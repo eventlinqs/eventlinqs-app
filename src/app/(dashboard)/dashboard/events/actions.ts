@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import { canTransition } from '@/lib/event-lifecycle'
 import type { EventStatus, EventVisibility, EventType, TicketTierType } from '@/types/database'
 
@@ -149,6 +150,8 @@ export async function createEvent(input: CreateEventInput): Promise<{ error?: st
     }
   }
 
+  revalidatePath('/dashboard/events')
+  revalidatePath('/dashboard')
   return {}
 }
 
@@ -156,7 +159,7 @@ export type UpdateEventInput = Omit<CreateEventInput, 'eventId' | 'organisationI
   eventId: string
 }
 
-export async function updateEvent(input: UpdateEventInput): Promise<{ error?: string }> {
+export async function updateEvent(input: UpdateEventInput): Promise<{ error: string } | never> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
@@ -232,7 +235,9 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error?: st
     if (tiersError) return { error: 'Failed to update ticket tiers.' }
   }
 
-  return {}
+  revalidatePath('/dashboard/events')
+  revalidatePath('/dashboard')
+  redirect('/dashboard/events?saved=1')
 }
 
 export async function publishEvent(eventId: string): Promise<{ error?: string }> {

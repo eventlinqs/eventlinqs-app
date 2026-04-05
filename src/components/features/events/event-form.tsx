@@ -354,7 +354,9 @@ export function EventForm({
         router.push('/dashboard/events')
         router.refresh()
       }
-    } catch {
+    } catch (err: unknown) {
+      // Re-throw Next.js redirect/navigation errors so they propagate correctly
+      if (err !== null && typeof err === 'object' && 'digest' in err) throw err
       setError('Something went wrong. Please try again.')
     } finally {
       setIsSubmitting(false)
@@ -368,7 +370,10 @@ export function EventForm({
       return
     }
     setImageUploading(true)
-    const url = await uploadEventImage(file, userId, eventIdRef.current)
+    const fd = new FormData()
+    fd.append('file', file)
+    fd.append('eventId', eventIdRef.current)
+    const url = await uploadEventImage(fd)
     setImageUploading(false)
     if (url) {
       set('cover_image_url', url)

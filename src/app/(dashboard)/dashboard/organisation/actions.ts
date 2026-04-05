@@ -1,7 +1,9 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 
 const CreateOrgSchema = z.object({
@@ -66,11 +68,16 @@ export async function createOrganisation(formData: FormData) {
     .single()
 
   if (orgError || !org) {
+    console.error('[createOrganisation] org insert error:', orgError)
     return { error: 'Failed to create organisation. Please try again.' }
   }
 
-  // Insert owner membership
-  const { error: memberError } = await supabase
+  // Insert owner membership using the service-role client.
+  // The anon-key RLS policy on organisation_members requires the user to
+  // already be an owner of the org, which is impossible on first insert.
+  // We've already verified the user's identity above — this is safe.
+  const adminClient = createAdminClient()
+  const { error: memberError } = await adminClient
     .from('organisation_members')
     .insert({
       organisation_id: org.id,
@@ -79,7 +86,10 @@ export async function createOrganisation(formData: FormData) {
     })
 
   if (memberError) {
-    return { error: 'Failed to assign organisation ownership.' }
+    console.error('[createOrganisation] member insert error:', memberError)
+    // Roll back the organisation row so we don't leave orphaned orgs
+    await adminClient.from('organisations').delete().eq('id', org.id)
+    return { error: 'Failed to assign organisation ownership. Please try again.' }
   }
 
   // Update profile role to organiser
@@ -88,5 +98,6 @@ export async function createOrganisation(formData: FormData) {
     .update({ role: 'organiser' })
     .eq('id', user.id)
 
+  revalidatePath('/dashboard', 'layout')
   redirect('/dashboard/organisation')
 }

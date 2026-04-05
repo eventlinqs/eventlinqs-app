@@ -7,11 +7,11 @@ import type { Event } from '@/types/database'
 type FilterTab = 'all' | 'draft' | 'published' | 'past' | 'cancelled'
 
 type Props = {
-  searchParams: Promise<{ tab?: string }>
+  searchParams: Promise<{ tab?: string; saved?: string }>
 }
 
 export default async function MyEventsPage({ searchParams }: Props) {
-  const { tab } = await searchParams
+  const { tab, saved } = await searchParams
   const activeTab = (tab as FilterTab) ?? 'all'
 
   const supabase = await createClient()
@@ -69,6 +69,11 @@ export default async function MyEventsPage({ searchParams }: Props) {
 
   return (
     <div>
+      {saved === '1' && (
+        <div className="mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+          Event saved successfully.
+        </div>
+      )}
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">My Events</h1>
         <Link

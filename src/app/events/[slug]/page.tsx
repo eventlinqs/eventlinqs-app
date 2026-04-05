@@ -4,6 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import type { Event, TicketTier, Organisation, EventCategory } from '@/types/database'
+import { CopyLinkButton } from '@/components/features/events/copy-link-button'
 
 type Props = {
   params: Promise<{ slug: string }>
@@ -251,12 +252,7 @@ export default async function EventDetailPage({ params }: Props) {
             {/* Share */}
             <div className="mt-8 flex items-center gap-3">
               <span className="text-sm text-gray-500">Share:</span>
-              <button
-                onClick={() => typeof navigator !== 'undefined' && navigator.clipboard?.writeText(window.location.href)}
-                className="text-sm text-blue-600 hover:underline"
-              >
-                Copy link
-              </button>
+              <CopyLinkButton />
             </div>
           </div>
 
