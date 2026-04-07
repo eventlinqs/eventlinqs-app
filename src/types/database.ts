@@ -143,3 +143,118 @@ export interface EventAddon {
   created_at: string
   updated_at: string
 }
+
+// ─── M3: Checkout & Payments ───────────────────────────────────────────────
+
+export type OrderStatus = 'pending' | 'confirmed' | 'partially_refunded' | 'refunded' | 'cancelled' | 'expired'
+
+export type PaymentStatus = 'initiated' | 'processing' | 'requires_action' | 'completed' | 'failed' | 'expired' | 'cancelled' | 'refund_pending' | 'refunded' | 'refund_failed'
+
+export type PaymentGatewayType = 'stripe' | 'paystack' | 'flutterwave' | 'paypal'
+
+export type ReservationStatus = 'active' | 'converted' | 'expired' | 'cancelled'
+
+export type DiscountType = 'percentage' | 'fixed_amount'
+
+export type FeePassType = 'absorb' | 'pass_to_buyer'
+
+export interface Order {
+  id: string
+  order_number: string
+  event_id: string
+  organisation_id: string
+  user_id: string | null
+  guest_email: string | null
+  guest_name: string | null
+  status: OrderStatus
+  subtotal_cents: number
+  addon_total_cents: number
+  platform_fee_cents: number
+  processing_fee_cents: number
+  tax_cents: number
+  discount_cents: number
+  total_cents: number
+  currency: string
+  fee_pass_type: FeePassType
+  discount_code_id: string | null
+  reservation_id: string | null
+  metadata: Record<string, unknown>
+  created_at: string
+  updated_at: string
+  confirmed_at: string | null
+  cancelled_at: string | null
+  expires_at: string | null
+}
+
+export interface OrderItem {
+  id: string
+  order_id: string
+  ticket_tier_id: string | null
+  addon_id: string | null
+  item_type: 'ticket' | 'addon'
+  item_name: string
+  quantity: number
+  unit_price_cents: number
+  total_cents: number
+  attendee_first_name: string | null
+  attendee_last_name: string | null
+  attendee_email: string | null
+  metadata: Record<string, unknown>
+  created_at: string
+}
+
+export interface Payment {
+  id: string
+  order_id: string
+  gateway: PaymentGatewayType
+  gateway_payment_id: string | null
+  status: PaymentStatus
+  amount_cents: number
+  currency: string
+  client_secret: string | null
+  receipt_url: string | null
+  failure_reason: string | null
+  gateway_response: Record<string, unknown>
+  idempotency_key: string
+  created_at: string
+  updated_at: string
+  completed_at: string | null
+}
+
+export interface Reservation {
+  id: string
+  event_id: string
+  user_id: string | null
+  session_id: string | null
+  status: ReservationStatus
+  items: ReservationItem[]
+  expires_at: string
+  created_at: string
+  converted_at: string | null
+}
+
+export interface ReservationItem {
+  ticket_tier_id: string
+  quantity: number
+  addon_id?: string
+}
+
+export interface DiscountCode {
+  id: string
+  event_id: string
+  organisation_id: string
+  code: string
+  discount_type: DiscountType
+  discount_value: number
+  currency: string | null
+  max_uses: number | null
+  max_uses_per_user: number
+  current_uses: number
+  min_order_amount_cents: number | null
+  applicable_tier_ids: string[] | null
+  valid_from: string | null
+  valid_until: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}

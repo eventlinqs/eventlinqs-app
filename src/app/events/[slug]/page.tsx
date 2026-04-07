@@ -3,8 +3,9 @@ import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import type { Metadata } from 'next'
-import type { Event, TicketTier, Organisation, EventCategory } from '@/types/database'
+import type { Event, TicketTier, Organisation, EventCategory, EventAddon } from '@/types/database'
 import { CopyLinkButton } from '@/components/features/events/copy-link-button'
+import { TicketSelector } from '@/components/checkout/ticket-selector'
 
 type Props = {
   params: Promise<{ slug: string }>
@@ -14,13 +15,14 @@ type FullEvent = Event & {
   ticket_tiers: TicketTier[]
   organisation: Organisation
   category: EventCategory | null
+  event_addons?: EventAddon[]
 }
 
 async function fetchEvent(slug: string): Promise<FullEvent | null> {
   const supabase = await createClient()
   const { data } = await supabase
     .from('events')
-    .select('*, ticket_tiers(*), organisation:organisations(*), category:event_categories(*)')
+    .select('*, ticket_tiers(*), organisation:organisations(*), category:event_categories(*), event_addons(*)')
     .eq('slug', slug)
     .single() as { data: FullEvent | null }
   return data
@@ -147,13 +149,14 @@ export default async function EventDetailPage({ params }: Props) {
 
       {/* Cover image hero */}
       {event.cover_image_url && (
-        <div className="relative aspect-[3/1] w-full overflow-hidden bg-gray-200">
+        <div className="w-full bg-gray-100">
           <Image
             src={event.cover_image_url}
             alt={event.title}
-            fill
+            width={1200}
+            height={630}
             priority
-            className="object-cover"
+            className="w-full h-auto object-contain"
           />
         </div>
       )}
@@ -260,59 +263,13 @@ export default async function EventDetailPage({ params }: Props) {
           <div className="w-full lg:w-80 shrink-0">
             <div className="sticky top-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Tickets</h2>
-
-              {isTicketingSuspended && (
-                <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
-                  Ticket sales are temporarily paused.
-                </div>
-              )}
-
-              {visibleTiers.length === 0 ? (
-                <p className="text-sm text-gray-500">No tickets available.</p>
-              ) : (
-                <div className="space-y-3">
-                  {visibleTiers.map(tier => {
-                    const soldOut = isSoldOut(tier)
-                    const remaining = tier.total_capacity - tier.sold_count
-                    return (
-                      <div
-                        key={tier.id}
-                        className={`rounded-lg border p-4 ${soldOut ? 'border-gray-100 bg-gray-50 opacity-60' : 'border-gray-200'}`}
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-gray-900">{tier.name}</p>
-                            {tier.description && (
-                              <p className="mt-0.5 text-xs text-gray-500">{tier.description}</p>
-                            )}
-                            {!soldOut && remaining <= 20 && (
-                              <p className="mt-1 text-xs text-amber-600">Only {remaining} left</p>
-                            )}
-                          </div>
-                          <div className="ml-3 text-right">
-                            <p className="text-sm font-bold text-gray-900">{formatPrice(tier)}</p>
-                            {soldOut && (
-                              <span className="inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-600">
-                                Sold out
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-
-              {visibleTiers.some(t => !isSoldOut(t)) && !isTicketingSuspended && (
-                <button
-                  disabled
-                  title="Checkout coming in Module 3"
-                  className="mt-4 w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white opacity-70 cursor-not-allowed"
-                >
-                  Select Tickets
-                </button>
-              )}
+              <TicketSelector
+                eventId={event.id}
+                tiers={visibleTiers}
+                addons={(event.event_addons ?? []).filter(a => a.is_active)}
+                isTicketingSuspended={isTicketingSuspended}
+                currency={visibleTiers[0]?.currency ?? 'AUD'}
+              />
             </div>
           </div>
         </div>

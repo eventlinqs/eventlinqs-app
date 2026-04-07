@@ -32,7 +32,9 @@ export async function updateSession(request: NextRequest) {
   // Define public routes that don't require authentication
   const publicRoutes = ['/', '/login', '/signup', '/auth/callback', '/auth/confirm', '/events', '/about', '/contact', '/privacy', '/terms']
   const isPublicRoute = publicRoutes.some(route =>
-    request.nextUrl.pathname === route || request.nextUrl.pathname.startsWith('/events/')
+    request.nextUrl.pathname === route ||
+    request.nextUrl.pathname.startsWith('/events/') ||
+    request.nextUrl.pathname.startsWith('/checkout/')
   )
 
   // Redirect unauthenticated users away from protected routes

@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 
 export default async function DashboardPage() {
@@ -42,14 +43,14 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <Link href="/dashboard/events" className="rounded-lg border border-gray-200 bg-white p-6 hover:border-gray-300 hover:shadow-sm transition-shadow">
           <h3 className="text-sm font-medium text-gray-500">Upcoming Events</h3>
           <p className="mt-2 text-3xl font-bold text-gray-900">{upcomingCount}</p>
-        </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-6">
+        </Link>
+        <Link href="/dashboard/events" className="rounded-lg border border-gray-200 bg-white p-6 hover:border-gray-300 hover:shadow-sm transition-shadow">
           <h3 className="text-sm font-medium text-gray-500">Total Events</h3>
           <p className="mt-2 text-3xl font-bold text-gray-900">{totalCount}</p>
-        </div>
+        </Link>
         <div className="rounded-lg border border-gray-200 bg-white p-6">
           <h3 className="text-sm font-medium text-gray-500">Account Status</h3>
           <p className="mt-2 text-lg font-semibold text-green-600">Active</p>

@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { EventForm } from '@/components/features/events/event-form'
+import { RevenueSummary } from '@/components/orders/revenue-summary'
 import type { Event, TicketTier, EventCategory } from '@/types/database'
 
 type Props = {
@@ -39,6 +40,19 @@ export default async function EditEventPage({ params }: Props) {
     .eq('is_active', true)
     .order('sort_order') as { data: EventCategory[] | null }
 
+  // Revenue data for the sidebar card
+  const { data: revenueData } = await supabase
+    .from('orders')
+    .select('total_cents, platform_fee_cents, processing_fee_cents, currency')
+    .eq('event_id', id)
+    .eq('status', 'confirmed')
+
+  const revenue = revenueData ?? []
+  const grossCents = revenue.reduce((s: number, o: { total_cents: number }) => s + o.total_cents, 0)
+  const platformFeeCents = revenue.reduce((s: number, o: { platform_fee_cents: number }) => s + o.platform_fee_cents, 0)
+  const processingFeeCents = revenue.reduce((s: number, o: { processing_fee_cents: number }) => s + o.processing_fee_cents, 0)
+  const revCurrency = revenue[0]?.currency ?? event.ticket_tiers?.[0]?.currency ?? 'AUD'
+
   const { ticket_tiers, ...eventData } = event
 
   return (
@@ -56,16 +70,41 @@ export default async function EditEventPage({ params }: Props) {
         </div>
       )}
 
-      <EventForm
-        userId={user.id}
-        organisationId={event.organisation_id}
-        categories={categories ?? []}
-        editMode
-        existingEventId={event.id}
-        existingEvent={eventData}
-        existingTiers={ticket_tiers ?? []}
-        existingStatus={event.status}
-      />
+      <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
+        <EventForm
+          userId={user.id}
+          organisationId={event.organisation_id}
+          categories={categories ?? []}
+          editMode
+          existingEventId={event.id}
+          existingEvent={eventData}
+          existingTiers={ticket_tiers ?? []}
+          existingStatus={event.status}
+        />
+
+        <div className="space-y-4">
+          <RevenueSummary
+            grossCents={grossCents}
+            platformFeeCents={platformFeeCents}
+            processingFeeCents={processingFeeCents}
+            currency={revCurrency}
+          />
+          <div className="flex flex-col gap-2">
+            <Link
+              href={`/dashboard/events/${id}/orders`}
+              className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-center text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              View Orders
+            </Link>
+            <Link
+              href={`/dashboard/events/${id}/discounts`}
+              className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-center text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Discount Codes
+            </Link>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
