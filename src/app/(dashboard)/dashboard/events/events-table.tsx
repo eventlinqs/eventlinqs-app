@@ -153,7 +153,11 @@ export function EventsTable({ events }: { events: EventRow[] }) {
             const totalCapacity = event.ticket_tiers.reduce((sum, t) => sum + t.total_capacity, 0)
 
             return (
-              <tr key={event.id} className="hover:bg-gray-50">
+              <tr
+                key={event.id}
+                className="hover:bg-gray-50 cursor-pointer"
+                onClick={() => router.push(`/dashboard/events/${event.id}/edit`)}
+              >
                 <td className="px-4 py-3">
                   <p className="font-medium text-gray-900">{event.title}</p>
                   {event.venue_city && (
@@ -171,7 +175,7 @@ export function EventsTable({ events }: { events: EventRow[] }) {
                 <td className="px-4 py-3 text-gray-600">
                   {totalCapacity > 0 ? `${soldCount} / ${totalCapacity}` : '—'}
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                   <RowActions event={event} onDone={() => router.refresh()} />
                 </td>
               </tr>

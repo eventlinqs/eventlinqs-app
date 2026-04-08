@@ -17,7 +17,7 @@ export default async function DiscountsPage({ params }: Props) {
 
   const { data: event } = await supabase
     .from('events')
-    .select('id, title, organisation_id, currency')
+    .select('id, title, organisation_id')
     .eq('id', eventId)
     .single()
 
@@ -40,7 +40,7 @@ export default async function DiscountsPage({ params }: Props) {
 
   const { data: tiers } = await supabase
     .from('ticket_tiers')
-    .select('id, name')
+    .select('id, name, currency')
     .eq('event_id', eventId)
     .eq('is_active', true)
 
@@ -57,7 +57,7 @@ export default async function DiscountsPage({ params }: Props) {
 
       <DiscountCodesClient
         eventId={eventId}
-        currency={event.currency ?? 'AUD'}
+        currency={tiers?.[0]?.currency ?? 'AUD'}
         initialCodes={(discountCodes ?? []) as DiscountCode[]}
         tiers={(tiers ?? []) as Pick<TicketTier, 'id' | 'name'>[]}
       />

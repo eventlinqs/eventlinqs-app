@@ -11,10 +11,12 @@ type Props = {
 
 export default async function CheckoutPage({ params }: Props) {
   const { reservation_id } = await params
+  console.log('[CheckoutPage] render start — reservation_id:', reservation_id)
 
   const supabase = await createClient()
   const admin = createAdminClient()
   const { data: { user } } = await supabase.auth.getUser()
+  console.log('[CheckoutPage] auth user:', user?.id ?? 'guest (no session)')
 
   // Load reservation via admin client to bypass RLS (supports guest checkout)
   const { data: reservation, error: resError } = await admin
@@ -24,6 +26,8 @@ export default async function CheckoutPage({ params }: Props) {
     .eq('status', 'active')
     .single()
 
+  console.log('[CheckoutPage] reservation lookup — data:', reservation?.id ?? null, '| error:', resError?.message ?? null)
+
   if (resError || !reservation) {
     // Reservation missing or already used — send user back to pick tickets again
     redirect('/events?error=reservation_not_found')
@@ -31,17 +35,23 @@ export default async function CheckoutPage({ params }: Props) {
 
   // Expired?
   if (new Date(reservation.expires_at) < new Date()) {
+    console.log('[CheckoutPage] notFound() — reservation expired at', reservation.expires_at)
     redirect('/events?error=reservation_expired')
   }
 
-  // Load event
-  const { data: event } = await supabase
+  // Load event — must use admin client to bypass RLS for guest users
+  const { data: event, error: eventError } = await admin
     .from('events')
-    .select('id, title, start_date, end_date, timezone, venue_name, venue_city, venue_country, organisation_id, fee_pass_type, currency')
+    .select('id, title, start_date, end_date, timezone, venue_name, venue_city, venue_country, organisation_id, fee_pass_type')
     .eq('id', reservation.event_id)
     .single()
 
-  if (!event) notFound()
+  console.log('[CheckoutPage] event lookup — data:', event?.id ?? null, '| error:', eventError?.message ?? null)
+
+  if (!event) {
+    console.log('[CheckoutPage] notFound() — event not found for id:', reservation.event_id)
+    notFound()
+  }
 
   // Determine currency from ticket tiers
   const reservationItems = reservation.items as { ticket_tier_id?: string; addon_id?: string; quantity: number }[]
@@ -51,14 +61,18 @@ export default async function CheckoutPage({ params }: Props) {
 
   let tiers: TicketTier[] = []
   if (tierIds.length > 0) {
-    const { data } = await supabase.from('ticket_tiers').select('*').in('id', tierIds)
-    tiers = (data ?? []) as TicketTier[]
+    // Must use admin client — ticket_tiers RLS restricts guest reads
+    const { data: tiersData, error: tiersError } = await admin.from('ticket_tiers').select('*').in('id', tierIds)
+    console.log('[CheckoutPage] ticket_tiers lookup — count:', tiersData?.length ?? 0, '| error:', tiersError?.message ?? null)
+    tiers = (tiersData ?? []) as TicketTier[]
   }
 
   let addons: EventAddon[] = []
   if (addonIds.length > 0) {
-    const { data } = await supabase.from('event_addons').select('*').in('id', addonIds)
-    addons = (data ?? []) as EventAddon[]
+    // Must use admin client — event_addons RLS restricts guest reads
+    const { data: addonsData, error: addonsError } = await admin.from('event_addons').select('*').in('id', addonIds)
+    console.log('[CheckoutPage] event_addons lookup — count:', addonsData?.length ?? 0, '| error:', addonsError?.message ?? null)
+    addons = (addonsData ?? []) as EventAddon[]
   }
 
   const tierMap = new Map(tiers.map(t => [t.id, t]))
@@ -88,8 +102,9 @@ export default async function CheckoutPage({ params }: Props) {
 
   const calculator = new PaymentCalculator()
   const initialFees = await calculator.calculate(cartTickets, cartAddons, currency, fee_pass_type, 0)
+  console.log('[CheckoutPage] fee calculation — total_cents:', initialFees.total_cents, '| currency:', currency)
 
-  // Load user profile for pre-fill
+  // Load user profile for pre-fill (session client is correct here — only called when user is authenticated)
   let userFirstName = ''
   let userLastName = ''
   let userEmail = ''

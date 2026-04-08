@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { ConfirmationActions } from '@/components/orders/confirmation-actions'
 import type { Order, OrderItem } from '@/types/database'
 
@@ -20,11 +21,14 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
   const { redirect_status } = await searchParams
 
   const supabase = await createClient()
+  // Admin client — order may belong to a guest (user_id null) or a different user (organiser view),
+  // so session-based RLS would block the SELECT. Authorization is by order_id/order_number (unguessable).
+  const adminClient = createAdminClient()
 
   // Fetch order — can be by UUID or by order_number (EL-XXXXXXXX)
   const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(order_id)
 
-  const query = supabase
+  const query = adminClient
     .from('orders')
     .select('*, order_items(*)')
 
@@ -40,7 +44,7 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
   // Show confirmation page anyway — the webhook will confirm the order
   const isConfirmed = fullOrder.status === 'confirmed' || redirect_status === 'succeeded'
 
-  const { data: event } = await supabase
+  const { data: event } = await adminClient
     .from('events')
     .select('title, start_date, end_date, timezone, venue_name, venue_city, venue_country, slug')
     .eq('id', fullOrder.event_id)

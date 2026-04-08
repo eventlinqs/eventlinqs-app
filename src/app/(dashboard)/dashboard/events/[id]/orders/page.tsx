@@ -1,6 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { OrderTable } from '@/components/orders/order-table'
 import { RevenueSummary } from '@/components/orders/revenue-summary'
 import type { Order } from '@/types/database'
@@ -13,12 +14,13 @@ export default async function EventOrdersPage({ params }: Props) {
   const { id: eventId } = await params
 
   const supabase = await createClient()
+  const adminClient = createAdminClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
   const { data: event } = await supabase
     .from('events')
-    .select('id, title, organisation_id, currency, ticket_tiers(id, name, total_capacity, sold_count)')
+    .select('id, title, organisation_id, ticket_tiers(id, name, total_capacity, sold_count)')
     .eq('id', eventId)
     .single()
 
@@ -33,8 +35,8 @@ export default async function EventOrdersPage({ params }: Props) {
 
   if (!org) notFound()
 
-  // Fetch all orders for this event
-  const { data: orders } = await supabase
+  // Fetch all orders for this event — admin client bypasses RLS (organiser is not the buyer)
+  const { data: orders } = await adminClient
     .from('orders')
     .select('*, order_items(id, item_type, quantity)')
     .eq('event_id', eventId)
@@ -47,7 +49,8 @@ export default async function EventOrdersPage({ params }: Props) {
   let profileMap = new Map<string, { full_name: string | null; email: string }>()
 
   if (userIds.length > 0) {
-    const { data: profiles } = await supabase
+    // Admin client needed — organiser reading other users' profiles
+    const { data: profiles } = await adminClient
       .from('profiles')
       .select('id, full_name, email')
       .in('id', userIds)
@@ -83,7 +86,7 @@ export default async function EventOrdersPage({ params }: Props) {
   const totalCapacity = (event.ticket_tiers ?? []).reduce((s: number, t: { total_capacity: number }) => s + t.total_capacity, 0)
   const remaining = totalCapacity - ticketsSold
 
-  const currency = event.currency ?? 'AUD'
+  const currency = ordersData[0]?.currency ?? 'AUD'
 
   return (
     <div>

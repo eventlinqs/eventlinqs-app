@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { StripeAdapter } from '@/lib/payments/stripe-adapter'
 import { Resend } from 'resend'
 import type Stripe from 'stripe'
@@ -68,8 +69,11 @@ async function handlePaymentSucceeded(
   const order_id = intent.metadata?.order_id
   if (!order_id) return
 
+  // Webhooks have no auth session — use admin client to bypass RLS for all writes
+  const adminClient = createAdminClient()
+
   // Idempotency: check if already completed
-  const { data: payment } = await supabase
+  const { data: payment } = await adminClient
     .from('payments')
     .select('id, status, order_id')
     .eq('gateway_payment_id', intent.id)
@@ -81,73 +85,35 @@ async function handlePaymentSucceeded(
   const receipt_url = typeof charge === 'object' && charge?.receipt_url ? charge.receipt_url : null
 
   // Transition payment → completed
-  await supabase.rpc('transition_payment_status', {
+  await adminClient.rpc('transition_payment_status', {
     p_payment_id: payment.id,
     p_new_status: 'completed',
     p_gateway_data: { receipt_url, stripe_event_id: intent.id },
   })
 
-  // Confirm order
-  const { data: order } = await supabase
-    .from('orders')
-    .update({
-      status: 'confirmed',
-      confirmed_at: new Date().toISOString(),
-    })
-    .eq('id', order_id)
-    .select('*, order_items(*)')
-    .single()
+  // Atomically confirm the order: sets status=confirmed, converts reservation,
+  // increments sold_count, decrements reserved_count, updates discount uses
+  const { error: confirmError } = await adminClient.rpc('confirm_order', {
+    p_order_id: order_id,
+  })
 
-  if (!order) return
-
-  // Convert reservation
-  if (order.reservation_id) {
-    await supabase
-      .from('reservations')
-      .update({ status: 'converted', converted_at: new Date().toISOString() })
-      .eq('id', order.reservation_id)
-  }
-
-  // Increment sold counts
-  const ticketItems = (order.order_items ?? []).filter(
-    (i: { item_type: string }) => i.item_type === 'ticket'
-  )
-
-  // Group by tier
-  const tierQuantities = new Map<string, number>()
-  for (const item of ticketItems) {
-    if (item.ticket_tier_id) {
-      tierQuantities.set(item.ticket_tier_id, (tierQuantities.get(item.ticket_tier_id) ?? 0) + item.quantity)
-    }
-  }
-
-  for (const [tier_id, quantity] of tierQuantities) {
-    await supabase.rpc('increment_sold_count', { p_tier_id: tier_id, p_quantity: quantity })
-  }
-
-  // Record discount usage
-  if (order.discount_code_id) {
-    await supabase.rpc('increment_discount_uses', { p_code_id: order.discount_code_id })
-
-    if (order.user_id) {
-      await supabase.from('discount_code_usages').upsert({
-        discount_code_id: order.discount_code_id,
-        order_id,
-        user_id: order.user_id,
-        discount_amount_cents: order.discount_cents,
-      })
-    }
+  if (confirmError) {
+    console.error('confirm_order RPC error:', confirmError)
+    return
   }
 
   // Send confirmation email
-  await sendConfirmationEmail(supabase, order_id, receipt_url)
+  await sendConfirmationEmail(adminClient, order_id, receipt_url)
 }
 
 async function handlePaymentFailed(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  _supabase: Awaited<ReturnType<typeof createClient>>,
   intent: Stripe.PaymentIntent
 ) {
-  const { data: payment } = await supabase
+  // Webhook has no auth session — must use admin client for all DB operations
+  const adminClient = createAdminClient()
+
+  const { data: payment } = await adminClient
     .from('payments')
     .select('id, status')
     .eq('gateway_payment_id', intent.id)
@@ -157,17 +123,20 @@ async function handlePaymentFailed(
 
   const failureMessage = intent.last_payment_error?.message ?? 'Payment failed'
 
-  await supabase
+  await adminClient
     .from('payments')
     .update({ status: 'failed', failure_reason: failureMessage })
     .eq('id', payment.id)
 }
 
 async function handleRequiresAction(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  _supabase: Awaited<ReturnType<typeof createClient>>,
   intent: Stripe.PaymentIntent
 ) {
-  const { data: payment } = await supabase
+  // Webhook has no auth session — must use admin client for all DB operations
+  const adminClient = createAdminClient()
+
+  const { data: payment } = await adminClient
     .from('payments')
     .select('id, status')
     .eq('gateway_payment_id', intent.id)
@@ -175,7 +144,7 @@ async function handleRequiresAction(
 
   if (!payment) return
 
-  await supabase.rpc('transition_payment_status', {
+  await adminClient.rpc('transition_payment_status', {
     p_payment_id: payment.id,
     p_new_status: 'requires_action',
     p_gateway_data: {},
@@ -183,10 +152,13 @@ async function handleRequiresAction(
 }
 
 async function handlePaymentCancelled(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  _supabase: Awaited<ReturnType<typeof createClient>>,
   intent: Stripe.PaymentIntent
 ) {
-  const { data: payment } = await supabase
+  // Webhook has no auth session — must use admin client for all DB operations
+  const adminClient = createAdminClient()
+
+  const { data: payment } = await adminClient
     .from('payments')
     .select('id, status, order_id')
     .eq('gateway_payment_id', intent.id)
@@ -194,21 +166,21 @@ async function handlePaymentCancelled(
 
   if (!payment) return
 
-  await supabase.rpc('transition_payment_status', {
+  await adminClient.rpc('transition_payment_status', {
     p_payment_id: payment.id,
     p_new_status: 'cancelled',
     p_gateway_data: {},
   })
 
   // Release reservation
-  const { data: order } = await supabase
+  const { data: order } = await adminClient
     .from('orders')
     .select('reservation_id')
     .eq('id', payment.order_id)
     .single()
 
   if (order?.reservation_id) {
-    await supabase
+    await adminClient
       .from('reservations')
       .update({ status: 'cancelled' })
       .eq('id', order.reservation_id)
@@ -217,14 +189,14 @@ async function handlePaymentCancelled(
 }
 
 async function sendConfirmationEmail(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  db: ReturnType<typeof createAdminClient>,
   order_id: string,
   receipt_url: string | null
 ) {
   const resendKey = process.env.RESEND_API_KEY
   if (!resendKey) return
 
-  const { data: order } = await supabase
+  const { data: order } = await db
     .from('orders')
     .select('*, order_items(*)')
     .eq('id', order_id)
@@ -232,7 +204,7 @@ async function sendConfirmationEmail(
 
   if (!order) return
 
-  const { data: event } = await supabase
+  const { data: event } = await db
     .from('events')
     .select('title, start_date, end_date, timezone, venue_name, venue_city, venue_country')
     .eq('id', order.event_id)
@@ -242,7 +214,7 @@ async function sendConfirmationEmail(
 
   const buyerEmail = order.guest_email ?? (
     order.user_id
-      ? (await supabase.from('profiles').select('email').eq('id', order.user_id).single()).data?.email
+      ? (await db.from('profiles').select('email').eq('id', order.user_id).single()).data?.email
       : null
   )
 

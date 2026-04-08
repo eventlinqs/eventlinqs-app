@@ -1,6 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import type { Order, OrderItem, Payment } from '@/types/database'
 
 type Props = {
@@ -28,12 +29,13 @@ export default async function OrderDetailPage({ params }: Props) {
   const { id: eventId, orderId } = await params
 
   const supabase = await createClient()
+  const adminClient = createAdminClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
   const { data: event } = await supabase
     .from('events')
-    .select('id, title, organisation_id, currency')
+    .select('id, title, organisation_id')
     .eq('id', eventId)
     .single()
 
@@ -48,7 +50,8 @@ export default async function OrderDetailPage({ params }: Props) {
 
   if (!org) notFound()
 
-  const { data: order } = await supabase
+  // Admin client — organiser is not the buyer, RLS blocks session-client reads on orders/payments
+  const { data: order } = await adminClient
     .from('orders')
     .select('*, order_items(*), payments(*)')
     .eq('id', orderId)
@@ -59,12 +62,12 @@ export default async function OrderDetailPage({ params }: Props) {
 
   const fullOrder = order as FullOrder
 
-  // Load buyer profile if user order
+  // Load buyer profile if user order — admin client needed to read another user's profile
   let buyerName = fullOrder.guest_name ?? ''
   let buyerEmail = fullOrder.guest_email ?? ''
 
   if (fullOrder.user_id) {
-    const { data: profile } = await supabase
+    const { data: profile } = await adminClient
       .from('profiles')
       .select('full_name, email')
       .eq('id', fullOrder.user_id)

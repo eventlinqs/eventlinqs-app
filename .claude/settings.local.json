@@ -8,7 +8,8 @@
       "Bash(ls /c/Users/61416/OneDrive/Desktop/EventLinqs/eventlinqs-app/*.tsx)",
       "Bash(cp /c/Users/61416/OneDrive/Desktop/EventLinqs/eventlinqs-app/src/middleware.ts /c/Users/61416/OneDrive/Desktop/EventLinqs/eventlinqs-app/src/proxy.ts)",
       "Bash(rm /c/Users/61416/OneDrive/Desktop/EventLinqs/eventlinqs-app/src/middleware.ts)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(node scripts/_backfill_once.mjs)"
     ]
   }
 }
