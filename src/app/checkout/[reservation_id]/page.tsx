@@ -53,56 +53,123 @@ export default async function CheckoutPage({ params }: Props) {
     notFound()
   }
 
-  // Determine currency from ticket tiers
-  const reservationItems = reservation.items as { ticket_tier_id?: string; addon_id?: string; quantity: number }[]
+  // Determine if this is a seat reservation or GA
+  const rawItems = reservation.items as
+    | { seat_ids: string[] }
+    | { ticket_tier_id?: string; addon_id?: string; quantity: number }[]
 
-  const tierIds = reservationItems.filter(i => i.ticket_tier_id).map(i => i.ticket_tier_id!)
-  const addonIds = reservationItems.filter(i => i.addon_id).map(i => i.addon_id!)
+  const isSeatReservation = !Array.isArray(rawItems) && Array.isArray((rawItems as { seat_ids?: unknown }).seat_ids)
 
-  let tiers: TicketTier[] = []
-  if (tierIds.length > 0) {
-    // Must use admin client — ticket_tiers RLS restricts guest reads
-    const { data: tiersData, error: tiersError } = await admin.from('ticket_tiers').select('*').in('id', tierIds)
-    console.log('[CheckoutPage] ticket_tiers lookup — count:', tiersData?.length ?? 0, '| error:', tiersError?.message ?? null)
-    tiers = (tiersData ?? []) as TicketTier[]
+  // ── Seat reservation path ──────────────────────────────────────────────────
+  let seatSlots: { seat_id: string; label: string; price_cents: number }[] = []
+  let currency = 'AUD'
+  let initialFees: Awaited<ReturnType<typeof PaymentCalculator.prototype.calculate>> | null = null
+  let ticketSlots: { tier_id: string; tier_name: string; quantity: number }[] = []
+  let tierIds: string[] = []
+
+  if (isSeatReservation) {
+    const seatIds = (rawItems as { seat_ids: string[] }).seat_ids
+
+    const { data: seats, error: seatsError } = await admin
+      .from('seats')
+      .select('id, row_label, seat_number, seat_type, price_cents, ticket_tier_id')
+      .in('id', seatIds)
+
+    console.log('[CheckoutPage] seat lookup — count:', seats?.length ?? 0, '| error:', seatsError?.message ?? null)
+
+    if (seats && seats.length > 0) {
+      // Get tier info for currency
+      const tierIdsFromSeats = [...new Set(seats.map(s => s.ticket_tier_id).filter(Boolean) as string[])]
+      let firstTier: { id: string; price: number; currency: string } | null = null
+      if (tierIdsFromSeats.length > 0) {
+        const { data: t } = await admin.from('ticket_tiers').select('id, price, currency').in('id', tierIdsFromSeats).limit(1)
+        firstTier = t?.[0] ?? null
+      }
+      if (!firstTier) {
+        const { data: t } = await admin.from('ticket_tiers').select('id, price, currency').eq('event_id', event.id).limit(1)
+        firstTier = t?.[0] ?? null
+      }
+      currency = firstTier?.currency ?? 'AUD'
+
+      seatSlots = seats.map(s => ({
+        seat_id: s.id,
+        label: `Row ${s.row_label} · Seat ${s.seat_number}${s.seat_type !== 'standard' ? ` (${s.seat_type})` : ''}`,
+        price_cents: s.price_cents ?? firstTier?.price ?? 0,
+      }))
+
+      const totalSeatCents = seatSlots.reduce((s, x) => s + x.price_cents, 0)
+      const avgPriceCents = Math.round(totalSeatCents / seatSlots.length)
+      const fee_pass_type = (event.fee_pass_type ?? 'pass_to_buyer') as FeePassType
+      const calculator = new PaymentCalculator()
+      initialFees = await calculator.calculate(
+        [{ tier_id: 'seat', tier_name: 'Reserved Seat', quantity: seatSlots.length, unit_price_cents: avgPriceCents }],
+        [],
+        currency,
+        fee_pass_type,
+        0
+      )
+      // Override subtotal with exact seat sum
+      initialFees = { ...initialFees, subtotal_cents: totalSeatCents, total_cents: totalSeatCents + initialFees.platform_fee_cents + initialFees.payment_processing_fee_cents + initialFees.tax_cents }
+    } else {
+      redirect('/events?error=reservation_not_found')
+    }
   }
 
+  // ── GA path ────────────────────────────────────────────────────────────────
   let addons: EventAddon[] = []
-  if (addonIds.length > 0) {
-    // Must use admin client — event_addons RLS restricts guest reads
-    const { data: addonsData, error: addonsError } = await admin.from('event_addons').select('*').in('id', addonIds)
-    console.log('[CheckoutPage] event_addons lookup — count:', addonsData?.length ?? 0, '| error:', addonsError?.message ?? null)
-    addons = (addonsData ?? []) as EventAddon[]
+
+  if (!isSeatReservation) {
+    const reservationItems = rawItems as { ticket_tier_id?: string; addon_id?: string; quantity: number }[]
+    tierIds = reservationItems.filter(i => i.ticket_tier_id).map(i => i.ticket_tier_id!)
+    const addonIds = reservationItems.filter(i => i.addon_id).map(i => i.addon_id!)
+
+    let tiers: TicketTier[] = []
+    if (tierIds.length > 0) {
+      const { data: tiersData, error: tiersError } = await admin.from('ticket_tiers').select('*').in('id', tierIds)
+      console.log('[CheckoutPage] ticket_tiers lookup — count:', tiersData?.length ?? 0, '| error:', tiersError?.message ?? null)
+      tiers = (tiersData ?? []) as TicketTier[]
+    }
+
+    if (addonIds.length > 0) {
+      const { data: addonsData, error: addonsError } = await admin.from('event_addons').select('*').in('id', addonIds)
+      console.log('[CheckoutPage] event_addons lookup — count:', addonsData?.length ?? 0, '| error:', addonsError?.message ?? null)
+      addons = (addonsData ?? []) as EventAddon[]
+    }
+
+    const tierMap = new Map(tiers.map(t => [t.id, t]))
+    const addonMap = new Map(addons.map(a => [a.id, a]))
+
+    currency = tiers[0]?.currency ?? 'AUD'
+    const fee_pass_type = (event.fee_pass_type ?? 'pass_to_buyer') as FeePassType
+
+    const cartTickets = reservationItems
+      .filter(i => i.ticket_tier_id)
+      .map(i => ({
+        tier_id: i.ticket_tier_id!,
+        tier_name: tierMap.get(i.ticket_tier_id!)?.name ?? 'Ticket',
+        quantity: i.quantity,
+        unit_price_cents: tierMap.get(i.ticket_tier_id!)?.price ?? 0,
+      }))
+
+    const cartAddons = reservationItems
+      .filter(i => i.addon_id)
+      .map(i => ({
+        addon_id: i.addon_id!,
+        addon_name: addonMap.get(i.addon_id!)?.name ?? 'Add-on',
+        quantity: i.quantity,
+        unit_price_cents: addonMap.get(i.addon_id!)?.price ?? 0,
+      }))
+
+    const calculator = new PaymentCalculator()
+    initialFees = await calculator.calculate(cartTickets, cartAddons, currency, fee_pass_type, 0)
+    console.log('[CheckoutPage] fee calculation — total_cents:', initialFees.total_cents, '| currency:', currency)
+
+    ticketSlots = cartTickets.map(t => ({
+      tier_id: t.tier_id,
+      tier_name: t.tier_name,
+      quantity: t.quantity,
+    }))
   }
-
-  const tierMap = new Map(tiers.map(t => [t.id, t]))
-  const addonMap = new Map(addons.map(a => [a.id, a]))
-
-  const currency = tiers[0]?.currency ?? 'AUD'
-  const fee_pass_type = (event.fee_pass_type ?? 'pass_to_buyer') as FeePassType
-
-  // Calculate initial fees
-  const cartTickets = reservationItems
-    .filter(i => i.ticket_tier_id)
-    .map(i => ({
-      tier_id: i.ticket_tier_id!,
-      tier_name: tierMap.get(i.ticket_tier_id!)?.name ?? 'Ticket',
-      quantity: i.quantity,
-      unit_price_cents: tierMap.get(i.ticket_tier_id!)?.price ?? 0,
-    }))
-
-  const cartAddons = reservationItems
-    .filter(i => i.addon_id)
-    .map(i => ({
-      addon_id: i.addon_id!,
-      addon_name: addonMap.get(i.addon_id!)?.name ?? 'Add-on',
-      quantity: i.quantity,
-      unit_price_cents: addonMap.get(i.addon_id!)?.price ?? 0,
-    }))
-
-  const calculator = new PaymentCalculator()
-  const initialFees = await calculator.calculate(cartTickets, cartAddons, currency, fee_pass_type, 0)
-  console.log('[CheckoutPage] fee calculation — total_cents:', initialFees.total_cents, '| currency:', currency)
 
   // Load user profile for pre-fill (session client is correct here — only called when user is authenticated)
   let userFirstName = ''
@@ -140,12 +207,6 @@ export default async function CheckoutPage({ params }: Props) {
 
   const venue = [event.venue_name, event.venue_city, event.venue_country].filter(Boolean).join(', ') || null
 
-  const ticketSlots = cartTickets.map(t => ({
-    tier_id: t.tier_id,
-    tier_name: t.tier_name,
-    quantity: t.quantity,
-  }))
-
   return (
     <CheckoutForm
       reservationId={reservation_id}
@@ -154,9 +215,11 @@ export default async function CheckoutPage({ params }: Props) {
       eventTitle={event.title}
       eventDate={eventDate}
       venue={venue}
-      initialFees={initialFees}
+      initialFees={initialFees!}
       ticketSlots={ticketSlots}
       tierIds={tierIds}
+      seatMode={isSeatReservation}
+      seatSlots={seatSlots}
       userId={user?.id ?? null}
       userFirstName={userFirstName}
       userLastName={userLastName}

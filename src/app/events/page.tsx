@@ -2,6 +2,9 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import Image from 'next/image'
 import type { Event, EventCategory } from '@/types/database'
+import { SocialProofBadge } from '@/components/inventory/social-proof-badge'
+import type { EventInventory } from '@/lib/redis/inventory-cache'
+import { getDynamicPriceMap } from '@/lib/pricing/dynamic-pricing'
 
 type Props = {
   searchParams: Promise<{
@@ -25,9 +28,13 @@ function formatDate(iso: string) {
   })
 }
 
-function formatPrice(tiers: { price: number; currency: string }[]) {
+function formatPrice(
+  tiers: { id: string; price: number; currency: string }[],
+  dynamicPrices: Map<string, number>,
+) {
   if (!tiers || tiers.length === 0) return 'Free'
-  const min = Math.min(...tiers.map(t => t.price))
+  const effectivePrices = tiers.map(t => dynamicPrices.get(t.id) ?? t.price)
+  const min = Math.min(...effectivePrices)
   if (min === 0) return 'Free'
   const currency = tiers[0].currency ?? 'AUD'
   return `From ${currency} ${(min / 100).toFixed(2)}`
@@ -47,10 +54,10 @@ export default async function EventsPage({ searchParams }: Props) {
     .eq('is_active', true)
     .order('sort_order') as { data: Pick<EventCategory, 'id' | 'name' | 'slug'>[] | null }
 
-  // Build events query
+  // Build events query — include inventory fields for social proof badges
   let query = supabase
     .from('events')
-    .select('*, ticket_tiers(price, currency), category:event_categories(name, slug)', { count: 'exact' })
+    .select('*, ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity), category:event_categories(name, slug)', { count: 'exact' })
     .eq('status', 'published')
     .eq('visibility', 'public')
     .order('start_date', { ascending: true })
@@ -86,12 +93,34 @@ export default async function EventsPage({ searchParams }: Props) {
     query = query.gte('start_date', now)
   }
 
+  type EventTierData = { id: string; price: number; currency: string; sold_count: number; reserved_count: number; total_capacity: number }
+
   const { data: events, count } = await query as {
     data: (Event & {
-      ticket_tiers: { price: number; currency: string }[]
+      ticket_tiers: EventTierData[]
       category: { name: string; slug: string } | null
     })[] | null
     count: number | null
+  }
+
+  // Fetch dynamic prices for the cheapest tier of each event (the "From X" price)
+  const cheapestTierIds = (events ?? [])
+    .map(e => {
+      const tiers = e.ticket_tiers
+      if (!tiers || tiers.length === 0) return null
+      return tiers.reduce((min, t) => t.price < min.price ? t : min, tiers[0]).id
+    })
+    .filter((id): id is string => id !== null)
+  const dynamicPrices = await getDynamicPriceMap(cheapestTierIds)
+
+  // Build event-level inventory for social proof badges (computed from tier data)
+  function buildEventInventory(tiers: EventTierData[]): EventInventory {
+    const total_sold = tiers.reduce((s, t) => s + t.sold_count, 0)
+    const total_reserved = tiers.reduce((s, t) => s + t.reserved_count, 0)
+    const total_capacity = tiers.reduce((s, t) => s + t.total_capacity, 0)
+    const available = Math.max(0, total_capacity - total_sold - total_reserved)
+    const percent_sold = total_capacity > 0 ? Math.round((total_sold / total_capacity) * 100) : 0
+    return { total_sold, total_reserved, total_capacity, available, percent_sold }
   }
 
   const totalPages = Math.ceil((count ?? 0) / PAGE_SIZE)
@@ -273,9 +302,18 @@ export default async function EventsPage({ searchParams }: Props) {
                           {event.venue_city}
                         </p>
                       )}
-                      <p className="mt-auto pt-3 text-sm font-semibold text-gray-900">
-                        {formatPrice(event.ticket_tiers)}
-                      </p>
+                      <div className="mt-auto pt-3 flex items-center justify-between gap-2">
+                        <p className="text-sm font-semibold text-gray-900">
+                          {formatPrice(event.ticket_tiers, dynamicPrices)}
+                        </p>
+                        {event.ticket_tiers.length > 0 && (
+                          <SocialProofBadge
+                            inventory={buildEventInventory(event.ticket_tiers)}
+                            createdAt={event.created_at}
+                            compact
+                          />
+                        )}
+                      </div>
                     </div>
                   </Link>
                 ))}

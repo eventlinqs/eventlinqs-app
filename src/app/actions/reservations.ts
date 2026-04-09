@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
+import { refreshInventoryCache } from '@/lib/redis/inventory-cache'
 
 const ReservationItemSchema = z.object({
   ticket_tier_id: z.string().uuid(),
@@ -62,6 +63,13 @@ export async function createReservation(
 
   if (!result.success) {
     return { error: result.error ?? 'Unable to reserve tickets. Please try again.' }
+  }
+
+  // Refresh Redis inventory cache for all reserved tiers (fire-and-forget)
+  for (const item of ticket_items) {
+    refreshInventoryCache(item.ticket_tier_id, event_id).catch(err => {
+      console.error('[reservations] refreshInventoryCache failed:', err)
+    })
   }
 
   return {

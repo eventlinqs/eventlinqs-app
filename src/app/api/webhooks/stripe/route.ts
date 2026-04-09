@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { StripeAdapter } from '@/lib/payments/stripe-adapter'
 import { Resend } from 'resend'
+import { refreshInventoryCache } from '@/lib/redis/inventory-cache'
 import type Stripe from 'stripe'
 
 export const dynamic = 'force-dynamic'
@@ -102,6 +103,67 @@ async function handlePaymentSucceeded(
     return
   }
 
+  // Mark reserved seats as sold (seat reservations)
+  const { data: orderForSeats } = await adminClient
+    .from('orders')
+    .select('reservation_id')
+    .eq('id', order_id)
+    .single()
+
+  if (orderForSeats?.reservation_id) {
+    const { data: reservationForSeats } = await adminClient
+      .from('reservations')
+      .select('items, event_id')
+      .eq('id', orderForSeats.reservation_id)
+      .single()
+
+    if (reservationForSeats) {
+      const items = reservationForSeats.items as { seat_ids?: string[] } | unknown[]
+      const seatIds = !Array.isArray(items) && (items as { seat_ids?: string[] }).seat_ids
+      if (Array.isArray(seatIds) && seatIds.length > 0) {
+        const { error: seatSoldError } = await adminClient
+          .from('seats')
+          .update({ status: 'sold', updated_at: new Date().toISOString() })
+          .in('id', seatIds)
+          .eq('event_id', reservationForSeats.event_id)
+
+        if (seatSoldError) {
+          console.error('[webhook] failed to mark seats as sold:', seatSoldError)
+        }
+      }
+    }
+  }
+
+  // Refresh Redis inventory cache for all affected tiers
+  const { data: orderItems, error: itemsError } = await adminClient
+    .from('order_items')
+    .select('ticket_tier_id, ticket_tiers(event_id)')
+    .eq('order_id', order_id)
+    .eq('item_type', 'ticket')
+    .not('ticket_tier_id', 'is', null)
+
+  if (itemsError) {
+    console.error('[webhook] Failed to load order items for cache refresh:', itemsError)
+  }
+
+  if (orderItems && orderItems.length > 0) {
+    const seen = new Set<string>()
+    for (const item of orderItems) {
+      if (!item.ticket_tier_id) continue
+      const cacheKey = `${item.ticket_tier_id}`
+      if (seen.has(cacheKey)) continue
+      seen.add(cacheKey)
+      const tierRelation = item.ticket_tiers as { event_id: string }[] | { event_id: string } | null
+      const eventId = Array.isArray(tierRelation) ? tierRelation[0]?.event_id : tierRelation?.event_id
+      if (eventId) {
+        // Fire-and-forget — never let cache failure break webhook response
+        refreshInventoryCache(item.ticket_tier_id, eventId).catch(err => {
+          console.error('[webhook] refreshInventoryCache failed:', err)
+        })
+      }
+    }
+  }
+
   // Send confirmation email
   await sendConfirmationEmail(adminClient, order_id, receipt_url)
 }
@@ -185,6 +247,30 @@ async function handlePaymentCancelled(
       .update({ status: 'cancelled' })
       .eq('id', order.reservation_id)
       .eq('status', 'active')
+
+    // Release any seat reservation — return seats to available
+    const { data: reservation } = await adminClient
+      .from('reservations')
+      .select('items, event_id')
+      .eq('id', order.reservation_id)
+      .single()
+
+    if (reservation) {
+      const items = reservation.items as { seat_ids?: string[] } | unknown[]
+      const seatIds = !Array.isArray(items) && (items as { seat_ids?: string[] }).seat_ids
+      if (Array.isArray(seatIds) && seatIds.length > 0) {
+        await adminClient
+          .from('seats')
+          .update({
+            status: 'available',
+            reservation_id: null,
+            updated_at: new Date().toISOString(),
+          })
+          .in('id', seatIds)
+          .eq('event_id', reservation.event_id)
+          .eq('status', 'reserved')
+      }
+    }
   }
 }
 

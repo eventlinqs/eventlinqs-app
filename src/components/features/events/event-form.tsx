@@ -63,6 +63,10 @@ type FormData = {
   is_age_restricted: boolean
   age_restriction_min: string
   max_capacity: string
+  // M4: Reserved seating
+  has_reserved_seating: boolean
+  venue_id: string
+  seat_map_id: string
 }
 
 const TIMEZONES = [
@@ -166,6 +170,9 @@ function getDefaultFormData(): FormData {
     is_age_restricted: false,
     age_restriction_min: '18',
     max_capacity: '',
+    has_reserved_seating: false,
+    venue_id: '',
+    seat_map_id: '',
   }
 }
 
@@ -195,6 +202,9 @@ function fromExistingEvent(
     is_age_restricted: boolean
     age_restriction_min: number | null
     max_capacity: number | null
+    has_reserved_seating?: boolean
+    venue_id?: string | null
+    seat_map_id?: string | null
   },
   tiers: TicketTier[]
 ): FormData {
@@ -238,15 +248,25 @@ function fromExistingEvent(
     is_age_restricted: event.is_age_restricted,
     age_restriction_min: (event.age_restriction_min ?? 18).toString(),
     max_capacity: event.max_capacity?.toString() ?? '',
+    has_reserved_seating: event.has_reserved_seating ?? false,
+    venue_id: event.venue_id ?? '',
+    seat_map_id: event.seat_map_id ?? '',
   }
 }
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
+interface VenueOption {
+  id: string
+  name: string
+  seat_maps: { id: string; name: string; total_seats: number }[]
+}
+
 type Props = {
   userId: string
   organisationId: string
   categories: EventCategory[]
+  venues?: VenueOption[]
   // For edit mode
   editMode?: boolean
   existingEventId?: string
@@ -261,6 +281,7 @@ export function EventForm({
   userId,
   organisationId,
   categories,
+  venues = [],
   editMode = false,
   existingEventId,
   existingEvent,
@@ -317,6 +338,9 @@ export function EventForm({
     max_capacity: formData.max_capacity ? parseInt(formData.max_capacity) : null,
     status,
     scheduled_publish_at: null,
+    has_reserved_seating: formData.has_reserved_seating,
+    venue_id: formData.has_reserved_seating ? (formData.venue_id || null) : null,
+    seat_map_id: formData.has_reserved_seating ? (formData.seat_map_id || null) : null,
     ticket_tiers: formData.ticket_tiers.map((t, i) => ({
       name: t.name,
       description: t.description,
@@ -964,6 +988,93 @@ export function EventForm({
           placeholder="e.g. 500"
           className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
         />
+      </div>
+
+      <div className="rounded-lg border border-gray-200 p-4 space-y-4">
+        <label className="flex items-center gap-3 cursor-pointer">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={formData.has_reserved_seating}
+            onClick={() => {
+              set('has_reserved_seating', !formData.has_reserved_seating)
+              if (formData.has_reserved_seating) {
+                set('venue_id', '')
+                set('seat_map_id', '')
+              }
+            }}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              formData.has_reserved_seating ? 'bg-blue-600' : 'bg-gray-300'
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                formData.has_reserved_seating ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
+          <div>
+            <p className="text-sm font-medium text-gray-900">Reserved seating</p>
+            <p className="text-xs text-gray-500">Buyers pick specific seats from an interactive seat map</p>
+          </div>
+        </label>
+
+        {formData.has_reserved_seating && (
+          <div className="ml-14 space-y-3">
+            {venues.length === 0 ? (
+              <p className="text-sm text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
+                No venues found. <a href="/dashboard/venues" className="underline">Create a venue</a> and import a seat map first.
+              </p>
+            ) : (
+              <>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Venue</label>
+                  <select
+                    value={formData.venue_id}
+                    onChange={e => {
+                      set('venue_id', e.target.value)
+                      set('seat_map_id', '')
+                    }}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  >
+                    <option value="">Select a venue…</option>
+                    {venues.map(v => (
+                      <option key={v.id} value={v.id}>{v.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {formData.venue_id && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Seat Map</label>
+                    {(() => {
+                      const venue = venues.find(v => v.id === formData.venue_id)
+                      const maps = venue?.seat_maps ?? []
+                      return maps.length === 0 ? (
+                        <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
+                          This venue has no seat maps. <a href={`/dashboard/venues/${formData.venue_id}/seat-maps`} className="underline">Import one.</a>
+                        </p>
+                      ) : (
+                        <select
+                          value={formData.seat_map_id}
+                          onChange={e => set('seat_map_id', e.target.value)}
+                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        >
+                          <option value="">Select a seat map…</option>
+                          {maps.map(m => (
+                            <option key={m.id} value={m.id}>
+                              {m.name} ({m.total_seats} seats)
+                            </option>
+                          ))}
+                        </select>
+                      )
+                    })()}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { canTransition } from '@/lib/event-lifecycle'
@@ -64,6 +65,10 @@ export type CreateEventInput = {
   status: EventStatus
   scheduled_publish_at: string | null
   ticket_tiers: TicketTierInput[]
+  // M4: Reserved seating
+  has_reserved_seating: boolean
+  venue_id: string | null
+  seat_map_id: string | null
 }
 
 export async function createEvent(input: CreateEventInput): Promise<{ error?: string }> {
@@ -84,7 +89,9 @@ export async function createEvent(input: CreateEventInput): Promise<{ error?: st
   const slug = generateSlug(input.title)
   const now = new Date().toISOString()
 
-  const { error: eventError } = await supabase
+  const admin = createAdminClient()
+
+  const { error: eventError } = await admin
     .from('events')
     .insert({
       id: input.eventId,
@@ -120,6 +127,9 @@ export async function createEvent(input: CreateEventInput): Promise<{ error?: st
       status: input.status,
       published_at: input.status === 'published' ? now : null,
       scheduled_publish_at: input.status === 'scheduled' ? input.scheduled_publish_at : null,
+      has_reserved_seating: input.has_reserved_seating,
+      venue_id: input.has_reserved_seating ? (input.venue_id || null) : null,
+      seat_map_id: input.has_reserved_seating ? (input.seat_map_id || null) : null,
     })
 
   if (eventError) {
@@ -143,10 +153,22 @@ export async function createEvent(input: CreateEventInput): Promise<{ error?: st
       sort_order: tier.sort_order ?? i,
     }))
 
-    const { error: tiersError } = await supabase.from('ticket_tiers').insert(tiers)
+    const { error: tiersError } = await admin.from('ticket_tiers').insert(tiers)
     if (tiersError) {
       console.error('Ticket tiers insert error:', tiersError)
       return { error: 'Event created but failed to save ticket tiers.' }
+    }
+  }
+
+  // Materialise seats if reserved seating is enabled and a seat map is selected
+  if (input.has_reserved_seating && input.seat_map_id) {
+    const { error: matError } = await admin.rpc('materialize_seats', {
+      p_event_id: input.eventId,
+      p_seat_map_id: input.seat_map_id,
+    })
+    if (matError) {
+      console.error('[events] materialize_seats failed:', matError)
+      // Non-fatal: event is created, seats can be materialised later
     }
   }
 
@@ -175,7 +197,16 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
 
   const now = new Date().toISOString()
 
-  const { error: eventError } = await supabase
+  const admin = createAdminClient()
+
+  // Read previous seat_map_id to detect changes
+  const { data: prevEvent } = await supabase
+    .from('events')
+    .select('seat_map_id, has_reserved_seating')
+    .eq('id', input.eventId)
+    .single()
+
+  const { error: eventError } = await admin
     .from('events')
     .update({
       title: input.title,
@@ -207,13 +238,16 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
       status: input.status,
       published_at: input.status === 'published' && !event.status.includes('published') ? now : undefined,
       scheduled_publish_at: input.status === 'scheduled' ? input.scheduled_publish_at : null,
+      has_reserved_seating: input.has_reserved_seating,
+      venue_id: input.has_reserved_seating ? (input.venue_id || null) : null,
+      seat_map_id: input.has_reserved_seating ? (input.seat_map_id || null) : null,
     })
     .eq('id', input.eventId)
 
   if (eventError) return { error: 'Failed to update event.' }
 
   // Replace ticket tiers: delete existing, re-insert
-  await supabase.from('ticket_tiers').delete().eq('event_id', input.eventId)
+  await admin.from('ticket_tiers').delete().eq('event_id', input.eventId)
 
   if (input.ticket_tiers.length > 0) {
     const tiers = input.ticket_tiers.map((tier, i) => ({
@@ -231,8 +265,24 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
       sort_order: tier.sort_order ?? i,
     }))
 
-    const { error: tiersError } = await supabase.from('ticket_tiers').insert(tiers)
+    const { error: tiersError } = await admin.from('ticket_tiers').insert(tiers)
     if (tiersError) return { error: 'Failed to update ticket tiers.' }
+  }
+
+  // Re-materialise seats if seat map changed or reserved seating was just enabled
+  const seatMapChanged =
+    input.has_reserved_seating &&
+    input.seat_map_id &&
+    (prevEvent?.seat_map_id !== input.seat_map_id || !prevEvent?.has_reserved_seating)
+
+  if (seatMapChanged) {
+    const { error: matError } = await admin.rpc('materialize_seats', {
+      p_event_id: input.eventId,
+      p_seat_map_id: input.seat_map_id,
+    })
+    if (matError) {
+      console.error('[events] materialize_seats failed on update:', matError)
+    }
   }
 
   revalidatePath('/dashboard/events')

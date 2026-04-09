@@ -29,6 +29,8 @@ interface CheckoutFormProps {
   initialFees: FeeBreakdown
   ticketSlots: { tier_id: string; tier_name: string; quantity: number }[]
   tierIds: string[]
+  seatMode?: boolean
+  seatSlots?: { seat_id: string; label: string; price_cents: number }[]
   userId: string | null
   userFirstName: string
   userLastName: string
@@ -112,6 +114,8 @@ export function CheckoutForm({
   initialFees,
   ticketSlots,
   tierIds,
+  seatMode = false,
+  seatSlots = [],
   userId,
   userFirstName,
   userLastName,
@@ -169,6 +173,9 @@ export function CheckoutForm({
       return 'Please enter a valid email address'
     }
     if (!buyerName.trim()) return 'Please enter your name'
+
+    // Seat mode: buyer info is used for all seats — no per-seat attendee required
+    if (seatMode) return null
 
     const totalTickets = ticketSlots.reduce((s, t) => s + t.quantity, 0)
     if (attendees.length < totalTickets) {
@@ -337,15 +344,34 @@ export function CheckoutForm({
                 </div>
               </div>
 
-              {/* Attendee details */}
-              <AttendeeForm
-                tickets={ticketSlots}
-                buyerFirstName={userFirstName || buyerName.split(' ')[0]}
-                buyerLastName={userLastName || buyerName.split(' ').slice(1).join(' ')}
-                buyerEmail={buyerEmail}
-                attendees={attendees}
-                onChange={setAttendees}
-              />
+              {/* Seat slots (seat mode only) */}
+              {seatMode && seatSlots && seatSlots.length > 0 && (
+                <div className="rounded-xl border border-gray-200 bg-white p-6">
+                  <h3 className="text-base font-semibold text-gray-900 mb-4">Your Seats</h3>
+                  <ul className="divide-y divide-gray-100">
+                    {seatSlots.map(slot => (
+                      <li key={slot.seat_id} className="flex items-center justify-between py-2 text-sm">
+                        <span className="text-gray-700">{slot.label}</span>
+                        <span className="font-medium text-gray-900">
+                          {currency.toUpperCase()} {(slot.price_cents / 100).toFixed(2)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Attendee details (GA only) */}
+              {!seatMode && (
+                <AttendeeForm
+                  tickets={ticketSlots}
+                  buyerFirstName={userFirstName || buyerName.split(' ')[0]}
+                  buyerLastName={userLastName || buyerName.split(' ').slice(1).join(' ')}
+                  buyerEmail={buyerEmail}
+                  attendees={attendees}
+                  onChange={setAttendees}
+                />
+              )}
 
               {/* Discount code */}
               <DiscountCodeInput

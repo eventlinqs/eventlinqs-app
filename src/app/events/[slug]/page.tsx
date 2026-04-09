@@ -6,6 +6,12 @@ import type { Metadata } from 'next'
 import type { Event, TicketTier, Organisation, EventCategory, EventAddon } from '@/types/database'
 import { CopyLinkButton } from '@/components/features/events/copy-link-button'
 import { TicketSelector } from '@/components/checkout/ticket-selector'
+import { SeatSelector, type SeatData, type SectionData } from '@/components/checkout/seat-selector'
+import { AccessCodeInput } from '@/components/features/events/access-code-input'
+import { SocialProofBadge } from '@/components/inventory/social-proof-badge'
+import { getUnlockedTierIds } from '@/app/actions/access-codes'
+import { getEventInventory, getTierInventory } from '@/lib/redis/inventory-cache'
+import { getDynamicPriceMap } from '@/lib/pricing/dynamic-pricing'
 
 type Props = {
   params: Promise<{ slug: string }>
@@ -18,13 +24,20 @@ type FullEvent = Event & {
   event_addons?: EventAddon[]
 }
 
+type EnrichedTier = TicketTier & { display_price_cents: number }
+
 async function fetchEvent(slug: string): Promise<FullEvent | null> {
   const supabase = await createClient()
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('events')
     .select('*, ticket_tiers(*), organisation:organisations(*), category:event_categories(*), event_addons(*)')
     .eq('slug', slug)
-    .single() as { data: FullEvent | null }
+    .single() as { data: FullEvent | null; error: unknown }
+
+  if (error) {
+    console.error('[event-detail] fetchEvent failed:', error)
+    return null
+  }
   return data
 }
 
@@ -60,13 +73,42 @@ function formatDateTime(iso: string, timezone: string) {
   })
 }
 
-function formatPrice(tier: TicketTier) {
-  if (tier.price === 0) return 'Free'
-  return `${tier.currency} ${(tier.price / 100).toFixed(2)}`
+/**
+ * Determine if a tier is currently purchasable, applying M4 rules:
+ * - sale_start / sale_end windows
+ * - hidden_until reveals
+ * - requires_access_code gating
+ */
+function isTierCurrentlyVisible(tier: TicketTier, now: Date, unlockedTierIds: string[]): boolean {
+  if (!tier.is_visible || !tier.is_active) return false
+
+  // Sale window: hide before sale_start
+  if (tier.sale_start && new Date(tier.sale_start) > now) return false
+  // Sale window: hide after sale_end
+  if (tier.sale_end && new Date(tier.sale_end) <= now) return false
+  // Hidden until reveal time
+  if (tier.hidden_until && new Date(tier.hidden_until) > now) return false
+  // Access-code gated: only show if unlocked
+  if (tier.requires_access_code && !unlockedTierIds.includes(tier.id)) return false
+
+  return true
 }
 
-function isSoldOut(tier: TicketTier) {
-  return tier.sold_count >= tier.total_capacity
+/**
+ * Determine if ANY tiers have access-code-gated content that is still locked.
+ * We show the access code input when this is true.
+ */
+function hasLockedTiers(tiers: TicketTier[], now: Date, unlockedTierIds: string[]): boolean {
+  return tiers.some(t => {
+    if (!t.is_active) return false
+    if (t.requires_access_code && !unlockedTierIds.includes(t.id)) return true
+    // Also show input for hidden_until tiers if within 24h of reveal
+    if (t.hidden_until) {
+      const revealTime = new Date(t.hidden_until)
+      if (revealTime > now && revealTime.getTime() - now.getTime() < 24 * 60 * 60 * 1000) return true
+    }
+    return false
+  })
 }
 
 export default async function EventDetailPage({ params }: Props) {
@@ -131,8 +173,70 @@ export default async function EventDetailPage({ params }: Props) {
     )
   }
 
+  const now = new Date()
   const isTicketingSuspended = event.status === 'paused' || event.status === 'postponed'
-  const visibleTiers = event.ticket_tiers.filter(t => t.is_visible && t.is_active)
+
+  // Read session-unlocked tier IDs from cookie (server-side)
+  const unlockedTierIds = await getUnlockedTierIds()
+
+  // Apply M4 visibility rules to tiers
+  const visibleTiers = event.ticket_tiers.filter(t => isTierCurrentlyVisible(t, now, unlockedTierIds))
+  const showAccessCodeInput = hasLockedTiers(event.ticket_tiers, now, unlockedTierIds)
+
+  // Fetch dynamic prices for all visible tiers in parallel
+  const dynamicPriceMap = await getDynamicPriceMap(visibleTiers.map(t => t.id))
+  const enrichedTiers: EnrichedTier[] = visibleTiers.map(t => ({
+    ...t,
+    display_price_cents: dynamicPriceMap.get(t.id) ?? t.price,
+  }))
+
+  // Load inventory from Redis cache (with DB fallback) for badges
+  const eventInventory = await getEventInventory(event.id)
+
+  const tierInventoryMap = new Map(
+    await Promise.all(
+      enrichedTiers.map(async t => {
+        const inv = await getTierInventory(t.id)
+        return [t.id, inv] as const
+      })
+    )
+  )
+
+  // Fetch seats + sections when reserved seating is enabled
+  let eventSeats: SeatData[] = []
+  let eventSections: SectionData[] = []
+
+  if (event.has_reserved_seating) {
+    const seatSupabase = await createClient()
+    const [seatsResult, sectionsResult] = await Promise.all([
+      seatSupabase
+        .from('seats')
+        .select('id, row_label, seat_number, seat_type, status, x, y, price_cents, seat_map_section_id')
+        .eq('event_id', event.id)
+        .order('row_label')
+        .order('seat_number'),
+      event.seat_map_id
+        ? seatSupabase
+            .from('seat_map_sections')
+            .select('id, name, color')
+            .eq('seat_map_id', event.seat_map_id)
+            .order('sort_order')
+        : Promise.resolve({ data: [] as { id: string; name: string; color: string }[], error: null }),
+    ])
+
+    if (seatsResult.error) {
+      console.error('[event-detail] failed to load seats:', seatsResult.error)
+    }
+
+    eventSeats = (seatsResult.data ?? []).map(s => ({
+      ...s,
+      x: typeof s.x === 'number' ? s.x : parseFloat(s.x as unknown as string) || 0,
+      y: typeof s.y === 'number' ? s.y : parseFloat(s.y as unknown as string) || 0,
+    }))
+
+    eventSections = (sectionsResult.data ?? []) as SectionData[]
+  }
+
   const location = [event.venue_name, event.venue_address, event.venue_city, event.venue_state, event.venue_country]
     .filter(Boolean)
     .join(', ')
@@ -172,6 +276,13 @@ export default async function EventDetailPage({ params }: Props) {
             )}
 
             <h1 className="mt-3 text-3xl font-bold text-gray-900">{event.title}</h1>
+
+            {/* Event-level social proof badge */}
+            {eventInventory && (
+              <div className="mt-2">
+                <SocialProofBadge inventory={eventInventory} createdAt={event.created_at} />
+              </div>
+            )}
 
             {event.is_age_restricted && (
               <div className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-amber-100 px-3 py-1.5 text-sm text-amber-800">
@@ -260,17 +371,59 @@ export default async function EventDetailPage({ params }: Props) {
           </div>
 
           {/* Ticket panel */}
-          <div className="w-full lg:w-80 shrink-0">
-            <div className="sticky top-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Tickets</h2>
-              <TicketSelector
-                eventId={event.id}
-                tiers={visibleTiers}
-                addons={(event.event_addons ?? []).filter(a => a.is_active)}
-                isTicketingSuspended={isTicketingSuspended}
-                currency={visibleTiers[0]?.currency ?? 'AUD'}
-              />
-            </div>
+          <div className={`w-full shrink-0 ${event.has_reserved_seating ? 'lg:w-full' : 'lg:w-80'}`}>
+            {event.has_reserved_seating ? (
+              <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Choose Your Seats</h2>
+                {isTicketingSuspended ? (
+                  <p className="text-sm text-amber-700 bg-amber-50 rounded-lg px-4 py-3">
+                    Ticketing is temporarily paused for this event.
+                  </p>
+                ) : (
+                  <SeatSelector
+                    eventId={event.id}
+                    seats={eventSeats}
+                    sections={eventSections}
+                    defaultPriceCents={enrichedTiers[0]?.display_price_cents ?? enrichedTiers[0]?.price ?? 0}
+                    currency={enrichedTiers[0]?.currency ?? 'AUD'}
+                    maxPerOrder={enrichedTiers[0]?.max_per_order ?? 10}
+                  />
+                )}
+              </div>
+            ) : (
+              <div className="sticky top-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Tickets</h2>
+
+                {/* Per-tier social proof badges */}
+                {enrichedTiers.length > 0 && (
+                  <div className="mb-3 space-y-1.5">
+                    {enrichedTiers.map(tier => {
+                      const inv = tierInventoryMap.get(tier.id)
+                      if (!inv) return null
+                      return (
+                        <div key={tier.id} className="flex items-center justify-between text-xs text-gray-500">
+                          <span>{tier.name}</span>
+                          <SocialProofBadge inventory={inv} createdAt={event.created_at} compact />
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+
+                <TicketSelector
+                  eventId={event.id}
+                  tiers={enrichedTiers}
+                  addons={(event.event_addons ?? []).filter(a => a.is_active)}
+                  isTicketingSuspended={isTicketingSuspended}
+                  currency={enrichedTiers[0]?.currency ?? 'AUD'}
+                />
+
+                {/* Access code input — shown when gated tiers exist */}
+                {showAccessCodeInput && (
+                  <AccessCodeInput eventId={event.id} />
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

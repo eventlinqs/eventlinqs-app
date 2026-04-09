@@ -100,10 +100,70 @@ export interface Event {
   metadata: Record<string, unknown>
   created_at: string
   updated_at: string
+  // M4: Reserved seating
+  has_reserved_seating: boolean
+  venue_id: string | null
+  seat_map_id: string | null
   // Joined data
   category?: EventCategory
   organisation?: Organisation
   ticket_tiers?: TicketTier[]
+}
+
+// M4: Venue
+export interface Venue {
+  id: string
+  organisation_id: string
+  name: string
+  address: string | null
+  city: string | null
+  state: string | null
+  country: string | null
+  postal_code: string | null
+  capacity: number | null
+  description: string | null
+  image_url: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+// M4: Seat map
+export interface SeatMap {
+  id: string
+  venue_id: string
+  name: string
+  description: string | null
+  layout: Record<string, unknown>
+  total_seats: number
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+// M4: Seat status / type enums
+export type SeatStatus = 'available' | 'reserved' | 'sold' | 'held' | 'blocked' | 'accessible'
+export type SeatType = 'standard' | 'premium' | 'accessible' | 'companion' | 'restricted_view' | 'obstructed'
+
+export interface Seat {
+  id: string
+  event_id: string
+  seat_map_section_id: string | null
+  ticket_tier_id: string | null
+  row_label: string
+  seat_number: string
+  seat_type: SeatType
+  status: SeatStatus
+  x: number | null
+  y: number | null
+  price_cents: number | null
+  reservation_id: string | null
+  order_item_id: string | null
+  held_by_user_id: string | null
+  held_reason: string | null
+  metadata: Record<string, unknown>
+  created_at: string
+  updated_at: string
 }
 
 export interface TicketTier {
@@ -127,6 +187,11 @@ export interface TicketTier {
   metadata: Record<string, unknown>
   created_at: string
   updated_at: string
+  // M4 columns
+  dynamic_pricing_enabled: boolean
+  hidden_until: string | null
+  requires_access_code: boolean
+  seat_map_section_id: string | null
 }
 
 export interface EventAddon {

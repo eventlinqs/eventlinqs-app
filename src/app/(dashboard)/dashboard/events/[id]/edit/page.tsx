@@ -40,6 +40,19 @@ export default async function EditEventPage({ params }: Props) {
     .eq('is_active', true)
     .order('sort_order') as { data: EventCategory[] | null }
 
+  const { data: venuesWithMaps } = await supabase
+    .from('venues')
+    .select('id, name, seat_maps(id, name, total_seats)')
+    .eq('organisation_id', event.organisation_id)
+    .eq('is_active', true)
+    .order('name')
+
+  const venues = (venuesWithMaps ?? []).map(v => ({
+    id: v.id,
+    name: v.name,
+    seat_maps: (v.seat_maps ?? []).filter((m: { id: string; name: string; total_seats: number }) => m),
+  }))
+
   // Revenue data for the sidebar card
   const { data: revenueData } = await supabase
     .from('orders')
@@ -75,6 +88,7 @@ export default async function EditEventPage({ params }: Props) {
           userId={user.id}
           organisationId={event.organisation_id}
           categories={categories ?? []}
+          venues={venues}
           editMode
           existingEventId={event.id}
           existingEvent={eventData}

@@ -6,9 +6,11 @@ import { createReservation } from '@/app/actions/reservations'
 import { registerFreeTickets } from '@/app/actions/register-free'
 import type { TicketTier, EventAddon } from '@/types/database'
 
+type TierWithDisplayPrice = TicketTier & { display_price_cents?: number }
+
 interface TicketSelectorProps {
   eventId: string
-  tiers: TicketTier[]
+  tiers: TierWithDisplayPrice[]
   addons: EventAddon[]
   isTicketingSuspended: boolean
   currency: string
@@ -57,10 +59,10 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
   const totalTickets = Object.values(tierQuantities).reduce((s, q) => s + q, 0)
 
   const subtotalCents =
-    tiers.reduce((s, t) => s + (tierQuantities[t.id] ?? 0) * t.price, 0) +
+    tiers.reduce((s, t) => s + (tierQuantities[t.id] ?? 0) * (t.display_price_cents ?? t.price), 0) +
     addons.reduce((s, a) => s + (addonQuantities[a.id] ?? 0) * a.price, 0)
 
-  const allFree = tiers.every(t => t.price === 0)
+  const allFree = tiers.every(t => (t.display_price_cents ?? t.price) === 0)
 
   function handleCheckout() {
     setError(null)
@@ -141,7 +143,7 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
                     {!soldOut && available <= 20 && (
                       <p className="mt-1 text-xs text-amber-600">Only {available} left</p>
                     )}
-                    <p className="mt-1 text-sm font-bold text-gray-900">{formatPrice(tier.price, currency)}</p>
+                    <p className="mt-1 text-sm font-bold text-gray-900">{formatPrice(tier.display_price_cents ?? tier.price, currency)}</p>
                   </div>
 
                   {soldOut ? (
