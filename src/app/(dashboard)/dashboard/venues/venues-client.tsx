@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { createVenue, updateVenue, deleteVenue, type VenueInput } from './actions'
+import { createVenue, updateVenue, deleteVenue, type VenueInput, type VenueRow } from './actions'
 
 interface Venue {
   id: string
@@ -201,7 +201,9 @@ export function VenuesClient({ venues: initialVenues }: Props) {
     return new Promise(resolve => {
       startTransition(async () => {
         const result = await createVenue(input)
-        if (!result.error) {
+        if (!result.error && result.venue) {
+          const newVenue: Venue = { ...result.venue as VenueRow, _seat_map_count: 0 }
+          setVenues(prev => [...prev, newVenue])
           setShowCreate(false)
           router.refresh()
         }

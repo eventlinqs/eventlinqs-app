@@ -1084,7 +1084,7 @@ export function EventForm({
           <div className="ml-14 space-y-3">
             {venues.length === 0 ? (
               <p className="text-sm text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
-                No venues found. <a href="/dashboard/venues" className="underline">Create a venue</a> and import a seat map first.
+                No venues found. <a href="/dashboard/venues" target="_blank" rel="noopener noreferrer" className="underline">Create a venue</a> and import a seat map first.
               </p>
             ) : (
               <>
@@ -1113,7 +1113,7 @@ export function EventForm({
                       const maps = venue?.seat_maps ?? []
                       return maps.length === 0 ? (
                         <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
-                          This venue has no seat maps. <a href={`/dashboard/venues/${formData.venue_id}/seat-maps`} className="underline">Import one.</a>
+                          This venue has no seat maps yet. Create one in <a href="/dashboard/venues" target="_blank" rel="noopener noreferrer" className="underline">Venues</a> before continuing.
                         </p>
                       ) : (
                         <select
