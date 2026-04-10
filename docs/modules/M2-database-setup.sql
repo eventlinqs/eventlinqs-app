@@ -31,7 +31,9 @@ INSERT INTO public.event_categories (name, slug, icon, sort_order) VALUES
   ('Fashion', 'fashion', 'shirt', 12),
   ('Health & Wellness', 'health-wellness', 'activity', 13),
   ('Community', 'community', 'home', 14),
-  ('Other', 'other', 'grid', 15);
+  ('Festival', 'festival', 'sparkles', 15),
+  ('Film', 'film', 'film', 16),
+  ('Other', 'other', 'grid', 17);
 
 ALTER TABLE public.event_categories ENABLE ROW LEVEL SECURITY;
 

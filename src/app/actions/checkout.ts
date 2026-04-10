@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { PaymentCalculator } from '@/lib/payments/payment-calculator'
 import { getDefaultGateway } from '@/lib/payments/gateway-factory'
@@ -76,7 +77,7 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
   // 2. Load event and ticket tiers
   const { data: event } = await supabase
     .from('events')
-    .select('id, title, organisation_id, fee_pass_type')
+    .select('id, title, slug, organisation_id, fee_pass_type')
     .eq('id', reservation.event_id)
     .single()
 
@@ -388,7 +389,7 @@ interface SeatCheckoutArgs {
     expires_at: string
   }
   seatIds: string[]
-  event: { id: string; title: string; organisation_id: string; fee_pass_type: string | null }
+  event: { id: string; title: string; slug: string | null; organisation_id: string; fee_pass_type: string | null }
   buyer_email: string
   buyer_name: string
   attendees: { ticket_tier_id: string; first_name: string; last_name: string; email: string }[]
@@ -522,6 +523,10 @@ async function processSeatCheckout({
     console.error('[checkout-seats] order insert failed:', orderError)
     return { error: 'Failed to create order. Please try again.' }
   }
+
+  // Bust caches now that order exists and seat states are committed
+  if (event.slug) revalidatePath(`/events/${event.slug}`)
+  revalidatePath(`/dashboard/events/${event.id}/seats`)
 
   // Create one order_item per seat
   const orderItems = seats.map(seat => ({

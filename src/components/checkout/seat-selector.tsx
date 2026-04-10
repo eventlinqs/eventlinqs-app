@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { createSeatReservation } from '@/app/actions/seat-reservations'
 
 export interface SeatData {
@@ -51,6 +52,7 @@ export function SeatSelector({
   currency,
   maxPerOrder,
 }: Props) {
+  const router = useRouter()
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -167,7 +169,8 @@ export function SeatSelector({
       })
       if (result.error) {
         setError(result.error)
-        // Clear any now-unavailable seats from selection
+        // Re-fetch seat availability so the map reflects who just took those seats
+        router.refresh()
         return
       }
       if (result.reservation_id) {

@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 
 const CreateSeatReservationSchema = z.object({
@@ -39,7 +40,7 @@ export async function createSeatReservation(
 
   if (error) {
     console.error('[seat-reservations] create_seat_reservation RPC failed:', error)
-    return { error: error.message ?? 'Failed to reserve seats. They may have been taken.' }
+    return { error: 'One or more seats are no longer available. Please reselect.' }
   }
 
   const result = data as {
@@ -50,7 +51,17 @@ export async function createSeatReservation(
   }
 
   if (!result.success) {
-    return { error: result.error ?? 'One or more seats are no longer available. Please try again.' }
+    return { error: result.error ?? 'One or more seats are no longer available. Please reselect.' }
+  }
+
+  // Bust the public event page cache so other buyers see updated seat availability
+  const { data: eventRow } = await supabase
+    .from('events')
+    .select('slug')
+    .eq('id', event_id)
+    .single()
+  if (eventRow?.slug) {
+    revalidatePath(`/events/${eventRow.slug}`)
   }
 
   return {

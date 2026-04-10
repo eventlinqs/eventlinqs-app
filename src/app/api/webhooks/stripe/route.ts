@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { StripeAdapter } from '@/lib/payments/stripe-adapter'
@@ -130,6 +131,17 @@ async function handlePaymentSucceeded(
         if (seatSoldError) {
           console.error('[webhook] failed to mark seats as sold:', seatSoldError)
         }
+
+        // Bust public event page and organiser seat view
+        const { data: eventForRevalidation } = await adminClient
+          .from('events')
+          .select('slug')
+          .eq('id', reservationForSeats.event_id)
+          .single()
+        if (eventForRevalidation?.slug) {
+          revalidatePath(`/events/${eventForRevalidation.slug}`)
+        }
+        revalidatePath(`/dashboard/events/${reservationForSeats.event_id}/seats`)
       }
     }
   }
@@ -269,6 +281,17 @@ async function handlePaymentCancelled(
           .in('id', seatIds)
           .eq('event_id', reservation.event_id)
           .eq('status', 'reserved')
+
+        // Bust public event page and organiser seat view so released seats become selectable again
+        const { data: eventForRevalidation } = await adminClient
+          .from('events')
+          .select('slug')
+          .eq('id', reservation.event_id)
+          .single()
+        if (eventForRevalidation?.slug) {
+          revalidatePath(`/events/${eventForRevalidation.slug}`)
+        }
+        revalidatePath(`/dashboard/events/${reservation.event_id}/seats`)
       }
     }
   }

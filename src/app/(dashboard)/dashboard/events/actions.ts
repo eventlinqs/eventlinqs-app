@@ -134,7 +134,7 @@ export async function createEvent(input: CreateEventInput): Promise<{ error?: st
 
   if (eventError) {
     console.error('Event insert error:', eventError)
-    return { error: 'Failed to create event. Please try again.' }
+    return { error: `Failed to create event: ${eventError.message}` }
   }
 
   if (input.ticket_tiers.length > 0) {
@@ -174,6 +174,9 @@ export async function createEvent(input: CreateEventInput): Promise<{ error?: st
 
   revalidatePath('/dashboard/events')
   revalidatePath('/dashboard')
+  if (input.has_reserved_seating) {
+    revalidatePath(`/events/${slug}`)
+  }
   return {}
 }
 
@@ -189,7 +192,7 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
   // Verify ownership via event → org
   const { data: event } = await supabase
     .from('events')
-    .select('id, organisation_id, status')
+    .select('id, organisation_id, status, slug')
     .eq('id', input.eventId)
     .single()
 
@@ -244,7 +247,7 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
     })
     .eq('id', input.eventId)
 
-  if (eventError) return { error: 'Failed to update event.' }
+  if (eventError) return { error: `Failed to update event: ${eventError.message}` }
 
   // Replace ticket tiers: delete existing, re-insert
   await admin.from('ticket_tiers').delete().eq('event_id', input.eventId)
@@ -266,7 +269,7 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
     }))
 
     const { error: tiersError } = await admin.from('ticket_tiers').insert(tiers)
-    if (tiersError) return { error: 'Failed to update ticket tiers.' }
+    if (tiersError) return { error: `Failed to update ticket tiers: ${tiersError.message}` }
   }
 
   // Re-materialise seats if seat map changed or reserved seating was just enabled
@@ -287,6 +290,9 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
 
   revalidatePath('/dashboard/events')
   revalidatePath('/dashboard')
+  if (input.has_reserved_seating && event.slug) {
+    revalidatePath(`/events/${event.slug}`)
+  }
   redirect('/dashboard/events?saved=1')
 }
 

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { importSeatMapCsv, deleteSeatMap, type ImportResult } from './actions'
 
 interface SeatMap {
@@ -118,6 +119,7 @@ function SeatMapPreview({ layout }: { layout: Layout }) {
 }
 
 export function SeatMapsClient({ venueId, venueName, seatMaps: initialMaps }: Props) {
+  const router = useRouter()
   const [seatMaps, setSeatMaps] = useState<SeatMap[]>(initialMaps)
   const [showImport, setShowImport] = useState(false)
   const [mapName, setMapName] = useState('')
@@ -151,6 +153,7 @@ export function SeatMapsClient({ venueId, venueName, seatMaps: initialMaps }: Pr
           },
           ...prev,
         ])
+        router.refresh()
         // Keep the preview visible; let user close manually
       }
     })
@@ -162,6 +165,7 @@ export function SeatMapsClient({ venueId, venueName, seatMaps: initialMaps }: Pr
       if (!result.error) {
         setSeatMaps(prev => prev.filter(m => m.id !== seatMapId))
         setDeletingId(null)
+        router.refresh()
       }
     })
   }
@@ -195,7 +199,7 @@ export function SeatMapsClient({ venueId, venueName, seatMaps: initialMaps }: Pr
               onClick={() => { setShowImport(false); setImportResult(null); setCsvText('') }}
               className="text-sm text-gray-500 hover:text-gray-700"
             >
-              Cancel
+              Close
             </button>
           </div>
 

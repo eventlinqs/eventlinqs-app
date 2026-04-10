@@ -253,14 +253,14 @@ export default async function EventDetailPage({ params }: Props) {
 
       {/* Cover image hero */}
       {event.cover_image_url && (
-        <div className="w-full bg-gray-100">
+        <div className="w-full bg-gray-100 flex items-center justify-center max-h-96 overflow-hidden">
           <Image
             src={event.cover_image_url}
             alt={event.title}
             width={1200}
             height={630}
             priority
-            className="w-full h-auto object-contain"
+            className="w-full max-h-96 object-contain"
           />
         </div>
       )}

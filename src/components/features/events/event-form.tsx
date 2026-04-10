@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { createEvent, updateEvent } from '@/app/(dashboard)/dashboard/events/actions'
@@ -129,7 +129,7 @@ function newTier(sort_order: number): TicketTierInput {
     tier_type: 'general_admission',
     price: '0',
     currency: 'AUD',
-    total_capacity: '100',
+    total_capacity: '',
     sale_start: '',
     sale_end: '',
     min_per_order: '1',
@@ -299,6 +299,7 @@ export function EventForm({
   )
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [stepError, setStepError] = useState<string | null>(null)
   const [imageUploading, setImageUploading] = useState(false)
   const [imageDragOver, setImageDragOver] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -306,6 +307,18 @@ export function EventForm({
   const set = useCallback(<K extends keyof FormData>(key: K, value: FormData[K]) => {
     setFormData(d => ({ ...d, [key]: value }))
   }, [])
+
+  // Auto-detect browser timezone on mount (new events only)
+  useEffect(() => {
+    if (!editMode) {
+      try {
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+        if (tz) set('timezone', tz)
+      } catch {
+        // keep default
+      }
+    }
+  }, [editMode, set])
 
   const buildPayload = (status: EventStatus) => ({
     eventId: eventIdRef.current,
@@ -406,6 +419,45 @@ export function EventForm({
     }
   }
 
+  const handleContinue = () => {
+    if (step === 2) {
+      if (formData.start_date && formData.end_date) {
+        if (new Date(formData.end_date) <= new Date(formData.start_date)) {
+          setStepError('End date and time must be after start date and time.')
+          return
+        }
+      }
+    }
+    if (step === 5) {
+      const eventStart = formData.start_date ? new Date(formData.start_date) : null
+      const eventEnd = formData.end_date ? new Date(formData.end_date) : null
+      for (let i = 0; i < formData.ticket_tiers.length; i++) {
+        const tier = formData.ticket_tiers[i]
+        const label = tier.name.trim() || `Tier ${i + 1}`
+        if (tier.sale_start && tier.sale_end) {
+          if (new Date(tier.sale_end) <= new Date(tier.sale_start)) {
+            setStepError(`${label}: Sale end date must be after sale start date.`)
+            return
+          }
+        }
+        if (tier.sale_end && eventEnd) {
+          if (new Date(tier.sale_end) > eventEnd) {
+            setStepError(`${label}: Sale end date cannot be after the event ends.`)
+            return
+          }
+        }
+        if (tier.sale_start && eventStart) {
+          if (new Date(tier.sale_start) > eventStart) {
+            setStepError(`${label}: Sale start date cannot be after the event starts.`)
+            return
+          }
+        }
+      }
+    }
+    setStepError(null)
+    setStep(s => Math.min(s + 1, 7))
+  }
+
   // ─── Step Renderers ────────────────────────────────────────────────────────
 
   const renderStep1 = () => (
@@ -438,11 +490,16 @@ export function EventForm({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+        <div className="flex items-center justify-between mb-1">
+          <label className="block text-sm font-medium text-gray-700">Description</label>
+          <span className={`text-xs ${formData.description.length > 4900 ? 'text-amber-500' : 'text-gray-400'}`}>
+            {formData.description.length}/5000
+          </span>
+        </div>
         <textarea
           rows={6}
           value={formData.description}
-          onChange={e => set('description', e.target.value)}
+          onChange={e => e.target.value.length <= 5000 && set('description', e.target.value)}
           placeholder="Describe your event in detail…"
           className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
         />
@@ -512,6 +569,9 @@ export function EventForm({
           onChange={e => set('timezone', e.target.value)}
           className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
         >
+          {formData.timezone && !TIMEZONES.includes(formData.timezone) && (
+            <option value={formData.timezone}>{formData.timezone} (detected)</option>
+          )}
           {TIMEZONES.map(tz => (
             <option key={tz} value={tz}>{tz}</option>
           ))}
@@ -668,12 +728,12 @@ export function EventForm({
 
         {formData.cover_image_url ? (
           <div className="relative">
-            <div className="relative aspect-video w-full overflow-hidden rounded-lg border border-gray-200">
+            <div className="relative aspect-video w-full overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
               <Image
                 src={formData.cover_image_url}
                 alt="Cover image preview"
                 fill
-                className="object-cover"
+                className="object-contain"
               />
             </div>
             <button
@@ -827,6 +887,7 @@ export function EventForm({
                   tiers[idx] = { ...tiers[idx], total_capacity: e.target.value }
                   set('ticket_tiers', tiers)
                 }}
+                placeholder="Enter capacity"
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
@@ -1209,23 +1270,30 @@ export function EventForm({
 
       {/* Navigation */}
       {step < 7 && (
-        <div className="mt-6 flex justify-between">
-          <button
-            type="button"
-            onClick={() => setStep(s => Math.max(s - 1, 1))}
-            disabled={step === 1}
-            className="rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:invisible transition-colors"
-          >
-            Back
-          </button>
-          <button
-            type="button"
-            onClick={() => setStep(s => Math.min(s + 1, 7))}
-            className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
-          >
-            Continue
-          </button>
-        </div>
+        <>
+          {stepError && (
+            <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {stepError}
+            </div>
+          )}
+          <div className="mt-6 flex justify-between">
+            <button
+              type="button"
+              onClick={() => { setStep(s => Math.max(s - 1, 1)); setStepError(null) }}
+              disabled={step === 1}
+              className="rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:invisible transition-colors"
+            >
+              Back
+            </button>
+            <button
+              type="button"
+              onClick={handleContinue}
+              className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+            >
+              Continue
+            </button>
+          </div>
+        </>
       )}
 
       {step === 7 && (

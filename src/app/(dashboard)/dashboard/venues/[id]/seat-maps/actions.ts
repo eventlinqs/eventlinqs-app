@@ -233,6 +233,7 @@ export async function importSeatMapCsv(
   }
 
   revalidatePath(`/dashboard/venues/${venueId}/seat-maps`)
+  revalidatePath('/dashboard/venues')
 
   return {
     success: true,
@@ -268,5 +269,6 @@ export async function deleteSeatMap(venueId: string, seatMapId: string): Promise
   }
 
   revalidatePath(`/dashboard/venues/${venueId}/seat-maps`)
+  revalidatePath('/dashboard/venues')
   return {}
 }

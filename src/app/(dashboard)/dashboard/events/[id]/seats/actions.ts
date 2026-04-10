@@ -12,7 +12,7 @@ async function getEventWithAuth(eventId: string, userId: string) {
   const supabase = await createClient()
   const { data: event, error } = await supabase
     .from('events')
-    .select('id, organisation_id')
+    .select('id, organisation_id, slug')
     .eq('id', eventId)
     .single()
 
@@ -79,6 +79,7 @@ export async function holdSeat(
   }
 
   revalidatePath(`/dashboard/events/${eventId}/seats`)
+  if (event.slug) revalidatePath(`/events/${event.slug}`)
   return {}
 }
 
@@ -120,5 +121,6 @@ export async function releaseSeat(
     .eq('event_id', eventId)
 
   revalidatePath(`/dashboard/events/${eventId}/seats`)
+  if (event.slug) revalidatePath(`/events/${event.slug}`)
   return {}
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createVenue, updateVenue, deleteVenue, type VenueInput } from './actions'
 
@@ -188,6 +189,7 @@ function VenueForm({
 }
 
 export function VenuesClient({ venues: initialVenues }: Props) {
+  const router = useRouter()
   const [venues, setVenues] = useState<Venue[]>(initialVenues)
   const [showCreate, setShowCreate] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -201,7 +203,7 @@ export function VenuesClient({ venues: initialVenues }: Props) {
         const result = await createVenue(input)
         if (!result.error) {
           setShowCreate(false)
-          // Optimistic: server revalidatePath will refresh; we rely on Next.js RSC re-render
+          router.refresh()
         }
         resolve()
       })
@@ -219,6 +221,7 @@ export function VenuesClient({ venues: initialVenues }: Props) {
             )
           )
           setEditingId(null)
+          router.refresh()
         }
         resolve()
       })
@@ -234,6 +237,7 @@ export function VenuesClient({ venues: initialVenues }: Props) {
       } else {
         setVenues(prev => prev.filter(v => v.id !== venueId))
         setDeletingId(null)
+        router.refresh()
       }
     })
   }
