@@ -106,6 +106,9 @@ export interface Event {
   seat_map_id: string | null
   // M4 Phase 3: Waitlist
   waitlist_enabled: boolean
+  // M4 Phase 4: Squad booking
+  squad_booking_enabled: boolean
+  squad_timeout_hours: number
   // Joined data
   category?: EventCategory
   organisation?: Organisation
@@ -332,6 +335,48 @@ export interface WaitlistNotification {
   converted: boolean
   converted_at: string | null
   email_sent: boolean
+}
+
+// ─── M4 Phase 4: Squad Booking ────────────────────────────────────────────────
+
+export type SquadStatus = 'forming' | 'completed' | 'expired' | 'cancelled'
+export type SquadMemberStatus = 'invited' | 'paid' | 'declined' | 'timed_out'
+
+export interface Squad {
+  id: string
+  event_id: string
+  leader_user_id: string
+  ticket_tier_id: string
+  reservation_id: string | null
+  total_spots: number
+  status: SquadStatus
+  share_token: string
+  extended_once: boolean
+  created_at: string
+  expires_at: string
+  completed_at: string | null
+  cancelled_at: string | null
+  // Joined data
+  event?: Event
+  ticket_tier?: TicketTier
+  squad_members?: SquadMember[]
+}
+
+export interface SquadMember {
+  id: string
+  squad_id: string
+  user_id: string | null
+  guest_email: string | null
+  attendee_first_name: string | null
+  attendee_last_name: string | null
+  attendee_email: string | null
+  status: SquadMemberStatus
+  order_id: string | null
+  position: number
+  created_at: string
+  paid_at: string | null
+  // Joined data
+  squad?: Squad
 }
 
 export interface DiscountCode {
