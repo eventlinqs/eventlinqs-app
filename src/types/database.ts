@@ -104,6 +104,8 @@ export interface Event {
   has_reserved_seating: boolean
   venue_id: string | null
   seat_map_id: string | null
+  // M4 Phase 3: Waitlist
+  waitlist_enabled: boolean
   // Joined data
   category?: EventCategory
   organisation?: Organisation
@@ -302,6 +304,34 @@ export interface ReservationItem {
   ticket_tier_id: string
   quantity: number
   addon_id?: string
+}
+
+// ─── M4 Phase 3: Waitlist ──────────────────────────────────────────────────
+
+export type WaitlistStatus = 'waiting' | 'notified' | 'converted' | 'expired' | 'removed'
+
+export interface WaitlistEntry {
+  id: string
+  event_id: string
+  ticket_tier_id: string | null
+  user_id: string
+  quantity_requested: number
+  status: WaitlistStatus
+  position: number
+  created_at: string
+  notified_at: string | null
+  converted_at: string | null
+  expired_at: string | null
+}
+
+export interface WaitlistNotification {
+  id: string
+  waitlist_id: string
+  notified_at: string
+  expires_at: string
+  converted: boolean
+  converted_at: string | null
+  email_sent: boolean
 }
 
 export interface DiscountCode {
