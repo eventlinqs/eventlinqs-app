@@ -6,6 +6,7 @@ import { createReservation } from '@/app/actions/reservations'
 import { registerFreeTickets } from '@/app/actions/register-free'
 import type { TicketTier, EventAddon } from '@/types/database'
 import { JoinWaitlistButton } from '@/components/waitlist/join-waitlist-button'
+import { StartSquadButton } from '@/components/squads/start-squad-button'
 
 type TierWithDisplayPrice = TicketTier & { display_price_cents?: number }
 
@@ -16,6 +17,7 @@ interface TicketSelectorProps {
   isTicketingSuspended: boolean
   currency: string
   waitlistEnabled?: boolean
+  squadBookingEnabled?: boolean
 }
 
 function formatPrice(priceCents: number, currency: string) {
@@ -23,7 +25,7 @@ function formatPrice(priceCents: number, currency: string) {
   return `${currency.toUpperCase()} ${(priceCents / 100).toFixed(2)}`
 }
 
-export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, currency, waitlistEnabled = false }: TicketSelectorProps) {
+export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, currency, waitlistEnabled = false, squadBookingEnabled = false }: TicketSelectorProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -111,6 +113,17 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
       router.push(`/checkout/${result.reservation_id}`)
     })
   }
+
+  // Squad: show button when squad booking is on, 2+ tickets from exactly one tier selected
+  const squadEligibleTier = (() => {
+    if (!squadBookingEnabled || isTicketingSuspended) return null
+    const selectedEntries = tiers.filter(t => (tierQuantities[t.id] ?? 0) >= 2)
+    if (selectedEntries.length !== 1) return null
+    const tier = selectedEntries[0]
+    const qty = tierQuantities[tier.id] ?? 0
+    if (qty < 2) return null
+    return { tier, qty }
+  })()
 
   const now = new Date()
   const activeTiers = tiers.filter(t => t.is_visible && t.is_active)
@@ -248,6 +261,17 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
         <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
           {error}
         </div>
+      )}
+
+      {squadEligibleTier && (
+        <StartSquadButton
+          eventId={eventId}
+          tierId={squadEligibleTier.tier.id}
+          tierName={squadEligibleTier.tier.name}
+          totalSpots={squadEligibleTier.qty}
+          pricePerSpotCents={squadEligibleTier.tier.display_price_cents ?? squadEligibleTier.tier.price}
+          currency={currency}
+        />
       )}
 
       {!isTicketingSuspended && activeTiers.some(t => getAvailable(t) > 0 && !(t.sale_start && new Date(t.sale_start) > now)) && (

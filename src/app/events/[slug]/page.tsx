@@ -438,6 +438,7 @@ export default async function EventDetailPage({ params }: Props) {
                   isTicketingSuspended={isTicketingSuspended}
                   currency={enrichedTiers[0]?.currency ?? 'AUD'}
                   waitlistEnabled={event.waitlist_enabled ?? false}
+                  squadBookingEnabled={event.squad_booking_enabled ?? false}
                 />
 
                 {/* Access code input — shown when gated tiers exist */}
