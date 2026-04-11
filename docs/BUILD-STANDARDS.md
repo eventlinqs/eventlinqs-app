@@ -159,3 +159,13 @@ Every UI, form, flow, validation, interaction, and error message built for Event
 ## Reference
 
 This file must be read by Claude Code at the start of every build command. Every command will begin with: "Read docs/BUILD-STANDARDS.md before writing any code."
+
+## Permanent Rules — added 11 Apr 2026
+
+### A) Benchmark Coverage Rule
+
+Every benchmark comparison in any verification report must explicitly address all 3 platforms: Ticketmaster, Eventbrite, AND DICE. If a platform is not applicable for the specific feature, write "N/A — [specific reason]" rather than omitting it. No shortcuts. No selective comparison.
+
+### B) Pre-Commit Hygiene Rule
+
+Always run git status before every commit. Inspect the staged files. Source files only — no .playwright-mcp/ artifacts, no verify-*.png screenshots, no temporary scratch files, no .next/ build output. If git status shows test artifacts, unstage them and update .gitignore before committing.
