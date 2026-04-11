@@ -160,6 +160,12 @@ Every UI, form, flow, validation, interaction, and error message built for Event
 
 This file must be read by Claude Code at the start of every build command. Every command will begin with: "Read docs/BUILD-STANDARDS.md before writing any code."
 
+## Dev Server Management Rule (mandatory)
+
+Claude Code MUST NOT start npm run dev in the background. The user runs the dev server in a dedicated PowerShell tab themselves. Claude Code may verify the server is running via curl http://localhost:3000 health check, but never spawns its own. Background dev servers leave zombie node.exe processes that hold port 3000, forcing manual taskkill cleanup. This is forbidden behavior.
+
+If Claude Code needs to verify a build worked, it uses npm run build (which exits cleanly) — not npm run dev.
+
 ## Permanent Rules — added 11 Apr 2026
 
 ### A) Benchmark Coverage Rule
