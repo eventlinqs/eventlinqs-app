@@ -47,3 +47,6 @@ next-env.d.ts
 verify-*.png
 homepage-*.png
 events-*.png
+waitlist-*.png
+squad-*.png
+queue-*.png

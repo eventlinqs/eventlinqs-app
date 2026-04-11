@@ -437,6 +437,7 @@ export default async function EventDetailPage({ params }: Props) {
                   addons={(event.event_addons ?? []).filter(a => a.is_active)}
                   isTicketingSuspended={isTicketingSuspended}
                   currency={enrichedTiers[0]?.currency ?? 'AUD'}
+                  waitlistEnabled={event.waitlist_enabled ?? false}
                 />
 
                 {/* Access code input — shown when gated tiers exist */}

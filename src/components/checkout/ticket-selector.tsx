@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createReservation } from '@/app/actions/reservations'
 import { registerFreeTickets } from '@/app/actions/register-free'
 import type { TicketTier, EventAddon } from '@/types/database'
+import { JoinWaitlistButton } from '@/components/waitlist/join-waitlist-button'
 
 type TierWithDisplayPrice = TicketTier & { display_price_cents?: number }
 
@@ -14,6 +15,7 @@ interface TicketSelectorProps {
   addons: EventAddon[]
   isTicketingSuspended: boolean
   currency: string
+  waitlistEnabled?: boolean
 }
 
 function formatPrice(priceCents: number, currency: string) {
@@ -21,7 +23,7 @@ function formatPrice(priceCents: number, currency: string) {
   return `${currency.toUpperCase()} ${(priceCents / 100).toFixed(2)}`
 }
 
-export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, currency }: TicketSelectorProps) {
+export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, currency, waitlistEnabled = false }: TicketSelectorProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -154,9 +156,20 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
                   </div>
 
                   {soldOut ? (
-                    <span className="inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-600 shrink-0">
-                      Sold out
-                    </span>
+                    waitlistEnabled ? (
+                      <div className="shrink-0 w-28">
+                        <JoinWaitlistButton
+                          eventId={eventId}
+                          tierId={tier.id}
+                          tierName={tier.name}
+                          maxPerOrder={tier.max_per_order}
+                        />
+                      </div>
+                    ) : (
+                      <span className="inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-600 shrink-0">
+                        Sold out
+                      </span>
+                    )
                   ) : salePending ? (
                     <span className="inline-block rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-600 shrink-0">
                       Sale starts soon
