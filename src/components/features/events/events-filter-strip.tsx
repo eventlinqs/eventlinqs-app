@@ -1,0 +1,274 @@
+'use client'
+
+import { useState } from 'react'
+import Link from 'next/link'
+
+type Category = { id: string; name: string; slug: string }
+
+type FilterParams = {
+  category?: string
+  city?: string
+  date?: string
+  free?: string
+  q?: string
+  page?: string
+}
+
+function buildFilterUrl(
+  params: FilterParams,
+  overrides: Record<string, string | undefined>,
+): string {
+  const merged: Record<string, string | undefined> = { ...params, ...overrides }
+  const qs = Object.entries(merged)
+    .filter(([, v]) => v !== undefined && v !== '')
+    .map(([k, v]) => `${k}=${encodeURIComponent(v!)}`)
+    .join('&')
+  return `/events${qs ? `?${qs}` : ''}`
+}
+
+const DATE_CHIPS: { key: string; label: string }[] = [
+  { key: 'today', label: 'Today' },
+  { key: 'week', label: 'This week' },
+  { key: 'weekend', label: 'Weekend' },
+  { key: 'month', label: 'This month' },
+]
+
+const DATE_OPTIONS: { key: string | undefined; label: string }[] = [
+  { key: undefined, label: 'Any time' },
+  ...DATE_CHIPS,
+]
+
+const CheckIcon = () => (
+  <svg
+    className="h-4 w-4 mr-2 flex-none text-blue-600"
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+    aria-hidden="true"
+  >
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+  </svg>
+)
+
+export function EventsFilterStrip({
+  categories,
+  params,
+}: {
+  categories: Category[]
+  params: FilterParams
+}) {
+  const [drawerOpen, setDrawerOpen] = useState(false)
+
+  const closeDrawer = () => setDrawerOpen(false)
+
+  return (
+    <>
+      {/* ── Horizontal chip strip ── visible below lg breakpoint only ── */}
+      <div className="lg:hidden mb-4">
+        <div
+          role="toolbar"
+          aria-label="Quick filters"
+          className="flex items-center gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+        >
+          {/* Advanced filters button */}
+          <button
+            type="button"
+            onClick={() => setDrawerOpen(true)}
+            aria-expanded={drawerOpen}
+            aria-haspopup="dialog"
+            className="flex-none inline-flex items-center gap-1.5 h-11 rounded-full border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 whitespace-nowrap transition-colors hover:bg-gray-50 active:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          >
+            <svg
+              className="h-4 w-4 flex-none"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              aria-hidden="true"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h18M7 9h10M10 14h4" />
+            </svg>
+            Filters
+          </button>
+
+          {/* Date quick chips */}
+          {DATE_CHIPS.map(chip => (
+            <Link
+              key={chip.key}
+              href={buildFilterUrl(params, {
+                date: params.date === chip.key ? undefined : chip.key,
+                page: '1',
+              })}
+              aria-current={params.date === chip.key ? 'true' : undefined}
+              className={`flex-none inline-flex items-center h-11 rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                params.date === chip.key
+                  ? 'bg-blue-600 text-white'
+                  : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              {chip.label}
+            </Link>
+          ))}
+
+          {/* Free chip */}
+          <Link
+            href={buildFilterUrl(params, {
+              free: params.free === '1' ? undefined : '1',
+              page: '1',
+            })}
+            aria-current={params.free === '1' ? 'true' : undefined}
+            className={`flex-none inline-flex items-center h-11 rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+              params.free === '1'
+                ? 'bg-blue-600 text-white'
+                : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            Free
+          </Link>
+
+          {/* Category chips */}
+          {categories.map(cat => (
+            <Link
+              key={cat.id}
+              href={buildFilterUrl(params, {
+                category: params.category === cat.id ? undefined : cat.id,
+                page: '1',
+              })}
+              aria-current={params.category === cat.id ? 'true' : undefined}
+              className={`flex-none inline-flex items-center h-11 rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                params.category === cat.id
+                  ? 'bg-blue-600 text-white'
+                  : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              {cat.name}
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Backdrop ── */}
+      <div
+        aria-hidden="true"
+        className={`fixed inset-0 bg-black/50 z-40 lg:hidden transition-opacity duration-300 ${
+          drawerOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={closeDrawer}
+      />
+
+      {/* ── Bottom-sheet drawer ── */}
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Filters"
+        className={`fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-2xl max-h-[85vh] overflow-y-auto lg:hidden transform transition-transform duration-300 ease-out ${
+          drawerOpen ? 'translate-y-0' : 'translate-y-full'
+        }`}
+      >
+        {/* Drag handle */}
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 rounded-full bg-gray-300" />
+        </div>
+
+        {/* Drawer header */}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+          <h2 className="text-base font-semibold text-gray-900">Filters</h2>
+          <button
+            type="button"
+            onClick={closeDrawer}
+            aria-label="Close filters"
+            className="h-11 w-11 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          >
+            <svg
+              className="h-5 w-5 text-gray-500"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              aria-hidden="true"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Drawer content */}
+        <div
+          className="px-5 pt-4 space-y-6"
+          style={{ paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}
+        >
+          {/* When */}
+          <section>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">When</p>
+            <div className="space-y-0.5">
+              {DATE_OPTIONS.map(opt => {
+                const isActive = (params.date ?? undefined) === opt.key
+                return (
+                  <Link
+                    key={opt.label}
+                    href={buildFilterUrl(params, { date: opt.key, page: '1' })}
+                    onClick={closeDrawer}
+                    className={`flex items-center h-11 rounded-lg px-3 text-sm transition-colors ${
+                      isActive
+                        ? 'bg-blue-50 font-medium text-blue-700'
+                        : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    {isActive && <CheckIcon />}
+                    {opt.label}
+                  </Link>
+                )
+              })}
+            </div>
+          </section>
+
+          {/* Category */}
+          <section>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Category</p>
+            <div className="space-y-0.5">
+              {[{ id: '', name: 'All categories' }, ...categories].map(cat => {
+                const isActive = cat.id === '' ? !params.category : params.category === cat.id
+                return (
+                  <Link
+                    key={cat.id || 'all'}
+                    href={buildFilterUrl(params, {
+                      category: cat.id || undefined,
+                      page: '1',
+                    })}
+                    onClick={closeDrawer}
+                    className={`flex items-center h-11 rounded-lg px-3 text-sm transition-colors ${
+                      isActive
+                        ? 'bg-blue-50 font-medium text-blue-700'
+                        : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    {isActive && <CheckIcon />}
+                    {cat.name}
+                  </Link>
+                )
+              })}
+            </div>
+          </section>
+
+          {/* Price */}
+          <section>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Price</p>
+            <Link
+              href={buildFilterUrl(params, {
+                free: params.free === '1' ? undefined : '1',
+                page: '1',
+              })}
+              onClick={closeDrawer}
+              className={`flex items-center h-11 rounded-lg px-3 text-sm transition-colors ${
+                params.free === '1'
+                  ? 'bg-blue-50 font-medium text-blue-700'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              {params.free === '1' && <CheckIcon />}
+              Free events only
+            </Link>
+          </section>
+        </div>
+      </div>
+    </>
+  )
+}

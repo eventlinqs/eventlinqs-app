@@ -5,6 +5,7 @@ import type { Event, EventCategory } from '@/types/database'
 import { SocialProofBadge } from '@/components/inventory/social-proof-badge'
 import type { EventInventory } from '@/lib/redis/inventory-cache'
 import { getDynamicPriceMap } from '@/lib/pricing/dynamic-pricing'
+import { EventsFilterStrip } from '@/components/features/events/events-filter-strip'
 
 type Props = {
   searchParams: Promise<{
@@ -89,6 +90,26 @@ export default async function EventsPage({ searchParams }: Props) {
     const endOfMonth = new Date()
     endOfMonth.setDate(endOfMonth.getDate() + 30)
     query = query.gte('start_date', now).lte('start_date', endOfMonth.toISOString())
+  } else if (params.date === 'weekend') {
+    const today = new Date()
+    const day = today.getDay() // 0 = Sun, 6 = Sat
+    let sat: Date
+    if (day === 6) {
+      sat = new Date(today)
+      sat.setHours(0, 0, 0, 0)
+    } else if (day === 0) {
+      sat = new Date(today)
+      sat.setDate(today.getDate() - 1)
+      sat.setHours(0, 0, 0, 0)
+    } else {
+      sat = new Date(today)
+      sat.setDate(today.getDate() + (6 - day))
+      sat.setHours(0, 0, 0, 0)
+    }
+    const sun = new Date(sat)
+    sun.setDate(sat.getDate() + 1)
+    sun.setHours(23, 59, 59, 999)
+    query = query.gte('start_date', sat.toISOString()).lte('start_date', sun.toISOString())
   } else {
     query = query.gte('start_date', now)
   }
@@ -171,9 +192,12 @@ export default async function EventsPage({ searchParams }: Props) {
       </div>
 
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        {/* Mobile chip strip — hidden on lg+ (desktop sees the sidebar instead) */}
+        <EventsFilterStrip categories={categories ?? []} params={params} />
+
         <div className="flex flex-col gap-8 lg:flex-row">
-          {/* Sidebar filters */}
-          <aside className="w-full lg:w-60 shrink-0">
+          {/* Sidebar filters — desktop only */}
+          <aside className="hidden lg:block lg:w-60 shrink-0">
             <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-6">
               {/* Date filter */}
               <div>
