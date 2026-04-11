@@ -12,6 +12,9 @@ export interface CreatePaymentIntentParams {
     // Optional fields for seat reservations — used by webhook to locate and update seats
     reservation_id?: string
     seat_ids?: string
+    // Optional fields for squad payments — used by webhook to mark member as paid
+    squad_id?: string
+    squad_member_id?: string
   }
   customer_email: string
   idempotency_key: string

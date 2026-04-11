@@ -35,7 +35,13 @@ export async function POST(request: NextRequest) {
     switch (event.type) {
       case 'payment_intent.succeeded': {
         const intent = event.data.object as Stripe.PaymentIntent
-        await handlePaymentSucceeded(supabase, intent)
+        // Route squad member payments to a dedicated handler to avoid double-processing
+        if (intent.metadata?.squad_member_id) {
+          const adminClient = createAdminClient()
+          await handleSquadMemberPaymentSucceeded(adminClient, intent)
+        } else {
+          await handlePaymentSucceeded(supabase, intent)
+        }
         break
       }
       case 'payment_intent.payment_failed': {
@@ -398,6 +404,126 @@ async function handlePaymentCancelled(
       // ── End waitlist promotion ─────────────────────────────────────────────────
     }
   }
+}
+
+async function handleSquadMemberPaymentSucceeded(
+  adminClient: ReturnType<typeof createAdminClient>,
+  intent: Stripe.PaymentIntent
+) {
+  const squadMemberId = intent.metadata?.squad_member_id
+  const squadId = intent.metadata?.squad_id
+  const orderId = intent.metadata?.order_id
+  if (!squadMemberId || !squadId || !orderId) return
+
+  // Idempotency: skip if already paid
+  const { data: member } = await adminClient
+    .from('squad_members')
+    .select('id, status')
+    .eq('id', squadMemberId)
+    .maybeSingle()
+
+  if (!member || member.status === 'paid') return
+
+  // Confirm the order for this member
+  const { error: orderError } = await adminClient
+    .from('orders')
+    .update({ status: 'confirmed', confirmed_at: new Date().toISOString() })
+    .eq('id', orderId)
+    .eq('status', 'pending')
+
+  if (orderError) {
+    console.error('[webhook] squad order confirm error:', orderError)
+  }
+
+  // Mark payment as completed
+  const charge = intent.latest_charge as Stripe.Charge | null
+  const receipt_url = typeof charge === 'object' && charge?.receipt_url ? charge.receipt_url : null
+
+  await adminClient
+    .from('payments')
+    .update({ status: 'completed', completed_at: new Date().toISOString(), receipt_url })
+    .eq('order_id', orderId)
+
+  // Mark squad member as paid
+  const { error: memberError } = await adminClient
+    .from('squad_members')
+    .update({ status: 'paid', paid_at: new Date().toISOString() })
+    .eq('id', squadMemberId)
+    .eq('status', 'invited')
+
+  if (memberError) {
+    console.error('[webhook] squad member paid update error:', memberError)
+    return
+  }
+
+  // Check if all members are now paid → complete the squad
+  const { data: squad } = await adminClient
+    .from('squads')
+    .select('id, status, total_spots, reservation_id, event_id, ticket_tier_id')
+    .eq('id', squadId)
+    .single()
+
+  if (!squad || squad.status !== 'forming') return
+
+  const { count: paidCount } = await adminClient
+    .from('squad_members')
+    .select('id', { count: 'exact', head: true })
+    .eq('squad_id', squadId)
+    .eq('status', 'paid')
+
+  if ((paidCount ?? 0) < squad.total_spots) return
+
+  // All members paid — complete the squad
+  const { error: completeError } = await adminClient
+    .from('squads')
+    .update({ status: 'completed', completed_at: new Date().toISOString() })
+    .eq('id', squadId)
+    .eq('status', 'forming')
+
+  if (completeError) {
+    console.error('[webhook] squad completion error:', completeError)
+    return
+  }
+
+  // Convert the shared reservation → increments sold_count for all spots
+  if (squad.reservation_id) {
+    await adminClient
+      .from('reservations')
+      .update({ status: 'converted', converted_at: new Date().toISOString() })
+      .eq('id', squad.reservation_id)
+      .eq('status', 'active')
+
+    // Increment sold_count for the tier by total_spots
+    await adminClient.rpc('increment_sold_count', {
+      p_tier_id: squad.ticket_tier_id,
+      p_quantity: squad.total_spots,
+    })
+  }
+
+  // Refresh inventory cache
+  refreshInventoryCache(squad.ticket_tier_id, squad.event_id).catch(err => {
+    console.error('[webhook] refreshInventoryCache failed after squad completion:', err)
+  })
+
+  // Send confirmation emails to all paid members
+  const { data: paidMembers } = await adminClient
+    .from('squad_members')
+    .select('order_id, attendee_email, guest_email, attendee_first_name')
+    .eq('squad_id', squadId)
+    .eq('status', 'paid')
+
+  if (paidMembers) {
+    for (const m of paidMembers) {
+      if (m.order_id) {
+        const memberEmail = m.attendee_email ?? m.guest_email
+        await sendConfirmationEmail(adminClient, m.order_id, null).catch(err => {
+          console.error('[webhook] squad confirmation email error for member:', err)
+        })
+      }
+    }
+  }
+
+  console.log(`[webhook] squad ${squadId} completed — ${squad.total_spots} members all paid`)
 }
 
 async function handleChargeRefunded(charge: Stripe.Charge) {
