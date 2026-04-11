@@ -1,0 +1,20 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e5]: EVENTLINQS
+      - generic [ref=e6]:
+        - link "Sign in" [ref=e7] [cursor=pointer]:
+          - /url: /login
+        - link "Sign up" [ref=e8] [cursor=pointer]:
+          - /url: /signup
+  - main [ref=e9]:
+    - heading "Tickets for the events you actually want to go to" [level=1] [ref=e10]:
+      - text: Tickets for the events
+      - text: you actually want to go to
+    - paragraph [ref=e11]: Discover events, buy tickets in seconds, and share the experience with friends. Transparent pricing. Zero hidden fees.
+    - generic [ref=e12]:
+      - link "Browse Events" [ref=e13] [cursor=pointer]:
+        - /url: /events
+      - link "For Organisers" [ref=e14] [cursor=pointer]:
+        - /url: /dashboard
+  - contentinfo [ref=e15]: © 2026 EventLinqs. All rights reserved.
