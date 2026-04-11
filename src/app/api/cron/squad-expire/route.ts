@@ -37,9 +37,15 @@ export async function GET(request: NextRequest) {
 
     if (rpcError) {
       console.error('[squad-expire] expire_stale_squads RPC error:', rpcError)
-      // RPC may not exist yet — fall back to manual query
+      // Fall through to manual query below
+    } else if (Array.isArray(rpcResult)) {
+      // RPC returned table rows with squad details — use directly
+      expiredSquads = rpcResult as typeof expiredSquads
     } else {
-      expiredSquads = (rpcResult as typeof expiredSquads) ?? []
+      // RPC returned an integer count (current schema: RETURNS integer).
+      // The RPC already expired squads + cancelled reservations atomically.
+      // Fall through to manual query to collect details needed for Stripe refunds.
+      console.log(`[squad-expire] RPC expired ${rpcResult ?? 0} squad(s) — querying details for refund processing`)
     }
 
     // Fallback: if RPC returned nothing or errored, find and expire squads manually
