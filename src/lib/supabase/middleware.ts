@@ -39,7 +39,8 @@ export async function updateSession(request: NextRequest) {
   const isPublicRoute = publicRoutes.some(route =>
     request.nextUrl.pathname === route ||
     request.nextUrl.pathname.startsWith('/events/') ||
-    request.nextUrl.pathname.startsWith('/checkout/')
+    request.nextUrl.pathname.startsWith('/checkout/') ||
+    request.nextUrl.pathname.startsWith('/squad/')
   )
 
   // Redirect unauthenticated users away from protected routes
