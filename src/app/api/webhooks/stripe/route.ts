@@ -53,6 +53,11 @@ export async function POST(request: NextRequest) {
         await handlePaymentCancelled(supabase, intent)
         break
       }
+      case 'charge.refunded': {
+        const charge = event.data.object as Stripe.Charge
+        await handleChargeRefunded(charge)
+        break
+      }
       default:
         // Ignore unhandled event types
         break
@@ -231,7 +236,7 @@ async function handlePaymentFailed(
 
   const { data: payment } = await adminClient
     .from('payments')
-    .select('id, status')
+    .select('id, status, order_id')
     .eq('gateway_payment_id', intent.id)
     .maybeSingle()
 
@@ -243,6 +248,42 @@ async function handlePaymentFailed(
     .from('payments')
     .update({ status: 'failed', failure_reason: failureMessage })
     .eq('id', payment.id)
+
+  // Release inventory and promote waitlist so held seats return to availability
+  if (!payment.order_id) return
+
+  const { data: order } = await adminClient
+    .from('orders')
+    .select('event_id, reservation_id')
+    .eq('id', payment.order_id)
+    .single()
+
+  if (!order?.event_id) return
+
+  // Cancel the reservation so inventory is freed
+  if (order.reservation_id) {
+    await adminClient
+      .from('reservations')
+      .update({ status: 'cancelled' })
+      .eq('id', order.reservation_id)
+      .eq('status', 'active')
+  }
+
+  const { data: failedItems } = await adminClient
+    .from('order_items')
+    .select('ticket_tier_id, quantity')
+    .eq('order_id', payment.order_id)
+    .eq('item_type', 'ticket')
+    .not('ticket_tier_id', 'is', null)
+
+  if (!failedItems || failedItems.length === 0) return
+
+  for (const item of failedItems) {
+    if (!item.ticket_tier_id) continue
+    promoteWaitlist(order.event_id, item.ticket_tier_id, item.quantity).catch(err => {
+      console.error('[webhook] promoteWaitlist failed after payment_failed:', err)
+    })
+  }
 }
 
 async function handleRequiresAction(
@@ -356,6 +397,51 @@ async function handlePaymentCancelled(
       }
       // ── End waitlist promotion ─────────────────────────────────────────────────
     }
+  }
+}
+
+async function handleChargeRefunded(charge: Stripe.Charge) {
+  // Webhook has no auth session — must use admin client for all DB operations
+  const adminClient = createAdminClient()
+
+  // Resolve payment_intent id from the charge object
+  const paymentIntentId = typeof charge.payment_intent === 'string'
+    ? charge.payment_intent
+    : (charge.payment_intent as Stripe.PaymentIntent | null)?.id
+
+  if (!paymentIntentId) return
+
+  const { data: payment } = await adminClient
+    .from('payments')
+    .select('id, order_id')
+    .eq('gateway_payment_id', paymentIntentId)
+    .maybeSingle()
+
+  if (!payment?.order_id) return
+
+  const { data: order } = await adminClient
+    .from('orders')
+    .select('event_id')
+    .eq('id', payment.order_id)
+    .single()
+
+  if (!order?.event_id) return
+
+  const { data: refundedItems } = await adminClient
+    .from('order_items')
+    .select('ticket_tier_id, quantity')
+    .eq('order_id', payment.order_id)
+    .eq('item_type', 'ticket')
+    .not('ticket_tier_id', 'is', null)
+
+  if (!refundedItems || refundedItems.length === 0) return
+
+  for (const item of refundedItems) {
+    if (!item.ticket_tier_id) continue
+    // Fire-and-forget — never let waitlist promotion failure break webhook
+    promoteWaitlist(order.event_id, item.ticket_tier_id, item.quantity).catch(err => {
+      console.error('[webhook] promoteWaitlist failed after charge.refunded:', err)
+    })
   }
 }
 
