@@ -169,3 +169,7 @@ Every benchmark comparison in any verification report must explicitly address al
 ### B) Pre-Commit Hygiene Rule
 
 Always run git status before every commit. Inspect the staged files. Source files only — no .playwright-mcp/ artifacts, no verify-*.png screenshots, no temporary scratch files, no .next/ build output. If git status shows test artifacts, unstage them and update .gitignore before committing.
+
+### C) Commit Authorship Rule
+
+NEVER add "Co-Authored-By: Claude" or any AI attribution to any commit message. All commits are authored by Lawal Adams only. This rule has no exceptions and applies to every commit forever until Lawal explicitly states otherwise. Even when using --amend, the Co-Authored-By line must be stripped.
