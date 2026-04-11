@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getMySquads } from '@/app/actions/squads'
 import type { SquadStatus } from '@/types/database'
+import { CopyLinkButton } from './copy-link-button'
 
 function formatDate(iso: string, timezone: string) {
   return new Date(iso).toLocaleString('en-AU', {
@@ -163,17 +164,7 @@ export default async function MySquadsPage() {
                   )}
 
                   {squad.status === 'forming' && (
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        if (navigator.clipboard) {
-                          await navigator.clipboard.writeText(`${window.location.origin}/squad/${squad.share_token}`)
-                        }
-                      }}
-                      className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                    >
-                      Copy link
-                    </button>
+                    <CopyLinkButton shareUrl={`${process.env.NEXT_PUBLIC_APP_URL ?? 'https://eventlinqs.com'}/squad/${squad.share_token}`} />
                   )}
 
                   {squad.status === 'completed' && (
