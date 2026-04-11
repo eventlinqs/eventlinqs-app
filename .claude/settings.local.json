@@ -9,7 +9,12 @@
       "Bash(cp /c/Users/61416/OneDrive/Desktop/EventLinqs/eventlinqs-app/src/middleware.ts /c/Users/61416/OneDrive/Desktop/EventLinqs/eventlinqs-app/src/proxy.ts)",
       "Bash(rm /c/Users/61416/OneDrive/Desktop/EventLinqs/eventlinqs-app/src/middleware.ts)",
       "Bash(rm:*)",
-      "Bash(node scripts/_backfill_once.mjs)"
+      "Bash(node scripts/_backfill_once.mjs)",
+      "Bash(curl -X POST http://localhost:3000/api/webhooks/stripe -H \"Content-Type: application/json\" -d \"{}\" -i --max-time 5)",
+      "Bash(echo \"Server PID: $!\")",
+      "Bash(curl -X POST http://localhost:3000/api/webhooks/stripe -H \"Content-Type: application/json\" -d \"{}\" -i --max-time 10)",
+      "Bash(xargs grep:*)",
+      "Bash(taskkill /PID 17992 /F)"
     ]
   }
 }

@@ -24,7 +24,7 @@ type FullEvent = Event & {
   event_addons?: EventAddon[]
 }
 
-type EnrichedTier = TicketTier & { display_price_cents: number }
+type EnrichedTier = TicketTier & { display_price_cents: number; sale_pending: boolean }
 
 async function fetchEvent(slug: string): Promise<FullEvent | null> {
   const supabase = await createClient()
@@ -82,15 +82,15 @@ function formatDateTime(iso: string, timezone: string) {
 function isTierCurrentlyVisible(tier: TicketTier, now: Date, unlockedTierIds: string[]): boolean {
   if (!tier.is_visible || !tier.is_active) return false
 
-  // Sale window: hide before sale_start
-  if (tier.sale_start && new Date(tier.sale_start) > now) return false
-  // Sale window: hide after sale_end
+  // Sale window: hide after sale_end (only when the sale has fully closed AND capacity exhausted)
   if (tier.sale_end && new Date(tier.sale_end) <= now) return false
   // Hidden until reveal time
   if (tier.hidden_until && new Date(tier.hidden_until) > now) return false
   // Access-code gated: only show if unlocked
   if (tier.requires_access_code && !unlockedTierIds.includes(tier.id)) return false
 
+  // NOTE: sale_start is intentionally NOT checked here. Tiers with a future sale_start
+  // are shown as "Sale starts soon" so buyers can see prices before the sale opens.
   return true
 }
 
@@ -183,11 +183,19 @@ export default async function EventDetailPage({ params }: Props) {
   const visibleTiers = event.ticket_tiers.filter(t => isTierCurrentlyVisible(t, now, unlockedTierIds))
   const showAccessCodeInput = hasLockedTiers(event.ticket_tiers, now, unlockedTierIds)
 
-  // Fetch dynamic prices for all visible tiers in parallel
-  const dynamicPriceMap = await getDynamicPriceMap(visibleTiers.map(t => t.id))
+  // Fetch dynamic prices for ALL tiers so tierPriceCentsMap is complete for seat price lookup
+  const allTiers = event.ticket_tiers
+  const dynamicPriceMap = await getDynamicPriceMap(allTiers.map(t => t.id))
+
+  function resolvePrice(tier: TicketTier): number {
+    const dynamic = dynamicPriceMap.get(tier.id)
+    return (dynamic && dynamic > 0) ? dynamic : tier.price
+  }
+
   const enrichedTiers: EnrichedTier[] = visibleTiers.map(t => ({
     ...t,
-    display_price_cents: dynamicPriceMap.get(t.id) ?? t.price,
+    sale_pending: !!(t.sale_start && new Date(t.sale_start) > now),
+    display_price_cents: resolvePrice(t),
   }))
 
   // Load inventory from Redis cache (with DB fallback) for badges
@@ -211,7 +219,7 @@ export default async function EventDetailPage({ params }: Props) {
     const [seatsResult, sectionsResult] = await Promise.all([
       seatSupabase
         .from('seats')
-        .select('id, row_label, seat_number, seat_type, status, x, y, price_cents, seat_map_section_id')
+        .select('id, row_label, seat_number, seat_type, status, x, y, price_cents, seat_map_section_id, ticket_tier_id')
         .eq('event_id', event.id)
         .order('row_label')
         .order('seat_number'),
@@ -232,10 +240,22 @@ export default async function EventDetailPage({ params }: Props) {
       ...s,
       x: typeof s.x === 'number' ? s.x : parseFloat(s.x as unknown as string) || 0,
       y: typeof s.y === 'number' ? s.y : parseFloat(s.y as unknown as string) || 0,
+      ticket_tier_id: s.ticket_tier_id ?? null,
     }))
 
     eventSections = (sectionsResult.data ?? []) as SectionData[]
   }
+
+  // Build tier price map from ALL tiers (not just visibleTiers) so every seat linked to any
+  // tier — including upcoming-sale tiers — shows the correct price on the seat map.
+  const tierPriceCentsMap: Record<string, number> = {}
+  for (const t of allTiers) {
+    tierPriceCentsMap[t.id] = resolvePrice(t)
+  }
+
+  // defaultPriceCents for SeatSelector uses first raw tier so it is never 0 when enrichedTiers
+  // is empty (e.g. all tiers have a future sale_start).
+  const defaultPriceCents = allTiers.length > 0 ? resolvePrice(allTiers[0]) : 0
 
   const location = [event.venue_name, event.venue_address, event.venue_city, event.venue_state, event.venue_country]
     .filter(Boolean)
@@ -384,9 +404,10 @@ export default async function EventDetailPage({ params }: Props) {
                     eventId={event.id}
                     seats={eventSeats}
                     sections={eventSections}
-                    defaultPriceCents={enrichedTiers[0]?.display_price_cents ?? enrichedTiers[0]?.price ?? 0}
-                    currency={enrichedTiers[0]?.currency ?? 'AUD'}
-                    maxPerOrder={enrichedTiers[0]?.max_per_order ?? 10}
+                    defaultPriceCents={defaultPriceCents}
+                    currency={allTiers[0]?.currency ?? enrichedTiers[0]?.currency ?? 'AUD'}
+                    maxPerOrder={allTiers[0]?.max_per_order ?? enrichedTiers[0]?.max_per_order ?? 10}
+                    tierPriceCentsMap={tierPriceCentsMap}
                   />
                 )}
               </div>

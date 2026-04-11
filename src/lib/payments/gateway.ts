@@ -9,6 +9,9 @@ export interface CreatePaymentIntentParams {
     event_id: string
     organisation_id: string
     buyer_email: string
+    // Optional fields for seat reservations — used by webhook to locate and update seats
+    reservation_id?: string
+    seat_ids?: string
   }
   customer_email: string
   idempotency_key: string

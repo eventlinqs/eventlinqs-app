@@ -110,6 +110,7 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
     })
   }
 
+  const now = new Date()
   const activeTiers = tiers.filter(t => t.is_visible && t.is_active)
 
   return (
@@ -127,12 +128,13 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
           {activeTiers.map(tier => {
             const available = getAvailable(tier)
             const soldOut = available <= 0
+            const salePending = !!(tier.sale_start && new Date(tier.sale_start) > now)
             const qty = tierQuantities[tier.id] ?? 0
 
             return (
               <div
                 key={tier.id}
-                className={`rounded-lg border p-4 ${soldOut ? 'border-gray-100 bg-gray-50 opacity-60' : 'border-gray-200'}`}
+                className={`rounded-lg border p-4 ${soldOut || salePending ? 'border-gray-100 bg-gray-50' : 'border-gray-200'}`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
@@ -140,7 +142,12 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
                     {tier.description && (
                       <p className="mt-0.5 text-xs text-gray-500">{tier.description}</p>
                     )}
-                    {!soldOut && available <= 20 && (
+                    {salePending && tier.sale_start && (
+                      <p className="mt-1 text-xs text-blue-600">
+                        Sale opens {new Date(tier.sale_start).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' })}
+                      </p>
+                    )}
+                    {!soldOut && !salePending && available <= 20 && (
                       <p className="mt-1 text-xs text-amber-600">Only {available} left</p>
                     )}
                     <p className="mt-1 text-sm font-bold text-gray-900">{formatPrice(tier.display_price_cents ?? tier.price, currency)}</p>
@@ -149,6 +156,10 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
                   {soldOut ? (
                     <span className="inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-600 shrink-0">
                       Sold out
+                    </span>
+                  ) : salePending ? (
+                    <span className="inline-block rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-600 shrink-0">
+                      Sale starts soon
                     </span>
                   ) : !isTicketingSuspended && (
                     <div className="flex items-center gap-2 shrink-0">
@@ -226,7 +237,7 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
         </div>
       )}
 
-      {!isTicketingSuspended && activeTiers.some(t => getAvailable(t) > 0) && (
+      {!isTicketingSuspended && activeTiers.some(t => getAvailable(t) > 0 && !(t.sale_start && new Date(t.sale_start) > now)) && (
         <button
           type="button"
           onClick={handleCheckout}

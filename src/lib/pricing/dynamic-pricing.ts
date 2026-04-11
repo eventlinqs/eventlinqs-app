@@ -47,5 +47,8 @@ export async function getDynamicPriceMap(tierIds: string[]): Promise<Map<string,
     })
   )
 
-  return new Map(results)
+  // Only include tiers with a positive price so callers can use ?? t.price as a
+  // safe fallback. A 0 result means the RPC found no active dynamic pricing rules
+  // for this tier (not that the tier is genuinely free).
+  return new Map(results.filter(([, price]) => price > 0))
 }

@@ -94,57 +94,98 @@ async function handlePaymentSucceeded(
   })
 
   // Atomically confirm the order: sets status=confirmed, converts reservation,
-  // increments sold_count, decrements reserved_count, updates discount uses
+  // increments sold_count, decrements reserved_count, updates discount uses.
+  // NOTE: do NOT return on error — reserved-seating orders must still have seats marked sold
+  // even if the confirm_order RPC fails (e.g. tier structure mismatch on seat events).
   const { error: confirmError } = await adminClient.rpc('confirm_order', {
     p_order_id: order_id,
   })
-
   if (confirmError) {
-    console.error('confirm_order RPC error:', confirmError)
-    return
+    console.error('[webhook] confirm_order RPC error (non-fatal, continuing):', confirmError)
   }
 
-  // Mark reserved seats as sold (seat reservations)
-  const { data: orderForSeats } = await adminClient
-    .from('orders')
-    .select('reservation_id')
-    .eq('id', order_id)
-    .single()
+  // ── Mark reserved seats as sold ──────────────────────────────────────────────
+  // Primary: read seat_ids from PaymentIntent metadata (set by processSeatCheckout).
+  // Fallback: resolve via order → reservation → items (covers legacy intents).
+  let seatIds: string[] | null = null
+  let seatEventId: string | null = intent.metadata?.event_id ?? null
 
-  if (orderForSeats?.reservation_id) {
-    const { data: reservationForSeats } = await adminClient
-      .from('reservations')
-      .select('items, event_id')
-      .eq('id', orderForSeats.reservation_id)
-      .single()
+  const rawMetaSeatIds = intent.metadata?.seat_ids
+  if (rawMetaSeatIds) {
+    try {
+      const parsed: unknown = JSON.parse(rawMetaSeatIds)
+      if (Array.isArray(parsed) && parsed.length > 0) seatIds = parsed as string[]
+    } catch {
+      console.error('[webhook] Failed to parse seat_ids from metadata:', rawMetaSeatIds)
+    }
+  }
 
-    if (reservationForSeats) {
-      const items = reservationForSeats.items as { seat_ids?: string[] } | unknown[]
-      const seatIds = !Array.isArray(items) && (items as { seat_ids?: string[] }).seat_ids
-      if (Array.isArray(seatIds) && seatIds.length > 0) {
-        const { error: seatSoldError } = await adminClient
-          .from('seats')
-          .update({ status: 'sold', updated_at: new Date().toISOString() })
-          .in('id', seatIds)
-          .eq('event_id', reservationForSeats.event_id)
+  // Fallback: look up order → reservation → items when metadata seat_ids absent
+  if (!seatIds) {
+    const reservationId = intent.metadata?.reservation_id ?? (
+      await adminClient.from('orders').select('reservation_id').eq('id', order_id).single()
+    ).data?.reservation_id
 
-        if (seatSoldError) {
-          console.error('[webhook] failed to mark seats as sold:', seatSoldError)
+    if (reservationId) {
+      const { data: reservationForSeats } = await adminClient
+        .from('reservations')
+        .select('items, event_id')
+        .eq('id', reservationId)
+        .single()
+
+      if (reservationForSeats) {
+        const items = reservationForSeats.items as { seat_ids?: string[] } | unknown[]
+        const ids = !Array.isArray(items) && (items as { seat_ids?: string[] }).seat_ids
+        if (Array.isArray(ids) && ids.length > 0) {
+          seatIds = ids
+          seatEventId = reservationForSeats.event_id
         }
-
-        // Bust public event page and organiser seat view
-        const { data: eventForRevalidation } = await adminClient
-          .from('events')
-          .select('slug')
-          .eq('id', reservationForSeats.event_id)
-          .single()
-        if (eventForRevalidation?.slug) {
-          revalidatePath(`/events/${eventForRevalidation.slug}`)
-        }
-        revalidatePath(`/dashboard/events/${reservationForSeats.event_id}/seats`)
       }
     }
   }
+
+  if (seatIds && seatIds.length > 0 && seatEventId) {
+    const { data: updatedSeats, error: seatSoldError } = await adminClient
+      .from('seats')
+      .update({ status: 'sold', updated_at: new Date().toISOString() })
+      .in('id', seatIds)
+      .eq('event_id', seatEventId)
+      .eq('status', 'reserved')
+      .select('id')
+
+    if (seatSoldError) {
+      console.error('[webhook] failed to mark seats as sold:', seatSoldError)
+    } else {
+      const updatedCount = updatedSeats?.length ?? 0
+      console.log(`[webhook] seats marked sold: ${updatedCount}/${seatIds.length} (payment_intent: ${intent.id})`)
+      if (updatedCount === 0) {
+        // Fetch current statuses to aid debugging
+        const { data: currentStatuses } = await adminClient
+          .from('seats')
+          .select('id, status')
+          .in('id', seatIds)
+        console.warn(
+          '[webhook] WARNING: 0 seats updated.',
+          'payment_intent_id:', intent.id,
+          'expected seat_ids:', seatIds,
+          'event_id:', seatEventId,
+          'current statuses:', currentStatuses,
+        )
+      }
+    }
+
+    // Bust public event page and organiser seat view
+    const { data: eventForRevalidation } = await adminClient
+      .from('events')
+      .select('slug')
+      .eq('id', seatEventId)
+      .single()
+    if (eventForRevalidation?.slug) {
+      revalidatePath(`/events/${eventForRevalidation.slug}`)
+    }
+    revalidatePath(`/dashboard/events/${seatEventId}/seats`)
+  }
+  // ── End seat update ──────────────────────────────────────────────────────────
 
   // Refresh Redis inventory cache for all affected tiers
   const { data: orderItems, error: itemsError } = await adminClient

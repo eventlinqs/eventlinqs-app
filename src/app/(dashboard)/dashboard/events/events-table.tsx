@@ -8,6 +8,7 @@ import type { Event, EventStatus } from '@/types/database'
 
 type EventRow = Event & {
   ticket_tiers: { sold_count: number; total_capacity: number }[]
+  has_reserved_seating?: boolean
 }
 
 const STATUS_BADGE: Record<EventStatus, string> = {
@@ -118,7 +119,7 @@ function RowActions({ event, onDone }: { event: EventRow; onDone: () => void }) 
   )
 }
 
-export function EventsTable({ events }: { events: EventRow[] }) {
+export function EventsTable({ events, seatSoldCountMap = {} }: { events: EventRow[]; seatSoldCountMap?: Record<string, number> }) {
   const router = useRouter()
 
   if (events.length === 0) {
@@ -149,7 +150,9 @@ export function EventsTable({ events }: { events: EventRow[] }) {
         </thead>
         <tbody className="divide-y divide-gray-100">
           {events.map(event => {
-            const soldCount = event.ticket_tiers.reduce((sum, t) => sum + t.sold_count, 0)
+            const soldCount = event.has_reserved_seating
+              ? (seatSoldCountMap[event.id] ?? 0)
+              : event.ticket_tiers.reduce((sum, t) => sum + t.sold_count, 0)
             const totalCapacity = event.ticket_tiers.reduce((sum, t) => sum + t.total_capacity, 0)
 
             return (

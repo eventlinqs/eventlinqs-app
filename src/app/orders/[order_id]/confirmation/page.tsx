@@ -55,6 +55,17 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
   const { data: { user } } = await supabase.auth.getUser()
   const isGuest = !user
 
+  // Determine smart logo link: organisers go to their dashboard, everyone else browses events
+  let logoHref = '/events'
+  if (user) {
+    const { data: org } = await adminClient
+      .from('organisations')
+      .select('id')
+      .eq('owner_id', user.id)
+      .maybeSingle()
+    if (org) logoHref = '/dashboard/events'
+  }
+
   const eventDate = new Date(event.start_date).toLocaleString('en-AU', {
     weekday: 'long',
     day: 'numeric',
@@ -81,7 +92,7 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
     <div className="min-h-screen bg-gray-50">
       <nav className="border-b border-gray-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl">
-          <Link href="/" className="text-xl font-bold text-[#1A1A2E]">EVENTLINQS</Link>
+          <Link href={logoHref} className="text-xl font-bold text-[#1A1A2E]">EVENTLINQS</Link>
         </div>
       </nav>
 

@@ -29,6 +29,11 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // API routes handle their own auth — never redirect them to /login
+  if (request.nextUrl.pathname.startsWith('/api/')) {
+    return supabaseResponse
+  }
+
   // Define public routes that don't require authentication
   const publicRoutes = ['/', '/login', '/signup', '/auth/callback', '/auth/confirm', '/events', '/about', '/contact', '/privacy', '/terms']
   const isPublicRoute = publicRoutes.some(route =>

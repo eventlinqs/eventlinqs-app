@@ -8,16 +8,20 @@ interface CartTimerProps {
 }
 
 export function CartTimer({ expiresAt, onExpired }: CartTimerProps) {
-  const [secondsLeft, setSecondsLeft] = useState<number>(() => {
-    const diff = Math.floor((new Date(expiresAt).getTime() - Date.now()) / 1000)
-    return Math.max(0, diff)
-  })
+  // Initialize to 0 (stable server/client value) to avoid hydration mismatch.
+  // Actual countdown starts after mount via useEffect.
+  const [secondsLeft, setSecondsLeft] = useState<number>(0)
 
   useEffect(() => {
-    if (secondsLeft <= 0) {
+    const diff = Math.floor((new Date(expiresAt).getTime() - Date.now()) / 1000)
+    const initial = Math.max(0, diff)
+
+    if (initial <= 0) {
       onExpired()
       return
     }
+
+    setSecondsLeft(initial)
 
     const id = setInterval(() => {
       setSecondsLeft(prev => {

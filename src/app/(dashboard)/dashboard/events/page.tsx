@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { EventsTable } from './events-table'
@@ -59,6 +60,27 @@ export default async function MyEventsPage({ searchParams }: Props) {
 
   const { data: events } = await query as { data: (Event & { ticket_tiers: { sold_count: number; total_capacity: number }[] })[] | null }
 
+  // For reserved seating events, sold count must come from seats table, not ticket_tiers.sold_count
+  const reservedEventIds = (events ?? [])
+    .filter(e => (e as Event & { has_reserved_seating?: boolean }).has_reserved_seating)
+    .map(e => e.id)
+
+  const seatSoldCountMap: Record<string, number> = {}
+  if (reservedEventIds.length > 0) {
+    // Use admin client so RLS never blocks reading seat counts for the organiser's own events
+    const adminClient = createAdminClient()
+    const { data: soldSeats } = await adminClient
+      .from('seats')
+      .select('event_id')
+      .in('event_id', reservedEventIds)
+      .eq('status', 'sold')
+    for (const row of soldSeats ?? []) {
+      seatSoldCountMap[row.event_id] = (seatSoldCountMap[row.event_id] ?? 0) + 1
+    }
+    console.log('[dashboard/events] reservedEventIds:', reservedEventIds)
+    console.log('[dashboard/events] seatSoldCountMap:', seatSoldCountMap)
+  }
+
   const tabs: { key: FilterTab; label: string }[] = [
     { key: 'all', label: 'All' },
     { key: 'draft', label: 'Draft' },
@@ -101,7 +123,7 @@ export default async function MyEventsPage({ searchParams }: Props) {
         ))}
       </div>
 
-      <EventsTable events={events ?? []} />
+      <EventsTable events={events ?? []} seatSoldCountMap={seatSoldCountMap} />
     </div>
   )
 }

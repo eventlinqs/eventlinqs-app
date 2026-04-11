@@ -353,6 +353,7 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
         event_id: event.id,
         organisation_id: event.organisation_id,
         buyer_email,
+        reservation_id,
       },
     })
 
@@ -597,6 +598,8 @@ async function processSeatCheckout({
         event_id: event.id,
         organisation_id: event.organisation_id,
         buyer_email,
+        reservation_id,
+        seat_ids: JSON.stringify(seatIds),
       },
     })
 

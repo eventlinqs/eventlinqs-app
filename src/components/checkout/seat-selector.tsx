@@ -14,6 +14,7 @@ export interface SeatData {
   y: number
   price_cents: number | null
   seat_map_section_id: string | null
+  ticket_tier_id: string | null
 }
 
 export interface SectionData {
@@ -29,6 +30,7 @@ interface Props {
   defaultPriceCents: number
   currency: string
   maxPerOrder: number
+  tierPriceCentsMap?: Record<string, number>
 }
 
 const STATUS_FILL: Record<string, { fill: string; stroke: string; clickable: boolean }> = {
@@ -51,6 +53,7 @@ export function SeatSelector({
   defaultPriceCents,
   currency,
   maxPerOrder,
+  tierPriceCentsMap = {},
 }: Props) {
   const router = useRouter()
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -58,12 +61,26 @@ export function SeatSelector({
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
+  // Primitive keys: only recompute memos when content changes, not on every array reference change
+  const seatsKey = seats.map(s => `${s.id}:${s.status}`).join('|')
+  const sectionsKey = sections.map(s => `${s.id}:${s.color}`).join('|')
+  const selectedIdsKey = [...selectedIds].sort().join(',')
+
   const sectionColorMap = useMemo(
     () => new Map(sections.map(s => [s.id, s.color])),
-    [sections]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sectionsKey]
   )
 
-  // Compute SVG viewport from seat coordinates
+  // Always resolve price from live tier map; ignore stale seat.price_cents
+  function getSeatPrice(seat: SeatData): number {
+    if (seat.ticket_tier_id && tierPriceCentsMap[seat.ticket_tier_id] != null) {
+      return tierPriceCentsMap[seat.ticket_tier_id]
+    }
+    return defaultPriceCents
+  }
+
+  // Compute SVG viewport from seat coordinates — seatsKey changes only when content changes
   const { minX, minY, viewWidth, viewHeight } = useMemo(() => {
     if (seats.length === 0) return { minX: 0, minY: 0, viewWidth: 400, viewHeight: 300 }
     const xs = seats.map(s => s.x)
@@ -78,7 +95,8 @@ export function SeatSelector({
       viewWidth: maxX - minX + SEAT_SIZE + PADDING * 2,
       viewHeight: maxY - minY + SEAT_SIZE + PADDING * 2,
     }
-  }, [seats])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seatsKey])
 
   function toggleSeat(seat: SeatData) {
     const style = STATUS_FILL[seat.status] ?? STATUS_FILL.sold
@@ -151,7 +169,7 @@ export function SeatSelector({
 
   const selectedSeats = seats.filter(s => selectedIds.has(s.id))
   const totalCents = selectedSeats.reduce(
-    (sum, s) => sum + (s.price_cents ?? defaultPriceCents),
+    (sum, s) => sum + getSeatPrice(s),
     0
   )
 
@@ -178,6 +196,78 @@ export function SeatSelector({
       }
     })
   }
+
+  const seatElements = useMemo(() =>
+    seats.map(seat => {
+      const cx = seat.x - minX + PADDING + SEAT_SIZE / 2
+      const cy = seat.y - minY + PADDING + SEAT_SIZE / 2
+      const isSelected = selectedIds.has(seat.id)
+      const effectiveStatus = isSelected ? 'selected' : seat.status
+      const styleInfo = STATUS_FILL[effectiveStatus] ?? STATUS_FILL.sold
+      const sectionColor = sectionColorMap.get(seat.seat_map_section_id ?? '') ?? '#4A90D9'
+      const fill = styleInfo.fill.replace('var(--section-color)', sectionColor)
+
+      return (
+        <g
+          key={seat.id}
+          style={{ cursor: styleInfo.clickable ? 'pointer' : 'not-allowed' }}
+          onClick={() => toggleSeat(seat)}
+          onMouseEnter={() => setHoveredId(seat.id)}
+          onMouseLeave={() => setHoveredId(null)}
+        >
+          <rect
+            x={cx - SEAT_SIZE / 2}
+            y={cy - SEAT_SIZE / 2}
+            width={SEAT_SIZE}
+            height={SEAT_SIZE}
+            rx="3"
+            fill={fill}
+            stroke={styleInfo.stroke}
+            strokeWidth={isSelected ? 2 : 1}
+            opacity={styleInfo.clickable ? 1 : 0.5}
+          />
+          <text
+            x={cx}
+            y={cy + 4}
+            textAnchor="middle"
+            fontSize="7"
+            fill="white"
+            style={{ pointerEvents: 'none', userSelect: 'none' }}
+          >
+            {seat.seat_number}
+          </text>
+        </g>
+      )
+    }),
+    // Primitive keys: stable deps that only change when seat content or selection actually changes.
+    // hoveredId intentionally excluded — hover highlight is rendered as a separate overlay below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [seatsKey, selectedIdsKey, minX, minY, sectionsKey]
+  )
+
+  // Hover highlight rendered separately so seatElements memo is not busted on every mouse move
+  const hoverOverlay = useMemo(() => {
+    if (!hoveredId) return null
+    const seat = seats.find(s => s.id === hoveredId)
+    if (!seat) return null
+    const style = STATUS_FILL[seat.status] ?? STATUS_FILL.sold
+    if (!style.clickable) return null
+    const cx = seat.x - minX + PADDING + SEAT_SIZE / 2
+    const cy = seat.y - minY + PADDING + SEAT_SIZE / 2
+    return (
+      <rect
+        x={cx - SEAT_SIZE / 2 - 1}
+        y={cy - SEAT_SIZE / 2 - 1}
+        width={SEAT_SIZE + 2}
+        height={SEAT_SIZE + 2}
+        rx="4"
+        fill="none"
+        stroke="#4A90D9"
+        strokeWidth={2}
+        style={{ pointerEvents: 'none' }}
+      />
+    )
+  }, [hoveredId, seats, minX, minY])
 
   const hovered = hoveredId ? seats.find(s => s.id === hoveredId) : null
 
@@ -227,49 +317,8 @@ export function SeatSelector({
             STAGE / FRONT
           </text>
 
-          {seats.map(seat => {
-            const cx = seat.x - minX + PADDING + SEAT_SIZE / 2
-            const cy = seat.y - minY + PADDING + SEAT_SIZE / 2
-            const isSelected = selectedIds.has(seat.id)
-            const isHovered = hoveredId === seat.id
-            const effectiveStatus = isSelected ? 'selected' : seat.status
-            const styleInfo = STATUS_FILL[effectiveStatus] ?? STATUS_FILL.sold
-            const sectionColor = sectionColorMap.get(seat.seat_map_section_id ?? '') ?? '#4A90D9'
-
-            const fill = styleInfo.fill.replace('var(--section-color)', sectionColor)
-
-            return (
-              <g
-                key={seat.id}
-                style={{ cursor: styleInfo.clickable ? 'pointer' : 'not-allowed' }}
-                onClick={() => toggleSeat(seat)}
-                onMouseEnter={() => setHoveredId(seat.id)}
-                onMouseLeave={() => setHoveredId(null)}
-              >
-                <rect
-                  x={cx - SEAT_SIZE / 2}
-                  y={cy - SEAT_SIZE / 2}
-                  width={SEAT_SIZE}
-                  height={SEAT_SIZE}
-                  rx="3"
-                  fill={fill}
-                  stroke={isHovered && styleInfo.clickable ? '#4A90D9' : styleInfo.stroke}
-                  strokeWidth={isSelected ? 2 : 1}
-                  opacity={styleInfo.clickable ? 1 : 0.5}
-                />
-                <text
-                  x={cx}
-                  y={cy + 4}
-                  textAnchor="middle"
-                  fontSize="7"
-                  fill="white"
-                  style={{ pointerEvents: 'none', userSelect: 'none' }}
-                >
-                  {seat.seat_number}
-                </text>
-              </g>
-            )
-          })}
+          {seatElements}
+          {hoverOverlay}
         </svg>
       </div>
 
@@ -279,7 +328,7 @@ export function SeatSelector({
           Row {hovered.row_label} · Seat {hovered.seat_number} ·{' '}
           {hovered.seat_type !== 'standard' && <span className="capitalize">{hovered.seat_type} · </span>}
           {hovered.status === 'available'
-            ? formatPrice(hovered.price_cents ?? defaultPriceCents)
+            ? formatPrice(getSeatPrice(hovered))
             : hovered.status === 'reserved'
             ? 'Being reserved'
             : 'Unavailable'}
@@ -326,7 +375,7 @@ export function SeatSelector({
                     )}
                   </span>
                   <span className="font-medium text-gray-900">
-                    {formatPrice(s.price_cents ?? defaultPriceCents)}
+                    {formatPrice(getSeatPrice(s))}
                   </span>
                 </div>
               ))}
