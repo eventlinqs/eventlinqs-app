@@ -20,7 +20,7 @@ export default async function EventOrdersPage({ params }: Props) {
 
   const { data: event } = await supabase
     .from('events')
-    .select('id, title, organisation_id, ticket_tiers(id, name, total_capacity, sold_count)')
+    .select('id, title, organisation_id, waitlist_enabled, ticket_tiers(id, name, total_capacity, sold_count)')
     .eq('id', eventId)
     .single()
 
@@ -88,6 +88,24 @@ export default async function EventOrdersPage({ params }: Props) {
 
   const currency = ordersData[0]?.currency ?? 'AUD'
 
+  // Fetch waitlist counts per tier (admin client — organiser reading buyer waitlist data)
+  let waitlistCountByTier: { tier_id: string; tier_name: string; waiting: number }[] = []
+  if (event.waitlist_enabled) {
+    const tiers = (event.ticket_tiers ?? []) as { id: string; name: string; total_capacity: number; sold_count: number }[]
+    const waitlistCounts = await Promise.all(
+      tiers.map(async (t) => {
+        const { count } = await adminClient
+          .from('waitlist')
+          .select('id', { count: 'exact', head: true })
+          .eq('ticket_tier_id', t.id)
+          .eq('status', 'waiting')
+        return { tier_id: t.id, tier_name: t.name, waiting: count ?? 0 }
+      })
+    )
+    waitlistCountByTier = waitlistCounts.filter(w => w.waiting > 0)
+  }
+  const totalWaiting = waitlistCountByTier.reduce((s, w) => s + w.waiting, 0)
+
   return (
     <div>
       <div className="mb-6 flex items-center gap-3">
@@ -100,7 +118,7 @@ export default async function EventOrdersPage({ params }: Props) {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+      <div className={`grid grid-cols-2 gap-4 mb-6 ${event.waitlist_enabled ? 'sm:grid-cols-5' : 'sm:grid-cols-4'}`}>
         <div className="rounded-xl border border-gray-200 bg-white p-5">
           <p className="text-xs text-gray-500 uppercase tracking-wider">Total Orders</p>
           <p className="text-2xl font-bold text-gray-900 mt-1">{confirmedOrders.length}</p>
@@ -119,6 +137,21 @@ export default async function EventOrdersPage({ params }: Props) {
           <p className="text-xs text-gray-500 uppercase tracking-wider">Remaining</p>
           <p className="text-2xl font-bold text-gray-900 mt-1">{remaining}</p>
         </div>
+        {event.waitlist_enabled && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
+            <p className="text-xs text-amber-700 uppercase tracking-wider">Waitlist</p>
+            <p className="text-2xl font-bold text-amber-900 mt-1">{totalWaiting}</p>
+            {waitlistCountByTier.length > 0 && (
+              <div className="mt-1 space-y-0.5">
+                {waitlistCountByTier.map(w => (
+                  <p key={w.tier_id} className="text-xs text-amber-700">
+                    {w.tier_name}: {w.waiting}
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
