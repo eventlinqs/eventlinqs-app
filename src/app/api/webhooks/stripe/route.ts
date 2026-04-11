@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { StripeAdapter } from '@/lib/payments/stripe-adapter'
 import { Resend } from 'resend'
 import { refreshInventoryCache } from '@/lib/redis/inventory-cache'
+import { promoteWaitlist } from '@/lib/waitlist/promote'
 import type Stripe from 'stripe'
 
 export const dynamic = 'force-dynamic'
@@ -334,6 +335,26 @@ async function handlePaymentCancelled(
         }
         revalidatePath(`/dashboard/events/${reservation.event_id}/seats`)
       }
+
+      // ── Waitlist promotion: release triggers next-in-line notification ────────
+      // Find the cancelled order items to know which tier had inventory released
+      const { data: cancelledItems } = await adminClient
+        .from('order_items')
+        .select('ticket_tier_id, quantity')
+        .eq('order_id', payment.order_id)
+        .eq('item_type', 'ticket')
+        .not('ticket_tier_id', 'is', null)
+
+      if (cancelledItems && cancelledItems.length > 0) {
+        for (const item of cancelledItems) {
+          if (!item.ticket_tier_id) continue
+          // Fire-and-forget — never let waitlist promotion failure break webhook
+          promoteWaitlist(reservation.event_id, item.ticket_tier_id, item.quantity).catch(err => {
+            console.error('[webhook] promoteWaitlist failed after cancellation:', err)
+          })
+        }
+      }
+      // ── End waitlist promotion ─────────────────────────────────────────────────
     }
   }
 }
