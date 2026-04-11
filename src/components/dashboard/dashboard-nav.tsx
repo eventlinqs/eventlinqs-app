@@ -42,6 +42,9 @@ export function DashboardNav({ user, profile }: Props) {
               <Link href="/dashboard/tickets" className="text-sm font-medium text-gray-700 hover:text-gray-900">
                 My Tickets
               </Link>
+              <Link href="/dashboard/my-waitlists" className="text-sm font-medium text-gray-700 hover:text-gray-900">
+                My Waitlists
+              </Link>
               {(profile?.role === 'organiser' || profile?.role === 'admin' || profile?.role === 'super_admin') && (
                 <Link href="/dashboard/organisation" className="text-sm font-medium text-gray-700 hover:text-gray-900">
                   Organisation
