@@ -7,10 +7,11 @@ export const dynamic = 'force-dynamic'
 /**
  * Cron route: runs every 5 minutes via Vercel Crons.
  *
- * 1. Calls expire_stale_squads() RPC — finds squads past expires_at in 'forming' status,
- *    marks them 'expired', and returns the affected squad IDs + their tier/event info.
- * 2. For each expired squad: issues Stripe refunds for any paid members, releases
- *    the squad's shared reservation, and promotes the waitlist for the freed inventory.
+ * 1. Calls expire_stale_squads() RPC — atomically finds forming squads past
+ *    expires_at, marks them 'expired', marks uninvited members 'timed_out',
+ *    cancels their reservation, and RETURNS the expired squad rows.
+ * 2. For each expired squad: queries paid members, issues Stripe refunds via
+ *    stripe.refunds.create, then promotes the waitlist for freed inventory.
  *
  * Protected by CRON_SECRET to prevent public triggering.
  */
@@ -23,62 +24,28 @@ export async function GET(request: NextRequest) {
 
   const adminClient = createAdminClient()
 
-  let expiredSquads: {
-    squad_id: string
-    event_id: string
-    ticket_tier_id: string
-    total_spots: number
-    reservation_id: string | null
-  }[] = []
-
   try {
-    // Step 1: Expire stale squads via RPC (atomic — uses row-level locking)
+    // Step 1: Expire stale squads via RPC (atomic — expires squads, marks
+    //         members timed_out, cancels reservations, returns squad details
+    //         needed for Stripe refund processing below)
     const { data: rpcResult, error: rpcError } = await adminClient.rpc('expire_stale_squads')
 
     if (rpcError) {
       console.error('[squad-expire] expire_stale_squads RPC error:', rpcError)
-      // Fall through to manual query below
-    } else if (Array.isArray(rpcResult)) {
-      // RPC returned table rows with squad details — use directly
-      expiredSquads = rpcResult as typeof expiredSquads
-    } else {
-      // RPC returned an integer count (current schema: RETURNS integer).
-      // The RPC already expired squads + cancelled reservations atomically.
-      // Fall through to manual query to collect details needed for Stripe refunds.
-      console.log(`[squad-expire] RPC expired ${rpcResult ?? 0} squad(s) — querying details for refund processing`)
+      return NextResponse.json({ error: 'RPC failed', detail: rpcError.message }, { status: 500 })
     }
 
-    // Fallback: if RPC returned nothing or errored, find and expire squads manually
-    if (expiredSquads.length === 0) {
-      const { data: staleSquads, error: fetchError } = await adminClient
-        .from('squads')
-        .select('id, event_id, ticket_tier_id, total_spots, reservation_id')
-        .eq('status', 'forming')
-        .lt('expires_at', new Date().toISOString())
-
-      if (fetchError) {
-        console.error('[squad-expire] fetch stale squads error:', fetchError)
-      }
-
-      if (staleSquads && staleSquads.length > 0) {
-        const staleIds = staleSquads.map(s => s.id)
-
-        // Mark all stale squads as expired
-        await adminClient
-          .from('squads')
-          .update({ status: 'expired' })
-          .in('id', staleIds)
-          .eq('status', 'forming')
-
-        expiredSquads = staleSquads.map(s => ({
-          squad_id: s.id,
-          event_id: s.event_id,
-          ticket_tier_id: s.ticket_tier_id,
-          total_spots: s.total_spots,
-          reservation_id: s.reservation_id,
-        }))
-      }
-    }
+    // Guard: after migration the RPC returns TABLE rows (array). Before the
+    // migration is applied it returns an integer — treat that as empty array
+    // so the route still responds 200 rather than crashing.
+    const expiredSquads = (Array.isArray(rpcResult) ? rpcResult : []) as {
+      squad_id: string
+      event_id: string
+      ticket_tier_id: string
+      total_spots: number
+      reservation_id: string | null
+      share_token: string
+    }[]
 
     if (expiredSquads.length === 0) {
       return NextResponse.json({ expired: 0, message: 'No squads to expire' })
@@ -87,10 +54,11 @@ export async function GET(request: NextRequest) {
     console.log(`[squad-expire] processing ${expiredSquads.length} expired squad(s)`)
 
     let totalRefunded = 0
+    let refundFailures = 0
     let totalWaitlistsPromoted = 0
 
     for (const squad of expiredSquads) {
-      // Step 2a: Find paid members who need refunds
+      // Step 2a: Find paid members who need Stripe refunds
       const { data: paidMembers, error: membersError } = await adminClient
         .from('squad_members')
         .select('id, order_id')
@@ -127,7 +95,7 @@ export async function GET(request: NextRequest) {
                 reason: 'requested_by_customer',
               })
 
-              // Mark order as refunded
+              // Mark order and payment as refunded
               await adminClient
                 .from('orders')
                 .update({ status: 'refunded' })
@@ -141,6 +109,7 @@ export async function GET(request: NextRequest) {
               totalRefunded++
               console.log(`[squad-expire] refunded member ${member.id} order ${member.order_id}`)
             } catch (refundErr) {
+              refundFailures++
               console.error(`[squad-expire] Stripe refund failed for order ${member.order_id}:`, refundErr)
             }
           }
@@ -149,18 +118,9 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Step 2c: Release the squad's shared reservation
-      if (squad.reservation_id) {
-        await adminClient
-          .from('reservations')
-          .update({ status: 'cancelled' })
-          .eq('id', squad.reservation_id)
-          .eq('status', 'active')
-      }
-
-      // Step 2d: Promote waitlist — tickets are back in inventory
+      // Step 2c: Promote waitlist — reservation already cancelled by RPC;
+      //          calculate released spots as total minus confirmed paid members
       try {
-        // How many spots were NOT yet paid = released back to pool
         const paidCount = paidMembers?.length ?? 0
         const releasedSpots = squad.total_spots - paidCount
         if (releasedSpots > 0) {
@@ -175,6 +135,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       expired: expiredSquads.length,
       refunded: totalRefunded,
+      refund_failures: refundFailures,
       waitlists_promoted: totalWaitlistsPromoted,
     })
   } catch (err) {
