@@ -109,6 +109,11 @@ export interface Event {
   // M4 Phase 4: Squad booking
   squad_booking_enabled: boolean
   squad_timeout_hours: number
+  // M4 Phase 3C: Virtual queue
+  is_high_demand: boolean
+  queue_admission_rate: number
+  queue_admission_window_minutes: number
+  queue_open_at: string | null
   // Joined data
   category?: EventCategory
   organisation?: Organisation
@@ -377,6 +382,24 @@ export interface SquadMember {
   paid_at: string | null
   // Joined data
   squad?: Squad
+}
+
+// ─── M4 Phase 3C: Virtual Queue ──────────────────────────────────────────────
+
+export type QueueStatus = 'waiting' | 'admitted' | 'expired' | 'abandoned'
+
+export interface QueueEntry {
+  id: string
+  event_id: string
+  user_id: string | null
+  session_id: string | null
+  ip_address: string | null
+  position: number
+  status: QueueStatus
+  position_token: string
+  admitted_at: string | null
+  expires_at: string | null
+  created_at: string
 }
 
 export interface DiscountCode {
