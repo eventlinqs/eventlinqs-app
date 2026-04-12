@@ -261,6 +261,7 @@ export function QueueRoom({
             src={coverImageUrl}
             alt={eventTitle}
             fill
+            sizes="100vw"
             className="object-cover opacity-30"
             priority
           />
