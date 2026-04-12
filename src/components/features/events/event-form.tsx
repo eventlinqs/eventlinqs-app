@@ -67,6 +67,9 @@ type FormData = {
   has_reserved_seating: boolean
   venue_id: string
   seat_map_id: string
+  // Phase 3B: Squad booking
+  squad_booking_enabled: boolean
+  squad_timeout_hours: string
 }
 
 const TIMEZONES = [
@@ -173,6 +176,8 @@ function getDefaultFormData(): FormData {
     has_reserved_seating: false,
     venue_id: '',
     seat_map_id: '',
+    squad_booking_enabled: true,
+    squad_timeout_hours: '24',
   }
 }
 
@@ -205,6 +210,8 @@ function fromExistingEvent(
     has_reserved_seating?: boolean
     venue_id?: string | null
     seat_map_id?: string | null
+    squad_booking_enabled?: boolean | null
+    squad_timeout_hours?: number | null
   },
   tiers: TicketTier[]
 ): FormData {
@@ -251,6 +258,8 @@ function fromExistingEvent(
     has_reserved_seating: event.has_reserved_seating ?? false,
     venue_id: event.venue_id ?? '',
     seat_map_id: event.seat_map_id ?? '',
+    squad_booking_enabled: event.squad_booking_enabled ?? false,
+    squad_timeout_hours: (event.squad_timeout_hours ?? 24).toString(),
   }
 }
 
@@ -354,6 +363,8 @@ export function EventForm({
     has_reserved_seating: formData.has_reserved_seating,
     venue_id: formData.has_reserved_seating ? (formData.venue_id || null) : null,
     seat_map_id: formData.has_reserved_seating ? (formData.seat_map_id || null) : null,
+    squad_booking_enabled: formData.squad_booking_enabled,
+    squad_timeout_hours: Math.min(72, Math.max(1, parseInt(formData.squad_timeout_hours) || 24)),
     ticket_tiers: formData.ticket_tiers.map((t, i) => ({
       name: t.name,
       description: t.description,
@@ -980,6 +991,64 @@ export function EventForm({
         </svg>
         Add Ticket Tier
       </button>
+
+      {/* Squad Booking */}
+      <div className="rounded-lg border border-gray-200 p-5">
+        <label className="flex cursor-pointer items-start gap-4 min-h-[44px]">
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-gray-900">Enable Squad Booking</p>
+            <p className="mt-1 text-xs text-gray-500">
+              Allow buyers to start a squad with friends and split payment. Each member pays
+              their own share. Unfilled squads are automatically refunded after the fill window.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={formData.squad_booking_enabled}
+            aria-label="Enable squad booking"
+            onClick={() => set('squad_booking_enabled', !formData.squad_booking_enabled)}
+            className={`relative mt-0.5 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+              formData.squad_booking_enabled ? 'bg-blue-600' : 'bg-gray-300'
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                formData.squad_booking_enabled ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </label>
+
+        {formData.squad_booking_enabled && (
+          <div className="mt-4 border-t border-gray-100 pt-4">
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">
+              Squad fill window
+              <span className="ml-1.5 font-normal text-gray-400">(hours, 1–72)</span>
+            </label>
+            <input
+              type="number"
+              min="1"
+              max="72"
+              value={formData.squad_timeout_hours}
+              onChange={e => {
+                const raw = e.target.value
+                // Allow free typing; clamp only on buildPayload
+                set('squad_timeout_hours', raw)
+              }}
+              onBlur={e => {
+                const val = parseInt(e.target.value)
+                if (isNaN(val) || val < 1) set('squad_timeout_hours', '1')
+                else if (val > 72) set('squad_timeout_hours', '72')
+              }}
+              className="w-28 rounded-lg border border-gray-300 px-3 py-2 text-base focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+            <p className="mt-1.5 text-xs text-gray-400">
+              Friends have this long to join after the squad is created. Default is 24 hours.
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   )
 

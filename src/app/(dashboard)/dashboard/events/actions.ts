@@ -69,6 +69,9 @@ export type CreateEventInput = {
   has_reserved_seating: boolean
   venue_id: string | null
   seat_map_id: string | null
+  // Phase 3B: Squad booking
+  squad_booking_enabled: boolean
+  squad_timeout_hours: number
 }
 
 export async function createEvent(input: CreateEventInput): Promise<{ error?: string }> {
@@ -130,6 +133,8 @@ export async function createEvent(input: CreateEventInput): Promise<{ error?: st
       has_reserved_seating: input.has_reserved_seating,
       venue_id: input.has_reserved_seating ? (input.venue_id || null) : null,
       seat_map_id: input.has_reserved_seating ? (input.seat_map_id || null) : null,
+      squad_booking_enabled: input.squad_booking_enabled,
+      squad_timeout_hours: input.squad_timeout_hours,
     })
 
   if (eventError) {
@@ -244,6 +249,8 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
       has_reserved_seating: input.has_reserved_seating,
       venue_id: input.has_reserved_seating ? (input.venue_id || null) : null,
       seat_map_id: input.has_reserved_seating ? (input.seat_map_id || null) : null,
+      squad_booking_enabled: input.squad_booking_enabled,
+      squad_timeout_hours: input.squad_timeout_hours,
     })
     .eq('id', input.eventId)
 
