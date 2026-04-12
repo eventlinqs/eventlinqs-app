@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
+import { validateAdmissionToken } from '@/lib/queue/tokens'
 import Image from 'next/image'
 import Link from 'next/link'
 import type { Metadata } from 'next'
@@ -15,6 +16,7 @@ import { getDynamicPriceMap } from '@/lib/pricing/dynamic-pricing'
 
 type Props = {
   params: Promise<{ slug: string }>
+  searchParams: Promise<{ queue_token?: string }>
 }
 
 type FullEvent = Event & {
@@ -43,6 +45,7 @@ async function fetchEvent(slug: string): Promise<FullEvent | null> {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
+  // searchParams unused in metadata
   const event = await fetchEvent(slug)
 
   if (!event) {
@@ -111,11 +114,25 @@ function hasLockedTiers(tiers: TicketTier[], now: Date, unlockedTierIds: string[
   })
 }
 
-export default async function EventDetailPage({ params }: Props) {
+export default async function EventDetailPage({ params, searchParams }: Props) {
   const { slug } = await params
+  const { queue_token } = await searchParams
   const event = await fetchEvent(slug)
 
   if (!event) notFound()
+
+  // Queue gate: high-demand events require a valid admission token
+  if (event.is_high_demand && event.status === 'published') {
+    const queueOpen = event.queue_open_at && new Date(event.queue_open_at) <= new Date()
+    if (queueOpen) {
+      const tokenValid = queue_token
+        ? validateAdmissionToken(queue_token).valid
+        : false
+      if (!tokenValid) {
+        redirect(`/queue/${slug}`)
+      }
+    }
+  }
 
   // Handle non-public states
   if (event.status === 'cancelled') {

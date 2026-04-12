@@ -40,7 +40,8 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname === route ||
     request.nextUrl.pathname.startsWith('/events/') ||
     request.nextUrl.pathname.startsWith('/checkout/') ||
-    request.nextUrl.pathname.startsWith('/squad/')
+    request.nextUrl.pathname.startsWith('/squad/') ||
+    request.nextUrl.pathname.startsWith('/queue/')
   )
 
   // Redirect unauthenticated users away from protected routes
