@@ -72,6 +72,11 @@ export type CreateEventInput = {
   // Phase 3B: Squad booking
   squad_booking_enabled: boolean
   squad_timeout_hours: number
+  // Phase 3C: Virtual queue
+  is_high_demand: boolean
+  queue_admission_rate: number
+  queue_admission_window_minutes: number
+  queue_open_at: string | null
 }
 
 export async function createEvent(input: CreateEventInput): Promise<{ error?: string }> {
@@ -135,6 +140,10 @@ export async function createEvent(input: CreateEventInput): Promise<{ error?: st
       seat_map_id: input.has_reserved_seating ? (input.seat_map_id || null) : null,
       squad_booking_enabled: input.squad_booking_enabled,
       squad_timeout_hours: input.squad_timeout_hours,
+      is_high_demand: input.is_high_demand,
+      queue_admission_rate: input.queue_admission_rate,
+      queue_admission_window_minutes: input.queue_admission_window_minutes,
+      queue_open_at: input.is_high_demand ? (input.queue_open_at || null) : null,
     })
 
   if (eventError) {
@@ -251,6 +260,10 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
       seat_map_id: input.has_reserved_seating ? (input.seat_map_id || null) : null,
       squad_booking_enabled: input.squad_booking_enabled,
       squad_timeout_hours: input.squad_timeout_hours,
+      is_high_demand: input.is_high_demand,
+      queue_admission_rate: input.queue_admission_rate,
+      queue_admission_window_minutes: input.queue_admission_window_minutes,
+      queue_open_at: input.is_high_demand ? (input.queue_open_at || null) : null,
     })
     .eq('id', input.eventId)
 

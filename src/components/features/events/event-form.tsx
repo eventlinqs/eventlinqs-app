@@ -70,6 +70,11 @@ type FormData = {
   // Phase 3B: Squad booking
   squad_booking_enabled: boolean
   squad_timeout_hours: string
+  // Phase 3C: Virtual queue
+  is_high_demand: boolean
+  queue_admission_rate: string
+  queue_admission_window_minutes: string
+  queue_open_at: string
 }
 
 const TIMEZONES = [
@@ -178,6 +183,10 @@ function getDefaultFormData(): FormData {
     seat_map_id: '',
     squad_booking_enabled: true,
     squad_timeout_hours: '24',
+    is_high_demand: false,
+    queue_admission_rate: '50',
+    queue_admission_window_minutes: '10',
+    queue_open_at: '',
   }
 }
 
@@ -212,6 +221,10 @@ function fromExistingEvent(
     seat_map_id?: string | null
     squad_booking_enabled?: boolean | null
     squad_timeout_hours?: number | null
+    is_high_demand?: boolean | null
+    queue_admission_rate?: number | null
+    queue_admission_window_minutes?: number | null
+    queue_open_at?: string | null
   },
   tiers: TicketTier[]
 ): FormData {
@@ -260,6 +273,12 @@ function fromExistingEvent(
     seat_map_id: event.seat_map_id ?? '',
     squad_booking_enabled: event.squad_booking_enabled ?? false,
     squad_timeout_hours: (event.squad_timeout_hours ?? 24).toString(),
+    is_high_demand: event.is_high_demand ?? false,
+    queue_admission_rate: (event.queue_admission_rate ?? 50).toString(),
+    queue_admission_window_minutes: (event.queue_admission_window_minutes ?? 10).toString(),
+    queue_open_at: event.queue_open_at
+      ? new Date(event.queue_open_at).toISOString().slice(0, 16)
+      : '',
   }
 }
 
@@ -365,6 +384,12 @@ export function EventForm({
     seat_map_id: formData.has_reserved_seating ? (formData.seat_map_id || null) : null,
     squad_booking_enabled: formData.squad_booking_enabled,
     squad_timeout_hours: Math.min(72, Math.max(1, parseInt(formData.squad_timeout_hours) || 24)),
+    is_high_demand: formData.is_high_demand,
+    queue_admission_rate: Math.min(500, Math.max(1, parseInt(formData.queue_admission_rate) || 50)),
+    queue_admission_window_minutes: Math.min(60, Math.max(5, parseInt(formData.queue_admission_window_minutes) || 10)),
+    queue_open_at: formData.is_high_demand && formData.queue_open_at
+      ? new Date(formData.queue_open_at).toISOString()
+      : null,
     ticket_tiers: formData.ticket_tiers.map((t, i) => ({
       name: t.name,
       description: t.description,
@@ -1046,6 +1071,97 @@ export function EventForm({
             <p className="mt-1.5 text-xs text-gray-400">
               Friends have this long to join after the squad is created. Default is 24 hours.
             </p>
+          </div>
+        )}
+      </div>
+
+      {/* Virtual Queue */}
+      <div className="rounded-lg border border-gray-200 p-5">
+        <label className="flex cursor-pointer items-start gap-4 min-h-[44px]">
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-gray-900">Enable Virtual Queue</p>
+            <p className="mt-1 text-xs text-gray-500">
+              For high-demand events. Attendees join a FIFO waiting room before reaching
+              checkout. Prevents site crashes and bot scalping.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={formData.is_high_demand}
+            aria-label="Enable virtual queue"
+            onClick={() => set('is_high_demand', !formData.is_high_demand)}
+            className={`relative mt-0.5 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+              formData.is_high_demand ? 'bg-blue-600' : 'bg-gray-300'
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                formData.is_high_demand ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </label>
+
+        {formData.is_high_demand && (
+          <div className="mt-4 border-t border-gray-100 pt-4 space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                Queue opens at
+                <span className="ml-1.5 font-normal text-gray-400">(optional — leave blank to open immediately)</span>
+              </label>
+              <input
+                type="datetime-local"
+                value={formData.queue_open_at}
+                onChange={e => set('queue_open_at', e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-base focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+              <p className="mt-1 text-xs text-gray-400">
+                Users can join the waiting room from this time. Set it before ticket sale start so the queue fills before admission begins.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                  Admitted per minute
+                  <span className="ml-1 font-normal text-gray-400">(1–500)</span>
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="500"
+                  value={formData.queue_admission_rate}
+                  onChange={e => set('queue_admission_rate', e.target.value)}
+                  onBlur={e => {
+                    const val = parseInt(e.target.value)
+                    if (isNaN(val) || val < 1) set('queue_admission_rate', '1')
+                    else if (val > 500) set('queue_admission_rate', '500')
+                  }}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-base focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                  Checkout window
+                  <span className="ml-1 font-normal text-gray-400">(mins, 5–60)</span>
+                </label>
+                <input
+                  type="number"
+                  min="5"
+                  max="60"
+                  value={formData.queue_admission_window_minutes}
+                  onChange={e => set('queue_admission_window_minutes', e.target.value)}
+                  onBlur={e => {
+                    const val = parseInt(e.target.value)
+                    if (isNaN(val) || val < 5) set('queue_admission_window_minutes', '5')
+                    else if (val > 60) set('queue_admission_window_minutes', '60')
+                  }}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-base focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+                <p className="mt-1 text-xs text-gray-400">Time to complete purchase once admitted.</p>
+              </div>
+            </div>
           </div>
         )}
       </div>
