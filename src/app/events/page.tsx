@@ -1,11 +1,14 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import Image from 'next/image'
 import type { Event, EventCategory } from '@/types/database'
-import { SocialProofBadge } from '@/components/inventory/social-proof-badge'
-import type { EventInventory } from '@/lib/redis/inventory-cache'
 import { getDynamicPriceMap } from '@/lib/pricing/dynamic-pricing'
 import { EventsFilterStrip } from '@/components/features/events/events-filter-strip'
+import { FilterSidebar } from '@/components/features/events/filter-sidebar'
+import { EventCard } from '@/components/features/events/event-card'
+import type { EventCardData } from '@/components/features/events/event-card'
+import { SiteHeader } from '@/components/layout/site-header'
+import { SiteFooter } from '@/components/layout/site-footer'
+import { Search } from 'lucide-react'
 
 type Props = {
   searchParams: Promise<{
@@ -13,33 +16,13 @@ type Props = {
     city?: string
     date?: string
     free?: string
+    culture?: string
     q?: string
     page?: string
   }>
 }
 
 const PAGE_SIZE = 12
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-AU', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })
-}
-
-function formatPrice(
-  tiers: { id: string; price: number; currency: string }[],
-  dynamicPrices: Map<string, number>,
-) {
-  if (!tiers || tiers.length === 0) return 'Free'
-  const effectivePrices = tiers.map(t => dynamicPrices.get(t.id) ?? t.price)
-  const min = Math.min(...effectivePrices)
-  if (min === 0) return 'Free'
-  const currency = tiers[0].currency ?? 'AUD'
-  return `From ${currency} ${(min / 100).toFixed(2)}`
-}
 
 export default async function EventsPage({ searchParams }: Props) {
   const params = await searchParams
@@ -48,17 +31,20 @@ export default async function EventsPage({ searchParams }: Props) {
 
   const supabase = await createClient()
 
-  // Fetch categories for filter
+  // Fetch categories — only active ones, ordered
   const { data: categories } = await supabase
     .from('event_categories')
     .select('id, name, slug')
     .eq('is_active', true)
     .order('sort_order') as { data: Pick<EventCategory, 'id' | 'name' | 'slug'>[] | null }
 
-  // Build events query — include inventory fields for social proof badges
+  // Build events query
   let query = supabase
     .from('events')
-    .select('*, ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity), category:event_categories(name, slug)', { count: 'exact' })
+    .select(
+      'id, slug, title, cover_image_url, thumbnail_url, start_date, venue_name, venue_city, venue_country, created_at, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)',
+      { count: 'exact' },
+    )
     .eq('status', 'published')
     .eq('visibility', 'public')
     .order('start_date', { ascending: true })
@@ -76,6 +62,9 @@ export default async function EventsPage({ searchParams }: Props) {
   if (params.free === '1') {
     query = query.eq('ticket_tiers.price', 0)
   }
+  if (params.culture) {
+    query = query.contains('tags', [params.culture])
+  }
 
   const now = new Date().toISOString()
   if (params.date === 'today') {
@@ -83,28 +72,23 @@ export default async function EventsPage({ searchParams }: Props) {
     endOfDay.setHours(23, 59, 59, 999)
     query = query.gte('start_date', now).lte('start_date', endOfDay.toISOString())
   } else if (params.date === 'week') {
-    const endOfWeek = new Date()
-    endOfWeek.setDate(endOfWeek.getDate() + 7)
-    query = query.gte('start_date', now).lte('start_date', endOfWeek.toISOString())
+    const end = new Date()
+    end.setDate(end.getDate() + 7)
+    query = query.gte('start_date', now).lte('start_date', end.toISOString())
   } else if (params.date === 'month') {
-    const endOfMonth = new Date()
-    endOfMonth.setDate(endOfMonth.getDate() + 30)
-    query = query.gte('start_date', now).lte('start_date', endOfMonth.toISOString())
+    const end = new Date()
+    end.setDate(end.getDate() + 30)
+    query = query.gte('start_date', now).lte('start_date', end.toISOString())
   } else if (params.date === 'weekend') {
     const today = new Date()
-    const day = today.getDay() // 0 = Sun, 6 = Sat
+    const day = today.getDay()
     let sat: Date
     if (day === 6) {
-      sat = new Date(today)
-      sat.setHours(0, 0, 0, 0)
+      sat = new Date(today); sat.setHours(0, 0, 0, 0)
     } else if (day === 0) {
-      sat = new Date(today)
-      sat.setDate(today.getDate() - 1)
-      sat.setHours(0, 0, 0, 0)
+      sat = new Date(today); sat.setDate(today.getDate() - 1); sat.setHours(0, 0, 0, 0)
     } else {
-      sat = new Date(today)
-      sat.setDate(today.getDate() + (6 - day))
-      sat.setHours(0, 0, 0, 0)
+      sat = new Date(today); sat.setDate(today.getDate() + (6 - day)); sat.setHours(0, 0, 0, 0)
     }
     const sun = new Date(sat)
     sun.setDate(sat.getDate() + 1)
@@ -114,35 +98,20 @@ export default async function EventsPage({ searchParams }: Props) {
     query = query.gte('start_date', now)
   }
 
-  type EventTierData = { id: string; price: number; currency: string; sold_count: number; reserved_count: number; total_capacity: number }
+  const { data: eventsRaw, count } = await query
 
-  const { data: events, count } = await query as {
-    data: (Event & {
-      ticket_tiers: EventTierData[]
-      category: { name: string; slug: string } | null
-    })[] | null
-    count: number | null
-  }
+  const events = (eventsRaw ?? []) as unknown as EventCardData[]
 
-  // Fetch dynamic prices for the cheapest tier of each event (the "From X" price)
-  const cheapestTierIds = (events ?? [])
+  // Dynamic price map for cheapest tier of each event
+  const cheapestTierIds = events
     .map(e => {
       const tiers = e.ticket_tiers
       if (!tiers || tiers.length === 0) return null
       return tiers.reduce((min, t) => t.price < min.price ? t : min, tiers[0]).id
     })
     .filter((id): id is string => id !== null)
-  const dynamicPrices = await getDynamicPriceMap(cheapestTierIds)
 
-  // Build event-level inventory for social proof badges (computed from tier data)
-  function buildEventInventory(tiers: EventTierData[]): EventInventory {
-    const total_sold = tiers.reduce((s, t) => s + t.sold_count, 0)
-    const total_reserved = tiers.reduce((s, t) => s + t.reserved_count, 0)
-    const total_capacity = tiers.reduce((s, t) => s + t.total_capacity, 0)
-    const available = Math.max(0, total_capacity - total_sold - total_reserved)
-    const percent_sold = total_capacity > 0 ? Math.round((total_sold / total_capacity) * 100) : 0
-    return { total_sold, total_reserved, total_capacity, available, percent_sold }
-  }
+  const dynamicPrices = await getDynamicPriceMap(cheapestTierIds)
 
   const totalPages = Math.ceil((count ?? 0) / PAGE_SIZE)
 
@@ -156,33 +125,44 @@ export default async function EventsPage({ searchParams }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="border-b border-gray-200 bg-white px-4 py-6 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl">
-          <div className="flex items-center justify-between mb-4">
-            <Link href="/" className="text-xl font-bold text-blue-600">EVENTLINQS</Link>
-            <Link href="/login" className="text-sm text-gray-600 hover:text-gray-900">Sign in</Link>
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900">Discover Events</h1>
+    <div className="min-h-screen bg-canvas">
+      <SiteHeader />
 
-          {/* Search */}
-          <form method="GET" className="mt-4">
-            <div className="flex gap-2">
-              <input
-                name="q"
-                defaultValue={params.q}
-                type="search"
-                placeholder="Search events…"
-                className="flex-1 rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
+      {/* ── Page header + search ────────────────────────────────── */}
+      <div className="border-b border-ink-100 bg-white px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <h1 className="font-display text-3xl font-700 text-ink-900 sm:text-4xl">
+            Discover Events
+          </h1>
+          <p className="mt-1 text-sm text-ink-400">
+            {count ?? 0} event{(count ?? 0) !== 1 ? 's' : ''} available
+          </p>
+
+          {/* Search bar — spec §6.9 */}
+          <form method="GET" className="mt-5">
+            <div className="flex gap-2 max-w-2xl">
+              <div className="relative flex-1">
+                <Search
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400"
+                  aria-hidden="true"
+                />
+                <input
+                  name="q"
+                  defaultValue={params.q}
+                  type="search"
+                  placeholder="Search events, artists, venues…"
+                  className="w-full rounded-lg border border-ink-200 bg-white py-2.5 pl-10 pr-4 text-sm text-ink-900 placeholder:text-ink-400 focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-400 transition-colors"
+                />
+              </div>
+              {/* Preserve other active filters through search submit */}
               {params.category && <input type="hidden" name="category" value={params.category} />}
               {params.city && <input type="hidden" name="city" value={params.city} />}
               {params.date && <input type="hidden" name="date" value={params.date} />}
               {params.free && <input type="hidden" name="free" value={params.free} />}
+              {params.culture && <input type="hidden" name="culture" value={params.culture} />}
               <button
                 type="submit"
-                className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+                className="rounded-lg bg-gold-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-gold-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
               >
                 Search
               </button>
@@ -192,174 +172,55 @@ export default async function EventsPage({ searchParams }: Props) {
       </div>
 
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        {/* Mobile chip strip — hidden on lg+ (desktop sees the sidebar instead) */}
-        <EventsFilterStrip categories={categories ?? []} params={params} />
+        {/* Mobile chip strip — hidden on lg+ */}
+        <EventsFilterStrip
+          categories={categories ?? []}
+          params={params}
+          resultsCount={count ?? 0}
+        />
 
         <div className="flex flex-col gap-8 lg:flex-row">
-          {/* Sidebar filters — desktop only */}
-          <aside className="hidden lg:block lg:w-60 shrink-0">
-            <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-6">
-              {/* Date filter */}
-              <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">When</p>
-                <div className="space-y-1">
-                  {[
-                    { key: undefined, label: 'Any time' },
-                    { key: 'today', label: 'Today' },
-                    { key: 'week', label: 'This week' },
-                    { key: 'month', label: 'This month' },
-                  ].map(opt => (
-                    <Link
-                      key={opt.label}
-                      href={buildUrl({ date: opt.key, page: '1' })}
-                      className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
-                        (params.date ?? undefined) === opt.key
-                          ? 'bg-blue-50 font-medium text-blue-700'
-                          : 'text-gray-600 hover:bg-gray-50'
-                      }`}
-                    >
-                      {opt.label}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-
-              {/* Category filter */}
-              <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Category</p>
-                <div className="space-y-1">
-                  <Link
-                    href={buildUrl({ category: undefined, page: '1' })}
-                    className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
-                      !params.category ? 'bg-blue-50 font-medium text-blue-700' : 'text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    All categories
-                  </Link>
-                  {(categories ?? []).map(c => (
-                    <Link
-                      key={c.id}
-                      href={buildUrl({ category: c.id, page: '1' })}
-                      className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
-                        params.category === c.id ? 'bg-blue-50 font-medium text-blue-700' : 'text-gray-600 hover:bg-gray-50'
-                      }`}
-                    >
-                      {c.name}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-
-              {/* Free toggle */}
-              <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Price</p>
-                <Link
-                  href={buildUrl({ free: params.free === '1' ? undefined : '1', page: '1' })}
-                  className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
-                    params.free === '1' ? 'bg-blue-50 font-medium text-blue-700' : 'text-gray-600 hover:bg-gray-50'
-                  }`}
-                >
-                  {params.free === '1' ? '✓ ' : ''}Free events only
-                </Link>
-              </div>
-            </div>
-          </aside>
+          {/* Desktop sidebar */}
+          <FilterSidebar categories={categories ?? []} params={params} />
 
           {/* Event grid */}
-          <div className="flex-1">
-            <p className="mb-4 text-sm text-gray-500">
-              {count ?? 0} event{(count ?? 0) !== 1 ? 's' : ''} found
-            </p>
-
+          <div className="flex-1 min-w-0">
             {!events || events.length === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 py-20 text-center">
-                <p className="text-sm text-gray-500">No events found matching your filters.</p>
+              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-ink-200 py-24 text-center">
+                <p className="text-sm text-ink-400">No events found matching your filters.</p>
                 <Link
                   href="/events"
-                  className="mt-3 text-sm text-blue-600 hover:underline"
+                  className="mt-3 text-sm font-medium text-gold-500 hover:text-gold-600 hover:underline"
                 >
-                  Clear filters
+                  Clear all filters
                 </Link>
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
                 {events.map(event => (
-                  <Link
-                    key={event.id}
-                    href={`/events/${event.slug}`}
-                    className="group flex flex-col rounded-xl border border-gray-200 bg-white overflow-hidden hover:shadow-md transition-shadow"
-                  >
-                    {/* Cover image */}
-                    <div className="relative aspect-video bg-gray-100">
-                      {event.cover_image_url ? (
-                        <Image
-                          src={event.cover_image_url}
-                          alt={event.title}
-                          fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                      ) : (
-                        <div className="flex h-full items-center justify-center text-gray-300">
-                          <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
-                        </div>
-                      )}
-                      {event.category && (
-                        <span className="absolute top-2 left-2 rounded-full bg-white/90 px-2.5 py-0.5 text-xs font-medium text-gray-700">
-                          {event.category.name}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="flex flex-1 flex-col p-4">
-                      <p className="text-xs text-blue-600 font-medium">{formatDate(event.start_date)}</p>
-                      <h3 className="mt-1 text-sm font-semibold text-gray-900 line-clamp-2 group-hover:text-blue-600 transition-colors">
-                        {event.title}
-                      </h3>
-                      {event.venue_city && (
-                        <p className="mt-1 text-xs text-gray-500 flex items-center gap-1">
-                          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                          </svg>
-                          {event.venue_city}
-                        </p>
-                      )}
-                      <div className="mt-auto pt-3 flex items-center justify-between gap-2">
-                        <p className="text-sm font-semibold text-gray-900">
-                          {formatPrice(event.ticket_tiers, dynamicPrices)}
-                        </p>
-                        {event.ticket_tiers.length > 0 && (
-                          <SocialProofBadge
-                            inventory={buildEventInventory(event.ticket_tiers)}
-                            createdAt={event.created_at}
-                            compact
-                          />
-                        )}
-                      </div>
-                    </div>
-                  </Link>
+                  <EventCard key={event.id} event={event} dynamicPrices={dynamicPrices} />
                 ))}
               </div>
             )}
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="mt-8 flex items-center justify-center gap-2">
+              <div className="mt-10 flex items-center justify-center gap-3">
                 {page > 1 && (
                   <Link
                     href={buildUrl({ page: String(page - 1) })}
-                    className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                    className="rounded-lg border border-ink-200 bg-white px-4 py-2 text-sm font-medium text-ink-700 hover:bg-ink-100 transition-colors"
                   >
                     Previous
                   </Link>
                 )}
-                <span className="text-sm text-gray-500">Page {page} of {totalPages}</span>
+                <span className="text-sm text-ink-400">
+                  Page {page} of {totalPages}
+                </span>
                 {page < totalPages && (
                   <Link
                     href={buildUrl({ page: String(page + 1) })}
-                    className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                    className="rounded-lg border border-ink-200 bg-white px-4 py-2 text-sm font-medium text-ink-700 hover:bg-ink-100 transition-colors"
                   >
                     Next
                   </Link>
@@ -369,6 +230,8 @@ export default async function EventsPage({ searchParams }: Props) {
           </div>
         </div>
       </div>
+
+      <SiteFooter />
     </div>
   )
 }

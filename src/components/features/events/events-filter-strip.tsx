@@ -10,6 +10,7 @@ type FilterParams = {
   city?: string
   date?: string
   free?: string
+  culture?: string
   q?: string
   page?: string
 }
@@ -40,7 +41,7 @@ const DATE_OPTIONS: { key: string | undefined; label: string }[] = [
 
 const CheckIcon = () => (
   <svg
-    className="h-4 w-4 mr-2 flex-none text-blue-600"
+    className="h-4 w-4 mr-2 flex-none text-gold-500"
     fill="none"
     viewBox="0 0 24 24"
     stroke="currentColor"
@@ -53,9 +54,11 @@ const CheckIcon = () => (
 export function EventsFilterStrip({
   categories,
   params,
+  resultsCount,
 }: {
   categories: Category[]
   params: FilterParams
+  resultsCount?: number
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -115,26 +118,40 @@ export function EventsFilterStrip({
           aria-label="Quick filters"
           className="flex items-center gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
         >
-          {/* Advanced filters trigger */}
-          <button
-            ref={triggerRef}
-            type="button"
-            onClick={openDrawer}
-            aria-expanded={drawerOpen}
-            aria-haspopup="dialog"
-            className="flex-none inline-flex items-center gap-1.5 h-11 rounded-full border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 whitespace-nowrap transition-colors hover:bg-gray-50 active:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-          >
-            <svg
-              className="h-4 w-4 flex-none"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              aria-hidden="true"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h18M7 9h10M10 14h4" />
-            </svg>
-            Filters
-          </button>
+          {/* Advanced filters trigger — shows active count badge */}
+          {(() => {
+            const activeCount = [params.date, params.category, params.free === '1' ? '1' : undefined, params.culture].filter(Boolean).length
+            return (
+              <button
+                ref={triggerRef}
+                type="button"
+                onClick={openDrawer}
+                aria-expanded={drawerOpen}
+                aria-haspopup="dialog"
+                className={`flex-none inline-flex items-center gap-1.5 h-11 rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 ${
+                  activeCount > 0
+                    ? 'border border-gold-500 bg-gold-100 text-gold-700'
+                    : 'border border-ink-200 bg-white text-ink-700 hover:bg-ink-100'
+                }`}
+              >
+                <svg
+                  className="h-4 w-4 flex-none"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  aria-hidden="true"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h18M7 9h10M10 14h4" />
+                </svg>
+                Filters
+                {activeCount > 0 && (
+                  <span className="ml-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-gold-500 text-[10px] font-bold text-white">
+                    {activeCount}
+                  </span>
+                )}
+              </button>
+            )
+          })()}
 
           {/* Date quick chips */}
           {DATE_CHIPS.map(chip => (
@@ -145,10 +162,10 @@ export function EventsFilterStrip({
                 page: '1',
               })}
               aria-current={params.date === chip.key ? 'true' : undefined}
-              className={`flex-none inline-flex items-center h-11 rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+              className={`flex-none inline-flex items-center h-11 rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 ${
                 params.date === chip.key
-                  ? 'bg-blue-600 text-white'
-                  : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                  ? 'bg-gold-500 text-white'
+                  : 'border border-ink-200 bg-white text-ink-700 hover:bg-ink-100'
               }`}
             >
               {chip.label}
@@ -162,10 +179,10 @@ export function EventsFilterStrip({
               page: '1',
             })}
             aria-current={params.free === '1' ? 'true' : undefined}
-            className={`flex-none inline-flex items-center h-11 rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+            className={`flex-none inline-flex items-center h-11 rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 ${
               params.free === '1'
-                ? 'bg-blue-600 text-white'
-                : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                ? 'bg-gold-500 text-white'
+                : 'border border-ink-200 bg-white text-ink-700 hover:bg-ink-100'
             }`}
           >
             Free
@@ -180,10 +197,10 @@ export function EventsFilterStrip({
                 page: '1',
               })}
               aria-current={params.category === cat.id ? 'true' : undefined}
-              className={`flex-none inline-flex items-center h-11 rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+              className={`flex-none inline-flex items-center h-11 rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 ${
                 params.category === cat.id
-                  ? 'bg-blue-600 text-white'
-                  : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                  ? 'bg-gold-500 text-white'
+                  : 'border border-ink-200 bg-white text-ink-700 hover:bg-ink-100'
               }`}
             >
               {cat.name}
@@ -220,16 +237,16 @@ export function EventsFilterStrip({
 
         {/* Drawer header */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
-          <h2 className="text-base font-semibold text-gray-900">Filters</h2>
+          <h2 className="text-base font-semibold text-ink-900">Filters</h2>
           <button
             ref={closeButtonRef}
             type="button"
             onClick={closeDrawer}
             aria-label="Close filters"
-            className="h-11 w-11 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="h-11 w-11 flex items-center justify-center rounded-full hover:bg-ink-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
           >
             <svg
-              className="h-5 w-5 text-gray-500"
+              className="h-5 w-5 text-ink-400"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -247,7 +264,7 @@ export function EventsFilterStrip({
         >
           {/* When */}
           <section>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">When</p>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-400">When</p>
             <div className="space-y-0.5">
               {DATE_OPTIONS.map(opt => {
                 const isActive = (params.date ?? undefined) === opt.key
@@ -258,8 +275,8 @@ export function EventsFilterStrip({
                     onClick={closeDrawer}
                     className={`flex items-center h-11 rounded-lg px-3 text-sm transition-colors ${
                       isActive
-                        ? 'bg-blue-50 font-medium text-blue-700'
-                        : 'text-gray-600 hover:bg-gray-50'
+                        ? 'bg-gold-100 font-semibold text-gold-700'
+                        : 'text-ink-600 hover:bg-ink-100'
                     }`}
                   >
                     {isActive && <CheckIcon />}
@@ -272,7 +289,7 @@ export function EventsFilterStrip({
 
           {/* Category */}
           <section>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Category</p>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-400">Category</p>
             <div className="space-y-0.5">
               {[{ id: '', name: 'All categories' }, ...categories].map(cat => {
                 const isActive = cat.id === '' ? !params.category : params.category === cat.id
@@ -286,8 +303,8 @@ export function EventsFilterStrip({
                     onClick={closeDrawer}
                     className={`flex items-center h-11 rounded-lg px-3 text-sm transition-colors ${
                       isActive
-                        ? 'bg-blue-50 font-medium text-blue-700'
-                        : 'text-gray-600 hover:bg-gray-50'
+                        ? 'bg-gold-100 font-semibold text-gold-700'
+                        : 'text-ink-600 hover:bg-ink-100'
                     }`}
                   >
                     {isActive && <CheckIcon />}
@@ -300,7 +317,7 @@ export function EventsFilterStrip({
 
           {/* Price */}
           <section>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Price</p>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-400">Price</p>
             <Link
               href={buildFilterUrl(params, {
                 free: params.free === '1' ? undefined : '1',
@@ -309,14 +326,30 @@ export function EventsFilterStrip({
               onClick={closeDrawer}
               className={`flex items-center h-11 rounded-lg px-3 text-sm transition-colors ${
                 params.free === '1'
-                  ? 'bg-blue-50 font-medium text-blue-700'
-                  : 'text-gray-600 hover:bg-gray-50'
+                  ? 'bg-gold-100 font-semibold text-gold-700'
+                  : 'text-ink-600 hover:bg-ink-100'
               }`}
             >
               {params.free === '1' && <CheckIcon />}
               Free events only
             </Link>
           </section>
+        </div>
+
+        {/* Sticky "Show X results" button — spec §6.5 */}
+        <div
+          className="sticky bottom-0 bg-white border-t border-ink-100 px-5 py-4"
+          style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}
+        >
+          <button
+            type="button"
+            onClick={closeDrawer}
+            className="w-full rounded-lg bg-gold-500 py-3 text-sm font-semibold text-white hover:bg-gold-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
+          >
+            {resultsCount !== undefined
+              ? `Show ${resultsCount.toLocaleString()} result${resultsCount !== 1 ? 's' : ''}`
+              : 'Show results'}
+          </button>
         </div>
       </div>
     </>
