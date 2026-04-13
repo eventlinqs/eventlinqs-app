@@ -1,5 +1,20 @@
 # EventLinqs Build Standards
 
+## Project Mandate (non-negotiable — highest-level standard)
+
+EventLinqs must surpass Ticketmaster, Eventbrite, and DICE as the MINIMUM bar — functionally the best, aesthetically the best, socially the best. "Matches them" is failure. "Exceeds them in every dimension" is the floor, not the ceiling.
+
+Every feature, every screen, every pixel, every interaction, every error message, every loading state must be held to this standard.
+
+Before marking any work complete, ask:
+1. Does this beat what Ticketmaster does? In what specific, measurable way?
+2. Does this beat what Eventbrite does? In what specific, measurable way?
+3. Does this beat what DICE does? In what specific, measurable way?
+
+If you cannot articulate the answer for all 3 platforms, the work is incomplete. "N/A" is acceptable only if the platform genuinely does not have that feature (e.g., Eventbrite has no virtual queue) — and even then, EventLinqs must still raise the bar beyond what the others do.
+
+Functional is the floor. Excellence is the requirement. Surpassing the competition is the mandate.
+
 ## Competitor Mindset (mandatory before any code change)
 
 Every code change for EventLinqs must be preceded by this mental checklist:
