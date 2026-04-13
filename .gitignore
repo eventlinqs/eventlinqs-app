@@ -43,10 +43,13 @@ next-env.d.ts
 # playwright mcp output
 .playwright-mcp/
 
-# verification screenshots
+# verification screenshots (root-level test artifacts — never commit)
+/*.png
 verify-*.png
 homepage-*.png
 events-*.png
 waitlist-*.png
 squad-*.png
 queue-*.png
+m45-*.png
+s*.png

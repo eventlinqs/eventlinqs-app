@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 
 type Category = { id: string; name: string; slug: string }
@@ -58,8 +58,53 @@ export function EventsFilterStrip({
   params: FilterParams
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
 
-  const closeDrawer = () => setDrawerOpen(false)
+  const closeDrawer = useCallback(() => {
+    setDrawerOpen(false)
+    // Return focus to the button that opened the drawer (WCAG 2.2 — focus management)
+    triggerRef.current?.focus()
+  }, [])
+
+  const openDrawer = useCallback(() => {
+    setDrawerOpen(true)
+  }, [])
+
+  // Move focus to the close button when drawer opens (WCAG 2.2 — focus management)
+  useEffect(() => {
+    if (!drawerOpen) return
+    // Small delay allows the transform transition to start before focus moves
+    const timer = setTimeout(() => {
+      closeButtonRef.current?.focus()
+    }, 50)
+    return () => clearTimeout(timer)
+  }, [drawerOpen])
+
+  // Escape key dismisses the drawer (WCAG 2.2 AA — keyboard dismissal)
+  useEffect(() => {
+    if (!drawerOpen) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        closeDrawer()
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [drawerOpen, closeDrawer])
+
+  // Prevent background scroll while drawer is open (matches TM/EB/DICE behaviour)
+  useEffect(() => {
+    if (drawerOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [drawerOpen])
 
   return (
     <>
@@ -70,10 +115,11 @@ export function EventsFilterStrip({
           aria-label="Quick filters"
           className="flex items-center gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
         >
-          {/* Advanced filters button */}
+          {/* Advanced filters trigger */}
           <button
+            ref={triggerRef}
             type="button"
-            onClick={() => setDrawerOpen(true)}
+            onClick={openDrawer}
             aria-expanded={drawerOpen}
             aria-haspopup="dialog"
             className="flex-none inline-flex items-center gap-1.5 h-11 rounded-full border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 whitespace-nowrap transition-colors hover:bg-gray-50 active:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
@@ -155,17 +201,20 @@ export function EventsFilterStrip({
         onClick={closeDrawer}
       />
 
-      {/* ── Bottom-sheet drawer ── */}
+      {/* ── Bottom-sheet drawer ──
+          aria-hidden when closed: removes it from accessibility tree while visually off-screen.
+          This prevents screen readers from navigating to a visually hidden dialog. ── */}
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Filters"
+        aria-hidden={!drawerOpen}
         className={`fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-2xl max-h-[85vh] overflow-y-auto lg:hidden transform transition-transform duration-300 ease-out ${
           drawerOpen ? 'translate-y-0' : 'translate-y-full'
         }`}
       >
-        {/* Drag handle */}
-        <div className="flex justify-center pt-3 pb-1">
+        {/* Drag handle — decorative */}
+        <div className="flex justify-center pt-3 pb-1" aria-hidden="true">
           <div className="w-10 h-1 rounded-full bg-gray-300" />
         </div>
 
@@ -173,6 +222,7 @@ export function EventsFilterStrip({
         <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
           <h2 className="text-base font-semibold text-gray-900">Filters</h2>
           <button
+            ref={closeButtonRef}
             type="button"
             onClick={closeDrawer}
             aria-label="Close filters"

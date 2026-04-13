@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { AuthProvider } from '@/components/providers/auth-provider'
+import { BottomNav } from '@/components/layout/bottom-nav'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -19,7 +20,15 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <AuthProvider>
-          {children}
+          {/*
+            pb-16 md:pb-0 — reserves 64px at the bottom of all content on mobile
+            so the fixed BottomNav never covers page content. Has no effect on md+
+            since BottomNav is hidden there.
+          */}
+          <div className="pb-16 md:pb-0">
+            {children}
+          </div>
+          <BottomNav />
         </AuthProvider>
       </body>
     </html>
