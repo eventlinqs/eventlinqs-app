@@ -1,59 +1,333 @@
-// M4.5 polish: replace with full marketing landing page
 import Link from 'next/link'
+import Image from 'next/image'
+import { createClient } from '@/lib/supabase/server'
+import { SiteHeader } from '@/components/layout/site-header'
+import { SiteFooter } from '@/components/layout/site-footer'
+import { EventCard } from '@/components/features/events/event-card'
+import type { EventCardData } from '@/components/features/events/event-card'
+import { getDynamicPriceMap } from '@/lib/pricing/dynamic-pricing'
 
-export default function HomePage() {
+/**
+ * Homepage — Pattern A cinematic hero + content sections.
+ *
+ * Spec §7.1 section order:
+ *   1. SiteHeader (sticky)
+ *   2. Hero — full-bleed photo, left-aligned display text, gold CTA (Pattern A)
+ *   3. TRENDING NOW — horizontal card carousel stub (data wired Session 3)
+ *   4. CULTURE PICKS — tabbed section stub (data wired Session 3)
+ *   5. FOR ORGANISERS — dark split section
+ *   6. SiteFooter
+ *
+ * Hero image: picsum.photos seed — replaced by Unsplash API in Session 3.
+ */
+
+// Section header component used across sections
+function SectionHeader({
+  eyebrow,
+  title,
+  href,
+  linkLabel = 'View all',
+}: {
+  eyebrow: string
+  title: string
+  href: string
+  linkLabel?: string
+}) {
   return (
-    <div className="min-h-screen bg-[#FAFAFA] flex flex-col">
-      <header className="border-b border-gray-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-5xl flex items-center justify-between">
-          <span className="text-xl font-bold text-[#1A1A2E]">EVENTLINQS</span>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/login"
-              className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              Sign in
-            </Link>
-            <Link
-              href="/signup"
-              className="rounded-lg bg-[#1A1A2E] px-4 py-2 text-sm font-semibold text-white hover:bg-[#2d2d4a] transition-colors"
-            >
-              Sign up
-            </Link>
+    <div className="flex items-end justify-between gap-4">
+      <div className="flex items-start gap-3">
+        {/* Gold bar accent */}
+        <div className="mt-1 h-8 w-0.5 shrink-0 bg-gold-500" aria-hidden="true" />
+        <div>
+          <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-500">
+            {eyebrow}
+          </p>
+          <h2 className="font-display text-2xl font-700 text-ink-900 sm:text-3xl">
+            {title}
+          </h2>
+        </div>
+      </div>
+      <Link
+        href={href}
+        className="shrink-0 text-sm font-medium text-gold-500 hover:text-gold-600 transition-colors whitespace-nowrap"
+      >
+        {linkLabel} &rsaquo;
+      </Link>
+    </div>
+  )
+}
+
+export default async function HomePage() {
+  const supabase = await createClient()
+
+  // Fetch 6 upcoming published events for TRENDING NOW preview
+  const { data: trendingRaw } = await supabase
+    .from('events')
+    .select('id, slug, title, cover_image_url, thumbnail_url, start_date, venue_name, venue_city, venue_country, created_at, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)')
+    .eq('status', 'published')
+    .eq('visibility', 'public')
+    .gte('start_date', new Date().toISOString())
+    .order('start_date', { ascending: true })
+    .limit(6)
+
+  const trending = (trendingRaw ?? []) as unknown as EventCardData[]
+
+  // Fetch 6 events tagged with culture-relevant tags for CULTURE PICKS
+  const { data: cultureRaw } = await supabase
+    .from('events')
+    .select('id, slug, title, cover_image_url, thumbnail_url, start_date, venue_name, venue_city, venue_country, created_at, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)')
+    .eq('status', 'published')
+    .eq('visibility', 'public')
+    .gte('start_date', new Date().toISOString())
+    .contains('tags', ['african'])
+    .order('start_date', { ascending: true })
+    .limit(6)
+
+  const culturePicks = (cultureRaw ?? []) as unknown as EventCardData[]
+
+  // Build dynamic price maps
+  function cheapestTierIds(events: EventCardData[]) {
+    return events
+      .map(e => {
+        const tiers = e.ticket_tiers
+        if (!tiers || tiers.length === 0) return null
+        return tiers.reduce((min, t) => t.price < min.price ? t : min, tiers[0]).id
+      })
+      .filter((id): id is string => id !== null)
+  }
+
+  const [trendingPrices, culturePrices] = await Promise.all([
+    getDynamicPriceMap(cheapestTierIds(trending)),
+    getDynamicPriceMap(cheapestTierIds(culturePicks)),
+  ])
+
+  return (
+    <div className="min-h-screen bg-canvas">
+      <SiteHeader />
+
+      <main>
+        {/* ── 1. HERO — Pattern A cinematic ─────────────────────── */}
+        <section
+          aria-label="Hero"
+          className="relative flex min-h-[520px] items-end overflow-hidden bg-ink-900 md:min-h-[600px] lg:min-h-[680px]"
+        >
+          {/* Background image — full bleed */}
+          <Image
+            src="https://picsum.photos/seed/hero-culture/1920/1080"
+            alt=""
+            fill
+            priority
+            className="object-cover object-center"
+            sizes="100vw"
+          />
+
+          {/* Dark gradient overlay — heavier at bottom for legibility */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background: 'linear-gradient(to top, rgba(10,22,40,0.92) 0%, rgba(10,22,40,0.55) 50%, rgba(10,22,40,0.15) 100%)',
+            }}
+            aria-hidden="true"
+          />
+
+          {/* Hero content — left aligned */}
+          <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-12 sm:px-6 lg:px-8 lg:pb-20">
+            <div className="max-w-2xl">
+              {/* Eyebrow pill */}
+              <span className="inline-flex items-center rounded-full border border-gold-500/40 bg-gold-500/10 px-3 py-1 text-xs font-semibold text-gold-400">
+                Where the culture gathers
+              </span>
+
+              {/* Display heading */}
+              <h1 className="mt-4 font-display font-800 leading-none tracking-tight text-white"
+                style={{ fontSize: 'clamp(2.5rem, 6vw, 5.5rem)' }}>
+                Tickets for events
+                <br />
+                <span className="text-gold-400">that move you.</span>
+              </h1>
+
+              <p className="mt-5 max-w-lg text-base text-white/75 sm:text-lg">
+                Afrobeats. Gospel. Amapiano. Business. Comedy. Owambe.
+                Discover what&rsquo;s on — no hidden fees, ever.
+              </p>
+
+              {/* CTAs */}
+              <div className="mt-8 flex flex-wrap items-center gap-3">
+                <Link
+                  href="/events"
+                  className="inline-flex items-center rounded-lg bg-gold-500 px-6 py-3 text-base font-semibold text-white shadow-sm hover:bg-gold-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
+                >
+                  Browse Events
+                </Link>
+                <Link
+                  href="/organiser"
+                  className="inline-flex items-center rounded-lg border border-white/30 bg-white/10 px-6 py-3 text-base font-semibold text-white backdrop-blur-sm hover:bg-white/20 transition-colors"
+                >
+                  Create an Event
+                </Link>
+              </div>
+            </div>
           </div>
-        </div>
-      </header>
+        </section>
 
-      <main className="flex flex-1 flex-col items-center justify-center px-4 py-24 text-center">
-        <h1 className="text-4xl font-bold tracking-tight text-[#1A1A2E] sm:text-5xl lg:text-6xl">
-          Tickets for the events
-          <br />
-          <span className="text-[#4A90D9]">you actually want to go to</span>
-        </h1>
-        <p className="mt-6 max-w-xl text-lg text-[#6B7280]">
-          Discover events, buy tickets in seconds, and share the experience with friends.
-          Transparent pricing. Zero hidden fees.
-        </p>
+        {/* ── 2. TRENDING NOW ──────────────────────────────────────── */}
+        <section aria-labelledby="trending-heading" className="bg-canvas py-14 sm:py-16">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <SectionHeader
+              eyebrow="Hot right now"
+              title="Trending Now"
+              href="/events"
+              linkLabel="See all events"
+            />
 
-        <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-          <Link
-            href="/events"
-            className="rounded-xl bg-[#4A90D9] px-8 py-3.5 text-base font-semibold text-white shadow-sm hover:bg-[#3a7bc8] transition-colors"
-          >
-            Browse Events
-          </Link>
-          <Link
-            href="/dashboard"
-            className="rounded-xl border border-gray-300 bg-white px-8 py-3.5 text-base font-semibold text-[#1A1A2E] hover:bg-gray-50 transition-colors"
-          >
-            For Organisers
-          </Link>
-        </div>
+            {trending.length > 0 ? (
+              <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
+                {trending.map(event => (
+                  <EventCard key={event.id} event={event} dynamicPrices={trendingPrices} />
+                ))}
+              </div>
+            ) : (
+              <div className="mt-8 flex items-center justify-center rounded-xl border border-dashed border-ink-200 py-16">
+                <p className="text-sm text-ink-400">Events loading soon — check back shortly.</p>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* ── 3. CULTURE PICKS ─────────────────────────────────────── */}
+        <section aria-labelledby="culture-heading" className="bg-ink-100 py-14 sm:py-16">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <SectionHeader
+              eyebrow="Made for the diaspora"
+              title="Culture Picks"
+              href="/events"
+              linkLabel="Explore culture"
+            />
+
+            {/* Sub-tab strip — layout only, data wired Session 3 */}
+            <div className="mt-6 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+              {['All', 'Afrobeats', 'Amapiano', 'Gospel', 'Comedy', 'Owambe', 'Business'].map((tab, i) => (
+                <button
+                  key={tab}
+                  type="button"
+                  className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+                    i === 0
+                      ? 'bg-gold-500 text-white'
+                      : 'bg-white text-ink-600 hover:bg-gold-100 hover:text-gold-600 border border-ink-200'
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+
+            {culturePicks.length > 0 ? (
+              <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
+                {culturePicks.map(event => (
+                  <EventCard key={event.id} event={event} dynamicPrices={culturePrices} />
+                ))}
+              </div>
+            ) : (
+              /* Fallback: show trending if no culture-tagged events yet */
+              trending.length > 0 ? (
+                <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
+                  {trending.slice(0, 3).map(event => (
+                    <EventCard key={event.id} event={event} dynamicPrices={trendingPrices} />
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-8 flex items-center justify-center rounded-xl border border-dashed border-ink-200 py-16 bg-white">
+                  <p className="text-sm text-ink-400">Cultural events loading soon.</p>
+                </div>
+              )
+            )}
+          </div>
+        </section>
+
+        {/* ── 4. FOR ORGANISERS — dark split section ────────────────── */}
+        <section aria-labelledby="organisers-heading" className="bg-ink-900 py-16 sm:py-20 lg:py-24">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col gap-12 lg:flex-row lg:items-center lg:gap-16">
+
+              {/* Text side */}
+              <div className="lg:max-w-lg">
+                <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-400">
+                  For event organisers
+                </p>
+                <h2
+                  id="organisers-heading"
+                  className="mt-3 font-display font-700 leading-tight text-white"
+                  style={{ fontSize: 'clamp(1.75rem, 3.5vw, 2.75rem)' }}
+                >
+                  Sell tickets.
+                  <br />
+                  Keep more.
+                </h2>
+                <p className="mt-5 text-base text-white/70">
+                  Transparent fees, real-time analytics, squad booking, and a checkout
+                  your fans will actually complete. Built for organisers who take their
+                  events seriously.
+                </p>
+
+                {/* Feature bullets */}
+                <ul className="mt-8 space-y-3">
+                  {[
+                    'All-in pricing — no surprise fees at checkout',
+                    'Real-time sales dashboard and scan app',
+                    'Squad booking — your fans buy together',
+                    'Africa-ready: mobile money, WhatsApp sharing',
+                  ].map(feature => (
+                    <li key={feature} className="flex items-start gap-3 text-sm text-white/80">
+                      <span className="mt-0.5 h-4 w-4 shrink-0 rounded-full bg-gold-500/20 flex items-center justify-center">
+                        <svg className="h-2.5 w-2.5 text-gold-400" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </span>
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="mt-10 flex flex-wrap gap-3">
+                  <Link
+                    href="/organiser"
+                    className="inline-flex items-center rounded-lg bg-gold-500 px-6 py-3 text-sm font-semibold text-white hover:bg-gold-600 transition-colors"
+                  >
+                    Start selling tickets
+                  </Link>
+                  <Link
+                    href="/organiser/pricing"
+                    className="inline-flex items-center rounded-lg border border-white/20 px-6 py-3 text-sm font-semibold text-white/80 hover:border-white/40 hover:text-white transition-colors"
+                  >
+                    View pricing
+                  </Link>
+                </div>
+              </div>
+
+              {/* Stats side */}
+              <div className="grid grid-cols-2 gap-4 lg:flex-1">
+                {[
+                  { value: '0%',     label: 'Platform fees on free events' },
+                  { value: '2-tap',  label: 'Checkout — fastest in market' },
+                  { value: '5+',     label: 'Payment gateways supported' },
+                  { value: '24/7',   label: 'Real-time ticket scanning' },
+                ].map(stat => (
+                  <div
+                    key={stat.label}
+                    className="rounded-xl border border-white/10 bg-white/5 p-5"
+                  >
+                    <p className="font-display text-3xl font-800 text-gold-400">{stat.value}</p>
+                    <p className="mt-1 text-xs leading-relaxed text-white/60">{stat.label}</p>
+                  </div>
+                ))}
+              </div>
+
+            </div>
+          </div>
+        </section>
       </main>
 
-      <footer className="border-t border-gray-200 bg-white px-4 py-6 text-center text-sm text-[#6B7280]">
-        &copy; {new Date().getFullYear()} EventLinqs. All rights reserved.
-      </footer>
+      <SiteFooter />
     </div>
   )
 }
