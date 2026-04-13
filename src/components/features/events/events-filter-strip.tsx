@@ -236,7 +236,7 @@ export function EventsFilterStrip({
         </div>
 
         {/* Drawer header */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-ink-100">
           <h2 className="text-base font-semibold text-ink-900">Filters</h2>
           <button
             ref={closeButtonRef}

@@ -36,28 +36,28 @@ function getBadge(inventory: InventoryData, createdAt: string): BadgeVariant {
 const BADGE_CONFIG = {
   sold_out: {
     label: 'Sold Out',
-    className: 'bg-gray-100 text-gray-600',
-    dot: 'bg-gray-400',
+    className: 'bg-ink-100 text-ink-400',
+    dot: 'bg-ink-400',
   },
   only_x_left: {
     label: null, // dynamic
-    className: 'bg-red-50 text-red-700',
-    dot: 'bg-red-500',
+    className: 'bg-gold-100 text-gold-600',
+    dot: 'bg-gold-500',
   },
   almost_sold_out: {
     label: 'Almost Sold Out',
-    className: 'bg-orange-50 text-orange-700',
-    dot: 'bg-orange-500',
+    className: 'bg-gold-100 text-gold-600',
+    dot: 'bg-gold-500',
   },
   selling_fast: {
     label: 'Selling Fast',
-    className: 'bg-amber-50 text-amber-700',
-    dot: 'bg-amber-500',
+    className: 'bg-coral-100 text-coral-600',
+    dot: 'bg-coral-500',
   },
   just_listed: {
     label: 'Just Listed',
-    className: 'bg-blue-50 text-blue-700',
-    dot: 'bg-blue-500',
+    className: 'bg-ink-100 text-ink-600',
+    dot: 'bg-ink-400',
   },
 }
 
