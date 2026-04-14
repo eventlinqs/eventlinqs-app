@@ -134,21 +134,23 @@ export default async function HomePage() {
           <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-12 sm:px-6 lg:px-8 lg:pb-20">
             <div className="max-w-2xl">
               {/* Eyebrow pill */}
-              <span className="inline-flex items-center rounded-full border border-gold-500/40 bg-gold-500/10 px-3 py-1 text-xs font-semibold text-gold-400">
-                Where the culture gathers
+              <span className="inline-flex items-center rounded-full border border-gold-500/40 bg-gold-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-gold-400">
+                Made for the diaspora
               </span>
 
               {/* Display heading */}
-              <h1 className="mt-4 font-display font-extrabold leading-none tracking-tight text-white"
-                style={{ fontSize: 'clamp(2.5rem, 6vw, 5.5rem)' }}>
-                Tickets for events
-                <br />
-                <span className="text-gold-400">that move you.</span>
+              <h1
+                className="mt-4 font-display font-extrabold leading-none tracking-tight text-white"
+                style={{ fontSize: 'clamp(3.5rem, 8vw, 7rem)' }}
+              >
+                Where the{' '}
+                <span className="text-gold-400">culture</span>
+                {' '}gathers.
               </h1>
 
               <p className="mt-5 max-w-lg text-base text-white/75 sm:text-lg">
-                Afrobeats. Gospel. Amapiano. Business. Comedy. Owambe.
-                Discover what&rsquo;s on — no hidden fees, ever.
+                Tickets for events that move you. Afrobeats, Gospel, Amapiano,
+                Owambe, Comedy — no hidden fees, ever.
               </p>
 
               {/* CTAs */}
