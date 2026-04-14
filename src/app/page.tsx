@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import Image from 'next/image'
 import { createClient } from '@/lib/supabase/server'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
@@ -106,26 +105,37 @@ export default async function HomePage() {
       <SiteHeader />
 
       <main>
-        {/* ── 1. HERO — Pattern A cinematic ─────────────────────── */}
+        {/* ── 1. HERO — cinematic video backdrop ───────────────── */}
         <section
           aria-label="Hero"
-          className="relative flex min-h-[520px] items-end overflow-hidden bg-ink-900 md:min-h-[600px] lg:min-h-[680px]"
+          className="relative flex min-h-[75vh] items-end overflow-hidden bg-navy-950 md:min-h-[85vh]"
         >
-          {/* Background image — full bleed */}
-          <Image
-            src="https://picsum.photos/seed/hero-culture/1920/1080"
-            alt=""
-            fill
-            priority
-            className="object-cover object-center"
-            sizes="100vw"
-          />
-
-          {/* Dark gradient overlay — heavier at bottom for legibility */}
+          {/* Fallback radial gradient — visible when video fails to load */}
           <div
             className="absolute inset-0"
             style={{
-              background: 'linear-gradient(to top, rgba(10,22,40,0.92) 0%, rgba(10,22,40,0.55) 50%, rgba(10,22,40,0.15) 100%)',
+              background: 'radial-gradient(ellipse 80% 60% at 10% 0%, rgba(212,160,23,0.05) 0%, transparent 60%)',
+            }}
+            aria-hidden="true"
+          />
+
+          {/* Video backdrop — autoplay, muted, loop, no controls */}
+          <video
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="absolute inset-0 h-full w-full object-cover"
+            aria-hidden="true"
+          >
+            <source src="/Hero/hero-crowd.mp4.mp4" type="video/mp4" />
+          </video>
+
+          {/* Dark overlay — top-to-bottom navy fade for text legibility */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background: 'linear-gradient(to bottom, rgba(10,14,26,0.60) 0%, rgba(10,14,26,0.70) 50%, rgba(10,14,26,1) 100%)',
             }}
             aria-hidden="true"
           />
