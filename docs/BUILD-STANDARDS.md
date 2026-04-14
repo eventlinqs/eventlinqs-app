@@ -194,3 +194,17 @@ Always run git status before every commit. Inspect the staged files. Source file
 ### C) Commit Authorship Rule
 
 NEVER add "Co-Authored-By: Claude" or any AI attribution to any commit message. All commits are authored by Lawal Adams only. This rule has no exceptions and applies to every commit forever until Lawal explicitly states otherwise. Even when using --amend, the Co-Authored-By line must be stripped.
+
+### E) File Organisation Rule
+
+All screenshot and test artifacts are ephemeral. They must never accumulate in the project root or in tracked directories. Rules:
+
+1. **Playwright screenshots** go into `.playwright-mcp/current/` when freshly captured and are immediately moved to the appropriate archive subfolder after review:
+   - `.playwright-mcp/archive/session-N/` — screenshots from session N's verification pass
+   - `.playwright-mcp/archive/verify-runs/` — ad-hoc verify / regression screenshots
+   - `.playwright-mcp/archive/m45-blueprint/` — competitor benchmark reference captures
+   - `.playwright-mcp/archive/misc/` — anything that doesn't fit the above
+2. **No PNG/JPG/WebP files ever in the project root.** If one appears, move it to the correct archive folder before the next commit.
+3. **No duplicate source files.** No `.bak`, `.orig`, `.old`, or `-copy` variants of any `.tsx`, `.ts`, `.css`, or `.sql` file. The canonical version is the only version.
+4. **Before every commit**, run `git status` and confirm zero image files are staged. If they are, run `git rm --cached <file>` and ensure `.gitignore` covers the pattern before proceeding.
+5. **`.gitignore` is the enforcement layer.** Whenever a new artifact type is introduced (e.g., a new screenshot prefix or export format), update `.gitignore` immediately in the same commit that introduces the artifact type.
