@@ -65,7 +65,7 @@ export function SiteFooter() {
 
       {/* Culture tagline strip */}
       <div className="border-b border-white/10 py-10 text-center px-4">
-        <p className="font-display text-2xl font-700 text-white sm:text-3xl">
+        <p className="font-display text-2xl font-bold text-white sm:text-3xl">
           Where the culture gathers.
         </p>
         <p className="mt-2 text-sm text-ink-400">
@@ -80,7 +80,7 @@ export function SiteFooter() {
         <div className="hidden md:grid md:grid-cols-4 md:gap-8">
           {/* Col 1 — Brand */}
           <div>
-            <p className="font-display text-base font-700 text-white tracking-tight">EVENTLINQS</p>
+            <p className="font-display text-base font-bold text-white tracking-tight">EVENTLINQS</p>
             <p className="mt-3 text-sm leading-6 text-ink-400">
               The ticketing platform built for Africa, its diaspora, and every community that knows how to celebrate.
             </p>

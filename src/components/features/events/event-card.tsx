@@ -149,7 +149,7 @@ export function EventCard({ event, dynamicPrices = new Map() }: Props) {
         </p>
 
         {/* Title */}
-        <h3 className="mt-1 font-display text-sm font-700 leading-snug text-ink-900 line-clamp-2 group-hover:text-gold-500 transition-colors">
+        <h3 className="mt-1 font-display text-sm font-bold leading-snug text-ink-900 line-clamp-2 group-hover:text-gold-500 transition-colors">
           {title}
         </h3>
 

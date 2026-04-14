@@ -21,7 +21,7 @@ export function SiteHeader() {
         {/* Logo */}
         <Link
           href="/"
-          className="font-display text-lg font-800 tracking-tight text-ink-900 hover:text-gold-500 transition-colors"
+          className="font-display text-lg font-extrabold tracking-tight text-ink-900 hover:text-gold-500 transition-colors"
           aria-label="EventLinqs — home"
         >
           EVENTLINQS

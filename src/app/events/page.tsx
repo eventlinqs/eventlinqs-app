@@ -131,7 +131,7 @@ export default async function EventsPage({ searchParams }: Props) {
       {/* ── Page header + search ────────────────────────────────── */}
       <div className="border-b border-ink-100 bg-white px-4 py-8 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
-          <h1 className="font-display text-3xl font-700 text-ink-900 sm:text-4xl">
+          <h1 className="font-display text-3xl font-bold text-ink-900 sm:text-4xl">
             Discover Events
           </h1>
           <p className="mt-1 text-sm text-ink-400">

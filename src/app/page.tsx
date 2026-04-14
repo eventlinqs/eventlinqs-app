@@ -42,7 +42,7 @@ function SectionHeader({
           <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-500">
             {eyebrow}
           </p>
-          <h2 className="font-display text-2xl font-700 text-ink-900 sm:text-3xl">
+          <h2 className="font-display text-2xl font-bold text-ink-900 sm:text-3xl">
             {title}
           </h2>
         </div>
@@ -139,7 +139,7 @@ export default async function HomePage() {
               </span>
 
               {/* Display heading */}
-              <h1 className="mt-4 font-display font-800 leading-none tracking-tight text-white"
+              <h1 className="mt-4 font-display font-extrabold leading-none tracking-tight text-white"
                 style={{ fontSize: 'clamp(2.5rem, 6vw, 5.5rem)' }}>
                 Tickets for events
                 <br />
@@ -256,7 +256,7 @@ export default async function HomePage() {
                 </p>
                 <h2
                   id="organisers-heading"
-                  className="mt-3 font-display font-700 leading-tight text-white"
+                  className="mt-3 font-display font-bold leading-tight text-white"
                   style={{ fontSize: 'clamp(1.75rem, 3.5vw, 2.75rem)' }}
                 >
                   Sell tickets.
@@ -316,7 +316,7 @@ export default async function HomePage() {
                     key={stat.label}
                     className="rounded-xl border border-white/10 bg-white/5 p-5"
                   >
-                    <p className="font-display text-3xl font-800 text-gold-400">{stat.value}</p>
+                    <p className="font-display text-3xl font-extrabold text-gold-400">{stat.value}</p>
                     <p className="mt-1 text-xs leading-relaxed text-white/60">{stat.label}</p>
                   </div>
                 ))}
