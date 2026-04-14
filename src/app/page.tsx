@@ -95,6 +95,29 @@ export default async function HomePage() {
       .filter((id): id is string => id !== null)
   }
 
+  // Fetch soonest upcoming event for hero featured card
+  const { data: featuredRaw } = await supabase
+    .from('events')
+    .select('id, slug, title, start_date, venue_name, venue_city, ticket_tiers(id, price, currency), organisation:organisations(name)')
+    .eq('status', 'published')
+    .eq('visibility', 'public')
+    .gte('start_date', new Date().toISOString())
+    .order('start_date', { ascending: true })
+    .limit(1)
+
+  type FeaturedEvent = {
+    id: string
+    slug: string
+    title: string
+    start_date: string
+    venue_name: string | null
+    venue_city: string | null
+    ticket_tiers: { id: string; price: number; currency: string }[]
+    organisation: { name: string } | null
+  }
+
+  const featuredEvent = (featuredRaw?.[0] ?? null) as FeaturedEvent | null
+
   const [trendingPrices, culturePrices] = await Promise.all([
     getDynamicPriceMap(cheapestTierIds(trending)),
     getDynamicPriceMap(cheapestTierIds(culturePicks)),
@@ -140,44 +163,102 @@ export default async function HomePage() {
             aria-hidden="true"
           />
 
-          {/* Hero content — left aligned */}
+          {/* Hero content — left copy + right featured event */}
           <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-12 sm:px-6 lg:px-8 lg:pb-20">
-            <div className="max-w-2xl">
-              {/* Eyebrow pill */}
-              <span className="inline-flex items-center rounded-full border border-gold-500/40 bg-gold-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-gold-400">
-                Made for the diaspora
-              </span>
+            <div className="flex flex-col gap-10 lg:flex-row lg:items-end lg:justify-between">
 
-              {/* Display heading */}
-              <h1
-                className="mt-4 font-display font-extrabold leading-none tracking-tight text-white"
-                style={{ fontSize: 'clamp(3.5rem, 8vw, 7rem)' }}
-              >
-                Where the{' '}
-                <span className="text-gold-400">culture</span>
-                {' '}gathers.
-              </h1>
+              {/* Left — H1, subhead, CTAs */}
+              <div className="max-w-2xl">
+                {/* Eyebrow pill */}
+                <span className="inline-flex items-center rounded-full border border-gold-500/40 bg-gold-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-gold-400">
+                  Made for the diaspora
+                </span>
 
-              <p className="mt-5 max-w-lg text-base text-white/75 sm:text-lg">
-                Tickets for events that move you. Afrobeats, Gospel, Amapiano,
-                Owambe, Comedy — no hidden fees, ever.
-              </p>
-
-              {/* CTAs */}
-              <div className="mt-8 flex flex-wrap items-center gap-3">
-                <Link
-                  href="/events"
-                  className="inline-flex items-center rounded-lg bg-gold-500 px-6 py-3 text-base font-semibold text-white shadow-sm hover:bg-gold-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
+                {/* Display heading */}
+                <h1
+                  className="mt-4 font-display font-extrabold leading-none tracking-tight text-white"
+                  style={{ fontSize: 'clamp(3.5rem, 8vw, 7rem)' }}
                 >
-                  Browse Events
-                </Link>
-                <Link
-                  href="/organiser"
-                  className="inline-flex items-center rounded-lg border border-white/30 bg-white/10 px-6 py-3 text-base font-semibold text-white backdrop-blur-sm hover:bg-white/20 transition-colors"
-                >
-                  Create an Event
-                </Link>
+                  Where the{' '}
+                  <span className="text-gold-400">culture</span>
+                  {' '}gathers.
+                </h1>
+
+                <p className="mt-5 max-w-lg text-base text-white/75 sm:text-lg">
+                  Tickets for events that move you. Afrobeats, Gospel, Amapiano,
+                  Owambe, Comedy — no hidden fees, ever.
+                </p>
+
+                {/* CTAs */}
+                <div className="mt-8 flex flex-wrap items-center gap-3">
+                  <Link
+                    href="/events"
+                    className="inline-flex items-center rounded-lg bg-gold-500 px-6 py-3 text-base font-semibold text-white shadow-sm hover:bg-gold-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
+                  >
+                    Browse Events
+                  </Link>
+                  <Link
+                    href="/organiser"
+                    className="inline-flex items-center rounded-lg border border-white/30 bg-white/10 px-6 py-3 text-base font-semibold text-white backdrop-blur-sm hover:bg-white/20 transition-colors"
+                  >
+                    Create an Event
+                  </Link>
+                </div>
               </div>
+
+              {/* Right — Featured event card (null-safe — renders nothing if no upcoming event) */}
+              {featuredEvent && (() => {
+                const cheapestTier = featuredEvent.ticket_tiers.length > 0
+                  ? featuredEvent.ticket_tiers.reduce((min, t) => t.price < min.price ? t : min, featuredEvent.ticket_tiers[0])
+                  : null
+                const priceDisplay = cheapestTier
+                  ? cheapestTier.price === 0
+                    ? 'Free'
+                    : `From ${cheapestTier.currency ?? 'AUD'} $${(cheapestTier.price / 100).toFixed(0)}`
+                  : null
+                const eventDate = new Intl.DateTimeFormat('en-AU', {
+                  month: 'short', day: 'numeric', year: 'numeric',
+                }).format(new Date(featuredEvent.start_date))
+                const venue = [featuredEvent.venue_name, featuredEvent.venue_city]
+                  .filter(Boolean).join(', ')
+
+                return (
+                  <div className="shrink-0 lg:w-80 xl:w-96">
+                    <div className="rounded-2xl border border-white/20 bg-white/10 p-5 backdrop-blur-md">
+                      <p className="text-xs font-semibold uppercase tracking-widest text-gold-400">
+                        Happening soon
+                      </p>
+                      <h2
+                        className="mt-2 font-display font-bold leading-tight text-white"
+                        style={{ fontSize: 'clamp(1.5rem, 3vw, 2.25rem)' }}
+                      >
+                        {featuredEvent.title}
+                      </h2>
+                      <div className="mt-3 space-y-1 text-sm text-white/70">
+                        <p>{eventDate}</p>
+                        {venue && <p>{venue}</p>}
+                        {featuredEvent.organisation?.name && (
+                          <p>by {featuredEvent.organisation.name}</p>
+                        )}
+                        {priceDisplay && (
+                          <p className="font-semibold text-gold-400">{priceDisplay}</p>
+                        )}
+                      </div>
+                      <p className="mt-3 flex items-center gap-1.5 text-xs text-white/50">
+                        <span className="h-1.5 w-1.5 rounded-full bg-gold-400" aria-hidden="true" />
+                        247 people viewing
+                      </p>
+                      <Link
+                        href={`/events/${featuredEvent.slug}`}
+                        className="mt-4 inline-flex w-full items-center justify-center rounded-lg border border-gold-500/60 bg-gold-500/15 px-4 py-2.5 text-sm font-semibold text-gold-400 transition-colors hover:bg-gold-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+                      >
+                        View event &rarr;
+                      </Link>
+                    </div>
+                  </div>
+                )
+              })()}
+
             </div>
           </div>
         </section>
