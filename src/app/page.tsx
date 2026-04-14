@@ -151,7 +151,7 @@ export default async function HomePage() {
             className="absolute inset-0 h-full w-full object-cover"
             aria-hidden="true"
           >
-            <source src="/Hero/hero-crowd.mp4.mp4" type="video/mp4" />
+            <source src="/Hero/hero-crowd.mp4" type="video/mp4" />
           </video>
 
           {/* Dark overlay — top-to-bottom navy fade for text legibility */}
