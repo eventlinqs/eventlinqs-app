@@ -134,7 +134,7 @@ export function FilterSidebar({
 
   return (
     <aside
-      className="hidden lg:block lg:w-64 xl:w-72 shrink-0"
+      className="hidden lg:block lg:w-[280px] shrink-0"
       aria-label="Event filters"
     >
       <div className="sticky top-24 rounded-xl border border-ink-100 bg-white p-5 space-y-0">
