@@ -51,7 +51,7 @@ export function PageHero({ eyebrow, title, subtitle, align = 'left' }: PageHeroP
         </h1>
 
         {subtitle && (
-          <p className={`mt-5 text-lg md:text-xl text-[var(--text-on-dark)] opacity-70 ${subtitleCls}`}>
+          <p className={`mt-5 text-lg md:text-xl text-white/70 ${subtitleCls}`}>
             {subtitle}
           </p>
         )}

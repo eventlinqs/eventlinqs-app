@@ -3,6 +3,7 @@ import type { ComponentPropsWithoutRef } from 'react'
 
 type Variant = 'primary' | 'secondary' | 'ghost'
 type Size = 'sm' | 'md' | 'lg'
+type Surface = 'light' | 'dark'
 
 const base = [
   'inline-flex items-center justify-center gap-2',
@@ -14,9 +15,14 @@ const base = [
   'disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none',
 ].join(' ')
 
+/**
+ * Light-surface variants (default).
+ * Primary uses text-[var(--text-primary)] (near-black on gold) per DESIGN-SYSTEM §3:
+ * "Gold buttons use --ink-900 text, NOT white." Contrast ratio ~7.4:1 (WCAG AAA).
+ */
 const variants: Record<Variant, string> = {
   primary: [
-    'bg-[var(--brand-accent)] text-white shadow-md',
+    'bg-[var(--brand-accent)] text-[var(--text-primary)] shadow-md',
     'hover:bg-[var(--brand-accent-hover)] hover:shadow-lg hover:-translate-y-0.5',
     'active:bg-[var(--brand-accent-active)] active:shadow-sm active:translate-y-0',
   ].join(' '),
@@ -32,14 +38,35 @@ const variants: Record<Variant, string> = {
   ].join(' '),
 }
 
+/**
+ * Dark-surface variant overrides.
+ * Used when the button sits on a dark (navy/black) background section.
+ * Primary is unchanged — gold reads clearly on dark with no adjustment needed.
+ */
+const darkSurface: Partial<Record<Variant, string>> = {
+  ghost: [
+    'bg-transparent text-white',
+    'hover:bg-white/10',
+    'active:bg-white/20',
+  ].join(' '),
+  secondary: [
+    'bg-white/10 text-white shadow-none',
+    'hover:bg-white/20 hover:-translate-y-0.5',
+    'active:bg-white/20 active:translate-y-0',
+  ].join(' '),
+}
+
 const sizes: Record<Size, string> = {
   sm: 'h-9 px-3 text-sm',
   md: 'h-11 px-4 text-base',
   lg: 'h-12 px-6 text-base',
 }
 
-function cls(variant: Variant, size: Size, className = '') {
-  return [base, variants[variant], sizes[size], className].filter(Boolean).join(' ')
+function cls(variant: Variant, size: Size, onSurface: Surface, className = '') {
+  const variantCls = onSurface === 'dark' && darkSurface[variant]
+    ? darkSurface[variant]!
+    : variants[variant]
+  return [base, variantCls, sizes[size], className].filter(Boolean).join(' ')
 }
 
 // ── Button (renders <button>) ─────────────────────────────────────────────────
@@ -47,6 +74,7 @@ function cls(variant: Variant, size: Size, className = '') {
 type ButtonProps = ComponentPropsWithoutRef<'button'> & {
   variant?: Variant
   size?: Size
+  onSurface?: Surface
   href?: undefined
 }
 
@@ -55,6 +83,7 @@ type ButtonProps = ComponentPropsWithoutRef<'button'> & {
 type ButtonLinkProps = Omit<ComponentPropsWithoutRef<typeof Link>, 'href'> & {
   variant?: Variant
   size?: Size
+  onSurface?: Surface
   href: string
 }
 
@@ -63,6 +92,7 @@ type Props = ButtonProps | ButtonLinkProps
 export function Button({
   variant = 'primary',
   size = 'md',
+  onSurface = 'light',
   className,
   children,
   ...rest
@@ -70,7 +100,7 @@ export function Button({
   if ('href' in rest && rest.href !== undefined) {
     const { href, ...linkRest } = rest as ButtonLinkProps
     return (
-      <Link href={href} className={cls(variant, size, className)} {...linkRest}>
+      <Link href={href} className={cls(variant, size, onSurface, className)} {...linkRest}>
         {children}
       </Link>
     )
@@ -79,7 +109,7 @@ export function Button({
   const { href: _href, ...btnRest } = rest as ButtonProps & { href?: undefined }
   void _href
   return (
-    <button className={cls(variant, size, className)} {...btnRest}>
+    <button className={cls(variant, size, onSurface, className)} {...btnRest}>
       {children}
     </button>
   )

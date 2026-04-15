@@ -39,10 +39,13 @@ export const FormField = forwardRef<HTMLInputElement, FormFieldProps>(
 
     return (
       <div className="space-y-1.5">
-        {/* Label */}
+        {/* Label — tints red when field is in error state */}
         <label
           htmlFor={id}
-          className="block text-sm font-medium text-[var(--text-primary)]"
+          className={[
+            'block text-sm font-medium',
+            error ? 'text-red-900' : 'text-[var(--text-primary)]',
+          ].join(' ')}
         >
           {label}
           {required && (
@@ -64,8 +67,8 @@ export const FormField = forwardRef<HTMLInputElement, FormFieldProps>(
             'block w-full h-12 rounded-lg border px-4 text-base',
             'bg-[var(--surface-0)] text-[var(--text-primary)]',
             'placeholder:text-[var(--text-muted)]',
-            // Transition
-            'transition-all duration-150',
+            // Transition — colors only (border, ring) not all properties
+            'transition-colors duration-150 ease-out',
             // Normal border
             error
               ? 'border-[var(--color-error)] focus:border-[var(--color-error)] focus:ring-2 focus:ring-[var(--color-error)]/20'
@@ -79,16 +82,16 @@ export const FormField = forwardRef<HTMLInputElement, FormFieldProps>(
           {...inputProps}
         />
 
-        {/* Error text */}
+        {/* Error text — mt-1.5 from input, leading-tight */}
         {error && (
-          <p id={errorId} role="alert" className="text-sm text-[var(--color-error)]">
+          <p id={errorId} role="alert" className="mt-1.5 text-sm leading-tight text-[var(--color-error)]">
             {error}
           </p>
         )}
 
-        {/* Helper text (only shown when no error) */}
+        {/* Helper text — mt-1.5 from input, leading-tight (only shown when no error) */}
         {!error && helperText && (
-          <p id={helperId} className="text-sm text-[var(--text-muted)]">
+          <p id={helperId} className="mt-1.5 text-sm leading-tight text-[var(--text-muted)]">
             {helperText}
           </p>
         )}

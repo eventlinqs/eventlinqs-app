@@ -302,16 +302,13 @@ export default function ShellPreviewPage() {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <Button variant="primary" size="md">Primary on dark</Button>
-            <Button variant="secondary" size="md">Secondary on dark</Button>
-            <Button variant="ghost" size="md" className="text-white hover:text-[var(--text-on-dark)]">
-              Ghost on dark
-            </Button>
+            <Button variant="primary" size="md" onSurface="dark">Primary on dark</Button>
+            <Button variant="secondary" size="md" onSurface="dark">Secondary on dark</Button>
+            <Button variant="ghost" size="md" onSurface="dark">Ghost on dark</Button>
           </div>
 
-          <p className="text-xs text-[var(--text-on-dark)] opacity-40">
-            Note: ghost variant inherits text-[var(--text-primary)] from Button defaults.
-            Override with className="text-white" when used on dark backgrounds.
+          <p className="text-xs text-white/40">
+            All three variants use <code className="rounded bg-white/10 px-1 text-white/70">onSurface=&quot;dark&quot;</code> — no className overrides needed.
           </p>
         </div>
       </ContentSection>
