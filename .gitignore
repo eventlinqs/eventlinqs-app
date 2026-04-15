@@ -49,3 +49,5 @@ next-env.d.ts
 
 # Claude Code local settings
 .claude/settings.local.json
+
+supabase/.temp/
