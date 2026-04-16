@@ -287,7 +287,7 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
             ? allFree ? 'Select Tickets' : 'Select Tickets'
             : allFree
             ? `Register ${totalTickets} ticket${totalTickets > 1 ? 's' : ''}`
-            : `Checkout — ${formatPrice(subtotalCents, currency)}`}
+            : `Checkout: ${formatPrice(subtotalCents, currency)}`}
         </button>
       )}
     </div>

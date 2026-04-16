@@ -32,7 +32,7 @@ export default function PrivacyPolicyPage() {
       <p>
         EventLinqs is operated by Lawal Adams (trading as EventLinqs, ABN pending registration),
         based in Melbourne, Victoria, Australia. We build technology that connects event
-        organisers and attendees — and we take the trust you place in us seriously.
+        organisers and attendees. We take the trust you place in us seriously.
       </p>
       <p>
         This Privacy Policy explains what personal information we collect, why we collect
@@ -58,7 +58,7 @@ export default function PrivacyPolicyPage() {
         <li>
           <strong>Transaction data.</strong> When you purchase a ticket, we record the
           event, ticket tier, quantity, price paid, and transaction reference. All card
-          payments are processed directly by Stripe — we never see or store your card
+          payments are processed directly by Stripe. We never see or store your card
           number, CVV, or full card details.
         </li>
         <li>
@@ -89,19 +89,19 @@ export default function PrivacyPolicyPage() {
         <li>Process payments and handle refunds through our payment partners.</li>
         <li>Send event reminders, updates, and essential service notifications.</li>
         <li>
-          Personalise your experience — recommending events based on your location and
+          Personalise your experience by recommending events based on your location and
           past attendance, with your consent.
         </li>
         <li>
-          Improve the platform — understanding what works and what doesn&apos;t through
+          Improve the platform by understanding what works and what doesn&apos;t through
           aggregated usage analytics.
         </li>
         <li>
-          Comply with legal obligations — including tax record-keeping under Australian
+          Comply with legal obligations, including tax record-keeping under Australian
           law and responding to lawful government requests.
         </li>
         <li>
-          Prevent fraud — detecting abnormal purchasing patterns, bot activity, and
+          Prevent fraud by detecting abnormal purchasing patterns, bot activity, and
           ticket scalping.
         </li>
       </ul>
@@ -124,7 +124,7 @@ export default function PrivacyPolicyPage() {
         </li>
         <li>
           <strong>Analytics cookies</strong> (opt-out available). We use PostHog to
-          understand how visitors navigate EventLinqs — which pages are popular, where
+          understand how visitors navigate EventLinqs: which pages are popular, where
           people drop off in checkout, and how features are used. This data is
           aggregated and never sold. You can opt out in your account settings or via
           your browser&apos;s Do Not Track setting.
@@ -144,26 +144,26 @@ export default function PrivacyPolicyPage() {
       </p>
       <ul>
         <li>
-          <strong>Stripe</strong> — payment processing. Your card details go directly
+          <strong>Stripe:</strong> payment processing. Your card details go directly
           to Stripe&apos;s PCI-compliant infrastructure. Stripe&apos;s privacy policy
           governs how they handle payment data.
         </li>
         <li>
-          <strong>Supabase</strong> — our database and authentication provider. Your
+          <strong>Supabase:</strong> our database and authentication provider. Your
           account data and transaction records are stored in Supabase&apos;s
           infrastructure.
         </li>
         <li>
-          <strong>Resend</strong> — email delivery. Your email address and ticket
+          <strong>Resend:</strong> email delivery. Your email address and ticket
           details are passed to Resend to send transactional emails (purchase
           confirmations, QR codes, reminders).
         </li>
         <li>
-          <strong>Vercel</strong> — web hosting. Your IP address and request data
+          <strong>Vercel:</strong> web hosting. Your IP address and request data
           pass through Vercel&apos;s infrastructure as a normal part of web hosting.
         </li>
         <li>
-          <strong>Upstash</strong> — caching. Anonymised session data and inventory
+          <strong>Upstash:</strong> caching. Anonymised session data and inventory
           snapshots are cached via Upstash Redis to improve performance.
         </li>
       </ul>
@@ -183,7 +183,7 @@ export default function PrivacyPolicyPage() {
           Standard contractual clauses approved by relevant data protection authorities.
         </li>
         <li>
-          The providers&apos; own compliance frameworks — Stripe (PCI DSS), Supabase
+          The providers&apos; own compliance frameworks: Stripe (PCI DSS), Supabase
           (SOC 2), and Vercel (ISO 27001) each maintain robust security certifications.
         </li>
       </ul>
@@ -196,21 +196,21 @@ export default function PrivacyPolicyPage() {
       <p>We retain your data for the following periods:</p>
       <ul>
         <li>
-          <strong>Account data</strong> — retained while your account is active.
+          <strong>Account data:</strong> retained while your account is active.
           If you close your account, we delete identifiable account data within
           90 days, subject to the exceptions below.
         </li>
         <li>
-          <strong>Financial records</strong> — retained for 7 years after the
+          <strong>Financial records:</strong> retained for 7 years after the
           transaction date, as required by Australian tax law (ATO record-keeping
           obligations).
         </li>
         <li>
-          <strong>Event attendance data</strong> — retained for 3 years to support
+          <strong>Event attendance data:</strong> retained for 3 years to support
           fraud prevention and dispute resolution.
         </li>
         <li>
-          <strong>Marketing preferences</strong> — retained until you withdraw
+          <strong>Marketing preferences:</strong> retained until you withdraw
           consent or close your account, whichever comes first.
         </li>
       </ul>
@@ -227,7 +227,7 @@ export default function PrivacyPolicyPage() {
         </li>
         <li>
           <strong>Correction.</strong> If your information is inaccurate or
-          incomplete, you can ask us to correct it — or update it directly in your
+          incomplete, you can ask us to correct it, or update it directly in your
           account settings.
         </li>
         <li>
@@ -289,7 +289,7 @@ export default function PrivacyPolicyPage() {
         </li>
         <li>
           <strong>Row-level security.</strong> Our database enforces strict
-          access control policies — your data is only accessible to you and
+          access control policies. Your data is only accessible to you and
           explicitly authorised platform functions.
         </li>
         <li>
@@ -319,7 +319,7 @@ export default function PrivacyPolicyPage() {
       </ul>
       <p>
         We aim to respond to all privacy requests within 30 days. For urgent
-        matters, please mark your subject line <em>URGENT — Privacy</em>.
+        matters, please mark your subject line <em>URGENT: Privacy</em>.
       </p>
     </LegalPageShell>
   )

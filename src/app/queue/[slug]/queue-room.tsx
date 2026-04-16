@@ -337,7 +337,7 @@ export function QueueRoom({
               <ul className="space-y-1 text-sm text-white/70">
                 <li>• We admit ~{admissionRate} people per minute in order</li>
                 <li>• When it&apos;s your turn, you&apos;ll have {admissionWindowMinutes} minutes to complete your purchase</li>
-                <li>• Keep this page open — closing it may lose your place</li>
+                <li>• Keep this page open. Closing it may lose your place.</li>
               </ul>
             </div>
 
@@ -410,7 +410,7 @@ export function QueueRoom({
 
       {/* Subtle footer */}
       <footer className="text-center py-4 text-xs text-white/20">
-        Fair, first-come first-served queue — powered by EventLinqs
+        Fair, first-come first-served queue. Powered by EventLinqs.
       </footer>
     </div>
   )

@@ -33,9 +33,9 @@ export default function TermsOfUsePage() {
     >
       <h2 id="agreement">Agreement</h2>
       <p>
-        By accessing or using the EventLinqs platform — including the website at{' '}
+        By accessing or using the EventLinqs platform (including the website at{' '}
         <a href="https://eventlinqs.com">eventlinqs.com</a>, any associated mobile
-        experience, or any related services — you agree to be bound by these Terms
+        experience, or any related services), you agree to be bound by these Terms
         of Use. If you do not agree to these terms, do not use the platform.
       </p>
       <p>
@@ -66,8 +66,8 @@ export default function TermsOfUsePage() {
       </p>
       <p>
         You are responsible for providing accurate, current, and complete
-        information when creating your account. Providing false information —
-        including a false name, email address, or payment details — is a violation
+        information when creating your account. Providing false information
+        (including a false name, email address, or payment details) is a violation
         of these terms and may result in immediate suspension of your account.
       </p>
       <p>
@@ -99,8 +99,8 @@ export default function TermsOfUsePage() {
           has authorised refunds for the new date.
         </li>
         <li>
-          The event is materially changed — such as a change of venue, cancellation
-          of the headline act, or a change of format — in circumstances covered
+          The event is materially changed (such as a change of venue, cancellation
+          of the headline act, or a change of format) in circumstances covered
           by Australian Consumer Law.
         </li>
         <li>The organiser&apos;s own posted refund policy applies.</li>
@@ -128,7 +128,7 @@ export default function TermsOfUsePage() {
         Organisers are solely responsible for:
       </p>
       <ul>
-        <li>Delivering the event as advertised — on the stated date, at the stated venue, with the stated programme.</li>
+        <li>Delivering the event as advertised: on the stated date, at the stated venue, with the stated programme.</li>
         <li>Complying with all applicable laws, including venue licensing, public liability insurance, health and safety obligations, and any permits required to run the event.</li>
         <li>Honouring their own posted refund policy.</li>
         <li>Responding promptly to attendee enquiries and complaints.</li>
@@ -151,15 +151,15 @@ export default function TermsOfUsePage() {
           from the platform without our written permission.
         </li>
         <li>
-          <strong>Initiate fraudulent chargebacks</strong> — that is, disputing
+          <strong>Initiate fraudulent chargebacks:</strong> that is, disputing
           a legitimate charge with your bank without first contacting us.
         </li>
         <li>
-          <strong>Harass or harm other users</strong> — including organisers,
+          <strong>Harass or harm other users:</strong> including organisers,
           attendees, or EventLinqs staff.
         </li>
         <li>
-          <strong>List illegal events</strong> — including events that promote
+          <strong>List illegal events:</strong> including events that promote
           unlawful activity, violence, or discrimination.
         </li>
         <li>
@@ -200,14 +200,14 @@ export default function TermsOfUsePage() {
 
       <h2 id="intellectual-property">Intellectual Property</h2>
       <p>
-        The EventLinqs platform — including its design, code, branding, and
-        copy — is owned by EventLinqs and protected by Australian and international
+        The EventLinqs platform (including its design, code, branding, and
+        copy) is owned by EventLinqs and protected by Australian and international
         intellectual property law. You may not copy, reproduce, or redistribute
         any part of the platform without our written permission.
       </p>
       <p>
-        Content you upload to EventLinqs — including event descriptions, images,
-        and videos — remains your property. By uploading it, you grant EventLinqs
+        Content you upload to EventLinqs (including event descriptions, images,
+        and videos) remains your property. By uploading it, you grant EventLinqs
         a non-exclusive, royalty-free, worldwide licence to display that content
         on the platform and in promotional materials related to your event. This
         licence ends when you remove the content or close your account, except

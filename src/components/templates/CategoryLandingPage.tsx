@@ -22,7 +22,7 @@ import { EventCard } from '@/components/features/events/event-card'
 import type { EventCardData } from '@/components/features/events/event-card'
 import type { HeroCategory } from '@/lib/hero-categories'
 
-/** Map string icon names (stored in data file) → actual Lucide components. */
+/** Map string icon names (stored in data file) to actual Lucide components. */
 const ICON_MAP: Record<string, ComponentType<LucideProps>> = {
   Zap,
   Heart,
@@ -91,7 +91,7 @@ export function CategoryLandingPage({ category, liveEvents = [] }: CategoryLandi
             return (
               <div
                 key={pillar.title}
-                className="group rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] p-6 transition-all duration-200 hover:-translate-y-1 hover:border-[var(--brand-accent)]/40 hover:shadow-lg"
+                className="group rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] p-6 transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg"
               >
                 {/* Icon in soft circle */}
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--brand-accent)]/10 transition-colors group-hover:bg-[var(--brand-accent)]/15">
@@ -135,7 +135,7 @@ export function CategoryLandingPage({ category, liveEvents = [] }: CategoryLandi
           <CategoryHeroEmpty
             eyebrow={eyebrowLabel}
             headline={`The first ${displayName} event on EventLinqs could be yours.`}
-            subhead={`${category.tagline} We're built for this — set up in 5 minutes, take payments in 7 days, share to WhatsApp in one tap.`}
+            subhead={`${category.tagline} We're built for this. Set up in 5 minutes, take payments in 7 days, share to WhatsApp in one tap.`}
             primaryAction={{
               // TODO(Session 2): replace with direct signup once /auth/signup?role=organiser is built
               label: 'Talk to us about listing',
@@ -197,7 +197,7 @@ export function CategoryLandingPage({ category, liveEvents = [] }: CategoryLandi
         </div>
       </ContentSection>
 
-      {/* ── 6. Final CTA — dark band with gradient glow ──────────── */}
+      {/* ── 6. Final CTA — dark band, single centred button ──────── */}
       <section className="relative overflow-hidden bg-[var(--surface-dark)] py-20 md:py-28 lg:py-32">
         {/* Top accent border */}
         <div
@@ -236,7 +236,7 @@ export function CategoryLandingPage({ category, liveEvents = [] }: CategoryLandi
         />
 
         <div className="relative z-10 mx-auto max-w-6xl px-4 md:px-6 lg:px-8">
-          <div className="flex flex-col items-start gap-8 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col items-center gap-8 text-center">
             <div className="max-w-2xl">
               {/* Section marker */}
               <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-accent)]">
@@ -250,25 +250,15 @@ export function CategoryLandingPage({ category, liveEvents = [] }: CategoryLandi
                 real human support, and a platform that actually understands the culture.
               </p>
             </div>
-            <div className="flex flex-col gap-3 sm:flex-row shrink-0">
-              {/* TODO(Session 2): replace with /auth/signup?role=organiser once built */}
-              <Button
-                variant="primary"
-                size="lg"
-                onSurface="dark"
-                href={`/contact?topic=organiser&interest=${slug}`}
-              >
-                Get in touch to list
-              </Button>
-              <Button
-                variant="ghost"
-                size="lg"
-                onSurface="dark"
-                href="/contact?topic=organiser"
-              >
-                Talk to us first
-              </Button>
-            </div>
+            {/* TODO(Session 2): replace with /auth/signup?role=organiser once built */}
+            <Button
+              variant="primary"
+              size="lg"
+              onSurface="dark"
+              href={`/contact?topic=organiser&interest=${slug}`}
+            >
+              Talk to us about your event
+            </Button>
           </div>
         </div>
       </section>

@@ -64,12 +64,17 @@ export function SiteFooter() {
     <footer className="bg-ink-900 text-white" aria-label="Site footer">
 
       {/* Culture tagline strip */}
-      <div className="border-b border-white/10 py-10 text-center px-4">
-        <p className="font-display text-2xl font-bold text-white sm:text-3xl">
+      <div className="border-b border-white/10 py-16 text-center px-4">
+        <div
+          aria-hidden="true"
+          className="mx-auto mb-5 h-px w-16"
+          style={{ background: 'linear-gradient(90deg, transparent, var(--color-gold-400, #E8B738), transparent)' }}
+        />
+        <p className="font-display text-3xl font-bold tracking-wide text-white sm:text-4xl">
           Where the culture gathers.
         </p>
         <p className="mt-2 text-sm text-ink-400">
-          Discover, celebrate, and connect — from Melbourne to London.
+          Discover, celebrate, and connect. From Melbourne to London.
         </p>
       </div>
 

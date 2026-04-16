@@ -137,14 +137,14 @@ export function SquadJoinPanel({
         md:static md:rounded-2xl md:border md:border-gray-200 md:shadow-sm md:p-5
       ">
         <p className="text-sm text-gray-600 mb-3">
-          You&apos;ve claimed a spot — pay your share to lock it in.
+          You&apos;ve claimed a spot. Pay your share to lock it in.
         </p>
         <Link
           href={`/squad/${shareToken}/pay/${currentUserMemberId}`}
           className="block w-full h-12 rounded-xl bg-[#4A90D9] text-white font-semibold text-base
                      flex items-center justify-center hover:bg-[#3478C5] transition-colors"
         >
-          Pay your share — {formatPrice(pricePerSpotCents, currency)}
+          Pay your share: {formatPrice(pricePerSpotCents, currency)}
         </Link>
       </div>
     )
@@ -159,7 +159,7 @@ export function SquadJoinPanel({
         md:static md:rounded-2xl md:border md:border-gray-200 md:shadow-sm md:p-5
       ">
         <p className="text-sm text-gray-600 mb-4">
-          Join the squad for <strong>{eventTitle}</strong> — everyone pays their own share.
+          Join the squad for <strong>{eventTitle}</strong>. Everyone pays their own share.
         </p>
         <div className="space-y-2">
           <Link
@@ -199,7 +199,7 @@ export function SquadJoinPanel({
           className="block w-full h-12 rounded-xl bg-[#4A90D9] text-white font-semibold text-base
                      flex items-center justify-center hover:bg-[#3478C5] transition-colors"
         >
-          Pay your share — {formatPrice(pricePerSpotCents, currency)}
+          Pay your share: {formatPrice(pricePerSpotCents, currency)}
         </Link>
       </div>
     )
@@ -318,7 +318,7 @@ export function SquadJoinPanel({
           className="w-full h-12 rounded-xl bg-[#4A90D9] text-white font-semibold text-base
                      disabled:opacity-50 hover:bg-[#3478C5] transition-colors"
         >
-          {isPending ? 'Joining…' : `Join Squad — ${formatPrice(pricePerSpotCents, currency)}`}
+          {isPending ? 'Joining…' : `Join Squad: ${formatPrice(pricePerSpotCents, currency)}`}
         </button>
       </form>
     </div>

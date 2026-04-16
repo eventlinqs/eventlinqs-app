@@ -133,7 +133,7 @@ export default function HelpPage() {
           </h2>
           <p className="max-w-md text-base text-[var(--text-secondary)]">
             Our support team replies within 24 hours, Monday to Friday.
-            We&apos;re real people — not bots.
+            We&apos;re real people, not bots.
           </p>
           <Button href="/contact" variant="primary" size="lg">
             Contact support

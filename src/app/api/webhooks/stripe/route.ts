@@ -609,7 +609,7 @@ async function sendConfirmationEmail(
     await resend.emails.send({
       from: 'EventLinqs <noreply@eventlinqs.com>',
       to: buyerEmail,
-      subject: `Order Confirmed: ${event.title} — ${order.order_number}`,
+      subject: `Order Confirmed: ${event.title} (${order.order_number})`,
       html: buildConfirmationEmailHtml(order, event, receipt_url),
     })
   } catch (err) {
@@ -687,7 +687,7 @@ function buildConfirmationEmailHtml(
         Your tickets will be available in your EventLinqs account once our ticketing system is fully activated.
       </p>
 
-      <p style="color:#9CA3AF;font-size:12px;">— The EventLinqs Team</p>
+      <p style="color:#9CA3AF;font-size:12px;">The EventLinqs Team</p>
     </div>
   `
 }

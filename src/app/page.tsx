@@ -186,7 +186,7 @@ export default async function HomePage() {
 
                 <p className="mt-5 max-w-lg text-base text-white/75 sm:text-lg">
                   Tickets for events that move you. Afrobeats, Gospel, Amapiano,
-                  Owambe, Comedy — no hidden fees, ever.
+                  Owambe, Comedy. No hidden fees, ever.
                 </p>
 
                 {/* CTAs */}
@@ -365,9 +365,9 @@ export default async function HomePage() {
                 {/* Feature bullets */}
                 <ul className="mt-8 space-y-3">
                   {[
-                    'All-in pricing — no surprise fees at checkout',
+                    'All-in pricing: no surprise fees at checkout',
                     'Real-time sales dashboard and scan app',
-                    'Squad booking — your fans buy together',
+                    'Squad booking: your fans buy together',
                     'Africa-ready: mobile money, WhatsApp sharing',
                   ].map(feature => (
                     <li key={feature} className="flex items-start gap-3 text-sm text-white/80">
@@ -401,7 +401,7 @@ export default async function HomePage() {
               <div className="grid grid-cols-2 gap-4 lg:flex-1">
                 {[
                   { value: '0%',     label: 'Platform fees on free events' },
-                  { value: '2-tap',  label: 'Checkout — fastest in market' },
+                  { value: '2-tap',  label: 'Checkout: fastest in market' },
                   { value: '5+',     label: 'Payment gateways supported' },
                   { value: '24/7',   label: 'Real-time ticket scanning' },
                 ].map(stat => (

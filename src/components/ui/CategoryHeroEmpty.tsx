@@ -74,8 +74,8 @@ export function CategoryHeroEmpty({
               right: '-10%',
               width: '60%',
               height: '60%',
-              background: 'radial-gradient(circle, var(--brand-accent), transparent 70%)',
-              opacity: 0.08,
+              background: 'radial-gradient(circle, var(--brand-accent), transparent 85%)',
+              opacity: 0.05,
             }}
           />
           {/* White glow — bottom-left */}

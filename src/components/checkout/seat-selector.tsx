@@ -420,7 +420,7 @@ export function SeatSelector({
             ? 'Reserving seats…'
             : selectedIds.size === 0
             ? 'Select seats to continue'
-            : `Reserve ${selectedIds.size} seat${selectedIds.size !== 1 ? 's' : ''} — ${formatPrice(totalCents)}`}
+            : `Reserve ${selectedIds.size} seat${selectedIds.size !== 1 ? 's' : ''}: ${formatPrice(totalCents)}`}
         </button>
       </div>
     </div>

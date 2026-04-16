@@ -75,7 +75,7 @@ export function StartSquadModal({
 
   function handleWhatsAppShare() {
     const msg = encodeURIComponent(
-      `Join my squad for this event! ${totalSpots} spots — each person pays their own share.\n\n${shareUrl}`
+      `Join my squad for this event! ${totalSpots} spots. Each person pays their own share.\n\n${shareUrl}`
     )
     window.open(`https://wa.me/?text=${msg}`, '_blank', 'noopener,noreferrer')
   }
@@ -84,7 +84,7 @@ export function StartSquadModal({
     if (navigator.share) {
       navigator.share({
         title: 'Join my EventLinqs Squad',
-        text: `I'm organising a group — ${totalSpots} spots, everyone pays their own share!`,
+        text: `I'm organising a group. ${totalSpots} spots, everyone pays their own share.`,
         url: shareUrl,
       }).catch(() => {
         // User dismissed or share failed — fall back to copy
@@ -178,7 +178,7 @@ export function StartSquadModal({
               <div className="rounded-xl bg-[#F0F6FF] border border-blue-100 p-4 mb-6">
                 <p className="text-sm font-semibold text-[#1A1A2E]">{tierName}</p>
                 <p className="text-sm text-gray-600 mt-1">
-                  <span className="font-medium">{totalSpots} spots</span> — each person pays{' '}
+                  <span className="font-medium">{totalSpots} spots,</span> each person pays{' '}
                   <span className="font-semibold text-[#4A90D9]">
                     {formatPrice(pricePerSpotCents, currency)} each
                   </span>
@@ -256,7 +256,7 @@ export function StartSquadModal({
                 className="w-full h-12 rounded-xl bg-[#1A1A2E] text-white font-semibold text-base
                            disabled:opacity-50 hover:bg-[#2d2d4a] transition-colors"
               >
-                {isPending ? 'Creating your squad…' : `Create Squad — ${totalSpots} Spots`}
+                {isPending ? 'Creating your squad…' : `Create Squad: ${totalSpots} Spots`}
               </button>
             </form>
           ) : (
@@ -267,7 +267,7 @@ export function StartSquadModal({
                   Your squad is live! Share the link with your friends.
                 </p>
                 <p className="text-xs text-emerald-600 mt-1">
-                  {totalSpots - 1} spot{totalSpots - 1 !== 1 ? 's' : ''} remaining — link expires in 24 hours.
+                  {totalSpots - 1} spot{totalSpots - 1 !== 1 ? 's' : ''} remaining. Link expires in 24 hours.
                 </p>
               </div>
 

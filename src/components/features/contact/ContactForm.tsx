@@ -77,7 +77,7 @@ export function ContactForm({ initialSubject = '' }: ContactFormProps) {
               </svg>
             </div>
             <p className="font-display text-lg font-semibold text-[var(--text-primary)]">
-              Message received — thanks!
+              Message received. Thanks.
             </p>
             <p className="mt-2 text-sm text-[var(--text-secondary)]">
               We&apos;ll reply within 24 hours.
@@ -179,7 +179,7 @@ export function ContactForm({ initialSubject = '' }: ContactFormProps) {
 
           <div>
             <dt className="font-semibold text-[var(--text-primary)]">Response time</dt>
-            <dd className="mt-1 text-[var(--text-secondary)]">Within 24 hours, Mon–Fri</dd>
+            <dd className="mt-1 text-[var(--text-secondary)]">Within 24 hours, Monday to Friday</dd>
           </div>
 
           <div>
@@ -222,7 +222,7 @@ export function ContactForm({ initialSubject = '' }: ContactFormProps) {
             Looking for a quick answer?
           </p>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">
-            Browse our Help Centre — you might find what you need without waiting.
+            Browse our Help Centre. You might find what you need without waiting.
           </p>
           <Link
             href="/help"

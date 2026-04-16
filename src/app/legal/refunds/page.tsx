@@ -57,9 +57,9 @@ export default function RefundPolicyPage() {
           announced and give you the option to keep your tickets or receive a refund.
         </li>
         <li>
-          <strong>Material change.</strong> If the event is materially changed —
-          including a significant change of venue, cancellation of the headlining
-          act, or a fundamental change to the event format — you may be entitled
+          <strong>Material change.</strong> If the event is materially changed
+          (including a significant change of venue, cancellation of the headlining
+          act, or a fundamental change to the event format) you may be entitled
           to a refund under Australian Consumer Law. We assess these on a
           case-by-case basis, and we will always err on the side of the attendee
           in genuine disputes.
@@ -87,10 +87,10 @@ export default function RefundPolicyPage() {
       </p>
       <ul>
         <li>
-          <strong>Credit and debit cards</strong> — typically 5–10 business days.
+          <strong>Credit and debit cards:</strong> typically 5 to 10 business days.
         </li>
         <li>
-          <strong>Buy Now Pay Later services</strong> — please contact your provider
+          <strong>Buy Now Pay Later services:</strong> please contact your provider
           directly, as timelines vary.
         </li>
       </ul>
@@ -125,7 +125,7 @@ export default function RefundPolicyPage() {
       <p>
         Chargebacks also have consequences for the event organiser, who may be
         penalised by Stripe even if the chargeback is later reversed. If you have
-        a legitimate dispute, we want to help — please give us the chance to do so.
+        a legitimate dispute, we want to help. Please give us the chance to do so.
       </p>
       <p>
         If you do initiate a chargeback and EventLinqs determines it is not
@@ -137,8 +137,8 @@ export default function RefundPolicyPage() {
 
       <p>
         Questions about a refund?{' '}
-        <a href="mailto:hello@eventlinqs.com">hello@eventlinqs.com</a> —
-        we reply within 24 hours, Monday to Friday.
+        <a href="mailto:hello@eventlinqs.com">hello@eventlinqs.com</a>.
+        We reply within 24 hours, Monday to Friday.
       </p>
     </LegalPageShell>
   )

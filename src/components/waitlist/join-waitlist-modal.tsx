@@ -103,7 +103,7 @@ export function JoinWaitlistModal({
           {/* Header */}
           <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
             <h2 id="waitlist-modal-title" className="text-lg font-semibold text-gray-900">
-              Join Waitlist — {tierName}
+              Join Waitlist: {tierName}
             </h2>
             <button
               ref={closeButtonRef}
@@ -219,11 +219,11 @@ export function JoinWaitlistModal({
                   disabled={isSubmitting}
                   className="w-full rounded-xl bg-[#1A1A2E] py-3 text-sm font-semibold text-white disabled:opacity-50 hover:bg-[#2d2d4a] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
                 >
-                  {isSubmitting ? 'Joining…' : `Join Waitlist — ${quantity} ticket${quantity > 1 ? 's' : ''}`}
+                  {isSubmitting ? 'Joining…' : `Join Waitlist: ${quantity} ticket${quantity > 1 ? 's' : ''}`}
                 </button>
 
                 <p className="mt-3 text-center text-xs text-gray-400">
-                  You&apos;ll have 15 minutes to buy once notified. FIFO — first in, first served.
+                  You&apos;ll have 15 minutes to buy once notified. FIFO: first in, first served.
                 </p>
               </form>
             )}

@@ -122,7 +122,7 @@ export async function promoteWaitlist(
       await resend.emails.send({
         from: 'EventLinqs <noreply@eventlinqs.com>',
         to: buyerEmail,
-        subject: `A spot opened up — claim it before ${expiresFormatted}`,
+        subject: `A spot opened up. Claim it before ${expiresFormatted}`,
         html: buildPromotionEmailHtml({
           eventTitle: eventData.title,
           eventDate,
@@ -168,12 +168,12 @@ function buildPromotionEmailHtml(p: EmailParams): string {
     <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;">
       <h1 style="color:#1A1A2E;font-size:22px;margin-bottom:4px;">A spot just opened up 🎟</h1>
       <p style="color:#6B7280;margin-top:0;font-size:14px;">
-        Good news — a <strong>${p.tierName}</strong> ticket for <strong>${p.eventTitle}</strong> is now available for you.
+        Good news: a <strong>${p.tierName}</strong> ticket for <strong>${p.eventTitle}</strong> is now available for you.
       </p>
 
       <div style="background:#FEF3C7;border:1px solid #FCD34D;border-radius:8px;padding:16px;margin:20px 0;">
         <p style="margin:0;font-size:14px;color:#92400E;">
-          ⏱ <strong>You have ${p.windowMinutes} minutes</strong> to complete your purchase — offer expires at <strong>${p.expiresFormatted}</strong>.
+          ⏱ <strong>You have ${p.windowMinutes} minutes</strong> to complete your purchase. Offer expires at <strong>${p.expiresFormatted}</strong>.
         </p>
       </div>
 
@@ -194,7 +194,7 @@ function buildPromotionEmailHtml(p: EmailParams): string {
       <p style="color:#9CA3AF;font-size:12px;">
         If you no longer want this ticket, simply ignore this email and your spot will be passed to the next person.
       </p>
-      <p style="color:#9CA3AF;font-size:12px;">— The EventLinqs Team</p>
+      <p style="color:#9CA3AF;font-size:12px;">The EventLinqs Team</p>
     </div>
   `
 }

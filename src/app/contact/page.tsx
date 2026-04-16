@@ -19,7 +19,7 @@ interface Props {
 /**
  * Build the pre-filled subject line from ?topic= and ?interest= URL params.
  * Used by category landing pages and footer organiser links to pre-fill the
- * contact form so the user doesn't have to type boilerplate context.
+ * contact form so the user does not have to type boilerplate context.
  */
 function buildInitialSubject(topic?: string, interest?: string): string {
   if (topic !== 'organiser') return ''
@@ -30,7 +30,7 @@ function buildInitialSubject(topic?: string, interest?: string): string {
     case 'create-event':
       return 'I want to create an event on EventLinqs'
     case 'pricing':
-      return 'Pricing question — organiser'
+      return 'Pricing question: organiser'
     case 'login':
       return 'Organiser login help'
     default:
@@ -51,8 +51,8 @@ export default async function ContactPage({ searchParams }: Props) {
         subtitle="We reply within 24 hours, Monday to Friday."
       />
 
-      {/* Main two-column section */}
-      <ContentSection surface="base" width="wide">
+      {/* Main two-column section — anchored for in-page scroll */}
+      <ContentSection surface="base" width="wide" id="contact-form">
         <ContactForm initialSubject={initialSubject} />
       </ContentSection>
 
@@ -64,13 +64,13 @@ export default async function ContactPage({ searchParams }: Props) {
               Are you running an event?
             </h2>
             <p className="mt-1 max-w-lg text-sm text-[var(--text-secondary)]">
-              Talk to our organiser team directly — we&apos;ll help you get set up on
+              Talk to our organiser team directly. We&apos;ll help you get set up on
               EventLinqs, walk you through pricing, and answer any questions before you
               go live.
             </p>
           </div>
           <Button
-            href="mailto:organisers@eventlinqs.com?subject=EventLinqs%20-%20Organiser%20enquiry"
+            href="/contact?topic=organiser#contact-form"
             variant="secondary"
             size="md"
             className="shrink-0"
