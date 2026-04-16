@@ -13,6 +13,8 @@ interface ContentSectionProps {
   /** aria-labelledby for accessible section labelling */
   'aria-labelledby'?: string
   className?: string
+  /** Renders a subtle accent gradient line at the top of the section. Default false. */
+  topBorder?: boolean
 }
 
 const surfaces: Record<SurfaceName, string> = {
@@ -51,13 +53,24 @@ export function ContentSection({
   id,
   'aria-labelledby': ariaLabelledby,
   className = '',
+  topBorder = false,
 }: ContentSectionProps) {
   return (
     <section
       id={id}
       aria-labelledby={ariaLabelledby}
-      className={`${surfaces[surface]} py-16 md:py-20 lg:py-24 ${className}`}
+      className={`relative ${surfaces[surface]} py-16 md:py-20 lg:py-24 ${className}`}
     >
+      {topBorder && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute left-0 right-0 top-0"
+          style={{
+            height: '1px',
+            background: 'linear-gradient(90deg, transparent, rgba(74, 144, 217, 0.25) 50%, transparent)',
+          }}
+        />
+      )}
       <div className={`mx-auto ${widths[width]} px-4 md:px-6 lg:px-8`}>
         {children}
       </div>
