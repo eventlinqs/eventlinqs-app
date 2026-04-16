@@ -38,10 +38,11 @@ export function PageHero({ eyebrow, title, subtitle, align = 'left', variant = '
 
   return (
     <section
-      className="relative bg-[var(--surface-dark)] text-[var(--text-on-dark)] py-24 md:py-32 lg:py-40 overflow-hidden"
+      className="relative bg-[var(--color-navy-950)] text-white py-24 md:py-32 lg:py-40 overflow-hidden"
       aria-labelledby="page-hero-heading"
     >
-      {/* Premium background layers */}
+      {/* Premium background layers — use backgroundImage (not background shorthand) so
+          background-color of the section is never overridden by the decorative divs */}
       {isPremium && (
         <>
           {/* Radial gradient — accent glow top-right */}
@@ -49,7 +50,7 @@ export function PageHero({ eyebrow, title, subtitle, align = 'left', variant = '
             aria-hidden="true"
             className="pointer-events-none absolute inset-0"
             style={{
-              background: 'radial-gradient(ellipse 80% 60% at 100% 0%, var(--brand-accent) 12%, transparent 60%)',
+              backgroundImage: 'radial-gradient(ellipse 80% 60% at 100% 0%, var(--color-gold-400, #E8B738) 12%, transparent 60%)',
             }}
           />
           {/* Secondary radial — soft white glow bottom-left */}
@@ -57,7 +58,7 @@ export function PageHero({ eyebrow, title, subtitle, align = 'left', variant = '
             aria-hidden="true"
             className="pointer-events-none absolute inset-0"
             style={{
-              background: 'radial-gradient(ellipse 60% 50% at 0% 100%, white 5%, transparent 50%)',
+              backgroundImage: 'radial-gradient(ellipse 60% 50% at 0% 100%, white 5%, transparent 50%)',
             }}
           />
           {/* Grid overlay */}
@@ -65,7 +66,7 @@ export function PageHero({ eyebrow, title, subtitle, align = 'left', variant = '
             aria-hidden="true"
             className="pointer-events-none absolute inset-0"
             style={{
-              background:
+              backgroundImage:
                 'linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)',
               backgroundSize: '100px 100px',
             }}
@@ -76,16 +77,17 @@ export function PageHero({ eyebrow, title, subtitle, align = 'left', variant = '
             className="pointer-events-none absolute bottom-0 left-0 right-0"
             style={{
               height: '2px',
-              background: 'linear-gradient(90deg, transparent, rgba(var(--brand-accent-rgb, 74 144 217) / 0.5) 50%, transparent)',
+              backgroundImage: 'linear-gradient(90deg, transparent, rgba(232, 183, 56, 0.5) 50%, transparent)',
             }}
           />
         </>
       )}
 
-      <div className={`relative mx-auto max-w-7xl px-4 md:px-6 lg:px-8 ${alignCls}`}>
+      {/* z-10 ensures content always renders above the decorative layers */}
+      <div className={`relative z-10 mx-auto max-w-7xl px-4 md:px-6 lg:px-8 ${alignCls}`}>
 
         {eyebrow && (
-          <p className="mb-4 font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-accent)]">
+          <p className="mb-4 font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-gold-400)]">
             {eyebrow}
           </p>
         )}

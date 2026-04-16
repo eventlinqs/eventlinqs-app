@@ -4,6 +4,32 @@
 :root {
   --background: #FAFAF7;
   --foreground: #0A1628;
+
+  /* ───────────────────────────────────────────────────────
+     Semantic Token Layer
+     These aliases map component-facing semantic names to the
+     primitive colour tokens. Components reference semantic
+     names only. Changing the primitive here propagates
+     everywhere. Do not reference --color-* primitives
+     directly in component files.
+     ─────────────────────────────────────────────────────── */
+
+  /* Brand & accents */
+  --brand-accent:        var(--color-gold-400);
+  --brand-accent-hover:  var(--color-gold-500);
+  --brand-accent-active: var(--color-gold-600);
+
+  /* Surfaces */
+  --surface-0:           var(--color-white);
+  --surface-1:           var(--color-ink-100);
+  --surface-2:           var(--color-ink-200);
+  --surface-dark:        var(--color-navy-950);
+
+  /* Text */
+  --text-primary:        var(--color-ink-900);
+  --text-secondary:      var(--color-ink-600);
+  --text-muted:          var(--color-ink-400);
+  --text-on-dark:        var(--color-white);
 }
 
 /* ─── Tailwind v4 theme block — all design system tokens ─────────────────── */
