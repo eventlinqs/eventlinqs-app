@@ -6,6 +6,9 @@
  *
  * Voice rules: no em-dash or en-dash as sentence punctuation, no exclamation marks,
  * plain English, Australian English spelling, concrete over abstract.
+ *
+ * Session 2a: updated throughout to reflect self-serve organiser model (Decision A)
+ * and inclusive brand positioning (Decision B).
  */
 
 export type HelpArticle = {
@@ -28,15 +31,15 @@ export const helpTopics: HelpTopic[] = [
     articles: [
       {
         q: 'What is EventLinqs?',
-        a: "EventLinqs is a ticketing platform built for African culture, music, and community events. Our platform serves the African diaspora worldwide. Our launch markets are Australia, the UK, Canada, Europe, and the United States, where we are building our first base of organisers and buyers. Our long-term mission is to serve African events globally, including across the continent itself. If you are based in Africa and want to work with us, reach out via the partnership form on our website.",
+        a: "EventLinqs is a ticketing platform that celebrates African and diaspora culture and is open to every organiser and every community. We built the platform with African culture, music, and community events in mind, and that shows in the features we prioritise: WhatsApp sharing, squad bookings, all-in pricing, and a checkout that actually works on mobile. Anyone can organise any kind of event here. Our launch markets are Australia, the UK, Canada, Europe, and the United States, with expansion across Africa underway.",
       },
       {
         q: 'Who is EventLinqs for?',
-        a: "EventLinqs is for people who organise and attend African and diaspora events. That includes Afrobeats and Amapiano nights, gospel concerts, Owambe celebrations, Caribbean parties, heritage and independence galas, diaspora business events, and everything in between. Buyers can use the platform as guests or with a free account. Organisers go through a brief vetting process before listing events.",
+        a: "EventLinqs is for anyone who organises or attends events. We built the platform with African and diaspora communities in mind, and organisers running Afrobeats nights, gospel concerts, Owambe celebrations, Caribbean fetes, heritage galas, and diaspora business events will feel right at home. But the platform is open to everyone. Weddings, birthday parties, corporate events, community festivals, and any other event that brings people together are all welcome. Buyers can use the platform as guests or with a free account.",
       },
       {
         q: 'Where does EventLinqs operate?',
-        a: "Our launch markets are Australia, the UK, Canada, Europe, and the United States, serving African diaspora communities in those regions. Extending the platform to events across Africa itself is a core part of our mission. If you are an organiser or buyer in Africa and want to work with us, contact us via the partnership form on our website.",
+        a: "Our launch markets are Australia, the UK, Canada, Europe, and the United States, serving African diaspora communities in those regions. We are expanding to support events across Africa, and we want to hear from organisers and buyers on the continent. If you are based in Africa, contact us via the support form on our website and select Partnership as the topic.",
       },
       {
         q: 'How do I create an account?',
@@ -52,7 +55,7 @@ export const helpTopics: HelpTopic[] = [
       },
       {
         q: 'How do I list an event on EventLinqs?',
-        a: "EventLinqs is a curated platform, not open signup. New organisers apply through the organiser application form on our website. We review applications within 2 business days and, if approved, schedule a short onboarding call with your team before your first event goes on sale. This process keeps quality high for buyers and ensures you get the support you need from the start.",
+        a: "Sign up as an organiser in minutes. Go to 'For Organisers' at the top of any page and click 'Start selling tickets.' Create your account, build your first event, and submit it for publishing. Every event is reviewed against our content and safety policy within 24 to 48 hours, and most are approved the same business day. No approval gate on organisers. Only on events.",
       },
       {
         q: 'Is it free to create an account?',
@@ -60,15 +63,15 @@ export const helpTopics: HelpTopic[] = [
       },
       {
         q: 'How is EventLinqs different from Ticketmaster or Eventbrite?',
-        a: "EventLinqs is built specifically for African culture and community events. Mainstream platforms treat these events as a small subset of their business. For us, they are the whole business. That means all-in pricing with no hidden fees at checkout, WhatsApp-native sharing, squad bookings so whole groups can buy together, and support from a team that understands the events we serve. We are also curated: every organiser on the platform has been vetted and onboarded by our team.",
+        a: "EventLinqs is built specifically for African culture and community events, and open to every organiser and every community that wants to use a platform that gets it right. Mainstream platforms treat diaspora events as a small subset of their business. For us, they are the whole business. That means all-in pricing with no hidden fees at checkout, WhatsApp-native sharing, squad bookings so whole groups can buy together, and support from a team that understands the events we serve. We are also built on transparency: what you see at checkout is what you pay. No convenience fee surprises at the final step.",
       },
       {
         q: 'How do I contact EventLinqs support?',
-        a: "Use the contact form on our website. Select the relevant topic and describe your issue. We reply to all messages within 1 business day, Monday to Friday. For organiser event-day emergencies, approved organisers receive a dedicated emergency contact at onboarding.",
+        a: "Use the contact form on our website. Select the relevant topic and describe your issue. We reply to all messages within 1 business day, Monday to Friday. For organiser event-day emergencies, contact us through the form and mark your message as urgent.",
       },
       {
         q: 'I am an organiser based in Africa. Can I work with EventLinqs?',
-        a: "Yes, we want to hear from you. Our launch focus is diaspora communities in Australia, the UK, Canada, Europe, and the United States. Extending the platform to events across Africa is a core part of our long-term mission. Reach out via the partnership form on our website. We are actively speaking with promoters and venues on the continent as part of our expansion planning.",
+        a: "Yes, we want to hear from you. Our launch focus is diaspora communities in Australia, the UK, Canada, Europe, and the United States. We are expanding to support events across Africa, and we want to be in conversation with the right people ahead of that. Reach out through the support form on our website and select Partnership as the topic. We are actively speaking with promoters, venues, and cultural organisations on the continent.",
       },
     ],
   },
@@ -132,23 +135,19 @@ export const helpTopics: HelpTopic[] = [
   {
     slug: 'selling-tickets',
     title: 'Selling Tickets',
-    description: 'For organisers: how to apply, set up events, get paid, and run your event day.',
+    description: 'For organisers: how to sign up, set up events, get paid, and run your event day.',
     articles: [
       {
         q: 'Can anyone sell tickets on EventLinqs?',
-        a: "EventLinqs is a curated platform. We do not offer open signup for organisers. New organisers apply through our website, and we review each application before granting access to list events. This keeps quality high for buyers and ensures you get the onboarding support needed to run a successful event.",
+        a: "Yes. Anyone can create an organiser account and start building events straight away. We welcome organisers from every community and for every kind of event, from concerts and cultural festivals to birthday parties, weddings, and corporate events. Every event goes through a content and safety review before it publishes, usually within 24 to 48 hours. The review is on the event, not on you as an organiser.",
       },
       {
-        q: 'How do I apply to become an organiser?',
-        a: "Complete the organiser application form on our website. You will need to provide basic details about yourself or your organisation and the type of events you run. We review applications within 2 business days and reply to every application, whether approved or not.",
+        q: 'How do I become an organiser?',
+        a: "Sign up for an EventLinqs account, then click 'Become an organiser' from your dashboard. You will be asked for your organisation or artist name, a contact email, and a payout account for when your events earn revenue. That is it. You can start building your first event immediately.",
       },
       {
-        q: 'What does the vetting process involve?',
-        a: "We review your application details, including your organisation name, the type of events you run, and your contact information. We may ask for additional details about your first planned event. We are looking for genuine event organisers with real events to list, not ticket resellers.",
-      },
-      {
-        q: 'What happens after I am approved?',
-        a: "Approved organisers are scheduled for a short onboarding call with our team. On the call, we walk you through the platform, help you set up your first event, and answer any questions about fees, payouts, and the tools available to you. You go live after the onboarding call is complete.",
+        q: 'How does event review work?',
+        a: "Every event you submit for publishing is reviewed against our content and safety policy. We check that event details are accurate, that pricing is fair, and that the event complies with our platform terms. Most reviews are completed the same business day. Once approved, your event goes live immediately on the platform. For returning organisers with a clean track record, reviews become faster over time.",
       },
       {
         q: 'What does it cost to sell tickets on EventLinqs?',
@@ -160,7 +159,7 @@ export const helpTopics: HelpTopic[] = [
       },
       {
         q: 'Which countries support organiser payouts?',
-        a: "At launch, payout routes are available in Australia, the UK, Canada, the United States, and most European countries via Stripe Connect. Payout routes for African countries are part of our expansion. If you are an organiser on the African continent, reach out via the partnership form on our website to discuss working with us.",
+        a: "At launch, payout routes are available in Australia, the UK, Canada, the United States, and most European countries via Stripe Connect. Payout routes for African countries are part of our expansion. If you are an organiser on the African continent, reach out via the support form on our website to discuss working with us.",
       },
       {
         q: 'Can I customise my event page?',
@@ -184,11 +183,11 @@ export const helpTopics: HelpTopic[] = [
       },
       {
         q: 'What marketing support does EventLinqs provide?',
-        a: "Curated events are promoted across our social media channels and included in category-specific pages visible to buyers browsing the platform. There is no additional charge for this. We do not guarantee specific reach or results for any individual event. Organisers are responsible for their own primary marketing.",
+        a: "Events on the platform are promoted across our social media channels and included in category-specific pages visible to buyers browsing the platform. There is no additional charge for this. We do not guarantee specific reach or results for any individual event. Organisers are responsible for their own primary marketing.",
       },
       {
-        q: 'Is there emergency support available on the day of my event?',
-        a: "Yes. Approved organisers receive a dedicated emergency contact when they complete onboarding. This contact is for critical event-day operational issues only, such as QR scanning failures or urgent venue changes. It is not a general support line.",
+        q: 'Is there support available on the day of my event?',
+        a: "Yes. If you run into operational issues on the day, such as QR scanning failures or last-minute venue changes, contact us through the support form and mark your message as urgent. New organisers receive step-by-step guidance during the event creation flow in the platform itself. If you need help at any point, our support team replies within 1 business day via the contact form.",
       },
       {
         q: 'Can I sell tickets at the door on the night?',
@@ -228,7 +227,7 @@ export const helpTopics: HelpTopic[] = [
       },
       {
         q: 'Which countries can receive organiser payouts?',
-        a: "At launch, payout routes are live in Australia, the UK, Canada, the United States, and most European countries via Stripe Connect. Payout routes for African countries are part of our expansion roadmap. If you are an organiser on the African continent, contact us via the partnership form to discuss working with us ahead of that.",
+        a: "At launch, payout routes are live in Australia, the UK, Canada, the United States, and most European countries via Stripe Connect. Payout routes for African countries are part of our expansion roadmap. If you are an organiser on the African continent, contact us via the support form to discuss working with us ahead of that.",
       },
       {
         q: 'What is the booking fee and where does it go?',
@@ -316,7 +315,7 @@ export const helpTopics: HelpTopic[] = [
       },
       {
         q: 'How quickly will I receive a response?',
-        a: "We aim to respond within 1 business day, Monday to Friday. For organiser event-day emergencies, approved organisers have access to a dedicated emergency contact. We do not currently offer 24/7 support.",
+        a: "We aim to respond within 1 business day, Monday to Friday. For urgent event-day issues, mark your message as urgent in the contact form. We do not currently offer 24/7 support.",
       },
       {
         q: 'Is there a phone number I can call?',
@@ -324,7 +323,7 @@ export const helpTopics: HelpTopic[] = [
       },
       {
         q: 'I am an organiser and something has gone wrong at my event right now. What do I do?',
-        a: "Approved organisers receive a dedicated emergency contact when they complete onboarding. Use that contact for event-day operational emergencies such as QR scanning issues or a sudden venue change. If you cannot reach us via that channel, send a message through the contact form with URGENT in the subject line.",
+        a: "Send a message through the contact form with URGENT in the subject line. Describe the issue as specifically as possible: what is happening, at which venue, and what you have already tried. We monitor for urgent messages and will respond as quickly as we can.",
       },
       {
         q: 'Where is the EventLinqs team based?',
@@ -332,7 +331,7 @@ export const helpTopics: HelpTopic[] = [
       },
       {
         q: 'I am an organiser or venue based in Africa. Can I work with EventLinqs?',
-        a: "Yes. Reach out via the contact form and select 'Partnership' as your topic. We are actively building toward an Africa launch and want to speak with promoters, venues, and cultural organisations on the continent now. We cannot give a fixed timeline for African payout routes and local payment methods, but those are part of our expansion and we want to be in conversation with the right people ahead of that.",
+        a: "Yes. Reach out via the contact form and select 'Partnership' as your topic. We are expanding to support events across Africa, and we want to hear from you. We cannot give a fixed timeline for African payout routes and local payment methods, but those are part of our expansion and we want to be in conversation with the right people ahead of that.",
       },
       {
         q: 'I am interested in a partnership or commercial arrangement. Who do I contact?',

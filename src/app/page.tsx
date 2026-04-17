@@ -198,7 +198,7 @@ export default async function HomePage() {
                     Browse Events
                   </Link>
                   <Link
-                    href="/organiser"
+                    href="/organisers/signup"
                     className="inline-flex items-center rounded-lg border border-white/30 bg-white/10 px-6 py-3 text-base font-semibold text-white backdrop-blur-sm hover:bg-white/20 transition-colors"
                   >
                     Create an Event
@@ -297,20 +297,27 @@ export default async function HomePage() {
               linkLabel="Explore culture"
             />
 
-            {/* Sub-tab strip — layout only, data wired Session 3 */}
+            {/* Sub-tab strip — each category pill navigates to its landing page */}
             <div className="mt-6 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-              {['All', 'Afrobeats', 'Amapiano', 'Gospel', 'Comedy', 'Owambe', 'Business'].map((tab, i) => (
-                <button
-                  key={tab}
-                  type="button"
-                  className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-                    i === 0
-                      ? 'bg-gold-500 text-white'
-                      : 'bg-white text-ink-600 hover:bg-gold-100 hover:text-gold-600 border border-ink-200'
-                  }`}
+              {/* "All" stays on homepage — no navigation */}
+              <span className="shrink-0 rounded-full px-4 py-1.5 text-sm font-medium bg-gold-500 text-white">
+                All
+              </span>
+              {[
+                { label: 'Afrobeats',  href: '/categories/afrobeats' },
+                { label: 'Amapiano',   href: '/categories/amapiano' },
+                { label: 'Gospel',     href: '/categories/gospel' },
+                { label: 'Comedy',     href: '/events?category=comedy' },
+                { label: 'Owambe',     href: '/categories/owambe' },
+                { label: 'Business',   href: '/categories/networking' },
+              ].map(({ label, href }) => (
+                <Link
+                  key={label}
+                  href={href}
+                  className="shrink-0 rounded-full px-4 py-1.5 text-sm font-medium bg-white text-ink-600 hover:bg-gold-100 hover:text-gold-600 border border-ink-200 transition-colors"
                 >
-                  {tab}
-                </button>
+                  {label}
+                </Link>
               ))}
             </div>
 
@@ -365,6 +372,7 @@ export default async function HomePage() {
                 {/* Feature bullets */}
                 <ul className="mt-8 space-y-3">
                   {[
+                    'Open to every community and every kind of event',
                     'All-in pricing: no surprise fees at checkout',
                     'Real-time sales dashboard and scan app',
                     'Squad booking: your fans buy together',
@@ -383,13 +391,13 @@ export default async function HomePage() {
 
                 <div className="mt-10 flex flex-wrap gap-3">
                   <Link
-                    href="/organiser"
+                    href="/organisers/signup"
                     className="inline-flex items-center rounded-lg bg-gold-500 px-6 py-3 text-sm font-semibold text-white hover:bg-gold-600 transition-colors"
                   >
                     Start selling tickets
                   </Link>
                   <Link
-                    href="/organiser/pricing"
+                    href="/pricing"
                     className="inline-flex items-center rounded-lg border border-white/20 px-6 py-3 text-sm font-semibold text-white/80 hover:border-white/40 hover:text-white transition-colors"
                   >
                     View pricing

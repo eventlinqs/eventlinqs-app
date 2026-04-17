@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button'
 
 const NAV_LINKS = [
   { label: 'Browse Events', href: '/events' },
-  { label: 'For Organisers', href: '/organiser' },
+  { label: 'For Organisers', href: '/organisers' },
 ]
 
 /**

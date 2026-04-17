@@ -23,9 +23,10 @@ const FOOTER_LINKS = {
     { label: 'Cultural Celebrations', href: '/events?category=community' },
   ],
   organisers: [
-    { label: 'Create an Event',  href: '/organiser/events/new' },
-    { label: 'Pricing',          href: '/organiser/pricing' },
-    { label: 'Organiser Login',  href: '/login?tab=organiser' },
+    { label: 'Start selling tickets', href: '/organisers/signup' },
+    { label: 'How it works',          href: '/organisers' },
+    { label: 'Pricing',               href: '/pricing' },
+    { label: 'Organiser login',       href: '/login?tab=organiser' },
   ],
   help: [
     { label: 'Help Centre',   href: '/help' },

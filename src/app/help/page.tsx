@@ -50,13 +50,13 @@ const TOPICS: HelpTopic[] = [
     icon: CreditCard,
     title: 'Payments & Payouts',
     description: 'Stripe, currencies, refunds, fees.',
-    href: '/help/payments',
+    href: '/help/payments-and-payouts',
   },
   {
     icon: ShieldCheck,
     title: 'Account & Privacy',
     description: 'Login, data, security.',
-    href: '/help/account',
+    href: '/help/account-and-privacy',
   },
   {
     icon: MessagesSquare,
