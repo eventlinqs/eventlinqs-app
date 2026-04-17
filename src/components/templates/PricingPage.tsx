@@ -5,7 +5,7 @@ import { ContentSection } from '@/components/layout/ContentSection'
 import { Button } from '@/components/ui/Button'
 
 /**
- * PricingPage — /pricing
+ * PricingPage - /pricing
  *
  * NOTE ON FEE NUMBERS: The placeholder rates below ("From 2.9% + AUD 0.59 per paid ticket")
  * need to be reviewed and confirmed by Lawal before launch. The actual fee structure is
@@ -24,10 +24,10 @@ const TIERS = [
     price: 'Free forever',
     priceDetail: null,
     description:
-      'Host any free event at zero cost. No platform fees. No hidden charges. Keep every registration you collect.',
+      'Host any free event at zero cost. No platform fees. No hidden charges. Keep every dollar you collect.',
     features: [
       'Unlimited free events',
-      'Unlimited ticket registrations',
+      'Unlimited free tickets',
       'All platform features included',
       'Real-time sales dashboard and scan app',
       'Guest list export and check-in tools',
@@ -106,7 +106,7 @@ export function PricingPage() {
   return (
     <PageShell>
 
-      {/* ── 1. Hero ───────────────────────────────────────────────── */}
+      {/* -- 1. Hero ------------------------------------------------- */}
       <PageHero
         eyebrow="PRICING"
         title="Simple. Transparent. Fair."
@@ -115,7 +115,7 @@ export function PricingPage() {
         variant="premium"
       />
 
-      {/* ── 2. Pricing tiers ──────────────────────────────────────── */}
+      {/* -- 2. Pricing tiers ---------------------------------------- */}
       <ContentSection surface="base" width="wide">
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           {TIERS.map(tier => (
@@ -188,7 +188,7 @@ export function PricingPage() {
         </p>
       </ContentSection>
 
-      {/* ── 3. FAQ ────────────────────────────────────────────────── */}
+      {/* -- 3. FAQ -------------------------------------------------- */}
       <ContentSection surface="alt" width="prose">
         <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent)]">
           Pricing FAQ
@@ -236,7 +236,7 @@ export function PricingPage() {
         </div>
       </ContentSection>
 
-      {/* ── 4. Final CTA band ─────────────────────────────────────── */}
+      {/* -- 4. Final CTA band --------------------------------------- */}
       <section className="relative overflow-hidden bg-[var(--surface-dark)] py-20 md:py-28">
         <div
           className="pointer-events-none absolute inset-x-0 top-0 h-0.5"

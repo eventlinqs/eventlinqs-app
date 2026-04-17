@@ -11,7 +11,7 @@ import { ButtonPair } from '@/components/ui/ButtonPair'
 import { helpTopics } from '@/lib/help-content'
 
 /**
- * OrganisersLandingPage — /organisers
+ * OrganisersLandingPage - /organisers
  *
  * Self-serve organiser landing page. Reflects Decision A (self-serve, no approval gates)
  * and Decision B (open to every community, culturally-rooted brand).
@@ -81,12 +81,12 @@ export function OrganisersLandingPage() {
   return (
     <PageShell>
 
-      {/* ── 1. Custom hero (premium styling, ButtonPair CTA) ──────── */}
+      {/* -- 1. Custom hero (premium styling, ButtonPair CTA) -------- */}
       <section
         className="relative bg-[var(--color-navy-950)] text-white py-24 md:py-32 lg:py-40 overflow-hidden"
         aria-labelledby="organisers-hero-heading"
       >
-        {/* Radial gradient — accent glow top-right */}
+        {/* Radial gradient - accent glow top-right */}
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0"
@@ -94,7 +94,7 @@ export function OrganisersLandingPage() {
             backgroundImage: 'radial-gradient(ellipse 80% 60% at 100% 0%, var(--color-gold-400, #E8B738) 12%, transparent 60%)',
           }}
         />
-        {/* Secondary radial — soft white glow bottom-left */}
+        {/* Secondary radial - soft white glow bottom-left */}
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0"
@@ -154,7 +154,7 @@ export function OrganisersLandingPage() {
         </div>
       </section>
 
-      {/* ── 2. Value pillars ──────────────────────────────────────── */}
+      {/* -- 2. Value pillars ---------------------------------------- */}
       <ContentSection surface="alt" width="default" topBorder>
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           {PILLARS.map(({ icon: Icon, title, body }) => (
@@ -176,7 +176,7 @@ export function OrganisersLandingPage() {
         </div>
       </ContentSection>
 
-      {/* ── 3. How it works ───────────────────────────────────────── */}
+      {/* -- 3. How it works ----------------------------------------- */}
       <ContentSection surface="base" width="default">
         <div className="max-w-3xl">
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent)]">
@@ -206,7 +206,7 @@ export function OrganisersLandingPage() {
         </ol>
       </ContentSection>
 
-      {/* ── 4. Open to every community ────────────────────────────── */}
+      {/* -- 4. Open to every community ------------------------------ */}
       <ContentSection surface="alt" width="default">
         <div className="max-w-3xl">
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent)]">
@@ -245,7 +245,7 @@ export function OrganisersLandingPage() {
         </div>
       </ContentSection>
 
-      {/* ── 5. FAQ ────────────────────────────────────────────────── */}
+      {/* -- 5. FAQ -------------------------------------------------- */}
       {FAQ_ARTICLES.length > 0 && (
         <ContentSection surface="base" width="prose">
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent)]">
@@ -294,7 +294,7 @@ export function OrganisersLandingPage() {
         </ContentSection>
       )}
 
-      {/* ── 6. Final CTA band ─────────────────────────────────────── */}
+      {/* -- 6. Final CTA band --------------------------------------- */}
       <section className="relative overflow-hidden bg-[var(--surface-dark)] py-20 md:py-28">
         <div
           className="pointer-events-none absolute inset-x-0 top-0 h-0.5"
