@@ -76,7 +76,7 @@ function TikTokIcon() {
 
 export function SiteFooter() {
   return (
-    <footer className="bg-ink-900 text-white" aria-label="Site footer">
+    <footer className="bg-ink-950 text-white" aria-label="Site footer">
       {/* Mobile accordion / Desktop 4-col grid */}
       <div className="mx-auto max-w-7xl px-4 pt-20 pb-10 sm:px-6 lg:px-8">
 

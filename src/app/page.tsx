@@ -19,6 +19,12 @@ import { CulturalPicksRail } from '@/components/features/events/cultural-picks-r
 import { getCityPhoto } from '@/lib/images/city-photo'
 import { detectLocation } from '@/lib/geo/detect'
 import { LocationFilterBanner } from '@/components/features/events/location-filter-banner'
+import {
+  SECTION_DEFAULT,
+  SECTION_TIGHT,
+  CONTAINER,
+  HEADER_TO_CONTENT,
+} from '@/lib/ui/spacing'
 
 /**
  * Homepage — the visceral experience layer.
@@ -359,9 +365,9 @@ export default async function HomePage() {
           uniqueCitiesCount={uniqueCitiesCount}
         />
 
-        {/* 2. Bento grid row 1 */}
-        <section aria-label="Featured events" className="bg-canvas py-16 sm:py-20">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        {/* 2. Bento grid row 1 — cream, follows hero (colour change) → DEFAULT */}
+        <section aria-label="Featured events" className={`bg-canvas ${SECTION_DEFAULT}`}>
+          <div className={CONTAINER}>
             <div className="mb-4">
               <LocationFilterBanner
                 location={detectedLocation}
@@ -388,7 +394,7 @@ export default async function HomePage() {
               </Link>
             </div>
 
-            <div className="mt-8">
+            <div className={HEADER_TO_CONTENT}>
               {featuredHero ? (
                 <BentoGrid>
                   <BentoTile size="hero">
@@ -437,10 +443,10 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* 3. This Week rail */}
+        {/* 3. This Week rail — cream-on-cream after Bento → TIGHT */}
         {thisWeek.length > 0 && (
-          <section aria-label="This week" className="bg-canvas pb-16 sm:pb-20">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <section aria-label="This week" className={`bg-canvas ${SECTION_TIGHT}`}>
+            <div className={CONTAINER}>
               <SnapRail
                 eyebrow="This week"
                 title="What's happening near you"
@@ -454,10 +460,10 @@ export default async function HomePage() {
           </section>
         )}
 
-        {/* 4. Cultural Picks — tab + rail per tab */}
+        {/* 4. Cultural Picks — cream-on-cream → TIGHT */}
         {culturalPicksTabs.length > 0 && (
-          <section aria-labelledby="culture-heading" className="bg-ink-100 py-16 sm:py-20">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <section aria-labelledby="culture-heading" className={`bg-canvas ${SECTION_TIGHT}`}>
+            <div className={CONTAINER}>
               <div className="flex items-end justify-between gap-4">
                 <div className="flex items-start gap-3">
                   <div className="mt-1 h-8 w-0.5 shrink-0 bg-gold-500" aria-hidden />
@@ -486,12 +492,12 @@ export default async function HomePage() {
         {/* 5. Live Vibe marquee */}
         <LiveVibeMarquee items={vibeImages} />
 
-        {/* 6. By City rail */}
-        <section aria-labelledby="cities-heading" className="bg-canvas py-16 sm:py-20">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        {/* 6. By City rail — cream, follows dark marquee (colour change) → DEFAULT */}
+        <section aria-labelledby="cities-heading" className={`bg-canvas ${SECTION_DEFAULT}`}>
+          <div className={CONTAINER}>
             <SnapRail
-              eyebrow="Australia and beyond"
-              title="Community events near you"
+              eyebrow="By city"
+              title="Browse by city"
               headingId="cities-heading"
               railLabel="Events by city"
               containerBg="canvas"
@@ -509,9 +515,9 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* 7. For Organisers */}
-        <section aria-labelledby="organisers-heading" className="bg-ink-900 py-16 sm:py-20 lg:py-24">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        {/* 7. For Organisers — dark, follows cream (colour change) → DEFAULT */}
+        <section aria-labelledby="organisers-heading" className={`bg-ink-950 ${SECTION_DEFAULT}`}>
+          <div className={CONTAINER}>
             <div className="flex flex-col gap-12 lg:flex-row lg:items-center lg:gap-16">
               <div className="lg:max-w-lg">
                 <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-400">
