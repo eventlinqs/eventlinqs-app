@@ -8,7 +8,7 @@ import type {
   FeaturedHeroEventSlide,
 } from '@/components/features/events/featured-event-hero'
 import { CATEGORY_HIGHLIGHT_SLIDES } from '@/lib/content/category-highlight-slides'
-import { BentoGrid, BentoTile } from '@/components/features/events/bento-grid'
+import { BentoGrid, BentoTile, BentoSupportingColumn } from '@/components/features/events/bento-grid'
 import { EventBentoTile } from '@/components/features/events/event-bento-tile'
 import type { BentoEvent } from '@/components/features/events/event-bento-tile'
 import { ThisWeekCard } from '@/components/features/events/this-week-card'
@@ -353,15 +353,17 @@ export default async function HomePage() {
                     )}
                   </BentoTile>
 
-                  {supportingEvents.map(event => (
-                    <BentoTile key={event.id} size="supporting">
-                      <EventBentoTile
-                        event={event}
-                        size="supporting"
-                        initiallySaved={savedEventIds.has(event.id)}
-                      />
-                    </BentoTile>
-                  ))}
+                  <BentoSupportingColumn>
+                    {supportingEvents.map(event => (
+                      <BentoTile key={event.id} size="supporting">
+                        <EventBentoTile
+                          event={event}
+                          size="supporting"
+                          initiallySaved={savedEventIds.has(event.id)}
+                        />
+                      </BentoTile>
+                    ))}
+                  </BentoSupportingColumn>
                 </BentoGrid>
               ) : (
                 <div className="flex items-center justify-center rounded-2xl border border-dashed border-ink-200 bg-white py-20 text-center">

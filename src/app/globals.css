@@ -172,8 +172,8 @@ body {
               border-color 220ms ease;
 }
 .tile-lift:hover {
-  transform: translate3d(0, -4px, 0);
-  box-shadow: 0 24px 48px -24px rgba(10, 22, 40, 0.45);
+  transform: translate3d(0, -2px, 0);
+  box-shadow: 0 20px 40px -24px rgba(10, 22, 40, 0.4);
 }
 
 /* Utility: hide scrollbar but keep scrolling (for horizontal strips). */
