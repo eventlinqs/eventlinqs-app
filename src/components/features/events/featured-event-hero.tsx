@@ -2,16 +2,22 @@ import Link from 'next/link'
 import { SmartMedia } from '@/components/ui/smart-media'
 import { GlassCard } from '@/components/ui/glass-card'
 import { getFeaturedHeroBackground, type EventMediaInput } from '@/lib/images/event-media'
+import type { CategoryHighlightSlide } from '@/lib/content/category-highlight-slides'
+import {
+  HeroCarouselClient,
+  type HeroCarouselSlide,
+} from './hero-carousel-client'
 
 /**
- * FeaturedEventHero — full-viewport cinematic hero for the homepage.
+ * FeaturedEventHero — full-viewport cinematic hero carousel.
  *
- * Background: SmartMedia (video preferred, then carousel, then Ken Burns).
- * Foreground (left): eyebrow, display headline, subcopy, CTAs.
- * Foreground (right, md+): floating glassmorphism event info card.
+ * Accepts a mix of real event slides + curated category highlight slides.
+ * Pre-resolves each slide's background media in parallel on the server,
+ * then hands pre-rendered JSX to the client carousel component.
  *
- * Always renders — even if no featured event exists, falls back to
- * Pexels category video + generic copy. This is the stage the product lives on.
+ * The H1 is always the brand promise ("Where the culture gathers.") — event
+ * identity lives in the ribbon card on the right. The eyebrow rotates based
+ * on the active slide's signal (soon, trending, or brand default).
  */
 
 export interface FeaturedHeroEvent extends EventMediaInput {
@@ -27,24 +33,21 @@ export interface FeaturedHeroEvent extends EventMediaInput {
   percent_sold?: number | null
 }
 
+export interface FeaturedHeroEventSlide {
+  event: FeaturedHeroEvent
+  ticketsSoldToday: number
+}
+
 const HERO_SUBCOPY =
   'Tickets for events that move you. Afrobeats, Gospel, Amapiano, Owambe, Comedy. No hidden fees, ever.'
 
-function heroEyebrow(event: FeaturedHeroEvent | null): string {
-  if (!event) return 'Made for the diaspora'
+function heroEyebrow(event: FeaturedHeroEvent): string {
   const daysToStart = Math.ceil(
     (new Date(event.start_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24),
   )
   if (daysToStart >= 0 && daysToStart <= 2) return 'Happening this weekend'
   if ((event.percent_sold ?? 0) > 70) return 'Trending now'
   return 'Made for the diaspora'
-}
-
-interface Props {
-  event: FeaturedHeroEvent | null
-  liveEventCount?: number
-  uniqueCitiesCount?: number
-  ticketsSoldToday?: number
 }
 
 function formatLongDate(iso: string): string {
@@ -64,136 +67,151 @@ function formatFromPrice(tiers: FeaturedHeroEvent['ticket_tiers']): string | nul
   return `From ${cheapest.currency ?? 'AUD'} ${formatted}`
 }
 
+function renderBackground(media: Awaited<ReturnType<typeof getFeaturedHeroBackground>>) {
+  return (
+    <>
+      <SmartMedia media={media} autoplay priority />
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            'linear-gradient(180deg, rgba(10,22,40,0.45) 0%, rgba(10,22,40,0.75) 65%, rgba(10,14,26,1) 100%)',
+        }}
+        aria-hidden
+      />
+      <div
+        className="absolute inset-0 opacity-80"
+        style={{
+          background:
+            'radial-gradient(ellipse 80% 60% at 10% 40%, rgba(10,22,40,0.1) 0%, rgba(10,22,40,0.7) 70%)',
+        }}
+        aria-hidden
+      />
+    </>
+  )
+}
+
+function renderEventCard(event: FeaturedHeroEvent, ticketsSoldToday: number) {
+  const price = formatFromPrice(event.ticket_tiers ?? null)
+  return (
+    <GlassCard variant="dark" as="aside" className="rounded-2xl p-5">
+      <p className="font-display text-[10px] font-semibold uppercase tracking-widest text-gold-400">
+        Happening soon
+      </p>
+      <h2 className="mt-2 font-display text-xl font-bold leading-tight text-white line-clamp-2">
+        {event.title}
+      </h2>
+      <div className="mt-3 space-y-1 text-sm text-white/75">
+        <p>{formatLongDate(event.start_date)}</p>
+        {event.venue_name && (
+          <p className="line-clamp-1">
+            {event.venue_name}
+            {event.venue_city ? ` \u00B7 ${event.venue_city}` : ''}
+          </p>
+        )}
+        {event.organisation?.name && (
+          <p className="text-white/55">by {event.organisation.name}</p>
+        )}
+        {price && <p className="font-semibold text-gold-300">{price}</p>}
+      </div>
+      {ticketsSoldToday > 0 && (
+        <div className="mt-3.5 flex items-center gap-2 text-[11px] font-semibold text-white/85">
+          <span className="relative h-2 w-2 rounded-full bg-coral-500">
+            <span className="absolute inset-0 rounded-full bg-coral-500 opacity-70 animate-ping" />
+          </span>
+          {ticketsSoldToday} tickets sold today
+        </div>
+      )}
+      <Link
+        href={`/events/${event.slug}`}
+        className="mt-5 inline-flex w-full items-center justify-center rounded-lg border border-gold-400/60 bg-gold-500/15 px-4 py-2.5 text-sm font-semibold text-gold-300 transition-colors duration-200 hover:bg-gold-500/25"
+      >
+        View event <span aria-hidden className="ml-1.5">&rarr;</span>
+      </Link>
+    </GlassCard>
+  )
+}
+
+function renderHighlightCard(slide: CategoryHighlightSlide) {
+  return (
+    <GlassCard variant="dark" as="aside" className="rounded-2xl p-5">
+      <p className="font-display text-[10px] font-semibold uppercase tracking-widest text-gold-400">
+        {slide.cardEyebrow}
+      </p>
+      <h2 className="mt-2 font-display text-xl font-bold leading-tight text-white">
+        {slide.cardTitle}
+      </h2>
+      <p className="mt-3 text-sm text-white/75">{slide.cardCopy}</p>
+      <Link
+        href={slide.ctaHref}
+        className="mt-5 inline-flex w-full items-center justify-center rounded-lg border border-gold-400/60 bg-gold-500/15 px-4 py-2.5 text-sm font-semibold text-gold-300 transition-colors duration-200 hover:bg-gold-500/25"
+      >
+        {slide.ctaLabel} <span aria-hidden className="ml-1.5">&rarr;</span>
+      </Link>
+    </GlassCard>
+  )
+}
+
+interface Props {
+  eventSlides: FeaturedHeroEventSlide[]
+  highlightSlides: CategoryHighlightSlide[]
+  liveEventCount?: number
+  uniqueCitiesCount?: number
+}
+
 export async function FeaturedEventHero({
-  event,
+  eventSlides,
+  highlightSlides,
   liveEventCount = 0,
   uniqueCitiesCount = 0,
-  ticketsSoldToday = 0,
 }: Props) {
-  const input: EventMediaInput = event ?? {
-    title: 'Where the culture gathers',
-    category: { slug: 'festival', name: 'Festival' },
+  // Resolve all slide backgrounds in parallel
+  const [eventMedia, highlightMedia] = await Promise.all([
+    Promise.all(eventSlides.map(s => getFeaturedHeroBackground(s.event))),
+    Promise.all(highlightSlides.map(s => getFeaturedHeroBackground(s.media))),
+  ])
+
+  const slides: HeroCarouselSlide[] = [
+    ...eventSlides.map((s, i) => ({
+      key: `event-${s.event.id}`,
+      eyebrow: heroEyebrow(s.event),
+      background: renderBackground(eventMedia[i]),
+      card: renderEventCard(s.event, s.ticketsSoldToday),
+      primaryHref: `/events/${s.event.slug}`,
+      primaryLabel: 'Get tickets',
+    })),
+    ...highlightSlides.map((s, i) => ({
+      key: `highlight-${s.key}`,
+      eyebrow: s.eyebrow,
+      background: renderBackground(highlightMedia[i]),
+      card: renderHighlightCard(s),
+      primaryHref: s.ctaHref,
+      primaryLabel: s.ctaLabel,
+    })),
+  ]
+
+  // Fallback: empty-state single slide if somehow we got nothing
+  if (slides.length === 0) {
+    const fallbackMedia = await getFeaturedHeroBackground({
+      title: 'Where the culture gathers',
+      category: { slug: 'festival', name: 'Festival' },
+    })
+    slides.push({
+      key: 'fallback',
+      eyebrow: 'Made for the diaspora',
+      background: renderBackground(fallbackMedia),
+      card: null,
+      primaryHref: '/events',
+      primaryLabel: 'Browse events',
+    })
   }
-  const media = await getFeaturedHeroBackground(input)
-
-  const eyebrow = heroEyebrow(event)
-  const subcopy = HERO_SUBCOPY
-
-  const price = event ? formatFromPrice(event.ticket_tiers ?? null) : null
-  const primaryHref = event ? `/events/${event.slug}` : '/events'
-  const primaryLabel = event ? 'Get tickets' : 'Browse events'
 
   return (
-    <section
-      aria-label="Featured event"
-      className="relative flex min-h-[70vh] items-end overflow-hidden bg-navy-950 md:min-h-[90vh]"
-    >
-      <div className="absolute inset-0">
-        <SmartMedia media={media} autoplay priority />
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              'linear-gradient(180deg, rgba(10,22,40,0.45) 0%, rgba(10,22,40,0.75) 65%, rgba(10,14,26,1) 100%)',
-          }}
-          aria-hidden
-        />
-        <div
-          className="absolute inset-0 opacity-80"
-          style={{
-            background:
-              'radial-gradient(ellipse 80% 60% at 10% 40%, rgba(10,22,40,0.1) 0%, rgba(10,22,40,0.7) 70%)',
-          }}
-          aria-hidden
-        />
-      </div>
-
-      <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-16 sm:px-6 lg:px-8 lg:pb-24">
-        <div className="flex flex-col gap-10 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-2xl animate-fade-rise">
-            <p className="font-display text-[11px] font-semibold uppercase tracking-[0.28em] text-gold-400">
-              {eyebrow}
-            </p>
-            <h1
-              className="mt-4 font-display font-extrabold leading-[0.95] tracking-tight text-white"
-              style={{ fontSize: 'clamp(2.75rem, 7vw, 6rem)' }}
-            >
-              Where the <span className="text-gold-400">culture</span> gathers.
-            </h1>
-            <p className="mt-5 max-w-xl text-base text-white/80 sm:text-lg">{subcopy}</p>
-
-            {liveEventCount >= 10 && (
-              <div className="mt-4 inline-flex items-center gap-2.5 text-[13px] text-white/75 font-medium">
-                <span className="relative h-2 w-2 rounded-full bg-gold-400">
-                  <span className="absolute inset-0 rounded-full bg-gold-400 opacity-60 animate-ping" />
-                </span>
-                {liveEventCount} events live now
-                <span className="h-3 w-px bg-white/30" />
-                {uniqueCitiesCount} {uniqueCitiesCount === 1 ? 'city' : 'cities'}
-                <span className="h-3 w-px bg-white/30" />
-                This week
-              </div>
-            )}
-
-            <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Link
-                href={primaryHref}
-                className="inline-flex items-center rounded-lg bg-gold-500 px-6 py-3 text-base font-semibold text-white shadow-lg shadow-gold-500/20 transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.02] hover:bg-gold-600 hover:shadow-gold-500/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
-              >
-                {primaryLabel}
-              </Link>
-              <Link
-                href="/events"
-                className="inline-flex items-center rounded-lg border border-white/25 bg-white/5 px-6 py-3 text-base font-semibold text-white backdrop-blur-md transition-colors duration-200 hover:border-white/50 hover:bg-white/10"
-              >
-                Browse all events
-              </Link>
-            </div>
-          </div>
-
-          {event && (
-            <GlassCard
-              variant="dark"
-              as="aside"
-              className="hidden w-full max-w-sm shrink-0 animate-fade-rise rounded-2xl p-5 lg:block"
-            >
-              <p className="font-display text-[10px] font-semibold uppercase tracking-widest text-gold-400">
-                Happening soon
-              </p>
-              <h2 className="mt-2 font-display text-xl font-bold leading-tight text-white line-clamp-2">
-                {event.title}
-              </h2>
-              <div className="mt-3 space-y-1 text-sm text-white/75">
-                <p>{formatLongDate(event.start_date)}</p>
-                {event.venue_name && (
-                  <p className="line-clamp-1">
-                    {event.venue_name}
-                    {event.venue_city ? ` · ${event.venue_city}` : ''}
-                  </p>
-                )}
-                {event.organisation?.name && (
-                  <p className="text-white/55">by {event.organisation.name}</p>
-                )}
-                {price && <p className="font-semibold text-gold-300">{price}</p>}
-              </div>
-              {ticketsSoldToday > 0 && (
-                <div className="mt-3.5 flex items-center gap-2 text-[11px] font-semibold text-white/85">
-                  <span className="relative h-2 w-2 rounded-full bg-coral-500">
-                    <span className="absolute inset-0 rounded-full bg-coral-500 opacity-70 animate-ping" />
-                  </span>
-                  {ticketsSoldToday} tickets sold today
-                </div>
-              )}
-              <Link
-                href={`/events/${event.slug}`}
-                className="mt-5 inline-flex w-full items-center justify-center rounded-lg border border-gold-400/60 bg-gold-500/15 px-4 py-2.5 text-sm font-semibold text-gold-300 transition-colors duration-200 hover:bg-gold-500/25"
-              >
-                View event <span aria-hidden className="ml-1.5">&rarr;</span>
-              </Link>
-            </GlassCard>
-          )}
-        </div>
-      </div>
-    </section>
+    <HeroCarouselClient
+      slides={slides}
+      liveEventCount={liveEventCount}
+      uniqueCitiesCount={uniqueCitiesCount}
+      subcopy={HERO_SUBCOPY}
+    />
   )
 }

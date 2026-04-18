@@ -1,7 +1,18 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useSyncExternalStore } from 'react'
 import { useRouter } from 'next/navigation'
+
+function subscribeNoop(): () => void {
+  return () => {}
+}
+function getIsMac(): boolean {
+  if (typeof navigator === 'undefined') return false
+  return /Mac|iPhone|iPad|iPod/i.test(navigator.platform)
+}
+function getServerIsMac(): boolean {
+  return false
+}
 
 /**
  * NavSearch — Ticketmaster-pattern pill search bar.
@@ -18,13 +29,9 @@ interface Props {
 export function NavSearch({ variant = 'desktop' }: Props) {
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
-  const [isMac, setIsMac] = useState(false)
+  const isMac = useSyncExternalStore(subscribeNoop, getIsMac, getServerIsMac)
 
   useEffect(() => {
-    setIsMac(
-      typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/i.test(navigator.platform),
-    )
-
     const onKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey
       if (mod && e.key.toLowerCase() === 'k') {

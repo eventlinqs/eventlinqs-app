@@ -224,7 +224,10 @@ export default async function EventsPage({ searchParams }: Props) {
       <SiteHeader />
 
       {showFeaturedHero && featuredHero && (
-        <FeaturedEventHero event={featuredHero} />
+        <FeaturedEventHero
+          eventSlides={[{ event: featuredHero, ticketsSoldToday: 0 }]}
+          highlightSlides={[]}
+        />
       )}
 
       <div className="border-b border-ink-100 bg-white px-4 py-8 sm:px-6 lg:px-8">

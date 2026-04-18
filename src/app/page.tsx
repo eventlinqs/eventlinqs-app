@@ -3,7 +3,11 @@ import { createClient } from '@/lib/supabase/server'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { FeaturedEventHero } from '@/components/features/events/featured-event-hero'
-import type { FeaturedHeroEvent } from '@/components/features/events/featured-event-hero'
+import type {
+  FeaturedHeroEvent,
+  FeaturedHeroEventSlide,
+} from '@/components/features/events/featured-event-hero'
+import { CATEGORY_HIGHLIGHT_SLIDES } from '@/lib/content/category-highlight-slides'
 import { BentoGrid, BentoTile } from '@/components/features/events/bento-grid'
 import { EventBentoTile } from '@/components/features/events/event-bento-tile'
 import type { BentoEvent } from '@/components/features/events/event-bento-tile'
@@ -167,7 +171,35 @@ export default async function HomePage() {
     return count ?? 0
   }
 
-  const featuredTicketsSoldToday = featuredHero ? await getTicketsSoldToday(featuredHero.id) : 0
+  // ── Hero carousel candidates ─────────────────────────────────────────
+  // Score the top 5 soonest events; pick highest-scoring for rotation.
+  // Signals: percent_sold > 70 (+50), created within 48h (+25), start within 7d (+20).
+  const heroCandidateRaws = upcomingRawTyped.slice(0, 5)
+  const scoredCandidates = heroCandidateRaws.map(r => {
+    const tiers = r.ticket_tiers ?? []
+    const sold = tiers.reduce((s, t) => s + t.sold_count, 0)
+    const cap = tiers.reduce((s, t) => s + t.total_capacity, 0)
+    const pct = cap > 0 ? (sold / cap) * 100 : 0
+    const createdMs = Date.parse(r.created_at)
+    const startMs = Date.parse(r.start_date)
+    let score = 0
+    if (pct > 70) score += 50
+    if (nowMs - createdMs < 48 * 60 * 60 * 1000) score += 25
+    if (startMs - nowMs < 7 * 24 * 60 * 60 * 1000) score += 20
+    return { raw: r, score }
+  })
+  scoredCandidates.sort((a, b) => b.score - a.score)
+
+  const heroEventSlides: FeaturedHeroEventSlide[] = await Promise.all(
+    scoredCandidates.slice(0, 3).map(async ({ raw }) => ({
+      event: toFeaturedHeroEvent(raw),
+      ticketsSoldToday: await getTicketsSoldToday(raw.id),
+    })),
+  )
+
+  // Pad with category highlight slides if we have fewer than 3 real events.
+  const highlightSlidesNeeded = Math.max(0, 3 - heroEventSlides.length)
+  const heroHighlightSlides = CATEGORY_HIGHLIGHT_SLIDES.slice(0, highlightSlidesNeeded)
 
   // Bento row: featured + 3 supporting events
   const supportingOne = upcoming[1] ?? null
@@ -257,10 +289,10 @@ export default async function HomePage() {
       <main>
         {/* 1. Cinematic hero */}
         <FeaturedEventHero
-          event={featuredHero}
+          eventSlides={heroEventSlides}
+          highlightSlides={heroHighlightSlides}
           liveEventCount={liveEventCount ?? 0}
           uniqueCitiesCount={uniqueCitiesCount}
-          ticketsSoldToday={featuredTicketsSoldToday}
         />
 
         {/* 2. Bento grid row 1 */}
