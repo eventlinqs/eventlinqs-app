@@ -142,6 +142,22 @@ export default async function HomePage() {
   const featuredRaw = upcomingRawTyped[0] ?? null
   const featuredHero: FeaturedHeroEvent | null = featuredRaw ? toFeaturedHeroEvent(featuredRaw) : null
 
+  // Tickets sold today — fuels live signal on hero ribbon card
+  const todayStart = new Date()
+  todayStart.setUTCHours(0, 0, 0, 0)
+
+  async function getTicketsSoldToday(eventId: string): Promise<number> {
+    const { count } = await supabase
+      .from('orders')
+      .select('id', { count: 'exact', head: true })
+      .eq('event_id', eventId)
+      .eq('status', 'confirmed')
+      .gte('created_at', todayStart.toISOString())
+    return count ?? 0
+  }
+
+  const featuredTicketsSoldToday = featuredHero ? await getTicketsSoldToday(featuredHero.id) : 0
+
   // Bento row: featured + 3 supporting events
   const supportingOne = upcoming[1] ?? null
   const supportingTwo = upcoming[2] ?? null
@@ -233,6 +249,7 @@ export default async function HomePage() {
           event={featuredHero}
           liveEventCount={liveEventCount ?? 0}
           uniqueCitiesCount={uniqueCitiesCount}
+          ticketsSoldToday={featuredTicketsSoldToday}
         />
 
         {/* 2. Bento grid row 1 */}

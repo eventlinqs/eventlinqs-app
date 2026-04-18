@@ -30,6 +30,7 @@ interface Props {
   event: FeaturedHeroEvent | null
   liveEventCount?: number
   uniqueCitiesCount?: number
+  ticketsSoldToday?: number
 }
 
 function formatLongDate(iso: string): string {
@@ -49,7 +50,12 @@ function formatFromPrice(tiers: FeaturedHeroEvent['ticket_tiers']): string | nul
   return `From ${cheapest.currency ?? 'AUD'} ${formatted}`
 }
 
-export async function FeaturedEventHero({ event, liveEventCount = 0, uniqueCitiesCount = 0 }: Props) {
+export async function FeaturedEventHero({
+  event,
+  liveEventCount = 0,
+  uniqueCitiesCount = 0,
+  ticketsSoldToday = 0,
+}: Props) {
   const input: EventMediaInput = event ?? {
     title: 'Where the culture gathers',
     category: { slug: 'festival', name: 'Festival' },
@@ -163,15 +169,14 @@ export async function FeaturedEventHero({ event, liveEventCount = 0, uniqueCitie
                 )}
                 {price && <p className="font-semibold text-gold-300">{price}</p>}
               </div>
-              {event.sold_today && event.sold_today > 0 ? (
-                <p className="mt-4 flex items-center gap-2 text-[11px] font-semibold text-white/85">
-                  <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-coral-500 opacity-80" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-coral-500" />
+              {ticketsSoldToday > 0 && (
+                <div className="mt-3.5 flex items-center gap-2 text-[11px] font-semibold text-white/85">
+                  <span className="relative h-2 w-2 rounded-full bg-coral-500">
+                    <span className="absolute inset-0 rounded-full bg-coral-500 opacity-70 animate-ping" />
                   </span>
-                  {event.sold_today} tickets sold today
-                </p>
-              ) : null}
+                  {ticketsSoldToday} tickets sold today
+                </div>
+              )}
               <Link
                 href={`/events/${event.slug}`}
                 className="mt-5 inline-flex w-full items-center justify-center rounded-lg border border-gold-400/60 bg-gold-500/15 px-4 py-2.5 text-sm font-semibold text-gold-300 transition-colors duration-200 hover:bg-gold-500/25"
