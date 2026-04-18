@@ -124,11 +124,19 @@ export function EventsTable({ events, seatSoldCountMap = {} }: { events: EventRo
 
   if (events.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 py-20 text-center">
-        <p className="text-sm font-medium text-gray-500">No events found</p>
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-ink-100 bg-white px-6 py-14 text-center">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gold-100 text-gold-600">
+          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75} aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3M4 11h16M5 21h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z" />
+          </svg>
+        </div>
+        <h2 className="mt-5 font-display text-lg font-semibold text-ink-900">Host your first event</h2>
+        <p className="mt-1 max-w-md text-sm text-ink-600">
+          Create an event, set ticket tiers, and publish. Your events appear here once created.
+        </p>
         <Link
           href="/dashboard/events/create"
-          className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+          className="mt-6 inline-flex h-11 items-center rounded-lg bg-gold-400 px-5 text-sm font-semibold text-ink-900 shadow-md transition-all hover:-translate-y-0.5 hover:bg-gold-500 hover:shadow-lg"
         >
           Create your first event
         </Link>
@@ -159,7 +167,7 @@ export function EventsTable({ events, seatSoldCountMap = {} }: { events: EventRo
               <tr
                 key={event.id}
                 className="hover:bg-gray-50 cursor-pointer"
-                onClick={() => router.push(`/dashboard/events/${event.id}/edit`)}
+                onClick={() => router.push(`/dashboard/events/${event.id}`)}
               >
                 <td className="px-4 py-3">
                   <p className="font-medium text-gray-900">{event.title}</p>

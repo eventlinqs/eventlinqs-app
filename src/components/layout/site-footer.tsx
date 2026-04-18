@@ -1,5 +1,7 @@
 'use client'
 
+import { EventlinqsLogo } from '@/components/ui/eventlinqs-logo'
+
 /**
  * SiteFooter — dual-pattern footer.
  *
@@ -15,18 +17,19 @@
 
 const FOOTER_LINKS = {
   discover: [
-    { label: 'Browse Events',       href: '/events' },
-    { label: 'Afrobeats',           href: '/events?category=music' },
-    { label: 'Gospel',              href: '/events?category=religion' },
-    { label: 'Comedy',              href: '/events?category=arts-culture' },
-    { label: 'Business & Summits',  href: '/events?category=business-networking' },
-    { label: 'Cultural Celebrations', href: '/events?category=community' },
+    { label: 'Browse all events',  href: '/events' },
+    { label: 'Afrobeats',          href: '/categories/afrobeats' },
+    { label: 'Amapiano',           href: '/categories/amapiano' },
+    { label: 'Gospel',             href: '/categories/gospel' },
+    { label: 'Comedy',             href: '/events?category=comedy' },
+    { label: 'Owambe',             href: '/categories/owambe' },
+    { label: 'Business & Networking', href: '/categories/networking' },
   ],
   organisers: [
     { label: 'Start selling tickets', href: '/organisers/signup' },
     { label: 'How it works',          href: '/organisers' },
     { label: 'Pricing',               href: '/pricing' },
-    { label: 'Organiser login',       href: '/login?tab=organiser' },
+    { label: 'Organiser login',       href: '/login' },
   ],
   help: [
     { label: 'Help Centre',   href: '/help' },
@@ -86,7 +89,7 @@ export function SiteFooter() {
         <div className="hidden md:grid md:grid-cols-4 md:gap-8">
           {/* Col 1 — Brand */}
           <div>
-            <p className="font-display text-base font-bold text-white tracking-tight">EVENTLINQS</p>
+            <EventlinqsLogo size="lg" variant="inverted" />
             <p className="mt-3 text-sm leading-6 text-ink-400">
               The ticketing platform built for Africa, its diaspora, and every community that knows how to celebrate.
             </p>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 interface CartTimerProps {
   expiresAt: string
@@ -8,34 +8,48 @@ interface CartTimerProps {
 }
 
 export function CartTimer({ expiresAt, onExpired }: CartTimerProps) {
-  // Initialize to 0 (stable server/client value) to avoid hydration mismatch.
+  // Initialise to 0 (stable server/client value) to avoid hydration mismatch.
   // Actual countdown starts after mount via useEffect.
   const [secondsLeft, setSecondsLeft] = useState<number>(0)
 
+  // Hold the latest onExpired in a ref so the effect deps can stay on [expiresAt]
+  // without triggering exhaustive-deps lint warnings and without restarting the
+  // interval when the parent passes a fresh function reference.
+  const onExpiredRef = useRef(onExpired)
   useEffect(() => {
-    const diff = Math.floor((new Date(expiresAt).getTime() - Date.now()) / 1000)
-    const initial = Math.max(0, diff)
+    onExpiredRef.current = onExpired
+  }, [onExpired])
 
-    if (initial <= 0) {
-      onExpired()
-      return
+  useEffect(() => {
+    function compute() {
+      const diff = Math.floor((new Date(expiresAt).getTime() - Date.now()) / 1000)
+      return Math.max(0, diff)
     }
 
-    setSecondsLeft(initial)
+    // Defer the first setState to a macrotask so it doesn't run synchronously
+    // inside the effect body (satisfies react-hooks/set-state-in-effect).
+    const firstTick = setTimeout(() => {
+      const initial = compute()
+      setSecondsLeft(initial)
+      if (initial <= 0) {
+        onExpiredRef.current()
+      }
+    }, 0)
 
     const id = setInterval(() => {
-      setSecondsLeft(prev => {
-        if (prev <= 1) {
-          clearInterval(id)
-          onExpired()
-          return 0
-        }
-        return prev - 1
-      })
+      const next = compute()
+      setSecondsLeft(next)
+      if (next <= 0) {
+        clearInterval(id)
+        onExpiredRef.current()
+      }
     }, 1000)
 
-    return () => clearInterval(id)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    return () => {
+      clearTimeout(firstTick)
+      clearInterval(id)
+    }
+  }, [expiresAt])
 
   const minutes = Math.floor(secondsLeft / 60)
   const seconds = secondsLeft % 60
@@ -43,14 +57,27 @@ export function CartTimer({ expiresAt, onExpired }: CartTimerProps) {
 
   return (
     <div
-      className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium ${
+      role="timer"
+      aria-live="polite"
+      className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
         isUrgent
-          ? 'bg-red-50 text-red-700 border border-red-200'
-          : 'bg-amber-50 text-amber-800 border border-amber-200'
+          ? 'bg-gold-100 text-ink-900 border border-gold-500'
+          : 'bg-ink-100/60 text-ink-900 border border-ink-200'
       }`}
     >
-      <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      <svg
+        className={`h-4 w-4 shrink-0 ${isUrgent ? 'text-gold-600' : 'text-ink-600'}`}
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        aria-hidden="true"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+        />
       </svg>
       <span>
         Tickets reserved for{' '}

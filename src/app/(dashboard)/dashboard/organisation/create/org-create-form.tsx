@@ -13,7 +13,15 @@ function toSlug(name: string): string {
     .substring(0, 50)
 }
 
-export function OrgCreateForm({ userEmail }: { userEmail: string }) {
+export function OrgCreateForm({
+  userEmail,
+  returnTo,
+  submitLabel = 'Create Organisation',
+}: {
+  userEmail: string
+  returnTo?: string
+  submitLabel?: string
+}) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [slug, setSlug] = useState('')
@@ -30,6 +38,7 @@ export function OrgCreateForm({ userEmail }: { userEmail: string }) {
       }}
       className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm space-y-5"
     >
+      {returnTo && <input type="hidden" name="returnTo" value={returnTo} />}
       <div>
         <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
           Organisation Name <span className="text-red-500">*</span>
@@ -137,7 +146,7 @@ export function OrgCreateForm({ userEmail }: { userEmail: string }) {
         disabled={isPending}
         className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
       >
-        {isPending ? 'Creating…' : 'Create Organisation'}
+        {isPending ? 'Creating…' : submitLabel}
       </button>
     </form>
   )

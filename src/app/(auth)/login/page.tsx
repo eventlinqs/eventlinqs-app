@@ -1,22 +1,30 @@
-import { LoginForm } from '@/components/auth/login-form'
 import Link from 'next/link'
+import { Suspense } from 'react'
+import { AuthShell } from '@/components/auth/auth-shell'
+import { LoginForm } from '@/components/auth/login-form'
+
+export const metadata = {
+  title: 'Sign in — EventLinqs',
+  description: 'Sign in to your EventLinqs account to manage events and tickets.',
+}
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-md space-y-8">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold">Welcome back</h1>
-          <p className="mt-2 text-gray-600">Sign in to your EventLinqs account</p>
-        </div>
-        <LoginForm />
-        <p className="text-center text-sm text-gray-600">
-          Don&apos;t have an account?{' '}
-          <Link href="/signup" className="font-medium text-blue-600 hover:text-blue-500">
-            Sign up
+    <AuthShell
+      title="Welcome back"
+      subtitle="Sign in to manage your events and tickets."
+      footer={
+        <>
+          New to EventLinqs?{' '}
+          <Link href="/signup" className="font-medium text-ink-900 underline-offset-2 hover:text-gold-600 hover:underline">
+            Create an account
           </Link>
-        </p>
-      </div>
-    </div>
+        </>
+      }
+    >
+      <Suspense fallback={<div className="h-[420px]" />}>
+        <LoginForm />
+      </Suspense>
+    </AuthShell>
   )
 }

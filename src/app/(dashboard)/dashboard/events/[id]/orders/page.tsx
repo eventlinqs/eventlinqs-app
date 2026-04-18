@@ -125,8 +125,12 @@ export default async function EventOrdersPage({ params }: Props) {
         </div>
         <div className="rounded-xl border border-gray-200 bg-white p-5">
           <p className="text-xs text-gray-500 uppercase tracking-wider">Revenue</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">
-            {currency.toUpperCase()} {(totalRevenue / 100).toFixed(0)}
+          <p className="text-2xl font-bold text-gray-900 mt-1 tabular-nums">
+            {new Intl.NumberFormat('en-AU', {
+              style: 'currency',
+              currency: currency.toUpperCase(),
+              currencyDisplay: 'code',
+            }).format(totalRevenue / 100)}
           </p>
         </div>
         <div className="rounded-xl border border-gray-200 bg-white p-5">

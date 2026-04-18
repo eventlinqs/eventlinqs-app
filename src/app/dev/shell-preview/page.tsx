@@ -1,5 +1,3 @@
-'use client'
-
 /**
  * /dev/shell-preview — visual verification page for all shell primitives.
  *
@@ -11,6 +9,7 @@
  * public launch (add to robots.txt or delete when no longer needed).
  */
 
+import Link from 'next/link'
 import { PageShell } from '@/components/layout/PageShell'
 import { PageHero } from '@/components/layout/PageHero'
 import { ContentSection } from '@/components/layout/ContentSection'
@@ -21,6 +20,7 @@ import { AuthCard } from '@/components/ui/AuthCard'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { LoadingState } from '@/components/ui/LoadingState'
 import { FileQuestion } from 'lucide-react'
+import { PreviewForm } from './PreviewForm'
 
 function BlockLabel({ number, name }: { number: number; name: string }) {
   return (
@@ -100,7 +100,7 @@ export default function ShellPreviewPage() {
 
           <p>
             For help with a specific order, visit{' '}
-            <a href="/help">the Help Centre</a> or email{' '}
+            <Link href="/help">the Help Centre</Link> or email{' '}
             <a href="mailto:hello@eventlinqs.com">hello@eventlinqs.com</a>.
             We reply within 24 hours, Monday to Friday.
           </p>
@@ -161,52 +161,7 @@ export default function ShellPreviewPage() {
       <ContentSection surface="base" aria-labelledby="block-4-heading">
         <BlockLabel number={4} name="FormField Component" />
 
-        <form
-          className="max-w-md space-y-5"
-          onSubmit={e => e.preventDefault()}
-          noValidate
-        >
-          <FormField
-            id="preview-email"
-            label="Email address"
-            type="email"
-            placeholder="you@example.com"
-            required
-            autoComplete="email"
-            helperText="We'll never share your email with anyone."
-          />
-
-          <FormField
-            id="preview-password"
-            label="Password"
-            type="password"
-            placeholder="Min. 8 characters"
-            required
-            helperText="Use a mix of letters, numbers, and symbols."
-          />
-
-          <FormField
-            id="preview-fullname"
-            label="Full name"
-            type="text"
-            placeholder="Your full name"
-            required
-            error="Please enter your full name."
-          />
-
-          <FormField
-            id="preview-phone"
-            label="Phone number"
-            type="tel"
-            placeholder="+61 4XX XXX XXX"
-            required
-            autoComplete="tel"
-          />
-
-          <Button type="submit" variant="primary" size="lg" className="w-full">
-            Submit form
-          </Button>
-        </form>
+        <PreviewForm />
       </ContentSection>
 
       {/* ── Block 5: AuthCard ──────────────────────────────────────────── */}

@@ -2,7 +2,9 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { Building2 } from 'lucide-react'
 import { EventsTable } from './events-table'
+import { DashboardEmptyState } from '@/components/dashboard/empty-state'
 import type { Event } from '@/types/database'
 
 type FilterTab = 'all' | 'draft' | 'published' | 'past' | 'cancelled'
@@ -27,15 +29,15 @@ export default async function MyEventsPage({ searchParams }: Props) {
 
   if (!org) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 text-center">
-        <h2 className="text-xl font-semibold text-gray-900">No Organisation</h2>
-        <p className="mt-2 text-gray-500">Create an organisation first to manage events.</p>
-        <Link
-          href="/dashboard/organisation/create"
-          className="mt-6 rounded-lg bg-blue-600 px-6 py-3 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
-        >
-          Create Organisation
-        </Link>
+      <div className="space-y-6">
+        <h1 className="font-display text-2xl font-bold text-ink-900">My events</h1>
+        <DashboardEmptyState
+          icon={<Building2 className="h-6 w-6" aria-hidden="true" />}
+          title="Set up your organisation first"
+          description="Your organisation is the brand you publish events under. Create one to start selling tickets."
+          primary={{ label: 'Create organisation', href: '/dashboard/organisation/create' }}
+          secondary={{ label: 'Browse events', href: '/events' }}
+        />
       </div>
     )
   }

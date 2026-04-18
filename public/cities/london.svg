@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" preserveAspectRatio="xMidYMid slice" role="img" aria-label="London">
+  <defs>
+    <linearGradient id="lon-bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#472F8E"/>
+      <stop offset="60%" stop-color="#58379E"/>
+      <stop offset="100%" stop-color="#2E1C5E"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="900" fill="url(#lon-bg)"/>
+  <!-- Big Ben + Parliament silhouette -->
+  <g opacity="0.35" fill="#1A0E3E">
+    <rect x="120" y="540" width="80" height="300"/>
+    <rect x="210" y="580" width="60" height="260"/>
+    <rect x="290" y="480" width="120" height="360"/>
+    <polygon points="350,480 350,400 380,400 380,480"/>
+    <polygon points="340,400 360,370 380,400"/>
+    <rect x="430" y="520" width="90" height="320"/>
+    <rect x="540" y="560" width="70" height="280"/>
+    <rect x="620" y="440" width="100" height="400"/>
+    <polygon points="660,440 670,400 680,440"/>
+    <rect x="740" y="500" width="80" height="340"/>
+    <rect x="840" y="540" width="90" height="300"/>
+    <rect x="950" y="480" width="70" height="360"/>
+    <rect x="1040" y="560" width="80" height="280"/>
+  </g>
+  <rect x="0" y="840" width="1200" height="60" fill="#1A0E3E"/>
+  <text x="1160" y="760" font-family="Manrope, 'Helvetica Neue', system-ui, sans-serif" font-size="260" font-weight="800" fill="#FFFFFF" fill-opacity="0.6" letter-spacing="-8" text-anchor="end">LONDON</text>
+</svg>

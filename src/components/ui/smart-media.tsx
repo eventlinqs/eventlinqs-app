@@ -1,0 +1,121 @@
+'use client'
+
+import { useEffect, useRef, useState } from 'react'
+import type { EventMedia } from '@/lib/images/event-media'
+
+/**
+ * SmartMedia — universal renderer for the EventMedia union.
+ *
+ * Modes:
+ *   video          — autoplay loop when `autoplay`, else hover-to-play.
+ *   carousel       — crossfade between images on an interval.
+ *   still-kenburns — gentle infinite zoom (CSS keyframe).
+ *
+ * All variants fill their parent absolutely — parent must be positioned.
+ */
+
+interface Props {
+  media: EventMedia
+  className?: string
+  /** When true, video autoplays. When false (default), plays on hover. */
+  autoplay?: boolean
+  /** Carousel rotation interval in ms (default 4000). */
+  carouselInterval?: number
+  /** Adds will-change, smoother Ken Burns — set on low-frequency / above-the-fold tiles. */
+  priority?: boolean
+  /** Optional poster/alt used for still-kenburns sizes — defaults to <img alt>. */
+  ariaLabel?: string
+}
+
+export function SmartMedia({
+  media,
+  className = '',
+  autoplay = false,
+  carouselInterval = 4000,
+  priority = false,
+  ariaLabel,
+}: Props) {
+  const [carouselIndex, setCarouselIndex] = useState(0)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const [hovered, setHovered] = useState(false)
+
+  useEffect(() => {
+    if (media.kind !== 'carousel') return
+    const id = setInterval(() => {
+      setCarouselIndex(i => (i + 1) % media.images.length)
+    }, carouselInterval)
+    return () => clearInterval(id)
+  }, [media, carouselInterval])
+
+  useEffect(() => {
+    if (media.kind !== 'video' || autoplay) return
+    const v = videoRef.current
+    if (!v) return
+    if (hovered) {
+      v.play().catch(() => {})
+    } else {
+      v.pause()
+      v.currentTime = 0
+    }
+  }, [hovered, media, autoplay])
+
+  const wrapBase = `absolute inset-0 overflow-hidden ${className}`
+
+  if (media.kind === 'video') {
+    return (
+      <div
+        ref={wrapRef}
+        className={wrapBase}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        aria-label={ariaLabel}
+      >
+        <video
+          ref={videoRef}
+          src={media.src}
+          poster={media.poster}
+          muted
+          playsInline
+          loop
+          autoPlay={autoplay}
+          preload={autoplay ? 'auto' : 'metadata'}
+          className="h-full w-full object-cover"
+        />
+      </div>
+    )
+  }
+
+  if (media.kind === 'carousel') {
+    return (
+      <div className={wrapBase} aria-label={ariaLabel}>
+        {media.images.map((src, i) => (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            key={`${src}-${i}`}
+            src={src}
+            alt={media.alts[i] ?? ''}
+            className="absolute inset-0 h-full w-full object-cover"
+            style={{
+              opacity: i === carouselIndex ? 1 : 0,
+              transform: i === carouselIndex ? 'scale(1.04)' : 'scale(1)',
+              transition: 'opacity 900ms ease, transform 4500ms ease',
+            }}
+          />
+        ))}
+      </div>
+    )
+  }
+
+  // still-kenburns
+  return (
+    <div className={wrapBase} aria-label={ariaLabel}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={media.src}
+        alt={media.alt}
+        className={`absolute inset-0 h-full w-full object-cover smart-media-kenburns ${priority ? 'will-change-transform' : ''}`}
+      />
+    </div>
+  )
+}

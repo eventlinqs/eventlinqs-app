@@ -330,6 +330,7 @@ export function EventForm({
   const [stepError, setStepError] = useState<string | null>(null)
   const [imageUploading, setImageUploading] = useState(false)
   const [imageDragOver, setImageDragOver] = useState(false)
+  const [aspectWarning, setAspectWarning] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const set = useCallback(<K extends keyof FormData>(key: K, value: FormData[K]) => {
@@ -438,9 +439,27 @@ export function EventForm({
 
   const handleImageFile = async (file: File) => {
     if (!file.type.startsWith('image/')) return
-    if (file.size > 5 * 1024 * 1024) {
-      setError('Image must be under 5MB')
+    if (file.size > 10 * 1024 * 1024) {
+      setError('Image must be under 10MB')
       return
+    }
+    setAspectWarning(null)
+    try {
+      const dims = await new Promise<{ w: number; h: number }>((resolve, reject) => {
+        const img = new window.Image()
+        img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight })
+        img.onerror = () => reject(new Error('image-load'))
+        img.src = URL.createObjectURL(file)
+      })
+      const ratio = dims.w / dims.h
+      const target = 16 / 9
+      if (Math.abs(ratio - target) / target > 0.1) {
+        setAspectWarning(
+          `Heads up: your image is ${dims.w}×${dims.h}. Cover images look best at 16:9 (e.g. 1600×900). Yours will be letterboxed to fit.`
+        )
+      }
+    } catch {
+      // Ignore measurement errors — proceed with upload anyway.
     }
     setImageUploading(true)
     const fd = new FormData()
@@ -760,7 +779,7 @@ export function EventForm({
     <div className="space-y-5">
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">Cover Image</label>
-        <p className="text-xs text-gray-500 mb-4">Max 5MB. Accepted formats: JPEG, PNG, WebP.</p>
+        <p className="text-xs text-gray-500 mb-4">Max 10MB. Accepted formats: JPEG, PNG, WebP.</p>
 
         {formData.cover_image_url ? (
           <div className="relative">
@@ -772,9 +791,17 @@ export function EventForm({
                 className="object-contain"
               />
             </div>
+            {aspectWarning && (
+              <div className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                {aspectWarning}
+              </div>
+            )}
             <button
               type="button"
-              onClick={() => set('cover_image_url', '')}
+              onClick={() => {
+                set('cover_image_url', '')
+                setAspectWarning(null)
+              }}
               className="mt-2 text-sm text-red-600 hover:text-red-800"
             >
               Remove image

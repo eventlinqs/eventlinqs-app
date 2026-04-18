@@ -2,9 +2,12 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   trailingSlash: false,
+  async redirects() {
+    return []
+  },
   experimental: {
     serverActions: {
-      bodySizeLimit: '5mb',
+      bodySizeLimit: '10mb',
     },
   },
   images: {
@@ -17,6 +20,14 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'picsum.photos',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.pexels.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'videos.pexels.com',
       },
     ],
   },

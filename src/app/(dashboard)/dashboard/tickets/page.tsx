@@ -86,14 +86,21 @@ export default async function MyTicketsPage() {
       <h1 className="text-2xl font-bold text-gray-900 mb-6">My Tickets</h1>
 
       {orderRows.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 py-20 text-center">
-          <p className="text-sm font-medium text-gray-500">No tickets yet</p>
-          <p className="mt-1 text-xs text-gray-400">Your purchased tickets will appear here.</p>
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-ink-100 bg-white px-6 py-14 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gold-100 text-gold-600">
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75} aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5h14a2 2 0 0 1 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3a2 2 0 0 0 0-4V7a2 2 0 0 1 2-2z" />
+            </svg>
+          </div>
+          <h2 className="mt-5 font-display text-lg font-semibold text-ink-900">You have not bought any tickets yet</h2>
+          <p className="mt-1 max-w-md text-sm text-ink-600">
+            Tickets you buy will appear here with QR codes and order details.
+          </p>
           <Link
             href="/events"
-            className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+            className="mt-6 inline-flex h-11 items-center rounded-lg bg-gold-400 px-5 text-sm font-semibold text-ink-900 shadow-md transition-all hover:-translate-y-0.5 hover:bg-gold-500 hover:shadow-lg"
           >
-            Browse Events
+            Browse events
           </Link>
         </div>
       ) : (

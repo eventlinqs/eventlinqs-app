@@ -4,6 +4,7 @@ import {
   Users,
   CheckCircle2,
 } from 'lucide-react'
+import Link from 'next/link'
 import { PageShell } from '@/components/layout/PageShell'
 import { ContentSection } from '@/components/layout/ContentSection'
 import { Button } from '@/components/ui/Button'
@@ -156,11 +157,11 @@ export function OrganisersLandingPage() {
 
       {/* -- 2. Value pillars ---------------------------------------- */}
       <ContentSection surface="alt" width="default" topBorder>
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <div className="group/cards grid grid-cols-1 gap-6 md:grid-cols-3">
           {PILLARS.map(({ icon: Icon, title, body }) => (
             <div
               key={title}
-              className="group rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] p-6 transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg"
+              className="group rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] p-6 transition-all duration-200 group-hover/cards:opacity-60 hover:!opacity-100 hover:-translate-y-0.5 hover:border-[var(--brand-accent)] hover:shadow-lg"
             >
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--brand-accent)]/10 transition-colors group-hover:bg-[var(--brand-accent)]/15">
                 <Icon className="h-6 w-6 text-[var(--brand-accent)]" aria-hidden="true" />
@@ -284,12 +285,12 @@ export function OrganisersLandingPage() {
           </div>
 
           <div className="mt-8 text-center">
-            <a
+            <Link
               href="/help/selling-tickets"
               className="text-sm font-medium text-[var(--brand-accent)] underline underline-offset-2 hover:text-[var(--brand-accent-hover)] transition-colors"
             >
               See all organiser help articles &rsaquo;
-            </a>
+            </Link>
           </div>
         </ContentSection>
       )}

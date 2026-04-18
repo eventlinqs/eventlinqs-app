@@ -1,4 +1,5 @@
 import { CheckCircle2 } from 'lucide-react'
+import Link from 'next/link'
 import { PageShell } from '@/components/layout/PageShell'
 import { PageHero } from '@/components/layout/PageHero'
 import { ContentSection } from '@/components/layout/ContentSection'
@@ -117,12 +118,13 @@ export function PricingPage() {
 
       {/* -- 2. Pricing tiers ---------------------------------------- */}
       <ContentSection surface="base" width="wide">
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <div className="group/cards grid grid-cols-1 gap-6 md:grid-cols-3">
           {TIERS.map(tier => (
             <div
               key={tier.id}
               className={[
-                'flex flex-col rounded-2xl border p-7',
+                'flex flex-col rounded-2xl border p-7 transition-all duration-200',
+                'group-hover/cards:opacity-60 hover:!opacity-100 hover:-translate-y-0.5 hover:border-[var(--brand-accent)] hover:shadow-xl',
                 tier.highlighted
                   ? 'border-[var(--brand-accent)]/50 bg-[var(--brand-accent)]/5 shadow-lg ring-1 ring-[var(--brand-accent)]/20'
                   : 'border-[var(--surface-2)] bg-[var(--surface-0)]',
@@ -227,12 +229,12 @@ export function PricingPage() {
         </div>
 
         <div className="mt-8 text-center">
-          <a
+          <Link
             href="/help/payments-and-payouts"
             className="text-sm font-medium text-[var(--brand-accent)] underline underline-offset-2 hover:text-[var(--brand-accent-hover)] transition-colors"
           >
             More payment and payout questions &rsaquo;
-          </a>
+          </Link>
         </div>
       </ContentSection>
 

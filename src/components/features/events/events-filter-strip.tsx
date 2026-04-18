@@ -10,7 +10,8 @@ type FilterParams = {
   city?: string
   date?: string
   free?: string
-  culture?: string
+  paid?: string
+  distance?: string
   q?: string
   page?: string
 }
@@ -120,7 +121,7 @@ export function EventsFilterStrip({
         >
           {/* Advanced filters trigger — shows active count badge */}
           {(() => {
-            const activeCount = [params.date, params.category, params.free === '1' ? '1' : undefined, params.culture].filter(Boolean).length
+            const activeCount = [params.date, params.category, params.free === '1' ? '1' : undefined, params.paid === '1' ? '1' : undefined, params.distance].filter(Boolean).length
             return (
               <button
                 ref={triggerRef}
@@ -188,17 +189,17 @@ export function EventsFilterStrip({
             Free
           </Link>
 
-          {/* Category chips */}
+          {/* Category chips — pass slug (§A.1) */}
           {categories.map(cat => (
             <Link
               key={cat.id}
               href={buildFilterUrl(params, {
-                category: params.category === cat.id ? undefined : cat.id,
+                category: params.category === cat.slug ? undefined : cat.slug,
                 page: '1',
               })}
-              aria-current={params.category === cat.id ? 'true' : undefined}
+              aria-current={params.category === cat.slug ? 'true' : undefined}
               className={`flex-none inline-flex items-center h-11 rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 ${
-                params.category === cat.id
+                params.category === cat.slug
                   ? 'bg-gold-500 text-white'
                   : 'border border-ink-200 bg-white text-ink-700 hover:bg-ink-100'
               }`}
@@ -287,17 +288,17 @@ export function EventsFilterStrip({
             </div>
           </section>
 
-          {/* Category */}
+          {/* Category — slug-based (§A.1) */}
           <section>
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-400">Category</p>
             <div className="space-y-0.5">
-              {[{ id: '', name: 'All categories' }, ...categories].map(cat => {
-                const isActive = cat.id === '' ? !params.category : params.category === cat.id
+              {[{ id: '', name: 'All categories', slug: '' }, ...categories].map(cat => {
+                const isActive = cat.slug === '' ? !params.category : params.category === cat.slug
                 return (
                   <Link
                     key={cat.id || 'all'}
                     href={buildFilterUrl(params, {
-                      category: cat.id || undefined,
+                      category: cat.slug || undefined,
                       page: '1',
                     })}
                     onClick={closeDrawer}
@@ -315,24 +316,30 @@ export function EventsFilterStrip({
             </div>
           </section>
 
-          {/* Price */}
+          {/* Price — tri-state */}
           <section>
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-400">Price</p>
-            <Link
-              href={buildFilterUrl(params, {
-                free: params.free === '1' ? undefined : '1',
-                page: '1',
-              })}
-              onClick={closeDrawer}
-              className={`flex items-center h-11 rounded-lg px-3 text-sm transition-colors ${
-                params.free === '1'
-                  ? 'bg-gold-100 font-semibold text-gold-700'
-                  : 'text-ink-600 hover:bg-ink-100'
-              }`}
-            >
-              {params.free === '1' && <CheckIcon />}
-              Free events only
-            </Link>
+            <div className="space-y-0.5">
+              {[
+                { key: 'all', label: 'All prices', active: !params.free && !params.paid, overrides: { free: undefined, paid: undefined } },
+                { key: 'free', label: 'Free only',  active: params.free === '1',          overrides: { free: '1', paid: undefined } },
+                { key: 'paid', label: 'Paid only',  active: params.paid === '1',          overrides: { free: undefined, paid: '1' } },
+              ].map(opt => (
+                <Link
+                  key={opt.key}
+                  href={buildFilterUrl(params, { ...opt.overrides, page: '1' })}
+                  onClick={closeDrawer}
+                  className={`flex items-center h-11 rounded-lg px-3 text-sm transition-colors ${
+                    opt.active
+                      ? 'bg-gold-100 font-semibold text-gold-700'
+                      : 'text-ink-600 hover:bg-ink-100'
+                  }`}
+                >
+                  {opt.active && <CheckIcon />}
+                  {opt.label}
+                </Link>
+              ))}
+            </div>
           </section>
         </div>
 
