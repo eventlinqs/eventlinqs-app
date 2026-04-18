@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
+import { EventlinqsLogo } from '@/components/ui/eventlinqs-logo'
 
 type Props = {
   title: string
@@ -12,13 +13,7 @@ export function AuthShell({ title, subtitle, footer, children }: Props) {
   return (
     <div className="flex min-h-screen flex-col bg-canvas">
       <header className="flex h-16 items-center justify-between border-b border-ink-100 bg-white px-4 sm:px-6 lg:px-8">
-        <Link
-          href="/"
-          className="font-display text-lg font-extrabold tracking-tight text-ink-900 transition-colors hover:text-gold-500"
-          aria-label="EventLinqs home"
-        >
-          EVENTLINQS
-        </Link>
+        <EventlinqsLogo asLink size="md" />
         <Link
           href="/events"
           className="text-sm font-medium text-ink-600 transition-colors hover:text-gold-600"
