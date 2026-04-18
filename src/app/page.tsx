@@ -18,6 +18,8 @@ import { SnapRail } from '@/components/ui/snap-rail'
 import { CulturalPicksRail } from '@/components/features/events/cultural-picks-rail'
 import { getCityPhoto } from '@/lib/images/city-photo'
 import { getCategoryPhoto } from '@/lib/images/category-photo'
+import { detectLocation } from '@/lib/geo/detect'
+import { LocationFilterBanner } from '@/components/features/events/location-filter-banner'
 
 /**
  * Homepage — the visceral experience layer.
@@ -131,15 +133,37 @@ export default async function HomePage() {
 
   const weekEndIso = new Date(nowMs + 7 * 24 * 60 * 60 * 1000).toISOString()
 
-  // Upcoming public events — pull 24 to fuel hero + bento + cultural tabs + This Week
-  const { data: upcomingRaw } = await supabase
+  // Resolve the visitor's city (cookie → Vercel headers → Melbourne fallback)
+  // so every feed on this page can prefer local events when there are some.
+  const detectedLocation = await detectLocation()
+  const cityFilter = detectedLocation.city
+
+  // Upcoming public events — pull 24 to fuel hero + bento + cultural tabs + This Week.
+  // Try the city-filtered query first; if it returns fewer than 2 rows, fall back
+  // to the unfiltered feed so sparse cities don't leave the homepage empty.
+  const { data: cityUpcomingRaw } = await supabase
     .from('events')
     .select(EVENT_SELECT)
     .eq('status', 'published')
     .eq('visibility', 'public')
     .gte('start_date', nowIso)
+    .ilike('venue_city', `%${cityFilter}%`)
     .order('start_date', { ascending: true })
     .limit(24)
+
+  let upcomingRaw = cityUpcomingRaw
+  let locationFilterActive = (cityUpcomingRaw ?? []).length >= 2
+  if (!locationFilterActive) {
+    const { data: allUpcomingRaw } = await supabase
+      .from('events')
+      .select(EVENT_SELECT)
+      .eq('status', 'published')
+      .eq('visibility', 'public')
+      .gte('start_date', nowIso)
+      .order('start_date', { ascending: true })
+      .limit(24)
+    upcomingRaw = allUpcomingRaw
+  }
 
   const upcoming = ((upcomingRaw ?? []) as unknown as RawRow[]).map(toBentoEvent)
   const upcomingRawTyped = (upcomingRaw ?? []) as unknown as RawRow[]
@@ -232,18 +256,32 @@ export default async function HomePage() {
     thisWeek.map(async e => <ThisWeekCard key={e.id} event={e} />),
   )
 
-  // Cultural picks per tab — fetch + pre-render cards in parallel
+  // Cultural picks per tab — try city-filtered first, fall back to all events
+  // for that tag when the local feed is sparse (<2 rows).
   const culturalQueries = await Promise.all(
     CULTURE_TABS.map(async tab => {
-      const { data } = await supabase
+      let { data } = await supabase
         .from('events')
         .select(EVENT_SELECT)
         .eq('status', 'published')
         .eq('visibility', 'public')
         .gte('start_date', nowIso)
         .contains('tags', [tab.tag])
+        .ilike('venue_city', `%${cityFilter}%`)
         .order('start_date', { ascending: true })
         .limit(8)
+      if ((data ?? []).length < 2) {
+        const result = await supabase
+          .from('events')
+          .select(EVENT_SELECT)
+          .eq('status', 'published')
+          .eq('visibility', 'public')
+          .gte('start_date', nowIso)
+          .contains('tags', [tab.tag])
+          .order('start_date', { ascending: true })
+          .limit(8)
+        data = result.data
+      }
       const events = ((data ?? []) as unknown as RawRow[]).map(toBentoEvent)
       const cards = await Promise.all(events.map(async e => <ThisWeekCard key={e.id} event={e} />))
       return { tab, events, cards }
@@ -345,6 +383,12 @@ export default async function HomePage() {
         {/* 2. Bento grid row 1 */}
         <section aria-label="Featured events" className="bg-canvas py-14 sm:py-16">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mb-4">
+              <LocationFilterBanner
+                location={detectedLocation}
+                filteredActive={locationFilterActive}
+              />
+            </div>
             <div className="flex items-end justify-between gap-4">
               <div className="flex items-start gap-3">
                 <div className="mt-1 h-8 w-0.5 shrink-0 bg-gold-500" aria-hidden />
