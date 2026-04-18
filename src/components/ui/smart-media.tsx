@@ -88,6 +88,7 @@ export function SmartMedia({
   }
 
   if (media.kind === 'branded-placeholder') {
+    // TODO M5: organiser dashboard should preview branded placeholder when no cover uploaded
     return (
       <div className={wrapBase} aria-label={ariaLabel}>
         <BrandedPlaceholder category={media.category} />
