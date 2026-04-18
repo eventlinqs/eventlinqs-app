@@ -105,7 +105,7 @@ export function HeroCarouselClient({
       ref={sectionRef}
       aria-roledescription={count > 1 ? 'carousel' : undefined}
       aria-label="Featured events"
-      className="relative flex min-h-[70vh] items-end overflow-hidden bg-navy-950 md:min-h-[90vh] group/hero"
+      className="relative flex min-h-[600px] items-end overflow-hidden bg-navy-950 md:min-h-[90vh] group/hero"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocusCapture={() => setPaused(true)}
@@ -147,7 +147,7 @@ export function HeroCarouselClient({
             </p>
             <h1
               className="mt-4 font-display font-extrabold leading-[0.95] tracking-tight text-white"
-              style={{ fontSize: 'clamp(2.75rem, 7vw, 6rem)' }}
+              style={{ fontSize: 'clamp(2.25rem, 8vw, 6rem)' }}
             >
               Where the <span className="text-gold-400">culture</span> gathers.
             </h1>

@@ -31,7 +31,7 @@ export async function ThisWeekCard({ event }: { event: BentoEvent }) {
   return (
     <Link
       href={`/events/${event.slug}`}
-      className="group relative flex w-[280px] shrink-0 snap-start flex-col overflow-hidden rounded-xl bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
+      className="group relative flex w-[240px] shrink-0 snap-start flex-col overflow-hidden rounded-xl bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg sm:w-[280px]"
       aria-label={event.title ?? 'Event'}
     >
       <div className="relative aspect-[16/9] overflow-hidden bg-ink-900">

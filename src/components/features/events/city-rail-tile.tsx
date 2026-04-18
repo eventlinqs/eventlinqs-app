@@ -16,7 +16,7 @@ export function CityRailTile({ city, slug, eventCount, imageSrc }: Props) {
   return (
     <Link
       href={`/events?city=${encodeURIComponent(slug)}`}
-      className="group relative block w-[280px] shrink-0 snap-start overflow-hidden rounded-2xl bg-ink-900 tile-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
+      className="group relative block w-[220px] shrink-0 snap-start overflow-hidden rounded-2xl bg-ink-900 tile-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 sm:w-[280px]"
       aria-label={`Events in ${city}`}
     >
       <div className="relative aspect-[4/5] overflow-hidden">

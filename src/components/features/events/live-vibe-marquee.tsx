@@ -38,8 +38,8 @@ const ICON_MAP: Record<VibeIcon, LucideIcon> = {
 function Item({ signal }: { signal: VibeSignal }) {
   const Icon = signal.icon ? ICON_MAP[signal.icon] : null
   const content = (
-    <span className="inline-flex items-center gap-2 text-sm font-medium text-white/90">
-      {Icon && <Icon aria-hidden className="h-4 w-4 shrink-0 text-gold-400" strokeWidth={2.25} />}
+    <span className="inline-flex items-center gap-2 text-xs font-medium text-white/90 sm:text-sm">
+      {Icon && <Icon aria-hidden className="h-3.5 w-3.5 shrink-0 text-gold-400 sm:h-4 sm:w-4" strokeWidth={2.25} />}
       <span>{signal.text}</span>
     </span>
   )
@@ -67,7 +67,7 @@ export function LiveVibeMarquee({ signals }: Props) {
         </p>
       </div>
       <div className="relative mt-3 flex overflow-hidden whitespace-nowrap">
-        <div className="flex min-w-[200%] gap-12 animate-marquee-slow">
+        <div className="flex min-w-[200%] gap-8 animate-marquee-slow sm:gap-12">
           {[...signals, ...signals].map((s, i) => (
             <Item key={`${s.text}-${i}`} signal={s} />
           ))}
