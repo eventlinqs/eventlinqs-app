@@ -13,3 +13,15 @@ export function createClient() {
   )
   return browserClient
 }
+
+// Swallow Supabase's NavigatorLockAcquireTimeoutError — it's a transient race
+// between concurrent auth-token reads and never surfaces as user-visible failure.
+if (typeof window !== 'undefined') {
+  window.addEventListener('unhandledrejection', (event) => {
+    const reason = event.reason as { message?: string; name?: string } | undefined
+    const msg = reason?.message ?? ''
+    if (msg.includes('lock') || reason?.name === 'NavigatorLockAcquireTimeoutError') {
+      event.preventDefault()
+    }
+  })
+}

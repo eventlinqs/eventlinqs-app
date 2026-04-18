@@ -12,8 +12,8 @@ type EventRow = Event & {
 }
 
 const STATUS_BADGE: Record<EventStatus, string> = {
-  draft: 'bg-gray-100 text-gray-600',
-  scheduled: 'bg-blue-100 text-blue-700',
+  draft: 'bg-ink-100 text-ink-600',
+  scheduled: 'bg-gold-100 text-gold-600',
   published: 'bg-green-100 text-green-700',
   paused: 'bg-amber-100 text-amber-700',
   postponed: 'bg-orange-100 text-orange-700',
@@ -47,7 +47,7 @@ function RowActions({ event, onDone }: { event: EventRow; onDone: () => void }) 
 
       <Link
         href={`/dashboard/events/${event.id}/edit`}
-        className="text-xs text-blue-600 hover:text-blue-800"
+        className="text-xs text-gold-500 hover:text-gold-600"
       >
         Edit
       </Link>
@@ -55,7 +55,7 @@ function RowActions({ event, onDone }: { event: EventRow; onDone: () => void }) 
       <Link
         href={`/events/${event.slug}`}
         target="_blank"
-        className="text-xs text-gray-500 hover:text-gray-700"
+        className="text-xs text-ink-400 hover:text-ink-600"
       >
         View
       </Link>
@@ -63,7 +63,7 @@ function RowActions({ event, onDone }: { event: EventRow; onDone: () => void }) 
       <button
         disabled={isPending}
         onClick={() => run(() => duplicateEvent(event.id))}
-        className="text-xs text-gray-500 hover:text-gray-700 disabled:opacity-40"
+        className="text-xs text-ink-400 hover:text-ink-600 disabled:opacity-40"
       >
         Duplicate
       </button>
@@ -124,11 +124,19 @@ export function EventsTable({ events, seatSoldCountMap = {} }: { events: EventRo
 
   if (events.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 py-20 text-center">
-        <p className="text-sm font-medium text-gray-500">No events found</p>
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-ink-100 bg-white px-6 py-14 text-center">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gold-100 text-gold-600">
+          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75} aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3M4 11h16M5 21h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z" />
+          </svg>
+        </div>
+        <h2 className="mt-5 font-display text-lg font-semibold text-ink-900">Host your first event</h2>
+        <p className="mt-1 max-w-md text-sm text-ink-600">
+          Create an event, set ticket tiers, and publish. Your events appear here once created.
+        </p>
         <Link
           href="/dashboard/events/create"
-          className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+          className="mt-6 inline-flex h-11 items-center rounded-lg bg-gold-400 px-5 text-sm font-semibold text-ink-900 shadow-md transition-all hover:-translate-y-0.5 hover:bg-gold-500 hover:shadow-lg"
         >
           Create your first event
         </Link>
@@ -137,18 +145,18 @@ export function EventsTable({ events, seatSoldCountMap = {} }: { events: EventRo
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+    <div className="overflow-x-auto rounded-xl border border-ink-200 bg-white">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-gray-100 bg-gray-50 text-left">
-            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Event</th>
-            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Date</th>
-            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Status</th>
-            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Sold</th>
-            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Actions</th>
+          <tr className="border-b border-ink-100 bg-ink-100 text-left">
+            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ink-400">Event</th>
+            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ink-400">Date</th>
+            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ink-400">Status</th>
+            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ink-400">Sold</th>
+            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ink-400">Actions</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-100">
+        <tbody className="divide-y divide-ink-100">
           {events.map(event => {
             const soldCount = event.has_reserved_seating
               ? (seatSoldCountMap[event.id] ?? 0)
@@ -158,16 +166,16 @@ export function EventsTable({ events, seatSoldCountMap = {} }: { events: EventRo
             return (
               <tr
                 key={event.id}
-                className="hover:bg-gray-50 cursor-pointer"
-                onClick={() => router.push(`/dashboard/events/${event.id}/edit`)}
+                className="hover:bg-ink-100 cursor-pointer"
+                onClick={() => router.push(`/dashboard/events/${event.id}`)}
               >
                 <td className="px-4 py-3">
-                  <p className="font-medium text-gray-900">{event.title}</p>
+                  <p className="font-medium text-ink-900">{event.title}</p>
                   {event.venue_city && (
-                    <p className="text-xs text-gray-400">{event.venue_city}</p>
+                    <p className="text-xs text-ink-400">{event.venue_city}</p>
                   )}
                 </td>
-                <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                <td className="px-4 py-3 text-ink-600 whitespace-nowrap">
                   {formatDate(event.start_date)}
                 </td>
                 <td className="px-4 py-3">
@@ -175,7 +183,7 @@ export function EventsTable({ events, seatSoldCountMap = {} }: { events: EventRo
                     {event.status}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-gray-600">
+                <td className="px-4 py-3 text-ink-600">
                   {totalCapacity > 0 ? `${soldCount} / ${totalCapacity}` : '—'}
                 </td>
                 <td className="px-4 py-3" onClick={e => e.stopPropagation()}>

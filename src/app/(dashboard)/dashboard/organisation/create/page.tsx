@@ -19,8 +19,8 @@ export default async function CreateOrganisationPage() {
   return (
     <div className="mx-auto max-w-xl">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Create Your Organisation</h1>
-        <p className="mt-2 text-gray-600">
+        <h1 className="text-2xl font-bold text-ink-900">Create Your Organisation</h1>
+        <p className="mt-2 text-ink-600">
           Set up your organisation to start creating and selling event tickets.
         </p>
       </div>

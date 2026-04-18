@@ -89,8 +89,8 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="border-b border-gray-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-ink-100">
+      <nav className="border-b border-ink-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl">
           <Link href={logoHref} className="text-xl font-bold text-[#1A1A2E]">EVENTLINQS</Link>
         </div>
@@ -104,26 +104,26 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            {isConfirmed ? 'Order Confirmed!' : 'Order Received'}
+          <h1 className="text-2xl font-bold text-ink-900">
+            {isConfirmed ? 'Order Confirmed' : 'Order Received'}
           </h1>
-          <p className="mt-1 text-gray-500">Order <span className="font-mono font-semibold text-gray-800">{fullOrder.order_number}</span></p>
+          <p className="mt-1 text-ink-400">Order <span className="font-mono font-semibold text-ink-800">{fullOrder.order_number}</span></p>
         </div>
 
         {/* Event details */}
-        <div className="rounded-xl border border-gray-200 bg-white p-6 mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 mb-3">{event.title}</h2>
+        <div className="rounded-xl border border-ink-200 bg-white p-6 mb-4">
+          <h2 className="text-lg font-semibold text-ink-900 mb-3">{event.title}</h2>
 
-          <div className="space-y-2 text-sm text-gray-600">
+          <div className="space-y-2 text-sm text-ink-600">
             <div className="flex items-start gap-2">
-              <svg className="h-4 w-4 mt-0.5 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="h-4 w-4 mt-0.5 shrink-0 text-ink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
               <span>{eventDate}</span>
             </div>
             {location && (
               <div className="flex items-start gap-2">
-                <svg className="h-4 w-4 mt-0.5 shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-4 w-4 mt-0.5 shrink-0 text-ink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
@@ -134,33 +134,33 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
         </div>
 
         {/* Tickets */}
-        <div className="rounded-xl border border-gray-200 bg-white p-6 mb-4">
-          <h3 className="text-base font-semibold text-gray-900 mb-3">Tickets Purchased</h3>
+        <div className="rounded-xl border border-ink-200 bg-white p-6 mb-4">
+          <h3 className="text-base font-semibold text-ink-900 mb-3">Tickets Purchased</h3>
           <div className="space-y-2">
             {Array.from(tierGroups).map(([name, qty]) => (
               <div key={name} className="flex justify-between text-sm">
-                <span className="text-gray-700">{name}</span>
-                <span className="text-gray-500">×{qty}</span>
+                <span className="text-ink-600">{name}</span>
+                <span className="text-ink-400">×{qty}</span>
               </div>
             ))}
             {addonItems.map((item, i) => (
               <div key={i} className="flex justify-between text-sm">
-                <span className="text-gray-500">{item.item_name} (add-on)</span>
-                <span className="text-gray-400">×{item.quantity}</span>
+                <span className="text-ink-400">{item.item_name} (add-on)</span>
+                <span className="text-ink-400">×{item.quantity}</span>
               </div>
             ))}
           </div>
 
-          <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between">
-            <span className="text-sm font-semibold text-gray-900">Total paid</span>
-            <span className="text-sm font-bold text-gray-900">{formatCents(fullOrder.total_cents, fullOrder.currency)}</span>
+          <div className="mt-4 pt-4 border-t border-ink-100 flex justify-between">
+            <span className="text-sm font-semibold text-ink-900">Total paid</span>
+            <span className="text-sm font-bold text-ink-900">{formatCents(fullOrder.total_cents, fullOrder.currency)}</span>
           </div>
         </div>
 
         {/* Ticket availability message */}
-        <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 mb-6 text-sm text-blue-800">
+        <div className="rounded-xl border border-gold-100 bg-gold-100 p-4 mb-6 text-sm text-gold-600">
           <p className="font-medium">Your tickets will be available in your account</p>
-          <p className="mt-1 text-blue-600">Digital tickets and QR codes will be sent to your email once activated.</p>
+          <p className="mt-1 text-gold-500">Digital tickets and QR codes will be sent to your email once activated.</p>
         </div>
 
         {/* Actions */}
@@ -175,9 +175,9 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
 
         {/* Guest CTA */}
         {isGuest && (
-          <div className="rounded-xl border border-gray-200 bg-white p-5 text-center mb-6">
-            <p className="text-sm font-semibold text-gray-900">Create an account to manage your tickets</p>
-            <p className="mt-1 text-xs text-gray-500">Access order history, digital tickets, and more</p>
+          <div className="rounded-xl border border-ink-200 bg-white p-5 text-center mb-6">
+            <p className="text-sm font-semibold text-ink-900">Create an account to manage your tickets</p>
+            <p className="mt-1 text-xs text-ink-400">Access order history, digital tickets, and more</p>
             <Link
               href="/signup"
               className="mt-3 inline-block rounded-lg bg-[#1A1A2E] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#2d2d4a]"

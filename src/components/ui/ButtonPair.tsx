@@ -45,8 +45,8 @@ function withVariant(node: ReactNode, variant: ButtonVariant): ReactNode {
  *
  * Usage:
  *   <ButtonPair
- *     primary={<Button variant="primary" href="/apply">Apply now</Button>}
- *     secondary={<Button variant="secondary" href="/learn">Learn more</Button>}
+ *     primary={<Button variant="primary" href="/organisers/signup">Start selling</Button>}
+ *     secondary={<Button variant="secondary" href="/pricing">View pricing</Button>}
  *   />
  */
 export function ButtonPair({ primary, secondary, gap = 'md' }: ButtonPairProps) {

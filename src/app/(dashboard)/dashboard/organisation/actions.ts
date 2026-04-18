@@ -99,5 +99,7 @@ export async function createOrganisation(formData: FormData) {
     .eq('id', user.id)
 
   revalidatePath('/dashboard', 'layout')
-  redirect('/dashboard/organisation')
+  const returnTo = (formData.get('returnTo') as string | null) || '/dashboard/organisation'
+  const safeReturnTo = returnTo.startsWith('/dashboard') ? returnTo : '/dashboard/organisation'
+  redirect(safeReturnTo)
 }

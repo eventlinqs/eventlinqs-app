@@ -52,6 +52,7 @@
   --color-navy-950: #0A0E1A;
 
   /* ── Neutrals (Ink scale) ── */
+  --color-ink-950: #050B16;
   --color-ink-900: #0A1628;
   --color-ink-800: #1A1A1A;
   --color-ink-600: #4A4A4A;
@@ -129,6 +130,62 @@ body {
   padding-top: env(safe-area-inset-top);
 }
 
+/* ─── Smart media motion ─────────────────────────────────────────────────── */
+@keyframes kenburns {
+  0%   { transform: scale(1)    translate3d(0, 0, 0); }
+  100% { transform: scale(1.08) translate3d(-1%, -1%, 0); }
+}
+.smart-media-kenburns {
+  animation: kenburns 14s ease-in-out infinite alternate;
+  transform-origin: center;
+}
+
+@keyframes marquee-slide {
+  0%   { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-50%, 0, 0); }
+}
+.animate-marquee {
+  animation: marquee-slide 40s linear infinite;
+}
+.animate-marquee-slow {
+  animation: marquee-slide 90s linear infinite;
+}
+.animate-marquee-vibe {
+  animation: marquee-slide 80s linear infinite;
+}
+.marquee-band:hover .animate-marquee,
+.marquee-band:hover .animate-marquee-slow,
+.marquee-band:hover .animate-marquee-vibe,
+.marquee-band:focus-within .animate-marquee,
+.marquee-band:focus-within .animate-marquee-slow,
+.marquee-band:focus-within .animate-marquee-vibe {
+  animation-play-state: paused;
+}
+
+/* ─── Soft entrance for editorial sections ───────────────────────────────── */
+@keyframes fade-rise {
+  0%   { opacity: 0; transform: translate3d(0, 12px, 0); }
+  100% { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+.animate-fade-rise {
+  animation: fade-rise 600ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)) both;
+}
+
+/* Tile hover lift helper — used on bento tiles + card surfaces. */
+.tile-lift {
+  transition: transform 320ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)),
+              box-shadow 320ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)),
+              border-color 220ms ease;
+}
+.tile-lift:hover {
+  transform: translate3d(0, -2px, 0);
+  box-shadow: 0 20px 40px -24px rgba(10, 22, 40, 0.4);
+}
+
+/* Utility: hide scrollbar but keep scrolling (for horizontal strips). */
+.scrollbar-none::-webkit-scrollbar { display: none; }
+.scrollbar-none { scrollbar-width: none; -ms-overflow-style: none; }
+
 /* ─── Respect user reduced-motion preference ─────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -139,4 +196,6 @@ body {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+  .smart-media-kenburns { animation: none !important; transform: none !important; }
+  .animate-marquee, .animate-marquee-slow, .animate-marquee-vibe { animation: none !important; }
 }

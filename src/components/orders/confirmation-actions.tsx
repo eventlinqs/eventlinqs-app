@@ -107,22 +107,22 @@ export function ConfirmationActions(props: ConfirmationActionsProps) {
         <button
           type="button"
           onClick={() => setCalendarOpen(v => !v)}
-          className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-center text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-1"
+          className="w-full rounded-lg border border-ink-200 bg-white px-4 py-3 text-center text-sm font-medium text-ink-600 hover:bg-ink-100 transition-colors flex items-center justify-center gap-1"
         >
           Add to Calendar
-          <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="h-4 w-4 text-ink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
         </button>
 
         {calendarOpen && (
-          <div className="absolute left-0 right-0 z-10 mt-1 rounded-lg border border-gray-200 bg-white shadow-lg overflow-hidden">
+          <div className="absolute left-0 right-0 z-10 mt-1 rounded-lg border border-ink-200 bg-white shadow-lg overflow-hidden">
             <a
               href={buildGoogleCalendarUrl(props)}
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => setCalendarOpen(false)}
-              className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-3 px-4 py-3 text-sm text-ink-600 hover:bg-ink-100 transition-colors"
             >
               <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none">
                 <path d="M6 2v2M18 2v2M3 8h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
@@ -133,7 +133,7 @@ export function ConfirmationActions(props: ConfirmationActionsProps) {
               href={buildIcsDataUrl(props)}
               download={icsFileName}
               onClick={() => setCalendarOpen(false)}
-              className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors border-t border-gray-100"
+              className="flex items-center gap-3 px-4 py-3 text-sm text-ink-600 hover:bg-ink-100 transition-colors border-t border-ink-100"
             >
               <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none">
                 <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2z" stroke="currentColor" strokeWidth={1.5} />
@@ -146,7 +146,7 @@ export function ConfirmationActions(props: ConfirmationActionsProps) {
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => setCalendarOpen(false)}
-              className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors border-t border-gray-100"
+              className="flex items-center gap-3 px-4 py-3 text-sm text-ink-600 hover:bg-ink-100 transition-colors border-t border-ink-100"
             >
               <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none">
                 <rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" strokeWidth={1.5} />
@@ -162,10 +162,10 @@ export function ConfirmationActions(props: ConfirmationActionsProps) {
       <button
         type="button"
         onClick={handleShare}
-        className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-3 text-center text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors relative"
+        className="flex-1 rounded-lg border border-ink-200 bg-white px-4 py-3 text-center text-sm font-medium text-ink-600 hover:bg-ink-100 transition-colors relative"
       >
         {copied ? (
-          <span className="text-green-600 font-medium">Event link copied!</span>
+          <span className="text-green-600 font-medium">Event link copied</span>
         ) : (
           'Share Event'
         )}

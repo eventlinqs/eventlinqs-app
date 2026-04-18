@@ -7,7 +7,7 @@ import { ContactForm } from '@/components/features/contact/ContactForm'
 import { getCategoryDisplayName } from '@/lib/hero-categories'
 
 export const metadata: Metadata = {
-  title: 'Contact Us — EventLinqs',
+  title: 'Contact Us | EventLinqs',
   description:
     'Get in touch with the EventLinqs team. We reply within 24 hours, Monday to Friday.',
 }

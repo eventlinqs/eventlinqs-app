@@ -137,7 +137,7 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
       )}
 
       {activeTiers.length === 0 ? (
-        <p className="text-sm text-gray-500">No tickets available.</p>
+        <p className="text-sm text-ink-400">No tickets available.</p>
       ) : (
         <div className="space-y-3">
           {activeTiers.map(tier => {
@@ -145,27 +145,38 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
             const soldOut = available <= 0
             const salePending = !!(tier.sale_start && new Date(tier.sale_start) > now)
             const qty = tierQuantities[tier.id] ?? 0
+            const qtyCapped = qty >= Math.min(tier.max_per_order, available)
+            const isSelected = qty > 0
 
             return (
               <div
                 key={tier.id}
-                className={`rounded-lg border p-4 ${soldOut || salePending ? 'border-gray-100 bg-gray-50' : 'border-gray-200'}`}
+                className={`rounded-xl border p-4 transition-colors ${
+                  soldOut || salePending
+                    ? 'border-ink-200/50 bg-ink-100/50 opacity-80'
+                    : isSelected
+                    ? 'border-gold-500 bg-gold-100/30 shadow-sm'
+                    : 'border-ink-200 bg-white hover:border-ink-400'
+                }`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900">{tier.name}</p>
+                    <p className="text-sm font-semibold text-ink-900">{tier.name}</p>
                     {tier.description && (
-                      <p className="mt-0.5 text-xs text-gray-500">{tier.description}</p>
+                      <p className="mt-0.5 text-xs text-ink-600">{tier.description}</p>
                     )}
                     {salePending && tier.sale_start && (
-                      <p className="mt-1 text-xs text-blue-600">
+                      <p className="mt-1 text-xs font-medium text-gold-600">
                         Sale opens {new Date(tier.sale_start).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' })}
                       </p>
                     )}
                     {!soldOut && !salePending && available <= 20 && (
-                      <p className="mt-1 text-xs text-amber-600">Only {available} left</p>
+                      <p className="mt-1 text-xs font-medium text-coral-500">Only {available} left</p>
                     )}
-                    <p className="mt-1 text-sm font-bold text-gray-900">{formatPrice(tier.display_price_cents ?? tier.price, currency)}</p>
+                    {!soldOut && !salePending && tier.max_per_order < 10 && (
+                      <p className="mt-0.5 text-[11px] text-ink-400">Max {tier.max_per_order} per order</p>
+                    )}
+                    <p className="mt-1 text-sm font-bold text-ink-900">{formatPrice(tier.display_price_cents ?? tier.price, currency)}</p>
                   </div>
 
                   {soldOut ? (
@@ -179,13 +190,13 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
                         />
                       </div>
                     ) : (
-                      <span className="inline-block rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-600 shrink-0">
+                      <span className="inline-flex items-center rounded-md bg-ink-900 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-gold-500 shrink-0">
                         Sold out
                       </span>
                     )
                   ) : salePending ? (
-                    <span className="inline-block rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-600 shrink-0">
-                      Sale starts soon
+                    <span className="inline-flex items-center rounded-md bg-gold-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-gold-600 shrink-0">
+                      Starts soon
                     </span>
                   ) : !isTicketingSuspended && (
                     <div className="flex items-center gap-2 shrink-0">
@@ -193,18 +204,28 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
                         type="button"
                         onClick={() => setTierQty(tier.id, -1, tier)}
                         disabled={qty === 0}
-                        className="h-8 w-8 rounded-full border border-gray-300 text-gray-600 font-bold disabled:opacity-30 hover:bg-gray-50 transition-colors flex items-center justify-center"
-                        aria-label="Decrease"
+                        className={`h-9 w-9 rounded-full border text-base font-bold flex items-center justify-center transition-colors ${
+                          qty === 0
+                            ? 'border-ink-200 text-ink-400 cursor-not-allowed'
+                            : 'border-gold-500 text-ink-900 hover:bg-gold-100'
+                        }`}
+                        aria-label={`Decrease ${tier.name} quantity`}
                       >
                         −
                       </button>
-                      <span className="w-6 text-center text-sm font-semibold tabular-nums">{qty}</span>
+                      <span className="w-7 text-center text-sm font-bold tabular-nums text-ink-900" aria-live="polite">{qty}</span>
                       <button
                         type="button"
                         onClick={() => setTierQty(tier.id, +1, tier)}
-                        disabled={qty >= Math.min(tier.max_per_order, available)}
-                        className="h-8 w-8 rounded-full border border-gray-300 text-gray-600 font-bold disabled:opacity-30 hover:bg-gray-50 transition-colors flex items-center justify-center"
-                        aria-label="Increase"
+                        disabled={qtyCapped}
+                        className={`h-9 w-9 rounded-full border text-base font-bold flex items-center justify-center transition-colors ${
+                          qtyCapped
+                            ? 'border-ink-200 text-ink-400 cursor-not-allowed'
+                            : isSelected
+                            ? 'border-gold-500 bg-gold-500 text-ink-900 hover:bg-gold-600'
+                            : 'border-ink-200 text-ink-600 hover:border-gold-500 hover:text-ink-900'
+                        }`}
+                        aria-label={`Increase ${tier.name} quantity`}
                       >
                         +
                       </button>
@@ -219,28 +240,44 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
 
       {addons.filter(a => a.is_active).length > 0 && (
         <div className="pt-2">
-          <p className="text-sm font-semibold text-gray-700 mb-2">Add-ons</p>
+          <p className="text-sm font-semibold text-ink-900 mb-2">Add-ons</p>
           <div className="space-y-2">
             {addons.filter(a => a.is_active).map(addon => {
               const qty = addonQuantities[addon.id] ?? 0
+              const isSelected = qty > 0
               return (
-                <div key={addon.id} className="flex items-center justify-between rounded-lg border border-gray-200 p-3">
+                <div
+                  key={addon.id}
+                  className={`flex items-center justify-between rounded-lg border p-3 transition-colors ${
+                    isSelected ? 'border-gold-500 bg-gold-100/30' : 'border-ink-200 bg-white'
+                  }`}
+                >
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900">{addon.name}</p>
-                    <p className="text-xs text-gray-900 font-semibold">{formatPrice(addon.price, currency)}</p>
+                    <p className="text-sm font-medium text-ink-900">{addon.name}</p>
+                    <p className="text-xs text-ink-900 font-semibold">{formatPrice(addon.price, currency)}</p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <button
                       type="button"
                       onClick={() => setAddonQty(addon.id, -1, addon)}
                       disabled={qty === 0}
-                      className="h-7 w-7 rounded-full border border-gray-300 text-sm font-bold disabled:opacity-30 hover:bg-gray-50 flex items-center justify-center"
+                      className={`h-8 w-8 rounded-full border text-sm font-bold flex items-center justify-center transition-colors ${
+                        qty === 0
+                          ? 'border-ink-200 text-ink-400 cursor-not-allowed'
+                          : 'border-gold-500 text-ink-900 hover:bg-gold-100'
+                      }`}
+                      aria-label={`Decrease ${addon.name} quantity`}
                     >−</button>
-                    <span className="w-5 text-center text-sm tabular-nums">{qty}</span>
+                    <span className="w-5 text-center text-sm font-bold tabular-nums text-ink-900">{qty}</span>
                     <button
                       type="button"
                       onClick={() => setAddonQty(addon.id, +1, addon)}
-                      className="h-7 w-7 rounded-full border border-gray-300 text-sm font-bold hover:bg-gray-50 flex items-center justify-center"
+                      className={`h-8 w-8 rounded-full border text-sm font-bold flex items-center justify-center transition-colors ${
+                        isSelected
+                          ? 'border-gold-500 bg-gold-500 text-ink-900 hover:bg-gold-600'
+                          : 'border-ink-200 text-ink-600 hover:border-gold-500 hover:text-ink-900'
+                      }`}
+                      aria-label={`Increase ${addon.name} quantity`}
                     >+</button>
                   </div>
                 </div>
@@ -251,7 +288,7 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
       )}
 
       {totalTickets > 0 && subtotalCents > 0 && (
-        <div className="flex justify-between text-sm font-medium text-gray-700 pt-2 border-t border-gray-100">
+        <div className="flex justify-between text-sm font-semibold text-ink-900 pt-3 border-t border-ink-200">
           <span>Subtotal</span>
           <span>{formatPrice(subtotalCents, currency)}</span>
         </div>
@@ -279,15 +316,15 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
           type="button"
           onClick={handleCheckout}
           disabled={totalTickets === 0 || isPending}
-          className="w-full rounded-lg bg-[#1A1A2E] px-4 py-3 text-sm font-semibold text-white disabled:opacity-40 hover:bg-[#2d2d4a] transition-colors"
+          className="w-full rounded-xl bg-gold-500 hover:bg-gold-600 px-4 py-3.5 text-sm font-semibold text-ink-900 disabled:bg-ink-200 disabled:text-ink-400 disabled:cursor-not-allowed transition-colors shadow-sm hover:shadow-md"
         >
           {isPending
             ? 'Reserving…'
             : totalTickets === 0
-            ? allFree ? 'Select Tickets' : 'Select Tickets'
+            ? 'Select tickets to continue'
             : allFree
             ? `Register ${totalTickets} ticket${totalTickets > 1 ? 's' : ''}`
-            : `Checkout: ${formatPrice(subtotalCents, currency)}`}
+            : `Checkout · ${formatPrice(subtotalCents, currency)}`}
         </button>
       )}
     </div>

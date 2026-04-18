@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 450" preserveAspectRatio="xMidYMid slice" role="img" aria-label="EventLinqs">
+  <defs>
+    <radialGradient id="glow" cx="30%" cy="35%" r="75%">
+      <stop offset="0%" stop-color="#1a2545" stop-opacity="1"/>
+      <stop offset="65%" stop-color="#0A1628" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#050912" stop-opacity="1"/>
+    </radialGradient>
+  </defs>
+  <rect width="600" height="450" fill="url(#glow)"/>
+  <g opacity="0.95">
+    <text x="40" y="245" font-family="Manrope, system-ui, sans-serif" font-size="46" font-weight="800" fill="#FFFFFF" letter-spacing="-1">EVENTLINQS</text>
+    <circle cx="480" cy="235" r="7" fill="#D4A017"/>
+  </g>
+</svg>

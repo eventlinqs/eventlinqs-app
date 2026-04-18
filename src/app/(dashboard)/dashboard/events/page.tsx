@@ -2,7 +2,9 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { Building2 } from 'lucide-react'
 import { EventsTable } from './events-table'
+import { DashboardEmptyState } from '@/components/dashboard/empty-state'
 import type { Event } from '@/types/database'
 
 type FilterTab = 'all' | 'draft' | 'published' | 'past' | 'cancelled'
@@ -27,15 +29,15 @@ export default async function MyEventsPage({ searchParams }: Props) {
 
   if (!org) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 text-center">
-        <h2 className="text-xl font-semibold text-gray-900">No Organisation</h2>
-        <p className="mt-2 text-gray-500">Create an organisation first to manage events.</p>
-        <Link
-          href="/dashboard/organisation/create"
-          className="mt-6 rounded-lg bg-blue-600 px-6 py-3 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
-        >
-          Create Organisation
-        </Link>
+      <div className="space-y-6">
+        <h1 className="font-display text-2xl font-bold text-ink-900">My events</h1>
+        <DashboardEmptyState
+          icon={<Building2 className="h-6 w-6" aria-hidden="true" />}
+          title="Set up your organisation first"
+          description="Your organisation is the brand you publish events under. Create one to start selling tickets."
+          primary={{ label: 'Create organisation', href: '/dashboard/organisation/create' }}
+          secondary={{ label: 'Browse events', href: '/events' }}
+        />
       </div>
     )
   }
@@ -97,25 +99,25 @@ export default async function MyEventsPage({ searchParams }: Props) {
         </div>
       )}
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">My Events</h1>
+        <h1 className="text-2xl font-bold text-ink-900">My Events</h1>
         <Link
           href="/dashboard/events/create"
-          className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+          className="rounded-lg bg-gold-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-gold-600 transition-colors"
         >
           + Create Event
         </Link>
       </div>
 
       {/* Filter tabs */}
-      <div className="mb-6 flex gap-1 border-b border-gray-200">
+      <div className="mb-6 flex gap-1 border-b border-ink-200">
         {tabs.map(t => (
           <Link
             key={t.key}
             href={`/dashboard/events?tab=${t.key}`}
             className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
               activeTab === t.key
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+                ? 'border-gold-500 text-gold-500'
+                : 'border-transparent text-ink-400 hover:text-ink-600'
             }`}
           >
             {t.label}

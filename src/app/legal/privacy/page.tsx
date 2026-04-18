@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { LegalPageShell } from '@/components/ui/LegalPageShell'
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy — EventLinqs',
+  title: 'Privacy Policy | EventLinqs',
   description:
     'How EventLinqs collects, uses, and protects your personal information. Read our full Privacy Policy.',
 }

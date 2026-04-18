@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { EventForm } from '@/components/features/events/event-form'
+import { OrgCreateForm } from '../../organisation/create/org-create-form'
 import type { EventCategory } from '@/types/database'
 
 export default async function CreateEventPage() {
@@ -18,17 +19,24 @@ export default async function CreateEventPage() {
 
   if (!org) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 text-center">
-        <h2 className="text-xl font-semibold text-gray-900">Organisation Required</h2>
-        <p className="mt-2 max-w-sm text-gray-500">
-          You need to create an organisation before you can create events.
-        </p>
-        <Link
-          href="/dashboard/organisation/create"
-          className="mt-6 rounded-lg bg-blue-600 px-6 py-3 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
-        >
-          Create Organisation
-        </Link>
+      <div className="mx-auto max-w-xl">
+        <div className="mb-8 flex items-center gap-4">
+          <Link href="/dashboard/events" className="text-sm text-ink-400 hover:text-ink-600">
+            ← My Events
+          </Link>
+          <h1 className="text-2xl font-bold text-ink-900">Create Event</h1>
+        </div>
+        <div className="mb-6 rounded-xl border border-gold-400/40 bg-gold-100/50 px-5 py-4">
+          <p className="text-sm font-semibold text-ink-900">First, set up your organisation</p>
+          <p className="mt-1 text-xs text-ink-600">
+            Every event lives under an organisation. Fill this in once and you&rsquo;ll be straight on to creating your event.
+          </p>
+        </div>
+        <OrgCreateForm
+          userEmail={user.email ?? ''}
+          returnTo="/dashboard/events/create"
+          submitLabel="Continue to event details"
+        />
       </div>
     )
   }
@@ -55,10 +63,10 @@ export default async function CreateEventPage() {
   return (
     <div>
       <div className="mb-8 flex items-center gap-4">
-        <Link href="/dashboard/events" className="text-sm text-gray-500 hover:text-gray-700">
+        <Link href="/dashboard/events" className="text-sm text-ink-400 hover:text-ink-600">
           ← My Events
         </Link>
-        <h1 className="text-2xl font-bold text-gray-900">Create Event</h1>
+        <h1 className="text-2xl font-bold text-ink-900">Create Event</h1>
       </div>
       <EventForm
         userId={user.id}

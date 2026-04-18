@@ -48,14 +48,16 @@ export function JoinWaitlistModal({
     return () => document.removeEventListener('keydown', handler)
   }, [isOpen, onClose])
 
-  // Reset state when reopened
-  useEffect(() => {
+  // Reset state when reopened — derive from prop during render (React-recommended pattern)
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen)
+  if (isOpen !== prevIsOpen) {
+    setPrevIsOpen(isOpen)
     if (isOpen) {
       setQuantity(1)
       setError(null)
       setSuccessPosition(null)
     }
-  }, [isOpen])
+  }
 
   if (!isOpen) return null
 
@@ -101,8 +103,8 @@ export function JoinWaitlistModal({
         <div className="w-full md:w-[480px] bg-white rounded-t-2xl md:rounded-2xl shadow-xl overflow-hidden">
 
           {/* Header */}
-          <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
-            <h2 id="waitlist-modal-title" className="text-lg font-semibold text-gray-900">
+          <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-ink-100">
+            <h2 id="waitlist-modal-title" className="text-lg font-semibold text-ink-900">
               Join Waitlist: {tierName}
             </h2>
             <button
@@ -110,7 +112,7 @@ export function JoinWaitlistModal({
               type="button"
               onClick={onClose}
               aria-label="Close waitlist modal"
-              className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-ink-400 hover:bg-ink-100 hover:text-ink-600 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500"
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -127,12 +129,12 @@ export function JoinWaitlistModal({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900">You&apos;re on the waitlist!</h3>
-                <p className="mt-2 text-sm text-gray-600">
-                  You are <span className="font-bold text-gray-900">#{successPosition}</span> in line for{' '}
+                <h3 className="text-lg font-semibold text-ink-900">You&apos;re on the waitlist</h3>
+                <p className="mt-2 text-sm text-ink-600">
+                  You are <span className="font-bold text-ink-900">#{successPosition}</span> in line for{' '}
                   <span className="font-medium">{tierName}</span>.
                 </p>
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-ink-400">
                   We&apos;ll email you immediately if tickets become available. You have 15 minutes to complete your purchase once notified.
                 </p>
                 <div className="mt-6 flex flex-col gap-2">
@@ -145,7 +147,7 @@ export function JoinWaitlistModal({
                   <button
                     type="button"
                     onClick={onClose}
-                    className="block w-full rounded-xl border border-gray-200 py-3 text-center text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                    className="block w-full rounded-xl border border-ink-200 py-3 text-center text-sm font-medium text-ink-600 hover:bg-ink-100 transition-colors"
                   >
                     Close
                   </button>
@@ -154,13 +156,13 @@ export function JoinWaitlistModal({
             ) : (
               /* ── Join form ── */
               <form onSubmit={handleSubmit} noValidate>
-                <p className="text-sm text-gray-600 mb-5">
+                <p className="text-sm text-ink-600 mb-5">
                   This tier is sold out. Join the waitlist and we&apos;ll notify you immediately if a spot opens up.
                 </p>
 
                 {/* Quantity */}
                 <div className="mb-5">
-                  <label htmlFor="waitlist-quantity" className="block text-sm font-medium text-gray-700 mb-1.5">
+                  <label htmlFor="waitlist-quantity" className="block text-sm font-medium text-ink-600 mb-1.5">
                     How many tickets do you need?
                   </label>
                   <div className="flex items-center gap-3">
@@ -169,7 +171,7 @@ export function JoinWaitlistModal({
                       onClick={() => setQuantity(q => Math.max(1, q - 1))}
                       disabled={quantity <= 1}
                       aria-label="Decrease quantity"
-                      className="flex h-11 w-11 items-center justify-center rounded-full border border-gray-300 text-lg font-bold text-gray-600 disabled:opacity-30 hover:bg-gray-50 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+                      className="flex h-11 w-11 items-center justify-center rounded-full border border-ink-200 text-lg font-bold text-ink-600 disabled:opacity-30 hover:bg-ink-100 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500"
                     >
                       −
                     </button>
@@ -177,7 +179,7 @@ export function JoinWaitlistModal({
                       id="waitlist-quantity"
                       aria-live="polite"
                       aria-atomic="true"
-                      className="w-12 text-center text-xl font-bold tabular-nums text-gray-900"
+                      className="w-12 text-center text-xl font-bold tabular-nums text-ink-900"
                     >
                       {quantity}
                     </span>
@@ -186,18 +188,18 @@ export function JoinWaitlistModal({
                       onClick={() => setQuantity(q => Math.min(maxQty, q + 1))}
                       disabled={quantity >= maxQty}
                       aria-label="Increase quantity"
-                      className="flex h-11 w-11 items-center justify-center rounded-full border border-gray-300 text-lg font-bold text-gray-600 disabled:opacity-30 hover:bg-gray-50 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+                      className="flex h-11 w-11 items-center justify-center rounded-full border border-ink-200 text-lg font-bold text-ink-600 disabled:opacity-30 hover:bg-ink-100 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500"
                     >
                       +
                     </button>
                   </div>
-                  <p className="mt-1 text-xs text-gray-400">Maximum {maxQty} per order</p>
+                  <p className="mt-1 text-xs text-ink-400">Maximum {maxQty} per order</p>
                 </div>
 
                 {/* Email confirmation */}
                 {userEmail && (
-                  <div className="mb-5 rounded-lg bg-blue-50 border border-blue-100 px-4 py-3">
-                    <p className="text-sm text-blue-800">
+                  <div className="mb-5 rounded-lg bg-gold-100 border border-gold-100 px-4 py-3">
+                    <p className="text-sm text-gold-600">
                       Notifications will be sent to <span className="font-semibold">{userEmail}</span>
                     </p>
                   </div>
@@ -217,12 +219,12 @@ export function JoinWaitlistModal({
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full rounded-xl bg-[#1A1A2E] py-3 text-sm font-semibold text-white disabled:opacity-50 hover:bg-[#2d2d4a] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+                  className="w-full rounded-xl bg-[#1A1A2E] py-3 text-sm font-semibold text-white disabled:opacity-50 hover:bg-[#2d2d4a] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500"
                 >
                   {isSubmitting ? 'Joining…' : `Join Waitlist: ${quantity} ticket${quantity > 1 ? 's' : ''}`}
                 </button>
 
-                <p className="mt-3 text-center text-xs text-gray-400">
+                <p className="mt-3 text-center text-xs text-ink-400">
                   You&apos;ll have 15 minutes to buy once notified. FIFO: first in, first served.
                 </p>
               </form>

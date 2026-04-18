@@ -16,9 +16,9 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const topic = getHelpTopic(slug)
-  if (!topic) return { title: 'Not Found — Help Centre — EventLinqs' }
+  if (!topic) return { title: 'Not Found | Help Centre | EventLinqs' }
   return {
-    title: `${topic.title} — Help Centre — EventLinqs`,
+    title: `${topic.title} | Help Centre | EventLinqs`,
     description: topic.description,
   }
 }

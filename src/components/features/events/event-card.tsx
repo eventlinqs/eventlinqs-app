@@ -2,8 +2,9 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { Heart, MapPin } from 'lucide-react'
+import { MapPin } from 'lucide-react'
 import { SocialProofBadge } from '@/components/inventory/social-proof-badge'
+import { SaveEventButton } from './save-event-button'
 import type { EventInventory } from '@/lib/redis/inventory-cache'
 
 /**
@@ -46,6 +47,7 @@ export type EventCardData = {
 type Props = {
   event: EventCardData
   dynamicPrices?: Map<string, number>
+  initiallySaved?: boolean
 }
 
 function formatDate(iso: string) {
@@ -83,9 +85,9 @@ function buildInventory(tiers: EventCardTier[]): EventInventory {
   return { total_sold, total_reserved, total_capacity, available, percent_sold }
 }
 
-export function EventCard({ event, dynamicPrices = new Map() }: Props) {
+export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = false }: Props) {
   const {
-    slug, title, cover_image_url, start_date,
+    id, slug, title, cover_image_url, start_date,
     venue_city, venue_country, created_at, category, ticket_tiers,
   } = event
 
@@ -100,7 +102,7 @@ export function EventCard({ event, dynamicPrices = new Map() }: Props) {
   return (
     <Link
       href={`/events/${slug}`}
-      className="group flex flex-col rounded-xl overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow border border-ink-100"
+      className="group flex flex-col rounded-lg overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow border border-ink-100"
     >
       {/* ── Image ───────────────────────────────────────────────── */}
       <div className="relative aspect-video md:aspect-[4/3] overflow-hidden bg-ink-100">
@@ -127,18 +129,13 @@ export function EventCard({ event, dynamicPrices = new Map() }: Props) {
           </span>
         )}
 
-        {/* Heart / save — bottom-right overlay */}
-        <button
-          type="button"
-          aria-label={`Save ${title}`}
-          onClick={(e) => {
-            e.preventDefault()
-            // Save/unsave logic wired in Session 4
-          }}
-          className="absolute bottom-3 right-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/40 transition-colors min-h-[44px] min-w-[44px] -mb-[8px] -mr-[8px]"
-        >
-          <Heart className="h-4 w-4" strokeWidth={2} />
-        </button>
+        {/* Heart / save — top-right overlay */}
+        <SaveEventButton
+          eventId={id}
+          initiallySaved={initiallySaved}
+          variant="light"
+          className="absolute right-3 top-3 shadow-sm"
+        />
       </div>
 
       {/* ── Card body ───────────────────────────────────────────── */}

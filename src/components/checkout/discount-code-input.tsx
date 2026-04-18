@@ -75,8 +75,8 @@ export function DiscountCodeInput({
   }
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-6">
-      <h3 className="text-base font-semibold text-gray-900 mb-3">Discount Code</h3>
+    <div className="rounded-xl border border-ink-200 bg-white p-6">
+      <h3 className="text-base font-semibold text-ink-900 mb-3">Discount Code</h3>
       <div className="flex gap-2">
         <input
           type="text"
@@ -84,13 +84,13 @@ export function DiscountCodeInput({
           onChange={e => setCode(e.target.value.toUpperCase())}
           onKeyDown={e => e.key === 'Enter' && handleApply()}
           placeholder="Enter code"
-          className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono uppercase"
+          className="flex-1 rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500 font-mono uppercase"
         />
         <button
           type="button"
           onClick={handleApply}
           disabled={isPending || !code.trim()}
-          className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 hover:bg-gray-700 transition-colors"
+          className="rounded-lg bg-ink-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 hover:bg-ink-600 transition-colors"
         >
           {isPending ? 'Checking…' : 'Apply'}
         </button>

@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 140" role="img" aria-label="EventLinqs">
+  <title>EventLinqs — Concept B (Q-tail gold underscore under QS)</title>
+  <text
+    x="0"
+    y="92"
+    font-family="Manrope, 'Segoe UI', system-ui, -apple-system, sans-serif"
+    font-weight="800"
+    font-size="92"
+    letter-spacing="-3"
+    fill="currentColor"
+  >EVENTLINQS</text>
+  <path
+    d="M 450 98 Q 458 114 475 114 L 585 114"
+    stroke="#D4A017"
+    stroke-width="6"
+    fill="none"
+    stroke-linecap="round"
+  />
+</svg>

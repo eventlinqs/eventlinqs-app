@@ -155,15 +155,15 @@ export function StartSquadModal({
         "
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
-          <h2 id="squad-modal-title" className="text-lg font-bold text-gray-900">
-            {step === 'success' ? '🎉 Squad Created!' : 'Start a Squad'}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-ink-100 shrink-0">
+          <h2 id="squad-modal-title" className="text-lg font-bold text-ink-900">
+            {step === 'success' ? '🎉 Squad Created' : 'Start a Squad'}
           </h2>
           <button
             type="button"
             onClick={handleClose}
             aria-label="Close"
-            className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-500"
+            className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-ink-100 transition-colors text-ink-400"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -175,26 +175,26 @@ export function StartSquadModal({
           {step === 'form' ? (
             <form onSubmit={handleSubmit} noValidate>
               {/* Squad summary */}
-              <div className="rounded-xl bg-[#F0F6FF] border border-blue-100 p-4 mb-6">
+              <div className="rounded-xl bg-[#F0F6FF] border border-gold-100 p-4 mb-6">
                 <p className="text-sm font-semibold text-[#1A1A2E]">{tierName}</p>
-                <p className="text-sm text-gray-600 mt-1">
+                <p className="text-sm text-ink-600 mt-1">
                   <span className="font-medium">{totalSpots} spots,</span> each person pays{' '}
                   <span className="font-semibold text-[#4A90D9]">
                     {formatPrice(pricePerSpotCents, currency)} each
                   </span>
                 </p>
-                <p className="text-xs text-gray-500 mt-2">
+                <p className="text-xs text-ink-400 mt-2">
                   When all {totalSpots} spots are filled, everyone gets their ticket automatically.
                   If the squad expires unfilled, all payments are refunded.
                 </p>
               </div>
 
               {/* Leader details */}
-              <p className="text-sm font-semibold text-gray-900 mb-3">Your details</p>
+              <p className="text-sm font-semibold text-ink-900 mb-3">Your details</p>
 
               <div className="grid grid-cols-2 gap-3 mb-3">
                 <div>
-                  <label htmlFor="squad-first" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="squad-first" className="block text-sm font-medium text-ink-600 mb-1">
                     First name <span aria-hidden="true" className="text-red-500">*</span>
                   </label>
                   <input
@@ -204,12 +204,12 @@ export function StartSquadModal({
                     autoComplete="given-name"
                     value={firstName}
                     onChange={e => setFirstName(e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base text-gray-900 focus:border-[#4A90D9] focus:outline-none focus:ring-1 focus:ring-[#4A90D9]"
+                    className="w-full rounded-lg border border-ink-200 px-3 py-2.5 text-base text-ink-900 focus:border-[#4A90D9] focus:outline-none focus:ring-1 focus:ring-[#4A90D9]"
                     placeholder="Alice"
                   />
                 </div>
                 <div>
-                  <label htmlFor="squad-last" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="squad-last" className="block text-sm font-medium text-ink-600 mb-1">
                     Last name <span aria-hidden="true" className="text-red-500">*</span>
                   </label>
                   <input
@@ -219,14 +219,14 @@ export function StartSquadModal({
                     autoComplete="family-name"
                     value={lastName}
                     onChange={e => setLastName(e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base text-gray-900 focus:border-[#4A90D9] focus:outline-none focus:ring-1 focus:ring-[#4A90D9]"
+                    className="w-full rounded-lg border border-ink-200 px-3 py-2.5 text-base text-ink-900 focus:border-[#4A90D9] focus:outline-none focus:ring-1 focus:ring-[#4A90D9]"
                     placeholder="Smith"
                   />
                 </div>
               </div>
 
               <div className="mb-5">
-                <label htmlFor="squad-email" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="squad-email" className="block text-sm font-medium text-ink-600 mb-1">
                   Email address <span aria-hidden="true" className="text-red-500">*</span>
                 </label>
                 <input
@@ -236,7 +236,7 @@ export function StartSquadModal({
                   autoComplete="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base text-gray-900 focus:border-[#4A90D9] focus:outline-none focus:ring-1 focus:ring-[#4A90D9]"
+                  className="w-full rounded-lg border border-ink-200 px-3 py-2.5 text-base text-ink-900 focus:border-[#4A90D9] focus:outline-none focus:ring-1 focus:ring-[#4A90D9]"
                   placeholder="alice@example.com"
                 />
               </div>
@@ -273,7 +273,7 @@ export function StartSquadModal({
 
               {/* Share link */}
               <div className="mb-5">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-ink-600 mb-2">
                   Your squad link
                 </label>
                 <div className="flex gap-2">
@@ -281,13 +281,13 @@ export function StartSquadModal({
                     readOnly
                     value={shareUrl}
                     aria-label="Squad share link"
-                    className="flex-1 min-w-0 rounded-lg border border-gray-300 bg-gray-50 px-3 py-2.5 text-sm text-gray-700 truncate"
+                    className="flex-1 min-w-0 rounded-lg border border-ink-200 bg-ink-100 px-3 py-2.5 text-sm text-ink-600 truncate"
                   />
                   <button
                     type="button"
                     onClick={handleCopy}
-                    className="shrink-0 h-11 px-4 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                    aria-label={copied ? 'Copied!' : 'Copy link'}
+                    className="shrink-0 h-11 px-4 rounded-lg border border-ink-200 text-sm font-medium text-ink-600 hover:bg-ink-100 transition-colors"
+                    aria-label={copied ? 'Copied' : 'Copy link'}
                   >
                     {copied ? '✓ Copied' : 'Copy'}
                   </button>
@@ -311,8 +311,8 @@ export function StartSquadModal({
                 <button
                   type="button"
                   onClick={handleNativeShare}
-                  className="w-full h-12 rounded-xl border border-gray-300 text-gray-700 font-semibold text-sm
-                             flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors"
+                  className="w-full h-12 rounded-xl border border-ink-200 text-ink-600 font-semibold text-sm
+                             flex items-center justify-center gap-2 hover:bg-ink-100 transition-colors"
                 >
                   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />

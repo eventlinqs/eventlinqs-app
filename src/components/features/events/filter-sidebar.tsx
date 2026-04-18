@@ -5,13 +5,13 @@ import Link from 'next/link'
 import { ChevronDown } from 'lucide-react'
 
 /**
- * FilterSidebar — desktop-only collapsible filter panel (§6.4).
+ * FilterSidebar — desktop-only collapsible filter panel.
  *
  * Groups:
- *   WHEN        — expanded by default (date quick-picks)
- *   CATEGORY    — expanded, top 5 visible + "Show N more" toggle
- *   PRICE       — collapsed (free toggle)
- *   CULTURE/LANGUAGE — collapsed + top 6 culture tags (our moat vs TM/DICE)
+ *   WHEN      — expanded by default (date quick-picks)
+ *   CATEGORY  — expanded, top 5 visible + "Show N more" toggle; uses slugs
+ *   PRICE     — collapsed, tri-state All / Free only / Paid only
+ *   DISTANCE  — collapsed, km radius from detected user location
  *
  * Hidden below lg breakpoint — mobile gets EventsFilterStrip + bottom drawer.
  */
@@ -23,7 +23,8 @@ type FilterParams = {
   city?: string
   date?: string
   free?: string
-  culture?: string
+  paid?: string
+  distance?: string
   q?: string
   page?: string
 }
@@ -48,13 +49,13 @@ const DATE_OPTIONS = [
   { key: 'month',    label: 'This month' },
 ]
 
-const CULTURE_TAGS = [
-  { key: 'afrobeats', label: 'Afrobeats' },
-  { key: 'amapiano',  label: 'Amapiano' },
-  { key: 'highlife',  label: 'Highlife' },
-  { key: 'gospel',    label: 'Gospel' },
-  { key: 'comedy',    label: 'Comedy' },
-  { key: 'owambe',    label: 'Owambe' },
+const DISTANCE_OPTIONS: { key: string | undefined; label: string }[] = [
+  { key: undefined, label: 'Any distance' },
+  { key: '5',   label: 'Within 5km' },
+  { key: '10',  label: 'Within 10km' },
+  { key: '25',  label: 'Within 25km' },
+  { key: '50',  label: 'Within 50km' },
+  { key: '100', label: 'Within 100km' },
 ]
 
 const CATEGORIES_VISIBLE = 5
@@ -154,7 +155,7 @@ export function FilterSidebar({
           </div>
         </SidebarGroup>
 
-        {/* CATEGORY */}
+        {/* CATEGORY — slug-based href (§A.1 fix) */}
         <SidebarGroup title="Category" defaultOpen={true}>
           <div className="space-y-0.5">
             <FilterLink
@@ -166,8 +167,8 @@ export function FilterSidebar({
             {visibleCategories.map(c => (
               <FilterLink
                 key={c.id}
-                href={buildUrl(params, { category: c.id, page: '1' })}
-                active={params.category === c.id}
+                href={buildUrl(params, { category: c.slug, page: '1' })}
+                active={params.category === c.slug}
               >
                 {c.name}
               </FilterLink>
@@ -184,32 +185,40 @@ export function FilterSidebar({
           </div>
         </SidebarGroup>
 
-        {/* PRICE */}
+        {/* PRICE — tri-state All / Free / Paid */}
         <SidebarGroup title="Price" defaultOpen={false}>
-          <FilterLink
-            href={buildUrl(params, { free: params.free === '1' ? undefined : '1', page: '1' })}
-            active={params.free === '1'}
-          >
-            Free events only
-          </FilterLink>
-        </SidebarGroup>
-
-        {/* CULTURE / LANGUAGE — our moat */}
-        <SidebarGroup title="Culture / Language" defaultOpen={false}>
           <div className="space-y-0.5">
             <FilterLink
-              href={buildUrl(params, { culture: undefined, page: '1' })}
-              active={!params.culture}
+              href={buildUrl(params, { free: undefined, paid: undefined, page: '1' })}
+              active={!params.free && !params.paid}
             >
-              All genres
+              All prices
             </FilterLink>
-            {CULTURE_TAGS.map(tag => (
+            <FilterLink
+              href={buildUrl(params, { free: '1', paid: undefined, page: '1' })}
+              active={params.free === '1'}
+            >
+              Free only
+            </FilterLink>
+            <FilterLink
+              href={buildUrl(params, { free: undefined, paid: '1', page: '1' })}
+              active={params.paid === '1'}
+            >
+              Paid only
+            </FilterLink>
+          </div>
+        </SidebarGroup>
+
+        {/* DISTANCE — radius from detected location */}
+        <SidebarGroup title="Distance" defaultOpen={false}>
+          <div className="space-y-0.5">
+            {DISTANCE_OPTIONS.map(opt => (
               <FilterLink
-                key={tag.key}
-                href={buildUrl(params, { culture: tag.key, page: '1' })}
-                active={params.culture === tag.key}
+                key={opt.label}
+                href={buildUrl(params, { distance: opt.key, page: '1' })}
+                active={(params.distance ?? undefined) === opt.key}
               >
-                {tag.label}
+                {opt.label}
               </FilterLink>
             ))}
           </div>

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Sydney">
+  <defs>
+    <linearGradient id="syd-bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#123E74"/>
+      <stop offset="60%" stop-color="#1A4E8F"/>
+      <stop offset="100%" stop-color="#0A2449"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="900" fill="url(#syd-bg)"/>
+  <!-- Opera House-style silhouette + harbour line -->
+  <g opacity="0.4" fill="#051A33">
+    <path d="M 140 780 Q 220 580 300 780 Z"/>
+    <path d="M 260 780 Q 340 560 420 780 Z"/>
+    <path d="M 380 780 Q 460 600 540 780 Z"/>
+    <path d="M 500 780 Q 580 620 660 780 Z"/>
+    <rect x="720" y="520" width="60" height="260"/>
+    <rect x="790" y="460" width="80" height="320"/>
+    <rect x="880" y="500" width="70" height="280"/>
+    <rect x="960" y="440" width="90" height="340"/>
+    <rect x="1060" y="520" width="60" height="260"/>
+  </g>
+  <rect x="0" y="780" width="1200" height="120" fill="#051A33"/>
+  <text x="1160" y="720" font-family="Manrope, 'Helvetica Neue', system-ui, sans-serif" font-size="240" font-weight="800" fill="#FFFFFF" fill-opacity="0.6" letter-spacing="-6" text-anchor="end">SYDNEY</text>
+</svg>

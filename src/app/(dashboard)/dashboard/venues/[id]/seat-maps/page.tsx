@@ -46,7 +46,7 @@ export default async function SeatMapsPage({ params }: Props) {
   return (
     <div>
       <div className="mb-6">
-        <Link href="/dashboard/venues" className="text-sm text-gray-500 hover:text-gray-700">
+        <Link href="/dashboard/venues" className="text-sm text-ink-400 hover:text-ink-600">
           ← Venues
         </Link>
       </div>

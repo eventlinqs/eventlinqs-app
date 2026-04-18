@@ -1,22 +1,38 @@
-import { SignupForm } from '@/components/auth/signup-form'
 import Link from 'next/link'
+import { AuthShell } from '@/components/auth/auth-shell'
+import { SignupForm } from '@/components/auth/signup-form'
 
-export default function SignupPage() {
+export const metadata = {
+  title: 'Create account | EventLinqs',
+  description: 'Create your EventLinqs account to buy tickets and host events.',
+}
+
+type Props = {
+  searchParams: Promise<{ role?: string }>
+}
+
+export default async function SignupPage({ searchParams }: Props) {
+  const { role } = await searchParams
+  const isOrganiser = role === 'organiser'
+
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-md space-y-8">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold">Create your account</h1>
-          <p className="mt-2 text-gray-600">Join EventLinqs and discover amazing events</p>
-        </div>
-        <SignupForm />
-        <p className="text-center text-sm text-gray-600">
+    <AuthShell
+      title={isOrganiser ? 'Start selling tickets in 5 minutes' : 'Create your account'}
+      subtitle={
+        isOrganiser
+          ? 'Set up your organiser account, create your first event, and share the link. Your first event is on us.'
+          : 'Discover events and host your own in minutes.'
+      }
+      footer={
+        <>
           Already have an account?{' '}
-          <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500">
+          <Link href="/login" className="font-medium text-ink-900 underline-offset-2 hover:text-gold-600 hover:underline">
             Sign in
           </Link>
-        </p>
-      </div>
-    </div>
+        </>
+      }
+    >
+      <SignupForm role={isOrganiser ? 'organiser' : 'attendee'} />
+    </AuthShell>
   )
 }

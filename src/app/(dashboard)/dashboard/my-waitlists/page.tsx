@@ -14,31 +14,31 @@ export default async function MyWaitlistsPage() {
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">My Waitlists</h1>
+        <h1 className="text-2xl font-bold text-ink-900">My Waitlists</h1>
         <Link
           href="/events"
-          className="text-sm text-blue-600 hover:text-blue-800 transition-colors"
+          className="text-sm text-gold-500 hover:text-gold-600 transition-colors"
         >
           Browse Events →
         </Link>
       </div>
 
       {waitlists.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 py-20 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-gray-100">
-            <svg className="h-7 w-7 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-ink-100 bg-white px-6 py-14 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gold-100 text-gold-600">
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75} aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
             </svg>
           </div>
-          <p className="text-sm font-medium text-gray-700">You&apos;re not on any waitlists yet</p>
-          <p className="mt-1 text-xs text-gray-400">
-            When a sold-out event has a waitlist, you can join from the event page.
+          <h2 className="mt-5 font-display text-lg font-semibold text-ink-900">You are not on any waitlists</h2>
+          <p className="mt-1 max-w-md text-sm text-ink-600">
+            When an event sells out you can join its waitlist from the event page. We will notify you if spots open up.
           </p>
           <Link
             href="/events"
-            className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+            className="mt-6 inline-flex h-11 items-center rounded-lg bg-gold-400 px-5 text-sm font-semibold text-ink-900 shadow-md transition-all hover:-translate-y-0.5 hover:bg-gold-500 hover:shadow-lg"
           >
-            Browse Events
+            Browse sold-out events
           </Link>
         </div>
       ) : (

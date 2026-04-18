@@ -1,4 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Metadata } from 'next'
@@ -11,7 +12,7 @@ type Props = {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { token } = await params
   return {
-    title: `Pay Your Share — Squad — EventLinqs`,
+    title: `Pay Your Share — Squad | EventLinqs`,
     robots: { index: false },
   }
 }
@@ -88,38 +89,38 @@ export default async function SquadPayPage({ params }: Props) {
   const memberEmail = member.attendee_email ?? member.guest_email ?? ''
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="border-b border-gray-200 bg-white px-4 py-4 sm:px-6">
+    <div className="min-h-screen bg-ink-100">
+      <nav className="border-b border-ink-200 bg-white px-4 py-4 sm:px-6">
         <div className="mx-auto max-w-lg">
-          <a href="/" className="text-lg font-bold text-blue-600">EVENTLINQS</a>
+          <Link href="/" className="text-lg font-bold text-gold-500">EVENTLINQS</Link>
         </div>
       </nav>
 
       <div className="mx-auto max-w-lg px-4 py-8 sm:px-6">
         {/* Order summary */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 mb-6 shadow-sm">
-          <h1 className="text-lg font-bold text-gray-900 mb-1">Pay your share</h1>
-          <p className="text-sm text-gray-500 mb-4">
+        <div className="rounded-2xl border border-ink-200 bg-white p-5 mb-6 shadow-sm">
+          <h1 className="text-lg font-bold text-ink-900 mb-1">Pay your share</h1>
+          <p className="text-sm text-ink-400 mb-4">
             You&apos;re paying for 1 spot in a squad for this event.
           </p>
 
-          <div className="border-t border-gray-100 pt-4 space-y-2">
+          <div className="border-t border-ink-100 pt-4 space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-gray-600">{event.title}</span>
+              <span className="text-ink-600">{event.title}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-gray-500">{eventDate}</span>
+              <span className="text-ink-400">{eventDate}</span>
             </div>
             {(event.venue_name || event.venue_city) && (
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500">
+                <span className="text-ink-400">
                   {[event.venue_name, event.venue_city].filter(Boolean).join(', ')}
                 </span>
               </div>
             )}
-            <div className="flex justify-between text-sm pt-2 border-t border-gray-100">
-              <span className="text-gray-700">1 × {tier.name}</span>
-              <span className="font-medium text-gray-900">
+            <div className="flex justify-between text-sm pt-2 border-t border-ink-100">
+              <span className="text-ink-600">1 × {tier.name}</span>
+              <span className="font-medium text-ink-900">
                 {tier.currency.toUpperCase()} {(tier.price / 100).toFixed(2)}
               </span>
             </div>
@@ -127,7 +128,7 @@ export default async function SquadPayPage({ params }: Props) {
         </div>
 
         {/* Stripe payment form */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-ink-200 bg-white p-5 shadow-sm">
           <SquadPayForm
             memberId={member_id}
             squadToken={token}

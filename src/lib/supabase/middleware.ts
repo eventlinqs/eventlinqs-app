@@ -2,6 +2,12 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function updateSession(request: NextRequest) {
+  // Stripe webhook must bypass everything — no cookie touching, no redirects.
+  // Any NextResponse.redirect() from here turns into a 307 and Stripe retries.
+  if (request.nextUrl.pathname === '/api/webhooks/stripe') {
+    return NextResponse.next({ request })
+  }
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -35,7 +41,21 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Define public routes that don't require authentication
-  const publicRoutes = ['/', '/login', '/signup', '/auth/callback', '/auth/confirm', '/events', '/about', '/contact', '/privacy', '/terms']
+  const publicRoutes = [
+    '/',
+    '/login',
+    '/signup',
+    '/forgot-password',
+    '/verify-email-sent',
+    '/auth/callback',
+    '/auth/confirm',
+    '/auth/reset-password',
+    '/events',
+    '/about',
+    '/contact',
+    '/privacy',
+    '/terms',
+  ]
   const isPublicRoute = publicRoutes.some(route =>
     request.nextUrl.pathname === route ||
     request.nextUrl.pathname.startsWith('/events/') ||

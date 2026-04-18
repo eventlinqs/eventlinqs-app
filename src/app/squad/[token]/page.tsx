@@ -15,11 +15,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const squad = await getSquadByToken(token)
 
   if (!squad) {
-    return { title: 'Squad Not Found — EventLinqs' }
+    return { title: 'Squad Not Found | EventLinqs' }
   }
 
   return {
-    title: `Join the Squad — ${squad.event.title} — EventLinqs`,
+    title: `Join the Squad — ${squad.event.title} | EventLinqs`,
     description: `${squad.squad_members.filter(m => m.status === 'paid').length} of ${squad.total_spots} spots filled. Join the squad for ${squad.event.title}.`,
   }
 }
@@ -59,7 +59,8 @@ export default async function SquadPage({ params }: Props) {
   const isCancelled = squad.status === 'cancelled'
   const isExpiredStatus = squad.status === 'expired' || isExpired
 
-  // Countdown: seconds until expiry
+  // Countdown: snapshot at render time (server component, re-renders on request)
+  // eslint-disable-next-line react-hooks/purity -- intentional: SSR snapshot of "now" for the expiry countdown
   const msUntilExpiry = new Date(squad.expires_at).getTime() - Date.now()
   const hoursLeft = Math.max(0, Math.floor(msUntilExpiry / (1000 * 60 * 60)))
   const minutesLeft = Math.max(0, Math.floor((msUntilExpiry % (1000 * 60 * 60)) / (1000 * 60)))
@@ -72,13 +73,13 @@ export default async function SquadPage({ params }: Props) {
   const pricePerSpot = squad.ticket_tier.price
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-ink-100">
       {/* Nav */}
-      <nav className="border-b border-gray-200 bg-white px-4 py-4 sm:px-6">
+      <nav className="border-b border-ink-200 bg-white px-4 py-4 sm:px-6">
         <div className="mx-auto max-w-2xl flex items-center justify-between">
-          <Link href="/" className="text-lg font-bold text-blue-600">EVENTLINQS</Link>
+          <Link href="/" className="text-lg font-bold text-gold-500">EVENTLINQS</Link>
           {!user && (
-            <Link href="/login" className="text-sm text-gray-600 hover:text-gray-900">
+            <Link href="/login" className="text-sm text-ink-600 hover:text-ink-900">
               Sign in
             </Link>
           )}
@@ -88,7 +89,7 @@ export default async function SquadPage({ params }: Props) {
       <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
         {/* Event hero */}
         {squad.event.cover_image_url && (
-          <div className="relative w-full aspect-video rounded-2xl overflow-hidden mb-6 bg-gray-200">
+          <div className="relative w-full aspect-video rounded-2xl overflow-hidden mb-6 bg-ink-200">
             <Image
               src={squad.event.cover_image_url}
               alt={squad.event.title}
@@ -101,32 +102,32 @@ export default async function SquadPage({ params }: Props) {
 
         {/* Event info */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">{squad.event.title}</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-ink-900">{squad.event.title}</h1>
+          <p className="mt-1 text-sm text-ink-400">
             {formatDateTime(squad.event.start_date, squad.event.timezone)}
           </p>
           {squad.event.venue_name && (
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-ink-400">
               {squad.event.venue_name}{squad.event.venue_city ? `, ${squad.event.venue_city}` : ''}
             </p>
           )}
         </div>
 
         {/* Squad card */}
-        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden mb-6">
+        <div className="rounded-2xl border border-ink-200 bg-white shadow-sm overflow-hidden mb-6">
           {/* Squad header */}
-          <div className="px-5 py-4 border-b border-gray-100">
+          <div className="px-5 py-4 border-b border-ink-100">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm text-gray-500">Squad for</p>
-                <p className="font-semibold text-gray-900">{squad.ticket_tier.name}</p>
+                <p className="text-sm text-ink-400">Squad for</p>
+                <p className="font-semibold text-ink-900">{squad.ticket_tier.name}</p>
               </div>
               {isComplete ? (
                 <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
                   Complete
                 </span>
               ) : isCancelled ? (
-                <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">
+                <span className="inline-flex items-center rounded-full bg-ink-100 px-3 py-1 text-xs font-semibold text-ink-600">
                   Cancelled
                 </span>
               ) : isExpiredStatus ? (
@@ -134,7 +135,7 @@ export default async function SquadPage({ params }: Props) {
                   Expired
                 </span>
               ) : (
-                <span className="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
+                <span className="inline-flex items-center rounded-full bg-gold-100 px-3 py-1 text-xs font-semibold text-gold-600">
                   Forming
                 </span>
               )}
@@ -142,21 +143,21 @@ export default async function SquadPage({ params }: Props) {
           </div>
 
           {/* Spots progress */}
-          <div className="px-5 py-4 border-b border-gray-100">
+          <div className="px-5 py-4 border-b border-ink-100">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium text-gray-700">
-                <span className="text-lg font-bold text-gray-900">{filledSpots}</span>
+              <p className="text-sm font-medium text-ink-600">
+                <span className="text-lg font-bold text-ink-900">{filledSpots}</span>
                 {' '}of{' '}
-                <span className="text-lg font-bold text-gray-900">{squad.total_spots}</span>
+                <span className="text-lg font-bold text-ink-900">{squad.total_spots}</span>
                 {' '}spots filled
               </p>
               {paidSpots > 0 && (
-                <p className="text-xs text-gray-500">{paidSpots} paid</p>
+                <p className="text-xs text-ink-400">{paidSpots} paid</p>
               )}
             </div>
 
             {/* Progress bar */}
-            <div className="w-full bg-gray-100 rounded-full h-2.5" role="progressbar" aria-valuenow={filledSpots} aria-valuemin={0} aria-valuemax={squad.total_spots}>
+            <div className="w-full bg-ink-100 rounded-full h-2.5" role="progressbar" aria-valuenow={filledSpots} aria-valuemin={0} aria-valuemax={squad.total_spots}>
               <div
                 className="bg-[#4A90D9] h-2.5 rounded-full transition-all"
                 style={{ width: `${Math.min(100, (filledSpots / squad.total_spots) * 100)}%` }}
@@ -176,8 +177,8 @@ export default async function SquadPage({ params }: Props) {
                       isPaid
                         ? 'bg-emerald-500 border-emerald-500 text-white'
                         : isInvited
-                        ? 'bg-blue-100 border-blue-300 text-blue-700'
-                        : 'bg-gray-100 border-dashed border-gray-300 text-gray-400'
+                        ? 'bg-gold-100 border-gold-400 text-gold-600'
+                        : 'bg-ink-100 border-dashed border-ink-200 text-ink-400'
                     }`}
                     aria-label={
                       isPaid
@@ -198,14 +199,14 @@ export default async function SquadPage({ params }: Props) {
           <div className="px-5 py-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-gray-500">Price per person</p>
-                <p className="text-lg font-bold text-gray-900">
+                <p className="text-xs text-ink-400">Price per person</p>
+                <p className="text-lg font-bold text-ink-900">
                   {squad.ticket_tier.currency.toUpperCase()} {(pricePerSpot / 100).toFixed(2)}
                 </p>
               </div>
               {!isExpiredStatus && !isComplete && !isCancelled && (
                 <div className="text-right">
-                  <p className="text-xs text-gray-500">Expires in</p>
+                  <p className="text-xs text-ink-400">Expires in</p>
                   <p className="text-sm font-semibold text-amber-700">
                     {hoursLeft > 0 ? `${hoursLeft}h ` : ''}{minutesLeft}m
                   </p>
