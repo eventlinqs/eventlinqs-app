@@ -2,7 +2,7 @@ import { AuthShell } from '@/components/auth/auth-shell'
 import { ResetPasswordForm } from '@/components/auth/reset-password-form'
 
 export const metadata = {
-  title: 'Set a new password — EventLinqs',
+  title: 'Set a new password | EventLinqs',
   description: 'Choose a new password for your EventLinqs account.',
 }
 

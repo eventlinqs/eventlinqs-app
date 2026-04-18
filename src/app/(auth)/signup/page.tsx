@@ -3,7 +3,7 @@ import { AuthShell } from '@/components/auth/auth-shell'
 import { SignupForm } from '@/components/auth/signup-form'
 
 export const metadata = {
-  title: 'Create account — EventLinqs',
+  title: 'Create account | EventLinqs',
   description: 'Create your EventLinqs account to buy tickets and host events.',
 }
 

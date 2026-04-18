@@ -3,7 +3,7 @@ import { AuthShell } from '@/components/auth/auth-shell'
 import { ResendVerificationButton } from '@/components/auth/resend-verification-button'
 
 export const metadata = {
-  title: 'Verify your email — EventLinqs',
+  title: 'Verify your email | EventLinqs',
   description: 'Check your inbox for the verification link to activate your EventLinqs account.',
 }
 

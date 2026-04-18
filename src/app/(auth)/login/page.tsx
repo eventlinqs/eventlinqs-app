@@ -4,7 +4,7 @@ import { AuthShell } from '@/components/auth/auth-shell'
 import { LoginForm } from '@/components/auth/login-form'
 
 export const metadata = {
-  title: 'Sign in — EventLinqs',
+  title: 'Sign in | EventLinqs',
   description: 'Sign in to your EventLinqs account to manage events and tickets.',
 }
 

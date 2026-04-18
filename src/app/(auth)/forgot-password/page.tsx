@@ -3,7 +3,7 @@ import { AuthShell } from '@/components/auth/auth-shell'
 import { ForgotPasswordForm } from '@/components/auth/forgot-password-form'
 
 export const metadata = {
-  title: 'Reset password — EventLinqs',
+  title: 'Reset password | EventLinqs',
   description: 'Request a password reset link for your EventLinqs account.',
 }
 
