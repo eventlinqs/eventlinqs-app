@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/Button'
 import type { ComponentType } from 'react'
 
 export const metadata: Metadata = {
-  title: 'Help Centre — EventLinqs',
+  title: 'Help Centre | EventLinqs',
   description:
     'Find answers to common questions about buying tickets, selling tickets, payments, and your EventLinqs account.',
 }

@@ -77,8 +77,8 @@ function PaymentForm({
   }
 
   return (
-    <form onSubmit={handlePay} className="rounded-xl border border-gray-200 bg-white p-6">
-      <h3 className="text-base font-semibold text-gray-900 mb-4">Payment</h3>
+    <form onSubmit={handlePay} className="rounded-xl border border-ink-200 bg-white p-6">
+      <h3 className="text-base font-semibold text-ink-900 mb-4">Payment</h3>
       <PaymentElement options={{ layout: 'tabs' }} />
 
       {payError && (
@@ -97,7 +97,7 @@ function PaymentForm({
           : `Pay ${currency.toUpperCase()} ${(totalCents / 100).toFixed(2)}`}
       </button>
 
-      <p className="mt-3 text-center text-xs text-gray-400">
+      <p className="mt-3 text-center text-xs text-ink-400">
         Secured by Stripe. Your payment info is never stored on our servers.
       </p>
     </form>
@@ -232,15 +232,15 @@ export function CheckoutForm({
 
   if (expired) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="min-h-screen bg-ink-100 flex items-center justify-center px-4">
         <div className="text-center max-w-sm">
           <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
             <svg className="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h2 className="text-xl font-bold text-gray-900">Your reservation has expired</h2>
-          <p className="mt-2 text-gray-500 text-sm">The 10-minute hold on your tickets has ended. The tickets may have been taken by another buyer.</p>
+          <h2 className="text-xl font-bold text-ink-900">Your reservation has expired</h2>
+          <p className="mt-2 text-ink-400 text-sm">The 10-minute hold on your tickets has ended. The tickets may have been taken by another buyer.</p>
           <a
             href={`/events`}
             className="mt-6 inline-block rounded-lg bg-[#1A1A2E] px-6 py-3 text-sm font-semibold text-white hover:bg-[#2d2d4a]"
@@ -255,8 +255,8 @@ export function CheckoutForm({
   // Once we have a client secret, show Stripe Elements
   if (clientSecret && orderId) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <nav className="border-b border-gray-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-ink-100">
+        <nav className="border-b border-ink-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-3xl flex items-center justify-between">
             <span className="text-xl font-bold text-[#1A1A2E]">EVENTLINQS</span>
             <CartTimer expiresAt={expiresAt} onExpired={handleExpired} />
@@ -296,8 +296,8 @@ export function CheckoutForm({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="border-b border-gray-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-ink-100">
+      <nav className="border-b border-ink-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-3xl flex items-center justify-between">
           <span className="text-xl font-bold text-[#1A1A2E]">EVENTLINQS</span>
           <CartTimer expiresAt={expiresAt} onExpired={handleExpired} />
@@ -306,7 +306,7 @@ export function CheckoutForm({
 
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
         {!userId && (
-          <div className="mb-6 rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-800">
+          <div className="mb-6 rounded-lg bg-gold-100 border border-gold-100 px-4 py-3 text-sm text-gold-600">
             <a href="/login" className="font-medium underline">Log in</a> for a faster checkout. Or continue as guest below.
           </div>
         )}
@@ -315,44 +315,44 @@ export function CheckoutForm({
           <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
             <div className="space-y-6">
               {/* Buyer info */}
-              <div className="rounded-xl border border-gray-200 bg-white p-6">
-                <h3 className="text-base font-semibold text-gray-900 mb-4">Your Details</h3>
+              <div className="rounded-xl border border-ink-200 bg-white p-6">
+                <h3 className="text-base font-semibold text-ink-900 mb-4">Your Details</h3>
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">Full name</label>
+                    <label className="block text-xs text-ink-400 mb-1">Full name</label>
                     <input
                       type="text"
                       value={buyerName}
                       onChange={e => setBuyerName(e.target.value)}
                       required
                       placeholder="Jane Smith"
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">Email</label>
+                    <label className="block text-xs text-ink-400 mb-1">Email</label>
                     <input
                       type="email"
                       value={buyerEmail}
                       onChange={e => setBuyerEmail(e.target.value)}
                       required
                       placeholder="you@example.com"
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
                     />
-                    <p className="mt-1 text-xs text-gray-400">Confirmation sent to this address</p>
+                    <p className="mt-1 text-xs text-ink-400">Confirmation sent to this address</p>
                   </div>
                 </div>
               </div>
 
               {/* Seat slots (seat mode only) */}
               {seatMode && seatSlots && seatSlots.length > 0 && (
-                <div className="rounded-xl border border-gray-200 bg-white p-6">
-                  <h3 className="text-base font-semibold text-gray-900 mb-4">Your Seats</h3>
-                  <ul className="divide-y divide-gray-100">
+                <div className="rounded-xl border border-ink-200 bg-white p-6">
+                  <h3 className="text-base font-semibold text-ink-900 mb-4">Your Seats</h3>
+                  <ul className="divide-y divide-ink-100">
                     {seatSlots.map(slot => (
                       <li key={slot.seat_id} className="flex items-center justify-between py-2 text-sm">
-                        <span className="text-gray-700">{slot.label}</span>
-                        <span className="font-medium text-gray-900">
+                        <span className="text-ink-600">{slot.label}</span>
+                        <span className="font-medium text-ink-900">
                           {currency.toUpperCase()} {(slot.price_cents / 100).toFixed(2)}
                         </span>
                       </li>

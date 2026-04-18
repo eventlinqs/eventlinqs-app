@@ -518,7 +518,7 @@ export function EventForm({
   const renderStep1 = () => (
     <div className="space-y-5">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-ink-600 mb-1">
           Event Title <span className="text-red-500">*</span>
         </label>
         <input
@@ -526,28 +526,28 @@ export function EventForm({
           value={formData.title}
           onChange={e => set('title', e.target.value)}
           placeholder="e.g. Summer Music Festival 2026"
-          className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-ink-600 mb-1">
           Short Summary
-          <span className="ml-2 text-xs text-gray-400">({formData.summary.length}/200)</span>
+          <span className="ml-2 text-xs text-ink-400">({formData.summary.length}/200)</span>
         </label>
         <input
           type="text"
           value={formData.summary}
           onChange={e => e.target.value.length <= 200 && set('summary', e.target.value)}
           placeholder="A brief one-line description shown on event cards"
-          className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
         />
       </div>
 
       <div>
         <div className="flex items-center justify-between mb-1">
-          <label className="block text-sm font-medium text-gray-700">Description</label>
-          <span className={`text-xs ${formData.description.length > 4900 ? 'text-amber-500' : 'text-gray-400'}`}>
+          <label className="block text-sm font-medium text-ink-600">Description</label>
+          <span className={`text-xs ${formData.description.length > 4900 ? 'text-amber-500' : 'text-ink-400'}`}>
             {formData.description.length}/5000
           </span>
         </div>
@@ -556,16 +556,16 @@ export function EventForm({
           value={formData.description}
           onChange={e => e.target.value.length <= 5000 && set('description', e.target.value)}
           placeholder="Describe your event in detail…"
-          className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+        <label className="block text-sm font-medium text-ink-600 mb-1">Category</label>
         <select
           value={formData.category_id}
           onChange={e => set('category_id', e.target.value)}
-          className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
         >
           <option value="">Select a category</option>
           {categories.map(c => (
@@ -575,16 +575,16 @@ export function EventForm({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-ink-600 mb-1">
           Tags
-          <span className="ml-2 text-xs text-gray-400">Comma-separated</span>
+          <span className="ml-2 text-xs text-ink-400">Comma-separated</span>
         </label>
         <input
           type="text"
           value={formData.tags}
           onChange={e => set('tags', e.target.value)}
           placeholder="music, outdoor, family-friendly"
-          className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
         />
       </div>
     </div>
@@ -594,35 +594,35 @@ export function EventForm({
     <div className="space-y-5">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-ink-600 mb-1">
             Start Date & Time <span className="text-red-500">*</span>
           </label>
           <input
             type="datetime-local"
             value={formData.start_date}
             onChange={e => set('start_date', e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-ink-600 mb-1">
             End Date & Time <span className="text-red-500">*</span>
           </label>
           <input
             type="datetime-local"
             value={formData.end_date}
             onChange={e => set('end_date', e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
           />
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Timezone</label>
+        <label className="block text-sm font-medium text-ink-600 mb-1">Timezone</label>
         <select
           value={formData.timezone}
           onChange={e => set('timezone', e.target.value)}
-          className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
         >
           {formData.timezone && !TIMEZONES.includes(formData.timezone) && (
             <option value={formData.timezone}>{formData.timezone} (detected)</option>
@@ -638,9 +638,9 @@ export function EventForm({
           type="checkbox"
           checked={formData.is_multi_day}
           onChange={e => set('is_multi_day', e.target.checked)}
-          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          className="h-4 w-4 rounded border-ink-200 text-gold-500 focus:ring-gold-500"
         />
-        <span className="text-sm font-medium text-gray-700">This is a multi-day event</span>
+        <span className="text-sm font-medium text-ink-600">This is a multi-day event</span>
       </label>
 
       <label className="flex items-center gap-3 cursor-pointer">
@@ -648,18 +648,18 @@ export function EventForm({
           type="checkbox"
           checked={formData.is_recurring}
           onChange={e => set('is_recurring', e.target.checked)}
-          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          className="h-4 w-4 rounded border-ink-200 text-gold-500 focus:ring-gold-500"
         />
-        <span className="text-sm font-medium text-gray-700">This is a recurring event</span>
+        <span className="text-sm font-medium text-ink-600">This is a recurring event</span>
       </label>
 
       {formData.is_recurring && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Recurrence</label>
+          <label className="block text-sm font-medium text-ink-600 mb-1">Recurrence</label>
           <select
             value={formData.recurrence_rule}
             onChange={e => set('recurrence_rule', e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
           >
             {RECURRENCE_OPTIONS.map(r => (
               <option key={r.value} value={r.value}>{r.label}</option>
@@ -673,7 +673,7 @@ export function EventForm({
   const renderStep3 = () => (
     <div className="space-y-5">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Event Type</label>
+        <label className="block text-sm font-medium text-ink-600 mb-2">Event Type</label>
         <div className="flex gap-3">
           {(['in_person', 'virtual', 'hybrid'] as EventType[]).map(type => (
             <button
@@ -682,8 +682,8 @@ export function EventForm({
               onClick={() => set('event_type', type)}
               className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium capitalize transition-colors ${
                 formData.event_type === type
-                  ? 'border-blue-500 bg-blue-50 text-blue-700'
-                  : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                  ? 'border-gold-500 bg-gold-100 text-gold-600'
+                  : 'border-ink-200 text-ink-600 hover:border-ink-400'
               }`}
             >
               {type.replace('_', ' ')}
@@ -695,62 +695,62 @@ export function EventForm({
       {(formData.event_type === 'in_person' || formData.event_type === 'hybrid') && (
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Venue Name</label>
+            <label className="block text-sm font-medium text-ink-600 mb-1">Venue Name</label>
             <input
               type="text"
               value={formData.venue_name}
               onChange={e => set('venue_name', e.target.value)}
               placeholder="e.g. Melbourne Convention Centre"
-              className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+            <label className="block text-sm font-medium text-ink-600 mb-1">Address</label>
             <input
               type="text"
               value={formData.venue_address}
               onChange={e => set('venue_address', e.target.value)}
               placeholder="Street address"
-              className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+              <label className="block text-sm font-medium text-ink-600 mb-1">City</label>
               <input
                 type="text"
                 value={formData.venue_city}
                 onChange={e => set('venue_city', e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">State / Region</label>
+              <label className="block text-sm font-medium text-ink-600 mb-1">State / Region</label>
               <input
                 type="text"
                 value={formData.venue_state}
                 onChange={e => set('venue_state', e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
               />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
+              <label className="block text-sm font-medium text-ink-600 mb-1">Country</label>
               <input
                 type="text"
                 value={formData.venue_country}
                 onChange={e => set('venue_country', e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Postal Code</label>
+              <label className="block text-sm font-medium text-ink-600 mb-1">Postal Code</label>
               <input
                 type="text"
                 value={formData.venue_postal_code}
                 onChange={e => set('venue_postal_code', e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
               />
             </div>
           </div>
@@ -759,16 +759,16 @@ export function EventForm({
 
       {(formData.event_type === 'virtual' || formData.event_type === 'hybrid') && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-ink-600 mb-1">
             Virtual / Streaming URL
-            <span className="ml-2 text-xs text-gray-400">Hidden from attendees until after purchase</span>
+            <span className="ml-2 text-xs text-ink-400">Hidden from attendees until after purchase</span>
           </label>
           <input
             type="url"
             value={formData.virtual_url}
             onChange={e => set('virtual_url', e.target.value)}
             placeholder="https://zoom.us/j/..."
-            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
           />
         </div>
       )}
@@ -778,12 +778,12 @@ export function EventForm({
   const renderStep4 = () => (
     <div className="space-y-5">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Cover Image</label>
-        <p className="text-xs text-gray-500 mb-4">Max 10MB. Accepted formats: JPEG, PNG, WebP.</p>
+        <label className="block text-sm font-medium text-ink-600 mb-2">Cover Image</label>
+        <p className="text-xs text-ink-400 mb-4">Max 10MB. Accepted formats: JPEG, PNG, WebP.</p>
 
         {formData.cover_image_url ? (
           <div className="relative">
-            <div className="relative aspect-video w-full overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+            <div className="relative aspect-video w-full overflow-hidden rounded-lg border border-ink-200 bg-ink-100">
               <Image
                 src={formData.cover_image_url}
                 alt="Cover image preview"
@@ -820,19 +820,19 @@ export function EventForm({
             onClick={() => fileInputRef.current?.click()}
             className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-6 py-12 transition-colors ${
               imageDragOver
-                ? 'border-blue-400 bg-blue-50'
-                : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+                ? 'border-gold-400 bg-gold-100'
+                : 'border-ink-200 hover:border-ink-400 hover:bg-ink-100'
             }`}
           >
             {imageUploading ? (
-              <p className="text-sm text-gray-600">Uploading…</p>
+              <p className="text-sm text-ink-600">Uploading…</p>
             ) : (
               <>
-                <svg className="mb-3 h-10 w-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="mb-3 h-10 w-10 text-ink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium text-blue-600">Click to upload</span> or drag and drop
+                <p className="text-sm text-ink-600">
+                  <span className="font-medium text-gold-500">Click to upload</span> or drag and drop
                 </p>
               </>
             )}
@@ -855,9 +855,9 @@ export function EventForm({
   const renderStep5 = () => (
     <div className="space-y-6">
       {formData.ticket_tiers.map((tier, idx) => (
-        <div key={tier.id} className="rounded-lg border border-gray-200 p-5">
+        <div key={tier.id} className="rounded-lg border border-ink-200 p-5">
           <div className="mb-4 flex items-center justify-between">
-            <h4 className="text-sm font-semibold text-gray-900">
+            <h4 className="text-sm font-semibold text-ink-900">
               Ticket Tier {idx + 1}
             </h4>
             {formData.ticket_tiers.length > 1 && (
@@ -876,7 +876,7 @@ export function EventForm({
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Name</label>
+              <label className="block text-xs font-medium text-ink-600 mb-1">Name</label>
               <input
                 type="text"
                 value={tier.name}
@@ -886,12 +886,12 @@ export function EventForm({
                   set('ticket_tiers', tiers)
                 }}
                 placeholder="e.g. General Admission"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
+              <label className="block text-xs font-medium text-ink-600 mb-1">Type</label>
               <select
                 value={tier.tier_type}
                 onChange={e => {
@@ -899,7 +899,7 @@ export function EventForm({
                   tiers[idx] = { ...tiers[idx], tier_type: e.target.value as TicketTierType }
                   set('ticket_tiers', tiers)
                 }}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
               >
                 {TIER_TYPES.map(t => (
                   <option key={t.value} value={t.value}>{t.label}</option>
@@ -908,7 +908,7 @@ export function EventForm({
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Price</label>
+              <label className="block text-xs font-medium text-ink-600 mb-1">Price</label>
               <div className="flex gap-2">
                 <select
                   value={tier.currency}
@@ -917,7 +917,7 @@ export function EventForm({
                     tiers[idx] = { ...tiers[idx], currency: e.target.value }
                     set('ticket_tiers', tiers)
                   }}
-                  className="w-24 rounded-lg border border-gray-300 px-2 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-24 rounded-lg border border-ink-200 px-2 py-2 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
                 >
                   {CURRENCIES.map(c => (
                     <option key={c} value={c}>{c}</option>
@@ -934,13 +934,13 @@ export function EventForm({
                     set('ticket_tiers', tiers)
                   }}
                   placeholder="0.00"
-                  className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="flex-1 rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Total Capacity</label>
+              <label className="block text-xs font-medium text-ink-600 mb-1">Total Capacity</label>
               <input
                 type="number"
                 min="1"
@@ -951,12 +951,12 @@ export function EventForm({
                   set('ticket_tiers', tiers)
                 }}
                 placeholder="Enter capacity"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Sale Starts</label>
+              <label className="block text-xs font-medium text-ink-600 mb-1">Sale Starts</label>
               <input
                 type="datetime-local"
                 value={tier.sale_start}
@@ -965,12 +965,12 @@ export function EventForm({
                   tiers[idx] = { ...tiers[idx], sale_start: e.target.value }
                   set('ticket_tiers', tiers)
                 }}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Sale Ends</label>
+              <label className="block text-xs font-medium text-ink-600 mb-1">Sale Ends</label>
               <input
                 type="datetime-local"
                 value={tier.sale_end}
@@ -979,12 +979,12 @@ export function EventForm({
                   tiers[idx] = { ...tiers[idx], sale_end: e.target.value }
                   set('ticket_tiers', tiers)
                 }}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Min per Order</label>
+              <label className="block text-xs font-medium text-ink-600 mb-1">Min per Order</label>
               <input
                 type="number"
                 min="1"
@@ -994,12 +994,12 @@ export function EventForm({
                   tiers[idx] = { ...tiers[idx], min_per_order: e.target.value }
                   set('ticket_tiers', tiers)
                 }}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Max per Order</label>
+              <label className="block text-xs font-medium text-ink-600 mb-1">Max per Order</label>
               <input
                 type="number"
                 min="1"
@@ -1009,12 +1009,12 @@ export function EventForm({
                   tiers[idx] = { ...tiers[idx], max_per_order: e.target.value }
                   set('ticket_tiers', tiers)
                 }}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
               />
             </div>
 
             <div className="sm:col-span-2">
-              <label className="block text-xs font-medium text-gray-700 mb-1">Description (optional)</label>
+              <label className="block text-xs font-medium text-ink-600 mb-1">Description (optional)</label>
               <input
                 type="text"
                 value={tier.description}
@@ -1024,7 +1024,7 @@ export function EventForm({
                   set('ticket_tiers', tiers)
                 }}
                 placeholder="What's included in this ticket?"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
               />
             </div>
           </div>
@@ -1036,7 +1036,7 @@ export function EventForm({
         onClick={() => {
           set('ticket_tiers', [...formData.ticket_tiers, newTier(formData.ticket_tiers.length)])
         }}
-        className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 px-4 py-3 text-sm font-medium text-gray-600 hover:border-blue-400 hover:text-blue-600 transition-colors"
+        className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-ink-200 px-4 py-3 text-sm font-medium text-ink-600 hover:border-gold-400 hover:text-gold-500 transition-colors"
       >
         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -1045,11 +1045,11 @@ export function EventForm({
       </button>
 
       {/* Squad Booking */}
-      <div className="rounded-lg border border-gray-200 p-5">
+      <div className="rounded-lg border border-ink-200 p-5">
         <label className="flex cursor-pointer items-start gap-4 min-h-[44px]">
           <div className="flex-1">
-            <p className="text-sm font-semibold text-gray-900">Enable Squad Booking</p>
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="text-sm font-semibold text-ink-900">Enable Squad Booking</p>
+            <p className="mt-1 text-xs text-ink-400">
               Allow buyers to start a squad with friends and split payment. Each member pays
               their own share. Unfilled squads are automatically refunded after the fill window.
             </p>
@@ -1060,8 +1060,8 @@ export function EventForm({
             aria-checked={formData.squad_booking_enabled}
             aria-label="Enable squad booking"
             onClick={() => set('squad_booking_enabled', !formData.squad_booking_enabled)}
-            className={`relative mt-0.5 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-              formData.squad_booking_enabled ? 'bg-blue-600' : 'bg-gray-300'
+            className={`relative mt-0.5 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-gold-500 focus:ring-offset-2 ${
+              formData.squad_booking_enabled ? 'bg-gold-500' : 'bg-ink-200'
             }`}
           >
             <span
@@ -1073,10 +1073,10 @@ export function EventForm({
         </label>
 
         {formData.squad_booking_enabled && (
-          <div className="mt-4 border-t border-gray-100 pt-4">
-            <label className="block text-xs font-medium text-gray-700 mb-1.5">
+          <div className="mt-4 border-t border-ink-100 pt-4">
+            <label className="block text-xs font-medium text-ink-600 mb-1.5">
               Squad fill window
-              <span className="ml-1.5 font-normal text-gray-400">(hours, 1–72)</span>
+              <span className="ml-1.5 font-normal text-ink-400">(hours, 1–72)</span>
             </label>
             <input
               type="number"
@@ -1093,9 +1093,9 @@ export function EventForm({
                 if (isNaN(val) || val < 1) set('squad_timeout_hours', '1')
                 else if (val > 72) set('squad_timeout_hours', '72')
               }}
-              className="w-28 rounded-lg border border-gray-300 px-3 py-2 text-base focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-28 rounded-lg border border-ink-200 px-3 py-2 text-base focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
             />
-            <p className="mt-1.5 text-xs text-gray-400">
+            <p className="mt-1.5 text-xs text-ink-400">
               Friends have this long to join after the squad is created. Default is 24 hours.
             </p>
           </div>
@@ -1103,11 +1103,11 @@ export function EventForm({
       </div>
 
       {/* Virtual Queue */}
-      <div className="rounded-lg border border-gray-200 p-5">
+      <div className="rounded-lg border border-ink-200 p-5">
         <label className="flex cursor-pointer items-start gap-4 min-h-[44px]">
           <div className="flex-1">
-            <p className="text-sm font-semibold text-gray-900">Enable Virtual Queue</p>
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="text-sm font-semibold text-ink-900">Enable Virtual Queue</p>
+            <p className="mt-1 text-xs text-ink-400">
               For high-demand events. Attendees join a FIFO waiting room before reaching
               checkout. Prevents site crashes and bot scalping.
             </p>
@@ -1118,8 +1118,8 @@ export function EventForm({
             aria-checked={formData.is_high_demand}
             aria-label="Enable virtual queue"
             onClick={() => set('is_high_demand', !formData.is_high_demand)}
-            className={`relative mt-0.5 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-              formData.is_high_demand ? 'bg-blue-600' : 'bg-gray-300'
+            className={`relative mt-0.5 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-gold-500 focus:ring-offset-2 ${
+              formData.is_high_demand ? 'bg-gold-500' : 'bg-ink-200'
             }`}
           >
             <span
@@ -1131,28 +1131,28 @@ export function EventForm({
         </label>
 
         {formData.is_high_demand && (
-          <div className="mt-4 border-t border-gray-100 pt-4 space-y-4">
+          <div className="mt-4 border-t border-ink-100 pt-4 space-y-4">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">
+              <label className="block text-xs font-medium text-ink-600 mb-1.5">
                 Queue opens at
-                <span className="ml-1.5 font-normal text-gray-400">(optional — leave blank to open immediately)</span>
+                <span className="ml-1.5 font-normal text-ink-400">(optional — leave blank to open immediately)</span>
               </label>
               <input
                 type="datetime-local"
                 value={formData.queue_open_at}
                 onChange={e => set('queue_open_at', e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-base focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-ink-200 px-3 py-2 text-base focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
               />
-              <p className="mt-1 text-xs text-gray-400">
+              <p className="mt-1 text-xs text-ink-400">
                 Users can join the waiting room from this time. Set it before ticket sale start so the queue fills before admission begins.
               </p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                <label className="block text-xs font-medium text-ink-600 mb-1.5">
                   Admitted per minute
-                  <span className="ml-1 font-normal text-gray-400">(1–500)</span>
+                  <span className="ml-1 font-normal text-ink-400">(1–500)</span>
                 </label>
                 <input
                   type="number"
@@ -1165,13 +1165,13 @@ export function EventForm({
                     if (isNaN(val) || val < 1) set('queue_admission_rate', '1')
                     else if (val > 500) set('queue_admission_rate', '500')
                   }}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-base focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-ink-200 px-3 py-2 text-base focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                <label className="block text-xs font-medium text-ink-600 mb-1.5">
                   Checkout window
-                  <span className="ml-1 font-normal text-gray-400">(mins, 5–60)</span>
+                  <span className="ml-1 font-normal text-ink-400">(mins, 5–60)</span>
                 </label>
                 <input
                   type="number"
@@ -1184,9 +1184,9 @@ export function EventForm({
                     if (isNaN(val) || val < 5) set('queue_admission_window_minutes', '5')
                     else if (val > 60) set('queue_admission_window_minutes', '60')
                   }}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-base focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-ink-200 px-3 py-2 text-base focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
                 />
-                <p className="mt-1 text-xs text-gray-400">Time to complete purchase once admitted.</p>
+                <p className="mt-1 text-xs text-ink-400">Time to complete purchase once admitted.</p>
               </div>
             </div>
           </div>
@@ -1198,25 +1198,25 @@ export function EventForm({
   const renderStep6 = () => (
     <div className="space-y-6">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-3">Visibility</label>
+        <label className="block text-sm font-medium text-ink-600 mb-3">Visibility</label>
         <div className="space-y-3">
           {([
             { value: 'public', label: 'Public', desc: 'Listed on EventLinqs and visible to everyone' },
             { value: 'private', label: 'Private', desc: 'Only visible to invited attendees' },
             { value: 'unlisted', label: 'Unlisted', desc: 'Accessible via direct link only, not listed publicly' },
           ] as { value: EventVisibility; label: string; desc: string }[]).map(opt => (
-            <label key={opt.value} className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 p-4 hover:bg-gray-50">
+            <label key={opt.value} className="flex cursor-pointer items-start gap-3 rounded-lg border border-ink-200 p-4 hover:bg-ink-100">
               <input
                 type="radio"
                 name="visibility"
                 value={opt.value}
                 checked={formData.visibility === opt.value}
                 onChange={() => set('visibility', opt.value)}
-                className="mt-0.5 h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500"
+                className="mt-0.5 h-4 w-4 border-ink-200 text-gold-500 focus:ring-gold-500"
               />
               <div>
-                <p className="text-sm font-medium text-gray-900">{opt.label}</p>
-                <p className="text-xs text-gray-500">{opt.desc}</p>
+                <p className="text-sm font-medium text-ink-900">{opt.label}</p>
+                <p className="text-xs text-ink-400">{opt.desc}</p>
               </div>
             </label>
           ))}
@@ -1229,29 +1229,29 @@ export function EventForm({
             type="checkbox"
             checked={formData.is_age_restricted}
             onChange={e => set('is_age_restricted', e.target.checked)}
-            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            className="h-4 w-4 rounded border-ink-200 text-gold-500 focus:ring-gold-500"
           />
-          <span className="text-sm font-medium text-gray-700">Age restriction applies</span>
+          <span className="text-sm font-medium text-ink-600">Age restriction applies</span>
         </label>
         {formData.is_age_restricted && (
           <div className="mt-3 ml-7">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Minimum Age</label>
+            <label className="block text-xs font-medium text-ink-600 mb-1">Minimum Age</label>
             <input
               type="number"
               min="1"
               max="99"
               value={formData.age_restriction_min}
               onChange={e => set('age_restriction_min', e.target.value)}
-              className="w-24 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-24 rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
             />
           </div>
         )}
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-ink-600 mb-1">
           Max Event Capacity
-          <span className="ml-2 text-xs text-gray-400">Optional — leave blank if unlimited</span>
+          <span className="ml-2 text-xs text-ink-400">Optional — leave blank if unlimited</span>
         </label>
         <input
           type="number"
@@ -1259,11 +1259,11 @@ export function EventForm({
           value={formData.max_capacity}
           onChange={e => set('max_capacity', e.target.value)}
           placeholder="e.g. 500"
-          className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
         />
       </div>
 
-      <div className="rounded-lg border border-gray-200 p-4 space-y-4">
+      <div className="rounded-lg border border-ink-200 p-4 space-y-4">
         <label className="flex items-center gap-3 cursor-pointer">
           <button
             type="button"
@@ -1277,7 +1277,7 @@ export function EventForm({
               }
             }}
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-              formData.has_reserved_seating ? 'bg-blue-600' : 'bg-gray-300'
+              formData.has_reserved_seating ? 'bg-gold-500' : 'bg-ink-200'
             }`}
           >
             <span
@@ -1287,8 +1287,8 @@ export function EventForm({
             />
           </button>
           <div>
-            <p className="text-sm font-medium text-gray-900">Reserved seating</p>
-            <p className="text-xs text-gray-500">Buyers pick specific seats from an interactive seat map</p>
+            <p className="text-sm font-medium text-ink-900">Reserved seating</p>
+            <p className="text-xs text-ink-400">Buyers pick specific seats from an interactive seat map</p>
           </div>
         </label>
 
@@ -1301,14 +1301,14 @@ export function EventForm({
             ) : (
               <>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Venue</label>
+                  <label className="block text-xs font-medium text-ink-600 mb-1">Venue</label>
                   <select
                     value={formData.venue_id}
                     onChange={e => {
                       set('venue_id', e.target.value)
                       set('seat_map_id', '')
                     }}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
                   >
                     <option value="">Select a venue…</option>
                     {venues.map(v => (
@@ -1319,7 +1319,7 @@ export function EventForm({
 
                 {formData.venue_id && (
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Seat Map</label>
+                    <label className="block text-xs font-medium text-ink-600 mb-1">Seat Map</label>
                     {(() => {
                       const venue = venues.find(v => v.id === formData.venue_id)
                       const maps = venue?.seat_maps ?? []
@@ -1331,7 +1331,7 @@ export function EventForm({
                         <select
                           value={formData.seat_map_id}
                           onChange={e => set('seat_map_id', e.target.value)}
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
                         >
                           <option value="">Select a seat map…</option>
                           {maps.map(m => (
@@ -1369,49 +1369,49 @@ export function EventForm({
           </div>
         )}
 
-        <div className="rounded-lg border border-gray-200 divide-y divide-gray-100">
+        <div className="rounded-lg border border-ink-200 divide-y divide-ink-100">
           <div className="px-5 py-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3">Basic Details</h3>
-            <p className="text-sm font-semibold text-gray-900">{formData.title || <em className="text-gray-400">Untitled</em>}</p>
-            {formData.summary && <p className="mt-1 text-sm text-gray-600">{formData.summary}</p>}
-            {formData.tags && <p className="mt-1 text-xs text-gray-400">Tags: {formData.tags}</p>}
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-3">Basic Details</h3>
+            <p className="text-sm font-semibold text-ink-900">{formData.title || <em className="text-ink-400">Untitled</em>}</p>
+            {formData.summary && <p className="mt-1 text-sm text-ink-600">{formData.summary}</p>}
+            {formData.tags && <p className="mt-1 text-xs text-ink-400">Tags: {formData.tags}</p>}
           </div>
 
           <div className="px-5 py-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Date & Time</h3>
-            <p className="text-sm text-gray-700">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">Date & Time</h3>
+            <p className="text-sm text-ink-600">
               {formData.start_date ? new Date(formData.start_date).toLocaleString() : '—'} →{' '}
               {formData.end_date ? new Date(formData.end_date).toLocaleString() : '—'}
             </p>
-            <p className="text-xs text-gray-400">{formData.timezone}</p>
+            <p className="text-xs text-ink-400">{formData.timezone}</p>
           </div>
 
           <div className="px-5 py-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Location</h3>
-            <p className="text-sm text-gray-700 capitalize">{formData.event_type.replace('_', ' ')}</p>
-            {formData.venue_name && <p className="text-sm text-gray-600">{formData.venue_name}</p>}
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">Location</h3>
+            <p className="text-sm text-ink-600 capitalize">{formData.event_type.replace('_', ' ')}</p>
+            {formData.venue_name && <p className="text-sm text-ink-600">{formData.venue_name}</p>}
             {formData.venue_city && (
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-ink-400">
                 {[formData.venue_city, formData.venue_state, formData.venue_country].filter(Boolean).join(', ')}
               </p>
             )}
           </div>
 
           <div className="px-5 py-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Tickets</h3>
-            <p className="text-sm text-gray-700">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">Tickets</h3>
+            <p className="text-sm text-ink-600">
               {formData.ticket_tiers.length} tier{formData.ticket_tiers.length !== 1 ? 's' : ''} · {totalCapacity.toLocaleString()} total capacity
             </p>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-ink-400">
               {isFree ? 'Free event' : `From ${formData.ticket_tiers[0]?.currency} ${minPrice.toFixed(2)}`}
             </p>
           </div>
 
           <div className="px-5 py-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Settings</h3>
-            <p className="text-sm text-gray-700 capitalize">{formData.visibility}</p>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">Settings</h3>
+            <p className="text-sm text-ink-600 capitalize">{formData.visibility}</p>
             {formData.is_age_restricted && (
-              <p className="text-xs text-gray-400">Age restricted: {formData.age_restriction_min}+</p>
+              <p className="text-xs text-ink-400">Age restricted: {formData.age_restriction_min}+</p>
             )}
           </div>
         </div>
@@ -1427,7 +1427,7 @@ export function EventForm({
             type="button"
             onClick={() => handleSubmit('draft')}
             disabled={isSubmitting}
-            className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            className="flex-1 rounded-lg border border-ink-200 bg-white px-4 py-3 text-sm font-medium text-ink-600 hover:bg-ink-100 disabled:opacity-50 transition-colors"
           >
             {isSubmitting ? 'Saving…' : 'Save as Draft'}
           </button>
@@ -1435,7 +1435,7 @@ export function EventForm({
             type="button"
             onClick={() => handleSubmit('published')}
             disabled={isSubmitting || !formData.title.trim()}
-            className="flex-1 rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="flex-1 rounded-lg bg-gold-500 px-4 py-3 text-sm font-medium text-white hover:bg-gold-600 disabled:opacity-50 transition-colors"
           >
             {isSubmitting ? 'Publishing…' : editMode ? 'Save Changes' : 'Publish Now'}
           </button>
@@ -1459,15 +1459,15 @@ export function EventForm({
       {/* Step indicator */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm text-gray-500">Step {step} of {STEPS.length}</span>
-          <span className="text-sm font-medium text-gray-900">{STEPS[step - 1]}</span>
+          <span className="text-sm text-ink-400">Step {step} of {STEPS.length}</span>
+          <span className="text-sm font-medium text-ink-900">{STEPS[step - 1]}</span>
         </div>
         <div className="flex gap-1">
           {STEPS.map((_, i) => (
             <div
               key={i}
               className={`h-1.5 flex-1 rounded-full transition-colors ${
-                i < step ? 'bg-blue-600' : i === step - 1 ? 'bg-blue-400' : 'bg-gray-200'
+                i < step ? 'bg-gold-500' : i === step - 1 ? 'bg-gold-400' : 'bg-ink-200'
               }`}
             />
           ))}
@@ -1475,8 +1475,8 @@ export function EventForm({
       </div>
 
       {/* Step content */}
-      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-900 mb-6">{STEPS[step - 1]}</h2>
+      <div className="rounded-xl border border-ink-200 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-ink-900 mb-6">{STEPS[step - 1]}</h2>
         {stepContent[step - 1]()}
       </div>
 
@@ -1493,14 +1493,14 @@ export function EventForm({
               type="button"
               onClick={() => { setStep(s => Math.max(s - 1, 1)); setStepError(null) }}
               disabled={step === 1}
-              className="rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:invisible transition-colors"
+              className="rounded-lg border border-ink-200 bg-white px-5 py-2.5 text-sm font-medium text-ink-600 hover:bg-ink-100 disabled:invisible transition-colors"
             >
               Back
             </button>
             <button
               type="button"
               onClick={handleContinue}
-              className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+              className="rounded-lg bg-gold-500 px-5 py-2.5 text-sm font-medium text-white hover:bg-gold-600 transition-colors"
             >
               Continue
             </button>
@@ -1513,7 +1513,7 @@ export function EventForm({
           <button
             type="button"
             onClick={() => setStep(s => Math.max(s - 1, 1))}
-            className="rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            className="rounded-lg border border-ink-200 bg-white px-5 py-2.5 text-sm font-medium text-ink-600 hover:bg-ink-100 transition-colors"
           >
             Back
           </button>

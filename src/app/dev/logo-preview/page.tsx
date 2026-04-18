@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Logo preview — EventLinqs (dev)',
+  title: 'Logo preview | EventLinqs (dev)',
   robots: { index: false, follow: false },
 }
 

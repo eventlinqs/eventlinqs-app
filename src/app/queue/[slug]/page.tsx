@@ -21,8 +21,8 @@ async function fetchEvent(slug: string): Promise<QueueEvent | null> {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const event = await fetchEvent(slug)
-  if (!event) return { title: 'Queue — EventLinqs' }
-  return { title: `Queue for ${event.title} — EventLinqs` }
+  if (!event) return { title: 'Queue | EventLinqs' }
+  return { title: `Queue for ${event.title} | EventLinqs` }
 }
 
 export default async function QueuePage({ params }: Props) {

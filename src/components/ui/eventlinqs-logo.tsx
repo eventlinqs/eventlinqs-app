@@ -28,7 +28,7 @@ export function EventlinqsLogo({
   variant = 'default',
   asLink = false,
   className,
-  'aria-label': ariaLabel = 'EventLinqs — home',
+  'aria-label': ariaLabel = 'EventLinqs home',
 }: Props) {
   const wordmarkColour = variant === 'inverted' ? 'text-white' : 'text-ink-900'
 

@@ -101,7 +101,7 @@ function InnerPayForm({
         )}
       </button>
 
-      <p className="mt-3 text-center text-xs text-gray-400">
+      <p className="mt-3 text-center text-xs text-ink-400">
         Secured by Stripe. Your payment info is never stored on our servers.
       </p>
     </form>
@@ -148,8 +148,8 @@ export function SquadPayForm({
   if (isLoading) {
     return (
       <div className="py-8 text-center">
-        <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-[#4A90D9]" />
-        <p className="mt-3 text-sm text-gray-500">Loading payment form…</p>
+        <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-ink-200 border-t-[#4A90D9]" />
+        <p className="mt-3 text-sm text-ink-400">Loading payment form…</p>
       </div>
     )
   }

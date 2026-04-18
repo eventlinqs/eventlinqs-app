@@ -19,7 +19,7 @@ const manrope = Manrope({
 })
 
 export const metadata: Metadata = {
-  title: 'EventLinqs — Discover & Create Amazing Events',
+  title: 'EventLinqs | Discover & Create Amazing Events',
   description: 'The professional event ticketing and discovery platform. Create, promote, and manage events with transparent pricing and zero hidden fees.',
 }
 

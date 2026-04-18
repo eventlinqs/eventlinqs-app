@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const category = getHeroCategory(slug)
 
   if (!category) {
-    return { title: 'Not Found — EventLinqs' }
+    return { title: 'Not Found | EventLinqs' }
   }
 
   const description = category.heroBody.slice(0, 155)

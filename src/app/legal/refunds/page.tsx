@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { LegalPageShell } from '@/components/ui/LegalPageShell'
 
 export const metadata: Metadata = {
-  title: 'Refund Policy — EventLinqs',
+  title: 'Refund Policy | EventLinqs',
   description:
     'When and how EventLinqs processes ticket refunds, including event cancellations, reschedules, and Australian Consumer Law rights.',
 }

@@ -57,11 +57,11 @@ export function SquadJoinPanel({
   // 1. Squad no longer active
   if (status === 'completed' || isExpired || status === 'expired') {
     return (
-      <div className="rounded-2xl border border-gray-200 bg-white p-5 text-center">
-        <p className="font-semibold text-gray-700">
+      <div className="rounded-2xl border border-ink-200 bg-white p-5 text-center">
+        <p className="font-semibold text-ink-600">
           {status === 'completed' ? '🎉 This squad is complete' : '⏰ This squad has expired'}
         </p>
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="mt-1 text-sm text-ink-400">
           {status === 'completed'
             ? 'All spots are filled and everyone has their ticket.'
             : 'The squad window has closed and unfilled spots were released.'}
@@ -78,9 +78,9 @@ export function SquadJoinPanel({
 
   if (status === 'cancelled') {
     return (
-      <div className="rounded-2xl border border-gray-200 bg-white p-5 text-center">
-        <p className="font-semibold text-gray-700">This squad has been cancelled</p>
-        <p className="mt-1 text-sm text-gray-500">The squad leader cancelled this group booking.</p>
+      <div className="rounded-2xl border border-ink-200 bg-white p-5 text-center">
+        <p className="font-semibold text-ink-600">This squad has been cancelled</p>
+        <p className="mt-1 text-sm text-ink-400">The squad leader cancelled this group booking.</p>
         <Link
           href={`/events/${eventSlug}`}
           className="mt-4 inline-block rounded-xl bg-[#1A1A2E] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#2d2d4a] transition-colors"
@@ -94,9 +94,9 @@ export function SquadJoinPanel({
   // 2. Squad is full
   if (isFull) {
     return (
-      <div className="rounded-2xl border border-gray-200 bg-white p-5 text-center">
-        <p className="font-semibold text-gray-700">Squad is full</p>
-        <p className="mt-1 text-sm text-gray-500">All spots have been claimed for this squad.</p>
+      <div className="rounded-2xl border border-ink-200 bg-white p-5 text-center">
+        <p className="font-semibold text-ink-600">Squad is full</p>
+        <p className="mt-1 text-sm text-ink-400">All spots have been claimed for this squad.</p>
         <Link
           href={`/events/${eventSlug}`}
           className="mt-4 inline-block rounded-xl bg-[#1A1A2E] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#2d2d4a] transition-colors"
@@ -111,17 +111,17 @@ export function SquadJoinPanel({
   if (currentUserMemberStatus === 'paid') {
     return (
       <div className="
-        fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 px-4 py-4
+        fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-ink-200 px-4 py-4
         pb-[max(1rem,env(safe-area-inset-bottom))]
-        md:static md:rounded-2xl md:border md:border-gray-200 md:shadow-sm
+        md:static md:rounded-2xl md:border md:border-ink-200 md:shadow-sm
       ">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 shrink-0">
             ✓
           </div>
           <div>
-            <p className="font-semibold text-gray-900">You&apos;re in</p>
-            <p className="text-sm text-gray-500">Your payment is confirmed. Watch for your ticket email.</p>
+            <p className="font-semibold text-ink-900">You&apos;re in</p>
+            <p className="text-sm text-ink-400">Your payment is confirmed. Watch for your ticket email.</p>
           </div>
         </div>
       </div>
@@ -132,11 +132,11 @@ export function SquadJoinPanel({
   if (currentUserMemberStatus === 'invited' && currentUserMemberId && !joined) {
     return (
       <div className="
-        fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 px-4 py-4
+        fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-ink-200 px-4 py-4
         pb-[max(1rem,env(safe-area-inset-bottom))]
-        md:static md:rounded-2xl md:border md:border-gray-200 md:shadow-sm md:p-5
+        md:static md:rounded-2xl md:border md:border-ink-200 md:shadow-sm md:p-5
       ">
-        <p className="text-sm text-gray-600 mb-3">
+        <p className="text-sm text-ink-600 mb-3">
           You&apos;ve claimed a spot. Pay your share to lock it in.
         </p>
         <Link
@@ -154,11 +154,11 @@ export function SquadJoinPanel({
   if (!isLoggedIn && !showForm) {
     return (
       <div className="
-        fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 px-4 py-4
+        fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-ink-200 px-4 py-4
         pb-[max(1rem,env(safe-area-inset-bottom))]
-        md:static md:rounded-2xl md:border md:border-gray-200 md:shadow-sm md:p-5
+        md:static md:rounded-2xl md:border md:border-ink-200 md:shadow-sm md:p-5
       ">
-        <p className="text-sm text-gray-600 mb-4">
+        <p className="text-sm text-ink-600 mb-4">
           Join the squad for <strong>{eventTitle}</strong>. Everyone pays their own share.
         </p>
         <div className="space-y-2">
@@ -172,8 +172,8 @@ export function SquadJoinPanel({
           <button
             type="button"
             onClick={() => setShowForm(true)}
-            className="block w-full h-12 rounded-xl border border-gray-300 text-gray-700 font-semibold text-sm
-                       flex items-center justify-center hover:bg-gray-50 transition-colors"
+            className="block w-full h-12 rounded-xl border border-ink-200 text-ink-600 font-semibold text-sm
+                       flex items-center justify-center hover:bg-ink-100 transition-colors"
           >
             Continue as guest
           </button>
@@ -186,9 +186,9 @@ export function SquadJoinPanel({
   if (joined && joinedMemberId) {
     return (
       <div className="
-        fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 px-4 py-4
+        fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-ink-200 px-4 py-4
         pb-[max(1rem,env(safe-area-inset-bottom))]
-        md:static md:rounded-2xl md:border md:border-gray-200 md:shadow-sm md:p-5
+        md:static md:rounded-2xl md:border md:border-ink-200 md:shadow-sm md:p-5
       ">
         <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-4 mb-4">
           <p className="font-semibold text-emerald-800">You&apos;re in the squad</p>
@@ -236,17 +236,17 @@ export function SquadJoinPanel({
 
   return (
     <div className="
-      fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 px-4 py-4
+      fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-ink-200 px-4 py-4
       pb-[max(1rem,env(safe-area-inset-bottom))] max-h-[80vh] overflow-y-auto
-      md:static md:rounded-2xl md:border md:border-gray-200 md:shadow-sm md:p-5 md:max-h-none
+      md:static md:rounded-2xl md:border md:border-ink-200 md:shadow-sm md:p-5 md:max-h-none
     ">
       <div className="flex items-center justify-between mb-4">
-        <p className="font-semibold text-gray-900">Join this squad</p>
+        <p className="font-semibold text-ink-900">Join this squad</p>
         {!isLoggedIn && (
           <button
             type="button"
             onClick={() => setShowForm(false)}
-            className="text-xs text-gray-500 hover:text-gray-700"
+            className="text-xs text-ink-400 hover:text-ink-600"
           >
             Cancel
           </button>
@@ -256,7 +256,7 @@ export function SquadJoinPanel({
       <form onSubmit={handleJoin} noValidate>
         <div className="grid grid-cols-2 gap-3 mb-3">
           <div>
-            <label htmlFor="join-first" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="join-first" className="block text-sm font-medium text-ink-600 mb-1">
               First name <span aria-hidden="true" className="text-red-500">*</span>
             </label>
             <input
@@ -266,13 +266,13 @@ export function SquadJoinPanel({
               autoComplete="given-name"
               value={firstName}
               onChange={e => setFirstName(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base text-gray-900
+              className="w-full rounded-lg border border-ink-200 px-3 py-2.5 text-base text-ink-900
                          focus:border-[#4A90D9] focus:outline-none focus:ring-1 focus:ring-[#4A90D9]"
               placeholder="Your first name"
             />
           </div>
           <div>
-            <label htmlFor="join-last" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="join-last" className="block text-sm font-medium text-ink-600 mb-1">
               Last name <span aria-hidden="true" className="text-red-500">*</span>
             </label>
             <input
@@ -282,7 +282,7 @@ export function SquadJoinPanel({
               autoComplete="family-name"
               value={lastName}
               onChange={e => setLastName(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base text-gray-900
+              className="w-full rounded-lg border border-ink-200 px-3 py-2.5 text-base text-ink-900
                          focus:border-[#4A90D9] focus:outline-none focus:ring-1 focus:ring-[#4A90D9]"
               placeholder="Your last name"
             />
@@ -290,7 +290,7 @@ export function SquadJoinPanel({
         </div>
 
         <div className="mb-4">
-          <label htmlFor="join-email" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="join-email" className="block text-sm font-medium text-ink-600 mb-1">
             Email address <span aria-hidden="true" className="text-red-500">*</span>
           </label>
           <input
@@ -300,7 +300,7 @@ export function SquadJoinPanel({
             autoComplete="email"
             value={email}
             onChange={e => setEmail(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base text-gray-900
+            className="w-full rounded-lg border border-ink-200 px-3 py-2.5 text-base text-ink-900
                        focus:border-[#4A90D9] focus:outline-none focus:ring-1 focus:ring-[#4A90D9]"
             placeholder="you@example.com"
           />

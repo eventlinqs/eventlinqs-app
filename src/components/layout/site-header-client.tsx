@@ -202,7 +202,7 @@ export function SiteHeaderClient({ location }: SiteHeaderClientProps) {
         <div className="flex h-16 items-center justify-between border-b border-ink-100 px-4">
           <Link
             href="/"
-            aria-label="EventLinqs — home"
+            aria-label="EventLinqs home"
             className="inline-flex items-baseline rounded-sm transition-colors hover:text-gold-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
             onClick={closeSheet}
           >

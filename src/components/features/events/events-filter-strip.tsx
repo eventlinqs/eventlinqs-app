@@ -233,7 +233,7 @@ export function EventsFilterStrip({
       >
         {/* Drag handle — decorative */}
         <div className="flex justify-center pt-3 pb-1" aria-hidden="true">
-          <div className="w-10 h-1 rounded-full bg-gray-300" />
+          <div className="w-10 h-1 rounded-full bg-ink-200" />
         </div>
 
         {/* Drawer header */}

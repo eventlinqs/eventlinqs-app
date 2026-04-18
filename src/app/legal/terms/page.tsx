@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { LegalPageShell } from '@/components/ui/LegalPageShell'
 
 export const metadata: Metadata = {
-  title: 'Terms of Use — EventLinqs',
+  title: 'Terms of Use | EventLinqs',
   description:
     'The terms and conditions that govern your use of the EventLinqs platform, including ticket purchases and organiser responsibilities.',
 }

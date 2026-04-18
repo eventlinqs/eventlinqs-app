@@ -13,9 +13,9 @@ const STATUS_LABELS: Record<string, { label: string; className: string }> = {
   confirmed: { label: 'Confirmed', className: 'bg-green-100 text-green-800' },
   pending: { label: 'Pending', className: 'bg-amber-100 text-amber-800' },
   cancelled: { label: 'Cancelled', className: 'bg-red-100 text-red-700' },
-  refunded: { label: 'Refunded', className: 'bg-gray-100 text-gray-700' },
+  refunded: { label: 'Refunded', className: 'bg-ink-100 text-ink-600' },
   partially_refunded: { label: 'Part Refunded', className: 'bg-orange-100 text-orange-700' },
-  expired: { label: 'Expired', className: 'bg-gray-100 text-gray-500' },
+  expired: { label: 'Expired', className: 'bg-ink-100 text-ink-400' },
 }
 
 export function OrderTable({ orders, eventId }: OrderTableProps) {
@@ -40,12 +40,12 @@ export function OrderTable({ orders, eventId }: OrderTableProps) {
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Search by name, email or order #…"
-          className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="flex-1 rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
         />
         <select
           value={statusFilter}
           onChange={e => setStatusFilter(e.target.value)}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none"
+          className="rounded-lg border border-ink-200 px-3 py-2 text-sm focus:outline-none"
         >
           <option value="all">All statuses</option>
           <option value="confirmed">Confirmed</option>
@@ -56,14 +56,14 @@ export function OrderTable({ orders, eventId }: OrderTableProps) {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="rounded-xl border border-gray-200 bg-white p-12 text-center">
-          <p className="text-gray-500 text-sm">No orders found</p>
+        <div className="rounded-xl border border-ink-200 bg-white p-12 text-center">
+          <p className="text-ink-400 text-sm">No orders found</p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+        <div className="overflow-x-auto rounded-xl border border-ink-200 bg-white">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <tr className="border-b border-ink-100 text-left text-xs font-semibold text-ink-400 uppercase tracking-wider">
                 <th className="px-4 py-3">Order #</th>
                 <th className="px-4 py-3">Buyer</th>
                 <th className="px-4 py-3">Tickets</th>
@@ -73,18 +73,18 @@ export function OrderTable({ orders, eventId }: OrderTableProps) {
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-ink-100">
               {filtered.map(order => {
-                const statusInfo = STATUS_LABELS[order.status] ?? { label: order.status, className: 'bg-gray-100 text-gray-600' }
+                const statusInfo = STATUS_LABELS[order.status] ?? { label: order.status, className: 'bg-ink-100 text-ink-600' }
                 return (
-                  <tr key={order.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 font-mono text-xs font-medium text-gray-900">{order.order_number}</td>
+                  <tr key={order.id} className="hover:bg-ink-100 transition-colors">
+                    <td className="px-4 py-3 font-mono text-xs font-medium text-ink-900">{order.order_number}</td>
                     <td className="px-4 py-3">
-                      <p className="font-medium text-gray-900">{order.buyer_name || '—'}</p>
-                      <p className="text-xs text-gray-500">{order.buyer_email}</p>
+                      <p className="font-medium text-ink-900">{order.buyer_name || '—'}</p>
+                      <p className="text-xs text-ink-400">{order.buyer_email}</p>
                     </td>
-                    <td className="px-4 py-3 text-gray-700">{order.ticket_count}</td>
-                    <td className="px-4 py-3 text-gray-900 font-medium">
+                    <td className="px-4 py-3 text-ink-600">{order.ticket_count}</td>
+                    <td className="px-4 py-3 text-ink-900 font-medium">
                       {order.currency.toUpperCase()} {(order.total_cents / 100).toFixed(2)}
                     </td>
                     <td className="px-4 py-3">
@@ -92,13 +92,13 @@ export function OrderTable({ orders, eventId }: OrderTableProps) {
                         {statusInfo.label}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
+                    <td className="px-4 py-3 text-ink-400 text-xs whitespace-nowrap">
                       {new Date(order.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </td>
                     <td className="px-4 py-3">
                       <Link
                         href={`/dashboard/events/${eventId}/orders/${order.id}`}
-                        className="text-xs text-blue-600 hover:underline whitespace-nowrap"
+                        className="text-xs text-gold-500 hover:underline whitespace-nowrap"
                       >
                         View →
                       </Link>

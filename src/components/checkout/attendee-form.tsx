@@ -94,14 +94,14 @@ export function AttendeeForm({
   if (slots.length === 0) return null
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-6">
+    <div className="rounded-xl border border-ink-200 bg-white p-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-base font-semibold text-gray-900">Attendee Details</h3>
+        <h3 className="text-base font-semibold text-ink-900">Attendee Details</h3>
         {buyerEmail && (
           <button
             type="button"
             onClick={useMyDetails ? clearFill : fillWithBuyerDetails}
-            className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+            className="text-sm text-gold-500 hover:text-gold-600 font-medium"
           >
             {useMyDetails ? 'Clear' : 'Use my details for all tickets'}
           </button>
@@ -112,40 +112,40 @@ export function AttendeeForm({
         {slots.map((slot, i) => {
           const attendee = getAttendee(i)
           return (
-            <div key={`${slot.tier_id}-${i}`} className="border-t border-gray-100 pt-4 first:border-t-0 first:pt-0">
-              <p className="text-sm font-medium text-gray-700 mb-3">
+            <div key={`${slot.tier_id}-${i}`} className="border-t border-ink-100 pt-4 first:border-t-0 first:pt-0">
+              <p className="text-sm font-medium text-ink-600 mb-3">
                 {slot.tier_name}
                 {slot.index > 0 && ` (Ticket ${slot.index + 1})`}
               </p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">First name</label>
+                  <label className="block text-xs text-ink-400 mb-1">First name</label>
                   <input
                     type="text"
                     value={attendee.first_name}
                     onChange={e => updateAttendee(i, 'first_name', e.target.value)}
                     required
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">Last name</label>
+                  <label className="block text-xs text-ink-400 mb-1">Last name</label>
                   <input
                     type="text"
                     value={attendee.last_name}
                     onChange={e => updateAttendee(i, 'last_name', e.target.value)}
                     required
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
                   />
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-xs text-gray-500 mb-1">Email</label>
+                  <label className="block text-xs text-ink-400 mb-1">Email</label>
                   <input
                     type="email"
                     value={attendee.email}
                     onChange={e => updateAttendee(i, 'email', e.target.value)}
                     required
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
                   />
                 </div>
               </div>
