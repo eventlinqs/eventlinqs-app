@@ -66,22 +66,6 @@ function TikTokIcon() {
 export function SiteFooter() {
   return (
     <footer className="bg-ink-900 text-white" aria-label="Site footer">
-
-      {/* Culture tagline strip */}
-      <div className="border-b border-white/10 py-16 text-center px-4">
-        <div
-          aria-hidden="true"
-          className="mx-auto mb-5 h-px w-16"
-          style={{ background: 'linear-gradient(90deg, transparent, var(--color-gold-400, #E8B738), transparent)' }}
-        />
-        <p className="font-display text-3xl font-bold tracking-wide text-white sm:text-4xl">
-          Where the culture gathers.
-        </p>
-        <p className="mt-2 text-sm text-ink-400">
-          Discover, celebrate, and connect. From Melbourne to London.
-        </p>
-      </div>
-
       {/* Mobile accordion / Desktop 4-col grid */}
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
 
