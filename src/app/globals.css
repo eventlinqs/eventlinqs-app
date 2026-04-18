@@ -147,7 +147,7 @@ body {
   animation: marquee-slide 40s linear infinite;
 }
 .animate-marquee-slow {
-  animation: marquee-slide 60s linear infinite;
+  animation: marquee-slide 90s linear infinite;
 }
 .marquee-band:hover .animate-marquee,
 .marquee-band:hover .animate-marquee-slow,

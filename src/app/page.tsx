@@ -12,11 +12,12 @@ import { BentoGrid, BentoTile, BentoSupportingColumn } from '@/components/featur
 import { EventBentoTile } from '@/components/features/events/event-bento-tile'
 import type { BentoEvent } from '@/components/features/events/event-bento-tile'
 import { ThisWeekCard } from '@/components/features/events/this-week-card'
-import { LiveVibeMarquee, type VibeSignal } from '@/components/features/events/live-vibe-marquee'
+import { LiveVibeMarquee, type VibeImage } from '@/components/features/events/live-vibe-marquee'
 import { CityRailTile } from '@/components/features/events/city-rail-tile'
 import { SnapRail } from '@/components/ui/snap-rail'
 import { CulturalPicksRail } from '@/components/features/events/cultural-picks-rail'
 import { getCityPhoto } from '@/lib/images/city-photo'
+import { getCategoryPhoto } from '@/lib/images/category-photo'
 
 /**
  * Homepage — the visceral experience layer.
@@ -34,7 +35,7 @@ import { getCityPhoto } from '@/lib/images/city-photo'
  */
 
 const EVENT_SELECT =
-  'id, slug, title, summary, cover_image_url, thumbnail_url, gallery_urls, start_date, venue_name, venue_city, venue_country, is_free, created_at, category:event_categories(name, slug), organisation:organisations(name), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
+  'id, slug, title, summary, cover_image_url, thumbnail_url, gallery_urls, start_date, venue_name, venue_city, venue_state, venue_country, is_free, created_at, category:event_categories(name, slug), organisation:organisations(name), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
 
 type RawRow = {
   id: string
@@ -47,6 +48,7 @@ type RawRow = {
   start_date: string
   venue_name: string | null
   venue_city: string | null
+  venue_state: string | null
   venue_country: string | null
   is_free: boolean | null
   created_at: string
@@ -271,35 +273,57 @@ export default async function HomePage() {
     }),
   )
 
-  // Live Vibe signals — platform activity, derived from upcoming inventory
-  const signals: VibeSignal[] = []
-  for (const raw of upcomingRawTyped.slice(0, 10)) {
-    const tiers = raw.ticket_tiers ?? []
-    const sold = tiers.reduce((s, t) => s + t.sold_count, 0)
-    const cap = tiers.reduce((s, t) => s + t.total_capacity, 0)
-    const pct = cap > 0 ? Math.round((sold / cap) * 100) : 0
-    const daysTo = Math.ceil((new Date(raw.start_date).getTime() - nowMs) / 86400000)
-    const href = `/events/${raw.slug}`
+  // Live Vibe — community event images scrolling across a black band.
+  // Map real events to image tiles; fall back to curated diaspora community
+  // highlights (seeded via category-photo) if we have fewer than 6 live events.
+  const realVibeImages: VibeImage[] = await Promise.all(
+    upcomingRawTyped.slice(0, 20).map(async raw => {
+      const categoryPhoto = raw.category?.slug
+        ? await getCategoryPhoto(raw.category.slug)
+        : null
+      const src =
+        raw.cover_image_url ??
+        raw.thumbnail_url ??
+        categoryPhoto?.src ??
+        '/images/event-fallback-hero.svg'
+      const community = [raw.venue_city, raw.venue_state, raw.venue_country]
+        .filter(Boolean)
+        .slice(0, 2)
+        .join(', ')
+      return {
+        id: raw.id,
+        src,
+        href: `/events/${raw.slug}`,
+        title: raw.title,
+        community: community || 'Live on EventLinqs',
+      }
+    }),
+  )
 
-    if (pct >= 70) {
-      signals.push({ icon: 'flame', text: `${raw.title}: ${pct}% sold`, href })
-    } else if (daysTo >= 0 && daysTo <= 5) {
-      signals.push({
-        icon: 'clock',
-        text: daysTo === 0 ? `${raw.title} tonight` : `${raw.title}: ${daysTo} days to go`,
-        href,
-      })
-    } else if (raw.venue_city) {
-      signals.push({ icon: 'pin', text: `New in ${raw.venue_city}: ${raw.title}`, href })
-    } else {
-      signals.push({ icon: 'sparkles', text: `New listing: ${raw.title}`, href })
-    }
-  }
-  if (signals.length === 0) {
-    signals.push(
-      { icon: 'sparkles', text: 'New events dropping every week in Melbourne, Sydney, London and Lagos' },
-      { icon: 'ticket', text: 'Afrobeats nights, Amapiano fests, Comedy rooms. Tickets with no hidden fees.' },
+  const fallbackCommunityTiles: { id: string; href: string; title: string; community: string; categorySlug: string }[] = [
+    { id: 'f1', href: '/events?city=melbourne', title: 'Afrobeats scene in Melbourne',  community: 'Melbourne, VIC',       categorySlug: 'afrobeats' },
+    { id: 'f2', href: '/events?city=sydney',    title: 'Community events in Sydney',    community: 'Sydney, NSW',          categorySlug: 'community' },
+    { id: 'f3', href: '/events?city=brisbane',  title: 'Gospel nights Brisbane',        community: 'Brisbane, QLD',        categorySlug: 'gospel' },
+    { id: 'f4', href: '/events?city=geelong',   title: 'Geelong community scene',       community: 'Geelong, VIC',         categorySlug: 'community' },
+    { id: 'f5', href: '/events?city=perth',     title: 'Diaspora events Perth',         community: 'Perth, WA',            categorySlug: 'heritage-and-independence' },
+    { id: 'f6', href: '/events',                title: 'Regional Australia events',     community: 'Across Australia',     categorySlug: 'festival' },
+  ]
+
+  let vibeImages: VibeImage[] = realVibeImages
+  if (vibeImages.length < 6) {
+    const padded = await Promise.all(
+      fallbackCommunityTiles.map(async t => {
+        const photo = await getCategoryPhoto(t.categorySlug)
+        return {
+          id: t.id,
+          src: photo.src,
+          href: t.href,
+          title: t.title,
+          community: t.community,
+        }
+      }),
     )
+    vibeImages = [...vibeImages, ...padded].slice(0, 12)
   }
 
   return (
@@ -434,7 +458,7 @@ export default async function HomePage() {
         )}
 
         {/* 5. Live Vibe marquee */}
-        <LiveVibeMarquee signals={signals} />
+        <LiveVibeMarquee items={vibeImages} />
 
         {/* 6. By City rail */}
         <section aria-labelledby="cities-heading" className="bg-canvas py-14 sm:py-16">

@@ -1,77 +1,69 @@
+'use client'
+
 import Link from 'next/link'
-import { Flame, MapPin, Clock, Sparkles, Ticket, type LucideIcon } from 'lucide-react'
+import Image from 'next/image'
 
 /**
- * LiveVibeMarquee — dark band of scrolling real-time platform signals.
+ * LiveVibeMarquee — endless horizontal scroll of community event images
+ * on a black band. Replaces the old text-ticker with a visual-first
+ * design: real photography, cream "community" eyebrow in gold, event
+ * title overlaid on a dark gradient.
  *
- * CSS-only marquee animation (60s linear), pauses on hover AND focus-within.
- * Each item can optionally link to an event. Glyph icons are lucide, gold-tinted.
- *
- * Signal shapes (the parent chooses which apply):
- *   - "{n} sold today" from recent orders      → ticket icon
- *   - "{pct}% sold" from inventory             → flame icon
- *   - "{days} days to go" from start_date      → clock icon
- *   - "New in {city}: {title}" listings        → pin icon
- *   - "New listing: {title}" default new       → sparkles icon
+ * Animation is CSS-only (90s linear infinite), pauses on hover/focus.
+ * Items are doubled so the translateX(-50%) keyframe produces a seamless
+ * loop.
  */
 
-export type VibeIcon = 'flame' | 'pin' | 'clock' | 'sparkles' | 'ticket'
-
-export interface VibeSignal {
-  text: string
-  href?: string
-  icon?: VibeIcon
+export type VibeImage = {
+  id: string
+  src: string
+  href: string
+  title: string
+  community: string
 }
 
 interface Props {
-  signals: VibeSignal[]
+  items: VibeImage[]
 }
 
-const ICON_MAP: Record<VibeIcon, LucideIcon> = {
-  flame: Flame,
-  pin: MapPin,
-  clock: Clock,
-  sparkles: Sparkles,
-  ticket: Ticket,
-}
-
-function Item({ signal }: { signal: VibeSignal }) {
-  const Icon = signal.icon ? ICON_MAP[signal.icon] : null
-  const content = (
-    <span className="inline-flex items-center gap-2 text-xs font-medium text-white/90 sm:text-sm">
-      {Icon && <Icon aria-hidden className="h-3.5 w-3.5 shrink-0 text-gold-400 sm:h-4 sm:w-4" strokeWidth={2.25} />}
-      <span>{signal.text}</span>
-    </span>
-  )
-  if (signal.href) {
-    return (
-      <Link
-        href={signal.href}
-        className="inline-flex items-center border-b border-transparent pb-0.5 transition-colors duration-200 hover:border-gold-400 hover:text-gold-400 focus-visible:outline-none focus-visible:border-gold-400 focus-visible:text-gold-400"
-      >
-        {content}
-      </Link>
-    )
-  }
-  return <span className="inline-flex items-center">{content}</span>
-}
-
-export function LiveVibeMarquee({ signals }: Props) {
-  if (!signals.length) return null
-
+export function LiveVibeMarquee({ items }: Props) {
+  if (items.length === 0) return null
+  const doubled = [...items, ...items]
   return (
-    <section aria-label="Live platform activity" className="marquee-band overflow-hidden bg-ink-900 py-5">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <section
+      aria-label="Live on EventLinqs"
+      className="marquee-band overflow-hidden bg-ink-900 py-6"
+    >
+      <div className="mx-auto mb-4 max-w-7xl px-4 sm:px-6 lg:px-8">
         <p className="font-display text-[11px] font-bold uppercase tracking-[0.22em] text-gold-400">
-          Live on EventLinqs
+          Live on EventLinqs — Community events across Australia
         </p>
       </div>
-      <div className="relative mt-3 flex overflow-hidden whitespace-nowrap">
-        <div className="flex min-w-[200%] gap-8 animate-marquee-slow sm:gap-12">
-          {[...signals, ...signals].map((s, i) => (
-            <Item key={`${s.text}-${i}`} signal={s} />
-          ))}
-        </div>
+      <div className="flex w-max animate-marquee-slow gap-4 whitespace-nowrap">
+        {doubled.map((item, i) => (
+          <Link
+            key={`${item.id}-${i}`}
+            href={item.href}
+            className="group relative h-[160px] w-[280px] flex-shrink-0 overflow-hidden rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-900"
+          >
+            <Image
+              src={item.src}
+              alt={item.title}
+              fill
+              sizes="280px"
+              className="object-cover transition-transform duration-500 group-hover:scale-105"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-ink-900/90 via-ink-900/20 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 p-3">
+              <p className="font-display text-[10px] font-bold uppercase tracking-widest text-gold-400">
+                {item.community}
+              </p>
+              <p className="truncate text-sm font-semibold text-white">
+                {item.title}
+              </p>
+            </div>
+          </Link>
+        ))}
       </div>
     </section>
   )
