@@ -381,7 +381,7 @@ export default async function HomePage() {
         />
 
         {/* 2. Bento grid row 1 */}
-        <section aria-label="Featured events" className="bg-canvas py-14 sm:py-16">
+        <section aria-label="Featured events" className="bg-canvas py-16 sm:py-20">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mb-4">
               <LocationFilterBanner
@@ -460,7 +460,7 @@ export default async function HomePage() {
 
         {/* 3. This Week rail */}
         {thisWeek.length > 0 && (
-          <section aria-label="This week" className="bg-canvas pb-14 sm:pb-16">
+          <section aria-label="This week" className="bg-canvas pb-16 sm:pb-20">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
               <SnapRail
                 eyebrow="This week"
@@ -477,7 +477,7 @@ export default async function HomePage() {
 
         {/* 4. Cultural Picks — tab + rail per tab */}
         {culturalPicksTabs.length > 0 && (
-          <section aria-labelledby="culture-heading" className="bg-ink-100 py-14 sm:py-16">
+          <section aria-labelledby="culture-heading" className="bg-ink-100 py-16 sm:py-20">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
               <div className="flex items-end justify-between gap-4">
                 <div className="flex items-start gap-3">
@@ -508,7 +508,7 @@ export default async function HomePage() {
         <LiveVibeMarquee items={vibeImages} />
 
         {/* 6. By City rail */}
-        <section aria-labelledby="cities-heading" className="bg-canvas py-14 sm:py-16">
+        <section aria-labelledby="cities-heading" className="bg-canvas py-16 sm:py-20">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <SnapRail
               eyebrow="Australia and beyond"

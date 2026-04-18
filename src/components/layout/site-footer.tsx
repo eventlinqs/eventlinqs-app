@@ -78,7 +78,7 @@ export function SiteFooter() {
   return (
     <footer className="bg-ink-900 text-white" aria-label="Site footer">
       {/* Mobile accordion / Desktop 4-col grid */}
-      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 pt-20 pb-10 sm:px-6 lg:px-8">
 
         {/* Desktop grid (hidden on mobile) — 6 equal columns: Brand + 5 link sections */}
         <div className="hidden md:grid md:grid-cols-6 md:gap-8">
