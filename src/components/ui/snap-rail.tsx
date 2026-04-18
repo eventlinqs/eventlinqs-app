@@ -86,7 +86,17 @@ function useScrollState() {
     el.scrollBy({ left: direction * step * 1.5, behavior: 'smooth' })
   }, [])
 
-  return { scrollRef, progress, canPrev, canNext, scrollByCards }
+  const onKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowRight') {
+      e.preventDefault()
+      scrollByCards(1)
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault()
+      scrollByCards(-1)
+    }
+  }, [scrollByCards])
+
+  return { scrollRef, progress, canPrev, canNext, scrollByCards, onKeyDown }
 }
 
 function ArrowButtons({
@@ -147,7 +157,7 @@ export function SnapRailScroller({
   controlsOnTop = false,
   children,
 }: SnapRailScrollerProps) {
-  const { scrollRef, progress, canPrev, canNext, scrollByCards } = useScrollState()
+  const { scrollRef, progress, canPrev, canNext, scrollByCards, onKeyDown } = useScrollState()
   const fadeFromClass = containerBg === 'canvas' ? 'from-canvas' : 'from-ink-100'
 
   const controlsRow = (
@@ -178,6 +188,7 @@ export function SnapRailScroller({
           role="region"
           aria-label={railLabel}
           tabIndex={0}
+          onKeyDown={onKeyDown}
           className="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-4 pb-4 pt-1 scrollbar-none focus-visible:outline-none sm:px-6 lg:px-8"
         >
           {children}
@@ -197,7 +208,7 @@ export function SnapRail({
   containerBg = 'canvas',
   children,
 }: SnapRailProps) {
-  const { scrollRef, progress, canPrev, canNext, scrollByCards } = useScrollState()
+  const { scrollRef, progress, canPrev, canNext, scrollByCards, onKeyDown } = useScrollState()
   const fadeFromClass = containerBg === 'canvas' ? 'from-canvas' : 'from-ink-100'
 
   return (
@@ -253,6 +264,7 @@ export function SnapRail({
           role="region"
           aria-label={railLabel}
           tabIndex={0}
+          onKeyDown={onKeyDown}
           className="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-4 pb-4 pt-1 scrollbar-none focus-visible:outline-none sm:px-6 lg:px-8"
         >
           {children}
