@@ -99,26 +99,29 @@ const CULTURE_TABS: { slug: string; label: string; tag: string; href: string }[]
 ]
 
 const CITY_TILES = [
-  { city: 'Melbourne',     slug: 'melbourne' },
-  { city: 'Sydney',        slug: 'sydney' },
-  { city: 'Brisbane',      slug: 'brisbane' },
-  { city: 'Perth',         slug: 'perth' },
-  { city: 'Adelaide',      slug: 'adelaide' },
-  { city: 'Auckland',      slug: 'auckland' },
-  { city: 'London',        slug: 'london' },
-  { city: 'Manchester',    slug: 'manchester' },
-  { city: 'Birmingham',    slug: 'birmingham' },
-  { city: 'Dublin',        slug: 'dublin' },
-  { city: 'Toronto',       slug: 'toronto' },
-  { city: 'Montreal',      slug: 'montreal' },
-  { city: 'New York',      slug: 'new-york' },
-  { city: 'Washington DC', slug: 'washington-dc' },
-  { city: 'Houston',       slug: 'houston' },
-  { city: 'Atlanta',       slug: 'atlanta' },
-  { city: 'Miami',         slug: 'miami' },
-  { city: 'Los Angeles',   slug: 'los-angeles' },
-  { city: 'Lagos',         slug: 'lagos' },
-  { city: 'Accra',         slug: 'accra' },
+  // Primary — Australian communities shown first for the M4.5 launch.
+  { city: 'Melbourne',    slug: 'melbourne' },
+  { city: 'Sydney',       slug: 'sydney' },
+  { city: 'Brisbane',     slug: 'brisbane' },
+  { city: 'Perth',        slug: 'perth' },
+  { city: 'Adelaide',     slug: 'adelaide' },
+  { city: 'Gold Coast',   slug: 'gold-coast' },
+  { city: 'Geelong',      slug: 'geelong' },
+  { city: 'Hobart',       slug: 'hobart' },
+  { city: 'Canberra',     slug: 'canberra' },
+  { city: 'Darwin',       slug: 'darwin' },
+  { city: 'Newcastle',    slug: 'newcastle' },
+  { city: 'Wollongong',   slug: 'wollongong' },
+  // Secondary — international diaspora cities still reachable.
+  { city: 'Auckland',     slug: 'auckland' },
+  { city: 'London',       slug: 'london' },
+  { city: 'Manchester',   slug: 'manchester' },
+  { city: 'Dublin',       slug: 'dublin' },
+  { city: 'Toronto',      slug: 'toronto' },
+  { city: 'New York',     slug: 'new-york' },
+  { city: 'Houston',      slug: 'houston' },
+  { city: 'Lagos',        slug: 'lagos' },
+  { city: 'Accra',        slug: 'accra' },
 ]
 
 export default async function HomePage() {
@@ -464,8 +467,8 @@ export default async function HomePage() {
         <section aria-labelledby="cities-heading" className="bg-canvas py-14 sm:py-16">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <SnapRail
-              eyebrow="By city"
-              title="Wherever you are, the culture follows"
+              eyebrow="Australia and beyond"
+              title="Community events near you"
               headingId="cities-heading"
               railLabel="Events by city"
               containerBg="canvas"
