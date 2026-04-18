@@ -51,7 +51,7 @@ export function LiveVibeMarquee({ items }: Props) {
           Community events across Australia
         </h2>
         <p className="mt-2 max-w-2xl text-sm text-ink-600 sm:text-base">
-          Real events, real organisers, real communities. This is what's happening right now.
+          Real events, real organisers, real communities. This is what&apos;s happening right now.
         </p>
       </div>
 
