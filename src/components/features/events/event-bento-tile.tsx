@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { SmartMedia } from '@/components/ui/smart-media'
 import { GlassCard } from '@/components/ui/glass-card'
 import { getEventMedia, getFeaturedEventMedia, type EventMediaInput } from '@/lib/images/event-media'
+import { SaveEventButton } from './save-event-button'
 import type { BentoSize } from './bento-grid'
 
 /**
@@ -30,6 +31,7 @@ interface Props {
   useVideoFallback?: boolean
   featured?: boolean
   pillLabel?: string
+  initiallySaved?: boolean
 }
 
 function formatDate(iso: string): string {
@@ -82,6 +84,7 @@ export async function EventBentoTile({
   useVideoFallback = false,
   featured = false,
   pillLabel,
+  initiallySaved = false,
 }: Props) {
   const media = useVideoFallback
     ? await getFeaturedEventMedia(event)
@@ -121,7 +124,7 @@ export async function EventBentoTile({
         />
       </div>
 
-      <div className="relative z-10 flex items-start justify-between p-4 md:p-5">
+      <div className="relative z-10 flex items-start justify-between gap-2 p-4 md:p-5">
         {category ? (
           <GlassCard
             variant="dark"
@@ -131,24 +134,27 @@ export async function EventBentoTile({
           </GlassCard>
         ) : <span />}
 
-        <div className="flex flex-col items-end gap-2">
-          {featured && (
-            <span className="rounded-full bg-gold-500 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-white shadow-sm">
-              Featured
-            </span>
-          )}
-          {signal && (
-            <GlassCard
-              variant="dark"
-              className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold text-white"
-            >
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-coral-500 opacity-80" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-coral-500" />
+        <div className="flex items-start gap-2">
+          <div className="flex flex-col items-end gap-2">
+            {featured && (
+              <span className="rounded-full bg-gold-500 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-white shadow-sm">
+                Featured
               </span>
-              {signal}
-            </GlassCard>
-          )}
+            )}
+            {signal && (
+              <GlassCard
+                variant="dark"
+                className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold text-white"
+              >
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-coral-500 opacity-80" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-coral-500" />
+                </span>
+                {signal}
+              </GlassCard>
+            )}
+          </div>
+          <SaveEventButton eventId={event.id} initiallySaved={initiallySaved} variant="dark" />
         </div>
       </div>
 

@@ -118,6 +118,17 @@ export default async function HomePage() {
   const upcoming = ((upcomingRaw ?? []) as unknown as RawRow[]).map(toBentoEvent)
   const upcomingRawTyped = (upcomingRaw ?? []) as unknown as RawRow[]
 
+  // Saved events for the current session (empty set if not signed in)
+  const { data: { session } } = await supabase.auth.getSession()
+  let savedEventIds = new Set<string>()
+  if (session?.user?.id) {
+    const { data: savedRows } = await supabase
+      .from('saved_events')
+      .select('event_id')
+      .eq('user_id', session.user.id)
+    savedEventIds = new Set((savedRows ?? []).map(r => r.event_id as string))
+  }
+
   // Live platform counts — fuels hero live strip
   const { count: liveEventCount } = await supabase
     .from('events')
@@ -285,16 +296,29 @@ export default async function HomePage() {
                         size="hero"
                         useVideoFallback
                         featured
+                        initiallySaved={savedEventIds.has(featuredHero.id)}
                       />
                     )}
                   </BentoTile>
 
                   <BentoTile size="wide">
-                    {supportingOne && <EventBentoTile event={supportingOne} size="wide" />}
+                    {supportingOne && (
+                      <EventBentoTile
+                        event={supportingOne}
+                        size="wide"
+                        initiallySaved={savedEventIds.has(supportingOne.id)}
+                      />
+                    )}
                   </BentoTile>
 
                   <BentoTile size="standard">
-                    {supportingTwo && <EventBentoTile event={supportingTwo} size="standard" />}
+                    {supportingTwo && (
+                      <EventBentoTile
+                        event={supportingTwo}
+                        size="standard"
+                        initiallySaved={savedEventIds.has(supportingTwo.id)}
+                      />
+                    )}
                   </BentoTile>
 
                   <BentoTile size="compact">
@@ -409,12 +433,20 @@ export default async function HomePage() {
                     <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-12 md:auto-rows-[130px]">
                       {events[0] && (
                         <div className="md:col-span-8 md:row-span-3 min-h-[260px] relative overflow-hidden rounded-2xl">
-                          <EventBentoTile event={events[0]} size="wide" />
+                          <EventBentoTile
+                            event={events[0]}
+                            size="wide"
+                            initiallySaved={savedEventIds.has(events[0].id)}
+                          />
                         </div>
                       )}
                       {events.slice(1, 4).map(e => (
                         <div key={e.id} className="md:col-span-4 md:row-span-3 min-h-[220px] relative overflow-hidden rounded-2xl">
-                          <EventBentoTile event={e} size="standard" />
+                          <EventBentoTile
+                            event={e}
+                            size="standard"
+                            initiallySaved={savedEventIds.has(e.id)}
+                          />
                         </div>
                       ))}
                     </div>
