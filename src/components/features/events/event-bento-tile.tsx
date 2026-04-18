@@ -171,16 +171,9 @@ export async function EventBentoTile({
           <p className="mt-1.5 text-xs text-white/75 line-clamp-1">{venue}</p>
         )}
 
-        <div className="mt-3 flex items-center justify-between gap-2">
-          {price && (
-            <p className="text-sm font-semibold text-gold-300">{price}</p>
-          )}
-          {(size === 'hero' || size === 'wide') && (
-            <span className="inline-flex items-center gap-1 text-xs font-semibold text-white transition-transform duration-300 group-hover:translate-x-1">
-              Get tickets <span aria-hidden>&rarr;</span>
-            </span>
-          )}
-        </div>
+        {price && (
+          <p className="mt-3 text-sm font-semibold text-gold-300">{price}</p>
+        )}
       </div>
     </Link>
   )
