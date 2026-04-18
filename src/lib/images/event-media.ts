@@ -1,25 +1,31 @@
 import { getCategoryPhoto } from './category-photo'
 import { getCategoryVideo } from './category-video'
 
+// M6+: add in-app curated image library for organisers. Until then, branded
+// placeholder is the only fallback in tile contexts — no Pexels stock.
+
 /**
  * Orchestrator that decides what media to display for any event.
  *
- * Priority (standard tile):
+ * Priority (standard tile, getEventMedia):
  *   1. organiser video_url
  *   2. organiser gallery_urls (>= 3 images) → carousel
  *   3. organiser cover_image_url → Ken Burns still
- *   4. Pexels category photo → Ken Burns still
+ *   4. branded placeholder (EventLinqs wordmark + category label)
  *
- * Priority (featured tile, getFeaturedEventMedia):
+ * Priority (featured bento tile, getFeaturedEventMedia):
  *   1-3 as above
- *   4. Pexels category video (autoplay)
- *   5. Pexels category photo → Ken Burns still
+ *   4. branded placeholder
+ *
+ * Pexels photography is reserved for full-bleed hero backgrounds
+ * (getFeaturedHeroBackground) and By City rail tiles only.
  */
 
 export type EventMedia =
   | { kind: 'video'; src: string; poster: string; duration: number }
   | { kind: 'carousel'; images: string[]; alts: string[] }
   | { kind: 'still-kenburns'; src: string; alt: string }
+  | { kind: 'branded-placeholder'; category: string | null }
 
 export interface EventMediaInput {
   title?: string | null
@@ -58,11 +64,9 @@ export async function getEventMedia(event: EventMediaInput): Promise<EventMedia>
     }
   }
 
-  const photo = await getCategoryPhoto(event.category?.slug)
   return {
-    kind: 'still-kenburns',
-    src: photo.src,
-    alt: event.title ?? photo.alt,
+    kind: 'branded-placeholder',
+    category: event.category?.name ?? event.category?.slug ?? null,
   }
 }
 
@@ -92,21 +96,9 @@ export async function getFeaturedEventMedia(event: EventMediaInput): Promise<Eve
     }
   }
 
-  const video = await getCategoryVideo(event.category?.slug)
-  if (video) {
-    return {
-      kind: 'video',
-      src: video.src,
-      poster: video.poster,
-      duration: video.duration,
-    }
-  }
-
-  const photo = await getCategoryPhoto(event.category?.slug)
   return {
-    kind: 'still-kenburns',
-    src: photo.src,
-    alt: event.title ?? photo.alt,
+    kind: 'branded-placeholder',
+    category: event.category?.name ?? event.category?.slug ?? null,
   }
 }
 

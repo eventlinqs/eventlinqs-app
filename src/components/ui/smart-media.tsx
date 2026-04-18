@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { EventMedia } from '@/lib/images/event-media'
+import { BrandedPlaceholder } from './branded-placeholder'
 
 /**
  * SmartMedia — universal renderer for the EventMedia union.
@@ -82,6 +83,14 @@ export function SmartMedia({
           preload={autoplay ? 'auto' : 'metadata'}
           className="h-full w-full object-cover"
         />
+      </div>
+    )
+  }
+
+  if (media.kind === 'branded-placeholder') {
+    return (
+      <div className={wrapBase} aria-label={ariaLabel}>
+        <BrandedPlaceholder category={media.category} />
       </div>
     )
   }
