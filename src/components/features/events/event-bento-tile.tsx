@@ -70,11 +70,12 @@ function liveSignal(event: BentoEvent): string | null {
 
 function titleSize(size: BentoSize): string {
   switch (size) {
-    case 'hero':     return 'text-2xl md:text-3xl lg:text-4xl'
-    case 'wide':     return 'text-xl md:text-2xl'
-    case 'standard': return 'text-lg md:text-xl'
-    case 'compact':  return 'text-base'
-    case 'tall':     return 'text-xl md:text-2xl'
+    case 'hero':       return 'text-2xl md:text-3xl lg:text-4xl'
+    case 'supporting': return 'text-lg md:text-xl'
+    case 'wide':       return 'text-xl md:text-2xl'
+    case 'standard':   return 'text-lg md:text-xl'
+    case 'compact':    return 'text-base'
+    case 'tall':       return 'text-xl md:text-2xl'
   }
 }
 
@@ -167,7 +168,7 @@ export async function EventBentoTile({
         <h3 className={`mt-1 font-display font-extrabold leading-tight ${titleSize(size)} line-clamp-2`}>
           {event.title}
         </h3>
-        {size !== 'compact' && venue && (
+        {venue && (
           <p className="mt-1.5 text-xs text-white/75 line-clamp-1">{venue}</p>
         )}
 

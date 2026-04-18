@@ -11,7 +11,6 @@ import { CATEGORY_HIGHLIGHT_SLIDES } from '@/lib/content/category-highlight-slid
 import { BentoGrid, BentoTile } from '@/components/features/events/bento-grid'
 import { EventBentoTile } from '@/components/features/events/event-bento-tile'
 import type { BentoEvent } from '@/components/features/events/event-bento-tile'
-import { FreeWeekendTile } from '@/components/features/events/free-weekend-tile'
 import { ThisWeekCard } from '@/components/features/events/this-week-card'
 import { LiveVibeMarquee, type VibeSignal } from '@/components/features/events/live-vibe-marquee'
 import { CityRailTile } from '@/components/features/events/city-rail-tile'
@@ -203,14 +202,8 @@ export default async function HomePage() {
   const highlightSlidesNeeded = Math.max(0, 3 - heroEventSlides.length)
   const heroHighlightSlides = CATEGORY_HIGHLIGHT_SLIDES.slice(0, highlightSlidesNeeded)
 
-  // Bento row: featured + 3 supporting events
-  const supportingOne = upcoming[1] ?? null
-  const supportingTwo = upcoming[2] ?? null
-
-  // Free weekend tile — first free event in the next 7 days
-  const weekendFree = upcoming.find(
-    e => (e.is_free === true || (e.ticket_tiers ?? []).every(t => t.price === 0)) && new Date(e.start_date) <= new Date(weekEndIso),
-  ) ?? null
+  // Bento row: featured hero + 3 equal-weight supporting events
+  const supportingEvents = upcoming.slice(1, 4)
 
   // This Week — events within next 7 days, pre-rendered as rail cards
   const thisWeek = upcoming.filter(e => new Date(e.start_date) <= new Date(weekEndIso)).slice(0, 10)
@@ -344,29 +337,15 @@ export default async function HomePage() {
                     )}
                   </BentoTile>
 
-                  <BentoTile size="wide">
-                    {supportingOne && (
+                  {supportingEvents.map(event => (
+                    <BentoTile key={event.id} size="supporting">
                       <EventBentoTile
-                        event={supportingOne}
-                        size="wide"
-                        initiallySaved={savedEventIds.has(supportingOne.id)}
+                        event={event}
+                        size="supporting"
+                        initiallySaved={savedEventIds.has(event.id)}
                       />
-                    )}
-                  </BentoTile>
-
-                  <BentoTile size="standard">
-                    {supportingTwo && (
-                      <EventBentoTile
-                        event={supportingTwo}
-                        size="standard"
-                        initiallySaved={savedEventIds.has(supportingTwo.id)}
-                      />
-                    )}
-                  </BentoTile>
-
-                  <BentoTile size="compact">
-                    <FreeWeekendTile event={weekendFree} fallbackMode={!weekendFree} />
-                  </BentoTile>
+                    </BentoTile>
+                  ))}
                 </BentoGrid>
               ) : (
                 <div className="flex items-center justify-center rounded-2xl border border-dashed border-ink-200 bg-white py-20 text-center">
