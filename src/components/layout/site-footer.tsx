@@ -20,10 +20,9 @@ const FOOTER_LINKS = {
     { label: 'Browse all events',  href: '/events' },
     { label: 'Afrobeats',          href: '/categories/afrobeats' },
     { label: 'Amapiano',           href: '/categories/amapiano' },
-    { label: 'Gospel',             href: '/categories/gospel' },
-    { label: 'Comedy',             href: '/events?category=comedy' },
     { label: 'Owambe',             href: '/categories/owambe' },
-    { label: 'Business & Networking', href: '/categories/networking' },
+    { label: 'Caribbean',          href: '/categories/caribbean' },
+    { label: 'Heritage',           href: '/categories/heritage-and-independence' },
   ],
   organisers: [
     { label: 'Start selling tickets', href: '/organisers/signup' },
@@ -34,8 +33,20 @@ const FOOTER_LINKS = {
   help: [
     { label: 'Help Centre',   href: '/help' },
     { label: 'Contact Us',    href: '/contact' },
-    { label: 'Privacy Policy', href: '/legal/privacy' },
-    { label: 'Terms of Use',  href: '/legal/terms' },
+    { label: 'Refunds',       href: '/help/refunds' },
+    { label: 'Accessibility', href: '/help/accessibility' },
+  ],
+  company: [
+    { label: 'About EventLinqs', href: '/about' },
+    { label: 'Press',            href: '/press' },
+    { label: 'Careers',          href: '/careers' },
+    { label: 'Blog',             href: '/blog' },
+  ],
+  legal: [
+    { label: 'Privacy Policy',   href: '/legal/privacy' },
+    { label: 'Terms of Use',     href: '/legal/terms' },
+    { label: 'Cookie Policy',    href: '/legal/cookies' },
+    { label: 'Organiser Terms',  href: '/legal/organiser-terms' },
   ],
 }
 
@@ -69,13 +80,13 @@ export function SiteFooter() {
       {/* Mobile accordion / Desktop 4-col grid */}
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
 
-        {/* Desktop grid (hidden on mobile) */}
-        <div className="hidden md:grid md:grid-cols-4 md:gap-8">
+        {/* Desktop grid (hidden on mobile) — 6 equal columns: Brand + 5 link sections */}
+        <div className="hidden md:grid md:grid-cols-6 md:gap-8">
           {/* Col 1 — Brand */}
           <div>
             <EventlinqsLogo size="lg" variant="inverted" />
             <p className="mt-3 text-sm leading-6 text-ink-400">
-              The ticketing platform built for Africa, its diaspora, and every community that knows how to celebrate.
+              Built for Africa, its diaspora, and every community that knows how to celebrate.
             </p>
             <div className="mt-6 flex gap-4">
               <a href="https://twitter.com/eventlinqs" aria-label="EventLinqs on X (Twitter)" className="text-ink-400 hover:text-white transition-colors">
@@ -125,6 +136,30 @@ export function SiteFooter() {
               ))}
             </ul>
           </div>
+
+          {/* Col 5 — Company */}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-ink-400">Company</p>
+            <ul className="mt-4 space-y-3">
+              {FOOTER_LINKS.company.map(link => (
+                <li key={link.href}>
+                  <a href={link.href} className="text-sm text-ink-400 hover:text-white transition-colors">{link.label}</a>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Col 6 — Legal */}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-ink-400">Legal</p>
+            <ul className="mt-4 space-y-3">
+              {FOOTER_LINKS.legal.map(link => (
+                <li key={link.href}>
+                  <a href={link.href} className="text-sm text-ink-400 hover:text-white transition-colors">{link.label}</a>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
 
         {/* Mobile accordions (hidden on md+) */}
@@ -133,6 +168,8 @@ export function SiteFooter() {
             { title: 'Discover',    links: FOOTER_LINKS.discover },
             { title: 'Organisers',  links: FOOTER_LINKS.organisers },
             { title: 'Help',        links: FOOTER_LINKS.help },
+            { title: 'Company',     links: FOOTER_LINKS.company },
+            { title: 'Legal',       links: FOOTER_LINKS.legal },
           ].map(section => (
             <details key={section.title} className="group">
               <summary className="flex cursor-pointer list-none items-center justify-between py-4 text-sm font-semibold text-white [&::-webkit-details-marker]:hidden">
@@ -173,9 +210,12 @@ export function SiteFooter() {
 
       {/* Bottom bar */}
       <div className="border-t border-white/10 py-6 px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl flex flex-col items-center gap-2 text-center sm:flex-row sm:justify-between">
+        <div className="mx-auto max-w-7xl flex flex-col items-center gap-2 text-center md:flex-row md:justify-between md:gap-6 md:text-left">
           <p className="text-xs text-ink-400">
             © {new Date().getFullYear()} EventLinqs. All rights reserved.
+          </p>
+          <p className="hidden md:block text-xs text-ink-400">
+            Built for Africa, its diaspora, and every community that knows how to celebrate.
           </p>
           <p className="text-xs text-ink-400">
             Transparent pricing. Zero hidden fees. Always.
