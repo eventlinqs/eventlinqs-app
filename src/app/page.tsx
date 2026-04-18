@@ -152,6 +152,8 @@ export default async function HomePage() {
     }),
   )
 
+  const populatedCulturalQueries = culturalQueries.filter(q => q.events.length > 0)
+
   // City counts
   const cityCounts = await Promise.all(
     CITY_TILES.map(async t => {
@@ -307,95 +309,76 @@ export default async function HomePage() {
         )}
 
         {/* 4. Cultural Picks — bento per tab */}
-        <section aria-labelledby="culture-heading" className="bg-ink-100 py-14 sm:py-16">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="flex items-end justify-between gap-4">
-              <div className="flex items-start gap-3">
-                <div className="mt-1 h-8 w-0.5 shrink-0 bg-gold-500" aria-hidden />
-                <div>
-                  <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-500">
-                    Made for the diaspora
-                  </p>
-                  <h2 id="culture-heading" className="font-display text-2xl font-bold text-ink-900 sm:text-3xl">
-                    Cultural picks
-                  </h2>
+        {populatedCulturalQueries.length > 0 && (
+          <section aria-labelledby="culture-heading" className="bg-ink-100 py-14 sm:py-16">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+              <div className="flex items-end justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="mt-1 h-8 w-0.5 shrink-0 bg-gold-500" aria-hidden />
+                  <div>
+                    <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-500">
+                      Made for the diaspora
+                    </p>
+                    <h2 id="culture-heading" className="font-display text-2xl font-bold text-ink-900 sm:text-3xl">
+                      Cultural picks
+                    </h2>
+                  </div>
                 </div>
-              </div>
-              <Link
-                href="/events"
-                className="shrink-0 text-sm font-medium text-gold-500 whitespace-nowrap transition-colors hover:text-gold-600"
-              >
-                Explore culture &rsaquo;
-              </Link>
-            </div>
-
-            {/* Tab strip — first tab active by default. Anchor links scroll to corresponding block. */}
-            <div className="mt-6 flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-              {culturalQueries.map(({ tab }, i) => (
-                <a
-                  key={tab.slug}
-                  href={`#culture-${tab.slug}`}
-                  className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium border transition-colors ${
-                    i === 0
-                      ? 'bg-gold-500 border-gold-500 text-white'
-                      : 'bg-white border-ink-200 text-ink-700 hover:border-gold-400 hover:text-gold-600'
-                  }`}
+                <Link
+                  href="/events"
+                  className="shrink-0 text-sm font-medium text-gold-500 whitespace-nowrap transition-colors hover:text-gold-600"
                 >
-                  {tab.label}
-                </a>
-              ))}
-            </div>
+                  Explore culture &rsaquo;
+                </Link>
+              </div>
 
-            <div className="mt-8 space-y-10">
-              {culturalQueries.map(({ tab, events }) => (
-                <div key={tab.slug} id={`culture-${tab.slug}`} className="scroll-mt-24">
-                  <div className="flex items-baseline justify-between">
-                    <h3 className="font-display text-xl font-bold text-ink-900">{tab.label}</h3>
-                    <Link
-                      href={tab.href}
-                      className="text-xs font-medium text-gold-500 transition-colors hover:text-gold-600"
-                    >
-                      View all {tab.label} &rsaquo;
-                    </Link>
-                  </div>
-                  <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-12 md:auto-rows-[130px]">
-                    {events.length === 0 ? (
-                      <div className="md:col-span-12 md:row-span-2 flex items-center justify-center rounded-2xl border-2 border-dashed border-ink-200 bg-white p-8 text-center">
-                        <div>
-                          <p className="font-display text-base font-semibold text-ink-900">
-                            Be the first to host a {tab.label} event
-                          </p>
-                          <p className="mt-1 text-xs text-ink-400">
-                            Zero platform fees on your first event. Go live in five minutes.
-                          </p>
-                          <Link
-                            href="/organisers/signup"
-                            className="mt-4 inline-flex items-center rounded-lg bg-gold-500 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-gold-600"
-                          >
-                            Start hosting
-                          </Link>
+              {/* Tab strip — first populated tab active by default. */}
+              <div className="mt-6 flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+                {populatedCulturalQueries.map(({ tab }, i) => (
+                  <a
+                    key={tab.slug}
+                    href={`#culture-${tab.slug}`}
+                    className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium border transition-colors ${
+                      i === 0
+                        ? 'bg-gold-500 border-gold-500 text-white'
+                        : 'bg-white border-ink-200 text-ink-700 hover:border-gold-400 hover:text-gold-600'
+                    }`}
+                  >
+                    {tab.label}
+                  </a>
+                ))}
+              </div>
+
+              <div className="mt-8 space-y-10">
+                {populatedCulturalQueries.map(({ tab, events }) => (
+                  <div key={tab.slug} id={`culture-${tab.slug}`} className="scroll-mt-24">
+                    <div className="flex items-baseline justify-between">
+                      <h3 className="font-display text-xl font-bold text-ink-900">{tab.label}</h3>
+                      <Link
+                        href={tab.href}
+                        className="text-xs font-medium text-gold-500 transition-colors hover:text-gold-600"
+                      >
+                        View all {tab.label} &rsaquo;
+                      </Link>
+                    </div>
+                    <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-12 md:auto-rows-[130px]">
+                      {events[0] && (
+                        <div className="md:col-span-8 md:row-span-3 min-h-[260px] relative overflow-hidden rounded-2xl">
+                          <EventBentoTile event={events[0]} size="wide" />
                         </div>
-                      </div>
-                    ) : (
-                      <>
-                        {events[0] && (
-                          <div className="md:col-span-8 md:row-span-3 min-h-[260px] relative overflow-hidden rounded-2xl">
-                            <EventBentoTile event={events[0]} size="wide" />
-                          </div>
-                        )}
-                        {events.slice(1, 4).map(e => (
-                          <div key={e.id} className="md:col-span-4 md:row-span-3 min-h-[220px] relative overflow-hidden rounded-2xl">
-                            <EventBentoTile event={e} size="standard" />
-                          </div>
-                        ))}
-                      </>
-                    )}
+                      )}
+                      {events.slice(1, 4).map(e => (
+                        <div key={e.id} className="md:col-span-4 md:row-span-3 min-h-[220px] relative overflow-hidden rounded-2xl">
+                          <EventBentoTile event={e} size="standard" />
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* 5. By City */}
         <section aria-labelledby="cities-heading" className="bg-canvas py-14 sm:py-16">
