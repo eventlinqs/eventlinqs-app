@@ -141,10 +141,15 @@ export function HeroCarouselClient({
       {/* Foreground content */}
       <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-24 pt-16 sm:px-6 lg:px-8 lg:pb-28">
         <div className="flex flex-col gap-10 lg:flex-row lg:items-end lg:justify-between">
-          <div key={`fg-${active.key}`} className="max-w-2xl animate-fade-rise">
-            <p className="font-display text-[11px] font-semibold uppercase tracking-[0.28em] text-gold-400">
-              {active.eyebrow}
-            </p>
+          <div
+            key={`fg-${active.key}`}
+            className="mx-auto max-w-2xl animate-fade-rise text-center sm:mx-0 sm:text-left"
+          >
+            <div className="flex justify-center sm:justify-start">
+              <p className="font-display text-[11px] font-semibold uppercase tracking-[0.28em] text-gold-400">
+                {active.eyebrow}
+              </p>
+            </div>
             <h1
               className="mt-4 font-display font-extrabold leading-[0.95] tracking-tight text-white"
               style={{ fontSize: 'clamp(2.25rem, 8vw, 6rem)' }}
@@ -154,7 +159,7 @@ export function HeroCarouselClient({
             <p className="mt-5 max-w-xl text-base text-white/80 sm:text-lg">{subcopy}</p>
 
             {liveEventCount >= 10 && (
-              <div className="mt-4 inline-flex items-center gap-2.5 text-[13px] text-white/75 font-medium">
+              <div className="mt-4 flex items-center justify-center gap-2.5 text-[13px] font-medium text-white/75 sm:justify-start">
                 <span className="relative h-2 w-2 rounded-full bg-gold-400">
                   <span className="absolute inset-0 rounded-full bg-gold-400 opacity-60 animate-ping" />
                 </span>
@@ -166,7 +171,7 @@ export function HeroCarouselClient({
               </div>
             )}
 
-            <div className="mt-8 flex flex-wrap items-center gap-3">
+            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row sm:items-start sm:justify-start">
               <Link
                 href={active.primaryHref}
                 className="inline-flex items-center rounded-lg bg-gold-500 px-6 py-3 text-base font-semibold text-white shadow-lg shadow-gold-500/20 transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.02] hover:bg-gold-600 hover:shadow-gold-500/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
