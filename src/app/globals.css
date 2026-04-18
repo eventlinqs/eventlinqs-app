@@ -149,10 +149,15 @@ body {
 .animate-marquee-slow {
   animation: marquee-slide 90s linear infinite;
 }
+.animate-marquee-vibe {
+  animation: marquee-slide 80s linear infinite;
+}
 .marquee-band:hover .animate-marquee,
 .marquee-band:hover .animate-marquee-slow,
+.marquee-band:hover .animate-marquee-vibe,
 .marquee-band:focus-within .animate-marquee,
-.marquee-band:focus-within .animate-marquee-slow {
+.marquee-band:focus-within .animate-marquee-slow,
+.marquee-band:focus-within .animate-marquee-vibe {
   animation-play-state: paused;
 }
 
@@ -191,5 +196,5 @@ body {
     scroll-behavior: auto !important;
   }
   .smart-media-kenburns { animation: none !important; transform: none !important; }
-  .animate-marquee, .animate-marquee-slow { animation: none !important; }
+  .animate-marquee, .animate-marquee-slow, .animate-marquee-vibe { animation: none !important; }
 }
