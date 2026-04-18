@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import { useDragScroll } from '@/hooks/use-drag-scroll'
 
 /**
  * SnapRail primitives for horizontal scroll-snap strips.
@@ -158,6 +159,7 @@ export function SnapRailScroller({
   children,
 }: SnapRailScrollerProps) {
   const { scrollRef, progress, canPrev, canNext, scrollByCards, onKeyDown } = useScrollState()
+  useDragScroll(scrollRef)
   const fadeFromClass = containerBg === 'canvas' ? 'from-canvas' : 'from-ink-100'
 
   const controlsRow = (
@@ -189,6 +191,13 @@ export function SnapRailScroller({
           aria-label={railLabel}
           tabIndex={0}
           onKeyDown={onKeyDown}
+          onClickCapture={(e) => {
+            const el = e.currentTarget as HTMLElement
+            if (el.getAttribute('data-dragged') === 'true') {
+              e.preventDefault()
+              e.stopPropagation()
+            }
+          }}
           className="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-4 pb-4 pt-1 scrollbar-none focus-visible:outline-none sm:px-6 lg:px-8"
         >
           {children}
@@ -209,6 +218,7 @@ export function SnapRail({
   children,
 }: SnapRailProps) {
   const { scrollRef, progress, canPrev, canNext, scrollByCards, onKeyDown } = useScrollState()
+  useDragScroll(scrollRef)
   const fadeFromClass = containerBg === 'canvas' ? 'from-canvas' : 'from-ink-100'
 
   return (
@@ -265,6 +275,13 @@ export function SnapRail({
           aria-label={railLabel}
           tabIndex={0}
           onKeyDown={onKeyDown}
+          onClickCapture={(e) => {
+            const el = e.currentTarget as HTMLElement
+            if (el.getAttribute('data-dragged') === 'true') {
+              e.preventDefault()
+              e.stopPropagation()
+            }
+          }}
           className="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-4 pb-4 pt-1 scrollbar-none focus-visible:outline-none sm:px-6 lg:px-8"
         >
           {children}
