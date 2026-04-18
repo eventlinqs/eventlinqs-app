@@ -28,6 +28,8 @@ export interface FeaturedHeroEvent extends EventMediaInput {
 
 interface Props {
   event: FeaturedHeroEvent | null
+  liveEventCount?: number
+  uniqueCitiesCount?: number
 }
 
 function formatLongDate(iso: string): string {
@@ -47,7 +49,7 @@ function formatFromPrice(tiers: FeaturedHeroEvent['ticket_tiers']): string | nul
   return `From ${cheapest.currency ?? 'AUD'} ${formatted}`
 }
 
-export async function FeaturedEventHero({ event }: Props) {
+export async function FeaturedEventHero({ event, liveEventCount = 0, uniqueCitiesCount = 0 }: Props) {
   const input: EventMediaInput = event ?? {
     title: 'Where the culture gathers',
     category: { slug: 'festival', name: 'Festival' },
@@ -106,6 +108,19 @@ export async function FeaturedEventHero({ event }: Props) {
               {headline}
             </h1>
             <p className="mt-5 max-w-xl text-base text-white/80 sm:text-lg">{subcopy}</p>
+
+            {liveEventCount >= 10 && (
+              <div className="mt-4 inline-flex items-center gap-2.5 text-[13px] text-white/75 font-medium">
+                <span className="relative h-2 w-2 rounded-full bg-gold-400">
+                  <span className="absolute inset-0 rounded-full bg-gold-400 opacity-60 animate-ping" />
+                </span>
+                {liveEventCount} events live now
+                <span className="h-3 w-px bg-white/30" />
+                {uniqueCitiesCount} {uniqueCitiesCount === 1 ? 'city' : 'cities'}
+                <span className="h-3 w-px bg-white/30" />
+                This week
+              </div>
+            )}
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Link

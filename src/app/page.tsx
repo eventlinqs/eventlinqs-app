@@ -118,6 +118,26 @@ export default async function HomePage() {
   const upcoming = ((upcomingRaw ?? []) as unknown as RawRow[]).map(toBentoEvent)
   const upcomingRawTyped = (upcomingRaw ?? []) as unknown as RawRow[]
 
+  // Live platform counts — fuels hero live strip
+  const { count: liveEventCount } = await supabase
+    .from('events')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'published')
+    .eq('visibility', 'public')
+    .gte('start_date', nowIso)
+
+  const { data: cityRows } = await supabase
+    .from('events')
+    .select('venue_city')
+    .eq('status', 'published')
+    .eq('visibility', 'public')
+    .gte('start_date', nowIso)
+    .not('venue_city', 'is', null)
+
+  const uniqueCitiesCount = new Set(
+    (cityRows ?? []).map(r => r.venue_city?.trim().toLowerCase()).filter(Boolean)
+  ).size
+
   // Featured event (soonest upcoming) for cinematic hero + hero bento tile
   const featuredRaw = upcomingRawTyped[0] ?? null
   const featuredHero: FeaturedHeroEvent | null = featuredRaw ? toFeaturedHeroEvent(featuredRaw) : null
@@ -209,7 +229,11 @@ export default async function HomePage() {
 
       <main>
         {/* 1. Cinematic hero */}
-        <FeaturedEventHero event={featuredHero} />
+        <FeaturedEventHero
+          event={featuredHero}
+          liveEventCount={liveEventCount ?? 0}
+          uniqueCitiesCount={uniqueCitiesCount}
+        />
 
         {/* 2. Bento grid row 1 */}
         <section aria-label="Featured events" className="bg-canvas py-14 sm:py-16">
