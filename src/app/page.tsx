@@ -11,6 +11,7 @@ import { FreeWeekendTile } from '@/components/features/events/free-weekend-tile'
 import { ThisWeekStrip } from '@/components/features/events/this-week-strip'
 import { LiveVibeMarquee, type VibeSignal } from '@/components/features/events/live-vibe-marquee'
 import { CityTile } from '@/components/features/events/city-tile'
+import { getCityPhoto } from '@/lib/images/city-photo'
 
 /**
  * Homepage — the visceral experience layer.
@@ -91,10 +92,10 @@ const CULTURE_TABS: { slug: string; label: string; tag: string; href: string }[]
 ]
 
 const CITY_TILES = [
-  { city: 'Melbourne', slug: 'Melbourne', image: '/cities/melbourne.svg' },
-  { city: 'Sydney',    slug: 'Sydney',    image: '/cities/sydney.svg' },
-  { city: 'London',    slug: 'London',    image: '/cities/london.svg' },
-  { city: 'Lagos',     slug: 'Lagos',     image: '/cities/lagos.svg' },
+  { city: 'Melbourne', slug: 'melbourne' },
+  { city: 'Sydney',    slug: 'sydney' },
+  { city: 'London',    slug: 'london' },
+  { city: 'Lagos',     slug: 'lagos' },
 ]
 
 export default async function HomePage() {
@@ -154,17 +155,20 @@ export default async function HomePage() {
 
   const populatedCulturalQueries = culturalQueries.filter(q => q.events.length > 0)
 
-  // City counts
+  // City counts + real Pexels photography, fetched in parallel per city
   const cityCounts = await Promise.all(
     CITY_TILES.map(async t => {
-      const { count } = await supabase
-        .from('events')
-        .select('id', { count: 'exact', head: true })
-        .eq('status', 'published')
-        .eq('visibility', 'public')
-        .gte('start_date', nowIso)
-        .ilike('venue_city', `%${t.slug}%`)
-      return { ...t, count: count ?? 0 }
+      const [countResult, photo] = await Promise.all([
+        supabase.from('events').select('id', { count: 'exact', head: true })
+          .eq('status', 'published').eq('visibility', 'public')
+          .gte('start_date', nowIso).ilike('venue_city', `%${t.slug}%`),
+        getCityPhoto(t.slug),
+      ])
+      return {
+        ...t,
+        count: countResult.count ?? 0,
+        imageSrc: photo ?? `/cities/${t.slug}.svg`,
+      }
     }),
   )
 
@@ -402,7 +406,7 @@ export default async function HomePage() {
                   city={c.city}
                   slug={c.slug}
                   eventCount={c.count}
-                  imageSrc={c.image}
+                  imageSrc={c.imageSrc}
                 />
               ))}
             </div>
