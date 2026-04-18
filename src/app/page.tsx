@@ -12,9 +12,11 @@ import { BentoGrid, BentoTile } from '@/components/features/events/bento-grid'
 import { EventBentoTile } from '@/components/features/events/event-bento-tile'
 import type { BentoEvent } from '@/components/features/events/event-bento-tile'
 import { FreeWeekendTile } from '@/components/features/events/free-weekend-tile'
-import { ThisWeekStrip } from '@/components/features/events/this-week-strip'
+import { ThisWeekCard } from '@/components/features/events/this-week-card'
 import { LiveVibeMarquee, type VibeSignal } from '@/components/features/events/live-vibe-marquee'
-import { CityTile } from '@/components/features/events/city-tile'
+import { CityRailTile } from '@/components/features/events/city-rail-tile'
+import { SnapRail } from '@/components/ui/snap-rail'
+import { CulturalPicksRail } from '@/components/features/events/cultural-picks-rail'
 import { getCityPhoto } from '@/lib/images/city-photo'
 
 /**
@@ -210,10 +212,13 @@ export default async function HomePage() {
     e => (e.is_free === true || (e.ticket_tiers ?? []).every(t => t.price === 0)) && new Date(e.start_date) <= new Date(weekEndIso),
   ) ?? null
 
-  // This Week — events within next 7 days
+  // This Week — events within next 7 days, pre-rendered as rail cards
   const thisWeek = upcoming.filter(e => new Date(e.start_date) <= new Date(weekEndIso)).slice(0, 10)
+  const thisWeekCards = await Promise.all(
+    thisWeek.map(async e => <ThisWeekCard key={e.id} event={e} />),
+  )
 
-  // Cultural picks per tab — fetch in parallel using tag overlaps
+  // Cultural picks per tab — fetch + pre-render cards in parallel
   const culturalQueries = await Promise.all(
     CULTURE_TABS.map(async tab => {
       const { data } = await supabase
@@ -224,15 +229,21 @@ export default async function HomePage() {
         .gte('start_date', nowIso)
         .contains('tags', [tab.tag])
         .order('start_date', { ascending: true })
-        .limit(4)
-      return {
-        tab,
-        events: ((data ?? []) as unknown as RawRow[]).map(toBentoEvent),
-      }
+        .limit(8)
+      const events = ((data ?? []) as unknown as RawRow[]).map(toBentoEvent)
+      const cards = await Promise.all(events.map(async e => <ThisWeekCard key={e.id} event={e} />))
+      return { tab, events, cards }
     }),
   )
 
-  const populatedCulturalQueries = culturalQueries.filter(q => q.events.length > 0)
+  const culturalPicksTabs = culturalQueries
+    .filter(q => q.events.length > 0)
+    .map(q => ({
+      slug: q.tab.slug,
+      label: q.tab.label,
+      href: q.tab.href,
+      cards: <>{q.cards}</>,
+    }))
 
   // City counts + real Pexels photography, fetched in parallel per city
   const cityCounts = await Promise.all(
@@ -379,38 +390,25 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* 3. This Week strip */}
+        {/* 3. This Week rail */}
         {thisWeek.length > 0 && (
           <section aria-label="This week" className="bg-canvas pb-14 sm:pb-16">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-              <div className="flex items-end justify-between gap-4">
-                <div className="flex items-start gap-3">
-                  <div className="mt-1 h-8 w-0.5 shrink-0 bg-gold-500" aria-hidden />
-                  <div>
-                    <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-500">
-                      This week
-                    </p>
-                    <h2 className="font-display text-2xl font-bold text-ink-900 sm:text-3xl">
-                      What&apos;s happening near you
-                    </h2>
-                  </div>
-                </div>
-                <Link
-                  href="/events?date=week"
-                  className="shrink-0 text-sm font-medium text-gold-500 whitespace-nowrap transition-colors hover:text-gold-600"
-                >
-                  View all &rsaquo;
-                </Link>
-              </div>
-              <div className="mt-8">
-                <ThisWeekStrip events={thisWeek} />
-              </div>
+              <SnapRail
+                eyebrow="This week"
+                title="What's happening near you"
+                headerLink={{ href: '/events?date=week', label: 'View all' }}
+                railLabel="Events this week"
+                containerBg="canvas"
+              >
+                {thisWeekCards}
+              </SnapRail>
             </div>
           </section>
         )}
 
-        {/* 4. Cultural Picks — bento per tab */}
-        {populatedCulturalQueries.length > 0 && (
+        {/* 4. Cultural Picks — tab + rail per tab */}
+        {culturalPicksTabs.length > 0 && (
           <section aria-labelledby="culture-heading" className="bg-ink-100 py-14 sm:py-16">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
               <div className="flex items-end justify-between gap-4">
@@ -433,80 +431,23 @@ export default async function HomePage() {
                 </Link>
               </div>
 
-              {/* Tab strip — first populated tab active by default. */}
-              <div className="mt-6 flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-                {populatedCulturalQueries.map(({ tab }, i) => (
-                  <a
-                    key={tab.slug}
-                    href={`#culture-${tab.slug}`}
-                    className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium border transition-colors ${
-                      i === 0
-                        ? 'bg-gold-500 border-gold-500 text-white'
-                        : 'bg-white border-ink-200 text-ink-700 hover:border-gold-400 hover:text-gold-600'
-                    }`}
-                  >
-                    {tab.label}
-                  </a>
-                ))}
-              </div>
-
-              <div className="mt-8 space-y-10">
-                {populatedCulturalQueries.map(({ tab, events }) => (
-                  <div key={tab.slug} id={`culture-${tab.slug}`} className="scroll-mt-24">
-                    <div className="flex items-baseline justify-between">
-                      <h3 className="font-display text-xl font-bold text-ink-900">{tab.label}</h3>
-                      <Link
-                        href={tab.href}
-                        className="text-xs font-medium text-gold-500 transition-colors hover:text-gold-600"
-                      >
-                        View all {tab.label} &rsaquo;
-                      </Link>
-                    </div>
-                    <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-12 md:auto-rows-[130px]">
-                      {events[0] && (
-                        <div className="md:col-span-8 md:row-span-3 min-h-[260px] relative overflow-hidden rounded-2xl">
-                          <EventBentoTile
-                            event={events[0]}
-                            size="wide"
-                            initiallySaved={savedEventIds.has(events[0].id)}
-                          />
-                        </div>
-                      )}
-                      {events.slice(1, 4).map(e => (
-                        <div key={e.id} className="md:col-span-4 md:row-span-3 min-h-[220px] relative overflow-hidden rounded-2xl">
-                          <EventBentoTile
-                            event={e}
-                            size="standard"
-                            initiallySaved={savedEventIds.has(e.id)}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <CulturalPicksRail tabs={culturalPicksTabs} />
             </div>
           </section>
         )}
 
-        {/* 5. By City */}
+        {/* 5. By City rail */}
         <section aria-labelledby="cities-heading" className="bg-canvas py-14 sm:py-16">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="flex items-start gap-3">
-              <div className="mt-1 h-8 w-0.5 shrink-0 bg-gold-500" aria-hidden />
-              <div>
-                <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-500">
-                  By city
-                </p>
-                <h2 id="cities-heading" className="font-display text-2xl font-bold text-ink-900 sm:text-3xl">
-                  Wherever you are, the culture follows
-                </h2>
-              </div>
-            </div>
-
-            <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <SnapRail
+              eyebrow="By city"
+              title="Wherever you are, the culture follows"
+              headingId="cities-heading"
+              railLabel="Events by city"
+              containerBg="canvas"
+            >
               {cityCounts.map(c => (
-                <CityTile
+                <CityRailTile
                   key={c.slug}
                   city={c.city}
                   slug={c.slug}
@@ -514,7 +455,7 @@ export default async function HomePage() {
                   imageSrc={c.imageSrc}
                 />
               ))}
-            </div>
+            </SnapRail>
           </div>
         </section>
 

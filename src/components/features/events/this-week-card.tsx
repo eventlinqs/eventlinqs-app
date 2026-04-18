@@ -4,16 +4,9 @@ import { getEventMedia } from '@/lib/images/event-media'
 import type { BentoEvent } from './event-bento-tile'
 
 /**
- * ThisWeekStrip — horizontal scroll strip of events in the next 7 days.
- * CSS scroll-snap on the container, 280px cards.
- *
- * Server component. Each card renders with SmartMedia. Parent supplies
- * the events array and the section header.
+ * ThisWeekCard — 280px snap-start event card for horizontal rails.
+ * Server component; renders SmartMedia + event meta.
  */
-
-interface Props {
-  events: BentoEvent[]
-}
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-AU', {
@@ -32,9 +25,9 @@ function formatPrice(tiers: BentoEvent['ticket_tiers']): string {
   return `${cheapest.currency ?? 'AUD'} ${formatted}`
 }
 
-async function ThisWeekCard({ event }: { event: BentoEvent }) {
+export async function ThisWeekCard({ event }: { event: BentoEvent }) {
   const media = await getEventMedia(event)
-  const venue = [event.venue_name, event.venue_city].filter(Boolean).join(' · ')
+  const venue = [event.venue_name, event.venue_city].filter(Boolean).join(' \u00B7 ')
   return (
     <Link
       href={`/events/${event.slug}`}
@@ -73,23 +66,5 @@ async function ThisWeekCard({ event }: { event: BentoEvent }) {
         </p>
       </div>
     </Link>
-  )
-}
-
-export async function ThisWeekStrip({ events }: Props) {
-  if (!events.length) return null
-  const cards = await Promise.all(events.map(e => ThisWeekCard({ event: e })))
-
-  return (
-    <div className="relative -mx-4 sm:-mx-6 lg:-mx-8">
-      {/* Right-edge gradient fade hints at more content */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute right-0 top-0 z-10 h-full w-24 bg-gradient-to-l from-canvas to-transparent"
-      />
-      <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-4 pb-4 pt-1 scrollbar-none sm:px-6 lg:px-8">
-        {cards}
-      </div>
-    </div>
   )
 }
