@@ -152,7 +152,7 @@ export default async function HomePage() {
     .limit(24)
 
   let upcomingRaw = cityUpcomingRaw
-  let locationFilterActive = (cityUpcomingRaw ?? []).length >= 2
+  const locationFilterActive = (cityUpcomingRaw ?? []).length >= 2
   if (!locationFilterActive) {
     const { data: allUpcomingRaw } = await supabase
       .from('events')
