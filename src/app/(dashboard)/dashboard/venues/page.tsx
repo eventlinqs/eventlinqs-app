@@ -15,7 +15,7 @@ export default async function VenuesPage() {
 
   if (!org) {
     return (
-      <div className="py-12 text-center text-sm text-gray-500">
+      <div className="py-12 text-center text-sm text-ink-400">
         You need to create an organisation before managing venues.
       </div>
     )

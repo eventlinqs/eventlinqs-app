@@ -113,28 +113,28 @@ export function DiscountCodesClient({ eventId, currency, initialCodes, tiers }: 
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="mb-6 rounded-xl border border-gray-200 bg-white p-6">
-          <h3 className="text-base font-semibold text-gray-900 mb-4">New Discount Code</h3>
+        <form onSubmit={handleSubmit} className="mb-6 rounded-xl border border-ink-200 bg-white p-6">
+          <h3 className="text-base font-semibold text-ink-900 mb-4">New Discount Code</h3>
 
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Code *</label>
+              <label className="block text-xs text-ink-400 mb-1">Code *</label>
               <input
                 type="text"
                 value={form.code}
                 onChange={e => handleChange('code', e.target.value.toUpperCase())}
                 placeholder="SUMMER20"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono uppercase focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm font-mono uppercase focus:outline-none focus:ring-1 focus:ring-gold-400"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Type *</label>
+              <label className="block text-xs text-ink-400 mb-1">Type *</label>
               <select
                 value={form.discount_type}
                 onChange={e => handleChange('discount_type', e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none"
+                className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:outline-none"
               >
                 <option value="percentage">Percentage off (%)</option>
                 <option value="fixed_amount">Fixed amount off</option>
@@ -142,7 +142,7 @@ export function DiscountCodesClient({ eventId, currency, initialCodes, tiers }: 
             </div>
 
             <div>
-              <label className="block text-xs text-gray-500 mb-1">
+              <label className="block text-xs text-ink-400 mb-1">
                 Value * {form.discount_type === 'percentage' ? '(1–100)' : `(${currency.toUpperCase()})`}
               </label>
               <input
@@ -152,36 +152,36 @@ export function DiscountCodesClient({ eventId, currency, initialCodes, tiers }: 
                 min="0.01"
                 step={form.discount_type === 'percentage' ? '1' : '0.01'}
                 max={form.discount_type === 'percentage' ? '100' : undefined}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gold-400"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Max Total Uses</label>
+              <label className="block text-xs text-ink-400 mb-1">Max Total Uses</label>
               <input
                 type="number"
                 value={form.max_uses}
                 onChange={e => handleChange('max_uses', e.target.value)}
                 min="1"
                 placeholder="Unlimited"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gold-400"
               />
             </div>
 
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Max Uses Per Person</label>
+              <label className="block text-xs text-ink-400 mb-1">Max Uses Per Person</label>
               <input
                 type="number"
                 value={form.max_uses_per_user}
                 onChange={e => handleChange('max_uses_per_user', e.target.value)}
                 min="1"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gold-400"
               />
             </div>
 
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Min Order Value ({currency.toUpperCase()})</label>
+              <label className="block text-xs text-ink-400 mb-1">Min Order Value ({currency.toUpperCase()})</label>
               <input
                 type="number"
                 value={form.min_order_amount}
@@ -189,34 +189,34 @@ export function DiscountCodesClient({ eventId, currency, initialCodes, tiers }: 
                 min="0"
                 step="0.01"
                 placeholder="No minimum"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gold-400"
               />
             </div>
 
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Valid From</label>
+              <label className="block text-xs text-ink-400 mb-1">Valid From</label>
               <input
                 type="datetime-local"
                 value={form.valid_from}
                 onChange={e => handleChange('valid_from', e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gold-400"
               />
             </div>
 
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Valid Until</label>
+              <label className="block text-xs text-ink-400 mb-1">Valid Until</label>
               <input
                 type="datetime-local"
                 value={form.valid_until}
                 onChange={e => handleChange('valid_until', e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gold-400"
               />
             </div>
           </div>
 
           {tiers.length > 0 && (
             <div className="mt-4">
-              <label className="block text-xs text-gray-500 mb-2">Restrict to Ticket Types (leave blank for all)</label>
+              <label className="block text-xs text-ink-400 mb-2">Restrict to Ticket Types (leave blank for all)</label>
               <div className="flex flex-wrap gap-2">
                 {tiers.map(tier => (
                   <label key={tier.id} className="flex items-center gap-1.5 cursor-pointer">
@@ -231,7 +231,7 @@ export function DiscountCodesClient({ eventId, currency, initialCodes, tiers }: 
                       }}
                       className="rounded"
                     />
-                    <span className="text-sm text-gray-700">{tier.name}</span>
+                    <span className="text-sm text-ink-600">{tier.name}</span>
                   </label>
                 ))}
               </div>
@@ -255,7 +255,7 @@ export function DiscountCodesClient({ eventId, currency, initialCodes, tiers }: 
             <button
               type="button"
               onClick={() => { setShowForm(false); setForm(initialForm); setFormError(null) }}
-              className="rounded-lg border border-gray-300 px-5 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              className="rounded-lg border border-ink-200 px-5 py-2 text-sm text-ink-600 hover:bg-ink-100"
             >
               Cancel
             </button>
@@ -264,14 +264,14 @@ export function DiscountCodesClient({ eventId, currency, initialCodes, tiers }: 
       )}
 
       {codes.length === 0 ? (
-        <div className="rounded-xl border border-gray-200 bg-white p-12 text-center">
-          <p className="text-gray-500 text-sm">No discount codes yet. Create one to boost ticket sales.</p>
+        <div className="rounded-xl border border-ink-200 bg-white p-12 text-center">
+          <p className="text-ink-400 text-sm">No discount codes yet. Create one to boost ticket sales.</p>
         </div>
       ) : (
-        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <div className="rounded-xl border border-ink-200 bg-white overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <tr className="border-b border-ink-100 text-left text-xs font-semibold text-ink-400 uppercase tracking-wider">
                 <th className="px-4 py-3">Code</th>
                 <th className="px-4 py-3">Discount</th>
                 <th className="px-4 py-3">Uses</th>
@@ -280,26 +280,26 @@ export function DiscountCodesClient({ eventId, currency, initialCodes, tiers }: 
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-ink-100">
               {codes.map(code => (
-                <tr key={code.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-mono font-semibold text-gray-900">{code.code}</td>
-                  <td className="px-4 py-3 text-gray-700">
+                <tr key={code.id} className="hover:bg-ink-100">
+                  <td className="px-4 py-3 font-mono font-semibold text-ink-900">{code.code}</td>
+                  <td className="px-4 py-3 text-ink-600">
                     {code.discount_type === 'percentage'
                       ? `${code.discount_value}%`
                       : `${(code.currency ?? currency).toUpperCase()} ${(code.discount_value / 100).toFixed(2)}`}
                   </td>
-                  <td className="px-4 py-3 text-gray-500">
+                  <td className="px-4 py-3 text-ink-400">
                     {code.current_uses}{code.max_uses !== null ? ` / ${code.max_uses}` : ''}
                   </td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">
+                  <td className="px-4 py-3 text-ink-400 text-xs">
                     {code.valid_until
                       ? new Date(code.valid_until).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
                       : 'No expiry'}
                   </td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                      code.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+                      code.is_active ? 'bg-green-100 text-green-800' : 'bg-ink-100 text-ink-600'
                     }`}>
                       {code.is_active ? 'Active' : 'Inactive'}
                     </span>
@@ -309,7 +309,7 @@ export function DiscountCodesClient({ eventId, currency, initialCodes, tiers }: 
                       <button
                         onClick={() => handleToggle(code.id, code.is_active)}
                         disabled={isPending}
-                        className="text-xs text-blue-600 hover:underline"
+                        className="text-xs text-gold-500 hover:underline"
                       >
                         {code.is_active ? 'Deactivate' : 'Activate'}
                       </button>

@@ -20,13 +20,13 @@ function formatDate(iso: string, timezone: string) {
 function statusBadge(status: SquadStatus) {
   switch (status) {
     case 'forming':
-      return <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-700">Forming</span>
+      return <span className="inline-flex items-center rounded-full bg-gold-100 px-2.5 py-0.5 text-xs font-semibold text-gold-600">Forming</span>
     case 'completed':
       return <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">Completed</span>
     case 'expired':
       return <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-600">Expired</span>
     case 'cancelled':
-      return <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600">Cancelled</span>
+      return <span className="inline-flex items-center rounded-full bg-ink-100 px-2.5 py-0.5 text-xs font-semibold text-ink-600">Cancelled</span>
   }
 }
 
@@ -49,10 +49,10 @@ export default async function MySquadsPage() {
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">My Squads</h1>
+        <h1 className="text-2xl font-bold text-ink-900">My Squads</h1>
         <Link
           href="/events"
-          className="text-sm text-blue-600 hover:text-blue-800 transition-colors"
+          className="text-sm text-gold-500 hover:text-gold-600 transition-colors"
         >
           Browse Events →
         </Link>
@@ -88,13 +88,13 @@ export default async function MySquadsPage() {
             return (
               <div
                 key={squad.id}
-                className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
+                className="rounded-xl border border-ink-200 bg-white p-5 shadow-sm"
               >
                 {/* Header row */}
                 <div className="flex items-start gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h2 className="text-base font-semibold text-gray-900 truncate">
+                      <h2 className="text-base font-semibold text-ink-900 truncate">
                         {squad.event.title}
                       </h2>
                       {statusBadge(squad.status)}
@@ -104,19 +104,19 @@ export default async function MySquadsPage() {
                         </span>
                       )}
                     </div>
-                    <p className="mt-0.5 text-sm text-gray-500">
+                    <p className="mt-0.5 text-sm text-ink-400">
                       {formatDate(squad.event.start_date, squad.event.timezone)}
                     </p>
                     {(squad.event.venue_name || squad.event.venue_city) && (
-                      <p className="text-xs text-gray-400 mt-0.5">
+                      <p className="text-xs text-ink-400 mt-0.5">
                         {[squad.event.venue_name, squad.event.venue_city].filter(Boolean).join(', ')}
                       </p>
                     )}
                   </div>
 
                   <div className="shrink-0 text-right">
-                    <p className="text-xs text-gray-500">{squad.ticket_tier.name}</p>
-                    <p className="text-sm font-semibold text-gray-900">
+                    <p className="text-xs text-ink-400">{squad.ticket_tier.name}</p>
+                    <p className="text-sm font-semibold text-ink-900">
                       {squad.ticket_tier.currency.toUpperCase()} {(squad.ticket_tier.price / 100).toFixed(2)}/ea
                     </p>
                   </div>
@@ -125,11 +125,11 @@ export default async function MySquadsPage() {
                 {/* Progress */}
                 <div className="mt-4">
                   <div className="flex items-center justify-between text-sm mb-1.5">
-                    <span className="text-gray-700">
-                      <span className="font-semibold text-gray-900">{filledSpots}</span>
+                    <span className="text-ink-600">
+                      <span className="font-semibold text-ink-900">{filledSpots}</span>
                       {' '}/ {squad.total_spots} spots filled
                       {paidSpots > 0 && paidSpots < filledSpots && (
-                        <span className="text-gray-500"> ({paidSpots} paid)</span>
+                        <span className="text-ink-400"> ({paidSpots} paid)</span>
                       )}
                     </span>
                     {squad.status === 'forming' && (
@@ -139,7 +139,7 @@ export default async function MySquadsPage() {
                     )}
                   </div>
                   <div
-                    className="w-full bg-gray-100 rounded-full h-2"
+                    className="w-full bg-ink-100 rounded-full h-2"
                     role="progressbar"
                     aria-valuenow={filledSpots}
                     aria-valuemin={0}
@@ -170,7 +170,7 @@ export default async function MySquadsPage() {
                   {squad.status === 'completed' && (
                     <Link
                       href={`/squad/${squad.share_token}`}
-                      className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                      className="rounded-lg border border-ink-200 px-4 py-2 text-sm font-medium text-ink-600 hover:bg-ink-100 transition-colors"
                     >
                       View
                     </Link>

@@ -70,22 +70,22 @@ export default async function DynamicPricingPage({ params }: Props) {
   }))
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="border-b border-gray-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-ink-100">
+      <div className="border-b border-ink-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-3xl flex items-center gap-4">
           <Link
             href={`/dashboard/events`}
-            className="text-sm text-gray-500 hover:text-gray-700"
+            className="text-sm text-ink-400 hover:text-ink-600"
           >
             ← Events
           </Link>
           <Link
             href={`/dashboard/events/${eventId}/edit`}
-            className="text-sm text-gray-500 hover:text-gray-700"
+            className="text-sm text-ink-400 hover:text-ink-600"
           >
             Edit Event
           </Link>
-          <span className="text-sm font-medium text-gray-900">Dynamic Pricing</span>
+          <span className="text-sm font-medium text-ink-900">Dynamic Pricing</span>
         </div>
       </div>
 

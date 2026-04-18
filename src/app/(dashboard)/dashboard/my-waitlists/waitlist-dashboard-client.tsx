@@ -11,11 +11,11 @@ interface Props {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  waiting:  { label: 'Waiting',   className: 'bg-blue-100 text-blue-700' },
+  waiting:  { label: 'Waiting',   className: 'bg-gold-100 text-gold-600' },
   notified: { label: 'Your turn', className: 'bg-amber-100 text-amber-800 animate-pulse' },
   converted:{ label: 'Converted', className: 'bg-green-100 text-green-700' },
-  expired:  { label: 'Expired',   className: 'bg-gray-100 text-gray-500' },
-  removed:  { label: 'Removed',   className: 'bg-gray-100 text-gray-400' },
+  expired:  { label: 'Expired',   className: 'bg-ink-100 text-ink-400' },
+  removed:  { label: 'Removed',   className: 'bg-ink-100 text-ink-400' },
 }
 
 function formatDate(iso: string) {
@@ -89,7 +89,7 @@ export function WaitlistDashboardClient({ initialWaitlists }: Props) {
         return (
           <div
             key={entry.id}
-            className="rounded-xl border border-gray-200 bg-white p-5"
+            className="rounded-xl border border-ink-200 bg-white p-5"
             aria-label={`Waitlist entry for ${entry.event_title}`}
           >
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -101,7 +101,7 @@ export function WaitlistDashboardClient({ initialWaitlists }: Props) {
                   </span>
                   {isWaiting && (
                     <span
-                      className="text-sm font-bold text-gray-900 tabular-nums"
+                      className="text-sm font-bold text-ink-900 tabular-nums"
                       aria-live="polite"
                       aria-atomic="true"
                       aria-label={`Position ${entry.position} in line`}
@@ -115,22 +115,22 @@ export function WaitlistDashboardClient({ initialWaitlists }: Props) {
                 {entry.event_slug ? (
                   <Link
                     href={`/events/${entry.event_slug}`}
-                    className="text-base font-semibold text-gray-900 hover:text-blue-600 transition-colors"
+                    className="text-base font-semibold text-ink-900 hover:text-gold-500 transition-colors"
                   >
                     {entry.event_title}
                   </Link>
                 ) : (
-                  <p className="text-base font-semibold text-gray-900">{entry.event_title}</p>
+                  <p className="text-base font-semibold text-ink-900">{entry.event_title}</p>
                 )}
 
                 {/* Tier + date */}
-                <p className="mt-0.5 text-sm text-gray-500">
-                  {entry.tier_name && <span className="font-medium text-gray-700">{entry.tier_name} · </span>}
+                <p className="mt-0.5 text-sm text-ink-400">
+                  {entry.tier_name && <span className="font-medium text-ink-600">{entry.tier_name} · </span>}
                   {entry.event_start_date ? formatDate(entry.event_start_date) : ''}
                 </p>
 
                 {/* Quantity */}
-                <p className="mt-1 text-xs text-gray-400">
+                <p className="mt-1 text-xs text-ink-400">
                   {entry.quantity_requested} ticket{entry.quantity_requested > 1 ? 's' : ''} requested
                   {' · '}Joined {formatDate(entry.created_at)}
                 </p>
@@ -142,7 +142,7 @@ export function WaitlistDashboardClient({ initialWaitlists }: Props) {
                     role="status"
                     aria-live="assertive"
                   >
-                    A spot opened! Check your email for the checkout link — it expires in 15 minutes.
+                    A spot opened. Check your email for the checkout link. It expires in 15 minutes.
                   </div>
                 )}
               </div>
@@ -154,7 +154,7 @@ export function WaitlistDashboardClient({ initialWaitlists }: Props) {
                   onClick={() => handleLeave(entry.id)}
                   disabled={isLeaving || isPending}
                   aria-label={`Leave waitlist for ${entry.event_title}`}
-                  className="shrink-0 rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50 hover:text-red-600 hover:border-red-200 disabled:opacity-40 transition-colors min-h-[44px]"
+                  className="shrink-0 rounded-lg border border-ink-200 px-3 py-2 text-xs font-medium text-ink-600 hover:bg-ink-100 hover:text-red-600 hover:border-red-200 disabled:opacity-40 transition-colors min-h-[44px]"
                 >
                   {isLeaving ? 'Leaving…' : 'Leave Waitlist'}
                 </button>
@@ -164,7 +164,7 @@ export function WaitlistDashboardClient({ initialWaitlists }: Props) {
         )
       })}
 
-      <p className="pt-2 text-center text-xs text-gray-400">
+      <p className="pt-2 text-center text-xs text-ink-400">
         Positions update automatically every 30 seconds.
       </p>
     </div>

@@ -109,23 +109,23 @@ export default async function EventOrdersPage({ params }: Props) {
   return (
     <div>
       <div className="mb-6 flex items-center gap-3">
-        <Link href={`/dashboard/events/${eventId}/edit`} className="text-sm text-gray-500 hover:text-gray-700">
+        <Link href={`/dashboard/events/${eventId}/edit`} className="text-sm text-ink-400 hover:text-ink-600">
           ← Back to Event
         </Link>
-        <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
-        <span className="text-gray-400 text-sm">·</span>
-        <span className="text-sm text-gray-600">{event.title}</span>
+        <h1 className="text-2xl font-bold text-ink-900">Orders</h1>
+        <span className="text-ink-400 text-sm">·</span>
+        <span className="text-sm text-ink-600">{event.title}</span>
       </div>
 
       {/* Stat cards */}
       <div className={`grid grid-cols-2 gap-4 mb-6 ${event.waitlist_enabled ? 'sm:grid-cols-5' : 'sm:grid-cols-4'}`}>
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wider">Total Orders</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{confirmedOrders.length}</p>
+        <div className="rounded-xl border border-ink-200 bg-white p-5">
+          <p className="text-xs text-ink-400 uppercase tracking-wider">Total Orders</p>
+          <p className="text-2xl font-bold text-ink-900 mt-1">{confirmedOrders.length}</p>
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wider">Revenue</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1 tabular-nums">
+        <div className="rounded-xl border border-ink-200 bg-white p-5">
+          <p className="text-xs text-ink-400 uppercase tracking-wider">Revenue</p>
+          <p className="text-2xl font-bold text-ink-900 mt-1 tabular-nums">
             {new Intl.NumberFormat('en-AU', {
               style: 'currency',
               currency: currency.toUpperCase(),
@@ -133,13 +133,13 @@ export default async function EventOrdersPage({ params }: Props) {
             }).format(totalRevenue / 100)}
           </p>
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wider">Tickets Sold</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{ticketsSold}</p>
+        <div className="rounded-xl border border-ink-200 bg-white p-5">
+          <p className="text-xs text-ink-400 uppercase tracking-wider">Tickets Sold</p>
+          <p className="text-2xl font-bold text-ink-900 mt-1">{ticketsSold}</p>
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wider">Remaining</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{remaining}</p>
+        <div className="rounded-xl border border-ink-200 bg-white p-5">
+          <p className="text-xs text-ink-400 uppercase tracking-wider">Remaining</p>
+          <p className="text-2xl font-bold text-ink-900 mt-1">{remaining}</p>
         </div>
         {event.waitlist_enabled && (
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
@@ -173,7 +173,7 @@ export default async function EventOrdersPage({ params }: Props) {
           <div className="mt-4 flex gap-2">
             <Link
               href={`/dashboard/events/${eventId}/discounts`}
-              className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-center text-xs font-medium text-gray-700 hover:bg-gray-50"
+              className="flex-1 rounded-lg border border-ink-200 bg-white px-3 py-2 text-center text-xs font-medium text-ink-600 hover:bg-ink-100"
             >
               Discount Codes
             </Link>

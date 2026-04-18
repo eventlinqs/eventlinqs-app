@@ -47,12 +47,12 @@ export default async function DiscountsPage({ params }: Props) {
   return (
     <div>
       <div className="mb-6 flex items-center gap-3">
-        <Link href={`/dashboard/events/${eventId}/orders`} className="text-sm text-gray-500 hover:text-gray-700">
+        <Link href={`/dashboard/events/${eventId}/orders`} className="text-sm text-ink-400 hover:text-ink-600">
           ← Orders
         </Link>
-        <h1 className="text-2xl font-bold text-gray-900">Discount Codes</h1>
-        <span className="text-gray-400 text-sm">·</span>
-        <span className="text-sm text-gray-600">{event.title}</span>
+        <h1 className="text-2xl font-bold text-ink-900">Discount Codes</h1>
+        <span className="text-ink-400 text-sm">·</span>
+        <span className="text-sm text-ink-600">{event.title}</span>
       </div>
 
       <DiscountCodesClient

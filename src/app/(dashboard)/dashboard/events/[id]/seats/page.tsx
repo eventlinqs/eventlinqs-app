@@ -35,10 +35,10 @@ export default async function SeatsManagementPage({ params }: Props) {
   if (!event.has_reserved_seating) {
     return (
       <div className="py-12 text-center">
-        <p className="text-sm text-gray-500">This event does not use reserved seating.</p>
+        <p className="text-sm text-ink-400">This event does not use reserved seating.</p>
         <Link
           href={`/dashboard/events/${eventId}/edit`}
-          className="mt-4 inline-block text-sm text-blue-600 hover:underline"
+          className="mt-4 inline-block text-sm text-gold-500 hover:underline"
         >
           Edit event to enable reserved seating
         </Link>
@@ -68,18 +68,18 @@ export default async function SeatsManagementPage({ params }: Props) {
 
   return (
     <div>
-      <div className="mb-6 border-b border-gray-200 bg-white px-4 py-4 sm:px-6 lg:px-8 -mx-4 sm:-mx-6 lg:-mx-8">
+      <div className="mb-6 border-b border-ink-200 bg-white px-4 py-4 sm:px-6 lg:px-8 -mx-4 sm:-mx-6 lg:-mx-8">
         <div className="flex items-center gap-4">
-          <Link href="/dashboard/events" className="text-sm text-gray-500 hover:text-gray-700">
+          <Link href="/dashboard/events" className="text-sm text-ink-400 hover:text-ink-600">
             ← Events
           </Link>
           <Link
             href={`/dashboard/events/${eventId}/edit`}
-            className="text-sm text-gray-500 hover:text-gray-700"
+            className="text-sm text-ink-400 hover:text-ink-600"
           >
             {event.title}
           </Link>
-          <span className="text-sm font-medium text-gray-900">Seat Management</span>
+          <span className="text-sm font-medium text-ink-900">Seat Management</span>
         </div>
       </div>
 

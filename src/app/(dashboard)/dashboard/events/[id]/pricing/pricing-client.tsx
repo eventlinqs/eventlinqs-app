@@ -145,24 +145,24 @@ function TierPricingCard({ tier, eventId }: { tier: Tier; eventId: string }) {
   }
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-6">
+    <div className="rounded-xl border border-ink-200 bg-white p-6">
       {/* Tier header */}
       <div className="flex items-start justify-between mb-4">
         <div>
-          <h3 className="text-base font-semibold text-gray-900">{tier.name}</h3>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <h3 className="text-base font-semibold text-ink-900">{tier.name}</h3>
+          <p className="text-sm text-ink-400 mt-0.5">
             Base price: {formatPrice(tier.price, tier.currency)} · {tier.sold_count}/{tier.total_capacity} sold ({percentSold}%)
           </p>
         </div>
         <label className="flex items-center gap-2 cursor-pointer">
-          <span className="text-sm text-gray-700">Dynamic pricing</span>
+          <span className="text-sm text-ink-600">Dynamic pricing</span>
           <button
             type="button"
             role="switch"
             aria-checked={enabled}
             onClick={() => setEnabled(v => !v)}
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-              enabled ? 'bg-blue-600' : 'bg-gray-300'
+              enabled ? 'bg-gold-500' : 'bg-ink-200'
             }`}
           >
             <span
@@ -177,8 +177,8 @@ function TierPricingCard({ tier, eventId }: { tier: Tier; eventId: string }) {
       {enabled && (
         <>
           {/* Preview */}
-          <div className="mb-4 rounded-lg bg-blue-50 px-4 py-3">
-            <p className="text-sm text-blue-800">
+          <div className="mb-4 rounded-lg bg-gold-100 px-4 py-3">
+            <p className="text-sm text-gold-600">
               <span className="font-medium">At current sales ({percentSold}% sold), buyers pay:</span>{' '}
               {formatPrice(currentStepPrice, tier.currency)}
             </p>
@@ -186,7 +186,7 @@ function TierPricingCard({ tier, eventId }: { tier: Tier; eventId: string }) {
 
           {/* Steps */}
           <div className="space-y-3 mb-4">
-            <div className="grid grid-cols-[1fr_1fr_auto] gap-2 text-xs font-medium text-gray-500 px-1">
+            <div className="grid grid-cols-[1fr_1fr_auto] gap-2 text-xs font-medium text-ink-400 px-1">
               <span>Up to % sold</span>
               <span>Price ({tier.currency})</span>
               <span />
@@ -202,13 +202,13 @@ function TierPricingCard({ tier, eventId }: { tier: Tier; eventId: string }) {
                     onChange={e => handlePercentChange(i, e.target.value)}
                     onBlur={() => handlePercentBlur(i)}
                     placeholder="1–100"
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 pr-8 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full rounded-lg border border-ink-200 px-3 py-2 pr-8 text-sm focus:border-gold-400 focus:outline-none focus:ring-1 focus:ring-gold-400"
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">%</span>
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-400">%</span>
                 </div>
                 {/* Price field — text input, decimal allowed, formatted on blur */}
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-ink-400">$</span>
                   <input
                     type="text"
                     inputMode="decimal"
@@ -216,14 +216,14 @@ function TierPricingCard({ tier, eventId }: { tier: Tier; eventId: string }) {
                     onChange={e => handlePriceChange(i, e.target.value)}
                     onBlur={() => handlePriceBlur(i)}
                     placeholder="0.00"
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 pl-7 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full rounded-lg border border-ink-200 px-3 py-2 pl-7 text-sm focus:border-gold-400 focus:outline-none focus:ring-1 focus:ring-gold-400"
                   />
                 </div>
                 <button
                   type="button"
                   onClick={() => removeStep(i)}
                   disabled={steps.length <= 1}
-                  className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-400 hover:bg-red-50 hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   title="Remove step"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -238,7 +238,7 @@ function TierPricingCard({ tier, eventId }: { tier: Tier; eventId: string }) {
             <button
               type="button"
               onClick={addStep}
-              className="mb-4 flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 transition-colors"
+              className="mb-4 flex items-center gap-1.5 text-sm text-gold-500 hover:text-gold-600 transition-colors"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -250,7 +250,7 @@ function TierPricingCard({ tier, eventId }: { tier: Tier; eventId: string }) {
       )}
 
       {/* Save row */}
-      <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+      <div className="flex items-center justify-between pt-2 border-t border-ink-100">
         {message && (
           <p className={`text-sm ${message.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
             {message.text}
@@ -261,7 +261,7 @@ function TierPricingCard({ tier, eventId }: { tier: Tier; eventId: string }) {
           type="button"
           onClick={save}
           disabled={isPending}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          className="rounded-lg bg-gold-500 px-4 py-2 text-sm font-medium text-white hover:bg-gold-600 disabled:opacity-50 transition-colors"
         >
           {isPending ? 'Saving…' : 'Save'}
         </button>
@@ -274,15 +274,15 @@ export function PricingClient({ eventId, eventTitle, tiers }: Props) {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Dynamic Pricing</h1>
-        <p className="mt-1 text-sm text-gray-500">{eventTitle}</p>
-        <p className="mt-2 text-sm text-gray-600">
-          Set stepwise price increases as tickets sell. Prices lock at reservation time — buyers are never surprised.
+        <h1 className="text-2xl font-bold text-ink-900">Dynamic Pricing</h1>
+        <p className="mt-1 text-sm text-ink-400">{eventTitle}</p>
+        <p className="mt-2 text-sm text-ink-600">
+          Set stepwise price increases as tickets sell. Prices lock at reservation time, so buyers are never surprised.
         </p>
       </div>
 
       {tiers.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-gray-300 py-12 text-center text-sm text-gray-500">
+        <div className="rounded-xl border border-dashed border-ink-200 py-12 text-center text-sm text-ink-400">
           No ticket tiers found for this event.
         </div>
       ) : (

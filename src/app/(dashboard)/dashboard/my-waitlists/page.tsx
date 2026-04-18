@@ -14,10 +14,10 @@ export default async function MyWaitlistsPage() {
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">My Waitlists</h1>
+        <h1 className="text-2xl font-bold text-ink-900">My Waitlists</h1>
         <Link
           href="/events"
-          className="text-sm text-blue-600 hover:text-blue-800 transition-colors"
+          className="text-sm text-gold-500 hover:text-gold-600 transition-colors"
         >
           Browse Events →
         </Link>

@@ -71,10 +71,10 @@ export default async function EditEventPage({ params }: Props) {
   return (
     <div>
       <div className="mb-8 flex items-center gap-4">
-        <Link href="/dashboard/events" className="text-sm text-gray-500 hover:text-gray-700">
+        <Link href="/dashboard/events" className="text-sm text-ink-400 hover:text-ink-600">
           ← My Events
         </Link>
-        <h1 className="text-2xl font-bold text-gray-900">Edit Event</h1>
+        <h1 className="text-2xl font-bold text-ink-900">Edit Event</h1>
       </div>
 
       {event.status === 'published' && (
@@ -106,13 +106,13 @@ export default async function EditEventPage({ params }: Props) {
           <div className="flex flex-col gap-2">
             <Link
               href={`/dashboard/events/${id}/orders`}
-              className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-center text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="rounded-lg border border-ink-200 bg-white px-4 py-2.5 text-center text-sm font-medium text-ink-600 hover:bg-ink-100"
             >
               View Orders
             </Link>
             <Link
               href={`/dashboard/events/${id}/discounts`}
-              className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-center text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="rounded-lg border border-ink-200 bg-white px-4 py-2.5 text-center text-sm font-medium text-ink-600 hover:bg-ink-100"
             >
               Discount Codes
             </Link>
