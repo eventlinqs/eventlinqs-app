@@ -59,7 +59,8 @@ export default async function SquadPage({ params }: Props) {
   const isCancelled = squad.status === 'cancelled'
   const isExpiredStatus = squad.status === 'expired' || isExpired
 
-  // Countdown: seconds until expiry
+  // Countdown: snapshot at render time (server component, re-renders on request)
+  // eslint-disable-next-line react-hooks/purity -- intentional: SSR snapshot of "now" for the expiry countdown
   const msUntilExpiry = new Date(squad.expires_at).getTime() - Date.now()
   const hoursLeft = Math.max(0, Math.floor(msUntilExpiry / (1000 * 60 * 60)))
   const minutesLeft = Math.max(0, Math.floor((msUntilExpiry % (1000 * 60 * 60)) / (1000 * 60)))

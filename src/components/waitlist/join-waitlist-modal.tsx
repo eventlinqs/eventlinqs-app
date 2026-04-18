@@ -48,14 +48,16 @@ export function JoinWaitlistModal({
     return () => document.removeEventListener('keydown', handler)
   }, [isOpen, onClose])
 
-  // Reset state when reopened
-  useEffect(() => {
+  // Reset state when reopened — derive from prop during render (React-recommended pattern)
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen)
+  if (isOpen !== prevIsOpen) {
+    setPrevIsOpen(isOpen)
     if (isOpen) {
       setQuantity(1)
       setError(null)
       setSuccessPosition(null)
     }
-  }, [isOpen])
+  }
 
   if (!isOpen) return null
 

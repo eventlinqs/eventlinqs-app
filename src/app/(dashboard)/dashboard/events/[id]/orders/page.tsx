@@ -46,7 +46,7 @@ export default async function EventOrdersPage({ params }: Props) {
 
   // Build display orders (join buyer name/email from profile or guest fields)
   const userIds = ordersData.filter(o => o.user_id).map(o => o.user_id!)
-  let profileMap = new Map<string, { full_name: string | null; email: string }>()
+  const profileMap = new Map<string, { full_name: string | null; email: string }>()
 
   if (userIds.length > 0) {
     // Admin client needed — organiser reading other users' profiles

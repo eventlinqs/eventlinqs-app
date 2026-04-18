@@ -69,7 +69,7 @@ export default async function MyTicketsPage() {
 
   // Fetch event details for each order
   const eventIds = [...new Set(orderRows.map(o => o.event_id))]
-  let eventMap = new Map<string, EventInfo>()
+  const eventMap = new Map<string, EventInfo>()
 
   if (eventIds.length > 0) {
     const { data: events } = await adminClient

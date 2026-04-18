@@ -1,4 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Metadata } from 'next'
@@ -91,7 +92,7 @@ export default async function SquadPayPage({ params }: Props) {
     <div className="min-h-screen bg-ink-100">
       <nav className="border-b border-ink-200 bg-white px-4 py-4 sm:px-6">
         <div className="mx-auto max-w-lg">
-          <a href="/" className="text-lg font-bold text-gold-500">EVENTLINQS</a>
+          <Link href="/" className="text-lg font-bold text-gold-500">EVENTLINQS</Link>
         </div>
       </nav>
 
