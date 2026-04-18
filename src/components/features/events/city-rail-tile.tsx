@@ -44,9 +44,15 @@ export function CityRailTile({ city, slug, eventCount, imageSrc }: Props) {
             <div>
               <h3 className="font-display text-2xl font-extrabold leading-tight">{city}</h3>
               {typeof eventCount === 'number' && (
-                <p className="mt-1 text-xs text-white/70">
-                  {eventCount} upcoming {eventCount === 1 ? 'event' : 'events'}
-                </p>
+                eventCount > 0 ? (
+                  <p className="mt-1 text-xs text-white/70">
+                    {eventCount} upcoming {eventCount === 1 ? 'event' : 'events'}
+                  </p>
+                ) : (
+                  <p className="mt-1 text-xs font-semibold uppercase tracking-widest text-gold-300">
+                    Coming soon
+                  </p>
+                )
               )}
             </div>
             <span

@@ -97,10 +97,26 @@ const CULTURE_TABS: { slug: string; label: string; tag: string; href: string }[]
 ]
 
 const CITY_TILES = [
-  { city: 'Melbourne', slug: 'melbourne' },
-  { city: 'Sydney',    slug: 'sydney' },
-  { city: 'London',    slug: 'london' },
-  { city: 'Lagos',     slug: 'lagos' },
+  { city: 'Melbourne',     slug: 'melbourne' },
+  { city: 'Sydney',        slug: 'sydney' },
+  { city: 'Brisbane',      slug: 'brisbane' },
+  { city: 'Perth',         slug: 'perth' },
+  { city: 'Adelaide',      slug: 'adelaide' },
+  { city: 'Auckland',      slug: 'auckland' },
+  { city: 'London',        slug: 'london' },
+  { city: 'Manchester',    slug: 'manchester' },
+  { city: 'Birmingham',    slug: 'birmingham' },
+  { city: 'Dublin',        slug: 'dublin' },
+  { city: 'Toronto',       slug: 'toronto' },
+  { city: 'Montreal',      slug: 'montreal' },
+  { city: 'New York',      slug: 'new-york' },
+  { city: 'Washington DC', slug: 'washington-dc' },
+  { city: 'Houston',       slug: 'houston' },
+  { city: 'Atlanta',       slug: 'atlanta' },
+  { city: 'Miami',         slug: 'miami' },
+  { city: 'Los Angeles',   slug: 'los-angeles' },
+  { city: 'Lagos',         slug: 'lagos' },
+  { city: 'Accra',         slug: 'accra' },
 ]
 
 export default async function HomePage() {
