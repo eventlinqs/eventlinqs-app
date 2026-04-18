@@ -94,14 +94,14 @@ function renderBackground(media: Awaited<ReturnType<typeof getFeaturedHeroBackgr
 function renderEventCard(event: FeaturedHeroEvent, ticketsSoldToday: number) {
   const price = formatFromPrice(event.ticket_tiers ?? null)
   return (
-    <GlassCard variant="dark" as="aside" className="rounded-2xl p-5">
-      <p className="font-display text-[10px] font-semibold uppercase tracking-widest text-gold-400">
+    <GlassCard variant="light-on-dark" as="aside" className="rounded-xl p-5">
+      <p className="font-display text-[10px] font-bold uppercase tracking-widest text-gold-600">
         Happening soon
       </p>
-      <h2 className="mt-2 font-display text-xl font-bold leading-tight text-white line-clamp-2">
+      <h2 className="mt-2 font-display text-xl font-bold leading-tight text-ink-900 line-clamp-2">
         {event.title}
       </h2>
-      <div className="mt-3 space-y-1 text-sm text-white/75">
+      <div className="mt-3 space-y-1 text-sm text-ink-700">
         <p>{formatLongDate(event.start_date)}</p>
         {event.venue_name && (
           <p className="line-clamp-1">
@@ -110,12 +110,16 @@ function renderEventCard(event: FeaturedHeroEvent, ticketsSoldToday: number) {
           </p>
         )}
         {event.organisation?.name && (
-          <p className="text-white/55">by {event.organisation.name}</p>
+          <p className="text-ink-600">by {event.organisation.name}</p>
         )}
-        {price && <p className="font-semibold text-gold-300">{price}</p>}
+        {price && (
+          <p className="font-display text-[18px] font-extrabold text-ink-900">
+            {price}
+          </p>
+        )}
       </div>
       {ticketsSoldToday > 0 && (
-        <div className="mt-3.5 flex items-center gap-2 text-[11px] font-semibold text-white/85">
+        <div className="mt-3.5 flex items-center gap-2 text-[11px] font-semibold text-ink-700">
           <span className="relative h-2 w-2 rounded-full bg-coral-500">
             <span className="absolute inset-0 rounded-full bg-coral-500 opacity-70 animate-ping" />
           </span>
@@ -124,7 +128,7 @@ function renderEventCard(event: FeaturedHeroEvent, ticketsSoldToday: number) {
       )}
       <Link
         href={`/events/${event.slug}`}
-        className="mt-5 inline-flex w-full items-center justify-center rounded-lg border border-gold-400/60 bg-gold-500/15 px-4 py-2.5 text-sm font-semibold text-gold-300 transition-colors duration-200 hover:bg-gold-500/25"
+        className="mt-4 flex w-full items-center justify-center rounded-lg bg-gold-500 py-3 font-bold text-ink-900 transition-colors hover:bg-gold-400"
       >
         View event <span aria-hidden className="ml-1.5">&rarr;</span>
       </Link>
@@ -134,17 +138,17 @@ function renderEventCard(event: FeaturedHeroEvent, ticketsSoldToday: number) {
 
 function renderHighlightCard(slide: CategoryHighlightSlide) {
   return (
-    <GlassCard variant="dark" as="aside" className="rounded-2xl p-5">
-      <p className="font-display text-[10px] font-semibold uppercase tracking-widest text-gold-400">
+    <GlassCard variant="light-on-dark" as="aside" className="rounded-xl p-5">
+      <p className="font-display text-[10px] font-bold uppercase tracking-widest text-gold-600">
         {slide.cardEyebrow}
       </p>
-      <h2 className="mt-2 font-display text-xl font-bold leading-tight text-white">
+      <h2 className="mt-2 font-display text-xl font-bold leading-tight text-ink-900">
         {slide.cardTitle}
       </h2>
-      <p className="mt-3 text-sm text-white/75">{slide.cardCopy}</p>
+      <p className="mt-3 text-sm text-ink-700">{slide.cardCopy}</p>
       <Link
         href={slide.ctaHref}
-        className="mt-5 inline-flex w-full items-center justify-center rounded-lg border border-gold-400/60 bg-gold-500/15 px-4 py-2.5 text-sm font-semibold text-gold-300 transition-colors duration-200 hover:bg-gold-500/25"
+        className="mt-5 flex w-full items-center justify-center rounded-lg bg-gold-500 py-3 font-bold text-ink-900 transition-colors hover:bg-gold-400"
       >
         {slide.ctaLabel} <span aria-hidden className="ml-1.5">&rarr;</span>
       </Link>
