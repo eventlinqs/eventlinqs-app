@@ -56,8 +56,8 @@ export async function FeaturedEventHero({ event }: Props) {
 
   const city = event?.venue_city ?? 'a city near you'
   const eyebrow = event
-    ? `Featured \u00B7 ${formatLongDate(event.start_date)} \u00B7 ${city}`
-    : 'Featured \u00B7 Every weekend \u00B7 Globally'
+    ? `Featured · ${formatLongDate(event.start_date)} · ${city}`
+    : 'Featured · Every weekend · Globally'
 
   const headline = event?.title ?? 'Where the culture gathers.'
   const subcopy = event?.summary
@@ -140,7 +140,7 @@ export async function FeaturedEventHero({ event }: Props) {
                 {event.venue_name && (
                   <p className="line-clamp-1">
                     {event.venue_name}
-                    {event.venue_city ? ` \u00B7 ${event.venue_city}` : ''}
+                    {event.venue_city ? ` · ${event.venue_city}` : ''}
                   </p>
                 )}
                 {event.organisation?.name && (

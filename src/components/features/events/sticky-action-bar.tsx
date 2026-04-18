@@ -82,7 +82,7 @@ export function StickyActionBar({
             </p>
             <p className="mt-0.5 text-[11px] text-ink-400 line-clamp-1">
               {dateLabel}
-              {venueLabel ? ` \u00B7 ${venueLabel}` : ''}
+              {venueLabel ? ` · ${venueLabel}` : ''}
             </p>
           </div>
 

@@ -126,11 +126,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const event = await fetchEvent(slug)
 
   if (!event) {
-    return { title: 'Event not found \u2014 EventLinqs' }
+    return { title: 'Event not found | EventLinqs' }
   }
 
   return {
-    title: `${event.title} \u2014 EventLinqs`,
+    title: `${event.title} | EventLinqs`,
     description: event.summary ?? event.description?.replace(/<[^>]*>/g, '').slice(0, 160) ?? '',
     openGraph: {
       title: event.title,
@@ -352,7 +352,7 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
   }))
   const priceLabel = cheapestPrice(priceTiersForDisplay)
   const shortDate = formatShortDate(event.start_date, event.timezone)
-  const venueLabelShort = [event.venue_name, event.venue_city].filter(Boolean).join(' \u00B7 ') || null
+  const venueLabelShort = [event.venue_name, event.venue_city].filter(Boolean).join(' · ') || null
   const fullAddress = [event.venue_name, event.venue_address, event.venue_city, event.venue_state, event.venue_country]
     .filter(Boolean)
     .join(', ')

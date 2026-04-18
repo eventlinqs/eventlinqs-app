@@ -157,7 +157,7 @@ export function StartSquadModal({
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
           <h2 id="squad-modal-title" className="text-lg font-bold text-gray-900">
-            {step === 'success' ? '🎉 Squad Created!' : 'Start a Squad'}
+            {step === 'success' ? '🎉 Squad Created' : 'Start a Squad'}
           </h2>
           <button
             type="button"
@@ -287,7 +287,7 @@ export function StartSquadModal({
                     type="button"
                     onClick={handleCopy}
                     className="shrink-0 h-11 px-4 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                    aria-label={copied ? 'Copied!' : 'Copy link'}
+                    aria-label={copied ? 'Copied' : 'Copy link'}
                   >
                     {copied ? '✓ Copied' : 'Copy'}
                   </button>

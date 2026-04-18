@@ -90,7 +90,7 @@ export async function EventBentoTile({
   const autoplayVideo = size === 'hero' && media.kind === 'video'
   const price = formatCheapestPrice(event.ticket_tiers ?? null)
   const signal = liveSignal(event)
-  const venue = [event.venue_name, event.venue_city].filter(Boolean).join(' \u00B7 ')
+  const venue = [event.venue_name, event.venue_city].filter(Boolean).join(' · ')
   const category = pillLabel ?? event.category?.name ?? null
 
   return (

@@ -34,7 +34,7 @@ function formatPrice(tiers: BentoEvent['ticket_tiers']): string {
 
 async function ThisWeekCard({ event }: { event: BentoEvent }) {
   const media = await getEventMedia(event)
-  const venue = [event.venue_name, event.venue_city].filter(Boolean).join(' \u00B7 ')
+  const venue = [event.venue_name, event.venue_city].filter(Boolean).join(' · ')
   return (
     <Link
       href={`/events/${event.slug}`}

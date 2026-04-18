@@ -40,7 +40,7 @@ export async function FreeWeekendTile({ event, fallbackMode = false }: Props) {
   const href = event ? `/events/${event.slug}` : '/events?free=1'
   const title = event?.title ?? 'Free this weekend'
   const venue = event
-    ? [event.venue_name, event.venue_city].filter(Boolean).join(' \u00B7 ')
+    ? [event.venue_name, event.venue_city].filter(Boolean).join(' · ')
     : 'Discover events that cost nothing but your Saturday'
 
   return (

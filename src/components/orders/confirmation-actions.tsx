@@ -165,7 +165,7 @@ export function ConfirmationActions(props: ConfirmationActionsProps) {
         className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-3 text-center text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors relative"
       >
         {copied ? (
-          <span className="text-green-600 font-medium">Event link copied!</span>
+          <span className="text-green-600 font-medium">Event link copied</span>
         ) : (
           'Share Event'
         )}

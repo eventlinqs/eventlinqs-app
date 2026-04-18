@@ -12,7 +12,7 @@ interface Props {
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   waiting:  { label: 'Waiting',   className: 'bg-blue-100 text-blue-700' },
-  notified: { label: 'Your turn!', className: 'bg-amber-100 text-amber-800 animate-pulse' },
+  notified: { label: 'Your turn', className: 'bg-amber-100 text-amber-800 animate-pulse' },
   converted:{ label: 'Converted', className: 'bg-green-100 text-green-700' },
   expired:  { label: 'Expired',   className: 'bg-gray-100 text-gray-500' },
   removed:  { label: 'Removed',   className: 'bg-gray-100 text-gray-400' },

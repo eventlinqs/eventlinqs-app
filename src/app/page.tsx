@@ -177,11 +177,11 @@ export default async function HomePage() {
     const href = `/events/${raw.slug}`
 
     if (pct >= 70) {
-      signals.push({ glyph: '\uD83D\uDD25', text: `${raw.title} \u2014 ${pct}% sold`, href })
+      signals.push({ glyph: '\uD83D\uDD25', text: `${raw.title}: ${pct}% sold`, href })
     } else if (daysTo >= 0 && daysTo <= 5) {
       signals.push({
         glyph: '\u23F0',
-        text: daysTo === 0 ? `${raw.title} \u2014 tonight` : `${raw.title} \u2014 ${daysTo} days to go`,
+        text: daysTo === 0 ? `${raw.title} tonight` : `${raw.title}: ${daysTo} days to go`,
         href,
       })
     } else if (raw.venue_city) {
@@ -193,7 +193,7 @@ export default async function HomePage() {
   if (signals.length === 0) {
     signals.push(
       { glyph: '\u2728', text: 'New events dropping every week in Melbourne, Sydney, London and Lagos' },
-      { glyph: '\uD83C\uDFAB', text: 'Afrobeats nights, Amapiano fests, Comedy rooms \u2014 tickets with no hidden fees' },
+      { glyph: '\uD83C\uDFAB', text: 'Afrobeats nights, Amapiano fests, Comedy rooms. Tickets with no hidden fees.' },
     )
   }
 

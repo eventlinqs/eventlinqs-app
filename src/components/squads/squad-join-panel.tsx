@@ -59,7 +59,7 @@ export function SquadJoinPanel({
     return (
       <div className="rounded-2xl border border-gray-200 bg-white p-5 text-center">
         <p className="font-semibold text-gray-700">
-          {status === 'completed' ? '🎉 This squad is complete!' : '⏰ This squad has expired'}
+          {status === 'completed' ? '🎉 This squad is complete' : '⏰ This squad has expired'}
         </p>
         <p className="mt-1 text-sm text-gray-500">
           {status === 'completed'
@@ -120,7 +120,7 @@ export function SquadJoinPanel({
             ✓
           </div>
           <div>
-            <p className="font-semibold text-gray-900">You&apos;re in!</p>
+            <p className="font-semibold text-gray-900">You&apos;re in</p>
             <p className="text-sm text-gray-500">Your payment is confirmed. Watch for your ticket email.</p>
           </div>
         </div>
@@ -191,7 +191,7 @@ export function SquadJoinPanel({
         md:static md:rounded-2xl md:border md:border-gray-200 md:shadow-sm md:p-5
       ">
         <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-4 mb-4">
-          <p className="font-semibold text-emerald-800">You&apos;re in the squad!</p>
+          <p className="font-semibold text-emerald-800">You&apos;re in the squad</p>
           <p className="text-sm text-emerald-700 mt-1">Pay your share to lock in your spot.</p>
         </div>
         <Link

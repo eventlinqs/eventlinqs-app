@@ -52,11 +52,11 @@ export function AccessCodeInput({ eventId, onUnlocked }: Props) {
           disabled={isPending || !code.trim()}
           className="rounded-lg bg-ink-900 px-4 py-2 text-sm font-medium text-white hover:bg-ink-800 disabled:opacity-50 transition-colors"
         >
-          {isPending ? '\u2026' : 'Apply'}
+          {isPending ? '…' : 'Apply'}
         </button>
       </form>
       {error && <p className="mt-2 text-xs text-coral-600">{error}</p>}
-      {success && <p className="mt-2 text-xs text-emerald-600">Access granted! New tiers are now visible.</p>}
+      {success && <p className="mt-2 text-xs text-emerald-600">Access granted. New tiers are now visible.</p>}
     </div>
   )
 }

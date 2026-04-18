@@ -127,7 +127,7 @@ export function JoinWaitlistModal({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900">You&apos;re on the waitlist!</h3>
+                <h3 className="text-lg font-semibold text-gray-900">You&apos;re on the waitlist</h3>
                 <p className="mt-2 text-sm text-gray-600">
                   You are <span className="font-bold text-gray-900">#{successPosition}</span> in line for{' '}
                   <span className="font-medium">{tierName}</span>.

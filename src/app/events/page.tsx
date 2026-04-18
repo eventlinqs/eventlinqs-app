@@ -247,7 +247,7 @@ export default async function EventsPage({ searchParams }: Props) {
                   name="q"
                   defaultValue={params.q}
                   type="search"
-                  placeholder="Search events, artists, venues\u2026"
+                  placeholder="Search events, artists, venues…"
                   className="w-full rounded-lg border border-ink-200 bg-white py-2.5 pl-10 pr-4 text-sm text-ink-900 placeholder:text-ink-400 transition-colors focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-400"
                 />
               </div>

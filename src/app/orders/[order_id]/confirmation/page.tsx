@@ -105,7 +105,7 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
             </svg>
           </div>
           <h1 className="text-2xl font-bold text-gray-900">
-            {isConfirmed ? 'Order Confirmed!' : 'Order Received'}
+            {isConfirmed ? 'Order Confirmed' : 'Order Received'}
           </h1>
           <p className="mt-1 text-gray-500">Order <span className="font-mono font-semibold text-gray-800">{fullOrder.order_number}</span></p>
         </div>
