@@ -273,23 +273,23 @@ export default async function HomePage() {
     const href = `/events/${raw.slug}`
 
     if (pct >= 70) {
-      signals.push({ glyph: '\uD83D\uDD25', text: `${raw.title}: ${pct}% sold`, href })
+      signals.push({ icon: 'flame', text: `${raw.title}: ${pct}% sold`, href })
     } else if (daysTo >= 0 && daysTo <= 5) {
       signals.push({
-        glyph: '\u23F0',
+        icon: 'clock',
         text: daysTo === 0 ? `${raw.title} tonight` : `${raw.title}: ${daysTo} days to go`,
         href,
       })
     } else if (raw.venue_city) {
-      signals.push({ glyph: '\uD83D\uDCCD', text: `New in ${raw.venue_city}: ${raw.title}`, href })
+      signals.push({ icon: 'pin', text: `New in ${raw.venue_city}: ${raw.title}`, href })
     } else {
-      signals.push({ glyph: '\u2728', text: `New listing: ${raw.title}`, href })
+      signals.push({ icon: 'sparkles', text: `New listing: ${raw.title}`, href })
     }
   }
   if (signals.length === 0) {
     signals.push(
-      { glyph: '\u2728', text: 'New events dropping every week in Melbourne, Sydney, London and Lagos' },
-      { glyph: '\uD83C\uDFAB', text: 'Afrobeats nights, Amapiano fests, Comedy rooms. Tickets with no hidden fees.' },
+      { icon: 'sparkles', text: 'New events dropping every week in Melbourne, Sydney, London and Lagos' },
+      { icon: 'ticket', text: 'Afrobeats nights, Amapiano fests, Comedy rooms. Tickets with no hidden fees.' },
     )
   }
 
@@ -436,7 +436,10 @@ export default async function HomePage() {
           </section>
         )}
 
-        {/* 5. By City rail */}
+        {/* 5. Live Vibe marquee */}
+        <LiveVibeMarquee signals={signals} />
+
+        {/* 6. By City rail */}
         <section aria-labelledby="cities-heading" className="bg-canvas py-14 sm:py-16">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <SnapRail
@@ -458,9 +461,6 @@ export default async function HomePage() {
             </SnapRail>
           </div>
         </section>
-
-        {/* 6. Live Vibe marquee */}
-        <LiveVibeMarquee signals={signals} />
 
         {/* 7. For Organisers */}
         <section aria-labelledby="organisers-heading" className="bg-ink-900 py-16 sm:py-20 lg:py-24">

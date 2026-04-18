@@ -149,8 +149,10 @@ body {
 .animate-marquee-slow {
   animation: marquee-slide 60s linear infinite;
 }
-.marquee-pause:hover .animate-marquee,
-.marquee-pause:hover .animate-marquee-slow {
+.marquee-band:hover .animate-marquee,
+.marquee-band:hover .animate-marquee-slow,
+.marquee-band:focus-within .animate-marquee,
+.marquee-band:focus-within .animate-marquee-slow {
   animation-play-state: paused;
 }
 
