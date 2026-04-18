@@ -128,6 +128,16 @@ export function HeroCarouselClient({
         ))}
       </div>
 
+      {/* Radial darkening behind the ribbon card — floats card regardless of active media */}
+      <div
+        className="absolute inset-0 pointer-events-none hidden lg:block"
+        style={{
+          background:
+            'radial-gradient(ellipse 50% 70% at 85% 70%, rgba(10,14,26,0.55) 0%, transparent 70%)',
+        }}
+        aria-hidden
+      />
+
       {/* Foreground content */}
       <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-24 pt-16 sm:px-6 lg:px-8 lg:pb-28">
         <div className="flex flex-col gap-10 lg:flex-row lg:items-end lg:justify-between">

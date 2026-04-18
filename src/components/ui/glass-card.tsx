@@ -21,7 +21,7 @@ export function GlassCard({
 }: Props) {
   const base =
     variant === 'dark'
-      ? 'bg-ink-900/85 backdrop-blur-xl border border-gold-500/35 shadow-[0_24px_48px_rgba(0,0,0,0.3)]'
+      ? 'bg-ink-900/[0.92] backdrop-blur-2xl border border-gold-500/50 shadow-[0_0_0_1px_rgba(212,160,23,0.15),0_24px_48px_rgba(0,0,0,0.5),0_0_80px_rgba(212,160,23,0.10)]'
       : 'bg-white/60 backdrop-blur-md border border-white/40'
   return <Tag className={`${base} ${className}`}>{children}</Tag>
 }
