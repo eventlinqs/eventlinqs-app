@@ -24,6 +24,20 @@ export interface FeaturedHeroEvent extends EventMediaInput {
   ticket_tiers?: { price: number; currency: string }[] | null
   summary?: string | null
   sold_today?: number | null
+  percent_sold?: number | null
+}
+
+const HERO_SUBCOPY =
+  'Tickets for events that move you. Afrobeats, Gospel, Amapiano, Owambe, Comedy. No hidden fees, ever.'
+
+function heroEyebrow(event: FeaturedHeroEvent | null): string {
+  if (!event) return 'Made for the diaspora'
+  const daysToStart = Math.ceil(
+    (new Date(event.start_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+  )
+  if (daysToStart >= 0 && daysToStart <= 2) return 'Happening this weekend'
+  if ((event.percent_sold ?? 0) > 70) return 'Trending now'
+  return 'Made for the diaspora'
 }
 
 interface Props {
@@ -62,15 +76,8 @@ export async function FeaturedEventHero({
   }
   const media = await getFeaturedHeroBackground(input)
 
-  const city = event?.venue_city ?? 'a city near you'
-  const eyebrow = event
-    ? `Featured · ${formatLongDate(event.start_date)} · ${city}`
-    : 'Featured · Every weekend · Globally'
-
-  const headline = event?.title ?? 'Where the culture gathers.'
-  const subcopy = event?.summary
-    ? event.summary
-    : 'Afrobeats, Amapiano, Comedy, Gospel, Owambe and the culture that makes every weekend matter. Tickets with no hidden fees, ever.'
+  const eyebrow = heroEyebrow(event)
+  const subcopy = HERO_SUBCOPY
 
   const price = event ? formatFromPrice(event.ticket_tiers ?? null) : null
   const primaryHref = event ? `/events/${event.slug}` : '/events'
@@ -111,7 +118,7 @@ export async function FeaturedEventHero({
               className="mt-4 font-display font-extrabold leading-[0.95] tracking-tight text-white"
               style={{ fontSize: 'clamp(2.75rem, 7vw, 6rem)' }}
             >
-              {headline}
+              Where the <span className="text-gold-400">culture</span> gathers.
             </h1>
             <p className="mt-5 max-w-xl text-base text-white/80 sm:text-lg">{subcopy}</p>
 
