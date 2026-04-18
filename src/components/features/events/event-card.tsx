@@ -102,7 +102,7 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
   return (
     <Link
       href={`/events/${slug}`}
-      className="group flex flex-col rounded-xl overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow border border-ink-100"
+      className="group flex flex-col rounded-lg overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow border border-ink-100"
     >
       {/* ── Image ───────────────────────────────────────────────── */}
       <div className="relative aspect-video md:aspect-[4/3] overflow-hidden bg-ink-100">
