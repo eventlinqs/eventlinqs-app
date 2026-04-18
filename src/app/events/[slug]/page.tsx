@@ -25,6 +25,8 @@ import { StickyActionBar } from '@/components/features/events/sticky-action-bar'
 import { RelatedEventsGrid } from '@/components/features/events/related-events-grid'
 import type { EventCardData } from '@/components/features/events/event-card'
 import { VenueMap } from '@/components/features/events/venue-map'
+import { SectionHeader } from '@/components/ui/SectionHeader'
+import { EventSoldOut, type EventSoldOutRelated } from '@/components/features/events/event-sold-out'
 
 type Props = {
   params: Promise<{ slug: string }>
@@ -378,6 +380,28 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
     .filter((id): id is string => typeof id === 'string')
   const relatedPrices = await getDynamicPriceMap(relatedTierIds)
 
+  const isSoldOut =
+    !event.has_reserved_seating &&
+    !!eventInventory &&
+    eventInventory.total_capacity > 0 &&
+    eventInventory.available === 0
+
+  const soldOutRelated: EventSoldOutRelated[] = related.slice(0, 3).map(e => {
+    const firstTier = e.ticket_tiers?.[0]
+    return {
+      id: e.id,
+      slug: e.slug,
+      title: e.title,
+      start_date: e.start_date,
+      venue_city: e.venue_city,
+      venue_country: e.venue_country,
+      cover_image_url: e.cover_image_url,
+      category_name: e.category?.name ?? null,
+      from_price_cents: firstTier?.price ?? null,
+      currency: firstTier?.currency ?? null,
+    }
+  })
+
   return (
     <div className="min-h-screen bg-canvas">
       <SiteHeader />
@@ -482,9 +506,9 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
                 {/* About */}
                 {(event.summary || event.description) && (
                   <div>
-                    <h2 className="font-display text-2xl font-bold text-ink-900">About this event</h2>
+                    <SectionHeader eyebrow="The details" title="About this event" />
                     {event.summary && (
-                      <p className="mt-3 text-base leading-relaxed text-ink-600">{event.summary}</p>
+                      <p className="mt-5 text-base leading-relaxed text-ink-600">{event.summary}</p>
                     )}
                     {event.description && (
                       <div
@@ -534,9 +558,9 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
 
                 {/* Venue map */}
                 {event.event_type !== 'virtual' && (fullAddress || event.venue_name) && (
-                  <div className="mt-8">
-                    <h2 className="font-display text-xl font-bold text-ink-900">Venue</h2>
-                    <div className="mt-4">
+                  <div className="mt-10">
+                    <SectionHeader eyebrow="Location" title="Venue" size="sm" />
+                    <div className="mt-5">
                       <VenueMap
                         venueName={event.venue_name}
                         address={event.venue_address}
@@ -551,21 +575,18 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
                 )}
 
                 {/* Organiser card */}
-                <div className="mt-10 rounded-2xl border border-ink-200 bg-white p-6">
-                  <div className="flex items-start gap-4">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-ink-900 text-sm font-bold text-gold-300">
-                      {event.organisation.name.slice(0, 2).toUpperCase()}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[11px] font-semibold uppercase tracking-widest text-gold-500">
-                        Organised by
-                      </p>
-                      <p className="mt-1 font-display text-base font-bold text-ink-900">
-                        {event.organisation.name}
-                      </p>
-                      {event.organisation.description && (
-                        <p className="mt-1 text-sm text-ink-600 line-clamp-2">{event.organisation.description}</p>
-                      )}
+                <div className="mt-10">
+                  <SectionHeader eyebrow="Organised by" title={event.organisation.name} size="sm" />
+                  <div className="mt-5 rounded-2xl border border-ink-200 bg-white p-6">
+                    <div className="flex items-start gap-4">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-ink-900 text-sm font-bold text-gold-300">
+                        {event.organisation.name.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        {event.organisation.description && (
+                          <p className="text-sm text-ink-600 line-clamp-3">{event.organisation.description}</p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -599,7 +620,7 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
               >
                 {event.has_reserved_seating ? (
                   <div className="rounded-2xl border border-ink-200 bg-white p-6 shadow-sm">
-                    <h2 className="mb-4 font-display text-xl font-bold text-ink-900">Choose your seats</h2>
+                    <SectionHeader eyebrow="Seating" title="Choose your seats" size="sm" className="mb-5" />
                     {isTicketingSuspended ? (
                       <p className="rounded-lg bg-warning/10 px-4 py-3 text-sm text-warning">
                         Ticketing is temporarily paused for this event.
@@ -616,9 +637,17 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
                       />
                     )}
                   </div>
+                ) : isSoldOut ? (
+                  <div className="sticky top-20">
+                    <EventSoldOut
+                      event={{ id: event.id, slug: event.slug, title: event.title }}
+                      primaryTierId={allTiers[0]?.id ?? null}
+                      relatedEvents={soldOutRelated}
+                    />
+                  </div>
                 ) : (
                   <div className="sticky top-20 rounded-2xl border border-ink-200 bg-white p-6 shadow-sm">
-                    <h2 className="mb-4 font-display text-xl font-bold text-ink-900">Tickets</h2>
+                    <SectionHeader eyebrow="Get in" title="Tickets" size="sm" className="mb-5" />
 
                     {enrichedTiers.length > 0 && (
                       <div className="mb-3 space-y-1.5">
