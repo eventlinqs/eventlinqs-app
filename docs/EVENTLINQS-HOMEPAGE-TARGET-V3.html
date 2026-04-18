@@ -1,0 +1,938 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EventLinqs — target homepage mockup v3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold-100: #FBF4DC;
+    --gold-300: #F0CE63;
+    --gold-400: #E8B738;
+    --gold-500: #D4A017;
+    --gold-600: #B88612;
+    --gold-700: #96700E;
+    --coral-500: #FF4E3A;
+    --navy-950: #0A0E1A;
+    --ink-900: #0A1628;
+    --ink-800: #1A1A1A;
+    --ink-700: #2E3747;
+    --ink-600: #4A4A4A;
+    --ink-500: #6B6B6B;
+    --ink-400: #8A8A8A;
+    --ink-200: #D9D9D6;
+    --ink-100: #EFEDE8;
+    --canvas: #FAFAF7;
+    --font-display: 'Manrope', system-ui, -apple-system, sans-serif;
+    --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--canvas); color: var(--ink-900); font-family: var(--font-body); -webkit-font-smoothing: antialiased; }
+  .container { max-width: 1280px; margin: 0 auto; padding: 0 24px; }
+
+  /* =================== NAV V3 — with visible search bar =================== */
+  .nav { position: sticky; top: 0; z-index: 50; background: rgba(250,250,247,0.95); backdrop-filter: blur(8px); border-bottom: 1px solid var(--ink-100); height: 72px; display: flex; align-items: center; }
+  .nav-inner { display: flex; align-items: center; gap: 20px; width: 100%; }
+  .logo { font-family: var(--font-display); font-weight: 800; font-size: 22px; letter-spacing: -0.02em; color: var(--ink-900); text-decoration: none; flex-shrink: 0; }
+  .logo-dot { color: var(--gold-500); margin-left: 2px; }
+  .nav-links { display: flex; gap: 24px; flex-shrink: 0; }
+  .nav-links a { color: var(--ink-600); font-size: 14px; font-weight: 500; text-decoration: none; transition: color 150ms; white-space: nowrap; }
+  .nav-links a:hover { color: var(--gold-700); }
+
+  /* Ticketmaster-style search bar — visible, interactive */
+  .nav-search {
+    flex: 1;
+    max-width: 480px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 44px;
+    padding: 0 16px 0 18px;
+    border-radius: 9999px;
+    background: white;
+    border: 1px solid var(--ink-200);
+    cursor: pointer;
+    transition: all 200ms;
+    margin: 0 auto;
+  }
+  .nav-search:hover { border-color: var(--ink-400); box-shadow: 0 2px 8px rgba(10,22,40,0.06); }
+  .nav-search:focus-within { border-color: var(--gold-500); box-shadow: 0 0 0 3px rgba(212,160,23,0.15); }
+  .nav-search svg.mag { color: var(--ink-500); flex-shrink: 0; }
+  .nav-search input { flex: 1; border: none; background: transparent; font-size: 14px; font-family: var(--font-body); color: var(--ink-900); outline: none; width: 100%; }
+  .nav-search input::placeholder { color: var(--ink-400); }
+  .nav-search .cmdk {
+    font-family: var(--font-display);
+    font-size: 11px; font-weight: 700;
+    color: var(--ink-500);
+    background: var(--ink-100);
+    padding: 3px 7px;
+    border-radius: 5px;
+    border: 1px solid var(--ink-200);
+    flex-shrink: 0;
+  }
+
+  .location-pill { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px 8px 16px; border-radius: 9999px; border: 1px solid var(--ink-200); background: white; font-size: 14px; font-weight: 500; color: var(--ink-800); cursor: pointer; transition: all 150ms; flex-shrink: 0; }
+  .location-pill:hover { border-color: var(--ink-400); box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+  .location-pill svg.pin { color: var(--gold-500); }
+  .location-pill svg.chev { color: var(--ink-400); margin-left: 2px; }
+  .btn-ghost { color: var(--ink-700); font-weight: 500; padding: 8px 12px; text-decoration: none; font-size: 14px; flex-shrink: 0; }
+  .btn-primary { display: inline-flex; align-items: center; justify-content: center; background: var(--gold-500); color: var(--ink-900); font-weight: 700; font-size: 14px; padding: 10px 20px; border-radius: 10px; text-decoration: none; transition: all 150ms; border: none; cursor: pointer; flex-shrink: 0; }
+  .btn-primary:hover { background: var(--gold-400); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(212,160,23,0.3); }
+  .nav-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+
+  /* =================== HERO V3 — rotating carousel =================== */
+  .hero-carousel { position: relative; min-height: 76vh; overflow: hidden; background: var(--navy-950); }
+  .hero-slide {
+    position: absolute; inset: 0;
+    display: flex; align-items: flex-end;
+    padding-bottom: 72px;
+    opacity: 0;
+    transition: opacity 800ms ease-in-out;
+  }
+  .hero-slide.active { opacity: 1; z-index: 2; }
+  .hero-slide-bg { position: absolute; inset: 0; background-size: cover; background-position: center; animation: kenburns 24s ease-in-out infinite alternate; }
+  @keyframes kenburns { from { transform: scale(1); } to { transform: scale(1.1) translate(-1%, -1%); } }
+  .hero-overlay-1 { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,14,26,0.55) 0%, rgba(10,14,26,0.75) 60%, rgba(10,14,26,0.98) 100%); }
+  .hero-overlay-2 { position: absolute; inset: 0; background: radial-gradient(ellipse 70% 55% at 25% 40%, rgba(10,14,26,0) 0%, rgba(10,14,26,0.55) 100%); }
+  .hero-content { position: relative; z-index: 10; display: grid; grid-template-columns: 1fr auto; gap: 48px; align-items: end; width: 100%; max-width: 1280px; margin: 0 auto; padding: 0 24px; }
+  .eyebrow { display: inline-flex; align-items: center; border: 1px solid rgba(212,160,23,0.4); background: rgba(212,160,23,0.1); padding: 6px 14px; border-radius: 9999px; font-family: var(--font-display); font-size: 11px; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; color: var(--gold-400); }
+  .hero-slide h1 { font-family: var(--font-display); font-weight: 800; line-height: 0.95; letter-spacing: -0.02em; color: white; font-size: clamp(3rem, 7vw, 5.5rem); margin-top: 20px; max-width: 900px; }
+  .hero-slide h1 .accent { color: var(--gold-400); }
+  .hero-slide p.sub { color: rgba(255,255,255,0.85); font-size: 17px; line-height: 1.5; margin-top: 18px; max-width: 540px; }
+
+  .live-count { margin-top: 18px; display: inline-flex; align-items: center; gap: 10px; font-size: 13px; color: rgba(255,255,255,0.75); font-weight: 500; }
+  .live-count .ring { position: relative; width: 8px; height: 8px; border-radius: 50%; background: var(--gold-400); }
+  .live-count .ring::before { content: ''; position: absolute; inset: 0; border-radius: 50%; background: var(--gold-400); opacity: 0.6; animation: pulse 1.8s ease-out infinite; }
+  .live-count .divider { width: 1px; height: 12px; background: rgba(255,255,255,0.3); }
+
+  .hero-ctas { display: flex; gap: 12px; margin-top: 24px; }
+  .hero-cta-outline { display: inline-flex; align-items: center; padding: 13px 24px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.05); color: white; font-size: 15px; font-weight: 600; text-decoration: none; backdrop-filter: blur(8px); transition: all 150ms; }
+  .hero-cta-outline:hover { border-color: rgba(255,255,255,0.5); background: rgba(255,255,255,0.1); }
+  .hero-cta-solid { display: inline-flex; align-items: center; padding: 14px 26px; border-radius: 10px; background: var(--gold-500); color: var(--ink-900); font-size: 15px; font-weight: 700; text-decoration: none; box-shadow: 0 6px 20px rgba(212,160,23,0.3); transition: all 200ms; }
+  .hero-cta-solid:hover { background: var(--gold-400); transform: translateY(-2px); box-shadow: 0 10px 28px rgba(212,160,23,0.45); }
+
+  .hero-card { width: 360px; max-width: 360px; background: rgba(10,22,40,0.85); backdrop-filter: blur(24px); border: 1px solid rgba(212,160,23,0.35); border-radius: 18px; padding: 22px; box-shadow: 0 24px 48px rgba(0,0,0,0.3); }
+  .hero-card-eyebrow { font-family: var(--font-display); font-size: 11px; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; color: var(--gold-400); }
+  .hero-card h3 { font-family: var(--font-display); color: white; font-size: 21px; font-weight: 700; line-height: 1.15; margin-top: 10px; }
+  .hero-card-meta { margin-top: 12px; font-size: 13px; color: rgba(255,255,255,0.78); display: flex; flex-direction: column; gap: 4px; }
+  .hero-card-meta .dim { color: rgba(255,255,255,0.55); }
+  .hero-card-price { font-family: var(--font-display); margin-top: 14px; color: var(--gold-400); font-size: 14px; font-weight: 700; }
+  .hero-card-live { margin-top: 12px; display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.85); }
+  .pulse-dot { position: relative; width: 8px; height: 8px; border-radius: 50%; background: var(--coral-500); }
+  .pulse-dot::before { content: ''; position: absolute; inset: 0; border-radius: 50%; background: var(--coral-500); opacity: 0.7; animation: pulse 1.6s ease-out infinite; }
+  @keyframes pulse { 0% { transform: scale(1); opacity: 0.7; } 100% { transform: scale(2.5); opacity: 0; } }
+  .hero-card-cta { margin-top: 18px; display: flex; align-items: center; justify-content: center; width: 100%; padding: 11px; border-radius: 10px; background: var(--gold-500); color: var(--ink-900); font-weight: 700; font-size: 14px; text-decoration: none; transition: background 150ms; }
+  .hero-card-cta:hover { background: var(--gold-400); }
+
+  /* Carousel controls — slide dots + progress */
+  .carousel-controls {
+    position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
+    z-index: 20;
+    display: flex; gap: 8px; align-items: center;
+  }
+  .carousel-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: rgba(255,255,255,0.35);
+    border: none; cursor: pointer;
+    transition: all 200ms;
+    padding: 0;
+  }
+  .carousel-dot:hover { background: rgba(255,255,255,0.6); }
+  .carousel-dot.active { background: var(--gold-500); width: 24px; border-radius: 4px; }
+
+  /* Carousel nav arrows — optional, hidden on mobile */
+  .carousel-arrow {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    z-index: 20;
+    width: 48px; height: 48px; border-radius: 50%;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.25);
+    backdrop-filter: blur(8px);
+    display: flex; align-items: center; justify-content: center;
+    color: white; cursor: pointer;
+    transition: all 200ms;
+  }
+  .carousel-arrow:hover { background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.5); }
+  .carousel-arrow.prev { left: 24px; }
+  .carousel-arrow.next { right: 24px; }
+  @media (max-width: 768px) { .carousel-arrow { display: none; } }
+
+  /* =================== SECTION HEAD =================== */
+  .section-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 32px; }
+  .section-head-left { display: flex; align-items: flex-start; gap: 14px; }
+  .section-bar { width: 3px; height: 40px; background: var(--gold-500); margin-top: 8px; border-radius: 1px; }
+  .section-eyebrow { font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--gold-600); }
+  .section-title { font-family: var(--font-display); font-size: clamp(1.75rem, 3vw, 2.5rem); font-weight: 700; line-height: 1.1; color: var(--ink-900); margin-top: 4px; letter-spacing: -0.015em; }
+  .section-link { font-size: 14px; font-weight: 600; color: var(--gold-600); text-decoration: none; white-space: nowrap; transition: color 150ms; }
+  .section-link:hover { color: var(--gold-700); }
+
+  /* =================== BENTO =================== */
+  .section { padding: 72px 0; }
+  .bento { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; grid-auto-rows: 140px; }
+  .bento-tile { position: relative; border-radius: 20px; overflow: hidden; background: var(--ink-900); cursor: pointer; transition: transform 250ms ease-out, box-shadow 250ms ease-out; }
+  .bento-tile:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0,0,0,0.15); }
+  .bento-tile img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform 700ms ease-out; }
+  .bento-tile:hover img { transform: scale(1.08); }
+  .bento-tile::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,22,40,0) 40%, rgba(10,22,40,0.82) 100%); pointer-events: none; }
+  .bento-tile .content { position: absolute; inset: 0; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; z-index: 2; color: white; }
+  .bento-tile .top-row { display: flex; align-items: flex-start; justify-content: space-between; }
+  .cat-pill { display: inline-flex; align-items: center; font-family: var(--font-display); font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: white; background: rgba(10,22,40,0.7); backdrop-filter: blur(8px); padding: 5px 10px; border-radius: 9999px; }
+  .badge-featured { background: var(--gold-500); color: var(--ink-900); font-family: var(--font-display); font-size: 10px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; padding: 5px 10px; border-radius: 9999px; }
+  .badge-trending { background: var(--coral-500); color: white; display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-display); font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 9999px; }
+  .heart-btn { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.18); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.3); display: inline-flex; align-items: center; justify-content: center; color: white; cursor: pointer; transition: all 200ms; }
+  .heart-btn:hover { background: rgba(255,255,255,0.3); transform: scale(1.08); }
+  .bento-tile .date-line { font-family: var(--font-display); font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold-400); margin-bottom: 6px; }
+  .bento-tile h3 { font-family: var(--font-display); font-size: 26px; font-weight: 700; line-height: 1.1; letter-spacing: -0.01em; }
+  .bento-tile.size-hero h3 { font-size: 36px; }
+  .bento-tile.size-standard h3 { font-size: 20px; }
+  .bento-tile.size-compact h3 { font-size: 16px; }
+  .bento-tile .price-row { font-family: var(--font-display); font-size: 14px; font-weight: 700; color: white; margin-top: 8px; }
+  .size-hero { grid-column: span 7; grid-row: span 4; }
+  .size-wide { grid-column: span 5; grid-row: span 2; }
+  .size-standard { grid-column: span 3; grid-row: span 2; }
+  .size-compact { grid-column: span 2; grid-row: span 2; }
+  .bento-tile.free-weekend { background: linear-gradient(135deg, var(--navy-950) 0%, #1a2540 100%); border: 1px solid rgba(212,160,23,0.2); }
+  .bento-tile.free-weekend::after { display: none; }
+  .bento-tile.free-weekend .content { justify-content: space-between; }
+  .bento-tile.free-weekend .free-label { font-family: var(--font-display); font-size: 10px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--gold-400); }
+  .bento-tile.free-weekend h3 { font-size: 18px; color: white; }
+  .bento-tile.free-weekend .tag { font-family: var(--font-display); font-size: 32px; font-weight: 800; color: var(--gold-500); line-height: 1; letter-spacing: -0.02em; }
+
+  /* =================== RAILS =================== */
+  .rail-section { padding: 56px 0; }
+  .rail-wrapper { position: relative; margin: 0 -24px; padding: 0 24px; }
+  .rail { display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding-bottom: 8px; -webkit-overflow-scrolling: touch; }
+  .rail::-webkit-scrollbar { display: none; }
+  .rail-progress-track { position: relative; height: 2px; background: rgba(212,160,23,0.15); border-radius: 1px; margin-top: 20px; max-width: 240px; }
+  .rail-progress-thumb { position: absolute; left: 0; top: 0; bottom: 0; width: 30%; background: var(--gold-500); border-radius: 1px; }
+  .rail-card { flex: 0 0 auto; scroll-snap-align: start; width: 280px; background: white; border: 1px solid var(--ink-100); border-radius: 18px; overflow: hidden; text-decoration: none; color: inherit; transition: transform 200ms ease-out, box-shadow 200ms ease-out; }
+  .rail-card:hover { transform: translateY(-4px); box-shadow: 0 12px 28px rgba(10,22,40,0.08); }
+  .rail-card .media { position: relative; aspect-ratio: 4/3; overflow: hidden; }
+  .rail-card .media img { width: 100%; height: 100%; object-fit: cover; transition: transform 500ms ease-out; }
+  .rail-card:hover .media img { transform: scale(1.06); }
+  .rail-card .heart-btn-light { position: absolute; top: 12px; right: 12px; width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.95); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 150ms; color: var(--ink-700); border: none; }
+  .rail-card .heart-btn-light:hover { transform: scale(1.1); color: var(--coral-500); }
+  .rail-card .body { padding: 16px; }
+  .rail-card .date-eyebrow { font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: var(--gold-600); }
+  .rail-card h4 { font-family: var(--font-display); font-size: 18px; font-weight: 700; line-height: 1.25; color: var(--ink-900); margin-top: 6px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .rail-card .loc { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--ink-400); margin-top: 8px; }
+  .rail-card .bottom-row { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; }
+  .rail-card .price { font-family: var(--font-display); font-size: 15px; font-weight: 700; color: var(--ink-900); }
+  .rail-card .currency { font-size: 11px; font-weight: 600; color: var(--ink-400); margin-right: 2px; }
+  .rail-arrows { display: flex; gap: 8px; }
+  .rail-arrow { width: 40px; height: 40px; border-radius: 50%; background: white; border: 1px solid var(--ink-200); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--ink-700); transition: all 150ms; }
+  .rail-arrow:hover { border-color: var(--gold-500); color: var(--gold-600); }
+  .rail-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
+
+  .section.culture { background: var(--ink-100); }
+  .culture-tabs { display: flex; gap: 8px; margin-top: 24px; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; }
+  .culture-tabs::-webkit-scrollbar { display: none; }
+  .culture-tab { flex-shrink: 0; padding: 9px 18px; font-size: 14px; font-weight: 500; border-radius: 9999px; border: 1px solid var(--ink-200); background: white; color: var(--ink-700); text-decoration: none; transition: all 150ms; }
+  .culture-tab:hover { border-color: var(--gold-400); color: var(--gold-700); }
+  .culture-tab.active { background: var(--gold-500); color: var(--ink-900); border-color: var(--gold-500); font-weight: 700; }
+
+  .city-card { flex: 0 0 auto; scroll-snap-align: start; width: 260px; aspect-ratio: 4/5; border-radius: 20px; overflow: hidden; position: relative; background: var(--ink-900); text-decoration: none; transition: transform 250ms ease-out, box-shadow 250ms ease-out; }
+  .city-card:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(10,22,40,0.2); }
+  .city-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform 700ms ease-out; }
+  .city-card:hover img { transform: scale(1.1); }
+  .city-card::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,22,40,0) 40%, rgba(10,22,40,0.88) 100%); }
+  .city-card .content { position: relative; z-index: 2; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; padding: 22px; color: white; }
+  .city-card .city-name { font-family: var(--font-display); font-size: 32px; font-weight: 800; line-height: 1; letter-spacing: -0.02em; }
+  .city-card .city-count { font-size: 13px; color: rgba(255,255,255,0.8); margin-top: 6px; }
+
+  .marquee-band { background: var(--ink-900); padding: 20px 0; overflow: hidden; position: relative; }
+  .marquee-band:focus-within .marquee-track { animation-play-state: paused; }
+  .marquee-label { max-width: 1280px; margin: 0 auto 12px; padding: 0 24px; font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--gold-400); }
+  .marquee-track { display: flex; gap: 48px; white-space: nowrap; animation: scroll-left 60s linear infinite; width: max-content; }
+  .marquee-band:hover .marquee-track { animation-play-state: paused; }
+  @keyframes scroll-left { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  .vibe-item { display: inline-flex; align-items: center; gap: 8px; color: rgba(255,255,255,0.9); font-size: 14px; font-weight: 500; text-decoration: none; }
+  .vibe-item .glyph { color: var(--gold-400); }
+  .vibe-item:hover, .vibe-item:focus { color: var(--gold-400); }
+
+  .proof-section { background: var(--canvas); padding: 72px 0; }
+  .proof-head { text-align: center; margin-bottom: 40px; }
+  .proof-head .eyebrow { font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--gold-600); }
+  .proof-head h2 { font-family: var(--font-display); font-size: 30px; font-weight: 700; color: var(--ink-900); margin-top: 8px; letter-spacing: -0.015em; }
+  .proof-head p.lede { color: var(--ink-600); font-size: 16px; margin-top: 8px; max-width: 520px; margin-left: auto; margin-right: auto; }
+  .proof-logos { background: var(--ink-900); border-radius: 24px; padding: 56px 40px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 48px 32px; align-items: center; justify-items: center; }
+  .proof-logo { font-family: var(--font-display); font-size: 15px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.7); text-align: center; line-height: 1.15; text-decoration: none; transition: color 200ms; }
+  .proof-logo:hover { color: white; }
+
+  .organisers-section { background: var(--ink-900); color: white; padding: 96px 0; }
+  .organisers-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: start; }
+  .organisers-eyebrow { font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--gold-400); }
+  .organisers-h2 { font-family: var(--font-display); font-size: clamp(2rem, 3.5vw, 2.75rem); font-weight: 700; line-height: 1.05; margin-top: 12px; }
+  .organisers-sub { color: rgba(255,255,255,0.75); font-size: 17px; line-height: 1.6; margin-top: 20px; }
+  .organisers-features { list-style: none; margin-top: 32px; display: flex; flex-direction: column; gap: 14px; }
+  .organisers-features li { display: flex; align-items: center; gap: 14px; color: rgba(255,255,255,0.85); font-size: 15px; }
+  .organisers-features .check { width: 22px; height: 22px; border-radius: 50%; background: rgba(212,160,23,0.15); display: flex; align-items: center; justify-content: center; color: var(--gold-400); font-size: 11px; font-weight: 900; flex-shrink: 0; }
+  .organisers-ctas { display: flex; gap: 12px; margin-top: 40px; }
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .stat-card { border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04); border-radius: 16px; padding: 24px; }
+  .stat-card .value { font-family: var(--font-display); font-size: 42px; font-weight: 800; color: var(--gold-400); letter-spacing: -0.02em; }
+  .stat-card .label { color: rgba(255,255,255,0.65); font-size: 13px; margin-top: 8px; }
+  .testimonial-card { margin-top: 24px; border-left: 3px solid var(--gold-500); background: rgba(255,255,255,0.04); border-radius: 12px; padding: 20px 24px; display: flex; gap: 16px; align-items: center; }
+  .testimonial-avatar { flex-shrink: 0; width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, var(--gold-500), var(--coral-500)); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 800; color: var(--ink-900); font-size: 16px; }
+  .testimonial-body { flex: 1; }
+  .testimonial-quote { color: rgba(255,255,255,0.92); font-size: 15px; line-height: 1.45; font-style: italic; }
+  .testimonial-attribution { color: rgba(255,255,255,0.55); font-size: 12px; margin-top: 6px; }
+
+  .footer { background: var(--ink-900); color: rgba(255,255,255,0.75); padding: 80px 0 32px; border-top: 1px solid rgba(255,255,255,0.05); }
+  .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 48px; }
+  .footer-brand p { max-width: 280px; font-size: 14px; line-height: 1.6; margin-top: 16px; }
+  .footer-socials { display: flex; gap: 12px; margin-top: 20px; }
+  .footer-socials a { width: 36px; height: 36px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.7); transition: all 150ms; }
+  .footer-socials a:hover { border-color: var(--gold-500); color: var(--gold-400); }
+  .footer-col h4 { font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--gold-400); margin-bottom: 16px; }
+  .footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  .footer-col a { color: rgba(255,255,255,0.75); font-size: 14px; text-decoration: none; transition: color 150ms; }
+  .footer-col a:hover { color: var(--gold-400); }
+  .footer-bottom { border-top: 1px solid rgba(255,255,255,0.1); margin-top: 56px; padding-top: 24px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: rgba(255,255,255,0.5); }
+
+  .annotation-panel { background: var(--gold-100); border-top: 3px solid var(--gold-500); border-bottom: 3px solid var(--gold-500); padding: 24px 0; font-family: var(--font-body); }
+  .annotation-panel .container { display: flex; gap: 24px; align-items: flex-start; }
+  .annotation-panel .label { font-family: var(--font-display); font-weight: 800; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; background: var(--gold-500); color: var(--ink-900); padding: 6px 12px; border-radius: 6px; flex-shrink: 0; white-space: nowrap; }
+  .annotation-panel p { color: var(--ink-800); font-size: 14px; line-height: 1.55; flex: 1; }
+  .annotation-panel strong { color: var(--gold-700); font-weight: 700; }
+  .annotation-panel code {
+    font-family: 'Monaco', 'Menlo', monospace; font-size: 12px;
+    background: white; padding: 2px 6px; border-radius: 4px;
+    border: 1px solid var(--gold-500); color: var(--ink-900);
+  }
+  .data-source { background: white; border: 1px solid var(--gold-500); color: var(--ink-900); font-size: 11px; font-family: 'Monaco', 'Menlo', monospace; padding: 3px 6px; border-radius: 4px; display: inline-block; margin-top: 4px; }
+
+  .map-icon { width: 13px; height: 13px; }
+</style>
+</head>
+<body>
+
+<!-- ==================== NAV V3 with SEARCH BAR ==================== -->
+<header class="nav">
+  <div class="container nav-inner">
+    <a href="#" class="logo">EVENTLINQS<span class="logo-dot">.</span></a>
+    <nav class="nav-links">
+      <a href="#">Events</a>
+      <a href="#">For organisers</a>
+    </nav>
+    <div class="nav-search">
+      <svg class="mag" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+      <input type="text" placeholder="Search events, artists, venues" aria-label="Search events, artists, venues">
+      <span class="cmdk">⌘K</span>
+    </div>
+    <div class="nav-right">
+      <button class="location-pill">
+        <svg class="pin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        Melbourne
+        <svg class="chev" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <a href="#" class="btn-ghost">Sign in</a>
+      <a href="#" class="btn-primary">Get started</a>
+    </div>
+  </div>
+</header>
+
+<div class="annotation-panel">
+  <div class="container">
+    <span class="label">V3 — Nav</span>
+    <p><strong>Ticketmaster-pattern search bar added (per your command).</strong> Pill-shaped, 480px max-width, centred in nav, live-input text field with magnifying glass icon left and <code>⌘K</code> hint right (Ticketmaster image 1 pattern exactly — visible, interactive, conversion-positive). Focus ring is gold. Click or Cmd+K opens full-screen search modal with categories, recent searches, trending, live results. Location pill stays separate (sits beside Sign in). On mobile, the search bar drops to a full-width second row below the hamburger — always visible, always interactive.</p>
+  </div>
+</div>
+
+<!-- ==================== HERO V3 ROTATING CAROUSEL ==================== -->
+<section class="hero-carousel">
+
+  <button class="carousel-arrow prev" aria-label="Previous slide"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
+  <button class="carousel-arrow next" aria-label="Next slide"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 6l6 6-6 6"/></svg></button>
+
+  <!-- SLIDE 1 — Afrobeats event -->
+  <div class="hero-slide active">
+    <div class="hero-slide-bg" style="background-image: url('https://images.pexels.com/photos/1763075/pexels-photo-1763075.jpeg?auto=compress&cs=tinysrgb&w=2000')"></div>
+    <div class="hero-overlay-1"></div>
+    <div class="hero-overlay-2"></div>
+    <div class="hero-content">
+      <div>
+        <span class="eyebrow">Happening this weekend</span>
+        <h1>Where the <span class="accent">culture</span> gathers.</h1>
+        <p class="sub">Tickets for events that move you. Afrobeats, Gospel, Amapiano, Owambe, Comedy. No hidden fees, ever.</p>
+        <div class="live-count">
+          <span class="ring"></span>
+          156 events live now
+          <span class="divider"></span>
+          23 cities
+          <span class="divider"></span>
+          This week
+        </div>
+        <div class="hero-ctas">
+          <a href="#" class="hero-cta-solid">Get tickets</a>
+          <a href="#" class="hero-cta-outline">Browse all events</a>
+        </div>
+      </div>
+      <aside class="hero-card">
+        <div class="hero-card-eyebrow">Happening soon</div>
+        <h3>Afrobeats Melbourne Summer Sessions</h3>
+        <div class="hero-card-meta">
+          <div>Sun 26 Apr · 8:00 PM</div>
+          <div>Melbourne Showgrounds</div>
+          <div class="dim">by Tasknora</div>
+        </div>
+        <div class="hero-card-price">From AUD $65</div>
+        <div class="hero-card-live">
+          <span class="pulse-dot"></span>
+          247 tickets sold today
+        </div>
+        <a href="#" class="hero-card-cta">View event →</a>
+      </aside>
+    </div>
+  </div>
+
+  <!-- SLIDE 2 — Gospel event -->
+  <div class="hero-slide">
+    <div class="hero-slide-bg" style="background-image: url('https://images.pexels.com/photos/2747448/pexels-photo-2747448.jpeg?auto=compress&cs=tinysrgb&w=2000')"></div>
+    <div class="hero-overlay-1"></div>
+    <div class="hero-overlay-2"></div>
+    <div class="hero-content">
+      <div>
+        <span class="eyebrow">Trending in London</span>
+        <h1>Voices of the <span class="accent">diaspora</span>.</h1>
+        <p class="sub">The Gospel concert taking London by storm. Culture, faith, and fire in a single night.</p>
+        <div class="live-count">
+          <span class="ring"></span>
+          87% sold
+          <span class="divider"></span>
+          Selling fast
+        </div>
+        <div class="hero-ctas">
+          <a href="#" class="hero-cta-solid">Get tickets</a>
+          <a href="#" class="hero-cta-outline">Browse all events</a>
+        </div>
+      </div>
+      <aside class="hero-card">
+        <div class="hero-card-eyebrow">Featured tonight</div>
+        <h3>Gospel Night: Voices of the Diaspora</h3>
+        <div class="hero-card-meta">
+          <div>Fri 24 Apr · 7:30 PM</div>
+          <div>Alexandra Palace</div>
+          <div class="dim">by Gospel Australia</div>
+        </div>
+        <div class="hero-card-price">From GBP £35</div>
+        <div class="hero-card-live">
+          <span class="pulse-dot"></span>
+          412 tickets sold today
+        </div>
+        <a href="#" class="hero-card-cta">View event →</a>
+      </aside>
+    </div>
+  </div>
+
+  <!-- SLIDE 3 — Category highlight -->
+  <div class="hero-slide">
+    <div class="hero-slide-bg" style="background-image: url('https://images.pexels.com/photos/1267320/pexels-photo-1267320.jpeg?auto=compress&cs=tinysrgb&w=2000')"></div>
+    <div class="hero-overlay-1"></div>
+    <div class="hero-overlay-2"></div>
+    <div class="hero-content">
+      <div>
+        <span class="eyebrow">This weekend</span>
+        <h1>Laughs with <span class="accent">soul</span>.</h1>
+        <p class="sub">African comedy night in Melbourne. One room, seven comedians, zero holding back.</p>
+        <div class="live-count">
+          <span class="ring"></span>
+          Tomorrow night
+          <span class="divider"></span>
+          Premium seats available
+        </div>
+        <div class="hero-ctas">
+          <a href="#" class="hero-cta-solid">Get tickets</a>
+          <a href="#" class="hero-cta-outline">Browse all events</a>
+        </div>
+      </div>
+      <aside class="hero-card">
+        <div class="hero-card-eyebrow">Tomorrow night</div>
+        <h3>African Comedy Night: The Showcase</h3>
+        <div class="hero-card-meta">
+          <div>Sat 25 Apr · 8:00 PM</div>
+          <div>Melbourne Town Hall</div>
+          <div class="dim">by Diaspora Culture</div>
+        </div>
+        <div class="hero-card-price">From AUD $30</div>
+        <div class="hero-card-live">
+          <span class="pulse-dot"></span>
+          89 tickets sold today
+        </div>
+        <a href="#" class="hero-card-cta">View event →</a>
+      </aside>
+    </div>
+  </div>
+
+  <!-- Carousel dots -->
+  <div class="carousel-controls">
+    <button class="carousel-dot active" aria-label="Slide 1"></button>
+    <button class="carousel-dot" aria-label="Slide 2"></button>
+    <button class="carousel-dot" aria-label="Slide 3"></button>
+  </div>
+</section>
+
+<div class="annotation-panel">
+  <div class="container">
+    <span class="label">V3 — Hero</span>
+    <p><strong>Rotating hero carousel — 3 slides, auto-advance every 7s, pause on hover/focus.</strong> Each slide has its own video/image background, eyebrow (rotating: "Happening this weekend" / "Trending in London" / "This weekend"), H1 (event-specific or category tagline), live signals strip, and "Happening Soon" ribbon card with the event-specific data. Dot indicators bottom-centre jump between slides. Arrow buttons left/right on desktop. Swipe on mobile. <strong>Hero reduced from 85vh to 76vh</strong> so the bento peeks above the fold for scroll cue. <strong>Data source for slides:</strong> <span class="data-source">5 soonest events with percent_sold &gt; 20% OR created_at &lt; 48h ago OR is_homepage_featured = true</span>. If &lt; 3 qualifying events, pad with category highlight slides ("This week in Afrobeats", "Free this weekend"). Never fewer than 3 slides. Respects prefers-reduced-motion (no auto-advance, dots/swipe only).</p>
+  </div>
+</div>
+
+<!-- ==================== BENTO GRID ==================== -->
+<section class="section">
+  <div class="container">
+    <div class="section-head">
+      <div class="section-head-left">
+        <div class="section-bar"></div>
+        <div>
+          <div class="section-eyebrow">The lineup</div>
+          <h2 class="section-title">What everyone is buying into</h2>
+        </div>
+      </div>
+      <a href="#" class="section-link">View all events →</a>
+    </div>
+
+    <div class="bento">
+      <div class="bento-tile size-hero">
+        <img src="https://images.pexels.com/photos/2240771/pexels-photo-2240771.jpeg?auto=compress&cs=tinysrgb&w=1400" alt="">
+        <div class="content">
+          <div class="top-row">
+            <span class="badge-featured">Featured</span>
+            <button class="heart-btn" aria-label="Save event"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1 7.8 7.8 7.8-7.8 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg></button>
+          </div>
+          <div>
+            <div class="date-line">Sat 19 Apr · Tomorrow</div>
+            <h3>Amapiano Takeover: Melbourne Edition</h3>
+            <div class="price-row">From AUD $45</div>
+          </div>
+        </div>
+      </div>
+      <div class="bento-tile size-wide">
+        <img src="https://images.pexels.com/photos/1537635/pexels-photo-1537635.jpeg?auto=compress&cs=tinysrgb&w=900" alt="">
+        <div class="content">
+          <div class="top-row">
+            <span class="cat-pill">Music</span>
+            <button class="heart-btn" aria-label="Save event"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1 7.8 7.8 7.8-7.8 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg></button>
+          </div>
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+              <div class="date-line" style="margin:0">Fri 24 Apr</div>
+              <span class="badge-trending">🔥 Trending</span>
+            </div>
+            <h3>Afrobeats Summer Sessions</h3>
+            <div class="price-row">From AUD $65</div>
+          </div>
+        </div>
+      </div>
+      <div class="bento-tile size-standard">
+        <img src="https://images.pexels.com/photos/1763075/pexels-photo-1763075.jpeg?auto=compress&cs=tinysrgb&w=600" alt="">
+        <div class="content">
+          <div class="top-row">
+            <span class="cat-pill">Music</span>
+            <button class="heart-btn" aria-label="Save event"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1 7.8 7.8 7.8-7.8 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg></button>
+          </div>
+          <div>
+            <div class="date-line">Sun 26 Apr</div>
+            <h3>Holistic Session</h3>
+            <div class="price-row">From AUD $2.50</div>
+          </div>
+        </div>
+      </div>
+      <div class="bento-tile size-compact free-weekend">
+        <div class="content">
+          <div><div class="free-label">This weekend</div></div>
+          <div>
+            <div class="tag">FREE</div>
+            <h3 style="margin-top:8px">Discover events that cost nothing but your Saturday</h3>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="annotation-panel">
+  <div class="container">
+    <span class="label">V3 — Bento</span>
+    <p><strong>Real data.</strong> All 4 tiles pull from <span class="data-source">supabase.events</span> filtered to published + public + future + with cover image. Hero tile = first event with <code>is_homepage_featured = true</code>, else soonest. Wide tile = next soonest with <code>percent_sold &gt; 70</code> (trending tag triggers). Standard = next soonest. Free Weekend = aggregate CTA linking to <code>/events?price=free&amp;date=weekend</code>. Heart button save state synced with <span class="data-source">supabase.saved_events</span>. Auto-play video on hover via existing SmartMedia. Nothing hardcoded.</p>
+  </div>
+</div>
+
+<!-- ==================== THIS WEEK RAIL ==================== -->
+<section class="rail-section">
+  <div class="container">
+    <div class="rail-head">
+      <div class="section-head-left">
+        <div class="section-bar"></div>
+        <div>
+          <div class="section-eyebrow">This week</div>
+          <h2 class="section-title">What's happening near you</h2>
+        </div>
+      </div>
+      <div class="rail-arrows">
+        <button class="rail-arrow" aria-label="Previous"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <button class="rail-arrow" aria-label="Next"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 6l6 6-6 6"/></svg></button>
+      </div>
+    </div>
+    <div class="rail-wrapper">
+      <div class="rail">
+        <a href="#" class="rail-card">
+          <div class="media">
+            <img src="https://images.pexels.com/photos/1190297/pexels-photo-1190297.jpeg?auto=compress&cs=tinysrgb&w=600" alt="">
+            <span class="cat-pill" style="position:absolute;top:12px;left:12px">Nightlife</span>
+            <button class="heart-btn-light" aria-label="Save"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1 7.8 7.8 7.8-7.8 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg></button>
+          </div>
+          <div class="body">
+            <div class="date-eyebrow">Sun 19 Apr</div>
+            <h4>Afrobeats All Night — Melbourne</h4>
+            <div class="loc"><svg class="map-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> Melbourne</div>
+            <div class="bottom-row">
+              <div class="price"><span class="currency">AUD</span>$45</div>
+              <span style="font-size:12px;font-weight:600;color:var(--coral-500)">🔥 Selling fast</span>
+            </div>
+          </div>
+        </a>
+        <a href="#" class="rail-card">
+          <div class="media">
+            <img src="https://images.pexels.com/photos/1587927/pexels-photo-1587927.jpeg?auto=compress&cs=tinysrgb&w=600" alt="">
+            <span class="cat-pill" style="position:absolute;top:12px;left:12px">Music</span>
+            <button class="heart-btn-light" aria-label="Save"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1 7.8 7.8 7.8-7.8 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg></button>
+          </div>
+          <div class="body">
+            <div class="date-eyebrow">Fri 24 Apr</div>
+            <h4>Gospel Night: Voices of the Diaspora</h4>
+            <div class="loc"><svg class="map-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> Sydney</div>
+            <div class="bottom-row"><div class="price"><span class="currency">AUD</span>$35</div></div>
+          </div>
+        </a>
+        <a href="#" class="rail-card">
+          <div class="media">
+            <img src="https://images.pexels.com/photos/1267320/pexels-photo-1267320.jpeg?auto=compress&cs=tinysrgb&w=600" alt="">
+            <span class="cat-pill" style="position:absolute;top:12px;left:12px">Comedy</span>
+            <button class="heart-btn-light" aria-label="Save"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1 7.8 7.8 7.8-7.8 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg></button>
+          </div>
+          <div class="body">
+            <div class="date-eyebrow">Sat 25 Apr</div>
+            <h4>African Comedy Night: The Showcase</h4>
+            <div class="loc"><svg class="map-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> Melbourne</div>
+            <div class="bottom-row"><div class="price"><span class="currency">AUD</span>$30</div></div>
+          </div>
+        </a>
+        <a href="#" class="rail-card">
+          <div class="media">
+            <img src="https://images.pexels.com/photos/2527070/pexels-photo-2527070.jpeg?auto=compress&cs=tinysrgb&w=600" alt="">
+            <span class="cat-pill" style="position:absolute;top:12px;left:12px">Owambe</span>
+            <button class="heart-btn-light" aria-label="Save"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1 7.8 7.8 7.8-7.8 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg></button>
+          </div>
+          <div class="body">
+            <div class="date-eyebrow">Sun 26 Apr</div>
+            <h4>Owambe Society Presents: Aso Ebi Day</h4>
+            <div class="loc"><svg class="map-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> London</div>
+            <div class="bottom-row"><div class="price"><span class="currency">GBP</span>£25</div></div>
+          </div>
+        </a>
+        <a href="#" class="rail-card">
+          <div class="media">
+            <img src="https://images.pexels.com/photos/1649771/pexels-photo-1649771.jpeg?auto=compress&cs=tinysrgb&w=600" alt="">
+            <span class="cat-pill" style="position:absolute;top:12px;left:12px">Caribbean</span>
+            <button class="heart-btn-light" aria-label="Save"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1 7.8 7.8 7.8-7.8 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg></button>
+          </div>
+          <div class="body">
+            <div class="date-eyebrow">Mon 27 Apr</div>
+            <h4>Soca Takeover: Summer Sessions</h4>
+            <div class="loc"><svg class="map-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> Toronto</div>
+            <div class="bottom-row"><div class="price"><span class="currency">CAD</span>$40</div></div>
+          </div>
+        </a>
+      </div>
+      <div class="rail-progress-track"><div class="rail-progress-thumb"></div></div>
+    </div>
+  </div>
+</section>
+
+<div class="annotation-panel">
+  <div class="container">
+    <span class="label">V3 — This Week</span>
+    <p><strong>Real data.</strong> Query: <span class="data-source">events where start_date between now and now+7d, ordered by start_date ASC, filtered by user's city if set (ilike venue_city)</span>. Cards show real event title, real date, real venue_city, real price (cheapest ticket_tier). "Selling fast" tag renders only when <code>percent_sold &gt; 70</code> from Redis inventory cache. Nothing hardcoded.</p>
+  </div>
+</div>
+
+<!-- ==================== CULTURAL PICKS ==================== -->
+<section class="section culture">
+  <div class="container">
+    <div class="section-head">
+      <div class="section-head-left">
+        <div class="section-bar"></div>
+        <div>
+          <div class="section-eyebrow">Made for the diaspora</div>
+          <h2 class="section-title">Cultural picks</h2>
+        </div>
+      </div>
+      <a href="#" class="section-link">Explore culture →</a>
+    </div>
+    <div class="culture-tabs">
+      <a href="#" class="culture-tab active">All</a>
+      <a href="#" class="culture-tab">Afrobeats</a>
+      <a href="#" class="culture-tab">Amapiano</a>
+      <a href="#" class="culture-tab">Gospel</a>
+      <a href="#" class="culture-tab">Owambe</a>
+      <a href="#" class="culture-tab">Caribbean</a>
+    </div>
+    <div class="rail-wrapper" style="margin-top:32px">
+      <div class="rail">
+        <a href="#" class="rail-card">
+          <div class="media">
+            <img src="https://images.pexels.com/photos/1201779/pexels-photo-1201779.jpeg?auto=compress&cs=tinysrgb&w=600" alt="">
+            <span class="cat-pill" style="position:absolute;top:12px;left:12px">Afrobeats</span>
+            <button class="heart-btn-light" aria-label="Save"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1 7.8 7.8 7.8-7.8 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg></button>
+          </div>
+          <div class="body">
+            <div class="date-eyebrow">Sat 03 May</div>
+            <h4>Naija Nights: Afrobeats Takeover</h4>
+            <div class="loc"><svg class="map-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> Lagos</div>
+            <div class="bottom-row"><div class="price"><span class="currency">USD</span>$20</div></div>
+          </div>
+        </a>
+        <a href="#" class="rail-card">
+          <div class="media">
+            <img src="https://images.pexels.com/photos/1763067/pexels-photo-1763067.jpeg?auto=compress&cs=tinysrgb&w=600" alt="">
+            <span class="cat-pill" style="position:absolute;top:12px;left:12px">Afrobeats</span>
+            <button class="heart-btn-light" aria-label="Save"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1 7.8 7.8 7.8-7.8 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg></button>
+          </div>
+          <div class="body">
+            <div class="date-eyebrow">Fri 09 May</div>
+            <h4>Culture Sessions: The Spring Residency</h4>
+            <div class="loc"><svg class="map-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> London</div>
+            <div class="bottom-row"><div class="price"><span class="currency">GBP</span>£28</div></div>
+          </div>
+        </a>
+        <a href="#" class="rail-card">
+          <div class="media">
+            <img src="https://images.pexels.com/photos/167636/pexels-photo-167636.jpeg?auto=compress&cs=tinysrgb&w=600" alt="">
+            <span class="cat-pill" style="position:absolute;top:12px;left:12px">Afrobeats</span>
+            <button class="heart-btn-light" aria-label="Save"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1 7.8 7.8 7.8-7.8 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg></button>
+          </div>
+          <div class="body">
+            <div class="date-eyebrow">Sat 10 May</div>
+            <h4>WizKid Tribute: The Experience</h4>
+            <div class="loc"><svg class="map-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> Houston</div>
+            <div class="bottom-row"><div class="price"><span class="currency">USD</span>$55</div></div>
+          </div>
+        </a>
+      </div>
+      <div class="rail-progress-track"><div class="rail-progress-thumb"></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== MARQUEE ==================== -->
+<div class="marquee-band">
+  <div class="marquee-label">Live on EventLinqs</div>
+  <div class="marquee-track">
+    <a class="vibe-item" href="#"><span class="glyph">🔥</span> Afrobeats All Night — 92% sold</a>
+    <a class="vibe-item" href="#"><span class="glyph">📍</span> New in London: Culture Sessions</a>
+    <a class="vibe-item" href="#"><span class="glyph">⏰</span> Gospel Night — 3 days to go</a>
+    <a class="vibe-item" href="#"><span class="glyph">✨</span> New listing: Soca Takeover Toronto</a>
+    <a class="vibe-item" href="#"><span class="glyph">📍</span> New in Sydney: Amapiano Takeover</a>
+    <a class="vibe-item" href="#"><span class="glyph">🔥</span> WizKid Tribute — 78% sold</a>
+    <a class="vibe-item" href="#"><span class="glyph">🔥</span> Afrobeats All Night — 92% sold</a>
+    <a class="vibe-item" href="#"><span class="glyph">📍</span> New in London: Culture Sessions</a>
+    <a class="vibe-item" href="#"><span class="glyph">⏰</span> Gospel Night — 3 days to go</a>
+    <a class="vibe-item" href="#"><span class="glyph">✨</span> New listing: Soca Takeover Toronto</a>
+    <a class="vibe-item" href="#"><span class="glyph">📍</span> New in Sydney: Amapiano Takeover</a>
+    <a class="vibe-item" href="#"><span class="glyph">🔥</span> WizKid Tribute — 78% sold</a>
+  </div>
+</div>
+
+<!-- ==================== BY CITY ==================== -->
+<section class="rail-section">
+  <div class="container">
+    <div class="rail-head">
+      <div class="section-head-left">
+        <div class="section-bar"></div>
+        <div>
+          <div class="section-eyebrow">By city</div>
+          <h2 class="section-title">Wherever you are, the culture follows</h2>
+        </div>
+      </div>
+      <div class="rail-arrows">
+        <button class="rail-arrow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <button class="rail-arrow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 6l6 6-6 6"/></svg></button>
+      </div>
+    </div>
+    <div class="rail-wrapper">
+      <div class="rail">
+        <a href="#" class="city-card"><img src="https://images.pexels.com/photos/2193300/pexels-photo-2193300.jpeg?auto=compress&cs=tinysrgb&w=600" alt=""><div class="content"><div class="city-name">Melbourne</div><div class="city-count">4 upcoming events</div></div></a>
+        <a href="#" class="city-card"><img src="https://images.pexels.com/photos/1108701/pexels-photo-1108701.jpeg?auto=compress&cs=tinysrgb&w=600" alt=""><div class="content"><div class="city-name">Sydney</div><div class="city-count">2 upcoming events</div></div></a>
+        <a href="#" class="city-card"><img src="https://images.pexels.com/photos/1427263/pexels-photo-1427263.jpeg?auto=compress&cs=tinysrgb&w=600" alt=""><div class="content"><div class="city-name">London</div><div class="city-count">1 upcoming event</div></div></a>
+        <a href="#" class="city-card"><img src="https://images.pexels.com/photos/1134166/pexels-photo-1134166.jpeg?auto=compress&cs=tinysrgb&w=600" alt=""><div class="content"><div class="city-name">Toronto</div><div class="city-count">3 upcoming events</div></div></a>
+        <a href="#" class="city-card"><img src="https://images.pexels.com/photos/2506923/pexels-photo-2506923.jpeg?auto=compress&cs=tinysrgb&w=600" alt=""><div class="content"><div class="city-name">Lagos</div><div class="city-count">8 upcoming events</div></div></a>
+        <a href="#" class="city-card"><img src="https://images.pexels.com/photos/417054/pexels-photo-417054.jpeg?auto=compress&cs=tinysrgb&w=600" alt=""><div class="content"><div class="city-name">New York</div><div class="city-count">5 upcoming events</div></div></a>
+        <a href="#" class="city-card"><img src="https://images.pexels.com/photos/161963/pexels-photo-161963.jpeg?auto=compress&cs=tinysrgb&w=600" alt=""><div class="content"><div class="city-name">Houston</div><div class="city-count">2 upcoming events</div></div></a>
+        <a href="#" class="city-card"><img src="https://images.pexels.com/photos/1707752/pexels-photo-1707752.jpeg?auto=compress&cs=tinysrgb&w=600" alt=""><div class="content"><div class="city-name">Atlanta</div><div class="city-count">4 upcoming events</div></div></a>
+      </div>
+      <div class="rail-progress-track"><div class="rail-progress-thumb"></div></div>
+    </div>
+  </div>
+</section>
+
+<div class="annotation-panel">
+  <div class="container">
+    <span class="label">V3 — Cities</span>
+    <p><strong>Real data.</strong> Event counts come from <span class="data-source">supabase.events count per venue_city ilike</span>. City photos come from new <span class="data-source">src/lib/images/city-photo.ts</span> — Pexels-backed, mirrors the category-photo.ts pattern, 24h cached. Brand SVG fallback when Pexels unavailable. Cities with 0 events show "Coming soon" instead of "0 upcoming events" — tile still clickable, destination shows empty-city CTA "Be the first to host in [city]".</p>
+  </div>
+</div>
+
+<!-- ==================== SOCIAL PROOF ==================== -->
+<section class="proof-section">
+  <div class="container">
+    <div class="proof-head">
+      <div class="eyebrow">Trusted by organisers</div>
+      <h2>Building culture across the diaspora</h2>
+      <p class="lede">12 organisers in Australia, UK, Canada and the US have committed to launch with EventLinqs.</p>
+    </div>
+    <div class="proof-logos">
+      <a href="#" class="proof-logo">Avant<br>Gardner</a>
+      <a href="#" class="proof-logo">Amapiano<br>Collective</a>
+      <a href="#" class="proof-logo">Owambe<br>Society</a>
+      <a href="#" class="proof-logo">Afrobeats<br>Melbourne</a>
+      <a href="#" class="proof-logo">Beavs<br>Geelong</a>
+      <a href="#" class="proof-logo">Gospel<br>Australia</a>
+      <a href="#" class="proof-logo">Soca<br>Council</a>
+      <a href="#" class="proof-logo">Caribbean<br>Vibes</a>
+      <a href="#" class="proof-logo">Naija<br>Nights</a>
+      <a href="#" class="proof-logo">Diaspora<br>Culture</a>
+      <a href="#" class="proof-logo">Culture<br>Sessions</a>
+      <a href="#" class="proof-logo">Lagos<br>After Dark</a>
+    </div>
+  </div>
+</section>
+
+<div class="annotation-panel">
+  <div class="container">
+    <span class="label">V3 — Proof</span>
+    <p><strong>Real data.</strong> Query: <span class="data-source">organisations where status='active' and logo_url is not null, limit 12</span>. Each logo wordmark links to <code>/organisers/[slug]</code>. <strong>Entire section hides if count &lt; 6</strong>. No fake app ratings (apps don't exist yet — will re-add in M6+).</p>
+  </div>
+</div>
+
+<!-- ==================== ORGANISERS ==================== -->
+<section class="organisers-section">
+  <div class="container">
+    <div class="organisers-grid">
+      <div>
+        <div class="organisers-eyebrow">For event organisers</div>
+        <h2 class="organisers-h2">Sell tickets.<br>Keep more.</h2>
+        <p class="organisers-sub">Transparent fees, real-time analytics, squad booking, and a checkout your fans will actually complete. Built for organisers who take their events seriously.</p>
+        <ul class="organisers-features">
+          <li><span class="check">✓</span> Open to every community and every kind of event</li>
+          <li><span class="check">✓</span> All-in pricing: no surprise fees at checkout</li>
+          <li><span class="check">✓</span> Real-time sales dashboard and scan app</li>
+          <li><span class="check">✓</span> Squad booking: your fans buy together</li>
+          <li><span class="check">✓</span> Africa-ready: mobile money, WhatsApp sharing</li>
+        </ul>
+        <div class="organisers-ctas">
+          <a href="#" style="display:inline-flex;align-items:center;background:var(--gold-500);color:var(--ink-900);font-weight:700;font-size:15px;padding:12px 22px;border-radius:10px;text-decoration:none;box-shadow:0 6px 16px rgba(212,160,23,0.3);transition:all 150ms">Start selling tickets</a>
+          <a href="#" style="display:inline-flex;align-items:center;padding:12px 22px;border-radius:10px;border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.9);font-weight:600;font-size:15px;text-decoration:none">View pricing</a>
+        </div>
+      </div>
+      <div>
+        <div class="stats-grid">
+          <div class="stat-card"><div class="value">0%</div><div class="label">Platform fees on free events</div></div>
+          <div class="stat-card"><div class="value">2-tap</div><div class="label">Checkout: fastest in market</div></div>
+          <div class="stat-card"><div class="value">5+</div><div class="label">Payment gateways supported</div></div>
+          <div class="stat-card"><div class="value">24/7</div><div class="label">Real-time ticket scanning</div></div>
+        </div>
+        <div class="testimonial-card">
+          <div class="testimonial-avatar">TN</div>
+          <div class="testimonial-body">
+            <div class="testimonial-quote">"Sold 450 tickets for Afrobeats All Night in 48 hours. The squad booking feature alone converted 30% more group sales than our last platform."</div>
+            <div class="testimonial-attribution">Tasknora — Afrobeats Melbourne Summer Sessions</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== FOOTER ==================== -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a href="#" class="logo" style="color:white">EVENTLINQS<span class="logo-dot">.</span></a>
+        <p>Built for culture. Transparent pricing. Zero hidden fees, ever. Melbourne to Lagos to London.</p>
+        <div class="footer-socials">
+          <a href="#" aria-label="Instagram"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37zM17.5 6.5h.01"/></svg></a>
+          <a href="#" aria-label="TikTok"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64 2.93 2.93 0 01.88.13V9.4a6.84 6.84 0 00-1-.05A6.33 6.33 0 005.8 20.1a6.34 6.34 0 0010.86-4.43v-7a8.16 8.16 0 004.77 1.52v-3.4a4.85 4.85 0 01-1.84-.1z"/></svg></a>
+          <a href="#" aria-label="X"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
+        </div>
+      </div>
+      <div class="footer-col">
+        <h4>Discover</h4>
+        <ul><li><a href="#">Browse events</a></li><li><a href="#">Afrobeats</a></li><li><a href="#">Amapiano</a></li><li><a href="#">Gospel</a></li><li><a href="#">Owambe</a></li><li><a href="#">Comedy</a></li></ul>
+      </div>
+      <div class="footer-col">
+        <h4>Organisers</h4>
+        <ul><li><a href="#">Start selling tickets</a></li><li><a href="#">How it works</a></li><li><a href="#">Pricing</a></li><li><a href="#">Organiser login</a></li></ul>
+      </div>
+      <div class="footer-col">
+        <h4>Help</h4>
+        <ul><li><a href="#">Help centre</a></li><li><a href="#">Contact us</a></li><li><a href="#">Privacy policy</a></li><li><a href="#">Terms of use</a></li></ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div>© 2026 EventLinqs. All rights reserved.</div>
+      <div>Transparent pricing. Zero hidden fees. Always.</div>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Simple carousel auto-advance — pauses on hover/focus, respects reduced motion
+  (function(){
+    var carousel = document.querySelector('.hero-carousel');
+    var slides = document.querySelectorAll('.hero-slide');
+    var dots = document.querySelectorAll('.carousel-dot');
+    var prevBtn = document.querySelector('.carousel-arrow.prev');
+    var nextBtn = document.querySelector('.carousel-arrow.next');
+    var current = 0;
+    var timer;
+
+    var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    function goTo(i){
+      slides[current].classList.remove('active');
+      dots[current].classList.remove('active');
+      current = (i + slides.length) % slides.length;
+      slides[current].classList.add('active');
+      dots[current].classList.add('active');
+    }
+
+    function autoAdvance(){
+      if (reducedMotion) return;
+      timer = setInterval(function(){ goTo(current + 1); }, 7000);
+    }
+    function pause(){ clearInterval(timer); }
+    function resume(){ pause(); autoAdvance(); }
+
+    dots.forEach(function(dot, i){
+      dot.addEventListener('click', function(){ goTo(i); resume(); });
+    });
+    if (prevBtn) prevBtn.addEventListener('click', function(){ goTo(current - 1); resume(); });
+    if (nextBtn) nextBtn.addEventListener('click', function(){ goTo(current + 1); resume(); });
+    carousel.addEventListener('mouseenter', pause);
+    carousel.addEventListener('mouseleave', resume);
+    carousel.addEventListener('focusin', pause);
+    carousel.addEventListener('focusout', resume);
+
+    autoAdvance();
+  })();
+</script>
+
+</body>
+</html>
