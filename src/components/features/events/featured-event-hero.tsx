@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { SmartMedia } from '@/components/ui/smart-media'
 import { GlassCard } from '@/components/ui/glass-card'
-import { getFeaturedEventMedia, type EventMediaInput } from '@/lib/images/event-media'
+import { getFeaturedHeroBackground, type EventMediaInput } from '@/lib/images/event-media'
 
 /**
  * FeaturedEventHero — full-viewport cinematic hero for the homepage.
@@ -54,7 +54,7 @@ export async function FeaturedEventHero({ event, liveEventCount = 0, uniqueCitie
     title: 'Where the culture gathers',
     category: { slug: 'festival', name: 'Festival' },
   }
-  const media = await getFeaturedEventMedia(input)
+  const media = await getFeaturedHeroBackground(input)
 
   const city = event?.venue_city ?? 'a city near you'
   const eyebrow = event

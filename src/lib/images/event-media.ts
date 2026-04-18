@@ -111,6 +111,58 @@ export async function getFeaturedEventMedia(event: EventMediaInput): Promise<Eve
 }
 
 /**
+ * Hero-only resolver that NEVER uses organiser cover_image_url as the background.
+ *
+ * Rationale: the full-bleed hero background should always be a cinematic
+ * Pexels clip or curated crowd still — not a static organiser upload that was
+ * designed for card contexts.
+ *
+ * Priority:
+ *   1. organiser video_url (only if explicitly uploaded)
+ *   2. Pexels category video
+ *   3. Pexels category photo (Ken Burns)
+ *   4. Curated crowd still from /public/hero/hero-crowd.mp4
+ */
+const HERO_CROWD_VIDEO = '/hero/hero-crowd.mp4'
+
+export async function getFeaturedHeroBackground(event: EventMediaInput): Promise<EventMedia> {
+  if (event.video_url) {
+    return {
+      kind: 'video',
+      src: event.video_url,
+      poster: FALLBACK_POSTER,
+      duration: 0,
+    }
+  }
+
+  const video = await getCategoryVideo(event.category?.slug)
+  if (video) {
+    return {
+      kind: 'video',
+      src: video.src,
+      poster: video.poster,
+      duration: video.duration,
+    }
+  }
+
+  const photo = await getCategoryPhoto(event.category?.slug)
+  if (photo && photo.src !== '/images/event-fallback-hero.svg') {
+    return {
+      kind: 'still-kenburns',
+      src: photo.src,
+      alt: event.title ?? photo.alt,
+    }
+  }
+
+  return {
+    kind: 'video',
+    src: HERO_CROWD_VIDEO,
+    poster: FALLBACK_POSTER,
+    duration: 0,
+  }
+}
+
+/**
  * Lightweight single-image helper for card contexts that don't need the full
  * EventMedia union. Used for This Week strip + compact tiles where carousel
  * or video would be overkill.
