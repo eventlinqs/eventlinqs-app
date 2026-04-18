@@ -1,25 +1,14 @@
 'use client'
 
-import { useEffect, useRef, useSyncExternalStore } from 'react'
+import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-
-function subscribeNoop(): () => void {
-  return () => {}
-}
-function getIsMac(): boolean {
-  if (typeof navigator === 'undefined') return false
-  return /Mac|iPhone|iPad|iPod/i.test(navigator.platform)
-}
-function getServerIsMac(): boolean {
-  return false
-}
 
 /**
  * NavSearch — Ticketmaster-pattern pill search bar.
  *
- * Pill-shaped input, magnifying glass left, Cmd/Ctrl+K badge right.
- * Submitting navigates to /events?q=<query>. Empty submit goes to /events.
- * Cmd/Ctrl+K focuses the input from anywhere on the page.
+ * Pill-shaped input, magnifying glass left. Submitting navigates to
+ * /events?q=<query>. Empty submit goes to /events. Cmd/Ctrl+K focuses
+ * the input from anywhere on the page (power-user shortcut, no visible hint).
  */
 
 interface Props {
@@ -29,7 +18,6 @@ interface Props {
 export function NavSearch({ variant = 'desktop' }: Props) {
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
-  const isMac = useSyncExternalStore(subscribeNoop, getIsMac, getServerIsMac)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -79,12 +67,6 @@ export function NavSearch({ variant = 'desktop' }: Props) {
           aria-label="Search events, artists, venues"
           className="flex-1 border-0 bg-transparent text-sm text-ink-900 outline-none placeholder:text-ink-400"
         />
-        <span
-          aria-hidden
-          className="hidden sm:inline-block shrink-0 rounded-md border border-ink-200 bg-ink-100 px-1.5 py-0.5 font-display text-[11px] font-bold text-ink-500"
-        >
-          {isMac ? '\u2318K' : 'Ctrl K'}
-        </span>
       </label>
     </form>
   )
