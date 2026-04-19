@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
 import { refreshInventoryCache } from '@/lib/redis/inventory-cache'
+import { getOrCreateGuestSessionId } from '@/lib/auth/guest-session'
 
 const ReservationItemSchema = z.object({
   ticket_tier_id: z.string().uuid(),
@@ -40,6 +41,7 @@ export async function createReservation(
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  const sessionId = user ? null : await getOrCreateGuestSessionId()
 
   // Build items array for the DB function
   const items = [
@@ -50,7 +52,7 @@ export async function createReservation(
   const { data, error } = await supabase.rpc('create_reservation', {
     p_event_id: event_id,
     p_user_id: user?.id ?? null,
-    p_session_id: null,
+    p_session_id: sessionId,
     p_items: items,
   })
 

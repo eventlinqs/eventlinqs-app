@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { PaymentCalculator } from '@/lib/payments/payment-calculator'
 import { CheckoutForm } from './checkout-form'
+import { getGuestSessionId } from '@/lib/auth/guest-session'
 import type { FeePassType, TicketTier, EventAddon } from '@/types/database'
 
 type Props = {
@@ -30,6 +31,18 @@ export default async function CheckoutPage({ params }: Props) {
 
   if (resError || !reservation) {
     // Reservation missing or already used — send user back to pick tickets again
+    redirect('/events?error=reservation_not_found')
+  }
+
+  // Ownership check — either the reservation belongs to this auth user,
+  // or its session_id matches this browser's guest cookie. The admin
+  // client above bypasses RLS for guest visibility, so we enforce
+  // ownership here instead of relying on the policy.
+  const guestSessionId = await getGuestSessionId()
+  const ownedByUser = reservation.user_id && user && reservation.user_id === user.id
+  const ownedByGuest = reservation.session_id && guestSessionId && reservation.session_id === guestSessionId
+  if (!ownedByUser && !ownedByGuest) {
+    console.log('[CheckoutPage] ownership mismatch — redirecting to /events')
     redirect('/events?error=reservation_not_found')
   }
 

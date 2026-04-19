@@ -47,6 +47,9 @@ next-env.d.ts
 *.jpeg
 *.webp
 
+# lighthouse audit reports — local only
+lighthouse-reports/
+
 # Claude Code local settings
 .claude/settings.local.json
 

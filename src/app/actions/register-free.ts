@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { z } from 'zod'
+import { getOrCreateGuestSessionId } from '@/lib/auth/guest-session'
 
 const RegisterFreeSchema = z.object({
   event_id: z.string().uuid(),
@@ -79,11 +80,13 @@ export async function registerFreeTickets(
     quantity: i.quantity,
   }))
 
+  const sessionId = user ? null : await getOrCreateGuestSessionId()
+
   console.log('[registerFreeTickets] Calling create_reservation RPC...')
   const { data: resData, error: resError } = await supabase.rpc('create_reservation', {
     p_event_id: event_id,
     p_user_id: user?.id ?? null,
-    p_session_id: null,
+    p_session_id: sessionId,
     p_items: items,
   })
 
