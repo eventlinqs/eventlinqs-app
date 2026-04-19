@@ -8,6 +8,7 @@ import { PaymentCalculator } from '@/lib/payments/payment-calculator'
 import { getDefaultGateway } from '@/lib/payments/gateway-factory'
 import { validateDiscountCode } from './discount-codes'
 import { getDynamicPriceMap } from '@/lib/pricing/dynamic-pricing'
+import { getGuestSessionId } from '@/lib/auth/guest-session'
 import type { FeePassType } from '@/types/database'
 
 const AttendeeSchema = z.object({
@@ -58,8 +59,10 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
   const adminClient = createAdminClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  // 1. Verify reservation is still active
-  const { data: reservation } = await supabase
+  // 1. Verify reservation is still active — load via admin client so guest
+  // carts (no auth session, RLS-denied) can still find their row. Ownership
+  // is then enforced in app code against the guest_session cookie.
+  const { data: reservation } = await adminClient
     .from('reservations')
     .select('*')
     .eq('id', reservation_id)
@@ -67,6 +70,13 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
     .single()
 
   if (!reservation) {
+    return { error: 'Your reservation has expired. Please select tickets again.' }
+  }
+
+  const guestSessionId = await getGuestSessionId()
+  const ownedByUser = reservation.user_id && user && reservation.user_id === user.id
+  const ownedByGuest = reservation.session_id && guestSessionId && reservation.session_id === guestSessionId
+  if (!ownedByUser && !ownedByGuest) {
     return { error: 'Your reservation has expired. Please select tickets again.' }
   }
 
