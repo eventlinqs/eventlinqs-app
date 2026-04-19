@@ -367,8 +367,11 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
       },
     })
 
-    // Save gateway_payment_id and client_secret
-    await supabase
+    // Save gateway_payment_id and client_secret — use admin client so guest
+    // checkouts (no auth session, RLS-denied) can persist the Stripe intent
+    // id. Webhook matches payments by gateway_payment_id; if this UPDATE is
+    // silently swallowed the order can never be confirmed.
+    await adminClient
       .from('payments')
       .update({
         gateway_payment_id: intentResult.gateway_payment_id,
@@ -378,7 +381,7 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
       .eq('id', payment_id)
 
     // Update order with payment ID
-    await supabase
+    await adminClient
       .from('orders')
       .update({ metadata: { payment_id } })
       .eq('id', order_id)
