@@ -15,6 +15,14 @@ export async function POST(request: NextRequest) {
   const body = await request.text()
   const signature = request.headers.get('stripe-signature')
 
+  console.log('[stripe-webhook] %s',
+    process.env.STRIPE_WEBHOOK_SECRET
+      ? `secret loaded length=${process.env.STRIPE_WEBHOOK_SECRET.length} prefix=${process.env.STRIPE_WEBHOOK_SECRET.slice(0, 8)}`
+      : 'SECRET MISSING'
+  )
+  console.log('[stripe-webhook] %s', signature ? `sig present len=${signature.length}` : 'sig missing')
+  console.log('[stripe-webhook] body length=%d', body.length)
+
   if (!signature) {
     return NextResponse.json({ error: 'Missing stripe-signature header' }, { status: 400 })
   }
@@ -24,9 +32,11 @@ export async function POST(request: NextRequest) {
 
   try {
     event = (await adapter.constructWebhookEvent(body, signature)) as Stripe.Event
+    console.log('[stripe-webhook] verified event type=%s id=%s', event.type, event.id)
   } catch (err) {
-    console.error('Stripe webhook signature verification failed:', err)
-    return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('[stripe-webhook] SIGNATURE_FAIL:', msg)
+    return NextResponse.json({ error: 'Invalid signature', detail: msg }, { status: 400 })
   }
 
   const supabase = await createClient()
