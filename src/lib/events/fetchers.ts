@@ -146,12 +146,34 @@ export async function fetchPublicEvents(
 
   const supabase = await createClient()
 
+  // Distance filter: resolve IDs within radius via Haversine RPC before
+  // the main query. Requires an origin; silently no-ops if the caller
+  // didn't provide one (geolocation not granted / unresolved).
+  let distanceIds: string[] | null = null
+  if (
+    typeof filters.distance_km === 'number' &&
+    filters.distance_km > 0 &&
+    input.origin
+  ) {
+    const { data: nearby } = await supabase.rpc('events_within_distance', {
+      p_lat: input.origin.latitude,
+      p_lng: input.origin.longitude,
+      p_radius_km: filters.distance_km,
+    })
+    distanceIds = ((nearby ?? []) as { id: string }[]).map(e => e.id)
+    if (distanceIds.length === 0) {
+      return { events: [], total: 0, page, pageSize, totalPages: 0 }
+    }
+  }
+
   let query = supabase
     .from('events')
     .select(BASE_SELECT, { count: 'exact' })
     .eq('status', 'published')
     .eq('visibility', 'public')
     .range(offset, offset + pageSize - 1)
+
+  if (distanceIds) query = query.in('id', distanceIds)
 
   if (filters.sort === 'date_asc' || !filters.sort || filters.sort === 'relevance') {
     query = query.order('start_date', { ascending: true })
@@ -212,13 +234,17 @@ export async function fetchPublicEvents(
   const raw = (data ?? []) as unknown as RawRow[]
   let events = raw.map(toPublicEventRow)
 
+  // price_min / price_max arrive in AUD (dollar units) from the URL; tier
+  // prices are stored as integer minor units (cents) per the monetary
+  // conventions in CLAUDE.md. Convert before comparison.
   if (typeof filters.price_min === 'number' || typeof filters.price_max === 'number') {
-    const min = filters.price_min ?? 0
-    const max = filters.price_max ?? Number.POSITIVE_INFINITY
+    const minCents = (filters.price_min ?? 0) * 100
+    const maxCents =
+      filters.price_max === undefined ? Number.POSITIVE_INFINITY : filters.price_max * 100
     events = events.filter(e => {
-      if (e.ticket_tiers.length === 0) return min === 0
+      if (e.ticket_tiers.length === 0) return minCents === 0
       const cheapest = Math.min(...e.ticket_tiers.map(t => t.price))
-      return cheapest >= min && cheapest <= max
+      return cheapest >= minCents && cheapest <= maxCents
     })
   }
 

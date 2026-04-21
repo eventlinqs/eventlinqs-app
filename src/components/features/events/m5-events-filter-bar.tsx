@@ -1,10 +1,15 @@
-import Link from 'next/link'
+'use client'
+
+import { useCallback, useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { SlidersHorizontal, LayoutGrid, Map as MapIcon } from 'lucide-react'
 import {
   buildEventsUrl,
   type EventsSearchParams,
   type EventsView,
 } from '@/lib/events/search-params'
+import { FilterSheet } from './m5-filter-sheet'
+import { MoreFiltersPanel, type MoreFiltersValues } from './m5-more-filters-panel'
 
 type CategoryChip = { id: string; name: string; slug: string }
 
@@ -19,26 +24,93 @@ const DATE_PRESETS: DatePreset[] = [
   { key: 'free', label: 'Free' },
 ]
 
+const MORE_FILTER_KEYS: (keyof EventsSearchParams)[] = [
+  'price_min',
+  'price_max',
+  'from',
+  'to',
+  'distance_km',
+  'sort',
+]
+
 type Props = {
   params: EventsSearchParams
   categories: CategoryChip[]
   view: EventsView
+  hasGeoSignal: boolean
 }
 
-/**
- * Sticky filter bar under the site header.
- * Row 1: date preset chips (wraps on mobile).
- * Row 2: category chips (horizontal scroll on mobile).
- * Right rail: grid/map view toggle + "More filters" button (placeholder).
- */
-export function EventsFilterBar({ params, categories, view }: Props) {
+export function EventsFilterBar({ params, categories, view, hasGeoSignal }: Props) {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+  const [sheetOpen, setSheetOpen] = useState(false)
+
   const activePreset = params.preset ?? null
   const activeCategory = params.category ?? null
+
+  const moreFiltersActiveCount = MORE_FILTER_KEYS.reduce(
+    (n, k) => (params[k] !== undefined && params[k] !== '' ? n + 1 : n),
+    0,
+  )
+
+  const navigate = useCallback(
+    (url: string) => {
+      startTransition(() => router.push(url, { scroll: false }))
+    },
+    [router],
+  )
+
+  const handlePresetClick = useCallback(
+    (key: DatePreset['key']) => {
+      const isActive = activePreset === key
+      navigate(buildEventsUrl(params, { preset: isActive ? undefined : key, page: undefined }))
+    },
+    [activePreset, params, navigate],
+  )
+
+  const handleCategoryClick = useCallback(
+    (slug: string | null) => {
+      const nextSlug = slug && activeCategory !== slug ? slug : undefined
+      navigate(buildEventsUrl(params, { category: nextSlug, page: undefined }))
+    },
+    [activeCategory, params, navigate],
+  )
+
+  const handleViewChange = useCallback(
+    (next: EventsView) => {
+      navigate(buildEventsUrl(params, { view: next === 'grid' ? undefined : next }))
+    },
+    [params, navigate],
+  )
+
+  const handleApplyMoreFilters = useCallback(
+    (values: MoreFiltersValues) => {
+      navigate(
+        buildEventsUrl(params, {
+          price_min: values.price_min ?? undefined,
+          price_max: values.price_max ?? undefined,
+          from: values.from ?? undefined,
+          to: values.to ?? undefined,
+          distance_km: values.distance_km ?? undefined,
+          sort: values.sort ?? undefined,
+          page: undefined,
+        }),
+      )
+      setSheetOpen(false)
+    },
+    [params, navigate],
+  )
+
+  const handleClearAll = useCallback(() => {
+    navigate('/events')
+    setSheetOpen(false)
+  }, [navigate])
 
   return (
     <div
       className="sticky z-40 border-b border-ink-100 bg-white/95 backdrop-blur-sm"
       style={{ top: 'var(--header-height)' }}
+      aria-busy={isPending || undefined}
     >
       <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:px-6 lg:px-8">
         {/* Row 1 — date preset chips + view toggle + more-filters */}
@@ -46,24 +118,21 @@ export function EventsFilterBar({ params, categories, view }: Props) {
           <div className="flex min-w-0 flex-1 flex-wrap gap-2" role="group" aria-label="Date filters">
             {DATE_PRESETS.map(p => {
               const isActive = activePreset === p.key
-              const href = buildEventsUrl(params, {
-                preset: isActive ? undefined : p.key,
-                page: undefined,
-              })
               return (
-                <Link
+                <button
                   key={p.key}
-                  href={href}
+                  type="button"
+                  onClick={() => handlePresetClick(p.key)}
                   aria-pressed={isActive}
                   className={
-                    'rounded-full px-3 py-1.5 text-xs font-medium transition-colors ' +
+                    'rounded-full px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 ' +
                     (isActive
                       ? 'bg-ink-900 text-white'
                       : 'border border-ink-200 bg-white text-ink-700 hover:border-ink-400')
                   }
                 >
                   {p.label}
-                </Link>
+                </button>
               )
             })}
           </div>
@@ -74,38 +143,51 @@ export function EventsFilterBar({ params, categories, view }: Props) {
               aria-label="View mode"
               className="hidden rounded-lg border border-ink-200 bg-white p-0.5 sm:inline-flex"
             >
-              <Link
-                href={buildEventsUrl(params, { view: view === 'grid' ? undefined : 'grid' })}
+              <button
+                type="button"
+                onClick={() => handleViewChange('grid')}
                 aria-pressed={view === 'grid'}
                 className={
-                  'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ' +
+                  'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 ' +
                   (view === 'grid' ? 'bg-ink-900 text-white' : 'text-ink-700 hover:bg-ink-100')
                 }
               >
                 <LayoutGrid className="h-3.5 w-3.5" aria-hidden="true" />
                 Grid
-              </Link>
-              <Link
-                href={buildEventsUrl(params, { view: 'map' })}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleViewChange('map')}
                 aria-pressed={view === 'map'}
                 className={
-                  'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ' +
+                  'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 ' +
                   (view === 'map' ? 'bg-ink-900 text-white' : 'text-ink-700 hover:bg-ink-100')
                 }
               >
                 <MapIcon className="h-3.5 w-3.5" aria-hidden="true" />
                 Map
-              </Link>
+              </button>
             </div>
 
             <button
               type="button"
-              disabled
-              title="More filters (coming in Step 3)"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-3 py-1.5 text-xs font-medium text-ink-700 transition-colors hover:border-ink-400 disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={() => setSheetOpen(true)}
+              aria-haspopup="dialog"
+              aria-expanded={sheetOpen}
+              className={
+                'inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 ' +
+                (moreFiltersActiveCount > 0
+                  ? 'border-gold-500 bg-gold-100 text-gold-600'
+                  : 'border-ink-200 bg-white text-ink-700 hover:border-ink-400')
+              }
             >
               <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
               More filters
+              {moreFiltersActiveCount > 0 && (
+                <span className="ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-gold-500 px-1 text-[10px] font-bold text-white">
+                  {moreFiltersActiveCount}
+                </span>
+              )}
             </button>
           </div>
         </div>
@@ -117,43 +199,71 @@ export function EventsFilterBar({ params, categories, view }: Props) {
             aria-label="Category filters"
             className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0"
           >
-            <Link
-              href={buildEventsUrl(params, { category: undefined, page: undefined })}
+            <button
+              type="button"
+              onClick={() => handleCategoryClick(null)}
               aria-pressed={!activeCategory}
               className={
-                'shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ' +
+                'shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 ' +
                 (!activeCategory
                   ? 'bg-gold-500 text-white'
                   : 'border border-ink-200 bg-white text-ink-700 hover:border-ink-400')
               }
             >
               All categories
-            </Link>
+            </button>
             {categories.map(c => {
               const isActive = activeCategory === c.slug
-              const href = buildEventsUrl(params, {
-                category: isActive ? undefined : c.slug,
-                page: undefined,
-              })
               return (
-                <Link
+                <button
                   key={c.id}
-                  href={href}
+                  type="button"
+                  onClick={() => handleCategoryClick(c.slug)}
                   aria-pressed={isActive}
                   className={
-                    'shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ' +
+                    'shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 ' +
                     (isActive
                       ? 'bg-gold-500 text-white'
                       : 'border border-ink-200 bg-white text-ink-700 hover:border-ink-400')
                   }
                 >
                   {c.name}
-                </Link>
+                </button>
               )
             })}
           </div>
         )}
       </div>
+
+      <FilterSheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        title="More filters"
+        footer={
+          <div className="flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={handleClearAll}
+              className="text-xs font-semibold text-ink-600 underline-offset-4 hover:text-ink-900 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+            >
+              Clear all
+            </button>
+            <button
+              type="submit"
+              form="m5-more-filters-form"
+              className="rounded-lg bg-gold-500 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gold-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+            >
+              Apply
+            </button>
+          </div>
+        }
+      >
+        <MoreFiltersPanel
+          initial={params}
+          hasGeoSignal={hasGeoSignal}
+          onApply={handleApplyMoreFilters}
+        />
+      </FilterSheet>
     </div>
   )
 }

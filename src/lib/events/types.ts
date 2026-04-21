@@ -66,11 +66,17 @@ export type BboxFilter = {
   maxLat: number
 }
 
+export type GeoOrigin = {
+  latitude: number
+  longitude: number
+}
+
 export type FetchPublicEventsInput = {
   filters?: FetchPublicEventsFilters
   page?: number
   pageSize?: number
   bbox?: BboxFilter
+  origin?: GeoOrigin
 }
 
 export type FetchPublicEventsResult = {

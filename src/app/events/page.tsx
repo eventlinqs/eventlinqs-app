@@ -5,6 +5,7 @@ import {
   parseEventsSearchParams,
   type EventsSearchParams,
 } from '@/lib/events/search-params'
+import { detectLocation } from '@/lib/geo/detect'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { EventsHeroStrip } from '@/components/features/events/m5-events-hero-strip'
@@ -30,19 +31,25 @@ export default async function EventsPage({ searchParams }: Props) {
   const { filters, page, view } = parseEventsSearchParams(raw)
 
   const supabase = await createClient()
-  const [{ data: categories }, { data: userData }] = await Promise.all([
+  const [{ data: categories }, { data: userData }, location] = await Promise.all([
     supabase
       .from('event_categories')
       .select('id, name, slug')
       .eq('is_active', true)
       .order('sort_order'),
     supabase.auth.getUser(),
+    detectLocation(),
   ])
 
   const userId = userData.user?.id ?? null
+  const origin =
+    location.latitude !== null && location.longitude !== null
+      ? { latitude: location.latitude, longitude: location.longitude }
+      : undefined
+  const hasGeoSignal = location.source !== 'fallback' && origin !== undefined
 
   const [result, recommended] = await Promise.all([
-    fetchPublicEvents({ filters, page, pageSize: 24 }),
+    fetchPublicEvents({ filters, page, pageSize: 24, origin }),
     fetchRecommendedEvents(userId, 12),
   ])
 
@@ -59,6 +66,7 @@ export default async function EventsPage({ searchParams }: Props) {
           params={raw}
           categories={(categories ?? []).map(c => ({ id: c.id, name: c.name, slug: c.slug }))}
           view={view}
+          hasGeoSignal={hasGeoSignal}
         />
 
         <RecommendedRail events={recommended} headline={recHeadline} />
