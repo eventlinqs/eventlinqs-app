@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { getCategoryPhoto } from '@/lib/images/category-photo'
 import type { PublicEventRow } from '@/lib/events/types'
 import { EventCard, type EventCardData } from './event-card'
 
@@ -6,13 +7,31 @@ type Props = {
   events: PublicEventRow[]
 }
 
-function toCardData(e: PublicEventRow): EventCardData {
+// Organiser uploads live on Supabase storage. picsum.photos is a seed-script
+// artefact — it's a random-photo service, not real imagery. When the stored
+// cover is missing or still points at picsum, fall through to the category
+// Pexels photo so the grid looks populated without ever overwriting a real
+// organiser upload.
+function needsFallback(url: string | null): boolean {
+  if (!url) return true
+  return /^https:\/\/picsum\.photos\//i.test(url)
+}
+
+async function toCardData(e: PublicEventRow): Promise<EventCardData> {
+  let cover = e.cover_image_url
+  let thumb = e.thumbnail_url
+  if (needsFallback(cover)) {
+    const photo = await getCategoryPhoto(e.category?.slug)
+    cover = photo.src
+    if (needsFallback(thumb)) thumb = photo.thumb
+  }
+
   return {
     id: e.id,
     slug: e.slug,
     title: e.title,
-    cover_image_url: e.cover_image_url,
-    thumbnail_url: e.thumbnail_url,
+    cover_image_url: cover,
+    thumbnail_url: thumb,
     start_date: e.start_date,
     venue_name: e.venue_name,
     venue_city: e.venue_city,
@@ -30,7 +49,7 @@ function toCardData(e: PublicEventRow): EventCardData {
   }
 }
 
-export function EventsGrid({ events }: Props) {
+export async function EventsGrid({ events }: Props) {
   if (events.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-ink-200 bg-white py-16 text-center">
@@ -45,11 +64,13 @@ export function EventsGrid({ events }: Props) {
     )
   }
 
+  const cards = await Promise.all(events.map(toCardData))
+
   return (
     <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {events.map(e => (
-        <li key={e.id}>
-          <EventCard event={toCardData(e)} />
+      {cards.map(card => (
+        <li key={card.id}>
+          <EventCard event={card} />
         </li>
       ))}
     </ul>
