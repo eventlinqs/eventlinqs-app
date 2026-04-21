@@ -302,7 +302,11 @@ export default async function HomePage() {
       cards: <>{q.cards}</>,
     }))
 
-  // City counts + real Pexels photography, fetched in parallel per city
+  // City counts + real Pexels photography, fetched in parallel per city.
+  // Image cascade: Pexels photo → curated local SVG (only 4 exist) →
+  // shared /cities/_fallback.svg. Avoids 404s on the 17+ launch cities
+  // that don't have a dedicated SVG.
+  const LOCAL_CITY_SVG = new Set(['lagos', 'london', 'melbourne', 'sydney'])
   const cityCounts = await Promise.all(
     CITY_TILES.map(async t => {
       const [countResult, photo] = await Promise.all([
@@ -311,10 +315,13 @@ export default async function HomePage() {
           .gte('start_date', nowIso).ilike('venue_city', `%${t.slug}%`),
         getCityPhoto(t.slug),
       ])
+      const localSvg = LOCAL_CITY_SVG.has(t.slug)
+        ? `/cities/${t.slug}.svg`
+        : '/cities/_fallback.svg'
       return {
         ...t,
         count: countResult.count ?? 0,
-        imageSrc: photo ?? `/cities/${t.slug}.svg`,
+        imageSrc: photo ?? localSvg,
       }
     }),
   )
