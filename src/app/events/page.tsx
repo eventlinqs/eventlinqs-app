@@ -13,6 +13,9 @@ import { EventsFilterBar } from '@/components/features/events/m5-events-filter-b
 import { RecommendedRail } from '@/components/features/events/m5-recommended-rail'
 import { EventsGrid } from '@/components/features/events/m5-events-grid'
 import { EventsPagination } from '@/components/features/events/m5-events-pagination'
+import { EventsMap } from '@/components/features/events/m5-events-map'
+
+const MELBOURNE_FALLBACK = { lat: -37.8136, lng: 144.9631 }
 
 export const revalidate = 60
 
@@ -71,15 +74,26 @@ export default async function EventsPage({ searchParams }: Props) {
 
         <RecommendedRail events={recommended} headline={recHeadline} />
 
-        <section aria-label="Event results" className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          <EventsGrid
-            events={result.events}
+        {view === 'map' ? (
+          <EventsMap
             params={raw}
-            page={result.page}
-            totalPages={result.totalPages}
+            initialCenter={
+              hasGeoSignal && origin
+                ? { lat: origin.latitude, lng: origin.longitude }
+                : MELBOURNE_FALLBACK
+            }
           />
-          <EventsPagination params={raw} page={result.page} totalPages={result.totalPages} />
-        </section>
+        ) : (
+          <section aria-label="Event results" className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+            <EventsGrid
+              events={result.events}
+              params={raw}
+              page={result.page}
+              totalPages={result.totalPages}
+            />
+            <EventsPagination params={raw} page={result.page} totalPages={result.totalPages} />
+          </section>
+        )}
       </main>
       <SiteFooter />
     </div>
