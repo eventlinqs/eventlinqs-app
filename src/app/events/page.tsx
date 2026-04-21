@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { fetchPublicEvents, fetchRecommendedEvents } from '@/lib/events'
 import {
+  hasActiveFilters,
   parseEventsSearchParams,
   type EventsSearchParams,
 } from '@/lib/events/search-params'
@@ -57,13 +58,24 @@ export default async function EventsPage({ searchParams }: Props) {
   const effectiveCountry = filters.country ?? location.country ?? 'Australia'
   const effectiveFilters = { ...filters, country: effectiveCountry }
 
+  // Rail disappears when any narrowing filter is active (preset,
+  // category, q, price, date range, distance). The country default is
+  // not counted as a user filter. Parallel-fetch regardless so the grid
+  // request isn't serialised behind the rail decision.
+  const filterActive = hasActiveFilters(filters)
   const [result, recommended] = await Promise.all([
     fetchPublicEvents({ filters: effectiveFilters, page, pageSize: 24, origin }),
-    fetchRecommendedEvents(userId, 12),
+    filterActive
+      ? Promise.resolve([])
+      : fetchRecommendedEvents(userId, 12),
   ])
 
   const recHeadline: 'recommended' | 'popular' | null =
-    recommended.length === 0 ? null : userId ? 'recommended' : 'popular'
+    filterActive || recommended.length === 0
+      ? null
+      : userId
+        ? 'recommended'
+        : 'popular'
 
   return (
     <div className="flex min-h-screen flex-col bg-canvas">

@@ -1,68 +1,69 @@
-import Image from 'next/image'
 import Link from 'next/link'
 import { projectToCardData } from '@/lib/events/event-card-projection'
 import type { PublicEventRow } from '@/lib/events/types'
+import { EventCard } from './event-card'
 
 type Props = {
   events: PublicEventRow[]
   headline: 'recommended' | 'popular' | null
+  seeAllHref?: string
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-AU', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  })
-}
+const MIN_RAIL_COUNT = 3
+const MAX_RAIL_COUNT = 12
 
-export async function RecommendedRail({ events, headline }: Props) {
-  if (headline === null || events.length === 0) return null
+/**
+ * Horizontal rail of Recommended / Popular events rendered above the
+ * main grid. Uses the shared EventCard so social-proof badges and the
+ * Pexels cascade match the main grid.
+ *
+ * Rendering is gated two ways:
+ *   1. `headline === null` → caller decided not to show the rail (e.g.
+ *      filters are active on the browsing surface).
+ *   2. `events.length < MIN_RAIL_COUNT` → sparse data wouldn't read as a
+ *      rail. Stay silent instead.
+ */
+export async function RecommendedRail({
+  events,
+  headline,
+  seeAllHref = '/events?sort=popular',
+}: Props) {
+  if (headline === null) return null
+  if (events.length < MIN_RAIL_COUNT) return null
 
+  const top = events.slice(0, MAX_RAIL_COUNT)
   const title = headline === 'recommended' ? 'Recommended for you' : 'Popular this week'
-  const cards = await projectToCardData(events)
+  const cards = await projectToCardData(top)
 
   return (
     <section aria-labelledby="m5-rec-heading" className="border-b border-ink-100 bg-canvas">
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between">
-          <h2 id="m5-rec-heading" className="font-display text-lg font-bold text-ink-900 sm:text-xl">
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <div className="flex items-end justify-between gap-4">
+          <h2
+            id="m5-rec-heading"
+            className="font-display text-lg font-bold text-ink-900 sm:text-xl"
+          >
             {title}
           </h2>
-          <span className="text-xs text-ink-400">{events.length} events</span>
+          <Link
+            href={seeAllHref}
+            className="shrink-0 text-xs font-semibold text-accent hover:underline sm:text-sm"
+          >
+            See all
+          </Link>
         </div>
-        <ul className="mt-3 -mx-4 flex items-stretch gap-3 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-          {cards.map(c => {
-            const img = c.thumbnail_url ?? c.cover_image_url
-            return (
-              <li key={c.id} className="w-60 shrink-0">
-                <Link
-                  href={`/events/${c.slug}`}
-                  className="group block overflow-hidden rounded-lg border border-ink-100 bg-white transition-shadow hover:shadow-md"
-                  aria-label={c.title}
-                >
-                  <div className="relative aspect-[16/9] overflow-hidden bg-ink-900">
-                    {img && (
-                      <Image
-                        src={img}
-                        alt={c.title}
-                        fill
-                        sizes="240px"
-                        className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-                      />
-                    )}
-                  </div>
-                  <div className="p-3">
-                    <p className="font-display text-[10px] font-semibold uppercase tracking-widest text-gold-500">
-                      {formatDate(c.start_date)}
-                    </p>
-                    <p className="mt-1 line-clamp-2 text-sm font-semibold text-ink-900">{c.title}</p>
-                    <p className="mt-1 truncate text-xs text-ink-400">{c.venue_city ?? '—'}</p>
-                  </div>
-                </Link>
-              </li>
-            )
-          })}
+        <ul
+          className="mt-4 -mx-4 flex snap-x snap-mandatory items-stretch gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:gap-4 sm:px-0"
+          data-testid="m5-rec-rail"
+        >
+          {cards.map(c => (
+            <li
+              key={c.id}
+              className="w-64 shrink-0 snap-start sm:w-72"
+            >
+              <EventCard event={c} />
+            </li>
+          ))}
         </ul>
       </div>
     </section>

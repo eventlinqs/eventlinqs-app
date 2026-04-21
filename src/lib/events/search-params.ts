@@ -104,6 +104,27 @@ export function parseEventsSearchParams(
  * route passes `/events/browse/{slug}` so filter/pagination URLs stay
  * under that city namespace.
  */
+/**
+ * Does the current filter state represent a default/unfiltered view?
+ * Used to gate the Recommended rail — a personalised/popular rail is
+ * noise when the user has narrowed the catalogue to something specific.
+ * `country` and `sort` are excluded because `country` is auto-defaulted
+ * to the visitor's detected location (not a user-initiated filter) and
+ * `sort` reorders without narrowing.
+ */
+export function hasActiveFilters(filters: FetchPublicEventsFilters): boolean {
+  return Boolean(
+    filters.q ||
+      filters.preset ||
+      filters.category ||
+      filters.price_min !== undefined ||
+      filters.price_max !== undefined ||
+      filters.from ||
+      filters.to ||
+      (filters.distance_km !== undefined && filters.distance_km > 0),
+  )
+}
+
 export function buildEventsUrl(
   base: EventsSearchParams,
   overrides: Partial<Record<keyof EventsSearchParams, string | number | null | undefined>>,

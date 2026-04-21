@@ -277,9 +277,13 @@ function cheapest(e: PublicEventRow): number {
 /**
  * Popular-this-week: events with the most orders confirmed in the last 7
  * days. Falls back to upcoming-by-date if the DB hasn't accrued enough order
- * signal yet.
+ * signal yet. When `city` is supplied the result is narrowed to events in
+ * that city (ilike match so "Melbourne" matches "Melbourne, VIC").
  */
-export async function fetchPopularThisWeek(limit: number = 12): Promise<PublicEventRow[]> {
+export async function fetchPopularThisWeek(
+  limit: number = 12,
+  city?: string,
+): Promise<PublicEventRow[]> {
   const supabase = await createClient()
   const weekAgo = new Date()
   weekAgo.setDate(weekAgo.getDate() - 7)
@@ -305,18 +309,25 @@ export async function fetchPopularThisWeek(limit: number = 12): Promise<PublicEv
     .map(([id]) => id)
 
   if (sortedIds.length === 0) {
-    const { events } = await fetchPublicEvents({ page: 1, pageSize: limit })
+    const { events } = await fetchPublicEvents({
+      page: 1,
+      pageSize: limit,
+      filters: city ? { city } : undefined,
+    })
     return events
   }
 
   const now = new Date().toISOString()
-  const { data, error } = await supabase
+  let query = supabase
     .from('events')
     .select(BASE_SELECT)
     .eq('status', 'published')
     .eq('visibility', 'public')
     .gte('start_date', now)
     .in('id', sortedIds)
+  if (city) query = query.ilike('venue_city', `%${city}%`)
+
+  const { data, error } = await query
 
   if (error) {
     console.error('[fetchPopularThisWeek] event hydrate failed:', error)
@@ -340,8 +351,9 @@ export async function fetchPopularThisWeek(limit: number = 12): Promise<PublicEv
 export async function fetchRecommendedEvents(
   userId: string | null,
   limit: number = 12,
+  city?: string,
 ): Promise<PublicEventRow[]> {
-  if (!userId) return fetchPopularThisWeek(limit)
+  if (!userId) return fetchPopularThisWeek(limit, city)
 
   const supabase = await createClient()
 
@@ -359,7 +371,7 @@ export async function fetchRecommendedEvents(
       : null
 
   if (orgIds.length === 0 && catIds.length === 0 && !preferredCity) {
-    return fetchPopularThisWeek(limit)
+    return fetchPopularThisWeek(limit, city)
   }
 
   const now = new Date().toISOString()
@@ -378,15 +390,19 @@ export async function fetchRecommendedEvents(
     .limit(limit)
 
   if (orFilters.length > 0) query = query.or(orFilters.join(','))
+  // Route-level city constraint wins over preferred_city — when the user
+  // lands on /events/browse/{slug} the rail must not bleed events from
+  // other cities into a city-scoped page.
+  if (city) query = query.ilike('venue_city', `%${city}%`)
 
   const { data, error } = await query
   if (error) {
     console.error('[fetchRecommendedEvents] query failed:', error)
-    return fetchPopularThisWeek(limit)
+    return fetchPopularThisWeek(limit, city)
   }
 
   const raw = (data ?? []) as unknown as RawRow[]
   const events = raw.map(toPublicEventRow)
-  if (events.length === 0) return fetchPopularThisWeek(limit)
+  if (events.length === 0) return fetchPopularThisWeek(limit, city)
   return events
 }

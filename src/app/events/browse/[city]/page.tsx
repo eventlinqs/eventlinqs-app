@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { fetchPublicEvents, fetchRecommendedEvents } from '@/lib/events'
 import {
+  hasActiveFilters,
   parseEventsSearchParams,
   type EventsSearchParams,
 } from '@/lib/events/search-params'
@@ -100,15 +101,27 @@ export default async function BrowseCityPage({ params, searchParams }: Props) {
   // cross-filtered results.
   const effectiveFilters = { ...filters, city: city.city, country: undefined }
 
+  // Rail disappears when any narrowing filter is active. The route
+  // city itself is the base scope of the page and is never treated as a
+  // narrowing filter. Parallel-fetch so the grid request isn't
+  // serialised behind the rail decision.
+  const filterActive = hasActiveFilters(filters)
   const [result, recommended] = await Promise.all([
     fetchPublicEvents({ filters: effectiveFilters, page, pageSize: 24, origin }),
-    fetchRecommendedEvents(userId, 12),
+    filterActive
+      ? Promise.resolve([])
+      : fetchRecommendedEvents(userId, 12, city.city),
   ])
 
   const recHeadline: 'recommended' | 'popular' | null =
-    recommended.length === 0 ? null : userId ? 'recommended' : 'popular'
+    filterActive || recommended.length === 0
+      ? null
+      : userId
+        ? 'recommended'
+        : 'popular'
 
   const basePath = `/events/browse/${city.slug}`
+  const railSeeAllHref = `${basePath}?sort=popular`
 
   return (
     <div className="flex min-h-screen flex-col bg-canvas">
@@ -130,7 +143,7 @@ export default async function BrowseCityPage({ params, searchParams }: Props) {
           basePath={basePath}
         />
 
-        <RecommendedRail events={recommended} headline={recHeadline} />
+        <RecommendedRail events={recommended} headline={recHeadline} seeAllHref={railSeeAllHref} />
 
         {view === 'map' ? (
           <EventsMap
