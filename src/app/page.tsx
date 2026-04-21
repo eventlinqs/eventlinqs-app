@@ -323,7 +323,10 @@ export default async function HomePage() {
   // Real events first; if fewer than 6, pad with branded placeholder tiles
   // carrying a community label. No Pexels here — tile context.
   const realVibeImages: VibeImage[] = upcomingRawTyped.slice(0, 20).map(raw => {
-    const src = raw.cover_image_url ?? raw.thumbnail_url ?? null
+    const picsum = /^https:\/\/picsum\.photos\//i
+    const pickReal = (u: string | null): string | null =>
+      u && !picsum.test(u) ? u : null
+    const src = pickReal(raw.cover_image_url) ?? pickReal(raw.thumbnail_url) ?? null
     const community = [raw.venue_city, raw.venue_state, raw.venue_country]
       .filter(Boolean)
       .slice(0, 2)

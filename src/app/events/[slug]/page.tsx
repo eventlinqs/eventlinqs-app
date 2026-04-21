@@ -24,6 +24,8 @@ import { getFeaturedEventMedia } from '@/lib/images/event-media'
 import { StickyActionBar } from '@/components/features/events/sticky-action-bar'
 import { RelatedEventsGrid } from '@/components/features/events/related-events-grid'
 import type { EventCardData } from '@/components/features/events/event-card'
+import { projectToCardData } from '@/lib/events/event-card-projection'
+import type { PublicEventRow } from '@/lib/events/types'
 import { VenueMap } from '@/components/features/events/venue-map'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { EventSoldOut, type EventSoldOutRelated } from '@/components/features/events/event-sold-out'
@@ -375,6 +377,7 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
     event.organisation_id,
     event.venue_city,
   )
+  const relatedCards = await projectToCardData(related as unknown as PublicEventRow[])
   const relatedTierIds = related
     .map(e => e.ticket_tiers?.[0]?.id)
     .filter((id): id is string => typeof id === 'string')
@@ -684,7 +687,7 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
 
         {/* Related events */}
         {related.length > 0 && (
-          <RelatedEventsGrid events={related} dynamicPrices={relatedPrices} />
+          <RelatedEventsGrid events={relatedCards} dynamicPrices={relatedPrices} />
         )}
       </main>
 

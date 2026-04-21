@@ -4,6 +4,13 @@ import { getCategoryVideo } from './category-video'
 // M6+: add in-app curated image library for organisers. Until then, branded
 // placeholder is the only fallback in tile contexts — no Pexels stock.
 
+// picsum.photos is a seed-script placeholder, not real imagery. Treat it as
+// "no cover" so the tile falls through to category Pexels / branded SVG.
+function isRealCover(url: string | null | undefined): url is string {
+  if (!url) return false
+  return !/^https:\/\/picsum\.photos\//i.test(url)
+}
+
 /**
  * Orchestrator that decides what media to display for any event.
  *
@@ -43,12 +50,12 @@ export async function getEventMedia(event: EventMediaInput): Promise<EventMedia>
     return {
       kind: 'video',
       src: event.video_url,
-      poster: event.cover_image_url ?? FALLBACK_POSTER,
+      poster: isRealCover(event.cover_image_url) ? event.cover_image_url : FALLBACK_POSTER,
       duration: 0,
     }
   }
 
-  if (event.gallery_urls && event.gallery_urls.length >= 3) {
+  if (event.gallery_urls && event.gallery_urls.length >= 3 && event.gallery_urls.every(isRealCover)) {
     return {
       kind: 'carousel',
       images: event.gallery_urls,
@@ -56,11 +63,20 @@ export async function getEventMedia(event: EventMediaInput): Promise<EventMedia>
     }
   }
 
-  if (event.cover_image_url) {
+  if (isRealCover(event.cover_image_url)) {
     return {
       kind: 'still-kenburns',
       src: event.cover_image_url,
       alt: event.title ?? 'Event cover',
+    }
+  }
+
+  const photo = await getCategoryPhoto(event.category?.slug)
+  if (photo.src !== FALLBACK_POSTER) {
+    return {
+      kind: 'still-kenburns',
+      src: photo.src,
+      alt: event.title ?? photo.alt,
     }
   }
 
@@ -75,12 +91,12 @@ export async function getFeaturedEventMedia(event: EventMediaInput): Promise<Eve
     return {
       kind: 'video',
       src: event.video_url,
-      poster: event.cover_image_url ?? FALLBACK_POSTER,
+      poster: isRealCover(event.cover_image_url) ? event.cover_image_url : FALLBACK_POSTER,
       duration: 0,
     }
   }
 
-  if (event.gallery_urls && event.gallery_urls.length >= 3) {
+  if (event.gallery_urls && event.gallery_urls.length >= 3 && event.gallery_urls.every(isRealCover)) {
     return {
       kind: 'carousel',
       images: event.gallery_urls,
@@ -88,11 +104,20 @@ export async function getFeaturedEventMedia(event: EventMediaInput): Promise<Eve
     }
   }
 
-  if (event.cover_image_url) {
+  if (isRealCover(event.cover_image_url)) {
     return {
       kind: 'still-kenburns',
       src: event.cover_image_url,
       alt: event.title ?? 'Event cover',
+    }
+  }
+
+  const photo = await getCategoryPhoto(event.category?.slug)
+  if (photo.src !== FALLBACK_POSTER) {
+    return {
+      kind: 'still-kenburns',
+      src: photo.src,
+      alt: event.title ?? photo.alt,
     }
   }
 
@@ -160,9 +185,12 @@ export async function getFeaturedHeroBackground(event: EventMediaInput): Promise
  * or video would be overkill.
  */
 export async function getEventStillImage(event: EventMediaInput): Promise<string> {
-  if (event.cover_image_url) return event.cover_image_url
-  if (event.thumbnail_url) return event.thumbnail_url
-  if (event.gallery_urls && event.gallery_urls.length > 0) return event.gallery_urls[0]
+  if (isRealCover(event.cover_image_url)) return event.cover_image_url
+  if (isRealCover(event.thumbnail_url)) return event.thumbnail_url
+  if (event.gallery_urls && event.gallery_urls.length > 0) {
+    const first = event.gallery_urls.find(isRealCover)
+    if (first) return first
+  }
   const photo = await getCategoryPhoto(event.category?.slug)
   return photo.thumb
 }
