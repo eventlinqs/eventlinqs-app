@@ -41,12 +41,25 @@ const USER_ID = profile.id
 
 // Category IDs (from event_categories seed)
 const CAT = {
-  music:    'b62551e2-4010-45fa-be8c-f9353ba0f39d',
-  nightlife:'2443fb27-a02c-412c-b05c-06d1a8e070a6',
-  religion: '310ec098-563e-46cb-97d2-fea1eb048bb7',
-  arts:     '0fcd5166-fcba-4df3-95f8-26fa0e8ff1bc',
-  business: '8234412f-2a88-42d2-a9d2-406425f67ad9',
-  community:'db15a8f5-6aa2-40b7-b018-3d1087e3eb73',
+  music:               'b62551e2-4010-45fa-be8c-f9353ba0f39d',
+  nightlife:           '2443fb27-a02c-412c-b05c-06d1a8e070a6',
+  religion:            '310ec098-563e-46cb-97d2-fea1eb048bb7',
+  arts:                '0fcd5166-fcba-4df3-95f8-26fa0e8ff1bc',
+  arts_culture:        '0fcd5166-fcba-4df3-95f8-26fa0e8ff1bc',
+  business:            '8234412f-2a88-42d2-a9d2-406425f67ad9',
+  business_networking: '8234412f-2a88-42d2-a9d2-406425f67ad9',
+  community:           'db15a8f5-6aa2-40b7-b018-3d1087e3eb73',
+  charity:             '51093545-2307-4d9f-a211-1db68576e20e',
+  comedy:              '342836b3-f047-4b4a-a19d-21b7ca98837a',
+  education:           '365dbe13-eb67-446b-9a19-8bcecd1f19e1',
+  family:              'e227e1e0-beba-49c4-97bc-62f96114f456',
+  fashion:             '5d6c0ed9-72f3-45e4-b3f6-e5e0ac86aeb0',
+  festival:            '4084278c-83fe-4325-a730-5135c8b60042',
+  film:                '4b03fe74-12e9-4c3b-8904-a5c2b73da424',
+  food_drink:          '36ee7cf5-5908-452c-92e6-a720903b2445',
+  health_wellness:     'd2547529-773f-44c0-ac7b-1f186c549323',
+  sports:              'b413cc36-2c85-4f5f-97e1-6217402c8601',
+  technology:          'b06fcc5d-21d5-4c70-91ce-0eb47e4cfb4e',
 }
 
 const events = [
@@ -255,6 +268,461 @@ for (const ev of events) {
   }
 
   console.log(`  OK    ${ev.title} — AUD $${(ev.price_cents / 100).toFixed(0)}, cap ${ev.max_capacity}`)
+  inserted++
+}
+
+// --- M5 Step 5: demo dataset ------------------------------------------------
+// 25 extra events designed so /events can exercise every filter chip, every
+// social-proof badge, four cities across AU/NZ/NG/GH, and a $5–$500 price
+// spread. Covers are intentionally null so m5-events-grid's Pexels fallback
+// kicks in (confirms Step 5 Pre-work A end-to-end).
+
+const now = new Date()
+const HOUR = 3_600_000
+const DAY = 24 * HOUR
+const iso = ms => new Date(now.getTime() + ms).toISOString()
+
+const DEMO_EVENTS = [
+  // -------- badge: last_chance (starts < 24h) --------
+  {
+    id: '11111111-1111-4111-8111-111111112101',
+    title: 'Amapiano Sundown — Perth',
+    slug: 'amapiano-sundown-perth-m5',
+    description: 'Rooftop Amapiano at golden hour. Log-drum bass, wailing piano, diaspora dancefloor — Perth in full colour.',
+    summary: 'Rooftop Amapiano, golden hour, Perth',
+    category_id: CAT.nightlife,
+    start_date: iso(6 * HOUR),
+    end_date: iso(12 * HOUR),
+    timezone: 'Australia/Perth',
+    venue_name: 'Northbridge Rooftop', venue_city: 'Perth', venue_state: 'WA', venue_country: 'Australia',
+    max_capacity: 300, tags: ['amapiano','nightlife','rooftop'],
+    tiers: [{ name: 'GA', price: 6500, capacity: 280, sold: 40, reserved: 0 }],
+  },
+  {
+    id: '11111111-1111-4111-8111-111111112102',
+    title: 'Gospel Easter Vigil — Accra',
+    slug: 'gospel-easter-vigil-accra-m5',
+    description: 'An all-night gospel vigil bringing together choirs from across Accra. Traditional Ghanaian hymns and contemporary worship under one roof.',
+    summary: 'All-night gospel vigil, Accra choirs united',
+    category_id: CAT.religion,
+    start_date: iso(18 * HOUR),
+    end_date: iso(28 * HOUR),
+    timezone: 'Africa/Accra',
+    venue_name: 'Accra International Conference Centre', venue_city: 'Accra', venue_state: 'Greater Accra', venue_country: 'Ghana',
+    max_capacity: 1200, tags: ['gospel','worship','ghana','religion'],
+    tiers: [{ name: 'GA', price: 2500, capacity: 1100, sold: 60, reserved: 0 }],
+  },
+
+  // -------- badge: few_left (< 10 remaining) --------
+  {
+    id: '11111111-1111-4111-8111-111111112103',
+    title: 'Intimate Jazz Supper — Auckland',
+    slug: 'intimate-jazz-supper-auckland-m5',
+    description: 'A 100-seat-only candlelit jazz supper. Diaspora jazz quartet, three-course Afro-fusion menu, no phones on the table.',
+    summary: '100-seat candlelit jazz supper, Afro-fusion menu',
+    category_id: CAT.music,
+    start_date: iso(9 * DAY),
+    end_date: iso(9 * DAY + 4 * HOUR),
+    timezone: 'Pacific/Auckland',
+    venue_name: 'The Civic Lounge', venue_city: 'Auckland', venue_state: 'Auckland', venue_country: 'New Zealand',
+    max_capacity: 100, tags: ['jazz','intimate','auckland','supper'],
+    tiers: [{ name: 'Reserved Seat', price: 14500, capacity: 100, sold: 95, reserved: 4 }],
+  },
+  {
+    id: '11111111-1111-4111-8111-111111112104',
+    title: 'Lagos Fashion Week — Gala Night',
+    slug: 'lagos-fashion-week-gala-m5',
+    description: 'The closing gala of Lagos Fashion Week. Runway finale, afterparty, 100 gala seats only.',
+    summary: 'Lagos Fashion Week closing gala — 100 seats',
+    category_id: CAT.fashion,
+    start_date: iso(14 * DAY),
+    end_date: iso(14 * DAY + 6 * HOUR),
+    timezone: 'Africa/Lagos',
+    venue_name: 'Eko Hotel Gala Suite', venue_city: 'Lagos', venue_state: 'Lagos', venue_country: 'Nigeria',
+    max_capacity: 100, tags: ['fashion','gala','lagos','runway'],
+    tiers: [{ name: 'Gala Seat', price: 22000, capacity: 100, sold: 96, reserved: 3 }],
+  },
+
+  // -------- badge: selling_fast (> 70% sold) --------
+  {
+    id: '11111111-1111-4111-8111-111111112105',
+    title: 'Amapiano Takeover — Brisbane',
+    slug: 'amapiano-takeover-brisbane-m5',
+    description: 'Brisbane gets its first dedicated Amapiano takeover. Sydney and Melbourne DJs invade the River City.',
+    summary: 'Brisbane Amapiano takeover — interstate DJs',
+    category_id: CAT.nightlife,
+    start_date: iso(21 * DAY),
+    end_date: iso(21 * DAY + 7 * HOUR),
+    timezone: 'Australia/Brisbane',
+    venue_name: 'The Tivoli', venue_city: 'Brisbane', venue_state: 'QLD', venue_country: 'Australia',
+    max_capacity: 100, tags: ['amapiano','nightlife','brisbane'],
+    tiers: [{ name: 'GA', price: 7500, capacity: 100, sold: 92, reserved: 0 }],
+  },
+  {
+    id: '11111111-1111-4111-8111-111111112106',
+    title: 'Tech Founders Demo Day — Perth',
+    slug: 'tech-founders-demo-day-perth-m5',
+    description: 'Twelve African-diaspora founders pitch their startups. Investor panel, networking, jollof after-party.',
+    summary: '12 diaspora founders pitch, investors in room',
+    category_id: CAT.technology,
+    start_date: iso(17 * DAY),
+    end_date: iso(17 * DAY + 6 * HOUR),
+    timezone: 'Australia/Perth',
+    venue_name: 'Spacecubed Riff', venue_city: 'Perth', venue_state: 'WA', venue_country: 'Australia',
+    max_capacity: 180, tags: ['tech','startups','pitching','networking'],
+    tiers: [{ name: 'Founder Pass', price: 5500, capacity: 180, sold: 140, reserved: 0 }],
+  },
+
+  // -------- badge: just_announced (created < 48h ago) --------
+  {
+    id: '11111111-1111-4111-8111-111111112107',
+    title: 'Accra Comedy Pop-Up',
+    slug: 'accra-comedy-pop-up-m5',
+    description: 'A surprise one-night-only comedy showcase with six of West Africa\u2019s best touring comedians. Just announced.',
+    summary: 'Surprise 6-comedian comedy showcase, Accra',
+    category_id: CAT.comedy,
+    start_date: iso(12 * DAY),
+    end_date: iso(12 * DAY + 3 * HOUR),
+    timezone: 'Africa/Accra',
+    venue_name: 'Alliance Fran\u00e7aise Accra', venue_city: 'Accra', venue_state: 'Greater Accra', venue_country: 'Ghana',
+    created_at_override: iso(-6 * HOUR),
+    max_capacity: 280, tags: ['comedy','stand-up','west-africa','accra'],
+    tiers: [{ name: 'GA', price: 3000, capacity: 250, sold: 12, reserved: 0 }],
+  },
+  {
+    id: '11111111-1111-4111-8111-111111112108',
+    title: 'Coastal Yoga Retreat — Auckland',
+    slug: 'coastal-yoga-retreat-auckland-m5',
+    description: 'A weekend of coastal vinyasa, breathwork, and West African drumming circles. Just added for this season.',
+    summary: 'Coastal vinyasa + West African drumming',
+    category_id: CAT.health_wellness,
+    start_date: iso(30 * DAY),
+    end_date: iso(32 * DAY),
+    timezone: 'Pacific/Auckland',
+    venue_name: 'Piha Beach Retreat', venue_city: 'Auckland', venue_state: 'Auckland', venue_country: 'New Zealand',
+    created_at_override: iso(-12 * HOUR),
+    max_capacity: 40, tags: ['yoga','wellness','retreat','drumming'],
+    tiers: [{ name: 'Full Retreat', price: 12000, capacity: 40, sold: 4, reserved: 0 }],
+  },
+
+  // -------- badge: free (is_free=true, no tiers) --------
+  {
+    id: '11111111-1111-4111-8111-111111112109',
+    title: 'Perth Diaspora Community Picnic',
+    slug: 'perth-diaspora-community-picnic-m5',
+    description: 'A free afternoon picnic bringing Perth\u2019s African, Caribbean and Pacific communities together. BYO food, shared dessert table.',
+    summary: 'Free community picnic, Perth diaspora',
+    category_id: CAT.community,
+    start_date: iso(10 * DAY),
+    end_date: iso(10 * DAY + 5 * HOUR),
+    timezone: 'Australia/Perth',
+    venue_name: 'Kings Park Lawn', venue_city: 'Perth', venue_state: 'WA', venue_country: 'Australia',
+    max_capacity: 600, tags: ['community','picnic','family','free'],
+    is_free: true,
+  },
+  {
+    id: '11111111-1111-4111-8111-11111111210a',
+    title: 'Lagos Youth Gospel Worship',
+    slug: 'lagos-youth-gospel-worship-m5',
+    description: 'A free open-air worship gathering led by Lagos\u2019 youth ministries. Acoustic sets, prayer, fellowship.',
+    summary: 'Free open-air youth worship, Lagos',
+    category_id: CAT.religion,
+    start_date: iso(19 * DAY),
+    end_date: iso(19 * DAY + 4 * HOUR),
+    timezone: 'Africa/Lagos',
+    venue_name: 'Freedom Park Lagos', venue_city: 'Lagos', venue_state: 'Lagos', venue_country: 'Nigeria',
+    max_capacity: 2000, tags: ['gospel','youth','worship','free'],
+    is_free: true,
+  },
+  {
+    id: '11111111-1111-4111-8111-11111111210b',
+    title: 'Auckland African Food Market',
+    slug: 'auckland-african-food-market-m5',
+    description: 'A free Saturday market with 20+ African food vendors. Nigerian, Ethiopian, Somali, Ghanaian, South African stalls.',
+    summary: 'Free Saturday market, 20+ African food stalls',
+    category_id: CAT.food_drink,
+    start_date: iso(6 * DAY),
+    end_date: iso(6 * DAY + 8 * HOUR),
+    timezone: 'Pacific/Auckland',
+    venue_name: 'Aotea Square', venue_city: 'Auckland', venue_state: 'Auckland', venue_country: 'New Zealand',
+    max_capacity: 3000, tags: ['food','market','african','free'],
+    is_free: true,
+  },
+
+  // -------- regular events: category + city + price spread --------
+  {
+    id: '11111111-1111-4111-8111-11111111210c',
+    title: 'Diaspora Founders Forum — Accra',
+    slug: 'diaspora-founders-forum-accra-m5',
+    description: 'A full-day forum for African-diaspora founders returning to the continent. Panels, office hours, capital roundtable.',
+    summary: 'Diaspora founders forum — capital + community',
+    category_id: CAT.business_networking,
+    start_date: iso(24 * DAY),
+    end_date: iso(24 * DAY + 10 * HOUR),
+    timezone: 'Africa/Accra',
+    venue_name: 'Kempinski Hotel Gold Coast', venue_city: 'Accra', venue_state: 'Greater Accra', venue_country: 'Ghana',
+    max_capacity: 400, tags: ['business','networking','diaspora','founders'],
+    tiers: [{ name: 'Standard Pass', price: 18000, capacity: 350, sold: 40, reserved: 0 }],
+  },
+  {
+    id: '11111111-1111-4111-8111-11111111210d',
+    title: 'Perth Women in Business Gala',
+    slug: 'perth-women-in-business-gala-m5',
+    description: 'Black-tie gala honouring 12 women-led businesses across Western Australia. Keynote, awards, networking dinner.',
+    summary: 'Black-tie gala, 12 women-led businesses',
+    category_id: CAT.business_networking,
+    start_date: iso(27 * DAY),
+    end_date: iso(27 * DAY + 5 * HOUR),
+    timezone: 'Australia/Perth',
+    venue_name: 'Crown Towers Perth', venue_city: 'Perth', venue_state: 'WA', venue_country: 'Australia',
+    max_capacity: 250, tags: ['business','gala','women','networking'],
+    tiers: [{ name: 'Gala Ticket', price: 50000, capacity: 250, sold: 30, reserved: 0 }],
+  },
+  {
+    id: '11111111-1111-4111-8111-11111111210e',
+    title: 'Afro-Contemporary Art Exhibition — Auckland',
+    slug: 'afro-contemporary-art-auckland-m5',
+    description: 'A six-week exhibition featuring 18 contemporary African artists. Opening night includes live jazz and catering.',
+    summary: '18 African artists, opening night jazz',
+    category_id: CAT.arts_culture,
+    start_date: iso(15 * DAY),
+    end_date: iso(15 * DAY + 6 * HOUR),
+    timezone: 'Pacific/Auckland',
+    venue_name: 'Auckland Art Gallery', venue_city: 'Auckland', venue_state: 'Auckland', venue_country: 'New Zealand',
+    max_capacity: 500, tags: ['arts','culture','exhibition','opening-night'],
+    tiers: [{ name: 'Opening Night', price: 2500, capacity: 500, sold: 60, reserved: 0 }],
+  },
+  {
+    id: '11111111-1111-4111-8111-11111111210f',
+    title: 'Nigerian Literature Festival — Lagos',
+    slug: 'nigerian-literature-festival-lagos-m5',
+    description: 'A one-day festival of Nigerian writers, poets, and spoken-word artists. Affordable cultural programming for all.',
+    summary: 'Nigerian writers, poets, spoken-word — Lagos',
+    category_id: CAT.arts_culture,
+    start_date: iso(20 * DAY),
+    end_date: iso(20 * DAY + 9 * HOUR),
+    timezone: 'Africa/Lagos',
+    venue_name: 'Freedom Park Lagos', venue_city: 'Lagos', venue_state: 'Lagos', venue_country: 'Nigeria',
+    max_capacity: 800, tags: ['literature','poetry','nigeria','festival'],
+    tiers: [{ name: 'GA', price: 500, capacity: 800, sold: 180, reserved: 0 }],
+  },
+  {
+    id: '11111111-1111-4111-8111-111111112110',
+    title: 'Perth Family Fun Day',
+    slug: 'perth-family-fun-day-m5',
+    description: 'Face painting, jumping castles, West African drumming workshops, and kids\u2019 Jollof lunch box — a full afternoon for the family.',
+    summary: 'Kids activities, drumming, Jollof lunch',
+    category_id: CAT.family,
+    start_date: iso(11 * DAY),
+    end_date: iso(11 * DAY + 6 * HOUR),
+    timezone: 'Australia/Perth',
+    venue_name: 'Whiteman Park', venue_city: 'Perth', venue_state: 'WA', venue_country: 'Australia',
+    max_capacity: 600, tags: ['family','kids','drumming','picnic'],
+    tiers: [{ name: 'Family Pass', price: 1500, capacity: 600, sold: 120, reserved: 0 }],
+  },
+  {
+    id: '11111111-1111-4111-8111-111111112111',
+    title: 'Kids African Drumming Workshop — Auckland',
+    slug: 'kids-african-drumming-workshop-auckland-m5',
+    description: 'A hands-on drumming circle for kids 5-12. Instruments provided, cultural storytelling, parent tea-break lounge.',
+    summary: 'Kids drumming workshop, instruments provided',
+    category_id: CAT.family,
+    start_date: iso(13 * DAY),
+    end_date: iso(13 * DAY + 3 * HOUR),
+    timezone: 'Pacific/Auckland',
+    venue_name: 'Corban Estate Arts Centre', venue_city: 'Auckland', venue_state: 'Auckland', venue_country: 'New Zealand',
+    max_capacity: 80, tags: ['family','kids','drumming','workshop'],
+    tiers: [{ name: 'Child Ticket', price: 2000, capacity: 80, sold: 18, reserved: 0 }],
+  },
+  {
+    id: '11111111-1111-4111-8111-111111112112',
+    title: 'Accra Independence Festival',
+    slug: 'accra-independence-festival-m5',
+    description: 'Three stages, parade, food, fashion, cultural showcases. Accra\u2019s biggest outdoor festival of the season.',
+    summary: 'Three stages, parade, food, fashion',
+    category_id: CAT.festival,
+    start_date: iso(26 * DAY),
+    end_date: iso(27 * DAY),
+    timezone: 'Africa/Accra',
+    venue_name: 'Black Star Square', venue_city: 'Accra', venue_state: 'Greater Accra', venue_country: 'Ghana',
+    max_capacity: 8000, tags: ['festival','independence','ghana','cultural'],
+    tiers: [{ name: 'Day Pass', price: 5000, capacity: 5000, sold: 520, reserved: 0 }],
+  },
+  {
+    id: '11111111-1111-4111-8111-111111112113',
+    title: 'Perth World Music Festival',
+    slug: 'perth-world-music-festival-m5',
+    description: 'Two days of global music — Afrobeats, reggae, bossa nova, Amapiano. Two stages, global food village, family-friendly.',
+    summary: 'Two-day world music festival, two stages',
+    category_id: CAT.festival,
+    start_date: iso(33 * DAY),
+    end_date: iso(34 * DAY),
+    timezone: 'Australia/Perth',
+    venue_name: 'Elizabeth Quay', venue_city: 'Perth', venue_state: 'WA', venue_country: 'Australia',
+    max_capacity: 4000, tags: ['festival','world-music','afrobeats','amapiano'],
+    tiers: [{ name: 'Weekend Pass', price: 9500, capacity: 4000, sold: 380, reserved: 0 }],
+  },
+  {
+    id: '11111111-1111-4111-8111-111111112114',
+    title: 'Lagos Half Marathon',
+    slug: 'lagos-half-marathon-m5',
+    description: '21.1km course through the heart of Lagos. Live Afrobeat bands every 2km, finish-line jollof and zobo.',
+    summary: '21.1km Lagos course, live bands every 2km',
+    category_id: CAT.sports,
+    start_date: iso(35 * DAY),
+    end_date: iso(35 * DAY + 5 * HOUR),
+    timezone: 'Africa/Lagos',
+    venue_name: 'Lekki-Ikoyi Bridge', venue_city: 'Lagos', venue_state: 'Lagos', venue_country: 'Nigeria',
+    max_capacity: 3000, tags: ['sports','running','marathon','lagos'],
+    tiers: [{ name: 'Runner Entry', price: 3500, capacity: 3000, sold: 340, reserved: 0 }],
+  },
+  {
+    id: '11111111-1111-4111-8111-111111112115',
+    title: 'Auckland 5K Community Run',
+    slug: 'auckland-5k-community-run-m5',
+    description: '5km community fun run for the Piha Beach environmental trust. Chip-timed, kid-friendly, rain or shine.',
+    summary: '5km community fun run, chip-timed',
+    category_id: CAT.sports,
+    start_date: iso(16 * DAY),
+    end_date: iso(16 * DAY + 3 * HOUR),
+    timezone: 'Pacific/Auckland',
+    venue_name: 'Piha Beach', venue_city: 'Auckland', venue_state: 'Auckland', venue_country: 'New Zealand',
+    max_capacity: 800, tags: ['sports','running','community','charity'],
+    tiers: [{ name: 'Entry', price: 2500, capacity: 800, sold: 90, reserved: 0 }],
+  },
+  {
+    id: '11111111-1111-4111-8111-111111112116',
+    title: 'Accra Jollof Wars Cook-Off',
+    slug: 'accra-jollof-wars-cook-off-m5',
+    description: 'Ghanaian vs Nigerian vs Senegalese Jollof, judged by three celebrity chefs. Taste all three with your ticket.',
+    summary: 'Three-country Jollof cook-off, tasting ticket',
+    category_id: CAT.food_drink,
+    start_date: iso(23 * DAY),
+    end_date: iso(23 * DAY + 5 * HOUR),
+    timezone: 'Africa/Accra',
+    venue_name: 'Labadi Beach Hotel', venue_city: 'Accra', venue_state: 'Greater Accra', venue_country: 'Ghana',
+    max_capacity: 450, tags: ['food','jollof','cook-off','accra'],
+    tiers: [{ name: 'Tasting Pass', price: 4000, capacity: 400, sold: 110, reserved: 0 }],
+  },
+  {
+    id: '11111111-1111-4111-8111-111111112117',
+    title: 'Auckland Stand-Up Showcase',
+    slug: 'auckland-stand-up-showcase-m5',
+    description: 'Four African-diaspora comedians from across AU/NZ take the stage for a no-holds-barred 90 minutes.',
+    summary: '4 diaspora comedians, 90 minutes',
+    category_id: CAT.comedy,
+    start_date: iso(18 * DAY),
+    end_date: iso(18 * DAY + 3 * HOUR),
+    timezone: 'Pacific/Auckland',
+    venue_name: 'The Classic Comedy Club', venue_city: 'Auckland', venue_state: 'Auckland', venue_country: 'New Zealand',
+    max_capacity: 220, tags: ['comedy','stand-up','diaspora'],
+    tiers: [{ name: 'GA', price: 4500, capacity: 220, sold: 60, reserved: 0 }],
+  },
+  {
+    id: '11111111-1111-4111-8111-111111112118',
+    title: 'Lagos Nollywood Cinema Night',
+    slug: 'lagos-nollywood-cinema-night-m5',
+    description: 'An open-air Nollywood premiere screening with director Q&A, red-carpet photo wall, and small chops catering.',
+    summary: 'Open-air Nollywood premiere + director Q&A',
+    category_id: CAT.film,
+    start_date: iso(22 * DAY),
+    end_date: iso(22 * DAY + 4 * HOUR),
+    timezone: 'Africa/Lagos',
+    venue_name: 'Muri Okunola Park', venue_city: 'Lagos', venue_state: 'Lagos', venue_country: 'Nigeria',
+    max_capacity: 500, tags: ['film','nollywood','cinema','premiere'],
+    tiers: [{ name: 'GA', price: 2000, capacity: 500, sold: 85, reserved: 0 }],
+  },
+  {
+    id: '11111111-1111-4111-8111-111111112119',
+    title: 'Diaspora Mentorship Summit — Perth',
+    slug: 'diaspora-mentorship-summit-perth-m5',
+    description: 'A one-day summit pairing senior African-diaspora professionals with emerging talent. 1:1 mentor circles, career workshops.',
+    summary: '1:1 mentor circles + career workshops',
+    category_id: CAT.education,
+    start_date: iso(29 * DAY),
+    end_date: iso(29 * DAY + 9 * HOUR),
+    timezone: 'Australia/Perth',
+    venue_name: 'UWA Business School', venue_city: 'Perth', venue_state: 'WA', venue_country: 'Australia',
+    max_capacity: 180, tags: ['education','mentorship','career','summit'],
+    tiers: [{ name: 'Attendee', price: 9500, capacity: 180, sold: 34, reserved: 0 }],
+  },
+]
+
+console.log(`\n--- M5 demo dataset (${DEMO_EVENTS.length} events) ---`)
+
+for (const ev of DEMO_EVENTS) {
+  const { data: existing } = await supabase
+    .from('events')
+    .select('id')
+    .eq('id', ev.id)
+    .single()
+
+  if (existing) {
+    console.log(`  SKIP  ${ev.title} (already exists)`)
+    skipped++
+    continue
+  }
+
+  const insert = {
+    id: ev.id,
+    title: ev.title,
+    slug: ev.slug,
+    description: ev.description,
+    summary: ev.summary,
+    organisation_id: ORG_ID,
+    created_by: USER_ID,
+    category_id: ev.category_id,
+    start_date: ev.start_date,
+    end_date: ev.end_date,
+    timezone: ev.timezone,
+    event_type: 'in_person',
+    venue_name: ev.venue_name,
+    venue_city: ev.venue_city,
+    venue_state: ev.venue_state,
+    venue_country: ev.venue_country,
+    cover_image_url: null,
+    thumbnail_url: null,
+    status: 'published',
+    visibility: 'public',
+    published_at: new Date().toISOString(),
+    max_capacity: ev.max_capacity,
+    tags: ev.tags,
+    fee_pass_type: 'pass_to_buyer',
+    is_age_restricted: false,
+    is_free: ev.is_free ?? false,
+  }
+  if (ev.created_at_override) insert.created_at = ev.created_at_override
+
+  const { error: evErr } = await supabase.from('events').insert(insert)
+  if (evErr) {
+    console.error(`  ERROR ${ev.title}:`, evErr.message)
+    continue
+  }
+
+  if (Array.isArray(ev.tiers) && ev.tiers.length > 0) {
+    const tierRows = ev.tiers.map((t, i) => ({
+      event_id: ev.id,
+      name: t.name,
+      description: t.description ?? 'General entry',
+      tier_type: t.tier_type ?? 'general_admission',
+      price: t.price,
+      currency: 'AUD',
+      total_capacity: t.capacity,
+      sold_count: t.sold ?? 0,
+      reserved_count: t.reserved ?? 0,
+      sort_order: i,
+    }))
+    const { error: tierErr } = await supabase.from('ticket_tiers').insert(tierRows)
+    if (tierErr) {
+      console.error(`  ERROR ticket tier for ${ev.title}:`, tierErr.message)
+      continue
+    }
+  }
+
+  const priceLabel = ev.is_free
+    ? 'FREE'
+    : `$${((ev.tiers?.[0]?.price ?? 0) / 100).toFixed(0)}`
+  console.log(`  OK    ${ev.title.padEnd(55)} ${priceLabel}`)
   inserted++
 }
 
