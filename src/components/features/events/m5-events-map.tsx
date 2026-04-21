@@ -112,7 +112,7 @@ export function EventsMap({ params, initialCenter }: Props) {
   }, [])
 
   useEffect(() => {
-    const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN
+    const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN?.trim()
     if (!token) {
       setUnavailableReason('Mapping service is not configured.')
       return
