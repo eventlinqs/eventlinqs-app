@@ -1,4 +1,4 @@
-import type { PublicEventRow, PublicEventTier, SocialProofBadge } from './types'
+import type { PublicEventTier, SocialProofBadge } from './types'
 
 /**
  * Compute the single social-proof badge to render on an event card.

@@ -30,6 +30,9 @@
   --text-secondary:      var(--color-ink-600);
   --text-muted:          var(--color-ink-400);
   --text-on-dark:        var(--color-white);
+
+  /* Layout */
+  --header-height: 4rem;
 }
 
 /* ─── Tailwind v4 theme block — all design system tokens ─────────────────── */
