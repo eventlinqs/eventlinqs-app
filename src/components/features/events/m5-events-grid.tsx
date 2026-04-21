@@ -1,78 +1,36 @@
-import Link from 'next/link'
-import { getCategoryPhoto } from '@/lib/images/category-photo'
+import { projectToCardData } from '@/lib/events/event-card-projection'
 import type { PublicEventRow } from '@/lib/events/types'
-import { EventCard, type EventCardData } from './event-card'
+import type { EventsSearchParams } from '@/lib/events/search-params'
+import { EventsEmptyState } from './m5-events-empty-state'
+import { EventsGridClient } from './m5-events-grid-client'
 
 type Props = {
   events: PublicEventRow[]
+  params: EventsSearchParams
+  page: number
+  totalPages: number
 }
 
-// Organiser uploads live on Supabase storage. picsum.photos is a seed-script
-// artefact — it's a random-photo service, not real imagery. When the stored
-// cover is missing or still points at picsum, fall through to the category
-// Pexels photo so the grid looks populated without ever overwriting a real
-// organiser upload.
-function needsFallback(url: string | null): boolean {
-  if (!url) return true
-  return /^https:\/\/picsum\.photos\//i.test(url)
-}
-
-async function toCardData(e: PublicEventRow): Promise<EventCardData> {
-  let cover = e.cover_image_url
-  let thumb = e.thumbnail_url
-  if (needsFallback(cover)) {
-    const photo = await getCategoryPhoto(e.category?.slug)
-    cover = photo.src
-    if (needsFallback(thumb)) thumb = photo.thumb
-  }
-
-  return {
-    id: e.id,
-    slug: e.slug,
-    title: e.title,
-    cover_image_url: cover,
-    thumbnail_url: thumb,
-    start_date: e.start_date,
-    venue_name: e.venue_name,
-    venue_city: e.venue_city,
-    venue_country: e.venue_country,
-    created_at: e.created_at,
-    category: e.category
-      ? { name: e.category.name, slug: e.category.slug }
-      : null,
-    ticket_tiers: e.ticket_tiers,
-    is_free: e.is_free,
-    organisation: e.organisation
-      ? { name: e.organisation.name, slug: e.organisation.slug }
-      : null,
-    badge: e.badge,
-  }
-}
-
-export async function EventsGrid({ events }: Props) {
+/**
+ * Server-side entry point for the /events grid. Resolves Pexels fallbacks
+ * for the initial page, then hands off to EventsGridClient which owns the
+ * IntersectionObserver + useTransition infinite-scroll loop. Subsequent
+ * pages are fetched through the loadMoreEventCards server action, so
+ * PEXELS_API_KEY and unstable_cache stay server-only.
+ */
+export async function EventsGrid({ events, params, page, totalPages }: Props) {
   if (events.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-ink-200 bg-white py-16 text-center">
-        <p className="text-sm font-medium text-ink-900">No events match your filters.</p>
-        <Link
-          href="/events"
-          className="mt-2 text-sm font-medium text-gold-500 hover:text-gold-600 hover:underline"
-        >
-          Clear filters
-        </Link>
-      </div>
-    )
+    return <EventsEmptyState />
   }
 
-  const cards = await Promise.all(events.map(toCardData))
+  const initialCards = await projectToCardData(events)
 
   return (
-    <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {cards.map(card => (
-        <li key={card.id}>
-          <EventCard event={card} />
-        </li>
-      ))}
-    </ul>
+    <EventsGridClient
+      initialCards={initialCards}
+      params={params}
+      startPage={page}
+      totalPages={totalPages}
+    />
   )
 }

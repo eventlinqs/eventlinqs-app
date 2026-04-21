@@ -72,7 +72,12 @@ export default async function EventsPage({ searchParams }: Props) {
         <RecommendedRail events={recommended} headline={recHeadline} />
 
         <section aria-label="Event results" className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          <EventsGrid events={result.events} />
+          <EventsGrid
+            events={result.events}
+            params={raw}
+            page={result.page}
+            totalPages={result.totalPages}
+          />
           <EventsPagination params={raw} page={result.page} totalPages={result.totalPages} />
         </section>
       </main>
