@@ -237,7 +237,9 @@ export async function fetchPublicEvents(
   // price_min / price_max arrive in AUD (dollar units) from the URL; tier
   // prices are stored as integer minor units (cents) per the monetary
   // conventions in CLAUDE.md. Convert before comparison.
-  if (typeof filters.price_min === 'number' || typeof filters.price_max === 'number') {
+  const priceFiltered =
+    typeof filters.price_min === 'number' || typeof filters.price_max === 'number'
+  if (priceFiltered) {
     const minCents = (filters.price_min ?? 0) * 100
     const maxCents =
       filters.price_max === undefined ? Number.POSITIVE_INFINITY : filters.price_max * 100
@@ -252,7 +254,13 @@ export async function fetchPublicEvents(
     events.sort((a, b) => cheapest(a) - cheapest(b))
   }
 
-  const total = count ?? events.length
+  // When price filtering strips rows post-query, the Supabase `count`
+  // reflects the pre-filter total and disagrees with the rendered grid.
+  // Use the filtered length as the source of truth so the hero strip
+  // and pagination match what the user sees.
+  // TODO(m5-perf): move price filter into SQL to avoid over-fetching
+  //   when query pages are large — tracked against Step 8.
+  const total = priceFiltered ? events.length : count ?? events.length
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
 
   return { events, total, page, pageSize, totalPages }

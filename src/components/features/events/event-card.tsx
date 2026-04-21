@@ -6,6 +6,8 @@ import { MapPin } from 'lucide-react'
 import { SocialProofBadge } from '@/components/inventory/social-proof-badge'
 import { SaveEventButton } from './save-event-button'
 import type { EventInventory } from '@/lib/redis/inventory-cache'
+import type { SocialProofBadge as M5Badge } from '@/lib/events/types'
+import { BADGE_LABELS, BADGE_STYLES } from '@/lib/events/badges'
 
 /**
  * EventCard — spec §6.2
@@ -17,7 +19,11 @@ import type { EventInventory } from '@/lib/redis/inventory-cache'
  *   - Card body: date (gold), title (Manrope), location, price + social proof
  *
  * Price: "From AUD $X" — Manrope 700, no decimal for round cents
- * Social proof badge: coral for trending, gold for near-sold-out (§6.2 spec)
+ *
+ * M5 mode: when `event.badge` is explicitly provided (non-undefined),
+ * the card shows the M5 single-priority social-proof badge top-left
+ * (replacing the category pill) and renders the organisation name above
+ * the title instead of the bottom inventory chip.
  */
 
 export type EventCardTier = {
@@ -42,6 +48,9 @@ export type EventCardData = {
   created_at: string
   category: { name: string; slug: string } | null
   ticket_tiers: EventCardTier[]
+  is_free?: boolean | null
+  organisation?: { name: string; slug?: string } | null
+  badge?: M5Badge | null
 }
 
 type Props = {
@@ -61,7 +70,9 @@ function formatDate(iso: string) {
 function formatPrice(
   tiers: EventCardTier[],
   dynamicPrices: Map<string, number>,
+  isFree: boolean | null = null,
 ): string {
+  if (isFree === true) return 'Free'
   if (!tiers || tiers.length === 0) return 'Free'
   const effectivePrices = tiers.map(t => dynamicPrices.get(t.id) ?? t.price)
   const min = Math.min(...effectivePrices)
@@ -89,9 +100,15 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
   const {
     id, slug, title, cover_image_url, start_date,
     venue_city, venue_country, created_at, category, ticket_tiers,
+    organisation, badge,
   } = event
 
-  const priceLabel = formatPrice(ticket_tiers, dynamicPrices)
+  // M5 mode: caller explicitly attached a pre-computed `badge` (including
+  // `null`, meaning "no badge for this event"). Disables the inventory
+  // badge at the bottom and swaps the top-left pill.
+  const m5Mode = 'badge' in event
+
+  const priceLabel = formatPrice(ticket_tiers, dynamicPrices, event.is_free ?? null)
   const inventory  = ticket_tiers.length > 0 ? buildInventory(ticket_tiers) : null
 
   // Location display: city if available, else country
@@ -122,12 +139,21 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
           </div>
         )}
 
-        {/* Category pill — top-left overlay */}
-        {category && (
-          <span className="absolute left-3 top-3 rounded-full bg-ink-900/75 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
-            {category.name}
-          </span>
-        )}
+        {/* Top-left overlay: M5 badge (priority) or category pill. Exactly one renders. */}
+        {m5Mode
+          ? badge && (
+              <span
+                data-m5-badge={badge}
+                className={`absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-semibold shadow-sm ${BADGE_STYLES[badge]}`}
+              >
+                {BADGE_LABELS[badge]}
+              </span>
+            )
+          : category && (
+              <span className="absolute left-3 top-3 rounded-full bg-ink-900/75 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+                {category.name}
+              </span>
+            )}
 
         {/* Heart / save — top-right overlay */}
         <SaveEventButton
@@ -140,30 +166,46 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
 
       {/* ── Card body ───────────────────────────────────────────── */}
       <div className="flex flex-1 flex-col p-4">
-        {/* Date */}
-        <p className="font-display text-xs font-semibold text-gold-500">
-          {formatDate(start_date)}
-        </p>
+        {m5Mode && organisation ? (
+          <p className="text-xs font-medium text-ink-400">{organisation.name}</p>
+        ) : (
+          <p className="font-display text-xs font-semibold text-gold-500">
+            {formatDate(start_date)}
+          </p>
+        )}
 
         {/* Title */}
         <h3 className="mt-1 font-display text-sm font-bold leading-snug text-ink-900 line-clamp-2 group-hover:text-gold-500 transition-colors">
           {title}
         </h3>
 
-        {/* Location */}
-        {location && (
-          <p className="mt-1.5 flex items-center gap-1 text-xs text-ink-400">
+        {/* Date + location (single row in m5 mode) or just location */}
+        {m5Mode ? (
+          <p className="mt-1.5 flex items-center gap-1.5 text-xs text-ink-400">
             <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
-            {location}
+            <span>{formatDate(start_date)}</span>
+            {location && (
+              <>
+                <span aria-hidden="true">·</span>
+                <span className="truncate">{location}</span>
+              </>
+            )}
           </p>
+        ) : (
+          location && (
+            <p className="mt-1.5 flex items-center gap-1 text-xs text-ink-400">
+              <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
+              {location}
+            </p>
+          )
         )}
 
-        {/* Price + social proof */}
+        {/* Price + social proof (inventory chip suppressed in M5 mode) */}
         <div className="mt-auto flex items-center justify-between gap-2 pt-3">
           <p className="font-display text-sm font-bold text-ink-900">
             {priceLabel}
           </p>
-          {inventory && (
+          {!m5Mode && inventory && (
             <SocialProofBadge
               inventory={inventory}
               createdAt={created_at}

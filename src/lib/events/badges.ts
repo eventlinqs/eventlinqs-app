@@ -92,13 +92,14 @@ export const BADGE_LABELS: Record<SocialProofBadge, string> = {
 }
 
 /**
- * Tailwind token classnames for each badge variant. Uses existing gold / coral
- * / ink palette — no new tokens introduced.
+ * Tailwind token classnames for each badge variant. Uses the existing
+ * semantic token layer (success / warning / error / info) and brand gold
+ * for "accent" — no new tokens introduced.
  */
 export const BADGE_STYLES: Record<SocialProofBadge, string> = {
-  last_chance: 'bg-coral-500 text-white',
-  few_left: 'bg-gold-500 text-ink-900',
-  selling_fast: 'bg-coral-100 text-coral-600',
-  just_announced: 'bg-ink-900 text-white',
-  free: 'bg-gold-100 text-gold-600',
+  last_chance: 'bg-error text-white',
+  few_left: 'bg-warning text-ink-900',
+  selling_fast: 'bg-gold-500 text-ink-900',
+  just_announced: 'bg-info text-white',
+  free: 'bg-success text-white',
 }
