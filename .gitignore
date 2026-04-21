@@ -54,3 +54,5 @@ lighthouse-reports/
 .claude/settings.local.json
 
 supabase/.temp/
+
+.vercel
