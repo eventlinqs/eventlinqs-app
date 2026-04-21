@@ -282,6 +282,30 @@ const HOUR = 3_600_000
 const DAY = 24 * HOUR
 const iso = ms => new Date(now.getTime() + ms).toISOString()
 
+// Approximate city centre coordinates used to place demo events on the
+// map. Each event gets small jitter (~±0.005 deg, ≈500m) around the
+// centre so Mapbox clustering has something meaningful to merge/split
+// without every pin stacking on the same lat/lng.
+const CITY_COORDS = {
+  'Perth':     { lat: -31.9505, lng: 115.8605 },
+  'Auckland':  { lat: -36.8485, lng: 174.7633 },
+  'Lagos':     { lat:   6.5244, lng:   3.3792 },
+  'Accra':     { lat:   5.6037, lng:  -0.1870 },
+  'Brisbane':  { lat: -27.4698, lng: 153.0251 },
+  'Melbourne': { lat: -37.8136, lng: 144.9631 },
+  'Sydney':    { lat: -33.8688, lng: 151.2093 },
+}
+
+function jitter() {
+  return (Math.random() - 0.5) * 0.010
+}
+
+function resolveCityCoords(city) {
+  const base = CITY_COORDS[city]
+  if (!base) return { lat: null, lng: null }
+  return { lat: +(base.lat + jitter()).toFixed(6), lng: +(base.lng + jitter()).toFixed(6) }
+}
+
 const DEMO_EVENTS = [
   // -------- badge: last_chance (starts < 24h) --------
   {
@@ -650,15 +674,37 @@ const DEMO_EVENTS = [
 
 console.log(`\n--- M5 demo dataset (${DEMO_EVENTS.length} events) ---`)
 
+let coordsBackfilled = 0
+
 for (const ev of DEMO_EVENTS) {
+  const coords = resolveCityCoords(ev.venue_city)
+
   const { data: existing } = await supabase
     .from('events')
-    .select('id')
+    .select('id, venue_latitude, venue_longitude')
     .eq('id', ev.id)
     .single()
 
   if (existing) {
-    console.log(`  SKIP  ${ev.title} (already exists)`)
+    // Idempotent coord backfill: only write when the row has no coords yet,
+    // so re-runs never overwrite organiser edits made through the dashboard.
+    if (
+      coords.lat !== null &&
+      (existing.venue_latitude === null || existing.venue_longitude === null)
+    ) {
+      const { error: updErr } = await supabase
+        .from('events')
+        .update({ venue_latitude: coords.lat, venue_longitude: coords.lng })
+        .eq('id', ev.id)
+      if (updErr) {
+        console.error(`  ERROR coord backfill ${ev.title}:`, updErr.message)
+      } else {
+        coordsBackfilled++
+        console.log(`  COORDS ${ev.title.padEnd(55)} (${coords.lat}, ${coords.lng})`)
+      }
+    } else {
+      console.log(`  SKIP  ${ev.title} (already exists)`)
+    }
     skipped++
     continue
   }
@@ -680,6 +726,8 @@ for (const ev of DEMO_EVENTS) {
     venue_city: ev.venue_city,
     venue_state: ev.venue_state,
     venue_country: ev.venue_country,
+    venue_latitude: coords.lat,
+    venue_longitude: coords.lng,
     cover_image_url: null,
     thumbnail_url: null,
     status: 'published',
@@ -727,4 +775,6 @@ for (const ev of DEMO_EVENTS) {
 }
 
 const { count } = await supabase.from('events').select('*', { count: 'exact', head: true })
-console.log(`\nDone. Inserted: ${inserted}  Skipped: ${skipped}  Total events in DB: ${count}`)
+console.log(
+  `\nDone. Inserted: ${inserted}  Skipped: ${skipped}  Coords backfilled: ${coordsBackfilled}  Total events in DB: ${count}`,
+)
