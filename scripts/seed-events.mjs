@@ -284,7 +284,7 @@ const iso = ms => new Date(now.getTime() + ms).toISOString()
 
 // Approximate city centre coordinates used to place demo events on the
 // map. Each event gets small jitter (~±0.005 deg, ≈500m) around the
-// centre so Mapbox clustering has something meaningful to merge/split
+// centre so map clustering has something meaningful to merge/split
 // without every pin stacking on the same lat/lng.
 const CITY_COORDS = {
   'Perth':     { lat: -31.9505, lng: 115.8605 },

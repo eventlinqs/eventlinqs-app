@@ -52,8 +52,9 @@ export async function loadMoreEventCards(
 /**
  * Server action for the /events map view. Returns a flat list of
  * lat/lng points for the current viewport bbox, shaped down to just
- * what the Mapbox popup needs (title, city, date, starting-from
- * price, link). Pagination is disabled — the bbox IS the filter.
+ * what the Google Maps InfoWindow needs (title, city, date,
+ * starting-from price, link). Pagination is disabled — the bbox IS
+ * the filter.
  * Hard-capped at 500 to keep payloads bounded when a user zooms way
  * out over a dense region.
  */
