@@ -57,6 +57,7 @@ export type FetchPublicEventsFilters = {
   distance_km?: number
   sort?: 'relevance' | 'date_asc' | 'price_asc' | 'popularity'
   city?: string
+  country?: string
 }
 
 export type BboxFilter = {

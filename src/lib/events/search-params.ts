@@ -9,6 +9,7 @@ export type EventsSearchParams = {
   q?: string
   preset?: string
   category?: string
+  country?: string
   price_min?: string
   price_max?: string
   from?: string
@@ -79,6 +80,7 @@ export function parseEventsSearchParams(
     q: raw.q?.trim() || undefined,
     preset,
     category: raw.category?.trim() || undefined,
+    country: raw.country?.trim() || undefined,
     price_min: parseNonNegativeFloat(raw.price_min),
     price_max: parseNonNegativeFloat(raw.price_max),
     from: isIsoish(raw.from),

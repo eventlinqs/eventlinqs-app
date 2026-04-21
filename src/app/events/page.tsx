@@ -51,8 +51,14 @@ export default async function EventsPage({ searchParams }: Props) {
       : undefined
   const hasGeoSignal = location.source !== 'fallback' && origin !== undefined
 
+  // Default the catalogue to the visitor's detected country unless they've
+  // explicitly picked another via the ?country= URL param. Unknown / failed
+  // detection falls back to Australia (primary market).
+  const effectiveCountry = filters.country ?? location.country ?? 'Australia'
+  const effectiveFilters = { ...filters, country: effectiveCountry }
+
   const [result, recommended] = await Promise.all([
-    fetchPublicEvents({ filters, page, pageSize: 24, origin }),
+    fetchPublicEvents({ filters: effectiveFilters, page, pageSize: 24, origin }),
     fetchRecommendedEvents(userId, 12),
   ])
 

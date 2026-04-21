@@ -201,6 +201,9 @@ export async function fetchPublicEvents(
   if (filters.city) {
     query = query.ilike('venue_city', `%${filters.city}%`)
   }
+  if (filters.country) {
+    query = query.eq('venue_country', filters.country)
+  }
 
   if (filters.preset === 'free') {
     query = query.eq('is_free', true)

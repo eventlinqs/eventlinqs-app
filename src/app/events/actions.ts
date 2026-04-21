@@ -34,7 +34,12 @@ export async function loadMoreEventCards(
       ? { latitude: location.latitude, longitude: location.longitude }
       : undefined
 
-  const result = await fetchPublicEvents({ filters, page, pageSize: 24, origin })
+  const effectiveFilters = {
+    ...filters,
+    country: filters.country ?? location.country ?? 'Australia',
+  }
+
+  const result = await fetchPublicEvents({ filters: effectiveFilters, page, pageSize: 24, origin })
   const cards = await projectToCardData(result.events)
 
   return {
@@ -57,8 +62,13 @@ export async function loadEventsInBbox(
   bbox: BboxFilter,
 ): Promise<MapEventPoint[]> {
   const { filters } = parseEventsSearchParams(params)
+  const location = await detectLocation()
+  const effectiveFilters = {
+    ...filters,
+    country: filters.country ?? location.country ?? 'Australia',
+  }
   const result = await fetchPublicEvents({
-    filters,
+    filters: effectiveFilters,
     page: 1,
     pageSize: 500,
     bbox,

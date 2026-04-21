@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import type { DetectedLocation } from '@/lib/geo/detect'
 
 interface City {
@@ -98,6 +98,48 @@ interface LocationPickerProps {
   onChange?: () => void
 }
 
+function CityList({
+  cities,
+  current,
+  onPick,
+}: {
+  cities: City[]
+  current: DetectedLocation
+  onPick: (c: City) => void
+}) {
+  return (
+    <ul className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+      {cities.map(c => {
+        const isCurrent =
+          c.city === current.city && c.countryCode === current.countryCode
+        return (
+          <li key={`${c.countryCode}-${c.city}`}>
+            <button
+              type="button"
+              onClick={() => onPick(c)}
+              className={[
+                'flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left',
+                'text-sm transition-colors',
+                isCurrent
+                  ? 'bg-gold-100 text-ink-900 font-semibold'
+                  : 'text-ink-700 hover:bg-ink-100 hover:text-ink-900',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]',
+              ].join(' ')}
+              aria-current={isCurrent || undefined}
+            >
+              <span className="truncate">
+                <span className="font-medium text-ink-900">{c.city}</span>
+                <span className="ml-2 text-xs text-ink-400">{c.country}</span>
+              </span>
+              {isCurrent && <span className="text-xs text-gold-600">Current</span>}
+            </button>
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
 export function LocationPicker({
   currentLocation,
   variant = 'pill',
@@ -105,13 +147,18 @@ export function LocationPicker({
 }: LocationPickerProps) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
+  const [showOtherCountries, setShowOtherCountries] = useState(false)
   const [geoBusy, setGeoBusy] = useState(false)
   const [geoError, setGeoError] = useState<string | null>(null)
 
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const triggerRef = useRef<HTMLButtonElement>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  const isSearching = query.trim().length > 0
 
   const filteredCities = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -120,6 +167,15 @@ export function LocationPicker({
       c.city.toLowerCase().includes(q) || c.country.toLowerCase().includes(q),
     )
   }, [query])
+
+  const auCities = useMemo(
+    () => filteredCities.filter(c => c.countryCode === 'AU'),
+    [filteredCities],
+  )
+  const otherCities = useMemo(
+    () => filteredCities.filter(c => c.countryCode !== 'AU'),
+    [filteredCities],
+  )
 
   const closeDialog = useCallback(() => {
     setOpen(false)
@@ -167,8 +223,18 @@ export function LocationPicker({
     }
     closeDialog()
     onChange?.()
-    router.refresh()
-  }, [closeDialog, onChange, router])
+
+    // On /events, persist the picked country to the URL so it's shareable
+    // and survives refresh without relying solely on the cookie.
+    if (pathname && pathname.startsWith('/events')) {
+      const next = new URLSearchParams(searchParams?.toString() ?? '')
+      next.set('country', city.country)
+      next.delete('page')
+      router.push(`/events${next.toString() ? `?${next.toString()}` : ''}`, { scroll: false })
+    } else {
+      router.refresh()
+    }
+  }, [closeDialog, onChange, pathname, router, searchParams])
 
   const useMyLocation = useCallback(() => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
@@ -305,46 +371,59 @@ export function LocationPicker({
             </div>
 
             <div className="px-5 pb-5 pt-4">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-ink-400">
-                Suggested cities
-              </p>
               {filteredCities.length === 0 ? (
                 <p className="py-6 text-center text-sm text-ink-600">
                   No cities match &ldquo;{query}&rdquo;. Try another search.
                 </p>
+              ) : isSearching ? (
+                <>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-ink-400">
+                    Matches
+                  </p>
+                  <CityList
+                    cities={filteredCities}
+                    current={currentLocation}
+                    onPick={applyCity}
+                  />
+                </>
               ) : (
-                <ul className="grid max-h-80 grid-cols-1 gap-1 overflow-y-auto sm:grid-cols-2">
-                  {filteredCities.map((c) => {
-                    const isCurrent =
-                      c.city === currentLocation.city &&
-                      c.countryCode === currentLocation.countryCode
-                    return (
-                      <li key={`${c.countryCode}-${c.city}`}>
-                        <button
-                          type="button"
-                          onClick={() => applyCity(c)}
-                          className={[
-                            'flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left',
-                            'text-sm transition-colors',
-                            isCurrent
-                              ? 'bg-gold-100 text-ink-900 font-semibold'
-                              : 'text-ink-700 hover:bg-ink-100 hover:text-ink-900',
-                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]',
-                          ].join(' ')}
-                          aria-current={isCurrent || undefined}
-                        >
-                          <span className="truncate">
-                            <span className="font-medium text-ink-900">{c.city}</span>
-                            <span className="ml-2 text-xs text-ink-400">{c.country}</span>
-                          </span>
-                          {isCurrent && (
-                            <span className="text-xs text-gold-600">Current</span>
-                          )}
-                        </button>
-                      </li>
-                    )
-                  })}
-                </ul>
+                <>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-ink-400">
+                    Australia
+                  </p>
+                  <CityList
+                    cities={auCities}
+                    current={currentLocation}
+                    onPick={applyCity}
+                  />
+
+                  {!showOtherCountries ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowOtherCountries(true)}
+                      aria-expanded={false}
+                      className={[
+                        'mt-4 flex w-full items-center justify-center gap-2 h-10 rounded-lg',
+                        'border border-dashed border-ink-200 bg-white text-xs font-semibold',
+                        'text-ink-700 hover:border-gold-500 hover:text-gold-600 transition-colors',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]',
+                      ].join(' ')}
+                    >
+                      Browse other countries
+                    </button>
+                  ) : (
+                    <>
+                      <p className="mb-2 mt-5 text-xs font-semibold uppercase tracking-widest text-ink-400">
+                        Other countries
+                      </p>
+                      <CityList
+                        cities={otherCities}
+                        current={currentLocation}
+                        onPick={applyCity}
+                      />
+                    </>
+                  )}
+                </>
               )}
             </div>
           </div>
