@@ -8,7 +8,7 @@
   </defs>
   <rect width="600" height="450" fill="url(#glow)"/>
   <g opacity="0.95">
-    <text x="40" y="245" font-family="Manrope, system-ui, sans-serif" font-size="46" font-weight="800" fill="#FFFFFF" letter-spacing="-1">EVENTLINQS</text>
-    <circle cx="480" cy="235" r="7" fill="#D4A017"/>
+    <text x="300" y="245" text-anchor="middle" font-family="Manrope, system-ui, sans-serif" font-size="46" font-weight="800" fill="#FFFFFF" letter-spacing="-1">EVENTLINQS</text>
+    <circle cx="440" cy="235" r="7" fill="#D4A017"/>
   </g>
 </svg>

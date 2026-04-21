@@ -8,10 +8,10 @@
   </defs>
   <rect width="1600" height="900" fill="url(#glow)"/>
   <g opacity="0.92">
-    <text x="120" y="480" font-family="Manrope, 'Helvetica Neue', system-ui, sans-serif" font-size="128" font-weight="800" fill="#FFFFFF" letter-spacing="-4">EVENTLINQS</text>
-    <circle cx="1295" cy="455" r="18" fill="#D4A017"/>
+    <text x="800" y="480" text-anchor="middle" font-family="Manrope, 'Helvetica Neue', system-ui, sans-serif" font-size="128" font-weight="800" fill="#FFFFFF" letter-spacing="-4">EVENTLINQS</text>
+    <circle cx="1175" cy="455" r="18" fill="#D4A017"/>
   </g>
   <g opacity="0.5">
-    <text x="120" y="540" font-family="Manrope, system-ui, sans-serif" font-size="28" font-weight="500" fill="#FFFFFF" letter-spacing="14">WHERE THE CULTURE GATHERS</text>
+    <text x="800" y="540" text-anchor="middle" font-family="Manrope, system-ui, sans-serif" font-size="28" font-weight="500" fill="#FFFFFF" letter-spacing="14">WHERE THE CULTURE GATHERS</text>
   </g>
 </svg>
