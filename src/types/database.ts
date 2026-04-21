@@ -421,3 +421,26 @@ export interface DiscountCode {
   created_at: string
   updated_at: string
 }
+
+// ─── M5: Personalisation (saved entities) ─────────────────────────────────
+
+export interface SavedEvent {
+  id: string
+  user_id: string
+  event_id: string
+  created_at: string
+}
+
+export interface SavedOrganiser {
+  id: string
+  user_id: string
+  organisation_id: string
+  created_at: string
+}
+
+export interface SavedCategory {
+  id: string
+  user_id: string
+  category_id: string
+  created_at: string
+}
