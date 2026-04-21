@@ -38,9 +38,11 @@ type Props = {
   categories: CategoryChip[]
   view: EventsView
   hasGeoSignal: boolean
+  /** /events or /events/browse/{slug} — drives URL building for chips + pagination. */
+  basePath?: string
 }
 
-export function EventsFilterBar({ params, categories, view, hasGeoSignal }: Props) {
+export function EventsFilterBar({ params, categories, view, hasGeoSignal, basePath = '/events' }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -63,24 +65,24 @@ export function EventsFilterBar({ params, categories, view, hasGeoSignal }: Prop
   const handlePresetClick = useCallback(
     (key: DatePreset['key']) => {
       const isActive = activePreset === key
-      navigate(buildEventsUrl(params, { preset: isActive ? undefined : key, page: undefined }))
+      navigate(buildEventsUrl(params, { preset: isActive ? undefined : key, page: undefined }, basePath))
     },
-    [activePreset, params, navigate],
+    [activePreset, params, navigate, basePath],
   )
 
   const handleCategoryClick = useCallback(
     (slug: string | null) => {
       const nextSlug = slug && activeCategory !== slug ? slug : undefined
-      navigate(buildEventsUrl(params, { category: nextSlug, page: undefined }))
+      navigate(buildEventsUrl(params, { category: nextSlug, page: undefined }, basePath))
     },
-    [activeCategory, params, navigate],
+    [activeCategory, params, navigate, basePath],
   )
 
   const handleViewChange = useCallback(
     (next: EventsView) => {
-      navigate(buildEventsUrl(params, { view: next === 'grid' ? undefined : next }))
+      navigate(buildEventsUrl(params, { view: next === 'grid' ? undefined : next }, basePath))
     },
-    [params, navigate],
+    [params, navigate, basePath],
   )
 
   const handleApplyMoreFilters = useCallback(
@@ -94,17 +96,17 @@ export function EventsFilterBar({ params, categories, view, hasGeoSignal }: Prop
           distance_km: values.distance_km ?? undefined,
           sort: values.sort ?? undefined,
           page: undefined,
-        }),
+        }, basePath),
       )
       setSheetOpen(false)
     },
-    [params, navigate],
+    [params, navigate, basePath],
   )
 
   const handleClearAll = useCallback(() => {
-    navigate('/events')
+    navigate(basePath)
     setSheetOpen(false)
-  }, [navigate])
+  }, [navigate, basePath])
 
   return (
     <div

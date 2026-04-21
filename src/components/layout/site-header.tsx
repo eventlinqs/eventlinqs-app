@@ -1,14 +1,18 @@
 import { detectLocation } from '@/lib/geo/detect'
+import { getPickerCities } from '@/lib/locations/picker-cities'
 import { SiteHeaderClient } from './site-header-client'
 
 /**
  * SiteHeader — public site top navigation.
  *
- * Server wrapper that resolves the visitor's detected location (cookie →
- * Vercel geo headers → Melbourne fallback) and passes it to the client
- * inner, which owns the interactive hamburger and location picker.
+ * Server wrapper that resolves the visitor's detected location and the
+ * merged (launch-target + DB-distinct) picker city list, then passes
+ * both to the client inner.
  */
 export async function SiteHeader() {
-  const location = await detectLocation()
-  return <SiteHeaderClient location={location} />
+  const [location, cities] = await Promise.all([
+    detectLocation(),
+    getPickerCities(),
+  ])
+  return <SiteHeaderClient location={location} cities={cities} />
 }

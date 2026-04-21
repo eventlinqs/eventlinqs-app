@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, updateTag } from 'next/cache'
 import { canTransition } from '@/lib/event-lifecycle'
 import type { EventStatus, EventVisibility, EventType, TicketTierType } from '@/types/database'
 
@@ -191,6 +191,8 @@ export async function createEvent(input: CreateEventInput): Promise<{ error?: st
   if (input.has_reserved_seating) {
     revalidatePath(`/events/${slug}`)
   }
+  // New city may have appeared in the picker merge source.
+  updateTag('picker-cities')
   return {}
 }
 
@@ -313,6 +315,8 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
   if (input.has_reserved_seating && event.slug) {
     revalidatePath(`/events/${event.slug}`)
   }
+  // venue_city may have changed — refresh the picker merge source.
+  updateTag('picker-cities')
   redirect('/dashboard/events?saved=1')
 }
 
@@ -337,7 +341,10 @@ export async function publishEvent(eventId: string): Promise<{ error?: string }>
     .update({ status: 'published', published_at: new Date().toISOString() })
     .eq('id', eventId)
 
-  return error ? { error: 'Failed to publish event' } : {}
+  if (error) return { error: 'Failed to publish event' }
+  // A newly published event may bring a previously absent city into the picker.
+  updateTag('picker-cities')
+  return {}
 }
 
 export async function pauseEvent(eventId: string): Promise<{ error?: string }> {

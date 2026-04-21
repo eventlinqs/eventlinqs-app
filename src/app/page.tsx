@@ -342,11 +342,11 @@ export default async function HomePage() {
   })
 
   const fallbackCommunityTiles: VibeImage[] = [
-    { id: 'f1', src: null, href: '/events?city=melbourne', title: 'Afrobeats scene in Melbourne',  community: 'Melbourne, VIC',       placeholderCategory: 'Afrobeats' },
-    { id: 'f2', src: null, href: '/events?city=sydney',    title: 'Community events in Sydney',    community: 'Sydney, NSW',          placeholderCategory: 'Community' },
-    { id: 'f3', src: null, href: '/events?city=brisbane',  title: 'Gospel nights Brisbane',        community: 'Brisbane, QLD',        placeholderCategory: 'Gospel' },
-    { id: 'f4', src: null, href: '/events?city=geelong',   title: 'Geelong community scene',       community: 'Geelong, VIC',         placeholderCategory: 'Community' },
-    { id: 'f5', src: null, href: '/events?city=perth',     title: 'Diaspora events Perth',         community: 'Perth, WA',            placeholderCategory: 'Heritage' },
+    { id: 'f1', src: null, href: '/events/browse/melbourne', title: 'Afrobeats scene in Melbourne',  community: 'Melbourne, VIC',       placeholderCategory: 'Afrobeats' },
+    { id: 'f2', src: null, href: '/events/browse/sydney',    title: 'Community events in Sydney',    community: 'Sydney, NSW',          placeholderCategory: 'Community' },
+    { id: 'f3', src: null, href: '/events/browse/brisbane',  title: 'Gospel nights Brisbane',        community: 'Brisbane, QLD',        placeholderCategory: 'Gospel' },
+    { id: 'f4', src: null, href: '/events/browse/geelong',   title: 'Geelong community scene',       community: 'Geelong, VIC',         placeholderCategory: 'Community' },
+    { id: 'f5', src: null, href: '/events/browse/perth',     title: 'Diaspora events Perth',         community: 'Perth, WA',            placeholderCategory: 'Heritage' },
     { id: 'f6', src: null, href: '/events',                title: 'Regional Australia events',     community: 'Across Australia',     placeholderCategory: 'Festival' },
   ]
 

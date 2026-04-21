@@ -4,6 +4,12 @@ import type { EventsSearchParams } from '@/lib/events/search-params'
 type Props = {
   params: EventsSearchParams
   total: number
+  /** Form action target. Defaults to /events; browse pages pass /events/browse/{slug}. */
+  basePath?: string
+  /** Optional heading override (e.g. "Events in Melbourne"). */
+  heading?: string
+  /** Optional subtitle override below the count. */
+  subtitle?: string
 }
 
 const PASSTHROUGH_KEYS = [
@@ -18,18 +24,25 @@ const PASSTHROUGH_KEYS = [
   'view',
 ] as const
 
-export function EventsHeroStrip({ params, total }: Props) {
+export function EventsHeroStrip({
+  params,
+  total,
+  basePath = '/events',
+  heading = 'Discover events',
+  subtitle,
+}: Props) {
   return (
     <section className="border-b border-ink-100 bg-white">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         <h1 className="font-display text-2xl font-bold text-ink-900 sm:text-3xl">
-          Discover events
+          {heading}
         </h1>
         <p className="mt-1 text-sm text-ink-400">
           {total} event{total === 1 ? '' : 's'} available
+          {subtitle ? ` · ${subtitle}` : ''}
         </p>
 
-        <form method="GET" action="/events" className="mt-4">
+        <form method="GET" action={basePath} className="mt-4">
           <div className="flex max-w-2xl gap-2">
             <div className="relative flex-1">
               <Search

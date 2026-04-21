@@ -55,6 +55,8 @@ export async function updateSession(request: NextRequest) {
     '/contact',
     '/privacy',
     '/terms',
+    '/sitemap.xml',
+    '/robots.txt',
   ]
   const isPublicRoute = publicRoutes.some(route =>
     request.nextUrl.pathname === route ||

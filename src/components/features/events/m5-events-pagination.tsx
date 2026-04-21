@@ -5,18 +5,19 @@ type Props = {
   params: EventsSearchParams
   page: number
   totalPages: number
+  basePath?: string
 }
 
 /**
  * Step 2 placeholder numbered pagination. Step 5 replaces this with the
  * full SEO + infinite-scroll pattern.
  */
-export function EventsPagination({ params, page, totalPages }: Props) {
+export function EventsPagination({ params, page, totalPages, basePath = '/events' }: Props) {
   if (totalPages <= 1) return null
 
   const pages = buildPageWindow(page, totalPages)
-  const prev = page > 1 ? buildEventsUrl(params, { page: String(page - 1) }) : null
-  const next = page < totalPages ? buildEventsUrl(params, { page: String(page + 1) }) : null
+  const prev = page > 1 ? buildEventsUrl(params, { page: String(page - 1) }, basePath) : null
+  const next = page < totalPages ? buildEventsUrl(params, { page: String(page + 1) }, basePath) : null
 
   return (
     <nav
@@ -57,7 +58,7 @@ export function EventsPagination({ params, page, totalPages }: Props) {
         ) : (
           <Link
             key={p}
-            href={buildEventsUrl(params, { page: p === 1 ? undefined : String(p) })}
+            href={buildEventsUrl(params, { page: p === 1 ? undefined : String(p) }, basePath)}
             className="rounded-md border border-ink-200 bg-white px-3 py-1.5 text-sm font-medium text-ink-700 transition-colors hover:bg-ink-100"
           >
             {p}

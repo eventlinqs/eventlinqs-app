@@ -3,31 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import type { DetectedLocation } from '@/lib/geo/detect'
-
-interface City {
-  city: string
-  country: string
-  countryCode: string
-  latitude: number
-  longitude: number
-}
-
-const CITIES: City[] = [
-  { city: 'Melbourne',  country: 'Australia',      countryCode: 'AU', latitude: -37.8136, longitude: 144.9631 },
-  { city: 'Sydney',     country: 'Australia',      countryCode: 'AU', latitude: -33.8688, longitude: 151.2093 },
-  { city: 'Brisbane',   country: 'Australia',      countryCode: 'AU', latitude: -27.4698, longitude: 153.0251 },
-  { city: 'Perth',      country: 'Australia',      countryCode: 'AU', latitude: -31.9523, longitude: 115.8613 },
-  { city: 'Adelaide',   country: 'Australia',      countryCode: 'AU', latitude: -34.9285, longitude: 138.6007 },
-  { city: 'Auckland',   country: 'New Zealand',    countryCode: 'NZ', latitude: -36.8485, longitude: 174.7633 },
-  { city: 'London',     country: 'United Kingdom', countryCode: 'GB', latitude: 51.5074, longitude:  -0.1278 },
-  { city: 'Manchester', country: 'United Kingdom', countryCode: 'GB', latitude: 53.4808, longitude:  -2.2426 },
-  { city: 'Toronto',    country: 'Canada',         countryCode: 'CA', latitude: 43.6532, longitude: -79.3832 },
-  { city: 'New York',   country: 'United States',  countryCode: 'US', latitude: 40.7128, longitude: -74.0060 },
-  { city: 'Houston',    country: 'United States',  countryCode: 'US', latitude: 29.7604, longitude: -95.3698 },
-  { city: 'Atlanta',    country: 'United States',  countryCode: 'US', latitude: 33.7490, longitude: -84.3880 },
-  { city: 'Lagos',      country: 'Nigeria',        countryCode: 'NG', latitude:  6.5244, longitude:   3.3792 },
-  { city: 'Accra',      country: 'Ghana',          countryCode: 'GH', latitude:  5.6037, longitude:  -0.1870 },
-]
+import type { PickerCity, PickerCityGroups } from '@/lib/locations/picker-cities'
 
 function MapPinIcon({ className = 'h-4 w-4' }: { className?: string }) {
   return (
@@ -77,10 +53,11 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number) {
   return 2 * R * Math.asin(Math.sqrt(a))
 }
 
-function nearestCity(lat: number, lng: number): City {
-  let best = CITIES[0]
+function nearestPickerCity(lat: number, lng: number, cities: PickerCity[]): PickerCity | null {
+  let best: PickerCity | null = null
   let bestDist = Infinity
-  for (const c of CITIES) {
+  for (const c of cities) {
+    if (c.latitude === null || c.longitude === null) continue
     const d = haversineKm(lat, lng, c.latitude, c.longitude)
     if (d < bestDist) {
       bestDist = d
@@ -92,6 +69,8 @@ function nearestCity(lat: number, lng: number): City {
 
 interface LocationPickerProps {
   currentLocation: DetectedLocation
+  /** Curated + dynamic picker cities. Fetched server-side and passed in. */
+  cities: PickerCityGroups
   /** Visual variant. `pill` = main bar button. `inline` = full-width row in mobile sheet. */
   variant?: 'pill' | 'inline'
   /** Optional callback fired after selection closes (e.g. to close mobile sheet). */
@@ -103,17 +82,18 @@ function CityList({
   current,
   onPick,
 }: {
-  cities: City[]
+  cities: PickerCity[]
   current: DetectedLocation
-  onPick: (c: City) => void
+  onPick: (c: PickerCity) => void
 }) {
   return (
     <ul className="grid grid-cols-1 gap-1 sm:grid-cols-2">
       {cities.map(c => {
         const isCurrent =
-          c.city === current.city && c.countryCode === current.countryCode
+          c.city === current.city &&
+          (c.countryCode === null || c.countryCode === current.countryCode)
         return (
-          <li key={`${c.countryCode}-${c.city}`}>
+          <li key={`${c.country}-${c.slug}`}>
             <button
               type="button"
               onClick={() => onPick(c)}
@@ -142,12 +122,13 @@ function CityList({
 
 export function LocationPicker({
   currentLocation,
+  cities,
   variant = 'pill',
   onChange,
 }: LocationPickerProps) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
-  const [showOtherCountries, setShowOtherCountries] = useState(false)
+  const [showDiaspora, setShowDiaspora] = useState(false)
   const [geoBusy, setGeoBusy] = useState(false)
   const [geoError, setGeoError] = useState<string | null>(null)
 
@@ -158,28 +139,28 @@ export function LocationPicker({
   const dialogRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
+  const allCities = useMemo<PickerCity[]>(
+    () => [
+      ...cities.australia,
+      ...cities.internationalByCountry.flatMap(g => g.cities),
+    ],
+    [cities],
+  )
+
   const isSearching = query.trim().length > 0
 
-  const filteredCities = useMemo(() => {
+  const filteredMatches = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return CITIES
-    return CITIES.filter(c =>
+    if (!q) return allCities
+    return allCities.filter(c =>
       c.city.toLowerCase().includes(q) || c.country.toLowerCase().includes(q),
     )
-  }, [query])
-
-  const auCities = useMemo(
-    () => filteredCities.filter(c => c.countryCode === 'AU'),
-    [filteredCities],
-  )
-  const otherCities = useMemo(
-    () => filteredCities.filter(c => c.countryCode !== 'AU'),
-    [filteredCities],
-  )
+  }, [allCities, query])
 
   const closeDialog = useCallback(() => {
     setOpen(false)
     setQuery('')
+    setShowDiaspora(false)
     setGeoError(null)
     setTimeout(() => triggerRef.current?.focus(), 0)
   }, [])
@@ -205,7 +186,7 @@ export function LocationPicker({
     return () => { document.body.style.overflow = '' }
   }, [open])
 
-  const applyCity = useCallback(async (city: City) => {
+  const applyCity = useCallback(async (city: PickerCity) => {
     try {
       await fetch('/api/location/set', {
         method: 'POST',
@@ -213,7 +194,7 @@ export function LocationPicker({
         body: JSON.stringify({
           city: city.city,
           country: city.country,
-          countryCode: city.countryCode,
+          countryCode: city.countryCode ?? '',
           latitude: city.latitude,
           longitude: city.longitude,
         }),
@@ -224,13 +205,31 @@ export function LocationPicker({
     closeDialog()
     onChange?.()
 
-    // On /events, persist the picked country to the URL so it's shareable
-    // and survives refresh without relying solely on the cookie.
+    // Anywhere under /events (browse or root): route to /events/browse/{slug}
+    // preserving existing filters (preset, category, price, etc.). `page`
+    // is dropped so the user sees page 1 of the new city's results.
     if (pathname && pathname.startsWith('/events')) {
       const next = new URLSearchParams(searchParams?.toString() ?? '')
-      next.set('country', city.country)
       next.delete('page')
-      router.push(`/events${next.toString() ? `?${next.toString()}` : ''}`, { scroll: false })
+      next.delete('country')
+      next.delete('city')
+      const qs = next.toString()
+      router.push(`/events/browse/${city.slug}${qs ? `?${qs}` : ''}`, { scroll: false })
+    } else {
+      router.refresh()
+    }
+  }, [closeDialog, onChange, pathname, router, searchParams])
+
+  const clearCity = useCallback(() => {
+    closeDialog()
+    onChange?.()
+    if (pathname && pathname.startsWith('/events')) {
+      const next = new URLSearchParams(searchParams?.toString() ?? '')
+      next.delete('page')
+      next.delete('country')
+      next.delete('city')
+      const qs = next.toString()
+      router.push(`/events${qs ? `?${qs}` : ''}`, { scroll: false })
     } else {
       router.refresh()
     }
@@ -245,9 +244,13 @@ export function LocationPicker({
     setGeoError(null)
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const match = nearestCity(pos.coords.latitude, pos.coords.longitude)
+        const match = nearestPickerCity(pos.coords.latitude, pos.coords.longitude, allCities)
         setGeoBusy(false)
-        void applyCity(match)
+        if (match) {
+          void applyCity(match)
+        } else {
+          setGeoError('Could not match your location to a supported city.')
+        }
       },
       (err) => {
         setGeoBusy(false)
@@ -259,7 +262,7 @@ export function LocationPicker({
       },
       { enableHighAccuracy: false, maximumAge: 5 * 60 * 1000, timeout: 8000 },
     )
-  }, [applyCity])
+  }, [allCities, applyCity])
 
   const triggerClasses = variant === 'pill'
     ? [
@@ -303,9 +306,9 @@ export function LocationPicker({
             role="dialog"
             aria-modal="true"
             aria-labelledby="location-picker-title"
-            className="w-full max-w-lg rounded-2xl bg-white shadow-2xl overflow-hidden"
+            className="flex w-full max-w-lg max-h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
           >
-            <div className="flex items-center justify-between border-b border-ink-100 px-5 py-4">
+            <div className="flex shrink-0 items-center justify-between border-b border-ink-100 px-5 py-4">
               <div className="flex items-center gap-2">
                 <MapPinIcon className="h-5 w-5 text-gold-500" />
                 <h2 id="location-picker-title" className="font-display text-base font-bold text-ink-900">
@@ -326,7 +329,7 @@ export function LocationPicker({
               </button>
             </div>
 
-            <div className="px-5 pt-4">
+            <div className="shrink-0 px-5 pt-4">
               <label htmlFor="location-search" className="sr-only">Search for a city</label>
               <div className="relative">
                 <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-ink-400">
@@ -370,8 +373,8 @@ export function LocationPicker({
               )}
             </div>
 
-            <div className="px-5 pb-5 pt-4">
-              {filteredCities.length === 0 ? (
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5 pt-4">
+              {filteredMatches.length === 0 ? (
                 <p className="py-6 text-center text-sm text-ink-600">
                   No cities match &ldquo;{query}&rdquo;. Try another search.
                 </p>
@@ -381,47 +384,70 @@ export function LocationPicker({
                     Matches
                   </p>
                   <CityList
-                    cities={filteredCities}
+                    cities={filteredMatches}
                     current={currentLocation}
                     onPick={applyCity}
                   />
                 </>
               ) : (
                 <>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-ink-400">
-                    Australia
-                  </p>
-                  <CityList
-                    cities={auCities}
-                    current={currentLocation}
-                    onPick={applyCity}
-                  />
+                  <button
+                    type="button"
+                    onClick={clearCity}
+                    className={[
+                      'mb-4 flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2',
+                      'text-left text-sm text-ink-700 hover:bg-ink-100 hover:text-ink-900',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]',
+                    ].join(' ')}
+                  >
+                    <span className="font-medium text-ink-900">All events</span>
+                    <span className="text-xs text-ink-400">No city filter</span>
+                  </button>
 
-                  {!showOtherCountries ? (
-                    <button
-                      type="button"
-                      onClick={() => setShowOtherCountries(true)}
-                      aria-expanded={false}
-                      className={[
-                        'mt-4 flex w-full items-center justify-center gap-2 h-10 rounded-lg',
-                        'border border-dashed border-ink-200 bg-white text-xs font-semibold',
-                        'text-ink-700 hover:border-gold-500 hover:text-gold-600 transition-colors',
-                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]',
-                      ].join(' ')}
-                    >
-                      Browse other countries
-                    </button>
-                  ) : (
+                  {cities.australia.length > 0 && (
                     <>
-                      <p className="mb-2 mt-5 text-xs font-semibold uppercase tracking-widest text-ink-400">
-                        Other countries
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-ink-400">
+                        Australia
                       </p>
                       <CityList
-                        cities={otherCities}
+                        cities={cities.australia}
                         current={currentLocation}
                         onPick={applyCity}
                       />
                     </>
+                  )}
+
+                  {cities.internationalByCountry.length > 0 && (
+                    !showDiaspora ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowDiaspora(true)}
+                        aria-expanded={false}
+                        className={[
+                          'mt-4 flex w-full items-center justify-center gap-2 h-10 rounded-lg',
+                          'border border-dashed border-ink-200 bg-white text-xs font-semibold',
+                          'text-ink-700 hover:border-gold-500 hover:text-gold-600 transition-colors',
+                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]',
+                        ].join(' ')}
+                      >
+                        Global diaspora cities
+                      </button>
+                    ) : (
+                      <div className="mt-5 space-y-4">
+                        {cities.internationalByCountry.map(group => (
+                          <div key={group.country}>
+                            <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-ink-400">
+                              {group.country}
+                            </p>
+                            <CityList
+                              cities={group.cities}
+                              current={currentLocation}
+                              onPick={applyCity}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )
                   )}
                 </>
               )}

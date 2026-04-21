@@ -7,6 +7,7 @@ import { LocationPicker } from '@/components/ui/location-picker'
 import { EventlinqsLogo } from '@/components/ui/eventlinqs-logo'
 import { NavSearch } from './nav-search'
 import type { DetectedLocation } from '@/lib/geo/detect'
+import type { PickerCityGroups } from '@/lib/locations/picker-cities'
 
 const NAV_LINKS = [
   { label: 'Browse Events', href: '/events' },
@@ -15,6 +16,7 @@ const NAV_LINKS = [
 
 interface SiteHeaderClientProps {
   location: DetectedLocation
+  cities: PickerCityGroups
 }
 
 /**
@@ -34,7 +36,7 @@ interface SiteHeaderClientProps {
  *
  * Hover: nav links use gold hover to match the logo and overall brand accent.
  */
-export function SiteHeaderClient({ location }: SiteHeaderClientProps) {
+export function SiteHeaderClient({ location, cities }: SiteHeaderClientProps) {
   const [isOpen, setIsOpen] = useState(false)
 
   const hamburgerRef  = useRef<HTMLButtonElement>(null)
@@ -131,7 +133,7 @@ export function SiteHeaderClient({ location }: SiteHeaderClientProps) {
           <div className="flex items-center gap-3 shrink-0 ml-auto md:ml-0">
             {/* Desktop location picker */}
             <div className="hidden md:block">
-              <LocationPicker currentLocation={location} />
+              <LocationPicker currentLocation={location} cities={cities} />
             </div>
 
             <Link
@@ -236,7 +238,7 @@ export function SiteHeaderClient({ location }: SiteHeaderClientProps) {
 
         <nav className="flex-1 overflow-y-auto px-4 py-6" aria-label="Mobile navigation">
           <div className="mb-4">
-            <LocationPicker currentLocation={location} variant="inline" onChange={closeSheet} />
+            <LocationPicker currentLocation={location} cities={cities} variant="inline" onChange={closeSheet} />
           </div>
           <ul className="space-y-1">
             {NAV_LINKS.map(link => (

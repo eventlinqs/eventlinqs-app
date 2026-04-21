@@ -97,12 +97,17 @@ export function parseEventsSearchParams(
 }
 
 /**
- * Build a /events URL preserving existing params and applying overrides.
- * Keys with value null/undefined are removed; other values are coerced to string.
+ * Build a /events (or /events/browse/:city) URL preserving existing
+ * params and applying overrides. Keys with value null/undefined are
+ * removed; other values are coerced to string. `basePath` defaults to
+ * /events so existing call sites keep their behaviour; the browse
+ * route passes `/events/browse/{slug}` so filter/pagination URLs stay
+ * under that city namespace.
  */
 export function buildEventsUrl(
   base: EventsSearchParams,
   overrides: Partial<Record<keyof EventsSearchParams, string | number | null | undefined>>,
+  basePath: string = '/events',
 ): string {
   const merged: Record<string, string> = {}
   for (const [k, v] of Object.entries(base)) {
@@ -116,5 +121,5 @@ export function buildEventsUrl(
     }
   }
   const qs = new URLSearchParams(merged).toString()
-  return qs ? `/events?${qs}` : '/events'
+  return qs ? `${basePath}?${qs}` : basePath
 }
