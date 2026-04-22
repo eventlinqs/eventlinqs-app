@@ -48,6 +48,15 @@ next-env.d.ts
 *.jpeg
 *.webp
 
+# playwright test runner artifacts — local only
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+# local utility scripts (screenshots, one-off probes)
+/scratch/
+
 # lighthouse audit reports — local only
 lighthouse-reports/
 .lighthouse/
