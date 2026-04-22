@@ -25,7 +25,7 @@ export function SectionHeader({
     <div className={`flex items-start gap-3 ${className}`}>
       <div className="mt-1 h-8 w-0.5 shrink-0 bg-gold-500" aria-hidden />
       <div>
-        <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-500">
+        <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-700">
           {eyebrow}
         </p>
         <h2 id={id} className={`font-display ${titleSizes[size]} font-bold text-ink-900`}>

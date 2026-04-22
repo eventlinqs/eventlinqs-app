@@ -25,7 +25,7 @@ export default function InsightsPage() {
         </p>
         <Link
           href="/dashboard/events"
-          className="mt-6 inline-flex items-center rounded-lg bg-gold-500 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gold-600"
+          className="mt-6 inline-flex items-center rounded-lg bg-gold-500 px-5 py-2.5 text-sm font-semibold text-ink-900 transition-colors hover:bg-gold-600"
         >
           View my events
         </Link>

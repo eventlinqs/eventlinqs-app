@@ -85,17 +85,17 @@ export function SiteFooter() {
           {/* Col 1 — Brand */}
           <div>
             <EventlinqsLogo size="lg" variant="inverted" />
-            <p className="mt-3 text-sm leading-6 text-ink-400">
+            <p className="mt-3 text-sm leading-6 text-white/70">
               Built for Africa, its diaspora, and every community that knows how to celebrate.
             </p>
             <div className="mt-6 flex gap-4">
-              <a href="https://twitter.com/eventlinqs" aria-label="EventLinqs on X (Twitter)" className="text-ink-400 hover:text-white transition-colors">
+              <a href="https://twitter.com/eventlinqs" aria-label="EventLinqs on X (Twitter)" className="text-white/70 hover:text-white transition-colors">
                 <TwitterIcon />
               </a>
-              <a href="https://instagram.com/eventlinqs" aria-label="EventLinqs on Instagram" className="text-ink-400 hover:text-white transition-colors">
+              <a href="https://instagram.com/eventlinqs" aria-label="EventLinqs on Instagram" className="text-white/70 hover:text-white transition-colors">
                 <InstagramIcon />
               </a>
-              <a href="https://tiktok.com/@eventlinqs" aria-label="EventLinqs on TikTok" className="text-ink-400 hover:text-white transition-colors">
+              <a href="https://tiktok.com/@eventlinqs" aria-label="EventLinqs on TikTok" className="text-white/70 hover:text-white transition-colors">
                 <TikTokIcon />
               </a>
             </div>
@@ -103,11 +103,11 @@ export function SiteFooter() {
 
           {/* Col 2 — Discover */}
           <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-ink-400">Discover</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-white/70">Discover</p>
             <ul className="mt-4 space-y-3">
               {FOOTER_LINKS.discover.map(link => (
                 <li key={link.href}>
-                  <a href={link.href} className="text-sm text-ink-400 hover:text-white transition-colors">{link.label}</a>
+                  <a href={link.href} className="text-sm text-white/70 hover:text-white transition-colors">{link.label}</a>
                 </li>
               ))}
             </ul>
@@ -115,11 +115,11 @@ export function SiteFooter() {
 
           {/* Col 3 — Organisers */}
           <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-ink-400">Organisers</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-white/70">Organisers</p>
             <ul className="mt-4 space-y-3">
               {FOOTER_LINKS.organisers.map(link => (
                 <li key={link.href}>
-                  <a href={link.href} className="text-sm text-ink-400 hover:text-white transition-colors">{link.label}</a>
+                  <a href={link.href} className="text-sm text-white/70 hover:text-white transition-colors">{link.label}</a>
                 </li>
               ))}
             </ul>
@@ -127,11 +127,11 @@ export function SiteFooter() {
 
           {/* Col 4 — Help */}
           <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-ink-400">Help</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-white/70">Help</p>
             <ul className="mt-4 space-y-3">
               {FOOTER_LINKS.help.map(link => (
                 <li key={link.href}>
-                  <a href={link.href} className="text-sm text-ink-400 hover:text-white transition-colors">{link.label}</a>
+                  <a href={link.href} className="text-sm text-white/70 hover:text-white transition-colors">{link.label}</a>
                 </li>
               ))}
             </ul>
@@ -139,11 +139,11 @@ export function SiteFooter() {
 
           {/* Col 5 — Company */}
           <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-ink-400">Company</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-white/70">Company</p>
             <ul className="mt-4 space-y-3">
               {FOOTER_LINKS.company.map(link => (
                 <li key={link.href}>
-                  <a href={link.href} className="text-sm text-ink-400 hover:text-white transition-colors">{link.label}</a>
+                  <a href={link.href} className="text-sm text-white/70 hover:text-white transition-colors">{link.label}</a>
                 </li>
               ))}
             </ul>
@@ -151,11 +151,11 @@ export function SiteFooter() {
 
           {/* Col 6 — Legal */}
           <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-ink-400">Legal</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-white/70">Legal</p>
             <ul className="mt-4 space-y-3">
               {FOOTER_LINKS.legal.map(link => (
                 <li key={link.href}>
-                  <a href={link.href} className="text-sm text-ink-400 hover:text-white transition-colors">{link.label}</a>
+                  <a href={link.href} className="text-sm text-white/70 hover:text-white transition-colors">{link.label}</a>
                 </li>
               ))}
             </ul>
@@ -175,7 +175,7 @@ export function SiteFooter() {
               <summary className="flex cursor-pointer list-none items-center justify-between py-4 text-sm font-semibold text-white [&::-webkit-details-marker]:hidden">
                 {section.title}
                 <svg
-                  className="h-4 w-4 text-ink-400 transition-transform group-open:rotate-180"
+                  className="h-4 w-4 text-white/70 transition-transform group-open:rotate-180"
                   fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -184,7 +184,7 @@ export function SiteFooter() {
               <ul className="pb-4 space-y-3">
                 {section.links.map(link => (
                   <li key={link.href}>
-                    <a href={link.href} className="text-sm text-ink-400 hover:text-white transition-colors">
+                    <a href={link.href} className="text-sm text-white/70 hover:text-white transition-colors">
                       {link.label}
                     </a>
                   </li>
@@ -196,13 +196,13 @@ export function SiteFooter() {
 
         {/* Mobile social icons */}
         <div className="md:hidden mt-8 flex justify-center gap-6">
-          <a href="https://twitter.com/eventlinqs" aria-label="EventLinqs on X (Twitter)" className="text-ink-400 hover:text-white transition-colors">
+          <a href="https://twitter.com/eventlinqs" aria-label="EventLinqs on X (Twitter)" className="text-white/70 hover:text-white transition-colors">
             <TwitterIcon />
           </a>
-          <a href="https://instagram.com/eventlinqs" aria-label="EventLinqs on Instagram" className="text-ink-400 hover:text-white transition-colors">
+          <a href="https://instagram.com/eventlinqs" aria-label="EventLinqs on Instagram" className="text-white/70 hover:text-white transition-colors">
             <InstagramIcon />
           </a>
-          <a href="https://tiktok.com/@eventlinqs" aria-label="EventLinqs on TikTok" className="text-ink-400 hover:text-white transition-colors">
+          <a href="https://tiktok.com/@eventlinqs" aria-label="EventLinqs on TikTok" className="text-white/70 hover:text-white transition-colors">
             <TikTokIcon />
           </a>
         </div>
@@ -211,13 +211,13 @@ export function SiteFooter() {
       {/* Bottom bar */}
       <div className="border-t border-white/10 py-6 px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl flex flex-col items-center gap-2 text-center md:flex-row md:justify-between md:gap-6 md:text-left">
-          <p className="text-xs text-ink-400">
+          <p className="text-xs text-white/70">
             © {new Date().getFullYear()} EventLinqs. All rights reserved.
           </p>
-          <p className="hidden md:block text-xs text-ink-400">
+          <p className="hidden md:block text-xs text-white/70">
             Built for Africa, its diaspora, and every community that knows how to celebrate.
           </p>
-          <p className="text-xs text-ink-400">
+          <p className="text-xs text-white/70">
             Transparent pricing. Zero hidden fees. Always.
           </p>
         </div>

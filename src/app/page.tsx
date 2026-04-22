@@ -388,7 +388,7 @@ export default async function HomePage() {
               <div className="flex items-start gap-3">
                 <div className="mt-1 h-8 w-0.5 shrink-0 bg-gold-500" aria-hidden />
                 <div>
-                  <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-500">
+                  <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-700">
                     The lineup
                   </p>
                   <h2 className="font-display text-2xl font-bold text-ink-900 sm:text-3xl">
@@ -398,7 +398,7 @@ export default async function HomePage() {
               </div>
               <Link
                 href="/events"
-                className="shrink-0 text-sm font-medium text-gold-500 whitespace-nowrap transition-colors hover:text-gold-600"
+                className="shrink-0 text-sm font-medium text-gold-700 whitespace-nowrap transition-colors hover:text-gold-600"
               >
                 View all events &rsaquo;
               </Link>
@@ -442,7 +442,7 @@ export default async function HomePage() {
                     </p>
                     <Link
                       href="/organisers/signup"
-                      className="mt-5 inline-flex items-center rounded-lg bg-gold-500 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gold-600"
+                      className="mt-5 inline-flex items-center rounded-lg bg-gold-500 px-5 py-2.5 text-sm font-semibold text-ink-900 transition-colors hover:bg-gold-600"
                     >
                       List your event
                     </Link>
@@ -478,7 +478,7 @@ export default async function HomePage() {
                 <div className="flex items-start gap-3">
                   <div className="mt-1 h-8 w-0.5 shrink-0 bg-gold-500" aria-hidden />
                   <div>
-                    <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-500">
+                    <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-700">
                       Made for the diaspora
                     </p>
                     <h2 id="culture-heading" className="font-display text-2xl font-bold text-ink-900 sm:text-3xl">
@@ -488,7 +488,7 @@ export default async function HomePage() {
                 </div>
                 <Link
                   href="/events"
-                  className="shrink-0 text-sm font-medium text-gold-500 whitespace-nowrap transition-colors hover:text-gold-600"
+                  className="shrink-0 text-sm font-medium text-gold-700 whitespace-nowrap transition-colors hover:text-gold-600"
                 >
                   Explore culture &rsaquo;
                 </Link>
@@ -568,7 +568,7 @@ export default async function HomePage() {
                 <div className="mt-10 flex flex-wrap gap-3">
                   <Link
                     href="/organisers/signup"
-                    className="inline-flex items-center rounded-lg bg-gold-500 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-gold-600"
+                    className="inline-flex items-center rounded-lg bg-gold-500 px-6 py-3 text-sm font-semibold text-ink-900 transition-colors hover:bg-gold-600"
                   >
                     Start selling tickets
                   </Link>

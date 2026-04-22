@@ -73,7 +73,10 @@ export function StickyActionBar({
         className={`hidden md:block fixed inset-x-0 top-0 z-40 transition-all duration-300 motion-reduce:transition-none ${
           visible ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0 motion-reduce:translate-y-0'
         }`}
-        aria-hidden={!visible}
+        // `inert` on the hidden state removes the subtree from focus + AT
+        // so axe's aria-hidden-focus rule passes. Prefer `inert` over
+        // aria-hidden because the bar contains focusable CTAs.
+        inert={!visible || undefined}
       >
         <div className="border-b border-ink-900/10 bg-white/85 backdrop-blur-md shadow-sm">
           <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 sm:px-6 lg:px-8">
@@ -117,7 +120,7 @@ export function StickyActionBar({
               <Link
                 href={ticketAnchor}
                 onClick={handleTicketsClick}
-                className="inline-flex items-center rounded-lg bg-gold-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-gold-600 hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+                className="inline-flex items-center rounded-lg bg-gold-500 px-4 py-2 text-sm font-semibold text-ink-900 shadow-sm transition-all duration-200 hover:bg-gold-600 hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
               >
                 Get tickets
               </Link>
@@ -136,7 +139,7 @@ export function StickyActionBar({
           visible ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 motion-reduce:translate-y-0'
         }`}
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
-        aria-hidden={!visible}
+        inert={!visible || undefined}
       >
         <div className="bg-white/95 backdrop-blur-md border-t border-ink-100 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
           <div className="flex items-center gap-3 px-4 py-3">
@@ -151,7 +154,7 @@ export function StickyActionBar({
             <Link
               href={ticketAnchor}
               onClick={handleTicketsClick}
-              className="inline-flex flex-1 items-center justify-center rounded-lg bg-gold-500 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-gold-600 motion-reduce:transition-none"
+              className="inline-flex flex-1 items-center justify-center rounded-lg bg-gold-500 px-4 py-3 text-sm font-semibold text-ink-900 shadow-sm transition-colors duration-200 hover:bg-gold-600 motion-reduce:transition-none"
             >
               Get tickets
             </Link>

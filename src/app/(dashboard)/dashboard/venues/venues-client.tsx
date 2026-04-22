@@ -179,7 +179,7 @@ function VenueForm({
           type="button"
           onClick={submit}
           disabled={isPending}
-          className="rounded-lg bg-gold-500 px-4 py-2 text-sm font-medium text-white hover:bg-gold-600 disabled:opacity-50 transition-colors"
+          className="rounded-lg bg-gold-500 px-4 py-2 text-sm font-medium text-ink-900 hover:bg-gold-600 disabled:opacity-50 transition-colors"
         >
           {isPending ? 'Saving…' : 'Save Venue'}
         </button>
@@ -257,7 +257,7 @@ export function VenuesClient({ venues: initialVenues }: Props) {
           <button
             type="button"
             onClick={() => setShowCreate(true)}
-            className="rounded-lg bg-gold-500 px-4 py-2 text-sm font-medium text-white hover:bg-gold-600 transition-colors"
+            className="rounded-lg bg-gold-500 px-4 py-2 text-sm font-medium text-ink-900 hover:bg-gold-600 transition-colors"
           >
             + New Venue
           </button>
@@ -278,7 +278,7 @@ export function VenuesClient({ venues: initialVenues }: Props) {
           <button
             type="button"
             onClick={() => setShowCreate(true)}
-            className="mt-4 rounded-lg bg-gold-500 px-4 py-2 text-sm font-medium text-white hover:bg-gold-600 transition-colors"
+            className="mt-4 rounded-lg bg-gold-500 px-4 py-2 text-sm font-medium text-ink-900 hover:bg-gold-600 transition-colors"
           >
             + New Venue
           </button>

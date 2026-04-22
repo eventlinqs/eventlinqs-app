@@ -144,7 +144,7 @@ export function OrgCreateForm({
       <button
         type="submit"
         disabled={isPending}
-        className="w-full rounded-lg bg-gold-500 px-4 py-3 text-sm font-medium text-white hover:bg-gold-600 disabled:opacity-50 transition-colors"
+        className="w-full rounded-lg bg-gold-500 px-4 py-3 text-sm font-medium text-ink-900 hover:bg-gold-600 disabled:opacity-50 transition-colors"
       >
         {isPending ? 'Creating…' : submitLabel}
       </button>

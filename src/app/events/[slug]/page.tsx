@@ -227,7 +227,7 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
           <p className="mt-2 text-base text-ink-600">This event has been cancelled.</p>
           <Link
             href="/events"
-            className="mt-6 inline-flex items-center rounded-lg bg-gold-500 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gold-600"
+            className="mt-6 inline-flex items-center rounded-lg bg-gold-500 px-5 py-2.5 text-sm font-semibold text-ink-900 transition-colors hover:bg-gold-600"
           >
             Browse other events
           </Link>
@@ -246,7 +246,7 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
           <p className="mt-2 text-base text-ink-600">This event has ended.</p>
           <Link
             href="/events"
-            className="mt-6 inline-flex items-center rounded-lg bg-gold-500 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gold-600"
+            className="mt-6 inline-flex items-center rounded-lg bg-gold-500 px-5 py-2.5 text-sm font-semibold text-ink-900 transition-colors hover:bg-gold-600"
           >
             Browse upcoming events
           </Link>
@@ -480,7 +480,7 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
               <div className="mt-8 flex flex-wrap items-center gap-3">
                 <Link
                   href="#tickets"
-                  className="inline-flex items-center rounded-lg bg-gold-500 px-6 py-3 text-base font-semibold text-white shadow-lg shadow-gold-500/20 transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.02] hover:bg-gold-600"
+                  className="inline-flex items-center rounded-lg bg-gold-500 px-6 py-3 text-base font-semibold text-ink-900 shadow-lg shadow-gold-500/20 transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.02] hover:bg-gold-600"
                 >
                   Get tickets
                 </Link>
@@ -525,7 +525,7 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
                 {/* When + Where */}
                 <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2">
                   <div className="rounded-2xl border border-ink-200 bg-white p-5">
-                    <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-gold-500">
+                    <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-gold-700">
                       When
                     </p>
                     <p className="mt-2 text-sm font-semibold text-ink-900">
@@ -538,7 +538,7 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
                   </div>
 
                   <div className="rounded-2xl border border-ink-200 bg-white p-5">
-                    <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-gold-500">
+                    <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-gold-700">
                       Where
                     </p>
                     {event.event_type === 'virtual' ? (

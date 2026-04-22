@@ -102,7 +102,7 @@ export default async function MyEventsPage({ searchParams }: Props) {
         <h1 className="text-2xl font-bold text-ink-900">My Events</h1>
         <Link
           href="/dashboard/events/create"
-          className="rounded-lg bg-gold-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-gold-600 transition-colors"
+          className="rounded-lg bg-gold-500 px-4 py-2.5 text-sm font-medium text-ink-900 hover:bg-gold-600 transition-colors"
         >
           + Create Event
         </Link>

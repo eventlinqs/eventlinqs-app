@@ -41,12 +41,12 @@ const BADGE_CONFIG = {
   },
   only_x_left: {
     label: null, // dynamic
-    className: 'bg-gold-100 text-gold-600',
+    className: 'bg-gold-100 text-gold-700',
     dot: 'bg-gold-500',
   },
   almost_sold_out: {
     label: 'Almost Sold Out',
-    className: 'bg-gold-100 text-gold-600',
+    className: 'bg-gold-100 text-gold-700',
     dot: 'bg-gold-500',
   },
   selling_fast: {

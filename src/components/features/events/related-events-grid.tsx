@@ -25,7 +25,7 @@ export function RelatedEventsGrid({
         <div className="flex items-start gap-3">
           <div className="mt-1 h-8 w-0.5 shrink-0 bg-gold-500" aria-hidden />
           <div>
-            <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-500">
+            <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-700">
               Related
             </p>
             <h2 id="related-events-heading" className="font-display text-2xl font-bold text-ink-900">

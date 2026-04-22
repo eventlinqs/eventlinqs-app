@@ -138,7 +138,7 @@ export async function EventBentoTile({
         <div className="flex items-start gap-2">
           <div className="flex flex-col items-end gap-2">
             {featured && (
-              <span className="rounded-full bg-gold-500 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-white shadow-sm">
+              <span className="rounded-full bg-gold-500 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-ink-900 shadow-sm">
                 Featured
               </span>
             )}

@@ -28,7 +28,7 @@ export default async function OrganisationPage() {
         </p>
         <Link
           href="/dashboard/organisation/create"
-          className="mt-6 rounded-lg bg-gold-500 px-6 py-3 text-sm font-medium text-white hover:bg-gold-600 transition-colors"
+          className="mt-6 rounded-lg bg-gold-500 px-6 py-3 text-sm font-medium text-ink-900 hover:bg-gold-600 transition-colors"
         >
           Create Organisation
         </Link>
@@ -103,7 +103,7 @@ export default async function OrganisationPage() {
       <div className="mt-6 flex gap-4">
         <Link
           href="/dashboard/events/create"
-          className="rounded-lg bg-gold-500 px-5 py-2.5 text-sm font-medium text-white hover:bg-gold-600 transition-colors"
+          className="rounded-lg bg-gold-500 px-5 py-2.5 text-sm font-medium text-ink-900 hover:bg-gold-600 transition-colors"
         >
           Create Event
         </Link>

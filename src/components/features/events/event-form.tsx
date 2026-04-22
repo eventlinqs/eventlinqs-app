@@ -1435,7 +1435,7 @@ export function EventForm({
             type="button"
             onClick={() => handleSubmit('published')}
             disabled={isSubmitting || !formData.title.trim()}
-            className="flex-1 rounded-lg bg-gold-500 px-4 py-3 text-sm font-medium text-white hover:bg-gold-600 disabled:opacity-50 transition-colors"
+            className="flex-1 rounded-lg bg-gold-500 px-4 py-3 text-sm font-medium text-ink-900 hover:bg-gold-600 disabled:opacity-50 transition-colors"
           >
             {isSubmitting ? 'Publishing…' : editMode ? 'Save Changes' : 'Publish Now'}
           </button>
@@ -1500,7 +1500,7 @@ export function EventForm({
             <button
               type="button"
               onClick={handleContinue}
-              className="rounded-lg bg-gold-500 px-5 py-2.5 text-sm font-medium text-white hover:bg-gold-600 transition-colors"
+              className="rounded-lg bg-gold-500 px-5 py-2.5 text-sm font-medium text-ink-900 hover:bg-gold-600 transition-colors"
             >
               Continue
             </button>

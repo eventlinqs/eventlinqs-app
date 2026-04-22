@@ -186,7 +186,7 @@ export function EventsFilterBar({ params, categories, view, hasGeoSignal, basePa
               <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
               More filters
               {moreFiltersActiveCount > 0 && (
-                <span className="ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-gold-500 px-1 text-[10px] font-bold text-white">
+                <span className="ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-gold-500 px-1 text-[10px] font-bold text-ink-900">
                   {moreFiltersActiveCount}
                 </span>
               )}
@@ -208,7 +208,7 @@ export function EventsFilterBar({ params, categories, view, hasGeoSignal, basePa
               className={
                 'shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 ' +
                 (!activeCategory
-                  ? 'bg-gold-500 text-white'
+                  ? 'bg-gold-500 text-ink-900'
                   : 'border border-ink-200 bg-white text-ink-700 hover:border-ink-400')
               }
             >
@@ -225,7 +225,7 @@ export function EventsFilterBar({ params, categories, view, hasGeoSignal, basePa
                   className={
                     'shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 ' +
                     (isActive
-                      ? 'bg-gold-500 text-white'
+                      ? 'bg-gold-500 text-ink-900'
                       : 'border border-ink-200 bg-white text-ink-700 hover:border-ink-400')
                   }
                 >
@@ -253,7 +253,7 @@ export function EventsFilterBar({ params, categories, view, hasGeoSignal, basePa
             <button
               type="submit"
               form="m5-more-filters-form"
-              className="rounded-lg bg-gold-500 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gold-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+              className="rounded-lg bg-gold-500 px-5 py-2.5 text-sm font-semibold text-ink-900 transition-colors hover:bg-gold-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
             >
               Apply
             </button>

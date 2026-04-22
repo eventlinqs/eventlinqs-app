@@ -100,6 +100,9 @@ export const BADGE_STYLES: Record<SocialProofBadge, string> = {
   last_chance: 'bg-error text-white',
   few_left: 'bg-warning text-ink-900',
   selling_fast: 'bg-gold-500 text-ink-900',
-  just_announced: 'bg-info text-white',
-  free: 'bg-success text-white',
+  // bg-info (#0EA5E9) + white was 2.77:1, bg-success (#0F9D58) + white was
+  // 3.54:1. Both failed WCAG AA 4.5:1. Dark text on these mid-tone
+  // backgrounds passes comfortably.
+  just_announced: 'bg-info text-ink-900',
+  free: 'bg-success text-ink-900',
 }

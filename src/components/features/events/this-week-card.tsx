@@ -54,7 +54,7 @@ export async function ThisWeekCard({ event }: { event: BentoEvent }) {
         )}
       </div>
       <div className="flex flex-col p-4">
-        <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-gold-500">
+        <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-gold-700">
           {formatDate(event.start_date)}
         </p>
         <h3 className="mt-1 font-display text-base font-bold leading-snug text-ink-900 line-clamp-2 transition-colors duration-200 group-hover:text-gold-600">

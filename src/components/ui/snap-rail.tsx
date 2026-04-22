@@ -227,7 +227,7 @@ export function SnapRail({
         <div className="flex items-start gap-3">
           <div className="mt-1 h-8 w-0.5 shrink-0 bg-gold-500" aria-hidden />
           <div>
-            <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-500">
+            <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-700">
               {eyebrow}
             </p>
             <h2
@@ -243,7 +243,7 @@ export function SnapRail({
           {headerLink && (
             <Link
               href={headerLink.href}
-              className="text-sm font-medium text-gold-500 whitespace-nowrap transition-colors hover:text-gold-600"
+              className="text-sm font-medium text-gold-700 whitespace-nowrap transition-colors hover:text-gold-600"
             >
               {headerLink.label} &rsaquo;
             </Link>

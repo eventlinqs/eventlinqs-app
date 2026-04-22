@@ -169,7 +169,7 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
         {m5Mode && organisation ? (
           <p className="text-xs font-medium text-ink-400">{organisation.name}</p>
         ) : (
-          <p className="font-display text-xs font-semibold text-gold-500">
+          <p className="font-display text-xs font-semibold text-gold-700">
             {formatDate(start_date)}
           </p>
         )}

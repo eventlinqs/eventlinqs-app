@@ -195,7 +195,7 @@ function EmptyCityState({ city }: { city: PickerCity }) {
       <div className="mt-6 flex flex-wrap justify-center gap-3">
         <Link
           href="/events"
-          className="rounded-lg bg-gold-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-gold-600"
+          className="rounded-lg bg-gold-500 px-4 py-2 text-sm font-semibold text-ink-900 transition-colors hover:bg-gold-600"
         >
           Browse all events
         </Link>

@@ -146,7 +146,7 @@ export function EventsFilterStrip({
                 </svg>
                 Filters
                 {activeCount > 0 && (
-                  <span className="ml-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-gold-500 text-[10px] font-bold text-white">
+                  <span className="ml-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-gold-500 text-[10px] font-bold text-ink-900">
                     {activeCount}
                   </span>
                 )}
@@ -165,7 +165,7 @@ export function EventsFilterStrip({
               aria-current={params.date === chip.key ? 'true' : undefined}
               className={`flex-none inline-flex items-center h-11 rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 ${
                 params.date === chip.key
-                  ? 'bg-gold-500 text-white'
+                  ? 'bg-gold-500 text-ink-900'
                   : 'border border-ink-200 bg-white text-ink-700 hover:bg-ink-100'
               }`}
             >
@@ -182,7 +182,7 @@ export function EventsFilterStrip({
             aria-current={params.free === '1' ? 'true' : undefined}
             className={`flex-none inline-flex items-center h-11 rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 ${
               params.free === '1'
-                ? 'bg-gold-500 text-white'
+                ? 'bg-gold-500 text-ink-900'
                 : 'border border-ink-200 bg-white text-ink-700 hover:bg-ink-100'
             }`}
           >
@@ -200,7 +200,7 @@ export function EventsFilterStrip({
               aria-current={params.category === cat.slug ? 'true' : undefined}
               className={`flex-none inline-flex items-center h-11 rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 ${
                 params.category === cat.slug
-                  ? 'bg-gold-500 text-white'
+                  ? 'bg-gold-500 text-ink-900'
                   : 'border border-ink-200 bg-white text-ink-700 hover:bg-ink-100'
               }`}
             >
@@ -351,7 +351,7 @@ export function EventsFilterStrip({
           <button
             type="button"
             onClick={closeDrawer}
-            className="w-full rounded-lg bg-gold-500 py-3 text-sm font-semibold text-white hover:bg-gold-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
+            className="w-full rounded-lg bg-gold-500 py-3 text-sm font-semibold text-ink-900 hover:bg-gold-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
           >
             {resultsCount !== undefined
               ? `Show ${resultsCount.toLocaleString()} result${resultsCount !== 1 ? 's' : ''}`

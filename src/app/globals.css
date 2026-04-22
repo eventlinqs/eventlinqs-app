@@ -46,6 +46,10 @@
   --color-gold-400: #E8B738;
   --color-gold-500: #D4A017;
   --color-gold-600: #B88612;
+  /* Gold as text-on-light fails AA at gold-500 (#D4A017 → 2.27:1 on canvas).
+     gold-700 exists for text use on canvas/white: #8B6A0E → 5.97:1 ✓.
+     On dark backgrounds, stay with gold-400/500 for brand punch. */
+  --color-gold-700: #8B6A0E;
 
   --color-coral-100: #FFE4DF;
   --color-coral-500: #FF4E3A;
@@ -59,7 +63,10 @@
   --color-ink-900: #0A1628;
   --color-ink-800: #1A1A1A;
   --color-ink-600: #4A4A4A;
-  --color-ink-400: #8A8A8A;
+  /* WCAG AA: #8A8A8A was 3.52:1 on white (fails 4.5:1). Darkened to
+     #6B7280 (4.83:1) so muted text like metadata, captions, and help
+     strings pass AA everywhere text-ink-400 is used. */
+  --color-ink-400: #6B7280;
   --color-ink-200: #D9D9D6;
   --color-ink-100: #EFEDE8;
   --color-canvas:  #FAFAF7;

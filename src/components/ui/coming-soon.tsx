@@ -29,7 +29,7 @@ export function ComingSoon({ title, eyebrow = 'Coming soon', blurb }: Props) {
         <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link
             href="/events"
-            className="inline-flex items-center rounded-lg bg-gold-500 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-gold-600"
+            className="inline-flex items-center rounded-lg bg-gold-500 px-6 py-3 text-sm font-semibold text-ink-900 transition-colors hover:bg-gold-600"
           >
             Browse events
           </Link>
