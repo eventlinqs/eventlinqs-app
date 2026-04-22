@@ -67,8 +67,8 @@ export function BottomNav() {
               aria-current={isActive ? 'page' : undefined}
               className={`flex flex-1 flex-col items-center justify-center gap-1 transition-colors min-h-[44px] ${
                 isActive
-                  ? 'text-gold-500'
-                  : 'text-ink-400 hover:text-ink-600 active:text-ink-900'
+                  ? 'text-gold-700'
+                  : 'text-ink-600 hover:text-ink-700 active:text-ink-900'
               }`}
             >
               <Icon

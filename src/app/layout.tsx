@@ -18,9 +18,13 @@ const manrope = Manrope({
   weight: ['600', '700', '800'],
 })
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: 'EventLinqs | Discover & Create Amazing Events',
   description: 'The professional event ticketing and discovery platform. Create, promote, and manage events with transparent pricing and zero hidden fees.',
+  alternates: { canonical: '/' },
 }
 
 export default function RootLayout({

@@ -24,6 +24,7 @@ export const metadata: Metadata = {
   title: 'Discover events | EventLinqs',
   description:
     'Browse upcoming events by date, category, city, and price. Where the culture gathers.',
+  alternates: { canonical: '/events' },
 }
 
 type Props = {

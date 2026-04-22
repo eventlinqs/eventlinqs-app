@@ -136,6 +136,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: `${event.title} | EventLinqs`,
     description: event.summary ?? event.description?.replace(/<[^>]*>/g, '').slice(0, 160) ?? '',
+    alternates: { canonical: `/events/${slug}` },
     openGraph: {
       title: event.title,
       description: event.summary ?? '',

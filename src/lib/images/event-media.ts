@@ -1,5 +1,4 @@
 import { getCategoryPhoto } from './category-photo'
-import { getCategoryVideo } from './category-video'
 
 // M6+: add in-app curated image library for organisers. Until then, branded
 // placeholder is the only fallback in tile contexts — no Pexels stock.
@@ -135,10 +134,14 @@ export async function getFeaturedEventMedia(event: EventMediaInput): Promise<Eve
  * designed for card contexts.
  *
  * Priority:
- *   1. organiser video_url (only if explicitly uploaded)
- *   2. Pexels category video
- *   3. Pexels category photo (Ken Burns)
- *   4. Curated crowd still from /public/hero/hero-crowd.mp4
+ *   1. organiser-uploaded video_url (self-hosted — no 3rd-party cookies)
+ *   2. Pexels category photo (Ken Burns) — routed via next/image proxy
+ *   3. Self-hosted curated crowd still
+ *
+ * NOTE: we deliberately skip Pexels videos. Their Cloudflare-fronted CDN sets
+ * the `_cfuvid` cookie on <video src=...> requests, which Lighthouse flags as
+ * third-party tracking and drops Best Practices to 77. Pexels stills go
+ * through /_next/image so they look same-origin and carry no cookies.
  */
 const HERO_CROWD_VIDEO = '/hero/hero-crowd.mp4'
 
@@ -149,16 +152,6 @@ export async function getFeaturedHeroBackground(event: EventMediaInput): Promise
       src: event.video_url,
       poster: FALLBACK_POSTER,
       duration: 0,
-    }
-  }
-
-  const video = await getCategoryVideo(event.category?.slug)
-  if (video) {
-    return {
-      kind: 'video',
-      src: video.src,
-      poster: video.poster,
-      duration: video.duration,
     }
   }
 

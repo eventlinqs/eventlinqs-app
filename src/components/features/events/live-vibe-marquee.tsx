@@ -179,7 +179,7 @@ export function LiveVibeMarquee({ items }: Props) {
                 )}
               </div>
               <div className="flex flex-1 flex-col p-4">
-                <p className="font-display text-[10px] font-bold uppercase tracking-widest text-gold-600">
+                <p className="font-display text-[10px] font-bold uppercase tracking-widest text-gold-700">
                   {item.community}
                 </p>
                 <p className="mt-1.5 line-clamp-2 whitespace-normal text-sm font-semibold leading-snug text-ink-900">

@@ -200,7 +200,7 @@ export function HeroCarouselClient({
             <div
               role="tablist"
               aria-label="Hero slide selector"
-              className="absolute inset-x-0 bottom-8 z-20 flex justify-center gap-2 sm:bottom-10"
+              className="absolute inset-x-0 bottom-8 z-20 flex justify-center gap-1 sm:bottom-10"
             >
               {slides.map((slide, i) => (
                 <button
@@ -210,11 +210,16 @@ export function HeroCarouselClient({
                   aria-selected={i === index}
                   aria-label={`Show slide ${i + 1} of ${count}`}
                   onClick={() => goTo(i)}
-                  className={[
-                    'h-1.5 rounded-full transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 focus-visible:ring-offset-navy-950',
-                    i === index ? 'w-8 bg-gold-400' : 'w-2 bg-white/40 hover:bg-white/60',
-                  ].join(' ')}
-                />
+                  className="flex h-6 min-w-[24px] items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 focus-visible:ring-offset-navy-950"
+                >
+                  <span
+                    aria-hidden
+                    className={[
+                      'block h-1.5 rounded-full transition-all duration-300',
+                      i === index ? 'w-8 bg-gold-400' : 'w-2 bg-white/40 group-hover:bg-white/60',
+                    ].join(' ')}
+                  />
+                </button>
               ))}
             </div>
 

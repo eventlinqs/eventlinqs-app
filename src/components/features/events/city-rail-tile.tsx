@@ -12,6 +12,11 @@ interface Props {
   imageSrc: string
 }
 
+function proxy(src: string): string {
+  if (src.startsWith('/') || src.startsWith('data:')) return src
+  return `/_next/image?url=${encodeURIComponent(src)}&w=640&q=75`
+}
+
 export function CityRailTile({ city, slug, eventCount, imageSrc }: Props) {
   return (
     <Link
@@ -22,8 +27,10 @@ export function CityRailTile({ city, slug, eventCount, imageSrc }: Props) {
       <div className="relative aspect-[4/5] overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={imageSrc}
+          src={proxy(imageSrc)}
           alt=""
+          loading="lazy"
+          decoding="async"
           className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
         />
         <div

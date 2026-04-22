@@ -61,7 +61,7 @@ export async function ThisWeekCard({ event }: { event: BentoEvent }) {
           {event.title}
         </h3>
         {venue && <p className="mt-1 text-xs text-ink-400 line-clamp-1">{venue}</p>}
-        <p className="mt-2 text-sm font-semibold text-gold-600">
+        <p className="mt-2 text-sm font-semibold text-gold-700">
           {formatPrice(event.ticket_tiers ?? null)}
         </p>
       </div>

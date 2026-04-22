@@ -101,7 +101,6 @@ export async function EventBentoTile({
     <Link
       href={`/events/${event.slug}`}
       className="group relative flex h-full w-full flex-col overflow-hidden rounded-xl bg-ink-900 tile-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
-      aria-label={event.title ?? 'Event'}
     >
       <div className="absolute inset-0">
         <SmartMedia

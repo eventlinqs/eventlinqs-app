@@ -95,7 +95,7 @@ function renderEventCard(event: FeaturedHeroEvent, ticketsSoldToday: number) {
   const price = formatFromPrice(event.ticket_tiers ?? null)
   return (
     <GlassCard variant="light-on-dark" as="aside" className="rounded-xl p-5">
-      <p className="font-display text-[10px] font-bold uppercase tracking-widest text-gold-600">
+      <p className="font-display text-[10px] font-bold uppercase tracking-widest text-gold-700">
         Happening soon
       </p>
       <h2 className="mt-2 font-display text-xl font-bold leading-tight text-ink-900 line-clamp-2">
@@ -139,7 +139,7 @@ function renderEventCard(event: FeaturedHeroEvent, ticketsSoldToday: number) {
 function renderHighlightCard(slide: CategoryHighlightSlide) {
   return (
     <GlassCard variant="light-on-dark" as="aside" className="rounded-xl p-5">
-      <p className="font-display text-[10px] font-bold uppercase tracking-widest text-gold-600">
+      <p className="font-display text-[10px] font-bold uppercase tracking-widest text-gold-700">
         {slide.cardEyebrow}
       </p>
       <h2 className="mt-2 font-display text-xl font-bold leading-tight text-ink-900">

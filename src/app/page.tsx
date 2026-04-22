@@ -143,38 +143,61 @@ export default async function HomePage() {
   const detectedLocation = await detectLocation()
   const cityFilter = detectedLocation.city
 
-  // Upcoming public events — pull 24 to fuel hero + bento + cultural tabs + This Week.
-  // Try the city-filtered query first; if it returns fewer than 2 rows, fall back
-  // to the unfiltered feed so sparse cities don't leave the homepage empty.
-  const { data: cityUpcomingRaw } = await supabase
-    .from('events')
-    .select(EVENT_SELECT)
-    .eq('status', 'published')
-    .eq('visibility', 'public')
-    .gte('start_date', nowIso)
-    .ilike('venue_city', `%${cityFilter}%`)
-    .order('start_date', { ascending: true })
-    .limit(24)
-
-  let upcomingRaw = cityUpcomingRaw
-  const locationFilterActive = (cityUpcomingRaw ?? []).length >= 2
-  if (!locationFilterActive) {
-    const { data: allUpcomingRaw } = await supabase
+  // Fan out all independent initial queries in parallel. Previously these ran
+  // sequentially, which added ~5 Supabase RTTs to TTFB and stalled LCP. We
+  // pay a small cost by always launching both city-scoped + unfiltered
+  // upcoming feeds (the fallback picks the winner), but the wall-clock saving
+  // on warm cache is multiple hundreds of ms on prod.
+  const [
+    cityUpcomingResult,
+    allUpcomingResult,
+    sessionResult,
+    liveEventCountResult,
+    cityRowsResult,
+  ] = await Promise.all([
+    supabase
+      .from('events')
+      .select(EVENT_SELECT)
+      .eq('status', 'published')
+      .eq('visibility', 'public')
+      .gte('start_date', nowIso)
+      .ilike('venue_city', `%${cityFilter}%`)
+      .order('start_date', { ascending: true })
+      .limit(24),
+    supabase
       .from('events')
       .select(EVENT_SELECT)
       .eq('status', 'published')
       .eq('visibility', 'public')
       .gte('start_date', nowIso)
       .order('start_date', { ascending: true })
-      .limit(24)
-    upcomingRaw = allUpcomingRaw
-  }
+      .limit(24),
+    supabase.auth.getSession(),
+    supabase
+      .from('events')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'published')
+      .eq('visibility', 'public')
+      .gte('start_date', nowIso),
+    supabase
+      .from('events')
+      .select('venue_city')
+      .eq('status', 'published')
+      .eq('visibility', 'public')
+      .gte('start_date', nowIso)
+      .not('venue_city', 'is', null),
+  ])
+
+  const cityUpcomingRaw = cityUpcomingResult.data
+  const allUpcomingRaw = allUpcomingResult.data
+  const locationFilterActive = (cityUpcomingRaw ?? []).length >= 2
+  const upcomingRaw = locationFilterActive ? cityUpcomingRaw : allUpcomingRaw
 
   const upcoming = ((upcomingRaw ?? []) as unknown as RawRow[]).map(toBentoEvent)
   const upcomingRawTyped = (upcomingRaw ?? []) as unknown as RawRow[]
 
-  // Saved events for the current session (empty set if not signed in)
-  const { data: { session } } = await supabase.auth.getSession()
+  // Saved events — only query when signed in; depends on session.
+  const session = sessionResult.data.session
   let savedEventIds = new Set<string>()
   if (session?.user?.id) {
     const { data: savedRows } = await supabase
@@ -184,21 +207,8 @@ export default async function HomePage() {
     savedEventIds = new Set((savedRows ?? []).map(r => r.event_id as string))
   }
 
-  // Live platform counts — fuels hero live strip
-  const { count: liveEventCount } = await supabase
-    .from('events')
-    .select('id', { count: 'exact', head: true })
-    .eq('status', 'published')
-    .eq('visibility', 'public')
-    .gte('start_date', nowIso)
-
-  const { data: cityRows } = await supabase
-    .from('events')
-    .select('venue_city')
-    .eq('status', 'published')
-    .eq('visibility', 'public')
-    .gte('start_date', nowIso)
-    .not('venue_city', 'is', null)
+  const liveEventCount = liveEventCountResult.count
+  const cityRows = cityRowsResult.data
 
   const uniqueCitiesCount = new Set(
     (cityRows ?? []).map(r => r.venue_city?.trim().toLowerCase()).filter(Boolean)
@@ -241,57 +251,78 @@ export default async function HomePage() {
   })
   scoredCandidates.sort((a, b) => b.score - a.score)
 
-  const heroEventSlides: FeaturedHeroEventSlide[] = await Promise.all(
-    scoredCandidates.slice(0, 3).map(async ({ raw }) => ({
-      event: toFeaturedHeroEvent(raw),
-      ticketsSoldToday: await getTicketsSoldToday(raw.id),
-    })),
-  )
-
-  // Pad with category highlight slides if we have fewer than 3 real events.
-  const highlightSlidesNeeded = Math.max(0, 3 - heroEventSlides.length)
-  const heroHighlightSlides = CATEGORY_HIGHLIGHT_SLIDES.slice(0, highlightSlidesNeeded)
-
   // Bento row: featured hero + 3 equal-weight supporting events
   const supportingEvents = upcoming.slice(1, 4)
 
-  // This Week — events within next 7 days, pre-rendered as rail cards
+  // This Week candidates — used below in the parallel dispatch
   const thisWeek = upcoming.filter(e => new Date(e.start_date) <= new Date(weekEndIso)).slice(0, 10)
-  const thisWeekCards = await Promise.all(
-    thisWeek.map(async e => <ThisWeekCard key={e.id} event={e} />),
-  )
 
-  // Cultural picks per tab — try city-filtered first, fall back to all events
-  // for that tag when the local feed is sparse (<2 rows).
-  const culturalQueries = await Promise.all(
-    CULTURE_TABS.map(async tab => {
-      let { data } = await supabase
-        .from('events')
-        .select(EVENT_SELECT)
-        .eq('status', 'published')
-        .eq('visibility', 'public')
-        .gte('start_date', nowIso)
-        .contains('tags', [tab.tag])
-        .ilike('venue_city', `%${cityFilter}%`)
-        .order('start_date', { ascending: true })
-        .limit(8)
-      if ((data ?? []).length < 2) {
-        const result = await supabase
+  // City image SVG lookup — used below for the city tiles
+  const LOCAL_CITY_SVG = new Set(['lagos', 'london', 'melbourne', 'sydney'])
+
+  // Dispatch the four remaining independent workloads in one big Promise.all.
+  // Previously they ran in series (hero → thisWeek → cultural → cities),
+  // which stacked 4 Supabase round-trips onto TTFB for every homepage render.
+  const [heroEventSlides, thisWeekCards, culturalQueries, cityCounts] = await Promise.all([
+    Promise.all(
+      scoredCandidates.slice(0, 3).map(async ({ raw }) => ({
+        event: toFeaturedHeroEvent(raw),
+        ticketsSoldToday: await getTicketsSoldToday(raw.id),
+      })),
+    ) as Promise<FeaturedHeroEventSlide[]>,
+    Promise.all(thisWeek.map(async e => <ThisWeekCard key={e.id} event={e} />)),
+    Promise.all(
+      CULTURE_TABS.map(async tab => {
+        let { data } = await supabase
           .from('events')
           .select(EVENT_SELECT)
           .eq('status', 'published')
           .eq('visibility', 'public')
           .gte('start_date', nowIso)
           .contains('tags', [tab.tag])
+          .ilike('venue_city', `%${cityFilter}%`)
           .order('start_date', { ascending: true })
           .limit(8)
-        data = result.data
-      }
-      const events = ((data ?? []) as unknown as RawRow[]).map(toBentoEvent)
-      const cards = await Promise.all(events.map(async e => <ThisWeekCard key={e.id} event={e} />))
-      return { tab, events, cards }
-    }),
-  )
+        if ((data ?? []).length < 2) {
+          const result = await supabase
+            .from('events')
+            .select(EVENT_SELECT)
+            .eq('status', 'published')
+            .eq('visibility', 'public')
+            .gte('start_date', nowIso)
+            .contains('tags', [tab.tag])
+            .order('start_date', { ascending: true })
+            .limit(8)
+          data = result.data
+        }
+        const events = ((data ?? []) as unknown as RawRow[]).map(toBentoEvent)
+        const cards = await Promise.all(events.map(async e => <ThisWeekCard key={e.id} event={e} />))
+        return { tab, events, cards }
+      }),
+    ),
+    Promise.all(
+      CITY_TILES.map(async t => {
+        const [countResult, photo] = await Promise.all([
+          supabase.from('events').select('id', { count: 'exact', head: true })
+            .eq('status', 'published').eq('visibility', 'public')
+            .gte('start_date', nowIso).ilike('venue_city', `%${t.slug}%`),
+          getCityPhoto(t.slug),
+        ])
+        const localSvg = LOCAL_CITY_SVG.has(t.slug)
+          ? `/cities/${t.slug}.svg`
+          : '/cities/_fallback.svg'
+        return {
+          ...t,
+          count: countResult.count ?? 0,
+          imageSrc: photo ?? localSvg,
+        }
+      }),
+    ),
+  ])
+
+  // Pad with category highlight slides if we have fewer than 3 real events.
+  const highlightSlidesNeeded = Math.max(0, 3 - heroEventSlides.length)
+  const heroHighlightSlides = CATEGORY_HIGHLIGHT_SLIDES.slice(0, highlightSlidesNeeded)
 
   const culturalPicksTabs = culturalQueries
     .filter(q => q.events.length > 0)
@@ -301,30 +332,6 @@ export default async function HomePage() {
       href: q.tab.href,
       cards: <>{q.cards}</>,
     }))
-
-  // City counts + real Pexels photography, fetched in parallel per city.
-  // Image cascade: Pexels photo → curated local SVG (only 4 exist) →
-  // shared /cities/_fallback.svg. Avoids 404s on the 17+ launch cities
-  // that don't have a dedicated SVG.
-  const LOCAL_CITY_SVG = new Set(['lagos', 'london', 'melbourne', 'sydney'])
-  const cityCounts = await Promise.all(
-    CITY_TILES.map(async t => {
-      const [countResult, photo] = await Promise.all([
-        supabase.from('events').select('id', { count: 'exact', head: true })
-          .eq('status', 'published').eq('visibility', 'public')
-          .gte('start_date', nowIso).ilike('venue_city', `%${t.slug}%`),
-        getCityPhoto(t.slug),
-      ])
-      const localSvg = LOCAL_CITY_SVG.has(t.slug)
-        ? `/cities/${t.slug}.svg`
-        : '/cities/_fallback.svg'
-      return {
-        ...t,
-        count: countResult.count ?? 0,
-        imageSrc: photo ?? localSvg,
-      }
-    }),
-  )
 
   // Live Vibe — community event cards scrolling across the cream band.
   // Real events first; if fewer than 6, pad with branded placeholder tiles
