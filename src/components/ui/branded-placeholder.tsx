@@ -12,9 +12,16 @@
 interface Props {
   category?: string | null
   className?: string
+  /**
+   * When true, renders only the dark gradient — no EventLinqs wordmark or
+   * category watermark. Used by the event detail hero, where the title and
+   * category pill already carry the branding and the watermark otherwise
+   * bleeds through behind the overlay text on short mobile viewports.
+   */
+  chromeless?: boolean
 }
 
-export function BrandedPlaceholder({ category, className = '' }: Props) {
+export function BrandedPlaceholder({ category, className = '', chromeless = false }: Props) {
   return (
     <div
       className={`absolute inset-0 flex flex-col items-center justify-center overflow-hidden ${className}`}
@@ -28,16 +35,18 @@ export function BrandedPlaceholder({ category, className = '' }: Props) {
             'radial-gradient(circle at 30% 20%, rgba(212,160,23,0.18) 0%, transparent 40%), radial-gradient(circle at 70% 80%, rgba(212,160,23,0.12) 0%, transparent 40%)',
         }}
       />
-      <div className="relative z-10 text-center px-4">
-        <div className="font-display text-white/50 text-xs font-bold tracking-[0.3em] uppercase mb-2">
-          EventLinqs<span className="text-gold-400">.</span>
-        </div>
-        {category ? (
-          <div className="font-display text-gold-400/90 text-[10px] font-bold tracking-[0.22em] uppercase">
-            {category}
+      {!chromeless && (
+        <div className="relative z-10 text-center px-4">
+          <div className="font-display text-white/50 text-xs font-bold tracking-[0.3em] uppercase mb-2">
+            EventLinqs<span className="text-gold-400">.</span>
           </div>
-        ) : null}
-      </div>
+          {category ? (
+            <div className="font-display text-gold-400/90 text-[10px] font-bold tracking-[0.22em] uppercase">
+              {category}
+            </div>
+          ) : null}
+        </div>
+      )}
     </div>
   )
 }

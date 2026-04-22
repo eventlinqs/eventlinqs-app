@@ -424,7 +424,7 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
           className="relative flex min-h-[55vh] items-end overflow-hidden bg-navy-950 md:min-h-[70vh]"
         >
           <div className="absolute inset-0">
-            <SmartMedia media={media} autoplay={autoplayHero} priority />
+            <SmartMedia media={media} autoplay={autoplayHero} priority placeholderChromeless />
             <div
               className="absolute inset-0"
               style={{
@@ -440,7 +440,7 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
               {event.category && (
                 <GlassCard
                   variant="dark"
-                  className="inline-flex rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-gold-300"
+                  className="inline-flex rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-gold-400"
                 >
                   {event.category.name}
                 </GlassCard>
@@ -485,7 +485,7 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
                   Get tickets
                 </Link>
                 <span className="inline-flex items-center gap-2 text-sm text-white/80">
-                  <span className="font-display font-bold text-gold-300">{priceLabel ?? 'Free entry'}</span>
+                  <span className="font-display font-bold text-gold-400">{priceLabel ?? 'Free entry'}</span>
                 </span>
               </div>
             </div>
@@ -582,7 +582,7 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
                   <SectionHeader eyebrow="Organised by" title={event.organisation.name} size="sm" />
                   <div className="mt-5 rounded-2xl border border-ink-200 bg-white p-6">
                     <div className="flex items-start gap-4">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-ink-900 text-sm font-bold text-gold-300">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-ink-900 text-sm font-bold text-gold-400">
                         {event.organisation.name.slice(0, 2).toUpperCase()}
                       </div>
                       <div className="min-w-0 flex-1">

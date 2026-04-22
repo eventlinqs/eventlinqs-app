@@ -49,14 +49,14 @@ export function CityRailTile({ city, slug, eventCount, imageSrc }: Props) {
                     {eventCount} upcoming {eventCount === 1 ? 'event' : 'events'}
                   </p>
                 ) : (
-                  <p className="mt-1 text-xs font-semibold uppercase tracking-widest text-gold-300">
+                  <p className="mt-1 text-xs font-semibold uppercase tracking-widest text-gold-400">
                     Coming soon
                   </p>
                 )
               )}
             </div>
             <span
-              className="opacity-0 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100 translate-x-[-6px] text-gold-300"
+              className="opacity-0 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100 translate-x-[-6px] text-gold-400"
               aria-hidden
             >
               &rarr;

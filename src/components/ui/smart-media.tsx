@@ -26,6 +26,8 @@ interface Props {
   priority?: boolean
   /** Optional poster/alt used for still-kenburns sizes — defaults to <img alt>. */
   ariaLabel?: string
+  /** When the branded-placeholder fallback is rendered, omit the watermark. Used by the event-detail hero. */
+  placeholderChromeless?: boolean
 }
 
 export function SmartMedia({
@@ -35,6 +37,7 @@ export function SmartMedia({
   carouselInterval = 4000,
   priority = false,
   ariaLabel,
+  placeholderChromeless = false,
 }: Props) {
   const [carouselIndex, setCarouselIndex] = useState(0)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -91,7 +94,7 @@ export function SmartMedia({
     // TODO M5: organiser dashboard should preview branded placeholder when no cover uploaded
     return (
       <div className={wrapBase} aria-label={ariaLabel}>
-        <BrandedPlaceholder category={media.category} />
+        <BrandedPlaceholder category={media.category} chromeless={placeholderChromeless} />
       </div>
     )
   }

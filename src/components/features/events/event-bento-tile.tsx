@@ -173,7 +173,7 @@ export async function EventBentoTile({
         )}
 
         {price && (
-          <p className="mt-3 text-sm font-semibold text-gold-300">{price}</p>
+          <p className="mt-3 text-sm font-semibold text-gold-400">{price}</p>
         )}
       </div>
     </Link>

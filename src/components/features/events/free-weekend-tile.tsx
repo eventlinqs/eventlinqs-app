@@ -71,7 +71,7 @@ export async function FreeWeekendTile({ event, fallbackMode = false }: Props) {
       <div className="relative z-10 flex items-start justify-between p-4">
         <GlassCard
           variant="dark"
-          className="rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-gold-300"
+          className="rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-gold-400"
         >
           Free
         </GlassCard>
@@ -89,7 +89,7 @@ export async function FreeWeekendTile({ event, fallbackMode = false }: Props) {
           {title}
         </h3>
         <p className="mt-1.5 text-xs text-white/75 line-clamp-2">{venue}</p>
-        <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-gold-300 transition-transform duration-300 group-hover:translate-x-1">
+        <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-gold-400 transition-transform duration-300 group-hover:translate-x-1">
           {event ? 'RSVP' : 'Discover'} <span aria-hidden>&rarr;</span>
         </span>
       </div>
