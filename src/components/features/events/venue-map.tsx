@@ -30,8 +30,36 @@ export function VenueMap({
   const mapRef = useRef<google.maps.Map | null>(null)
   const markerRef = useRef<google.maps.Marker | null>(null)
   const [interactive, setInteractive] = useState(false)
+  const [inView, setInView] = useState(false)
 
   const hasCoords = latitude !== null && longitude !== null
+
+  // Defer Google Maps JS download (~290KB) until the venue section nears
+  // the viewport. On event detail the map sits well below the fold, so
+  // eagerly loading on mount wastes mobile bandwidth and pushes LCP.
+  useEffect(() => {
+    if (!hasCoords) return
+    const el = containerRef.current
+    if (!el) return
+    if (typeof IntersectionObserver === 'undefined') {
+      setInView(true)
+      return
+    }
+    const io = new IntersectionObserver(
+      entries => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setInView(true)
+            io.disconnect()
+            break
+          }
+        }
+      },
+      { rootMargin: '400px 0px' },
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [hasCoords])
   const mapsLinkQuery = [venueName, address, city, state, country].filter(Boolean).join(', ')
   const mapsLink = hasCoords
     ? `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`
@@ -40,6 +68,7 @@ export function VenueMap({
 
   useEffect(() => {
     if (!hasCoords) return
+    if (!inView) return
     const loader = getGoogleMapsLoader()
     if (!loader) return
     if (!containerRef.current) return
@@ -89,7 +118,7 @@ export function VenueMap({
       markerRef.current = null
       mapRef.current = null
     }
-  }, [hasCoords, latitude, longitude, venueName])
+  }, [hasCoords, inView, latitude, longitude, venueName])
 
   return (
     <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">

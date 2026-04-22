@@ -50,6 +50,7 @@ next-env.d.ts
 
 # lighthouse audit reports — local only
 lighthouse-reports/
+.lighthouse/
 
 # Claude Code local settings
 .claude/settings.local.json
