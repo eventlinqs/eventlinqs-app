@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { useEffect, useRef, useState } from 'react'
 import type { EventMedia } from '@/lib/images/event-media'
 import { BrandedPlaceholder } from './branded-placeholder'
@@ -130,17 +131,20 @@ export function SmartMedia({
     )
   }
 
-  // still-kenburns
+  // still-kenburns — use Next.js <Image> so priority inserts a <link rel="preload">
+  // into the document head (raw <img> tags don't get auto-preloaded and leave a
+  // multi-second resourceLoadDelay before the LCP fetch starts).
   return (
     <div className={wrapBase} aria-label={ariaLabel}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={proxy(media.src)}
+      <Image
+        src={media.src}
         alt={media.alt}
-        loading={priority ? 'eager' : 'lazy'}
+        fill
+        sizes="(max-width: 768px) 100vw, 1920px"
+        priority={priority}
         fetchPriority={priority ? 'high' : 'auto'}
-        decoding="async"
-        className={`absolute inset-0 h-full w-full object-cover smart-media-kenburns ${priority ? 'will-change-transform' : ''}`}
+        quality={75}
+        className={`object-cover smart-media-kenburns ${priority ? 'will-change-transform' : ''}`}
       />
     </div>
   )
