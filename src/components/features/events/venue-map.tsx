@@ -37,10 +37,16 @@ export function VenueMap({
   // Defer Google Maps JS download (~290KB) until the venue section nears
   // the viewport. On event detail the map sits well below the fold, so
   // eagerly loading on mount wastes mobile bandwidth and pushes LCP.
+  // Triple-trigger for reliability: IntersectionObserver with wide margin,
+  // 2s fallback so we never stall if the observer never fires, and the
+  // native lazy-img sentinel below as a secondary trigger.
   useEffect(() => {
     if (!hasCoords) return
     const el = containerRef.current
-    if (!el) return
+    if (!el) {
+      setInView(true)
+      return
+    }
     if (typeof IntersectionObserver === 'undefined') {
       setInView(true)
       return
@@ -55,10 +61,14 @@ export function VenueMap({
           }
         }
       },
-      { rootMargin: '400px 0px' },
+      { rootMargin: '1000px 0px' },
     )
     io.observe(el)
-    return () => io.disconnect()
+    const fallback = window.setTimeout(() => setInView(true), 2000)
+    return () => {
+      io.disconnect()
+      window.clearTimeout(fallback)
+    }
   }, [hasCoords])
   const mapsLinkQuery = [venueName, address, city, state, country].filter(Boolean).join(', ')
   const mapsLink = hasCoords
@@ -126,6 +136,17 @@ export function VenueMap({
         {hasCoords ? (
           <>
             <div ref={containerRef} className="absolute inset-0 h-full w-full" />
+            {/* Native lazy-img sentinel — when the browser decides this
+                pseudo-image is near the viewport it kicks off `onLoad`,
+                giving us a second independent trigger alongside the IO. */}
+            <img
+              alt=""
+              src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=="
+              loading="lazy"
+              aria-hidden="true"
+              className="pointer-events-none absolute bottom-0 left-0 h-px w-px opacity-0"
+              onLoad={() => setInView(true)}
+            />
             {!interactive && (
               <div
                 className="absolute inset-0 flex items-center justify-center"
