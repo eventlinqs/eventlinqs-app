@@ -11,7 +11,7 @@ type Props = {
 }
 
 const MIN_RAIL_COUNT = 3
-const MAX_RAIL_COUNT = 12
+const MAX_RAIL_COUNT = 8
 
 /**
  * Horizontal rail of Recommended / Popular events rendered above the

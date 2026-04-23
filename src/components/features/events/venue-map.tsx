@@ -64,10 +64,27 @@ export function VenueMap({
       { rootMargin: '1000px 0px' },
     )
     io.observe(el)
-    const fallback = window.setTimeout(() => setInView(true), 2000)
+    // Secondary trigger: schedule on idle so we never stall if IO misses,
+    // but stay well clear of the LCP window so the Google Maps JS (~290KB)
+    // does not compete with hero image fetch on mobile throttling.
+    let idleHandle = 0
+    let fallbackHandle = 0
+    type WinWithIdle = Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => number
+      cancelIdleCallback?: (h: number) => void
+    }
+    const w = window as WinWithIdle
+    if (typeof w.requestIdleCallback === 'function') {
+      idleHandle = w.requestIdleCallback(() => setInView(true), { timeout: 8000 })
+    } else {
+      fallbackHandle = window.setTimeout(() => setInView(true), 6000)
+    }
     return () => {
       io.disconnect()
-      window.clearTimeout(fallback)
+      if (idleHandle && typeof w.cancelIdleCallback === 'function') {
+        w.cancelIdleCallback(idleHandle)
+      }
+      if (fallbackHandle) window.clearTimeout(fallbackHandle)
     }
   }, [hasCoords])
   const mapsLinkQuery = [venueName, address, city, state, country].filter(Boolean).join(', ')
