@@ -68,10 +68,13 @@ function formatFromPrice(tiers: FeaturedHeroEvent['ticket_tiers']): string | nul
   return `From ${cheapest.currency ?? 'AUD'} ${formatted}`
 }
 
-function renderBackground(media: Awaited<ReturnType<typeof getFeaturedHeroBackground>>) {
+function renderBackground(
+  media: Awaited<ReturnType<typeof getFeaturedHeroBackground>>,
+  priority: boolean,
+) {
   return (
     <>
-      <SmartMedia media={media} autoplay priority />
+      <SmartMedia media={media} autoplay={priority} priority={priority} />
       <div
         className="absolute inset-0"
         style={{
@@ -176,11 +179,14 @@ export async function FeaturedEventHero({
     Promise.all(highlightSlides.map(s => getFeaturedHeroBackground(s.media))),
   ])
 
+  // Only the first slide's background gets priority+preload so the browser
+  // commits to a single LCP candidate instead of thrashing between 3-6 hero
+  // images racing for fetchpriority=high in parallel.
   const slides: HeroCarouselSlide[] = [
     ...eventSlides.map((s, i) => ({
       key: `event-${s.event.id}`,
       eyebrow: heroEyebrow(s.event),
-      background: renderBackground(eventMedia[i]),
+      background: renderBackground(eventMedia[i], i === 0),
       card: renderEventCard(s.event, s.ticketsSoldToday),
       primaryHref: `/events/${s.event.slug}`,
       primaryLabel: 'Get tickets',
@@ -188,7 +194,7 @@ export async function FeaturedEventHero({
     ...highlightSlides.map((s, i) => ({
       key: `highlight-${s.key}`,
       eyebrow: s.eyebrow,
-      background: renderBackground(highlightMedia[i]),
+      background: renderBackground(highlightMedia[i], eventSlides.length === 0 && i === 0),
       card: renderHighlightCard(s),
       primaryHref: s.ctaHref,
       primaryLabel: s.ctaLabel,
@@ -204,7 +210,7 @@ export async function FeaturedEventHero({
     slides.push({
       key: 'fallback',
       eyebrow: 'Made for the diaspora',
-      background: renderBackground(fallbackMedia),
+      background: renderBackground(fallbackMedia, true),
       card: null,
       primaryHref: '/events',
       primaryLabel: 'Browse events',

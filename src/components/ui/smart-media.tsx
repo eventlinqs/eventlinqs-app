@@ -114,12 +114,16 @@ export function SmartMedia({
     return (
       <div className={wrapBase} aria-label={ariaLabel}>
         {media.images.map((src, i) => (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             key={`${src}-${i}`}
-            src={proxy(src)}
+            src={src}
             alt={media.alts[i] ?? ''}
-            className="absolute inset-0 h-full w-full object-cover"
+            fill
+            sizes="(max-width: 768px) 100vw, 1920px"
+            priority={priority && i === 0}
+            fetchPriority={priority && i === 0 ? 'high' : 'auto'}
+            quality={75}
+            className="object-cover"
             style={{
               opacity: i === carouselIndex ? 1 : 0,
               transform: i === carouselIndex ? 'scale(1.04)' : 'scale(1)',
