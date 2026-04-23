@@ -209,14 +209,14 @@ export default async function EventViewPage({ params }: Props) {
         <KpiCard
           icon={<Eye className="h-4 w-4" aria-hidden="true" />}
           label="Page views"
-          value="—"
+          value=":"
           hint="Wiring up in M5"
           dim
         />
         <KpiCard
           icon={<TrendingUp className="h-4 w-4" aria-hidden="true" />}
           label="Conversion"
-          value="—"
+          value=":"
           hint="Wiring up in M5"
           dim
         />
@@ -279,7 +279,7 @@ export default async function EventViewPage({ params }: Props) {
                           />
                         </div>
                         <span className="shrink-0 text-xs font-medium tabular-nums text-ink-600">
-                          {tier.sold_count}/{tier.total_capacity || '—'}
+                          {tier.sold_count}/{tier.total_capacity || ':'}
                         </span>
                       </div>
                     </li>

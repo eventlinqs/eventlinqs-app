@@ -201,7 +201,7 @@ function TierPricingCard({ tier, eventId }: { tier: Tier; eventId: string }) {
                     value={step._percentDisplay ?? String(step.capacity_threshold_percent)}
                     onChange={e => handlePercentChange(i, e.target.value)}
                     onBlur={() => handlePercentBlur(i)}
-                    placeholder="1–100"
+                    placeholder="1-100"
                     className="w-full rounded-lg border border-ink-200 px-3 py-2 pr-8 text-sm focus:border-gold-400 focus:outline-none focus:ring-1 focus:ring-gold-400"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-400">%</span>

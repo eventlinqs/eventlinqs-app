@@ -47,7 +47,7 @@ export function DiscountCodesClient({ eventId, currency, initialCodes, tiers }: 
 
     const codeUpper = form.code.toUpperCase().trim()
     if (!/^[A-Z0-9-]{3,20}$/.test(codeUpper)) {
-      setFormError('Code must be 3–20 uppercase letters, numbers, or hyphens')
+      setFormError('Code must be 3-20 uppercase letters, numbers, or hyphens')
       return
     }
 
@@ -143,7 +143,7 @@ export function DiscountCodesClient({ eventId, currency, initialCodes, tiers }: 
 
             <div>
               <label className="block text-xs text-ink-400 mb-1">
-                Value * {form.discount_type === 'percentage' ? '(1–100)' : `(${currency.toUpperCase()})`}
+                Value * {form.discount_type === 'percentage' ? '(1-100)' : `(${currency.toUpperCase()})`}
               </label>
               <input
                 type="number"

@@ -40,7 +40,7 @@ function generateOrderNumber(): string {
 export async function registerFreeTickets(
   input: z.infer<typeof RegisterFreeSchema>
 ): Promise<RegisterFreeResult> {
-  console.log('[registerFreeTickets] START — event_id:', input?.event_id)
+  console.log('[registerFreeTickets] START - event_id:', input?.event_id)
 
   const parsed = RegisterFreeSchema.safeParse(input)
   if (!parsed.success) {
@@ -49,11 +49,11 @@ export async function registerFreeTickets(
   }
 
   const { event_id, ticket_items } = parsed.data
-  console.log('[registerFreeTickets] Parsed input OK — event_id:', event_id, '| tiers:', ticket_items)
+  console.log('[registerFreeTickets] Parsed input OK - event_id:', event_id, '| tiers:', ticket_items)
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  console.log('[registerFreeTickets] Auth — user_id:', user?.id ?? 'GUEST')
+  console.log('[registerFreeTickets] Auth - user_id:', user?.id ?? 'GUEST')
 
   // 1. Verify all requested tiers are genuinely free (server-side check)
   const tierIds = ticket_items.map(i => i.ticket_tier_id)
@@ -62,7 +62,7 @@ export async function registerFreeTickets(
     .select('id, name, price, currency')
     .in('id', tierIds)
 
-  console.log('[registerFreeTickets] Tiers lookup — data:', tiers, '| error:', tiersError)
+  console.log('[registerFreeTickets] Tiers lookup - data:', tiers, '| error:', tiersError)
 
   if (!tiers || tiers.length !== tierIds.length) {
     console.log('[registerFreeTickets] FAIL: tiers not found. Expected', tierIds.length, 'got', tiers?.length ?? 0)
@@ -90,7 +90,7 @@ export async function registerFreeTickets(
     p_items: items,
   })
 
-  console.log('[registerFreeTickets] create_reservation result — data:', resData, '| error:', resError)
+  console.log('[registerFreeTickets] create_reservation result - data:', resData, '| error:', resError)
 
   if (resError || !resData) {
     console.error('[registerFreeTickets] FAIL: create_reservation error:', resError)
@@ -110,11 +110,11 @@ export async function registerFreeTickets(
   }
 
   const reservation_id = resResult.reservation_id
-  console.log('[registerFreeTickets] Reservation created — reservation_id:', reservation_id)
+  console.log('[registerFreeTickets] Reservation created - reservation_id:', reservation_id)
 
   // 3. Guest fallback — redirect to checkout page for email capture
   if (!user) {
-    console.log('[registerFreeTickets] Guest user — returning reservation_id for checkout redirect')
+    console.log('[registerFreeTickets] Guest user - returning reservation_id for checkout redirect')
     return { reservation_id }
   }
 
@@ -125,12 +125,12 @@ export async function registerFreeTickets(
     .eq('id', user.id)
     .single()
 
-  console.log('[registerFreeTickets] Profile lookup — full_name:', profile?.full_name, '| email:', profile?.email)
+  console.log('[registerFreeTickets] Profile lookup - full_name:', profile?.full_name, '| email:', profile?.email)
 
   const buyerEmail = profile?.email ?? user.email ?? ''
   const buyerName = profile?.full_name ?? buyerEmail
 
-  console.log('[registerFreeTickets] Looking up event via adminClient — event_id:', event_id)
+  console.log('[registerFreeTickets] Looking up event via adminClient - event_id:', event_id)
   const adminClient = createAdminClient()
   const { data: event, error: eventError } = await adminClient
     .from('events')
@@ -138,14 +138,14 @@ export async function registerFreeTickets(
     .eq('id', event_id)
     .single()
 
-  console.log('[registerFreeTickets] Event lookup result — data:', event, '| error:', eventError)
+  console.log('[registerFreeTickets] Event lookup result - data:', event, '| error:', eventError)
 
   if (!event) {
     console.error('[registerFreeTickets] FAIL: Event not found. event_id:', event_id, '| supabase error:', eventError)
     return { error: 'Event not found' }
   }
 
-  console.log('[registerFreeTickets] Event found — title:', event.title, '| org_id:', event.organisation_id)
+  console.log('[registerFreeTickets] Event found - title:', event.title, '| org_id:', event.organisation_id)
 
   const currency = tiers[0]?.currency ?? 'AUD'
 

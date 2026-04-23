@@ -28,11 +28,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description = category.heroBody.slice(0, 155)
 
   return {
-    title: `${category.displayName} events — ${category.tagline} | EventLinqs`,
+    title: `${category.displayName} events - ${category.tagline} | EventLinqs`,
     description,
     keywords: category.keywords,
     openGraph: {
-      title: `${category.displayName} events — ${category.tagline} | EventLinqs`,
+      title: `${category.displayName} events - ${category.tagline} | EventLinqs`,
       description,
       type: 'website',
     },

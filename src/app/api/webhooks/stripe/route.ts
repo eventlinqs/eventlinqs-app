@@ -523,7 +523,7 @@ async function handleSquadMemberPaymentSucceeded(
     }
   }
 
-  console.log(`[webhook] squad ${squadId} completed — ${squad.total_spots} members all paid`)
+  console.log(`[webhook] squad ${squadId} completed - ${squad.total_spots} members all paid`)
 }
 
 async function handleChargeRefunded(charge: Stripe.Charge) {

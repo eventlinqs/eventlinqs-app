@@ -112,7 +112,7 @@ export async function createSquad(
 
   if (reservationError || !reservationData) {
     console.error('[squads] create_reservation error:', reservationError)
-    return { error: reservationError?.message ?? 'Failed to reserve tickets — they may have sold out.' }
+    return { error: reservationError?.message ?? 'Failed to reserve tickets - they may have sold out.' }
   }
 
   const reservationResult = reservationData as {
@@ -223,7 +223,7 @@ export async function joinSquad(
     .single()
 
   if (squadError || !squad) {
-    return { error: 'Squad not found — this link may be invalid.' }
+    return { error: 'Squad not found - this link may be invalid.' }
   }
 
   if (squad.status === 'completed') return { error: 'This squad is already complete.' }
@@ -396,7 +396,7 @@ export async function leaveSquad(memberId: string): Promise<LeaveSquadResult> {
   if (memberError || !member) return { error: 'Member record not found' }
   if (member.user_id !== user.id) return { error: 'You can only remove your own membership' }
   if (member.status === 'paid') {
-    return { error: 'You have already paid — contact support to leave a completed squad' }
+    return { error: 'You have already paid - contact support to leave a completed squad' }
   }
 
   // Leaders cannot leave their own squad — they must cancel it
@@ -407,7 +407,7 @@ export async function leaveSquad(memberId: string): Promise<LeaveSquadResult> {
     .single()
 
   if (squad?.leader_user_id === user.id) {
-    return { error: 'Squad leaders cannot leave — cancel the squad instead' }
+    return { error: 'Squad leaders cannot leave - cancel the squad instead' }
   }
 
   const { error: updateError } = await adminClient

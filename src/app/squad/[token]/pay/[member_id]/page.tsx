@@ -12,7 +12,7 @@ type Props = {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { token } = await params
   return {
-    title: `Pay Your Share — Squad | EventLinqs`,
+    title: `Pay Your Share - Squad | EventLinqs`,
     robots: { index: false },
   }
 }

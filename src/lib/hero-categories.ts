@@ -216,12 +216,12 @@ export const heroCategories: Record<HeroCategorySlug, HeroCategory> = {
     tagline: 'Where the next deal, hire, and big idea gets made.',
     heroHeadline: 'Conferences, summits, and the rooms that move careers.',
     heroBody:
-      'Conferences, industry summits, founder mixers, executive masterclasses, women-in-business panels, and professional networking nights. EventLinqs takes business events as seriously as music ones — with the ticketing, attendee management, and sponsor tools to match.',
+      'Conferences, industry summits, founder mixers, executive masterclasses, women-in-business panels, and professional networking nights. EventLinqs takes business events as seriously as music ones - with the ticketing, attendee management, and sponsor tools to match.',
     storyHeadline: 'Business & Networking on EventLinqs',
     storyParagraphs: [
       "Business events cover more ground than any other category on EventLinqs. Multi-day conferences, industry summits, founder mixers, executive masterclasses, women-in-business panels, professional associations, diaspora chambers of commerce, leadership workshops, and the everyday networking breakfasts that keep cities humming. Each has its own rhythm, its own attendee expectations, and its own ticketing needs.",
       "EventLinqs gives business organisers the polish these events demand: clean, corporate-friendly event pages, multi-tier ticketing for early bird and VIP pricing, sponsor and corporate purchase flows, attendee export, branded check-in, and the kind of checkout experience that doesn't make a CFO or a keynote speaker roll their eyes. All without the corporate-platform price tag.",
-      "Whether you're running a 40-person founder breakfast, a 400-person industry summit, a multi-day professional development conference, or a recurring executive networking series — list it here.",
+      "Whether you're running a 40-person founder breakfast, a 400-person industry summit, a multi-day professional development conference, or a recurring executive networking series - list it here.",
     ],
     valuePillars: [
       { icon: 'Sparkles', title: 'Professional event pages', body: 'Clean, corporate-friendly templates that work for conferences, summits, and mixers alike.' },

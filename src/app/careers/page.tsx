@@ -12,7 +12,7 @@ export default function CareersPage() {
     <PageShell>
       <ComingSoon
         title="Careers"
-        blurb="We'll post roles here when we're hiring. Until then, the best way in is to build with us — organisers and attendees, start on the events page."
+        blurb="We'll post roles here when we're hiring. Until then, the best way in is to build with us - organisers and attendees, start on the events page."
       />
     </PageShell>
   )

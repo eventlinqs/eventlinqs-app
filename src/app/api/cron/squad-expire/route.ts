@@ -114,7 +114,7 @@ export async function GET(request: NextRequest) {
             }
           }
         } else {
-          console.warn('[squad-expire] STRIPE_SECRET_KEY not set — skipping refunds')
+          console.warn('[squad-expire] STRIPE_SECRET_KEY not set - skipping refunds')
         }
       }
 

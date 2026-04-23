@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   return {
-    title: `Join the Squad — ${squad.event.title} | EventLinqs`,
+    title: `Join the Squad - ${squad.event.title} | EventLinqs`,
     description: `${squad.squad_members.filter(m => m.status === 'paid').length} of ${squad.total_spots} spots filled. Join the squad for ${squad.event.title}.`,
   }
 }

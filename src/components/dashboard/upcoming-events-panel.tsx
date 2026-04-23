@@ -99,7 +99,7 @@ export function UpcomingEventsPanel({ events }: { events: UpcomingEvent[] }) {
                           />
                         </div>
                         <span className="shrink-0 text-xs font-medium tabular-nums text-ink-600">
-                          {event.ticketsSold}/{event.ticketsCapacity || '—'}
+                          {event.ticketsSold}/{event.ticketsCapacity || ':'}
                         </span>
                       </div>
                     </div>

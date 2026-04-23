@@ -12,7 +12,7 @@ type Props = {
 
 export default async function CheckoutPage({ params }: Props) {
   const { reservation_id } = await params
-  console.log('[CheckoutPage] render start — reservation_id:', reservation_id)
+  console.log('[CheckoutPage] render start - reservation_id:', reservation_id)
 
   const supabase = await createClient()
   const admin = createAdminClient()
@@ -27,7 +27,7 @@ export default async function CheckoutPage({ params }: Props) {
     .eq('status', 'active')
     .single()
 
-  console.log('[CheckoutPage] reservation lookup — data:', reservation?.id ?? null, '| error:', resError?.message ?? null)
+  console.log('[CheckoutPage] reservation lookup - data:', reservation?.id ?? null, '| error:', resError?.message ?? null)
 
   if (resError || !reservation) {
     // Reservation missing or already used — send user back to pick tickets again
@@ -42,13 +42,13 @@ export default async function CheckoutPage({ params }: Props) {
   const ownedByUser = reservation.user_id && user && reservation.user_id === user.id
   const ownedByGuest = reservation.session_id && guestSessionId && reservation.session_id === guestSessionId
   if (!ownedByUser && !ownedByGuest) {
-    console.log('[CheckoutPage] ownership mismatch — redirecting to /events')
+    console.log('[CheckoutPage] ownership mismatch - redirecting to /events')
     redirect('/events?error=reservation_not_found')
   }
 
   // Expired?
   if (new Date(reservation.expires_at) < new Date()) {
-    console.log('[CheckoutPage] notFound() — reservation expired at', reservation.expires_at)
+    console.log('[CheckoutPage] notFound() - reservation expired at', reservation.expires_at)
     redirect('/events?error=reservation_expired')
   }
 
@@ -59,10 +59,10 @@ export default async function CheckoutPage({ params }: Props) {
     .eq('id', reservation.event_id)
     .single()
 
-  console.log('[CheckoutPage] event lookup — data:', event?.id ?? null, '| error:', eventError?.message ?? null)
+  console.log('[CheckoutPage] event lookup - data:', event?.id ?? null, '| error:', eventError?.message ?? null)
 
   if (!event) {
-    console.log('[CheckoutPage] notFound() — event not found for id:', reservation.event_id)
+    console.log('[CheckoutPage] notFound() - event not found for id:', reservation.event_id)
     notFound()
   }
 
@@ -88,7 +88,7 @@ export default async function CheckoutPage({ params }: Props) {
       .select('id, row_label, seat_number, seat_type, price_cents, ticket_tier_id')
       .in('id', seatIds)
 
-    console.log('[CheckoutPage] seat lookup — count:', seats?.length ?? 0, '| error:', seatsError?.message ?? null)
+    console.log('[CheckoutPage] seat lookup - count:', seats?.length ?? 0, '| error:', seatsError?.message ?? null)
 
     if (seats && seats.length > 0) {
       // Get tier info for currency
@@ -139,13 +139,13 @@ export default async function CheckoutPage({ params }: Props) {
     let tiers: TicketTier[] = []
     if (tierIds.length > 0) {
       const { data: tiersData, error: tiersError } = await admin.from('ticket_tiers').select('*').in('id', tierIds)
-      console.log('[CheckoutPage] ticket_tiers lookup — count:', tiersData?.length ?? 0, '| error:', tiersError?.message ?? null)
+      console.log('[CheckoutPage] ticket_tiers lookup - count:', tiersData?.length ?? 0, '| error:', tiersError?.message ?? null)
       tiers = (tiersData ?? []) as TicketTier[]
     }
 
     if (addonIds.length > 0) {
       const { data: addonsData, error: addonsError } = await admin.from('event_addons').select('*').in('id', addonIds)
-      console.log('[CheckoutPage] event_addons lookup — count:', addonsData?.length ?? 0, '| error:', addonsError?.message ?? null)
+      console.log('[CheckoutPage] event_addons lookup - count:', addonsData?.length ?? 0, '| error:', addonsError?.message ?? null)
       addons = (addonsData ?? []) as EventAddon[]
     }
 
@@ -175,7 +175,7 @@ export default async function CheckoutPage({ params }: Props) {
 
     const calculator = new PaymentCalculator()
     initialFees = await calculator.calculate(cartTickets, cartAddons, currency, fee_pass_type, 0)
-    console.log('[CheckoutPage] fee calculation — total_cents:', initialFees.total_cents, '| currency:', currency)
+    console.log('[CheckoutPage] fee calculation - total_cents:', initialFees.total_cents, '| currency:', currency)
 
     ticketSlots = cartTickets.map(t => ({
       tier_id: t.tier_id,

@@ -1076,7 +1076,7 @@ export function EventForm({
           <div className="mt-4 border-t border-ink-100 pt-4">
             <label className="block text-xs font-medium text-ink-600 mb-1.5">
               Squad fill window
-              <span className="ml-1.5 font-normal text-ink-400">(hours, 1–72)</span>
+              <span className="ml-1.5 font-normal text-ink-400">(hours, 1-72)</span>
             </label>
             <input
               type="number"
@@ -1135,7 +1135,7 @@ export function EventForm({
             <div>
               <label className="block text-xs font-medium text-ink-600 mb-1.5">
                 Queue opens at
-                <span className="ml-1.5 font-normal text-ink-400">(optional — leave blank to open immediately)</span>
+                <span className="ml-1.5 font-normal text-ink-400">(optional - leave blank to open immediately)</span>
               </label>
               <input
                 type="datetime-local"
@@ -1152,7 +1152,7 @@ export function EventForm({
               <div>
                 <label className="block text-xs font-medium text-ink-600 mb-1.5">
                   Admitted per minute
-                  <span className="ml-1 font-normal text-ink-400">(1–500)</span>
+                  <span className="ml-1 font-normal text-ink-400">(1-500)</span>
                 </label>
                 <input
                   type="number"
@@ -1171,7 +1171,7 @@ export function EventForm({
               <div>
                 <label className="block text-xs font-medium text-ink-600 mb-1.5">
                   Checkout window
-                  <span className="ml-1 font-normal text-ink-400">(mins, 5–60)</span>
+                  <span className="ml-1 font-normal text-ink-400">(mins, 5-60)</span>
                 </label>
                 <input
                   type="number"
@@ -1251,7 +1251,7 @@ export function EventForm({
       <div>
         <label className="block text-sm font-medium text-ink-600 mb-1">
           Max Event Capacity
-          <span className="ml-2 text-xs text-ink-400">Optional — leave blank if unlimited</span>
+          <span className="ml-2 text-xs text-ink-400">Optional - leave blank if unlimited</span>
         </label>
         <input
           type="number"
@@ -1380,8 +1380,8 @@ export function EventForm({
           <div className="px-5 py-4">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">Date & Time</h3>
             <p className="text-sm text-ink-600">
-              {formData.start_date ? new Date(formData.start_date).toLocaleString() : '—'} →{' '}
-              {formData.end_date ? new Date(formData.end_date).toLocaleString() : '—'}
+              {formData.start_date ? new Date(formData.start_date).toLocaleString() : ':'} →{' '}
+              {formData.end_date ? new Date(formData.end_date).toLocaleString() : ':'}
             </p>
             <p className="text-xs text-ink-400">{formData.timezone}</p>
           </div>

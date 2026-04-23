@@ -12,7 +12,7 @@ export default function AboutPage() {
     <PageShell>
       <ComingSoon
         title="About EventLinqs"
-        blurb="Our story is being written. In the meantime, the work is in the product — come browse what organisers are putting on."
+        blurb="Our story is being written. In the meantime, the work is in the product - come browse what organisers are putting on."
       />
     </PageShell>
   )

@@ -408,7 +408,7 @@ export function CheckoutForm({
                 >
                   {isPending
                     ? 'Processing…'
-                    : `Continue to Payment — ${currency.toUpperCase()} ${(fees.total_cents / 100).toFixed(2)}`}
+                    : `Continue to Payment - ${currency.toUpperCase()} ${(fees.total_cents / 100).toFixed(2)}`}
                 </button>
               )}
             </div>

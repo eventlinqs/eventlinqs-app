@@ -59,7 +59,7 @@ export async function promoteWaitlist(
   // 3. For each notified entry without an email sent, resolve email and send
   const resendKey = process.env.RESEND_API_KEY
   if (!resendKey) {
-    console.warn('[waitlist] RESEND_API_KEY not set — skipping promotion emails')
+    console.warn('[waitlist] RESEND_API_KEY not set - skipping promotion emails')
     return count
   }
   const resend = new Resend(resendKey)

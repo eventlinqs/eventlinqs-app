@@ -24,7 +24,7 @@ export async function LocationFilterBanner({ location, filteredActive }: Props) 
       <span>
         {filteredActive
           ? `Showing events in ${location.city}.`
-          : `Not many events in ${location.city} yet — showing everything.`}
+          : `Not many events in ${location.city} yet - showing everything.`}
       </span>
       <LocationPicker currentLocation={location} cities={cities} variant="pill" />
     </div>

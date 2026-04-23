@@ -43,7 +43,7 @@ export default function ShellPreviewPage() {
       <PageHero
         eyebrow="PREVIEW"
         title="Page Hero Component"
-        subtitle="Every interior page starts with this dark hero band — consistent height, consistent type scale."
+        subtitle="Every interior page starts with this dark hero band - consistent height, consistent type scale."
       />
 
       {/* ── Block 2: Prose typography ─────────────────────────────────── */}
@@ -53,7 +53,7 @@ export default function ShellPreviewPage() {
           <h2 id="ticket-delivery">How EventLinqs Delivers Your Tickets</h2>
           <p>
             When you complete a purchase on EventLinqs, your tickets are issued
-            instantly. We don&apos;t mail physical tickets — every ticket lives
+            instantly. We don&apos;t mail physical tickets - every ticket lives
             in your account and can be accessed from any device at any time.
           </p>
 
@@ -62,7 +62,7 @@ export default function ShellPreviewPage() {
             Each ticket contains a unique QR code generated at the time of
             purchase. The code is cryptographically signed, so it cannot be
             duplicated or forged. Event staff scan it at the door using the
-            EventLinqs Scan app — the whole process takes under a second.
+            EventLinqs Scan app - the whole process takes under a second.
           </p>
           <ul>
             <li>Tickets are available immediately after payment confirms.</li>
@@ -88,7 +88,7 @@ export default function ShellPreviewPage() {
           <ol>
             <li>Leader creates the squad and selects the number of tickets.</li>
             <li>An invite link is generated and shared with friends.</li>
-            <li>Each friend pays their own share — no awkward reimbursements.</li>
+            <li>Each friend pays their own share - no awkward reimbursements.</li>
             <li>All tickets are issued once the squad is complete.</li>
           </ol>
 
@@ -240,7 +240,7 @@ export default function ShellPreviewPage() {
 
       {/* ── Block 8: Dark surface ──────────────────────────────────────── */}
       <ContentSection surface="dark" aria-labelledby="block-8-heading">
-        <BlockLabel number={8} name="Dark Surface — Text + Buttons" />
+        <BlockLabel number={8} name="Dark Surface - Text + Buttons" />
 
         <div className="space-y-8 max-w-2xl">
           <div>
@@ -248,11 +248,11 @@ export default function ShellPreviewPage() {
               Text on dark background
             </h2>
             <p className="mt-3 text-base text-[var(--text-on-dark)] opacity-70">
-              Supporting copy at 70% opacity — readable without competing with the heading.
+              Supporting copy at 70% opacity - readable without competing with the heading.
               Used for subtitles, descriptions, and secondary information.
             </p>
             <p className="mt-3 text-sm text-[var(--text-on-dark)] opacity-50">
-              Tertiary text at 50% opacity — metadata, timestamps, fine print.
+              Tertiary text at 50% opacity - metadata, timestamps, fine print.
             </p>
           </div>
 
@@ -263,7 +263,7 @@ export default function ShellPreviewPage() {
           </div>
 
           <p className="text-xs text-white/40">
-            All three variants use <code className="rounded bg-white/10 px-1 text-white/70">onSurface=&quot;dark&quot;</code> — no className overrides needed.
+            All three variants use <code className="rounded bg-white/10 px-1 text-white/70">onSurface=&quot;dark&quot;</code> - no className overrides needed.
           </p>
         </div>
       </ContentSection>
