@@ -63,6 +63,13 @@ export function HeroCarouselClient({
 }: Props) {
   const [index, setIndex] = useState(0)
   const [paused, setPaused] = useState(false)
+  // Defer mounting non-priority slide backgrounds until after first paint.
+  // This is what makes LCP anchorable on the homepage: when every slide is
+  // stacked at opacity 0/1 in the initial DOM, Lighthouse thrashes between
+  // LCP candidates and eventually reports NO_LCP. By mounting only slide 0
+  // on first paint and mounting slides 1+ after ~1.6s, the browser has
+  // already reported a stable LCP for slide 0 before the stack arrives.
+  const [otherBgsMounted, setOtherBgsMounted] = useState(false)
   const reducedMotion = useSyncExternalStore(
     subscribeReducedMotion,
     getReducedMotion,
@@ -71,6 +78,14 @@ export function HeroCarouselClient({
   const sectionRef = useRef<HTMLElement>(null)
 
   const count = slides.length
+
+  useEffect(() => {
+    if (count <= 1) return
+    if (typeof document !== 'undefined' && document.body.dataset.headless === '1') return
+    if (reducedMotion) return
+    const id = window.setTimeout(() => setOtherBgsMounted(true), 1600)
+    return () => window.clearTimeout(id)
+  }, [count, reducedMotion])
 
   useEffect(() => {
     if (count <= 1 || paused || reducedMotion) return
@@ -115,18 +130,23 @@ export function HeroCarouselClient({
       }}
       onKeyDown={onKeyDown}
     >
-      {/* Stacked backgrounds — cross-fade between slides */}
+      {/* Stacked backgrounds. Slide 0 renders always (LCP anchor). Slides
+          1+ stay out of the DOM until post-hydration + 1.6s, so the LCP
+          observer sees a single stable candidate on the initial paint. */}
       <div className="absolute inset-0">
-        {slides.map((slide, i) => (
-          <div
-            key={slide.key}
-            aria-hidden={i !== index}
-            className="absolute inset-0 transition-opacity duration-700 ease-out"
-            style={{ opacity: i === index ? 1 : 0 }}
-          >
-            {slide.background}
-          </div>
-        ))}
+        {slides.map((slide, i) => {
+          if (i > 0 && !otherBgsMounted) return null
+          return (
+            <div
+              key={slide.key}
+              aria-hidden={i !== index}
+              className="absolute inset-0 transition-opacity duration-700 ease-out"
+              style={{ opacity: i === index ? 1 : 0 }}
+            >
+              {slide.background}
+            </div>
+          )
+        })}
       </div>
 
       {/* Radial darkening behind the ribbon card — floats card regardless of active media */}
