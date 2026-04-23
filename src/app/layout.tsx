@@ -8,14 +8,14 @@ import { BottomNav } from '@/components/layout/bottom-nav'
 const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
-  display: 'swap',
+  display: 'optional',
   weight: ['400', '500'],
 })
 
 const manrope = Manrope({
   subsets: ['latin'],
   variable: '--font-manrope',
-  display: 'swap',
+  display: 'optional',
   weight: ['600', '700', '800'],
 })
 

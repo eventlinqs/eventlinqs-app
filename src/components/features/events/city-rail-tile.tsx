@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 
 /**
@@ -12,12 +13,8 @@ interface Props {
   imageSrc: string
 }
 
-function proxy(src: string): string {
-  if (src.startsWith('/') || src.startsWith('data:')) return src
-  return `/_next/image?url=${encodeURIComponent(src)}&w=640&q=75`
-}
-
 export function CityRailTile({ city, slug, eventCount, imageSrc }: Props) {
+  const isLocal = imageSrc.startsWith('/') || imageSrc.startsWith('data:')
   return (
     <Link
       href={`/events/browse/${encodeURIComponent(slug)}`}
@@ -25,16 +22,16 @@ export function CityRailTile({ city, slug, eventCount, imageSrc }: Props) {
       aria-label={`Events in ${city}`}
     >
       <div className="relative aspect-[4/5] overflow-hidden">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={proxy(imageSrc)}
+        <Image
+          src={imageSrc}
           alt=""
+          fill
+          sizes="(min-width: 640px) 280px, 220px"
+          quality={70}
           loading="lazy"
-          decoding="async"
           fetchPriority="low"
-          width={280}
-          height={350}
-          className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+          unoptimized={isLocal && imageSrc.endsWith('.svg')}
+          className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
         />
         <div
           className="absolute inset-0"
