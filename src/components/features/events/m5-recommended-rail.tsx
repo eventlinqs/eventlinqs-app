@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { projectToCardData } from '@/lib/events/event-card-projection'
 import type { PublicEventRow } from '@/lib/events/types'
 import { EventCard } from './event-card'
+import { DragRail } from '@/components/ui/drag-rail'
 
 type Props = {
   events: PublicEventRow[]
@@ -52,9 +53,10 @@ export async function RecommendedRail({
             See all
           </Link>
         </div>
-        <ul
-          className="mt-4 -mx-4 flex snap-x snap-mandatory items-stretch gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:gap-4 sm:px-0"
-          data-testid="m5-rec-rail"
+        <DragRail
+          className="mt-4 -mx-4 flex snap-x snap-mandatory items-stretch gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:gap-4 sm:px-0 scrollbar-none"
+          ariaLabel={title}
+          testId="m5-rec-rail"
         >
           {cards.map(c => (
             <li
@@ -64,7 +66,7 @@ export async function RecommendedRail({
               <EventCard event={c} />
             </li>
           ))}
-        </ul>
+        </DragRail>
       </div>
     </section>
   )
