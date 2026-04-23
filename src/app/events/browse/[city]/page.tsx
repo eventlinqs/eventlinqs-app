@@ -155,7 +155,7 @@ export default async function BrowseCityPage({ params, searchParams }: Props) {
             }
           />
         ) : (
-          <section aria-label="Event results" className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 [content-visibility:auto] [contain-intrinsic-size:auto_900px]">
+          <section aria-label="Event results" className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
             {result.events.length === 0 ? (
               <EmptyCityState city={city} />
             ) : (

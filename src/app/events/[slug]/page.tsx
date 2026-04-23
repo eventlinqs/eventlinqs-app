@@ -494,7 +494,7 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
         </section>
 
         {/* Content column + Ticket panel */}
-        <section className="bg-canvas pt-12 sm:pt-16 [content-visibility:auto] [contain-intrinsic-size:auto_1400px]">
+        <section className="bg-canvas pt-12 sm:pt-16">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className={event.has_reserved_seating ? 'space-y-10' : 'flex flex-col gap-10 lg:flex-row'}>
               <div className={event.has_reserved_seating ? '' : 'flex-1 min-w-0'}>

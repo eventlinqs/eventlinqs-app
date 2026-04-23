@@ -198,7 +198,7 @@ export function CategoryLandingPage({ category, liveEvents = [] }: CategoryLandi
       </ContentSection>
 
       {/* ── 6. Final CTA — dark band, single centred button ──────── */}
-      <section className="relative overflow-hidden bg-[var(--surface-dark)] py-20 md:py-28 lg:py-32 [content-visibility:auto] [contain-intrinsic-size:auto_560px]">
+      <section className="relative overflow-hidden bg-[var(--surface-dark)] py-20 md:py-28 lg:py-32">
         {/* Top accent border */}
         <div
           className="pointer-events-none absolute inset-x-0 top-0 h-0.5"

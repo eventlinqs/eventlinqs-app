@@ -59,7 +59,7 @@ export function ContentSection({
     <section
       id={id}
       aria-labelledby={ariaLabelledby}
-      className={`relative ${surfaces[surface]} py-16 md:py-20 lg:py-24 [content-visibility:auto] [contain-intrinsic-size:auto_720px] ${className}`}
+      className={`relative ${surfaces[surface]} py-16 md:py-20 lg:py-24 ${className}`}
     >
       {topBorder && (
         <div
