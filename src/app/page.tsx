@@ -481,7 +481,7 @@ export default async function HomePage() {
 
         {/* 3. This Week rail — cream-on-cream after Bento → TIGHT */}
         {thisWeek.length > 0 && (
-          <section aria-label="This week" className={`bg-canvas ${SECTION_TIGHT}`}>
+          <section aria-label="This week" className={`bg-canvas ${SECTION_TIGHT} [content-visibility:auto] [contain-intrinsic-size:auto_520px]`}>
             <div className={CONTAINER}>
               <SnapRail
                 eyebrow="This week"
@@ -498,7 +498,7 @@ export default async function HomePage() {
 
         {/* 4. Cultural Picks — cream-on-cream → TIGHT */}
         {culturalPicksTabs.length > 0 && (
-          <section aria-labelledby="culture-heading" className={`bg-canvas ${SECTION_TIGHT}`}>
+          <section aria-labelledby="culture-heading" className={`bg-canvas ${SECTION_TIGHT} [content-visibility:auto] [contain-intrinsic-size:auto_640px]`}>
             <div className={CONTAINER}>
               <div className="flex items-end justify-between gap-4">
                 <div className="flex items-start gap-3">
@@ -562,7 +562,7 @@ export default async function HomePage() {
         </section>
 
         {/* 7. For Organisers — dark, follows cream (colour change) → DEFAULT */}
-        <section aria-labelledby="organisers-heading" className={`bg-ink-950 ${SECTION_DEFAULT}`}>
+        <section aria-labelledby="organisers-heading" className={`bg-ink-950 ${SECTION_DEFAULT} [content-visibility:auto] [contain-intrinsic-size:auto_800px]`}>
           <div className={CONTAINER}>
             <div className="flex flex-col gap-12 lg:flex-row lg:items-center lg:gap-16">
               <div className="lg:max-w-lg">

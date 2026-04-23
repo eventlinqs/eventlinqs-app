@@ -90,7 +90,7 @@ export function LiveVibeMarquee({ items }: Props) {
   return (
     <section
       aria-labelledby="live-vibe-heading"
-      className="overflow-hidden bg-ink-950 py-16 sm:py-20"
+      className="overflow-hidden bg-ink-950 py-16 sm:py-20 [content-visibility:auto] [contain-intrinsic-size:auto_640px]"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onFocus={() => setIsHovered(true)}

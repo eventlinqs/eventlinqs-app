@@ -37,7 +37,7 @@ export async function RecommendedRail({
   const cards = await projectToCardData(top)
 
   return (
-    <section aria-labelledby="m5-rec-heading" className="border-b border-ink-100 bg-canvas">
+    <section aria-labelledby="m5-rec-heading" className="border-b border-ink-100 bg-canvas [content-visibility:auto] [contain-intrinsic-size:auto_520px]">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         <div className="flex items-end justify-between gap-4">
           <h2
