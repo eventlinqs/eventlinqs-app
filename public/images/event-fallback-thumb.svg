@@ -1,14 +1,42 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 450" preserveAspectRatio="xMidYMid slice" role="img" aria-label="EventLinqs">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 450" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Community event">
   <defs>
-    <radialGradient id="glow" cx="30%" cy="35%" r="75%">
-      <stop offset="0%" stop-color="#1a2545" stop-opacity="1"/>
-      <stop offset="65%" stop-color="#0A1628" stop-opacity="1"/>
-      <stop offset="100%" stop-color="#050912" stop-opacity="1"/>
+    <radialGradient id="et-glow" cx="50%" cy="35%" r="75%">
+      <stop offset="0%" stop-color="#1F2D48"/>
+      <stop offset="55%" stop-color="#0F1B2D"/>
+      <stop offset="100%" stop-color="#050912"/>
+    </radialGradient>
+    <radialGradient id="et-bokeh" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#E2B84A" stop-opacity="0.55"/>
+      <stop offset="70%" stop-color="#E2B84A" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#E2B84A" stop-opacity="0"/>
     </radialGradient>
   </defs>
-  <rect width="600" height="450" fill="url(#glow)"/>
-  <g opacity="0.95">
-    <text x="300" y="245" text-anchor="middle" font-family="Manrope, system-ui, sans-serif" font-size="46" font-weight="800" fill="#FFFFFF" letter-spacing="-1">EVENTLINQS</text>
-    <circle cx="440" cy="235" r="7" fill="#D4A017"/>
+  <rect width="600" height="450" fill="url(#et-glow)"/>
+  <g>
+    <circle cx="110" cy="120" r="24" fill="url(#et-bokeh)"/>
+    <circle cx="260" cy="90" r="18" fill="url(#et-bokeh)"/>
+    <circle cx="410" cy="130" r="30" fill="url(#et-bokeh)"/>
+    <circle cx="520" cy="100" r="22" fill="url(#et-bokeh)"/>
   </g>
+  <g fill="#05080F">
+    <ellipse cx="60"  cy="400" rx="32" ry="50"/>
+    <ellipse cx="120" cy="405" rx="28" ry="46"/>
+    <ellipse cx="180" cy="400" rx="32" ry="52"/>
+    <ellipse cx="240" cy="405" rx="30" ry="48"/>
+    <ellipse cx="300" cy="400" rx="32" ry="52"/>
+    <ellipse cx="360" cy="405" rx="30" ry="48"/>
+    <ellipse cx="420" cy="400" rx="32" ry="52"/>
+    <ellipse cx="480" cy="405" rx="28" ry="46"/>
+    <ellipse cx="540" cy="400" rx="32" ry="50"/>
+    <circle cx="60"  cy="340" r="16"/>
+    <circle cx="120" cy="345" r="15"/>
+    <circle cx="180" cy="340" r="17"/>
+    <circle cx="240" cy="345" r="16"/>
+    <circle cx="300" cy="340" r="17"/>
+    <circle cx="360" cy="345" r="16"/>
+    <circle cx="420" cy="340" r="17"/>
+    <circle cx="480" cy="345" r="15"/>
+    <circle cx="540" cy="340" r="16"/>
+  </g>
+  <rect x="0" y="440" width="600" height="10" fill="#02040A"/>
 </svg>

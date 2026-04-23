@@ -1,17 +1,57 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" role="img" aria-label="EventLinqs">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Community event">
   <defs>
-    <radialGradient id="glow" cx="25%" cy="30%" r="70%">
-      <stop offset="0%" stop-color="#1a2545" stop-opacity="1"/>
-      <stop offset="60%" stop-color="#0A1628" stop-opacity="1"/>
-      <stop offset="100%" stop-color="#050912" stop-opacity="1"/>
+    <radialGradient id="ef-glow" cx="50%" cy="35%" r="75%">
+      <stop offset="0%" stop-color="#1F2D48"/>
+      <stop offset="55%" stop-color="#0F1B2D"/>
+      <stop offset="100%" stop-color="#050912"/>
+    </radialGradient>
+    <linearGradient id="ef-spot" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#E2B84A" stop-opacity="0.22"/>
+      <stop offset="55%" stop-color="#E2B84A" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="#E2B84A" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="ef-bokeh" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#E2B84A" stop-opacity="0.55"/>
+      <stop offset="70%" stop-color="#E2B84A" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#E2B84A" stop-opacity="0"/>
     </radialGradient>
   </defs>
-  <rect width="1600" height="900" fill="url(#glow)"/>
-  <g opacity="0.92">
-    <text x="800" y="480" text-anchor="middle" font-family="Manrope, 'Helvetica Neue', system-ui, sans-serif" font-size="128" font-weight="800" fill="#FFFFFF" letter-spacing="-4">EVENTLINQS</text>
-    <circle cx="1175" cy="455" r="18" fill="#D4A017"/>
+  <rect width="1600" height="900" fill="url(#ef-glow)"/>
+  <ellipse cx="800" cy="260" rx="900" ry="260" fill="url(#ef-spot)"/>
+  <g>
+    <circle cx="220" cy="200" r="48" fill="url(#ef-bokeh)"/>
+    <circle cx="520" cy="150" r="32" fill="url(#ef-bokeh)"/>
+    <circle cx="880" cy="240" r="64" fill="url(#ef-bokeh)"/>
+    <circle cx="1200" cy="180" r="40" fill="url(#ef-bokeh)"/>
+    <circle cx="1420" cy="260" r="56" fill="url(#ef-bokeh)"/>
+    <circle cx="380" cy="360" r="24" fill="url(#ef-bokeh)"/>
+    <circle cx="1040" cy="380" r="28" fill="url(#ef-bokeh)"/>
   </g>
-  <g opacity="0.5">
-    <text x="800" y="540" text-anchor="middle" font-family="Manrope, system-ui, sans-serif" font-size="28" font-weight="500" fill="#FFFFFF" letter-spacing="14">WHERE THE CULTURE GATHERS</text>
+  <g fill="#05080F">
+    <ellipse cx="140" cy="760" rx="80" ry="120"/>
+    <ellipse cx="260" cy="770" rx="70" ry="110"/>
+    <ellipse cx="380" cy="760" rx="80" ry="125"/>
+    <ellipse cx="510" cy="770" rx="75" ry="115"/>
+    <ellipse cx="640" cy="760" rx="85" ry="130"/>
+    <ellipse cx="770" cy="770" rx="75" ry="120"/>
+    <ellipse cx="900" cy="760" rx="80" ry="125"/>
+    <ellipse cx="1030" cy="770" rx="70" ry="115"/>
+    <ellipse cx="1160" cy="760" rx="85" ry="130"/>
+    <ellipse cx="1290" cy="770" rx="75" ry="120"/>
+    <ellipse cx="1420" cy="760" rx="85" ry="125"/>
+    <ellipse cx="1540" cy="770" rx="70" ry="115"/>
+    <circle cx="140" cy="640" r="42"/>
+    <circle cx="260" cy="650" r="38"/>
+    <circle cx="380" cy="635" r="42"/>
+    <circle cx="510" cy="650" r="40"/>
+    <circle cx="640" cy="635" r="44"/>
+    <circle cx="770" cy="650" r="40"/>
+    <circle cx="900" cy="635" r="42"/>
+    <circle cx="1030" cy="650" r="38"/>
+    <circle cx="1160" cy="635" r="44"/>
+    <circle cx="1290" cy="650" r="40"/>
+    <circle cx="1420" cy="635" r="44"/>
+    <circle cx="1540" cy="650" r="38"/>
   </g>
+  <rect x="0" y="880" width="1600" height="20" fill="#02040A"/>
 </svg>

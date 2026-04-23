@@ -17,6 +17,7 @@ import { CityRailTile } from '@/components/features/events/city-rail-tile'
 import { SnapRail } from '@/components/ui/snap-rail'
 import { CulturalPicksRail } from '@/components/features/events/cultural-picks-rail'
 import { getCityPhoto } from '@/lib/images/city-photo'
+import { getCategoryPhoto } from '@/lib/images/category-photo'
 import { detectLocation } from '@/lib/geo/detect'
 import { LocationFilterBanner } from '@/components/features/events/location-filter-banner'
 import {
@@ -355,14 +356,32 @@ export default async function HomePage() {
     }
   })
 
-  const fallbackCommunityTiles: VibeImage[] = [
-    { id: 'f1', src: null, href: '/events/browse/melbourne', title: 'Afrobeats scene in Melbourne',  community: 'Melbourne, VIC',       placeholderCategory: 'Afrobeats' },
-    { id: 'f2', src: null, href: '/events/browse/sydney',    title: 'Community events in Sydney',    community: 'Sydney, NSW',          placeholderCategory: 'Community' },
-    { id: 'f3', src: null, href: '/events/browse/brisbane',  title: 'Gospel nights Brisbane',        community: 'Brisbane, QLD',        placeholderCategory: 'Gospel' },
-    { id: 'f4', src: null, href: '/events/browse/geelong',   title: 'Geelong community scene',       community: 'Geelong, VIC',         placeholderCategory: 'Community' },
-    { id: 'f5', src: null, href: '/events/browse/perth',     title: 'Diaspora events Perth',         community: 'Perth, WA',            placeholderCategory: 'Heritage' },
-    { id: 'f6', src: null, href: '/events',                title: 'Regional Australia events',     community: 'Across Australia',     placeholderCategory: 'Festival' },
-  ]
+  // Pre-resolve Pexels photos for each fallback tile so Live Vibe never
+  // renders a branded placeholder. If PEXELS_API_KEY is missing the
+  // helper returns the unbranded event-fallback SVG instead of the
+  // EVENTLINQS watermarked one.
+  const FALLBACK_SEEDS = [
+    { id: 'f1', href: '/events/browse/melbourne', title: 'Afrobeats scene in Melbourne', community: 'Melbourne, VIC',   categorySlug: 'afrobeats' },
+    { id: 'f2', href: '/events/browse/sydney',    title: 'Community events in Sydney',   community: 'Sydney, NSW',      categorySlug: 'community' },
+    { id: 'f3', href: '/events/browse/brisbane',  title: 'Gospel nights Brisbane',       community: 'Brisbane, QLD',    categorySlug: 'gospel' },
+    { id: 'f4', href: '/events/browse/geelong',   title: 'Geelong community scene',      community: 'Geelong, VIC',     categorySlug: 'community' },
+    { id: 'f5', href: '/events/browse/perth',     title: 'Diaspora events Perth',        community: 'Perth, WA',        categorySlug: 'heritage-and-independence' },
+    { id: 'f6', href: '/events',                  title: 'Regional Australia events',    community: 'Across Australia', categorySlug: 'festival' },
+  ] as const
+
+  const fallbackCommunityTiles: VibeImage[] = await Promise.all(
+    FALLBACK_SEEDS.map(async seed => {
+      const photo = await getCategoryPhoto(seed.categorySlug)
+      return {
+        id: seed.id,
+        src: photo.src,
+        href: seed.href,
+        title: seed.title,
+        community: seed.community,
+        placeholderCategory: seed.categorySlug,
+      }
+    })
+  )
 
   let vibeImages: VibeImage[] = realVibeImages
   if (vibeImages.length < 6) {

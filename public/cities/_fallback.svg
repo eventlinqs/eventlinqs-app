@@ -1,28 +1,75 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" preserveAspectRatio="xMidYMid slice" role="img" aria-label="City">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" preserveAspectRatio="xMidYMid slice" role="img" aria-label="City skyline">
   <defs>
-    <linearGradient id="fb-bg" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#1A1A2E"/>
-      <stop offset="60%" stop-color="#22223D"/>
-      <stop offset="100%" stop-color="#0F0F1F"/>
+    <linearGradient id="fb-sky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0F1B2D"/>
+      <stop offset="55%" stop-color="#1A2742"/>
+      <stop offset="100%" stop-color="#0A1322"/>
+    </linearGradient>
+    <linearGradient id="fb-glow" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#E2B84A" stop-opacity="0.18"/>
+      <stop offset="60%" stop-color="#E2B84A" stop-opacity="0.04"/>
+      <stop offset="100%" stop-color="#E2B84A" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="fb-bld-back" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1F2D48"/>
+      <stop offset="100%" stop-color="#121C30"/>
+    </linearGradient>
+    <linearGradient id="fb-bld-front" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0A111E"/>
+      <stop offset="100%" stop-color="#05090F"/>
     </linearGradient>
   </defs>
-  <rect width="1200" height="900" fill="url(#fb-bg)"/>
-  <g opacity="0.32" fill="#000000">
-    <rect x="100" y="600" width="70" height="240"/>
-    <rect x="190" y="520" width="90" height="320"/>
-    <rect x="300" y="460" width="70" height="380"/>
-    <rect x="390" y="560" width="50" height="280"/>
-    <rect x="460" y="400" width="120" height="440"/>
-    <polygon points="600,400 640,360 680,400 680,840 600,840"/>
-    <rect x="700" y="480" width="80" height="360"/>
-    <rect x="800" y="440" width="60" height="400"/>
-    <rect x="880" y="540" width="100" height="300"/>
-    <rect x="1000" y="580" width="80" height="260"/>
+  <rect width="1200" height="900" fill="url(#fb-sky)"/>
+  <circle cx="920" cy="220" r="70" fill="#E2B84A" fill-opacity="0.22"/>
+  <circle cx="920" cy="220" r="40" fill="#E2B84A" fill-opacity="0.6"/>
+  <ellipse cx="600" cy="640" rx="700" ry="220" fill="url(#fb-glow)"/>
+  <g fill="url(#fb-bld-back)">
+    <rect x="0" y="520" width="90" height="380"/>
+    <rect x="100" y="470" width="70" height="430"/>
+    <rect x="180" y="500" width="110" height="400"/>
+    <rect x="300" y="430" width="80" height="470"/>
+    <rect x="390" y="480" width="90" height="420"/>
+    <rect x="490" y="390" width="70" height="510"/>
+    <polygon points="570,390 610,350 650,390 650,900 570,900"/>
+    <rect x="660" y="430" width="80" height="470"/>
+    <rect x="750" y="480" width="60" height="420"/>
+    <rect x="820" y="410" width="100" height="490"/>
+    <rect x="930" y="470" width="70" height="430"/>
+    <rect x="1010" y="440" width="80" height="460"/>
+    <rect x="1100" y="500" width="100" height="400"/>
   </g>
-  <rect x="0" y="840" width="1200" height="60" fill="#000000" fill-opacity="0.4"/>
-  <g transform="translate(600 440)">
-    <circle cx="0" cy="0" r="140" fill="none" stroke="#E2B84A" stroke-width="10"/>
-    <circle cx="0" cy="0" r="28" fill="#E2B84A"/>
+  <g fill="#E2B84A" fill-opacity="0.55">
+    <rect x="115" y="530" width="6" height="6"/>
+    <rect x="135" y="555" width="6" height="6"/>
+    <rect x="205" y="540" width="6" height="6"/>
+    <rect x="235" y="580" width="6" height="6"/>
+    <rect x="320" y="470" width="6" height="6"/>
+    <rect x="350" y="520" width="6" height="6"/>
+    <rect x="410" y="520" width="6" height="6"/>
+    <rect x="450" y="570" width="6" height="6"/>
+    <rect x="505" y="430" width="6" height="6"/>
+    <rect x="535" y="480" width="6" height="6"/>
+    <rect x="685" y="470" width="6" height="6"/>
+    <rect x="710" y="520" width="6" height="6"/>
+    <rect x="840" y="440" width="6" height="6"/>
+    <rect x="870" y="490" width="6" height="6"/>
+    <rect x="895" y="530" width="6" height="6"/>
+    <rect x="950" y="510" width="6" height="6"/>
+    <rect x="1030" y="480" width="6" height="6"/>
+    <rect x="1055" y="540" width="6" height="6"/>
   </g>
-  <text x="600" y="720" font-family="Manrope, 'Helvetica Neue', system-ui, sans-serif" font-size="72" font-weight="800" fill="#FFFFFF" fill-opacity="0.75" letter-spacing="4" text-anchor="middle">EVENTLINQS</text>
+  <g fill="url(#fb-bld-front)">
+    <rect x="-20" y="650" width="140" height="260"/>
+    <rect x="120" y="600" width="100" height="310"/>
+    <rect x="220" y="630" width="80" height="280"/>
+    <rect x="310" y="580" width="120" height="330"/>
+    <rect x="440" y="620" width="90" height="290"/>
+    <rect x="540" y="570" width="130" height="340"/>
+    <rect x="680" y="610" width="100" height="300"/>
+    <rect x="790" y="580" width="110" height="330"/>
+    <rect x="910" y="630" width="90" height="280"/>
+    <rect x="1010" y="590" width="120" height="320"/>
+    <rect x="1140" y="640" width="80" height="270"/>
+  </g>
+  <rect x="0" y="880" width="1200" height="20" fill="#030609"/>
 </svg>
