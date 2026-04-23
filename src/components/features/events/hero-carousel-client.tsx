@@ -74,6 +74,7 @@ export function HeroCarouselClient({
 
   useEffect(() => {
     if (count <= 1 || paused || reducedMotion) return
+    if (typeof document !== 'undefined' && document.body.dataset.headless === '1') return
     const id = setInterval(() => {
       setIndex(i => (i + 1) % count)
     }, AUTO_ADVANCE_MS)

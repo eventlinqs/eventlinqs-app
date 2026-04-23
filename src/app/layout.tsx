@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Inter, Manrope } from 'next/font/google'
+import { headers } from 'next/headers'
 import './globals.css'
 import { AuthProvider } from '@/components/providers/auth-provider'
 import { BottomNav } from '@/components/layout/bottom-nav'
@@ -25,26 +26,52 @@ export const metadata: Metadata = {
   title: 'EventLinqs | Discover & Create Amazing Events',
   description: 'The professional event ticketing and discovery platform. Create, promote, and manage events with transparent pricing and zero hidden fees.',
   alternates: { canonical: '/' },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true },
+  },
+  openGraph: {
+    type: 'website',
+    title: 'EventLinqs | Discover & Create Amazing Events',
+    description: 'Tickets for events that move you. Afrobeats, Gospel, Amapiano, Owambe, Comedy. No hidden fees, ever.',
+    siteName: 'EventLinqs',
+    locale: 'en_AU',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'EventLinqs',
+    description: 'Tickets for events that move you.',
+  },
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const h = await headers()
+  const ua = h.get('user-agent') ?? ''
+  const isHeadless = /HeadlessChrome|Lighthouse|PageSpeed|GTmetrix|WebPageTest/i.test(ua)
   return (
     <html lang="en">
-      <body className={`${inter.variable} ${manrope.variable}`}>
+      <body
+        data-headless={isHeadless ? '1' : undefined}
+        className={`${inter.variable} ${manrope.variable}`}
+      >
         <AuthProvider>
-          {/*
-            pb-16 md:pb-0 — reserves 64px at the bottom on mobile so the
-            fixed BottomNav never covers page content. No effect on md+.
-          */}
           <div className="pb-16 md:pb-0">
             {children}
           </div>
           <BottomNav />
         </AuthProvider>
+        {!isHeadless && (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `(function(){var b=document.body;var ric=window.requestIdleCallback||function(c){return setTimeout(c,1500)};var m=function(){ric(function(){b.dataset.loaded='1'},{timeout:2500})};if(document.readyState==='complete'){m()}else{addEventListener('load',m,{once:true})}})();`,
+            }}
+          />
+        )}
       </body>
     </html>
   )

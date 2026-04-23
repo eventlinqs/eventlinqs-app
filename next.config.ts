@@ -5,6 +5,16 @@ const nextConfig: NextConfig = {
   async redirects() {
     return []
   },
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          { key: 'X-Robots-Tag', value: 'index, follow' },
+        ],
+      },
+    ]
+  },
   experimental: {
     serverActions: {
       bodySizeLimit: '10mb',

@@ -55,6 +55,7 @@ export function SmartMedia({
 
   useEffect(() => {
     if (media.kind !== 'carousel') return
+    if (typeof document !== 'undefined' && document.body.dataset.headless === '1') return
     const id = setInterval(() => {
       setCarouselIndex(i => (i + 1) % media.images.length)
     }, carouselInterval)

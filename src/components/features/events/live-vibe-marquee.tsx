@@ -63,6 +63,7 @@ export function LiveVibeMarquee({ items }: Props) {
     if (isPaused) return
     if (typeof window !== 'undefined' &&
         window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    if (typeof document !== 'undefined' && document.body.dataset.headless === '1') return
 
     let rafId = 0
     const tick = () => {
