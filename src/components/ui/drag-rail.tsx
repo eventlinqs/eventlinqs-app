@@ -16,7 +16,6 @@ export function DragRail({ children, className = '', ariaLabel, testId }: Props)
   return (
     <ul
       ref={ref}
-      role="region"
       aria-label={ariaLabel}
       data-testid={testId}
       onClickCapture={e => {
