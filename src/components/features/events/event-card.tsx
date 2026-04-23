@@ -57,6 +57,7 @@ type Props = {
   event: EventCardData
   dynamicPrices?: Map<string, number>
   initiallySaved?: boolean
+  priority?: boolean
 }
 
 function formatDate(iso: string) {
@@ -64,6 +65,7 @@ function formatDate(iso: string) {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
+    timeZone: 'UTC',
   })
 }
 
@@ -96,7 +98,7 @@ function buildInventory(tiers: EventCardTier[]): EventInventory {
   return { total_sold, total_reserved, total_capacity, available, percent_sold }
 }
 
-export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = false }: Props) {
+export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = false, priority = false }: Props) {
   const {
     id, slug, title, cover_image_url, start_date,
     venue_city, venue_country, created_at, category, ticket_tiers,
@@ -129,6 +131,8 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
             alt={title}
             fill
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            priority={priority}
+            fetchPriority={priority ? 'high' : 'auto'}
             className="object-cover transition-transform duration-500 group-hover:scale-105"
           />
         ) : (

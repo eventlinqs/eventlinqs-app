@@ -14,7 +14,7 @@ import { EventsFilterBar } from '@/components/features/events/m5-events-filter-b
 import { RecommendedRail } from '@/components/features/events/m5-recommended-rail'
 import { EventsGrid } from '@/components/features/events/m5-events-grid'
 import { EventsPagination } from '@/components/features/events/m5-events-pagination'
-import { EventsMap } from '@/components/features/events/m5-events-map'
+import { EventsMapLazy } from '@/components/features/events/m5-events-map-lazy'
 
 const MELBOURNE_FALLBACK = { lat: -37.8136, lng: 144.9631 }
 
@@ -94,7 +94,7 @@ export default async function EventsPage({ searchParams }: Props) {
         <RecommendedRail events={recommended} headline={recHeadline} />
 
         {view === 'map' ? (
-          <EventsMap
+          <EventsMapLazy
             params={raw}
             initialCenter={
               hasGeoSignal && origin

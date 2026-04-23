@@ -39,6 +39,7 @@ function formatDate(iso: string): string {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
+    timeZone: 'UTC',
   })
 }
 

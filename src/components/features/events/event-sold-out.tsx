@@ -190,6 +190,7 @@ function RelatedCard({ event }: { event: EventSoldOutRelated }) {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
+    timeZone: 'UTC',
   })
   const locationLabel = [event.venue_city, event.venue_country].filter(Boolean).join(', ') || null
   const priceLabel =

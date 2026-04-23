@@ -17,7 +17,7 @@ import { EventsFilterBar } from '@/components/features/events/m5-events-filter-b
 import { RecommendedRail } from '@/components/features/events/m5-recommended-rail'
 import { EventsGrid } from '@/components/features/events/m5-events-grid'
 import { EventsPagination } from '@/components/features/events/m5-events-pagination'
-import { EventsMap } from '@/components/features/events/m5-events-map'
+import { EventsMapLazy } from '@/components/features/events/m5-events-map-lazy'
 
 export const revalidate = 60
 
@@ -146,7 +146,7 @@ export default async function BrowseCityPage({ params, searchParams }: Props) {
         <RecommendedRail events={recommended} headline={recHeadline} seeAllHref={railSeeAllHref} />
 
         {view === 'map' ? (
-          <EventsMap
+          <EventsMapLazy
             params={raw}
             initialCenter={
               origin

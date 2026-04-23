@@ -74,9 +74,9 @@ export function EventsGridClient({
   return (
     <>
       <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {cards.map(card => (
+        {cards.map((card, i) => (
           <li key={card.id}>
-            <EventCard event={card} />
+            <EventCard event={card} priority={i < 4} />
           </li>
         ))}
         {isPending
