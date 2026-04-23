@@ -260,6 +260,10 @@ body[data-headless="1"] *::after {
 body[data-headless="1"] .smart-media-kenburns {
   animation: none !important;
   transform: none !important;
+  will-change: auto !important;
+}
+body[data-headless="1"] .will-change-transform {
+  will-change: auto !important;
 }
 body[data-headless="1"] .animate-marquee,
 body[data-headless="1"] .animate-marquee-slow,

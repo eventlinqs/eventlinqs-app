@@ -130,18 +130,26 @@ export function HeroCarouselClient({
       }}
       onKeyDown={onKeyDown}
     >
-      {/* Stacked backgrounds. Slide 0 renders always (LCP anchor). Slides
-          1+ stay out of the DOM until post-hydration + 1.6s, so the LCP
-          observer sees a single stable candidate on the initial paint. */}
+      {/* Slide 0 is always the base layer — rendered as a bare wrapper with
+          NO opacity, NO transition class, NO inline style. Lighthouse's LCP
+          observer needs a stable, unambiguous candidate on initial paint;
+          any `transition-opacity` or inline `opacity` on an ancestor of the
+          hero image was causing NO_LCP even with transitions disabled in
+          headless mode. Slides 1+ stack on top post-paint and cover it when
+          active. When index returns to 0, slides 1+ fade to opacity 0 and
+          reveal slide 0 again. */}
       <div className="absolute inset-0">
-        {slides.map((slide, i) => {
-          if (i > 0 && !otherBgsMounted) return null
+        <div className="absolute inset-0" aria-hidden={index !== 0}>
+          {slides[0].background}
+        </div>
+        {otherBgsMounted && slides.slice(1).map((slide, i) => {
+          const realIndex = i + 1
           return (
             <div
               key={slide.key}
-              aria-hidden={i !== index}
+              aria-hidden={realIndex !== index}
               className="absolute inset-0 transition-opacity duration-700 ease-out"
-              style={{ opacity: i === index ? 1 : 0 }}
+              style={{ opacity: realIndex === index ? 1 : 0 }}
             >
               {slide.background}
             </div>
