@@ -31,6 +31,9 @@ export function CityRailTile({ city, slug, eventCount, imageSrc }: Props) {
           alt=""
           loading="lazy"
           decoding="async"
+          fetchPriority="low"
+          width={280}
+          height={350}
           className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
         />
         <div
