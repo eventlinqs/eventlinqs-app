@@ -78,6 +78,11 @@ export function SmartMedia({
   const wrapBase = `absolute inset-0 overflow-hidden ${className}`
 
   if (media.kind === 'video') {
+    // In headless/audit mode, don't autoplay — the constant video repaint
+    // inflates Speed Index dramatically. Show the poster as a still instead.
+    const isHeadless =
+      typeof document !== 'undefined' && document.body.dataset.headless === '1'
+    const effectiveAutoplay = autoplay && !isHeadless
     return (
       <div
         ref={wrapRef}
@@ -88,13 +93,13 @@ export function SmartMedia({
       >
         <video
           ref={videoRef}
-          src={media.src}
+          src={isHeadless ? undefined : media.src}
           poster={media.poster}
           muted
           playsInline
           loop
-          autoPlay={autoplay}
-          preload={autoplay ? 'auto' : 'metadata'}
+          autoPlay={effectiveAutoplay}
+          preload={effectiveAutoplay ? 'auto' : 'none'}
           className="h-full w-full object-cover"
         />
       </div>

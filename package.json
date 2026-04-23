@@ -30,6 +30,7 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@next/bundle-analyzer": "^16.2.4",
     "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20.19.37",

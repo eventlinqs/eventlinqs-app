@@ -57,7 +57,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false)
     }
 
-    getUser()
+    type WinWithIdle = Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => number
+    }
+    const w = window as WinWithIdle
+    let handle = 0
+    if (typeof w.requestIdleCallback === 'function') {
+      handle = w.requestIdleCallback(() => { getUser() }, { timeout: 2500 })
+    } else {
+      handle = window.setTimeout(getUser, 200) as unknown as number
+    }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event: AuthChangeEvent, session: Session | null) => {
@@ -71,7 +80,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     )
 
-    return () => subscription.unsubscribe()
+    return () => {
+      subscription.unsubscribe()
+      if (handle) {
+        try { (window as unknown as { cancelIdleCallback?: (h: number) => void }).cancelIdleCallback?.(handle) } catch {}
+        try { window.clearTimeout(handle) } catch {}
+      }
+    }
   }, [])
 
   return (
