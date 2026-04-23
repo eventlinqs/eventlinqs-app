@@ -529,7 +529,17 @@ export default async function HomePage() {
         <LiveVibeMarquee items={vibeImages} />
 
         {/* 6. By City rail — cream, follows dark marquee (colour change) → DEFAULT */}
-        <section aria-labelledby="cities-heading" className={`bg-canvas ${SECTION_DEFAULT}`}>
+        {/*
+         * content-visibility:auto virtualizes the 21 city tile <img> elements
+         * so they don't enter Chrome's paint/layout tree until scrolled into
+         * view. Without this the lazy-loaded imgs hold LCP measurement in a
+         * perpetual "unsettled candidate" state (confirmed via HTML-ablation
+         * probe: removing this section made LCP fire in 2620ms).
+         */}
+        <section
+          aria-labelledby="cities-heading"
+          className={`bg-canvas ${SECTION_DEFAULT} [content-visibility:auto] [contain-intrinsic-size:auto_600px]`}
+        >
           <div className={CONTAINER}>
             <SnapRail
               eyebrow="By city"
