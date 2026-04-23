@@ -27,17 +27,105 @@ const supabase = createClient(
   { auth: { autoRefreshToken: false, persistSession: false } }
 )
 
-// Get org + user from DB
-const { data: org } = await supabase.from('organisations').select('id').limit(1).single()
+// Get user from DB (organisations are upserted below)
 const { data: profile } = await supabase.from('profiles').select('id').limit(1).single()
 
-if (!org || !profile) {
-  console.error('No organisation or profile found. Cannot seed.')
+if (!profile) {
+  console.error('No profile found. Cannot seed.')
   process.exit(1)
 }
 
-const ORG_ID = org.id
 const USER_ID = profile.id
+
+/**
+ * Eight diaspora-aligned organisations. Each event picks one via
+ * pickOrgId() so the homepage, Live Vibe marquee, and event detail
+ * pages show real, thematically-matched organiser names instead of
+ * a single generic entity.
+ */
+const ORGS = {
+  melbourneAfrobeats: {
+    id: '22222222-2222-4222-8222-222222222201',
+    name: 'Melbourne Afrobeats Collective',
+    slug: 'melbourne-afrobeats-collective',
+    description: 'Melbourne-based collective curating Afrobeats nights, festival takeovers, and diaspora showcases.',
+  },
+  jollofSupperClub: {
+    id: '22222222-2222-4222-8222-222222222202',
+    name: 'Jollof Rice Supper Club',
+    slug: 'jollof-rice-supper-club',
+    description: 'Pop-up supper club series celebrating West African cuisine across Australia and the diaspora.',
+  },
+  sydneyAmapiano: {
+    id: '22222222-2222-4222-8222-222222222203',
+    name: 'Sydney Amapiano Sessions',
+    slug: 'sydney-amapiano-sessions',
+    description: 'Sydney nightlife crew booking top Amapiano DJs and hosting the citys biggest Amapiano nights.',
+  },
+  lagosNightsAustralia: {
+    id: '22222222-2222-4222-8222-222222222204',
+    name: 'Lagos Nights Australia',
+    slug: 'lagos-nights-australia',
+    description: 'Traditional Owambe and West African celebration producers for the Australian diaspora.',
+  },
+  diasporaBusinessForum: {
+    id: '22222222-2222-4222-8222-222222222205',
+    name: 'Diaspora Business Forum',
+    slug: 'diaspora-business-forum',
+    description: 'Conferences, summits, and roundtables connecting African and diaspora founders with capital and partners.',
+  },
+  gospelCulturalNetwork: {
+    id: '22222222-2222-4222-8222-222222222206',
+    name: 'Gospel Cultural Network',
+    slug: 'gospel-cultural-network',
+    description: 'Gospel concerts, choir nights, and worship gatherings for the global African Christian diaspora.',
+  },
+  perthAfricanMarket: {
+    id: '22222222-2222-4222-8222-222222222207',
+    name: 'Perth African Market',
+    slug: 'perth-african-market',
+    description: 'Perth collective running African food markets, family days, and regional community events.',
+  },
+  aucklandCulturalAlliance: {
+    id: '22222222-2222-4222-8222-222222222208',
+    name: 'Auckland Cultural Alliance',
+    slug: 'auckland-cultural-alliance',
+    description: 'Multicultural collective producing cultural festivals, art exhibitions, and community events across Aotearoa.',
+  },
+}
+
+function pickOrgId(ev) {
+  const tags = new Set(ev.tags ?? [])
+  const city = (ev.venue_city ?? '').toLowerCase()
+
+  if (tags.has('owambe') || tags.has('yoruba')) return ORGS.lagosNightsAustralia.id
+  if (tags.has('gospel') || tags.has('christian') || tags.has('worship') || tags.has('choir')) return ORGS.gospelCulturalNetwork.id
+  if (tags.has('business') || tags.has('networking') || tags.has('entrepreneurship') || tags.has('summit')) return ORGS.diasporaBusinessForum.id
+  if (tags.has('amapiano') && city === 'sydney') return ORGS.sydneyAmapiano.id
+  if (tags.has('amapiano')) return ORGS.sydneyAmapiano.id
+  if (tags.has('afrobeats') && city === 'melbourne') return ORGS.melbourneAfrobeats.id
+  if (city === 'auckland') return ORGS.aucklandCulturalAlliance.id
+  if (city === 'perth') return ORGS.perthAfricanMarket.id
+  if (tags.has('food') || tags.has('supper') || tags.has('market')) return ORGS.jollofSupperClub.id
+  return ORGS.melbourneAfrobeats.id
+}
+
+// Upsert all 8 organisations up front
+for (const org of Object.values(ORGS)) {
+  const { error } = await supabase.from('organisations').upsert({
+    id: org.id,
+    name: org.name,
+    slug: org.slug,
+    description: org.description,
+    owner_id: USER_ID,
+    status: 'active',
+  }, { onConflict: 'id' })
+  if (error) {
+    console.error(`  ERROR upserting organisation ${org.name}:`, error.message)
+  } else {
+    console.log(`  ORG   ${org.name}`)
+  }
+}
 
 // Category IDs (from event_categories seed)
 const CAT = {
@@ -68,7 +156,7 @@ const events = [
     title: 'Afrobeats Melbourne Summer Sessions',
     slug: 'afrobeats-melbourne-summer-sessions-2026',
     description: 'The biggest Afrobeats event of the Melbourne summer. Three stages, international DJs, Nigerian street food, and a crowd that knows every word.',
-    summary: 'Live Afrobeats, 3 stages, street food — Melbourne Showgrounds',
+    summary: 'Live Afrobeats, 3 stages, street food - Melbourne Showgrounds',
     category_id: CAT.music,
     start_date: '2026-04-26T08:00:00Z', // 18:00 AEST
     end_date:   '2026-04-26T16:00:00Z', // 02:00 AEST next day
@@ -82,10 +170,10 @@ const events = [
   },
   {
     id: '11111111-1111-4111-8111-111111111102',
-    title: 'Afrobeats All Night — London',
+    title: 'Afrobeats All Night - London',
     slug: 'afrobeats-all-night-london-2026',
     description: "London's premier monthly Afrobeats session returns for a special extended night. The freshest Afrobeats, Afropop, and Alte sounds from a world-class DJ lineup.",
-    summary: "London's top Afrobeats night — extended session, world-class DJs",
+    summary: "London's top Afrobeats night - extended session, world-class DJs",
     category_id: CAT.music,
     start_date: '2026-05-02T20:00:00Z', // 21:00 BST
     end_date:   '2026-05-03T03:00:00Z', // 04:00 BST
@@ -99,10 +187,10 @@ const events = [
   },
   {
     id: '11111111-1111-4111-8111-111111111103',
-    title: 'Amapiano Takeover — Sydney',
+    title: 'Amapiano Takeover - Sydney',
     slug: 'amapiano-takeover-sydney-2026',
     description: "Sydney's wildest Amapiano party is back. Log drums, wailing piano, and a dancefloor that never stops. This is the sound of South Africa in the heart of the city.",
-    summary: "Sydney's biggest Amapiano night — log drums, wailing piano, all night",
+    summary: "Sydney's biggest Amapiano night - log drums, wailing piano, all night",
     category_id: CAT.nightlife,
     start_date: '2026-05-03T10:00:00Z', // 20:00 AEST
     end_date:   '2026-05-03T17:00:00Z', // 03:00 AEST next day
@@ -116,10 +204,10 @@ const events = [
   },
   {
     id: '11111111-1111-4111-8111-111111111104',
-    title: 'Highlife Heritage Night — Brisbane',
+    title: 'Highlife Heritage Night - Brisbane',
     slug: 'highlife-heritage-night-brisbane-2026',
     description: 'A celebration of West African Highlife music across the decades. Live band, traditional attire welcome, authentic Ghanaian and Nigerian cuisine.',
-    summary: 'Live Highlife band, traditional attire, West African cuisine — Brisbane',
+    summary: 'Live Highlife band, traditional attire, West African cuisine - Brisbane',
     category_id: CAT.music,
     start_date: '2026-05-10T07:00:00Z', // 17:00 AEST
     end_date:   '2026-05-10T13:00:00Z', // 23:00 AEST
@@ -133,10 +221,10 @@ const events = [
   },
   {
     id: '11111111-1111-4111-8111-111111111105',
-    title: 'Gospel on the Hills — Melbourne',
+    title: 'Gospel on the Hills - Melbourne',
     slug: 'gospel-on-the-hills-melbourne-2026',
     description: "An uplifting evening of Gospel music bringing together choirs and soloists from across Melbourne's African and Pacific Islander communities. Family-friendly.",
-    summary: 'Gospel night — choirs, soloists, African community, all welcome',
+    summary: 'Gospel night - choirs, soloists, African community, all welcome',
     category_id: CAT.religion,
     start_date: '2026-05-17T05:00:00Z', // 15:00 AEST
     end_date:   '2026-05-17T10:00:00Z', // 20:00 AEST
@@ -150,10 +238,10 @@ const events = [
   },
   {
     id: '11111111-1111-4111-8111-111111111106',
-    title: 'African Comedy Night — The Showcase',
+    title: 'African Comedy Night - The Showcase',
     slug: 'african-comedy-night-the-showcase-2026',
     description: "Six of Australia's funniest African comedians take the stage for a night of stories, cultural observations, and laughs that hit different. Doors open 7pm.",
-    summary: '6 African comedians, cultural humour, Melbourne — an unmissable night',
+    summary: '6 African comedians, cultural humour, Melbourne - an unmissable night',
     category_id: CAT.arts,
     start_date: '2026-05-09T09:00:00Z', // 19:00 AEST
     end_date:   '2026-05-09T13:00:00Z', // 23:00 AEST
@@ -170,7 +258,7 @@ const events = [
     title: 'Diaspora Business Summit 2026',
     slug: 'diaspora-business-summit-2026',
     description: 'The annual gathering of African diaspora entrepreneurs, investors, and professionals. Keynotes, panels, pitch sessions, and a gala dinner. Network with 300+ leaders.',
-    summary: 'Keynotes, panels, pitching, gala dinner — African diaspora entrepreneurs, Sydney',
+    summary: 'Keynotes, panels, pitching, gala dinner - African diaspora entrepreneurs, Sydney',
     category_id: CAT.business,
     start_date: '2026-05-22T22:00:00Z', // 08:00 AEST
     end_date:   '2026-05-23T12:00:00Z', // 22:00 AEST
@@ -184,10 +272,10 @@ const events = [
   },
   {
     id: '11111111-1111-4111-8111-111111111108',
-    title: 'Owambe — The Gathering',
+    title: 'Owambe - The Gathering',
     slug: 'owambe-the-gathering-2026',
-    description: 'Owambe is the Yoruba word for "it is there" — and this party will be there in every sense. Traditional wear, live band, jollof rice cook-off, and West African culture.',
-    summary: 'West African cultural celebration — live band, jollof cook-off, traditional attire',
+    description: 'Owambe is the Yoruba word for "it is there" - and this party will be there in every sense. Traditional wear, live band, jollof rice cook-off, and West African culture.',
+    summary: 'West African cultural celebration - live band, jollof cook-off, traditional attire',
     category_id: CAT.community,
     start_date: '2026-06-07T04:00:00Z', // 14:00 AEST
     end_date:   '2026-06-07T13:00:00Z', // 23:00 AEST
@@ -213,6 +301,14 @@ for (const ev of events) {
     .single()
 
   if (existing) {
+    // Backfill organisation to the diaspora-aligned pick.
+    const { error: orgUpdErr } = await supabase
+      .from('events')
+      .update({ organisation_id: pickOrgId(ev) })
+      .eq('id', ev.id)
+    if (orgUpdErr) {
+      console.error(`  ERROR org backfill ${ev.title}:`, orgUpdErr.message)
+    }
     console.log(`  SKIP  ${ev.title} (already exists)`)
     skipped++
     continue
@@ -224,7 +320,7 @@ for (const ev of events) {
     slug: ev.slug,
     description: ev.description,
     summary: ev.summary,
-    organisation_id: ORG_ID,
+    organisation_id: pickOrgId(ev),
     created_by: USER_ID,
     category_id: ev.category_id,
     start_date: ev.start_date,
@@ -267,7 +363,7 @@ for (const ev of events) {
     continue
   }
 
-  console.log(`  OK    ${ev.title} — AUD $${(ev.price_cents / 100).toFixed(0)}, cap ${ev.max_capacity}`)
+  console.log(`  OK    ${ev.title} - AUD $${(ev.price_cents / 100).toFixed(0)}, cap ${ev.max_capacity}`)
   inserted++
 }
 
@@ -310,9 +406,9 @@ const DEMO_EVENTS = [
   // -------- badge: last_chance (starts < 24h) --------
   {
     id: '11111111-1111-4111-8111-111111112101',
-    title: 'Amapiano Sundown — Perth',
+    title: 'Amapiano Sundown - Perth',
     slug: 'amapiano-sundown-perth-m5',
-    description: 'Rooftop Amapiano at golden hour. Log-drum bass, wailing piano, diaspora dancefloor — Perth in full colour.',
+    description: 'Rooftop Amapiano at golden hour. Log-drum bass, wailing piano, diaspora dancefloor - Perth in full colour.',
     summary: 'Rooftop Amapiano, golden hour, Perth',
     category_id: CAT.nightlife,
     start_date: iso(6 * HOUR),
@@ -324,7 +420,7 @@ const DEMO_EVENTS = [
   },
   {
     id: '11111111-1111-4111-8111-111111112102',
-    title: 'Gospel Easter Vigil — Accra',
+    title: 'Gospel Easter Vigil - Accra',
     slug: 'gospel-easter-vigil-accra-m5',
     description: 'An all-night gospel vigil bringing together choirs from across Accra. Traditional Ghanaian hymns and contemporary worship under one roof.',
     summary: 'All-night gospel vigil, Accra choirs united',
@@ -340,7 +436,7 @@ const DEMO_EVENTS = [
   // -------- badge: few_left (< 10 remaining) --------
   {
     id: '11111111-1111-4111-8111-111111112103',
-    title: 'Intimate Jazz Supper — Auckland',
+    title: 'Intimate Jazz Supper - Auckland',
     slug: 'intimate-jazz-supper-auckland-m5',
     description: 'A 100-seat-only candlelit jazz supper. Diaspora jazz quartet, three-course Afro-fusion menu, no phones on the table.',
     summary: '100-seat candlelit jazz supper, Afro-fusion menu',
@@ -354,10 +450,10 @@ const DEMO_EVENTS = [
   },
   {
     id: '11111111-1111-4111-8111-111111112104',
-    title: 'Lagos Fashion Week — Gala Night',
+    title: 'Lagos Fashion Week - Gala Night',
     slug: 'lagos-fashion-week-gala-m5',
     description: 'The closing gala of Lagos Fashion Week. Runway finale, afterparty, 100 gala seats only.',
-    summary: 'Lagos Fashion Week closing gala — 100 seats',
+    summary: 'Lagos Fashion Week closing gala - 100 seats',
     category_id: CAT.fashion,
     start_date: iso(14 * DAY),
     end_date: iso(14 * DAY + 6 * HOUR),
@@ -370,10 +466,10 @@ const DEMO_EVENTS = [
   // -------- badge: selling_fast (> 70% sold) --------
   {
     id: '11111111-1111-4111-8111-111111112105',
-    title: 'Amapiano Takeover — Brisbane',
+    title: 'Amapiano Takeover - Brisbane',
     slug: 'amapiano-takeover-brisbane-m5',
     description: 'Brisbane gets its first dedicated Amapiano takeover. Sydney and Melbourne DJs invade the River City.',
-    summary: 'Brisbane Amapiano takeover — interstate DJs',
+    summary: 'Brisbane Amapiano takeover - interstate DJs',
     category_id: CAT.nightlife,
     start_date: iso(21 * DAY),
     end_date: iso(21 * DAY + 7 * HOUR),
@@ -384,7 +480,7 @@ const DEMO_EVENTS = [
   },
   {
     id: '11111111-1111-4111-8111-111111112106',
-    title: 'Tech Founders Demo Day — Perth',
+    title: 'Tech Founders Demo Day - Perth',
     slug: 'tech-founders-demo-day-perth-m5',
     description: 'Twelve African-diaspora founders pitch their startups. Investor panel, networking, jollof after-party.',
     summary: '12 diaspora founders pitch, investors in room',
@@ -415,7 +511,7 @@ const DEMO_EVENTS = [
   },
   {
     id: '11111111-1111-4111-8111-111111112108',
-    title: 'Coastal Yoga Retreat — Auckland',
+    title: 'Coastal Yoga Retreat - Auckland',
     slug: 'coastal-yoga-retreat-auckland-m5',
     description: 'A weekend of coastal vinyasa, breathwork, and West African drumming circles. Just added for this season.',
     summary: 'Coastal vinyasa + West African drumming',
@@ -476,10 +572,10 @@ const DEMO_EVENTS = [
   // -------- regular events: category + city + price spread --------
   {
     id: '11111111-1111-4111-8111-11111111210c',
-    title: 'Diaspora Founders Forum — Accra',
+    title: 'Diaspora Founders Forum - Accra',
     slug: 'diaspora-founders-forum-accra-m5',
     description: 'A full-day forum for African-diaspora founders returning to the continent. Panels, office hours, capital roundtable.',
-    summary: 'Diaspora founders forum — capital + community',
+    summary: 'Diaspora founders forum - capital + community',
     category_id: CAT.business_networking,
     start_date: iso(24 * DAY),
     end_date: iso(24 * DAY + 10 * HOUR),
@@ -504,7 +600,7 @@ const DEMO_EVENTS = [
   },
   {
     id: '11111111-1111-4111-8111-11111111210e',
-    title: 'Afro-Contemporary Art Exhibition — Auckland',
+    title: 'Afro-Contemporary Art Exhibition - Auckland',
     slug: 'afro-contemporary-art-auckland-m5',
     description: 'A six-week exhibition featuring 18 contemporary African artists. Opening night includes live jazz and catering.',
     summary: '18 African artists, opening night jazz',
@@ -518,10 +614,10 @@ const DEMO_EVENTS = [
   },
   {
     id: '11111111-1111-4111-8111-11111111210f',
-    title: 'Nigerian Literature Festival — Lagos',
+    title: 'Nigerian Literature Festival - Lagos',
     slug: 'nigerian-literature-festival-lagos-m5',
     description: 'A one-day festival of Nigerian writers, poets, and spoken-word artists. Affordable cultural programming for all.',
-    summary: 'Nigerian writers, poets, spoken-word — Lagos',
+    summary: 'Nigerian writers, poets, spoken-word - Lagos',
     category_id: CAT.arts_culture,
     start_date: iso(20 * DAY),
     end_date: iso(20 * DAY + 9 * HOUR),
@@ -534,7 +630,7 @@ const DEMO_EVENTS = [
     id: '11111111-1111-4111-8111-111111112110',
     title: 'Perth Family Fun Day',
     slug: 'perth-family-fun-day-m5',
-    description: 'Face painting, jumping castles, West African drumming workshops, and kids\u2019 Jollof lunch box — a full afternoon for the family.',
+    description: 'Face painting, jumping castles, West African drumming workshops, and kids\u2019 Jollof lunch box - a full afternoon for the family.',
     summary: 'Kids activities, drumming, Jollof lunch',
     category_id: CAT.family,
     start_date: iso(11 * DAY),
@@ -546,7 +642,7 @@ const DEMO_EVENTS = [
   },
   {
     id: '11111111-1111-4111-8111-111111112111',
-    title: 'Kids African Drumming Workshop — Auckland',
+    title: 'Kids African Drumming Workshop - Auckland',
     slug: 'kids-african-drumming-workshop-auckland-m5',
     description: 'A hands-on drumming circle for kids 5-12. Instruments provided, cultural storytelling, parent tea-break lounge.',
     summary: 'Kids drumming workshop, instruments provided',
@@ -576,7 +672,7 @@ const DEMO_EVENTS = [
     id: '11111111-1111-4111-8111-111111112113',
     title: 'Perth World Music Festival',
     slug: 'perth-world-music-festival-m5',
-    description: 'Two days of global music — Afrobeats, reggae, bossa nova, Amapiano. Two stages, global food village, family-friendly.',
+    description: 'Two days of global music - Afrobeats, reggae, bossa nova, Amapiano. Two stages, global food village, family-friendly.',
     summary: 'Two-day world music festival, two stages',
     category_id: CAT.festival,
     start_date: iso(33 * DAY),
@@ -658,7 +754,7 @@ const DEMO_EVENTS = [
   },
   {
     id: '11111111-1111-4111-8111-111111112119',
-    title: 'Diaspora Mentorship Summit — Perth',
+    title: 'Diaspora Mentorship Summit - Perth',
     slug: 'diaspora-mentorship-summit-perth-m5',
     description: 'A one-day summit pairing senior African-diaspora professionals with emerging talent. 1:1 mentor circles, career workshops.',
     summary: '1:1 mentor circles + career workshops',
@@ -705,6 +801,15 @@ for (const ev of DEMO_EVENTS) {
     } else {
       console.log(`  SKIP  ${ev.title} (already exists)`)
     }
+    // Backfill organisation to the diaspora-aligned pick so existing rows
+    // seeded earlier (with the single placeholder org) switch over too.
+    const { error: orgUpdErr } = await supabase
+      .from('events')
+      .update({ organisation_id: pickOrgId(ev) })
+      .eq('id', ev.id)
+    if (orgUpdErr) {
+      console.error(`  ERROR org backfill ${ev.title}:`, orgUpdErr.message)
+    }
     skipped++
     continue
   }
@@ -715,7 +820,7 @@ for (const ev of DEMO_EVENTS) {
     slug: ev.slug,
     description: ev.description,
     summary: ev.summary,
-    organisation_id: ORG_ID,
+    organisation_id: pickOrgId(ev),
     created_by: USER_ID,
     category_id: ev.category_id,
     start_date: ev.start_date,
