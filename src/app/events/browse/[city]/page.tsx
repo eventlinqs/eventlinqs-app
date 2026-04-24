@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { fetchPublicEvents } from '@/lib/events'
+import { fetchPublicEvents, fetchPublicEventsCached } from '@/lib/events'
 import {
   hasActiveFilters,
   parseEventsSearchParams,
@@ -96,12 +96,22 @@ export default async function BrowseCityPage({ params, searchParams }: Props) {
   // the grid regressed SI on /events mobile for the same reason —
   // images only begin loading after the streamed chunk arrives, which
   // stretches Lighthouse's visual-progress integral.
-  const result = await fetchPublicEvents({
-    filters: effectiveFilters,
-    page,
-    pageSize: 24,
-    origin,
-  })
+  const canUseCached =
+    !filterActive &&
+    typeof effectiveFilters.distance_km !== 'number' &&
+    view !== 'map'
+  const result = canUseCached
+    ? await fetchPublicEventsCached({
+        filters: effectiveFilters,
+        page,
+        pageSize: 24,
+      })
+    : await fetchPublicEvents({
+        filters: effectiveFilters,
+        page,
+        pageSize: 24,
+        origin,
+      })
 
   const basePath = `/events/browse/${city.slug}`
   const railSeeAllHref = `${basePath}?sort=popular`

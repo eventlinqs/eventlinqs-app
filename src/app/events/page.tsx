@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
-import { fetchPublicEvents } from '@/lib/events'
+import { fetchPublicEvents, fetchPublicEventsCached } from '@/lib/events'
 import {
   hasActiveFilters,
   parseEventsSearchParams,
@@ -63,12 +63,26 @@ export default async function EventsPage({ searchParams }: Props) {
   // imagery as soon as the HTML is parsed. Suspense here regressed SI
   // because images started loading after the streamed chunk arrived
   // instead of during HTML parse.
-  const result = await fetchPublicEvents({
-    filters: effectiveFilters,
-    page,
-    pageSize: 24,
-    origin,
-  })
+  // Default-case (no filters, no distance) goes through the cached path
+  // so PSI cache-bust queries share a warm snapshot; filtered/personalised
+  // queries still hit the request-scoped client to respect filters and
+  // distance-RPC semantics.
+  const canUseCached =
+    !filterActive &&
+    typeof effectiveFilters.distance_km !== 'number' &&
+    view !== 'map'
+  const result = canUseCached
+    ? await fetchPublicEventsCached({
+        filters: effectiveFilters,
+        page,
+        pageSize: 24,
+      })
+    : await fetchPublicEvents({
+        filters: effectiveFilters,
+        page,
+        pageSize: 24,
+        origin,
+      })
 
   return (
     <div className="flex min-h-screen flex-col bg-canvas">

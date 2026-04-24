@@ -1,4 +1,6 @@
+import { unstable_cache } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { withBadge } from './badges'
 import type {
   FetchPublicEventsInput,
@@ -272,6 +274,131 @@ export async function fetchPublicEvents(
 function cheapest(e: PublicEventRow): number {
   if (e.ticket_tiers.length === 0) return 0
   return Math.min(...e.ticket_tiers.map(t => t.price))
+}
+
+/**
+ * Cached variant for anonymous default-case browsing. Uses the admin client
+ * (published + public filter keeps data scope identical to RLS) and
+ * unstable_cache so PSI/bot cache-bust queries still share a warm snapshot.
+ * Bucketed by hour to avoid cache-key explosion while staying fresh.
+ * Callers must only pass origin when genuinely needed — ignore the argument
+ * for the default case so the cache key stays stable.
+ */
+export async function fetchPublicEventsCached(
+  input: FetchPublicEventsInput = {},
+): Promise<FetchPublicEventsResult> {
+  const filters = input.filters ?? {}
+  const page = input.page ?? 1
+  const pageSize = input.pageSize ?? DEFAULT_PAGE_SIZE
+  const bucket = Math.floor(Date.now() / (60 * 60 * 1000))
+  const keyParts = [
+    'events-public-v1',
+    `bucket:${bucket}`,
+    `page:${page}`,
+    `size:${pageSize}`,
+    `country:${filters.country ?? ''}`,
+    `city:${filters.city ?? ''}`,
+    `category:${filters.category ?? ''}`,
+    `preset:${filters.preset ?? ''}`,
+    `sort:${filters.sort ?? ''}`,
+    `q:${filters.q ?? ''}`,
+    `from:${filters.from ?? ''}`,
+    `to:${filters.to ?? ''}`,
+    `pmin:${filters.price_min ?? ''}`,
+    `pmax:${filters.price_max ?? ''}`,
+  ]
+  const cacheKey = keyParts.join('|')
+
+  return unstable_cache(
+    () => runFetchPublicEventsAdmin({ filters, page, pageSize, origin: input.origin, bbox: input.bbox }),
+    [cacheKey],
+    { revalidate: 60, tags: ['events-public'] },
+  )()
+}
+
+async function runFetchPublicEventsAdmin(
+  input: FetchPublicEventsInput,
+): Promise<FetchPublicEventsResult> {
+  const page = Math.max(1, input.page ?? 1)
+  const pageSize = input.pageSize ?? DEFAULT_PAGE_SIZE
+  const offset = (page - 1) * pageSize
+  const filters = input.filters ?? {}
+  const now = new Date()
+
+  const supabase = createAdminClient()
+
+  let query = supabase
+    .from('events')
+    .select(BASE_SELECT, { count: 'exact' })
+    .eq('status', 'published')
+    .eq('visibility', 'public')
+    .range(offset, offset + pageSize - 1)
+
+  if (filters.sort === 'date_asc' || !filters.sort || filters.sort === 'relevance') {
+    query = query.order('start_date', { ascending: true })
+  } else if (filters.sort === 'price_asc') {
+    query = query.order('start_date', { ascending: true })
+  } else if (filters.sort === 'popularity') {
+    query = query.order('start_date', { ascending: true })
+  }
+
+  if (filters.q) query = query.ilike('title', `%${filters.q}%`)
+  if (filters.category) {
+    const { data: cat } = await supabase
+      .from('event_categories')
+      .select('id')
+      .eq('slug', filters.category)
+      .maybeSingle()
+    if (cat) {
+      query = query.eq('category_id', cat.id)
+    } else {
+      query = query.eq('category_id', '00000000-0000-0000-0000-000000000000')
+    }
+  }
+  if (filters.city) query = query.ilike('venue_city', `%${filters.city}%`)
+  if (filters.country) query = query.eq('venue_country', filters.country)
+  if (filters.preset === 'free') query = query.eq('is_free', true)
+
+  const window = presetWindow(filters.preset, now)
+  if (window) {
+    query = query.gte('start_date', window.from)
+    if (window.to) query = query.lte('start_date', window.to)
+  } else {
+    query = query.gte('start_date', now.toISOString())
+  }
+
+  if (filters.from) query = query.gte('start_date', filters.from)
+  if (filters.to) query = query.lte('start_date', filters.to)
+
+  const { data, count, error } = await query
+  if (error) {
+    console.error('[fetchPublicEventsCached] query failed:', error)
+    return { events: [], total: 0, page, pageSize, totalPages: 0 }
+  }
+
+  const raw = (data ?? []) as unknown as RawRow[]
+  let events = raw.map(toPublicEventRow)
+
+  const priceFiltered =
+    typeof filters.price_min === 'number' || typeof filters.price_max === 'number'
+  if (priceFiltered) {
+    const minCents = (filters.price_min ?? 0) * 100
+    const maxCents =
+      filters.price_max === undefined ? Number.POSITIVE_INFINITY : filters.price_max * 100
+    events = events.filter(e => {
+      if (e.ticket_tiers.length === 0) return minCents === 0
+      const cheap = Math.min(...e.ticket_tiers.map(t => t.price))
+      return cheap >= minCents && cheap <= maxCents
+    })
+  }
+
+  if (filters.sort === 'price_asc') {
+    events.sort((a, b) => cheapest(a) - cheapest(b))
+  }
+
+  const total = priceFiltered ? events.length : count ?? events.length
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  return { events, total, page, pageSize, totalPages }
 }
 
 /**
