@@ -293,13 +293,59 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
 
   const now = new Date()
   const isTicketingSuspended = event.status === 'paused' || event.status === 'postponed'
-
-  const unlockedTierIds = await getUnlockedTierIds()
-  const visibleTiers = event.ticket_tiers.filter(t => isTierCurrentlyVisible(t, now, unlockedTierIds))
-  const showAccessCodeInput = hasLockedTiers(event.ticket_tiers, now, unlockedTierIds)
-
   const allTiers = event.ticket_tiers
-  const dynamicPriceMap = await getDynamicPriceMap(allTiers.map(t => t.id))
+
+  const seatsPromise = event.has_reserved_seating
+    ? (async () => {
+        const seatSupabase = await createClient()
+        const [seatsResult, sectionsResult] = await Promise.all([
+          seatSupabase
+            .from('seats')
+            .select('id, row_label, seat_number, seat_type, status, x, y, price_cents, seat_map_section_id, ticket_tier_id')
+            .eq('event_id', event.id)
+            .order('row_label')
+            .order('seat_number'),
+          event.seat_map_id
+            ? seatSupabase
+                .from('seat_map_sections')
+                .select('id, name, color')
+                .eq('seat_map_id', event.seat_map_id)
+                .order('sort_order')
+            : Promise.resolve({ data: [] as { id: string; name: string; color: string }[], error: null }),
+        ])
+        return { seatsResult, sectionsResult }
+      })()
+    : Promise.resolve(null)
+
+  const [
+    unlockedTierIds,
+    dynamicPriceMap,
+    eventInventory,
+    media,
+    related,
+    seatsData,
+  ] = await Promise.all([
+    getUnlockedTierIds(),
+    getDynamicPriceMap(allTiers.map(t => t.id)),
+    getEventInventory(event.id),
+    getFeaturedEventMedia({
+      title: event.title,
+      cover_image_url: event.cover_image_url,
+      thumbnail_url: event.thumbnail_url,
+      gallery_urls: event.gallery_urls,
+      category: event.category ? { slug: event.category.slug ?? null, name: event.category.name } : null,
+    }),
+    fetchRelatedEvents(
+      event.id,
+      event.category_id,
+      event.organisation_id,
+      event.venue_city,
+    ),
+    seatsPromise,
+  ])
+
+  const visibleTiers = allTiers.filter(t => isTierCurrentlyVisible(t, now, unlockedTierIds))
+  const showAccessCodeInput = hasLockedTiers(allTiers, now, unlockedTierIds)
 
   function resolvePrice(tier: TicketTier): number {
     const dynamic = dynamicPriceMap.get(tier.id)
@@ -312,39 +358,13 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
     display_price_cents: resolvePrice(t),
   }))
 
-  const eventInventory = await getEventInventory(event.id)
-
-  const tierInventoryMap = new Map(
-    await Promise.all(
-      enrichedTiers.map(async t => [t.id, await getTierInventory(t.id)] as const),
-    ),
-  )
-
   let eventSeats: SeatData[] = []
   let eventSections: SectionData[] = []
-
-  if (event.has_reserved_seating) {
-    const seatSupabase = await createClient()
-    const [seatsResult, sectionsResult] = await Promise.all([
-      seatSupabase
-        .from('seats')
-        .select('id, row_label, seat_number, seat_type, status, x, y, price_cents, seat_map_section_id, ticket_tier_id')
-        .eq('event_id', event.id)
-        .order('row_label')
-        .order('seat_number'),
-      event.seat_map_id
-        ? seatSupabase
-            .from('seat_map_sections')
-            .select('id, name, color')
-            .eq('seat_map_id', event.seat_map_id)
-            .order('sort_order')
-        : Promise.resolve({ data: [] as { id: string; name: string; color: string }[], error: null }),
-    ])
-
+  if (seatsData) {
+    const { seatsResult, sectionsResult } = seatsData
     if (seatsResult.error) {
       console.error('[event-detail] failed to load seats:', seatsResult.error)
     }
-
     eventSeats = (seatsResult.data ?? []).map(s => ({
       ...s,
       x: typeof s.x === 'number' ? s.x : parseFloat(s.x as unknown as string) || 0,
@@ -370,27 +390,18 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
     .filter(Boolean)
     .join(', ')
 
-  const media = await getFeaturedEventMedia({
-    title: event.title,
-    cover_image_url: event.cover_image_url,
-    thumbnail_url: event.thumbnail_url,
-    gallery_urls: event.gallery_urls,
-    category: event.category ? { slug: event.category.slug ?? null, name: event.category.name } : null,
-  })
-
   const autoplayHero = media.kind === 'video'
 
-  const related = await fetchRelatedEvents(
-    event.id,
-    event.category_id,
-    event.organisation_id,
-    event.venue_city,
-  )
-  const relatedCards = await projectToCardData(related as unknown as PublicEventRow[])
   const relatedTierIds = related
     .map(e => e.ticket_tiers?.[0]?.id)
     .filter((id): id is string => typeof id === 'string')
-  const relatedPrices = await getDynamicPriceMap(relatedTierIds)
+
+  const [tierInventoryEntries, relatedCards, relatedPrices] = await Promise.all([
+    Promise.all(enrichedTiers.map(async t => [t.id, await getTierInventory(t.id)] as const)),
+    projectToCardData(related as unknown as PublicEventRow[]),
+    getDynamicPriceMap(relatedTierIds),
+  ])
+  const tierInventoryMap = new Map(tierInventoryEntries)
 
   const isSoldOut =
     !event.has_reserved_seating &&
