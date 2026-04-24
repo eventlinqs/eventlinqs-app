@@ -1,6 +1,7 @@
 export {
   fetchPublicEvents,
   fetchPublicEventsCached,
+  fetchActiveCategoriesCached,
   fetchRecommendedEvents,
   fetchPopularThisWeek,
 } from './fetchers'

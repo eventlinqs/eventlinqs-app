@@ -1,7 +1,10 @@
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
-import { createClient } from '@/lib/supabase/server'
-import { fetchPublicEvents, fetchPublicEventsCached } from '@/lib/events'
+import {
+  fetchPublicEvents,
+  fetchPublicEventsCached,
+  fetchActiveCategoriesCached,
+} from '@/lib/events'
 import {
   hasActiveFilters,
   parseEventsSearchParams,
@@ -37,13 +40,8 @@ export default async function EventsPage({ searchParams }: Props) {
   const raw = await searchParams
   const { filters, page, view } = parseEventsSearchParams(raw)
 
-  const supabase = await createClient()
-  const [{ data: categories }, location] = await Promise.all([
-    supabase
-      .from('event_categories')
-      .select('id, name, slug')
-      .eq('is_active', true)
-      .order('sort_order'),
+  const [categories, location] = await Promise.all([
+    fetchActiveCategoriesCached(),
     detectLocation(),
   ])
 
@@ -90,7 +88,7 @@ export default async function EventsPage({ searchParams }: Props) {
 
         <EventsFilterBar
           params={raw}
-          categories={(categories ?? []).map(c => ({ id: c.id, name: c.name, slug: c.slug }))}
+          categories={categories}
           view={view}
           hasGeoSignal={hasGeoSignal}
         />

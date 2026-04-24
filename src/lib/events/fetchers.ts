@@ -316,6 +316,20 @@ export async function fetchPublicEventsCached(
   )()
 }
 
+export const fetchActiveCategoriesCached = unstable_cache(
+  async () => {
+    const supabase = createAdminClient()
+    const { data } = await supabase
+      .from('event_categories')
+      .select('id, name, slug')
+      .eq('is_active', true)
+      .order('sort_order')
+    return (data ?? []) as { id: string; name: string; slug: string }[]
+  },
+  ['events-active-categories-v1'],
+  { revalidate: 3600, tags: ['event-categories'] },
+)
+
 async function runFetchPublicEventsAdmin(
   input: FetchPublicEventsInput,
 ): Promise<FetchPublicEventsResult> {
