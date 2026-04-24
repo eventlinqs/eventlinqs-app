@@ -1,8 +1,8 @@
+import { createClient } from '@/lib/supabase/server'
 import { fetchRecommendedEvents } from '@/lib/events'
 import { RecommendedRail } from './m5-recommended-rail'
 
 type Props = {
-  userId: string | null
   filterActive: boolean
   cityName: string
   seeAllHref: string
@@ -10,16 +10,19 @@ type Props = {
 
 /**
  * Suspense boundary target for /events/browse/[city] recommendations.
- * Mirrors EventsRecommendedSection but scopes the fetch to a specific
- * city so the rail is deterministically about that city's culture.
+ * Owns its own auth lookup so the enclosing shell stays cookies-free
+ * and Next.js can treat the page as cacheable under ISR.
  */
 export async function EventsBrowseRecommendedSection({
-  userId,
   filterActive,
   cityName,
   seeAllHref,
 }: Props) {
   if (filterActive) return null
+
+  const supabase = await createClient()
+  const { data: userData } = await supabase.auth.getUser()
+  const userId = userData.user?.id ?? null
 
   const events = await fetchRecommendedEvents(userId, 12, cityName)
   const headline: 'recommended' | 'popular' | null =

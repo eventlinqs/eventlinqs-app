@@ -68,17 +68,14 @@ export default async function BrowseCityPage({ params, searchParams }: Props) {
   const { filters, page, view } = parseEventsSearchParams(raw)
 
   const supabase = await createClient()
-  const [{ data: categories }, { data: userData }, location] = await Promise.all([
+  const [{ data: categories }, location] = await Promise.all([
     supabase
       .from('event_categories')
       .select('id, name, slug')
       .eq('is_active', true)
       .order('sort_order'),
-    supabase.auth.getUser(),
     detectLocation(),
   ])
-
-  const userId = userData.user?.id ?? null
 
   const origin =
     city.latitude !== null && city.longitude !== null
@@ -139,7 +136,6 @@ export default async function BrowseCityPage({ params, searchParams }: Props) {
         {!filterActive ? (
           <Suspense fallback={<EventsRecommendedSkeleton />}>
             <EventsBrowseRecommendedSection
-              userId={userId}
               filterActive={filterActive}
               cityName={city.city}
               seeAllHref={railSeeAllHref}

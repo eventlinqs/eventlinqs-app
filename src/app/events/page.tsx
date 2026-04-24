@@ -38,17 +38,15 @@ export default async function EventsPage({ searchParams }: Props) {
   const { filters, page, view } = parseEventsSearchParams(raw)
 
   const supabase = await createClient()
-  const [{ data: categories }, { data: userData }, location] = await Promise.all([
+  const [{ data: categories }, location] = await Promise.all([
     supabase
       .from('event_categories')
       .select('id, name, slug')
       .eq('is_active', true)
       .order('sort_order'),
-    supabase.auth.getUser(),
     detectLocation(),
   ])
 
-  const userId = userData.user?.id ?? null
   const origin =
     location.latitude !== null && location.longitude !== null
       ? { latitude: location.latitude, longitude: location.longitude }
@@ -102,7 +100,7 @@ export default async function EventsPage({ searchParams }: Props) {
             image-load timing. */}
         {!filterActive ? (
           <Suspense fallback={<EventsRecommendedSkeleton />}>
-            <EventsRecommendedSection userId={userId} filterActive={filterActive} />
+            <EventsRecommendedSection filterActive={filterActive} />
           </Suspense>
         ) : null}
 

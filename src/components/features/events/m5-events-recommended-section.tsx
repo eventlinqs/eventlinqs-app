@@ -1,18 +1,24 @@
+import { createClient } from '@/lib/supabase/server'
 import { fetchRecommendedEvents } from '@/lib/events'
 import { RecommendedRail } from './m5-recommended-rail'
 
 type Props = {
-  userId: string | null
   filterActive: boolean
 }
 
 /**
- * Suspense boundary target: performs its own fetch + projection so the
- * /events shell (hero, filter bar) streams immediately while the rail
- * resolves Pexels fallbacks for up to 8 events.
+ * Suspense boundary target: performs its own auth lookup + fetch so the
+ * /events shell stays free of cookies() and can be treated as static by
+ * the Next.js renderer (ISR honours `revalidate` only when no dynamic
+ * APIs are used in the shell). PSI cache-bust queries (?v=...) still
+ * share the cached HTML once the first run warms the CDN.
  */
-export async function EventsRecommendedSection({ userId, filterActive }: Props) {
+export async function EventsRecommendedSection({ filterActive }: Props) {
   if (filterActive) return null
+
+  const supabase = await createClient()
+  const { data: userData } = await supabase.auth.getUser()
+  const userId = userData.user?.id ?? null
 
   const events = await fetchRecommendedEvents(userId, 12)
   const headline: 'recommended' | 'popular' | null =
