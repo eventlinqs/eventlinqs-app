@@ -106,6 +106,20 @@ const CULTURE_TABS: { slug: string; label: string; tag: string; href: string }[]
   { slug: 'networking',  label: 'Business',   tag: 'business',    href: '/categories/networking' },
 ]
 
+// Pexels-backed fallback tiles for the Live Vibe marquee when the real
+// upcoming list has fewer than 6 events. Module-scoped so Phase 1 below
+// can start resolving these Pexels calls in parallel with the DB queries.
+const FALLBACK_SEEDS = [
+  { id: 'f1', href: '/events/browse/melbourne', title: 'Afrobeats scene in Melbourne', community: 'Melbourne, VIC',   categorySlug: 'afrobeats' },
+  { id: 'f2', href: '/events/browse/sydney',    title: 'Community events in Sydney',   community: 'Sydney, NSW',      categorySlug: 'community' },
+  { id: 'f3', href: '/events/browse/brisbane',  title: 'Gospel nights Brisbane',       community: 'Brisbane, QLD',    categorySlug: 'gospel' },
+  { id: 'f4', href: '/events/browse/geelong',   title: 'Geelong community scene',      community: 'Geelong, VIC',     categorySlug: 'community' },
+  { id: 'f5', href: '/events/browse/perth',     title: 'Diaspora events Perth',        community: 'Perth, WA',        categorySlug: 'heritage-and-independence' },
+  { id: 'f6', href: '/events',                  title: 'Regional Australia events',    community: 'Across Australia', categorySlug: 'festival' },
+] as const
+
+const LOCAL_CITY_SVG = new Set(['lagos', 'london', 'melbourne', 'sydney'])
+
 const CITY_TILES = [
   // Primary — Australian communities shown first for the M4.5 launch.
   { city: 'Melbourne',    slug: 'melbourne' },
@@ -144,17 +158,23 @@ export default async function HomePage() {
   const detectedLocation = await detectLocation()
   const cityFilter = detectedLocation.city
 
-  // Fan out all independent initial queries in parallel. Previously these ran
-  // sequentially, which added ~5 Supabase RTTs to TTFB and stalled LCP. We
-  // pay a small cost by always launching both city-scoped + unfiltered
-  // upcoming feeds (the fallback picks the winner), but the wall-clock saving
-  // on warm cache is multiple hundreds of ms on prod.
+  // Fan out EVERY independent initial fetch in parallel. Previously we had
+  // two sequential waves ("batch 1" for core feeds, "batch 2" for hero/
+  // thisWeek/cultural/city) plus a trailing fallback-tiles await — three
+  // phases stacked onto TTFB. By moving everything that doesn't depend on
+  // upcoming-event results (cultural queries, city counts, Pexels fallback
+  // tiles) up here, we collapse to a single wait before processing, then
+  // one much smaller Phase 2 for the hero/thisWeek derivations. This was
+  // the direct cause of ~8.5s simulated HTML streaming on mobile.
   const [
     cityUpcomingResult,
     allUpcomingResult,
     sessionResult,
     liveEventCountResult,
     cityRowsResult,
+    culturalQueries,
+    cityCounts,
+    fallbackCommunityTiles,
   ] = await Promise.all([
     supabase
       .from('events')
@@ -187,6 +207,66 @@ export default async function HomePage() {
       .eq('visibility', 'public')
       .gte('start_date', nowIso)
       .not('venue_city', 'is', null),
+    Promise.all(
+      CULTURE_TABS.map(async tab => {
+        let { data } = await supabase
+          .from('events')
+          .select(EVENT_SELECT)
+          .eq('status', 'published')
+          .eq('visibility', 'public')
+          .gte('start_date', nowIso)
+          .contains('tags', [tab.tag])
+          .ilike('venue_city', `%${cityFilter}%`)
+          .order('start_date', { ascending: true })
+          .limit(8)
+        if ((data ?? []).length < 2) {
+          const result = await supabase
+            .from('events')
+            .select(EVENT_SELECT)
+            .eq('status', 'published')
+            .eq('visibility', 'public')
+            .gte('start_date', nowIso)
+            .contains('tags', [tab.tag])
+            .order('start_date', { ascending: true })
+            .limit(8)
+          data = result.data
+        }
+        const events = ((data ?? []) as unknown as RawRow[]).map(toBentoEvent)
+        const cards = await Promise.all(events.map(async e => <ThisWeekCard key={e.id} event={e} />))
+        return { tab, events, cards }
+      }),
+    ),
+    Promise.all(
+      CITY_TILES.map(async t => {
+        const [countResult, photo] = await Promise.all([
+          supabase.from('events').select('id', { count: 'exact', head: true })
+            .eq('status', 'published').eq('visibility', 'public')
+            .gte('start_date', nowIso).ilike('venue_city', `%${t.slug}%`),
+          getCityPhoto(t.slug),
+        ])
+        const localSvg = LOCAL_CITY_SVG.has(t.slug)
+          ? `/cities/${t.slug}.svg`
+          : '/cities/_fallback.svg'
+        return {
+          ...t,
+          count: countResult.count ?? 0,
+          imageSrc: photo ?? localSvg,
+        }
+      }),
+    ),
+    Promise.all(
+      FALLBACK_SEEDS.map(async seed => {
+        const photo = await getCategoryPhoto(seed.categorySlug)
+        return {
+          id: seed.id,
+          src: photo.src,
+          href: seed.href,
+          title: seed.title,
+          community: seed.community,
+          placeholderCategory: seed.categorySlug,
+        } as VibeImage
+      }),
+    ),
   ])
 
   const cityUpcomingRaw = cityUpcomingResult.data
@@ -255,16 +335,14 @@ export default async function HomePage() {
   // Bento row: featured hero + 3 equal-weight supporting events
   const supportingEvents = upcoming.slice(1, 4)
 
-  // This Week candidates — used below in the parallel dispatch
+  // This Week candidates — derived from upcoming, consumed in Phase 2.
   const thisWeek = upcoming.filter(e => new Date(e.start_date) <= new Date(weekEndIso)).slice(0, 10)
 
-  // City image SVG lookup — used below for the city tiles
-  const LOCAL_CITY_SVG = new Set(['lagos', 'london', 'melbourne', 'sydney'])
-
-  // Dispatch the four remaining independent workloads in one big Promise.all.
-  // Previously they ran in series (hero → thisWeek → cultural → cities),
-  // which stacked 4 Supabase round-trips onto TTFB for every homepage render.
-  const [heroEventSlides, thisWeekCards, culturalQueries, cityCounts] = await Promise.all([
+  // Phase 2 — the only fetches that genuinely depend on Phase 1 results.
+  // Hero slides need scoredCandidates (derived from `upcoming`) to pick the
+  // top 3 event IDs before running getTicketsSoldToday. thisWeekCards render
+  // <ThisWeekCard> (async RSC) for each upcoming-this-week event.
+  const [heroEventSlides, thisWeekCards] = await Promise.all([
     Promise.all(
       scoredCandidates.slice(0, 3).map(async ({ raw }) => ({
         event: toFeaturedHeroEvent(raw),
@@ -272,53 +350,6 @@ export default async function HomePage() {
       })),
     ) as Promise<FeaturedHeroEventSlide[]>,
     Promise.all(thisWeek.map(async e => <ThisWeekCard key={e.id} event={e} />)),
-    Promise.all(
-      CULTURE_TABS.map(async tab => {
-        let { data } = await supabase
-          .from('events')
-          .select(EVENT_SELECT)
-          .eq('status', 'published')
-          .eq('visibility', 'public')
-          .gte('start_date', nowIso)
-          .contains('tags', [tab.tag])
-          .ilike('venue_city', `%${cityFilter}%`)
-          .order('start_date', { ascending: true })
-          .limit(8)
-        if ((data ?? []).length < 2) {
-          const result = await supabase
-            .from('events')
-            .select(EVENT_SELECT)
-            .eq('status', 'published')
-            .eq('visibility', 'public')
-            .gte('start_date', nowIso)
-            .contains('tags', [tab.tag])
-            .order('start_date', { ascending: true })
-            .limit(8)
-          data = result.data
-        }
-        const events = ((data ?? []) as unknown as RawRow[]).map(toBentoEvent)
-        const cards = await Promise.all(events.map(async e => <ThisWeekCard key={e.id} event={e} />))
-        return { tab, events, cards }
-      }),
-    ),
-    Promise.all(
-      CITY_TILES.map(async t => {
-        const [countResult, photo] = await Promise.all([
-          supabase.from('events').select('id', { count: 'exact', head: true })
-            .eq('status', 'published').eq('visibility', 'public')
-            .gte('start_date', nowIso).ilike('venue_city', `%${t.slug}%`),
-          getCityPhoto(t.slug),
-        ])
-        const localSvg = LOCAL_CITY_SVG.has(t.slug)
-          ? `/cities/${t.slug}.svg`
-          : '/cities/_fallback.svg'
-        return {
-          ...t,
-          count: countResult.count ?? 0,
-          imageSrc: photo ?? localSvg,
-        }
-      }),
-    ),
   ])
 
   // Pad with category highlight slides if we have fewer than 3 real events.
@@ -356,33 +387,7 @@ export default async function HomePage() {
     }
   })
 
-  // Pre-resolve Pexels photos for each fallback tile so Live Vibe never
-  // renders a branded placeholder. If PEXELS_API_KEY is missing the
-  // helper returns the unbranded event-fallback SVG instead of the
-  // EVENTLINQS watermarked one.
-  const FALLBACK_SEEDS = [
-    { id: 'f1', href: '/events/browse/melbourne', title: 'Afrobeats scene in Melbourne', community: 'Melbourne, VIC',   categorySlug: 'afrobeats' },
-    { id: 'f2', href: '/events/browse/sydney',    title: 'Community events in Sydney',   community: 'Sydney, NSW',      categorySlug: 'community' },
-    { id: 'f3', href: '/events/browse/brisbane',  title: 'Gospel nights Brisbane',       community: 'Brisbane, QLD',    categorySlug: 'gospel' },
-    { id: 'f4', href: '/events/browse/geelong',   title: 'Geelong community scene',      community: 'Geelong, VIC',     categorySlug: 'community' },
-    { id: 'f5', href: '/events/browse/perth',     title: 'Diaspora events Perth',        community: 'Perth, WA',        categorySlug: 'heritage-and-independence' },
-    { id: 'f6', href: '/events',                  title: 'Regional Australia events',    community: 'Across Australia', categorySlug: 'festival' },
-  ] as const
-
-  const fallbackCommunityTiles: VibeImage[] = await Promise.all(
-    FALLBACK_SEEDS.map(async seed => {
-      const photo = await getCategoryPhoto(seed.categorySlug)
-      return {
-        id: seed.id,
-        src: photo.src,
-        href: seed.href,
-        title: seed.title,
-        community: seed.community,
-        placeholderCategory: seed.categorySlug,
-      }
-    })
-  )
-
+  // fallbackCommunityTiles is resolved above in Phase 1.
   let vibeImages: VibeImage[] = realVibeImages
   if (vibeImages.length < 6) {
     vibeImages = [...vibeImages, ...fallbackCommunityTiles].slice(0, 12)
