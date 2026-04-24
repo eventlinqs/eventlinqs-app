@@ -123,15 +123,6 @@ export default async function HomePage() {
   const upcoming = upcomingRawTyped.map(toBentoEvent)
 
   const session = sessionResult.data.session
-  let savedEventIds = new Set<string>()
-  if (session?.user?.id) {
-    const { data: savedRows } = await supabase
-      .from('saved_events')
-      .select('event_id')
-      .eq('user_id', session.user.id)
-    savedEventIds = new Set((savedRows ?? []).map(r => r.event_id as string))
-  }
-
   const liveEventCount = liveEventCountResult.count
   const cityRows = cityRowsResult.data
   const uniqueCitiesCount = new Set(
@@ -143,16 +134,6 @@ export default async function HomePage() {
 
   const todayStart = new Date()
   todayStart.setUTCHours(0, 0, 0, 0)
-
-  async function getTicketsSoldToday(eventId: string): Promise<number> {
-    const { count } = await supabase
-      .from('orders')
-      .select('id', { count: 'exact', head: true })
-      .eq('event_id', eventId)
-      .eq('status', 'confirmed')
-      .gte('created_at', todayStart.toISOString())
-    return count ?? 0
-  }
 
   // Hero carousel scoring — top 5 soonest events, rank by recency + heat.
   const heroCandidateRaws = upcomingRawTyped.slice(0, 5)
@@ -171,12 +152,43 @@ export default async function HomePage() {
   })
   scoredCandidates.sort((a, b) => b.score - a.score)
 
-  const heroEventSlides = (await Promise.all(
-    scoredCandidates.slice(0, 3).map(async ({ raw }) => ({
-      event: toFeaturedHeroEvent(raw),
-      ticketsSoldToday: await getTicketsSoldToday(raw.id),
-    })),
-  )) as FeaturedHeroEventSlide[]
+  const topCandidates = scoredCandidates.slice(0, 3)
+  const heroEventIds = topCandidates.map(c => c.raw.id)
+  const userIdForSaved = session?.user?.id ?? null
+
+  // Phase 2 (parallel) — two independent queries run together instead of
+  // stacked awaits. Aggregated orders query replaces 3 per-event count
+  // queries for the hero carousel.
+  const [soldTodayResult, savedRowsResult] = await Promise.all([
+    heroEventIds.length > 0
+      ? supabase
+          .from('orders')
+          .select('event_id')
+          .in('event_id', heroEventIds)
+          .eq('status', 'confirmed')
+          .gte('created_at', todayStart.toISOString())
+      : Promise.resolve({ data: [] as { event_id: string }[] }),
+    userIdForSaved
+      ? supabase
+          .from('saved_events')
+          .select('event_id')
+          .eq('user_id', userIdForSaved)
+      : Promise.resolve({ data: [] as { event_id: string }[] }),
+  ])
+
+  const soldTodayByEvent = new Map<string, number>()
+  for (const row of soldTodayResult.data ?? []) {
+    soldTodayByEvent.set(row.event_id, (soldTodayByEvent.get(row.event_id) ?? 0) + 1)
+  }
+
+  const savedEventIds = new Set(
+    (savedRowsResult.data ?? []).map(r => r.event_id as string),
+  )
+
+  const heroEventSlides = topCandidates.map(({ raw }) => ({
+    event: toFeaturedHeroEvent(raw),
+    ticketsSoldToday: soldTodayByEvent.get(raw.id) ?? 0,
+  })) as FeaturedHeroEventSlide[]
 
   const highlightSlidesNeeded = Math.max(0, 3 - heroEventSlides.length)
   const heroHighlightSlides = CATEGORY_HIGHLIGHT_SLIDES.slice(0, highlightSlidesNeeded)
