@@ -53,6 +53,7 @@ export async function FreeWeekendTile({ event, fallbackMode = false }: Props) {
       <div className="absolute inset-0">
         <SmartMedia
           media={media}
+          sizes="(max-width: 1024px) 100vw, 42vw"
           className="transition-transform duration-[1400ms] ease-out group-hover:scale-[1.04]"
         />
         <div

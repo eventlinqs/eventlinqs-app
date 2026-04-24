@@ -26,7 +26,15 @@ import { RelatedEventsGrid } from '@/components/features/events/related-events-g
 import type { EventCardData } from '@/components/features/events/event-card'
 import { projectToCardData } from '@/lib/events/event-card-projection'
 import type { PublicEventRow } from '@/lib/events/types'
-import { VenueMap } from '@/components/features/events/venue-map'
+import dynamic from 'next/dynamic'
+
+// VenueMap pulls in @googlemaps/js-api-loader (~290KB). Loading it statically
+// makes it part of the event-detail route chunk, which Next.js eagerly
+// prefetches from any page linking to /events/*. next/dynamic splits it into
+// its own chunk so the map code stays out of the initial bundle on every cell.
+const VenueMap = dynamic(
+  () => import('@/components/features/events/venue-map').then(m => m.VenueMap)
+)
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { EventSoldOut, type EventSoldOutRelated } from '@/components/features/events/event-sold-out'
 

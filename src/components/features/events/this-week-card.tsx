@@ -38,6 +38,7 @@ export async function ThisWeekCard({ event }: { event: BentoEvent }) {
       <div className="relative aspect-[16/9] overflow-hidden bg-ink-900">
         <SmartMedia
           media={media}
+          sizes="(max-width: 640px) 240px, 280px"
           className="transition-transform duration-[1400ms] ease-out group-hover:scale-[1.05]"
         />
         <div

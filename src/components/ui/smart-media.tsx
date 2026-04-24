@@ -38,6 +38,12 @@ interface Props {
   ariaLabel?: string
   /** When the branded-placeholder fallback is rendered, omit the watermark. Used by the event-detail hero. */
   placeholderChromeless?: boolean
+  /**
+   * Explicit sizes hint for next/image. Default assumes a full-viewport hero.
+   * Bento tiles / rail tiles / cards must override with their actual rendered
+   * width to avoid downloading a 1920px asset for a 300px tile.
+   */
+  sizes?: string
 }
 
 export function SmartMedia({
@@ -48,6 +54,7 @@ export function SmartMedia({
   priority = false,
   ariaLabel,
   placeholderChromeless = false,
+  sizes = '(max-width: 768px) 100vw, 1920px',
 }: Props) {
   const [carouselIndex, setCarouselIndex] = useState(0)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -124,7 +131,7 @@ export function SmartMedia({
             src={src}
             alt={media.alts[i] ?? ''}
             fill
-            sizes="(max-width: 768px) 100vw, 1920px"
+            sizes={sizes}
             priority={priority && i === 0}
             fetchPriority={priority && i === 0 ? 'high' : 'auto'}
             quality={75}
@@ -149,7 +156,7 @@ export function SmartMedia({
         src={media.src}
         alt={media.alt}
         fill
-        sizes="(max-width: 768px) 100vw, 1920px"
+        sizes={sizes}
         priority={priority}
         fetchPriority={priority ? 'high' : 'auto'}
         quality={75}

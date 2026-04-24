@@ -80,6 +80,21 @@ function titleSize(size: BentoSize): string {
   }
 }
 
+// sizes hint that matches the tile's actual rendered width at each
+// breakpoint — stops next/image from serving a 1920px asset to a
+// 400px slot, which accounts for most of the image-delivery savings
+// called out by PSI on the homepage.
+function mediaSizesFor(size: BentoSize): string {
+  switch (size) {
+    case 'hero':       return '(max-width: 1024px) 100vw, 58vw'
+    case 'supporting': return '(max-width: 1024px) 100vw, 42vw'
+    case 'wide':       return '(max-width: 1024px) 100vw, 50vw'
+    case 'standard':   return '(max-width: 1024px) 100vw, 33vw'
+    case 'compact':    return '(max-width: 1024px) 50vw, 25vw'
+    case 'tall':       return '(max-width: 1024px) 100vw, 33vw'
+  }
+}
+
 export async function EventBentoTile({
   event,
   size,
@@ -109,6 +124,7 @@ export async function EventBentoTile({
           autoplay={autoplayVideo}
           carouselInterval={size === 'hero' ? 4000 : 6000}
           priority={size === 'hero'}
+          sizes={mediaSizesFor(size)}
           className="transition-transform duration-[1400ms] ease-out group-hover:scale-[1.04]"
         />
         <div
