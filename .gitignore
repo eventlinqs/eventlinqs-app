@@ -62,7 +62,7 @@ lighthouse-reports/
 .lighthouse/
 
 # Claude Code local settings
-.claude/settings.local.json
+.claude/
 
 supabase/.temp/
 
