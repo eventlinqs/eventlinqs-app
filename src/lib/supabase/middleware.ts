@@ -40,35 +40,15 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse
   }
 
-  // Define public routes that don't require authentication
-  const publicRoutes = [
-    '/',
-    '/login',
-    '/signup',
-    '/forgot-password',
-    '/verify-email-sent',
-    '/auth/callback',
-    '/auth/confirm',
-    '/auth/reset-password',
-    '/events',
-    '/about',
-    '/contact',
-    '/privacy',
-    '/terms',
-    '/sitemap.xml',
-    '/robots.txt',
-  ]
-  const isPublicRoute = publicRoutes.some(route =>
-    request.nextUrl.pathname === route ||
-    request.nextUrl.pathname.startsWith('/events/') ||
-    request.nextUrl.pathname.startsWith('/checkout/') ||
-    request.nextUrl.pathname.startsWith('/orders/') ||
-    request.nextUrl.pathname.startsWith('/squad/') ||
-    request.nextUrl.pathname.startsWith('/queue/')
+  // Default-public, explicit-protected. Only the listed prefixes require auth —
+  // adding a new public marketing/legal/help route requires zero changes here.
+  const protectedPrefixes = ['/dashboard']
+  const isProtectedRoute = protectedPrefixes.some(prefix =>
+    request.nextUrl.pathname === prefix ||
+    request.nextUrl.pathname.startsWith(`${prefix}/`)
   )
 
-  // Redirect unauthenticated users away from protected routes
-  if (!user && !isPublicRoute) {
+  if (!user && isProtectedRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     url.searchParams.set('redirect', request.nextUrl.pathname)
