@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter, Manrope } from 'next/font/google'
 import { headers } from 'next/headers'
+import Script from 'next/script'
 import './globals.css'
 import { AuthProvider } from '@/components/providers/auth-provider'
 import { BottomNav } from '@/components/layout/bottom-nav'
@@ -71,6 +72,19 @@ export default async function RootLayout({
               __html: `(function(){var b=document.body;var ric=window.requestIdleCallback||function(c){return setTimeout(c,1500)};var m=function(){ric(function(){b.dataset.loaded='1'},{timeout:2500})};if(document.readyState==='complete'){m()}else{addEventListener('load',m,{once:true})}})();`,
             }}
           />
+        )}
+        {/* Privacy-friendly analytics by Plausible — cookieless, EU-hosted. */}
+        {!isHeadless && (
+          <>
+            <Script
+              src="https://plausible.io/js/pa-cvIbUzVB_8Lu2naP1u5Xo.js"
+              strategy="afterInteractive"
+            />
+            <Script id="plausible-init" strategy="afterInteractive">
+              {`window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+plausible.init()`}
+            </Script>
+          </>
         )}
       </body>
     </html>
