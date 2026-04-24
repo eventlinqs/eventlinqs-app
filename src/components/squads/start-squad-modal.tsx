@@ -35,7 +35,7 @@ export function StartSquadModal({
   const [isPending, startTransition] = useTransition()
   const [step, setStep] = useState<ModalStep>('form')
   const [shareToken, setShareToken] = useState<string | null>(null)
-  const [squadId, setSquadId] = useState<string | null>(null)
+  const [_squadId, setSquadId] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
 

@@ -48,13 +48,11 @@ export function VenueMap({
       return
     }
     const el = containerRef.current
-    if (!el) {
-      setInView(true)
-      return
-    }
-    if (typeof IntersectionObserver === 'undefined') {
-      setInView(true)
-      return
+    // Defer setState to the next tick so we don't cascade-render inside
+    // the effect body (react-hooks/set-state-in-effect).
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      const t = setTimeout(() => setInView(true), 0)
+      return () => clearTimeout(t)
     }
     const io = new IntersectionObserver(
       entries => {
@@ -141,7 +139,10 @@ export function VenueMap({
             <div ref={containerRef} className="absolute inset-0 h-full w-full" />
             {/* Native lazy-img sentinel — when the browser decides this
                 pseudo-image is near the viewport it kicks off `onLoad`,
-                giving us a second independent trigger alongside the IO. */}
+                giving us a second independent trigger alongside the IO.
+                This is a 1-pixel transparent GIF, not a display image —
+                `next/image` is the wrong tool here. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               alt=""
               src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=="

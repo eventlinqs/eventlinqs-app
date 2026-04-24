@@ -48,15 +48,6 @@ interface PricingRule {
   is_active: boolean
 }
 
-interface TaxRule {
-  id: string
-  country_code: string
-  tax_name: string
-  tax_percent: number
-  applies_to: string
-  is_active: boolean
-}
-
 export class PaymentCalculator {
   // Fetch the best matching pricing rule from the database
   // Priority: country-specific > event-type-specific > GLOBAL

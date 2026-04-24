@@ -143,6 +143,12 @@ export function QueueRoom({
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [])
 
+  const handleAdmission = useCallback((_id: string, token: string) => {
+    clearQueueId(eventId)
+    setPhase('admitted')
+    router.push(`/events/${eventSlug}?queue_token=${encodeURIComponent(token)}`)
+  }, [eventId, eventSlug, router])
+
   // Join queue
   const join = useCallback(async () => {
     setPhase('joining')
@@ -179,13 +185,7 @@ export function QueueRoom({
     setQueueId(result.queueId)
     setPosition(result.position)
     setPhase('waiting')
-  }, [eventId])
-
-  function handleAdmission(id: string, token: string) {
-    clearQueueId(eventId)
-    setPhase('admitted')
-    router.push(`/events/${eventSlug}?queue_token=${encodeURIComponent(token)}`)
-  }
+  }, [eventId, handleAdmission])
 
   // Transition from pre-queue to joining when countdown hits zero
   useEffect(() => {
@@ -231,7 +231,7 @@ export function QueueRoom({
     return () => {
       if (pollRef.current) clearInterval(pollRef.current)
     }
-  }, [phase, queueId, eventId])
+  }, [phase, queueId, eventId, handleAdmission])
 
   const handleLeave = async () => {
     if (queueId) await leaveQueue({ queueId })

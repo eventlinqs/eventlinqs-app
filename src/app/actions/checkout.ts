@@ -53,7 +53,7 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
     return { error: issues[0]?.message ?? 'Invalid checkout data' }
   }
 
-  const { reservation_id, buyer_email, buyer_name, attendees, discount_code, addon_quantities } = parsed.data
+  const { reservation_id, buyer_email, buyer_name, attendees, discount_code, addon_quantities: _addon_quantities } = parsed.data
 
   const supabase = await createClient()
   const adminClient = createAdminClient()
@@ -413,7 +413,7 @@ interface SeatCheckoutArgs {
 
 async function processSeatCheckout({
   reservation_id,
-  reservation,
+  reservation: _reservation,
   seatIds,
   event,
   buyer_email,

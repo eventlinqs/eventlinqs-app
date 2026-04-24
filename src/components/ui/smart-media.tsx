@@ -5,15 +5,6 @@ import { useEffect, useRef, useState } from 'react'
 import type { EventMedia } from '@/lib/images/event-media'
 import { BrandedPlaceholder } from './branded-placeholder'
 
-// Route remote images through Next.js's image optimiser so they load from our
-// origin. This avoids third-party cookies (Pexels is fronted by Cloudflare,
-// which sets `_cfuvid` on direct image requests) that otherwise tank the
-// Lighthouse Best Practices score.
-function proxy(src: string): string {
-  if (src.startsWith('/') || src.startsWith('data:')) return src
-  return `/_next/image?url=${encodeURIComponent(src)}&w=1920&q=75`
-}
-
 /**
  * SmartMedia — universal renderer for the EventMedia union.
  *

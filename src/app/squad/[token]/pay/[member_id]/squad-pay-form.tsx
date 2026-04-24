@@ -113,7 +113,7 @@ function InnerPayForm({
 export function SquadPayForm({
   memberId,
   squadToken,
-  memberEmail,
+  memberEmail: _memberEmail,
   pricePerSpotCents,
   currency,
   publishableKey,

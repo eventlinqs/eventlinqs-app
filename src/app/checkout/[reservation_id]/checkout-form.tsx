@@ -39,7 +39,7 @@ interface CheckoutFormProps {
 }
 
 function PaymentForm({
-  clientSecret,
+  clientSecret: _clientSecret,
   orderId,
   totalCents,
   currency,
@@ -51,7 +51,6 @@ function PaymentForm({
 }) {
   const stripe = useStripe()
   const elements = useElements()
-  const router = useRouter()
   const [paying, setPaying] = useState(false)
   const [payError, setPayError] = useState<string | null>(null)
 
@@ -129,7 +128,7 @@ export function CheckoutForm({
   const [fees, setFees] = useState<FeeBreakdown>(initialFees)
   const [discountCode, setDiscountCode] = useState<string | null>(null)
   const [discountCents, setDiscountCents] = useState(0)
-  const [discountCodeId, setDiscountCodeId] = useState<string | null>(null)
+  const [_discountCodeId, setDiscountCodeId] = useState<string | null>(null)
 
   const [buyerEmail, setBuyerEmail] = useState(userEmail)
   const [buyerName, setBuyerName] = useState(

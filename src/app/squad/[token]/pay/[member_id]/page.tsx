@@ -9,8 +9,7 @@ type Props = {
   params: Promise<{ token: string; member_id: string }>
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { token } = await params
+export async function generateMetadata(_props: Props): Promise<Metadata> {
   return {
     title: `Pay Your Share - Squad | EventLinqs`,
     robots: { index: false },

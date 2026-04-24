@@ -1,5 +1,3 @@
-import type { ReactNode } from 'react'
-
 interface PageHeroProps {
   /** Small uppercase label above the title, e.g. "LEGAL", "HELP" */
   eyebrow?: string

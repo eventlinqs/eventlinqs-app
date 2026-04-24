@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { getMyWaitlists, leaveWaitlist } from '@/app/actions/waitlist'
+import { leaveWaitlist } from '@/app/actions/waitlist'
 import type { MyWaitlistRow } from '@/app/actions/waitlist'
 
 interface Props {

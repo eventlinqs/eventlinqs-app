@@ -515,7 +515,6 @@ async function handleSquadMemberPaymentSucceeded(
   if (paidMembers) {
     for (const m of paidMembers) {
       if (m.order_id) {
-        const memberEmail = m.attendee_email ?? m.guest_email
         await sendConfirmationEmail(adminClient, m.order_id, null).catch(err => {
           console.error('[webhook] squad confirmation email error for member:', err)
         })

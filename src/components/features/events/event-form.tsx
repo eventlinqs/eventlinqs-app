@@ -306,7 +306,7 @@ type Props = {
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export function EventForm({
-  userId,
+  userId: _userId,
   organisationId,
   categories,
   venues = [],
