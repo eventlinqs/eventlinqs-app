@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import type { AuthResponse } from '@supabase/supabase-js'
 import { JoinWaitlistModal } from './join-waitlist-modal'
 
 interface Props {
@@ -15,15 +17,10 @@ export function JoinWaitlistButton({ eventId, tierId, tierName, maxPerOrder }: P
   const [userEmail, setUserEmail] = useState<string | null>(null)
 
   useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      const { createClient } = await import('@/lib/supabase/client')
-      if (cancelled) return
-      const supabase = createClient()
-      const { data } = await supabase.auth.getUser()
-      if (!cancelled) setUserEmail(data.user?.email ?? null)
-    })()
-    return () => { cancelled = true }
+    const supabase = createClient()
+    supabase.auth.getUser().then((res: AuthResponse) => {
+      setUserEmail(res.data.user?.email ?? null)
+    })
   }, [])
 
   return (

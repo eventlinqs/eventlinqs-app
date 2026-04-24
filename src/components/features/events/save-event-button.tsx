@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { Heart } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
 type Variant = 'dark' | 'light'
@@ -31,7 +32,6 @@ export function SaveEventButton({
     e.preventDefault()
     e.stopPropagation()
 
-    const { createClient } = await import('@/lib/supabase/client')
     const supabase = createClient()
     const { data: { session } } = await supabase.auth.getSession()
 
