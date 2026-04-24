@@ -197,7 +197,7 @@ function RelatedCard({ event }: { event: EventSoldOutRelated }) {
     event.from_price_cents != null && event.currency
       ? event.from_price_cents === 0
         ? 'Free'
-        : `From ${event.currency.toUpperCase()} ${(event.from_price_cents / 100).toFixed(0)}`
+        : `From ${event.currency.toUpperCase()} ${(event.from_price_cents / 100).toFixed(2)}`
       : null
 
   return (

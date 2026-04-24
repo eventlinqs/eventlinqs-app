@@ -30,7 +30,7 @@ export default function PrivacyPolicyPage() {
     >
       <h2 id="introduction">Introduction</h2>
       <p>
-        EventLinqs is operated by Lawal Adams (trading as EventLinqs, ABN pending registration),
+        EventLinqs is operated by Lawal Adams (trading as EventLinqs, ABN 30 837 447 587),
         based in Melbourne, Victoria, Australia. We build technology that connects event
         organisers and attendees. We take the trust you place in us seriously.
       </p>
