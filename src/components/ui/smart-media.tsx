@@ -123,9 +123,15 @@ export function SmartMedia({
   }
 
   if (media.kind === 'carousel') {
+    // Render only the images we've actually reached in the carousel cycle,
+    // plus one lookahead so the next fade-in has something decoded. In
+    // headless / audit mode carouselIndex stays at 0, so only one image
+    // ships — previously 3-5 full-viewport Pexels assets all loaded in
+    // parallel and dominated the Speed Index window.
+    const maxVisible = Math.min(media.images.length, carouselIndex + 2)
     return (
       <div className={wrapBase} aria-label={ariaLabel}>
-        {media.images.map((src, i) => (
+        {media.images.slice(0, maxVisible).map((src, i) => (
           <Image
             key={`${src}-${i}`}
             src={src}

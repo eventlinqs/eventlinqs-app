@@ -63,6 +63,7 @@ export function BottomNav() {
             <Link
               key={href}
               href={href}
+              prefetch={false}
               aria-label={label}
               aria-current={isActive ? 'page' : undefined}
               className={`flex flex-1 flex-col items-center justify-center gap-1 transition-colors min-h-[44px] ${
