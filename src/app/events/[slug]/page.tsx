@@ -8,10 +8,7 @@ import type {
 } from '@/types/database'
 import { CopyLinkButton } from '@/components/features/events/copy-link-button'
 import { TicketSelector } from '@/components/checkout/ticket-selector'
-import {
-  SeatSelector, type SeatData, type SectionData,
-} from '@/components/checkout/seat-selector'
-import { AccessCodeInput } from '@/components/features/events/access-code-input'
+import type { SeatData, SectionData } from '@/components/checkout/seat-selector'
 import { SocialProofBadge } from '@/components/inventory/social-proof-badge'
 import { getUnlockedTierIds } from '@/app/actions/access-codes'
 import { getEventInventory, getTierInventory } from '@/lib/redis/inventory-cache'
@@ -36,7 +33,22 @@ const VenueMap = dynamic(
   () => import('@/components/features/events/venue-map').then(m => m.VenueMap)
 )
 import { SectionHeader } from '@/components/ui/SectionHeader'
-import { EventSoldOut, type EventSoldOutRelated } from '@/components/features/events/event-sold-out'
+import type { EventSoldOutRelated } from '@/components/features/events/event-sold-out'
+
+// Conditional client components — each only renders for a small fraction of
+// events. Static imports bloat the always-shipped event-detail chunk with
+// Supabase and heavy modal code that 95% of visitors never use. next/dynamic
+// splits each into its own lazy chunk that only downloads when the condition
+// actually materialises.
+const SeatSelector = dynamic(
+  () => import('@/components/checkout/seat-selector').then(m => m.SeatSelector),
+)
+const AccessCodeInput = dynamic(
+  () => import('@/components/features/events/access-code-input').then(m => m.AccessCodeInput),
+)
+const EventSoldOut = dynamic(
+  () => import('@/components/features/events/event-sold-out').then(m => m.EventSoldOut),
+)
 
 type Props = {
   params: Promise<{ slug: string }>
