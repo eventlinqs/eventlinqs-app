@@ -13,19 +13,6 @@ function CardSkeleton() {
   )
 }
 
-function GridCardSkeleton() {
-  return (
-    <div className="overflow-hidden rounded-xl bg-ink-100" aria-hidden>
-      <div className="aspect-[16/10] bg-ink-200/60 animate-pulse" />
-      <div className="space-y-2 p-3">
-        <div className="h-4 w-3/4 rounded bg-ink-200/60 animate-pulse" />
-        <div className="h-3 w-1/2 rounded bg-ink-200/40 animate-pulse" />
-        <div className="h-3 w-1/3 rounded bg-ink-200/40 animate-pulse" />
-      </div>
-    </div>
-  )
-}
-
 export function EventsRecommendedSkeleton() {
   return (
     <section
@@ -42,21 +29,6 @@ export function EventsRecommendedSkeleton() {
             <CardSkeleton key={i} />
           ))}
         </div>
-      </div>
-    </section>
-  )
-}
-
-export function EventsResultsSkeleton() {
-  return (
-    <section
-      aria-label="Event results — loading"
-      className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8"
-    >
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <GridCardSkeleton key={i} />
-        ))}
       </div>
     </section>
   )

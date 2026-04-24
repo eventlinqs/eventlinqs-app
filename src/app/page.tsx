@@ -111,7 +111,8 @@ export default async function HomePage() {
       .eq('status', 'published')
       .eq('visibility', 'public')
       .gte('start_date', nowIso)
-      .not('venue_city', 'is', null),
+      .not('venue_city', 'is', null)
+      .limit(200),
   ])
 
   const cityUpcomingRaw = cityUpcomingResult.data

@@ -1,8 +1,9 @@
+import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { fetchPublicEvents, fetchRecommendedEvents } from '@/lib/events'
+import { fetchPublicEvents } from '@/lib/events'
 import {
   hasActiveFilters,
   parseEventsSearchParams,
@@ -14,10 +15,11 @@ import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { EventsHeroStrip } from '@/components/features/events/m5-events-hero-strip'
 import { EventsFilterBar } from '@/components/features/events/m5-events-filter-bar'
-import { RecommendedRail } from '@/components/features/events/m5-recommended-rail'
 import { EventsGrid } from '@/components/features/events/m5-events-grid'
 import { EventsPagination } from '@/components/features/events/m5-events-pagination'
 import { EventsMapLazy } from '@/components/features/events/m5-events-map-lazy'
+import { EventsBrowseRecommendedSection } from '@/components/features/events/m5-events-browse-recommended-section'
+import { EventsRecommendedSkeleton } from '@/components/features/events/m5-events-skeletons'
 
 export const revalidate = 60
 
@@ -28,12 +30,6 @@ type Props = {
 
 const MELBOURNE_FALLBACK = { lat: -37.8136, lng: 144.9631 }
 
-/**
- * Resolve the slug to a PickerCity (launch list or DB-sourced). Returns
- * null when the slug isn't present in either source — the page then
- * renders notFound() so we don't spawn infinite SEO URLs for garbage
- * input.
- */
 async function resolveCity(slug: string): Promise<PickerCity | null> {
   const groups = await getPickerCities()
   const all = [
@@ -84,10 +80,6 @@ export default async function BrowseCityPage({ params, searchParams }: Props) {
 
   const userId = userData.user?.id ?? null
 
-  // When the city has known coordinates (launch cities + picker cities
-  // with geocode data), use them as the geo origin so distance filters
-  // and map centring are anchored to the city instead of the visitor's
-  // detected location.
   const origin =
     city.latitude !== null && city.longitude !== null
       ? { latitude: city.latitude, longitude: city.longitude }
@@ -96,29 +88,20 @@ export default async function BrowseCityPage({ params, searchParams }: Props) {
         : undefined
   const hasGeoSignal = origin !== undefined
 
-  // The path drives the city filter; any ?city= in the query is ignored
-  // so /events/browse/melbourne?city=sydney doesn't produce confusing
-  // cross-filtered results.
   const effectiveFilters = { ...filters, city: city.city, country: undefined }
-
-  // Rail disappears when any narrowing filter is active. The route
-  // city itself is the base scope of the page and is never treated as a
-  // narrowing filter. Parallel-fetch so the grid request isn't
-  // serialised behind the rail decision.
   const filterActive = hasActiveFilters(filters)
-  const [result, recommended] = await Promise.all([
-    fetchPublicEvents({ filters: effectiveFilters, page, pageSize: 24, origin }),
-    filterActive
-      ? Promise.resolve([])
-      : fetchRecommendedEvents(userId, 12, city.city),
-  ])
 
-  const recHeadline: 'recommended' | 'popular' | null =
-    filterActive || recommended.length === 0
-      ? null
-      : userId
-        ? 'recommended'
-        : 'popular'
+  // Main catalogue fetch stays inline so mobile browsers can start
+  // preloading card imagery as soon as the HTML is parsed. Suspense on
+  // the grid regressed SI on /events mobile for the same reason —
+  // images only begin loading after the streamed chunk arrives, which
+  // stretches Lighthouse's visual-progress integral.
+  const result = await fetchPublicEvents({
+    filters: effectiveFilters,
+    page,
+    pageSize: 24,
+    origin,
+  })
 
   const basePath = `/events/browse/${city.slug}`
   const railSeeAllHref = `${basePath}?sort=popular`
@@ -143,7 +126,16 @@ export default async function BrowseCityPage({ params, searchParams }: Props) {
           basePath={basePath}
         />
 
-        <RecommendedRail events={recommended} headline={recHeadline} seeAllHref={railSeeAllHref} />
+        {!filterActive ? (
+          <Suspense fallback={<EventsRecommendedSkeleton />}>
+            <EventsBrowseRecommendedSection
+              userId={userId}
+              filterActive={filterActive}
+              cityName={city.city}
+              seeAllHref={railSeeAllHref}
+            />
+          </Suspense>
+        ) : null}
 
         {view === 'map' ? (
           <EventsMapLazy
