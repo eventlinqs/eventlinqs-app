@@ -58,12 +58,12 @@ export async function RecommendedRail({
           ariaLabel={title}
           testId="m5-rec-rail"
         >
-          {cards.map(c => (
+          {cards.map((c, i) => (
             <li
               key={c.id}
               className="w-64 shrink-0 snap-start sm:w-72"
             >
-              <EventCard event={c} />
+              <EventCard event={c} priority={i === 0} />
             </li>
           ))}
         </DragRail>
