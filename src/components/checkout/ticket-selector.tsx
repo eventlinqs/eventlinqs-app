@@ -7,6 +7,7 @@ import { registerFreeTickets } from '@/app/actions/register-free'
 import type { TicketTier, EventAddon } from '@/types/database'
 import { JoinWaitlistButton } from '@/components/waitlist/join-waitlist-button'
 import { StartSquadButton } from '@/components/squads/start-squad-button'
+import { trackTicketCheckoutStart } from '@/lib/analytics/plausible'
 
 type TierWithDisplayPrice = TicketTier & { display_price_cents?: number }
 
@@ -78,6 +79,21 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
     const addon_items = addons
       .filter(a => (addonQuantities[a.id] ?? 0) > 0)
       .map(a => ({ addon_id: a.id, quantity: addonQuantities[a.id] }))
+
+    // Primary tier = tier with the largest quantity; when tied, first one wins.
+    // A single checkout can span multiple tiers, but Plausible props are flat
+    // key-value, so we pick a representative label for funnel analysis.
+    const primaryTier = tiers
+      .filter(t => (tierQuantities[t.id] ?? 0) > 0)
+      .sort((a, b) => (tierQuantities[b.id] ?? 0) - (tierQuantities[a.id] ?? 0))[0]
+    if (primaryTier) {
+      trackTicketCheckoutStart({
+        event_id: eventId,
+        ticket_type: primaryTier.name,
+        quantity: totalTickets,
+        total_amount_cents: subtotalCents,
+      })
+    }
 
     startTransition(async () => {
       // Free-only cart: skip checkout page entirely for logged-in users

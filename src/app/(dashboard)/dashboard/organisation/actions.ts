@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
+import { trackOrganiserSignupServer } from '@/lib/analytics/plausible'
 
 const CreateOrgSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(100),
@@ -97,6 +98,13 @@ export async function createOrganisation(formData: FormData) {
     .from('profiles')
     .update({ role: 'organiser' })
     .eq('id', user.id)
+
+  // Plausible: new-organiser conversion. Fire-and-forget before redirect.
+  const origin = process.env.NEXT_PUBLIC_APP_URL ?? 'https://eventlinqs.com'
+  trackOrganiserSignupServer(`${origin}/dashboard/organisation`, {
+    organisation_id: org.id,
+    organisation_type: 'organiser',
+  }).catch(err => console.warn('[createOrganisation] plausible track failed:', err))
 
   revalidatePath('/dashboard', 'layout')
   const returnTo = (formData.get('returnTo') as string | null) || '/dashboard/organisation'

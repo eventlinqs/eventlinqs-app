@@ -6,6 +6,7 @@ import { StripeAdapter } from '@/lib/payments/stripe-adapter'
 import { Resend } from 'resend'
 import { refreshInventoryCache } from '@/lib/redis/inventory-cache'
 import { promoteWaitlist } from '@/lib/waitlist/promote'
+import { trackTicketPurchaseCompleteServer } from '@/lib/analytics/plausible'
 import type Stripe from 'stripe'
 
 export const dynamic = 'force-dynamic'
@@ -231,6 +232,37 @@ async function handlePaymentSucceeded(
 
   // Send confirmation email
   await sendConfirmationEmail(adminClient, order_id, receipt_url)
+
+  // Fire Plausible purchase conversion (fire-and-forget — never block webhook).
+  // Uses the confirmation page URL so the event attributes to the normal funnel.
+  try {
+    const { data: orderForAnalytics } = await adminClient
+      .from('orders')
+      .select('order_number, total_cents, currency, event_id, order_items(item_name, quantity, item_type)')
+      .eq('id', order_id)
+      .single()
+
+    if (orderForAnalytics) {
+      const ticketItems = (orderForAnalytics.order_items ?? []).filter(
+        (i: { item_type: string }) => i.item_type === 'ticket',
+      ) as { item_name: string; quantity: number }[]
+      const primaryTicket = ticketItems[0]
+      const totalQty = ticketItems.reduce((sum, i) => sum + (i.quantity ?? 0), 0)
+      const origin = process.env.NEXT_PUBLIC_APP_URL ?? 'https://eventlinqs.com'
+      trackTicketPurchaseCompleteServer(
+        `${origin}/orders/${orderForAnalytics.order_number}/confirmation`,
+        {
+          event_id: orderForAnalytics.event_id ?? '',
+          ticket_type: primaryTicket?.item_name ?? 'Ticket',
+          quantity: totalQty,
+          total_amount_cents: orderForAnalytics.total_cents ?? 0,
+          currency: (orderForAnalytics.currency ?? 'AUD').toUpperCase(),
+        },
+      ).catch(err => console.warn('[webhook] plausible purchase track failed:', err))
+    }
+  } catch (err) {
+    console.warn('[webhook] plausible purchase track setup failed:', err)
+  }
 }
 
 async function handlePaymentFailed(
