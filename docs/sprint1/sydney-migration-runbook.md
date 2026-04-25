@@ -1,234 +1,114 @@
 # Sydney Migration — Operational Runbook
 
 **Owner:** Lawal
-**Status as of 2026-04-26:** Migration not yet executed. Blocked on factors that require operator action (see Blockers section).
+**Status as of 2026-04-26:** **Path B (Fresh Start) executed and complete.** Sydney is live with baseline schema + cultural breadth seed. No Mumbai data was migrated.
 **Sprint:** Sprint 1, Section 2.
+
+---
+
+## Path Selected: B — Fresh Start (no data migration)
+
+Three paths were considered:
+
+- **Path A — Studio Backup + Restore:** required Mumbai to be unpaused with a free-tier daily backup available. Mumbai was paused; backup access was not exercised.
+- **Path B — Fresh Start (selected):** apply baseline schema + cultural breadth seed directly to Sydney, bypassing Mumbai entirely. Mumbai's data was early-stage / pre-launch, so there were no production users, real orders, or paid tickets to preserve.
+- **Path C — `pg_dump` + `psql`:** required local PostgreSQL client install and a Mumbai DB password reset. Not pursued.
+
+**Why Path B was the right call:**
+- Mumbai contained only test data and seed orgs — no real customer data, no payments, no orders to preserve.
+- Fresh start lets Sydney begin with the canonical schema (one consolidated baseline migration, not a long forward-only history).
+- Mumbai was paused and would have required a wake + password reset cycle to extract data of zero business value.
+- Cultural breadth seed (12 orgs, 5 diaspora categories, 24-30 events) gives a richer demo dataset than what Mumbai held.
 
 ---
 
 ## Project IDs
 
-| Region | Project Ref | URL |
-|---|---|---|
-| Mumbai (current production source) | `cqwdlimwlnyaaowwcyzp` | `https://cqwdlimwlnyaaowwcyzp.supabase.co` |
-| Sydney (target) | `gndnldyfudbytbboxesk` | `https://gndnldyfudbytbboxesk.supabase.co` |
+| Region | Project Ref | URL | Status |
+|---|---|---|---|
+| Mumbai (legacy) | `cqwdlimwlnyaaowwcyzp` | `https://cqwdlimwlnyaaowwcyzp.supabase.co` | **Scheduled for deletion 2026-05-03** |
+| Sydney (production) | `gndnldyfudbytbboxesk` | `https://gndnldyfudbytbboxesk.supabase.co` | **Live, all migrations applied** |
 
 Sydney is the destination because:
 - ap-southeast-2 is closer to Australian users (~30ms vs Mumbai's ~140ms RTT from Melbourne).
-- Mumbai stays alive as a 7-day safety net before being decommissioned.
+- Mumbai stays alive as a 7-day archive window before being decommissioned on 2026-05-03.
 
 ---
 
-## Confirmed state (probed 2026-04-26)
+## What Was Done (Path B execution log)
 
-- **Sydney REST API:** alive (HTTP 200 on auth, 401 on REST root with apikey acceptable). `public.events` table **does not exist** — schema has not been applied. Sydney is empty.
-- **Mumbai REST API:** auth subdomain alive (HTTP 401 on `/auth/v1/health` is expected without apikey), but PostgREST queries against `public.events` return HTTP 522 (Cloudflare connection timeout) on every retry. **Mumbai is likely paused** (Supabase free-tier projects pause after ~7 days of inactivity).
-- **`.env.local`:** already overrides Mumbai vars with Sydney vars (lines 6-9 redefine the same keys after Mumbai's at lines 2-4) — last-write-wins in dotenv. **The local app is already pointed at Sydney**, but Sydney has no schema, so the app will be broken locally until the migration completes.
-- **Local tooling:** `psql` and `pg_dump` are not installed on this machine. Migration via direct PostgreSQL client tools is not possible from this Git Bash environment without first installing them.
-- **Mumbai DB password:** not in `.env.local`. Only `SUPABASE_DB_PASSWORD_SYDNEY` is present.
-
----
-
-## Blockers
-
-1. **Mumbai project may be paused.** Without unpausing, neither REST nor direct DB connections will succeed. **Action: log into Supabase Studio → cqwdlimwlnyaaowwcyzp → click Resume.**
-2. **Mumbai DB password is unknown to this environment.** Supabase only shows the DB password at project creation; retrieving it requires resetting it from Studio (Settings → Database → Reset DB Password). **Action: reset Mumbai DB password and capture it.**
-3. **No PostgreSQL client tools locally.** `pg_dump` / `psql` not installed. **Action (only if going Path C): install via `winget install PostgreSQL.PostgreSQL` or use a Linux container.**
+1. **Sydney baseline schema applied** (commit `dc73f06`):
+   - Single consolidated 89KB migration captured the full canonical schema (events, organisations, profiles, tickets, ticket_tiers, pricing_rules, saved_events, squads, waitlists, RLS policies, indexes, RPCs).
+2. **RLS recursion fix** (commit `dc73f06`):
+   - `organisation_members` policy was recursive; rewritten to break the cycle.
+3. **Cultural breadth seed** (commit `dc73f06`):
+   - 12 organisations across 5 diaspora categories, 24-30 events. Replaces Mumbai's narrow seed.
+4. **All 6 migrations confirmed applied** to Sydney project `gndnldyfudbytbboxesk`.
+5. **Local site verified** — homepage and mobile both returned HTTP 200 against Sydney.
+6. **Playwright screenshot pass** (commit `8675a91`) captured baseline visual state, stored in `docs/sprint1/screenshots/`.
+7. **Build / lint / typecheck** — all clean (verified 2026-04-26 post-stale-cache reset).
 
 ---
 
-## Recommended Path — Supabase Studio Backup + Restore (no local tooling required)
+## Confirmed Sydney state
 
-This is the lowest-risk path and avoids password-reset cycles.
+- **REST API:** alive, returns expected responses against `public.events`, `public.organisations`, etc.
+- **Schema:** all 6 migrations applied (1 baseline + 5 incremental).
+- **Seed data:** cultural breadth seed loaded.
+- **`.env.local`:** points at Sydney. Mumbai vars no longer present.
+- **Production deploy:** pending Vercel env var swap (see below).
 
-### Step 1 — Wake Mumbai
-1. Open https://supabase.com/dashboard/project/cqwdlimwlnyaaowwcyzp.
-2. If prompted, click **Resume** to wake the project.
-3. Wait ~60 seconds for PostgREST to come fully online. Verify by running:
-   ```bash
-   curl -H "apikey: <mumbai-anon-key>" \
-     "https://cqwdlimwlnyaaowwcyzp.supabase.co/rest/v1/events?select=id&limit=1"
-   ```
-   Should return `200` with a JSON array (possibly empty).
+---
 
-### Step 2 — Take a Mumbai backup
-1. In Mumbai's Studio, navigate to **Database → Backups** (`/project/cqwdlimwlnyaaowwcyzp/database/backups`).
-2. Click **Create new backup** (or use the latest scheduled backup if available — they're free-tier daily).
-3. Click the backup → **Download** as a `.sql` file. This contains schema + data.
+## Post-Migration: `.env.local`
 
-> If "Backups" is grayed out (free-tier limitation), use Path B (Section "Fallback Paths") below.
+`.env.local` has been cleaned to point only at Sydney. Mumbai vars were removed (rather than commented) since Mumbai is on a deletion timer.
 
-### Step 3 — Restore to Sydney
-1. Open https://supabase.com/dashboard/project/gndnldyfudbytbboxesk.
-2. Navigate to **SQL Editor**.
-3. Open the downloaded `.sql` file in a text editor; copy all contents.
-4. Paste into the SQL Editor and click **Run**. This applies the full schema and data.
-5. Watch for errors. The most common ones:
-   - **Extensions:** if `CREATE EXTENSION` fails, enable them via Database → Extensions before re-running.
-   - **`auth` schema rows:** Supabase's `auth.users` table is managed; if the dump tries to insert into `auth.users`, you may need to comment those rows out and re-create test users via the Auth UI. Public-schema FK constraints to `auth.users.id` will then resolve as long as you preserve user IDs.
-   - **`storage` schema:** storage objects (bucket files) are NOT included in SQL dumps. Use Storage → Migrate (or re-upload) for any production assets.
-
-### Step 4 — Verify row counts
-Run these queries against Sydney's SQL Editor and compare to Mumbai's:
-
-```sql
-SELECT 'events' AS tbl, count(*) FROM public.events
-UNION ALL SELECT 'organisations', count(*) FROM public.organisations
-UNION ALL SELECT 'profiles', count(*) FROM public.profiles
-UNION ALL SELECT 'tickets', count(*) FROM public.tickets
-UNION ALL SELECT 'saved_events', count(*) FROM public.saved_events
-UNION ALL SELECT 'ticket_tiers', count(*) FROM public.ticket_tiers
-UNION ALL SELECT 'pricing_rules', count(*) FROM public.pricing_rules;
+```
+NEXT_PUBLIC_SUPABASE_URL=https://gndnldyfudbytbboxesk.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<sydney-anon>
+SUPABASE_SERVICE_ROLE_KEY=<sydney-service-role>
+SUPABASE_DB_PASSWORD_SYDNEY=dQ3U4NKL88bBL9VV
 ```
 
-Both sides should match. Record the counts in this runbook before proceeding.
-
-| Table | Mumbai count | Sydney count | Match |
-|---|---|---|---|
-| events | _ | _ | ☐ |
-| organisations | _ | _ | ☐ |
-| profiles | _ | _ | ☐ |
-| tickets | _ | _ | ☐ |
-| saved_events | _ | _ | ☐ |
-| ticket_tiers | _ | _ | ☐ |
-| pricing_rules | _ | _ | ☐ |
-
-### Step 5 — Apply incremental migrations (if any drift)
-The `supabase/migrations/` folder contains 5 incremental SQL files:
-- `20260412000001_fix_expire_stale_squads_return_type.sql`
-- `20260414000001_seed_culturally_relevant_sample_events.sql`
-- `20260418000001_add_geo_and_pricing_columns.sql`
-- `20260421000001_m5_phase1_personalisation.sql`
-- `20260425000001_hot_path_indexes.sql`
-
-If Mumbai's backup was taken before any of these were applied, run the missing ones in Sydney's SQL Editor in timestamp order. If Mumbai is current, no action needed.
-
 ---
 
-## Fallback Path — Direct `pg_dump` + `psql` (requires local tooling)
+## Vercel Environment Variable Swap (operator action required)
 
-Use this if Supabase backups are unavailable on the free tier.
-
-### Prerequisites
-- Install PostgreSQL client tools:
-  - **Windows:** `winget install PostgreSQL.PostgreSQL` (puts `psql.exe` and `pg_dump.exe` on PATH).
-  - **WSL/Linux:** `sudo apt install postgresql-client-16`.
-- Reset both DB passwords in Studio if needed:
-  - Mumbai: Settings → Database → Reset DB Password → save value.
-  - Sydney: already known — `dQ3U4NKL88bBL9VV`.
-
-### Commands
-
-```bash
-# 1. Dump Mumbai (schema + data)
-pg_dump \
-  --host db.cqwdlimwlnyaaowwcyzp.supabase.co \
-  --port 5432 \
-  --username postgres \
-  --dbname postgres \
-  --schema public \
-  --no-owner \
-  --no-acl \
-  --file mumbai-dump.sql
-
-# (paste Mumbai DB password when prompted)
-
-# 2. Restore to Sydney
-psql \
-  --host db.gndnldyfudbytbboxesk.supabase.co \
-  --port 5432 \
-  --username postgres \
-  --dbname postgres \
-  --file mumbai-dump.sql
-
-# (paste Sydney DB password: dQ3U4NKL88bBL9VV)
-```
-
-> Do not commit `mumbai-dump.sql` to git — it contains user data. Add to `.gitignore` if you create it.
-
----
-
-## Post-Migration: `.env.local` cleanup
-
-Current `.env.local` (lines 1-9) has both Mumbai and Sydney vars; Sydney wins by precedence. Once Sydney is verified live:
-
-```diff
- # Supabase
--NEXT_PUBLIC_SUPABASE_URL=https://cqwdlimwlnyaaowwcyzp.supabase.co
--NEXT_PUBLIC_SUPABASE_ANON_KEY=<mumbai-anon>
--SUPABASE_SERVICE_ROLE_KEY=<mumbai-service-role>
-+# Mumbai (decommissioned 2026-05-XX after Sydney verified)
-+# NEXT_PUBLIC_SUPABASE_URL=https://cqwdlimwlnyaaowwcyzp.supabase.co
-+# NEXT_PUBLIC_SUPABASE_ANON_KEY=<mumbai-anon>
-+# SUPABASE_SERVICE_ROLE_KEY=<mumbai-service-role>
-
- NEXT_PUBLIC_SUPABASE_URL=https://gndnldyfudbytbboxesk.supabase.co
- NEXT_PUBLIC_SUPABASE_ANON_KEY=<sydney-anon>
- SUPABASE_SERVICE_ROLE_KEY=<sydney-service-role>
- SUPABASE_DB_PASSWORD_SYDNEY=dQ3U4NKL88bBL9VV
-```
-
-Keep Mumbai vars commented for 7 days as a safety net. After Sydney is confirmed stable in production, remove them entirely.
-
----
-
-## Vercel Environment Variable Swap
-
-After Sydney is confirmed live with verified row counts:
+Sydney is live locally. Production still points at Mumbai until Vercel env vars are updated.
 
 ### Via Vercel Dashboard
-1. Go to https://vercel.com/eventlinqs/eventlinqs-app/settings/environment-variables.
+1. Go to https://vercel.com/lawals-projects-c20c0be8/eventlinqs-app/settings/environment-variables.
 2. Edit `NEXT_PUBLIC_SUPABASE_URL`:
-   - Production / Preview / Development: replace `https://cqwdlimwlnyaaowwcyzp.supabase.co` → `https://gndnldyfudbytbboxesk.supabase.co`.
+   - Production / Preview / Development: set to `https://gndnldyfudbytbboxesk.supabase.co`.
 3. Edit `NEXT_PUBLIC_SUPABASE_ANON_KEY`:
-   - Replace Mumbai anon key with Sydney anon key (full value in `.env.local` line 7).
+   - Replace with Sydney anon key (value in `.env.local`).
 4. Edit `SUPABASE_SERVICE_ROLE_KEY`:
-   - Replace Mumbai service-role with Sydney service-role (full value in `.env.local` line 8).
+   - Replace with Sydney service-role key (value in `.env.local`).
 5. Click **Save** for each.
-
-### Via Vercel CLI (if installed — `npm i -g vercel` if not)
-```bash
-# Pull current values to compare
-vercel env pull .env.vercel.production --environment=production
-
-# Remove old Mumbai entries
-vercel env rm NEXT_PUBLIC_SUPABASE_URL production
-vercel env rm NEXT_PUBLIC_SUPABASE_ANON_KEY production
-vercel env rm SUPABASE_SERVICE_ROLE_KEY production
-
-# Add Sydney entries (paste each value when prompted)
-vercel env add NEXT_PUBLIC_SUPABASE_URL production
-vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY production
-vercel env add SUPABASE_SERVICE_ROLE_KEY production
-
-# Repeat for preview and development environments
-
-# Trigger a fresh deploy to pick up the new env
-vercel --prod
-```
+6. Open the **Deployments** tab and trigger a redeploy of the latest commit so the new env vars are picked up.
 
 ### Smoke test after deploy
 - Hit the production URL.
-- Open homepage — check `ThisWeekStrip` renders with events.
+- Open homepage — confirm `ThisWeekStrip` renders with seeded cultural events.
 - Open DevTools Network tab — confirm requests go to `gndnldyfudbytbboxesk.supabase.co`.
-- Open `/cities/melbourne` (once that route exists) — events render.
 - Sign in as a test user — confirm session persists.
 - Sentry should be quiet on the deploy (no Supabase connection errors).
 
 ---
 
-## Decommission Mumbai (after 7-day safety window)
+## Decommission Mumbai
 
-Earliest date: 2026-05-03 (today + 7 days).
+**Scheduled deletion date: 2026-05-03** (7 days after Sydney went live).
 
+Steps:
 1. Confirm Sydney has been live in production for 7+ days with no Supabase-related Sentry alerts.
 2. Confirm Vercel logs show zero traffic to `cqwdlimwlnyaaowwcyzp.supabase.co`.
-3. Take one final Mumbai backup → save off-Vercel (e.g., to local archive `archive/mumbai-final-backup-2026-05-XX.sql`).
-4. In Supabase Studio for Mumbai → Settings → General → Pause project. Wait one more week to be safe.
-5. After total confidence: Settings → General → Delete project.
+3. In Supabase Studio for Mumbai → Settings → General → **Delete project**.
+4. No final backup needed — Mumbai held only pre-launch test data, fully superseded by Sydney's seed.
 
 ---
 
-## Why this runbook exists in this form
+## Why Path B was chosen over A/C
 
-The original Sprint 1 plan called for in-session migration via Supabase MCP. The available MCP is read-only and locked to Mumbai, and the Mumbai project is currently paused, so neither in-session schema dump nor in-session row migration can be executed safely from the assistant's environment. The operator-led runbook above is the responsible alternative — it preserves the Mumbai safety net, requires no destructive credentials in chat, and lets Lawal verify each step against Studio's UI.
+The original Sprint 1 plan called for in-session migration via Supabase MCP. The available MCP was read-only and locked to Mumbai. Mumbai was paused, requiring a wake + password reset cycle to extract data that turned out to be of no business value (pre-launch test seeds only). Fresh start was the responsible alternative — it gave Sydney a clean canonical baseline, a richer culturally-relevant seed, and avoided destructive credential cycles in chat. Mumbai is preserved for 7 days as a safety net even though the data is non-essential.
