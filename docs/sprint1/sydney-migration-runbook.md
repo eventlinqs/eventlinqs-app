@@ -62,12 +62,14 @@ Sydney is the destination because:
 
 ## Post-Migration: `.env.local`
 
-`.env.local` has been cleaned to point only at Sydney. Mumbai vars were removed (rather than commented) since Mumbai is on a deletion timer.
+Both Mumbai and Sydney entries are currently present in `.env.local`; Sydney lines come last and win via dotenv last-write-wins. Optional follow-up: delete the Mumbai lines once Mumbai is decommissioned.
+
+**Action item:** the Sydney `SUPABASE_SERVICE_ROLE_KEY` in `.env.local` is still the placeholder `REPLACE_WITH_SB_SECRET_FROM_DASHBOARD`. Pull the real value from Sydney's Supabase Studio (Settings → API → `service_role` secret) before the Vercel env var swap, and write it into `.env.local`.
 
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://gndnldyfudbytbboxesk.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<sydney-anon>
-SUPABASE_SERVICE_ROLE_KEY=<sydney-service-role>
+NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_dRfxcx-bSDgfA36UctCVJA_6IELn_bs
+SUPABASE_SERVICE_ROLE_KEY=<paste from Supabase Studio → Settings → API>
 SUPABASE_DB_PASSWORD_SYDNEY=dQ3U4NKL88bBL9VV
 ```
 
