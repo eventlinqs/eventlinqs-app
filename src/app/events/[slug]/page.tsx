@@ -37,6 +37,7 @@ const VenueMap = dynamic(
 )
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { EventSoldOut, type EventSoldOutRelated } from '@/components/features/events/event-sold-out'
+import { EventViewTracker } from '@/components/features/events/event-view-tracker'
 
 type Props = {
   params: Promise<{ slug: string }>
@@ -427,6 +428,13 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
 
   return (
     <div className="min-h-screen bg-canvas">
+      <EventViewTracker
+        eventId={event.id}
+        eventTitle={event.title}
+        category={event.category?.name ?? 'Uncategorised'}
+        venueCity={event.venue_city ?? 'Unknown'}
+        priceRange={priceLabel ?? 'Free'}
+      />
       <SiteHeader />
 
       <StickyActionBar

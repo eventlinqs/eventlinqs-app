@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { Heart } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { trackSaveEvent } from '@/lib/analytics/plausible'
 
 type Variant = 'dark' | 'light'
 
@@ -47,7 +48,13 @@ export function SaveEventButton({
       const { error } = nextSaved
         ? await supabase.from('saved_events').insert({ event_id: eventId, user_id: session.user.id })
         : await supabase.from('saved_events').delete().eq('event_id', eventId).eq('user_id', session.user.id)
-      if (error) setSaved(!nextSaved)
+      if (error) {
+        setSaved(!nextSaved)
+        return
+      }
+      if (nextSaved) {
+        trackSaveEvent({ event_id: eventId })
+      }
     })
   }
 

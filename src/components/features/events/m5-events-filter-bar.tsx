@@ -10,6 +10,7 @@ import {
 } from '@/lib/events/search-params'
 import { FilterSheet } from './m5-filter-sheet'
 import { MoreFiltersPanel, type MoreFiltersValues } from './m5-more-filters-panel'
+import { trackEventSearch } from '@/lib/analytics/plausible'
 
 type CategoryChip = { id: string; name: string; slug: string }
 
@@ -65,7 +66,15 @@ export function EventsFilterBar({ params, categories, view, hasGeoSignal, basePa
   const handlePresetClick = useCallback(
     (key: DatePreset['key']) => {
       const isActive = activePreset === key
-      navigate(buildEventsUrl(params, { preset: isActive ? undefined : key, page: undefined }, basePath))
+      const nextPreset = isActive ? undefined : key
+      if (nextPreset) {
+        trackEventSearch({
+          date_preset: nextPreset,
+          category: params.category,
+          query: params.q,
+        })
+      }
+      navigate(buildEventsUrl(params, { preset: nextPreset, page: undefined }, basePath))
     },
     [activePreset, params, navigate, basePath],
   )
@@ -73,6 +82,13 @@ export function EventsFilterBar({ params, categories, view, hasGeoSignal, basePa
   const handleCategoryClick = useCallback(
     (slug: string | null) => {
       const nextSlug = slug && activeCategory !== slug ? slug : undefined
+      if (nextSlug) {
+        trackEventSearch({
+          category: nextSlug,
+          date_preset: params.preset,
+          query: params.q,
+        })
+      }
       navigate(buildEventsUrl(params, { category: nextSlug, page: undefined }, basePath))
     },
     [activeCategory, params, navigate, basePath],

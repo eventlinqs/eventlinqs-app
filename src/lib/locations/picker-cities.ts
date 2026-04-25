@@ -49,20 +49,29 @@ function launchToPicker(c: LaunchCity): PickerCity {
 }
 
 async function buildPickerCitiesRaw(): Promise<PickerCityGroups> {
-  const supabase = createAdminClient()
-  const { data } = await supabase
-    .from('events')
-    .select('venue_city, venue_country')
-    .eq('status', 'published')
-    .eq('visibility', 'public')
-    .not('venue_city', 'is', null)
+  // Admin client may be unavailable during build (CI has placeholder env with
+  // no SUPABASE_SERVICE_ROLE_KEY). Fall through to launch-target cities only;
+  // DB-sourced diaspora cities fill in at runtime once ISR revalidates.
+  let rows: Array<{ venue_city: string | null; venue_country: string | null }> = []
+  try {
+    const supabase = createAdminClient()
+    const { data } = await supabase
+      .from('events')
+      .select('venue_city, venue_country')
+      .eq('status', 'published')
+      .eq('visibility', 'public')
+      .not('venue_city', 'is', null)
+    rows = data ?? []
+  } catch {
+    rows = []
+  }
 
   const bySlug = new Map<string, PickerCity>()
   for (const c of LAUNCH_TARGET_CITIES) {
     bySlug.set(c.slug, launchToPicker(c))
   }
 
-  for (const row of data ?? []) {
+  for (const row of rows) {
     const cityName = row.venue_city?.trim()
     if (!cityName) continue
     const slug = toCitySlug(cityName)
