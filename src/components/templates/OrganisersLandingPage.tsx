@@ -166,9 +166,9 @@ export function OrganisersLandingPage() {
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--brand-accent)]/10 transition-colors group-hover:bg-[var(--brand-accent)]/15">
                 <Icon className="h-6 w-6 text-[var(--brand-accent)]" aria-hidden="true" />
               </div>
-              <h3 className="mt-4 inline-block border-b-2 border-[var(--brand-accent)]/30 pb-0.5 text-base font-semibold text-[var(--text-primary)] transition-colors group-hover:border-[var(--brand-accent)]/70">
+              <h2 className="mt-4 inline-block border-b-2 border-[var(--brand-accent)]/30 pb-0.5 text-base font-semibold text-[var(--text-primary)] transition-colors group-hover:border-[var(--brand-accent)]/70">
                 {title}
-              </h3>
+              </h2>
               <p className="mt-2 text-sm leading-relaxed text-[var(--text-secondary)]">
                 {body}
               </p>
@@ -180,7 +180,7 @@ export function OrganisersLandingPage() {
       {/* -- 3. How it works ----------------------------------------- */}
       <ContentSection surface="base" width="default">
         <div className="max-w-3xl">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent)]">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
             How it works
           </p>
           <h2 className="font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">
@@ -210,7 +210,7 @@ export function OrganisersLandingPage() {
       {/* -- 4. Open to every community ------------------------------ */}
       <ContentSection surface="alt" width="default">
         <div className="max-w-3xl">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent)]">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
             Who can use EventLinqs
           </p>
           <h2 className="font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">
@@ -249,7 +249,7 @@ export function OrganisersLandingPage() {
       {/* -- 5. FAQ -------------------------------------------------- */}
       {FAQ_ARTICLES.length > 0 && (
         <ContentSection surface="base" width="prose">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent)]">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
             Common questions
           </p>
           <h2 className="mb-8 font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">
@@ -287,7 +287,7 @@ export function OrganisersLandingPage() {
           <div className="mt-8 text-center">
             <Link
               href="/help/selling-tickets"
-              className="text-sm font-medium text-[var(--brand-accent)] underline underline-offset-2 hover:text-[var(--brand-accent-hover)] transition-colors"
+              className="text-sm font-medium text-[var(--brand-accent-strong)] underline underline-offset-2 hover:text-[var(--text-primary)] transition-colors"
             >
               See all organiser help articles &rsaquo;
             </Link>

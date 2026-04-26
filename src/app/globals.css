@@ -18,6 +18,10 @@
   --brand-accent:        var(--color-gold-400);
   --brand-accent-hover:  var(--color-gold-500);
   --brand-accent-active: var(--color-gold-600);
+  /* For small text and links on light surfaces. gold-400 fails 4.5:1
+     against white; gold-800 hits 5.0:1 on the alt surface (ink-100)
+     and 7.5:1 on white. Use --brand-accent on dark surfaces only. */
+  --brand-accent-strong: var(--color-gold-800);
 
   /* Surfaces */
   --surface-0:           var(--color-white);
@@ -48,8 +52,11 @@
   --color-gold-600: #B88612;
   /* Gold as text-on-light fails AA at gold-500 (#D4A017 → 2.27:1 on canvas).
      gold-700 exists for text use on canvas/white: #8B6A0E → 5.97:1 ✓.
+     gold-800 exists for text on the slightly darker alt surface (ink-100
+     #efede8): gold-700 only hits 4.3:1 there, gold-800 → 5.0:1 ✓.
      On dark backgrounds, stay with gold-400/500 for brand punch. */
   --color-gold-700: #8B6A0E;
+  --color-gold-800: #6F5409;
 
   --color-coral-100: #FFE4DF;
   --color-coral-500: #FF4E3A;

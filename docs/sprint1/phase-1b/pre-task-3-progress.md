@@ -48,3 +48,41 @@ Full analysis at `docs/sprint1/phase-1b/iter-1-baseline-analysis.md`.
 ### A.4 Server stop
 Single-PID kill on the production server, no `taskkill /F /IM node.exe`.
 
+## Phase B - Hero LCP + organisers a11y/SEO regression (iter-2)
+
+Phase B deliberately scoped narrow: close the iter-1 a11y/SEO regression on `/organisers` first (small batch fix that does not affect LCP), then take a fresh measurement and decide whether to bundle JS-bundle work into iter-2 or split it into iter-3. Iter-2 was kept scope-tight - actual LCP raster optimisation and JS bundle work moves into iter-3.
+
+### B.1 Audit findings on the hero stack
+- `HeroMedia` (src/components/media/HeroMedia.tsx) is correctly architected: priority+fetchPriority="high" on slide-0, no opacity transition on the LCP layer, ambient layer mounted post-rAF×2.
+- `HeroCarouselClient` defers slides 1+ for 1.6s after first paint, so the LCP candidate is unambiguous.
+- `app/layout.tsx` uses `next/font` Inter + Manrope with `display: 'optional'` and explicit weight subsets - already optimal for fallback-text LCP. Both fonts are auto-preloaded by next/font.
+- The render-side LCP delay (LCP - TTFB) is dominated by JavaScript and CSS parse, not by the hero raster path. ~75 kB unused JS (shared chunks) appears on every route. That is iter-3 (Phase C) territory.
+- Conclusion for iter-2: the hero stack does not need invasive change. The bigger win is JS bundle reduction in iter-3.
+
+### B.2 organisers a11y + SEO regression closure
+- Added `--brand-accent-strong: var(--color-gold-800)` token (gold-800 = #6F5409, computes 7.5:1 against white and 5.0:1 against ink-100 alt surface). Replaces gold-400 (1.86:1) usage on small text on light surfaces.
+- Updated 4 eyebrow paragraphs and the help-link CTA in `OrganisersLandingPage.tsx` to use `text-[var(--brand-accent-strong)]`. Hover route now uses `--text-primary` so the link still meets AA on hover.
+- Changed pillar card `<h3>` to `<h2>` so heading-order is sequentially descending (h1 hero → h2 pillar cards → h2 sibling sections → h3 nested step titles).
+- Added `alternates: { canonical: '/organisers' }` to /organisers page metadata. (Layout was setting canonical=`/` and the child page inherited it - fix is per-page override.)
+
+### B.3 Iter-2 captures
+
+| Route | Perf | A11y | BP | SEO | FCP | LCP | TBT | TTFB |
+|---|---|---|---|---|---|---|---|---|
+| `/` | 0.80 (+0.02) | 1.00 | 1.00 | 1.00 | 1406 | 3729 | 234 | 2013 |
+| `/events` | 0.79 (+0.09) | 1.00 | 1.00 | 1.00 | 2109 | 4551 | 187 | 350 |
+| `/events/browse/melbourne` | 0.82 (+0.02) | 1.00 | 1.00 | 1.00 | 1235 | 4534 | 169 | 422 |
+| `/events/afrobeats-melbourne-summer-sessions` | 0.78 (+0.02) | 1.00 | 1.00 | 1.00 | 1797 | 4026 | 197 | 2897 |
+| `/organisers` | 0.77 | 1.00 (+0.06) | 1.00 | 1.00 (+0.09) | 2058 | 3867 | 305 | 45 |
+
+Headline result: every page in the test suite is at A11y=1, BP=1, SEO=1. Performance varies 0.77 to 0.82. Saved at `docs/sprint1/phase-1b/iter-2/`.
+
+### B.4 What iter-3 must address
+- Top issue across all five routes: ~75 kB unused JS in shared chunks. Phase C (code-split + tree-shake) targets this.
+- LCP plateau: iter-2 LCPs are within run-to-run variance of iter-1 (±300 ms is cache/timing noise). LCP gains will land in iter-3 (JS bundle) and iter-5 (TTFB via ISR), not in iter-2.
+
+### B.5 Server stop
+Single-PID kill on the production server.
+
+
+
