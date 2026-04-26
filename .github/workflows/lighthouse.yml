@@ -1,0 +1,82 @@
+# Lighthouse CI gate — enforces docs/MEDIA-ARCHITECTURE.md §12.2.
+#
+# Runs on every PR. Boots a local Supabase stack so the dynamic routes
+# in lighthouserc.json (/events/[city], /events/[slug]) resolve to real
+# seeded content, builds the Next.js app, then audits the URL set
+# against the assertions in lighthouserc.json (Performance >= 95,
+# Accessibility/Best-Practices/SEO = 100, LCP < 2.5s, TBT < 300ms,
+# CLS < 0.1).
+#
+# Gate state:
+#   - `continue-on-error: true` is set during Phase 1B Pre-Task 1 because
+#     iter-0 baseline returned NO_LCP (Performance: null). The job runs
+#     and uploads its report so we can track progress, but it does not
+#     block PR merge yet.
+
+name: Lighthouse CI
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: lighthouse-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lighthouse:
+    name: Lighthouse mobile gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true  # REMOVE THIS LINE IMMEDIATELY after Pre-Task 3 reports Performance >=95 on all 5 page types. From that moment forward, this is a hard gate. PRs must pass Lighthouse to merge.
+
+    env:
+      NEXT_TELEMETRY_DISABLED: 1
+      NEXT_PUBLIC_SITE_URL: https://eventlinqs.com
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # Boot a local Supabase stack so dynamic Lighthouse URLs
+      # (/events/melbourne, /events/bollywood-nights-...) resolve to
+      # real content. `supabase start` applies every file in
+      # supabase/migrations/ including the cultural breadth seed.
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start Supabase
+        run: supabase start
+
+      - name: Export Supabase env
+        # NEXT_PUBLIC_* must be present BEFORE `next build` so the values
+        # are inlined into the client bundle. Pull them from the running
+        # local stack and write to $GITHUB_ENV for subsequent steps.
+        run: |
+          status=$(supabase status -o env)
+          api_url=$(echo "$status" | grep '^API_URL=' | cut -d= -f2- | tr -d '"')
+          anon_key=$(echo "$status" | grep '^ANON_KEY=' | cut -d= -f2- | tr -d '"')
+          echo "NEXT_PUBLIC_SUPABASE_URL=$api_url" >> $GITHUB_ENV
+          echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$anon_key" >> $GITHUB_ENV
+
+      - name: Build
+        run: npm run build
+
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          configPath: ./lighthouserc.json
+          uploadArtifacts: true
+          temporaryPublicStorage: true
