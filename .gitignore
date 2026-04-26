@@ -57,6 +57,14 @@ next-env.d.ts
 !public/images/hero/*.png
 !public/**/*.svg
 
+# Allowlist Pre-Task 2 visual regression evidence — BEFORE/AFTER screenshots
+# captured at 7 viewports per refactor. Tracked as proof of "no visual
+# regression" for each migration commit; reviewers can diff before/ vs after/.
+!docs/visual-regression/**/*.png
+!docs/visual-regression/**/*.jpg
+!docs/visual-regression/**/*.jpeg
+!docs/visual-regression/**/*.webp
+
 # playwright test runner artifacts — local only
 /test-results/
 /playwright-report/

@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { SmartMedia } from '@/components/ui/smart-media'
+import { HeroMedia } from '@/components/media'
 import { GlassCard } from '@/components/ui/glass-card'
 import { getFeaturedHeroBackground, type EventMediaInput } from '@/lib/images/event-media'
 import type { CategoryHighlightSlide } from '@/lib/content/category-highlight-slides'
@@ -74,7 +74,13 @@ function renderBackground(
 ) {
   return (
     <>
-      <SmartMedia media={media} autoplay={priority} priority={priority} />
+      <HeroMedia
+        image={media.image}
+        alt={media.alt}
+        videoSrc={priority ? media.videoSrc : undefined}
+        kenBurns={priority && media.kenBurns}
+        priority={priority}
+      />
       <div
         className="absolute inset-0"
         style={{

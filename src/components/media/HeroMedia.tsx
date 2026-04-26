@@ -45,6 +45,13 @@ export interface HeroMediaProps {
    * sizing — but full-bleed hero should always be `fill`.
    */
   fillParent?: boolean
+  /**
+   * LCP designation. Defaults to true — HeroMedia's canonical role is the
+   * above-fold LCP layer. Set false for sibling hero slides (e.g. carousel
+   * positions 1+) that share the surface but must NOT compete for the LCP
+   * candidate. Non-priority slides drop fetchPriority="high" and lazy-load.
+   */
+  priority?: boolean
 }
 
 function assertRaster(url: string): void {
@@ -66,6 +73,7 @@ export function HeroMedia({
   sizes = MEDIA_SIZES.fullBleed,
   className = '',
   fillParent = true,
+  priority = true,
 }: HeroMediaProps) {
   assertRaster(image)
 
@@ -77,14 +85,17 @@ export function HeroMedia({
     <div className={wrapClasses}>
       {/*
         LCP LAYER — paints statically on first commit. No transform, no
-        opacity transition. This is the element Lighthouse measures as LCP.
+        opacity transition. This is the element Lighthouse measures as LCP
+        when priority=true. Sibling slides pass priority=false so they
+        download lazily and never out-compete the active LCP candidate.
       */}
       <Image
         src={image}
         alt={alt}
         fill
-        priority
-        fetchPriority="high"
+        priority={priority}
+        fetchPriority={priority ? 'high' : 'auto'}
+        loading={priority ? 'eager' : 'lazy'}
         sizes={sizes}
         quality={MEDIA_QUALITY.hero}
         className="object-cover"
@@ -93,9 +104,11 @@ export function HeroMedia({
       {/*
         AMBIENT LAYER — mounted via useEffect after rAF×2 so it cannot
         disqualify the LCP element. Renders ken-burns scale and/or video
-        overlay on top of the static LCP image.
+        overlay on top of the static LCP image. Only the priority slide
+        ever requests an ambient layer; non-priority sibling slides skip
+        it to keep the LCP slide's overlay budget intact.
       */}
-      {(videoSrc || kenBurns) && (
+      {priority && (videoSrc || kenBurns) && (
         <HeroAmbientLayer
           videoSrc={videoSrc}
           kenBurns={kenBurns}
