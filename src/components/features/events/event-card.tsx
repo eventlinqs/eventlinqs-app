@@ -1,8 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
 import { MapPin } from 'lucide-react'
+import { EventCardMedia } from '@/components/media'
 import { SocialProofBadge } from '@/components/inventory/social-proof-badge'
 import { SaveEventButton } from './save-event-button'
 import type { EventInventory } from '@/lib/redis/inventory-cache'
@@ -126,14 +126,12 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
       {/* ── Image ───────────────────────────────────────────────── */}
       <div className="relative aspect-video md:aspect-[4/3] overflow-hidden bg-ink-100">
         {cover_image_url ? (
-          <Image
+          <EventCardMedia
             src={cover_image_url}
             alt={title}
-            fill
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            variant="card"
             priority={priority}
-            fetchPriority={priority ? 'high' : 'auto'}
-            className="object-cover transition-transform duration-500 group-hover:scale-105"
+            className="transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
           <div className="flex h-full items-center justify-center text-ink-200">

@@ -72,7 +72,6 @@ const eslintConfig = defineConfig([
       "src/components/features/events/event-sold-out.tsx",
       "src/components/features/events/live-vibe-marquee.tsx",
       "src/components/features/events/city-rail-tile.tsx",
-      "src/components/features/events/event-card.tsx",
       // Square-bracket Next.js dynamic segments and parenthesized route
       // groups confuse minimatch — use `**` wildcards to traverse them.
       "src/app/queue/**",
