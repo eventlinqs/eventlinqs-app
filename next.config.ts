@@ -22,6 +22,17 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: '10mb',
     },
+    // Tree-shake barrel imports per Next.js docs. Without this, importing
+    // `{ Home } from 'lucide-react'` drags the full icon barrel into the
+    // shared chunk on every route. Phase 1B Pre-Task 3 iter-2 measured
+    // ~75 kB unused JS in shared chunks across all five page types;
+    // lucide-react was the dominant offender (23 import sites).
+    optimizePackageImports: [
+      'lucide-react',
+      '@tanstack/react-query',
+      '@supabase/ssr',
+      '@supabase/supabase-js',
+    ],
   },
   images: {
     formats: ['image/avif', 'image/webp'],
