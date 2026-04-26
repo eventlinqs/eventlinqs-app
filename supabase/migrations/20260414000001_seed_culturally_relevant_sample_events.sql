@@ -5,6 +5,16 @@
 
 DO $$
 BEGIN
+  -- Skip on a fresh project that has no organisations or profiles yet.
+  -- The hardcoded organisation_id / created_by lookups below assume Mumbai-era
+  -- seed data; on Sydney the cultural breadth seed (20260426000001) provides
+  -- the canonical seed instead, so this older 8-event seed becomes a no-op.
+  IF NOT EXISTS (SELECT 1 FROM organisations LIMIT 1)
+     OR NOT EXISTS (SELECT 1 FROM profiles LIMIT 1) THEN
+    RAISE NOTICE 'Skipping 20260414 seed: no organisations or profiles present';
+    RETURN;
+  END IF;
+
   -- Only insert if these seed events don't already exist
   IF NOT EXISTS (SELECT 1 FROM events WHERE id = '11111111-1111-4111-8111-111111111101') THEN
 
