@@ -1,6 +1,5 @@
 import Link from 'next/link'
-import { EventCardMedia, type EventCardMediaVariant } from '@/components/media'
-import { BrandedPlaceholder } from '@/components/ui/branded-placeholder'
+import { EventCardMedia, type EventCardMediaVariant, BrandedPlaceholder } from '@/components/media'
 import { GlassCard } from '@/components/ui/glass-card'
 import { getEventMedia, getFeaturedEventMedia, type EventMediaInput } from '@/lib/images/event-media'
 import { SaveEventButton } from './save-event-button'

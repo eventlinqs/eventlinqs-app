@@ -6,6 +6,11 @@
  * of organiser photography when none exists. Matches the pattern Eventbrite
  * and Luma use for coverless events — brand-trust over generic stock.
  *
+ * Lives under `src/components/media/decorative/` rather than feature code so
+ * the gradient inline-style is intentionally scoped under the media library
+ * (where the no-restricted-syntax background-image ban is permanently
+ * disabled). See docs/MEDIA-ARCHITECTURE.md §11 and docs/MEDIA-INCONSISTENCIES.md V14.
+ *
  * Renders absolutely positioned — parent must be `relative`.
  */
 

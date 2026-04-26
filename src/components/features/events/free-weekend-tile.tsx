@@ -1,6 +1,5 @@
 import Link from 'next/link'
-import { EventCardMedia } from '@/components/media'
-import { BrandedPlaceholder } from '@/components/ui/branded-placeholder'
+import { EventCardMedia, BrandedPlaceholder } from '@/components/media'
 import { GlassCard } from '@/components/ui/glass-card'
 import { getEventMedia, type EventMediaInput } from '@/lib/images/event-media'
 import { getCategoryPhoto } from '@/lib/images/category-photo'

@@ -3,8 +3,7 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useDragScroll } from '@/hooks/use-drag-scroll'
-import { EventCardMedia } from '@/components/media'
-import { BrandedPlaceholder } from '@/components/ui/branded-placeholder'
+import { EventCardMedia, BrandedPlaceholder } from '@/components/media'
 
 /**
  * LiveVibeMarquee — deep navy editorial band of community event cards.

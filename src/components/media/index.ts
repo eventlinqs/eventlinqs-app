@@ -20,6 +20,8 @@ export type { OrganiserAvatarSize } from './OrganiserAvatar'
 
 export { CategoryTileImage } from './CategoryTileImage'
 
+export { BrandedPlaceholder } from './decorative/branded-placeholder'
+
 export { MEDIA_QUALITY } from './quality'
 export type { MediaQualityTier } from './quality'
 

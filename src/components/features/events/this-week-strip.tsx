@@ -1,6 +1,5 @@
 import Link from 'next/link'
-import { EventCardMedia } from '@/components/media'
-import { BrandedPlaceholder } from '@/components/ui/branded-placeholder'
+import { EventCardMedia, BrandedPlaceholder } from '@/components/media'
 import { getEventMedia } from '@/lib/images/event-media'
 import type { BentoEvent } from './event-bento-tile'
 
