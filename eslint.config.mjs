@@ -66,7 +66,6 @@ const eslintConfig = defineConfig([
       "src/components/media/**",
       // Transitional — refactored to media/ surfaces in Pre-Task 2.
       // Removing each entry from this list is the migration milestone.
-      "src/components/ui/smart-media.tsx",
       "src/components/ui/CategoryHeroEmpty.tsx",
       "src/components/features/events/event-form.tsx",
       "src/components/features/events/event-sold-out.tsx",
