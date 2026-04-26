@@ -13,7 +13,7 @@ type Props = {
 
 /**
  * Responsive sheet: bottom sheet on mobile, right-hand side panel on
- * md+. No new dependency — plain portal-less overlay using the same
+ * md+. No new dependency - plain portal-less overlay using the same
  * interaction patterns as site-header-client and events-filter-strip
  * (Escape to close, body scroll lock, focus management).
  */

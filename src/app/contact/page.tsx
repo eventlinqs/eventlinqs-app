@@ -51,7 +51,7 @@ export default async function ContactPage({ searchParams }: Props) {
         subtitle="We reply within 24 hours, Monday to Friday."
       />
 
-      {/* Main two-column section — anchored for in-page scroll */}
+      {/* Main two-column section - anchored for in-page scroll */}
       <ContentSection surface="base" width="wide" id="contact-form">
         <ContactForm initialSubject={initialSubject} />
       </ContentSection>

@@ -1,4 +1,4 @@
-# Media Architecture — EventLinqs Platform Standard
+# Media Architecture - EventLinqs Platform Standard
 
 **Status:** Authoritative. Every page, every component, every PR.
 **Date:** 2026-04-26
@@ -20,17 +20,17 @@ This document centralises every media decision so the same fix works on every pa
 ## 1. Principles (non-negotiable)
 
 1. **Every above-fold visual region MUST have a raster LCP candidate.** No SVG-only heroes. No `branded-placeholder` as the sole hero element. No video with SVG poster on the LCP path.
-2. **Every image MUST have explicit dimensions** — `width` + `height` props, or `fill` inside a sized parent. CLS budget is 0.
-3. **Every image MUST declare format priority via `next.config.ts`** — AVIF first, WebP fallback, raster only.
+2. **Every image MUST have explicit dimensions** - `width` + `height` props, or `fill` inside a sized parent. CLS budget is 0.
+3. **Every image MUST declare format priority via `next.config.ts`** - AVIF first, WebP fallback, raster only.
 4. **Every image MUST go through `<Image>` from `next/image`** unless it is a local SVG, in which case use the approved component for that role.
 5. **Every above-fold image MUST have `priority` AND `fetchPriority="high"`** AND **MUST NOT** carry an opacity transition or active scale transform on the first paint.
 6. **Every below-fold image MUST be lazy** with `loading="lazy"` and `decoding="async"`. No exceptions.
 7. **Every video MUST have a raster poster** (AVIF/WebP/JPEG). Never SVG. Above-fold video must have a peer raster `<Image>` painted as the LCP layer with the video overlaid only after first commit.
-8. **All media component code lives in `src/components/media/`.** Feature components consume that library only — they do not construct `<Image>` or `<video>` directly.
+8. **All media component code lives in `src/components/media/`.** Feature components consume that library only - they do not construct `<Image>` or `<video>` directly.
 
 ---
 
-## 2. Component library — the only allowed surfaces
+## 2. Component library - the only allowed surfaces
 
 Located at `src/components/media/`. Each enforces a slice of this standard.
 
@@ -39,7 +39,7 @@ Located at `src/components/media/`. Each enforces a slice of this standard.
 | `<HeroMedia>` | Above-fold full-bleed hero on any route (`/`, `/events/[slug]`, future landing pages) | `priority`, `fetchPriority="high"`, raster only, no opacity transition on first paint, video overlay deferred to `requestIdleCallback` |
 | `<EventCardMedia>` | Card / tile / bento / rail / list-row event imagery | lazy, sized via prop variant (`bento-hero`, `bento-supporting`, `card`, `rail`, `marquee`, `list-row`), AVIF, blur placeholder |
 | `<CityTileImage>` | City rail tiles, city landing page heroes, region selectors | dual-mode (local SVG → raw `<img unoptimized>`; remote raster → `<Image>` with rail sizes) |
-| `<OrganiserAvatar>` | Every avatar — topbar, organiser cards, ticket holder badges, list rows | rounded-full, sized via `size` prop (`xs`, `sm`, `md`, `topbar`, `lg`), initials fallback, lazy unless `priority` |
+| `<OrganiserAvatar>` | Every avatar - topbar, organiser cards, ticket holder badges, list rows | rounded-full, sized via `size` prop (`xs`, `sm`, `md`, `topbar`, `lg`), initials fallback, lazy unless `priority` |
 | `<CategoryTileImage>` | Category landing tiles, category pickers, category browse cards | lazy, sized for category card layout, AVIF, alt text required |
 
 These are the **only** surfaces feature code is allowed to use for media. ESLint enforces.
@@ -68,7 +68,7 @@ These are the **only** surfaces feature code is allowed to use for media. ESLint
 
 ### 4.1 Formats
 
-`next.config.ts` declares `formats: ['image/avif', 'image/webp']`. The Image Optimizer serves AVIF when the browser sends `Accept: image/avif`, falling back to WebP. **Origin upload format is irrelevant** — Supabase storage, Pexels, and any other source go through `/_next/image`.
+`next.config.ts` declares `formats: ['image/avif', 'image/webp']`. The Image Optimizer serves AVIF when the browser sends `Accept: image/avif`, falling back to WebP. **Origin upload format is irrelevant** - Supabase storage, Pexels, and any other source go through `/_next/image`.
 
 Raster formats: AVIF preferred. WebP fallback. PNG/JPEG only as origin upload (transparent to component).
 
@@ -78,10 +78,10 @@ Centralised in `src/components/media/quality.ts`:
 
 ```ts
 export const MEDIA_QUALITY = {
-  hero: 80,      // full-viewport hero — best perceived quality
+  hero: 80,      // full-viewport hero - best perceived quality
   card: 75,      // standard card / bento tile
   rail: 70,      // small rail / marquee tile
-  avatar: 75,    // avatars — sharpness matters at small sizes
+  avatar: 75,    // avatars - sharpness matters at small sizes
 } as const
 ```
 
@@ -111,7 +111,7 @@ Variants on each component pull their hint from this map. **Never** inline a `si
 
 ---
 
-## 5. The LCP rule — above-fold media
+## 5. The LCP rule - above-fold media
 
 ### 5.1 What qualifies as LCP
 
@@ -155,7 +155,7 @@ The `image` prop is **required** and must point to a raster URL. If callers only
 
 - A `<video>` element above the fold must NEVER be the LCP candidate. The peer `<Image>` is.
 - Posters are raster only. Period.
-- `autoplay` is gated by `document.body.dataset.headless === '1'` (set during Lighthouse runs and Playwright audits) — autoplay is disabled in audit mode to stabilise Speed Index.
+- `autoplay` is gated by `document.body.dataset.headless === '1'` (set during Lighthouse runs and Playwright audits) - autoplay is disabled in audit mode to stabilise Speed Index.
 - All videos: `muted`, `playsInline`, `loop`, `preload="none"` unless explicitly auto-playing, in which case `preload="auto"`.
 
 ---
@@ -185,7 +185,7 @@ The `image` prop is **required** and must point to a raster URL. If callers only
 - Decorative gradients, vignettes, blurred backdrops are NOT content imagery.
 - They live as inline `style={{ background: 'linear-gradient(...)' }}` or Tailwind utilities.
 - They MAY use `style={{ backgroundImage: 'radial-gradient(...)' }}` because no URL is referenced.
-- They MUST NOT use `background-image: url(...)` — that pattern is reserved for content imagery and is forbidden.
+- They MUST NOT use `background-image: url(...)` - that pattern is reserved for content imagery and is forbidden.
 
 `<BrandedPlaceholder>` is decorative and stays in `src/components/ui/`. It can never be the sole element above the fold.
 
@@ -194,7 +194,7 @@ The `image` prop is **required** and must point to a raster URL. If callers only
 ## 11. Forbidden patterns (mirror of MEDIA-INCONSISTENCIES.md §Forbidden)
 
 1. ❌ `background-image: url(...)` for content imagery
-2. ❌ Raw `<img>` for content imagery (`@next/next/no-img-element` — error, not warn)
+2. ❌ Raw `<img>` for content imagery (`@next/next/no-img-element` - error, not warn)
 3. ❌ Above-fold media without `priority` + `fetchPriority="high"`
 4. ❌ `<Image>` without `width`+`height` and without `fill`
 5. ❌ `<video>` with SVG poster on the LCP path

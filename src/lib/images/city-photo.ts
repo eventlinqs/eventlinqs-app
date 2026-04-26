@@ -4,7 +4,7 @@ import { unstable_cache } from 'next/cache'
  * City-aware photo pipeline backed by Pexels.
  *
  * Mirrors category-photo.ts but returns a portrait-oriented URL string.
- * Falls back to null when PEXELS_API_KEY is missing or the request fails —
+ * Falls back to null when PEXELS_API_KEY is missing or the request fails  - 
  * callers are expected to substitute their own placeholder (e.g. /cities/<slug>.svg).
  */
 

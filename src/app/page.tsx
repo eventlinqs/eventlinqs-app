@@ -36,16 +36,16 @@ import {
 } from '@/components/features/home/section-skeletons'
 
 /**
- * Homepage — the visceral experience layer.
+ * Homepage - the visceral experience layer.
  *
  * Section order (manifest A.1.1):
  *   1. SiteHeader (sticky, above fold)
- *   2. Cinematic hero (above fold) — awaited inline
- *   3. Bento grid row 1 (above fold) — awaited inline
- *   4. This Week rail (below fold) — Suspense-streamed
- *   5. Cultural Picks (below fold) — Suspense-streamed (self-fetching)
- *   6. Live Vibe marquee (below fold) — Suspense-streamed
- *   7. By City rail (below fold) — Suspense-streamed (self-fetching)
+ *   2. Cinematic hero (above fold) - awaited inline
+ *   3. Bento grid row 1 (above fold) - awaited inline
+ *   4. This Week rail (below fold) - Suspense-streamed
+ *   5. Cultural Picks (below fold) - Suspense-streamed (self-fetching)
+ *   6. Live Vibe marquee (below fold) - Suspense-streamed
+ *   7. By City rail (below fold) - Suspense-streamed (self-fetching)
  *   8. For Organisers dark split (static, below fold)
  *   9. SiteFooter
  *
@@ -136,7 +136,7 @@ export default async function HomePage() {
   const todayStart = new Date()
   todayStart.setUTCHours(0, 0, 0, 0)
 
-  // Hero carousel scoring — top 5 soonest events, rank by recency + heat.
+  // Hero carousel scoring - top 5 soonest events, rank by recency + heat.
   const heroCandidateRaws = upcomingRawTyped.slice(0, 5)
   const scoredCandidates = heroCandidateRaws.map(r => {
     const tiers = r.ticket_tiers ?? []
@@ -157,7 +157,7 @@ export default async function HomePage() {
   const heroEventIds = topCandidates.map(c => c.raw.id)
   const userIdForSaved = session?.user?.id ?? null
 
-  // Phase 2 (parallel) — two independent queries run together instead of
+  // Phase 2 (parallel) - two independent queries run together instead of
   // stacked awaits. Aggregated orders query replaces 3 per-event count
   // queries for the hero carousel.
   const [soldTodayResult, savedRowsResult] = await Promise.all([
@@ -204,7 +204,7 @@ export default async function HomePage() {
       <SiteHeader />
 
       <main>
-        {/* 1. Cinematic hero — above fold, rendered inline */}
+        {/* 1. Cinematic hero - above fold, rendered inline */}
         <FeaturedEventHero
           eventSlides={heroEventSlides}
           highlightSlides={heroHighlightSlides}
@@ -212,7 +212,7 @@ export default async function HomePage() {
           uniqueCitiesCount={uniqueCitiesCount}
         />
 
-        {/* 2. Bento grid row 1 — above fold, rendered inline */}
+        {/* 2. Bento grid row 1 - above fold, rendered inline */}
         <section aria-label="Featured events" className={`bg-canvas ${SECTION_DEFAULT}`}>
           <div className={CONTAINER}>
             <div className="mb-4">
@@ -288,27 +288,27 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* 3. This Week rail — below fold, Suspense-streamed */}
+        {/* 3. This Week rail - below fold, Suspense-streamed */}
         <Suspense fallback={<ThisWeekSkeleton />}>
           <ThisWeekSection events={thisWeek} />
         </Suspense>
 
-        {/* 4. Cultural Picks — below fold, Suspense-streamed (self-fetching) */}
+        {/* 4. Cultural Picks - below fold, Suspense-streamed (self-fetching) */}
         <Suspense fallback={<CulturalPicksSkeleton />}>
           <CulturalPicksSection cityFilter={cityFilter} nowIso={nowIso} />
         </Suspense>
 
-        {/* 5. Live Vibe marquee — below fold, Suspense-streamed */}
+        {/* 5. Live Vibe marquee - below fold, Suspense-streamed */}
         <Suspense fallback={<LiveVibeSkeleton />}>
           <LiveVibeSection upcomingRaw={upcomingRawTyped} />
         </Suspense>
 
-        {/* 6. By City rail — below fold, Suspense-streamed (self-fetching) */}
+        {/* 6. By City rail - below fold, Suspense-streamed (self-fetching) */}
         <Suspense fallback={<CityRailSkeleton />}>
           <CityRailSection nowIso={nowIso} />
         </Suspense>
 
-        {/* 7. For Organisers — static, below fold */}
+        {/* 7. For Organisers - static, below fold */}
         <section aria-labelledby="organisers-heading" className={`bg-ink-950 ${SECTION_DEFAULT}`}>
           <div className={CONTAINER}>
             <div className="flex flex-col gap-12 lg:flex-row lg:items-center lg:gap-16">

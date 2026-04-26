@@ -222,7 +222,7 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
     }
   }
 
-  // Non-public state screens — gentle brand-aligned treatments.
+  // Non-public state screens - gentle brand-aligned treatments.
   if (event.status === 'cancelled') {
     return (
       <div className="min-h-screen bg-canvas">

@@ -107,7 +107,7 @@ export function SquadJoinPanel({
     )
   }
 
-  // 3. Current user already in squad and has paid — show "Pay your share" or status
+  // 3. Current user already in squad and has paid - show "Pay your share" or status
   if (currentUserMemberStatus === 'paid') {
     return (
       <div className="
@@ -128,7 +128,7 @@ export function SquadJoinPanel({
     )
   }
 
-  // 4. Current user already joined but not paid yet — show Pay CTA
+  // 4. Current user already joined but not paid yet - show Pay CTA
   if (currentUserMemberStatus === 'invited' && currentUserMemberId && !joined) {
     return (
       <div className="
@@ -150,7 +150,7 @@ export function SquadJoinPanel({
     )
   }
 
-  // 5. Not logged in — prompt login
+  // 5. Not logged in - prompt login
   if (!isLoggedIn && !showForm) {
     return (
       <div className="

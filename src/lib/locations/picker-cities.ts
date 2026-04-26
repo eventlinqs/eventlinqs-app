@@ -14,7 +14,7 @@ import {
  *
  * Shape returned groups Australia first (always the AU section of the
  * picker) and everything else grouped by country name (the "Global
- * diaspora cities" expander). No event counts — counts appear on the
+ * diaspora cities" expander). No event counts - counts appear on the
  * results page only (competitor-aligned with Ticketmaster, DICE,
  * Eventbrite).
  */
@@ -32,7 +32,7 @@ export type PickerCity = {
 export type PickerCityGroups = {
   australia: PickerCity[]
   internationalByCountry: Array<{ country: string; cities: PickerCity[] }>
-  /** Every valid picker slug, flattened — used for /events/browse/[city] validation. */
+  /** Every valid picker slug, flattened - used for /events/browse/[city] validation. */
   validSlugs: string[]
 }
 

@@ -1,12 +1,12 @@
 import type { EventMediaInput } from '@/lib/images/event-media'
 
 /**
- * Category highlight slides — used to pad the hero carousel when fewer than
+ * Category highlight slides - used to pad the hero carousel when fewer than
  * three qualifying events exist. Each slide routes to a category or curated
  * filter and uses Pexels-backed category media via getFeaturedHeroBackground.
  *
  * Order is meaningful: Afrobeats anchors, Free-weekend converts, Trending
- * captures FOMO — covers the three primary intents.
+ * captures FOMO - covers the three primary intents.
  */
 
 export interface CategoryHighlightSlide {

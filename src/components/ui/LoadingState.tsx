@@ -4,7 +4,7 @@ interface LoadingStateProps {
 }
 
 /**
- * LoadingState — skeleton pulse loader.
+ * LoadingState - skeleton pulse loader.
  *
  * Renders staggered-width skeleton bars to visually approximate
  * a loading text block. Uses the standard Tailwind `animate-pulse`.

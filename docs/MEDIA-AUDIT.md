@@ -45,7 +45,7 @@ This document is the **inventory**. The violations list is in `MEDIA-INCONSISTEN
 | File:Line | Element | Poster | autoPlay | preload | Notes |
 |---|---|---|---|---|---|
 | `src/components/ui/smart-media.tsx:92` | `<video>` (kind='video') | `media.poster` (often `/images/event-fallback-hero.svg`) | conditional, disabled in headless | `'auto'` if autoplay else `'none'` | muted, playsInline, loop |
-| `public/hero/hero-crowd.mp4` | self-hosted hero video asset | served by SmartMedia when category photo unavailable | — | — | **POSTER IS SVG → CAUSES NO_LCP** |
+| `public/hero/hero-crowd.mp4` | self-hosted hero video asset | served by SmartMedia when category photo unavailable | - | - | **POSTER IS SVG → CAUSES NO_LCP** |
 
 ### E. `<picture>` elements
 
@@ -62,10 +62,10 @@ images: {
   imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   minimumCacheTTL: 60,
   remotePatterns: [
-    'gndnldyfudbytbboxesk.supabase.co' (Supabase storage — organiser uploads),
+    'gndnldyfudbytbboxesk.supabase.co' (Supabase storage - organiser uploads),
     'picsum.photos' (seed-script placeholder; treated as "no cover" by isRealCover),
     'images.pexels.com' (category hero photos),
-    'videos.pexels.com' (declared but deliberately unused — see event-media.ts:141-144),
+    'videos.pexels.com' (declared but deliberately unused - see event-media.ts:141-144),
   ],
 }
 ```
@@ -87,7 +87,7 @@ public/
 │   ├── sydney.svg
 │   └── _fallback.svg
 ├── hero/
-│   └── hero-crowd.mp4          ← LCP fallback video (SVG poster — broken)
+│   └── hero-crowd.mp4          ← LCP fallback video (SVG poster - broken)
 ├── images/
 │   ├── event-fallback-hero.svg ← used as video poster (NOT LCP-eligible)
 │   └── event-fallback-thumb.svg
@@ -98,7 +98,7 @@ public/
 ├── file.svg / globe.svg / next.svg / vercel.svg / window.svg (defaults)
 ```
 
-**Missing:** No raster (JPEG/WebP/AVIF) hero fallback. Every fallback path terminates in an SVG, which is why `getFeaturedHeroBackground()` produces a video element with an SVG poster — the configuration that triggered NO_LCP in iter-0.
+**Missing:** No raster (JPEG/WebP/AVIF) hero fallback. Every fallback path terminates in an SVG, which is why `getFeaturedHeroBackground()` produces a video element with an SVG poster - the configuration that triggered NO_LCP in iter-0.
 
 ---
 
@@ -109,7 +109,7 @@ public/
 - Three possible kinds:
   1. `kind='video'` with `<video>` element + `poster` attribute (poster is `/images/event-fallback-hero.svg` in fallback path)
   2. `kind='still-kenburns'` with `<Image priority fetchPriority="high">` (Pexels category photo)
-  3. `kind='branded-placeholder'` — pure CSS gradient (NO image element at all)
+  3. `kind='branded-placeholder'` - pure CSS gradient (NO image element at all)
 - `getFeaturedHeroBackground` (event-media.ts:148) priority order:
   1. organiser `video_url`
   2. category Pexels photo (Ken Burns)
@@ -117,7 +117,7 @@ public/
 
 ### Event detail `/events/[slug]`
 - LCP candidate: `SmartMedia` with `priority={true}` and `placeholderChromeless={true}`
-- Resolved server-side via `getFeaturedEventMedia()` — same fall-through risk
+- Resolved server-side via `getFeaturedEventMedia()` - same fall-through risk
 
 ### `/events` listing
 - LCP candidate: first `<EventBentoTile>` or `<EventCard>` in grid (depends on layout)
@@ -132,19 +132,19 @@ public/
 
 ## 5. Supporting files reviewed
 
-- `src/lib/images/event-media.ts` — orchestrator that picks an `EventMedia` variant per event
-- `src/lib/images/category-photo.ts` — Pexels lookup for category fallback (referenced; not opened during audit)
-- `src/components/ui/smart-media.tsx` — universal renderer (carousel / kenburns / video / placeholder)
-- `src/components/ui/branded-placeholder.tsx` — decorative SVG-free gradient placeholder
+- `src/lib/images/event-media.ts` - orchestrator that picks an `EventMedia` variant per event
+- `src/lib/images/category-photo.ts` - Pexels lookup for category fallback (referenced; not opened during audit)
+- `src/components/ui/smart-media.tsx` - universal renderer (carousel / kenburns / video / placeholder)
+- `src/components/ui/branded-placeholder.tsx` - decorative SVG-free gradient placeholder
 
 ---
 
 ## 6. Pattern variations in use
 
 - **Quality tiers:** 70 (city rail), 75 (smart-media all kinds), 85 (event-card), default unset (live-vibe). Four distinct hardcodes, no central authority.
-- **Sizes hints:** five distinct strategies — full-viewport default in SmartMedia, fixed `280px` in marquee, responsive grid in EventCard, fixed-with-bp in CityRailTile, size-aware in EventBentoTile.
+- **Sizes hints:** five distinct strategies - full-viewport default in SmartMedia, fixed `280px` in marquee, responsive grid in EventCard, fixed-with-bp in CityRailTile, size-aware in EventBentoTile.
 - **Priority assignment:** SmartMedia decides internally based on parent `priority` and slide index; EventCard accepts an explicit prop; CityRailTile hardcodes `fetchPriority="low"`.
 - **Lazy loading:** never explicitly set on Next `<Image>` (default lazy except when `priority`); 4 raw `<img>` tags omit `loading="lazy"` entirely.
 - **Animation timings:** `opacity 900ms ease, transform 4500ms ease` (carousel), `transition-opacity duration-700` (slide fade), no shared variable.
-- **Video posters:** `media.poster` falls back to `/images/event-fallback-hero.svg` — single source of NO_LCP.
-- **Headless / audit-mode opt-out:** `document.body.dataset.headless === '1'` checks in SmartMedia disable autoplay and freeze the carousel — needs to be set by Lighthouse runner via `--extra-headers` or page setup script.
+- **Video posters:** `media.poster` falls back to `/images/event-fallback-hero.svg` - single source of NO_LCP.
+- **Headless / audit-mode opt-out:** `document.body.dataset.headless === '1'` checks in SmartMedia disable autoplay and freeze the carousel - needs to be set by Lighthouse runner via `--extra-headers` or page setup script.

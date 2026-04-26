@@ -14,7 +14,7 @@ export default async function DynamicPricingPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Load event — only columns that exist (no currency on events)
+  // Load event - only columns that exist (no currency on events)
   const { data: event, error: eventError } = await supabase
     .from('events')
     .select('id, title, organisation_id')

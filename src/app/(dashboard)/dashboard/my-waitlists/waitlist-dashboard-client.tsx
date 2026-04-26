@@ -40,7 +40,7 @@ export function WaitlistDashboardClient({ initialWaitlists }: Props) {
     if (!hasActiveWaiting) return
 
     const interval = setInterval(async () => {
-      // Refresh the full list — server action re-fetches from DB
+      // Refresh the full list - server action re-fetches from DB
       // This is simpler than polling individual positions and catches status changes
       router.refresh()
     }, 30_000)
@@ -48,7 +48,7 @@ export function WaitlistDashboardClient({ initialWaitlists }: Props) {
     return () => clearInterval(interval)
   }, [waitlists, router])
 
-  // Sync with server-refreshed props — when router.refresh() fires, Next.js
+  // Sync with server-refreshed props - when router.refresh() fires, Next.js
   // re-runs the server component and passes new initialWaitlists via props
   useEffect(() => {
     setWaitlists(initialWaitlists)

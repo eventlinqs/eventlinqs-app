@@ -84,7 +84,7 @@ export function ConfirmationActions(props: ConfirmationActionsProps) {
           url,
         })
       } catch {
-        // User cancelled share — do nothing
+        // User cancelled share - do nothing
       }
       return
     }
@@ -94,7 +94,7 @@ export function ConfirmationActions(props: ConfirmationActionsProps) {
       setCopied(true)
       setTimeout(() => setCopied(false), 2500)
     } catch {
-      // Clipboard API blocked — silently ignore
+      // Clipboard API blocked - silently ignore
     }
   }
 

@@ -1,12 +1,12 @@
 # Google OAuth Setup Checklist
 
-Follow these steps once to enable the **Continue with Google** button on the login and signup pages. The UI and Supabase client calls are already wired — this just turns on the provider.
+Follow these steps once to enable the **Continue with Google** button on the login and signup pages. The UI and Supabase client calls are already wired - this just turns on the provider.
 
 Estimated time: 10 minutes.
 
 ---
 
-## Part 1 — Google Cloud Console
+## Part 1 - Google Cloud Console
 
 1. Open https://console.cloud.google.com/ and pick or create a project (suggestion: `EventLinqs`).
 2. In the left menu go to **APIs & Services → OAuth consent screen**.
@@ -26,11 +26,11 @@ Estimated time: 10 minutes.
 10. Back in left menu go to **APIs & Services → Credentials**.
 11. Click **Create credentials → OAuth client ID**.
 12. Application type: **Web application**. Name: `EventLinqs Web`.
-13. **Authorised JavaScript origins** — add all of:
+13. **Authorised JavaScript origins** - add all of:
     - `https://eventlinqs.com`
     - `https://www.eventlinqs.com`
     - `http://localhost:3000`
-14. **Authorised redirect URIs** — add:
+14. **Authorised redirect URIs** - add:
     - `https://<your-project-ref>.supabase.co/auth/v1/callback`
 
     Replace `<your-project-ref>` with the ref shown in your Supabase project URL, e.g. `abcd1234.supabase.co`.
@@ -39,7 +39,7 @@ Estimated time: 10 minutes.
 
 ---
 
-## Part 2 — Supabase Dashboard
+## Part 2 - Supabase Dashboard
 
 1. Open https://supabase.com/dashboard and pick the EventLinqs project.
 2. Left menu → **Authentication → Providers**.
@@ -53,7 +53,7 @@ Estimated time: 10 minutes.
 
 ---
 
-## Part 3 — Verify URL settings in Supabase
+## Part 3 - Verify URL settings in Supabase
 
 Still in Supabase:
 
@@ -70,23 +70,23 @@ Still in Supabase:
 
 ---
 
-## Part 4 — Smoke test
+## Part 4 - Smoke test
 
 1. Locally: `npm run dev`, visit http://localhost:3000/login, click **Continue with Google**.
 2. You should be bounced to Google, see the EventLinqs consent screen, pick your account, and land back on `/dashboard` signed in.
-3. Repeat from **/signup** — same redirect behaviour.
+3. Repeat from **/signup** - same redirect behaviour.
 4. On production once deployed, repeat from `https://eventlinqs.com/login`.
 
 If the redirect fails with `redirect_uri_mismatch`, the URI in step 14 (Google Cloud) does not match what Supabase is sending. Copy the exact URI from the Google error page into Google Cloud.
 
 ---
 
-## Part 5 — Publish the Google OAuth app (when ready)
+## Part 5 - Publish the Google OAuth app (when ready)
 
 While the app is in **Testing** mode only the test users you added can sign in. Before launch:
 
 1. Back in Google Cloud → **OAuth consent screen**.
-2. Click **Publish app**. Google may ask for verification if you use any sensitive scopes (we do not — `email` and `profile` are non-sensitive), so publishing should be instant.
+2. Click **Publish app**. Google may ask for verification if you use any sensitive scopes (we do not - `email` and `profile` are non-sensitive), so publishing should be instant.
 
 ---
 

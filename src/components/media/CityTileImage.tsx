@@ -3,7 +3,7 @@ import { MEDIA_QUALITY } from './quality'
 import { MEDIA_SIZES } from './sizes'
 
 /**
- * CityTileImage — the only allowed surface for city-specific imagery
+ * CityTileImage - the only allowed surface for city-specific imagery
  * (rail tiles, city landing heroes, region selectors).
  *
  * Dual-mode:
@@ -12,7 +12,7 @@ import { MEDIA_SIZES } from './sizes'
  *     re-encode the SVG into a raster, defeating the point.
  *   - Remote raster: renders <Image> with rail sizes + rail quality.
  *
- * The component decides — callers do not. This way the `<img>` escape
+ * The component decides - callers do not. This way the `<img>` escape
  * hatch (and its eslint-disable annotation) lives in exactly one file.
  */
 

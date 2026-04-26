@@ -20,7 +20,7 @@ interface SiteHeaderClientProps {
 }
 
 /**
- * SiteHeaderClient — sticky top navigation bar client inner.
+ * SiteHeaderClient - sticky top navigation bar client inner.
  *
  * Desktop (md+):
  *   Logo left · Nav centre · LocationPicker + Sign in + Get Started right
@@ -126,10 +126,10 @@ export function SiteHeaderClient({ location, cities }: SiteHeaderClientProps) {
             ))}
           </nav>
 
-          {/* Desktop search — Ticketmaster pill, centred */}
+          {/* Desktop search - Ticketmaster pill, centred */}
           <NavSearch variant="desktop" />
 
-          {/* Right side — desktop CTAs + mobile hamburger */}
+          {/* Right side - desktop CTAs + mobile hamburger */}
           <div className="flex items-center gap-3 shrink-0 ml-auto md:ml-0">
             {/* Desktop location picker */}
             <div className="hidden md:block">
@@ -181,7 +181,7 @@ export function SiteHeaderClient({ location, cities }: SiteHeaderClientProps) {
 
         </div>
 
-        {/* Mobile search — full-width second row below the nav */}
+        {/* Mobile search - full-width second row below the nav */}
         <div className="md:hidden border-t border-ink-100 bg-white/95 px-4 py-2.5">
           <NavSearch variant="mobile" />
         </div>

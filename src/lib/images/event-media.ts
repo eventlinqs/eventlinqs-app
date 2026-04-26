@@ -1,7 +1,7 @@
 import { getCategoryPhoto } from './category-photo'
 
 // M6+: add in-app curated image library for organisers. Until then, branded
-// placeholder is the only fallback in tile contexts — no Pexels stock.
+// placeholder is the only fallback in tile contexts - no Pexels stock.
 
 // picsum.photos is a seed-script placeholder, not real imagery. Treat it as
 // "no cover" so the tile falls through to category Pexels / branded SVG.
@@ -131,7 +131,7 @@ export async function getFeaturedEventMedia(event: EventMediaInput): Promise<Eve
  *
  * Contract: `image` is ALWAYS a raster URL (AVIF/JPEG/WebP). The W3C
  * LargestContentfulPaint spec excludes SVG, so the hero LCP layer must
- * never receive an SVG — that is what produced the iter-0 NO_LCP error.
+ * never receive an SVG - that is what produced the iter-0 NO_LCP error.
  *
  * Priority:
  *   1. organiser-uploaded video_url → ambient overlay; raster poster comes
@@ -140,7 +140,7 @@ export async function getFeaturedEventMedia(event: EventMediaInput): Promise<Eve
  *   3. Pre-generated category hero raster from /images/hero/{slug}.jpg
  *
  * Pexels stills go through /_next/image so they look same-origin and carry
- * no cookies. Pexels VIDEOS are deliberately skipped — their Cloudflare-
+ * no cookies. Pexels VIDEOS are deliberately skipped - their Cloudflare-
  * fronted CDN sets `_cfuvid` on <video> requests and Lighthouse flags it
  * as third-party tracking, dropping Best Practices to 77.
  */
@@ -149,7 +149,7 @@ export interface HeroBackgroundMedia {
   image: string
   /** Alt text for the hero image. */
   alt: string
-  /** Optional ambient video — overlay only, played after LCP commits. */
+  /** Optional ambient video - overlay only, played after LCP commits. */
   videoSrc?: string
   /** When true, ken-burns scale runs on the post-LCP ambient layer. */
   kenBurns?: boolean
@@ -158,7 +158,7 @@ export interface HeroBackgroundMedia {
 const HERO_RASTER_DIR = '/images/hero'
 
 // Slugs we have on disk (see scripts/fetch-hero-rasters.mjs). Anything not in
-// this set falls back to the canonical "afrobeats" raster — chosen because
+// this set falls back to the canonical "afrobeats" raster - chosen because
 // the multicultural-festival shot reads as "the platform" rather than as any
 // one category.
 const HERO_RASTER_SLUGS = new Set([

@@ -35,7 +35,7 @@
   --header-height: 4rem;
 }
 
-/* ─── Tailwind v4 theme block — all design system tokens ─────────────────── */
+/* ─── Tailwind v4 theme block - all design system tokens ─────────────────── */
 @theme inline {
   /* Canvas / background */
   --color-background: var(--background);
@@ -78,12 +78,12 @@
   --color-error:   #DC2626;
   --color-info:    #0EA5E9;
 
-  /* ── Typography — font families ── */
+  /* ── Typography - font families ── */
   --font-display: var(--font-manrope), system-ui, -apple-system, sans-serif;
   --font-body:    var(--font-inter),   system-ui, -apple-system, sans-serif;
   --font-mono:    'JetBrains Mono', ui-monospace, monospace;
 
-  /* ── Fluid type scale — clamp(mobile, fluid, desktop) ── */
+  /* ── Fluid type scale - clamp(mobile, fluid, desktop) ── */
   --text-display-3xl: clamp(4rem,   8vw,   6.5rem);
   --text-display-2xl: clamp(3.5rem, 6vw,   5.5rem);
   --text-display-xl:  clamp(2.75rem,4.5vw, 4rem);
@@ -96,7 +96,7 @@
   --text-body-sm:     0.875rem;
   --text-caption:     0.75rem;
 
-  /* ── Spacing — 4px grid ── */
+  /* ── Spacing - 4px grid ── */
   --space-1:  0.25rem;   /* 4px  */
   --space-2:  0.5rem;    /* 8px  */
   --space-3:  0.75rem;   /* 12px */
@@ -124,7 +124,7 @@ body {
   font-family: var(--font-body);
 }
 
-/* ─── WCAG 2.2 AA focus indicator — gold, keyboard-only ─────────────────── */
+/* ─── WCAG 2.2 AA focus indicator - gold, keyboard-only ─────────────────── */
 :focus-visible {
   outline: 2px solid var(--color-gold-400);
   outline-offset: 2px;
@@ -213,7 +213,7 @@ body[data-loaded="1"] .animate-pulse {
   animation: fade-rise 600ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)) both;
 }
 
-/* Tile hover lift helper — used on bento tiles + card surfaces. */
+/* Tile hover lift helper - used on bento tiles + card surfaces. */
 .tile-lift {
   transition: transform 320ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)),
               box-shadow 320ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)),

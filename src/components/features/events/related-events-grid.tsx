@@ -2,7 +2,7 @@ import { EventCard } from './event-card'
 import type { EventCardData } from './event-card'
 
 /**
- * RelatedEventsGrid — 4-card grid surfaced at the bottom of the event
+ * RelatedEventsGrid - 4-card grid surfaced at the bottom of the event
  * detail page. Parent supplies a pre-filtered list (same category or
  * same organiser or same city, upcoming order).
  */

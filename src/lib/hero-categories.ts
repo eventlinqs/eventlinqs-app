@@ -1,9 +1,9 @@
 /**
- * hero-categories.ts — Tier-1 category data model.
+ * hero-categories.ts - Tier-1 category data model.
  *
  * Two-tier category architecture:
- *   Tier 1 — Hero categories: dedicated /categories/[slug] landing pages.
- *   Tier 2 — Filter-only categories: /events?category=[slug], no landing page.
+ *   Tier 1 - Hero categories: dedicated /categories/[slug] landing pages.
+ *   Tier 2 - Filter-only categories: /events?category=[slug], no landing page.
  *
  * This file owns all Tier-1 content. It is the single source of truth for
  * hero category copy, metadata, and SEO keywords.

@@ -5,20 +5,20 @@ import { usePathname } from 'next/navigation'
 import { Home, CalendarDays, Ticket, User } from 'lucide-react'
 
 /**
- * Mobile bottom tab bar — visible on <768px, hidden on md+.
+ * Mobile bottom tab bar - visible on <768px, hidden on md+.
  *
  * Benchmark:
- *   Ticketmaster: Home / Search / My Tickets / Profile — fills icon on active, app-store style
- *   Eventbrite:   Browse / Following / Tickets / Account — accent underline + colour on active
- *   DICE:         Discover / Search / Tickets / Profile — high contrast black background
+ *   Ticketmaster: Home / Search / My Tickets / Profile - fills icon on active, app-store style
+ *   Eventbrite:   Browse / Following / Tickets / Account - accent underline + colour on active
+ *   DICE:         Discover / Search / Tickets / Profile - high contrast black background
  *
  * EventLinqs exceeds all three:
  *   - Larger touch targets (flex-1 full height = full column width, min 44px)
  *   - Safe-area padding for Dynamic Island / notch devices
  *   - Heavier stroke on active icon instead of separate filled asset (no icon duplication)
- *   - Hidden on checkout (distraction-free payment) — DICE doesn't do this
+ *   - Hidden on checkout (distraction-free payment) - DICE doesn't do this
  *   - Auth-aware destination: unauthenticated taps on Tickets/Account redirect to login
- *     with redirect param, then return to intended page — TM/EB/DICE require re-navigation
+ *     with redirect param, then return to intended page - TM/EB/DICE require re-navigation
  */
 
 // Routes where the bottom nav must NOT render

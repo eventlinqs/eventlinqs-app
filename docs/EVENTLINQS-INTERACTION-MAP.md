@@ -1,4 +1,4 @@
-# EventLinqs Homepage — Interaction Map
+# EventLinqs Homepage - Interaction Map
 
 > **Purpose:** for every clickable / interactive element on the target homepage, this document specifies: what the user sees, what the click does, what state transitions occur, and what happens in every edge case. This is the acceptance test document. When Claude Code builds a component, it must satisfy every interaction listed here.
 
@@ -12,11 +12,11 @@
 - **No dead ends.** Every click takes the user somewhere useful. If a feature isn't built yet, the click shows a "Coming in May" toast, not silence.
 - **Loading states are never blank screens.** Skeleton loaders for cards, pulse animations for text, never a spinner on an empty page.
 - **Error states are never generic.** "Something went wrong" is forbidden. Always say what happened and offer a retry.
-- **Nothing requires JavaScript to render initial content.** Every section is SSR/RSC — SEO works, first paint is fast.
+- **Nothing requires JavaScript to render initial content.** Every section is SSR/RSC - SEO works, first paint is fast.
 
 ---
 
-## 1 — Nav bar interactions
+## 1 - Nav bar interactions
 
 ### 1.1 Logo (`EVENTLINQS.`)
 - **Click:** navigate to `/`
@@ -41,37 +41,37 @@
 - **Visual:** gold pin icon + city name + down chevron signals dropdown
 - **Modal content:** search input at top, list of 14 cities (Melbourne, Sydney, Brisbane, Perth, Adelaide, Auckland, London, Manchester, Toronto, New York, Houston, Atlanta, Lagos, Accra), "Detect my location" button
 - **On city select:** modal closes with 200ms fade, pill text updates to new city, page data refetches for new city, cookie `el_location` updates
-- **Edge case — location not detected:** pill defaults to "Melbourne" with lighter colour + tooltip "Set your city for personalised events"
-- **Edge case — no events in chosen city:** rail sections show "No events in [city] yet" with CTA "Be the first to host in [city]" + "Browse events in other cities" link
+- **Edge case - location not detected:** pill defaults to "Melbourne" with lighter colour + tooltip "Set your city for personalised events"
+- **Edge case - no events in chosen city:** rail sections show "No events in [city] yet" with CTA "Be the first to host in [city]" + "Browse events in other cities" link
 
 ### 1.5 "Sign in" ghost link
 - **Click:** navigate to `/login`
 - **Hover:** text colour transitions ink-700 → gold-700
-- **Edge case — already logged in:** the "Sign in" link is replaced with the user's avatar + initials, clicking opens account menu (Dashboard, My tickets, My squads, Sign out)
+- **Edge case - already logged in:** the "Sign in" link is replaced with the user's avatar + initials, clicking opens account menu (Dashboard, My tickets, My squads, Sign out)
 
 ### 1.6 "Get started" gold button
 - **Click:** navigate to `/signup`
 - **Hover:** bg gold-500 → gold-400, translate-y -1px, gold-tinted shadow grows
 - **Active/pressed:** scale(0.98)
-- **Edge case — already logged in:** button changes to "Dashboard" and navigates to `/dashboard`
+- **Edge case - already logged in:** button changes to "Dashboard" and navigates to `/dashboard`
 
 ---
 
-## 2 — Hero interactions
+## 2 - Hero interactions
 
 ### 2.1 Background video / Ken Burns still
-- **Not interactive** — decorative
+- **Not interactive** - decorative
 - **Behaviour:** autoplay muted loop (video) OR 24-second Ken Burns zoom (still)
 - **Prefers-reduced-motion:** video still plays (no animation); Ken Burns disables scale animation
 - **Source priority:** (1) featured event's organiser-uploaded video, (2) Pexels category video for featured event category, (3) curated crowd still + Ken Burns
 - **Never uses:** organiser's cover image as hero background
 
 ### 2.2 "Made for the diaspora" eyebrow pill
-- **Not interactive** — brand decoration only
+- **Not interactive** - brand decoration only
 
 ### 2.3 H1 "Where the culture gathers."
 - **Not interactive**
-- **Typography:** `clamp(3.5rem, 8vw, 6.5rem)` — 56px mobile, 104px desktop
+- **Typography:** `clamp(3.5rem, 8vw, 6.5rem)` - 56px mobile, 104px desktop
 - **Gold accent:** "culture" is `text-gold-400`
 - **Mobile behaviour:** sits above the ribbon card (which drops below subcopy)
 
@@ -79,8 +79,8 @@
 - **Click:** navigate to `/events` (implicit: "show me all live events")
 - **Hover:** subtle underline on the count numbers
 - **Data source:** live count of events where `status='published'` AND `visibility='public'` AND `start_date >= now`
-- **Edge case — 0 events:** strip hides entirely (never show "0 events live now")
-- **Edge case — < 10 events:** strip shows "[N] events live now · [M] cities" and drops "This week" (too granular to be impressive at low counts)
+- **Edge case - 0 events:** strip hides entirely (never show "0 events live now")
+- **Edge case - < 10 events:** strip shows "[N] events live now · [M] cities" and drops "This week" (too granular to be impressive at low counts)
 
 ### 2.5 "Get tickets" gold CTA
 - **Click:** if featured event exists → `/events/[featuredEvent.slug]`; else → `/events`
@@ -95,16 +95,16 @@
 - **Click anywhere on card body:** `/events/[featuredEvent.slug]`
 - **Click "View event →" CTA specifically:** same destination, card-level click extends hit area
 - **Hover:** no lift (fixed position), the CTA button inside hovers normally (gold-500 → gold-400)
-- **Edge case — no featured event:** card hides entirely; H1 + subcopy + live count + CTAs expand to fill available space
-- **Edge case — featured event sold out:** ribbon becomes `Sold out` state with `View event` replaced by `Join waitlist` (coral outline CTA)
-- **Coral pulse dot:** shows count of tickets sold *today* — if 0, dot hides and "tickets sold today" line removed
+- **Edge case - no featured event:** card hides entirely; H1 + subcopy + live count + CTAs expand to fill available space
+- **Edge case - featured event sold out:** ribbon becomes `Sold out` state with `View event` replaced by `Join waitlist` (coral outline CTA)
+- **Coral pulse dot:** shows count of tickets sold *today* - if 0, dot hides and "tickets sold today" line removed
 - **Mobile:** card drops full-width below the CTAs, becomes a stacked block
 
 ---
 
-## 3 — Bento grid interactions
+## 3 - Bento grid interactions
 
-### 3.1 Event tile (any size — hero, wide, standard, compact)
+### 3.1 Event tile (any size - hero, wide, standard, compact)
 - **Click anywhere on tile:** navigate to `/events/[slug]`
 - **Hover:** tile lifts 4px (translate-y -4), shadow grows, inner image scales 108%
 - **Hover on tiles with video:** after 500ms hover delay, SmartMedia swaps image → video, autoplay muted. On mouse leave, video pauses, currentTime resets to 0. Uses existing `kind: 'video'` + `hovered` state in SmartMedia.
@@ -112,14 +112,14 @@
 - **Mobile tap-to-open video preview:** long-press (500ms) on tile plays video inline; release exits
 
 ### 3.2 Category pill (e.g. "Music", "Nightlife")
-- **Click propagation:** pill is `pointer-events: none` — click passes through to tile (tile navigates to event, not to category). Category filtering happens from `/events` page, not from homepage pills.
+- **Click propagation:** pill is `pointer-events: none` - click passes through to tile (tile navigates to event, not to category). Category filtering happens from `/events` page, not from homepage pills.
 
 ### 3.3 "Featured" gold pill (hero tile only)
 - **Not interactive**
 - **Logic:** only appears on the hero tile. Never on other tiles.
 
 ### 3.4 "Trending" coral pill (on wide tile when applicable)
-- **Click:** `/events?sort=trending` (optional — can be non-interactive)
+- **Click:** `/events?sort=trending` (optional - can be non-interactive)
 - **Logic:** appears when event's `percent_sold > 70%`
 
 ### 3.5 Heart save button (top-right of every tile)
@@ -130,9 +130,9 @@
   - Optimistic UI update (heart fills immediately, reverts on API failure)
   - Toast "Saved to your list" with "View saved" action link
 - **Click on already-saved:** removes save, heart goes empty, toast "Removed from saved"
-- **Event propagation:** `e.preventDefault()` + `e.stopPropagation()` — clicking heart does NOT navigate to event
+- **Event propagation:** `e.preventDefault()` + `e.stopPropagation()` - clicking heart does NOT navigate to event
 - **Keyboard:** Tab-focusable, Enter/Space toggle. aria-pressed reflects state, aria-label is "Save [event title]" or "Remove [event title] from saved"
-- **Edge case — heart spam click:** debounced to 300ms between calls
+- **Edge case - heart spam click:** debounced to 300ms between calls
 
 ### 3.6 Free Weekend tile (brand gradient, no image)
 - **Click:** navigate to `/events?price=free` (filter)
@@ -141,26 +141,26 @@
 
 ---
 
-## 4 — Section header (used across all sections)
+## 4 - Section header (used across all sections)
 
 ### 4.1 Eyebrow text (e.g. "This week", "By city")
-- **Not interactive** — always gold-600, tracking-widest, uppercase caption
+- **Not interactive** - always gold-600, tracking-widest, uppercase caption
 
 ### 4.2 Section title (H2, e.g. "What's happening near you")
 - **Not interactive**
 
 ### 4.3 "View all events →" / "Explore culture →" section link (top-right)
-- **Click:** navigate to section-appropriate URL — `/events`, `/events?date=week`, `/events?date=weekend&price=free`, `/events?sort=trending`, etc.
+- **Click:** navigate to section-appropriate URL - `/events`, `/events?date=week`, `/events?date=weekend&price=free`, `/events?sort=trending`, etc.
 - **Hover:** gold-600 → gold-700
 - **Arrow:** slides right 2px on hover
 
 ---
 
-## 5 — Horizontal rail interactions (applies to This Week, Cultural Picks, By City, Fans also viewed)
+## 5 - Horizontal rail interactions (applies to This Week, Cultural Picks, By City, Fans also viewed)
 
 ### 5.1 Rail itself (scroll container)
 - **Touch/trackpad:** native horizontal scroll with CSS scroll-snap
-- **Mouse drag:** click-drag not supported (conflicts with card click) — mouse users use arrow buttons instead
+- **Mouse drag:** click-drag not supported (conflicts with card click) - mouse users use arrow buttons instead
 - **Keyboard:** arrow keys Left/Right scroll the rail one card-width at a time when rail has keyboard focus. `Home` key scrolls to start. `End` key scrolls to last card.
 
 ### 5.2 Scroll progress bar (bottom of rail)
@@ -173,19 +173,19 @@
 - **Hover:** border ink-200 → gold-500, chevron colour ink-700 → gold-600
 - **Disabled state:** left arrow at scrollLeft=0 → opacity 0.4, cursor not-allowed. Right arrow at scrollLeft=max → same.
 - **Keyboard:** Tab-focusable, Enter/Space activates
-- **Mobile:** arrows hidden (`display: none` below 640px) — swipe only
+- **Mobile:** arrows hidden (`display: none` below 640px) - swipe only
 
 ### 5.4 Rail card (any card in any rail)
 - **Click anywhere on card body:** navigate to `/events/[slug]`
 - **Hover:** lift translate-y -4, shadow grows, inner image scales 106%
 - **Heart button:** top-right on image. Same behaviour as bento heart button (Section 3.5).
 - **Focus:** gold-400 ring 2px
-- **Edge case — sold out:** "Selling fast" urgency tag replaced with "Sold out" in ink-500. Card still clickable; leads to event detail which shows sold-out UX.
-- **Edge case — free event:** price row shows "Free" in gold-600 (instead of "From AUD $X")
+- **Edge case - sold out:** "Selling fast" urgency tag replaced with "Sold out" in ink-500. Card still clickable; leads to event detail which shows sold-out UX.
+- **Edge case - free event:** price row shows "Free" in gold-600 (instead of "From AUD $X")
 
 ---
 
-## 6 — Cultural Picks tab interactions
+## 6 - Cultural Picks tab interactions
 
 ### 6.1 Tab buttons (All, Afrobeats, Amapiano, Gospel, Owambe, Caribbean)
 - **Click inactive tab:** 200ms opacity crossfade of rail content, URL updates to `#culture-[slug]`, tab pill fills gold-500
@@ -196,76 +196,76 @@
 
 ### 6.2 Rail beneath tabs
 - **Updates based on active tab:** filters events by `tags` array containing the tab's slug
-- **Edge case — 0 events for tab:** tab hides entirely (does not render). If All is empty AND no tabs remain, entire Cultural Picks section hides.
-- **Edge case — network error loading:** rail shows 6 skeleton cards with pulse animation; after 10s failed retry, empty state with "Try again" button
+- **Edge case - 0 events for tab:** tab hides entirely (does not render). If All is empty AND no tabs remain, entire Cultural Picks section hides.
+- **Edge case - network error loading:** rail shows 6 skeleton cards with pulse animation; after 10s failed retry, empty state with "Try again" button
 
 ---
 
-## 7 — Live Vibe marquee interactions
+## 7 - Live Vibe marquee interactions
 
 ### 7.1 Marquee strip
 - **Hover on any part:** animation pauses (CSS `animation-play-state: paused`)
 - **Keyboard focus within:** animation pauses
 - **Reduced motion:** animation disabled entirely (`@media (prefers-reduced-motion: reduce)`)
-- **Mobile tap-to-pause:** not implemented — users can scroll naturally; marquee continues
+- **Mobile tap-to-pause:** not implemented - users can scroll naturally; marquee continues
 
 ### 7.2 Individual vibe items (each link)
 - **Click:** navigate to the linked event's `/events/[slug]`
 - **Hover:** colour transitions white/90 → gold-400
 - **Focus:** gold-400 colour + gold-400 underline
-- **Edge case — no signals generated:** marquee renders fallback signals ("New events dropping every week in Melbourne, Sydney, London and Lagos") — never renders empty
-- **Edge case — < 4 signals:** signals array is duplicated 3x instead of 2x to maintain marquee rhythm
+- **Edge case - no signals generated:** marquee renders fallback signals ("New events dropping every week in Melbourne, Sydney, London and Lagos") - never renders empty
+- **Edge case - < 4 signals:** signals array is duplicated 3x instead of 2x to maintain marquee rhythm
 
 ---
 
-## 8 — By City carousel interactions
+## 8 - By City carousel interactions
 
 ### 8.1 City tile
 - **Click:** navigate to `/events?city=[citySlug]`
 - **Hover:** tile lifts translate-y -4, shadow grows, inner image scales 110%
 - **Focus:** gold-400 ring
-- **Edge case — 0 events in city:** count line reads "Coming soon" instead of "0 upcoming events" — tile still clickable but destination shows empty-city state with "Be the first to host in [city]" CTA
+- **Edge case - 0 events in city:** count line reads "Coming soon" instead of "0 upcoming events" - tile still clickable but destination shows empty-city state with "Be the first to host in [city]" CTA
 
 ### 8.2 Rail mechanics
 - **Identical to Section 5** (scroll, arrow buttons, progress bar, keyboard)
 
 ---
 
-## 9 — Social proof interactions
+## 9 - Social proof interactions
 
 ### 9.1 Organiser logo wordmark
 - **Click:** navigate to `/organisers/[organiserSlug]` (public profile page with their events)
 - **Hover:** opacity 0.7 → 1.0, text white
 - **Focus:** 2px gold-400 ring outlined around the wordmark bounds
-- **Edge case — fewer than 6 organisers have logos:** entire section hides (rendered as `return null`)
+- **Edge case - fewer than 6 organisers have logos:** entire section hides (rendered as `return null`)
 
 ---
 
-## 10 — For Organisers section interactions
+## 10 - For Organisers section interactions
 
 ### 10.1 "Start selling tickets" gold CTA
 - **Click:** `/organisers/signup`
 - **Hover:** gold-500 → gold-400, translate-y -1, shadow grows
-- **Edge case — already logged in as organiser:** CTA text changes to "Create event", navigates to `/dashboard/events/create`
+- **Edge case - already logged in as organiser:** CTA text changes to "Create event", navigates to `/dashboard/events/create`
 
 ### 10.2 "View pricing" outline CTA
 - **Click:** `/pricing`
 - **Hover:** border white/20 → white/40
 
 ### 10.3 Feature bullet rows (the 5 checkmarked items)
-- **Not interactive** — read-only
+- **Not interactive** - read-only
 
 ### 10.4 Stat cards (0%, 2-tap, 5+, 24/7)
-- **Not interactive** — read-only. Could become clickable in v2 (each stat deep-links to a pricing-explainer anchor), but not required for M4.5.
+- **Not interactive** - read-only. Could become clickable in v2 (each stat deep-links to a pricing-explainer anchor), but not required for M4.5.
 
 ### 10.5 Testimonial card
 - **Click:** navigate to `/events/[testimonialEvent.slug]` (the event referenced in the quote)
 - **Hover:** subtle border-left width 3 → 4px, text slightly brightens
-- **Edge case — no testimonial available:** hide card entirely
+- **Edge case - no testimonial available:** hide card entirely
 
 ---
 
-## 11 — Footer interactions
+## 11 - Footer interactions
 
 ### 11.1 Logo
 - **Click:** `/`
@@ -285,11 +285,11 @@
 
 ---
 
-## 12 — Global error & edge-case states
+## 12 - Global error & edge-case states
 
 ### 12.1 Page-level data fetch failure
 - **Behaviour:** each section handles its own fetch independently. A failure in "This Week" rail does NOT prevent the Hero, Bento, or Cultural Picks from rendering.
-- **Visual:** failing section shows minimal error state — small text "We couldn't load this right now. Refresh to try again." in ink-500, with retry button in gold-outline style
+- **Visual:** failing section shows minimal error state - small text "We couldn't load this right now. Refresh to try again." in ink-500, with retry button in gold-outline style
 - **Never:** a blank page. Never a full-page error.
 
 ### 12.2 Slow connection (throttled 3G)
@@ -299,11 +299,11 @@
 
 ### 12.3 User has JavaScript disabled
 - **What works:** all SSR content visible (hero, bento, all rails, text). All navigation links work.
-- **What breaks:** heart save buttons (shown but clicking does nothing — noscript fallback: links to `/login` with toast "Save events after signing in"), horizontal rail arrow buttons (hidden via `noscript` CSS — users scroll natively), tab interactions (tabs become `<a href="#culture-afrobeats">` anchor links with SSR-rendered all-content-visible fallback).
+- **What breaks:** heart save buttons (shown but clicking does nothing - noscript fallback: links to `/login` with toast "Save events after signing in"), horizontal rail arrow buttons (hidden via `noscript` CSS - users scroll natively), tab interactions (tabs become `<a href="#culture-afrobeats">` anchor links with SSR-rendered all-content-visible fallback).
 - **Target:** entire homepage is browsable and events purchasable with JS off.
 
 ### 12.4 Screen reader user
-- **Every image has alt text** (auto-generated from event title + " — " + category if not provided)
+- **Every image has alt text** (auto-generated from event title + " - " + category if not provided)
 - **Every interactive element has accessible name** (either visible text or aria-label)
 - **Section landmarks:** `<header>`, `<main>`, `<nav>`, `<footer>`, `<section aria-labelledby="...">`
 - **Skip link:** "Skip to main content" hidden link at top of DOM, visible on Tab focus
@@ -320,7 +320,7 @@
 - **Footer:** columns stack vertical.
 
 ### 12.6 User at 1920px+ ultra-wide
-- **Container:** `max-width: 1280px` remains — content never exceeds this width. Outer margins grow.
+- **Container:** `max-width: 1280px` remains - content never exceeds this width. Outer margins grow.
 - **Background sections (ink-900, gradient):** full-bleed. Content contained at 1280px centred.
 
 ### 12.7 User sees a "Coming soon" or not-yet-built feature
@@ -329,7 +329,7 @@
 
 ---
 
-## 13 — Performance budgets
+## 13 - Performance budgets
 
 | Metric | Target | Budget |
 |---|---|---|
@@ -344,7 +344,7 @@
 
 ---
 
-## 14 — Acceptance criteria
+## 14 - Acceptance criteria
 
 The homepage is "done" when:
 
@@ -352,14 +352,14 @@ The homepage is "done" when:
 2. Every edge case in Section 12 is handled gracefully
 3. Every button/link has a visible hover, focus, and active state
 4. No dashed-border empty boxes exist anywhere
-5. No stale Tailwind tokens (bg-gray-50, bg-blue-*, etc.) — only design system tokens
+5. No stale Tailwind tokens (bg-gray-50, bg-blue-*, etc.) - only design system tokens
 6. No unicode escapes rendered as literal text
 7. No em-dashes or en-dashes as punctuation in copy
 8. No exclamation marks anywhere
 9. Australian English throughout (organiser, favourite, colour)
 10. Gold appears on < 5% of visible viewport at any scroll position
 11. Every horizontal rail has a scroll progress bar
-12. Every section either shows real content or hides entirely — never a dashed empty state
+12. Every section either shows real content or hides entirely - never a dashed empty state
 13. Lighthouse scores: Accessibility ≥ 95, Best Practices ≥ 95, SEO ≥ 95, Performance ≥ 85 on mobile
 14. `npm run lint` passes, `npm run build` passes, `npx tsc --noEmit` passes
 

@@ -191,11 +191,11 @@ export class PaymentCalculator {
     let fees_shown_to_buyer: number
 
     if (fee_pass_type === 'absorb') {
-      // Organiser absorbs fees — buyer just pays subtotal + tax - discount
+      // Organiser absorbs fees - buyer just pays subtotal + tax - discount
       total_cents = discounted_subtotal + tax_cents
       fees_shown_to_buyer = 0
     } else {
-      // pass_to_buyer — fees added on top
+      // pass_to_buyer - fees added on top
       total_cents = discounted_subtotal + platform_fee_cents + payment_processing_fee_cents + tax_cents
       fees_shown_to_buyer = platform_fee_cents + payment_processing_fee_cents
     }

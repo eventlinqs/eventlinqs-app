@@ -72,7 +72,7 @@ function PaymentForm({
       setPayError(error.message ?? 'Payment failed. Please try again.')
       setPaying(false)
     }
-    // On success, Stripe redirects to return_url — no code runs here
+    // On success, Stripe redirects to return_url - no code runs here
   }
 
   return (
@@ -173,7 +173,7 @@ export function CheckoutForm({
     }
     if (!buyerName.trim()) return 'Please enter your name'
 
-    // Seat mode: buyer info is used for all seats — no per-seat attendee required
+    // Seat mode: buyer info is used for all seats - no per-seat attendee required
     if (seatMode) return null
 
     const totalTickets = ticketSlots.reduce((s, t) => s + t.quantity, 0)
@@ -390,7 +390,7 @@ export function CheckoutForm({
                 </div>
               )}
 
-              {/* For free events — direct register button */}
+              {/* For free events - direct register button */}
               {fees.total_cents === 0 ? (
                 <button
                   type="submit"

@@ -26,7 +26,7 @@ function getServerReducedMotion(): boolean {
 }
 
 /**
- * HeroCarouselClient — rotating stage for the cinematic homepage hero.
+ * HeroCarouselClient - rotating stage for the cinematic homepage hero.
  *
  * - Auto-advance every 7s; pauses on hover, focus-within, or prefers-reduced-motion.
  * - Cross-fades backgrounds; swaps foreground (eyebrow + CTA + card) per slide.
@@ -131,7 +131,7 @@ export function HeroCarouselClient({
       }}
       onKeyDown={onKeyDown}
     >
-      {/* Slide 0 is always the base layer — rendered as a bare wrapper with
+      {/* Slide 0 is always the base layer - rendered as a bare wrapper with
           NO opacity, NO transition class, NO inline style. Lighthouse's LCP
           observer needs a stable, unambiguous candidate on initial paint;
           any `transition-opacity` or inline `opacity` on an ancestor of the
@@ -161,7 +161,7 @@ export function HeroCarouselClient({
         })}
       </div>
 
-      {/* Radial darkening behind the ribbon card — floats card regardless of active media */}
+      {/* Radial darkening behind the ribbon card - floats card regardless of active media */}
       <div
         className="absolute inset-0 pointer-events-none hidden lg:block"
         style={{
@@ -256,7 +256,7 @@ export function HeroCarouselClient({
               ))}
             </div>
 
-            {/* Prev / next arrows — md+ only */}
+            {/* Prev / next arrows - md+ only */}
             <button
               type="button"
               onClick={goPrev}

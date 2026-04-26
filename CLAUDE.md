@@ -1,4 +1,4 @@
-# CLAUDE.md — EventLinqs Project Rules
+# CLAUDE.md - EventLinqs Project Rules
 
 ## What Is This Project
 
@@ -30,15 +30,15 @@ EventLinqs is a global event ticketing, discovery, and social experience platfor
 ## Brand Colours (Tailwind Config)
 
 ```
-primary: '#1A1A2E'      // Deep Navy — headers, primary buttons, navigation
-accent: '#4A90D9'        // Electric Blue — links, highlights, interactive elements
-success: '#10B981'       // Emerald Green — confirmations, valid scans
-warning: '#F59E0B'       // Amber — warnings, VIP scan, attention states
-error: '#EF4444'         // Red — errors, invalid scans, destructive actions
-background: '#FAFAFA'    // Off-White — page backgrounds
-surface: '#FFFFFF'       // White — cards, modals, input fields
-textPrimary: '#1A1A2E'  // Near Black — body text, headings
-textSecondary: '#6B7280' // Grey — subtitles, helper text, metadata
+primary: '#1A1A2E'      // Deep Navy - headers, primary buttons, navigation
+accent: '#4A90D9'        // Electric Blue - links, highlights, interactive elements
+success: '#10B981'       // Emerald Green - confirmations, valid scans
+warning: '#F59E0B'       // Amber - warnings, VIP scan, attention states
+error: '#EF4444'         // Red - errors, invalid scans, destructive actions
+background: '#FAFAFA'    // Off-White - page backgrounds
+surface: '#FFFFFF'       // White - cards, modals, input fields
+textPrimary: '#1A1A2E'  // Near Black - body text, headings
+textSecondary: '#6B7280' // Grey - subtitles, helper text, metadata
 ```
 
 ## Coding Standards
@@ -56,38 +56,38 @@ textSecondary: '#6B7280' // Grey — subtitles, helper text, metadata
 - Use Zod for runtime validation on all API inputs.
 - Use React Server Components by default. Use client components (`'use client'`) only when interactivity requires it.
 - Mobile-first responsive design on every page. No desktop-only layouts.
-- Images: use Next.js `<Image>` component with WebP format and lazy loading.
+- Images: feature code consumes the canonical media library at `@/components/media` only. Direct `next/image` imports are forbidden in feature code (ESLint enforces). See `## Media Architecture` below.
 - Errors: wrap async operations in try/catch. Log errors to Sentry. Show user-friendly error messages.
 
 ## File Structure
 
 ```
 src/
-  app/                    — Next.js pages and routes
-    (public)/             — Attendee-facing pages
-    (organiser)/          — Organiser dashboard pages
-    (admin)/              — Admin panel pages
-    (auth)/               — Login, signup, OTP pages
-    api/                  — API routes
-  components/             — Reusable UI components
-    ui/                   — Base components (shadcn/ui)
-    forms/                — Form components
-    layout/               — Navigation, footer, sidebar
-    features/             — Feature-specific components
-  lib/                    — Business logic and services
-    services/             — Core service modules
-    supabase/             — Supabase client and helpers
-    utils/                — Shared utility functions
-    types/                — TypeScript type definitions
-  hooks/                  — Custom React hooks
-  styles/                 — Global styles
+  app/                    - Next.js pages and routes
+    (public)/             - Attendee-facing pages
+    (organiser)/          - Organiser dashboard pages
+    (admin)/              - Admin panel pages
+    (auth)/               - Login, signup, OTP pages
+    api/                  - API routes
+  components/             - Reusable UI components
+    ui/                   - Base components (shadcn/ui)
+    forms/                - Form components
+    layout/               - Navigation, footer, sidebar
+    features/             - Feature-specific components
+  lib/                    - Business logic and services
+    services/             - Core service modules
+    supabase/             - Supabase client and helpers
+    utils/                - Shared utility functions
+    types/                - TypeScript type definitions
+  hooks/                  - Custom React hooks
+  styles/                 - Global styles
 supabase/
-  migrations/             — Database migration SQL files
-  seed/                   — Seed data
-  functions/              — Supabase Edge Functions
+  migrations/             - Database migration SQL files
+  seed/                   - Seed data
+  functions/              - Supabase Edge Functions
 docs/
-  EventLinqs_Scope_v5.md  — Full platform specification (THE BIBLE)
-  modules/                — Module build specs
+  EventLinqs_Scope_v5.md  - Full platform specification (THE BIBLE)
+  modules/                - Module build specs
 ```
 
 ## Module Build Process
@@ -114,6 +114,42 @@ This project is built in 12 sequential modules. Each module has a spec file in `
 - All API routes validate authentication before processing.
 - All user inputs are validated with Zod schemas.
 - No secrets in client-side code. All API keys and secrets go in `.env.local` and are accessed server-side only.
+
+## Media Architecture
+
+All event covers, hero backgrounds, city tiles, organiser avatars, and category imagery flow through the media component library at `src/components/media/`. The library is the single contract between feature code and `next/image`. See `docs/MEDIA-ARCHITECTURE.md` for the full standard and `docs/MEDIA-INCONSISTENCIES.md` for the violation taxonomy that drove Pre-Task 2.
+
+Public surfaces:
+
+- `HeroMedia`: above-the-fold heroes. Always renders a priority-painted raster as the LCP layer. Refuses videos with SVG posters and refuses to be the sole hero element when no raster is available.
+- `EventCardMedia`: every card, tile, rail, and marquee surface. Variants: `bento-hero`, `bento-supporting`, `card`, `rail`, `marquee`. Each carries its own `sizes` and `quality`.
+- `CityTileImage`: city rail and city directory tiles. Routes local SVG placeholders through a raw `<img>` (avoiding Next raster re-encoding of vectors) and remote rasters through `next/image`.
+- `OrganiserAvatar`: organiser identity. Sizes: `xs`, `sm`, `md`, `topbar`, `lg`.
+- `CategoryTileImage`: category nav and category hero tiles.
+- `BrandedPlaceholder` (under `media/decorative/`): dark-gradient EventLinqs-wordmark fallback when no organiser cover exists.
+
+Centralised constants:
+
+- `MEDIA_QUALITY` (`@/components/media/quality.ts`): `hero` 80, `card` 75, `rail` 70, `avatar` 75. Mirrors the `qualities: [70, 75, 85]` array in `next.config.ts`.
+- `MEDIA_SIZES` (`@/components/media/sizes.ts`): canonical responsive `sizes` strings per layout role.
+- `MEDIA_TRANSITIONS` (`@/components/media/transitions.ts`): brand-level easing and duration constants for carousels, ken-burns, card hover, and hero crossfades.
+
+Rules enforced by ESLint (`eslint.config.mjs`):
+
+1. Direct `import Image from 'next/image'` is forbidden in feature code. Import from `@/components/media`.
+2. Raw `<img>` elements are forbidden in feature code (`@next/next/no-img-element` set to `error`).
+3. `style={{ backgroundImage: 'url(...)' }}` is forbidden for content imagery. Decorative gradients (radial, linear) without `url(...)` are allowed.
+4. `next/legacy/image` is forbidden. Use the modern `next/image` via the media library.
+
+Forbidden patterns (must NOT ship, full list in `docs/MEDIA-INCONSISTENCIES.md` "Forbidden patterns" section):
+
+- Above-fold media without `priority` and `fetchPriority="high"`.
+- `<video>` with SVG poster on the LCP path.
+- Hardcoded `quality={N}` outside `MEDIA_QUALITY.*` references.
+- Hardcoded `sizes="100vw"` outside `MEDIA_SIZES.*` helpers.
+- `unoptimized={true}` on remote raster images (only allowed for local SVG via `CityTileImage`).
+
+When adding a new media surface (a new role that doesn't fit any existing variant), extend the library rather than reaching for `next/image` directly. Surfaces live in `src/components/media/` and are always exempt from the no-`next/image` rule.
 
 ## Important Reminders
 

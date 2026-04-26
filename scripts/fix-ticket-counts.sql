@@ -3,7 +3,7 @@
 -- Run this in the Supabase SQL editor.
 -- ============================================================
 
--- STEP 1: BEFORE STATE — show current values for all events
+-- STEP 1: BEFORE STATE - show current values for all events
 SELECT
   e.title AS event_title,
   t.id AS tier_id,
@@ -16,7 +16,7 @@ JOIN events e ON e.id = t.event_id
 ORDER BY e.title, t.name;
 
 -- STEP 2: Recompute sold_count from confirmed order_items
--- (This is the authoritative fix — counts actual delivered tickets)
+-- (This is the authoritative fix - counts actual delivered tickets)
 UPDATE ticket_tiers tt
 SET sold_count = (
   SELECT COALESCE(SUM(oi.quantity), 0)
@@ -42,7 +42,7 @@ SET reserved_count = (
 );
 
 -- STEP 4: Fix total_capacity to 60 for the "Stripe Test Event" General Admission tier
--- (Only runs if the capacity is currently 59 — safe no-op if already correct)
+-- (Only runs if the capacity is currently 59 - safe no-op if already correct)
 UPDATE ticket_tiers
 SET total_capacity = 60
 WHERE name = 'General Admission'
@@ -51,7 +51,7 @@ WHERE name = 'General Admission'
     SELECT id FROM events WHERE title = 'Stripe Test Event' LIMIT 1
   );
 
--- STEP 5: AFTER STATE — verify the corrected values
+-- STEP 5: AFTER STATE - verify the corrected values
 SELECT
   e.title AS event_title,
   t.id AS tier_id,

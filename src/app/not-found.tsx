@@ -5,7 +5,7 @@ import { ContentSection } from '@/components/layout/ContentSection'
 import { EmptyState } from '@/components/ui/EmptyState'
 
 /**
- * Custom 404 — rendered automatically by Next.js for any unmatched route.
+ * Custom 404 - rendered automatically by Next.js for any unmatched route.
  * No metadata export needed here; Next.js sets a default 404 title.
  */
 export default function NotFound() {

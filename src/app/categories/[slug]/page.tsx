@@ -64,7 +64,7 @@ export default async function CategoryPage({ params }: Props) {
     .order('start_date', { ascending: true })
     .limit(6)
 
-  // Filter client-side by category slug — Supabase doesn't allow nested WHERE
+  // Filter client-side by category slug - Supabase doesn't allow nested WHERE
   // on joined tables without a view or RPC. Safe at this event volume.
   const liveEvents = ((eventsRaw ?? []) as unknown as EventCardData[]).filter(
     e => e.category?.slug === slug || e.category?.slug === category.displayName.toLowerCase(),

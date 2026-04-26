@@ -1,9 +1,9 @@
 # Module 2: Event Management
 
 **Status:** Not Started  
-**Depends on:** Module 1 (Foundation) — must be complete  
-**Priority:** Critical — this is the core product  
-**Estimated Sessions:** 4–6 (with Claude Code)
+**Depends on:** Module 1 (Foundation) - must be complete  
+**Priority:** Critical - this is the core product  
+**Estimated Sessions:** 4-6 (with Claude Code)
 
 ---
 
@@ -11,11 +11,11 @@
 
 Module 2 turns EventLinqs from a login page into an event platform. This module delivers: event creation with a rich builder, event categories, venue/location handling with Google Maps, the full event lifecycle state machine (Draft → Published → Completed/Cancelled), ticket tier management, event visibility controls, the organiser's event management dashboard, and the public-facing event discovery and detail pages.
 
-No payment processing in this module — that comes in Module 3 (Checkout & Payments). Here we build the event data layer, the creation experience, and the browsing experience.
+No payment processing in this module - that comes in Module 3 (Checkout & Payments). Here we build the event data layer, the creation experience, and the browsing experience.
 
 ---
 
-## Part 1: Database Schema (SQL — run in Supabase SQL Editor)
+## Part 1: Database Schema (SQL - run in Supabase SQL Editor)
 
 ### 1.1 Event Categories Seed Table
 
@@ -237,7 +237,7 @@ CREATE TABLE public.ticket_tiers (
   description TEXT,
   tier_type public.ticket_tier_type NOT NULL DEFAULT 'general_admission',
   
-  -- Pricing (in smallest currency unit — cents)
+  -- Pricing (in smallest currency unit - cents)
   price INT NOT NULL DEFAULT 0, -- 0 = free
   currency TEXT NOT NULL DEFAULT 'AUD',
   
@@ -451,43 +451,43 @@ Create `src/app/(dashboard)/dashboard/events/create/page.tsx`
 
 This is a multi-step form (tabbed or stepped layout):
 
-**Step 1 — Basic Details:**
+**Step 1 - Basic Details:**
 - Title (required, text input)
 - Summary (short text, max 200 chars)
-- Description (rich text editor — use a textarea with markdown support for now, rich text editor can be enhanced later)
+- Description (rich text editor - use a textarea with markdown support for now, rich text editor can be enhanced later)
 - Category (dropdown from event_categories table)
 - Tags (comma-separated input, stored as JSON array)
 
-**Step 2 — Date & Time:**
+**Step 2 - Date & Time:**
 - Start date + time (datetime picker)
 - End date + time (datetime picker)
 - Timezone (dropdown, default to user's timezone)
 - Multi-day toggle
 - Recurring toggle (if checked, show recurrence options: daily, weekly, monthly)
 
-**Step 3 — Location:**
+**Step 3 - Location:**
 - Event type toggle: In Person / Virtual / Hybrid
 - If In Person or Hybrid:
   - Venue name (text input)
-  - Address (Google Maps autocomplete — use a text input for now, Google Maps integration can be enhanced later with API key)
+  - Address (Google Maps autocomplete - use a text input for now, Google Maps integration can be enhanced later with API key)
   - City, State, Country, Postal Code (auto-filled from address or manual entry)
   - Latitude/Longitude (auto-filled from address)
 - If Virtual or Hybrid:
-  - Virtual URL (text input — note: this is hidden from attendees until after purchase)
+  - Virtual URL (text input - note: this is hidden from attendees until after purchase)
 
-**Step 4 — Cover Image:**
+**Step 4 - Cover Image:**
 - Image upload dropzone (drag & drop or click to browse)
 - Upload to Supabase Storage bucket `event-images`
 - Store path as `{user_id}/{event_id}/{filename}`
 - Preview after upload
 - Max 5MB, accepts JPEG/PNG/WebP
 
-**Step 5 — Tickets:**
+**Step 5 - Tickets:**
 - "Add Ticket Tier" button
 - For each tier:
   - Name (e.g., "General Admission", "VIP")
   - Type (dropdown from ticket_tier_type enum)
-  - Price (number input in dollars — convert to cents on save)
+  - Price (number input in dollars - convert to cents on save)
   - Currency (dropdown, default AUD)
   - Total Capacity (number input)
   - Sale Start date (optional)
@@ -498,12 +498,12 @@ This is a multi-step form (tabbed or stepped layout):
 - Can reorder tiers (drag or up/down buttons)
 - Can delete tiers
 
-**Step 6 — Settings:**
+**Step 6 - Settings:**
 - Visibility: Public / Private / Unlisted (radio buttons)
 - Age restriction toggle (if on, show min age input, default 18)
-- Max event capacity (optional — overrides sum of tier capacities)
+- Max event capacity (optional - overrides sum of tier capacities)
 
-**Step 7 — Review & Publish:**
+**Step 7 - Review & Publish:**
 - Summary of all entered data
 - Two buttons:
   - "Save as Draft" → saves with status 'draft'
@@ -585,13 +585,13 @@ The function should:
 Create `src/app/(dashboard)/dashboard/events/actions.ts`:
 
 Server actions for:
-- `createEvent(formData)` — insert event + ticket tiers + addons
-- `updateEvent(eventId, formData)` — update event details
-- `publishEvent(eventId)` — transition to published
-- `pauseEvent(eventId)` — transition to paused
-- `cancelEvent(eventId)` — transition to cancelled
-- `duplicateEvent(eventId)` — clone event with new slug, status = draft
-- `deleteEvent(eventId)` — soft delete (only drafts)
+- `createEvent(formData)` - insert event + ticket tiers + addons
+- `updateEvent(eventId, formData)` - update event details
+- `publishEvent(eventId)` - transition to published
+- `pauseEvent(eventId)` - transition to paused
+- `cancelEvent(eventId)` - transition to cancelled
+- `duplicateEvent(eventId)` - clone event with new slug, status = draft
+- `deleteEvent(eventId)` - soft delete (only drafts)
 
 ---
 
@@ -656,7 +656,7 @@ Create `src/app/events/[slug]/page.tsx`:
   - List all visible, active ticket tiers
   - Show name, price, availability status
   - "Sold Out" badge if sold_count >= total_capacity
-  - "Select Tickets" button (links to checkout — placeholder for now, Module 3)
+  - "Select Tickets" button (links to checkout - placeholder for now, Module 3)
 - Share buttons (copy link)
 - If event is private → show "This is a private event" if user doesn't have access
 - If event is cancelled → show cancellation notice
@@ -839,17 +839,17 @@ Read docs/modules/M2-event-management.md and build everything in Parts 3, 4, 5, 
 After Claude Code finishes:
 1. Run `npm run dev`
 2. Log in at `/login`
-3. Go to `/dashboard/organisation/create` — create an organisation
-4. Go to `/dashboard/events/create` — create a test event with a cover image and ticket tiers
+3. Go to `/dashboard/organisation/create` - create an organisation
+4. Go to `/dashboard/events/create` - create a test event with a cover image and ticket tiers
 5. Publish the event
-6. Visit `/events` — your event should appear in the listing
-7. Click the event — full detail page should load
+6. Visit `/events` - your event should appear in the listing
+7. Click the event - full detail page should load
 
 ### Step 5: Commit
 
 ```powershell
 git add .
-git commit -m "M2: Event Management — builder, lifecycle, listings, detail pages"
+git commit -m "M2: Event Management - builder, lifecycle, listings, detail pages"
 git push
 ```
 
@@ -870,4 +870,4 @@ Any time you need to open Claude Code again:
 
 ## What Comes After Module 2
 
-**Module 3: Checkout & Payments** — Stripe integration, cart system, checkout flow, order processing, payment confirmation, ticket issuance with QR codes, and the organiser payout dashboard.
+**Module 3: Checkout & Payments** - Stripe integration, cart system, checkout flow, order processing, payment confirmation, ticket issuance with QR codes, and the organiser payout dashboard.

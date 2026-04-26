@@ -30,7 +30,7 @@ interface LegalPageShellProps {
 }
 
 /**
- * LegalPageShell — composed shell for Privacy / Terms / Refunds pages.
+ * LegalPageShell - composed shell for Privacy / Terms / Refunds pages.
  *
  * Layout:
  *   PageShell
@@ -64,7 +64,7 @@ export function LegalPageShell({
               <Prose>{children}</Prose>
             </div>
 
-            {/* Sticky in-page nav — hidden on mobile */}
+            {/* Sticky in-page nav - hidden on mobile */}
             <InPageNav sections={sections} />
           </div>
         ) : (

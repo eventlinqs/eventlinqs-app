@@ -1,4 +1,4 @@
-# Media Inconsistencies — Violations of the Standard
+# Media Inconsistencies - Violations of the Standard
 
 **Date:** 2026-04-26
 **Source:** `docs/MEDIA-AUDIT.md`
@@ -6,13 +6,13 @@
 
 Each violation is tagged with severity:
 
-- **🔴 BLOCKER** — directly causes Lighthouse degradation (NO_LCP, missing dims = CLS, large unoptimized image = LCP slow). Must fix before iter-1 measurement.
-- **🟠 HIGH** — measurable score impact (wrong sizes hint, missing fetchPriority on hero, missing lazy on below-fold).
-- **🟡 MEDIUM** — consistency / future-proofing (quality tier mismatch, animation timing not centralised).
+- **🔴 BLOCKER** - directly causes Lighthouse degradation (NO_LCP, missing dims = CLS, large unoptimized image = LCP slow). Must fix before iter-1 measurement.
+- **🟠 HIGH** - measurable score impact (wrong sizes hint, missing fetchPriority on hero, missing lazy on below-fold).
+- **🟡 MEDIUM** - consistency / future-proofing (quality tier mismatch, animation timing not centralised).
 
 ---
 
-## V1 🔴 BLOCKER — Hero fallback uses SVG poster on `<video>` (NO_LCP root cause)
+## V1 🔴 BLOCKER - Hero fallback uses SVG poster on `<video>` (NO_LCP root cause)
 
 **File:** `src/lib/images/event-media.ts:148-173` and `src/components/ui/smart-media.tsx:78-104`
 
@@ -28,27 +28,27 @@ Each violation is tagged with severity:
 
 ---
 
-## V2 🔴 BLOCKER — `branded-placeholder` kind has no LCP-eligible element
+## V2 🔴 BLOCKER - `branded-placeholder` kind has no LCP-eligible element
 
 **File:** `src/components/ui/branded-placeholder.tsx:24-52` consumed by `src/components/ui/smart-media.tsx:107-114`
 
-**Issue:** When an event has no cover image and no category photo is available, `getEventMedia` and `getFeaturedEventMedia` return `kind: 'branded-placeholder'`. `SmartMedia` renders only CSS gradients — no `<img>`, no `<video>`, no `<picture>`. There is **no LCP candidate** in the hero region.
+**Issue:** When an event has no cover image and no category photo is available, `getEventMedia` and `getFeaturedEventMedia` return `kind: 'branded-placeholder'`. `SmartMedia` renders only CSS gradients - no `<img>`, no `<video>`, no `<picture>`. There is **no LCP candidate** in the hero region.
 
 **Fix:** Above-fold contexts must never render `branded-placeholder` alone. New `HeroMedia` rejects this kind and falls back to a curated raster crowd image at the boundary.
 
 ---
 
-## V3 🔴 BLOCKER — `FeaturedEventHero` slide 0 priority depends on async media resolution
+## V3 🔴 BLOCKER - `FeaturedEventHero` slide 0 priority depends on async media resolution
 
 **File:** `src/components/features/events/featured-event-hero.tsx:189` and `src/components/ui/smart-media.tsx:132,158`
 
 **Issue:** Slide 0 only gets `priority=true` if `getFeaturedHeroBackground` returns `kind='still-kenburns'` or `kind='video'`. For carousel and placeholder kinds, the priority flag flows but the rendered element either doesn't qualify for LCP (placeholder) or has the carousel opacity transition layered on (carousel mode).
 
-**Fix:** `HeroMedia` always renders a single, statically-painted raster `<Image priority fetchPriority="high">` as the LCP layer. Carousel rotation, ken-burns transform, and video overlay (if any) sit on top of that layer — they do not replace it.
+**Fix:** `HeroMedia` always renders a single, statically-painted raster `<Image priority fetchPriority="high">` as the LCP layer. Carousel rotation, ken-burns transform, and video overlay (if any) sit on top of that layer - they do not replace it.
 
 ---
 
-## V4 🟠 HIGH — Carousel image opacity transition on slide 0 in `SmartMedia`
+## V4 🟠 HIGH - Carousel image opacity transition on slide 0 in `SmartMedia`
 
 **File:** `src/components/ui/smart-media.tsx:137-140`
 
@@ -58,7 +58,7 @@ Each violation is tagged with severity:
 
 ---
 
-## V5 🟠 HIGH — `SmartMedia` default `sizes` is full-viewport, leaks to non-hero usage
+## V5 🟠 HIGH - `SmartMedia` default `sizes` is full-viewport, leaks to non-hero usage
 
 **File:** `src/components/ui/smart-media.tsx:48`
 
@@ -72,7 +72,7 @@ sizes = '(max-width: 768px) 100vw, 1920px'
 
 ---
 
-## V6 🟠 HIGH — Quality tiers hardcoded per component, not centrally managed
+## V6 🟠 HIGH - Quality tiers hardcoded per component, not centrally managed
 
 **Files:** `src/components/ui/smart-media.tsx:134,159` (75), `src/components/features/events/event-card.tsx:129` (85), `src/components/features/events/city-rail-tile.tsx:25` (70).
 
@@ -82,13 +82,13 @@ sizes = '(max-width: 768px) 100vw, 1920px'
 
 ---
 
-## V7 🟠 HIGH — Raw `<img>` tags miss `loading="lazy"` and `decoding="async"`
+## V7 🟠 HIGH - Raw `<img>` tags miss `loading="lazy"` and `decoding="async"`
 
 **Files:**
-- `src/components/dashboard/dashboard-topbar.tsx:99` — avatar (above-fold)
-- `src/components/dashboard/upcoming-events-panel.tsx:62` — thumbnail (panel)
-- `src/components/features/events/city-tile.tsx:25` — local SVG (rail)
-- `src/app/dev/logo-preview/page.tsx:64` — dev only (excluded)
+- `src/components/dashboard/dashboard-topbar.tsx:99` - avatar (above-fold)
+- `src/components/dashboard/upcoming-events-panel.tsx:62` - thumbnail (panel)
+- `src/components/features/events/city-tile.tsx:25` - local SVG (rail)
+- `src/app/dev/logo-preview/page.tsx:64` - dev only (excluded)
 
 **Issue:** Each uses `eslint-disable-next-line @next/next/no-img-element` and ships raw `<img>` without `loading`, `decoding`, `width`, or `height` attributes. Risks CLS from un-dimensioned images and wastes main thread on synchronous decode.
 
@@ -96,17 +96,17 @@ sizes = '(max-width: 768px) 100vw, 1920px'
 
 ---
 
-## V8 🟠 HIGH — Above-fold `DashboardTopbar` avatar is unoptimised raw `<img>`
+## V8 🟠 HIGH - Above-fold `DashboardTopbar` avatar is unoptimised raw `<img>`
 
 **File:** `src/components/dashboard/dashboard-topbar.tsx:99`
 
-**Issue:** Sticky topbar avatar — visible on first paint of every dashboard route — is a raw `<img src={avatar}>` with no optimisation, no dimensions, no priority, no lazy directive, no fallback if the URL is unreachable.
+**Issue:** Sticky topbar avatar - visible on first paint of every dashboard route - is a raw `<img src={avatar}>` with no optimisation, no dimensions, no priority, no lazy directive, no fallback if the URL is unreachable.
 
 **Fix:** Replace with `<OrganiserAvatar size="topbar" priority />`.
 
 ---
 
-## V9 🟡 MEDIUM — `loading` attribute never explicitly set on `<Image>`
+## V9 🟡 MEDIUM - `loading` attribute never explicitly set on `<Image>`
 
 **Files:** all Next `<Image>` callsites (smart-media, event-card, city-rail-tile, live-vibe-marquee).
 
@@ -114,12 +114,12 @@ sizes = '(max-width: 768px) 100vw, 1920px'
 
 ---
 
-## V10 🟡 MEDIUM — Animation timings duplicated across components
+## V10 🟡 MEDIUM - Animation timings duplicated across components
 
 **Files:**
-- `src/components/ui/smart-media.tsx:139` — `'opacity 900ms ease, transform 4500ms ease'`
-- `src/components/features/events/hero-carousel-client.tsx:151` — `transition-opacity duration-700`
-- card hover transitions — various
+- `src/components/ui/smart-media.tsx:139` - `'opacity 900ms ease, transform 4500ms ease'`
+- `src/components/features/events/hero-carousel-client.tsx:151` - `transition-opacity duration-700`
+- card hover transitions - various
 
 **Issue:** No shared timing variables. Brand-level easing/duration changes require touching many files.
 
@@ -127,7 +127,7 @@ sizes = '(max-width: 768px) 100vw, 1920px'
 
 ---
 
-## V11 🟡 MEDIUM — `images.qualities` not declared in `next.config.ts`
+## V11 🟡 MEDIUM - `images.qualities` not declared in `next.config.ts`
 
 **File:** `next.config.ts:26-50`
 
@@ -137,29 +137,29 @@ sizes = '(max-width: 768px) 100vw, 1920px'
 
 ---
 
-## V12 🟡 MEDIUM — No `<picture>` element used for art-direction breakpoints
+## V12 🟡 MEDIUM - No `<picture>` element used for art-direction breakpoints
 
-**Status:** acceptable for now — `next/image` `srcSet` covers our cases. Flagged for future when distinct mobile vs desktop crops are needed.
+**Status:** acceptable for now - `next/image` `srcSet` covers our cases. Flagged for future when distinct mobile vs desktop crops are needed.
 
 ---
 
-## V13 🟡 MEDIUM — `videos.pexels.com` declared in `remotePatterns` but never used
+## V13 🟡 MEDIUM - `videos.pexels.com` declared in `remotePatterns` but never used
 
 **File:** `next.config.ts:46-48`
 
-**Issue:** Remote pattern allowed but commented out elsewhere ("we deliberately skip Pexels videos" — `event-media.ts:141-144`). Dead config surface.
+**Issue:** Remote pattern allowed but commented out elsewhere ("we deliberately skip Pexels videos" - `event-media.ts:141-144`). Dead config surface.
 
 **Fix:** Remove the unused pattern.
 
 ---
 
-## V14 🟡 MEDIUM — `BrandedPlaceholder` uses inline `style={{ backgroundImage: ... }}`
+## V14 🟡 MEDIUM - `BrandedPlaceholder` uses inline `style={{ backgroundImage: ... }}`
 
 **File:** `src/components/ui/branded-placeholder.tsx:32-37`
 
 **Issue:** Decorative gradient is inline `backgroundImage`. ESLint rule (V-eslint-1) bans `background-image` for **content imagery**, but we must explicitly allow this decorative pattern. Currently no rule distinguishes the two.
 
-**Fix:** ESLint rule scopes the ban to `<div>`/`<section>` elements outside `src/components/media/decorative/` — and `BrandedPlaceholder` either moves to that directory or annotates the decorative intent.
+**Fix:** ESLint rule scopes the ban to `<div>`/`<section>` elements outside `src/components/media/decorative/` - and `BrandedPlaceholder` either moves to that directory or annotates the decorative intent.
 
 ---
 

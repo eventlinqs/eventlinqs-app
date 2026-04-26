@@ -7,7 +7,7 @@ import { MEDIA_SIZES } from './sizes'
 import { MEDIA_TRANSITIONS, MEDIA_AUDIT_FLAG } from './transitions'
 
 /**
- * HeroAmbientLayer — the optional ken-burns / video overlay for HeroMedia.
+ * HeroAmbientLayer - the optional ken-burns / video overlay for HeroMedia.
  *
  * Mounted client-side AFTER the LCP image commits. Two requestAnimationFrame
  * ticks ensure the browser has reported LCP before any transform / opacity /
@@ -15,7 +15,7 @@ import { MEDIA_TRANSITIONS, MEDIA_AUDIT_FLAG } from './transitions'
  * NO_LCP / disqualification class of bugs.
  *
  * In audit mode (document.body.dataset.headless === '1'), the ambient layer
- * is suppressed — autoplay video and 4.5s transforms inflate Speed Index
+ * is suppressed - autoplay video and 4.5s transforms inflate Speed Index
  * without changing what the user perceives during a measurement run.
  */
 

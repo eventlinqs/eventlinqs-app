@@ -89,7 +89,7 @@ export function SeatSelector({
     [sectionsKey]
   )
 
-  // Price lookup — always live from tier map
+  // Price lookup - always live from tier map
   const getSeatPrice = useCallback(
     (seat: SeatData): number => {
       if (seat.ticket_tier_id && tierPriceCentsMap[seat.ticket_tier_id] != null) {
@@ -271,7 +271,7 @@ export function SeatSelector({
     })
   }
 
-  // Seat <g> elements — memoised on stable primitive keys, NOT on hoveredId.
+  // Seat <g> elements - memoised on stable primitive keys, NOT on hoveredId.
   // Hover highlight is an overlay rendered above this layer so it never busts this memo.
   const seatElements = useMemo(
     () =>
@@ -372,7 +372,7 @@ export function SeatSelector({
   }
 
   // Reserve space for the floating tooltip so showing/hiding it doesn't shift layout
-  // — this was the root cause of the bottom-row hover flicker.
+  // - this was the root cause of the bottom-row hover flicker.
   const TOOLTIP_RESERVED_PX = 40
 
   return (
@@ -480,7 +480,7 @@ export function SeatSelector({
               </text>
             ))}
 
-            {/* Seats first, then hover overlay — overlay MUST render last so it layers on top */}
+            {/* Seats first, then hover overlay - overlay MUST render last so it layers on top */}
             {seatElements}
             {hoverOverlay}
           </svg>
@@ -521,7 +521,7 @@ export function SeatSelector({
         </div>
       </div>
 
-      {/* Reserved-height tooltip row — prevents layout shift on hover (fixes bottom-row flicker) */}
+      {/* Reserved-height tooltip row - prevents layout shift on hover (fixes bottom-row flicker) */}
       <div
         className="transition-opacity duration-150"
         style={{ minHeight: `${TOOLTIP_RESERVED_PX}px` }}

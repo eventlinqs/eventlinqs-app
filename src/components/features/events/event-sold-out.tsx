@@ -9,7 +9,7 @@ import { createClient } from '@/lib/supabase/client'
 import { joinWaitlist } from '@/app/actions/waitlist'
 
 /**
- * EventSoldOut — full sold-out UX for an event detail page.
+ * EventSoldOut - full sold-out UX for an event detail page.
  *
  * Renders where the ticket selector would normally appear. Keeps the
  * surrounding event detail (hero, about, venue) intact. Integration:
@@ -77,7 +77,7 @@ export function EventSoldOut({ event, primaryTierId, relatedEvents }: EventSoldO
       return
     }
 
-    // Unauthenticated flow — bounce to login with a return path to this event
+    // Unauthenticated flow - bounce to login with a return path to this event
     if (!authEmail) {
       const next = encodeURIComponent(`/events/${event.slug}?waitlist=1`)
       router.push(`/login?email=${encodeURIComponent(trimmed)}&next=${next}`)

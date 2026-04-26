@@ -1,6 +1,6 @@
-# EventLinqs Design System — v2.0
+# EventLinqs Design System - v2.0
 
-**Status:** Locked v2.0 — living document, evolves with A/B test data
+**Status:** Locked v2.0 - living document, evolves with A/B test data
 **Last updated:** 13 April 2026
 **Owner:** Lawal Adams + Claude
 **Enforcement:** This document supersedes Claude Code's instincts. Every UI decision must reference it. Deviations require explicit approval and test data.
@@ -34,10 +34,10 @@
 ## 1. Brand Identity
 
 ### Mission
-Build the ticketing and events platform for the African diaspora and the communities that gather with them — Melbourne, Sydney, London, Toronto, Lagos, Accra, Johannesburg, New York — with a product experience that surpasses Ticketmaster, Eventbrite, and DICE.
+Build the ticketing and events platform for the African diaspora and the communities that gather with them - Melbourne, Sydney, London, Toronto, Lagos, Accra, Johannesburg, New York - with a product experience that surpasses Ticketmaster, Eventbrite, and DICE.
 
 ### Audience
-- **Primary:** African diaspora aged 22–55 in Australia, UK, Canada, and Europe
+- **Primary:** African diaspora aged 22-55 in Australia, UK, Canada, and Europe
 - **Secondary:** Event organisers, DJs, community leaders, promoters serving diaspora audiences
 - **Tertiary:** Western attendees drawn to diaspora culture (music, food, art, conferences, weddings, business)
 
@@ -57,7 +57,7 @@ Every design decision must honour at least three of these six, never violate any
 | Ticketmaster | Trusted, commercial, soulless | Big edge-to-edge cards, clear hierarchy | Aggressive ads, generic stock photos, "Open in App" banner | Match polish, kill the ads, cultural soul |
 | Eventbrite | Warm, DIY, earnest | Friendly tone | Cream/orange palette feels twee, generic typography | More premium, less generic |
 | DICE | Underground, punk, niche | Massive bold display type, zero ads, hand-drawn personality, confident minimalism | All-black alienates 40+, US/UK only, no presence in AU | Broader cultural appeal, refined not punk, multi-region |
-| **EventLinqs** | **Premium cultural with mass appeal** | **TBD — we're building it** | **TBD** | **Nobody owns this space** |
+| **EventLinqs** | **Premium cultural with mass appeal** | **TBD - we're building it** | **TBD** | **Nobody owns this space** |
 
 ---
 
@@ -66,10 +66,10 @@ Every design decision must honour at least three of these six, never violate any
 ### Voice Pillars
 
 **Confident, never corporate.**
-Say "Tickets for the events that matter to you" — not "Discover a curated selection of events tailored to your interests."
+Say "Tickets for the events that matter to you" - not "Discover a curated selection of events tailored to your interests."
 
 **Warm, never twee.**
-Say "Welcome back, Lawal. Three events you saved are happening this week." — not "Hey there! 👋 We've got some fab events coming up just for you!"
+Say "Welcome back, Lawal. Three events you saved are happening this week." - not "Hey there! 👋 We've got some fab events coming up just for you!"
 
 **Cultural, never tokenistic.**
 Use real cultural terms ("Owambe", "Detty December", "Afrobeats", "Amapiano") where they fit. Don't slap a kente pattern on everything.
@@ -83,12 +83,12 @@ Use real cultural terms ("Owambe", "Detty December", "Afrobeats", "Amapiano") wh
 |---|---|---|
 | Hero / Marketing pages | Confident, bold | "WHERE THE CULTURE GATHERS" |
 | Event listings | Informational, clean | "Sat 19 Apr · The Forum, Melbourne · From AUD $45" |
-| Empty states | Warm, helpful | "No events here yet — try widening your filters or browse by city" |
+| Empty states | Warm, helpful | "No events here yet - try widening your filters or browse by city" |
 | Errors | Honest, owning it | "Payment didn't go through. Your card wasn't charged. Try again or use a different card." |
 | Confirmation | Celebratory, brief | "You're in. Tickets sent to lawal@example.com" |
-| Onboarding | Clear, no friction | "Add your phone — we'll text your ticket QR" |
+| Onboarding | Clear, no friction | "Add your phone - we'll text your ticket QR" |
 | Organiser dashboard | Professional, data-led | "23 tickets sold today. Up 41% vs same time last week." |
-| Cookie banner / Legal | Plain English, never dark patterns | "We use cookies for analytics. Decline or accept — both work fine." |
+| Cookie banner / Legal | Plain English, never dark patterns | "We use cookies for analytics. Decline or accept - both work fine." |
 
 ### Words We Use
 Get tickets · Save · Following · Trending · This week · Sold out · From AUD $X · Free · Organiser · Venue · Doors open · Lineup · About this event · You're in
@@ -98,7 +98,7 @@ Get tickets · Save · Following · Trending · This week · Sold out · From AU
 - "Curated", "Bespoke", "Tailored" (corporate filler)
 - "Hey there!", "Hi friend!" (try-hard)
 - Emoji in body copy or CTAs (allowed in microcopy like confirmation toasts only)
-- "Click here", "Learn more" (lazy CTAs — use specific verbs)
+- "Click here", "Learn more" (lazy CTAs - use specific verbs)
 - "Just" / "Simply" ("just sign up" is condescending)
 - "World-class", "Best-in-class", "Industry-leading" (claims without proof)
 
@@ -110,25 +110,25 @@ Get tickets · Save · Following · Trending · This week · Sold out · From AU
 
 | Token | Hex | HSL | Use |
 |---|---|---|---|
-| `--gold-500` | `#D4A017` | `44, 81%, 46%` | Primary accent — CTAs, links, key highlights |
+| `--gold-500` | `#D4A017` | `44, 81%, 46%` | Primary accent - CTAs, links, key highlights |
 | `--gold-600` | `#B88612` | `44, 82%, 39%` | Hover state for gold CTAs |
 | `--gold-400` | `#E8B738` | `43, 79%, 57%` | Focus ring, decorative accents |
 | `--gold-100` | `#FBF4DC` | `46, 79%, 92%` | Tinted backgrounds, badges |
-| `--coral-500` | `#FF4E3A` | `6, 100%, 62%` | Secondary accent — celebratory moments, "trending", "live now" |
+| `--coral-500` | `#FF4E3A` | `6, 100%, 62%` | Secondary accent - celebratory moments, "trending", "live now" |
 | `--coral-600` | `#E63E2C` | `6, 78%, 54%` | Hover for coral CTAs |
 | `--coral-100` | `#FFE4DF` | `8, 100%, 94%` | Coral-tinted pills, badges |
 
-### Neutrals (warm-biased — critical)
+### Neutrals (warm-biased - critical)
 
 | Token | Hex | Use |
 |---|---|---|
-| `--ink-900` | `#0A1628` | Deep navy-black — headlines, footer, high-contrast moments |
+| `--ink-900` | `#0A1628` | Deep navy-black - headlines, footer, high-contrast moments |
 | `--ink-800` | `#1A1A1A` | Body text primary |
 | `--ink-600` | `#4A4A4A` | Body text secondary |
 | `--ink-400` | `#8A8A8A` | Tertiary text, disabled states |
 | `--ink-200` | `#D9D9D6` | Dividers, borders |
 | `--ink-100` | `#EFEDE8` | Subtle section backgrounds |
-| `--canvas` | `#FAFAF7` | Page background — warm off-white (NOT pure white) |
+| `--canvas` | `#FAFAF7` | Page background - warm off-white (NOT pure white) |
 | `--white` | `#FFFFFF` | Cards, modals only |
 
 ### Semantic
@@ -140,15 +140,15 @@ Get tickets · Save · Following · Trending · This week · Sold out · From AU
 | `--error` | `#DC2626` | Failed payments, errors |
 | `--info` | `#0EA5E9` | Informational toasts |
 
-### Contrast (WCAG 2.2 AA — MANDATORY)
+### Contrast (WCAG 2.2 AA - MANDATORY)
 
 | Combination | Ratio | Pass |
 |---|---|---|
 | `--ink-800` on `--canvas` | 15.8:1 | AAA |
 | `--ink-600` on `--canvas` | 7.2:1 | AAA |
-| `--white` on `--gold-500` | 3.1:1 | AA Large only — use for headings/buttons 18px+ bold |
-| `--ink-900` on `--gold-500` | 7.4:1 | AAA — preferred combo for gold buttons |
-| `--white` on `--coral-500` | 3.4:1 | AA Large only — 16px+ bold only |
+| `--white` on `--gold-500` | 3.1:1 | AA Large only - use for headings/buttons 18px+ bold |
+| `--ink-900` on `--gold-500` | 7.4:1 | AAA - preferred combo for gold buttons |
+| `--white` on `--coral-500` | 3.4:1 | AA Large only - 16px+ bold only |
 | `--white` on `--ink-900` | 17.6:1 | AAA |
 
 **Rule:** Gold buttons use `--ink-900` text, NOT white. Coral buttons use white text but only at 16px+ bold.
@@ -190,7 +190,7 @@ Both Manrope and Inter as variable fonts from Google Fonts with `display=swap`.
 
 | Size | Tracking |
 |---|---|
-| Display (2rem+) | `-0.02em` (tight — the "sharpen" effect) |
+| Display (2rem+) | `-0.02em` (tight - the "sharpen" effect) |
 | Headings | `-0.01em` |
 | Body | `0` |
 | Caption uppercase | `+0.08em` |
@@ -225,7 +225,7 @@ Both Manrope and Inter as variable fonts from Google Fonts with `display=swap`.
 --space-8:  32px
 ```
 
-**Default gap between major sections: `--space-8` (32px) mobile, `--space-12` (48px) desktop. Never eyeball spacing — always reference a token.**
+**Default gap between major sections: `--space-8` (32px) mobile, `--space-12` (48px) desktop. Never eyeball spacing - always reference a token.**
 
 ### Container widths
 
@@ -236,12 +236,12 @@ Both Manrope and Inter as variable fonts from Google Fonts with `display=swap`.
 | `--container-lg` | 1280px | Default page width |
 | `--container-xl` | 1440px | Wide layouts (dashboards) |
 
-### Viewport breakpoints (mobile-first — MANDATORY)
+### Viewport breakpoints (mobile-first - MANDATORY)
 
 ```
 sm:  640px   (large phones landscape)
 md:  768px   (tablets)
-lg:  1024px  (small laptops — sidebar appears here)
+lg:  1024px  (small laptops - sidebar appears here)
 xl:  1280px  (desktop)
 2xl: 1536px  (wide desktop)
 ```
@@ -269,17 +269,17 @@ xl:  1280px  (desktop)
 **Rules:**
 - Border radius: `9999px` (pill) for primary CTAs, `8px` for secondary
 - Min touch target: 44x44px (WCAG 2.2 AA)
-- Font: Manrope 600 (14px–16px)
+- Font: Manrope 600 (14px-16px)
 - Hover: lift 2px + shadow, 150ms ease
 - Active: press 1px, 80ms
 - Focus-visible: 2px ring in `--gold-400`
 
-### 6.2 Event Cards — THE MOST IMPORTANT COMPONENT
+### 6.2 Event Cards - THE MOST IMPORTANT COMPONENT
 
 **Desktop (1024px+):**
 - Image aspect: **4:3 landscape** (cinematic, like Ticketmaster)
 - Image overlay: category pill top-left, heart icon bottom-right
-- Below image: title (Manrope 700, 20px, 2 lines max), date (Inter 500, 14px, `--gold-600`), venue (Inter 400, 14px, `--ink-600`), price (Manrope 700, 16px) — left-aligned, `--space-4` padding
+- Below image: title (Manrope 700, 20px, 2 lines max), date (Inter 500, 14px, `--gold-600`), venue (Inter 400, 14px, `--ink-600`), price (Manrope 700, 16px) - left-aligned, `--space-4` padding
 - Background: `--white`
 - Border: `1px solid --ink-200`
 - Radius: `16px`
@@ -287,8 +287,8 @@ xl:  1280px  (desktop)
 - Shadow hover: `0 12px 32px rgba(10, 22, 40, 0.12)`, lift 4px
 - Transition: `all 200ms cubic-bezier(0.4, 0, 0.2, 1)`
 
-**Mobile (<1024px) — confirmed against TM mobile pattern:**
-- Image aspect: **16:9 landscape, edge-to-edge** (TM mobile pattern — cards dominate viewport, single-column scroll)
+**Mobile (<1024px) - confirmed against TM mobile pattern:**
+- Image aspect: **16:9 landscape, edge-to-edge** (TM mobile pattern - cards dominate viewport, single-column scroll)
 - For homepage carousels: square 1:1 with horizontal scroll + peek (DICE pattern)
 - Padding `--space-4`
 - Same component spec otherwise
@@ -309,7 +309,7 @@ xl:  1280px  (desktop)
 - Position: absolute, bottom `--space-3` right `--space-3`
 
 **Price tag:**
-- Always lead with "From AUD $X" (international diaspora — currency essential)
+- Always lead with "From AUD $X" (international diaspora - currency essential)
 - Free events: "Free" in `--gold-600`
 - Sold out: strike through + "SOLD OUT" pill in `--ink-900`
 - Low stock: "Only 8 left" in `--coral-500` (only when 10 or less remaining)
@@ -321,8 +321,8 @@ xl:  1280px  (desktop)
 - CSS `scroll-snap-type: x mandatory` on container
 - `scroll-snap-align: start` on each card
 - `overflow-x: auto` with hidden scrollbar on mobile
-- Prev/Next arrow buttons visible on desktop only (44x44px circular, `--ink-900` background, white arrow). On TM mobile they're visible always — we hide on mobile, rely on swipe.
-- 3–4 cards visible on desktop, 1.25 cards on mobile (peek of next card)
+- Prev/Next arrow buttons visible on desktop only (44x44px circular, `--ink-900` background, white arrow). On TM mobile they're visible always - we hide on mobile, rely on swipe.
+- 3-4 cards visible on desktop, 1.25 cards on mobile (peek of next card)
 - Gap: `--space-4` (16px)
 - Padding left/right: `--space-6` desktop, `--space-4` mobile
 - Keyboard accessible: arrow keys navigate, Tab moves between cards
@@ -332,7 +332,7 @@ xl:  1280px  (desktop)
 - Right: "View all >" link in `--gold-600`
 - Padding bottom before carousel: `--space-6`
 
-### 6.4 Filter Sidebar (Desktop) — THE FIX
+### 6.4 Filter Sidebar (Desktop) - THE FIX
 
 **Problem:** Current `/events` shows ~15 items expanded vertically. Amateur. Kills the grid.
 
@@ -341,17 +341,17 @@ xl:  1280px  (desktop)
 | Group | Default | Items shown | Show more? |
 |---|---|---|---|
 | WHEN | Expanded | 4 (Any time, Today, This week, This month) | No |
-| CATEGORY | Expanded | Top 5 | Yes — "+ 8 more" link |
+| CATEGORY | Expanded | Top 5 | Yes - "+ 8 more" link |
 | PRICE | Collapsed | Range slider + quick pills | N/A |
 | VENUE | Collapsed | Search input + recent | N/A |
-| **CULTURE / LANGUAGE** | Collapsed | Top 6 (Afrobeats, Amapiano, Highlife, Gospel, Comedy, Business) | Yes — "+ 10 more" |
+| **CULTURE / LANGUAGE** | Collapsed | Top 6 (Afrobeats, Amapiano, Highlife, Gospel, Comedy, Business) | Yes - "+ 10 more" |
 
 **CULTURE/LANGUAGE is our moat.** TM/EB/DICE don't have it.
 
 **Visual spec per group:**
 - Group header: Manrope 700, 14px, uppercase `+0.08em`, `--ink-900`
 - Chevron (`lucide-react ChevronDown`): 16x16px, `--ink-600`, rotates 180 deg on expand, 200ms ease
-- Active filter count badge: pill next to chevron, `--gold-500` bg, `--ink-900` text, 11px Manrope 600 — shows "2" if 2 filters active in collapsed group
+- Active filter count badge: pill next to chevron, `--gold-500` bg, `--ink-900` text, 11px Manrope 600 - shows "2" if 2 filters active in collapsed group
 - Option row: Inter 400, 14px, checkbox 16x16px with `--gold-500` fill when checked, 8px gap
 - Selected row: bg `--gold-100` on hover
 - "Show more" link: Inter 500, 13px, `--gold-600`, underline on hover
@@ -362,7 +362,7 @@ xl:  1280px  (desktop)
 
 **Height transition:** `max-height` animated 250ms ease-out
 
-### 6.5 Filter Drawer (Mobile) — preserve Session 1 work
+### 6.5 Filter Drawer (Mobile) - preserve Session 1 work
 
 Keep everything from commit `d0c71ba`:
 - Closed by default
@@ -375,7 +375,7 @@ Additions for v2.0:
 - Active filter count badge on "Filters" trigger button
 - Same group/chevron/show-more pattern as desktop
 
-### 6.6 Hero Sections (TWO patterns — pick per page)
+### 6.6 Hero Sections (TWO patterns - pick per page)
 
 **Pattern A: Cinematic Hero (Homepage, Category landing pages)**
 - Height: `clamp(560px, 70vh, 720px)` desktop, `520px` mobile
@@ -387,15 +387,15 @@ Additions for v2.0:
 - CTA: Primary gold pill, `lg`, "Explore Events >"
 - Secondary CTA: Ghost on dark, "List Your Event"
 
-**Pattern B: Bold Display Hero (Marketing/About pages — DICE-inspired)**
+**Pattern B: Bold Display Hero (Marketing/About pages - DICE-inspired)**
 - Background: `--canvas` (no photo)
 - Padding: `--space-20` top + bottom
 - H1: `--display-3xl`, Manrope 800, `--ink-900`, line-height 1.0, max-width `900px`
 - Sub-hero: `--body-lg`, Inter 400, `--ink-600`, max-width `560px`, mt `--space-6`
 - CTA: Primary-dark pill, `lg` ("GET THE APP" / "EXPLORE EVENTS")
-- Use sparingly — ONE bold display hero per user journey
+- Use sparingly - ONE bold display hero per user journey
 
-**Below hero — search bar (sticky on scroll, Pattern A only):**
+**Below hero - search bar (sticky on scroll, Pattern A only):**
 - White card, `--space-4` padding, `16px` radius, shadow
 - Location picker | Date picker | Search input | Gold search button
 - Horizontal desktop, stacked mobile
@@ -404,12 +404,12 @@ Additions for v2.0:
 
 - 3 columns desktop, 1 mobile
 - Each: image (16:9) + category eyebrow + title (`--heading-lg`) + 3-line excerpt + "Read more >"
-- No card background — content only
+- No card background - content only
 - `--space-8` gap
 
-### 6.8 Footer (REVISED — DICE-inspired minimalism, not TM clutter)
+### 6.8 Footer (REVISED - DICE-inspired minimalism, not TM clutter)
 
-**Mobile (<1024px) — DICE pattern:**
+**Mobile (<1024px) - DICE pattern:**
 - Background: `--canvas` (white-ish, NOT black)
 - Logo top-left, `--space-12` padding
 - 3 collapsed accordions: "Company" / "Support" / "Legal"
@@ -422,10 +422,10 @@ Additions for v2.0:
 **Desktop (1024px+):**
 - Background: `--ink-900` (dark, premium)
 - 4-column grid:
-  1. **App** — logo + tagline + iOS/Android badges
-  2. **Attend** — Your tickets, My events, Following, Gift cards
-  3. **Organise** — Sell tickets, Manage events, Pricing, Organiser guide
-  4. **Company** — About, Careers, Press, Contact, Accessibility, Help
+  1. **App** - logo + tagline + iOS/Android badges
+  2. **Attend** - Your tickets, My events, Following, Gift cards
+  3. **Organise** - Sell tickets, Manage events, Pricing, Organiser guide
+  4. **Company** - About, Careers, Press, Contact, Accessibility, Help
 - Sub-footer: social icons + copyright + legal links (Terms, Privacy, Cookie)
 - Top padding `--space-20`, bottom `--space-12`
 
@@ -471,7 +471,7 @@ Additions for v2.0:
 - Radius: `8px`
 - Padding: `--space-3` `--space-4`
 - Font: Inter 400, 16px (16px prevents iOS zoom on focus)
-- Label: Inter 500, 14px, `--ink-800`, mb `--space-2` — ALWAYS visible above input (never placeholder-only)
+- Label: Inter 500, 14px, `--ink-800`, mb `--space-2` - ALWAYS visible above input (never placeholder-only)
 - Helper text: Inter 400, 13px, `--ink-600`, mt `--space-1`
 - Error state: border `--error`, helper text `--error`
 
@@ -496,17 +496,17 @@ All pills: `4px 10px` padding, `9999px` radius, Inter 500, 12px
 
 **Above the fold:**
 1. Top nav (sticky): Logo · Browse · For Organisers · Sign in · Get Started CTA
-2. Hero (Pattern A — cinematic photo) with rotating Unsplash-fed bg
+2. Hero (Pattern A - cinematic photo) with rotating Unsplash-fed bg
 3. Sticky search bar (Location + Date + Query + Search)
 
 **Below the fold (in order):**
 4. **TRENDING NOW** carousel (8 events, horizontal scroll, large square cards)
-5. **THIS WEEK IN MELBOURNE** (geo-personalised carousel — fallback to Sydney/Brisbane based on user location)
-6. **CULTURE PICKS** — diaspora differentiator. Sub-tabs: Afrobeats · Amapiano · Highlife · Comedy · Business · Gospel
-7. **FEATURED ORGANISERS** — 6 organiser cards (logo + name + follower count + 2 upcoming events each)
-8. **EDITORIAL 3-COLUMN** — "Stories from the culture" (blog teasers)
-9. **SOCIAL PROOF BAND** (see Section 9) — app ratings + community count + organiser logos
-10. **FOR ORGANISERS** — split section, image left + copy right ("Sell tickets in minutes. Keep your community close.")
+5. **THIS WEEK IN MELBOURNE** (geo-personalised carousel - fallback to Sydney/Brisbane based on user location)
+6. **CULTURE PICKS** - diaspora differentiator. Sub-tabs: Afrobeats · Amapiano · Highlife · Comedy · Business · Gospel
+7. **FEATURED ORGANISERS** - 6 organiser cards (logo + name + follower count + 2 upcoming events each)
+8. **EDITORIAL 3-COLUMN** - "Stories from the culture" (blog teasers)
+9. **SOCIAL PROOF BAND** (see Section 9) - app ratings + community count + organiser logos
+10. **FOR ORGANISERS** - split section, image left + copy right ("Sell tickets in minutes. Keep your community close.")
 11. Footer
 
 **Mobile order:** same, but hero shrinks to `520px`, all carousels become 1.25-card peek pattern, social proof band stacks vertically.
@@ -523,7 +523,7 @@ All pills: `4px 10px` padding, `9999px` radius, Inter 500, 12px
 - Sub-line: "X events near you" (or "in [city]")
 - Sort dropdown right: "Most popular" / "Soonest" / "Price: low to high" / "Newest"
 
-**Sidebar (Desktop) — see Section 6.4 for spec**
+**Sidebar (Desktop) - see Section 6.4 for spec**
 
 **Empty state:**
 - Centred Manrope 600 18px: "No events match your filters"
@@ -559,7 +559,7 @@ All pills: `4px 10px` padding, `9999px` radius, Inter 500, 12px
   - Ticket selector card (`--white`, shadow, `16px` radius)
   - Ticket types listed with +/- counter
   - Price summary
-  - "Get tickets — AUD $XX" primary gold pill button (full-width)
+  - "Get tickets - AUD $XX" primary gold pill button (full-width)
   - "Save event" ghost button below
 
 **Mobile:**
@@ -576,7 +576,7 @@ All pills: `4px 10px` padding, `9999px` radius, Inter 500, 12px
 3. Step 1: ticket types + qty (already selected from event page)
 4. Step 2: name, email, phone (Stripe Elements style)
 5. Step 3: payment (Stripe card element + Apple Pay/Google Pay buttons up top)
-6. Step 4: success — confetti animation (subtle), order summary, "Tickets sent to email" + "Add to wallet" buttons
+6. Step 4: success - confetti animation (subtle), order summary, "Tickets sent to email" + "Add to wallet" buttons
 
 **Sticky bottom bar (mobile):**
 - Total: AUD $XX
@@ -649,9 +649,9 @@ All pills: `4px 10px` padding, `9999px` radius, Inter 500, 12px
 
 ### Photography cascade (events)
 
-1. **Organiser upload** (Supabase Storage) — if present, use
-2. **Curated manual upload** (admin-seeded heroes) — if no organiser upload
-3. **Unsplash API** — auto-fetch by event category keywords, cache, attribute photographer per Unsplash terms
+1. **Organiser upload** (Supabase Storage) - if present, use
+2. **Curated manual upload** (admin-seeded heroes) - if no organiser upload
+3. **Unsplash API** - auto-fetch by event category keywords, cache, attribute photographer per Unsplash terms
 
 ### Illustration style
 
@@ -659,13 +659,13 @@ All pills: `4px 10px` padding, `9999px` radius, Inter 500, 12px
 - Empty states · Onboarding screens · Marketing pages · 404/error pages
 
 **Style guide:**
-- **Hand-drawn, organic line work** — inspired by DICE's punk illustration approach (the "Weirdly easy ticketing" dancing tickets)
-- **Cultural pattern motifs** — subtle adinkra symbols, Ankara textile patterns, geometric African line art (NEVER as decoration overlay on faces or skin — only as supporting motifs)
-- **Limited palette** — use brand colours only (gold + coral + ink-900 + canvas)
-- **Personality over perfection** — slightly imperfect line weights feel human
+- **Hand-drawn, organic line work** - inspired by DICE's punk illustration approach (the "Weirdly easy ticketing" dancing tickets)
+- **Cultural pattern motifs** - subtle adinkra symbols, Ankara textile patterns, geometric African line art (NEVER as decoration overlay on faces or skin - only as supporting motifs)
+- **Limited palette** - use brand colours only (gold + coral + ink-900 + canvas)
+- **Personality over perfection** - slightly imperfect line weights feel human
 
 **Stock illustration libraries permitted:**
-- Custom commissioned (preferred — Lawal's brief)
+- Custom commissioned (preferred - Lawal's brief)
 - Open Doodles, Humaaans (when customised to brand palette)
 
 **Rejected:**
@@ -691,8 +691,8 @@ All pills: `4px 10px` padding, `9999px` radius, Inter 500, 12px
 - `loading="lazy"` on below-fold
 - `decoding="async"` always
 - Always set `width` + `height` to prevent CLS
-- Alt text mandatory — organiser upload enforces it, Unsplash API populates from photo metadata
-- **Never AI-generated images** — degrades trust
+- Alt text mandatory - organiser upload enforces it, Unsplash API populates from photo metadata
+- **Never AI-generated images** - degrades trust
 
 ---
 
@@ -704,7 +704,7 @@ All pills: `4px 10px` padding, `9999px` radius, Inter 500, 12px
 
 - Two large cards side-by-side: iOS [4.9 stars] | Android [4.8 stars]
 - Card bg `--white`, large rating number `--display-xl` Manrope 800
-- Use on: marketing pages, footer above (post-app-launch only — don't fake ratings)
+- Use on: marketing pages, footer above (post-app-launch only - don't fake ratings)
 
 ### Pattern 2: Community Count Strip
 
@@ -730,7 +730,7 @@ All pills: `4px 10px` padding, `9999px` radius, Inter 500, 12px
 ### Pattern 5: Press Mentions (post-PR)
 
 - "As featured in" + logos of any press (SBS, ABC, AfroTech, etc.)
-- Reserved for actual press wins — never fake
+- Reserved for actual press wins - never fake
 
 ---
 
@@ -747,7 +747,7 @@ All pills: `4px 10px` padding, `9999px` radius, Inter 500, 12px
 [Component below]
 ```
 
-The gold bar is 32px wide, 2px tall `--gold-500` above the eyebrow — borrowed from TM, refined.
+The gold bar is 32px wide, 2px tall `--gold-500` above the eyebrow - borrowed from TM, refined.
 
 ### Eyebrow Labels (Inter 500, 12px uppercase, `+0.08em`, `--ink-600`)
 
@@ -756,10 +756,10 @@ The gold bar is 32px wide, 2px tall `--gold-500` above the eyebrow — borrowed 
 ### Section Titles (Manrope 700, 24-32px, `--ink-900`)
 
 - "Trending now" not "Hot Events" or fire-emoji "Trending"
-- "This week in Melbourne" — geo-aware
-- "Culture picks" — diaspora differentiator
-- "From the community" — testimonials/stories
-- "Featured organisers" — promoter discovery
+- "This week in Melbourne" - geo-aware
+- "Culture picks" - diaspora differentiator
+- "From the community" - testimonials/stories
+- "Featured organisers" - promoter discovery
 
 ### Microcopy
 
@@ -774,8 +774,8 @@ The gold bar is 32px wide, 2px tall `--gold-500` above the eyebrow — borrowed 
 | Success ticket purchase | "You're in. Tickets sent to [email]." |
 | Card saved | "Saved" (toast, 2s) |
 | Card unsaved | "Removed" (toast, 2s) |
-| Newsletter signup | "Get the weekly drop — new events every Thursday." |
-| Cookie banner | "We use cookies for analytics. Decline or accept — both work fine." [Decline] [Accept] |
+| Newsletter signup | "Get the weekly drop - new events every Thursday." |
+| Cookie banner | "We use cookies for analytics. Decline or accept - both work fine." [Decline] [Accept] |
 
 ---
 
@@ -793,21 +793,21 @@ The gold bar is 32px wide, 2px tall `--gold-500` above the eyebrow — borrowed 
 
 | Action | Duration |
 |---|---|
-| Micro (hover, press) | 100–150ms |
-| Component state (drawer, accordion) | 200–250ms |
-| Page-level transition | 300–400ms |
+| Micro (hover, press) | 100-150ms |
+| Component state (drawer, accordion) | 200-250ms |
+| Page-level transition | 300-400ms |
 | Loading skeleton pulse | 1500ms loop |
 | Hero rotation | 8000ms cross-fade |
 
 ### Rules
-- `prefers-reduced-motion` respected — all non-essential animation disabled
-- Only animate `transform` and `opacity` — never `width`, `height`, `top`, `left`
-- Stagger list reveals 40–60ms per item on first render
-- Card hover lift = signature micro-interaction — must feel smooth
+- `prefers-reduced-motion` respected - all non-essential animation disabled
+- Only animate `transform` and `opacity` - never `width`, `height`, `top`, `left`
+- Stagger list reveals 40-60ms per item on first render
+- Card hover lift = signature micro-interaction - must feel smooth
 
 ---
 
-## 12. Accessibility (WCAG 2.2 AA — floor)
+## 12. Accessibility (WCAG 2.2 AA - floor)
 
 - All interactive elements 44x44px or larger
 - All colour combinations 4.5:1 contrast minimum (3:1 for large text)
@@ -825,7 +825,7 @@ The gold bar is 32px wide, 2px tall `--gold-500` above the eyebrow — borrowed 
 
 ## 13. Performance
 
-### Core Web Vitals targets (mobile 4G — MANDATORY)
+### Core Web Vitals targets (mobile 4G - MANDATORY)
 
 | Metric | Target |
 |---|---|
@@ -853,8 +853,8 @@ The gold bar is 32px wide, 2px tall `--gold-500` above the eyebrow — borrowed 
 
 ### Stack
 - **Vercel Analytics** (Web Vitals + page views)
-- **PostHog** (free <1M events/mo) — heatmaps, recordings, funnels, feature flags, A/B variants
-- **Sentry** — error tracking
+- **PostHog** (free <1M events/mo) - heatmaps, recordings, funnels, feature flags, A/B variants
+- **Sentry** - error tracking
 
 ### Events to track (minimum)
 - `page_view` (path, referrer)
@@ -894,11 +894,11 @@ The gold bar is 32px wide, 2px tall `--gold-500` above the eyebrow — borrowed 
 
 ---
 
-## 15. Anti-Patterns — Claude Code must NEVER do these
+## 15. Anti-Patterns - Claude Code must NEVER do these
 
 ### Visual
-- Generic Bootstrap blue (`#007BFF`, `#2563EB`) — we use gold
-- Pure white `#FFFFFF` as page background — we use `--canvas`
+- Generic Bootstrap blue (`#007BFF`, `#2563EB`) - we use gold
+- Pure white `#FFFFFF` as page background - we use `--canvas`
 - Centre-aligned body paragraphs longer than 2 lines
 - Hero sections without photography OR bold display type (no empty coloured blocks)
 - Filter sidebar with more than 5 items expanded per group
@@ -920,12 +920,12 @@ The gold bar is 32px wide, 2px tall `--gold-500` above the eyebrow — borrowed 
 ### Behaviour
 - Auto-playing video or audio
 - Modal popups within 5 seconds of page load (cookie banner exempt)
-- "Open in App" banners that block content (TM does this — we don't)
+- "Open in App" banners that block content (TM does this - we don't)
 - Newsletter modals on first visit
 - Aggressive monetisation banners between content
 - More than ONE primary CTA above the fold
 - Sticky header that's more than 80px tall (eats viewport)
-- Banner ads anywhere — we have no ads
+- Banner ads anywhere - we have no ads
 
 ### Accessibility
 - Icon-only buttons without accessible name
@@ -945,7 +945,7 @@ The gold bar is 32px wide, 2px tall `--gold-500` above the eyebrow — borrowed 
 
 ## 16. Flexibility Clause
 
-Claude Code is permitted — and encouraged — to propose variations within this system when:
+Claude Code is permitted - and encouraged - to propose variations within this system when:
 - User testing or A/B data suggests a better direction
 - A new pattern emerges that honours mood words + accessibility + performance
 - A specific page has a clear rationale for deviation
@@ -972,7 +972,7 @@ Claude Code is permitted — and encouraged — to propose variations within thi
 ### What we steal from Ticketmaster
 - Hero full-bleed cinematic photography + left-side text + primary CTA (Pattern A)
 - Carousel arrow controls + category pills above titles
-- Card grid generosity — cards are BIG, images dominate
+- Card grid generosity - cards are BIG, images dominate
 - Editorial 3-column content sections (homepage)
 - Mobile single-column edge-to-edge card stack
 - Eyebrow + section title + gold bar pattern
@@ -993,27 +993,27 @@ Claude Code is permitted — and encouraged — to propose variations within thi
 - **From DICE:** all-black-everything (alienates 40+), US/UK-centric copy, app-only mentality
 
 ### What's uniquely ours
-- **Culture/Language filter** — diaspora differentiator, no competitor has it
+- **Culture/Language filter** - diaspora differentiator, no competitor has it
 - **Gold + Coral palette** against warm off-white
 - **"Where the culture gathers" positioning**
 - **Multi-currency display** (AUD, GBP, CAD, NGN, GHS from day one)
-- **Unsplash API cascade for seed events** — fixes cold-start content problem
+- **Unsplash API cascade for seed events** - fixes cold-start content problem
 - **Geo-personalised "This week in [city]"** sections
 - **Cultural illustration motifs** (subtle, brand-coloured)
-- **Brand voice** that's confident-cultural-warm — neither punk (DICE) nor corporate (TM) nor twee (EB)
+- **Brand voice** that's confident-cultural-warm - neither punk (DICE) nor corporate (TM) nor twee (EB)
 
 ---
 
 ## 18. Enforcement
 
 - Every session report (per `BUILD-STANDARDS.md`) must reference this doc
-- Every card, button, hero, filter, page touched must use tokens — never raw hex, raw px (except where specified), raw font names
+- Every card, button, hero, filter, page touched must use tokens - never raw hex, raw px (except where specified), raw font names
 - Deviations caught in review: revert + document
 - A/B test results update this doc monthly
-- Version this file in git — it is the visual constitution
+- Version this file in git - it is the visual constitution
 
 **Signed off:** Lawal Adams + Claude, 13 April 2026
-**Next review:** After Session 5 (Login polish) — based on first batch of A/B test data
+**Next review:** After Session 5 (Login polish) - based on first batch of A/B test data
 
 ---
 

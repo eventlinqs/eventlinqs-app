@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Heart, Share2 } from 'lucide-react'
 
 /**
- * StickyActionBar — appears after scrolling past the event hero.
+ * StickyActionBar - appears after scrolling past the event hero.
  *
  * Glassmorphism bar pinned to viewport top. Shows compact event title,
  * date, venue, price range and a primary "Get tickets" action that scrolls

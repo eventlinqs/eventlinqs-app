@@ -1,8 +1,8 @@
 # Module 1: Foundation
 
 **Status:** Not Started
-**Priority:** Critical — everything depends on this
-**Estimated Sessions:** 3–5 (with Claude Code)
+**Priority:** Critical - everything depends on this
+**Estimated Sessions:** 3-5 (with Claude Code)
 
 ---
 
@@ -23,12 +23,12 @@ Create `.env.local` in the project root with:
 NEXT_PUBLIC_SUPABASE_URL=https://cqwdlimwlnyaaowwcyzp.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxd2RsaW13bG55YWFvd3djeXpwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5MzMwNDQsImV4cCI6MjA4ODUwOTA0NH0.4JVQ0fqoMKs-5BfFs-oJc-VgUhQ9X9mv75XfglSrGlc
 
-# Stripe (placeholder — real keys added in Module 5)
+# Stripe (placeholder - real keys added in Module 5)
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_placeholder
 STRIPE_SECRET_KEY=sk_test_placeholder
 STRIPE_WEBHOOK_SECRET=whsec_placeholder
 
-# Resend (placeholder — real key added in Module 7)
+# Resend (placeholder - real key added in Module 7)
 RESEND_API_KEY=re_placeholder
 
 # App
@@ -78,7 +78,7 @@ export async function createClient() {
               cookieStore.set(name, value, options)
             )
           } catch {
-            // Called from Server Component — ignore
+            // Called from Server Component - ignore
           }
         },
       },
@@ -408,7 +408,7 @@ export async function GET(request: Request) {
     }
   }
 
-  // Auth error — redirect to login with error
+  // Auth error - redirect to login with error
   return NextResponse.redirect(`${origin}/login?error=auth_callback_failed`)
 }
 ```
@@ -953,7 +953,7 @@ import { AuthProvider } from '@/components/providers/auth-provider'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'EventLinqs — Discover & Create Amazing Events',
+  title: 'EventLinqs - Discover & Create Amazing Events',
   description: 'The professional event ticketing and discovery platform. Create, promote, and manage events with transparent pricing and zero hidden fees.',
 }
 
@@ -1278,17 +1278,17 @@ Open Claude Code in your `eventlinqs-app` directory. It will automatically read 
 
 After Claude Code finishes, run `npm run dev` and test:
 
-1. Go to `http://localhost:3000/signup` — create an account
+1. Go to `http://localhost:3000/signup` - create an account
 2. Check your email for the confirmation link
 3. After confirming, go to `/login` and sign in
 4. You should land on `/dashboard` with your name showing
-5. Check Supabase dashboard → Table Editor → profiles — your profile should exist
+5. Check Supabase dashboard → Table Editor → profiles - your profile should exist
 
 ### Step 4: Commit
 
 ```bash
 git add .
-git commit -m "M1: Foundation — auth, database schema, dashboard shell"
+git commit -m "M1: Foundation - auth, database schema, dashboard shell"
 git push
 ```
 
@@ -1296,4 +1296,4 @@ git push
 
 ## What Comes After Module 1
 
-**Module 2: Event Management** — event creation, editing, categories, venue management, date/time handling, cover images, and the public event listing page. This is where EventLinqs starts looking like an events platform.
+**Module 2: Event Management** - event creation, editing, categories, venue management, date/time handling, cover images, and the public event listing page. This is where EventLinqs starts looking like an events platform.

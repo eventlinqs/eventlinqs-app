@@ -1,5 +1,5 @@
 /**
- * /dev/shell-preview — visual verification page for all shell primitives.
+ * /dev/shell-preview - visual verification page for all shell primitives.
  *
  * Visit this route to confirm every primitive renders correctly before
  * building real pages on top. Wrapped in PageShell so Header + Footer

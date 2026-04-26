@@ -3,7 +3,7 @@
  *
  * Feature components import from `@/components/media` and use only these
  * surfaces. Direct `import Image from 'next/image'` is forbidden in feature
- * code — see `eslint.config.mjs` `no-restricted-imports` rule.
+ * code - see `eslint.config.mjs` `no-restricted-imports` rule.
  *
  * See docs/MEDIA-ARCHITECTURE.md.
  */

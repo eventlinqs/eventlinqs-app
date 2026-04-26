@@ -112,7 +112,7 @@ export default function HelpPage() {
                   </p>
                 </div>
 
-                {/* Trailing arrow — appears on hover */}
+                {/* Trailing arrow - appears on hover */}
                 <span
                   className="absolute right-6 top-1/2 -translate-y-1/2 text-[var(--text-muted)] opacity-0 transition-opacity duration-150 group-hover:opacity-100"
                   aria-hidden="true"

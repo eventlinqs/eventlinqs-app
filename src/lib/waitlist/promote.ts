@@ -17,7 +17,7 @@ export async function promoteWaitlist(
 
   const adminClient = createAdminClient()
 
-  // 1. Call RPC — atomically finds waiting entries, sets status = 'notified',
+  // 1. Call RPC - atomically finds waiting entries, sets status = 'notified',
   //    creates waitlist_notifications rows with expires_at = NOW() + windowMinutes.
   const { data: promotedCount, error: rpcError } = await adminClient.rpc('promote_waitlist', {
     p_event_id: eventId,

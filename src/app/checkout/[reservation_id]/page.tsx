@@ -30,11 +30,11 @@ export default async function CheckoutPage({ params }: Props) {
   console.log('[CheckoutPage] reservation lookup - data:', reservation?.id ?? null, '| error:', resError?.message ?? null)
 
   if (resError || !reservation) {
-    // Reservation missing or already used — send user back to pick tickets again
+    // Reservation missing or already used - send user back to pick tickets again
     redirect('/events?error=reservation_not_found')
   }
 
-  // Ownership check — either the reservation belongs to this auth user,
+  // Ownership check - either the reservation belongs to this auth user,
   // or its session_id matches this browser's guest cookie. The admin
   // client above bypasses RLS for guest visibility, so we enforce
   // ownership here instead of relying on the policy.
@@ -52,7 +52,7 @@ export default async function CheckoutPage({ params }: Props) {
     redirect('/events?error=reservation_expired')
   }
 
-  // Load event — must use admin client to bypass RLS for guest users
+  // Load event - must use admin client to bypass RLS for guest users
   const { data: event, error: eventError } = await admin
     .from('events')
     .select('id, title, start_date, end_date, timezone, venue_name, venue_city, venue_country, organisation_id, fee_pass_type')
@@ -184,7 +184,7 @@ export default async function CheckoutPage({ params }: Props) {
     }))
   }
 
-  // Load user profile for pre-fill (session client is correct here — only called when user is authenticated)
+  // Load user profile for pre-fill (session client is correct here - only called when user is authenticated)
   let userFirstName = ''
   let userLastName = ''
   let userEmail = ''

@@ -25,9 +25,9 @@ const surfaces: Record<SurfaceName, string> = {
 
 /**
  * max-w values:
- *   prose   → max-w-3xl  (~672px)  — long-form reading (legal, help, articles)
- *   default → max-w-6xl  (~1152px) — standard content, most interior sections
- *   wide    → max-w-7xl  (~1280px) — full-width grids, matching homepage sections
+ *   prose   → max-w-3xl  (~672px)  - long-form reading (legal, help, articles)
+ *   default → max-w-6xl  (~1152px) - standard content, most interior sections
+ *   wide    → max-w-7xl  (~1280px) - full-width grids, matching homepage sections
  */
 const widths: Record<WidthName, string> = {
   prose:   'max-w-3xl',
@@ -36,7 +36,7 @@ const widths: Record<WidthName, string> = {
 }
 
 /**
- * ContentSection — replaces raw <section> on interior pages.
+ * ContentSection - replaces raw <section> on interior pages.
  *
  * Enforces consistent vertical rhythm (py-16 → py-20 → py-24) and
  * horizontal padding across breakpoints, with three width presets.

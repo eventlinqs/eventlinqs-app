@@ -73,7 +73,7 @@ export default async function RootLayout({
             }}
           />
         )}
-        {/* Privacy-friendly analytics by Plausible — cookieless, EU-hosted. */}
+        {/* Privacy-friendly analytics by Plausible - cookieless, EU-hosted. */}
         {!isHeadless && (
           <>
             <Script

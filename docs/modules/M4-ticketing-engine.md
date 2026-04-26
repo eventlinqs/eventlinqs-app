@@ -1,9 +1,9 @@
 # Module 4: Ticketing Engine & Inventory
 
 **Status:** Not Started
-**Depends on:** M1 (Foundation), M2 (Event Management), M3 (Checkout & Payments) — all three must be complete
-**Priority:** Critical — this is the ticketing "moat" that separates EventLinqs from Eventbrite/Humanitix
-**Estimated Sessions:** 5–7 (with Claude Code) — this is the biggest module we've tackled
+**Depends on:** M1 (Foundation), M2 (Event Management), M3 (Checkout & Payments) - all three must be complete
+**Priority:** Critical - this is the ticketing "moat" that separates EventLinqs from Eventbrite/Humanitix
+**Estimated Sessions:** 5-7 (with Claude Code) - this is the biggest module we've tackled
 
 ---
 
@@ -11,15 +11,15 @@
 
 Module 4 takes EventLinqs from "a checkout that works" to "a real ticketing platform that can compete with Ticketmaster, DICE, and Eventbrite". This module delivers:
 
-- **Reserved seating engine** — full seat maps, interactive selection, seat holds, best-available algorithm, accessible seating
-- **Dynamic pricing engine** — stepwise demand-based price changes per tier
-- **Squad booking** — group buys where friends each pay their own share
-- **Waitlist system** — auto-notifies buyers when tickets become available
-- **Virtual queue** — fair-order queue for high-demand on-sales (Taylor Swift-style releases)
-- **Redis inventory caching** — hot inventory counts with "Only X left!" social proof badges
-- **Advanced tier rules** — Early Bird auto-close by date, tier dependencies, hidden tiers
-- **Concurrency hardening** — PostgreSQL advisory locks, SELECT FOR UPDATE, idempotent finalisation
-- **Capacity race condition prevention** — guarantees no overselling under any load
+- **Reserved seating engine** - full seat maps, interactive selection, seat holds, best-available algorithm, accessible seating
+- **Dynamic pricing engine** - stepwise demand-based price changes per tier
+- **Squad booking** - group buys where friends each pay their own share
+- **Waitlist system** - auto-notifies buyers when tickets become available
+- **Virtual queue** - fair-order queue for high-demand on-sales (Taylor Swift-style releases)
+- **Redis inventory caching** - hot inventory counts with "Only X left!" social proof badges
+- **Advanced tier rules** - Early Bird auto-close by date, tier dependencies, hidden tiers
+- **Concurrency hardening** - PostgreSQL advisory locks, SELECT FOR UPDATE, idempotent finalisation
+- **Capacity race condition prevention** - guarantees no overselling under any load
 
 **What is NOT in this module:**
 - Ticket transfers (M6)
@@ -29,13 +29,13 @@ Module 4 takes EventLinqs from "a checkout that works" to "a real ticketing plat
 
 ---
 
-## LESSONS FROM M3 — MANDATORY BUILD PRINCIPLES FOR M4
+## LESSONS FROM M3 - MANDATORY BUILD PRINCIPLES FOR M4
 
 The following principles MUST be followed during every Claude Code build session for M4. These are non-negotiable. They exist because M3 burned hours on bugs that should have been prevented by design.
 
 ### Principle 1: Admin client for all inventory writes
 Every write to these tables MUST use `createAdminClient()` (service role, RLS-bypassed):
-- `reservations` (already fixed in M3 — keep it that way)
+- `reservations` (already fixed in M3 - keep it that way)
 - `seats` (new in M4)
 - `seat_holds` (new in M4)
 - `waitlist` (new in M4)
@@ -50,7 +50,7 @@ Reads where organiser looks at buyer data MUST use admin client (learned from M3
 Webhooks and cron jobs MUST use admin client (no auth session exists).
 
 ### Principle 2: Column verification before queries
-Before Claude Code writes any SELECT statement against a table, it MUST first check what columns exist. The `events` table does NOT have a `currency` column — currency lives on `ticket_tiers`. This caused 4+ bugs in M3. For M4:
+Before Claude Code writes any SELECT statement against a table, it MUST first check what columns exist. The `events` table does NOT have a `currency` column - currency lives on `ticket_tiers`. This caused 4+ bugs in M3. For M4:
 - Reference the M1/M2/M3 SQL files (now in `scripts/` and in previous M-spec files) for schema truth
 - Never guess column names
 - If unsure, do a column check query first
@@ -70,7 +70,7 @@ Errors must surface. Silent failures cost hours.
 All seat reservations, inventory decrements, squad joins, waitlist promotions, and queue advances use `SELECT ... FOR UPDATE` inside an RPC function. Never implement inventory logic in application code that could race.
 
 ### Principle 5: State machines enforced in database
-Seat status, waitlist status, squad status, virtual queue position — all have explicit state machines with valid transitions enforced by DB triggers or RPC functions. No client can bypass them.
+Seat status, waitlist status, squad status, virtual queue position - all have explicit state machines with valid transitions enforced by DB triggers or RPC functions. No client can bypass them.
 
 ### Principle 6: Test each feature end-to-end before moving on
 Build waitlist → test waitlist (add entry, verify notification trigger fires, verify promotion on cancellation). THEN move to virtual queue. Don't build all 8 features at once and try to test them in one go.
@@ -93,7 +93,7 @@ Before starting M4, confirm the following:
 - [ ] M1, M2, M3 all complete and committed
 - [ ] `git push` has pushed all M3 work to GitHub
 - [ ] Stripe listener running OR ready to restart (see restart steps in README)
-- [ ] **Upstash Redis account created** (see Part 0 below — DO THIS FIRST)
+- [ ] **Upstash Redis account created** (see Part 0 below - DO THIS FIRST)
 - [ ] Upstash Redis database provisioned (free tier is fine)
 - [ ] `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` added to `.env.local`
 - [ ] npm package `@upstash/redis` installed
@@ -104,13 +104,13 @@ Before starting M4, confirm the following:
 
 ### 0.1 Why Redis?
 
-Redis gives us millisecond-fast hot inventory counts for social proof badges ("Only 3 left!", "Selling Fast", "Almost Sold Out"). Without it, every event page would hit the database for inventory counts, which is slow under load. Upstash is a serverless Redis service — free tier is 10,000 commands per day, zero config, no server management.
+Redis gives us millisecond-fast hot inventory counts for social proof badges ("Only 3 left!", "Selling Fast", "Almost Sold Out"). Without it, every event page would hit the database for inventory counts, which is slow under load. Upstash is a serverless Redis service - free tier is 10,000 commands per day, zero config, no server management.
 
 ### 0.2 Create the Upstash account
 
 1. Open browser → go to `https://upstash.com`
 2. Click **Sign Up** top-right
-3. Sign up with GitHub (fastest — uses your existing GitHub account) or email
+3. Sign up with GitHub (fastest - uses your existing GitHub account) or email
 4. Verify email if needed
 
 ### 0.3 Create a Redis database
@@ -119,15 +119,15 @@ Redis gives us millisecond-fast hot inventory counts for social proof badges ("O
 2. Fill in:
    - **Name:** `eventlinqs-inventory`
    - **Type:** Regional (cheaper, faster for a single region)
-   - **Region:** Pick the closest to your Vercel deployment region — for Australia, choose `Asia Pacific (Sydney) - ap-southeast-2`. If not available, pick the closest Asia-Pacific option.
+   - **Region:** Pick the closest to your Vercel deployment region - for Australia, choose `Asia Pacific (Sydney) - ap-southeast-2`. If not available, pick the closest Asia-Pacific option.
    - **Eviction:** Enable (so old cache entries auto-clear if memory fills up)
 3. Click **Create**
 
 ### 0.4 Get your REST credentials
 
 After the database is created, you'll see the database details page. Scroll down to the **REST API** section. You'll see two values:
-- `UPSTASH_REDIS_REST_URL` — starts with `https://...`
-- `UPSTASH_REDIS_REST_TOKEN` — a long token string
+- `UPSTASH_REDIS_REST_URL` - starts with `https://...`
+- `UPSTASH_REDIS_REST_TOKEN` - a long token string
 
 Copy both to Notepad.
 
@@ -155,11 +155,11 @@ Wait for install to complete.
 
 ### 0.7 Verify
 
-After install, you can restart the dev server. Nothing should break yet — Redis isn't used until we wire it up in Part 8.
+After install, you can restart the dev server. Nothing should break yet - Redis isn't used until we wire it up in Part 8.
 
 ---
 
-## Part 1: Database Schema (SQL — run in Supabase SQL Editor)
+## Part 1: Database Schema (SQL - run in Supabase SQL Editor)
 
 > The SQL is provided in a separate combined file: `M4-ticketing-engine-sql.sql`
 > Copy the entire file contents into Supabase → SQL Editor → New query → Run.
@@ -215,7 +215,7 @@ After install, you can restart the dev server. Nothing should break yet — Redi
 
 ### 2.1 Data Model
 
-A **venue** is a physical location (e.g., "Melbourne Convention Centre"). A venue can have one or more **seat maps** (e.g., "Main Hall — Theatre Config", "Main Hall — Cabaret Config"). A **seat map** has multiple **sections** (e.g., "Orchestra", "Mezzanine", "Balcony"). Each section has multiple **seats** with specific row and number labels.
+A **venue** is a physical location (e.g., "Melbourne Convention Centre"). A venue can have one or more **seat maps** (e.g., "Main Hall - Theatre Config", "Main Hall - Cabaret Config"). A **seat map** has multiple **sections** (e.g., "Orchestra", "Mezzanine", "Balcony"). Each section has multiple **seats** with specific row and number labels.
 
 Each **event** that uses reserved seating links to:
 - One `venue_id`
@@ -264,7 +264,7 @@ When an organiser publishes an event with reserved seating, a PostgreSQL functio
 3. Each seat gets event_id, seat_map_section_id, row_label, seat_number, seat_type, status='available', x/y coordinates
 4. This happens in a single transaction
 
-The seat_map is reusable — the same venue can be used for multiple events without re-drawing.
+The seat_map is reusable - the same venue can be used for multiple events without re-drawing.
 
 ### 2.4 Seat Map Builder UI
 
@@ -481,7 +481,7 @@ When an event (or specific tier) is sold out, buyers can join a waitlist. If tic
 ```
 id UUID PK
 event_id UUID FK → events
-ticket_tier_id UUID FK → ticket_tiers (nullable — join event-wide waitlist)
+ticket_tier_id UUID FK → ticket_tiers (nullable - join event-wide waitlist)
 user_id UUID FK → auth.users
 quantity_requested INT DEFAULT 1
 status waitlist_status DEFAULT 'waiting'
@@ -550,7 +550,7 @@ Organisers can mark an event as `is_high_demand = true`. When true:
 - At the sale start time: buyers are placed in the queue
 - After the sale: normal checkout flow (queue disabled)
 
-Alternatively, the system can auto-enable queue mode if traffic to an event exceeds a threshold (e.g., 500 concurrent viewers). This auto-detection is a v2 feature — for v1, organisers manually enable it.
+Alternatively, the system can auto-enable queue mode if traffic to an event exceeds a threshold (e.g., 500 concurrent viewers). This auto-detection is a v2 feature - for v1, organisers manually enable it.
 
 ### 6.3 Data Model
 
@@ -587,7 +587,7 @@ A background process (cron or on-demand) admits buyers in batches:
 
 ### 6.6 Anti-Gaming Protections
 
-- Position token is HMAC-signed — can't be manipulated
+- Position token is HMAC-signed - can't be manipulated
 - Cloudflare Turnstile challenge at queue entry (bot detection)
 - Device fingerprint check (prevents one device holding multiple positions)
 - IP-based rate limiting (max 1 queue entry per IP per event)
@@ -604,8 +604,8 @@ For M4 v1, we implement:
 ### 7.1 Sale Start / Sale End (Early Bird Auto-Close)
 
 `ticket_tiers` gets two new columns:
-- `sale_start TIMESTAMPTZ` — when this tier becomes available for purchase (nullable = always available)
-- `sale_end TIMESTAMPTZ` — when this tier auto-closes (nullable = never closes)
+- `sale_start TIMESTAMPTZ` - when this tier becomes available for purchase (nullable = always available)
+- `sale_end TIMESTAMPTZ` - when this tier auto-closes (nullable = never closes)
 
 The tier is visible to buyers ONLY when `NOW() >= sale_start AND (sale_end IS NULL OR NOW() < sale_end)`.
 
@@ -613,13 +613,13 @@ Example: Early Bird tier has `sale_end = event_date - 14 days`. At 14 days befor
 
 ### 7.2 Hidden Tiers (Pre-Sale Tiers)
 
-`ticket_tiers.hidden_until TIMESTAMPTZ` — when a tier is hidden until a certain time. Useful for pre-sales.
+`ticket_tiers.hidden_until TIMESTAMPTZ` - when a tier is hidden until a certain time. Useful for pre-sales.
 
 Example: A tier is hidden until the public on-sale date. Organisers with an access code can see it early.
 
 ### 7.3 Access-Code Gated Tiers
 
-`ticket_tiers.requires_access_code BOOLEAN` — if true, the tier is hidden from normal view. Buyers must enter an access code on the event page to reveal it.
+`ticket_tiers.requires_access_code BOOLEAN` - if true, the tier is hidden from normal view. Buyers must enter an access code on the event page to reveal it.
 
 Access codes are managed in a new `tier_access_codes` table:
 ```
@@ -632,7 +632,7 @@ valid_from, valid_until TIMESTAMPTZ
 is_active BOOLEAN DEFAULT TRUE
 ```
 
-When a buyer enters a valid code, the tier becomes visible in their session. This uses a server-side session flag (not just a cookie — must be validated server-side at reservation time).
+When a buyer enters a valid code, the tier becomes visible in their session. This uses a server-side session flag (not just a cookie - must be validated server-side at reservation time).
 
 ---
 
@@ -675,9 +675,9 @@ export const redis = new Redis({
 ```
 
 New file `src/lib/redis/inventory-cache.ts` with functions:
-- `getTierInventory(tierId: string)` — reads from Redis, falls back to DB
-- `setTierInventory(tierId, data)` — writes to Redis
-- `invalidateTierInventory(tierId)` — deletes the key
+- `getTierInventory(tierId: string)` - reads from Redis, falls back to DB
+- `setTierInventory(tierId, data)` - writes to Redis
+- `invalidateTierInventory(tierId)` - deletes the key
 - `getEventInventory(eventId: string)`, `setEventInventory(eventId, data)`, `invalidateEventInventory(eventId)`
 
 ### 8.4 Social Proof Badges
@@ -695,9 +695,9 @@ Badge rules (rendered on event cards and event detail page):
 
 Badges are computed server-side from Redis inventory data and passed to the page as props.
 
-### 8.5 "Who's Viewing" Counter (v2 — NOT in M4)
+### 8.5 "Who's Viewing" Counter (v2 - NOT in M4)
 
-Later we can add "24 people are viewing this event right now" using Redis sorted sets with viewer session IDs. This is a cool feature but NOT in M4 scope — add to polish list.
+Later we can add "24 people are viewing this event right now" using Redis sorted sets with viewer session IDs. This is a cool feature but NOT in M4 scope - add to polish list.
 
 ---
 
@@ -720,8 +720,8 @@ Several M3 files need updates to handle the new M4 features:
 - Dynamic pricing overrides the tier base price when enabled
 
 **`src/app/events/[slug]/page.tsx`:**
-- Check `has_reserved_seating` flag — if true, render the seat selection UI instead of quantity picker
-- Check `is_high_demand` flag — if true AND within sale window, redirect to queue page
+- Check `has_reserved_seating` flag - if true, render the seat selection UI instead of quantity picker
+- Check `is_high_demand` flag - if true AND within sale window, redirect to queue page
 - Read inventory from Redis cache for display
 - Render social proof badges
 
@@ -923,7 +923,7 @@ src/
     (public)/
       events/
         [slug]/
-          page.tsx                    (updated — seat UI / queue redirect / badges)
+          page.tsx                    (updated - seat UI / queue redirect / badges)
     
     queue/
       [event_slug]/
@@ -1055,7 +1055,7 @@ When Module 4 is complete, every item below must be true:
 - [ ] Queue expires at configurable admission window
 
 ### Advanced Tier Rules
-- [ ] `sale_start` / `sale_end` enforced — tier hidden when out of window
+- [ ] `sale_start` / `sale_end` enforced - tier hidden when out of window
 - [ ] `hidden_until` hides tier until reveal time
 - [ ] Access-code gated tiers work with session flag
 - [ ] Access code validation server-side at reservation time
@@ -1120,17 +1120,17 @@ M4 is too large for a single prompt. We break it into 3 phases. Paste this for P
 Read docs/modules/M4-ticketing-engine.md in full. This is the spec for Module 4.
 
 CRITICAL: Before writing any code, you MUST:
-1. Read the "LESSONS FROM M3" section and follow every principle — especially Principle 1 (admin client for writes) and Principle 2 (verify columns exist)
+1. Read the "LESSONS FROM M3" section and follow every principle - especially Principle 1 (admin client for writes) and Principle 2 (verify columns exist)
 2. Read scripts/fix-ticket-counts.sql to understand the current ticket_tiers schema
 3. Read src/lib/payments/payment-calculator.ts to understand the pricing engine
 4. Read src/app/actions/checkout.ts and src/app/actions/reservations.ts to understand existing reservation flows
 5. Read src/app/api/webhooks/stripe/route.ts to understand webhook patterns
 
-PHASE 1 SCOPE — Build ONLY these parts of M4 in this session:
+PHASE 1 SCOPE - Build ONLY these parts of M4 in this session:
 - Part 0: Upstash Redis client setup (src/lib/redis/client.ts and inventory-cache.ts)
 - Part 8: Redis inventory cache write-through from confirm_order and create_reservation RPCs
 - Part 3: Dynamic pricing engine (schema is in SQL, build the TypeScript helpers, editor page, and integrate into checkout.ts to use get_current_tier_price RPC)
-- Part 7: Advanced tier rules — sale_start/sale_end enforcement on event page, hidden_until, access codes
+- Part 7: Advanced tier rules - sale_start/sale_end enforcement on event page, hidden_until, access codes
 - Part 8: Social proof badges component and integration on event cards
 
 DO NOT build in this phase: seats, squads, waitlist, virtual queue (those are phases 2 and 3).
@@ -1151,7 +1151,7 @@ Follow the test plan Claude Code gives you. Only proceed to Phase 2 after Phase 
 ### Step 8: Phase 2 Command
 
 ```
-PHASE 2 SCOPE for M4 — Build these parts next:
+PHASE 2 SCOPE for M4 - Build these parts next:
 - Part 2: Reserved seating (venue CRUD, seat map import via CSV, seat materialisation, interactive seat selection UI, best-available algorithm)
 - Part 9: Update reservations.ts and checkout.ts to handle seat-based reservations
 
@@ -1165,7 +1165,7 @@ At the end, show me files changed, build output, and test plan.
 ### Step 10: Phase 3 Command
 
 ```
-PHASE 3 SCOPE for M4 — Build these final parts:
+PHASE 3 SCOPE for M4 - Build these final parts:
 - Part 4: Squad booking (squad creation, join page, member payment flow, state machine, squad emails, cron job for expiry)
 - Part 5: Waitlist system (join waitlist, position tracking, promote_waitlist RPC integration, notification emails, cron cleanup)
 - Part 6: Virtual queue (high-demand event redirect, queue page with polling, HMAC-signed positions, admit_queue_batch RPC, cron admission)
@@ -1204,10 +1204,10 @@ This section documents how each M4 feature compares to competitors. Use this for
 | Transparent pricing | ❌ (hidden fees) | Partial | ✅ | ✅ |
 | Accessible seating | ✅ | ❌ | ❌ | ✅ |
 
-**EventLinqs advantage:** We have every feature Ticketmaster has — but with transparent pricing, social squad booking, and a design-first experience. We match DICE on simplicity while exceeding them on capability.
+**EventLinqs advantage:** We have every feature Ticketmaster has - but with transparent pricing, social squad booking, and a design-first experience. We match DICE on simplicity while exceeding them on capability.
 
 ---
 
 ## What Comes After Module 4
 
-**Module 5: Multi-gateway + Payouts + Refunds + Chargebacks + Fraud** — Adds Paystack/Flutterwave/PayPal, refund processing, organiser payouts with holds, chargeback handling, and fraud scoring. CRITICAL: Start your Paystack and Flutterwave business verification applications now if you haven't — they take 1-3 weeks.
+**Module 5: Multi-gateway + Payouts + Refunds + Chargebacks + Fraud** - Adds Paystack/Flutterwave/PayPal, refund processing, organiser payouts with holds, chargeback handling, and fraud scoring. CRITICAL: Start your Paystack and Flutterwave business verification applications now if you haven't - they take 1-3 weeks.

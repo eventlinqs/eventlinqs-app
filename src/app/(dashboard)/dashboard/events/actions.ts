@@ -23,7 +23,7 @@ export type TicketTierInput = {
   name: string
   description: string
   tier_type: TicketTierType
-  price: number // dollars — converted to cents on insert
+  price: number // dollars - converted to cents on insert
   currency: string
   total_capacity: number
   sale_start: string | null
@@ -315,7 +315,7 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
   if (input.has_reserved_seating && event.slug) {
     revalidatePath(`/events/${event.slug}`)
   }
-  // venue_city may have changed — refresh the picker merge source.
+  // venue_city may have changed - refresh the picker merge source.
   updateTag('picker-cities')
   redirect('/dashboard/events?saved=1')
 }

@@ -114,7 +114,7 @@ export async function deleteVenue(venueId: string): Promise<{ error?: string }> 
   if (!orgId) return { error: 'Organisation not found' }
 
   const admin = createAdminClient()
-  // Soft delete — preserves FK links on historical events
+  // Soft delete - preserves FK links on historical events
   const { error } = await admin
     .from('venues')
     .update({ is_active: false })

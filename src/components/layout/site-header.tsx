@@ -3,7 +3,7 @@ import { getPickerCities } from '@/lib/locations/picker-cities'
 import { SiteHeaderClient } from './site-header-client'
 
 /**
- * SiteHeader — public site top navigation.
+ * SiteHeader - public site top navigation.
  *
  * Server wrapper that resolves the visitor's detected location and the
  * merged (launch-target + DB-distinct) picker city list, then passes

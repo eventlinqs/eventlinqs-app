@@ -1,5 +1,5 @@
 -- ============================================================
--- EventLinqs Module 3: Checkout & Payments — Combined SQL
+-- EventLinqs Module 3: Checkout & Payments - Combined SQL
 -- ============================================================
 -- Run this entire file in Supabase → SQL Editor → New query → Run
 -- Prerequisites: M1 and M2 SQL must have been run first
@@ -139,7 +139,7 @@ CREATE POLICY "Users can view their own orders"
   USING (auth.uid() = user_id);
 
 -- Guest orders are viewable by order_number (handled in app logic via secure token)
--- No RLS policy for guests — accessed via server-side query with order_id
+-- No RLS policy for guests - accessed via server-side query with order_id
 
 -- Org owners/admins can view orders for their events
 CREATE POLICY "Org members can view event orders"
@@ -210,7 +210,7 @@ CREATE INDEX idx_order_items_addon ON public.order_items(addon_id);
 -- RLS
 ALTER TABLE public.order_items ENABLE ROW LEVEL SECURITY;
 
--- Same access as orders — buyers see their own, org members see their events'
+-- Same access as orders - buyers see their own, org members see their events'
 CREATE POLICY "Users can view their own order items"
   ON public.order_items FOR SELECT
   USING (
@@ -640,7 +640,7 @@ INSERT INTO public.tax_rules (country_code, tax_name, tax_rate, applies_to_platf
   ('GH', 'VAT', 0.1500, TRUE, TRUE),   -- 15% VAT (simplified, Ghana has tiers)
   ('NG', 'VAT', 0.0750, TRUE, TRUE);   -- 7.5% VAT
 
--- US has state-level sales tax — not seeded here, handled per-state in Module 5
+-- US has state-level sales tax - not seeded here, handled per-state in Module 5
 -- For M3, US orders have zero tax until state-level tax engine is built
 
 -- ============================================================

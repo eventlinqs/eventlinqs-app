@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function updateSession(request: NextRequest) {
-  // Stripe webhook must bypass everything — no cookie touching, no redirects.
+  // Stripe webhook must bypass everything - no cookie touching, no redirects.
   // Any NextResponse.redirect() from here turns into a 307 and Stripe retries.
   if (request.nextUrl.pathname === '/api/webhooks/stripe') {
     return NextResponse.next({ request })
@@ -35,12 +35,12 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // API routes handle their own auth — never redirect them to /login
+  // API routes handle their own auth - never redirect them to /login
   if (request.nextUrl.pathname.startsWith('/api/')) {
     return supabaseResponse
   }
 
-  // Default-public, explicit-protected. Only the listed prefixes require auth —
+  // Default-public, explicit-protected. Only the listed prefixes require auth  - 
   // adding a new public marketing/legal/help route requires zero changes here.
   const protectedPrefixes = ['/dashboard']
   const isProtectedRoute = protectedPrefixes.some(prefix =>

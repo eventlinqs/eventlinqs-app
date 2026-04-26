@@ -84,7 +84,7 @@ async function handlePaymentSucceeded(
   const order_id = intent.metadata?.order_id
   if (!order_id) return
 
-  // Webhooks have no auth session — use admin client to bypass RLS for all writes
+  // Webhooks have no auth session - use admin client to bypass RLS for all writes
   const adminClient = createAdminClient()
 
   // Idempotency: check if already completed
@@ -108,7 +108,7 @@ async function handlePaymentSucceeded(
 
   // Atomically confirm the order: sets status=confirmed, converts reservation,
   // increments sold_count, decrements reserved_count, updates discount uses.
-  // NOTE: do NOT return on error — reserved-seating orders must still have seats marked sold
+  // NOTE: do NOT return on error - reserved-seating orders must still have seats marked sold
   // even if the confirm_order RPC fails (e.g. tier structure mismatch on seat events).
   const { error: confirmError } = await adminClient.rpc('confirm_order', {
     p_order_id: order_id,
@@ -222,7 +222,7 @@ async function handlePaymentSucceeded(
       const tierRelation = item.ticket_tiers as { event_id: string }[] | { event_id: string } | null
       const eventId = Array.isArray(tierRelation) ? tierRelation[0]?.event_id : tierRelation?.event_id
       if (eventId) {
-        // Fire-and-forget — never let cache failure break webhook response
+        // Fire-and-forget - never let cache failure break webhook response
         refreshInventoryCache(item.ticket_tier_id, eventId).catch(err => {
           console.error('[webhook] refreshInventoryCache failed:', err)
         })
@@ -233,7 +233,7 @@ async function handlePaymentSucceeded(
   // Send confirmation email
   await sendConfirmationEmail(adminClient, order_id, receipt_url)
 
-  // Fire Plausible purchase conversion (fire-and-forget — never block webhook).
+  // Fire Plausible purchase conversion (fire-and-forget - never block webhook).
   // Uses the confirmation page URL so the event attributes to the normal funnel.
   try {
     const { data: orderForAnalytics } = await adminClient
@@ -269,7 +269,7 @@ async function handlePaymentFailed(
   _supabase: Awaited<ReturnType<typeof createClient>>,
   intent: Stripe.PaymentIntent
 ) {
-  // Webhook has no auth session — must use admin client for all DB operations
+  // Webhook has no auth session - must use admin client for all DB operations
   const adminClient = createAdminClient()
 
   const { data: payment } = await adminClient
@@ -328,7 +328,7 @@ async function handleRequiresAction(
   _supabase: Awaited<ReturnType<typeof createClient>>,
   intent: Stripe.PaymentIntent
 ) {
-  // Webhook has no auth session — must use admin client for all DB operations
+  // Webhook has no auth session - must use admin client for all DB operations
   const adminClient = createAdminClient()
 
   const { data: payment } = await adminClient
@@ -350,7 +350,7 @@ async function handlePaymentCancelled(
   _supabase: Awaited<ReturnType<typeof createClient>>,
   intent: Stripe.PaymentIntent
 ) {
-  // Webhook has no auth session — must use admin client for all DB operations
+  // Webhook has no auth session - must use admin client for all DB operations
   const adminClient = createAdminClient()
 
   const { data: payment } = await adminClient
@@ -381,7 +381,7 @@ async function handlePaymentCancelled(
       .eq('id', order.reservation_id)
       .eq('status', 'active')
 
-    // Release any seat reservation — return seats to available
+    // Release any seat reservation - return seats to available
     const { data: reservation } = await adminClient
       .from('reservations')
       .select('items, event_id')
@@ -427,7 +427,7 @@ async function handlePaymentCancelled(
       if (cancelledItems && cancelledItems.length > 0) {
         for (const item of cancelledItems) {
           if (!item.ticket_tier_id) continue
-          // Fire-and-forget — never let waitlist promotion failure break webhook
+          // Fire-and-forget - never let waitlist promotion failure break webhook
           promoteWaitlist(reservation.event_id, item.ticket_tier_id, item.quantity).catch(err => {
             console.error('[webhook] promoteWaitlist failed after cancellation:', err)
           })
@@ -505,7 +505,7 @@ async function handleSquadMemberPaymentSucceeded(
 
   if ((paidCount ?? 0) < squad.total_spots) return
 
-  // All members paid — complete the squad
+  // All members paid - complete the squad
   const { error: completeError } = await adminClient
     .from('squads')
     .update({ status: 'completed', completed_at: new Date().toISOString() })
@@ -558,7 +558,7 @@ async function handleSquadMemberPaymentSucceeded(
 }
 
 async function handleChargeRefunded(charge: Stripe.Charge) {
-  // Webhook has no auth session — must use admin client for all DB operations
+  // Webhook has no auth session - must use admin client for all DB operations
   const adminClient = createAdminClient()
 
   // Resolve payment_intent id from the charge object
@@ -595,7 +595,7 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
 
   for (const item of refundedItems) {
     if (!item.ticket_tier_id) continue
-    // Fire-and-forget — never let waitlist promotion failure break webhook
+    // Fire-and-forget - never let waitlist promotion failure break webhook
     promoteWaitlist(order.event_id, item.ticket_tier_id, item.quantity).catch(err => {
       console.error('[webhook] promoteWaitlist failed after charge.refunded:', err)
     })

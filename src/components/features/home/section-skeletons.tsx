@@ -44,7 +44,7 @@ function RailHeaderSkeleton({ eyebrow, title }: { eyebrow: string; title: string
 
 export function ThisWeekSkeleton() {
   return (
-    <section aria-label="This week — loading" className={`bg-canvas ${SECTION_TIGHT}`}>
+    <section aria-label="This week - loading" className={`bg-canvas ${SECTION_TIGHT}`}>
       <div className={CONTAINER}>
         <RailHeaderSkeleton eyebrow="This week" title="What's happening near you" />
         <div className="mt-6 flex gap-4 overflow-hidden">
@@ -59,7 +59,7 @@ export function ThisWeekSkeleton() {
 
 export function CulturalPicksSkeleton() {
   return (
-    <section aria-label="Cultural picks — loading" className={`bg-canvas ${SECTION_TIGHT}`}>
+    <section aria-label="Cultural picks - loading" className={`bg-canvas ${SECTION_TIGHT}`}>
       <div className={CONTAINER}>
         <RailHeaderSkeleton eyebrow="Made for the diaspora" title="Cultural picks" />
         <div className="mt-6 flex gap-2 overflow-hidden">
@@ -83,7 +83,7 @@ export function CulturalPicksSkeleton() {
 
 export function LiveVibeSkeleton() {
   return (
-    <section aria-label="Live vibe — loading" className="bg-ink-950 py-16">
+    <section aria-label="Live vibe - loading" className="bg-ink-950 py-16">
       <div className="flex gap-4 overflow-hidden px-4">
         {[0, 1, 2, 3, 4, 5].map(i => (
           <div
@@ -100,7 +100,7 @@ export function LiveVibeSkeleton() {
 export function CityRailSkeleton() {
   return (
     <section
-      aria-label="Browse by city — loading"
+      aria-label="Browse by city - loading"
       className={`bg-canvas ${SECTION_DEFAULT}`}
     >
       <div className={CONTAINER}>

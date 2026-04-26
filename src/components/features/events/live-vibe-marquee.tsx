@@ -6,7 +6,7 @@ import { useDragScroll } from '@/hooks/use-drag-scroll'
 import { EventCardMedia, BrandedPlaceholder } from '@/components/media'
 
 /**
- * LiveVibeMarquee — deep navy editorial band of community event cards.
+ * LiveVibeMarquee - deep navy editorial band of community event cards.
  *
  * Dark ink-950 band so the white elevated cards POP with heavy shadow.
  * Auto-scrolls left at ~80s/cycle via a requestAnimationFrame loop driving

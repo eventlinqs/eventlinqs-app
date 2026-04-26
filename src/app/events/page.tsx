@@ -93,7 +93,7 @@ export default async function EventsPage({ searchParams }: Props) {
           hasGeoSignal={hasGeoSignal}
         />
 
-        {/* Recommended rail is secondary — its per-event Pexels cascade
+        {/* Recommended rail is secondary - its per-event Pexels cascade
             can stream after shell paint without regressing the grid's
             image-load timing. */}
         {!filterActive ? (

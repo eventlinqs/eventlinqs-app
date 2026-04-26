@@ -112,13 +112,13 @@ export async function registerFreeTickets(
   const reservation_id = resResult.reservation_id
   console.log('[registerFreeTickets] Reservation created - reservation_id:', reservation_id)
 
-  // 3. Guest fallback — redirect to checkout page for email capture
+  // 3. Guest fallback - redirect to checkout page for email capture
   if (!user) {
     console.log('[registerFreeTickets] Guest user - returning reservation_id for checkout redirect')
     return { reservation_id }
   }
 
-  // 4. Logged-in user — complete the free order immediately
+  // 4. Logged-in user - complete the free order immediately
   const { data: profile } = await supabase
     .from('profiles')
     .select('full_name, email')
@@ -214,7 +214,7 @@ export async function registerFreeTickets(
 
   await adminClient.from('order_items').insert(orderItems)
 
-  // 6. Confirm the order — sets status, converts reservation, increments sold_count
+  // 6. Confirm the order - sets status, converts reservation, increments sold_count
   const { error: confirmError } = await adminClient.rpc('confirm_order', { p_order_id: order_id })
   if (confirmError) {
     console.error('[registerFreeTickets] confirm_order error:', confirmError)

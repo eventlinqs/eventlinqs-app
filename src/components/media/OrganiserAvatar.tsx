@@ -6,7 +6,7 @@ import { MEDIA_QUALITY } from './quality'
 import { MEDIA_SIZES } from './sizes'
 
 /**
- * OrganiserAvatar — the only allowed surface for any avatar on EventLinqs:
+ * OrganiserAvatar - the only allowed surface for any avatar on EventLinqs:
  * dashboard topbar, organiser cards, ticket holder badges, list rows.
  *
  * Renders one of:
@@ -26,7 +26,7 @@ interface Props {
   /** Display name used to derive initials when src is missing. */
   name: string
   size: OrganiserAvatarSize
-  /** Above-fold (e.g. dashboard topbar) — sets priority. Defaults false. */
+  /** Above-fold (e.g. dashboard topbar) - sets priority. Defaults false. */
   priority?: boolean
   className?: string
 }
@@ -93,7 +93,7 @@ export function OrganiserAvatar({
     )
   }
 
-  // Initials fallback — no <img>, no network.
+  // Initials fallback - no <img>, no network.
   const fontPx = Math.round(px * 0.4)
   return (
     <span

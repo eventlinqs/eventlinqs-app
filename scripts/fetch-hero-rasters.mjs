@@ -12,7 +12,7 @@
  * Run:
  *   node scripts/fetch-hero-rasters.mjs
  *
- * Requires PEXELS_API_KEY in .env.local. Idempotent — skips files that
+ * Requires PEXELS_API_KEY in .env.local. Idempotent - skips files that
  * already exist unless --force is passed.
  *
  * Each category is encoded as both a 1920x1080 JPEG (quality 80, mozjpeg)
@@ -45,7 +45,7 @@ const env = Object.fromEntries(
 
 const PEXELS_API_KEY = env.PEXELS_API_KEY
 if (!PEXELS_API_KEY) {
-  console.error('PEXELS_API_KEY missing from .env.local — cannot fetch.')
+  console.error('PEXELS_API_KEY missing from .env.local - cannot fetch.')
   process.exit(1)
 }
 
@@ -147,7 +147,7 @@ async function main() {
     }
   }
 
-  // Write attribution manifest — Pexels licence requires photographer credit.
+  // Write attribution manifest - Pexels licence requires photographer credit.
   const manifest = {
     generated_at: new Date().toISOString(),
     note: 'Photos sourced from Pexels (https://www.pexels.com). Free to use under the Pexels licence; attribution appreciated. Regenerate with: node scripts/fetch-hero-rasters.mjs --force',

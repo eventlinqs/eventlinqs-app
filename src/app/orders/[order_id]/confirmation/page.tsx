@@ -21,11 +21,11 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
   const { redirect_status } = await searchParams
 
   const supabase = await createClient()
-  // Admin client — order may belong to a guest (user_id null) or a different user (organiser view),
+  // Admin client - order may belong to a guest (user_id null) or a different user (organiser view),
   // so session-based RLS would block the SELECT. Authorization is by order_id/order_number (unguessable).
   const adminClient = createAdminClient()
 
-  // Fetch order — can be by UUID or by order_number (EL-XXXXXXXX)
+  // Fetch order - can be by UUID or by order_number (EL-XXXXXXXX)
   const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(order_id)
 
   const query = adminClient
@@ -41,7 +41,7 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
   const fullOrder = order as FullOrder
 
   // If Stripe just redirected back with succeeded status, the webhook may still be processing
-  // Show confirmation page anyway — the webhook will confirm the order
+  // Show confirmation page anyway - the webhook will confirm the order
   const isConfirmed = fullOrder.status === 'confirmed' || redirect_status === 'succeeded'
 
   const { data: event } = await adminClient

@@ -216,7 +216,7 @@ export default async function SquadPage({ params }: Props) {
           </div>
         </div>
 
-        {/* Join panel — client component for interactivity */}
+        {/* Join panel - client component for interactivity */}
         <SquadJoinPanel
           squadId={squad.id}
           shareToken={token}

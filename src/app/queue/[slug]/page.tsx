@@ -31,7 +31,7 @@ export default async function QueuePage({ params }: Props) {
 
   if (!event) notFound()
 
-  // Non-high-demand events have no queue — send directly to event page
+  // Non-high-demand events have no queue - send directly to event page
   if (!event.is_high_demand) {
     redirect(`/events/${slug}`)
   }

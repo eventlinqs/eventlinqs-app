@@ -88,7 +88,7 @@ export default async function BrowseCityPage({ params, searchParams }: Props) {
 
   // Main catalogue fetch stays inline so mobile browsers can start
   // preloading card imagery as soon as the HTML is parsed. Suspense on
-  // the grid regressed SI on /events mobile for the same reason —
+  // the grid regressed SI on /events mobile for the same reason  - 
   // images only begin loading after the streamed chunk arrives, which
   // stretches Lighthouse's visual-progress integral.
   const canUseCached =

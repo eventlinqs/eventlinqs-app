@@ -264,7 +264,7 @@ export async function fetchPublicEvents(
   // Use the filtered length as the source of truth so the hero strip
   // and pagination match what the user sees.
   // TODO(m5-perf): move price filter into SQL to avoid over-fetching
-  //   when query pages are large — tracked against Step 8.
+  //   when query pages are large - tracked against Step 8.
   const total = priceFiltered ? events.length : count ?? events.length
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
 
@@ -281,7 +281,7 @@ function cheapest(e: PublicEventRow): number {
  * (published + public filter keeps data scope identical to RLS) and
  * unstable_cache so PSI/bot cache-bust queries still share a warm snapshot.
  * Bucketed by hour to avoid cache-key explosion while staying fresh.
- * Callers must only pass origin when genuinely needed — ignore the argument
+ * Callers must only pass origin when genuinely needed - ignore the argument
  * for the default case so the cache key stays stable.
  */
 export async function fetchPublicEventsCached(
@@ -531,7 +531,7 @@ export async function fetchRecommendedEvents(
     .limit(limit)
 
   if (orFilters.length > 0) query = query.or(orFilters.join(','))
-  // Route-level city constraint wins over preferred_city — when the user
+  // Route-level city constraint wins over preferred_city - when the user
   // lands on /events/browse/{slug} the rail must not bleed events from
   // other cities into a city-scoped page.
   if (city) query = query.ilike('venue_city', `%${city}%`)

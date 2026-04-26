@@ -1,10 +1,10 @@
-# EventLinqs — Master Plan V1
+# EventLinqs - Master Plan V1
 
 **Version:** 1.0
 **Date locked:** 15 April 2026
 **Owner:** Lawal Adams
 **Engineering partner:** Claude
-**Status:** ACTIVE — this document is the build contract
+**Status:** ACTIVE - this document is the build contract
 
 ---
 
@@ -41,7 +41,7 @@ The three founder decisions made on 15 April 2026:
 
 **Image strategy: Hybrid (Decision 1D).**
 - Phase 1 (Week 5): AI-generated category cover photography using Midjourney v7. Budget: ~AUD $50 one-off for ~30-50 images. Commercial licence rights confirmed via Midjourney paid plan.
-- Phase 2 (Q3 2026, post-launch): Commission a Melbourne-based photographer for owned, culturally-authentic v2 imagery. Budget: ~AUD $500–2,000 one-off.
+- Phase 2 (Q3 2026, post-launch): Commission a Melbourne-based photographer for owned, culturally-authentic v2 imagery. Budget: ~AUD $500-2,000 one-off.
 - Until Phase 1 ships in Week 5, all category and marketing pages use the **premium-bare** treatment (gradient + pattern + typography), shipped in Week 1 Session 1.
 
 **Video on day one (Decision 2A).**
@@ -49,10 +49,10 @@ The three founder decisions made on 15 April 2026:
 - Organiser video upload limits: 50 MB / 30 seconds / 1080×1920 vertical or 1920×1080 horizontal / MP4, MOV, WebM.
 - Verified-organiser tier (later): 100 MB cap.
 - Static poster image always required as fallback.
-- Estimated monthly cost: AUD $30–80 at launch volumes.
+- Estimated monthly cost: AUD $30-80 at launch volumes.
 
 **6-week timeline committed (Decision 3 YES).**
-- 20 build sessions total, 3–4 per week, 1–3 hours each.
+- 20 build sessions total, 3-4 per week, 1-3 hours each.
 - Launch target: end of May 2026.
 - Friends/private beta link: end of Week 4 (after discovery + search ships).
 - Public soft launch: end of Week 6.
@@ -61,13 +61,13 @@ The three founder decisions made on 15 April 2026:
 
 ## 4. Where We Start From (Inventory)
 
-What's already shipped — this is the foundation Track B builds on, not a restart.
+What's already shipped - this is the foundation Track B builds on, not a restart.
 
 **Infrastructure live:**
 - Vercel Pro deployment, custom domain `eventlinqs.com`, SSL active
 - Supabase backend with all 13 M4 tables and 10 RPC functions
 - Stripe test mode, working checkout, dynamic pricing engine, social proof badges
-- Upstash Redis cache (N. Virginia free tier — Week 6 will migrate to Sydney paid plan)
+- Upstash Redis cache (N. Virginia free tier - Week 6 will migrate to Sydney paid plan)
 - Resend transactional email (free tier)
 - Microsoft 365 email at `hello@eventlinqs.com`
 - GitHub repo `github.com/eventlinqs/eventlinqs-app`, branch `main`
@@ -111,7 +111,7 @@ What's already shipped — this is the foundation Track B builds on, not a resta
 - Auth flow not yet built (Week 1)
 - Image upload pipeline spec exists but not implemented (Week 1)
 - Video upload not built (Week 3)
-- Search not built — currently filter only (Week 4)
+- Search not built - currently filter only (Week 4)
 - No category cover imagery (Week 5)
 - No production monitoring (Week 6)
 
@@ -121,30 +121,30 @@ What's already shipped — this is the foundation Track B builds on, not a resta
 
 Every session has a defined goal, a defined deliverable, and a defined verification checklist. Sessions never end until verification passes.
 
-### WEEK 1 — Foundation Completion
+### WEEK 1 - Foundation Completion
 
 **Theme:** Get the marketing surface to launch grade. Build auth. Make image upload real.
 
-**Session 1 — Recovery + Visual Polish**
+**Session 1 - Recovery + Visual Polish**
 - Fix CTA label honesty on all 7 category landing pages ("List your event" → "Get in touch to list" until Week 1 Session 2 builds the real signup)
-- Restore footer integrity — every Help link works, no over-rewiring
+- Restore footer integrity - every Help link works, no over-rewiring
 - Visual upgrade on category landing pages: gradient depth, pattern overlays, typography rhythm, value pillar cards with hover, persona pills, accent-bordered final CTA
 - Premium-bare hero treatment (Stripe/Linear/Vercel grade without imagery)
 - Verify: footer click test (12 links), 7 category pages screenshot review at desktop and 375px
 
-**Session 2 — Auth + Organiser Marketing + Pricing**
-- `/auth/signup` — full signup with role selection (attendee / organiser), password strength, terms checkbox, email verification trigger
-- `/auth/signin` — sign in, remember me, forgot password link
-- `/auth/forgot-password` — request reset email
-- `/auth/reset-password/[token]` — set new password
-- `/auth/verify-email/[token]` — verify email confirmation
-- `/organisers` — full marketing landing page: hero, value props, three pillars, sample organiser personas, pricing snapshot, primary CTA "Start selling tickets"
-- `/pricing` — transparent pricing table: Free events (0%), Standard paid (2.5% + AUD 0.50/ticket), Enterprise (contact); FAQ accordion; comparison vs Eventbrite
+**Session 2 - Auth + Organiser Marketing + Pricing**
+- `/auth/signup` - full signup with role selection (attendee / organiser), password strength, terms checkbox, email verification trigger
+- `/auth/signin` - sign in, remember me, forgot password link
+- `/auth/forgot-password` - request reset email
+- `/auth/reset-password/[token]` - set new password
+- `/auth/verify-email/[token]` - verify email confirmation
+- `/organisers` - full marketing landing page: hero, value props, three pillars, sample organiser personas, pricing snapshot, primary CTA "Start selling tickets"
+- `/pricing` - transparent pricing table: Free events (0%), Standard paid (2.5% + AUD 0.50/ticket), Enterprise (contact); FAQ accordion; comparison vs Eventbrite
 - All seven category landing page CTAs flip from `/contact?topic=organiser` back to `/auth/signup?role=organiser&category={slug}`
 - Footer ORGANISERS column flips back to real destinations
 - Verify: full signup → email verification → signin flow tested end-to-end
 
-**Session 3 — Image Upload Pipeline**
+**Session 3 - Image Upload Pipeline**
 - Install `browser-image-compression` package
 - Build `lib/upload/compressImage.ts` and `lib/upload/validateImage.ts` per the existing Media Upload Spec
 - Wire up event cover image upload in event creation form: validate → compress to WEBP ≤2MB → upload to Supabase Storage → save URL
@@ -159,11 +159,11 @@ Every session has a defined goal, a defined deliverable, and a defined verificat
 
 ---
 
-### WEEK 2 — Event Flow Polish + M4.5 Blueprint Completion
+### WEEK 2 - Event Flow Polish + M4.5 Blueprint Completion
 
 **Theme:** The fan and organiser experience is end-to-end production polish.
 
-**Session 4 — Event Detail Page Redesign**
+**Session 4 - Event Detail Page Redesign**
 - Implement M4.5 Blueprint Phase 1 (event detail rebuild)
 - Cover image hero at 2:1 aspect, full-bleed
 - Title + date + venue on the left, sticky ticket panel on the right (desktop)
@@ -175,68 +175,68 @@ Every session has a defined goal, a defined deliverable, and a defined verificat
 - Related events rail at bottom
 - Verify: every event field renders correctly, mobile flow tested at 375px
 
-**Session 5 — Mobile Bottom Nav + Sticky Checkout + M4.5 Polish Items**
-- Mobile bottom tab bar (Home, Discover, Tickets, Account) — visible <md breakpoint only
+**Session 5 - Mobile Bottom Nav + Sticky Checkout + M4.5 Polish Items**
+- Mobile bottom tab bar (Home, Discover, Tickets, Account) - visible <md breakpoint only
 - Sticky "Select Tickets" / "Get Tickets" CTA on mobile event detail (M4.5 P1-4)
 - Filter sheet auto-open bug fix on `/events` mobile (M4.5 P1-1)
 - Checkout error toasts (M4.5 P1-5)
 - Loading states everywhere async data is fetched
 - Empty states everywhere data could be missing
-- Verify: complete mobile fan flow — homepage → discover → event detail → checkout → confirmation, all at 375px
+- Verify: complete mobile fan flow - homepage → discover → event detail → checkout → confirmation, all at 375px
 
-**Session 6 — Bug Sweep + Stripe Hardening**
+**Session 6 - Bug Sweep + Stripe Hardening**
 - Stripe webhook 307 → 200 fix
 - Revenue card rounding fix (AUD 3.76 displays correctly)
 - Supabase auth-token lock unhandledRejection cleanup
 - Pre-existing lint warnings in `join-waitlist-modal.tsx`, `start-squad-modal.tsx`, `payment-calculator.ts` resolved
 - M3 fixes verified surviving M4 refactors
 - Stripe test → live mode dry run (still in test, but verify the flip path works)
-- Verify: 30-min smoke test — full purchase, refund initiation, organiser sees revenue, attendee gets QR
+- Verify: 30-min smoke test - full purchase, refund initiation, organiser sees revenue, attendee gets QR
 
 **Week 2 ships:** End-to-end event flow at production polish. Every known bug closed. Mobile experience matches desktop.
 
 ---
 
-### WEEK 3 — Video Infrastructure + Media Library
+### WEEK 3 - Video Infrastructure + Media Library
 
 **Theme:** Organisers manage rich media properly. Platform feels modern.
 
-**Session 7 — Mux Integration**
+**Session 7 - Mux Integration**
 - Sign up for Mux account, create environment, get API keys (US-East1 region for now)
 - Add Mux SDK to project
-- Build `/api/upload/video` route — generates Mux direct upload URL
+- Build `/api/upload/video` route - generates Mux direct upload URL
 - Client-side video upload component with progress, validation (50 MB cap, 30 sec cap, MP4/MOV/WebM)
-- Mux webhook handler — receives `video.asset.ready`, stores playback ID in Supabase
+- Mux webhook handler - receives `video.asset.ready`, stores playback ID in Supabase
 - Mux player component using `@mux/mux-player-react`
 - Auto-generated poster image from Mux thumbnail API
 - Update event detail page to render video when present
 - Verify: upload a 30-second 1080p MP4 → encodes → plays back smoothly on event detail page
 
-**Session 8 — Media Library**
+**Session 8 - Media Library**
 - New Supabase table `organiser_media` (id, organiser_id, asset_type [image|video], storage_url, mux_playback_id, thumbnail_url, metadata, created_at)
-- Build `/dashboard/media` — grid view of all uploaded media, filter by image/video, search, delete
+- Build `/dashboard/media` - grid view of all uploaded media, filter by image/video, search, delete
 - Drag-and-drop multi-upload area
 - Each media item: preview, file size, dimensions, "use in event" button
 - RLS: organisers see only their own media
 - Verify: upload 10 mixed photos and videos, manage them, delete one, organise
 
-**Session 9 — Event Creation Integrates Media Library**
+**Session 9 - Event Creation Integrates Media Library**
 - Refactor event creation form to support media library selection ("Choose from library" + "Upload new")
 - Cover image picker with preview
 - Optional cover video picker
 - Image gallery (up to 5 additional images, drag-to-reorder)
 - All images served via `next/image` with appropriate sizes
-- Verify: create an event using only library media (no fresh upload), then create another event using fresh upload — both work
+- Verify: create an event using only library media (no fresh upload), then create another event using fresh upload - both work
 
 **Week 3 ships:** Organisers upload professional video and photos. Media library is real. Event pages feel alive.
 
 ---
 
-### WEEK 4 — Discovery + Search + Geography
+### WEEK 4 - Discovery + Search + Geography
 
 **Theme:** Fans find events the way they actually search.
 
-**Session 10 — Trending Now + Culture Picks Rails**
+**Session 10 - Trending Now + Culture Picks Rails**
 - Implement Session 4 scope from `docs/epics/SESSION-4-EVENT-RAILS.md`
 - Add `tickets_sold_count`, `published_at`, `is_culture_pick`, `culture_pick_sort_order` to events table
 - Trending RPC ranks by velocity over last 7 days
@@ -245,18 +245,18 @@ Every session has a defined goal, a defined deliverable, and a defined verificat
 - Surface alternation: Featured (base) → Trending (alt) → Culture Picks (base)
 - Verify: buy 3 tickets on a test event, refresh homepage, event moves up in Trending
 
-**Session 11 — Real Search**
+**Session 11 - Real Search**
 - Decision: Postgres full-text search vs Meilisearch Cloud
   - Default to Postgres FTS (zero new infrastructure, free)
   - Upgrade to Meilisearch in Q3 if relevance becomes a problem
 - Add `tsvector` column to events with trigger to auto-update on insert/update
 - GIN index for fast lookup
-- Build `/api/search` endpoint — returns events matched by title, description, organiser name, venue
-- Type-ahead component in homepage hero search bar — debounced, shows top 5 results inline as user types, "See all results" link
-- Search results page at `/search?q=` — full grid with filters
+- Build `/api/search` endpoint - returns events matched by title, description, organiser name, venue
+- Type-ahead component in homepage hero search bar - debounced, shows top 5 results inline as user types, "See all results" link
+- Search results page at `/search?q=` - full grid with filters
 - Verify: search "afro" returns Afrobeats events, organiser names match, autocomplete works under 200 ms
 
-**Session 12 — City Pages**
+**Session 12 - City Pages**
 - New route `/cities/[slug]` for: melbourne, sydney, brisbane, perth, london, toronto
 - Each city page: hero ("Live events in Melbourne"), upcoming events grid filtered by city, popular categories in this city, "Are you organising in {city}?" CTA
 - City detection via venue address country/state/city fields on events
@@ -264,15 +264,15 @@ Every session has a defined goal, a defined deliverable, and a defined verificat
 - SEO metadata per city
 - Verify: `/cities/melbourne` shows only Melbourne events, generates valid OG tags
 
-**Week 4 ships:** Discovery is real — search works, rails populate, cities have homes. Friends/private beta link sent end of this week.
+**Week 4 ships:** Discovery is real - search works, rails populate, cities have homes. Friends/private beta link sent end of this week.
 
 ---
 
-### WEEK 5 — Imagery + Global Readiness
+### WEEK 5 - Imagery + Global Readiness
 
 **Theme:** The platform looks gorgeous. Ready for non-AU audiences.
 
-**Session 13 — Imagery Production**
+**Session 13 - Imagery Production**
 - Generate 7 category cover images via Midjourney v7 (one per hero category, 16:9 cinematic, culturally-authentic prompts)
 - Generate 6 city hero images (Melbourne diaspora scene, Sydney, Brisbane, Perth, London, Toronto)
 - Generate 4 marketing imagery for homepage and About page
@@ -283,7 +283,7 @@ Every session has a defined goal, a defined deliverable, and a defined verificat
 - Drop images into existing `coverImage` props on category landing pages, city pages, homepage hero
 - Verify: every category page now has a cinematic cover image, every city page has a local-feeling hero
 
-**Session 14 — Multi-Currency + Locale Detection**
+**Session 14 - Multi-Currency + Locale Detection**
 - Browser geolocation + Cloudflare IP country header for default locale
 - Currency display switcher in header (AUD, GBP, USD, CAD, EUR, NGN, ZAR)
 - Real-time conversion via Frankfurter API (free, ECB rates)
@@ -292,8 +292,8 @@ Every session has a defined goal, a defined deliverable, and a defined verificat
 - Format times per timezone with clear label ("7:00 PM AEST")
 - Verify: visit from a UK IP address sees GBP by default, can switch to AUD; event times shown correctly per event timezone
 
-**Session 15 — Social Sharing + SEO Hardening**
-- Open Graph image generation per event using `@vercel/og` — dynamic OG images with event title, date, cover image
+**Session 15 - Social Sharing + SEO Hardening**
+- Open Graph image generation per event using `@vercel/og` - dynamic OG images with event title, date, cover image
 - WhatsApp share generates clean preview card
 - X / Twitter share with hashtags pre-filled
 - Instagram-optimised share format (story-ready 1080×1920)
@@ -306,11 +306,11 @@ Every session has a defined goal, a defined deliverable, and a defined verificat
 
 ---
 
-### WEEK 6 — Launch Hardening
+### WEEK 6 - Launch Hardening
 
 **Theme:** Production grade. Friends become users.
 
-**Session 16 — Sentry + Error Monitoring**
+**Session 16 - Sentry + Error Monitoring**
 - Sign up for Sentry (Team plan ~AUD $40/mo)
 - Install `@sentry/nextjs`
 - Configure source maps for production
@@ -319,17 +319,17 @@ Every session has a defined goal, a defined deliverable, and a defined verificat
 - Slack/email alerts for critical errors
 - Verify: throw a test error in production, Sentry catches it, alert fires
 
-**Session 17 — Performance Pass**
+**Session 17 - Performance Pass**
 - Lighthouse audit on homepage, /events, /events/[slug], /categories/afrobeats, /pricing, /organisers
 - Fix every page to ≥ 85 Performance, ≥ 95 Accessibility, ≥ 95 Best Practices, ≥ 95 SEO
 - Hero video lazy loads on mobile (not blocking FCP on 3G)
 - Image lazy loading with proper `sizes` attribute
 - Font preloading
 - Critical CSS inlined
-- Bundle analysis — split, tree-shake, dynamic imports for heavy components
+- Bundle analysis - split, tree-shake, dynamic imports for heavy components
 - Verify: Lighthouse mobile homepage ≥ 85 Performance, LCP < 2.5 s on 4G simulation
 
-**Session 18 — Accessibility Audit**
+**Session 18 - Accessibility Audit**
 - Full WCAG 2.1 AA audit using axe DevTools
 - Screen reader testing (NVDA on Windows, VoiceOver on iPhone simulator if available)
 - Keyboard navigation: every interactive element reachable, focus visible, skip-to-content link
@@ -339,14 +339,14 @@ Every session has a defined goal, a defined deliverable, and a defined verificat
 - prefers-reduced-motion respected globally
 - Verify: zero axe critical/serious errors on top 10 routes
 
-**Session 19 — Load Testing**
+**Session 19 - Load Testing**
 - Use k6 or Artillery to simulate 1,000 concurrent users hitting a single event page during a ticket drop
 - Verify: page renders < 3 s, checkout completes, no Redis cache stampede, no Stripe rate limit
 - Tune Supabase connection pooler if needed
 - Tune Vercel function concurrency limits
 - Document the load profile in `docs/launch/LOAD-TEST-RESULTS.md`
 
-**Session 20 — Production Plan Flip + Launch**
+**Session 20 - Production Plan Flip + Launch**
 - Upstash Redis: free tier N. Virginia → Fixed 250MB Sydney region (paid)
 - Supabase: Free → Pro plan (AUD $40/mo)
 - Resend: Free → Pro plan (AUD $30/mo, dedicated IP)
@@ -374,17 +374,17 @@ What you're paying through the build, week by week.
 | 3 | Mux dev tier (~$10) | None | ~AUD $52 |
 | 4 | None | None | ~AUD $52 |
 | 5 | None | Midjourney generation ~AUD $50 | ~AUD $52 |
-| 6 | Supabase Pro $40, Resend Pro $30, Upstash Sydney $15, Sentry $40, Mux production ~$30 | None | ~AUD $207–$250 |
+| 6 | Supabase Pro $40, Resend Pro $30, Upstash Sydney $15, Sentry $40, Mux production ~$30 | None | ~AUD $207-$250 |
 
 **One-offs:**
 - Week 5 imagery generation: AUD $50
-- Q3 commissioned photography (post-launch v2): AUD $500–$2,000
+- Q3 commissioned photography (post-launch v2): AUD $500-$2,000
 
-**By end of Week 6 monthly steady state:** ~AUD $200–$250/month for a launch-ready platform competing with Ticketmaster, DICE, and Eventbrite.
+**By end of Week 6 monthly steady state:** ~AUD $200-$250/month for a launch-ready platform competing with Ticketmaster, DICE, and Eventbrite.
 
 ---
 
-## 7. Definition of Done — The Gate
+## 7. Definition of Done - The Gate
 
 Before public soft launch (end of Week 6), every item below must be true. This is the absolute gate.
 
@@ -443,7 +443,7 @@ If any item above is not true, launch is delayed. No exceptions. The plan is the
 
 **Before every session:**
 - Confirm which session number from this plan we're running
-- Read the session goal and deliverables out loud (literally — say them in chat)
+- Read the session goal and deliverables out loud (literally - say them in chat)
 - Confirm Claude Code session is fresh (`/exit` and re-launch if more than 2 hours of work in current session)
 
 **During every session:**
@@ -455,7 +455,7 @@ If any item above is not true, launch is delayed. No exceptions. The plan is the
 - Verify against the session's deliverables
 - Update Production Readiness Charter checkboxes
 - `git add . && git commit -m "session N: <goal>" && git push`
-- Update this plan with anything that drifted (only with founder approval — written here, not in chat)
+- Update this plan with anything that drifted (only with founder approval - written here, not in chat)
 
 **Week boundaries:**
 - End-of-week checkpoint: review the week's "ships" criterion. Does it hold?
@@ -464,7 +464,7 @@ If any item above is not true, launch is delayed. No exceptions. The plan is the
 
 ---
 
-## 9. Parking Lot — Ideas Logged, Not Yet Scheduled
+## 9. Parking Lot - Ideas Logged, Not Yet Scheduled
 
 Things that come up during the build that are good but not in this plan. They get parked here, evaluated at week boundaries, and either added in writing to the plan (with founder approval) or deferred to v2.
 
@@ -482,10 +482,10 @@ What could go wrong and how we handle it.
 | Midjourney imagery doesn't feel culturally authentic | Medium | High | Generate in Week 5 not Week 6 to leave time to regenerate or pivot to commissioned photography for Week 6 |
 | Lawal sick or work shifts spike | Medium | Medium | Each week has 1 buffer session built in by counting 3-4 sessions per 7 days |
 | Supabase Free tier hits limits before Week 6 | Low | High | Watch usage daily from Week 4; flip to Pro early if needed |
-| Stripe verification delay for live mode | Medium | High | Submit live mode application Week 4 not Week 6 — typical approval is 1-3 days but plan for 2 weeks |
+| Stripe verification delay for live mode | Medium | High | Submit live mode application Week 4 not Week 6 - typical approval is 1-3 days but plan for 2 weeks |
 | Vercel hits Pro plan function limits | Low | Medium | Already on Pro; monitor usage, function concurrency, bandwidth |
 | AI image licence ambiguity | Low | Medium | Use Midjourney paid plan (commercial rights confirmed); document every image's prompt + date in `brand_assets` table |
-| Footer / link regressions during refactors | Medium | Low | Add Playwright test that clicks every footer link and asserts each resolves to a 200 — runs in CI from Week 2 onward |
+| Footer / link regressions during refactors | Medium | Low | Add Playwright test that clicks every footer link and asserts each resolves to a 200 - runs in CI from Week 2 onward |
 | Founder burnout | Medium | High | Sessions are 1-3 hours, not marathons. End-of-week checkpoint asks "are you energised or drained?" Honest answer drives next week's pace. |
 
 ---
@@ -525,5 +525,5 @@ End of May 2026. EventLinqs goes live. Together.
 
 ---
 
-**Master Plan V1 — locked 15 April 2026.**
+**Master Plan V1 - locked 15 April 2026.**
 **Next step: Week 1 Session 1, tomorrow.**

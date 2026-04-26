@@ -1,4 +1,4 @@
-# Lighthouse CI gate — enforces docs/MEDIA-ARCHITECTURE.md §12.2.
+# Lighthouse CI gate - enforces docs/MEDIA-ARCHITECTURE.md §12.2.
 #
 # Runs on every PR. Boots a local Supabase stack so the dynamic routes
 # in lighthouserc.json (/events/[city], /events/[slug]) resolve to real

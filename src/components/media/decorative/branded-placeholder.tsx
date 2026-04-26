@@ -1,24 +1,24 @@
 // M6+: add in-app curated image library for organisers. Until then, branded
-// placeholder is the only fallback — no stock imagery in tile contexts.
+// placeholder is the only fallback - no stock imagery in tile contexts.
 
 /**
- * BrandedPlaceholder — dark-gradient EventLinqs-wordmark tile shown in place
+ * BrandedPlaceholder - dark-gradient EventLinqs-wordmark tile shown in place
  * of organiser photography when none exists. Matches the pattern Eventbrite
- * and Luma use for coverless events — brand-trust over generic stock.
+ * and Luma use for coverless events - brand-trust over generic stock.
  *
  * Lives under `src/components/media/decorative/` rather than feature code so
  * the gradient inline-style is intentionally scoped under the media library
  * (where the no-restricted-syntax background-image ban is permanently
  * disabled). See docs/MEDIA-ARCHITECTURE.md §11 and docs/MEDIA-INCONSISTENCIES.md V14.
  *
- * Renders absolutely positioned — parent must be `relative`.
+ * Renders absolutely positioned - parent must be `relative`.
  */
 
 interface Props {
   category?: string | null
   className?: string
   /**
-   * When true, renders only the dark gradient — no EventLinqs wordmark or
+   * When true, renders only the dark gradient - no EventLinqs wordmark or
    * category watermark. Used by the event detail hero, where the title and
    * category pill already carry the branding and the watermark otherwise
    * bleeds through behind the overlay text on short mobile viewports.

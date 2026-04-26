@@ -47,7 +47,7 @@ export function validateAdmissionToken(
     const mac = raw.slice(lastColon + 1)
     const expiresAtMsStr = raw.slice(secondLastColon + 1, lastColon)
     const rest = raw.slice(0, secondLastColon)
-    // rest = queueId:eventId — split on first colon
+    // rest = queueId:eventId - split on first colon
     const firstColon = rest.indexOf(':')
     if (firstColon === -1) return { valid: false }
     const queueId = rest.slice(0, firstColon)

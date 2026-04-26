@@ -23,7 +23,7 @@ export interface SquadMemberPaymentResult {
 
 /**
  * Creates a Stripe PaymentIntent for one squad member paying their share (1 ticket).
- * The squad's shared reservation is held at the squad level — this order has no reservation.
+ * The squad's shared reservation is held at the squad level - this order has no reservation.
  * On payment success, the webhook marks the member as paid and completes the squad if full.
  */
 export async function createSquadMemberPaymentIntent(
@@ -166,7 +166,7 @@ export async function createSquadMemberPaymentIntent(
 
   if (itemError) {
     console.error('[squad-checkout] order_item insert error:', itemError)
-    // Non-fatal — continue
+    // Non-fatal - continue
   }
 
   // Create payment record

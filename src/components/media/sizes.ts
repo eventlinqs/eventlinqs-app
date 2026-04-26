@@ -23,13 +23,13 @@ export const MEDIA_SIZES = {
   marquee: '280px',
   /** Category landing tile */
   category: '(max-width: 768px) 50vw, 320px',
-  /** Avatar — topbar (32px on every breakpoint) */
+  /** Avatar - topbar (32px on every breakpoint) */
   avatarTopbar: '32px',
-  /** Avatar — small (32px) */
+  /** Avatar - small (32px) */
   avatarSm: '32px',
-  /** Avatar — medium (48px) */
+  /** Avatar - medium (48px) */
   avatarMd: '48px',
-  /** Avatar — large (96px) */
+  /** Avatar - large (96px) */
   avatarLg: '96px',
 } as const
 

@@ -7,7 +7,7 @@ interface PageShellProps {
 }
 
 /**
- * PageShell — wraps every non-homepage interior page.
+ * PageShell - wraps every non-homepage interior page.
  *
  * Uses a flex-col layout so <main> grows to fill available viewport height,
  * preventing the blank void below the fold on short pages.

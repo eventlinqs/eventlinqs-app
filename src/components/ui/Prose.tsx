@@ -6,10 +6,10 @@ interface ProseProps {
 }
 
 /**
- * Prose — typography wrapper for long-form text.
+ * Prose - typography wrapper for long-form text.
  *
  * Applies consistent styling to headings, paragraphs, lists, links,
- * code, and blockquotes — without @tailwindcss/typography or any plugin.
+ * code, and blockquotes - without @tailwindcss/typography or any plugin.
  * Every style is explicit Tailwind utility or CSS-var based.
  *
  * Usage:

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 
 /**
- * M5 Phase 1 — /events browse surface E2E
+ * M5 Phase 1 - /events browse surface E2E
  *
  * Runs against production build (`npm run start`, port 3000).
  * 20 scenarios × 2 viewports = 40 assertions.
@@ -14,7 +14,7 @@ const EVENTS_URL = '/events'
 const CITY_URL = '/events/browse/melbourne'
 const NO_MATCH_QUERY = '?q=zzzz-definitely-no-events-match-this-8734'
 
-test.describe('M5 /events browse — Phase 1 acceptance suite', () => {
+test.describe('M5 /events browse - Phase 1 acceptance suite', () => {
   // ── 1. Hero strip loads ─────────────────────────────────────────
   test('1. hero strip renders heading and non-zero event count', async ({ page }) => {
     await page.goto(EVENTS_URL)
@@ -203,7 +203,7 @@ test.describe('M5 /events browse — Phase 1 acceptance suite', () => {
   // (no CDN tier). ISR is declared via `export const revalidate = 60` in
   // the page source; on Vercel the edge CDN turns that into s-maxage.
   // We verify the Next.js runtime serves the page and the bundle id header
-  // is present — proof the page went through the Next.js cache layer.
+  // is present - proof the page went through the Next.js cache layer.
   test('19. /events is served by the Next.js runtime (ISR declared in source)', async ({ page }) => {
     const res = await page.goto(EVENTS_URL)
     expect(res).not.toBeNull()

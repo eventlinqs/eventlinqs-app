@@ -3,15 +3,15 @@ import type { PublicEventTier, SocialProofBadge } from './types'
 /**
  * Compute the single social-proof badge to render on an event card.
  *
- * Priority (highest to lowest — exactly one badge is ever returned):
- *   1. last_chance      — event starts in < 24 hours
- *   2. few_left         — fewer than 10 tickets remaining across all tiers
- *   3. selling_fast     — more than 70% of inventory sold
- *   4. just_announced   — event was created less than 48 hours ago
- *   5. free             — event has no paid tickets
+ * Priority (highest to lowest - exactly one badge is ever returned):
+ *   1. last_chance      - event starts in < 24 hours
+ *   2. few_left         - fewer than 10 tickets remaining across all tiers
+ *   3. selling_fast     - more than 70% of inventory sold
+ *   4. just_announced   - event was created less than 48 hours ago
+ *   5. free             - event has no paid tickets
  *
  * Returns null when none of the conditions apply. Runs server-side only
- * (no "now" pinning beyond Date.now() — callers on ISR pages accept up to
+ * (no "now" pinning beyond Date.now() - callers on ISR pages accept up to
  * the revalidation window of staleness).
  */
 
@@ -42,32 +42,32 @@ export function computeSocialProofBadge(
 ): SocialProofBadge | null {
   const nowMs = now.getTime()
 
-  // 1. last_chance — < 24h to start
+  // 1. last_chance - < 24h to start
   const startMs = new Date(event.start_date).getTime()
   const hoursUntilStart = (startMs - nowMs) / HOUR_MS
   if (hoursUntilStart > 0 && hoursUntilStart < 24) {
     return 'last_chance'
   }
 
-  // 2. few_left — < 10 tickets remaining across all tiers
+  // 2. few_left - < 10 tickets remaining across all tiers
   const { sold, reserved, capacity } = sumTiers(event.ticket_tiers)
   const remaining = Math.max(0, capacity - sold - reserved)
   if (capacity > 0 && remaining > 0 && remaining < 10) {
     return 'few_left'
   }
 
-  // 3. selling_fast — > 70% sold
+  // 3. selling_fast - > 70% sold
   if (capacity > 0 && sold / capacity > 0.7) {
     return 'selling_fast'
   }
 
-  // 4. just_announced — created < 48h ago
+  // 4. just_announced - created < 48h ago
   const ageHours = (nowMs - new Date(event.created_at).getTime()) / HOUR_MS
   if (ageHours >= 0 && ageHours < 48) {
     return 'just_announced'
   }
 
-  // 5. free — no paid tickets
+  // 5. free - no paid tickets
   if (event.is_free === true) {
     return 'free'
   }
@@ -94,7 +94,7 @@ export const BADGE_LABELS: Record<SocialProofBadge, string> = {
 /**
  * Tailwind token classnames for each badge variant. Uses the existing
  * semantic token layer (success / warning / error / info) and brand gold
- * for "accent" — no new tokens introduced.
+ * for "accent" - no new tokens introduced.
  */
 export const BADGE_STYLES: Record<SocialProofBadge, string> = {
   last_chance: 'bg-error text-white',

@@ -3,12 +3,12 @@ import { MEDIA_QUALITY } from './quality'
 import { MEDIA_SIZES } from './sizes'
 
 /**
- * EventCardMedia — the only allowed surface for event imagery in card,
+ * EventCardMedia - the only allowed surface for event imagery in card,
  * tile, bento, rail, marquee, and list-row layouts.
  *
  * Variants map to the layout role and apply the correct sizes hint, quality
  * tier, and lazy/priority defaults. Feature components do NOT pass raw
- * `sizes` or `quality` — they pick a variant.
+ * `sizes` or `quality` - they pick a variant.
  *
  * See docs/MEDIA-ARCHITECTURE.md §3 for the role → variant table.
  */
@@ -21,9 +21,9 @@ export type EventCardMediaVariant =
   | 'marquee'
 
 interface Props {
-  /** Source URL — raster recommended; SVG allowed for placeholder thumbs. */
+  /** Source URL - raster recommended; SVG allowed for placeholder thumbs. */
   src: string
-  /** Alt text — required. Empty string only for purely decorative tiles. */
+  /** Alt text - required. Empty string only for purely decorative tiles. */
   alt: string
   /** Layout variant. Drives sizes + quality + priority defaults. */
   variant: EventCardMediaVariant

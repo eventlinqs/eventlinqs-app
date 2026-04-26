@@ -85,7 +85,7 @@ export async function setTierInventory(tierId: string, data: TierInventory): Pro
     await redis.set(tierKey(tierId), data, { ex: TTL_SECONDS })
   } catch (err) {
     console.error('[inventory-cache] setTierInventory failed:', err)
-    // Never throw — Redis failures must not break the app
+    // Never throw - Redis failures must not break the app
   }
 }
 

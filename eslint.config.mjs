@@ -29,16 +29,16 @@ const eslintConfig = defineConfig([
   //
   // Rules that enforce docs/MEDIA-ARCHITECTURE.md across the platform.
   //
-  //   1. Raw <img> for content imagery is forbidden — use a media/ surface.
+  //   1. Raw <img> for content imagery is forbidden - use a media/ surface.
   //   2. background-image: url(...) is forbidden for content imagery.
-  //   3. Direct `next/image` import is forbidden in feature code — feature
+  //   3. Direct `next/image` import is forbidden in feature code - feature
   //      code consumes only the media/ library.
   // ────────────────────────────────────────────────────────────────────────
   {
     files: ["src/**/*.{ts,tsx}"],
     rules: {
       // Escalate from default "warn" to "error". Existing files use
-      // eslint-disable comments which still work — those will be removed
+      // eslint-disable comments which still work - those will be removed
       // during Pre-Task 2 refactor.
       "@next/next/no-img-element": "error",
       "no-restricted-syntax": [
@@ -47,7 +47,7 @@ const eslintConfig = defineConfig([
           // Ban inline `style={{ backgroundImage: 'url(...)' }}` for content.
           // Decorative gradients (radial-gradient, linear-gradient) are NOT
           // matched. Template-literal URL strings (\`url(${x})\`) are not
-          // caught by AST regex match — PR review covers that escape hatch.
+          // caught by AST regex match - PR review covers that escape hatch.
           selector:
             "JSXAttribute[name.name='style'] Property[key.name='backgroundImage'][value.value=/url\\(/]",
           message:
@@ -56,21 +56,21 @@ const eslintConfig = defineConfig([
       ],
     },
   },
-  // Block direct next/image imports in feature code — feature components
+  // Block direct next/image imports in feature code - feature components
   // must consume the media/ library only. The media/ library itself, plus
   // the transitional list below, are exempt.
   {
     files: ["src/**/*.{ts,tsx}"],
     ignores: [
-      // Permanent — the media library IS the wrapper layer.
+      // Permanent - the media library IS the wrapper layer.
       "src/components/media/**",
-      // Transitional — refactored to media/ surfaces in Pre-Task 2.
+      // Transitional - refactored to media/ surfaces in Pre-Task 2.
       // Removing each entry from this list is the migration milestone.
       "src/components/ui/CategoryHeroEmpty.tsx",
       "src/components/features/events/event-form.tsx",
       "src/components/features/events/event-sold-out.tsx",
       // Square-bracket Next.js dynamic segments and parenthesized route
-      // groups confuse minimatch — use `**` wildcards to traverse them.
+      // groups confuse minimatch - use `**` wildcards to traverse them.
       "src/app/queue/**",
       "src/app/squad/**",
       "src/app/**/dashboard/events/**",
@@ -88,7 +88,7 @@ const eslintConfig = defineConfig([
             {
               name: "next/legacy/image",
               message:
-                "next/legacy/image is forbidden — use the modern next/image via @/components/media.",
+                "next/legacy/image is forbidden - use the modern next/image via @/components/media.",
             },
           ],
         },

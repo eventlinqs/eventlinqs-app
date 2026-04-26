@@ -65,7 +65,7 @@ function InnerPayForm({
       if (confirmError) {
         setError(confirmError.message ?? 'Payment could not be processed. Please try again.')
       }
-      // On success Stripe redirects to returnUrl — no code runs here
+      // On success Stripe redirects to returnUrl - no code runs here
     })
   }
 

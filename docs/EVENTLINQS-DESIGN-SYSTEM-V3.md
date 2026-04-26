@@ -1,13 +1,13 @@
-# EventLinqs Design System v3.0 — The Ticketmaster-Grade Spec
+# EventLinqs Design System v3.0 - The Ticketmaster-Grade Spec
 
 > Authored: 2026-04-18 by Claude (CTO / Chief Graphic Officer for the EventLinqs build).
 > Based on: forensic study of 40 mobile reference screenshots (Airbnb, DICE, Ticketmaster) plus full read of `github.com/eventlinqs/eventlinqs-app` git head on `main`.
 >
-> **Status: locked. This is the visual contract.** Any Claude Code stream working on Module 4.5 obeys this document. If a token, ratio, or pattern is not in this doc, do not invent it — propose a change and update the doc first.
+> **Status: locked. This is the visual contract.** Any Claude Code stream working on Module 4.5 obeys this document. If a token, ratio, or pattern is not in this doc, do not invent it - propose a change and update the doc first.
 
 ---
 
-## 0. Preamble — what we are competing against
+## 0. Preamble - what we are competing against
 
 | Property | Airbnb | DICE | Ticketmaster | EventLinqs target |
 |---|---|---|---|---|
@@ -16,14 +16,14 @@
 | Image carousel | Yes, dot indicators | No | Yes, arrows + counter | Yes, dot indicators (Airbnb pattern) |
 | Heart / favourite | Yes, top-right | Yes, bottom-right of poster | Yes, beneath hero | Yes, bottom-right of card image |
 | Social proof | Guest favourite pill | Venue logo grid + app ratings | Star ratings on app banner | Trending pill + Organiser favourite pill + venue logo grid |
-| Empty states | None — only show populated | None — only show populated | "0 RESULTS" with refinement | Hide empty rails entirely |
-| Sticky action bar | No on mobile | Yes — Purchase Ticket | Yes — Buy Tickets / Price / More Info | Yes — Get tickets / Price / Availability dot |
+| Empty states | None - only show populated | None - only show populated | "0 RESULTS" with refinement | Hide empty rails entirely |
+| Sticky action bar | No on mobile | Yes - Purchase Ticket | Yes - Buy Tickets / Price / More Info | Yes - Get tickets / Price / Availability dot |
 
 **The bar to clear: any fan or organiser landing on EventLinqs must believe within 3 seconds that this platform is at least as well-built as DICE.** No exceptions.
 
 ---
 
-## 1. Brand foundation — locked tokens
+## 1. Brand foundation - locked tokens
 
 These are already in `src/app/globals.css` and Tailwind v4 theme block. Any divergence is a bug.
 
@@ -33,9 +33,9 @@ These are already in `src/app/globals.css` and Tailwind v4 theme block. Any dive
 |---|---|---|
 | `gold-100` | `#FBF4DC` | Soft accent backgrounds, badge fills |
 | `gold-400` | `#E8B738` | Hover states, accent text on dark surfaces |
-| `gold-500` | `#D4A017` | Brand accent — CTAs, eyebrows, the dot in EVENTLINQS• |
+| `gold-500` | `#D4A017` | Brand accent - CTAs, eyebrows, the dot in EVENTLINQS• |
 | `gold-600` | `#B88612` | Active/pressed states |
-| `coral-500` | `#FF4E3A` | Trending / urgency — sparingly |
+| `coral-500` | `#FF4E3A` | Trending / urgency - sparingly |
 | `coral-600` | `#E63E2C` | Coral hover |
 | `navy-950` | `#0A0E1A` | Hero base, dark surface |
 | `ink-900` | `#0A1628` | Primary text, dark surface secondary |
@@ -44,7 +44,7 @@ These are already in `src/app/globals.css` and Tailwind v4 theme block. Any dive
 | `ink-400` | `#8A8A8A` | Muted text, icon strokes |
 | `ink-200` | `#D9D9D6` | Borders, dividers |
 | `ink-100` | `#EFEDE8` | Soft surface, alternate band background |
-| `canvas` | `#FAFAF7` | Default page background — warm off-white |
+| `canvas` | `#FAFAF7` | Default page background - warm off-white |
 | `white` | `#FFFFFF` | Card surfaces, on-image text |
 
 **Gold usage rule.** Gold is an *accent*, not a flood. The visible gold per viewport must not exceed roughly 5% of the visible area. Gold appears in: (a) the EVENTLINQS• logo dot, (b) primary CTAs, (c) eyebrow labels above section headers, (d) date stamps on event cards, (e) the View event arrow on the hero featured card. Gold never fills a section background. Gold never fills a card body.
@@ -60,7 +60,7 @@ These are already in `src/app/globals.css` and Tailwind v4 theme block. Any dive
 
 | Token | clamp | Use |
 |---|---|---|
-| `text-display-3xl` | `clamp(4rem, 8vw, 6.5rem)` | Hero H1 only — once per page |
+| `text-display-3xl` | `clamp(4rem, 8vw, 6.5rem)` | Hero H1 only - once per page |
 | `text-display-2xl` | `clamp(3.5rem, 6vw, 5.5rem)` | Category landing page H1 |
 | `text-display-xl` | `clamp(2.75rem, 4.5vw, 4rem)` | Event detail page H1 |
 | `text-display-lg` | `clamp(2rem, 3.5vw, 3rem)` | Section H2 |
@@ -74,7 +74,7 @@ These are already in `src/app/globals.css` and Tailwind v4 theme block. Any dive
 
 **Weight rules.** Display: 700 / 800 only. Body: 400 / 500 / 600. Never use 900 (too brutal). Never set body copy below 14px.
 
-### Spacing — 4px grid
+### Spacing - 4px grid
 
 All margins, padding, gaps use the `--space-N` token where N corresponds to `4 * N` pixels. The grid is non-negotiable. No magic numbers like `padding: 13px`.
 
@@ -86,7 +86,7 @@ All margins, padding, gaps use the `--space-N` token where N corresponds to `4 *
 | Cards (event, organiser, city) | `rounded-2xl` (16px) |
 | Buttons | `rounded-lg` (8px) |
 | Form inputs | `rounded-lg` (8px) |
-| Image inside card | `rounded-t-2xl` (top corners only — body extends to bottom) |
+| Image inside card | `rounded-t-2xl` (top corners only - body extends to bottom) |
 
 ### Shadows
 
@@ -99,9 +99,9 @@ All margins, padding, gaps use the `--space-N` token where N corresponds to `4 *
 
 ---
 
-## 2. Logo — EVENTLINQS•
+## 2. Logo - EVENTLINQS•
 
-The wordmark is `EVENTLINQS` set in Manrope ExtraBold (800), tracking `tracking-tight` (-0.02em), followed by a gold dot — the "lockup full stop". This is the lockup spec from Concept A Option 2.
+The wordmark is `EVENTLINQS` set in Manrope ExtraBold (800), tracking `tracking-tight` (-0.02em), followed by a gold dot - the "lockup full stop". This is the lockup spec from Concept A Option 2.
 
 ```tsx
 // components/ui/eventlinqs-logo.tsx
@@ -120,7 +120,7 @@ The dot is `text-gold-500`. Always. Even on dark surfaces.
 
 ---
 
-## 3. Navigation — Airbnb pill search bar (decision 1 from top 10)
+## 3. Navigation - Airbnb pill search bar (decision 1 from top 10)
 
 ### Desktop (≥ md)
 
@@ -133,7 +133,7 @@ The dot is `text-gold-500`. Always. Even on dark surfaces.
 ```
 
 - Logo left (linked to `/`)
-- Centre: pill search bar — `rounded-full bg-canvas border border-ink-200 hover:shadow-sm`
+- Centre: pill search bar - `rounded-full bg-canvas border border-ink-200 hover:shadow-sm`
 - Right: ghost Sign in button + gold Get Started button
 - **No location pin pill. Anywhere.**
 - Sticky on scroll: header shrinks to 56px and search pill stays centred.
@@ -149,7 +149,7 @@ The dot is `text-gold-500`. Always. Even on dark surfaces.
 └────────────────────────────────────┘
 ```
 
-The search pill drops to a second row on mobile. Tapping the pill opens a full-screen search modal (Module 5 territory — for now, links to `/events`).
+The search pill drops to a second row on mobile. Tapping the pill opens a full-screen search modal (Module 5 territory - for now, links to `/events`).
 
 ### Search modal (built in M5, stub for M4.5)
 
@@ -178,7 +178,7 @@ Markup (already exists in `page.tsx`, refine):
 ```tsx
 <div className="flex items-end justify-between gap-4">
   <div className="flex items-start gap-3">
-    {/* Vertical gold accent bar — 2px wide, 32px tall */}
+    {/* Vertical gold accent bar - 2px wide, 32px tall */}
     <div className="mt-1 h-8 w-0.5 shrink-0 bg-gold-500" aria-hidden="true" />
     <div>
       <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-gold-500">
@@ -199,7 +199,7 @@ Markup (already exists in `page.tsx`, refine):
 
 ---
 
-## 5. Event card anatomy — the most important atom
+## 5. Event card anatomy - the most important atom
 
 This is the visual workhorse. It must be perfect.
 
@@ -227,17 +227,17 @@ This is the visual workhorse. It must be perfect.
 | Element | Value |
 |---|---|
 | Card | `rounded-2xl bg-white border border-ink-100 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-200 ease-out` |
-| Image aspect | 4:3 desktop, 16:9 mobile — `aspect-video md:aspect-[4/3]` |
+| Image aspect | 4:3 desktop, 16:9 mobile - `aspect-video md:aspect-[4/3]` |
 | Image radius | `rounded-t-2xl overflow-hidden` |
 | Category pill | `absolute left-3 top-3 rounded-full bg-ink-900/80 backdrop-blur-sm px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white` |
-| Carousel dots | `absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5` — only renders when `gallery_urls.length > 1` |
+| Carousel dots | `absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5` - only renders when `gallery_urls.length > 1` |
 | Heart button | `absolute bottom-3 right-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-ink-900 shadow-sm hover:scale-110 transition-transform` |
 | Body padding | `p-4 md:p-5` |
 | Date | `font-display text-[11px] font-semibold uppercase tracking-[0.15em] text-gold-600` |
 | Title | `mt-1.5 font-display text-lg md:text-xl font-bold leading-tight text-ink-900 line-clamp-2 group-hover:text-gold-700 transition-colors` |
 | Location | `mt-2 flex items-center gap-1 text-sm text-ink-500` with map pin icon at `h-3.5 w-3.5` |
 | Price row | `mt-auto flex items-end justify-between gap-2 pt-4` |
-| Price | `font-display text-base font-bold text-ink-900` — currency code in `text-xs font-medium text-ink-500` |
+| Price | `font-display text-base font-bold text-ink-900` - currency code in `text-xs font-medium text-ink-500` |
 | Social proof badge | from `SocialProofBadge` component, `compact` variant |
 
 ### Featured card (used as first card on grids)
@@ -246,7 +246,7 @@ Twice the height of a default card. Title at `text-display-lg`. Subtitle line be
 
 ### Card hover motion
 
-`hover:-translate-y-1` lifts the whole card by 4px. `transition-all duration-200 ease-out`. The image inside applies `group-hover:scale-105` over `duration-500` — a slow inner zoom, classic Airbnb.
+`hover:-translate-y-1` lifts the whole card by 4px. `transition-all duration-200 ease-out`. The image inside applies `group-hover:scale-105` over `duration-500` - a slow inner zoom, classic Airbnb.
 
 ---
 
@@ -268,7 +268,7 @@ Used in 3 places: card image (when `gallery_urls.length > 1`), event detail hero
 - Arrow buttons on desktop (left/right, white circles with ink-900 chevron)
 - Counter "1 / 5" bottom-right
 - Dot indicators bottom-centre
-- Tap to open lightbox (M5 — for M4.5, just enlarges modal)
+- Tap to open lightbox (M5 - for M4.5, just enlarges modal)
 
 ### Implementation
 
@@ -282,14 +282,14 @@ Uses native CSS scroll-snap (`snap-x snap-mandatory`) for swipe behaviour, no JS
 
 ---
 
-## 7. Hero anatomy — homepage
+## 7. Hero anatomy - homepage
 
 ```
 ┌───────────────────────────────────────────────────────────────────┐
-│  [Pill search bar overlaid on top — see Nav]                      │
+│  [Pill search bar overlaid on top - see Nav]                      │
 │                                                                    │
 │                                                                    │
-│   [video backdrop — crowd at an event, 60% darkened]              │
+│   [video backdrop - crowd at an event, 60% darkened]              │
 │                                                                    │
 │   ┃ MADE FOR THE DIASPORA                                         │
 │   ┃                                                                │
@@ -320,9 +320,9 @@ Uses native CSS scroll-snap (`snap-x snap-mandatory`) for swipe behaviour, no JS
 | Subhead | `text-base sm:text-lg text-white/75 max-w-lg` |
 | CTA primary | gold filled, `Get tickets` |
 | CTA secondary | white outline, `Browse all events` |
-| Featured card | `bg-ink-900 border border-gold-500/30` — solid, NOT glassmorphism (decision 7) |
+| Featured card | `bg-ink-900 border border-gold-500/30` - solid, NOT glassmorphism (decision 7) |
 
-### The featured card — solid, not glass (CRITICAL FIX)
+### The featured card - solid, not glass (CRITICAL FIX)
 
 Current (wrong): translucent glass card vanishing into the dark video.
 
@@ -356,7 +356,7 @@ New (right):
 
 ---
 
-## 8. Cultural Picks — eliminate empty states (decision 3)
+## 8. Cultural Picks - eliminate empty states (decision 3)
 
 Current (wrong): six dashed grey boxes saying "Be the first to host a [X] event".
 
@@ -366,7 +366,7 @@ If the user clicks a tab and the event count drops to zero between hover and cli
 
 ---
 
-## 9. By City rail — editorial photography (decision 9)
+## 9. By City rail - editorial photography (decision 9)
 
 ```
 BY CITY                                                       View all →
@@ -379,12 +379,12 @@ Wherever you are, the culture follows
 └────────────┘ └────────────┘ └────────────┘ └────────────┘
 ```
 
-Each tile is `aspect-[4/5]` (taller than wide), with a real city photograph. Bottom-up dark gradient. City name in white extrabold display 28px. Event count in white/70 14px below. Cities with 0 events still show — the count just reads "Coming soon" instead of "0 events".
+Each tile is `aspect-[4/5]` (taller than wide), with a real city photograph. Bottom-up dark gradient. City name in white extrabold display 28px. Event count in white/70 14px below. Cities with 0 events still show - the count just reads "Coming soon" instead of "0 events".
 
 Photography source priority:
 1. **Licensed editorial photo** (preferred, paid)
-2. **Pexels API with city query** (fallback) — query template: `"{city} skyline {evening|night|aerial}"` rotating
-3. **Brand-coloured fallback** (last resort) — full-bleed city colour from a curated palette, with a city silhouette SVG, NEVER plain "[CITY NAME]" ghost text
+2. **Pexels API with city query** (fallback) - query template: `"{city} skyline {evening|night|aerial}"` rotating
+3. **Brand-coloured fallback** (last resort) - full-bleed city colour from a curated palette, with a city silhouette SVG, NEVER plain "[CITY NAME]" ghost text
 
 Pexels query examples:
 - Melbourne: `"Melbourne skyline night"`, `"Melbourne city evening"`, `"Melbourne CBD aerial"`
@@ -392,7 +392,7 @@ Pexels query examples:
 
 ---
 
-## 10. Social proof layer — venue/promoter logos + ratings (decision 8)
+## 10. Social proof layer - venue/promoter logos + ratings (decision 8)
 
 New section between By City and For Organisers on the homepage:
 
@@ -416,7 +416,7 @@ Loved by fans
 └─────────────────────┘  └─────────────────────┘
 ```
 
-For launch (M4.5 finishing pass), populate with real organisers who have signed up, even if it's only 4-6 names. Monochrome white wordmarks on `bg-ink-900`. Ratings panel shows iOS/Android stars only when the apps actually exist (M6 territory) — until then, omit the ratings panel and let the logo grid stand alone.
+For launch (M4.5 finishing pass), populate with real organisers who have signed up, even if it's only 4-6 names. Monochrome white wordmarks on `bg-ink-900`. Ratings panel shows iOS/Android stars only when the apps actually exist (M6 territory) - until then, omit the ratings panel and let the logo grid stand alone.
 
 If you have fewer than 6 organiser logos, do not ship this section. Empty social proof is worse than no social proof.
 
@@ -424,7 +424,7 @@ If you have fewer than 6 organiser logos, do not ship this section. Empty social
 
 ## 11. Live Vibe marquee
 
-Current implementation (per your screenshots): horizontal scrolling pink-pin items "New in London: Afrobeats All Night — London", "New in Sydney: Amapiano Takeover — Sydney" etc.
+Current implementation (per your screenshots): horizontal scrolling pink-pin items "New in London: Afrobeats All Night - London", "New in Sydney: Amapiano Takeover - Sydney" etc.
 
 Keep the marquee. Tighten:
 - Position: between Cultural Picks and By City
@@ -437,7 +437,7 @@ Keep the marquee. Tighten:
 
 ---
 
-## 12. Event detail page — full lift
+## 12. Event detail page - full lift
 
 Current state: stale Tailwind (`bg-gray-50`, `bg-blue-100`), object-contained small hero, no SiteHeader/SiteFooter wrapper, ad-hoc nav. **This page is the worst-shape page in the app right now.** Full rebuild required.
 
@@ -462,7 +462,7 @@ Current state: stale Tailwind (`bg-gray-50`, `bg-blue-100`), object-contained sm
 │                                     │
 │ WHEN & WHERE                        │
 │ ┌─────────────────────────────────┐ │
-│ │ [venue map embed — Google Maps] │ │
+│ │ [venue map embed - Google Maps] │ │
 │ └─────────────────────────────────┘ │
 │ Venue Name                          │
 │ 123 Example St, Melbourne           │
@@ -490,9 +490,9 @@ Current state: stale Tailwind (`bg-gray-50`, `bg-blue-100`), object-contained sm
 
 Two-column on `lg:`:
 - Left (60%): hero carousel, About, When & Where, Organiser, Share, Fans also viewed
-- Right (40%): sticky ticket selector card — `lg:sticky lg:top-24` — contains the existing `TicketSelector` component
+- Right (40%): sticky ticket selector card - `lg:sticky lg:top-24` - contains the existing `TicketSelector` component
 
-### Sticky bottom action bar (mobile only — decision 10)
+### Sticky bottom action bar (mobile only - decision 10)
 
 ```tsx
 <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-ink-100 shadow-[0_-4px_20px_rgba(10,22,40,0.08)] pb-[max(0.75rem,env(safe-area-inset-bottom))] px-4 pt-3">
@@ -529,16 +529,16 @@ Availability dot colours follow Ticketmaster's GOOD / LOW / NONE pattern (image 
 | Ken Burns | Hero video alternative when video fails | `animate-[ken-burns_20s_ease-in-out_infinite]` keyframes scale 1 → 1.1 + translate |
 | Marquee | Live Vibe strip | `animate-[marquee_60s_linear_infinite]` |
 | Fade-in on scroll | Section enters viewport | IntersectionObserver + `opacity-0 → opacity-100` over 600ms ease-out |
-| Carousel snap | Card image carousel swipe | CSS `snap-x snap-mandatory` — no JS |
+| Carousel snap | Card image carousel swipe | CSS `snap-x snap-mandatory` - no JS |
 | CTA pulse | Pulse dot on Happening Soon | `animate-pulse` Tailwind built-in |
 
 **Reduced-motion override** is already in `globals.css`. Honour it. Anything that `transform` or `animate` must check the media query.
 
 ---
 
-## 14. Image pipeline — Pexels API tuned per category
+## 14. Image pipeline - Pexels API tuned per category
 
-Schema is set. `gallery_urls: string[]` exists on events. Upload component handles 1 image today — needs to support up to 10.
+Schema is set. `gallery_urls: string[]` exists on events. Upload component handles 1 image today - needs to support up to 10.
 
 ### Smart fallback hierarchy
 
@@ -579,11 +579,11 @@ export function SmartMedia({ src, fallbackCategory, alt, ...rest }: Props) {
 
 ---
 
-## 15. Empty states — proper, not dashed
+## 15. Empty states - proper, not dashed
 
 Replace every dashed-border empty state with one of:
 
-### Pattern A — Discovery empty (events page with no results matching filters)
+### Pattern A - Discovery empty (events page with no results matching filters)
 
 ```
         [SVG illustration: a person looking at a map with a magnifying glass]
@@ -595,7 +595,7 @@ Replace every dashed-border empty state with one of:
                    [Reset filters]   [Browse all events]
 ```
 
-### Pattern B — Category landing empty (Cultural Picks tab with no events)
+### Pattern B - Category landing empty (Cultural Picks tab with no events)
 
 ```
               [SVG illustration: a stage with stage lights and a microphone]
@@ -607,7 +607,7 @@ Replace every dashed-border empty state with one of:
                               [Start hosting]
 ```
 
-### Pattern C — Section hide entirely (Cultural Picks on homepage)
+### Pattern C - Section hide entirely (Cultural Picks on homepage)
 
 If the section has no content, **hide the entire section**. Do not render the header, the tabs, or the dashed boxes.
 
@@ -631,11 +631,11 @@ All grids:
 - `lg:` 3 columns
 - `xl:` 4 columns (city tiles, organiser logos)
 
-Container: `mx-auto max-w-7xl px-4 sm:px-6 lg:px-8` — non-negotiable.
+Container: `mx-auto max-w-7xl px-4 sm:px-6 lg:px-8` - non-negotiable.
 
 ---
 
-## 17. Accessibility — WCAG 2.2 AA, no compromises
+## 17. Accessibility - WCAG 2.2 AA, no compromises
 
 - All interactive elements `min-h-[44px]` and `min-w-[44px]` (already in tokens)
 - Focus ring: gold-400, 2px, 2px offset (already in `globals.css`)
@@ -643,7 +643,7 @@ Container: `mx-auto max-w-7xl px-4 sm:px-6 lg:px-8` — non-negotiable.
 - Heart button: `aria-label="Save {title}"` and `aria-pressed={isSaved}`
 - Carousel: keyboard navigation (left/right arrows), aria-roledescription="carousel"
 - Sticky bottom bar: doesn't trap focus; `role="region"` with `aria-label="Ticket actions"`
-- Colour contrast: gold-500 on white passes AA for large text (3:1) — gold-600 used for body-size text on white (4.5:1)
+- Colour contrast: gold-500 on white passes AA for large text (3:1) - gold-600 used for body-size text on white (4.5:1)
 - Reduced motion: respected on every animation
 
 ---
@@ -662,7 +662,7 @@ The Apple test fails on:
 - Any spacing that isn't on the 4px grid
 - Any state where the user sees a dashed grey rectangle
 - Any nav with a non-functional pin pill
-- Any button labelled in mid-sentence case ("Get started" not "Get Started" — Australian English follows sentence case for inline labels, title case for proper noun CTAs only)
+- Any button labelled in mid-sentence case ("Get started" not "Get Started" - Australian English follows sentence case for inline labels, title case for proper noun CTAs only)
 
 ---
 
@@ -671,10 +671,10 @@ The Apple test fails on:
 - Sentence case for body, headings, and inline labels: "Get tickets", "Browse all events"
 - Title case only for proper nouns: "EventLinqs", "Cultural Picks" (section title), "Made for the Diaspora" (eyebrow)
 - Spelling: organiser (not organizer), favourite (not favorite), colour (not color)
-- No em-dashes (—) or en-dashes (–) as punctuation. Use hyphens for compound words only. Sentences end with full stops.
+- No em-dashes ( - ) or en-dashes (-) as punctuation. Use hyphens for compound words only. Sentences end with full stops.
 - No exclamation marks. Anywhere. Even in CTAs. "Get tickets" not "Get tickets!".
-- Numerals: "5+ payment gateways", "24/7 ticket scanning", "$44" — no spelled-out numbers in UI
-- Date format: "Sun, 19 Apr" (short) or "Sunday 19 April 2026" (long) — never US format
+- Numerals: "5+ payment gateways", "24/7 ticket scanning", "$44" - no spelled-out numbers in UI
+- Date format: "Sun, 19 Apr" (short) or "Sunday 19 April 2026" (long) - never US format
 
 ---
 
@@ -685,8 +685,8 @@ The Apple test fails on:
 1. New SiteHeader with pill search bar (no Melbourne pin pill)
 2. New EventCard with carousel support and updated typography
 3. ImageCarousel primitive
-4. Hero — solid Happening Soon card replacing glass
-5. Cultural Picks — empty-tab hiding logic
+4. Hero - solid Happening Soon card replacing glass
+5. Cultural Picks - empty-tab hiding logic
 6. By City rail with editorial photography
 7. Live Vibe marquee tightened
 8. Social proof / venue logos section (only if 6+ logos available)
@@ -698,7 +698,7 @@ The Apple test fails on:
 
 ### Waits for M5+:
 
-- Search modal (sheet) — pill links to `/events?focus=search` for now
+- Search modal (sheet) - pill links to `/events?focus=search` for now
 - Saved events functionality (heart button is wired to noop in M4.5)
 - iOS / Android app store ratings panel (apps don't exist yet)
 - Lightbox on detail carousel

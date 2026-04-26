@@ -17,7 +17,7 @@ interface EmptyStateProps {
 }
 
 /**
- * EmptyState — shown when a page or list has no data.
+ * EmptyState - shown when a page or list has no data.
  *
  * Follows the brand voice: warm and directive, never dismissive.
  * Always tells the user what to do next via primaryAction.

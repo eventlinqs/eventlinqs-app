@@ -10,7 +10,7 @@ import type { SocialProofBadge as M5Badge } from '@/lib/events/types'
 import { BADGE_LABELS, BADGE_STYLES } from '@/lib/events/badges'
 
 /**
- * EventCard — spec §6.2
+ * EventCard - spec §6.2
  *
  * Layout:
  *   - Image: 16:9 mobile (edge-to-edge in grid), 4:3 on md+ (desktop grid)
@@ -18,7 +18,7 @@ import { BADGE_LABELS, BADGE_STYLES } from '@/lib/events/badges'
  *   - Heart/save button: absolute bottom-right of image
  *   - Card body: date (gold), title (Manrope), location, price + social proof
  *
- * Price: "From AUD $X" — Manrope 700, no decimal for round cents
+ * Price: "From AUD $X" - Manrope 700, no decimal for round cents
  *
  * M5 mode: when `event.badge` is explicitly provided (non-undefined),
  * the card shows the M5 single-priority social-proof badge top-left
@@ -157,7 +157,7 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
               </span>
             )}
 
-        {/* Heart / save — top-right overlay */}
+        {/* Heart / save - top-right overlay */}
         <SaveEventButton
           eventId={id}
           initiallySaved={initiallySaved}

@@ -3,18 +3,18 @@ import { MEDIA_QUALITY } from './quality'
 import { MEDIA_SIZES } from './sizes'
 
 /**
- * CategoryTileImage — the only allowed surface for category-tile imagery
+ * CategoryTileImage - the only allowed surface for category-tile imagery
  * (category landing tiles, category pickers, category browse cards).
  *
  * Always lazy. Always category sizes hint. Alt text required (categories
- * are user-facing labels — semantic alt is mandatory for SEO).
+ * are user-facing labels - semantic alt is mandatory for SEO).
  *
  * See docs/MEDIA-ARCHITECTURE.md §3 for the role → variant table.
  */
 
 interface Props {
   src: string
-  /** Required — category tile alt is SEO-relevant (page indexes by category). */
+  /** Required - category tile alt is SEO-relevant (page indexes by category). */
   alt: string
   /** Above-fold (e.g. category landing hero); defaults false. */
   priority?: boolean

@@ -9,13 +9,13 @@ import {
 } from './hero-carousel-client'
 
 /**
- * FeaturedEventHero — full-viewport cinematic hero carousel.
+ * FeaturedEventHero - full-viewport cinematic hero carousel.
  *
  * Accepts a mix of real event slides + curated category highlight slides.
  * Pre-resolves each slide's background media in parallel on the server,
  * then hands pre-rendered JSX to the client carousel component.
  *
- * The H1 is always the brand promise ("Where the culture gathers.") — event
+ * The H1 is always the brand promise ("Where the culture gathers.") - event
  * identity lives in the ribbon card on the right. The eyebrow rotates based
  * on the active slide's signal (soon, trending, or brand default).
  */
