@@ -48,6 +48,15 @@ next-env.d.ts
 *.jpeg
 *.webp
 
+# Allowlist canonical media assets that ship with the app — these are
+# production fallbacks, not screenshot artifacts, and MUST be tracked.
+# See docs/MEDIA-ARCHITECTURE.md.
+!public/images/hero/*.jpg
+!public/images/hero/*.jpeg
+!public/images/hero/*.webp
+!public/images/hero/*.png
+!public/**/*.svg
+
 # playwright test runner artifacts — local only
 /test-results/
 /playwright-report/
