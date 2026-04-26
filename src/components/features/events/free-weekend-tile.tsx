@@ -1,12 +1,13 @@
 import Link from 'next/link'
-import { SmartMedia } from '@/components/ui/smart-media'
+import { EventCardMedia } from '@/components/media'
+import { BrandedPlaceholder } from '@/components/ui/branded-placeholder'
 import { GlassCard } from '@/components/ui/glass-card'
 import { getEventMedia, type EventMediaInput } from '@/lib/images/event-media'
 import { getCategoryPhoto } from '@/lib/images/category-photo'
 import type { BentoEvent } from './event-bento-tile'
 
 /**
- * FreeWeekendTile — bento cell that highlights the highest-capacity free
+ * FreeWeekendTile: bento cell that highlights the highest-capacity free
  * event this weekend. Falls back to "Discover free events" generic CTA
  * when no free-weekend event exists.
  */
@@ -26,6 +27,32 @@ function formatDate(iso: string): string {
   })
 }
 
+interface ResolvedTileMedia {
+  imageSrc: string | null
+  imageAlt: string
+  placeholderCategory: string | null
+}
+
+function resolveTileMedia(
+  fallbackAlt: string,
+  media: Awaited<ReturnType<typeof getEventMedia>>,
+): ResolvedTileMedia {
+  if (media.kind === 'video') {
+    return { imageSrc: media.poster, imageAlt: fallbackAlt, placeholderCategory: null }
+  }
+  if (media.kind === 'carousel') {
+    return {
+      imageSrc: media.images[0] ?? null,
+      imageAlt: media.alts[0] ?? fallbackAlt,
+      placeholderCategory: null,
+    }
+  }
+  if (media.kind === 'still-kenburns') {
+    return { imageSrc: media.src, imageAlt: media.alt ?? fallbackAlt, placeholderCategory: null }
+  }
+  return { imageSrc: null, imageAlt: fallbackAlt, placeholderCategory: media.category }
+}
+
 export async function FreeWeekendTile({ event, fallbackMode = false }: Props) {
   let mediaInput: EventMediaInput | null = event
   if (!mediaInput || fallbackMode) {
@@ -38,10 +65,12 @@ export async function FreeWeekendTile({ event, fallbackMode = false }: Props) {
   }
 
   const media = await getEventMedia(mediaInput)
+  const fallbackAlt = event?.title ?? 'Free this weekend'
+  const { imageSrc, imageAlt, placeholderCategory } = resolveTileMedia(fallbackAlt, media)
   const href = event ? `/events/${event.slug}` : '/events?free=1'
   const title = event?.title ?? 'Free this weekend'
   const venue = event
-    ? [event.venue_name, event.venue_city].filter(Boolean).join(' · ')
+    ? [event.venue_name, event.venue_city].filter(Boolean).join(' \u00B7 ')
     : 'Discover events that cost nothing but your Saturday'
 
   return (
@@ -51,11 +80,13 @@ export async function FreeWeekendTile({ event, fallbackMode = false }: Props) {
       aria-label={event ? `Free: ${event.title}` : 'Browse free events'}
     >
       <div className="absolute inset-0">
-        <SmartMedia
-          media={media}
-          sizes="(max-width: 1024px) 100vw, 42vw"
-          className="transition-transform duration-[1400ms] ease-out group-hover:scale-[1.04]"
-        />
+        <div className="absolute inset-0 overflow-hidden transition-transform duration-[1400ms] ease-out group-hover:scale-[1.04]">
+          {imageSrc ? (
+            <EventCardMedia src={imageSrc} alt={imageAlt} variant="bento-hero" />
+          ) : (
+            <BrandedPlaceholder category={placeholderCategory} />
+          )}
+        </div>
         <div
           className="absolute inset-0"
           style={{
