@@ -18,9 +18,9 @@ import { getEventInventory, getTierInventory } from '@/lib/redis/inventory-cache
 import { getDynamicPriceMap } from '@/lib/pricing/dynamic-pricing'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
-import { SmartMedia } from '@/components/ui/smart-media'
+import { HeroMedia } from '@/components/media'
 import { GlassCard } from '@/components/ui/glass-card'
-import { getFeaturedEventMedia } from '@/lib/images/event-media'
+import { getFeaturedHeroBackground } from '@/lib/images/event-media'
 import { StickyActionBar } from '@/components/features/events/sticky-action-bar'
 import { RelatedEventsGrid } from '@/components/features/events/related-events-grid'
 import type { EventCardData } from '@/components/features/events/event-card'
@@ -329,7 +329,7 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
     getUnlockedTierIds(),
     getDynamicPriceMap(allTiers.map(t => t.id)),
     getEventInventory(event.id),
-    getFeaturedEventMedia({
+    getFeaturedHeroBackground({
       title: event.title,
       cover_image_url: event.cover_image_url,
       thumbnail_url: event.thumbnail_url,
@@ -391,8 +391,6 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
     .filter(Boolean)
     .join(', ')
 
-  const autoplayHero = media.kind === 'video'
-
   const relatedTierIds = related
     .map(e => e.ticket_tiers?.[0]?.id)
     .filter((id): id is string => typeof id === 'string')
@@ -452,7 +450,12 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
           className="relative flex min-h-[55vh] items-end overflow-hidden bg-navy-950 md:min-h-[70vh]"
         >
           <div className="absolute inset-0">
-            <SmartMedia media={media} autoplay={autoplayHero} priority placeholderChromeless />
+            <HeroMedia
+              image={media.image}
+              alt={media.alt}
+              videoSrc={media.videoSrc}
+              kenBurns={media.kenBurns}
+            />
             <div
               className="absolute inset-0"
               style={{
