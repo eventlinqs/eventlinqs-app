@@ -9,6 +9,7 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from 'react'
+import { MEDIA_TRANSITIONS } from '@/components/media'
 
 function subscribeReducedMotion(onChange: () => void): () => void {
   if (typeof window === 'undefined') return () => {}
@@ -148,8 +149,11 @@ export function HeroCarouselClient({
             <div
               key={slide.key}
               aria-hidden={realIndex !== index}
-              className="absolute inset-0 transition-opacity duration-700 ease-out"
-              style={{ opacity: realIndex === index ? 1 : 0 }}
+              className="absolute inset-0"
+              style={{
+                opacity: realIndex === index ? 1 : 0,
+                transition: `opacity ${MEDIA_TRANSITIONS.heroCarouselFadeMs}ms ease-out`,
+              }}
             >
               {slide.background}
             </div>
