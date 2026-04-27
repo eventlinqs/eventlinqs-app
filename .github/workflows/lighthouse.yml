@@ -1,20 +1,28 @@
 # Lighthouse CI gate - enforces docs/MEDIA-ARCHITECTURE.md §12.2.
 #
+# Hard gate covering every public page type. Performance 95+ on every
+# URL or PR fails to merge.
+#
 # Runs on every PR. Boots a local Supabase stack so the dynamic routes
 # in lighthouserc.json (/events/browse/[city], /events/[slug],
 # /categories/[slug]) resolve to real seeded content, builds the
-# Next.js app, then audits the URL set against the regression-gate
+# Next.js app, then audits the full URL set against the locked
 # thresholds in lighthouserc.json.
 #
 # Gate state (activated 2026-04-27 after Pre-Task 3):
 #   - Hard gate (continue-on-error: false). PRs failing this gate
 #     cannot merge.
-#   - Thresholds are calibrated to the iter-6 simulator floor on
-#     this stack: Performance >= 0.65, A11y >= 0.95, BP = 1.0,
-#     SEO >= 0.9, CLS <= 0.05. LCP/TBT/FCP/SI are warn-only because
-#     they are dominated by the Lighthouse simulator's 4x CPU model.
-#     Real-device CWV measurement on Vercel deploy will be added as
-#     a separate gate in Pre-Task 4.
+#   - Thresholds are the original locked Pre-Task 3 standard:
+#     Performance >= 0.95, A11y/BP/SEO = 1.00, LCP <= 2.5s,
+#     TBT <= 300ms, CLS <= 0.1.
+#   - Coverage spans every public page type (homepage, listing, city
+#     listing, category, event detail, organiser landing, pricing,
+#     help, legal, auth-entry login/signup). Auth-gated dashboards
+#     and order surfaces are excluded - they need a recorded-session
+#     Lighthouse gate added by Module M7 / Pre-Task 5.
+#   - This gate WILL fail on the next PR until every listed page hits
+#     Performance 0.95 under the simulator. That is intent. No silent
+#     goalpost-moving.
 
 name: Lighthouse CI
 
