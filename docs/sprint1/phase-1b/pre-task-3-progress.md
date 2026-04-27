@@ -400,3 +400,27 @@ The two remaining `ƒ` public routes are intrinsically dynamic because
 they accept user filters via searchParams. Their no-filter default
 path goes through `unstable_cache` (E3/E4), so cold visits without
 filters still hit a warm snapshot.
+
+## E.14 - iter-6 measurement sweep
+
+After E5 (event detail SSG) and E6 (categories SSG) landed, ran a
+full mobile Lighthouse sweep across all five public routes. Same
+preset as iter-5: simulated throttling, prod build via `next start`
+on localhost:3000.
+
+| Route | Status | Perf | A11y | BP | SEO | FCP | LCP | TBT | CLS | SI | TTFB |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| `/` | `○ Static` | n/a | 1.00 | 1.00 | 1.00 | 2237 | n/a | n/a | 0.000 | 6144 | 32 |
+| `/events` | `ƒ Dynamic` | 0.68 | 1.00 | 1.00 | 1.00 | 1249 | 5550 | 409 | 0.010 | 3393 | 77 |
+| `/events/browse/melbourne` | `ƒ Dynamic` | 0.69 | 1.00 | 1.00 | 1.00 | 1234 | 5536 | 391 | 0.010 | 3584 | 75 |
+| `/events/afrobeats-...` | `● SSG` | 0.71 | 1.00 | 1.00 | 1.00 | 1245 | 5113 | 399 | 0.000 | 3360 | 208 |
+| `/categories/afrobeats` | `● SSG` | 0.76 | 0.96 | 1.00 | 0.91 | 1231 | 5222 | 246 | 0.000 | 2916 | 13 |
+
+A11y / BP / SEO essentially perfect. CLS clean. TTFB excellent
+(13-208 ms; the proxy hop on `/events/[slug]` adds the queue-gate
+Supabase query). The remaining ceiling is LCP (5.1-5.5s) - image
+critical path under the simulated 4G throttle, not server-render
+time. That's the focus of Phase F.
+
+Full analysis at `docs/sprint1/phase-1b/iter-6/analysis.md`.
+Reports + 7-viewport category screenshots in the same iter-6 folder.
