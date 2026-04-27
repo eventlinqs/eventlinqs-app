@@ -361,3 +361,42 @@ for the high-demand gate) plus static HTML hand-off. CLS is clean.
   wrappers) plus internal Postgres-only helpers.
 - `scripts/screenshot-iter5-event-detail.mjs` - new 7-viewport capture
   script for the event detail route.
+
+## E.13 - /categories/[slug] + /organisers audit
+
+### /organisers
+No `[slug]` route exists. `/organisers` (landing page) and
+`/organisers/signup` are both `○ Static` already - no work needed.
+The "organiser dashboard" routes are under `/dashboard/organisation*`
+which is gated auth content, intentionally `ƒ Dynamic`.
+
+### /categories/[slug]
+Same ISR-blocking pattern as the other public detail pages: imported
+`createClient` from `@/lib/supabase/server` (cookies-bound). The route
+already had `generateStaticParams` over the hero category list, so
+flipping to `createPublicClient` + `revalidate = 300` was the only
+change needed.
+
+Result: `● /categories/[slug]   5m   1y` with all 6 hero categories
+pre-rendered at build (afrobeats, amapiano, gospel, etc.).
+
+### Files touched
+- `src/app/categories/[slug]/page.tsx` - swapped to
+  `createPublicClient`, added `export const revalidate = 300`.
+
+### Public route static-status summary after E5 + E6
+| Route | Status | Notes |
+|---|---|---|
+| `/` | `○ Static` | 2m revalidate (E2) |
+| `/events` | `ƒ Dynamic` | searchParams; cached default-case path (E3) |
+| `/events/[slug]` | `● SSG` | 30s revalidate, 27 pre-rendered (E5) |
+| `/events/browse/[city]` | `ƒ Dynamic` | searchParams; pre-renders all picker cities (E4) |
+| `/categories/[slug]` | `● SSG` | 5m revalidate, 6 pre-rendered (E6) |
+| `/organisers` | `○ Static` | already static |
+| `/organisers/signup` | `○ Static` | already static |
+| `/help/[slug]` | `● SSG` | already static |
+
+The two remaining `ƒ` public routes are intrinsically dynamic because
+they accept user filters via searchParams. Their no-filter default
+path goes through `unstable_cache` (E3/E4), so cold visits without
+filters still hit a warm snapshot.
