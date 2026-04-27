@@ -17,8 +17,12 @@ export const MEDIA_SIZES = {
   bentoSupporting: '(max-width: 1024px) 50vw, 360px',
   /** Standard event card in a 1/2/3 column grid */
   card: '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw',
-  /** Horizontal rail tile (this-week, by-city desktop, etc.) */
-  rail: '(min-width: 1024px) 280px, 220px',
+  /** Horizontal rail tile (this-week, by-city desktop, recommended rail, etc.).
+   *  Actual rendered widths are fixed: w-64 (256px) on mobile,
+   *  sm:w-72 (288px) tablet+, with this-week strip at w-[280px] across
+   *  all breakpoints. The hint must reflect those CSS pixel widths so
+   *  next/image does not deliver a 750w asset for a 254px slot. */
+  rail: '(min-width: 640px) 288px, 256px',
   /** Live-vibe horizontal marquee */
   marquee: '280px',
   /** Category landing tile */

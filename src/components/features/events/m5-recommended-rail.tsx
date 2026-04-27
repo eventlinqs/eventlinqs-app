@@ -63,7 +63,7 @@ export async function RecommendedRail({
               key={c.id}
               className="w-64 shrink-0 snap-start sm:w-72"
             >
-              <EventCard event={c} priority={i === 0} />
+              <EventCard event={c} priority={i === 0} variant="rail" />
             </li>
           ))}
         </DragRail>

@@ -296,4 +296,41 @@ homepage.
 
 This is also the fix for one item Lawal asked about explicitly.
 
+Commit: 7fc7f86 perf(home): drop bento hero priority to restore single LCP candidate.
+
+### C.2 Recommended rail image-delivery - rail-variant fix
+
+Inspected `image-delivery-insight` audit details on the iter-7 city
+report. Every flagged item has selector
+`li.w-64 > a.group > div.relative > img.object-cover` with the same
+reason: "image file is larger than it needs to be (695x392) for its
+displayed dimensions (478x250)". Display 478 CSS px = 254 CSS px x ~1.88
+DPR; the rail tile is `w-64` (256px) on mobile, `sm:w-72` (288px) above.
+Same audit also flags the same selectors on /events.
+
+Root cause: `EventCard` was hardcoding `variant="card"`, whose sizes hint
+is `(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw`. Inside a
+fixed-width 256px rail tile that hint is wrong - desktop browsers see
+`33vw` at 1366px = 451 CSS px, request that, and Next picks 750w from
+the srcset. The actual rendered slot is 254 CSS px.
+
+Fix:
+
+1. EventCard accepts `variant?: 'card' | 'rail'` (defaults `'card'`).
+2. RecommendedRail (used on /events and /events/browse/[city]) passes
+   `variant="rail"`.
+3. Tightened `MEDIA_SIZES.rail` from `(min-width: 1024px) 280px, 220px`
+   to `(min-width: 640px) 288px, 256px` to match the actual tile widths
+   (this-week `w-[280px]`, recommended `w-64` / `sm:w-72`).
+
+Per-tile flagged waste at the iter-7 baseline: 13-23 KB. Eight visible
+tiles per rail times two affected pages means a real but bounded LCP
+saving on /events and /events/browse/[city]. Image-delivery audit's
+`metricSavings.LCP` was 0 in the report (this audit measures
+delivered-vs-displayed bytes, not LCP directly), so the perf-score gain
+is via fewer bytes on the wire and faster paint of the first-row LCP
+tile. We will re-audit in Phase D.
+
+Build clean. Type-check clean. Lint clean.
+
 

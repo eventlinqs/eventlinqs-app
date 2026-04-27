@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { MapPin } from 'lucide-react'
-import { EventCardMedia } from '@/components/media'
+import { EventCardMedia, type EventCardMediaVariant } from '@/components/media'
 import { SocialProofBadge } from '@/components/inventory/social-proof-badge'
 import { SaveEventButton } from './save-event-button'
 import type { EventInventory } from '@/lib/redis/inventory-cache'
@@ -58,6 +58,13 @@ type Props = {
   dynamicPrices?: Map<string, number>
   initiallySaved?: boolean
   priority?: boolean
+  /**
+   * Layout context. Drives the underlying EventCardMedia variant so the
+   * srcset hint matches the actual rendered width. Pass `"rail"` when the
+   * card sits in a horizontal rail (fixed ~256-288px tile) so the browser
+   * does not download a 750w image for a 254 CSS px slot.
+   */
+  variant?: Extract<EventCardMediaVariant, 'card' | 'rail'>
 }
 
 function formatDate(iso: string) {
@@ -98,7 +105,7 @@ function buildInventory(tiers: EventCardTier[]): EventInventory {
   return { total_sold, total_reserved, total_capacity, available, percent_sold }
 }
 
-export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = false, priority = false }: Props) {
+export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = false, priority = false, variant = 'card' }: Props) {
   const {
     id, slug, title, cover_image_url, start_date,
     venue_city, venue_country, created_at, category, ticket_tiers,
@@ -129,7 +136,7 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
           <EventCardMedia
             src={cover_image_url}
             alt={title}
-            variant="card"
+            variant={variant}
             priority={priority}
             className="transition-transform duration-500 group-hover:scale-105"
           />
