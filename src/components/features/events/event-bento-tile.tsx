@@ -151,7 +151,6 @@ export async function EventBentoTile({
               src={imageSrc}
               alt={imageAlt}
               variant={variant}
-              priority={size === 'hero'}
             />
           ) : (
             <BrandedPlaceholder category={placeholderCategory} />

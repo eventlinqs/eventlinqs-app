@@ -267,4 +267,33 @@ modest (3 routes, ~150 ms each) and may be unnecessary if B.1's
 unused-JS gain alone clears those routes from the simulator floor.
 Defer pending Phase D real-device re-measurement.
 
+## Phase C - Targeted surgeries
+
+### C.1 Homepage NO_LCP - dual-priority resolution
+
+Inspected the rendered home HTML and found two `<img fetchPriority="high">`
+elements above the fold competing for the LCP candidate:
+
+1. Hero carousel slide 0 (cinematic full-bleed, intentional LCP target)
+2. Bento hero tile (the featured event card in the row below the
+   carousel) - inheriting `priority={size === 'hero'}` from
+   `EventBentoTile`
+
+Two competing high-priority candidates of similar size confuses
+Lighthouse's LCP picker. The lantern simulator's
+`getOptimisticGraph` errors with NO_LCP when no single dominant
+element settles in the trace window.
+
+Fix: drop `priority` from `EventBentoTile`. The bento hero tile is
+below the cinematic carousel (which is `min-h-[90vh]` on desktop,
+`600px` on mobile - i.e. above the fold takes the entire viewport on
+mobile, so the bento is below-fold by design).
+
+After the change, only the hero carousel slide 0 sets
+`fetchPriority="high"`. Verified in built `.next/server/app/index.html`:
+exactly one `<img fetchPriority="high">` element in the prerendered
+homepage.
+
+This is also the fix for one item Lawal asked about explicitly.
+
 
