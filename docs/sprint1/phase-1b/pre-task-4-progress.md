@@ -333,4 +333,42 @@ tile. We will re-audit in Phase D.
 
 Build clean. Type-check clean. Lint clean.
 
+### C.3 A11y violations - color-contrast and heading-order
+
+Pulled axe details from the iter-7 reports. Three failing audits across
+three pages, all rooted in the same problem: components were rendering
+gold text on light surfaces using `--brand-accent` (gold-400 #E8B738),
+which only hits 1.86:1 on white. The token comment in
+`src/app/globals.css` already calls this out: gold-400 is for dark
+surfaces only; light-surface text should use `--brand-accent-strong`
+(gold-800 #6F5409, 7.4:1 on white, 5.0:1 on ink-100).
+
+Color-contrast fixes:
+
+- `CategoryLandingPage` lines 74, 162, 183 (eyebrow `<p>` elements,
+  surfaces base + alt) -> swapped to `--brand-accent-strong`.
+- `PricingPage` line 134 (the "Most popular" tier badge -
+  gold-400-on-gold-100 panel), line 195 ("Pricing FAQ" eyebrow on
+  alt surface), line 234 (FAQ "more questions" link on alt surface)
+  -> all swapped to `--brand-accent-strong`.
+- `Prose` (used by every legal/help long-form page) - link colour
+  swapped from `--brand-accent` to `--brand-accent-strong`. Added a
+  new semantic token `--brand-accent-strong-hover` -> gold-700
+  (#8B6A0E, 5.97:1 on white) so hover still gives a "lift" cue
+  without falling below AA. Hover decoration also moved.
+
+Heading-order fix on /pricing: PageHero emits the page `<h1>` then the
+tier cards each declared `<h3>` for the tier name without an
+intervening `<h2>`. Inserted `<h2 className="sr-only">Pricing tiers</h2>`
+above the tier grid in `PricingPage.tsx`. Visual layout unchanged; axe
+now sees a valid hierarchy h1 -> h2 (sr-only) -> h3 (tier names) ->
+h2 (FAQ section).
+
+Visual change scope: gold-400 -> gold-800 on six small eyebrow / badge /
+link instances and Prose links. Same hue family, darker. No layout
+shifts. Will run Playwright visual diff in Phase D when the preview
+deploy is up.
+
+Build clean. Type-check clean. Lint clean.
+
 

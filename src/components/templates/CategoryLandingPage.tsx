@@ -71,7 +71,7 @@ export function CategoryLandingPage({ category, liveEvents = [] }: CategoryLandi
       {/* ── 2. Story / Why this category ─────────────────────────── */}
       <ContentSection surface="base" width="default">
         <div className="max-w-3xl">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent)]">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
             Why {displayName} on EventLinqs
           </p>
           <Prose>
@@ -159,7 +159,7 @@ export function CategoryLandingPage({ category, liveEvents = [] }: CategoryLandi
         <div className="flex flex-col gap-10 lg:flex-row lg:gap-16">
           {/* Persona pills */}
           <div className="flex-1">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent)]">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
               Built for
             </p>
             <h3 className="mb-5 font-display text-xl font-semibold text-[var(--text-primary)] sm:text-2xl">
@@ -180,7 +180,7 @@ export function CategoryLandingPage({ category, liveEvents = [] }: CategoryLandi
 
           {/* Active cities */}
           <div className="shrink-0 lg:w-64">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent)]">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
               Active in
             </p>
             <div className="flex flex-wrap gap-2">

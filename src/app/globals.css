@@ -22,6 +22,10 @@
      against white; gold-800 hits 5.0:1 on the alt surface (ink-100)
      and 7.5:1 on white. Use --brand-accent on dark surfaces only. */
   --brand-accent-strong: var(--color-gold-800);
+  /* Hover state for accent-strong text: gold-700 holds AA on white
+     (5.97:1) and gives a subtle "brightening" against the gold-800
+     base without dropping below contrast. */
+  --brand-accent-strong-hover: var(--color-gold-700);
 
   /* Surfaces */
   --surface-0:           var(--color-white);
