@@ -2,7 +2,6 @@ import type { Metadata } from 'next'
 import { Inter, Manrope } from 'next/font/google'
 import Script from 'next/script'
 import './globals.css'
-import { AuthProvider } from '@/components/providers/auth-provider'
 import { BottomNav } from '@/components/layout/bottom-nav'
 
 const inter = Inter({
@@ -86,12 +85,10 @@ export default function RootLayout({
         <Script id="el-real-user-bootstrap" strategy="afterInteractive">
           {BODY_REAL_USER_BOOTSTRAP}
         </Script>
-        <AuthProvider>
-          <div className="pb-16 md:pb-0">
-            {children}
-          </div>
-          <BottomNav />
-        </AuthProvider>
+        <div className="pb-16 md:pb-0">
+          {children}
+        </div>
+        <BottomNav />
       </body>
     </html>
   )

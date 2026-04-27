@@ -5,7 +5,6 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import type { AuthResponse } from '@supabase/supabase-js'
-import { createClient } from '@/lib/supabase/client'
 import { joinWaitlist } from '@/app/actions/waitlist'
 
 /**
@@ -57,11 +56,16 @@ export function EventSoldOut({ event, primaryTierId, relatedEvents }: EventSoldO
   const [isPending, startTransition] = useTransition()
 
   useEffect(() => {
-    const supabase = createClient()
-    supabase.auth.getUser().then((res: AuthResponse) => {
-      const mail = res.data.user?.email ?? null
-      setAuthEmail(mail)
-      if (mail) setEmail(mail)
+    // Defer Supabase load to post-paint via dynamic import: this component
+    // only ships on event detail pages but its eager Supabase pull was
+    // landing in the shared chunk for every public route that links here.
+    import('@/lib/supabase/client').then(({ createClient }) => {
+      const supabase = createClient()
+      supabase.auth.getUser().then((res: AuthResponse) => {
+        const mail = res.data.user?.email ?? null
+        setAuthEmail(mail)
+        if (mail) setEmail(mail)
+      })
     })
   }, [])
 

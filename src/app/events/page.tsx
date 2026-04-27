@@ -54,8 +54,12 @@ export default async function EventsPage({ searchParams }: Props) {
   const origin = undefined
   const hasGeoSignal = false
 
-  const effectiveCountry = filters.country ?? 'Australia'
-  const effectiveFilters = { ...filters, country: effectiveCountry }
+  // No country default. When filters.country is undefined the fetcher
+  // skips the venue_country filter entirely (see fetchers.ts:376), so
+  // the unfiltered grid surfaces every published event regardless of
+  // venue_country casing in the seed data. The country chip in the
+  // filter bar still lets users narrow by country explicitly.
+  const effectiveFilters = filters
   const filterActive = hasActiveFilters(filters)
 
   // Grid stays inline so mobile browsers can begin preloading card

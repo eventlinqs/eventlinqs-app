@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import type { AuthResponse } from '@supabase/supabase-js'
 import { JoinWaitlistModal } from './join-waitlist-modal'
 
@@ -17,9 +16,13 @@ export function JoinWaitlistButton({ eventId, tierId, tierName, maxPerOrder }: P
   const [userEmail, setUserEmail] = useState<string | null>(null)
 
   useEffect(() => {
-    const supabase = createClient()
-    supabase.auth.getUser().then((res: AuthResponse) => {
-      setUserEmail(res.data.user?.email ?? null)
+    // Dynamic import: keeps Supabase out of the public-route shared chunk
+    // when this button ships inside the ticket selector on event detail.
+    import('@/lib/supabase/client').then(({ createClient }) => {
+      const supabase = createClient()
+      supabase.auth.getUser().then((res: AuthResponse) => {
+        setUserEmail(res.data.user?.email ?? null)
+      })
     })
   }, [])
 
