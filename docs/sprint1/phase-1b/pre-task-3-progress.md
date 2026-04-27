@@ -241,3 +241,35 @@ Saved at `docs/sprint1/phase-1b/iter-5/events.report.{html,json}`.
 ### Server stop
 Single-PID kill on the production server (PID 980).
 
+## Phase E.11 - /events/browse/[city] refactor
+
+City pages still consume `searchParams` (filter URLs) and host the
+EventsBrowseRecommendedSection (auth lookup), so the route stays
+`ƒ Dynamic`. The architectural win is the same as /events: lighter
+data path, no headers() in the shell, generateStaticParams ready for
+PPR adoption later.
+
+### Changes
+- `src/app/events/browse/[city]/page.tsx`: added `generateStaticParams()`
+  enumerating every picker city (slug list comes from
+  `getPickerCities()`), `revalidate = 120`, `dynamicParams = true`.
+  Removed `await detectLocation()`. Origin now resolves only from
+  `city.latitude/longitude` (per-row data already available); the
+  visitor-IP fallback was redundant on a city-scoped page.
+
+### iter-5 capture (mobile, /events/browse/melbourne)
+| Route | Perf | A11y | BP | SEO | FCP | LCP | TBT | CLS | TTFB |
+|---|---|---|---|---|---|---|---|---|---|
+| city (iter-3) | 0.73 | 1.00 | 1.00 | 1.00 | 2123 | 4571 | 314 | - | 62 |
+| city (iter-5) | 0.69 | 1.00 | 1.00 | 1.00 | 1842 | 4478 | 406 | 0.000 | 76 |
+
+A11y / BP / SEO clean at 1.00. FCP improved (-281 ms). LCP / TBT
+within run-to-run variance. Saved at `docs/sprint1/phase-1b/iter-5/
+city.report.{html,json}`.
+
+7-viewport AFTER captures at
+`docs/sprint1/phase-1b/iter-5/screenshots-city-after/`.
+
+### Server stop
+Single-PID kill on the production server (PID 21816).
+
