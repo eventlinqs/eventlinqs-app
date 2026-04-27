@@ -161,3 +161,53 @@ is reachable in 2-3 commits, not 5+.
 
 Plan stays gated on Lawal's checkpoint decisions. No work begins
 until response received.
+
+## Phase B - Universal-lever sweep
+
+Lawal approved Phase B + Phase C overnight. Decisions captured:
+
+- Decision 1 + 2: Phase B sweep on the four universal levers, then
+  Phase C surgeries (home LCP element, city image-delivery, four
+  a11y dings). Evidence-based 2-3 commit approach is correct.
+- Decision 3: Threshold review only flagged if Phase C completes and
+  real-device production scores are 95+ but simulator stays below.
+  Until then, the locked 0.95 standard stands.
+
+### B.0 Refined plan from impact-weighted Lighthouse evidence
+
+The four levers have very different actual cost. Re-extracted
+`metricSavings` from each route's Lighthouse insight audits to weight
+the work:
+
+| Lever | Routes affected (real cost) | Highest LCP cost | Action |
+|---|---|---|---|
+| Unused JS | All 11 (300-470 ms savings each) | n/a (TBT/SI) | **B.1 Supabase deferral** |
+| Legacy JS | events, signup (150 ms each) | 150 ms | **B.2 browserslist target** |
+| Render-blocking CSS | help, login, signup (100-152 ms each) | 152 ms | **B.3 critical-CSS strategy** |
+| Cache lifetime | None (savings 0 on every route) | 0 ms | Skip - flagged URLs are 3p (vercel.live, plausible.io) |
+| Image-delivery | events, city (Phase C surgery) | tied to LCP | Phase C |
+
+**Skip cache-insight.** The 0.5-on-every-route signal is misleading -
+the flagged URLs are `vercel.live/feedback.js` (preview-only Vercel
+toolbar) and `plausible.io/pa-*.js` (third-party analytics CDN). Both
+are out of scope. Simulator score impact is 0 on every route.
+
+**Render-blocking is route-specific, not universal.** Only fires real
+LCP cost on help / login / signup (the leanest routes where the 18.5 KB
+global Tailwind CSS becomes proportionally large). Other routes have
+LCP savings 0 even where the diagnostic score is 0.5.
+
+### B.1 Lever 1 - Supabase client deferral
+
+Identified `12537mhf-1c02.js` as the 218 KB chunk containing Supabase
+SSR client (createBrowserClient + GoTrueClient + REST builders). 81%
+unused on /events. Root cause: `AuthProvider` in `src/app/layout.tsx`
+imports `createClient` from `@/lib/supabase/client` at module top, which
+forces Webpack/Turbopack to include the full Supabase chunk in every
+route's initial bundle even on routes that never trigger an auth call.
+
+Fix: refactor `AuthProvider` to dynamic-import the client inside the
+existing `requestIdleCallback` deferral. Subscription setup moves
+inside the async block. No consumer API changes (still exposes
+`{ user, profile, loading, refreshProfile }`).
+
