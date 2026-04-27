@@ -29,6 +29,14 @@
     "tailwind-merge": "^3.5.0",
     "zustand": "^5.0.12"
   },
+  "browserslist": [
+    "chrome >= 111",
+    "edge >= 111",
+    "firefox >= 128",
+    "safari >= 16.4",
+    "ios_saf >= 16.4",
+    "not dead"
+  ],
   "devDependencies": {
     "@next/bundle-analyzer": "^16.2.4",
     "@playwright/test": "^1.59.1",

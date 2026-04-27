@@ -211,3 +211,60 @@ existing `requestIdleCallback` deferral. Subscription setup moves
 inside the async block. No consumer API changes (still exposes
 `{ user, profile, loading, refreshProfile }`).
 
+**Verification (post-build, `.next/build-manifest.json`):** rootMainFiles
++ polyfillFiles total **555 KB unminified** on every route, none
+containing `createBrowserClient` / `GoTrueClient` signatures. The 218 KB
+Supabase chunk now loads only after `requestIdleCallback` fires
+post-LCP.
+
+Routes with their own client-side Supabase imports (event-detail via
+join-waitlist + event-sold-out, dashboard-* via topbar) will still
+fetch the chunk - those use cases are real and stay correct.
+
+Commit: `fbd0932`.
+
+### B.2 Lever 2 - Browserslist target
+
+Tightened browserslist (package.json) and TypeScript target (tsconfig.json
+ES2017 -> ES2022) to align with the project's de-facto floor of
+Tailwind v4 (Safari 16.4+, Chrome 111+, Firefox 128+). Intent: drop
+Array.prototype.at and similar polyfills.
+
+**Outcome:** zero immediate bundle change. Next.js 16 / Turbopack does
+not honour either signal for polyfill-chunk emission in the current
+release; framework chunk `0.~2ky53fo~10.js` still ships
+`Array.prototype.at` references regardless of target.
+
+Per Lighthouse insight, the actionable cost is 150 ms LCP on /events
+and /signup, 0 ms on the other 9 routes. Modest lever. Keeping the
+modernization (sensible default that may pay off in future Next.js
+versions; aligns intent with Tailwind requirements) but not claiming
+the win.
+
+### B.3 Lever 3 - Cache lifetime - SKIPPED (3rd-party / preview-only)
+
+Lighthouse `cache-insight` flagged `vercel.live/feedback.js` (Vercel
+preview-toolbar widget, ships only on preview deploys, not production)
+and `plausible.io/pa-*.js` (third-party analytics CDN, TTL governed by
+Plausible). Both out of our control. `metricSavings.LCP = 0` on every
+route confirms zero score impact.
+
+Skip.
+
+### B.4 Lever 4 - Render-blocking CSS - DEFERRED
+
+Real LCP cost only on /help (150 ms), /login (152 ms), /signup (~150
+ms). The 18.5 KB global Tailwind output blocks render proportionally
+more on lean routes. Two viable mitigations:
+
+1. `experimental.optimizeCss` + critters - inlines critical CSS,
+   defers non-critical. Risk: visual FOUC during the swap.
+2. CSS bundle reduction - audit unused utility classes and shrink
+   the 105 KB raw global CSS.
+
+Either is non-trivial and risks visual regression. Lever value is
+modest (3 routes, ~150 ms each) and may be unnecessary if B.1's
+unused-JS gain alone clears those routes from the simulator floor.
+Defer pending Phase D real-device re-measurement.
+
+
