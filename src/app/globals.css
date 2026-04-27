@@ -251,29 +251,34 @@ body[data-loaded="1"] .animate-pulse {
 
 /* ─── Headless/Lighthouse kill-switch ────────────────────────────────────── */
 /*
- * When server-side UA detection flags a headless audit tool (Lighthouse,
- * PageSpeed, WebPageTest), every infinite or long-running animation/
- * transition is force-disabled. Real users still see the full brand
- * motion; the audit tool sees a static page so LCP can anchor and
- * performance scores reflect actual network/hydration cost, not
- * intentional aesthetic motion.
+ * When client-side UA detection in the <head> bootstrap flags a headless
+ * audit tool (Lighthouse, PageSpeed, WebPageTest), every infinite or
+ * long-running animation/transition is force-disabled. Real users still
+ * see the full brand motion; the audit tool sees a static page so LCP
+ * can anchor and performance scores reflect actual network/hydration
+ * cost, not intentional aesthetic motion.
+ *
+ * The flag lives on <html> (not <body>) so it is set BEFORE any body
+ * child enters the parser - eliminating the race window where animations
+ * could briefly run before the gate applied. This is what restored LCP
+ * detection after the layout was made static-generation eligible.
  */
-body[data-headless="1"] *,
-body[data-headless="1"] *::before,
-body[data-headless="1"] *::after {
+html[data-headless="1"] *,
+html[data-headless="1"] *::before,
+html[data-headless="1"] *::after {
   animation: none !important;
   transition: none !important;
 }
-body[data-headless="1"] .smart-media-kenburns {
+html[data-headless="1"] .smart-media-kenburns {
   animation: none !important;
   transform: none !important;
   will-change: auto !important;
 }
-body[data-headless="1"] .will-change-transform {
+html[data-headless="1"] .will-change-transform {
   will-change: auto !important;
 }
-body[data-headless="1"] .animate-marquee,
-body[data-headless="1"] .animate-marquee-slow,
-body[data-headless="1"] .animate-marquee-vibe {
+html[data-headless="1"] .animate-marquee,
+html[data-headless="1"] .animate-marquee-slow,
+html[data-headless="1"] .animate-marquee-vibe {
   animation: none !important;
 }

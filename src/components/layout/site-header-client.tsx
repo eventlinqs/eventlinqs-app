@@ -38,9 +38,29 @@ interface SiteHeaderClientProps {
  */
 export function SiteHeaderClient({ location, cities }: SiteHeaderClientProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [displayLocation, setDisplayLocation] = useState(location)
 
   const hamburgerRef  = useRef<HTMLButtonElement>(null)
   const sheetRef      = useRef<HTMLDivElement>(null)
+
+  // Hydrate the picker's currently-displayed location from the `el_city`
+  // cookie post-mount. SSR ships a static default so the page is ISR-
+  // eligible; this effect upgrades the display to whatever the user
+  // selected in a prior visit. No-op when the cookie is absent or
+  // malformed.
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const match = document.cookie.match(/(?:^|;\s*)el_city=([^;]+)/)
+    if (!match) return
+    try {
+      const parsed = JSON.parse(decodeURIComponent(match[1]))
+      if (parsed && typeof parsed.city === 'string') {
+        setDisplayLocation({ ...parsed, source: 'cookie' as const })
+      }
+    } catch {
+      // ignore malformed cookie
+    }
+  }, [])
 
   useEffect(() => {
     if (!isOpen) return
@@ -133,7 +153,7 @@ export function SiteHeaderClient({ location, cities }: SiteHeaderClientProps) {
           <div className="flex items-center gap-3 shrink-0 ml-auto md:ml-0">
             {/* Desktop location picker */}
             <div className="hidden md:block">
-              <LocationPicker currentLocation={location} cities={cities} />
+              <LocationPicker currentLocation={displayLocation} cities={cities} />
             </div>
 
             <Link
@@ -238,7 +258,7 @@ export function SiteHeaderClient({ location, cities }: SiteHeaderClientProps) {
 
         <nav className="flex-1 overflow-y-auto px-4 py-6" aria-label="Mobile navigation">
           <div className="mb-4">
-            <LocationPicker currentLocation={location} cities={cities} variant="inline" onChange={closeSheet} />
+            <LocationPicker currentLocation={displayLocation} cities={cities} variant="inline" onChange={closeSheet} />
           </div>
           <ul className="space-y-1">
             {NAV_LINKS.map(link => (

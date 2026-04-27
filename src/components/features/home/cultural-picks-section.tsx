@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { createPublicClient } from '@/lib/supabase/public-client'
 import { CulturalPicksRail } from '@/components/features/events/cultural-picks-rail'
 import { ThisWeekCard } from '@/components/features/events/this-week-card'
 import { CONTAINER, SECTION_TIGHT } from '@/lib/ui/spacing'
@@ -16,7 +16,7 @@ interface Props {
 }
 
 export async function CulturalPicksSection({ cityFilter, nowIso }: Props) {
-  const supabase = await createClient()
+  const supabase = createPublicClient()
 
   const culturalQueries = await Promise.all(
     CULTURE_TABS.map(async tab => {

@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { createPublicClient } from '@/lib/supabase/public-client'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { FeaturedEventHero } from '@/components/features/events/featured-event-hero'
@@ -11,7 +11,7 @@ import { CATEGORY_HIGHLIGHT_SLIDES } from '@/lib/content/category-highlight-slid
 import { BentoGrid, BentoTile, BentoSupportingColumn } from '@/components/features/events/bento-grid'
 import { EventBentoTile } from '@/components/features/events/event-bento-tile'
 import type { BentoEvent } from '@/components/features/events/event-bento-tile'
-import { detectLocation } from '@/lib/geo/detect'
+import { MELBOURNE_FALLBACK } from '@/lib/geo/detect'
 import { LocationFilterBanner } from '@/components/features/events/location-filter-banner'
 import {
   SECTION_DEFAULT,
@@ -63,21 +63,29 @@ function cheapestPriceMarker(tiers: BentoEvent['ticket_tiers']): boolean {
 }
 void cheapestPriceMarker
 
+// ISR: re-render every 2 minutes. The homepage ships a static, anonymous
+// shell - no cookies/headers in the render path - so Next.js can promote
+// it to ISR. Per-user personalisation (saved-events badge, location
+// picker city) is hydrated client-side from cookies post-paint.
+export const revalidate = 120
+
 export default async function HomePage() {
-  const supabase = await createClient()
+  const supabase = createPublicClient()
   const nowIso = new Date().toISOString()
   const nowMs = Date.parse(nowIso)
 
-  const detectedLocation = await detectLocation()
-  const cityFilter = detectedLocation.city
+  const detectedLocation = MELBOURNE_FALLBACK
 
   // ── Above-fold data ──────────────────────────────────────────────────
   // These queries feed the hero + bento grid that render at first paint.
   // Everything else streams via Suspense boundaries below.
+  //
+  // Static-rendered: no city filter (geo detection is now client-side),
+  // no session lookup, no per-user saved-events query. The anonymous
+  // shell is identical for every visitor; the SiteHeader and the
+  // saved-events button hydrate user state post-mount.
   const [
-    cityUpcomingResult,
     allUpcomingResult,
-    sessionResult,
     liveEventCountResult,
     cityRowsResult,
   ] = await Promise.all([
@@ -87,18 +95,8 @@ export default async function HomePage() {
       .eq('status', 'published')
       .eq('visibility', 'public')
       .gte('start_date', nowIso)
-      .ilike('venue_city', `%${cityFilter}%`)
       .order('start_date', { ascending: true })
       .limit(24),
-    supabase
-      .from('events')
-      .select(EVENT_SELECT)
-      .eq('status', 'published')
-      .eq('visibility', 'public')
-      .gte('start_date', nowIso)
-      .order('start_date', { ascending: true })
-      .limit(24),
-    supabase.auth.getSession(),
     supabase
       .from('events')
       .select('id', { count: 'exact', head: true })
@@ -115,15 +113,13 @@ export default async function HomePage() {
       .limit(200),
   ])
 
-  const cityUpcomingRaw = cityUpcomingResult.data
   const allUpcomingRaw = allUpcomingResult.data
-  const locationFilterActive = (cityUpcomingRaw ?? []).length >= 2
-  const upcomingRaw = locationFilterActive ? cityUpcomingRaw : allUpcomingRaw
+  const locationFilterActive = false
+  const upcomingRaw = allUpcomingRaw
 
   const upcomingRawTyped = (upcomingRaw ?? []) as unknown as RawRow[]
   const upcoming = upcomingRawTyped.map(toBentoEvent)
 
-  const session = sessionResult.data.session
   const liveEventCount = liveEventCountResult.count
   const cityRows = cityRowsResult.data
   const uniqueCitiesCount = new Set(
@@ -155,36 +151,27 @@ export default async function HomePage() {
 
   const topCandidates = scoredCandidates.slice(0, 3)
   const heroEventIds = topCandidates.map(c => c.raw.id)
-  const userIdForSaved = session?.user?.id ?? null
 
-  // Phase 2 (parallel) - two independent queries run together instead of
-  // stacked awaits. Aggregated orders query replaces 3 per-event count
-  // queries for the hero carousel.
-  const [soldTodayResult, savedRowsResult] = await Promise.all([
-    heroEventIds.length > 0
-      ? supabase
-          .from('orders')
-          .select('event_id')
-          .in('event_id', heroEventIds)
-          .eq('status', 'confirmed')
-          .gte('created_at', todayStart.toISOString())
-      : Promise.resolve({ data: [] as { event_id: string }[] }),
-    userIdForSaved
-      ? supabase
-          .from('saved_events')
-          .select('event_id')
-          .eq('user_id', userIdForSaved)
-      : Promise.resolve({ data: [] as { event_id: string }[] }),
-  ])
+  // Tickets-sold-today is anonymous, public information (it's just a
+  // count of confirmed orders by event), so it stays in the static
+  // render. Saved-events is per-user and now hydrates client-side via
+  // SaveEventButton, so we ship the shell with everything unsaved and
+  // the button upgrades to the true state post-mount.
+  const soldTodayResult = heroEventIds.length > 0
+    ? await supabase
+        .from('orders')
+        .select('event_id')
+        .in('event_id', heroEventIds)
+        .eq('status', 'confirmed')
+        .gte('created_at', todayStart.toISOString())
+    : { data: [] as { event_id: string }[] }
 
   const soldTodayByEvent = new Map<string, number>()
   for (const row of soldTodayResult.data ?? []) {
     soldTodayByEvent.set(row.event_id, (soldTodayByEvent.get(row.event_id) ?? 0) + 1)
   }
 
-  const savedEventIds = new Set(
-    (savedRowsResult.data ?? []).map(r => r.event_id as string),
-  )
+  const savedEventIds = new Set<string>()
 
   const heroEventSlides = topCandidates.map(({ raw }) => ({
     event: toFeaturedHeroEvent(raw),
@@ -295,7 +282,7 @@ export default async function HomePage() {
 
         {/* 4. Cultural Picks - below fold, Suspense-streamed (self-fetching) */}
         <Suspense fallback={<CulturalPicksSkeleton />}>
-          <CulturalPicksSection cityFilter={cityFilter} nowIso={nowIso} />
+          <CulturalPicksSection cityFilter={detectedLocation.city} nowIso={nowIso} />
         </Suspense>
 
         {/* 5. Live Vibe marquee - below fold, Suspense-streamed */}
