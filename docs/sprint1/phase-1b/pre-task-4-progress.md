@@ -333,6 +333,35 @@ tile. We will re-audit in Phase D.
 
 Build clean. Type-check clean. Lint clean.
 
+### C.2.1 Rail priority drop - fixing the regression introduced by C.2
+
+The Phase D iter-8 sweep on /events caught a regression: perf 94 -> 66,
+LCP 2984ms -> 4486ms. `lcp-breakdown-insight` showed the LCP element
+became the first rail tile (li.w-64), with 3670ms of "resourceLoadDelay"
+- the gap between TTFB and the image fetch starting.
+
+Root cause: the recommended rail sits inside a `<Suspense>` boundary on
+both /events and /events/browse/[city]. The rail HTML doesn't paint
+until the Suspense data resolves (auth check + recommendations query).
+Setting `priority={i === 0}` on the first rail tile didn't make the
+image load earlier - the HTML isn't there yet - but it DID make
+Lighthouse's LCP picker prefer that image over the inline grid below.
+
+The inline grid renders without Suspense and its first card is in the
+initial HTML, so its image starts loading at TTFB. That's the real
+above-fold LCP candidate.
+
+Fix: drop the `priority` prop from rail tiles in
+`m5-recommended-rail.tsx`. Keep `variant="rail"` (the C.2 sizes fix is
+unrelated and still correct).
+
+This separates two concerns that C.2 had bundled together:
+1. C.2 (kept): rail tile sizes hint matches actual rendered width
+   (256-288px) instead of the wrong card-grid hint (33vw).
+2. C.2.1 (this fix): rail tiles do not request priority preload
+   because they are in a Suspense boundary and inline grid tiles are
+   the real LCP target.
+
 ### C.3 A11y violations - color-contrast and heading-order
 
 Pulled axe details from the iter-7 reports. Three failing audits across
