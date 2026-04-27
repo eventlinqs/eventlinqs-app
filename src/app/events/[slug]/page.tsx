@@ -1,20 +1,17 @@
-import { createClient } from '@/lib/supabase/server'
-import { notFound, redirect } from 'next/navigation'
-import { validateAdmissionToken } from '@/lib/queue/tokens'
+import { createPublicClient } from '@/lib/supabase/public-client'
+import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import type {
   Event, TicketTier, Organisation, EventCategory, EventAddon,
 } from '@/types/database'
 import { CopyLinkButton } from '@/components/features/events/copy-link-button'
-import { TicketSelector } from '@/components/checkout/ticket-selector'
 import {
   SeatSelector, type SeatData, type SectionData,
 } from '@/components/checkout/seat-selector'
-import { AccessCodeInput } from '@/components/features/events/access-code-input'
 import { SocialProofBadge } from '@/components/inventory/social-proof-badge'
-import { getUnlockedTierIds } from '@/app/actions/access-codes'
-import { getEventInventory, getTierInventory } from '@/lib/redis/inventory-cache'
+import { TicketPanelClient } from '@/components/features/events/ticket-panel-client'
+import { getEventInventoryStatic, getTierInventoryStatic } from '@/lib/redis/inventory-cache'
 import { getDynamicPriceMap } from '@/lib/pricing/dynamic-pricing'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
@@ -39,9 +36,35 @@ import { SectionHeader } from '@/components/ui/SectionHeader'
 import { EventSoldOut, type EventSoldOutRelated } from '@/components/features/events/event-sold-out'
 import { EventViewTracker } from '@/components/features/events/event-view-tracker'
 
+// Why ISR: every published event detail page is the same for all anonymous
+// visitors, so the shell ships as static HTML (revalidated every 5 minutes
+// from Postgres). Personalisation that previously made this dynamic
+// (queue gate via `searchParams.queue_token`, access-code unlock via
+// `getUnlockedTierIds()` cookie) has been lifted into middleware
+// (`src/middleware.ts`) and a client wrapper (`TicketPanelClient`)
+// respectively. Per-tier inventory + dynamic pricing still come from
+// Redis/Postgres at render time, but they go through `createPublicClient`
+// which doesn't read cookies.
+export const revalidate = 300
+export const dynamicParams = true
+
+export async function generateStaticParams() {
+  const supabase = createPublicClient()
+  const { data, error } = await supabase
+    .from('events')
+    .select('slug')
+    .eq('status', 'published')
+    .eq('visibility', 'public')
+
+  if (error || !data) {
+    console.error('[event-detail] generateStaticParams failed:', error)
+    return []
+  }
+  return data.map(row => ({ slug: row.slug as string }))
+}
+
 type Props = {
   params: Promise<{ slug: string }>
-  searchParams: Promise<{ queue_token?: string }>
 }
 
 type FullEvent = Event & {
@@ -57,7 +80,7 @@ type EnrichedTier = TicketTier & {
 }
 
 async function fetchEvent(slug: string): Promise<FullEvent | null> {
-  const supabase = await createClient()
+  const supabase = createPublicClient()
   const { data, error } = await supabase
     .from('events')
     .select('*, ticket_tiers(*), organisation:organisations(*), category:event_categories(*), event_addons(*)')
@@ -77,7 +100,7 @@ async function fetchRelatedEvents(
   organisationId: string,
   city: string | null,
 ): Promise<EventCardData[]> {
-  const supabase = await createClient()
+  const supabase = createPublicClient()
   const now = new Date().toISOString()
 
   // Same organiser upcoming events
@@ -176,26 +199,6 @@ function formatShortDate(iso: string, timezone: string) {
   })
 }
 
-function isTierCurrentlyVisible(tier: TicketTier, now: Date, unlockedTierIds: string[]): boolean {
-  if (!tier.is_visible || !tier.is_active) return false
-  if (tier.sale_end && new Date(tier.sale_end) <= now) return false
-  if (tier.hidden_until && new Date(tier.hidden_until) > now) return false
-  if (tier.requires_access_code && !unlockedTierIds.includes(tier.id)) return false
-  return true
-}
-
-function hasLockedTiers(tiers: TicketTier[], now: Date, unlockedTierIds: string[]): boolean {
-  return tiers.some(t => {
-    if (!t.is_active) return false
-    if (t.requires_access_code && !unlockedTierIds.includes(t.id)) return true
-    if (t.hidden_until) {
-      const revealTime = new Date(t.hidden_until)
-      if (revealTime > now && revealTime.getTime() - now.getTime() < 24 * 60 * 60 * 1000) return true
-    }
-    return false
-  })
-}
-
 function cheapestPrice(tiers: { price: number; currency: string }[]): string | null {
   if (!tiers.length) return null
   const m = tiers.reduce((x, t) => (t.price < x.price ? t : x), tiers[0])
@@ -205,22 +208,16 @@ function cheapestPrice(tiers: { price: number; currency: string }[]): string | n
   return `From ${m.currency ?? 'AUD'} ${formatted}`
 }
 
-export default async function EventDetailPage({ params, searchParams }: Props) {
+export default async function EventDetailPage({ params }: Props) {
   const { slug } = await params
-  const { queue_token } = await searchParams
   const event = await fetchEvent(slug)
 
   if (!event) notFound()
 
-  if (event.is_high_demand && event.status === 'published') {
-    const queueOpen = event.queue_open_at && new Date(event.queue_open_at) <= new Date()
-    if (queueOpen) {
-      const tokenValid = queue_token ? validateAdmissionToken(queue_token).valid : false
-      if (!tokenValid) {
-        redirect(`/queue/${slug}`)
-      }
-    }
-  }
+  // Queue gate moved to `src/middleware.ts`. The middleware redirects
+  // unauthenticated visitors to `/queue/[slug]` before this page renders,
+  // so by the time we get here, the visitor either holds a valid admission
+  // token or the event isn't gated at all.
 
   // Non-public state screens - gentle brand-aligned treatments.
   if (event.status === 'cancelled') {
@@ -298,7 +295,7 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
 
   const seatsPromise = event.has_reserved_seating
     ? (async () => {
-        const seatSupabase = await createClient()
+        const seatSupabase = createPublicClient()
         const [seatsResult, sectionsResult] = await Promise.all([
           seatSupabase
             .from('seats')
@@ -319,16 +316,14 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
     : Promise.resolve(null)
 
   const [
-    unlockedTierIds,
     dynamicPriceMap,
     eventInventory,
     media,
     related,
     seatsData,
   ] = await Promise.all([
-    getUnlockedTierIds(),
     getDynamicPriceMap(allTiers.map(t => t.id)),
-    getEventInventory(event.id),
+    getEventInventoryStatic(event.id),
     getFeaturedHeroBackground({
       title: event.title,
       cover_image_url: event.cover_image_url,
@@ -345,15 +340,16 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
     seatsPromise,
   ])
 
-  const visibleTiers = allTiers.filter(t => isTierCurrentlyVisible(t, now, unlockedTierIds))
-  const showAccessCodeInput = hasLockedTiers(allTiers, now, unlockedTierIds)
-
   function resolvePrice(tier: TicketTier): number {
     const dynamic = dynamicPriceMap.get(tier.id)
     return (dynamic && dynamic > 0) ? dynamic : tier.price
   }
 
-  const enrichedTiers: EnrichedTier[] = visibleTiers.map(t => ({
+  // Server enriches every active tier (including access-code-gated ones).
+  // TicketPanelClient filters by visibility + unlock state on the client so
+  // unlock can reveal new tiers without a router refresh that would just
+  // rehit the static HTML.
+  const enrichedAllTiers: EnrichedTier[] = allTiers.map(t => ({
     ...t,
     sale_pending: !!(t.sale_start && new Date(t.sale_start) > now),
     display_price_cents: resolvePrice(t),
@@ -396,11 +392,11 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
     .filter((id): id is string => typeof id === 'string')
 
   const [tierInventoryEntries, relatedCards, relatedPrices] = await Promise.all([
-    Promise.all(enrichedTiers.map(async t => [t.id, await getTierInventory(t.id)] as const)),
+    Promise.all(enrichedAllTiers.map(async t => [t.id, await getTierInventoryStatic(t.id)] as const)),
     projectToCardData(related as unknown as PublicEventRow[]),
     getDynamicPriceMap(relatedTierIds),
   ])
-  const tierInventoryMap = new Map(tierInventoryEntries)
+  const tierInventory = Object.fromEntries(tierInventoryEntries)
 
   const isSoldOut =
     !event.has_reserved_seating &&
@@ -665,8 +661,8 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
                         seats={eventSeats}
                         sections={eventSections}
                         defaultPriceCents={defaultPriceCents}
-                        currency={allTiers[0]?.currency ?? enrichedTiers[0]?.currency ?? 'AUD'}
-                        maxPerOrder={allTiers[0]?.max_per_order ?? enrichedTiers[0]?.max_per_order ?? 10}
+                        currency={allTiers[0]?.currency ?? 'AUD'}
+                        maxPerOrder={allTiers[0]?.max_per_order ?? 10}
                         tierPriceCentsMap={tierPriceCentsMap}
                       />
                     )}
@@ -683,32 +679,17 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
                   <div className="sticky top-20 rounded-2xl border border-ink-200 bg-white p-6 shadow-sm">
                     <SectionHeader eyebrow="Get in" title="Tickets" size="sm" className="mb-5" />
 
-                    {enrichedTiers.length > 0 && (
-                      <div className="mb-3 space-y-1.5">
-                        {enrichedTiers.map(tier => {
-                          const inv = tierInventoryMap.get(tier.id)
-                          if (!inv) return null
-                          return (
-                            <div key={tier.id} className="flex items-center justify-between text-xs text-ink-400">
-                              <span className="truncate">{tier.name}</span>
-                              <SocialProofBadge inventory={inv} createdAt={event.created_at} compact />
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )}
-
-                    <TicketSelector
+                    <TicketPanelClient
                       eventId={event.id}
-                      tiers={enrichedTiers}
-                      addons={(event.event_addons ?? []).filter(a => a.is_active)}
+                      eventCreatedAt={event.created_at}
+                      allTiers={enrichedAllTiers}
+                      addons={event.event_addons ?? []}
                       isTicketingSuspended={isTicketingSuspended}
-                      currency={enrichedTiers[0]?.currency ?? 'AUD'}
+                      defaultCurrency="AUD"
                       waitlistEnabled={event.waitlist_enabled ?? false}
                       squadBookingEnabled={event.squad_booking_enabled ?? false}
+                      tierInventory={tierInventory}
                     />
-
-                    {showAccessCodeInput && <AccessCodeInput eventId={event.id} />}
                   </div>
                 )}
               </div>

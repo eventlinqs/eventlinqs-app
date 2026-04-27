@@ -273,3 +273,91 @@ city.report.{html,json}`.
 ### Server stop
 Single-PID kill on the production server (PID 21816).
 
+
+## E.12 - /events/[slug] detail page refactor (iter-5)
+
+### Goal
+Take the event-detail page from `ƒ Dynamic` to `● SSG` so every published
+event ships as static HTML with a 5-minute revalidation window. The page
+was previously dynamic for two reasons: it read `searchParams.queue_token`
+(to gate high-demand events) and it called `getUnlockedTierIds()`, which
+reads cookies for access-code unlock state. Both touched dynamic APIs at
+render time and disqualified the route from `generateStaticParams` +
+`revalidate`.
+
+### Architectural moves
+1. **Queue gate -> proxy.** `src/proxy.ts` (Next 16's renamed middleware
+   file) now performs the high-demand check. For any `/events/<slug>`
+   request, the proxy runs a lightweight Supabase anon query for
+   `is_high_demand`, `queue_open_at`, `status`, and validates the
+   `queue_token` searchParam via `validateAdmissionToken`. Pre-admission
+   visitors get a 307 to `/queue/<slug>` before the page even renders.
+   This lets the page itself drop `searchParams` from its Props.
+2. **Access-code unlock -> client wrapper.** New
+   `src/components/features/events/ticket-panel-client.tsx` is a
+   `'use client'` component that owns the unlocked-tier-IDs state in
+   React (initially empty). Server enriches every active tier
+   (`enrichedAllTiers`) and ships them all to the client; client filters
+   by `is_visible`, `sale_end`, `hidden_until`, and unlock state.
+   `AccessCodeInput`'s `onUnlocked` callback now updates client state
+   instead of calling `router.refresh()` (which would just rehit the
+   static HTML).
+3. **Inventory cache -> unstable_cache static variants.** The Upstash
+   Redis client uses `cache: 'no-store'` fetch under the hood; calling
+   `getTierInventory` / `getEventInventory` from a static render path
+   tripped Next.js's `DYNAMIC_SERVER_USAGE` detector (even when the SET
+   side-effect was wrapped in try/catch). Added
+   `getTierInventoryStatic` / `getEventInventoryStatic` exports in
+   `src/lib/redis/inventory-cache.ts`: each wraps a Postgres-only fetch
+   helper in `unstable_cache` with `revalidate: 30` and the `inventory`
+   tag. The hot Redis-write path stays in place for checkout / admin
+   code that publishes fresh inventory.
+4. **Server data path -> public client.** `fetchEvent`,
+   `fetchRelatedEvents`, and the seats fetch all switched from
+   `await createClient()` (cookies-bound) to `createPublicClient()`.
+   Same RLS, no cookie side-effects.
+5. **`generateStaticParams`** enumerates every published + public event
+   slug at build time. `dynamicParams = true` lets newly-published
+   events be rendered on demand and cached afterwards.
+6. **`revalidate = 300`** at the page level. Inventory revalidates
+   independently every 30 s through the `unstable_cache` wrapper, so
+   sold-out / available counts stay fresh inside the 5-minute page
+   window.
+
+### Build status
+```
+● /events/[slug]                                  30s      1y
+  ├ /events/afrobeats-melbourne-summer-sessions   30s      1y
+  ├ /events/caribbean-carnival-melbourne-soca-...
+  └ [+25 more paths]
+```
+
+27 events pre-rendered at build. Route shows the SSG marker; the 30-second
+revalidate is the inner inventory cache window taking precedence over the
+page-level 300 s, which is the right behaviour (fresher inventory wins).
+
+### iter-5 capture (mobile, /events/afrobeats-melbourne-summer-sessions)
+| Run | Perf | FCP | LCP | TBT | CLS | SI | TTFB |
+|---|---|---|---|---|---|---|---|
+| event-detail (iter-5) | 0.85 | 1240 | 3952 | 161 | 0.000 | 2163 | 204 |
+
+A perf-only Lighthouse run (`--preset=perf`); the full A11y/BP/SEO sweep
+runs in E7. TTFB at 204 ms reflects the proxy hop (anon Supabase query
+for the high-demand gate) plus static HTML hand-off. CLS is clean.
+
+7-viewport AFTER captures at
+`docs/sprint1/phase-1b/iter-5/screenshots-event-detail-after/`.
+
+### Files touched
+- `src/app/events/[slug]/page.tsx` - removed cookies-bound dependencies,
+  added `generateStaticParams` + `revalidate`, swapped inline
+  TicketSelector + AccessCodeInput for `<TicketPanelClient>`.
+- `src/proxy.ts` - added `gateHighDemandEvent` helper executed before the
+  Supabase session update.
+- `src/components/features/events/ticket-panel-client.tsx` - new client
+  wrapper for tier filtering + access-code unlock.
+- `src/lib/redis/inventory-cache.ts` - added
+  `getTierInventoryStatic` / `getEventInventoryStatic` (`unstable_cache`
+  wrappers) plus internal Postgres-only helpers.
+- `scripts/screenshot-iter5-event-detail.mjs` - new 7-viewport capture
+  script for the event detail route.
