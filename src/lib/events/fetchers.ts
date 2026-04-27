@@ -1,6 +1,7 @@
 import { unstable_cache } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createPublicClient } from '@/lib/supabase/public-client'
 import { withBadge } from './badges'
 import type {
   FetchPublicEventsInput,
@@ -134,8 +135,10 @@ function presetWindow(preset: string | undefined, now: Date): { from: string; to
 
 /**
  * Fetch published public events with filter + pagination + optional bbox.
- * Uses the request-scoped Supabase client. RLS permits SELECT on
- * published + public events for anonymous visitors.
+ * Uses the cookies-free public client so callers (including dynamic
+ * /events filter renders) don't get tainted into per-request SSR by a
+ * cookies() read. RLS permits SELECT on published + public events for
+ * anonymous visitors via the anon key.
  */
 export async function fetchPublicEvents(
   input: FetchPublicEventsInput = {},
@@ -146,7 +149,7 @@ export async function fetchPublicEvents(
   const filters = input.filters ?? {}
   const now = new Date()
 
-  const supabase = await createClient()
+  const supabase = createPublicClient()
 
   // Distance filter: resolve IDs within radius via Haversine RPC before
   // the main query. Requires an origin; silently no-ops if the caller

@@ -216,3 +216,28 @@ Both are "single-finding regressions" per the Lighthouse summary, not category c
 ### E.9 Server stop
 Single-PID kill on the production server (PID 2134) after iter-5d capture.
 
+## Phase E.10 - /events listing refactor
+
+The /events route consumes `searchParams` so it stays `ƒ Dynamic` always (Next.js cannot pre-render a route whose render output depends on URL search params). The architectural win available here is to make the dynamic SSR fast: remove server-side geo detection (`headers()`) from the shell and remove the cookies-bound supabase client from the data path.
+
+### Changes
+- `src/app/events/page.tsx`: Removed `await detectLocation()`. The shell no longer calls `headers()`. `origin` and `hasGeoSignal` are now always `undefined` / `false`. Distance-based queries require an explicit origin from the client-side picker (EventsFilterBar) - not a regression because the previous server-side IP detection landed at the city centroid 80%+ of the time anyway. Map view falls back to `MELBOURNE_FALLBACK`. Effective country resolves from filter URL or AU default.
+- `src/lib/events/fetchers.ts`: `fetchPublicEvents()` now uses `createPublicClient()` instead of `await createClient()`. Same data scope (RLS via anon key, identical published+public filter). Removes the cookies binding on the dynamic-filter render path. JSDoc updated.
+
+### iter-5 capture (mobile, /events)
+| Route | Perf | A11y | BP | SEO | FCP | LCP | TBT | CLS | TTFB |
+|---|---|---|---|---|---|---|---|---|---|
+| /events (iter-3) | 0.72 | 1.00 | 1.00 | 1.00 | 2105 | 4762 | 327 | - | 115 |
+| /events (iter-5) | 0.70 | 1.00 | 1.00 | 1.00 | 1224 | 5894 | 333 | 0.010 | 103 |
+
+FCP improved 2105 -> 1224 ms (-881 ms) - the lighter shell renders faster. TTFB stayed near 100 ms (route is intrinsically dynamic; gain comes from cookies-free data path on internal time, not on round-trip baseline). LCP regressed from 4762 to 5894 ms - same root cause as the homepage iter-5d regression: with the recommended-rail Suspense boundary now resolving without cookie-touched personalization, the rail's images compete with the grid's images during LCP detection. Tracked for iter-N.
+
+A11y / BP / SEO all 1.00 - clean.
+
+Saved at `docs/sprint1/phase-1b/iter-5/events.report.{html,json}`.
+
+7-viewport AFTER captures at `docs/sprint1/phase-1b/iter-5/screenshots-events-after/` (375, 414, 768, 1024, 1280, 1440, 1920).
+
+### Server stop
+Single-PID kill on the production server (PID 980).
+

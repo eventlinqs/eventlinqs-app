@@ -10,7 +10,6 @@ import {
   parseEventsSearchParams,
   type EventsSearchParams,
 } from '@/lib/events/search-params'
-import { detectLocation } from '@/lib/geo/detect'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { EventsHeroStrip } from '@/components/features/events/m5-events-hero-strip'
@@ -23,6 +22,11 @@ import { EventsRecommendedSkeleton } from '@/components/features/events/m5-event
 
 const MELBOURNE_FALLBACK = { lat: -37.8136, lng: 144.9631 }
 
+// ISR: re-render every 60 seconds. Pages with searchParams stay dynamic on
+// filtered URLs but the bare /events route now caches. Geo detection moved
+// off the server (no headers() call) so the shell is cookies/headers-free.
+// Per-user recommendations stream via the EventsRecommendedSection
+// Suspense boundary, which performs its own auth lookup post-shell.
 export const revalidate = 60
 
 export const metadata: Metadata = {
@@ -40,18 +44,17 @@ export default async function EventsPage({ searchParams }: Props) {
   const raw = await searchParams
   const { filters, page, view } = parseEventsSearchParams(raw)
 
-  const [categories, location] = await Promise.all([
-    fetchActiveCategoriesCached(),
-    detectLocation(),
-  ])
+  const categories = await fetchActiveCategoriesCached()
 
-  const origin =
-    location.latitude !== null && location.longitude !== null
-      ? { latitude: location.latitude, longitude: location.longitude }
-      : undefined
-  const hasGeoSignal = location.source !== 'fallback' && origin !== undefined
+  // Server-side geo detection (headers() / IP lookup) was removed to keep
+  // /events ISR-eligible on the no-filter case. Country falls through to
+  // the filter URL parameter or the AU default; distance-based queries
+  // require an explicit origin from a client-side picker, which the
+  // EventsFilterBar surfaces as a "use my location" affordance.
+  const origin = undefined
+  const hasGeoSignal = false
 
-  const effectiveCountry = filters.country ?? location.country ?? 'Australia'
+  const effectiveCountry = filters.country ?? 'Australia'
   const effectiveFilters = { ...filters, country: effectiveCountry }
   const filterActive = hasActiveFilters(filters)
 
@@ -105,11 +108,7 @@ export default async function EventsPage({ searchParams }: Props) {
         {view === 'map' ? (
           <EventsMapLazy
             params={raw}
-            initialCenter={
-              hasGeoSignal && origin
-                ? { lat: origin.latitude, lng: origin.longitude }
-                : MELBOURNE_FALLBACK
-            }
+            initialCenter={MELBOURNE_FALLBACK}
           />
         ) : (
           <section aria-label="Event results" className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
