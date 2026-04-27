@@ -102,3 +102,62 @@ Phase A complete. Stopping for Lawal's call on three things:
 
 Standing by.
 
+### A.6 Deeper evidence (post-checkpoint diagnostic pass)
+
+While awaiting Lawal's checkpoint decisions, ran an audit-level extraction
+on the 11 stored Lighthouse JSON reports (no code changes, no gate changes,
+no new Lighthouse runs) to sharpen the Phase B plan. Script:
+`scripts/analyse-preview-evidence.mjs`.
+
+**Universal levers across every route:**
+
+| Audit | Pattern | Per-route savings |
+|---|---|---|
+| `unused-javascript` | Failing on 9/10 routes (score 0.00) | 180-470 ms |
+| `legacy-javascript-insight` | Failing on 9/10 routes | n/a (compile target) |
+| `cache-insight` | 0.5 on every route | n/a (asset Cache-Control) |
+| `render-blocking-insight` | Failing on most | varies |
+| `image-delivery-insight` | Only on /events and /events/browse/[city] | LCP-bound |
+
+The single biggest signal: **unused-JavaScript savings are 300-470 ms on
+every 0.94 route and on /signup (0.95)**. That is roughly the size of the
+gap from 0.94 to 0.95+ on the simulator. Tree-shaking the bundle should
+lift every 0.94 route into compliance simultaneously, without per-route
+surgery.
+
+**City listing (0.90) root cause:** Bytes (657 KiB) and JS bootup (711 ms)
+are mid-pack, not outliers. The 3544 ms LCP is dragged primarily by
+`image-delivery-insight` - confirms the original suspicion that the
+EventCard rail/marquee on city listings is the bottleneck, not architecture.
+
+**Home NO_LCP root cause confirmed:** Lighthouse error stack is
+`LanternLargestContentfulPaint.getOptimisticGraph` -> NO_LCP. The trace
+contains paints but no node qualifies as an LCP candidate. Consistent
+with the iter-6 hypothesis: hero is video-led, no above-fold raster
+element of sufficient size. Fix: introduce an explicit
+priority-painted raster LCP target above the fold (1 file change in
+`src/app/page.tsx`).
+
+**A11y violations enumerated:**
+
+| Route | Audit | Note |
+|---|---|---|
+| category | color-contrast | 1 occurrence, cosmetic CSS |
+| pricing | color-contrast | 1 occurrence |
+| pricing | heading-order | 1 occurrence, structural HTML |
+| legal-terms | color-contrast | 1 occurrence |
+
+Four total violations across three routes. All cosmetic / structural,
+no architectural change required.
+
+**Implication for Phase B/C plan (if Lawal greenlights):**
+
+Original plan was per-route optimization rounds. The deeper evidence
+suggests a **single Phase B sweep** addressing the four universal
+levers (unused JS, legacy JS, cache lifetimes, render-blocking) lifts
+every route simultaneously. Add three small Phase C surgeries
+(home LCP element, city image-delivery, a11y dings) and the standard
+is reachable in 2-3 commits, not 5+.
+
+Plan stays gated on Lawal's checkpoint decisions. No work begins
+until response received.
