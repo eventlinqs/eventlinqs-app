@@ -68,10 +68,12 @@ Both Mumbai and Sydney entries are currently present in `.env.local`; Sydney lin
 
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://gndnldyfudbytbboxesk.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_dRfxcx-bSDgfA36UctCVJA_6IELn_bs
-SUPABASE_SERVICE_ROLE_KEY=<paste from Supabase Studio → Settings → API>
-SUPABASE_DB_PASSWORD_SYDNEY=dQ3U4NKL88bBL9VV
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<copy from Supabase Studio → Settings → API → anon public>
+SUPABASE_SERVICE_ROLE_KEY=<paste from Supabase Studio → Settings → API → service_role>
+SUPABASE_DB_PASSWORD_SYDNEY=[REDACTED-ROTATED-2026-04-28]
 ```
+
+> **Security note (2026-04-28):** the original `SUPABASE_DB_PASSWORD_SYDNEY` value that previously lived in this runbook was rotated on 2026-04-28. The new password lives in the operator's password manager and `.env.local` only. It is not stored in Vercel environment variables (the running Next.js app authenticates to Supabase via anon and service-role keys; the DB password is consumed only by ad-hoc local psql / migration tooling). Old git history retains the rotated value but it no longer authenticates against the Sydney project. The previously-displayed anon key was also redacted as a precaution; pull the current value from Supabase Studio when needed.
 
 ---
 
