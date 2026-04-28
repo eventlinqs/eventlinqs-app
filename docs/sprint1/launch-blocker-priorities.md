@@ -202,6 +202,56 @@ Week 2:
 - Layout polish runs in parallel because it's pure frontend with no dependency on M6/M7 backend work.
 - Logo swap is dependency-on-Lawal and lands when asset arrives.
 
+## External presence and brand
+
+This section tracks non-code launch readiness: social handles, brand assets, and the code-side metadata that supports them. None of this is engineered work, but all of it is required before public launch.
+
+### 1. Social media accounts
+
+**Status:** none created yet. Lawal to register handles this weekend.
+
+| Platform | Handle | Status | Owner action |
+|---|---|---|---|
+| Instagram | @eventlinqs | Not created | Register, set bio, link in bio (Linktree or website). |
+| TikTok | @eventlinqs | Not created | Register, set bio. |
+| Facebook | EventLinqs page | Not created | Create business page, add cover. |
+| LinkedIn | EventLinqs company page | Not created | Create company page, add description + cover. |
+| X / Twitter | @eventlinqs | Not created | Register, set bio. |
+
+**Why this matters for launch:** every page on the site references social handles in the footer. Until the accounts exist, footer icons are placeholders that will lead to dead links. Site OG and Twitter Card meta also reference `@eventlinqs` — the handle should exist before launch traffic hits.
+
+### 2. Brand assets (pending logo delivery)
+
+**Status:** awaiting Fiverr Pro delivery of the EventLinqs logo set.
+
+| Asset | Format | Use |
+|---|---|---|
+| Profile picture (logo on dark background) | 1024×1024 PNG + SVG | All five social profiles. |
+| Cover / banner per platform | Per-platform spec | Facebook 1640×856, LinkedIn 1128×191, X header 1500×500, etc. |
+| First 9-12 Instagram grid posts | Templated 1080×1080 | Initial brand grid for launch. |
+| Story highlight covers | 1080×1920 | Saved highlights on IG. |
+| Logo light / dark variants | SVG + PNG | Platform navigation, emails, OG image, favicon. |
+
+The "Logo asset swap" launch blocker (§4 above) is the same dependency.
+
+### 3. Code-side social verification
+
+**Status:** needs audit. See `docs/sprint1/social-meta-audit.md` for per-route findings (generated 2026-04-28).
+
+The audit covers, per page type:
+
+- Open Graph tags (`og:title`, `og:description`, `og:image`, `og:url`, `og:type`).
+- Twitter Card tags (`twitter:card`, `twitter:site`, `twitter:image`).
+- Favicon set (16, 32, 48, 192, 512).
+- Apple touch icon (180×180).
+- `manifest.json` PWA metadata.
+- Footer social-icon link targets.
+
+The audit doc flags missing or broken metadata. **Fixes are deferred.** They land when:
+
+- Social accounts exist (so handles can be wired into Twitter Card and OG).
+- Logo is delivered (so OG images and favicons can be regenerated from the canonical asset).
+
 ## Out of scope for this launch
 
 These are explicitly deferred to post-launch sprints, with reasoning:
