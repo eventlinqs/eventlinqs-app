@@ -102,6 +102,9 @@ Anything that lets the platform owner approve organisers and adjust fees in prod
    - Page at `/admin` with: total organisations, active events, total revenue (last 30 days), pending approvals count.
    - Read-only; no charts; just numbers.
 
+5. **Admin route noindex** (0.1 day, carry-over from Phase 1B social meta fixes)
+   - When `src/app/admin` (or `src/app/(admin)/admin`) route group is created, add a `layout.tsx` that exports `metadata: { robots: { index: false, follow: false } }` following the pattern already shipped for `(auth)`, `(dashboard)`, `auth`, `checkout`, `squad`, `queue`, and `orders`. Skipped during Phase 1B because the route group does not exist yet.
+
 5. **Tests** (0.5 day)
    - Auth-gated routes 403 for non-admins. Pricing rule version increments. Approval flips org status.
 
