@@ -1,4 +1,4 @@
-# M6 Stripe Connect — current state audit
+# M6 Stripe Connect: current state audit
 
 **Date:** 2026-04-28
 **Branch:** `feat/sprint1-phase1b-performance-and-visual`
@@ -240,7 +240,69 @@ These are the gates between "code merged" and "real money flows":
 
 ---
 
-## 8. References
+## 8. Addendum: gaps revealed by Phase 0 plan refinements (added 2026-04-28 rev 1)
+
+The Phase 0 plan refinement (`m6-implementation-plan.md` rev 1) introduced sections covering tiered payouts, reserve architecture, tax handling, ACL compliance, refund/chargeback policy, and KYC enforcement. Re-running the audit lens against these locked decisions surfaces additional gaps not flagged in §1 to §7 above.
+
+### 8.1 Tax handling and TPAR (gap)
+
+§4.7 of this audit briefly mentions 1099-K (US) but does not enumerate AU obligations. Refinement §1.11 of the plan locks the following AU-specific gaps that need code:
+
+- **GST on platform fee column missing.** `orders` table has `platform_fee_cents` but no `platform_fee_gst_cents`. Phase 1 schema migration must add this column (or Phase 4 must compute on-the-fly when generating tax invoices). Decision: add the column in Phase 1 for clean storage.
+- **TPAR export missing.** No admin export exists for the AU Taxable Payments Annual Report. Out of M6 scope; flag for M7 admin tools.
+- **Tax invoice PDF generation missing.** No PDF generation library is in the dependency tree (`package.json` review). Phase 4 will need to add `@react-pdf/renderer` or similar.
+
+### 8.2 Australian Consumer Law compliance (gap)
+
+§1.12 of the refined plan locks the following surfaces that the audit did not check:
+
+- **Refund-policy snapshot at checkout missing.** `orders` table does not store the refund-policy text the buyer saw at purchase. Required for chargeback evidence and ACL compliance. Phase 1 schema migration must add `orders.refund_policy_snapshot TEXT` and `orders.terms_version_hash TEXT` and `orders.terms_accepted_at TIMESTAMPTZ`.
+- **Banned-phrase keyword screen missing.** No validation rejects organiser refund-policy text containing absolutist phrases. Phase 5 server-side validation required.
+- **Refund-policy display at checkout unaudited.** Need to verify `src/app/checkout/[orderId]/page.tsx` displays the organiser's refund policy in a buyer-visible location. Spot-check required during Phase 5.
+
+### 8.3 Refund window enforcement (gap)
+
+§1.8 of the refined plan locks a 7-day pre-event refund window for buyer-initiated refunds. The audit did not check whether such a window exists today.
+
+- **No refund window logic in code.** Codebase has `charge.refunded` webhook handling but no buyer-initiated refund server action and no time-based eligibility check. Phase 5 must add the server action with the 7-day boundary check.
+- `organisations.refund_window_days` column does not exist; Phase 1 schema migration adds it (per the rev 1 column list).
+
+### 8.4 Tier progression infrastructure (gap)
+
+§1.4 and §1.6 of the refined plan introduce `payout_tier`, `tier_progression_log`, and a nightly tier-progression job. The audit's §4.3 mentioned only "no risk-tier column"; the refined scope is broader.
+
+- **`tier_progression_log` table missing.** Phase 1 schema migration adds it.
+- **Nightly tier-progression job missing.** No Supabase Edge Function or Vercel cron exists. Phase 6 (or earlier as a Phase 3.5 subtask) must add it.
+- **Tier badge UI missing.** Phase 4 dashboard rev 1 surfaces tier and progress; today there is no tier surface anywhere.
+
+### 8.5 KYC publish-gate trigger (gap)
+
+§1.13 of the refined plan locks a database trigger that prevents `events.status` transitioning to `published` when the event is paid and the organiser is not KYC-complete. The audit's §4.7 mentions Stripe Express handles KYC but does not verify whether the publish path enforces it.
+
+- **No publish-gate trigger today.** Spot-checked: `events` table has `status` column but no trigger on UPDATE that checks the parent organisation's `stripe_charges_enabled`. Phase 3 migration must add it (recommend a `BEFORE UPDATE` trigger that raises if `NEW.status = 'published'` AND any `ticket_tiers.price_cents > 0` AND organisation `stripe_charges_enabled = FALSE`).
+- **No UI gate today.** `dashboard/events/[id]/edit/page.tsx` (or equivalent publish action) does not check organiser KYC before exposing the publish button. Phase 3 wiring required.
+
+### 8.6 Reserve and float operational gap (gap)
+
+§1.5 of the refined plan introduces per-event reserves with delayed release. The audit's §4.3 mentioned only "no rolling_reserves table"; the refined scope details are tighter.
+
+- **Reserve calculation logic missing.** The `payment_intent.succeeded` webhook handler does not compute or write reserve holds. Phase 3 wires this.
+- **Reserve-release scheduled job missing.** No mechanism marks `payout_holds.released_at` 3 business days after event end. Phase 4 (or a small Phase 3.5 subtask) must add the scheduled job.
+- **Business-day math missing.** No utility exists for "3 business days post-event" (must skip AU public holidays plus weekends). Phase 3 needs a small `addBusinessDays` helper, with AU public-holiday list either inlined or fetched from a date-utility library.
+
+### 8.7 Geographic country gate (gap)
+
+§1.10 of the refined plan locks AU/UK/US/EU only at v1. The audit did not check whether the organisation creation flow today rejects unsupported countries.
+
+- **No country gate today.** `organisations` insert path in the codebase accepts any country string without validation. Phase 2 onboarding adds the country gate; Phase 1 may want a CHECK constraint as defense-in-depth.
+
+### 8.8 Geographic seed-data state (clarification, not a gap)
+
+Production database currently has zero organisations (per existing `vercel env ls` checks and Sydney migration baseline). No African organisers exist to migrate; no waitlist UX needs to handle existing users. Confirms §1.10 is greenfield.
+
+---
+
+## 9. References
 
 - Scope: `docs/EventLinqs_Scope_v5.md` §3.7.2, §3.7.3, §3.7.4, §3.9.3, §4.5
 - M3 spec (existing checkout architecture): `docs/modules/M3-checkout-payments.md`
