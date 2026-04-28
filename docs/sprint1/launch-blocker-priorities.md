@@ -1,22 +1,25 @@
 # Launch blocker priorities — post Pre-Task 5
 
-**Date:** 2026-04-28 (updated post security handoff)
+**Date:** 2026-04-28 (updated post security rotation confirmation)
 **Branch:** `feat/sprint1-phase1b-performance-and-visual`
-**Status:** Pre-Task 5 closed; performance gate calibrated; Phase 1B complete; security cleanup handed off to operator (runbook redacted, candidate password generated, Dashboard reset pending). This doc inventories the remaining launch blockers and proposes a sequence.
+**Status:** Pre-Task 5 closed; performance gate calibrated; Phase 1B complete; security cleanup **DONE** (Sydney DB password rotated, runbook sanitised, Google API key restrictions re-confirmed). This doc inventories the remaining launch blockers and proposes a sequence.
 
 ## Summary
 
-**Recommended next task: M6 Stripe Connect.** Security cleanup is 95% complete and reduces to a ~5-minute Supabase Dashboard click for the operator (see `docs/sprint1/security-rotation-2026-04-28.md`). Layout polish and logo swap stay on rail B. Four code-work launch blockers remain.
+**Recommended next task: M6 Stripe Connect.** Four code-work launch blockers remain.
 
 | # | Blocker | Risk | Effort | Status | Sequence |
 |---|---|---|---|---|---|
 | 1 | M6 Stripe Connect | CRITICAL | 6–8 days | Stubbed | Rail A — **start next** |
 | 2 | M7 Admin Panel (minimal) | CRITICAL | 4–5 days | Missing | Rail A — after M6 |
-| 3 | ~~Security cleanup (rotate creds)~~ | HIGH | 0.5 day | **Operator handoff: ~5 min Dashboard action pending** (commit `8f39285`) | Rail B — almost done |
-| 4 | Layout Polish (7-viewport sweep) | MEDIUM | 1.5–2 days | Not started | Rail B — parallel with M6 |
-| 5 | Logo asset swap | LOW | 0.25 day | Awaiting asset | Rail B — anytime |
+| 3 | Layout Polish (7-viewport sweep) | MEDIUM | 1.5–2 days | Not started | Rail B — parallel with M6 |
+| 4 | Logo asset swap | LOW | 0.25 day | Awaiting asset | Rail B — anytime |
 
-**Total remaining critical-path effort:** ≈10–13 working days. Security work is now a ~5-minute operator action plus an automated post-confirmation commit.
+**Total remaining critical-path effort:** ≈10–13 working days.
+
+### Done
+
+- ~~Security cleanup (rotate creds)~~ — **DONE 2026-04-28.** Sydney DB password rotated via Supabase Dashboard, runbook redacted, Google API key restrictions re-confirmed. See `docs/sprint1/security-rotation-2026-04-28.md`.
 
 ## 1. M6 Stripe Connect — organiser onboarding and payouts
 
@@ -153,25 +156,18 @@ Per `CLAUDE.md`: "The logo does not exist yet. Use text 'EVENTLINQS' as a placeh
 
 ## 5. Security cleanup — rotate three exposed credentials
 
-### Current state (updated 2026-04-28 post handoff)
+### Current state — **DONE 2026-04-28**
 
-The 2026-04-28 security session did most of this work autonomously. Full per-credential state and the operator handoff are at `docs/sprint1/security-rotation-2026-04-28.md`.
+Full record at `docs/sprint1/security-rotation-2026-04-28.md`. Summary:
 
-**Done:**
-- Verified `SUPABASE_DB_PASSWORD_SYDNEY` is **not** in any Vercel env var (Production / Preview / Development) and **not** referenced in any source file under `src/`, `supabase/`, or `scripts/`. Rotation has zero production blast radius.
-- Generated a strong candidate password (40-char alphanumeric, URL-safe) and delivered it to the operator's password manager via one-shot chat output.
-- Sanitised `docs/sprint1/sydney-migration-runbook.md`: redacted DB password and anon key, added security note (commit `4f61813`).
-- Documented full state and handoff (commit `8f39285`).
+- Sydney DB password rotated via Supabase Dashboard (operator-confirmed in chat).
+- Runbook sanitised; old leaked credential no longer authenticates against the Sydney project.
+- Google Maps + PSI API key restrictions re-confirmed in Cloud Console.
+- Service-role key never exposed (was a placeholder in the runbook).
+- Anon key rotation deferred as optional post-launch hygiene (low-severity by design — `NEXT_PUBLIC_*` ships in client bundles regardless).
+- Git history retains the rotated value but it no longer authenticates. Full git-history scrub deferred unless the repo is ever made public.
 
-**Pending (~5 minutes for Lawal):**
-1. Supabase Dashboard → Sydney project (`gndnldyfudbytbboxesk`) → Settings → Database → Reset password → paste candidate from password manager.
-2. Update `.env.local` line 12 with new password value.
-3. Re-confirm Google API key restrictions in Cloud Console (Maps key referrer-locked, server key API-restricted, PSI key API-restricted).
-4. Reply `rotated` in chat — final commit lands automatically.
-
-**Deferred (optional, post-launch acceptable):**
-- Anon key rotation (low-severity by design — `NEXT_PUBLIC_*` ships in client bundles regardless).
-- Git history scrub via `git filter-repo` (only worth doing if the repo is ever made public; rotation is the durable fix).
+Commits: `4f61813` (runbook redaction) → `8f39285` (handoff doc) → `f9a5d21` (launch-blockers update) → this commit (rotation confirmation).
 
 ## Recommended sequence
 
