@@ -1,22 +1,22 @@
 # Launch blocker priorities — post Pre-Task 5
 
-**Date:** 2026-04-28
+**Date:** 2026-04-28 (updated post security handoff)
 **Branch:** `feat/sprint1-phase1b-performance-and-visual`
-**Status:** Pre-Task 5 closed; performance gate calibrated; Phase 1B complete. This doc inventories the remaining launch blockers and proposes a sequence.
+**Status:** Pre-Task 5 closed; performance gate calibrated; Phase 1B complete; security cleanup handed off to operator (runbook redacted, candidate password generated, Dashboard reset pending). This doc inventories the remaining launch blockers and proposes a sequence.
 
 ## Summary
 
-Five launch blockers remain. Two are revenue-path critical (M6 Stripe Connect and M7 Admin Panel), two are pre-launch hygiene (Layout polish and Logo asset), and one is a security obligation (rotate three credentials exposed in committed docs). Recommended sequence runs them roughly in parallel rails:
+**Recommended next task: M6 Stripe Connect.** Security cleanup is 95% complete and reduces to a ~5-minute Supabase Dashboard click for the operator (see `docs/sprint1/security-rotation-2026-04-28.md`). Layout polish and logo swap stay on rail B. Four code-work launch blockers remain.
 
-| # | Blocker | Risk | Effort | Sequence |
-|---|---|---|---|---|
-| 1 | M6 Stripe Connect | CRITICAL | 6–8 days | Rail A — start now |
-| 2 | M7 Admin Panel (minimal) | CRITICAL | 4–5 days | Rail A — after M6 unblocks |
-| 3 | Security cleanup (rotate creds) | HIGH | 0.5 day | Rail B — start now (out-of-band) |
-| 4 | Layout Polish (7-viewport sweep) | MEDIUM | 1.5–2 days | Rail B — parallel with M6 |
-| 5 | Logo asset swap | LOW | 0.25 day | Rail B — anytime before launch |
+| # | Blocker | Risk | Effort | Status | Sequence |
+|---|---|---|---|---|---|
+| 1 | M6 Stripe Connect | CRITICAL | 6–8 days | Stubbed | Rail A — **start next** |
+| 2 | M7 Admin Panel (minimal) | CRITICAL | 4–5 days | Missing | Rail A — after M6 |
+| 3 | ~~Security cleanup (rotate creds)~~ | HIGH | 0.5 day | **Operator handoff: ~5 min Dashboard action pending** (commit `8f39285`) | Rail B — almost done |
+| 4 | Layout Polish (7-viewport sweep) | MEDIUM | 1.5–2 days | Not started | Rail B — parallel with M6 |
+| 5 | Logo asset swap | LOW | 0.25 day | Awaiting asset | Rail B — anytime |
 
-**Total critical-path effort:** ≈10–13 working days assuming one engineer on rail A and parallel Lawal review on rail B.
+**Total remaining critical-path effort:** ≈10–13 working days. Security work is now a ~5-minute operator action plus an automated post-confirmation commit.
 
 ## 1. M6 Stripe Connect — organiser onboarding and payouts
 
@@ -153,46 +153,34 @@ Per `CLAUDE.md`: "The logo does not exist yet. Use text 'EVENTLINQS' as a placeh
 
 ## 5. Security cleanup — rotate three exposed credentials
 
-### Current state
+### Current state (updated 2026-04-28 post handoff)
 
-Three secrets are committed in plaintext to `docs/sprint1/sydney-migration-runbook.md`. They are in git history (verified via `git log -p`). Anyone with read access to the repo (current and future) has these values.
+The 2026-04-28 security session did most of this work autonomously. Full per-credential state and the operator handoff are at `docs/sprint1/security-rotation-2026-04-28.md`.
 
-| # | Credential | File:Line | Severity |
-|---|---|---|---|
-| 1 | `SUPABASE_DB_PASSWORD_SYDNEY=dQ3U4NKL88bBL9VV` | `docs/sprint1/sydney-migration-runbook.md:73` | **CRITICAL** — direct PostgreSQL admin access to the production Sydney project. |
-| 2 | `NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_dRfxcx-bSDgfA36UctCVJA_6IELn_bs` | `docs/sprint1/sydney-migration-runbook.md:71` | LOW — anon key is `NEXT_PUBLIC_*` and ships in client bundles by design. Rotation is best-practice hygiene only; not load-bearing. |
-| 3 | Sydney project ref `gndnldyfudbytbboxesk` | `docs/sprint1/sydney-migration-runbook.md:70` | LOW — public information about the project URL; not strictly a credential, but pairs with #1 to make brute-forcing easier. |
+**Done:**
+- Verified `SUPABASE_DB_PASSWORD_SYDNEY` is **not** in any Vercel env var (Production / Preview / Development) and **not** referenced in any source file under `src/`, `supabase/`, or `scripts/`. Rotation has zero production blast radius.
+- Generated a strong candidate password (40-char alphanumeric, URL-safe) and delivered it to the operator's password manager via one-shot chat output.
+- Sanitised `docs/sprint1/sydney-migration-runbook.md`: redacted DB password and anon key, added security note (commit `4f61813`).
+- Documented full state and handoff (commit `8f39285`).
 
-Note: The `SUPABASE_SERVICE_ROLE_KEY` placeholder in the runbook is `<paste from Supabase Studio → Settings → API>` (not a real value). The real service-role key is in `.env.local` and Vercel env vars only — verified via grep of all committed files. **Service-role key is not exposed in git.**
+**Pending (~5 minutes for Lawal):**
+1. Supabase Dashboard → Sydney project (`gndnldyfudbytbboxesk`) → Settings → Database → Reset password → paste candidate from password manager.
+2. Update `.env.local` line 12 with new password value.
+3. Re-confirm Google API key restrictions in Cloud Console (Maps key referrer-locked, server key API-restricted, PSI key API-restricted).
+4. Reply `rotated` in chat — final commit lands automatically.
 
-### Action
-
-1. **Rotate Sydney DB password** (0.25 day)
-   - Supabase Studio → Project Settings → Database → Reset password.
-   - Update `.env.local` `SUPABASE_DB_PASSWORD_SYDNEY` with new value.
-   - Update Vercel env if used for any direct-connection tooling (likely not — Supabase client uses anon/service-role keys, not DB password).
-
-2. **Rotate anon key** (0.1 day, optional)
-   - Supabase Studio → Project Settings → API → Reset anon key.
-   - Update `.env.local` and Vercel `NEXT_PUBLIC_SUPABASE_ANON_KEY` (production + preview + development).
-   - Trigger a redeploy so the new anon key is inlined into client bundles.
-
-3. **Sanitize the runbook** (0.1 day)
-   - Edit `docs/sprint1/sydney-migration-runbook.md` to replace the three credential lines with placeholders. Note: this only prevents future leaks. Old git revisions still contain the values — the rotated credentials must be considered the durable fix.
-   - Commit with message acknowledging this is forward-only sanitisation.
-
-4. **Audit other docs** (0.05 day)
-   - Re-grep `docs/` for any other credential patterns: `sb_publishable`, `sb_secret`, `sk_live`, `sk_test`, `whsec_`, `password`. Sanitize anything found.
-
-**Estimated effort:** 0.5 day total (mostly waiting on Supabase rotation and Vercel redeploy).
+**Deferred (optional, post-launch acceptable):**
+- Anon key rotation (low-severity by design — `NEXT_PUBLIC_*` ships in client bundles regardless).
+- Git history scrub via `git filter-repo` (only worth doing if the repo is ever made public; rotation is the durable fix).
 
 ## Recommended sequence
 
 ```
 Week 1 (mostly parallel):
+  Day 0   Operator: ~5 min Supabase Dashboard rotation + Cloud Console
+          re-confirm (closes security cleanup completely).
   Day 1   Rail A: M6 Stripe Connect onboarding flow
-          Rail B: Security cleanup (rotate creds, sanitize runbook)
-                  + Layout 7-viewport visual sweep capture
+          Rail B: Layout 7-viewport visual sweep capture
   Day 2   Rail A: M6 destination charges + checkout integration
           Rail B: Layout polish triage with Lawal
   Day 3   Rail A: M6 payouts dashboard
@@ -210,7 +198,7 @@ Week 2:
   Day 11  Rail A: End-to-end smoke: real org onboards, publishes event, sells ticket, payout settles, admin sees it
 ```
 
-**Critical-path total:** 10–13 working days.
+**Critical-path total:** 10–13 working days. **Recommended next code-work task: M6 Stripe Connect.**
 
 **Recommended sequencing rationale:**
 - M6 must come before M7 because the pricing rules editor in M7 directly drives the application fees applied in M6's destination charges. Building M7 first and then retrofitting M6 risks two reworks of the fee plumbing.
