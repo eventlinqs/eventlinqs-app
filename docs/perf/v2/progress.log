@@ -1,0 +1,6 @@
+# Mobile 95+ v2 progress log
+
+Format: timestamp | iteration | env | change | route | baseline median | new median | delta | decision (KEEP/REVERT) | reasoning
+
+Mission: median Lighthouse Performance >= 95 mobile on `/` AND `/events`. Control route `/about` must not drift more than 2 points from baseline. No regression on any other public route below current scores.
+
