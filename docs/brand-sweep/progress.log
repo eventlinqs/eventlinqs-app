@@ -92,3 +92,21 @@ Locked positioning:
     internal/code/commits; why these rules exist (links back to findings.md).
   About to commit Phase 1 + Phase 2 as one unit per mandate:
     "chore(brand): voice document and competitive research"
+
+[2026-05-02T01:22:00Z] PHASE 1+2 COMMITTED 57116a8, pushed.
+
+[2026-05-02T01:35:00Z] PHASE 3 DONE
+  Output: docs/brand-sweep/surface-inventory.md
+  Inventory:
+    Public surfaces in scope: 40 files / 8 batches
+    Files with "diaspora" today: 15 (15 in src/, 0 in public/)
+    Em-dashes in src/: 1 (dev comment in lib/supabase/public-client.ts:14)
+  Out-of-scope items recorded explicitly so the next agent does not
+  re-scope them under brand sweep: 12 dashboard / queue / squad /
+  dev-preview surfaces. They keep their own tone polish in a later
+  sprint.
+  Definition-of-done for Phase 4 batches: voice match, grep clean,
+  em-dash clean, locked phrases intact, typecheck + lint pass, commit
+  message matches mandate.
+
+  About to commit: "docs(brand): public surface inventory"
