@@ -5,6 +5,7 @@ export const metadata: Metadata = {
   title: 'Terms of Use | EventLinqs',
   description:
     'The terms and conditions that govern your use of the EventLinqs platform, including ticket purchases and organiser responsibilities.',
+  alternates: { canonical: '/legal/terms' },
 }
 
 const SECTIONS = [

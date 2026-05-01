@@ -5,6 +5,7 @@ import { ComingSoon } from '@/components/ui/coming-soon'
 export const metadata: Metadata = {
   title: 'About | EventLinqs',
   description: 'EventLinqs is the ticketing platform built for every culture. Afrobeats, Caribbean, Bollywood, Latin, Italian, Filipino, Lunar, Gospel, Amapiano, Comedy, Spanish, K-Pop, Reggae, and more.',
+  alternates: { canonical: '/about' },
 }
 
 export default function AboutPage() {

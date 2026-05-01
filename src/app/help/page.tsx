@@ -18,6 +18,7 @@ export const metadata: Metadata = {
   title: 'Help Centre | EventLinqs',
   description:
     'Find answers to common questions about buying tickets, selling tickets, payments, and your EventLinqs account.',
+  alternates: { canonical: '/help' },
 }
 
 interface HelpTopic {

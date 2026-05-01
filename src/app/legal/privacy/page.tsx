@@ -5,6 +5,7 @@ export const metadata: Metadata = {
   title: 'Privacy Policy | EventLinqs',
   description:
     'How EventLinqs collects, uses, and protects your personal information. Read our full Privacy Policy.',
+  alternates: { canonical: '/legal/privacy' },
 }
 
 const SECTIONS = [

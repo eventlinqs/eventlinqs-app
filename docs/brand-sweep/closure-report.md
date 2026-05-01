@@ -53,7 +53,7 @@ These items remain. They were scoped out of this autonomous run because each req
 
 1. **Visual regression pass.** Playwright screenshots at 7 viewports (320, 375, 414, 768, 1024, 1280, 1920) for every rewritten surface. tesseract.js OCR on each capture to confirm rendered text matches source. Recommend a dedicated visual-QA session with the dev server running.
 
-2. **Lighthouse and axe runs.** Per-surface accessibility and performance audits on the rewritten pages. The earlier Phase 1B work has the harness in `docs/sprint1/phase-1b/`. Re-run on the brand-sweep branch and diff against the iter-14-pt5 baseline.
+2. **Lighthouse and axe runs. DONE 2026-05-02.** New harness `scripts/brand-sweep-audit.mjs` runs Lighthouse + axe-core across 13 routes × 2 viewports = 26 cells. After fixing one root cause (missing `alternates.canonical` on 7 public routes), every public cell hits A11y 100, BP 100, SEO 100, axe 0. Performance hits 95-100 on 11 of 13 mobile cells and 98-100 on every desktop cell. Two documented caveats: (a) login/signup SEO 58 due to `(auth)` layout `robots: { index: false, follow: false }` (intentional, same caveat structure as M6 Phase 2 dashboard noindex); (b) home/events mobile perf 81/79, which is the Phase 1B image-LCP carry-over documented in `docs/sprint1/phase-1b/iter-14-pt5-image-preload/close-report.md` as architectural and outside brand-sweep scope (text-only changes cannot affect LCP). Full results doc at `docs/brand-sweep/verification/results.md`, per-cell JSON under `docs/brand-sweep/verification/{lighthouse,axe}/`, summary at `docs/brand-sweep/verification/summary.json`.
 
 3. **Competitive re-scoring.** Side-by-side review of EventLinqs against Ticketmaster, DICE, Eventbrite, Humanitix, RA, and Songkick using the brand-expression scorecard from `docs/brand-sweep/research/findings.md`.
 
@@ -63,4 +63,4 @@ These items remain. They were scoped out of this autonomous run because each req
 
 ## Status
 
-Phases 1 through 5 complete. Phase 4 delivered all 8 commit batches. Phase 5 verification passed every text-side check; visual / Lighthouse / scoring deferred as documented above.
+Phases 1 through 5 complete. Phase 4 delivered all 8 commit batches. Phase 5 text-side verification passed every check. Phase 5 follow-ups: A (seed-event scrub) and B (Lighthouse + axe) DONE 2026-05-02. Items 1, 3, 5 remain deferred as documented.

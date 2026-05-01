@@ -5,6 +5,7 @@ export const metadata: Metadata = {
   title: 'Refund Policy | EventLinqs',
   description:
     'When and how EventLinqs processes ticket refunds, including event cancellations, reschedules, and Australian Consumer Law rights.',
+  alternates: { canonical: '/legal/refunds' },
 }
 
 const SECTIONS = [
