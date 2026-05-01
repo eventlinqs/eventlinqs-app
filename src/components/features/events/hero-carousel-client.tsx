@@ -187,7 +187,7 @@ export function HeroCarouselClient({
               className="mt-4 font-display font-extrabold leading-[0.95] tracking-tight text-white"
               style={{ fontSize: 'clamp(2.25rem, 8vw, 6rem)' }}
             >
-              Where the <span className="text-gold-400">culture</span> gathers.
+              Every <span className="text-gold-400">culture</span>. Every event. One platform.
             </h1>
             <p className="mt-5 max-w-xl text-base text-white/80 sm:text-lg">{subcopy}</p>
 

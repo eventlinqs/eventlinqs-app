@@ -15,9 +15,10 @@ import {
  * Pre-resolves each slide's background media in parallel on the server,
  * then hands pre-rendered JSX to the client carousel component.
  *
- * The H1 is always the brand promise ("Where the culture gathers.") - event
- * identity lives in the ribbon card on the right. The eyebrow rotates based
- * on the active slide's signal (soon, trending, or brand default).
+ * The H1 is always the locked brand promise ("Every culture. Every event.
+ * One platform."). Event identity lives in the ribbon card on the right.
+ * The eyebrow rotates based on the active slide's signal: happening soon,
+ * trending, or the brand default.
  */
 
 export interface FeaturedHeroEvent extends EventMediaInput {
@@ -39,7 +40,7 @@ export interface FeaturedHeroEventSlide {
 }
 
 const HERO_SUBCOPY =
-  'Tickets for events that move you. Afrobeats, Gospel, Amapiano, Owambe, Comedy. No hidden fees, ever.'
+  'The ticketing platform built for every culture. Afrobeats, Caribbean, Bollywood, Latin, Italian, Filipino, Lunar, Gospel, Amapiano, Comedy, Spanish, K-Pop, Reggae and more. All-in pricing, no surprise fees.'
 
 function heroEyebrow(event: FeaturedHeroEvent): string {
   const daysToStart = Math.ceil(
@@ -47,7 +48,7 @@ function heroEyebrow(event: FeaturedHeroEvent): string {
   )
   if (daysToStart >= 0 && daysToStart <= 2) return 'Happening this weekend'
   if ((event.percent_sold ?? 0) > 70) return 'Trending now'
-  return 'Made for the diaspora'
+  return 'Made for every culture'
 }
 
 function formatLongDate(iso: string): string {
@@ -210,12 +211,12 @@ export async function FeaturedEventHero({
   // Fallback: empty-state single slide if somehow we got nothing
   if (slides.length === 0) {
     const fallbackMedia = await getFeaturedHeroBackground({
-      title: 'Where the culture gathers',
+      title: 'Every culture, every event',
       category: { slug: 'festival', name: 'Festival' },
     })
     slides.push({
       key: 'fallback',
-      eyebrow: 'Made for the diaspora',
+      eyebrow: 'Made for every culture',
       background: renderBackground(fallbackMedia, true),
       card: null,
       primaryHref: '/events',

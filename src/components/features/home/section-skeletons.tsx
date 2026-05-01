@@ -61,7 +61,7 @@ export function CulturalPicksSkeleton() {
   return (
     <section aria-label="Cultural picks - loading" className={`bg-canvas ${SECTION_TIGHT}`}>
       <div className={CONTAINER}>
-        <RailHeaderSkeleton eyebrow="Made for the diaspora" title="Cultural picks" />
+        <RailHeaderSkeleton eyebrow="Made for every culture" title="Cultural picks" />
         <div className="mt-6 flex gap-2 overflow-hidden">
           {[0, 1, 2, 3, 4, 5].map(i => (
             <div

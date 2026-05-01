@@ -67,7 +67,7 @@ export async function CulturalPicksSection({ cityFilter, nowIso }: Props) {
             <div className="mt-1 h-8 w-0.5 shrink-0 bg-gold-500" aria-hidden />
             <div>
               <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-700">
-                Made for the diaspora
+                Made for every culture
               </p>
               <h2 id="culture-heading" className="font-display text-2xl font-bold text-ink-900 sm:text-3xl">
                 Cultural picks

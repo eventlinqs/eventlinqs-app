@@ -24,7 +24,7 @@ export interface CategoryHighlightSlide {
 export const CATEGORY_HIGHLIGHT_SLIDES: CategoryHighlightSlide[] = [
   {
     key: 'afrobeats',
-    eyebrow: 'Made for the diaspora',
+    eyebrow: 'Made for every culture',
     cardEyebrow: 'Cultural picks',
     cardTitle: 'This week in Afrobeats',
     cardCopy:
@@ -50,7 +50,7 @@ export const CATEGORY_HIGHLIGHT_SLIDES: CategoryHighlightSlide[] = [
     cardEyebrow: 'Selling fast',
     cardTitle: 'What the culture is buying',
     cardCopy:
-      'The events the diaspora is booking right now. Move before the tickets do.',
+      'The events booking out right now. Move before the tickets do.',
     ctaLabel: 'See what is trending',
     ctaHref: '/events?sort=trending',
     media: { title: 'Trending events', category: { slug: 'music', name: 'Music' } },
