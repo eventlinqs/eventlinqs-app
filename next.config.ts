@@ -36,13 +36,13 @@ const nextConfig: NextConfig = {
   },
   images: {
     formats: ['image/avif', 'image/webp'],
-    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    deviceSizes: [375, 640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     // Constrain quality to brand tiers. Mirrors MEDIA_QUALITY in
     // src/components/media/quality.ts. A forgotten quality={100} on a
     // feature component will now be rejected at build time rather than
     // shipping an ungated 100% asset to production.
-    qualities: [70, 75, 85],
+    qualities: [70, 75, 80, 85],
     minimumCacheTTL: 60,
     remotePatterns: [
       {
