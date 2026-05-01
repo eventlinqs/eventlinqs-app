@@ -1,0 +1,94 @@
+EventLinqs M6.5 Brand Sweep Progress Log
+========================================
+Date:    2026-05-02
+Branch:  feat/sprint1-phase1b-performance-and-visual
+Mission: Replace "diaspora-first" with "culture-first" across every public surface.
+Mode:    Autonomous, no em-dashes, no co-authorship attribution.
+
+Locked positioning:
+  Hero tagline:     "Every culture. Every event. One platform."
+  Sub-tagline:      "The ticketing platform built for every culture."
+  Mission:          "EventLinqs is the ticketing platform built for every culture..."
+  Cultures (order): Afrobeats, Caribbean, Bollywood, Latin, Italian, Filipino,
+                    Lunar, Gospel, Amapiano, Comedy, Spanish, K-Pop, Reggae,
+                    West African, European, Asian, African, South Asian.
+
+[2026-05-02T00:18:00Z] PHASE 0 DONE - mandatory docs read, brand-sweep dir staged
+  Read: BUILD-STANDARDS, PRODUCTION-READINESS-CHECKLIST, MASTER-PLAN-V1,
+        DESIGN-SYSTEM (key sections), MEDIA-ARCHITECTURE, hygiene-2026-05-01.log.
+  Surveyed: 15 src/ files contain "diaspora", 0 in public/.
+            1 src/ file contains an em-dash (developer comment in
+            src/lib/supabase/public-client.ts:14).
+  Created: docs/brand-sweep/research/screenshots/,
+           docs/brand-sweep/verification/screenshots/.
+
+[2026-05-02T00:24:00Z] PHASE 1 BLOCKED - Playwright MCP unavailable
+  Symptom: every browser_navigate / browser_resize / browser_snapshot call
+  returns "browserBackend.callTool: Target page, context or browser has
+  been closed". Three retries against fresh URLs (about:blank, example.com,
+  ticketmaster.com.au) all fail with the same error.
+
+  This blocks two phases as written:
+    Phase 1 sub-goal "screenshots" - 60+ captures across 6 sites x 2 viewports
+    Phase 5 sub-goal D "Playwright visual verification" - 7 viewports x ~15 routes
+    Phase 5 sub-goal E "OCR verification" - depends on D's screenshots
+
+  Per defensive rule: "If any phase blocks for legitimate technical
+  reason (tool unavailable, environment issue, etc), STOP and report.
+  Do not improvise around blockers."
+
+  STOPPING. Surfacing to user before continuing.
+
+  Workarounds available IF user authorises a deviation from the mandate:
+    1. WebFetch can extract competitor copy as text (Phase 1 substantive
+       insight survives; screenshots do not).
+    2. Verification can lean on deterministic gates: grep, em-dash scan,
+       lint, typecheck, build, test, axe via @axe-core/playwright (which
+       runs Playwright via npx, NOT via MCP - might still work).
+       Lighthouse via npm can hit a built prod server.
+
+  Awaiting direction.
+
+[2026-05-02T00:32:00Z] DEVIATION AUTHORISED by user
+  Phase 1: WebFetch substitutes for Playwright MCP for competitor copy
+           extraction. Screenshots are deferred (not a blocker), noted
+           in findings.md. Substantive analysis still mandatory.
+  Phase 5: Direct Playwright via npx (scripts/brand-sweep-visual-verify.ts)
+           replaces Phase 5 D, E, F. Runs against built prod server,
+           captures 7 viewports per route, OCR via tesseract.js, fails
+           loud on any "diaspora" hit.
+  Phase 5F: Textual competitor description (from WebFetch findings)
+           replaces side-by-side competitor screenshots.
+  All other phases unchanged. Resuming autonomous execution.
+
+[2026-05-02T00:34:00Z] PHASE 1 RESUMED - WebFetch on 6 competitor sites
+
+[2026-05-02T01:05:00Z] PHASE 1 DONE
+  WebFetch results:
+    Ticketmaster.com.au           OK (consumer hero, footer)
+    business.ticketmaster.com.au  OK (organiser hero, value props)
+    dice.fm                       403 Cloudflare; reconstructed via WebSearch + Wikipedia
+    eventbrite.com.au             OK (consumer hero, categories)
+    eventbrite.com.au/l/sell-tickets-online  OK (organiser hub full extraction)
+    humanitix.com                 OK (full positioning + footer)
+    humanitix.com/au              OK (homepage rails, "Tickets for good not greed")
+    humanitix.com/au/host         404
+    ra.co                         OK (homepage editorial sections)
+    ra.co/events                  OK (Melbourne listing, filters, nav)
+    songkick.com                  OK (hero, taglines, genres)
+    songkick.com/info/about       OK (mission, philosophy, stats)
+  Outputs:
+    docs/brand-sweep/research/extracted-copy.md  (verbatim table per platform)
+    docs/brand-sweep/research/findings.md         (5 mandated questions answered + strategic gap analysis)
+  Visual screenshots: deferred per user authorisation. Recorded in
+    extracted-copy.md "Coverage gaps" section. Not a blocker.
+
+[2026-05-02T01:18:00Z] PHASE 2 DONE
+  Output: docs/brand-sweep/voice.md
+  Adopted; supersedes DESIGN-SYSTEM.md voice section.
+  Sections: who EventLinqs is; locked positioning; voice pillars; lexicon
+    (allow/forbid/use-with-care); CTA verbs; headline budget; punctuation
+    rules; cultural tone rules; tone-in-product-moments table; voice in
+    internal/code/commits; why these rules exist (links back to findings.md).
+  About to commit Phase 1 + Phase 2 as one unit per mandate:
+    "chore(brand): voice document and competitive research"
