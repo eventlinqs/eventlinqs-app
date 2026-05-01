@@ -114,6 +114,3 @@ export function Button({
     </button>
   )
 }
-
-// Named export for getting classes without the component (useful for <Link> wrappers)
-export { cls as buttonCls }

@@ -70,12 +70,6 @@ export const LAUNCH_TARGET_CITIES: readonly LaunchCity[] = [
   { city: 'Dubai',         slug: 'dubai',         country: 'United Arab Emirates', countryCode: 'AE', latitude: 25.2048, longitude: 55.2708, isAustralia: false },
 ]
 
-const BY_SLUG = new Map(LAUNCH_TARGET_CITIES.map(c => [c.slug, c]))
-
-export function findLaunchCityBySlug(slug: string): LaunchCity | null {
-  return BY_SLUG.get(slug.toLowerCase()) ?? null
-}
-
 export function toCitySlug(name: string): string {
   return name
     .toLowerCase()

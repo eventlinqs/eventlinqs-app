@@ -13,11 +13,3 @@ const ALLOWED_TRANSITIONS: Record<EventStatus, EventStatus[]> = {
 export function canTransition(from: EventStatus, to: EventStatus): boolean {
   return ALLOWED_TRANSITIONS[from].includes(to)
 }
-
-export function getAllowedTransitions(from: EventStatus): EventStatus[] {
-  return ALLOWED_TRANSITIONS[from]
-}
-
-export function isTerminalState(status: EventStatus): boolean {
-  return status === 'cancelled' || status === 'completed'
-}

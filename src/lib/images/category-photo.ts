@@ -109,11 +109,3 @@ export async function getCategoryPhoto(
   const query = CATEGORY_QUERIES[slug] ?? CATEGORY_QUERIES.other
   return await fetchPexels(query)
 }
-
-export function getCityPhotoQuery(city: string): string {
-  return `${city} skyline city night lights`
-}
-
-export async function getCityPhoto(city: string): Promise<PexelsPhoto> {
-  return await fetchPexels(getCityPhotoQuery(city))
-}

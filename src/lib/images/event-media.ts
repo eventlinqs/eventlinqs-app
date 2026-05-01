@@ -210,18 +210,3 @@ export async function getFeaturedHeroBackground(
   }
 }
 
-/**
- * Lightweight single-image helper for card contexts that don't need the full
- * EventMedia union. Used for This Week strip + compact tiles where carousel
- * or video would be overkill.
- */
-export async function getEventStillImage(event: EventMediaInput): Promise<string> {
-  if (isRealCover(event.cover_image_url)) return event.cover_image_url
-  if (isRealCover(event.thumbnail_url)) return event.thumbnail_url
-  if (event.gallery_urls && event.gallery_urls.length > 0) {
-    const first = event.gallery_urls.find(isRealCover)
-    if (first) return first
-  }
-  const photo = await getCategoryPhoto(event.category?.slug)
-  return photo.thumb
-}

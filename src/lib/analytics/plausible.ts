@@ -49,23 +49,6 @@ export function trackTicketCheckoutStart(data: {
   trackEvent('ticket_checkout_start', data)
 }
 
-export function trackTicketPurchaseComplete(data: {
-  event_id: string
-  ticket_type: string
-  quantity: number
-  total_amount_cents: number
-  currency: string
-}): void {
-  trackEvent('ticket_purchase_complete', data)
-}
-
-export function trackOrganiserSignup(data: {
-  organisation_id: string
-  organisation_type: string
-}): void {
-  trackEvent('organiser_signup', data)
-}
-
 export function trackEventSearch(data: {
   query?: string
   category?: string
