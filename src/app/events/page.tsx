@@ -1,4 +1,3 @@
-import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import {
   fetchPublicEvents,
@@ -17,16 +16,15 @@ import { EventsFilterBar } from '@/components/features/events/m5-events-filter-b
 import { EventsGrid } from '@/components/features/events/m5-events-grid'
 import { EventsPagination } from '@/components/features/events/m5-events-pagination'
 import { EventsMapLazy } from '@/components/features/events/m5-events-map-lazy'
-import { EventsRecommendedSection } from '@/components/features/events/m5-events-recommended-section'
-import { EventsRecommendedSkeleton } from '@/components/features/events/m5-events-skeletons'
+import { EventsPopularSection } from '@/components/features/events/m5-events-popular-section'
 
 const MELBOURNE_FALLBACK = { lat: -37.8136, lng: 144.9631 }
 
 // ISR: re-render every 60 seconds. Pages with searchParams stay dynamic on
 // filtered URLs but the bare /events route now caches. Geo detection moved
 // off the server (no headers() call) so the shell is cookies/headers-free.
-// Per-user recommendations stream via the EventsRecommendedSection
-// Suspense boundary, which performs its own auth lookup post-shell.
+// The popular rail renders synchronously in the shell via the public anon
+// client so the LCP card is discoverable during HTML parse.
 export const revalidate = 60
 
 export const metadata: Metadata = {
@@ -100,13 +98,15 @@ export default async function EventsPage({ searchParams }: Props) {
           hasGeoSignal={hasGeoSignal}
         />
 
-        {/* Recommended rail is secondary - its per-event Pexels cascade
-            can stream after shell paint without regressing the grid's
-            image-load timing. */}
+        {/* Popular rail renders synchronously in the shell so its first
+            card image (LCP candidate on /events) is discoverable during
+            HTML parse via the auto-injected priority preload. The previous
+            Suspense'd EventsRecommendedSection had auth-gated personalisation
+            but pushed the LCP image behind a streamed chunk, projecting LCP
+            to ~5s under Lantern. ISR stays alive because EventsPopularSection
+            uses the public anon client (no cookies()). */}
         {!filterActive ? (
-          <Suspense fallback={<EventsRecommendedSkeleton />}>
-            <EventsRecommendedSection filterActive={filterActive} />
-          </Suspense>
+          <EventsPopularSection filterActive={filterActive} />
         ) : null}
 
         {view === 'map' ? (

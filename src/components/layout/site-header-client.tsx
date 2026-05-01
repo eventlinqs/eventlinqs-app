@@ -158,11 +158,12 @@ export function SiteHeaderClient({ location, cities }: SiteHeaderClientProps) {
 
             <Link
               href="/login"
+              prefetch={false}
               className="hidden md:inline-flex items-center h-9 px-3 text-sm font-medium text-ink-700 hover:text-gold-600 transition-colors rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2"
             >
               Sign in
             </Link>
-            <Button href="/signup" variant="primary" size="sm" className="hidden md:inline-flex">
+            <Button href="/signup" prefetch={false} variant="primary" size="sm" className="hidden md:inline-flex">
               Get Started
             </Button>
 
@@ -281,10 +282,10 @@ export function SiteHeaderClient({ location, cities }: SiteHeaderClientProps) {
         </nav>
 
         <div className="border-t border-ink-100 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] space-y-3">
-          <Button href="/signup" variant="primary" size="lg" className="w-full" onClick={closeSheet}>
+          <Button href="/signup" prefetch={false} variant="primary" size="lg" className="w-full" onClick={closeSheet}>
             Get Started
           </Button>
-          <Button href="/login" variant="ghost" size="lg" className="w-full" onClick={closeSheet}>
+          <Button href="/login" prefetch={false} variant="ghost" size="lg" className="w-full" onClick={closeSheet}>
             Sign in
           </Button>
         </div>

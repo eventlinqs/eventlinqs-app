@@ -487,6 +487,80 @@ export async function fetchPopularThisWeek(
 }
 
 /**
+ * ISR-friendly variant of fetchPopularThisWeek. Uses the public anon client
+ * (no cookies()) and wraps in unstable_cache so /events shell can render
+ * the rail synchronously without forcing dynamic SSR. Bucketed by hour.
+ * The first card in the rail is the LCP candidate on /events; rendering it
+ * in the shell instead of inside Suspense lets Lighthouse discover the
+ * priority preload during HTML parse rather than after Suspense resolves.
+ */
+export async function fetchPopularThisWeekPublic(
+  limit: number = 12,
+  city?: string,
+): Promise<PublicEventRow[]> {
+  const bucket = Math.floor(Date.now() / (60 * 60 * 1000))
+  const keyParts = [
+    'popular-this-week-public-v1',
+    `bucket:${bucket}`,
+    `limit:${limit}`,
+    `city:${city ?? ''}`,
+  ]
+  return unstable_cache(
+    async () => {
+      const supabase = createPublicClient()
+      const weekAgo = new Date()
+      weekAgo.setDate(weekAgo.getDate() - 7)
+
+      const { data: popular } = await supabase
+        .from('orders')
+        .select('event_id')
+        .gte('created_at', weekAgo.toISOString())
+        .eq('status', 'confirmed')
+
+      const counts = new Map<string, number>()
+      for (const row of (popular ?? []) as { event_id: string }[]) {
+        counts.set(row.event_id, (counts.get(row.event_id) ?? 0) + 1)
+      }
+
+      const sortedIds = [...counts.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, limit)
+        .map(([id]) => id)
+
+      const now = new Date().toISOString()
+      let query = supabase
+        .from('events')
+        .select(BASE_SELECT)
+        .eq('status', 'published')
+        .eq('visibility', 'public')
+        .gte('start_date', now)
+        .order('start_date', { ascending: true })
+        .limit(limit)
+      if (sortedIds.length > 0) query = query.in('id', sortedIds)
+      if (city) query = query.ilike('venue_city', `%${city}%`)
+
+      const { data, error } = await query
+      if (error) {
+        console.error('[fetchPopularThisWeekPublic] query failed:', error)
+        return []
+      }
+
+      const raw = (data ?? []) as unknown as RawRow[]
+      if (sortedIds.length > 0) {
+        const byId = new Map(raw.map(r => [r.id, r]))
+        return sortedIds
+          .map(id => byId.get(id))
+          .filter((r): r is RawRow => Boolean(r))
+          .map(toPublicEventRow)
+      }
+      return raw.map(toPublicEventRow)
+    },
+    keyParts,
+    { revalidate: 60 * 30, tags: ['events:popular-public'] },
+  )()
+}
+
+/**
  * Recommended-for-you: union of events from organisers the user has saved,
  * categories the user has saved, and events in the user's preferred city.
  * Deduplicated by event id. Falls back to fetchPopularThisWeek when there

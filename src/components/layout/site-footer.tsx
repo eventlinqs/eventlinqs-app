@@ -1,5 +1,3 @@
-'use client'
-
 import { EventlinqsLogo } from '@/components/ui/eventlinqs-logo'
 
 /**
