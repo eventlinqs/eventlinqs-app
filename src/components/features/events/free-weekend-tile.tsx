@@ -70,7 +70,7 @@ export async function FreeWeekendTile({ event, fallbackMode = false }: Props) {
   const title = event?.title ?? 'Free this weekend'
   const venue = event
     ? [event.venue_name, event.venue_city].filter(Boolean).join(' \u00B7 ')
-    : 'Discover events that cost nothing but your Saturday'
+    : 'Find events that cost nothing but your Saturday'
 
   return (
     <Link
@@ -122,7 +122,7 @@ export async function FreeWeekendTile({ event, fallbackMode = false }: Props) {
         </h3>
         <p className="mt-1.5 text-xs text-white/75 line-clamp-2">{venue}</p>
         <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-gold-400 transition-transform duration-300 group-hover:translate-x-1">
-          {event ? 'RSVP' : 'Discover'} <span aria-hidden>&rarr;</span>
+          {event ? 'RSVP' : 'Find free'} <span aria-hidden>&rarr;</span>
         </span>
       </div>
     </Link>

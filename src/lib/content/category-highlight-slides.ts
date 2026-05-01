@@ -39,7 +39,7 @@ export const CATEGORY_HIGHLIGHT_SLIDES: CategoryHighlightSlide[] = [
     cardEyebrow: 'Zero platform fees',
     cardTitle: 'Free this weekend',
     cardCopy:
-      'Discover events that cost nothing but your Saturday. No platform fees, no catch.',
+      'Find events that cost nothing but your Saturday. No platform fees, no catch.',
     ctaLabel: 'Browse free events',
     ctaHref: '/events?price=free',
     media: { title: 'Free events', category: { slug: 'festival', name: 'Festival' } },

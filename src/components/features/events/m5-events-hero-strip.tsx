@@ -28,7 +28,7 @@ export function EventsHeroStrip({
   params,
   total,
   basePath = '/events',
-  heading = 'Discover events',
+  heading = 'Find your next event',
   subtitle,
 }: Props) {
   return (
