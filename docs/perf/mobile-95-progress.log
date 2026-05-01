@@ -4,3 +4,6 @@ Format: timestamp | iter | route | perf | LCP | TBT | SI | TTI | notes
 
 2026-05-02T02:40:00Z | baseline | / | 0.74 | 2153ms | 755ms | 5671ms | 4469ms | render-blocking CSS 1037ms, bootup 2.5s, hero is Pexels via /_next/image
 2026-05-02T02:40:00Z | baseline | /events | 0.86 | 4145ms | 62ms | 1227ms | 4956ms | LCP element first rail card; observed LCP 497ms (Lantern inflates 5x)
+
+2026-05-02T02:55:00Z | iter-1 | / | 0.85 | 2106ms | 467ms | 2718ms | 3235ms | swapped getFeaturedHeroBackground to local AVIFs only; LCP -47ms, TBT -288ms, SI -2953ms
+2026-05-02T02:55:00Z | iter-1 | /events | 0.91 | 3179ms | 163ms | 1255ms | 5165ms | LCP -966ms (less Pexels noise blocking main); TBT +101 (still ok)

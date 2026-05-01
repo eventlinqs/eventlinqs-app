@@ -183,30 +183,18 @@ function heroRasterFor(slug: string | null | undefined): string {
 export async function getFeaturedHeroBackground(
   event: EventMediaInput,
 ): Promise<HeroBackgroundMedia> {
-  const fallbackImage = heroRasterFor(event.category?.slug)
-  const fallbackAlt = event.title ?? event.category?.name ?? 'Cultural event'
+  const heroImage = heroRasterFor(event.category?.slug)
+  const alt = event.title ?? event.category?.name ?? 'Cultural event'
 
   if (event.video_url) {
-    return {
-      image: fallbackImage,
-      alt: fallbackAlt,
-      videoSrc: event.video_url,
-    }
+    return { image: heroImage, alt, videoSrc: event.video_url }
   }
 
-  const photo = await getCategoryPhoto(event.category?.slug)
-  if (photo && photo.src !== FALLBACK_POSTER) {
-    return {
-      image: photo.src,
-      alt: event.title ?? photo.alt,
-      kenBurns: true,
-    }
-  }
-
-  return {
-    image: fallbackImage,
-    alt: fallbackAlt,
-    kenBurns: true,
-  }
+  // Always serve the local AVIF hero raster as the LCP image. Routing the
+  // hero through the Next.js image optimiser (Pexels remote -> /_next/image)
+  // adds ~1100ms of cold-encoding on the LCP path on first request, even on
+  // a warm Vercel runtime. The local AVIFs are pre-curated per cultural
+  // slug and live under /public/images/hero/ for direct CDN delivery.
+  return { image: heroImage, alt, kenBurns: true }
 }
 
