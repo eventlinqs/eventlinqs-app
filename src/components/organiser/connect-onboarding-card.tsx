@@ -228,10 +228,14 @@ export function ConnectOnboardingCard({
 }
 
 function StatusPill({ state }: { state: ConnectOnboardingState }) {
+  // Solid backgrounds with ink-900 text. Tinted-on-tinted (e.g.
+  // text-warning on bg-warning/10) drops below 4.5:1 contrast for the
+  // 12px label, so we lean on a high-contrast pairing instead. Verified
+  // against axe-core wcag2aa during the M6 Phase 2 audit.
   const styles: Record<ConnectOnboardingState, string> = {
-    not_started: 'border-ink-200 bg-ink-50 text-ink-600',
-    in_progress: 'border-warning/30 bg-warning/10 text-warning',
-    complete: 'border-success/30 bg-success/10 text-success',
+    not_started: 'border-ink-200 bg-ink-50 text-ink-700',
+    in_progress: 'border-warning bg-warning text-ink-900',
+    complete: 'border-success bg-success text-ink-900',
   }
   const label: Record<ConnectOnboardingState, string> = {
     not_started: 'Not started',
@@ -362,7 +366,7 @@ function InProgressView({
         type="button"
         onClick={onContinue}
         disabled={submitting}
-        aria-label="Continue Stripe onboarding"
+        aria-label="Continue setup with Stripe"
         className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-gold-500 px-5 py-2.5 text-sm font-semibold text-ink-900 transition-colors hover:bg-gold-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500/40 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {submitting ? (
@@ -413,7 +417,7 @@ function CompleteView({
       <button
         type="button"
         onClick={onRefresh}
-        aria-label="Refresh payouts status"
+        aria-label="Refresh status"
         className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-ink-200 bg-white px-5 py-2.5 text-sm font-semibold text-ink-700 transition-colors hover:bg-ink-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500/40 focus-visible:ring-offset-2"
       >
         Refresh status

@@ -93,6 +93,7 @@ export function DashboardTopbar({ user, profile }: Props) {
               onClick={() => setMenuOpen((v) => !v)}
               aria-haspopup="menu"
               aria-expanded={menuOpen}
+              aria-label={`Account menu for ${displayName}`}
               className="flex items-center gap-2 rounded-full pl-1 pr-3 py-1 transition-colors hover:bg-ink-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
             >
               {avatar ? (

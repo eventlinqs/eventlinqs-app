@@ -22,7 +22,7 @@ import { Home, CalendarDays, Ticket, User } from 'lucide-react'
  */
 
 // Routes where the bottom nav must NOT render
-const HIDDEN_PREFIXES = ['/checkout', '/dashboard', '/login', '/auth']
+const HIDDEN_PREFIXES = ['/checkout', '/dashboard', '/login', '/auth', '/dev']
 
 type TabConfig = {
   href: string

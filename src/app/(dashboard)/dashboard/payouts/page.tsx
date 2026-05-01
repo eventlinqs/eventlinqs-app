@@ -11,6 +11,9 @@ import type { Organisation } from '@/types/database'
 
 export const metadata = {
   title: 'Payouts | EventLinqs Dashboard',
+  alternates: {
+    canonical: '/dashboard/payouts',
+  },
 }
 
 export const dynamic = 'force-dynamic'
