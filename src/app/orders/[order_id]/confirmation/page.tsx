@@ -105,7 +105,7 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
             </svg>
           </div>
           <h1 className="text-2xl font-bold text-ink-900">
-            {isConfirmed ? 'Order Confirmed' : 'Order Received'}
+            {isConfirmed ? "You're in" : 'Order received'}
           </h1>
           <p className="mt-1 text-ink-400">Order <span className="font-mono font-semibold text-ink-800">{fullOrder.order_number}</span></p>
         </div>
@@ -189,7 +189,7 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
 
         <div className="text-center">
           <Link href="/events" className="text-sm text-[#4A90D9] hover:underline">
-            Browse More Events →
+            Browse more events
           </Link>
         </div>
       </div>
