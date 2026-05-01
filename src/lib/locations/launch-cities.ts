@@ -1,8 +1,9 @@
 /**
  * Curated 32-city launch list for the EventLinqs location picker and
- * /events/browse/{city-slug} path-based routing. Chosen for African
- * diaspora community density rather than raw population - Ticketmaster's
- * city list is generic; ours is cultural.
+ * /events/browse/{city-slug} path-based routing. Chosen for cultural
+ * community density across Africa, the Caribbean, South Asia, East
+ * Asia, Latin America, and Anglo markets, rather than raw population.
+ * Ticketmaster's city list is generic; ours is cultural.
  *
  * These cities ALWAYS appear in the picker and sitemap regardless of
  * current event count, so they accumulate Google authority for when

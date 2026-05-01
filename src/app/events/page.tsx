@@ -30,9 +30,9 @@ const MELBOURNE_FALLBACK = { lat: -37.8136, lng: 144.9631 }
 export const revalidate = 60
 
 export const metadata: Metadata = {
-  title: 'Discover events | EventLinqs',
+  title: 'Find your next event | EventLinqs',
   description:
-    'Browse upcoming events by date, category, city, and price. Where the culture gathers.',
+    'Browse upcoming events by date, culture, city, and price. The ticketing platform built for every culture.',
   alternates: { canonical: '/events' },
 }
 

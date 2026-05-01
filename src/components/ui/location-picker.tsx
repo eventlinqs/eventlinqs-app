@@ -143,7 +143,7 @@ export function LocationPicker({
 }: LocationPickerProps) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
-  const [showDiaspora, setShowDiaspora] = useState(false)
+  const [showGlobalCities, setShowGlobalCities] = useState(false)
   const [geoBusy, setGeoBusy] = useState(false)
   const [geoError, setGeoError] = useState<string | null>(null)
 
@@ -174,7 +174,7 @@ export function LocationPicker({
   const closeDialog = useCallback(() => {
     setOpen(false)
     setQuery('')
-    setShowDiaspora(false)
+    setShowGlobalCities(false)
     setGeoError(null)
     setTimeout(() => triggerRef.current?.focus(), 0)
   }, [])
@@ -432,10 +432,10 @@ export function LocationPicker({
                   )}
 
                   {cities.internationalByCountry.length > 0 && (
-                    !showDiaspora ? (
+                    !showGlobalCities ? (
                       <button
                         type="button"
-                        onClick={() => setShowDiaspora(true)}
+                        onClick={() => setShowGlobalCities(true)}
                         aria-expanded={false}
                         className={[
                           'mt-4 flex w-full items-center justify-center gap-2 h-10 rounded-lg',
@@ -444,7 +444,7 @@ export function LocationPicker({
                           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]',
                         ].join(' ')}
                       >
-                        Global diaspora cities
+                        Global cities
                       </button>
                     ) : (
                       <div className="mt-5 space-y-4">
