@@ -187,14 +187,14 @@ function buildPromotionEmailHtml(p: EmailParams): string {
       <div style="margin:28px 0;">
         <a href="${p.checkoutUrl}"
            style="display:inline-block;background:#1A1A2E;color:white;padding:14px 28px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">
-          Claim Your Ticket Now →
+          Get your ticket
         </a>
       </div>
 
       <p style="color:#9CA3AF;font-size:12px;">
-        If you no longer want this ticket, simply ignore this email and your spot will be passed to the next person.
+        If you no longer want this ticket, ignore this email and your spot will be passed to the next person.
       </p>
-      <p style="color:#9CA3AF;font-size:12px;">The EventLinqs Team</p>
+      <p style="color:#9CA3AF;font-size:12px;">The EventLinqs team. The ticketing platform built for every culture.</p>
     </div>
   `
 }

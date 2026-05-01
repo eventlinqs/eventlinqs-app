@@ -726,7 +726,7 @@ function buildConfirmationEmailHtml(
 
   return `
     <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;">
-      <h1 style="color:#1A1A2E;font-size:24px;margin-bottom:4px;">Order Confirmed ✓</h1>
+      <h1 style="color:#1A1A2E;font-size:24px;margin-bottom:4px;">You're in</h1>
       <p style="color:#6B7280;margin-top:0;">Order ${order.order_number}</p>
 
       <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;" />
@@ -746,14 +746,14 @@ function buildConfirmationEmailHtml(
 
       <a href="${orderUrl}"
          style="display:inline-block;background:#4A90D9;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">
-        View Your Order
+        View your order
       </a>
 
       <p style="margin-top:32px;color:#9CA3AF;font-size:12px;">
         Your tickets will be available in your EventLinqs account once our ticketing system is fully activated.
       </p>
 
-      <p style="color:#9CA3AF;font-size:12px;">The EventLinqs Team</p>
+      <p style="color:#9CA3AF;font-size:12px;">The EventLinqs team. The ticketing platform built for every culture.</p>
     </div>
   `
 }
