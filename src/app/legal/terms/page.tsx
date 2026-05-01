@@ -33,7 +33,8 @@ export default function TermsOfUsePage() {
     >
       <h2 id="agreement">Agreement</h2>
       <p>
-        By accessing or using the EventLinqs platform (including the website at{' '}
+        EventLinqs is the ticketing platform built for every culture. By accessing
+        or using the EventLinqs platform (including the website at{' '}
         <a href="https://eventlinqs.com">eventlinqs.com</a>, any associated mobile
         experience, or any related services), you agree to be bound by these Terms
         of Use. If you do not agree to these terms, do not use the platform.
