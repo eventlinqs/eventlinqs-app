@@ -217,9 +217,10 @@ export function OrganisersLandingPage() {
             Open to every community.
           </h2>
           <p className="mt-4 text-base leading-relaxed text-[var(--text-secondary)]">
-            EventLinqs was built with African culture and diaspora communities in mind, and that
-            shows in everything we do. But our platform is open to every organiser and every
-            community. Weddings, birthday parties, cultural festivals, concerts, corporate events,
+            EventLinqs is the ticketing platform built for every culture. Afrobeats, Caribbean,
+            Bollywood, Latin, Italian, Filipino, Lunar, Gospel, Amapiano, Comedy, Spanish, K-Pop,
+            Reggae and beyond. Our platform is open to every organiser and every community.
+            Weddings, birthday parties, cultural festivals, concerts, corporate events,
             conferences, faith events. If it brings people together, it belongs here.
           </p>
 
@@ -229,7 +230,7 @@ export function OrganisersLandingPage() {
               'Gospel concerts and faith events',
               'Owambe celebrations and cultural ceremonies',
               'Caribbean fetes and independence galas',
-              'Diaspora business summits and networking events',
+              'Cultural business summits and networking events',
               'Weddings, birthdays, and family milestones',
               'Corporate events and conferences',
               'Any event that brings a community together',
