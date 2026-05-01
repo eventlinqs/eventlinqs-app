@@ -3,10 +3,9 @@ import { HeroMedia } from '@/components/media'
 import { GlassCard } from '@/components/ui/glass-card'
 import { getFeaturedHeroBackground, type EventMediaInput } from '@/lib/images/event-media'
 import type { CategoryHighlightSlide } from '@/lib/content/category-highlight-slides'
-import {
-  HeroCarouselClient,
-  type HeroCarouselSlide,
-} from './hero-carousel-client'
+import { type HeroCarouselSlide } from './hero-carousel-client'
+import { HeroCarouselEnhancer } from './hero-carousel-enhancer'
+import { FeaturedHeroStaticShell } from './featured-hero-static-shell'
 
 /**
  * FeaturedEventHero - full-viewport cinematic hero carousel.
@@ -225,11 +224,21 @@ export async function FeaturedEventHero({
   }
 
   return (
-    <HeroCarouselClient
-      slides={slides}
-      liveEventCount={liveEventCount}
-      uniqueCitiesCount={uniqueCitiesCount}
-      subcopy={HERO_SUBCOPY}
-    />
+    <>
+      <FeaturedHeroStaticShell
+        slide={slides[0]}
+        liveEventCount={liveEventCount}
+        uniqueCitiesCount={uniqueCitiesCount}
+        subcopy={HERO_SUBCOPY}
+        showIndicators={slides.length > 1}
+        totalSlides={slides.length}
+      />
+      <HeroCarouselEnhancer
+        slides={slides}
+        liveEventCount={liveEventCount}
+        uniqueCitiesCount={uniqueCitiesCount}
+        subcopy={HERO_SUBCOPY}
+      />
+    </>
   )
 }

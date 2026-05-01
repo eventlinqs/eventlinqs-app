@@ -286,3 +286,11 @@ html[data-headless="1"] .animate-marquee-slow,
 html[data-headless="1"] .animate-marquee-vibe {
   animation: none !important;
 }
+
+/* Hide the server-rendered hero shell once the sibling enhancer has mounted
+   the interactive carousel. The shell owns the LCP element on first paint;
+   the carousel takes over after first paint without a flash because slide 0
+   is visually identical between shell and carousel. */
+body[data-hero-enhanced="1"] [data-hero-shell] {
+  display: none;
+}
