@@ -40,6 +40,7 @@
     "not dead"
   ],
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.3",
     "@next/bundle-analyzer": "^16.2.4",
     "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4",
@@ -49,6 +50,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.2",
     "eslint-config-prettier": "^10.1.8",
+    "lighthouse": "^13.1.0",
     "playwright": "^1.59.1",
     "prettier": "^3.8.1",
     "tailwindcss": "^4",
