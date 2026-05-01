@@ -151,21 +151,21 @@ BEGIN
           350,
           '["comedy","african","stand-up","culture"]'
         ),
-        -- 7. Diaspora Business Summit 2026
+        -- 7. Cultural Business Summit 2026
         (
           '11111111-1111-4111-8111-111111111107',
-          'Diaspora Business Summit 2026',
-          'diaspora-business-summit-2026',
-          'The annual gathering of African diaspora entrepreneurs, investors, and professionals. Keynotes, panels, pitch sessions, and a gala dinner. Network with 300+ leaders.',
-          'Keynotes, panels, pitching, gala dinner — African diaspora entrepreneurs, Sydney',
+          'Cultural Business Summit 2026',
+          'cultural-business-summit-2026',
+          'The annual gathering of African and global cultural entrepreneurs, investors, and professionals. Keynotes, panels, pitch sessions, and a gala dinner. Network with 300+ leaders.',
+          'Keynotes, panels, pitching, gala dinner. African and global cultural entrepreneurs, Sydney',
           '8234412f-2a88-42d2-a9d2-406425f67ad9',
           '2026-05-23 08:00:00+10', '2026-05-23 22:00:00+10',
           'Australia/Sydney',
           'International Convention Centre Sydney', 'Sydney', 'NSW', 'Australia',
-          'https://picsum.photos/seed/diaspora/1200/900',
-          'https://picsum.photos/seed/diaspora/600/450',
+          'https://picsum.photos/seed/cultural-summit/1200/900',
+          'https://picsum.photos/seed/cultural-summit/600/450',
           300,
-          '["business","networking","diaspora","entrepreneurship","summit"]'
+          '["business","networking","cultural","entrepreneurship","summit"]'
         ),
         -- 8. Owambe — The Gathering
         (
@@ -209,7 +209,7 @@ BEGIN
       ('highlife-heritage-night-brisbane-2026',    'General Admission', 'Entry + dinner',                'general_admission', 4500,  350),
       ('gospel-on-the-hills-melbourne-2026',       'General Admission', 'Open seating',                  'general_admission', 3500,  500),
       ('african-comedy-night-the-showcase-2026',   'General Admission', 'Show entry',                    'general_admission', 4500,  300),
-      ('diaspora-business-summit-2026',            'Standard Pass',     'Full day access + gala dinner', 'general_admission', 18000, 250),
+      ('cultural-business-summit-2026',            'Standard Pass',     'Full day access + gala dinner', 'general_admission', 18000, 250),
       ('owambe-the-gathering-2026',                'General Admission', 'Full event access',             'general_admission', 5500,  1000)
     ) AS t(slug, name, description, tier_type, price, capacity) ON e.slug = t.slug;
 
