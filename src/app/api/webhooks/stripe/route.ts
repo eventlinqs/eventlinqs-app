@@ -7,6 +7,7 @@ import { Resend } from 'resend'
 import { refreshInventoryCache } from '@/lib/redis/inventory-cache'
 import { promoteWaitlist } from '@/lib/waitlist/promote'
 import { trackTicketPurchaseCompleteServer } from '@/lib/analytics/plausible'
+import { handleConnectAccountUpdated } from '@/lib/stripe/connect-handlers'
 import type Stripe from 'stripe'
 import type { PayoutRecordStatus } from '@/types/database'
 
@@ -770,102 +771,6 @@ function buildConfirmationEmailHtml(
 // upserts on natural keys (stripe_account_id, stripe_payout_id) so
 // re-delivery is safe.
 // =====================================================================
-
-async function handleConnectAccountUpdated(account: Stripe.Account, eventId: string) {
-  const adminClient = createAdminClient()
-
-  const fullyOnboarded = Boolean(
-    account.charges_enabled && account.payouts_enabled && account.details_submitted
-  )
-
-  // Snapshot previous state so we can detect the incomplete -> complete
-  // transition and trigger the Tier 1 promotion exactly once.
-  const { data: prevOrg, error: selectError } = await adminClient
-    .from('organisations')
-    .select(
-      'id, stripe_onboarding_complete, payout_tier, payout_destination'
-    )
-    .eq('stripe_account_id', account.id)
-    .maybeSingle()
-  if (selectError) {
-    console.error('[m6] account.updated select failed', { eventId, accountId: account.id, selectError })
-  }
-
-  // Resolve the default external account so destination charges have a
-  // concrete payout target. external_accounts.data[0].id is what Stripe
-  // returns once a bank account is attached during onboarding.
-  const externalAccount = account.external_accounts?.data?.[0]
-  const payoutDestination =
-    externalAccount && 'id' in externalAccount ? externalAccount.id : null
-
-  const updatePayload: Record<string, unknown> = {
-    stripe_charges_enabled: account.charges_enabled ?? false,
-    stripe_payouts_enabled: account.payouts_enabled ?? false,
-    stripe_account_country: account.country ?? null,
-    stripe_capabilities: (account.capabilities ?? {}) as Record<string, unknown>,
-    stripe_requirements: (account.requirements ?? {}) as unknown as Record<string, unknown>,
-    stripe_onboarding_complete: fullyOnboarded,
-    updated_at: new Date().toISOString(),
-  }
-  if (payoutDestination) {
-    updatePayload.payout_destination = payoutDestination
-  }
-
-  const { error: updateError } = await adminClient
-    .from('organisations')
-    .update(updatePayload)
-    .eq('stripe_account_id', account.id)
-
-  if (updateError) {
-    console.error('[m6] account.updated update failed', {
-      eventId,
-      accountId: account.id,
-      error: updateError,
-    })
-    return
-  }
-
-  // Tier promotion. Only fire on the first transition into the fully
-  // onboarded state. Phase 1 already defaulted payout_tier to 'tier_1'
-  // for new orgs, so this branch handles the case where an earlier
-  // `account.updated` set it to something else (or where a future
-  // migration adds organisations without a tier default).
-  const wasIncomplete = !prevOrg?.stripe_onboarding_complete
-  const tierIsTier1 = prevOrg?.payout_tier === 'tier_1'
-  if (fullyOnboarded && wasIncomplete && prevOrg?.id) {
-    if (!tierIsTier1) {
-      const { error: tierError } = await adminClient
-        .from('organisations')
-        .update({ payout_tier: 'tier_1', updated_at: new Date().toISOString() })
-        .eq('id', prevOrg.id)
-      if (tierError) {
-        console.error('[m6] account.updated tier promotion failed', {
-          eventId,
-          orgId: prevOrg.id,
-          error: tierError,
-        })
-      }
-    }
-    const { error: logError } = await adminClient.from('tier_progression_log').insert({
-      organisation_id: prevOrg.id,
-      from_tier: prevOrg?.payout_tier ?? 'tier_1',
-      to_tier: 'tier_1',
-      reason: 'auto_promotion',
-      triggered_by: null,
-      metadata: {
-        webhook_event_id: eventId,
-        stripe_account_id: account.id,
-      },
-    })
-    if (logError) {
-      console.error('[m6] account.updated tier log insert failed', {
-        eventId,
-        orgId: prevOrg.id,
-        error: logError,
-      })
-    }
-  }
-}
 
 async function handleConnectAccountDeauthorized(accountId: string | null, eventId: string) {
   if (!accountId) {
