@@ -42,8 +42,6 @@ export default async function EventsPage({ searchParams }: Props) {
   const raw = await searchParams
   const { filters, page, view } = parseEventsSearchParams(raw)
 
-  const categories = await fetchActiveCategoriesCached()
-
   // Server-side geo detection (headers() / IP lookup) was removed to keep
   // /events ISR-eligible on the no-filter case. Country falls through to
   // the filter URL parameter or the AU default; distance-based queries
@@ -72,18 +70,25 @@ export default async function EventsPage({ searchParams }: Props) {
     !filterActive &&
     typeof effectiveFilters.distance_km !== 'number' &&
     view !== 'map'
-  const result = canUseCached
-    ? await fetchPublicEventsCached({
-        filters: effectiveFilters,
-        page,
-        pageSize: 24,
-      })
-    : await fetchPublicEvents({
-        filters: effectiveFilters,
-        page,
-        pageSize: 24,
-        origin,
-      })
+
+  // Run categories + events fetch in parallel. Both are independent and
+  // either always-cached (categories) or cached-on-default-case (events).
+  // Sequential awaits added TTFB latency for no reason.
+  const [categories, result] = await Promise.all([
+    fetchActiveCategoriesCached(),
+    canUseCached
+      ? fetchPublicEventsCached({
+          filters: effectiveFilters,
+          page,
+          pageSize: 24,
+        })
+      : fetchPublicEvents({
+          filters: effectiveFilters,
+          page,
+          pageSize: 24,
+          origin,
+        }),
+  ])
 
   return (
     <div className="flex min-h-screen flex-col bg-canvas">
