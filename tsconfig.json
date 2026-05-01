@@ -30,5 +30,12 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    "scripts/m6-phase2-audit-authed.mts",
+    "scripts/m6-phase2-e2e-orchestrator.mts",
+    "scripts/m6-phase2-refresh-link.mts",
+    "scripts/m6-phase2-state-probe.mts",
+    "tests/fixtures/auth.mts"
+  ]
 }

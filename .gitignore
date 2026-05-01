@@ -92,3 +92,9 @@ lighthouse-reports/
 supabase/.temp/
 
 .vercel
+
+# Playwright auth state (test session cookies, tokens)
+.auth/
+
+# Local scratch state (e.g. M6 Phase 2 E2E orchestrator state)
+.tmp/
