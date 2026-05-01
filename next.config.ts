@@ -43,7 +43,12 @@ const nextConfig: NextConfig = {
     // feature component will now be rejected at build time rather than
     // shipping an ungated 100% asset to production.
     qualities: [70, 75, 80, 85],
-    minimumCacheTTL: 60,
+    // 1 year edge cache for optimised image variants. The variant URL is
+    // deterministic (src + w + q) and busts automatically when the source
+    // file changes, so a long TTL is safe and dramatically improves repeat
+    // LCP fetch time (post-warmup hits the CDN cache instead of going
+    // through the optimiser's transcoding step).
+    minimumCacheTTL: 31536000,
     remotePatterns: [
       {
         protocol: 'https',

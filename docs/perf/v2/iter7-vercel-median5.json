@@ -1,0 +1,212 @@
+{
+  "label": "iter7-vercel",
+  "base": "https://eventlinqs-38punobgr-lawals-projects-c20c0be8.vercel.app",
+  "runs": 5,
+  "timestamp": "2026-05-01T21:05:18.706Z",
+  "routes": {
+    "/": {
+      "contaminated": true,
+      "perfRange": 76,
+      "medianPerformance": 0,
+      "medianLcpMs": 4681.385,
+      "medianTbtMs": 0,
+      "medianFcpMs": 3352.985,
+      "medianSiMs": 5629,
+      "medianCls": 1.267222,
+      "lcpElement": null,
+      "samples": [
+        {
+          "run": 1,
+          "throttlingUsed": "devtools",
+          "performance": 0.39,
+          "lcpMs": 5459.363,
+          "tbtMs": 4095.023000000003,
+          "fcpMs": 3535.177,
+          "siMs": 5629,
+          "cls": 0.000101,
+          "lcpElement": null
+        },
+        {
+          "run": 2,
+          "throttlingUsed": "devtools",
+          "performance": null,
+          "lcpMs": 4382.884,
+          "tbtMs": null,
+          "fcpMs": 3315.801,
+          "siMs": 5497,
+          "cls": 1.267222,
+          "lcpElement": null
+        },
+        {
+          "run": 3,
+          "throttlingUsed": "simulate",
+          "performance": 0.76,
+          "lcpMs": 3332.035,
+          "tbtMs": 597,
+          "fcpMs": 1572.422,
+          "siMs": 2575.3879193460116,
+          "cls": 0,
+          "lcpElement": null
+        },
+        {
+          "run": 4,
+          "throttlingUsed": "devtools",
+          "performance": null,
+          "lcpMs": 4681.385,
+          "tbtMs": null,
+          "fcpMs": 3352.985,
+          "siMs": 6140,
+          "cls": 1.267222,
+          "lcpElement": null
+        },
+        {
+          "run": 5,
+          "throttlingUsed": "devtools",
+          "performance": null,
+          "lcpMs": 5007.578,
+          "tbtMs": null,
+          "fcpMs": 3554.438,
+          "siMs": 6472,
+          "cls": 1.267222,
+          "lcpElement": null
+        }
+      ]
+    },
+    "/events": {
+      "contaminated": false,
+      "perfRange": 4,
+      "medianPerformance": 84,
+      "medianLcpMs": 2316.812500000001,
+      "medianTbtMs": 507.9999999999998,
+      "medianFcpMs": 1565.9795000000004,
+      "medianSiMs": 2553.471980052471,
+      "medianCls": 0,
+      "lcpElement": null,
+      "samples": [
+        {
+          "run": 1,
+          "throttlingUsed": "simulate",
+          "performance": 0.85,
+          "lcpMs": 2316.812500000001,
+          "tbtMs": 496,
+          "fcpMs": 1565.9795000000004,
+          "siMs": 2302.0320923299596,
+          "cls": 0,
+          "lcpElement": null
+        },
+        {
+          "run": 2,
+          "throttlingUsed": "simulate",
+          "performance": 0.85,
+          "lcpMs": 2300.0839999999994,
+          "tbtMs": 483.99999999999955,
+          "fcpMs": 1679.829,
+          "siMs": 2565.495857993698,
+          "cls": 0,
+          "lcpElement": null
+        },
+        {
+          "run": 3,
+          "throttlingUsed": "simulate",
+          "performance": 0.83,
+          "lcpMs": 2325.3465000000006,
+          "tbtMs": 582.9999999999995,
+          "fcpMs": 1526.0225000000003,
+          "siMs": 2553.471980052471,
+          "cls": 0,
+          "lcpElement": null
+        },
+        {
+          "run": 4,
+          "throttlingUsed": "simulate",
+          "performance": 0.81,
+          "lcpMs": 2275.625,
+          "tbtMs": 667.4999999999995,
+          "fcpMs": 1268.9975,
+          "siMs": 2188.709258223283,
+          "cls": 0,
+          "lcpElement": null
+        },
+        {
+          "run": 5,
+          "throttlingUsed": "simulate",
+          "performance": 0.84,
+          "lcpMs": 2345.525,
+          "tbtMs": 507.9999999999998,
+          "fcpMs": 1588.589,
+          "siMs": 2591.0782020047664,
+          "cls": 0,
+          "lcpElement": null
+        }
+      ]
+    },
+    "/about": {
+      "contaminated": false,
+      "perfRange": 4,
+      "medianPerformance": 87,
+      "medianLcpMs": 2344.6780000000003,
+      "medianTbtMs": 457,
+      "medianFcpMs": 1183.0860000000002,
+      "medianSiMs": 1893.5800128091082,
+      "medianCls": 0,
+      "lcpElement": null,
+      "samples": [
+        {
+          "run": 1,
+          "throttlingUsed": "simulate",
+          "performance": 0.87,
+          "lcpMs": 2344.6780000000003,
+          "tbtMs": 457,
+          "fcpMs": 1183.0860000000002,
+          "siMs": 1749.0398920146463,
+          "cls": 0,
+          "lcpElement": null
+        },
+        {
+          "run": 2,
+          "throttlingUsed": "simulate",
+          "performance": 0.87,
+          "lcpMs": 2360.8395,
+          "tbtMs": 452,
+          "fcpMs": 1010.8395,
+          "siMs": 1469.7955896679277,
+          "cls": 0,
+          "lcpElement": null
+        },
+        {
+          "run": 3,
+          "throttlingUsed": "simulate",
+          "performance": 0.88,
+          "lcpMs": 2011.5680000000002,
+          "tbtMs": 450,
+          "fcpMs": 1212.438,
+          "siMs": 1913.3855119444847,
+          "cls": 0,
+          "lcpElement": null
+        },
+        {
+          "run": 4,
+          "throttlingUsed": "simulate",
+          "performance": 0.84,
+          "lcpMs": 2401.143,
+          "tbtMs": 520.9999999999998,
+          "fcpMs": 1195.023,
+          "siMs": 2131.40516363388,
+          "cls": 0,
+          "lcpElement": null
+        },
+        {
+          "run": 5,
+          "throttlingUsed": "simulate",
+          "performance": 0.86,
+          "lcpMs": 2319.16,
+          "tbtMs": 498.0000000000002,
+          "fcpMs": 1147.78,
+          "siMs": 1893.5800128091082,
+          "cls": 0,
+          "lcpElement": null
+        }
+      ]
+    }
+  }
+}
