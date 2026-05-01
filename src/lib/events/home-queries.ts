@@ -96,6 +96,6 @@ export const FALLBACK_SEEDS = [
   { id: 'f2', href: '/events/browse/sydney',    title: 'Community events in Sydney',   community: 'Sydney, NSW',      categorySlug: 'community' },
   { id: 'f3', href: '/events/browse/brisbane',  title: 'Gospel nights Brisbane',       community: 'Brisbane, QLD',    categorySlug: 'gospel' },
   { id: 'f4', href: '/events/browse/geelong',   title: 'Geelong community scene',      community: 'Geelong, VIC',     categorySlug: 'community' },
-  { id: 'f5', href: '/events/browse/perth',     title: 'Diaspora events Perth',        community: 'Perth, WA',        categorySlug: 'heritage-and-independence' },
+  { id: 'f5', href: '/events/browse/perth',     title: 'Cultural events Perth',        community: 'Perth, WA',        categorySlug: 'heritage-and-independence' },
   { id: 'f6', href: '/events',                  title: 'Regional Australia events',    community: 'Across Australia', categorySlug: 'festival' },
 ] as const

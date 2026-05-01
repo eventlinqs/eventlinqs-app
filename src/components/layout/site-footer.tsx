@@ -9,7 +9,7 @@ import { EventlinqsLogo } from '@/components/ui/eventlinqs-logo'
  *   - Mobile (<768px): 3 accordions (Discover, Organisers, Help) + social icons
  *   - Desktop (768px+): dark 4-col grid (Logo+tagline | Discover | Organisers | Help)
  *   - Background: ink-900 (#0A1628) - deep navy
- *   - CTA strip above footer columns: "Where the culture gathers"
+ *   - CTA strip above footer columns: "Every culture. Every event. One platform."
  *
  * Uses <details>/<summary> for mobile accordion - no JS, fully accessible,
  * respects prefers-reduced-motion via CSS.
@@ -86,7 +86,7 @@ export function SiteFooter() {
           <div>
             <EventlinqsLogo size="lg" variant="inverted" />
             <p className="mt-3 text-sm leading-6 text-white/70">
-              Built for Africa, its diaspora, and every community that knows how to celebrate.
+              The ticketing platform built for every culture.
             </p>
             <div className="mt-6 flex gap-4">
               <a href="https://twitter.com/eventlinqs" aria-label="EventLinqs on X (Twitter)" className="text-white/70 hover:text-white transition-colors">
@@ -215,7 +215,7 @@ export function SiteFooter() {
             © {new Date().getFullYear()} EventLinqs. All rights reserved.
           </p>
           <p className="hidden md:block text-xs text-white/70">
-            Built for Africa, its diaspora, and every community that knows how to celebrate.
+            The ticketing platform built for every culture.
           </p>
           <p className="text-xs text-white/70">
             Transparent pricing. Zero hidden fees. Always.
