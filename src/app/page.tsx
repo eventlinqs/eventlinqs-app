@@ -28,6 +28,7 @@ import { ThisWeekSection } from '@/components/features/home/this-week-section'
 import { CulturalPicksSection } from '@/components/features/home/cultural-picks-section'
 import { LiveVibeSection } from '@/components/features/home/live-vibe-section'
 import { CityRailSection } from '@/components/features/home/city-rail-section'
+import { TrustBand } from '@/components/marketing/trust-band'
 import {
   ThisWeekSkeleton,
   CulturalPicksSkeleton,
@@ -275,7 +276,12 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* 3. This Week rail - below fold, Suspense-streamed */}
+        {/* 3. Trust band - real-numbers strip between lineup and rails */}
+        <Suspense fallback={null}>
+          <TrustBand />
+        </Suspense>
+
+        {/* 4. This Week rail - below fold, Suspense-streamed */}
         <Suspense fallback={<ThisWeekSkeleton />}>
           <ThisWeekSection events={thisWeek} />
         </Suspense>

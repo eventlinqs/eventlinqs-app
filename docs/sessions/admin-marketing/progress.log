@@ -1,0 +1,49 @@
+# Session admin-marketing - progress log
+
+Branch: feat/m7-admin-panel
+Owner: Session 3
+Opened: 2026-05-02
+
+---
+
+2026-05-02  scope  Phase A1 scope written -> docs/admin-marketing/phase-a1/scope.md
+2026-05-02  scope  Phase B1 scope written -> docs/admin-marketing/phase-b1/scope.md
+2026-05-02  build  A1 schema migration drafted (admin_users + admin_invites + audit_log + RLS + indexes) -> supabase/migrations/20260502000002_admin_foundation.sql
+2026-05-02  build  A1 admin lib shipped (types, rbac, auth, audit, totp, encryption, session-timeout) -> src/lib/admin/
+2026-05-02  build  A1 admin shell + sidebar + topbar + stat-tile components -> src/components/admin/
+2026-05-02  build  A1 admin dashboard with Suspense-streamed GMV/queues/system-health tiles -> src/app/admin/(authed)/page.tsx
+2026-05-02  build  A1 login page + server action with 2FA + recovery-code break-glass -> src/app/admin/login/
+2026-05-02  build  A1 2FA enrolment flow (TOTP + 10 recovery codes) -> src/app/admin/(authed)/enrol-2fa/
+2026-05-02  build  A1 audit viewer with cursor pagination + filter form + JSON-detail overlay -> src/app/admin/(authed)/audit/
+2026-05-02  test   A1 TOTP unit tests 7/7 pass -> tests/unit/admin/totp.test.ts
+2026-05-02  gates  A1 typecheck clean (0 errors); lint clean within owned scope (1 pre-existing C-A1-05); 7/7 vitest; build compiles + typechecks (page-data collection blocked by missing local env vars - worktree config)
+2026-05-02  hygiene  Removed two pre-existing untracked files outside owned scope that were intentionally deleted in main (src/components/ui/smart-media.tsx via 2559d91, src/lib/images/category-video.ts via 010ac07) - blocked typecheck
+2026-05-02  hygiene  Removed standalone src/middleware.ts to resolve Next 16 conflict with src/proxy.ts; admin auth fully covered by (authed) layout gate
+2026-05-02  closure  Phase A1 closure report written -> docs/admin-marketing/phase-a1/closure-report.md
+2026-05-02  [GATE]   Phase A1 code complete - STOP for project manager review
+2026-05-02  [COORDINATION]  C-A1-01 founder applies migration via supabase db push --linked
+2026-05-02  [COORDINATION]  C-A1-03 founder generates ADMIN_TOTP_ENC_KEY (32-byte base64) and adds to Vercel + local env
+2026-05-02  [COORDINATION]  C-A1-04 Session 2 Hardening wires Sentry into recordAuditEvent failure path
+2026-05-02  [COORDINATION]  C-A1-05 pre-existing lint error in src/components/layout/site-header-client.tsx:58 - non-owned scope
+2026-05-02  [COORDINATION]  C-A1-06 Session 2 Hardening adds /admin to protectedPrefixes in src/lib/supabase/middleware.ts (optional)
+2026-05-02  [COORDINATION]  C-A1-07 founder runs supabase/scripts/admin/bootstrap-super-admin.sql once auth.users row exists
+2026-05-02  [COORDINATION]  C-A1-08 Session 2 Hardening regenerates src/types/database.ts after migration applies
+2026-05-02  fix       A1 migration citext extension hoisted to section 0 and applied to Sydney prod -> commit d8c3857
+2026-05-02  approved  [APPROVED A1] Phase A1 code-side approved by project manager 2026-05-02
+2026-05-02  scope     B1 active - Homepage Hollywood Pass scope already on disk from session open
+2026-05-02  build     B1 competitive findings synthesised text-only (Playwright deferred to C-B1-01) -> docs/admin-marketing/phase-b1/competitive/findings.md
+2026-05-02  build     B1 trust band component (real Supabase counts + Stripe/PCI/GDPR badges + ABN line) -> src/components/marketing/trust-band.tsx
+2026-05-02  build     B1 cultural-picks-section overridden with locked 18-culture canonical order (per-culture tag aliases, empty cultures filtered) -> src/components/features/home/cultural-picks-section.tsx
+2026-05-02  build     B1 footer rebuilt to v2 spec (4-col desktop / 3-accordion mobile / sub-footer with social + legal + ABN + Geelong address + markets line + email) -> src/components/layout/site-footer.tsx
+2026-05-02  build     B1 page.tsx wires <TrustBand /> between bento and rails inside Suspense boundary -> src/app/page.tsx
+2026-05-02  decision  B1 hero Pattern A retained per scope §4.2 - no code change. Rationale + rubric scores documented in competitive/findings.md and closure-report.md §8
+2026-05-02  fix       totp.test.ts require() converted to top-level import to satisfy lint rule
+2026-05-02  gates     B1 typecheck 0 errors, lint 0 errors in owned scope (1 pre-existing C-A1-05), 7/7 vitest, build compiles + 121 static pages generated
+2026-05-02  closure   Phase B1 closure report written -> docs/admin-marketing/phase-b1/closure-report.md
+2026-05-02  [GATE]    Phase B1 code complete - STOP for project manager review
+2026-05-02  [COORDINATION]  C-B1-01 founder/browser-enabled session captures Playwright homepage + footer at desktop+mobile for TM/DICE/EB/Humanitix
+2026-05-02  [COORDINATION]  C-B1-02 founder runs Vercel preview Lighthouse median-of-5 mobile after merge
+2026-05-02  [COORDINATION]  C-B1-03 founder/browser-enabled session captures 7-viewport visual regression of homepage
+2026-05-02  [COORDINATION]  C-B1-05 founder + project manager confirm cultural-rail imagery source (Pexels vs Unsplash vs commissioned)
+2026-05-02  [COORDINATION]  C-B1-06 by-city rail curated-imagery pass, blocked on C-B1-05
+2026-05-02  [COORDINATION]  C-B1-07 project manager confirms hero CTA verb-list interpretation (current per-slide CTAs vs scope §4.2 brand-level CTAs)
