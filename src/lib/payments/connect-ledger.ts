@@ -78,7 +78,7 @@ export function addThreeBusinessDays(date: Date): Date {
  * the guard keeps the function safe to call unconditionally.
  *
  * Logs and returns `skipped_unconfirmed_order` if the order row is missing
- * or not in `confirmed` status — the caller (webhook handler) is responsible
+ * or not in `confirmed` status; the caller (webhook handler) is responsible
  * for confirm_order() succeeding before this is invoked.
  */
 export async function recordOrderConfirmedLedger(

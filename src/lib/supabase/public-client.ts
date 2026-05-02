@@ -11,7 +11,7 @@
  * `revalidate`. Using this client is what makes ISR / static generation
  * possible for public read-only pages.
  *
- * RLS still applies — anon-key reads are gated by Postgres policies, the
+ * RLS still applies: anon-key reads are gated by Postgres policies, the
  * same way the server `createClient` is. Treat this as: "the same data,
  * but without the auth-session side effect that disqualifies static
  * rendering."
