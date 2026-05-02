@@ -167,3 +167,40 @@ Owner:    Hardening session
   unblocks remote migration audit also unblocks first-run db:types
   generation. After link, this session runs `npm run db:types` and
   commits src/types/database.generated.ts as a non-SHARED follow-up.
+
+[2026-05-02T21:00:00Z] [G] Rate-limit policy layer + Session 1 handoff
+  Commit: 71c191d feat(hardening-G): central rate-limit policy layer and Session 1 handoff
+  Files:  src/lib/rate-limit/policies.ts (NEW)
+          src/lib/rate-limit/middleware.ts (NEW)
+          src/app/api/health/redis/route.ts (M, +health-redis policy)
+          src/app/api/health/sentry-error/route.ts (M, +health-sentry-error policy)
+          tests/unit/rate-limit/policies.test.ts (NEW, 5 tests)
+          docs/hardening/phase1/rate-limit-handoff.md (NEW)
+  Note:   Latency target verification (latencyMs<20 for redis-backed
+          rate-limit miss/pass) gated on A's Sydney Upstash provision.
+          Policy layer itself is production-ready against the existing
+          free-tier client.
+  Gates:  vitest 25/25, tsc clean, build clean, lint baseline preserved.
+
+[2026-05-02T21:30:00Z] [GATE] PHASE 1 DRAFT-CLOSURE
+  Closure report: docs/hardening/phase1/closure-report.md
+  Branch:  feat/launch-hardening-nationwide pushed to origin
+  Commits: 12 commits in this phase (b8170ab through 71c191d)
+  Status:  All 7 deliverables A-G have landed code or scaffolding.
+  Pending founder actions (5):
+    1. A: Provision Upstash Sydney
+    2. B: Verify Resend domain + Supabase SMTP config
+    3. C: Apply Google Maps key restrictions
+    4. D+E: npx supabase link (single action unblocks both)
+    5. F: Create Sentry project + set Vercel env vars
+  Pending [SHARED] coordination:
+    1. 4afe68d (db:types scripts) PUSHED, awaiting confirmation
+    2. (queued) chore(deps): add @sentry/nextjs
+    3. (queued) feat(observability): wire withSentryConfig into next.config.ts
+  Cross-session handoff:
+    - Session 1: wire applyRateLimit into checkout/* and stripe/* routes
+      per docs/hardening/phase1/rate-limit-handoff.md
+  Quality:  lint baseline preserved (1 pre-existing site-header error),
+            tsc clean, build clean, vitest 25/25.
+  Hard gate per scope.md: Phase 2 does not start until partner Claude
+  approves this closure and the founder actions complete. STOP here.
