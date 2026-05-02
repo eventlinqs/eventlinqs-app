@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getRedisClient } from '@/lib/redis/client'
+import { rateLimitWithHeaders } from '@/lib/rate-limit/middleware'
 
 // Health endpoint for Upstash Redis. Returns latency for a single PING from
 // the Vercel function region to the configured Redis endpoint. Used to
@@ -29,7 +30,10 @@ function deriveRegion(url: string | undefined): string {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { blocked, headers } = await rateLimitWithHeaders('health-redis', request)
+  if (blocked) return blocked
+
   const url = process.env.UPSTASH_REDIS_REST_URL
   const region = deriveRegion(url)
   const ts = new Date().toISOString()
@@ -45,7 +49,7 @@ export async function GET() {
         ts,
         error: 'redis_not_configured',
       },
-      { status: 503 },
+      { status: 503, headers },
     )
   }
 
@@ -63,7 +67,7 @@ export async function GET() {
         result,
         ts,
       },
-      { status: ok ? 200 : 503 },
+      { status: ok ? 200 : 503, headers },
     )
   } catch (err) {
     const latencyMs = Date.now() - started
@@ -76,7 +80,7 @@ export async function GET() {
         ts,
         error: err instanceof Error ? err.message : 'unknown',
       },
-      { status: 503 },
+      { status: 503, headers },
     )
   }
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { captureException, isSentryEnabled } from '@/lib/observability/sentry'
+import { applyRateLimit } from '@/lib/rate-limit/middleware'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -9,10 +10,13 @@ export const runtime = 'nodejs'
 //
 // Usage: curl https://<host>/api/health/sentry-error?token=<HEALTH_TOKEN>
 //
-// The token gate is necessary because anyone hitting this endpoint
-// generates a Sentry event - leaving it unguarded would let scrapers
-// fill the org's monthly event quota.
+// Defence in depth: token gate + IP rate limit. Each successful call
+// generates a Sentry event, so even if the token leaks the rate limit
+// caps quota burn at 5/min/IP per the health-sentry-error policy.
 export async function GET(request: Request) {
+  const blocked = await applyRateLimit('health-sentry-error', request)
+  if (blocked) return blocked
+
   const token = process.env.HEALTH_CHECK_TOKEN
   const provided = new URL(request.url).searchParams.get('token')
 
