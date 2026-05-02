@@ -23,3 +23,95 @@ Owner:    Hardening session
     - Supabase CLI: not in PATH, accessible via npx (v2.98.0)
   Scope written: docs/hardening/phase1/scope.md
   Next: deliverable-by-deliverable execution per scope.
+
+[2026-05-02T16:22:00Z] [A] Redis health endpoint and Sydney migration docs
+  Commit: 239319d feat(hardening-A): redis health endpoint plus Sydney migration plan
+  Files:  src/app/api/health/redis/route.ts (NEW)
+          docs/hardening/phase1/upstash-sydney-setup.md (NEW)
+          docs/hardening/phase1/redis-migration-runbook.md (NEW)
+          .env.example (M, +Upstash + Resend + Sentry blocks)
+          docs/hardening/phase1/scope.md (M, /api/_health -> /api/health rename)
+  Note:   Original task spec used /api/_health/redis; Next.js App Router
+          treats _-prefixed folders as private and excludes them from
+          routing. Renamed to /api/health/redis per industry standard.
+  Gates:  tsc clean, build success, route appears in manifest as
+          /api/health/redis, vitest 3/3.
+
+[2026-05-02T16:23:00Z] [A] [COORDINATION] founder action required
+  Provision Sydney Upstash Redis instance per
+  docs/hardening/phase1/upstash-sydney-setup.md.
+  Blocks: deliverable G (rate-limit wiring against Sydney instance)
+          and any Phase 2 load tests against authoritative Redis.
+  Does not block: B, C, D, E, F. Continuing those.
+
+[2026-05-02T17:10:00Z] [B] Resend SMTP setup doc and brand-compliant auth templates
+  Commit: 7730095 feat(hardening-B): Resend SMTP setup doc and brand-compliant auth templates
+  Files:  docs/hardening/phase1/resend-smtp-setup.md (NEW)
+          src/lib/email/templates/auth/{confirm-signup,magic-link,
+            password-reset,email-change,reauthentication}.html (5 NEW)
+          src/lib/email/templates/auth/README.md (NEW)
+  Note:   Templates use 560px max width, EVENTLINQS wordmark text,
+          inline styles only, brand palette (#1A1A2E primary, #4A90D9
+          accent, #FAFAFA background). Supabase placeholders preserved
+          ({{ .ConfirmationURL }}, {{ .Token }}). No em-dashes, no
+          exclamation marks, AU English.
+  Gates:  Lint clean (templates are static HTML, not in TS path),
+          tsc clean, build success.
+
+[2026-05-02T17:10:30Z] [B] [COORDINATION] founder action required
+  Verify eventlinqs.com domain in Resend, generate SMTP credential,
+  configure Supabase Dashboard > Auth > SMTP Settings, paste 5
+  template HTML files into Auth template editor, set RESEND_API_KEY
+  in Vercel (production + preview + development).
+  Blocks: production auth-email cutover (no production blocker for
+          codebase work; founder action only).
+
+[2026-05-02T17:35:00Z] [C] Original deliverable: map token restrictions audit
+  Commit: 1556fd6 feat(hardening-C): map token restrictions audit and founder action
+  File:   docs/hardening/phase1/map-token-restrictions.md (NEW, since renamed)
+  Status: SUPERSEDED by C-REVISED below.
+
+[2026-05-02T18:05:00Z] [E] On-disk migration audit and remote drift handoff
+  Commit: 85f8008 feat(hardening-E): on-disk migration audit and remote drift handoff
+  File:   docs/hardening/phase1/migration-drift-audit.md (NEW)
+  Findings:
+    - 10 migration files on disk enumerated.
+    - Memory item "20260419000001_add_saved_events.sql on disk but
+      never applied" RESOLVED. That file is not on disk; saved_events
+      ships via 20260421000001_m5_phase1_personalisation.sql with
+      CREATE TABLE IF NOT EXISTS at line 18. Production traffic on
+      save-event-button.tsx implies remote application.
+    - Memory item "13 events vs 8 expected" PENDING remote audit.
+      Most likely explanation: seed migration ran cleanly with 8
+      events, then 20260426000001_cultural_breadth_seed.sql added 5
+      more for total 13. Confirms in T2.
+    - .env.local has duplicate NEXT_PUBLIC_SUPABASE_URL line
+      (cqwdlimwlnyaaowwcyzp dead, gndnldyfudbytbboxesk live per
+      dotenv last-write semantics). Founder-managed, not edited.
+
+[2026-05-02T18:05:30Z] [E] [COORDINATION] founder action required
+  Run npx supabase login then
+  npx supabase link --project-ref gndnldyfudbytbboxesk
+  Requires DB password. After link, this session runs
+  supabase migration list --linked and supabase db diff --linked
+  to fill the reconciliation matrix and close the event-count probe.
+  Blocks: full closure of E. Partial closure already in audit doc.
+
+[2026-05-02T19:15:00Z] [C-REVISED] Project manager update absorbed
+  PM directive: Mapbox is fully decommissioned (verified zero hits in
+  src/, package.json, .env.example, plus mapboxgl/MapboxGL/mapbox-gl
+  variants). Original C task is removed. Replaced with: Google Maps
+  API key audit and restrictions verification at
+  docs/hardening/phase1/google-maps-api-restrictions.md.
+  Action taken:
+    - git mv map-token-restrictions.md -> google-maps-api-restrictions.md
+    - Header rewritten: title, status line, scope summary updated.
+    - Mapbox decommission codified as a verification table (4 grep
+      targets, all 0 hits).
+    - Founder action remains: HTTP referrer restrictions on
+      eventlinqs.com/*, www.eventlinqs.com/*, *.vercel.app/*,
+      http://localhost:*/* + Maps JS API + Places API only + quota cap.
+    - No health check needed (key is browser-exposed by design;
+      security is restriction-based, not endpoint-based).
+  Note:  Token-scoping summary table retained as audit context for
+         Phase 4 (RLS audit, secret rotation policy).

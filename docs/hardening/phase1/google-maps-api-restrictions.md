@@ -1,26 +1,33 @@
-# Map token restrictions audit and founder action
+# Google Maps API restrictions audit and founder action
 
-Status: AWAITING FOUNDER ACTION (Google Maps key)
+Status: AWAITING FOUNDER VERIFICATION
 Owner: Lawal Adams
 Estimated time: 10 minutes
 Cost: zero (restrictions are free)
 Blocks: launch readiness checklist Section 1 (no exposed secrets)
 
+Project manager update 2026-05-02: Mapbox is fully decommissioned. Google Maps is the active mapping service. This deliverable supersedes the original Mapbox-named C task.
+
 ## Why this matters
 
 Public client-rendered map APIs require a key that ships in the browser bundle. That key is technically not secret. The security posture comes from binding the key to the domains and APIs it is allowed to serve. Without restrictions, anyone who scrapes the bundle can use the key on their own site and burn through your billing quota or trigger your monthly cap.
 
-EventLinqs renders maps on `/events/[slug]` (venue location) and `/events?view=map` (clustered grid). Both consume `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` via `src/lib/maps/google-maps-loader.ts`. The key currently has no restrictions documented. We harden it now.
+EventLinqs renders maps on `/events/[slug]` (venue location) and `/events?view=map` (clustered grid). Both consume `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` via `src/lib/maps/google-maps-loader.ts`. The key restriction state is currently unverified - this audit is the verification step.
 
 ## Audit findings - 2026-05-02
 
-### Mapbox
+### Mapbox decommission verified
 
-`grep -rni "mapbox" src/` returned zero hits. `.env.example` does not declare a Mapbox token. `package.json` does not depend on any Mapbox SDK.
+| Search target | Result |
+| --- | --- |
+| `grep -rni "mapbox" src/` | 0 hits |
+| `grep -i "mapbox" package.json` | 0 hits |
+| `grep -i "mapbox" .env.example` | 0 hits |
+| `grep -rni "mapboxgl\|MapboxGL\|mapbox-gl" src/` | 0 hits |
 
-Verdict: **N/A**. Mapbox is not used in the EventLinqs codebase. The original task brief named Mapbox; in this codebase the equivalent surface is Google Maps. Audit pivots accordingly.
+Verdict: **N/A**. Mapbox is fully decommissioned. No Mapbox SDK, env var, or import remains in the codebase.
 
-### Google Maps JavaScript API
+### Google Maps JavaScript API - active surfaces
 
 Active. Two surfaces:
 
