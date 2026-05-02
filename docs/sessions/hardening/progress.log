@@ -141,3 +141,29 @@ Owner:    Hardening session
   Both will be flagged in commit messages with [SHARED] per CLAUDE.md and
   will pause the session until partner Claude confirms no conflict with
   Session 1 / Session 3 work.
+
+[2026-05-02T20:25:00Z] [D] DB type generation scripts and migration plan
+  Commit: 66c2ae7 feat(hardening-D): db type generation scripts and migration plan
+  Files:  scripts/gen-db-types.mjs (NEW)
+          scripts/db-types-drift-check.mjs (NEW)
+          docs/hardening/phase1/db-types-automation.md (NEW)
+  Note:   Phase 1 scope explicitly stops at scaffold + migration plan.
+          The actual cutover from hand-written src/types/database.ts
+          (~50 import sites) to re-exports from database.generated.ts
+          is too high blast-radius for a hardening commit. Queued for
+          a later dedicated PR.
+  Smoke:  gen-db-types.mjs exits 1 with the documented link prompt
+          when run against an unlinked tree.
+
+[2026-05-02T20:26:00Z] [D] [SHARED] package.json: add db:types scripts
+  Commit: 4afe68d [SHARED] chore: add db:types and db:types:check npm scripts
+  Pushed to origin/feat/launch-hardening-nationwide.
+  Per CLAUDE.md: pausing further SHARED edits until partner Claude
+  confirms no conflict with Session 1 / Session 3.
+  Owned-files work continues in parallel (G scaffolding, closure draft).
+
+[2026-05-02T20:26:30Z] [D] [COORDINATION] founder action shared with [E]
+  Same `npx supabase link --project-ref gndnldyfudbytbboxesk` action that
+  unblocks remote migration audit also unblocks first-run db:types
+  generation. After link, this session runs `npm run db:types` and
+  commits src/types/database.generated.ts as a non-SHARED follow-up.
