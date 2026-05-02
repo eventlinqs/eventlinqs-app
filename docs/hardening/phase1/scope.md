@@ -61,7 +61,7 @@ Target: Fixed 250MB plan or larger, Sydney region (ap-southeast-2 or closest ava
 Actions:
 - Document founder action: provision new Sydney instance in `docs/hardening/phase1/upstash-sydney-setup.md` (CC cannot create paid Upstash resources).
 - Once founder confirms credentials available, update `.env.example` to document `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` and the region expectation.
-- Add health endpoint `src/app/api/_health/redis/route.ts` returning `{ ok, latencyMs, region }`. Latency from Vercel SYD compute to Sydney Redis should be <20ms post-migration.
+- Add health endpoint `src/app/api/health/redis/route.ts` returning `{ ok, latencyMs, region }`. Latency from Vercel SYD compute to Sydney Redis should be <20ms post-migration.
 - Document migration steps and rollback plan in `docs/hardening/phase1/redis-migration-runbook.md`.
 - Coordination: this task BLOCKS deliverable G (rate limiting). If founder action delays, mark [COORDINATION] in progress.log and proceed with other items.
 
