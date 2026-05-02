@@ -108,7 +108,8 @@ export default async function CheckoutPage({ params }: Props) {
         [],
         currency,
         fee_pass_type,
-        0
+        0,
+        event.organisation_id
       )
       // Override subtotal with exact seat sum
       initialFees = { ...initialFees, subtotal_cents: totalSeatCents, total_cents: totalSeatCents + initialFees.platform_fee_cents + initialFees.payment_processing_fee_cents + initialFees.tax_cents }
@@ -161,7 +162,14 @@ export default async function CheckoutPage({ params }: Props) {
       }))
 
     const calculator = new PaymentCalculator()
-    initialFees = await calculator.calculate(cartTickets, cartAddons, currency, fee_pass_type, 0)
+    initialFees = await calculator.calculate(
+      cartTickets,
+      cartAddons,
+      currency,
+      fee_pass_type,
+      0,
+      event.organisation_id
+    )
 
     ticketSlots = cartTickets.map(t => ({
       tier_id: t.tier_id,
