@@ -18,6 +18,13 @@ export interface CreatePaymentIntentParams {
   }
   customer_email: string
   idempotency_key: string
+
+  // Stripe Connect destination-charge fields (M6 Phase 3). Pass all three
+  // together for a destination charge, or omit all three for a platform-only
+  // charge. Mixed states are rejected by the adapter.
+  connected_account_id?: string
+  application_fee_cents?: number
+  on_behalf_of?: string
 }
 
 export interface PaymentIntentResult {

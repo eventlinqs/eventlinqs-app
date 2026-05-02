@@ -17,16 +17,48 @@ export class StripeAdapter implements PaymentGateway {
   async createPaymentIntent(params: CreatePaymentIntentParams): Promise<PaymentIntentResult> {
     const stripe = getStripeClient()
 
-    const intent = await stripe.paymentIntents.create(
-      {
-        amount: params.amount_cents,
-        currency: params.currency.toLowerCase(),
-        automatic_payment_methods: { enabled: true },
-        receipt_email: params.customer_email,
-        metadata: params.metadata,
-      },
-      { idempotencyKey: params.idempotency_key }
-    )
+    const connectFieldsPresent = [
+      params.connected_account_id,
+      params.application_fee_cents,
+      params.on_behalf_of,
+    ].filter((v) => v !== undefined && v !== null).length
+
+    if (connectFieldsPresent !== 0 && connectFieldsPresent !== 3) {
+      throw new Error(
+        'Destination charge requires all of connected_account_id, application_fee_cents, on_behalf_of to be set together (or all omitted).'
+      )
+    }
+
+    const isDestinationCharge = connectFieldsPresent === 3
+    if (isDestinationCharge) {
+      if (params.application_fee_cents! <= 0) {
+        throw new Error('application_fee_cents must be positive for a destination charge.')
+      }
+      if (params.application_fee_cents! >= params.amount_cents) {
+        throw new Error(
+          'application_fee_cents must be less than amount_cents; destination would receive zero or negative.'
+        )
+      }
+    }
+
+    const createParams = {
+      amount: params.amount_cents,
+      currency: params.currency.toLowerCase(),
+      automatic_payment_methods: { enabled: true },
+      receipt_email: params.customer_email,
+      metadata: params.metadata,
+      ...(isDestinationCharge
+        ? {
+            application_fee_amount: params.application_fee_cents!,
+            on_behalf_of: params.on_behalf_of!,
+            transfer_data: { destination: params.connected_account_id! },
+          }
+        : {}),
+    } satisfies Stripe.PaymentIntentCreateParams
+
+    const intent = await stripe.paymentIntents.create(createParams, {
+      idempotencyKey: params.idempotency_key,
+    })
 
     if (!intent.client_secret) {
       throw new Error('Stripe did not return a client_secret')
