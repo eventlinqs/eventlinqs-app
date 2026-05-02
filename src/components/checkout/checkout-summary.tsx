@@ -61,10 +61,17 @@ export function CheckoutSummary({ fees, eventTitle, eventDate, venue }: Checkout
           </div>
         )}
 
-        {bd.fees > 0 && (
+        {bd.platform_fee > 0 && (
           <div className="flex justify-between text-sm text-ink-600">
             <span>Service fee</span>
-            <span className="tabular-nums">{formatCents(bd.fees, currency)}</span>
+            <span className="tabular-nums">{formatCents(bd.platform_fee, currency)}</span>
+          </div>
+        )}
+
+        {bd.processing_fee > 0 && (
+          <div className="flex justify-between text-sm text-ink-600">
+            <span>Payment processing fee</span>
+            <span className="tabular-nums">{formatCents(bd.processing_fee, currency)}</span>
           </div>
         )}
 
