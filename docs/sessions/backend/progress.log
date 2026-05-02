@@ -1,0 +1,136 @@
+# Backend Session Progress Log
+# Session 1: Backend / Logic / Payments
+# Branch: feat/m6-phase3-destination-charges
+
+---
+
+## 2026-05-02 — M6 Phase 3 (Destination Charges)
+
+### Phase 3-A: Application fee calculator
+- src/lib/payments/application-fee.ts (new): currency-by-country map, RESERVE_PERCENT_BY_TIER, computeApplicationFeeCents, computeOrganiserShareCents, computeReserveCents, assertCanCreateDestinationCharge, ChargePreconditionError with 5 typed reasons
+- 33 unit tests passing
+
+### Phase 3-B: Destination charge orchestrator
+- src/lib/payments/create-destination-charge.ts (new): loads org, runs preconditions, validates currency, calls gateway with Connect fields
+- src/lib/payments/gateway.ts: extended CreatePaymentIntentParams with optional connected_account_id, application_fee_cents, on_behalf_of
+- src/lib/payments/stripe-adapter.ts: all-or-nothing validation on Connect fields, passes application_fee_amount + on_behalf_of + transfer_data.destination
+- 6 unit tests passing
+
+### Phase 3-C: Migrate checkout APIs to destination charges
+- src/app/actions/checkout.ts: 2 sites in processCheckout migrated, chargePreconditionMessage helper added
+- src/app/actions/squad-checkout.ts: 1 site in processSquadCheckout migrated
+- Free events continue to bypass Stripe entirely
+
+### Phase 3-D: Checkout UI service-fee transparency
+- No code change required. Existing UI consumes FeeBreakdown.breakdown_display; Phase 3 only changes server-side fee split
+
+### Phase 3-E: Webhook handler completion
+- src/lib/payments/connect-ledger.ts (new): recordOrderConfirmedLedger writes order_confirmed credit + reserve_hold debit + payout_holds row + organisation counter updates, idempotent on existing-row check
+- src/lib/payments/connect-ledger.ts: addThreeBusinessDays exported helper, fully tested
+- src/app/api/webhooks/stripe/route.ts: invokes recordOrderConfirmedLedger inside handlePaymentSucceeded and handleSquadMemberPaymentSucceeded, errors wrapped non-fatal
+- 6 unit tests passing
+
+### Phase 3-F: Refund core (no UI)
+- src/lib/payments/refund.ts (new): refundOrder with reverse_transfer + refund_application_fee, idempotency key refund:orderId:amount:initiator, RefundReason mapping, __setStripeClientForTests test seam
+- 8 unit tests passing
+
+### Phase 3-G: Comprehensive tests
+- 60 tests across 6 files, all passing
+- tests/unit/payments/destination-charge-flow.test.ts: integration-style end-to-end test verifying checkout PI creation and webhook ledger writes agree on fee math
+- Live E2E test plan documented in live-mode-prep-checklist.md Section 4, founder-executable
+
+### Phase 3-H: Live mode preparation checklist
+- docs/m6/phase3/live-mode-prep-checklist.md (new): 7-section checklist covering pre-activation gates, Stripe Dashboard prerequisites, codebase prerequisites, smoke-test plan, cutover plan, rollback, founder-only sign-off
+- Activation NOT performed; founder-gated
+
+### Closure
+- docs/m6/phase3/closure-report.md (new)
+- docs/m6/phase3/scope.md authored at start of phase
+- Gates: typecheck clean, vitest 60/60 passing, ESLint clean for Phase 3 owned files
+- Pre-existing lint error in src/components/layout/site-header-client.tsx:58 flagged (Session 3 ownership, not Phase 3 regression)
+- npm run build not run in this shell (env-var dependency); Vercel preview deploy will exercise full build
+
+### Critical founder-review items (from closure report Section 4)
+1. Application-fee composition deviation: implemented `app_fee = platform_fee + processing_fee` rather than the literal §1.3 reading of `app_fee = platform_fee` only. Math justification in scope.md §3.2. Confirm before live activation.
+2. Reserve percentages hardcoded in application-fee.ts (Tier 1=20, Tier 2=15, Tier 3=10). Acceptable for v1 but a Phase 4 candidate to migrate to pricing_rules.
+3. Refund idempotency key is sufficient for Phase 3 admin-only usage; Phase 4 should add a refunds-table content-addressed key.
+
+### Working tree status
+Phase 3 files are present in the working tree but NOT yet committed. Founder review of closure report and §4.1 composition decision is requested before commit. Recommended commit grouping listed in closure report Section 5.4.
+
+[GATE] Phase 3 complete — STOP for founder review before any Phase 4 work.
+
+---
+
+## 2026-05-02 — M6 Phase 3 REWORK (v2)
+
+Closure v1 REJECTED by founder. Two reasons: (1) RESERVE_PERCENT_BY_TIER violated the platform "no hardcoded fees" rule; (2) tier_1/2/3 system does not match industry practice. Investigation surfaced a third issue: latent wide-format read in payment-calculator.ts against a long-format pricing_rules table.
+
+### Rework deliverables (all complete)
+
+1. **Migration** `supabase/migrations/20260502000002_pricing_rules_extension.sql` (idempotent)
+   - Added `pricing_rules.organisation_id UUID NULL` for per-org overrides (FK, ON DELETE CASCADE)
+   - Extended `rule_type` CHECK with 6 new types: processing_fee_percentage, processing_fee_fixed_cents, processing_fee_pass_through (0/1/2 integer), reserve_percentage, payout_schedule_days, application_fee_composition_mode (1=inclusive default, 2=exclusive)
+   - Extended `value_type` CHECK to include 'integer'
+   - Two partial unique indexes (region default vs per-org override) for correct uniqueness under NULL
+   - Composite lookup index (rule_type, country_code, currency, organisation_id, effective_from)
+   - Seeded all 6 new types for AU/GB/US/NG/GH/KE/ZA/GLOBAL
+
+2. **New service** `src/lib/payments/pricing-rules.ts`
+   - 4-level precedence: per-org override → region default → GLOBAL/currency → GLOBAL/wildcard → throw
+   - 60s Upstash Redis cache with `invalidatePricingRule()` hook for admin panel
+   - Falls back to direct DB when Redis unavailable
+   - Typed convenience helpers for each rule type
+
+3. **Refactored** `src/lib/payments/application-fee.ts`
+   - Deleted RESERVE_PERCENT_BY_TIER and tier-based reserve helper
+   - Kept CONNECT_CURRENCY_MAP (structural)
+   - computeApplicationFeeCents/computeOrganiserShareCents/computeReserveCents are async, take (countryCode, currency, organisationId)
+   - Added composeApplicationFee(fees, mode) pure helper for tests
+   - assertCanCreateDestinationCharge validates against mode 1 (strictest)
+
+4. **Full rewrite** `src/lib/payments/payment-calculator.ts`
+   - Fixed latent wide-format bug
+   - Reads platform_fee_percentage / platform_fee_fixed / processing_fee_percentage / processing_fee_fixed_cents / processing_fee_pass_through in parallel via Promise.all
+   - tax_rules.tax_rate now correctly interpreted as fraction
+   - breakdown_display now exposes platform_fee + processing_fee separately (replaces lumped `fees`) for Eventbrite-style UI
+
+5. **Refactored** `src/lib/payments/connect-ledger.ts`
+   - Removed payout_tier dependence; loadOrg now selects stripe_account_country only
+   - reservePercent + payoutScheduleDays resolved in parallel from pricing_rules
+   - Renamed addThreeBusinessDays → addBusinessDays(date, n), kept legacy wrapper
+   - Reserve metadata records reserve_percent + payout_schedule_days
+
+6. **Updated** `src/lib/payments/create-destination-charge.ts`
+   - Removed payout_tier from OrgChargeFields and CreateDestinationChargeResult
+   - applicationFeeCents resolved via async computeApplicationFeeCents
+
+7. **UI** `src/components/checkout/checkout-summary.tsx`
+   - "Service fee" + "Payment processing fee" rendered as separate lines (Eventbrite/DICE pattern)
+
+8. **Call sites** event.organisation_id wired into all 4 PaymentCalculator.calculate sites
+
+9. **Tests** 73 passing across 6 files
+   - application-fee.test.ts: rewritten for async + composition modes
+   - create-destination-charge.test.ts: pricing-rules mock + mode 1/2 tests
+   - connect-ledger.test.ts: pricing-rules mock + reserve override test
+   - destination-charge-flow.test.ts: integration updated
+   - pricing-rules.test.ts (NEW): precedence ladder + typed coercion + caching + invalidation
+
+10. **Closure** `docs/m6/phase3/closure-report-v2.md`
+
+### Gates
+- TypeScript: clean (`npx tsc --noEmit` no output)
+- Vitest payments: 73/73 passing
+- ESLint Phase 3 owned files: clean
+- Next.js compile: clean (`✓ Compiled successfully`)
+- Pre-existing lint error in `src/components/layout/site-header-client.tsx:58` (Session 3 territory, not a Phase 3 regression)
+
+### [COORDINATION] Session 3 (admin panel)
+Phase 3 v2 added `pricing_rules.organisation_id` and 6 new rule_types. M7 admin panel will need a CRUD UI for these rows. After every UPDATE/INSERT, the admin handler MUST call `invalidatePricingRule({ ruleType, countryCode, currency, organisationId })` from `@/lib/payments/pricing-rules` so the change propagates within one read. Full contract documented in closure-report-v2.md §3.1.
+
+### Deferred to merge cycle
+Rate-limit wiring on checkout endpoints. Per founder clarification, the rate-limit handoff doc lives in Session 2's worktree; cross-session integration will land at the next merge cycle.
+
+[GATE] Phase 3 v2 complete — STOP for founder review.
+
