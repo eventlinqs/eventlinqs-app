@@ -13,7 +13,7 @@ interface FormFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'id
 }
 
 /**
- * FormField — accessible, single-field primitive.
+ * FormField - accessible, single-field primitive.
  *
  * - Label always rendered and linked via htmlFor
  * - Error text linked via aria-describedby
@@ -45,13 +45,13 @@ export const FormField = forwardRef<HTMLInputElement | HTMLTextAreaElement, Form
       'block w-full rounded-lg border px-4 text-base',
       'bg-[var(--surface-0)] text-[var(--text-primary)]',
       'placeholder:text-[var(--text-muted)]',
-      // Transition — colors only (border, ring) not all properties
+      // Transition - colors only (border, ring) not all properties
       'transition-colors duration-150 ease-out',
       // Normal border
       error
         ? 'border-[var(--color-error)] focus:border-[var(--color-error)] focus:ring-2 focus:ring-[var(--color-error)]/20'
         : 'border-[var(--surface-2)] focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[var(--brand-accent)]/20',
-      // Remove browser default outline — we use custom focus ring
+      // Remove browser default outline - we use custom focus ring
       'focus:outline-none',
       // Disabled
       'disabled:cursor-not-allowed disabled:opacity-50',
@@ -60,7 +60,7 @@ export const FormField = forwardRef<HTMLInputElement | HTMLTextAreaElement, Form
 
     return (
       <div className="space-y-1.5">
-        {/* Label — tints red when field is in error state */}
+        {/* Label - tints red when field is in error state */}
         <label
           htmlFor={id}
           className={[
@@ -100,14 +100,14 @@ export const FormField = forwardRef<HTMLInputElement | HTMLTextAreaElement, Form
           />
         )}
 
-        {/* Error text — mt-1.5 from input, leading-tight */}
+        {/* Error text - mt-1.5 from input, leading-tight */}
         {error && (
           <p id={errorId} role="alert" className="mt-1.5 text-sm leading-tight text-[var(--color-error)]">
             {error}
           </p>
         )}
 
-        {/* Helper text — mt-1.5 from input, leading-tight (only shown when no error) */}
+        {/* Helper text - mt-1.5 from input, leading-tight (only shown when no error) */}
         {!error && helperText && (
           <p id={helperId} className="mt-1.5 text-sm leading-tight text-[var(--text-muted)]">
             {helperText}

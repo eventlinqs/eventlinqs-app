@@ -48,6 +48,31 @@ next-env.d.ts
 *.jpeg
 *.webp
 
+# Allowlist canonical media assets that ship with the app — these are
+# production fallbacks, not screenshot artifacts, and MUST be tracked.
+# See docs/MEDIA-ARCHITECTURE.md.
+!public/images/hero/*.jpg
+!public/images/hero/*.jpeg
+!public/images/hero/*.webp
+!public/images/hero/*.png
+!public/**/*.svg
+
+# Allowlist Pre-Task 2 visual regression evidence - BEFORE/AFTER screenshots
+# captured at 7 viewports per refactor. Tracked as proof of "no visual
+# regression" for each migration commit; reviewers can diff before/ vs after/.
+!docs/visual-regression/**/*.png
+!docs/visual-regression/**/*.jpg
+!docs/visual-regression/**/*.jpeg
+!docs/visual-regression/**/*.webp
+
+# Allowlist Pre-Task 3 visual regression evidence under sprint1/phase-1b
+# (iter-N/screenshots-*-after, etc). Same rationale: tracked as proof that
+# the ISR refactor preserved visual integrity across viewports.
+!docs/sprint1/phase-1b/**/*.png
+!docs/sprint1/phase-1b/**/*.jpg
+!docs/sprint1/phase-1b/**/*.jpeg
+!docs/sprint1/phase-1b/**/*.webp
+
 # playwright test runner artifacts — local only
 /test-results/
 /playwright-report/
@@ -65,5 +90,13 @@ lighthouse-reports/
 .claude/
 
 supabase/.temp/
+
+.vercel
+
+# Playwright auth state (test session cookies, tokens)
+.auth/
+
+# Local scratch state (e.g. M6 Phase 2 E2E orchestrator state)
+.tmp/
 
 .vercel

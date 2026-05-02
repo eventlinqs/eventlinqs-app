@@ -18,7 +18,7 @@ const SIZE_CLASS: Record<Size, string> = {
 }
 
 /**
- * EventlinqsLogo — canonical wordmark.
+ * EventlinqsLogo - canonical wordmark.
  *
  * Concept A, Option 2 spacing (0.05em margin-left on the gold dot).
  * Use everywhere the EventLinqs brand appears in the UI chrome.

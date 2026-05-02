@@ -1,4 +1,3 @@
-import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import {
   fetchPublicEvents,
@@ -10,7 +9,6 @@ import {
   parseEventsSearchParams,
   type EventsSearchParams,
 } from '@/lib/events/search-params'
-import { detectLocation } from '@/lib/geo/detect'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { EventsHeroStrip } from '@/components/features/events/m5-events-hero-strip'
@@ -18,17 +16,21 @@ import { EventsFilterBar } from '@/components/features/events/m5-events-filter-b
 import { EventsGrid } from '@/components/features/events/m5-events-grid'
 import { EventsPagination } from '@/components/features/events/m5-events-pagination'
 import { EventsMapLazy } from '@/components/features/events/m5-events-map-lazy'
-import { EventsRecommendedSection } from '@/components/features/events/m5-events-recommended-section'
-import { EventsRecommendedSkeleton } from '@/components/features/events/m5-events-skeletons'
+import { EventsPopularSection } from '@/components/features/events/m5-events-popular-section'
 
 const MELBOURNE_FALLBACK = { lat: -37.8136, lng: 144.9631 }
 
+// ISR: re-render every 60 seconds. Pages with searchParams stay dynamic on
+// filtered URLs but the bare /events route now caches. Geo detection moved
+// off the server (no headers() call) so the shell is cookies/headers-free.
+// The popular rail renders synchronously in the shell via the public anon
+// client so the LCP card is discoverable during HTML parse.
 export const revalidate = 60
 
 export const metadata: Metadata = {
-  title: 'Discover events | EventLinqs',
+  title: 'Find your next event | EventLinqs',
   description:
-    'Browse upcoming events by date, category, city, and price. Where the culture gathers.',
+    'Browse upcoming events by date, culture, city, and price. The ticketing platform built for every culture.',
   alternates: { canonical: '/events' },
 }
 
@@ -40,19 +42,20 @@ export default async function EventsPage({ searchParams }: Props) {
   const raw = await searchParams
   const { filters, page, view } = parseEventsSearchParams(raw)
 
-  const [categories, location] = await Promise.all([
-    fetchActiveCategoriesCached(),
-    detectLocation(),
-  ])
+  // Server-side geo detection (headers() / IP lookup) was removed to keep
+  // /events ISR-eligible on the no-filter case. Country falls through to
+  // the filter URL parameter or the AU default; distance-based queries
+  // require an explicit origin from a client-side picker, which the
+  // EventsFilterBar surfaces as a "use my location" affordance.
+  const origin = undefined
+  const hasGeoSignal = false
 
-  const origin =
-    location.latitude !== null && location.longitude !== null
-      ? { latitude: location.latitude, longitude: location.longitude }
-      : undefined
-  const hasGeoSignal = location.source !== 'fallback' && origin !== undefined
-
-  const effectiveCountry = filters.country ?? location.country ?? 'Australia'
-  const effectiveFilters = { ...filters, country: effectiveCountry }
+  // No country default. When filters.country is undefined the fetcher
+  // skips the venue_country filter entirely (see fetchers.ts:376), so
+  // the unfiltered grid surfaces every published event regardless of
+  // venue_country casing in the seed data. The country chip in the
+  // filter bar still lets users narrow by country explicitly.
+  const effectiveFilters = filters
   const filterActive = hasActiveFilters(filters)
 
   // Grid stays inline so mobile browsers can begin preloading card
@@ -67,18 +70,25 @@ export default async function EventsPage({ searchParams }: Props) {
     !filterActive &&
     typeof effectiveFilters.distance_km !== 'number' &&
     view !== 'map'
-  const result = canUseCached
-    ? await fetchPublicEventsCached({
-        filters: effectiveFilters,
-        page,
-        pageSize: 24,
-      })
-    : await fetchPublicEvents({
-        filters: effectiveFilters,
-        page,
-        pageSize: 24,
-        origin,
-      })
+
+  // Run categories + events fetch in parallel. Both are independent and
+  // either always-cached (categories) or cached-on-default-case (events).
+  // Sequential awaits added TTFB latency for no reason.
+  const [categories, result] = await Promise.all([
+    fetchActiveCategoriesCached(),
+    canUseCached
+      ? fetchPublicEventsCached({
+          filters: effectiveFilters,
+          page,
+          pageSize: 24,
+        })
+      : fetchPublicEvents({
+          filters: effectiveFilters,
+          page,
+          pageSize: 24,
+          origin,
+        }),
+  ])
 
   return (
     <div className="flex min-h-screen flex-col bg-canvas">
@@ -93,23 +103,21 @@ export default async function EventsPage({ searchParams }: Props) {
           hasGeoSignal={hasGeoSignal}
         />
 
-        {/* Recommended rail is secondary — its per-event Pexels cascade
-            can stream after shell paint without regressing the grid's
-            image-load timing. */}
+        {/* Popular rail renders synchronously in the shell so its first
+            card image (LCP candidate on /events) is discoverable during
+            HTML parse via the auto-injected priority preload. The previous
+            Suspense'd EventsRecommendedSection had auth-gated personalisation
+            but pushed the LCP image behind a streamed chunk, projecting LCP
+            to ~5s under Lantern. ISR stays alive because EventsPopularSection
+            uses the public anon client (no cookies()). */}
         {!filterActive ? (
-          <Suspense fallback={<EventsRecommendedSkeleton />}>
-            <EventsRecommendedSection filterActive={filterActive} />
-          </Suspense>
+          <EventsPopularSection filterActive={filterActive} />
         ) : null}
 
         {view === 'map' ? (
           <EventsMapLazy
             params={raw}
-            initialCenter={
-              hasGeoSignal && origin
-                ? { lat: origin.latitude, lng: origin.longitude }
-                : MELBOURNE_FALLBACK
-            }
+            initialCenter={MELBOURNE_FALLBACK}
           />
         ) : (
           <section aria-label="Event results" className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">

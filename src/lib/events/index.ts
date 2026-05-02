@@ -4,6 +4,7 @@ export {
   fetchActiveCategoriesCached,
   fetchRecommendedEvents,
   fetchPopularThisWeek,
+  fetchPopularThisWeekPublic,
 } from './fetchers'
 export {
   computeSocialProofBadge,

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Bell, LogOut, Search, Settings, HelpCircle, Wallet } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { EventlinqsLogo } from '@/components/ui/eventlinqs-logo'
+import { OrganiserAvatar } from '@/components/media'
 import type { User } from '@supabase/supabase-js'
 
 type Props = {
@@ -92,14 +93,15 @@ export function DashboardTopbar({ user, profile }: Props) {
               onClick={() => setMenuOpen((v) => !v)}
               aria-haspopup="menu"
               aria-expanded={menuOpen}
+              aria-label={`Account menu for ${displayName}`}
               className="flex items-center gap-2 rounded-full pl-1 pr-3 py-1 transition-colors hover:bg-ink-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
             >
               {avatar ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <OrganiserAvatar
                   src={avatar}
-                  alt=""
-                  className="h-8 w-8 rounded-full border border-ink-100 object-cover"
+                  name={profile?.full_name ?? user.email ?? 'Account'}
+                  size="topbar"
+                  className="border border-ink-100"
                 />
               ) : (
                 <span

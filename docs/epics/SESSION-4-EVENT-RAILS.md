@@ -1,4 +1,4 @@
-# EventLinqs — Session 4 Scope Lock: Event Rails
+# EventLinqs - Session 4 Scope Lock: Event Rails
 
 **Session name:** Event Rails (Trending Now + Culture Picks)
 **Pre-reqs:** Production Readiness charter live, Button & Rhythm system deployed, Mini-Rail component built (from this session)
@@ -11,10 +11,10 @@
 
 The MiniRail component is already built (this session). Session 4 extends it into two new contexts and adds the data/ranking logic.
 
-### Rail 1 — Featured This Week
+### Rail 1 - Featured This Week
 Already built this session. Leave as-is.
 
-### Rail 2 — Trending Now
+### Rail 2 - Trending Now
 - Data source: events sorted by ticket velocity over last 7 days
 - Ranking: `(tickets_sold_last_7d / hours_since_published) DESC`, tie-break by social share count
 - Minimum threshold: event must have ≥ 5 tickets sold in last 7 days to qualify
@@ -23,15 +23,15 @@ Already built this session. Leave as-is.
 - Title: "Trending now"
 - Subcopy: "Moving fast this week"
 
-### Rail 3 — Culture Picks
+### Rail 3 - Culture Picks
 - Data source: editorially tagged events (add `is_culture_pick` boolean to events table)
-- Admin-curated only — no algorithm
-- Section surface: `base` (white) — sits between Trending (alt) and City Guide (alt)
+- Admin-curated only - no algorithm
+- Section surface: `base` (white) - sits between Trending (alt) and City Guide (alt)
 - Title: "Culture picks"
 - Subcopy: "Editor's selection"
 
 ### Optional if time permits
-- Rail 4 — "In your city" (location-based, uses user's geolocation with consent)
+- Rail 4 - "In your city" (location-based, uses user's geolocation with consent)
 
 ---
 
@@ -45,7 +45,7 @@ ALTER TABLE events
   ADD COLUMN IF NOT EXISTS is_culture_pick BOOLEAN DEFAULT false,
   ADD COLUMN IF NOT EXISTS culture_pick_sort_order INTEGER DEFAULT 0;
 
--- Denormalised ticket count — updated by trigger on ticket purchase
+-- Denormalised ticket count - updated by trigger on ticket purchase
 CREATE INDEX IF NOT EXISTS idx_events_trending ON events (tickets_sold_count DESC, published_at DESC)
   WHERE status = 'published';
 
@@ -105,7 +105,7 @@ Do not break the Featured mini-rail or the Stripe Test Event flow.
 
 - [ ] Homepage shows 3 rails, all with 4+ cards visible on desktop
 - [ ] Rails scroll-snap on mobile with momentum
-- [ ] Trending logic verifiable — buy 3 tickets on an event, refresh homepage, it moves up
+- [ ] Trending logic verifiable - buy 3 tickets on an event, refresh homepage, it moves up
 - [ ] Admin can mark an event as "culture pick" and it appears in that rail
 - [ ] `/events?sort=trending` works
 - [ ] All Production Readiness charter items still pass
@@ -114,7 +114,7 @@ Do not break the Featured mini-rail or the Stripe Test Event flow.
 
 # First-Party Media Pipeline Epic
 
-**Separate deliverable — scoping document only. Build starts after Session 4.**
+**Separate deliverable - scoping document only. Build starts after Session 4.**
 
 ---
 
@@ -177,17 +177,17 @@ If an asset isn't in this table, it does not go on the platform.
 
 ## 3. Commissioning Plan (concrete next steps)
 
-### Phase 1 — Pre-launch essentials (budget: AUD 500-1,500)
+### Phase 1 - Pre-launch essentials (budget: AUD 500-1,500)
 - 5 high-quality Afrobeats/diaspora-scene photos (paid stock or commissioned local Melbourne photographer)
 - 3 illustrated announcement card designs for Afro Nation / Homecoming / Promiseland replacements
-- 1 hero video (already live, but verify license — is the current video first-party or stock?)
+- 1 hero video (already live, but verify license - is the current video first-party or stock?)
 
-### Phase 2 — Post-launch polish (budget: AUD 2,000-5,000)
+### Phase 2 - Post-launch polish (budget: AUD 2,000-5,000)
 - Custom illustration set for event categories (Nightlife, Culture, Community, Wedding, Comedy, Concert)
 - City photography for Melbourne, Sydney, London (starting markets)
 - Organiser branding toolkit (social share templates)
 
-### Phase 3 — Scale (ongoing)
+### Phase 3 - Scale (ongoing)
 - Per-city photography as we expand
 - Updated category and marketing imagery each year
 - Photographer partnership programme (organiser events get shot by approved photographers, images flow into our asset library with consent)
@@ -219,4 +219,4 @@ If an asset isn't in this table, it does not go on the platform.
 
 **Not this session. Not Session 4.** This is a ~AUD 1,500 cash outlay and 2-3 weeks of sourcing/integration work. It starts **after** Session 4 ships *and* before any public marketing push.
 
-Target window: **early May 2026** — which means starting asset sourcing the week friends get the invite (so real media lands before any wider announcement).
+Target window: **early May 2026** - which means starting asset sourcing the week friends get the invite (so real media lands before any wider announcement).

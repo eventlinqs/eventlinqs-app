@@ -1,14 +1,14 @@
 import Link from 'next/link'
-import { SmartMedia } from '@/components/ui/smart-media'
+import { EventCardMedia, BrandedPlaceholder } from '@/components/media'
 import { getEventMedia } from '@/lib/images/event-media'
 import type { BentoEvent } from './event-bento-tile'
 
 /**
- * ThisWeekStrip — horizontal scroll strip of events in the next 7 days.
+ * ThisWeekStrip: horizontal scroll strip of events in the next 7 days.
  * CSS scroll-snap on the container, 280px cards.
  *
- * Server component. Each card renders with SmartMedia. Parent supplies
- * the events array and the section header.
+ * Server component. Each card renders EventCardMedia (rail variant) with
+ * BrandedPlaceholder fallback when no real photography exists.
  */
 
 interface Props {
@@ -32,8 +32,36 @@ function formatPrice(tiers: BentoEvent['ticket_tiers']): string {
   return `${cheapest.currency ?? 'AUD'} ${formatted}`
 }
 
+interface ResolvedTileMedia {
+  imageSrc: string | null
+  imageAlt: string
+  placeholderCategory: string | null
+}
+
+function resolveTileMedia(
+  event: BentoEvent,
+  media: Awaited<ReturnType<typeof getEventMedia>>,
+): ResolvedTileMedia {
+  const fallbackAlt = event.title ?? 'Event'
+  if (media.kind === 'video') {
+    return { imageSrc: media.poster, imageAlt: fallbackAlt, placeholderCategory: null }
+  }
+  if (media.kind === 'carousel') {
+    return {
+      imageSrc: media.images[0] ?? null,
+      imageAlt: media.alts[0] ?? fallbackAlt,
+      placeholderCategory: null,
+    }
+  }
+  if (media.kind === 'still-kenburns') {
+    return { imageSrc: media.src, imageAlt: media.alt ?? fallbackAlt, placeholderCategory: null }
+  }
+  return { imageSrc: null, imageAlt: fallbackAlt, placeholderCategory: media.category }
+}
+
 async function ThisWeekCard({ event }: { event: BentoEvent }) {
   const media = await getEventMedia(event)
+  const { imageSrc, imageAlt, placeholderCategory } = resolveTileMedia(event, media)
   const venue = [event.venue_name, event.venue_city].filter(Boolean).join(' \u00B7 ')
   return (
     <Link
@@ -42,10 +70,13 @@ async function ThisWeekCard({ event }: { event: BentoEvent }) {
       aria-label={event.title ?? 'Event'}
     >
       <div className="relative aspect-[16/9] overflow-hidden bg-ink-900">
-        <SmartMedia
-          media={media}
-          className="transition-transform duration-[1400ms] ease-out group-hover:scale-[1.05]"
-        />
+        <div className="absolute inset-0 overflow-hidden transition-transform duration-[1400ms] ease-out group-hover:scale-[1.05]">
+          {imageSrc ? (
+            <EventCardMedia src={imageSrc} alt={imageAlt} variant="rail" />
+          ) : (
+            <BrandedPlaceholder category={placeholderCategory} />
+          )}
+        </div>
         <div
           className="absolute inset-0"
           style={{

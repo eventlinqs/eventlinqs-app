@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 
 /**
- * GlassCard — glassmorphism primitive used for overlays on imagery,
+ * GlassCard - glassmorphism primitive used for overlays on imagery,
  * floating info chips, and sticky action bars.
  *
  * Variants:

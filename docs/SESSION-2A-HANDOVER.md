@@ -1,8 +1,8 @@
-# HANDOVER — EventLinqs Session 2a
+# HANDOVER - EventLinqs Session 2a
 
 **Date:** 19 April 2026
 **Branch state at handover:** main, up to date with origin
-**Last commit:** aeef124 feat(polish): Session 1 v2 polish — help content, ButtonPair, CTA collapse, dash sweep
+**Last commit:** aeef124 feat(polish): Session 1 v2 polish - help content, ButtonPair, CTA collapse, dash sweep
 
 ---
 
@@ -24,24 +24,24 @@ EventLinqs. Diaspora-first event ticketing platform. Self-serve like Eventbrite.
 
 ## POSITIONING DECISIONS LOCKED (NON-NEGOTIABLE)
 
-### Decision A — Self-serve organiser model (like Eventbrite, NOT like DICE)
+### Decision A - Self-serve organiser model (like Eventbrite, NOT like DICE)
 
 - Anyone signs up as an organiser in 5 minutes.
 - No approval gate on the person.
-- Events are reviewed for policy compliance within 24–48 hours after submission, not before the organiser can sign up.
+- Events are reviewed for policy compliance within 24-48 hours after submission, not before the organiser can sign up.
 - Returning organisers with clean track records get faster reviews over time.
 - No mandatory onboarding calls. Ever. Replace any reference to "onboarding call" in the codebase with "in-product guidance and email support."
 
-### Decision B — "Built for culture" brand positioning
+### Decision B - "Built for culture" brand positioning
 
-- Platform is open to everyone. Nigerian mate's birthday party, white Australian's wedding, Indian cultural festival — all welcome.
+- Platform is open to everyone. Nigerian mate's birthday party, white Australian's wedding, Indian cultural festival - all welcome.
 - African diaspora is the MARKETING focus and the brand's cultural soul.
 - African diaspora is NOT a USAGE restriction.
 - Category pages (Afrobeats, Amapiano, Gospel, Owambe, Caribbean, Heritage, Business) signal who we serve best, but nothing on the platform says "you must be diaspora to use this."
 - Tagline stays: "The ticketing platform built for Africa, its diaspora, and every community that knows how to celebrate." (This line is already inclusive. Keep it.)
 - Hero copy, help content, category copy must not read as exclusive to diaspora.
 
-### Decision C — Fee model
+### Decision C - Fee model
 
 - No upfront fees for organisers.
 - Free events: zero platform fees, permanently.
@@ -72,7 +72,7 @@ EventLinqs. Diaspora-first event ticketing platform. Self-serve like Eventbrite.
 ### AUTHORISED TO MODIFY
 
 - `src/lib/help-content.ts` (major rewrite to reflect Decisions A and B)
-- `src/app/help/page.tsx` (help hub — fix any slug mismatches in the topic grid links)
+- `src/app/help/page.tsx` (help hub - fix any slug mismatches in the topic grid links)
 - `src/app/help/[slug]/page.tsx` (verify slug routing still works after content rewrite)
 - `src/app/page.tsx` (homepage hero and feature bullets, reframe for Decision B)
 - `src/components/layout/site-header.tsx` or wherever "For Organisers" nav link lives
@@ -82,9 +82,9 @@ EventLinqs. Diaspora-first event ticketing platform. Self-serve like Eventbrite.
 
 ### AUTHORISED TO CREATE
 
-- `src/app/organisers/page.tsx` (new /organisers landing page — the page "For Organisers" nav currently 404s to)
-- `src/app/pricing/page.tsx` (new /pricing page — currently linked to but doesn't exist, produces 404)
-- `src/app/organisers/signup/page.tsx` (placeholder page — "Coming soon in Session 2b. Meanwhile, join the waitlist or contact us." Links to /contact?topic=organiser)
+- `src/app/organisers/page.tsx` (new /organisers landing page - the page "For Organisers" nav currently 404s to)
+- `src/app/pricing/page.tsx` (new /pricing page - currently linked to but doesn't exist, produces 404)
+- `src/app/organisers/signup/page.tsx` (placeholder page - "Coming soon in Session 2b. Meanwhile, join the waitlist or contact us." Links to /contact?topic=organiser)
 - `src/components/templates/OrganisersLandingPage.tsx` (layout component for /organisers)
 - `src/components/templates/PricingPage.tsx` (layout component for /pricing)
 
@@ -101,7 +101,7 @@ EventLinqs. Diaspora-first event ticketing platform. Self-serve like Eventbrite.
 
 ---
 
-## TASK 1 — Fix all broken links and 404s
+## TASK 1 - Fix all broken links and 404s
 
 ### Step 1.1: Help hub slug mismatches
 
@@ -131,17 +131,17 @@ The "View pricing" button on the homepage and the "Pricing" link in the footer c
 
 Afrobeats, Amapiano, Gospel, Comedy, Owambe, Business filter pills on the homepage are clickable but go nowhere.
 
-**Fix:** Each pill should link to `/categories/{slug}`. Use the existing slugs in hero-categories.ts. If "All" is selected, no redirect needed — it stays on homepage showing all categories. When a specific category is clicked, navigate to the category landing page.
+**Fix:** Each pill should link to `/categories/{slug}`. Use the existing slugs in hero-categories.ts. If "All" is selected, no redirect needed - it stays on homepage showing all categories. When a specific category is clicked, navigate to the category landing page.
 
 Confirm EVERY link on the homepage, help hub, footer, and main nav resolves to a real page. No 404s. If a link can't be resolved because the destination page doesn't exist yet in 2a, either remove the link entirely OR change it to a working alternative (e.g. /contact).
 
 ---
 
-## TASK 2 — Rewrite help content for Decisions A and B
+## TASK 2 - Rewrite help content for Decisions A and B
 
 **File:** `src/lib/help-content.ts`
 
-Apply these changes across all 6 topics. Rewrite affected answers completely — do not patch-edit.
+Apply these changes across all 6 topics. Rewrite affected answers completely - do not patch-edit.
 
 ### Rewrite rules
 
@@ -207,7 +207,7 @@ Voice rules remain: no dashes, no exclamation marks, Australian English, plain E
 
 ---
 
-## TASK 3 — Build /organisers landing page
+## TASK 3 - Build /organisers landing page
 
 Create `src/app/organisers/page.tsx` and `src/components/templates/OrganisersLandingPage.tsx`.
 
@@ -222,9 +222,9 @@ Create `src/app/organisers/page.tsx` and `src/components/templates/OrganisersLan
 - Use the existing ButtonPair component for the coupled hover effect
 
 **2. Three value pillars section** (reuse pillar card component, use the existing 2px lift + gold border hover):
-- Pillar 1: "All-in pricing" — "What the buyer sees at checkout is what they pay. No surprise fees at the final step. Fee caps protect buyer trust."
-- Pillar 2: "Real-time tools" — "Sales dashboard, guest list, check-in scan app, payment integration. Everything you need to run the event day."
-- Pillar 3: "Self-serve from day one" — "Sign up in minutes. Build your event. Submit for review. Go live. Most events are approved the same business day."
+- Pillar 1: "All-in pricing" - "What the buyer sees at checkout is what they pay. No surprise fees at the final step. Fee caps protect buyer trust."
+- Pillar 2: "Real-time tools" - "Sales dashboard, guest list, check-in scan app, payment integration. Everything you need to run the event day."
+- Pillar 3: "Self-serve from day one" - "Sign up in minutes. Build your event. Submit for review. Go live. Most events are approved the same business day."
 
 **3. How it works section** (4-step, numbered):
 1. Create your organiser account (1 minute)
@@ -236,7 +236,7 @@ Create `src/app/organisers/page.tsx` and `src/components/templates/OrganisersLan
 - Headline: "Open to every community"
 - Body: "EventLinqs was built with African culture and diaspora communities in mind, and that shows in everything we do. But our platform is open to every organiser and every community. Weddings, birthday parties, cultural festivals, concerts, corporate events, conferences, faith events. If it brings people together, it belongs here."
 
-**5. FAQ section** with 4–6 common organiser questions (pull from help-content.ts selling-tickets topic, show as accordion)
+**5. FAQ section** with 4-6 common organiser questions (pull from help-content.ts selling-tickets topic, show as accordion)
 
 **6. Final CTA band** (dark, single CTA):
 - "Ready to sell tickets?"
@@ -246,7 +246,7 @@ All copy must honour Decisions A and B. No mentions of vetting. No mandatory onb
 
 ---
 
-## TASK 4 — Build /pricing page
+## TASK 4 - Build /pricing page
 
 Create `src/app/pricing/page.tsx` and `src/components/templates/PricingPage.tsx`.
 
@@ -259,7 +259,7 @@ Create `src/app/pricing/page.tsx` and `src/components/templates/PricingPage.tsx`
 
 **2. Three pricing tiers** (card layout, pillar card styling):
 
-**Tier 1 — Free Events**
+**Tier 1 - Free Events**
 - Price: "Free forever"
 - Description: "Host any free event at zero cost. No platform fees. No hidden charges. Keep every dollar you collect."
 - Bullet list:
@@ -269,7 +269,7 @@ Create `src/app/pricing/page.tsx` and `src/components/templates/PricingPage.tsx`
   - Real-time sales dashboard and scan app
 - No CTA (or a subtle "Get started" link)
 
-**Tier 2 — Paid Events** (the main tier, visually emphasised)
+**Tier 2 - Paid Events** (the main tier, visually emphasised)
 - Price: "From 2.9% + AUD 0.59 per paid ticket"
 - Description: "Industry-leading rates. Split transparently between EventLinqs and your payment processor. Pass the fee to buyers or absorb it into your ticket price, your choice."
 - Bullet list:
@@ -280,7 +280,7 @@ Create `src/app/pricing/page.tsx` and `src/components/templates/PricingPage.tsx`
   - Dedicated payout support
 - CTA: "Start selling tickets" → /organisers/signup
 
-**Tier 3 — Enterprise**
+**Tier 3 - Enterprise**
 - Price: "Custom"
 - Description: "For venues, festivals, and high-volume organisers. Custom rates, dedicated support, and white-label options available."
 - Bullet list:
@@ -292,7 +292,7 @@ Create `src/app/pricing/page.tsx` and `src/components/templates/PricingPage.tsx`
 
 **NOTE ON FEE NUMBERS:** If the actual fee rate is set elsewhere (database config or a constants file), reference that source. If no fee is configured yet, use "2.9% + AUD 0.59" as a placeholder and add a code comment noting this needs to be made configurable by Lawal before launch. DO NOT hardcode fees anywhere; all fees must be admin-configurable per the master plan.
 
-**3. FAQ section** with 5–6 pricing-specific questions (draw from help-content.ts payments-and-payouts topic):
+**3. FAQ section** with 5-6 pricing-specific questions (draw from help-content.ts payments-and-payouts topic):
 - What counts as a "paid ticket"?
 - Who pays the booking fee, me or the buyer?
 - What currencies do you support?
@@ -307,7 +307,7 @@ Create `src/app/pricing/page.tsx` and `src/components/templates/PricingPage.tsx`
 
 ---
 
-## TASK 5 — Build /organisers/signup placeholder
+## TASK 5 - Build /organisers/signup placeholder
 
 Create `src/app/organisers/signup/page.tsx`.
 
@@ -326,7 +326,7 @@ Include a small note at the bottom: "Already an approved organiser? Contact us a
 
 ---
 
-## TASK 6 — Homepage hero and copy reframe
+## TASK 6 - Homepage hero and copy reframe
 
 **File:** `src/app/page.tsx`
 
@@ -341,7 +341,7 @@ Reframe any copy that reads as exclusive to diaspora. Audit the hero section, fe
 
 ---
 
-## TASK 7 — Category page organiser CTA audit
+## TASK 7 - Category page organiser CTA audit
 
 **File:** `src/components/templates/CategoryLandingPage.tsx` and `src/lib/hero-categories.ts`.
 
@@ -353,7 +353,7 @@ Update the copy around the CTA to feel welcoming to anyone, not exclusive.
 
 ---
 
-## TASK 8 — Contact page sweep
+## TASK 8 - Contact page sweep
 
 **File:** `src/app/contact/page.tsx` and `src/components/features/contact/ContactForm.tsx`.
 

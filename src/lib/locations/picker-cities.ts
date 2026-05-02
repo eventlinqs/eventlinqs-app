@@ -14,9 +14,8 @@ import {
  *
  * Shape returned groups Australia first (always the AU section of the
  * picker) and everything else grouped by country name (the "Global
- * diaspora cities" expander). No event counts — counts appear on the
- * results page only (competitor-aligned with Ticketmaster, DICE,
- * Eventbrite).
+ * cities" expander). No event counts - counts appear on the results
+ * page only (competitor-aligned with Ticketmaster, DICE, Eventbrite).
  */
 export type PickerCity = {
   city: string
@@ -32,7 +31,7 @@ export type PickerCity = {
 export type PickerCityGroups = {
   australia: PickerCity[]
   internationalByCountry: Array<{ country: string; cities: PickerCity[] }>
-  /** Every valid picker slug, flattened — used for /events/browse/[city] validation. */
+  /** Every valid picker slug, flattened - used for /events/browse/[city] validation. */
   validSlugs: string[]
 }
 
@@ -51,7 +50,7 @@ function launchToPicker(c: LaunchCity): PickerCity {
 async function buildPickerCitiesRaw(): Promise<PickerCityGroups> {
   // Admin client may be unavailable during build (CI has placeholder env with
   // no SUPABASE_SERVICE_ROLE_KEY). Fall through to launch-target cities only;
-  // DB-sourced diaspora cities fill in at runtime once ISR revalidates.
+  // DB-sourced global cities fill in at runtime once ISR revalidates.
   let rows: Array<{ venue_city: string | null; venue_country: string | null }> = []
   try {
     const supabase = createAdminClient()

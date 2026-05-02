@@ -1,0 +1,106 @@
+{
+  "generated_at": "2026-04-26T04:51:51.473Z",
+  "note": "Photos sourced from Pexels (https://www.pexels.com). Free to use under the Pexels licence; attribution appreciated. Regenerate with: node scripts/fetch-hero-rasters.mjs --force",
+  "categories": [
+    {
+      "slug": "afrobeats",
+      "photographer": "Noland Live",
+      "photographer_url": "https://www.pexels.com/@nolandlive",
+      "pexels_id": 34766298,
+      "pexels_url": "https://www.pexels.com/photo/crowd-enjoying-outdoor-summer-festival-event-34766298/",
+      "alt": "Diverse group of people enjoying a vibrant outdoor festival, capturing joy and community spirit.",
+      "jpg_bytes": 288966,
+      "avif_bytes": 190587
+    },
+    {
+      "slug": "gospel",
+      "photographer": "Thirdman",
+      "photographer_url": "https://www.pexels.com/@thirdman",
+      "pexels_id": 8468742,
+      "pexels_url": "https://www.pexels.com/photo/cross-on-table-by-prayers-with-bible-8468742/",
+      "alt": "Two individuals study the Bible with a cross on the table, symbolizing faith and devotion.",
+      "jpg_bytes": 102847,
+      "avif_bytes": 38525
+    },
+    {
+      "slug": "amapiano",
+      "photographer": "Safari  Consoler",
+      "photographer_url": "https://www.pexels.com/@safari-consoler-3290243",
+      "pexels_id": 29004126,
+      "pexels_url": "https://www.pexels.com/photo/traditional-african-dance-performance-outdoors-29004126/",
+      "alt": "Vibrant outdoor African dance performance showcasing cultural attire and celebration.",
+      "jpg_bytes": 276426,
+      "avif_bytes": 197240
+    },
+    {
+      "slug": "owambe",
+      "photographer": "Greta Hoffman",
+      "photographer_url": "https://www.pexels.com/@greta-hoffman",
+      "pexels_id": 9706055,
+      "pexels_url": "https://www.pexels.com/photo/a-family-celebrating-kwanzaa-together-9706055/",
+      "alt": "A joyful family toasting with wine, wearing traditional-patterned clothing indoors.",
+      "jpg_bytes": 266600,
+      "avif_bytes": 214438
+    },
+    {
+      "slug": "comedy",
+      "photographer": "SAULO LEITE",
+      "photographer_url": "https://www.pexels.com/@saulo-leite-1491182",
+      "pexels_id": 18652043,
+      "pexels_url": "https://www.pexels.com/photo/clown-on-stage-18652043/",
+      "alt": "Entertaining clown in costume with a red nose and green vest performing on a stage indoors.",
+      "jpg_bytes": 234641,
+      "avif_bytes": 122131
+    },
+    {
+      "slug": "caribbean-carnival",
+      "photographer": "Mario Spencer",
+      "photographer_url": "https://www.pexels.com/@spencphoto",
+      "pexels_id": 28184042,
+      "pexels_url": "https://www.pexels.com/photo/grand-gala-parade-2024-en-limon-28184042/",
+      "alt": "Colorful street festival celebrating Afro-Caribbean culture in Limón, Costa Rica.",
+      "jpg_bytes": 376652,
+      "avif_bytes": 330986
+    },
+    {
+      "slug": "bollywood",
+      "photographer": "Freek Wolsink",
+      "photographer_url": "https://www.pexels.com/@freek-wolsink-508219",
+      "pexels_id": 33721374,
+      "pexels_url": "https://www.pexels.com/photo/joyful-crowd-dancing-at-night-party-33721374/",
+      "alt": "A lively crowd enjoying a night party with vibrant lighting and dancing.",
+      "jpg_bytes": 190140,
+      "avif_bytes": 114292
+    },
+    {
+      "slug": "latin",
+      "photographer": "Victor Hugo Lagos",
+      "photographer_url": "https://www.pexels.com/@victor-hugo-lagos-2159630766",
+      "pexels_id": 36184851,
+      "pexels_url": "https://www.pexels.com/photo/vibrant-street-parade-in-arica-y-parinacota-chile-36184851/",
+      "alt": "Colorful dancers celebrate in a street parade at Arica y Parinacota, Chile.",
+      "jpg_bytes": 602321,
+      "avif_bytes": 778592
+    },
+    {
+      "slug": "filipino",
+      "photographer": "AiyAveAme Domingo's",
+      "photographer_url": "https://www.pexels.com/@aiyaveame-domingo-s-2158236354",
+      "pexels_id": 35245814,
+      "pexels_url": "https://www.pexels.com/photo/colorful-street-parade-in-tarlac-city-philippines-35245814/",
+      "alt": "Vibrant festival parade in Tarlac City showcasing traditional costumes and dance.",
+      "jpg_bytes": 311786,
+      "avif_bytes": 290980
+    },
+    {
+      "slug": "lunar",
+      "photographer": "Imam Efendi",
+      "photographer_url": "https://www.pexels.com/@imam-efendi-2156414795",
+      "pexels_id": 35055124,
+      "pexels_url": "https://www.pexels.com/photo/vibrant-lantern-display-in-jakarta-chinatown-35055124/",
+      "alt": "Colorful lanterns light up Jakarta's Chinatown, capturing festive Lunar New Year celebrations.",
+      "jpg_bytes": 330687,
+      "avif_bytes": 321428
+    }
+  ]
+}

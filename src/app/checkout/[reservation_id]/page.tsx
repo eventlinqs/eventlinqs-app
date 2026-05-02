@@ -12,12 +12,10 @@ type Props = {
 
 export default async function CheckoutPage({ params }: Props) {
   const { reservation_id } = await params
-  console.log('[CheckoutPage] render start - reservation_id:', reservation_id)
 
   const supabase = await createClient()
   const admin = createAdminClient()
   const { data: { user } } = await supabase.auth.getUser()
-  console.log('[CheckoutPage] auth user:', user?.id ?? 'guest (no session)')
 
   // Load reservation via admin client to bypass RLS (supports guest checkout)
   const { data: reservation, error: resError } = await admin
@@ -27,14 +25,12 @@ export default async function CheckoutPage({ params }: Props) {
     .eq('status', 'active')
     .single()
 
-  console.log('[CheckoutPage] reservation lookup - data:', reservation?.id ?? null, '| error:', resError?.message ?? null)
-
   if (resError || !reservation) {
-    // Reservation missing or already used — send user back to pick tickets again
+    // Reservation missing or already used - send user back to pick tickets again
     redirect('/events?error=reservation_not_found')
   }
 
-  // Ownership check — either the reservation belongs to this auth user,
+  // Ownership check - either the reservation belongs to this auth user,
   // or its session_id matches this browser's guest cookie. The admin
   // client above bypasses RLS for guest visibility, so we enforce
   // ownership here instead of relying on the policy.
@@ -42,27 +38,22 @@ export default async function CheckoutPage({ params }: Props) {
   const ownedByUser = reservation.user_id && user && reservation.user_id === user.id
   const ownedByGuest = reservation.session_id && guestSessionId && reservation.session_id === guestSessionId
   if (!ownedByUser && !ownedByGuest) {
-    console.log('[CheckoutPage] ownership mismatch - redirecting to /events')
     redirect('/events?error=reservation_not_found')
   }
 
   // Expired?
   if (new Date(reservation.expires_at) < new Date()) {
-    console.log('[CheckoutPage] notFound() - reservation expired at', reservation.expires_at)
     redirect('/events?error=reservation_expired')
   }
 
-  // Load event — must use admin client to bypass RLS for guest users
-  const { data: event, error: eventError } = await admin
+  // Load event - must use admin client to bypass RLS for guest users
+  const { data: event } = await admin
     .from('events')
     .select('id, title, start_date, end_date, timezone, venue_name, venue_city, venue_country, organisation_id, fee_pass_type')
     .eq('id', reservation.event_id)
     .single()
 
-  console.log('[CheckoutPage] event lookup - data:', event?.id ?? null, '| error:', eventError?.message ?? null)
-
   if (!event) {
-    console.log('[CheckoutPage] notFound() - event not found for id:', reservation.event_id)
     notFound()
   }
 
@@ -83,12 +74,10 @@ export default async function CheckoutPage({ params }: Props) {
   if (isSeatReservation) {
     const seatIds = (rawItems as { seat_ids: string[] }).seat_ids
 
-    const { data: seats, error: seatsError } = await admin
+    const { data: seats } = await admin
       .from('seats')
       .select('id, row_label, seat_number, seat_type, price_cents, ticket_tier_id')
       .in('id', seatIds)
-
-    console.log('[CheckoutPage] seat lookup - count:', seats?.length ?? 0, '| error:', seatsError?.message ?? null)
 
     if (seats && seats.length > 0) {
       // Get tier info for currency
@@ -138,14 +127,12 @@ export default async function CheckoutPage({ params }: Props) {
 
     let tiers: TicketTier[] = []
     if (tierIds.length > 0) {
-      const { data: tiersData, error: tiersError } = await admin.from('ticket_tiers').select('*').in('id', tierIds)
-      console.log('[CheckoutPage] ticket_tiers lookup - count:', tiersData?.length ?? 0, '| error:', tiersError?.message ?? null)
+      const { data: tiersData } = await admin.from('ticket_tiers').select('*').in('id', tierIds)
       tiers = (tiersData ?? []) as TicketTier[]
     }
 
     if (addonIds.length > 0) {
-      const { data: addonsData, error: addonsError } = await admin.from('event_addons').select('*').in('id', addonIds)
-      console.log('[CheckoutPage] event_addons lookup - count:', addonsData?.length ?? 0, '| error:', addonsError?.message ?? null)
+      const { data: addonsData } = await admin.from('event_addons').select('*').in('id', addonIds)
       addons = (addonsData ?? []) as EventAddon[]
     }
 
@@ -175,7 +162,6 @@ export default async function CheckoutPage({ params }: Props) {
 
     const calculator = new PaymentCalculator()
     initialFees = await calculator.calculate(cartTickets, cartAddons, currency, fee_pass_type, 0)
-    console.log('[CheckoutPage] fee calculation - total_cents:', initialFees.total_cents, '| currency:', currency)
 
     ticketSlots = cartTickets.map(t => ({
       tier_id: t.tier_id,
@@ -184,7 +170,7 @@ export default async function CheckoutPage({ params }: Props) {
     }))
   }
 
-  // Load user profile for pre-fill (session client is correct here — only called when user is authenticated)
+  // Load user profile for pre-fill (session client is correct here - only called when user is authenticated)
   let userFirstName = ''
   let userLastName = ''
   let userEmail = ''

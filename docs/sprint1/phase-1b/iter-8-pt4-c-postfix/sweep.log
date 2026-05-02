@@ -1,0 +1,77 @@
+
+=== home : / ===
+LanternError: NO_LCP
+    at LargestContentfulPaint.getOptimisticGraph (file:///C:/Users/61416/AppData/Local/npm-cache/_npx/0f94ee7615faf582/node_modules/@paulirish/trace_engine/models/trace/lantern/metrics/LargestContentfulPaint.js:30:19)
+    at LargestContentfulPaint.compute (file:///C:/Users/61416/AppData/Local/npm-cache/_npx/0f94ee7615faf582/node_modules/@paulirish/trace_engine/models/trace/lantern/metrics/Metric.js:46:38)
+    at LargestContentfulPaint.compute (file:///C:/Users/61416/AppData/Local/npm-cache/_npx/0f94ee7615faf582/node_modules/@paulirish/trace_engine/models/trace/lantern/metrics/LargestContentfulPaint.js:63:36)
+    at #createLanternContext (file:///C:/Users/61416/AppData/Local/npm-cache/_npx/0f94ee7615faf582/node_modules/@paulirish/trace_engine/models/trace/Processor.js:253:66)
+    at #computeInsightsForNavigation (file:///C:/Users/61416/AppData/Local/npm-cache/_npx/0f94ee7615faf582/node_modules/@paulirish/trace_engine/models/trace/Processor.js:477:49)
+    at #computeInsights (file:///C:/Users/61416/AppData/Local/npm-cache/_npx/0f94ee7615faf582/node_modules/@paulirish/trace_engine/models/trace/Processor.js:445:47)
+    at TraceProcessor.parse (file:///C:/Users/61416/AppData/Local/npm-cache/_npx/0f94ee7615faf582/node_modules/@paulirish/trace_engine/models/trace/Processor.js:126:38)
+    at async TraceEngineResult.runTraceEngine (file:///C:/Users/61416/AppData/Local/npm-cache/_npx/0f94ee7615faf582/node_modules/lighthouse/core/computed/trace-engine-result.js:43:5)
+    at async TraceEngineResult.compute_ (file:///C:/Users/61416/AppData/Local/npm-cache/_npx/0f94ee7615faf582/node_modules/lighthouse/core/computed/trace-engine-result.js:256:7)
+
+=== events : /events ===
+
+=== city : /events/browse/melbourne ===
+Runtime error encountered: EPERM, Permission denied: \\?\C:\Users\61416\AppData\Local\Temp\lighthouse.43959168 '\\?\C:\Users\61416\AppData\Local\Temp\lighthouse.43959168'
+Error: EPERM, Permission denied: \\?\C:\Users\61416\AppData\Local\Temp\lighthouse.43959168 '\\?\C:\Users\61416\AppData\Local\Temp\lighthouse.43959168'
+    at rmSync (node:fs:1221:18)
+    at Launcher.destroyTmp (file:///C:/Users/61416/AppData/Local/npm-cache/_npx/0f94ee7615faf582/node_modules/chrome-launcher/dist/chrome-launcher.js:367:9)
+    at Launcher.kill (file:///C:/Users/61416/AppData/Local/npm-cache/_npx/0f94ee7615faf582/node_modules/chrome-launcher/dist/chrome-launcher.js:349:14)
+    at Object.kill (file:///C:/Users/61416/AppData/Local/npm-cache/_npx/0f94ee7615faf582/node_modules/chrome-launcher/dist/chrome-launcher.js:39:18)
+    at runLighthouse (file:///C:/Users/61416/AppData/Local/npm-cache/_npx/0f94ee7615faf582/node_modules/lighthouse/cli/run.js:217:21)
+    at async file:///C:/Users/61416/AppData/Local/npm-cache/_npx/0f94ee7615faf582/node_modules/lighthouse/cli/index.js:10:1
+(non-fatal: Command failed: npx --yes lighthouse "https://eventlinqs-f6np0ixcb-lawals-projects-c20c0be8.vercel.a)
+
+=== category : /categories/afrobeats ===
+Runtime error encountered: EPERM, Permission denied: \\?\C:\Users\61416\AppData\Local\Temp\lighthouse.93536097 '\\?\C:\Users\61416\AppData\Local\Temp\lighthouse.93536097'
+Error: EPERM, Permission denied: \\?\C:\Users\61416\AppData\Local\Temp\lighthouse.93536097 '\\?\C:\Users\61416\AppData\Local\Temp\lighthouse.93536097'
+    at rmSync (node:fs:1221:18)
+    at Launcher.destroyTmp (file:///C:/Users/61416/AppData/Local/npm-cache/_npx/0f94ee7615faf582/node_modules/chrome-launcher/dist/chrome-launcher.js:367:9)
+    at Launcher.kill (file:///C:/Users/61416/AppData/Local/npm-cache/_npx/0f94ee7615faf582/node_modules/chrome-launcher/dist/chrome-launcher.js:349:14)
+    at Object.kill (file:///C:/Users/61416/AppData/Local/npm-cache/_npx/0f94ee7615faf582/node_modules/chrome-launcher/dist/chrome-launcher.js:39:18)
+    at runLighthouse (file:///C:/Users/61416/AppData/Local/npm-cache/_npx/0f94ee7615faf582/node_modules/lighthouse/cli/run.js:217:21)
+    at async file:///C:/Users/61416/AppData/Local/npm-cache/_npx/0f94ee7615faf582/node_modules/lighthouse/cli/index.js:10:1
+(non-fatal: Command failed: npx --yes lighthouse "https://eventlinqs-f6np0ixcb-lawals-projects-c20c0be8.vercel.a)
+
+=== event-detail : /events/afrobeats-melbourne-summer-sessions ===
+
+=== organisers : /organisers ===
+Runtime error encountered: EPERM, Permission denied: \\?\C:\Users\61416\AppData\Local\Temp\lighthouse.75581906 '\\?\C:\Users\61416\AppData\Local\Temp\lighthouse.75581906'
+Error: EPERM, Permission denied: \\?\C:\Users\61416\AppData\Local\Temp\lighthouse.75581906 '\\?\C:\Users\61416\AppData\Local\Temp\lighthouse.75581906'
+    at rmSync (node:fs:1221:18)
+    at Launcher.destroyTmp (file:///C:/Users/61416/AppData/Local/npm-cache/_npx/0f94ee7615faf582/node_modules/chrome-launcher/dist/chrome-launcher.js:367:9)
+    at Launcher.kill (file:///C:/Users/61416/AppData/Local/npm-cache/_npx/0f94ee7615faf582/node_modules/chrome-launcher/dist/chrome-launcher.js:349:14)
+    at Object.kill (file:///C:/Users/61416/AppData/Local/npm-cache/_npx/0f94ee7615faf582/node_modules/chrome-launcher/dist/chrome-launcher.js:39:18)
+    at runLighthouse (file:///C:/Users/61416/AppData/Local/npm-cache/_npx/0f94ee7615faf582/node_modules/lighthouse/cli/run.js:217:21)
+    at async file:///C:/Users/61416/AppData/Local/npm-cache/_npx/0f94ee7615faf582/node_modules/lighthouse/cli/index.js:10:1
+(non-fatal: Command failed: npx --yes lighthouse "https://eventlinqs-f6np0ixcb-lawals-projects-c20c0be8.vercel.a)
+
+=== pricing : /pricing ===
+
+=== help : /help ===
+Runtime error encountered: EPERM, Permission denied: \\?\C:\Users\61416\AppData\Local\Temp\lighthouse.33051563 '\\?\C:\Users\61416\AppData\Local\Temp\lighthouse.33051563'
+Error: EPERM, Permission denied: \\?\C:\Users\61416\AppData\Local\Temp\lighthouse.33051563 '\\?\C:\Users\61416\AppData\Local\Temp\lighthouse.33051563'
+    at rmSync (node:fs:1221:18)
+    at Launcher.destroyTmp (file:///C:/Users/61416/AppData/Local/npm-cache/_npx/0f94ee7615faf582/node_modules/chrome-launcher/dist/chrome-launcher.js:367:9)
+    at Launcher.kill (file:///C:/Users/61416/AppData/Local/npm-cache/_npx/0f94ee7615faf582/node_modules/chrome-launcher/dist/chrome-launcher.js:349:14)
+    at Object.kill (file:///C:/Users/61416/AppData/Local/npm-cache/_npx/0f94ee7615faf582/node_modules/chrome-launcher/dist/chrome-launcher.js:39:18)
+    at runLighthouse (file:///C:/Users/61416/AppData/Local/npm-cache/_npx/0f94ee7615faf582/node_modules/lighthouse/cli/run.js:217:21)
+    at async file:///C:/Users/61416/AppData/Local/npm-cache/_npx/0f94ee7615faf582/node_modules/lighthouse/cli/index.js:10:1
+(non-fatal: Command failed: npx --yes lighthouse "https://eventlinqs-f6np0ixcb-lawals-projects-c20c0be8.vercel.a)
+
+=== legal-terms : /legal/terms ===
+
+=== login : /login ===
+Runtime error encountered: EPERM, Permission denied: \\?\C:\Users\61416\AppData\Local\Temp\lighthouse.18072770 '\\?\C:\Users\61416\AppData\Local\Temp\lighthouse.18072770'
+Error: EPERM, Permission denied: \\?\C:\Users\61416\AppData\Local\Temp\lighthouse.18072770 '\\?\C:\Users\61416\AppData\Local\Temp\lighthouse.18072770'
+    at rmSync (node:fs:1221:18)
+    at Launcher.destroyTmp (file:///C:/Users/61416/AppData/Local/npm-cache/_npx/0f94ee7615faf582/node_modules/chrome-launcher/dist/chrome-launcher.js:367:9)
+    at Launcher.kill (file:///C:/Users/61416/AppData/Local/npm-cache/_npx/0f94ee7615faf582/node_modules/chrome-launcher/dist/chrome-launcher.js:349:14)
+    at Object.kill (file:///C:/Users/61416/AppData/Local/npm-cache/_npx/0f94ee7615faf582/node_modules/chrome-launcher/dist/chrome-launcher.js:39:18)
+    at runLighthouse (file:///C:/Users/61416/AppData/Local/npm-cache/_npx/0f94ee7615faf582/node_modules/lighthouse/cli/run.js:217:21)
+    at async file:///C:/Users/61416/AppData/Local/npm-cache/_npx/0f94ee7615faf582/node_modules/lighthouse/cli/index.js:10:1
+(non-fatal: Command failed: npx --yes lighthouse "https://eventlinqs-f6np0ixcb-lawals-projects-c20c0be8.vercel.a)
+
+=== signup : /signup ===

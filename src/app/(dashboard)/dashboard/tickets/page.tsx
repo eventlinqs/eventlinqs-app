@@ -57,7 +57,7 @@ export default async function MyTicketsPage() {
 
   const adminClient = createAdminClient()
 
-  // Fetch all confirmed/refunded orders for this user — admin client bypasses RLS
+  // Fetch all confirmed/refunded orders for this user - admin client bypasses RLS
   const { data: orders } = await adminClient
     .from('orders')
     .select('id, order_number, status, total_cents, currency, created_at, confirmed_at, event_id, order_items(id, item_type, item_name, quantity, attendee_first_name, attendee_last_name)')

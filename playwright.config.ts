@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
 
 /**
- * M5 Phase 1 — production E2E suite.
+ * M5 Phase 1 - production E2E suite.
  * Runs against a production build (`npm run build && npm run start`).
  * Reuses an already-running server if port 3000 is live.
  */

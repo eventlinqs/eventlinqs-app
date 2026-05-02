@@ -18,7 +18,7 @@ jobs:
 
     env:
       NEXT_TELEMETRY_DISABLED: 1
-      # Build-time env. Real secrets live in Vercel — these placeholders
+      # Build-time env. Real secrets live in Vercel - these placeholders
       # only satisfy `next build`'s client-bundle validation.
       NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key

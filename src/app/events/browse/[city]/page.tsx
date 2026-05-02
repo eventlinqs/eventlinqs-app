@@ -12,7 +12,6 @@ import {
   parseEventsSearchParams,
   type EventsSearchParams,
 } from '@/lib/events/search-params'
-import { detectLocation } from '@/lib/geo/detect'
 import { getPickerCities, type PickerCity } from '@/lib/locations/picker-cities'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
@@ -24,7 +23,20 @@ import { EventsMapLazy } from '@/components/features/events/m5-events-map-lazy'
 import { EventsBrowseRecommendedSection } from '@/components/features/events/m5-events-browse-recommended-section'
 import { EventsRecommendedSkeleton } from '@/components/features/events/m5-events-skeletons'
 
-export const revalidate = 60
+// ISR: pre-render every picker city at build time. Bare /events/browse/[city]
+// (no searchParams) hits the cached static HTML; filtered URLs render
+// dynamic but reuse the same cookies-free data path.
+export const revalidate = 120
+export const dynamicParams = true
+
+export async function generateStaticParams() {
+  const groups = await getPickerCities()
+  const all = [
+    ...groups.australia,
+    ...groups.internationalByCountry.flatMap(g => g.cities),
+  ]
+  return all.map(c => ({ city: c.slug }))
+}
 
 type Props = {
   params: Promise<{ city: string }>
@@ -70,17 +82,17 @@ export default async function BrowseCityPage({ params, searchParams }: Props) {
 
   const { filters, page, view } = parseEventsSearchParams(raw)
 
-  const [categories, location] = await Promise.all([
-    fetchActiveCategoriesCached(),
-    detectLocation(),
-  ])
+  const categories = await fetchActiveCategoriesCached()
 
+  // Origin resolves from the city geometry only (city.latitude/longitude),
+  // not from a server-side IP lookup. detectLocation() called headers()
+  // which silently disqualified this route from ISR; the fallback to a
+  // visitor's IP geo was redundant when we are already in a city-scoped
+  // page anyway.
   const origin =
     city.latitude !== null && city.longitude !== null
       ? { latitude: city.latitude, longitude: city.longitude }
-      : location.latitude !== null && location.longitude !== null
-        ? { latitude: location.latitude, longitude: location.longitude }
-        : undefined
+      : undefined
   const hasGeoSignal = origin !== undefined
 
   const effectiveFilters = { ...filters, city: city.city, country: undefined }
@@ -88,7 +100,7 @@ export default async function BrowseCityPage({ params, searchParams }: Props) {
 
   // Main catalogue fetch stays inline so mobile browsers can start
   // preloading card imagery as soon as the HTML is parsed. Suspense on
-  // the grid regressed SI on /events mobile for the same reason —
+  // the grid regressed SI on /events mobile for the same reason  - 
   // images only begin loading after the streamed chunk arrives, which
   // stretches Lighthouse's visual-progress integral.
   const canUseCached =

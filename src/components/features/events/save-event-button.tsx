@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from 'react'
 import { Heart } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { trackSaveEvent } from '@/lib/analytics/plausible'
 
@@ -33,6 +32,9 @@ export function SaveEventButton({
     e.preventDefault()
     e.stopPropagation()
 
+    // Dynamic import keeps Supabase out of every public-route bundle.
+    // Cost is paid on first heart-button interaction, not on /events shell load.
+    const { createClient } = await import('@/lib/supabase/client')
     const supabase = createClient()
     const { data: { session } } = await supabase.auth.getSession()
 

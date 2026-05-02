@@ -1,7 +1,9 @@
+import { unstable_cache } from 'next/cache'
 import { getRedisClient } from './client'
-import { createClient } from '@/lib/supabase/server'
+import { createPublicClient } from '@/lib/supabase/public-client'
 
 const TTL_SECONDS = 30
+const STATIC_REVALIDATE_SECONDS = 30
 
 export interface TierInventory {
   sold: number
@@ -43,7 +45,7 @@ export async function getTierInventory(tierId: string): Promise<TierInventory | 
 
   // Fallback to Postgres
   try {
-    const supabase = await createClient()
+    const supabase = createPublicClient()
     const { data, error } = await supabase
       .from('ticket_tiers')
       .select('sold_count, reserved_count, total_capacity')
@@ -85,7 +87,7 @@ export async function setTierInventory(tierId: string, data: TierInventory): Pro
     await redis.set(tierKey(tierId), data, { ex: TTL_SECONDS })
   } catch (err) {
     console.error('[inventory-cache] setTierInventory failed:', err)
-    // Never throw — Redis failures must not break the app
+    // Never throw - Redis failures must not break the app
   }
 }
 
@@ -116,7 +118,7 @@ export async function getEventInventory(eventId: string): Promise<EventInventory
 
   // Fallback to Postgres
   try {
-    const supabase = await createClient()
+    const supabase = createPublicClient()
     const { data, error } = await supabase
       .from('ticket_tiers')
       .select('sold_count, reserved_count, total_capacity')
@@ -185,3 +187,77 @@ export async function refreshInventoryCache(tierId: string, eventId: string): Pr
   await getTierInventory(tierId)
   await getEventInventory(eventId)
 }
+
+// ─── Static-render variants ────────────────────────────────────────────────
+//
+// Why a separate path: the regular getters perform Upstash `redis.get` /
+// `redis.set` which are `cache: 'no-store'` fetches under the hood. Calling
+// them inside an ISR render forces Next.js to mark the route as Dynamic
+// (DYNAMIC_SERVER_USAGE) even when wrapped in try/catch. Wrapping in
+// `unstable_cache` puts the inner fetches inside Next's data cache so
+// they're treated as cacheable for the static render.
+//
+// The static variants intentionally DON'T populate Redis on miss - the
+// regular Postgres-fallback code is reused but the side-effect SET is
+// skipped via a no-write fetch path. Checkout / admin code paths still
+// write through `setTierInventory` directly when they have a fresh value
+// to publish.
+
+async function fetchTierInventoryFromDb(tierId: string): Promise<TierInventory | null> {
+  try {
+    const supabase = createPublicClient()
+    const { data, error } = await supabase
+      .from('ticket_tiers')
+      .select('sold_count, reserved_count, total_capacity')
+      .eq('id', tierId)
+      .single()
+    if (error || !data) return null
+    const available = Math.max(0, data.total_capacity - data.sold_count - data.reserved_count)
+    const percent_sold = data.total_capacity > 0
+      ? Math.round((data.sold_count / data.total_capacity) * 100)
+      : 0
+    return {
+      sold: data.sold_count,
+      reserved: data.reserved_count,
+      total: data.total_capacity,
+      available,
+      percent_sold,
+    }
+  } catch {
+    return null
+  }
+}
+
+async function fetchEventInventoryFromDb(eventId: string): Promise<EventInventory | null> {
+  try {
+    const supabase = createPublicClient()
+    const { data, error } = await supabase
+      .from('ticket_tiers')
+      .select('sold_count, reserved_count, total_capacity')
+      .eq('event_id', eventId)
+      .eq('is_active', true)
+    if (error || !data) return null
+    const total_sold = data.reduce((s, t) => s + t.sold_count, 0)
+    const total_reserved = data.reduce((s, t) => s + t.reserved_count, 0)
+    const total_capacity = data.reduce((s, t) => s + t.total_capacity, 0)
+    const available = Math.max(0, total_capacity - total_sold - total_reserved)
+    const percent_sold = total_capacity > 0
+      ? Math.round((total_sold / total_capacity) * 100)
+      : 0
+    return { total_sold, total_reserved, total_capacity, available, percent_sold }
+  } catch {
+    return null
+  }
+}
+
+export const getTierInventoryStatic = unstable_cache(
+  fetchTierInventoryFromDb,
+  ['tier-inventory-static-v1'],
+  { revalidate: STATIC_REVALIDATE_SECONDS, tags: ['inventory'] },
+)
+
+export const getEventInventoryStatic = unstable_cache(
+  fetchEventInventoryFromDb,
+  ['event-inventory-static-v1'],
+  { revalidate: STATIC_REVALIDATE_SECONDS, tags: ['inventory'] },
+)

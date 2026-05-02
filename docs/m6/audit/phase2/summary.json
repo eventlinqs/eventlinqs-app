@@ -1,0 +1,61 @@
+{
+  "target": "http://localhost:3000/dev/connect-onboarding-preview",
+  "timestamp": "2026-04-30T10:38:22.846Z",
+  "runs": {
+    "mobile": {
+      "viewport": {
+        "width": 375,
+        "height": 812,
+        "deviceScaleFactor": 3,
+        "mobile": true,
+        "formFactor": "mobile"
+      },
+      "scores": {
+        "performance": 1,
+        "accessibility": 1,
+        "bestPractices": 1,
+        "seo": 1
+      },
+      "axe": {
+        "violations": 0,
+        "details": []
+      },
+      "gates": {
+        "performance": true,
+        "accessibility": true,
+        "bestPractices": true,
+        "seo": true,
+        "axe": true
+      },
+      "pass": true
+    },
+    "desktop": {
+      "viewport": {
+        "width": 1440,
+        "height": 900,
+        "deviceScaleFactor": 1,
+        "mobile": false,
+        "formFactor": "desktop"
+      },
+      "scores": {
+        "performance": 0.98,
+        "accessibility": 1,
+        "bestPractices": 1,
+        "seo": 1
+      },
+      "axe": {
+        "violations": 0,
+        "details": []
+      },
+      "gates": {
+        "performance": true,
+        "accessibility": true,
+        "bestPractices": true,
+        "seo": true,
+        "axe": true
+      },
+      "pass": true
+    }
+  },
+  "pass": true
+}

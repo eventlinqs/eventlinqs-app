@@ -18,11 +18,11 @@ interface CategoryHeroEmptyProps {
 }
 
 /**
- * CategoryHeroEmpty — full-bleed dark hero used when a category has no live events.
+ * CategoryHeroEmpty - full-bleed dark hero used when a category has no live events.
  *
  * Two modes:
- *   coverImage — shows <Image fill> + dark gradient overlay
- *   default    — CSS-only gradient pattern (brand accent radial + subtle grid)
+ *   coverImage - shows <Image fill> + dark gradient overlay
+ *   default    - CSS-only gradient pattern (brand accent radial + subtle grid)
  *
  * NOT a replacement for EmptyState (that primitive remains for placeholder pages).
  * This is specifically for category/filter contexts where we want a marketing
@@ -64,9 +64,9 @@ export function CategoryHeroEmpty({
           />
         </>
       ) : (
-        /* CSS-only pattern — two radial glows + no image dependency */
+        /* CSS-only pattern - two radial glows + no image dependency */
         <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
-          {/* Brand accent radial glow — top-right */}
+          {/* Brand accent radial glow - top-right */}
           <div
             className="absolute"
             style={{
@@ -78,7 +78,7 @@ export function CategoryHeroEmpty({
               opacity: 0.05,
             }}
           />
-          {/* White glow — bottom-left */}
+          {/* White glow - bottom-left */}
           <div
             className="absolute"
             style={{

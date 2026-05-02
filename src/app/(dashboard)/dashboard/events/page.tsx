@@ -79,8 +79,6 @@ export default async function MyEventsPage({ searchParams }: Props) {
     for (const row of soldSeats ?? []) {
       seatSoldCountMap[row.event_id] = (seatSoldCountMap[row.event_id] ?? 0) + 1
     }
-    console.log('[dashboard/events] reservedEventIds:', reservedEventIds)
-    console.log('[dashboard/events] seatSoldCountMap:', seatSoldCountMap)
   }
 
   const tabs: { key: FilterTab; label: string }[] = [

@@ -1,5 +1,5 @@
 -- ============================================================
--- EventLinqs Module 4: Ticketing Engine & Inventory — Combined SQL
+-- EventLinqs Module 4: Ticketing Engine & Inventory - Combined SQL
 -- ============================================================
 -- Run this entire file in Supabase → SQL Editor → New query → Run
 -- Prerequisites: M1, M2, M3 SQL must have been run first

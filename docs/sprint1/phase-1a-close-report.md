@@ -1,4 +1,4 @@
-# Sprint 1 Phase 1A — Close Report
+# Sprint 1 Phase 1A - Close Report
 
 **Date:** 2026-04-26
 **Owner:** Lawal
@@ -25,12 +25,12 @@ Hollywood Foundation Sprint 1 Phase 1A is complete. Production is now serving fr
 | `www.eventlinqs.com` | `dpl_EwHUhyyDfa2unMHfzaVj2dkik9jg` | `https://gndnldyfudbytbboxesk.supabase.co` | ✅ Sydney |
 | `eventlinqs.com.au` | `dpl_EwHUhyyDfa2unMHfzaVj2dkik9jg` | `https://gndnldyfudbytbboxesk.supabase.co` | ✅ Sydney |
 
-Probed via Playwright with `?cb=<timestamp>` cache-busters and `Cache-Control: no-store`. `x-vercel-cache: MISS` confirms fresh server responses, not browser/CDN cache. Cultural breadth seed visible: 49 event-link nodes on the homepage, hero strapline "Made for the diaspora — Afrobeats, Gospel, Amapiano, Owambe, Comedy", "27 events live now • 4 cities • This week" counter.
+Probed via Playwright with `?cb=<timestamp>` cache-busters and `Cache-Control: no-store`. `x-vercel-cache: MISS` confirms fresh server responses, not browser/CDN cache. Cultural breadth seed visible: 49 event-link nodes on the homepage, hero strapline "Made for the diaspora - Afrobeats, Gospel, Amapiano, Owambe, Comedy", "27 events live now • 4 cities • This week" counter.
 
 Screenshots:
 - `docs/sprint1/screenshots/post-redeploy-www-homepage.png` (full page, www domain)
 - `docs/sprint1/screenshots/post-redeploy-comau-homepage.png` (viewport, .com.au domain)
-- `docs/sprint1/screenshots/blocker-mumbai-still-serving-login.png` (pre-redeploy evidence — kept for audit trail)
+- `docs/sprint1/screenshots/blocker-mumbai-still-serving-login.png` (pre-redeploy evidence - kept for audit trail)
 
 ### Env-var swap notes for the audit trail
 
@@ -49,7 +49,7 @@ The first redeploy attempt did not promote a new build to Production; bundle sti
 
 | Category | Score | Status |
 |---|---|---|
-| **Performance** | 74 | 🟡 Sprint 2 target — ship to ≥90 |
+| **Performance** | 74 | 🟡 Sprint 2 target - ship to ≥90 |
 | **Accessibility** | 100 | ✅ |
 | **Best Practices** | 100 | ✅ |
 | **SEO** | 100 | ✅ |
@@ -64,13 +64,13 @@ The first redeploy attempt did not promote a new build to Production; bundle sti
 | **CLS** (Cumulative Layout Shift) | 0 | ≤ 0.1 | ✅ Perfect |
 | **FCP** (First Contentful Paint) | 2.2 s | ≤ 1.8 s | 🟡 Close to threshold |
 | **Speed Index** | 5.9 s | ≤ 3.4 s | 🟡 Sprint 2 priority |
-| **INP** (Interaction to Next Paint) | n/a | ≤ 200 ms | Field-data only — capture from PostHog/RUM in Sprint 2 |
+| **INP** (Interaction to Next Paint) | n/a | ≤ 200 ms | Field-data only - capture from PostHog/RUM in Sprint 2 |
 
 ### What this baseline tells us
 
 - **Backend latency is not the bottleneck.** TTFB 50ms is genuinely excellent; Sydney compute next to Sydney DB is delivering. Anyone who later argues for re-introducing Edge Functions or aggressive route caching has to beat 50ms TTFB without breaking RSC.
 - **The 3.7 s LCP and 5.9 s Speed Index are mostly client-side cost.** Likely culprits to investigate in Sprint 2: hero image weight (the diaspora hero photo), font loading strategy, JS bundle main-thread work (350ms TBT corroborates), and whether the cultural-events strip below the fold is render-blocking.
-- **Three perfect category scores** (a11y / BP / SEO) means we don't have to defensively maintain them in Sprint 2 — focus is uniformly on Performance.
+- **Three perfect category scores** (a11y / BP / SEO) means we don't have to defensively maintain them in Sprint 2 - focus is uniformly on Performance.
 
 These numbers are the **before** snapshot for Sprint 2 Phase 1 speed optimization. Re-run after each optimization PR and diff against this report.
 
@@ -103,33 +103,33 @@ All 7 commits are on `feat/sprint1-hollywood-foundation`, pushed to `origin`, an
 | Cultural breadth seed visible on homepage | DOM event-link count + diaspora hero copy | ✅ Pass (49 event links) |
 | Vercel compute region | `x-vercel-id` header | ✅ `syd1` |
 | Build / lint / typecheck (local, pre-merge) | `npm run build && npm run lint && npx tsc --noEmit` | ✅ All clean |
-| Lighthouse baseline captured | Lighthouse 13.1.0, mobile, slow 4G | ✅ Pass — see scores above |
+| Lighthouse baseline captured | Lighthouse 13.1.0, mobile, slow 4G | ✅ Pass - see scores above |
 
 ---
 
 ## Remaining items / handoffs
 
-### Final action — one step (you)
+### Final action - one step (you)
 Merge the Sprint 1 PR:
 
 → https://github.com/eventlinqs/eventlinqs-app/pull/new/feat/sprint1-hollywood-foundation
 
 Once merged, Vercel auto-deploys `main`. The new deployment will not change runtime behaviour (env vars are already correct, migrations and seed are already applied to Sydney directly), but it brings the repo state into alignment with what's running in production.
 
-### Mumbai decommission — scheduled
+### Mumbai decommission - scheduled
 Project `cqwdlimwlnyaaowwcyzp` marked for deletion **2026-05-03** (7 days from Sydney go-live). See `docs/sprint1/sydney-migration-runbook.md` § "Decommission Mumbai" for the procedure.
 
-### `.env.local` cleanup — optional
+### `.env.local` cleanup - optional
 Mumbai entries are still present in `.env.local` (Sydney wins via dotenv last-write precedence). After Mumbai is deleted on May 3, remove the Mumbai lines.
 
 ---
 
-## Sprint 1 Phase 1B — recommended start
+## Sprint 1 Phase 1B - recommended start
 
 With Phase 1A closed, Phase 1B can begin. Top candidates ordered by leverage:
 
-1. **Performance optimization pass** (LCP 3.7s → < 2.5s, TBT 350ms → < 200ms). Lighthouse baseline above is the diff target. Start by profiling the hero image + bundle main-thread work — those two are most likely to move LCP and TBT respectively.
+1. **Performance optimization pass** (LCP 3.7s → < 2.5s, TBT 350ms → < 200ms). Lighthouse baseline above is the diff target. Start by profiling the hero image + bundle main-thread work - those two are most likely to move LCP and TBT respectively.
 2. **PostHog INP capture wired up** so we get real-user (field) Web Vitals, not just lab. Lighthouse INP is unavailable in lab mode, and INP is the metric Google now ranks on.
-3. **Search relevance** — Meilisearch index population from the cultural breadth seed, so `/search` returns results across the 5 diaspora categories.
+3. **Search relevance** - Meilisearch index population from the cultural breadth seed, so `/search` returns results across the 5 diaspora categories.
 
 Recommend starting Phase 1B with #1 since the baseline is fresh and Sprint 2 was already framed around speed optimization.

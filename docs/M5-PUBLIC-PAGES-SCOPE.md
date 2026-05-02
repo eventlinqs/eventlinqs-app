@@ -1,7 +1,7 @@
-# EventLinqs Module 5 — Public Pages
+# EventLinqs Module 5 - Public Pages
 
-**Scope version:** 2.0 — final, ready for build
-**Predecessor:** M4.5 (Public Pages Redesign — homepage, nav, footer, auth shell, dashboard shell) — complete and deployed on eventlinqs.com
+**Scope version:** 2.0 - final, ready for build
+**Predecessor:** M4.5 (Public Pages Redesign - homepage, nav, footer, auth shell, dashboard shell) - complete and deployed on eventlinqs.com
 **Successor:** M4 Phase 2 (Reserved Seating with visual drag-drop seat builder)
 **Execution model:** 6 phases, each an independent Claude Code session
 **Estimated effort:** 8-9 Claude Code sessions across 3-4 evenings
@@ -10,17 +10,17 @@
 
 ---
 
-## Vision — locked
+## Vision - locked
 
-EventLinqs is a ticketing platform with a soul. It was born to serve the African diaspora — Afrobeats, Amapiano, Owambe, Gospel, Comedy — because that community has been poorly served by generic platforms that treat a Beyoncé stadium tour the same as a Melbourne diaspora warehouse rave. But the product itself is universal. Any organiser, any city, any genre can use it. The diaspora is the founding audience, not the ceiling.
+EventLinqs is a ticketing platform with a soul. It was born to serve the African diaspora - Afrobeats, Amapiano, Owambe, Gospel, Comedy - because that community has been poorly served by generic platforms that treat a Beyoncé stadium tour the same as a Melbourne diaspora warehouse rave. But the product itself is universal. Any organiser, any city, any genre can use it. The diaspora is the founding audience, not the ceiling.
 
-The positioning is **"Where the culture gathers."** Bold enough to mean something to the diaspora who feels seen. Universal enough that a pub-quiz organiser in Geelong can run their event on it without feeling out of place. That balance — emotional anchor with open arms — is what Ticketmaster, DICE, Eventbrite, and Resident Advisor all lack. They have scale without soul or soul without scale. EventLinqs has both.
+The positioning is **"Where the culture gathers."** Bold enough to mean something to the diaspora who feels seen. Universal enough that a pub-quiz organiser in Geelong can run their event on it without feeling out of place. That balance - emotional anchor with open arms - is what Ticketmaster, DICE, Eventbrite, and Resident Advisor all lack. They have scale without soul or soul without scale. EventLinqs has both.
 
 M5 builds the public discovery surface that lets this vision show itself.
 
 ---
 
-## Competitive truth — what we're up against and how we win
+## Competitive truth - what we're up against and how we win
 
 | Competitor | Their strength | Their weakness | How M5 beats them |
 |---|---|---|---|
@@ -33,23 +33,23 @@ M5 builds the public discovery surface that lets this vision show itself.
 
 ---
 
-## Pre-flight audit — what M4.5 already built
+## Pre-flight audit - what M4.5 already built
 
 Before writing any new code, Claude Code must read the M4.5 manifest and confirm the following are live on production. If any are missing, they are implicit dependencies and must be flagged before M5 Phase 1 starts.
 
-- Homepage (`/`) — hero "Where the culture gathers / MADE FOR THE DIASPORA", bento grid, This Week rail, Cultural Picks tabs, By City rail, Live Vibe marquee, For Organisers section, social proof, footer
-- Main navigation — logo, primary nav links, search bar trigger, city selector, Sign In, Get Started CTA
-- Footer — logo, 4 columns, social links, legal
-- Auth shell — Sign In, Sign Up, Forgot Password, Reset Password
-- Dashboard shell — `/dashboard` landing, events list, navigation
-- Global design tokens — gold accent, dark navy primary, cream background, GlassCard dark variant at 85% opacity, spacing rhythm tokens, heading hierarchy, Australian English copy throughout
-- Core components — `EventCard`, `GlassCard`, `EventlinqsLogo`, `Footer`, `Nav`, `SearchBar` trigger, heart save button wired to `saved_events` table with optimistic UI
+- Homepage (`/`) - hero "Where the culture gathers / MADE FOR THE DIASPORA", bento grid, This Week rail, Cultural Picks tabs, By City rail, Live Vibe marquee, For Organisers section, social proof, footer
+- Main navigation - logo, primary nav links, search bar trigger, city selector, Sign In, Get Started CTA
+- Footer - logo, 4 columns, social links, legal
+- Auth shell - Sign In, Sign Up, Forgot Password, Reset Password
+- Dashboard shell - `/dashboard` landing, events list, navigation
+- Global design tokens - gold accent, dark navy primary, cream background, GlassCard dark variant at 85% opacity, spacing rhythm tokens, heading hierarchy, Australian English copy throughout
+- Core components - `EventCard`, `GlassCard`, `EventlinqsLogo`, `Footer`, `Nav`, `SearchBar` trigger, heart save button wired to `saved_events` table with optimistic UI
 
 M5 builds around these. It does NOT rebuild them. If any M5 phase accidentally conflicts with M4.5 styling, the M4.5 tokens win.
 
 ---
 
-## What M5 delivers — 7 surfaces
+## What M5 delivers - 7 surfaces
 
 | Route | Purpose | Phase |
 |---|---|---|
@@ -65,7 +65,7 @@ Phase 6 is the close-out: full sitemap, integration verification, known-issues f
 
 ---
 
-## Cross-cutting requirements — apply to every phase
+## Cross-cutting requirements - apply to every phase
 
 These are non-negotiable. Claude Code enforces them on every commit.
 
@@ -108,19 +108,19 @@ These are non-negotiable. Claude Code enforces them on every commit.
 - Australian English (organiser, favourite, colour)
 - Zero exclamation marks in user-facing copy
 - Zero em-dashes or en-dashes in user-facing copy
-- No marketing hype adjectives — show, don't tell
+- No marketing hype adjectives - show, don't tell
 - Empty states have personality, not generic "No results found"
 - Error states are helpful, not scary
 
 ### Visual standards
-- Use only M4.5 design tokens — zero stale Tailwind classes (`bg-gray-*`, `bg-blue-*`)
+- Use only M4.5 design tokens - zero stale Tailwind classes (`bg-gray-*`, `bg-blue-*`)
 - Gold reserved for primary CTAs and emotional emphasis copy
 - Dark navy is brand surface, cream is background, white is elevated card
 - All imagery is real (Pexels or user-uploaded), no placeholder gradients past local dev
 
 ---
 
-## Phase 1 — `/events` Browse Page
+## Phase 1 - `/events` Browse Page
 
 ### Goal
 Build the production-grade events browse experience. Beats Eventbrite's `/d/` page on visual polish, beats DICE on category breadth, matches RA on filter sophistication, beats all on transparency.
@@ -135,7 +135,7 @@ Build the production-grade events browse experience. Beats Eventbrite's `/d/` pa
 
 **View toggle (NEW):**
 - Grid view (default) | Map view toggle in top-right of results area
-- Map view uses Mapbox GL JS (or Google Maps if Mapbox token isn't already in env vars — Claude Code checks)
+- Map view uses Mapbox GL JS (or Google Maps if Mapbox token isn't already in env vars - Claude Code checks)
 - Map shows event pins with category-coloured markers
 - Pin click opens compact event preview card with image, title, date, price, "View event" CTA
 - Pin clustering at zoom-out levels
@@ -155,11 +155,11 @@ Sticky horizontal chip row directly below nav. These are PRIMARY filters, not se
 
 **Social proof badge system (NEW):**
 Every event card across every M5 page renders one of these badges when conditions are met:
-- "Selling fast" — when >70% of inventory sold
-- "Few left" — when <10 tickets remaining
-- "Just announced" — when event created <48h ago
-- "Last chance" — when event starts <24h from now
-- "Free" — when no paid tickets exist
+- "Selling fast" - when >70% of inventory sold
+- "Few left" - when <10 tickets remaining
+- "Just announced" - when event created <48h ago
+- "Last chance" - when event starts <24h from now
+- "Free" - when no paid tickets exist
 - Badges render in top-left corner of `EventCard` component
 - Logic lives in a server-side helper, not duplicated per page
 
@@ -218,14 +218,14 @@ Browse with no filters, apply "Afrobeats" chip, apply "This Weekend" chip, chang
 
 ---
 
-## Phase 2 — Category + Sub-genre + City Landing Pages
+## Phase 2 - Category + Sub-genre + City Landing Pages
 
 ### Goal
 Build the SEO and discovery layer that drives organic traffic AND establishes EventLinqs as the AUTHORITY on diaspora music. This is where we beat RA on taxonomy depth (for non-electronic) and Eventbrite on visual polish.
 
 ### What gets built
 
-**Sub-genre taxonomy (NEW — schema work first):**
+**Sub-genre taxonomy (NEW - schema work first):**
 
 Add to database:
 ```sql
@@ -255,7 +255,7 @@ Seed taxonomy at minimum with these primary categories and sub-genres:
 - **Hip-Hop** → UK Hip-Hop, Aussie Hip-Hop, Naija Hip-Hop, US Hip-Hop
 - **House** → Deep House, Tech House, Soulful House, Afro House
 - **Comedy** → Stand-Up, Improv, Sketch
-- **Owambe** → (cultural celebration events — keep flat for now)
+- **Owambe** → (cultural celebration events - keep flat for now)
 - **Cultural / Community** → Diaspora Festivals, Heritage Events
 - **Other** → Any general category for non-music events (workshops, food, fitness, etc.)
 
@@ -266,7 +266,7 @@ This taxonomy expansion is what positions us as the diaspora authority. RA has 8
 - Sub-genre chip row directly below hero (Afrobeats parent → Afroswing / Afrohouse / Afro-pop / Naija Pop / Highlife chips)
 - Recommended for you rail (same logic as Phase 1, scoped to this category)
 - City filter chips
-- View toggle (Grid / Map) — same component as Phase 1
+- View toggle (Grid / Map) - same component as Phase 1
 - Primary events grid
 - "Featured organisers in [Category]" carousel
 - "Popular cities for [Category]" strip with mini-cards
@@ -283,10 +283,10 @@ This taxonomy expansion is what positions us as the diaspora authority. RA has 8
 - Hero with real city photography (Pexels) + local copy ("Melbourne doesn't sleep when the Afrobeats come to town.")
 - Category filter chips scoped to this city
 - Recommended for you rail scoped to this city
-- View toggle (Grid / Map) — map defaults to centred on this city
+- View toggle (Grid / Map) - map defaults to centred on this city
 - Primary events grid
 - "This weekend in [City]" featured strip (if events exist this weekend)
-- "Popular venues in [City]" — surfaces venue cards (links to `/venues/[slug]` from Phase 4)
+- "Popular venues in [City]" - surfaces venue cards (links to `/venues/[slug]` from Phase 4)
 - "Popular categories in [City]" strip
 - "Top organisers in [City]" carousel
 - Schema.org markup
@@ -316,7 +316,7 @@ Visit `/events/category/afrobeats`, click sub-genre chip "Afroswing", confirm UR
 
 ---
 
-## Phase 3 — Global Search Modal
+## Phase 3 - Global Search Modal
 
 ### Goal
 Build the full-screen search experience triggered by the M4.5 nav search bar. Beats DICE's search on result grouping, beats Eventbrite on speed, matches Linear's command menu on interaction polish.
@@ -337,14 +337,14 @@ Build the full-screen search experience triggered by the M4.5 nav search bar. Be
 
 **Empty state (no query):**
 - "Recent searches" section (max 5, stored in localStorage)
-- "Popular searches" section (curated list from a `popular_searches` table — admin-managed)
+- "Popular searches" section (curated list from a `popular_searches` table - admin-managed)
 - Shortcuts: "Browse by category" → links to `/events`, "Browse by city" → city selector
 
 **Results state:**
 Three sections, each collapsible:
-- **Events** — event cards (compact: title, date, city, price, image thumbnail)
-- **Organisers** — organiser cards (avatar, name, event count, verified badge)
-- **Cities & Categories** — text-only with event counts
+- **Events** - event cards (compact: title, date, city, price, image thumbnail)
+- **Organisers** - organiser cards (avatar, name, event count, verified badge)
+- **Cities & Categories** - text-only with event counts
 
 Each section shows max 5 results with "See all X events" / "See all X organisers" / "See all matching" CTAs that link to filtered browse pages.
 
@@ -384,12 +384,12 @@ Open modal via search bar, type "afro", verify Events section shows results with
 
 ---
 
-## Phase 4 — Organiser Profiles + Venue Pages
+## Phase 4 - Organiser Profiles + Venue Pages
 
 ### Goal
 Build the trust-and-discovery layer for organisers and venues. These pages are where buyers form trust and where organisers/venues anchor their brand. They drive organic shares (Instagram bios, WhatsApp broadcasts, flyer QR codes).
 
-### What gets built — Organiser Profile (`/organisers/[slug]`)
+### What gets built - Organiser Profile (`/organisers/[slug]`)
 
 **Cover image hero:**
 - Organiser-uploaded banner (16:9 aspect ratio, recommended 2160×1215)
@@ -403,7 +403,7 @@ Build the trust-and-discovery layer for organisers and venues. These pages are w
 - One-line tagline (from organiser settings)
 - City/base location with pin icon
 - Social links (Instagram, TikTok, Twitter, website) as icon row
-- **Follow button (NEW — real primitive, not stubbed):**
+- **Follow button (NEW - real primitive, not stubbed):**
   - Authed users: "Follow" / "Following" toggle, optimistic UI
   - Guest users: opens login modal with copy "Sign in to follow [Organiser]"
   - Wires to new `organiser_follows` table:
@@ -422,7 +422,7 @@ Build the trust-and-discovery layer for organisers and venues. These pages are w
 - "Y followers" (count from organiser_follows)
 - "Member since [year]" (from organisation created_at)
 - "Verified" badge if applicable
-- "Responds within X" (placeholder for M11 — show only if data exists, hide otherwise)
+- "Responds within X" (placeholder for M11 - show only if data exists, hide otherwise)
 
 **About section:**
 - Organiser-written bio with markdown support
@@ -450,7 +450,7 @@ Build the trust-and-discovery layer for organisers and venues. These pages are w
 - Form submits to organiser via Resend email
 - Honeypot + rate limit (3 enquiries per IP per day)
 
-### What gets built — Venue Page (`/venues/[slug]`)
+### What gets built - Venue Page (`/venues/[slug]`)
 
 **Schema (new):**
 ```sql
@@ -496,10 +496,10 @@ Visit a known organiser slug, confirm hero renders, click Follow button as guest
 
 ---
 
-## Phase 5 — Pricing Page
+## Phase 5 - Pricing Page
 
 ### Goal
-Ship the single most powerful conversion weapon EventLinqs has against Eventbrite and Ticketmaster — radical fee transparency.
+Ship the single most powerful conversion weapon EventLinqs has against Eventbrite and Ticketmaster - radical fee transparency.
 
 ### What gets built
 
@@ -518,14 +518,14 @@ Ship the single most powerful conversion weapon EventLinqs has against Eventbrit
 | Reserved seating | ✓ | ✓ | ✓ |
 | Marketing tools | ✓ | ✓ | ✓ + dedicated support |
 | Multi-currency | ✓ | ✓ | ✓ |
-| Custom branding | — | ✓ | ✓ |
-| Dedicated account manager | — | — | ✓ |
+| Custom branding | - | ✓ | ✓ |
+| Dedicated account manager | - | - | ✓ |
 | CTA | Get started | Get started | Talk to sales |
 
 **Organiser-absorb / pass-to-buyer toggle visualisation:**
 A toggle below the Standard card showing how the fee appears to the buyer:
-- Toggle ON (organiser absorbs): "Buyer sees AUD 50.00 — you receive AUD 45.95"
-- Toggle OFF (pass to buyer): "Buyer sees AUD 52.74 — you receive AUD 50.00"
+- Toggle ON (organiser absorbs): "Buyer sees AUD 50.00 - you receive AUD 45.95"
+- Toggle OFF (pass to buyer): "Buyer sees AUD 52.74 - you receive AUD 50.00"
 - Real numbers update as user toggles. Reads from `pricing_rules` table.
 
 **Fee calculator widget (the conversion weapon):**
@@ -566,7 +566,7 @@ Features to list:
 - Dedicated support
 - White-glove onboarding
 
-**Comparison table — EventLinqs vs Competitors:**
+**Comparison table - EventLinqs vs Competitors:**
 
 | | EventLinqs | Eventbrite | Ticketmaster |
 |---|---|---|---|
@@ -575,10 +575,10 @@ Features to list:
 | Service fees to buyer | Optional pass-through | Hidden, large | Predatory |
 | Payout speed | 7 days after event | 4-5 business days after event | 5-10 days after event |
 | Free events | Free | Free | N/A |
-| Diaspora community focus | ✓ | — | — |
-| Transparent fee calculator | ✓ | — | — |
+| Diaspora community focus | ✓ | - | - |
+| Transparent fee calculator | ✓ | - | - |
 
-(Verify all competitor numbers via web search before committing — they change.)
+(Verify all competitor numbers via web search before committing - they change.)
 
 **FAQ section (accordion):**
 - "When do I get paid after my event?"
@@ -612,7 +612,7 @@ Load `/pricing`, verify three tier cards render, toggle organiser-absorb, verify
 
 ---
 
-## Phase 6 — M5 Close-Out
+## Phase 6 - M5 Close-Out
 
 ### Goal
 Tie off M5 with full integration verification, sitemap generation, known-issues fixes, and the m5-close-out git tag.
@@ -635,9 +635,9 @@ Tie off M5 with full integration verification, sitemap generation, known-issues 
 - Recommended for you rails populate correctly
 
 **Known-issues fixes from P0 close-out report:**
-1. **Supabase Auth emails via Resend SMTP** — Configure Supabase Dashboard → Auth → SMTP Settings to use Resend API. All auth emails (password reset, email confirmation, magic links) now come from `noreply@eventlinqs.com` with proper EventLinqs branding.
-2. **Vercel `/events` caching alert** — Verify ISR is working correctly via Vercel logs. Run the Facebook crawler simulation: 100 concurrent requests to `/events` and confirm Supabase doesn't get hammered.
-3. **Step C authed smoke** — Now that Supabase Auth is properly configured for password resets, run the deferred authed smoke from the P0 close-out. Reset admin password, log in, verify dashboard, test authed checkout, save flow, logout.
+1. **Supabase Auth emails via Resend SMTP** - Configure Supabase Dashboard → Auth → SMTP Settings to use Resend API. All auth emails (password reset, email confirmation, magic links) now come from `noreply@eventlinqs.com` with proper EventLinqs branding.
+2. **Vercel `/events` caching alert** - Verify ISR is working correctly via Vercel logs. Run the Facebook crawler simulation: 100 concurrent requests to `/events` and confirm Supabase doesn't get hammered.
+3. **Step C authed smoke** - Now that Supabase Auth is properly configured for password resets, run the deferred authed smoke from the P0 close-out. Reset admin password, log in, verify dashboard, test authed checkout, save flow, logout.
 
 **Performance audit:**
 - Run Lighthouse on every M5 route, capture scores in a table
@@ -670,7 +670,7 @@ Start at homepage, click Browse Events, filter by Afrobeats, toggle to Map view,
 
 ---
 
-## Execution order — locked
+## Execution order - locked
 
 | Phase | Builds | Sessions | Notes |
 |---|---|---|---|
@@ -687,14 +687,14 @@ Start at homepage, click Browse Events, filter by Afrobeats, toggle to Map view,
 ## What M5 deliberately does NOT include
 
 To keep scope honest:
-- No reviews/ratings UI (M7 — community)
-- No SmartLinq full recommendations engine (M8 — uses MVP recommendation logic only)
+- No reviews/ratings UI (M7 - community)
+- No SmartLinq full recommendations engine (M8 - uses MVP recommendation logic only)
 - No push/email marketing infrastructure (M10)
 - No organiser analytics dashboard (M11)
 - No admin panel work (M12)
-- Reserved seating visual drag-drop builder — that's M4 Phase 2 immediately after M5
-- Resale market — that's M11
-- Friends-going social signal — deferred to M7 (but `organiser_follows` schema designed to extend)
+- Reserved seating visual drag-drop builder - that's M4 Phase 2 immediately after M5
+- Resale market - that's M11
+- Friends-going social signal - deferred to M7 (but `organiser_follows` schema designed to extend)
 
 ---
 

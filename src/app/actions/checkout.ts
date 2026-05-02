@@ -59,7 +59,7 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
   const adminClient = createAdminClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  // 1. Verify reservation is still active — load via admin client so guest
+  // 1. Verify reservation is still active - load via admin client so guest
   // carts (no auth session, RLS-denied) can still find their row. Ownership
   // is then enforced in app code against the guest_session cookie.
   const { data: reservation } = await adminClient
@@ -296,10 +296,10 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
   const { error: itemsError } = await adminClient.from('order_items').insert(orderItems)
   if (itemsError) {
     console.error('Order items error:', itemsError)
-    // Order is created, don't fail — items issue should be investigated
+    // Order is created, don't fail - items issue should be investigated
   }
 
-  // 8. For free orders — confirm immediately
+  // 8. For free orders - confirm immediately
   if (isFreeOrder) {
     // Mark reservation as converted
     await supabase
@@ -367,7 +367,7 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
       },
     })
 
-    // Save gateway_payment_id and client_secret — use admin client so guest
+    // Save gateway_payment_id and client_secret - use admin client so guest
     // checkouts (no auth session, RLS-denied) can persist the Stripe intent
     // id. Webhook matches payments by gateway_payment_id; if this UPDATE is
     // silently swallowed the order can never be confirmed.
@@ -483,7 +483,7 @@ async function processSeatCheckout({
 
   const priceBySeatId = new Map(priceResults.map(r => [r.seat_id, r.price_cents]))
 
-  // Build cartTickets (one "item" per unique tier, aggregated by price — for fee calculator)
+  // Build cartTickets (one "item" per unique tier, aggregated by price - for fee calculator)
   // Use the cheapest price for the fee tier if mixed
   const aggregatedForFee = [{
     tier_id: tierIdsFromSeats[0] ?? fallbackTier?.id ?? 'seat-ticket',

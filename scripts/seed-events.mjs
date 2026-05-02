@@ -1,7 +1,7 @@
 /**
  * One-shot seed script: 8 culturally-relevant sample events + ticket tiers
  * Run: node scripts/seed-events.mjs
- * Uses service role key — bypasses RLS. Delete this file after seeding.
+ * Uses service role key - bypasses RLS. Delete this file after seeding.
  */
 
 import { createClient } from '@supabase/supabase-js'
@@ -369,7 +369,7 @@ for (const ev of events) {
 
 // --- M5 Step 5: demo dataset ------------------------------------------------
 // 25 extra events designed so /events can exercise every filter chip, every
-// social-proof badge, four cities across AU/NZ/NG/GH, and a $5–$500 price
+// social-proof badge, four cities across AU/NZ/NG/GH, and a $5-$500 price
 // spread. Covers are intentionally null so m5-events-grid's Pexels fallback
 // kicks in (confirms Step 5 Pre-work A end-to-end).
 

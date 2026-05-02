@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { createPublicClient } from '@/lib/supabase/public-client'
 import { CulturalPicksRail } from '@/components/features/events/cultural-picks-rail'
 import { ThisWeekCard } from '@/components/features/events/this-week-card'
 import { CONTAINER, SECTION_TIGHT } from '@/lib/ui/spacing'
@@ -16,7 +16,7 @@ interface Props {
 }
 
 export async function CulturalPicksSection({ cityFilter, nowIso }: Props) {
-  const supabase = await createClient()
+  const supabase = createPublicClient()
 
   const culturalQueries = await Promise.all(
     CULTURE_TABS.map(async tab => {
@@ -67,7 +67,7 @@ export async function CulturalPicksSection({ cityFilter, nowIso }: Props) {
             <div className="mt-1 h-8 w-0.5 shrink-0 bg-gold-500" aria-hidden />
             <div>
               <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-700">
-                Made for the diaspora
+                Made for every culture
               </p>
               <h2 id="culture-heading" className="font-display text-2xl font-bold text-ink-900 sm:text-3xl">
                 Cultural picks

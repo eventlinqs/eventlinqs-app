@@ -2,7 +2,7 @@ import type { FetchPublicEventsFilters } from './types'
 
 /**
  * Shape of the raw searchParams object that Next.js awaits in /events.
- * Everything is optional + string — parsing happens here so the page and
+ * Everything is optional + string - parsing happens here so the page and
  * its children never touch raw URL state.
  */
 export type EventsSearchParams = {
@@ -106,7 +106,7 @@ export function parseEventsSearchParams(
  */
 /**
  * Does the current filter state represent a default/unfiltered view?
- * Used to gate the Recommended rail — a personalised/popular rail is
+ * Used to gate the Recommended rail - a personalised/popular rail is
  * noise when the user has narrowed the catalogue to something specific.
  * `country` and `sort` are excluded because `country` is auto-defaulted
  * to the visitor's detected location (not a user-initiated filter) and

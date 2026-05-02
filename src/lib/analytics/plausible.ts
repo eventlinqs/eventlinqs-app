@@ -1,12 +1,12 @@
 /**
- * Plausible Analytics — type-safe event tracking.
+ * Plausible Analytics - type-safe event tracking.
  *
  * Client-side: calls through to window.plausible installed by the snippet in
  * src/app/layout.tsx. Silently no-ops during SSR or before the script loads
  * (the queue in layout.tsx means calls made between page paint and script
  * ready are replayed once it boots).
  *
- * Server-side: see {@link trackEventServer} — posts to plausible.io/api/event
+ * Server-side: see {@link trackEventServer} - posts to plausible.io/api/event
  * for conversions that finalise outside the browser (Stripe webhook, server
  * actions).
  */
@@ -49,23 +49,6 @@ export function trackTicketCheckoutStart(data: {
   trackEvent('ticket_checkout_start', data)
 }
 
-export function trackTicketPurchaseComplete(data: {
-  event_id: string
-  ticket_type: string
-  quantity: number
-  total_amount_cents: number
-  currency: string
-}): void {
-  trackEvent('ticket_purchase_complete', data)
-}
-
-export function trackOrganiserSignup(data: {
-  organisation_id: string
-  organisation_type: string
-}): void {
-  trackEvent('organiser_signup', data)
-}
-
 export function trackEventSearch(data: {
   query?: string
   category?: string
@@ -92,7 +75,7 @@ const PLAUSIBLE_USER_AGENT = 'EventLinqs-Server/1.0 (+https://eventlinqs.com)'
 
 /**
  * Record a custom event from a server context (webhook, server action, cron).
- * Uses Plausible's Events API. Fire-and-forget — callers should never await
+ * Uses Plausible's Events API. Fire-and-forget - callers should never await
  * this in a critical path.
  *
  * @param url  Absolute URL to associate the event with (e.g. the confirmation

@@ -76,7 +76,7 @@ export async function createOrganisation(formData: FormData) {
   // Insert owner membership using the service-role client.
   // The anon-key RLS policy on organisation_members requires the user to
   // already be an owner of the org, which is impossible on first insert.
-  // We've already verified the user's identity above — this is safe.
+  // We've already verified the user's identity above - this is safe.
   const adminClient = createAdminClient()
   const { error: memberError } = await adminClient
     .from('organisation_members')

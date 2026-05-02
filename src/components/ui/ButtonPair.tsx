@@ -31,7 +31,7 @@ function withVariant(node: ReactNode, variant: ButtonVariant): ReactNode {
 }
 
 /**
- * ButtonPair — coupled-hover pair of buttons.
+ * ButtonPair - coupled-hover pair of buttons.
  *
  * Default state:
  *   primary  = gold (primary variant)

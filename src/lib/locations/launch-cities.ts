@@ -1,8 +1,9 @@
 /**
  * Curated 32-city launch list for the EventLinqs location picker and
- * /events/browse/{city-slug} path-based routing. Chosen for African
- * diaspora community density rather than raw population — Ticketmaster's
- * city list is generic; ours is cultural.
+ * /events/browse/{city-slug} path-based routing. Chosen for cultural
+ * community density across Africa, the Caribbean, South Asia, East
+ * Asia, Latin America, and Anglo markets, rather than raw population.
+ * Ticketmaster's city list is generic; ours is cultural.
  *
  * These cities ALWAYS appear in the picker and sitemap regardless of
  * current event count, so they accumulate Google authority for when
@@ -21,7 +22,7 @@ export type LaunchCity = {
 }
 
 export const LAUNCH_TARGET_CITIES: readonly LaunchCity[] = [
-  // Australia — 13 cities, sorted roughly by population
+  // Australia - 13 cities, sorted roughly by population
   { city: 'Melbourne',     slug: 'melbourne',     country: 'Australia', countryCode: 'AU', latitude: -37.8136, longitude: 144.9631, isAustralia: true },
   { city: 'Sydney',        slug: 'sydney',        country: 'Australia', countryCode: 'AU', latitude: -33.8688, longitude: 151.2093, isAustralia: true },
   { city: 'Brisbane',      slug: 'brisbane',      country: 'Australia', countryCode: 'AU', latitude: -27.4698, longitude: 153.0251, isAustralia: true },
@@ -69,12 +70,6 @@ export const LAUNCH_TARGET_CITIES: readonly LaunchCity[] = [
   // UAE
   { city: 'Dubai',         slug: 'dubai',         country: 'United Arab Emirates', countryCode: 'AE', latitude: 25.2048, longitude: 55.2708, isAustralia: false },
 ]
-
-const BY_SLUG = new Map(LAUNCH_TARGET_CITIES.map(c => [c.slug, c]))
-
-export function findLaunchCityBySlug(slug: string): LaunchCity | null {
-  return BY_SLUG.get(slug.toLowerCase()) ?? null
-}
 
 export function toCitySlug(name: string): string {
   return name

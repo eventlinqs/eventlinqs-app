@@ -9,6 +9,7 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from 'react'
+import { MEDIA_TRANSITIONS } from '@/components/media'
 
 function subscribeReducedMotion(onChange: () => void): () => void {
   if (typeof window === 'undefined') return () => {}
@@ -25,7 +26,7 @@ function getServerReducedMotion(): boolean {
 }
 
 /**
- * HeroCarouselClient — rotating stage for the cinematic homepage hero.
+ * HeroCarouselClient - rotating stage for the cinematic homepage hero.
  *
  * - Auto-advance every 7s; pauses on hover, focus-within, or prefers-reduced-motion.
  * - Cross-fades backgrounds; swaps foreground (eyebrow + CTA + card) per slide.
@@ -130,7 +131,7 @@ export function HeroCarouselClient({
       }}
       onKeyDown={onKeyDown}
     >
-      {/* Slide 0 is always the base layer — rendered as a bare wrapper with
+      {/* Slide 0 is always the base layer - rendered as a bare wrapper with
           NO opacity, NO transition class, NO inline style. Lighthouse's LCP
           observer needs a stable, unambiguous candidate on initial paint;
           any `transition-opacity` or inline `opacity` on an ancestor of the
@@ -148,8 +149,11 @@ export function HeroCarouselClient({
             <div
               key={slide.key}
               aria-hidden={realIndex !== index}
-              className="absolute inset-0 transition-opacity duration-700 ease-out"
-              style={{ opacity: realIndex === index ? 1 : 0 }}
+              className="absolute inset-0"
+              style={{
+                opacity: realIndex === index ? 1 : 0,
+                transition: `opacity ${MEDIA_TRANSITIONS.heroCarouselFadeMs}ms ease-out`,
+              }}
             >
               {slide.background}
             </div>
@@ -157,7 +161,7 @@ export function HeroCarouselClient({
         })}
       </div>
 
-      {/* Radial darkening behind the ribbon card — floats card regardless of active media */}
+      {/* Radial darkening behind the ribbon card - floats card regardless of active media */}
       <div
         className="absolute inset-0 pointer-events-none hidden lg:block"
         style={{
@@ -183,7 +187,7 @@ export function HeroCarouselClient({
               className="mt-4 font-display font-extrabold leading-[0.95] tracking-tight text-white"
               style={{ fontSize: 'clamp(2.25rem, 8vw, 6rem)' }}
             >
-              Where the <span className="text-gold-400">culture</span> gathers.
+              Every <span className="text-gold-400">culture</span>. Every event. One platform.
             </h1>
             <p className="mt-5 max-w-xl text-base text-white/80 sm:text-lg">{subcopy}</p>
 
@@ -252,7 +256,7 @@ export function HeroCarouselClient({
               ))}
             </div>
 
-            {/* Prev / next arrows — md+ only */}
+            {/* Prev / next arrows - md+ only */}
             <button
               type="button"
               onClick={goPrev}

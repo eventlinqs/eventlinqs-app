@@ -1,17 +1,15 @@
-'use client'
-
 import { EventlinqsLogo } from '@/components/ui/eventlinqs-logo'
 
 /**
- * SiteFooter — dual-pattern footer.
+ * SiteFooter - dual-pattern footer.
  *
  * Spec §6.8:
  *   - Mobile (<768px): 3 accordions (Discover, Organisers, Help) + social icons
  *   - Desktop (768px+): dark 4-col grid (Logo+tagline | Discover | Organisers | Help)
- *   - Background: ink-900 (#0A1628) — deep navy
- *   - CTA strip above footer columns: "Where the culture gathers"
+ *   - Background: ink-900 (#0A1628) - deep navy
+ *   - CTA strip above footer columns: "Every culture. Every event. One platform."
  *
- * Uses <details>/<summary> for mobile accordion — no JS, fully accessible,
+ * Uses <details>/<summary> for mobile accordion - no JS, fully accessible,
  * respects prefers-reduced-motion via CSS.
  */
 
@@ -80,13 +78,13 @@ export function SiteFooter() {
       {/* Mobile accordion / Desktop 4-col grid */}
       <div className="mx-auto max-w-7xl px-4 pt-20 pb-10 sm:px-6 lg:px-8">
 
-        {/* Desktop grid (hidden on mobile) — 6 equal columns: Brand + 5 link sections */}
+        {/* Desktop grid (hidden on mobile) - 6 equal columns: Brand + 5 link sections */}
         <div className="hidden md:grid md:grid-cols-6 md:gap-8">
-          {/* Col 1 — Brand */}
+          {/* Col 1 - Brand */}
           <div>
             <EventlinqsLogo size="lg" variant="inverted" />
             <p className="mt-3 text-sm leading-6 text-white/70">
-              Built for Africa, its diaspora, and every community that knows how to celebrate.
+              The ticketing platform built for every culture.
             </p>
             <div className="mt-6 flex gap-4">
               <a href="https://twitter.com/eventlinqs" aria-label="EventLinqs on X (Twitter)" className="text-white/70 hover:text-white transition-colors">
@@ -101,7 +99,7 @@ export function SiteFooter() {
             </div>
           </div>
 
-          {/* Col 2 — Discover */}
+          {/* Col 2 - Discover */}
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-white/70">Discover</p>
             <ul className="mt-4 space-y-3">
@@ -113,7 +111,7 @@ export function SiteFooter() {
             </ul>
           </div>
 
-          {/* Col 3 — Organisers */}
+          {/* Col 3 - Organisers */}
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-white/70">Organisers</p>
             <ul className="mt-4 space-y-3">
@@ -125,7 +123,7 @@ export function SiteFooter() {
             </ul>
           </div>
 
-          {/* Col 4 — Help */}
+          {/* Col 4 - Help */}
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-white/70">Help</p>
             <ul className="mt-4 space-y-3">
@@ -137,7 +135,7 @@ export function SiteFooter() {
             </ul>
           </div>
 
-          {/* Col 5 — Company */}
+          {/* Col 5 - Company */}
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-white/70">Company</p>
             <ul className="mt-4 space-y-3">
@@ -149,7 +147,7 @@ export function SiteFooter() {
             </ul>
           </div>
 
-          {/* Col 6 — Legal */}
+          {/* Col 6 - Legal */}
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-white/70">Legal</p>
             <ul className="mt-4 space-y-3">
@@ -215,7 +213,7 @@ export function SiteFooter() {
             © {new Date().getFullYear()} EventLinqs. All rights reserved.
           </p>
           <p className="hidden md:block text-xs text-white/70">
-            Built for Africa, its diaspora, and every community that knows how to celebrate.
+            The ticketing platform built for every culture.
           </p>
           <p className="text-xs text-white/70">
             Transparent pricing. Zero hidden fees. Always.

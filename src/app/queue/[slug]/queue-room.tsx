@@ -115,7 +115,7 @@ export function QueueRoom({
   const [queueId, setQueueId] = useState<string | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
-  // Screen Wake Lock (DICE pattern — prevents phone screen lock during wait)
+  // Screen Wake Lock (DICE pattern - prevents phone screen lock during wait)
   const wakeLockRef = useRef<WakeLockSentinel | null>(null)
   useEffect(() => {
     if (typeof navigator === 'undefined' || !('wakeLock' in navigator)) return

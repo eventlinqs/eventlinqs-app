@@ -1,4 +1,4 @@
-# SESSION 2B — DIAGNOSTIC REPORT + SCOPE MANIFEST
+# SESSION 2B - DIAGNOSTIC REPORT + SCOPE MANIFEST
 
 **Project:** EventLinqs
 **Executor:** Claude Code (Opus 4.7, xhigh effort) across 3 parallel terminal tabs
@@ -10,15 +10,15 @@
 
 ## HOW TO EXECUTE
 
-Three parallel streams, different files, no collisions. Open three PowerShell tabs with Claude Code in each, paste the matching stream prompt per tab, they run simultaneously. Lawal reviews outputs, runs local smoke test, commits and pushes as three commits (or one — his call).
+Three parallel streams, different files, no collisions. Open three PowerShell tabs with Claude Code in each, paste the matching stream prompt per tab, they run simultaneously. Lawal reviews outputs, runs local smoke test, commits and pushes as three commits (or one - his call).
 
-- **Stream A** — Backend & Data
-- **Stream B** — Auth & Dashboard
-- **Stream C** — Public Site Polish
+- **Stream A** - Backend & Data
+- **Stream B** - Auth & Dashboard
+- **Stream C** - Public Site Polish
 
 ---
 
-# PART 1 — DIAGNOSTIC REPORT
+# PART 1 - DIAGNOSTIC REPORT
 
 Every finding below is confirmed from a direct read of the main branch.
 
@@ -33,7 +33,7 @@ Three grey cards on grey background, no identity. Needs complete rebuild to Stri
 ## 1.3 Dashboard nav has no gold hover
 Same file, lines 37-55. Uses `text-gray-700 hover:text-gray-900`. Breaks brand consistency with public site.
 
-## 1.4 Category filter broken — UUID vs slug mismatch (ROOT CAUSE)
+## 1.4 Category filter broken - UUID vs slug mismatch (ROOT CAUSE)
 **File:** `src/app/events/page.tsx` line 57
 ```ts
 if (params.category) {
@@ -44,7 +44,7 @@ Code compares UUID column to slug string. Footer and homepage pass slugs (`?cate
 
 ## 1.5 Footer Comedy link points to wrong category
 **File:** `src/components/layout/site-footer.tsx` line 21
-`{ label: 'Comedy', href: '/events?category=arts-culture' }` — comedy is its own category slug, not arts-culture. Also `Cultural Celebrations` points to `community` which doesn't exist in hero-categories or seed data.
+`{ label: 'Comedy', href: '/events?category=arts-culture' }` - comedy is its own category slug, not arts-culture. Also `Cultural Celebrations` points to `community` which doesn't exist in hero-categories or seed data.
 
 ## 1.6 Price filter half-built
 **File:** `src/components/features/events/filter-sidebar.tsx` lines 183-193
@@ -74,7 +74,7 @@ Top-nav-only layout can't scale as features grow. Every modern SaaS uses top + l
 
 ---
 
-# PART 2 — NORTH STAR PRINCIPLES
+# PART 2 - NORTH STAR PRINCIPLES
 
 Applies to every change in every stream:
 
@@ -91,7 +91,7 @@ Applies to every change in every stream:
 
 ---
 
-# PART 3 — STREAM A: BACKEND & DATA
+# PART 3 - STREAM A: BACKEND & DATA
 
 **Tab 1.** Files: `src/app/events/page.tsx`, `src/components/features/events/filter-sidebar.tsx`, `supabase/migrations/*`, `src/lib/geo/*` (new), `src/app/api/webhooks/stripe/route.ts`, `src/lib/supabase/client.ts`, `next.config.ts`, `src/app/api/location/set/route.ts` (new).
 
@@ -133,7 +133,7 @@ Change category FilterLink map (around line 167) to use slugs:
 ))}
 ```
 
-## A.2 Fix price filter — Free / Paid / All
+## A.2 Fix price filter - Free / Paid / All
 
 **File:** `src/components/features/events/filter-sidebar.tsx` lines 183-193
 
@@ -201,7 +201,7 @@ Render the group in the sidebar. Also add `distance` to FilterParams type and pa
 
 Remove culture param from searchParams type and from the query block (lines 63-65).
 
-Distance filtering requires the user's current coords from geo-detect (A.4). When `params.distance` is set and user's lat/lng is known, filter events by Haversine distance. For simplicity in 2b, implement a Postgres RPC `events_within_distance(lat, lng, radius_km)` — Claude Code writes the SQL function in migration A.5 and calls it from events page when distance param is present.
+Distance filtering requires the user's current coords from geo-detect (A.4). When `params.distance` is set and user's lat/lng is known, filter events by Haversine distance. For simplicity in 2b, implement a Postgres RPC `events_within_distance(lat, lng, radius_km)` - Claude Code writes the SQL function in migration A.5 and calls it from events page when distance param is present.
 
 ## A.4 Geo-detection utility
 
@@ -349,7 +349,7 @@ COMMENT ON COLUMN profiles.preferred_city IS
   'User-selected city. Shape: {city, country, countryCode, latitude, longitude}';
 ```
 
-Also backfill venue coords for seeded events — Claude Code writes a follow-up seed update with approximate coords for Melbourne (-37.8136, 144.9631), Sydney (-33.8688, 151.2093), Brisbane (-27.4698, 153.0251), Perth (-31.9523, 115.8613) etc., applied based on `venue_city` match.
+Also backfill venue coords for seeded events - Claude Code writes a follow-up seed update with approximate coords for Melbourne (-37.8136, 144.9631), Sydney (-33.8688, 151.2093), Brisbane (-27.4698, 153.0251), Perth (-31.9523, 115.8613) etc., applied based on `venue_city` match.
 
 ## A.6 Fix Stripe webhook 307
 
@@ -417,7 +417,7 @@ Manual tests:
 
 ---
 
-# PART 4 — STREAM B: AUTH & DASHBOARD REBUILD
+# PART 4 - STREAM B: AUTH & DASHBOARD REBUILD
 
 **Tab 2.** Files: `src/app/(auth)/*`, `src/app/(dashboard)/*`, `src/components/dashboard/*`, `src/components/auth/*`, `src/lib/supabase/middleware.ts`.
 
@@ -494,7 +494,7 @@ Update signup page to redirect here after successful signup.
 
 ### B.5.1 New layout
 
-**File:** `src/app/(dashboard)/layout.tsx` — rewrite
+**File:** `src/app/(dashboard)/layout.tsx` - rewrite
 
 ```tsx
 import { createClient } from '@/lib/supabase/server'
@@ -531,8 +531,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
 **New file:** `src/components/dashboard/dashboard-topbar.tsx` (replaces dashboard-nav.tsx)
 
 Top bar 64px tall, white background, 1px bottom border:
-- Left: EVENTLINQS wordmark — **`href="/"` CRITICAL** — `font-display font-extrabold tracking-tight text-ink-900 hover:text-gold-500 transition-colors`
-- Middle: global search input (ghost border, Search icon, placeholder "Search events, orders, tickets…") — non-functional visual for now, can wire up in 2c
+- Left: EVENTLINQS wordmark - **`href="/"` CRITICAL** - `font-display font-extrabold tracking-tight text-ink-900 hover:text-gold-500 transition-colors`
+- Middle: global search input (ghost border, Search icon, placeholder "Search events, orders, tickets…") - non-functional visual for now, can wire up in 2c
 - Right: notifications Bell icon button, then user avatar (40px circle with initials if no avatar_url) + first name, opens dropdown on click
 - Dropdown menu: Account settings, Billing, Help centre (target="_blank" to /help), divider, Sign out
 
@@ -553,7 +553,7 @@ Items list per diagnostic section 1.13 above.
 
 ### B.5.4 Dashboard home rewrite
 
-**File:** `src/app/(dashboard)/dashboard/page.tsx` — complete rewrite
+**File:** `src/app/(dashboard)/dashboard/page.tsx` - complete rewrite
 
 ```tsx
 import { createClient } from '@/lib/supabase/server'
@@ -628,10 +628,10 @@ export default async function DashboardPage() {
 ### B.5.6 Empty states on other dashboard pages
 
 Audit and improve:
-- `/dashboard/events` — when no events, show illustration + "Host your first event" + CTA
-- `/dashboard/tickets` — when no tickets, "You haven't bought any tickets yet" + "Browse events" CTA
-- `/dashboard/my-waitlists` — "You're not on any waitlists" + "Browse sold-out events" link
-- `/dashboard/my-squads` — "No squads yet" + explanation of squads + "Join or create a squad"
+- `/dashboard/events` - when no events, show illustration + "Host your first event" + CTA
+- `/dashboard/tickets` - when no tickets, "You haven't bought any tickets yet" + "Browse events" CTA
+- `/dashboard/my-waitlists` - "You're not on any waitlists" + "Browse sold-out events" link
+- `/dashboard/my-squads` - "No squads yet" + explanation of squads + "Join or create a squad"
 
 ## B.6 Middleware updates
 
@@ -658,7 +658,7 @@ Manual tests:
 
 ---
 
-# PART 5 — STREAM C: PUBLIC SITE POLISH
+# PART 5 - STREAM C: PUBLIC SITE POLISH
 
 **Tab 3.** Files: `src/components/layout/site-header.tsx`, `src/components/layout/site-footer.tsx`, `src/components/ui/location-picker.tsx` (new), `src/app/page.tsx` (minor), `public/logos/*` (new), `src/app/dev/logo-preview/page.tsx` (new).
 
@@ -711,7 +711,7 @@ Convert to server component wrapper that passes `detectLocation()` result to a c
 
 **File:** `src/components/layout/site-header.tsx` lines 119-131
 
-Change nav link className from `hover:text-ink-900` to `hover:text-gold-600 transition-colors`. Sign in ghost button also gets `hover:text-gold-600` via the Button variant — verify the Button component's ghost variant supports gold hover or add a new variant `gold-ghost`.
+Change nav link className from `hover:text-ink-900` to `hover:text-gold-600 transition-colors`. Sign in ghost button also gets `hover:text-gold-600` via the Button variant - verify the Button component's ghost variant supports gold hover or add a new variant `gold-ghost`.
 
 ## C.4 Pillar card coupled hover
 
@@ -726,21 +726,21 @@ group-hover/cards:opacity-60
 hover:!opacity-100 hover:border-gold-500 hover:-translate-y-0.5
 ```
 
-## C.5 Logo exploration — 3 SVG concepts
+## C.5 Logo exploration - 3 SVG concepts
 
 Create `public/logos/` directory with three SVG files:
 
-**`eventlinqs-concept-a.svg`** — current wordmark + a single gold dot after the last S (like a full stop that doubles as a brand mark):
+**`eventlinqs-concept-a.svg`** - current wordmark + a single gold dot after the last S (like a full stop that doubles as a brand mark):
 ```
 EVENTLINQS.
 ```
 
-**`eventlinqs-concept-b.svg`** — wordmark with the Q's tail extending into a gold underscore beneath the next 2 letters:
+**`eventlinqs-concept-b.svg`** - wordmark with the Q's tail extending into a gold underscore beneath the next 2 letters:
 ```
 EVENTLIN[Q̲S]
 ```
 
-**`eventlinqs-concept-c.svg`** — wordmark with sharper, geometric E and S custom letterforms while keeping the overall feel — look at how Linear or Stripe refined their wordmarks by just tweaking 1-2 letters.
+**`eventlinqs-concept-c.svg`** - wordmark with sharper, geometric E and S custom letterforms while keeping the overall feel - look at how Linear or Stripe refined their wordmarks by just tweaking 1-2 letters.
 
 Each SVG uses `currentColor` for the text so it works on light or dark backgrounds.
 
@@ -777,14 +777,14 @@ Manual tests:
 
 ---
 
-# PART 6 — INTEGRATION CHECKLIST
+# PART 6 - INTEGRATION CHECKLIST
 
 After all three streams complete, Lawal:
 
-1. Checks `git status` in each tab — expects non-overlapping changed files (should be the case given the file split above)
-2. Runs `npm run build` at repo root — must succeed
-3. Runs `npm run lint` — must succeed
-4. Runs `npm run dev` — clean startup, no unhandledrejection noise
+1. Checks `git status` in each tab - expects non-overlapping changed files (should be the case given the file split above)
+2. Runs `npm run build` at repo root - must succeed
+3. Runs `npm run lint` - must succeed
+4. Runs `npm run dev` - clean startup, no unhandledrejection noise
 5. Smoke tests in browser:
    - Home: location pill shows "Melbourne", nav hover goes gold, footer links all return events
    - Events page: filter sidebar works for category, price, distance (no Culture/Language group visible)
@@ -798,20 +798,20 @@ After all three streams complete, Lawal:
 
 ---
 
-# PART 7 — OUT OF SCOPE FOR 2B
+# PART 7 - OUT OF SCOPE FOR 2B
 
 Deliberately deferred to future sessions:
 
-- Seat selector rebuild (2c — its own deep surface)
+- Seat selector rebuild (2c - its own deep surface)
 - Upstash Redis Sydney migration (M5 or 2c)
 - Image upload 10MB + WEBP (M4 polish follow-up)
 - Stripe Connect full onboarding UI (M5)
 - Real /dashboard/insights and /dashboard/payouts content (placeholder routes OK for now)
-- Full logo implementation — 2b produces concepts only; Lawal picks, 2c implements
+- Full logo implementation - 2b produces concepts only; Lawal picks, 2c implements
 
 ---
 
-# PART 8 — FINAL WORD
+# PART 8 - FINAL WORD
 
 Every surface touched in 2b must hold up to a walkthrough with a senior Silicon Valley engineer or product designer. Every empty state is designed. Every hover has intent. Every link resolves. Every flow completes.
 

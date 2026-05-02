@@ -10,6 +10,7 @@ export const metadata: Metadata = {
   title: 'Contact Us | EventLinqs',
   description:
     'Get in touch with the EventLinqs team. We reply within 24 hours, Monday to Friday.',
+  alternates: { canonical: '/contact' },
 }
 
 interface Props {
@@ -51,7 +52,7 @@ export default async function ContactPage({ searchParams }: Props) {
         subtitle="We reply within 24 hours, Monday to Friday."
       />
 
-      {/* Main two-column section — anchored for in-page scroll */}
+      {/* Main two-column section - anchored for in-page scroll */}
       <ContentSection surface="base" width="wide" id="contact-form">
         <ContactForm initialSubject={initialSubject} />
       </ContentSection>

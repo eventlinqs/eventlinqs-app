@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 
 /**
  * Cron route: runs every 5 minutes via Vercel Crons.
- * 1. Calls expire_waitlist_notifications() RPC — marks expired 'notified' entries
+ * 1. Calls expire_waitlist_notifications() RPC - marks expired 'notified' entries
  *    back to 'waiting' (or 'expired' if limit reached), freeing up the position.
  * 2. For every tier that just had an expiry, re-triggers promote_waitlist so the
  *    next person in line is notified immediately.
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     console.log(`[cron/waitlist-expire] expired ${count} notifications`)
 
     // Step 2: Find all event/tier pairs that still have 'waiting' entries (potential promos)
-    // The expire RPC may have freed capacity — attempt promotion for waiting tiers
+    // The expire RPC may have freed capacity - attempt promotion for waiting tiers
     if (count > 0) {
       const { data: waitingTiers, error: waitingError } = await adminClient
         .from('waitlist')

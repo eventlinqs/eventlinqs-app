@@ -1,0 +1,748 @@
+{
+  "base": "http://localhost:3000",
+  "timestamp": "2026-05-01T15:59:32.661Z",
+  "routes": {
+    "404": {
+      "path": "/this-route-does-not-exist-404-probe",
+      "runs": {
+        "mobile": {
+          "viewport": {
+            "width": 375,
+            "height": 812
+          },
+          "scores": {
+            "performance": null,
+            "accessibility": null,
+            "bestPractices": null,
+            "seo": null
+          },
+          "throttling": "simulate",
+          "axe": {
+            "violations": 0,
+            "status": 404,
+            "details": []
+          },
+          "gates": {
+            "axe": true
+          },
+          "pass": true
+        },
+        "desktop": {
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "scores": {
+            "performance": null,
+            "accessibility": null,
+            "bestPractices": null,
+            "seo": null
+          },
+          "throttling": "simulate",
+          "axe": {
+            "violations": 0,
+            "status": 404,
+            "details": []
+          },
+          "gates": {
+            "axe": true
+          },
+          "pass": true
+        }
+      }
+    },
+    "home": {
+      "path": "/",
+      "runs": {
+        "mobile": {
+          "viewport": {
+            "width": 375,
+            "height": 812
+          },
+          "scores": {
+            "performance": 0.81,
+            "accessibility": 1,
+            "bestPractices": 1,
+            "seo": 1
+          },
+          "throttling": "devtools",
+          "axe": {
+            "violations": 0,
+            "status": 200,
+            "details": []
+          },
+          "gates": {
+            "performance": false,
+            "accessibility": true,
+            "bestPractices": true,
+            "seo": true,
+            "axe": true
+          },
+          "pass": false
+        },
+        "desktop": {
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "scores": {
+            "performance": 1,
+            "accessibility": 1,
+            "bestPractices": 1,
+            "seo": 1
+          },
+          "throttling": "simulate",
+          "axe": {
+            "violations": 0,
+            "status": 200,
+            "details": []
+          },
+          "gates": {
+            "performance": true,
+            "accessibility": true,
+            "bestPractices": true,
+            "seo": true,
+            "axe": true
+          },
+          "pass": true
+        }
+      }
+    },
+    "events": {
+      "path": "/events",
+      "runs": {
+        "mobile": {
+          "viewport": {
+            "width": 375,
+            "height": 812
+          },
+          "scores": {
+            "performance": 0.79,
+            "accessibility": 1,
+            "bestPractices": 1,
+            "seo": 1
+          },
+          "throttling": "simulate",
+          "axe": {
+            "violations": 0,
+            "status": 200,
+            "details": []
+          },
+          "gates": {
+            "performance": false,
+            "accessibility": true,
+            "bestPractices": true,
+            "seo": true,
+            "axe": true
+          },
+          "pass": false
+        },
+        "desktop": {
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "scores": {
+            "performance": 0.98,
+            "accessibility": 1,
+            "bestPractices": 1,
+            "seo": 1
+          },
+          "throttling": "simulate",
+          "axe": {
+            "violations": 0,
+            "status": 200,
+            "details": []
+          },
+          "gates": {
+            "performance": true,
+            "accessibility": true,
+            "bestPractices": true,
+            "seo": true,
+            "axe": true
+          },
+          "pass": true
+        }
+      }
+    },
+    "organisers": {
+      "path": "/organisers",
+      "runs": {
+        "mobile": {
+          "viewport": {
+            "width": 375,
+            "height": 812
+          },
+          "scores": {
+            "performance": 0.95,
+            "accessibility": 1,
+            "bestPractices": 1,
+            "seo": 1
+          },
+          "throttling": "simulate",
+          "axe": {
+            "violations": 0,
+            "status": 200,
+            "details": []
+          },
+          "gates": {
+            "performance": true,
+            "accessibility": true,
+            "bestPractices": true,
+            "seo": true,
+            "axe": true
+          },
+          "pass": true
+        },
+        "desktop": {
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "scores": {
+            "performance": 1,
+            "accessibility": 1,
+            "bestPractices": 1,
+            "seo": 1
+          },
+          "throttling": "simulate",
+          "axe": {
+            "violations": 0,
+            "status": 200,
+            "details": []
+          },
+          "gates": {
+            "performance": true,
+            "accessibility": true,
+            "bestPractices": true,
+            "seo": true,
+            "axe": true
+          },
+          "pass": true
+        }
+      }
+    },
+    "pricing": {
+      "path": "/pricing",
+      "runs": {
+        "mobile": {
+          "viewport": {
+            "width": 375,
+            "height": 812
+          },
+          "scores": {
+            "performance": 0.96,
+            "accessibility": 1,
+            "bestPractices": 1,
+            "seo": 1
+          },
+          "throttling": "simulate",
+          "axe": {
+            "violations": 0,
+            "status": 200,
+            "details": []
+          },
+          "gates": {
+            "performance": true,
+            "accessibility": true,
+            "bestPractices": true,
+            "seo": true,
+            "axe": true
+          },
+          "pass": true
+        },
+        "desktop": {
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "scores": {
+            "performance": 1,
+            "accessibility": 1,
+            "bestPractices": 1,
+            "seo": 1
+          },
+          "throttling": "simulate",
+          "axe": {
+            "violations": 0,
+            "status": 200,
+            "details": []
+          },
+          "gates": {
+            "performance": true,
+            "accessibility": true,
+            "bestPractices": true,
+            "seo": true,
+            "axe": true
+          },
+          "pass": true
+        }
+      }
+    },
+    "about": {
+      "path": "/about",
+      "runs": {
+        "mobile": {
+          "viewport": {
+            "width": 375,
+            "height": 812
+          },
+          "scores": {
+            "performance": 0.96,
+            "accessibility": 1,
+            "bestPractices": 1,
+            "seo": 1
+          },
+          "throttling": "simulate",
+          "axe": {
+            "violations": 0,
+            "status": 200,
+            "details": []
+          },
+          "gates": {
+            "performance": true,
+            "accessibility": true,
+            "bestPractices": true,
+            "seo": true,
+            "axe": true
+          },
+          "pass": true
+        },
+        "desktop": {
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "scores": {
+            "performance": 1,
+            "accessibility": 1,
+            "bestPractices": 1,
+            "seo": 1
+          },
+          "throttling": "simulate",
+          "axe": {
+            "violations": 0,
+            "status": 200,
+            "details": []
+          },
+          "gates": {
+            "performance": true,
+            "accessibility": true,
+            "bestPractices": true,
+            "seo": true,
+            "axe": true
+          },
+          "pass": true
+        }
+      }
+    },
+    "contact": {
+      "path": "/contact",
+      "runs": {
+        "mobile": {
+          "viewport": {
+            "width": 375,
+            "height": 812
+          },
+          "scores": {
+            "performance": 0.95,
+            "accessibility": 1,
+            "bestPractices": 1,
+            "seo": 1
+          },
+          "throttling": "simulate",
+          "axe": {
+            "violations": 0,
+            "status": 200,
+            "details": []
+          },
+          "gates": {
+            "performance": true,
+            "accessibility": true,
+            "bestPractices": true,
+            "seo": true,
+            "axe": true
+          },
+          "pass": true
+        },
+        "desktop": {
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "scores": {
+            "performance": 1,
+            "accessibility": 1,
+            "bestPractices": 1,
+            "seo": 1
+          },
+          "throttling": "simulate",
+          "axe": {
+            "violations": 0,
+            "status": 200,
+            "details": []
+          },
+          "gates": {
+            "performance": true,
+            "accessibility": true,
+            "bestPractices": true,
+            "seo": true,
+            "axe": true
+          },
+          "pass": true
+        }
+      }
+    },
+    "help": {
+      "path": "/help",
+      "runs": {
+        "mobile": {
+          "viewport": {
+            "width": 375,
+            "height": 812
+          },
+          "scores": {
+            "performance": 0.96,
+            "accessibility": 1,
+            "bestPractices": 1,
+            "seo": 1
+          },
+          "throttling": "simulate",
+          "axe": {
+            "violations": 0,
+            "status": 200,
+            "details": []
+          },
+          "gates": {
+            "performance": true,
+            "accessibility": true,
+            "bestPractices": true,
+            "seo": true,
+            "axe": true
+          },
+          "pass": true
+        },
+        "desktop": {
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "scores": {
+            "performance": 1,
+            "accessibility": 1,
+            "bestPractices": 1,
+            "seo": 1
+          },
+          "throttling": "simulate",
+          "axe": {
+            "violations": 0,
+            "status": 200,
+            "details": []
+          },
+          "gates": {
+            "performance": true,
+            "accessibility": true,
+            "bestPractices": true,
+            "seo": true,
+            "axe": true
+          },
+          "pass": true
+        }
+      }
+    },
+    "legal-terms": {
+      "path": "/legal/terms",
+      "runs": {
+        "mobile": {
+          "viewport": {
+            "width": 375,
+            "height": 812
+          },
+          "scores": {
+            "performance": 0.95,
+            "accessibility": 1,
+            "bestPractices": 1,
+            "seo": 1
+          },
+          "throttling": "simulate",
+          "axe": {
+            "violations": 0,
+            "status": 200,
+            "details": []
+          },
+          "gates": {
+            "performance": true,
+            "accessibility": true,
+            "bestPractices": true,
+            "seo": true,
+            "axe": true
+          },
+          "pass": true
+        },
+        "desktop": {
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "scores": {
+            "performance": 1,
+            "accessibility": 1,
+            "bestPractices": 1,
+            "seo": 1
+          },
+          "throttling": "simulate",
+          "axe": {
+            "violations": 0,
+            "status": 200,
+            "details": []
+          },
+          "gates": {
+            "performance": true,
+            "accessibility": true,
+            "bestPractices": true,
+            "seo": true,
+            "axe": true
+          },
+          "pass": true
+        }
+      }
+    },
+    "legal-privacy": {
+      "path": "/legal/privacy",
+      "runs": {
+        "mobile": {
+          "viewport": {
+            "width": 375,
+            "height": 812
+          },
+          "scores": {
+            "performance": 0.95,
+            "accessibility": 1,
+            "bestPractices": 1,
+            "seo": 1
+          },
+          "throttling": "simulate",
+          "axe": {
+            "violations": 0,
+            "status": 200,
+            "details": []
+          },
+          "gates": {
+            "performance": true,
+            "accessibility": true,
+            "bestPractices": true,
+            "seo": true,
+            "axe": true
+          },
+          "pass": true
+        },
+        "desktop": {
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "scores": {
+            "performance": 1,
+            "accessibility": 1,
+            "bestPractices": 1,
+            "seo": 1
+          },
+          "throttling": "simulate",
+          "axe": {
+            "violations": 0,
+            "status": 200,
+            "details": []
+          },
+          "gates": {
+            "performance": true,
+            "accessibility": true,
+            "bestPractices": true,
+            "seo": true,
+            "axe": true
+          },
+          "pass": true
+        }
+      }
+    },
+    "legal-refunds": {
+      "path": "/legal/refunds",
+      "runs": {
+        "mobile": {
+          "viewport": {
+            "width": 375,
+            "height": 812
+          },
+          "scores": {
+            "performance": 0.95,
+            "accessibility": 1,
+            "bestPractices": 1,
+            "seo": 1
+          },
+          "throttling": "simulate",
+          "axe": {
+            "violations": 0,
+            "status": 200,
+            "details": []
+          },
+          "gates": {
+            "performance": true,
+            "accessibility": true,
+            "bestPractices": true,
+            "seo": true,
+            "axe": true
+          },
+          "pass": true
+        },
+        "desktop": {
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "scores": {
+            "performance": 1,
+            "accessibility": 1,
+            "bestPractices": 1,
+            "seo": 1
+          },
+          "throttling": "simulate",
+          "axe": {
+            "violations": 0,
+            "status": 200,
+            "details": []
+          },
+          "gates": {
+            "performance": true,
+            "accessibility": true,
+            "bestPractices": true,
+            "seo": true,
+            "axe": true
+          },
+          "pass": true
+        }
+      }
+    },
+    "login": {
+      "path": "/login",
+      "runs": {
+        "mobile": {
+          "viewport": {
+            "width": 375,
+            "height": 812
+          },
+          "scores": {
+            "performance": 0.99,
+            "accessibility": 1,
+            "bestPractices": 1,
+            "seo": 0.58
+          },
+          "throttling": "simulate",
+          "axe": {
+            "violations": 0,
+            "status": 200,
+            "details": []
+          },
+          "gates": {
+            "performance": true,
+            "accessibility": true,
+            "bestPractices": true,
+            "seo": false,
+            "axe": true
+          },
+          "pass": false
+        },
+        "desktop": {
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "scores": {
+            "performance": 1,
+            "accessibility": 1,
+            "bestPractices": 1,
+            "seo": 0.58
+          },
+          "throttling": "simulate",
+          "axe": {
+            "violations": 0,
+            "status": 200,
+            "details": []
+          },
+          "gates": {
+            "performance": true,
+            "accessibility": true,
+            "bestPractices": true,
+            "seo": false,
+            "axe": true
+          },
+          "pass": false
+        }
+      }
+    },
+    "signup": {
+      "path": "/signup",
+      "runs": {
+        "mobile": {
+          "viewport": {
+            "width": 375,
+            "height": 812
+          },
+          "scores": {
+            "performance": 0.98,
+            "accessibility": 1,
+            "bestPractices": 1,
+            "seo": 0.58
+          },
+          "throttling": "simulate",
+          "axe": {
+            "violations": 0,
+            "status": 200,
+            "details": []
+          },
+          "gates": {
+            "performance": true,
+            "accessibility": true,
+            "bestPractices": true,
+            "seo": false,
+            "axe": true
+          },
+          "pass": false
+        },
+        "desktop": {
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "scores": {
+            "performance": 1,
+            "accessibility": 1,
+            "bestPractices": 1,
+            "seo": 0.58
+          },
+          "throttling": "simulate",
+          "axe": {
+            "violations": 0,
+            "status": 200,
+            "details": []
+          },
+          "gates": {
+            "performance": true,
+            "accessibility": true,
+            "bestPractices": true,
+            "seo": false,
+            "axe": true
+          },
+          "pass": false
+        }
+      }
+    }
+  },
+  "pass": false,
+  "failures": [
+    "home mobile: performance fail",
+    "events mobile: performance fail",
+    "login mobile: seo fail",
+    "login desktop: seo fail",
+    "signup mobile: seo fail",
+    "signup desktop: seo fail"
+  ]
+}

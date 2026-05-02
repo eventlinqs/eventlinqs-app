@@ -20,7 +20,7 @@ interface SiteHeaderClientProps {
 }
 
 /**
- * SiteHeaderClient — sticky top navigation bar client inner.
+ * SiteHeaderClient - sticky top navigation bar client inner.
  *
  * Desktop (md+):
  *   Logo left · Nav centre · LocationPicker + Sign in + Get Started right
@@ -38,9 +38,29 @@ interface SiteHeaderClientProps {
  */
 export function SiteHeaderClient({ location, cities }: SiteHeaderClientProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [displayLocation, setDisplayLocation] = useState(location)
 
   const hamburgerRef  = useRef<HTMLButtonElement>(null)
   const sheetRef      = useRef<HTMLDivElement>(null)
+
+  // Hydrate the picker's currently-displayed location from the `el_city`
+  // cookie post-mount. SSR ships a static default so the page is ISR-
+  // eligible; this effect upgrades the display to whatever the user
+  // selected in a prior visit. No-op when the cookie is absent or
+  // malformed.
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const match = document.cookie.match(/(?:^|;\s*)el_city=([^;]+)/)
+    if (!match) return
+    try {
+      const parsed = JSON.parse(decodeURIComponent(match[1]))
+      if (parsed && typeof parsed.city === 'string') {
+        setDisplayLocation({ ...parsed, source: 'cookie' as const })
+      }
+    } catch {
+      // ignore malformed cookie
+    }
+  }, [])
 
   useEffect(() => {
     if (!isOpen) return
@@ -126,23 +146,24 @@ export function SiteHeaderClient({ location, cities }: SiteHeaderClientProps) {
             ))}
           </nav>
 
-          {/* Desktop search — Ticketmaster pill, centred */}
+          {/* Desktop search - Ticketmaster pill, centred */}
           <NavSearch variant="desktop" />
 
-          {/* Right side — desktop CTAs + mobile hamburger */}
+          {/* Right side - desktop CTAs + mobile hamburger */}
           <div className="flex items-center gap-3 shrink-0 ml-auto md:ml-0">
             {/* Desktop location picker */}
             <div className="hidden md:block">
-              <LocationPicker currentLocation={location} cities={cities} />
+              <LocationPicker currentLocation={displayLocation} cities={cities} />
             </div>
 
             <Link
               href="/login"
+              prefetch={false}
               className="hidden md:inline-flex items-center h-9 px-3 text-sm font-medium text-ink-700 hover:text-gold-600 transition-colors rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2"
             >
               Sign in
             </Link>
-            <Button href="/signup" variant="primary" size="sm" className="hidden md:inline-flex">
+            <Button href="/signup" prefetch={false} variant="primary" size="sm" className="hidden md:inline-flex">
               Get Started
             </Button>
 
@@ -181,7 +202,7 @@ export function SiteHeaderClient({ location, cities }: SiteHeaderClientProps) {
 
         </div>
 
-        {/* Mobile search — full-width second row below the nav */}
+        {/* Mobile search - full-width second row below the nav */}
         <div className="md:hidden border-t border-ink-100 bg-white/95 px-4 py-2.5">
           <NavSearch variant="mobile" />
         </div>
@@ -238,7 +259,7 @@ export function SiteHeaderClient({ location, cities }: SiteHeaderClientProps) {
 
         <nav className="flex-1 overflow-y-auto px-4 py-6" aria-label="Mobile navigation">
           <div className="mb-4">
-            <LocationPicker currentLocation={location} cities={cities} variant="inline" onChange={closeSheet} />
+            <LocationPicker currentLocation={displayLocation} cities={cities} variant="inline" onChange={closeSheet} />
           </div>
           <ul className="space-y-1">
             {NAV_LINKS.map(link => (
@@ -261,10 +282,10 @@ export function SiteHeaderClient({ location, cities }: SiteHeaderClientProps) {
         </nav>
 
         <div className="border-t border-ink-100 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] space-y-3">
-          <Button href="/signup" variant="primary" size="lg" className="w-full" onClick={closeSheet}>
+          <Button href="/signup" prefetch={false} variant="primary" size="lg" className="w-full" onClick={closeSheet}>
             Get Started
           </Button>
-          <Button href="/login" variant="ghost" size="lg" className="w-full" onClick={closeSheet}>
+          <Button href="/login" prefetch={false} variant="ghost" size="lg" className="w-full" onClick={closeSheet}>
             Sign in
           </Button>
         </div>

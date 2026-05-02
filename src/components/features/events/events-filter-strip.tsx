@@ -67,7 +67,7 @@ export function EventsFilterStrip({
 
   const closeDrawer = useCallback(() => {
     setDrawerOpen(false)
-    // Return focus to the button that opened the drawer (WCAG 2.2 — focus management)
+    // Return focus to the button that opened the drawer (WCAG 2.2 - focus management)
     triggerRef.current?.focus()
   }, [])
 
@@ -75,7 +75,7 @@ export function EventsFilterStrip({
     setDrawerOpen(true)
   }, [])
 
-  // Move focus to the close button when drawer opens (WCAG 2.2 — focus management)
+  // Move focus to the close button when drawer opens (WCAG 2.2 - focus management)
   useEffect(() => {
     if (!drawerOpen) return
     // Small delay allows the transform transition to start before focus moves
@@ -85,7 +85,7 @@ export function EventsFilterStrip({
     return () => clearTimeout(timer)
   }, [drawerOpen])
 
-  // Escape key dismisses the drawer (WCAG 2.2 AA — keyboard dismissal)
+  // Escape key dismisses the drawer (WCAG 2.2 AA - keyboard dismissal)
   useEffect(() => {
     if (!drawerOpen) return
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -119,7 +119,7 @@ export function EventsFilterStrip({
           aria-label="Quick filters"
           className="flex items-center gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
         >
-          {/* Advanced filters trigger — shows active count badge */}
+          {/* Advanced filters trigger - shows active count badge */}
           {(() => {
             const activeCount = [params.date, params.category, params.free === '1' ? '1' : undefined, params.paid === '1' ? '1' : undefined, params.distance].filter(Boolean).length
             return (
@@ -189,7 +189,7 @@ export function EventsFilterStrip({
             Free
           </Link>
 
-          {/* Category chips — pass slug (§A.1) */}
+          {/* Category chips - pass slug (§A.1) */}
           {categories.map(cat => (
             <Link
               key={cat.id}
@@ -231,7 +231,7 @@ export function EventsFilterStrip({
           drawerOpen ? 'translate-y-0' : 'translate-y-full'
         }`}
       >
-        {/* Drag handle — decorative */}
+        {/* Drag handle - decorative */}
         <div className="flex justify-center pt-3 pb-1" aria-hidden="true">
           <div className="w-10 h-1 rounded-full bg-ink-200" />
         </div>
@@ -288,7 +288,7 @@ export function EventsFilterStrip({
             </div>
           </section>
 
-          {/* Category — slug-based (§A.1) */}
+          {/* Category - slug-based (§A.1) */}
           <section>
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-400">Category</p>
             <div className="space-y-0.5">
@@ -316,7 +316,7 @@ export function EventsFilterStrip({
             </div>
           </section>
 
-          {/* Price — tri-state */}
+          {/* Price - tri-state */}
           <section>
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-400">Price</p>
             <div className="space-y-0.5">
@@ -343,7 +343,7 @@ export function EventsFilterStrip({
           </section>
         </div>
 
-        {/* Sticky "Show X results" button — spec §6.5 */}
+        {/* Sticky "Show X results" button - spec §6.5 */}
         <div
           className="sticky bottom-0 bg-white border-t border-ink-100 px-5 py-4"
           style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}

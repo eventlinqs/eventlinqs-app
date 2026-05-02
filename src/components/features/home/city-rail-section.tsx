@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createPublicClient } from '@/lib/supabase/public-client'
 import { SnapRail } from '@/components/ui/snap-rail'
 import { CityRailTile } from '@/components/features/events/city-rail-tile'
 import { getCityPhoto } from '@/lib/images/city-photo'
@@ -10,7 +10,7 @@ interface Props {
 }
 
 export async function CityRailSection({ nowIso }: Props) {
-  const supabase = await createClient()
+  const supabase = createPublicClient()
 
   const cityCounts = await Promise.all(
     CITY_TILES.map(async t => {

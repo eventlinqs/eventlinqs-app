@@ -14,7 +14,7 @@ const PEXELS_API = 'https://api.pexels.com/v1'
 // EventLinqs serves. Avoid single-demographic stock imagery.
 const CATEGORY_QUERIES: Record<string, string> = {
   'afrobeats': 'multicultural music festival diverse crowd',
-  'amapiano': 'african diaspora dance floor celebration',
+  'amapiano': 'amapiano dance floor celebration diverse crowd',
   'gospel': 'community gospel worship together',
   'owambe': 'african wedding celebration diverse families',
   'caribbean': 'caribbean carnival diverse crowd dance',
@@ -108,12 +108,4 @@ export async function getCategoryPhoto(
   const slug = (categorySlug || 'other').toLowerCase()
   const query = CATEGORY_QUERIES[slug] ?? CATEGORY_QUERIES.other
   return await fetchPexels(query)
-}
-
-export function getCityPhotoQuery(city: string): string {
-  return `${city} skyline city night lights`
-}
-
-export async function getCityPhoto(city: string): Promise<PexelsPhoto> {
-  return await fetchPexels(getCityPhotoQuery(city))
 }

@@ -1,9 +1,9 @@
 # Module 3: Checkout & Payments
 
 **Status:** Not Started
-**Depends on:** Module 1 (Foundation), Module 2 (Event Management) — both must be complete
-**Priority:** Critical — this is how EventLinqs makes money
-**Estimated Sessions:** 4–6 (with Claude Code)
+**Depends on:** Module 1 (Foundation), Module 2 (Event Management) - both must be complete
+**Priority:** Critical - this is how EventLinqs makes money
+**Estimated Sessions:** 4-6 (with Claude Code)
 
 ---
 
@@ -12,12 +12,12 @@
 Module 3 turns EventLinqs from an event listing platform into a revenue-generating ticketing business. This module delivers: the cart and checkout flow, Stripe integration (test mode), the full payment state machine, inventory reservation with cart timer, order management, discount codes, guest checkout, order confirmation with email receipt, and the organiser's order/revenue view.
 
 **What is NOT in this module:**
-- Multi-gateway routing (Paystack, Flutterwave, PayPal) — Module 5
-- QR ticket generation — Module 6
-- Refunds and chargebacks — Module 5
-- Organiser payout system — Module 5
-- Fraud scoring — Module 5
-- Seat map / reserved seating — Module 4
+- Multi-gateway routing (Paystack, Flutterwave, PayPal) - Module 5
+- QR ticket generation - Module 6
+- Refunds and chargebacks - Module 5
+- Organiser payout system - Module 5
+- Fraud scoring - Module 5
+- Seat map / reserved seating - Module 4
 
 **Architecture principle:** Stripe is the only gateway in M3, but the code is built with a gateway adapter pattern so Paystack/Flutterwave/PayPal plug in later without rewriting checkout logic.
 
@@ -27,8 +27,8 @@ Module 3 turns EventLinqs from an event listing platform into a revenue-generati
 
 Before starting M3, confirm the following:
 
-- [ ] Module 1 complete — auth, profiles, organisations working
-- [ ] Module 2 complete — events, ticket tiers, addons, public event pages working
+- [ ] Module 1 complete - auth, profiles, organisations working
+- [ ] Module 2 complete - events, ticket tiers, addons, public event pages working
 - [ ] Stripe account created (should already exist from initial setup)
 - [ ] Stripe test mode API keys available (publishable key + secret key)
 - [ ] Stripe webhook endpoint configured in Stripe Dashboard (we'll set this up during the module)
@@ -44,7 +44,7 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 
 ---
 
-## Part 1: Database Schema (SQL — run in Supabase SQL Editor)
+## Part 1: Database Schema (SQL - run in Supabase SQL Editor)
 
 > The SQL is provided in a separate combined file: `M3-checkout-payments-sql.sql`
 > Copy the entire file contents into Supabase → SQL Editor → New query → Run.
@@ -134,7 +134,7 @@ export interface PaymentGateway {
 
 Implements `PaymentGateway` using the `stripe` npm package. Key details:
 
-- Uses `stripe.paymentIntents.create()` with `automatic_payment_methods: { enabled: true }` — this enables cards, Apple Pay, Google Pay automatically
+- Uses `stripe.paymentIntents.create()` with `automatic_payment_methods: { enabled: true }` - this enables cards, Apple Pay, Google Pay automatically
 - Passes `metadata` for reconciliation
 - Uses `idempotency_key` to prevent duplicate charges
 - Webhook verification uses `stripe.webhooks.constructEvent()`
@@ -203,7 +203,7 @@ export interface FeeBreakdown {
 
 **Fee calculation rules:**
 - Platform fee: percentage + fixed per ticket (from pricing_rules)
-- Payment processing: Stripe's fee (2.9% + 30c for AU/international cards) — always pass-through, never marked up by EventLinqs
+- Payment processing: Stripe's fee (2.9% + 30c for AU/international cards) - always pass-through, never marked up by EventLinqs
 - If organiser chose `absorb`: fees are deducted from the organiser's revenue, buyer sees ticket price only
 - If organiser chose `pass_to_buyer`: fees are added on top, buyer sees ticket price + fees
 - Free events: zero fees, no payment processing
@@ -277,7 +277,7 @@ The `expire_stale_reservations()` function:
 The checkout page shows a countdown timer (MM:SS) synced to `reservation.expires_at`. When the timer reaches 0:
 - Display "Your reservation has expired"
 - Offer a "Try Again" button that returns them to the event page
-- Do NOT auto-retry — the tickets may have sold to someone else
+- Do NOT auto-retry - the tickets may have sold to someone else
 
 ---
 
@@ -294,7 +294,7 @@ Event Detail Page
   → Checkout Page:
       - Order summary (tickets, addons, fees, total)
       - Discount code input
-      - Attendee details (name, email per ticket — or bulk fill)
+      - Attendee details (name, email per ticket - or bulk fill)
       - Payment form (Stripe Elements)
       - "Pay $XX.XX" button
   → [Payment processing]
@@ -317,7 +317,7 @@ Located on the event detail page (below event info). Shows:
 
 Route: `/checkout/[reservation_id]`
 
-This is a single page with sections (not a multi-step wizard — keep it fast):
+This is a single page with sections (not a multi-step wizard - keep it fast):
 
 **Section 1: Order Summary**
 - Event name, date, venue
@@ -363,7 +363,7 @@ This is a single page with sections (not a multi-step wizard — keep it fast):
 - No login required to purchase tickets
 - Buyer provides email and name during checkout
 - Order is linked to the email, not a user_id
-- If a user later creates an account with that email, their past orders are associated via a background migration (not in M3 — future module)
+- If a user later creates an account with that email, their past orders are associated via a background migration (not in M3 - future module)
 - Guest orders still receive email confirmations
 
 ### 5.5 Authentication-Aware Checkout
@@ -380,7 +380,7 @@ This is a single page with sections (not a multi-step wizard — keep it fast):
 ### 6.1 Server-Side Checkout Action
 
 ```typescript
-// src/app/actions/checkout.ts — server action
+// src/app/actions/checkout.ts - server action
 
 export async function processCheckout(data: CheckoutFormData): Promise<CheckoutResult>
 ```
@@ -467,7 +467,7 @@ Route: `/orders/[order_id]/confirmation`
 
 Shows:
 - "Order Confirmed" with checkmark
-- Order number (formatted: `EL-XXXXXXXX` — 8 character alphanumeric)
+- Order number (formatted: `EL-XXXXXXXX` - 8 character alphanumeric)
 - Event name, date, venue
 - Tickets purchased (tier names and quantities)
 - Addons purchased
@@ -494,7 +494,7 @@ Template: create a React email template at `src/emails/order-confirmation.tsx` u
 
 ## Part 7: Organiser Order View
 
-### 7.1 Organiser Dashboard — Orders Tab
+### 7.1 Organiser Dashboard - Orders Tab
 
 Add to the existing organiser dashboard (from M2):
 
@@ -515,7 +515,7 @@ Shows:
 - Order number and status
 - Buyer details (name, email)
 - Line items with prices
-- Fee breakdown (platform fee, processing fee — organiser sees what they earn)
+- Fee breakdown (platform fee, processing fee - organiser sees what they earn)
 - Payment details (gateway, transaction ID, payment method)
 - Attendee list (names and emails for each ticket)
 - Timeline of status changes
@@ -551,9 +551,9 @@ Organiser can:
 
 | Field | Type | Rules |
 |-------|------|-------|
-| `code` | Text | Uppercase, alphanumeric + hyphens, unique per event, 3–20 chars |
+| `code` | Text | Uppercase, alphanumeric + hyphens, unique per event, 3-20 chars |
 | `discount_type` | Select | `percentage` or `fixed_amount` |
-| `discount_value` | Number | For percentage: 1–100. For fixed: minimum 1 cent |
+| `discount_value` | Number | For percentage: 1-100. For fixed: minimum 1 cent |
 | `currency` | Text | Required for fixed_amount type, matches event currency |
 | `max_uses` | Number | Null = unlimited |
 | `max_uses_per_user` | Number | Default 1 |
@@ -901,7 +901,7 @@ In PowerShell (after exiting Claude Code with `/exit`):
 
 ```powershell
 git add .
-git commit -m "M3: Checkout & Payments — Stripe integration, cart reservations, order management"
+git commit -m "M3: Checkout & Payments - Stripe integration, cart reservations, order management"
 git push
 ```
 
@@ -909,6 +909,6 @@ git push
 
 ## What Comes After Module 3
 
-**Module 4: Ticketing Engine & Inventory** — seat maps, reserved seating, dynamic pricing, squad booking, waitlist, advanced inventory management. This is where the ticketing system gets sophisticated.
+**Module 4: Ticketing Engine & Inventory** - seat maps, reserved seating, dynamic pricing, squad booking, waitlist, advanced inventory management. This is where the ticketing system gets sophisticated.
 
 **Module 5 look-ahead:** Module 5 adds multi-gateway routing (Paystack, Flutterwave, PayPal), refunds, chargebacks, organiser payouts, and fraud scoring. **Action item for Lawal: start your Paystack business verification application during M4 so it's approved by the time we reach M5.**

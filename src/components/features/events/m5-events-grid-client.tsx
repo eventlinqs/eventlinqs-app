@@ -33,7 +33,7 @@ export function EventsGridClient({
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const loadingRef = useRef(false)
 
-  // Reset when filters (params) or startPage change — the server just
+  // Reset when filters (params) or startPage change - the server just
   // rendered a different initial slice, so we throw away the appended tail.
   useEffect(() => {
     setCards(initialCards)

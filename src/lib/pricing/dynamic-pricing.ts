@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 /**
  * Get the current effective price for a ticket tier.
  * Calls the get_current_tier_price RPC which handles dynamic pricing step logic.
- * Uses the admin (service-role) client so this works on public pages too —
+ * Uses the admin (service-role) client so this works on public pages too  - 
  * the RPC is SECURITY DEFINER and only granted to authenticated + service_role.
  * Falls back to the tier's base price if the RPC fails.
  */

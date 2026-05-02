@@ -1,0 +1,181 @@
+{
+  "target": "http://localhost:3000/dashboard/payouts",
+  "timestamp": "2026-04-30T11:11:50.269Z",
+  "runs": {
+    "not_started-mobile": {
+      "viewport": {
+        "width": 375,
+        "height": 812,
+        "deviceScaleFactor": 3,
+        "mobile": true,
+        "formFactor": "mobile",
+        "ua": "Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+      },
+      "state": "not_started",
+      "scores": {
+        "performance": 0.87,
+        "accessibility": 1,
+        "bestPractices": 1,
+        "seo": 0.66
+      },
+      "axe": {
+        "violations": 0,
+        "details": []
+      },
+      "gates": {
+        "performance": false,
+        "accessibility": true,
+        "bestPractices": true,
+        "seo": false,
+        "axe": true
+      },
+      "pass": false
+    },
+    "not_started-desktop": {
+      "viewport": {
+        "width": 1440,
+        "height": 900,
+        "deviceScaleFactor": 1,
+        "mobile": false,
+        "formFactor": "desktop",
+        "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      },
+      "state": "not_started",
+      "scores": {
+        "performance": 0.71,
+        "accessibility": 1,
+        "bestPractices": 1,
+        "seo": 0.66
+      },
+      "axe": {
+        "violations": 0,
+        "details": []
+      },
+      "gates": {
+        "performance": false,
+        "accessibility": true,
+        "bestPractices": true,
+        "seo": false,
+        "axe": true
+      },
+      "pass": false
+    },
+    "in_progress-mobile": {
+      "viewport": {
+        "width": 375,
+        "height": 812,
+        "deviceScaleFactor": 3,
+        "mobile": true,
+        "formFactor": "mobile",
+        "ua": "Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+      },
+      "state": "in_progress",
+      "scores": {
+        "performance": 0.9,
+        "accessibility": 1,
+        "bestPractices": 1,
+        "seo": 0.66
+      },
+      "axe": {
+        "violations": 0,
+        "details": []
+      },
+      "gates": {
+        "performance": false,
+        "accessibility": true,
+        "bestPractices": true,
+        "seo": false,
+        "axe": true
+      },
+      "pass": false
+    },
+    "in_progress-desktop": {
+      "viewport": {
+        "width": 1440,
+        "height": 900,
+        "deviceScaleFactor": 1,
+        "mobile": false,
+        "formFactor": "desktop",
+        "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      },
+      "state": "in_progress",
+      "scores": {
+        "performance": 0.7,
+        "accessibility": 1,
+        "bestPractices": 1,
+        "seo": 0.66
+      },
+      "axe": {
+        "violations": 0,
+        "details": []
+      },
+      "gates": {
+        "performance": false,
+        "accessibility": true,
+        "bestPractices": true,
+        "seo": false,
+        "axe": true
+      },
+      "pass": false
+    },
+    "complete-mobile": {
+      "viewport": {
+        "width": 375,
+        "height": 812,
+        "deviceScaleFactor": 3,
+        "mobile": true,
+        "formFactor": "mobile",
+        "ua": "Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+      },
+      "state": "complete",
+      "scores": {
+        "performance": 0.94,
+        "accessibility": 1,
+        "bestPractices": 1,
+        "seo": 0.66
+      },
+      "axe": {
+        "violations": 0,
+        "details": []
+      },
+      "gates": {
+        "performance": false,
+        "accessibility": true,
+        "bestPractices": true,
+        "seo": false,
+        "axe": true
+      },
+      "pass": false
+    },
+    "complete-desktop": {
+      "viewport": {
+        "width": 1440,
+        "height": 900,
+        "deviceScaleFactor": 1,
+        "mobile": false,
+        "formFactor": "desktop",
+        "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      },
+      "state": "complete",
+      "scores": {
+        "performance": 0.71,
+        "accessibility": 1,
+        "bestPractices": 1,
+        "seo": 0.66
+      },
+      "axe": {
+        "violations": 0,
+        "details": []
+      },
+      "gates": {
+        "performance": false,
+        "accessibility": true,
+        "bestPractices": true,
+        "seo": false,
+        "axe": true
+      },
+      "pass": false
+    }
+  },
+  "pass": false
+}

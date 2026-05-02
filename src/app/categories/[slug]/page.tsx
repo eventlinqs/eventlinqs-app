@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
-import { createClient } from '@/lib/supabase/server'
+import { createPublicClient } from '@/lib/supabase/public-client'
 import {
   getHeroCategory,
   getAllHeroCategories,
@@ -8,6 +8,12 @@ import {
 } from '@/lib/hero-categories'
 import { CategoryLandingPage } from '@/components/templates/CategoryLandingPage'
 import type { EventCardData } from '@/components/features/events/event-card'
+
+// ISR: every hero category is the same for all anonymous visitors. The
+// 5-minute revalidate window matches /events/[slug] and keeps the live
+// event list fresh enough that newly-published events appear within the
+// usual SEO-crawler retry interval.
+export const revalidate = 300
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -51,7 +57,7 @@ export default async function CategoryPage({ params }: Props) {
   // Fetch live events for this category.
   // We join to event_categories to match by slug rather than UUID,
   // since the slug is the stable identifier in this data model.
-  const supabase = await createClient()
+  const supabase = createPublicClient()
 
   const { data: eventsRaw } = await supabase
     .from('events')
@@ -64,7 +70,7 @@ export default async function CategoryPage({ params }: Props) {
     .order('start_date', { ascending: true })
     .limit(6)
 
-  // Filter client-side by category slug — Supabase doesn't allow nested WHERE
+  // Filter client-side by category slug - Supabase doesn't allow nested WHERE
   // on joined tables without a view or RPC. Safe at this event volume.
   const liveEvents = ((eventsRaw ?? []) as unknown as EventCardData[]).filter(
     e => e.category?.slug === slug || e.category?.slug === category.displayName.toLowerCase(),

@@ -38,12 +38,12 @@ export function VenueMap({
   // the viewport. Map sits well below the fold; eager load wastes mobile
   // bandwidth and drags Speed Index because the map JS continues painting
   // tiles after the Lighthouse measurement window starts. In headless/
-  // audit mode, skip auto-load entirely — a real user scrolling to the
+  // audit mode, skip auto-load entirely - a real user scrolling to the
   // venue section still triggers the IntersectionObserver, but the
   // headless bot never gets there within the PSI 6s measurement window.
   useEffect(() => {
     if (!hasCoords) return
-    // Skip entirely in headless audit mode — matches smart-media's pattern.
+    // Skip entirely in headless audit mode - matches smart-media's pattern.
     if (typeof document !== 'undefined' && document.body.dataset.headless === '1') {
       return
     }
@@ -137,10 +137,10 @@ export function VenueMap({
         {hasCoords ? (
           <>
             <div ref={containerRef} className="absolute inset-0 h-full w-full" />
-            {/* Native lazy-img sentinel — when the browser decides this
+            {/* Native lazy-img sentinel - when the browser decides this
                 pseudo-image is near the viewport it kicks off `onLoad`,
                 giving us a second independent trigger alongside the IO.
-                This is a 1-pixel transparent GIF, not a display image —
+                This is a 1-pixel transparent GIF, not a display image  - 
                 `next/image` is the wrong tool here. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img

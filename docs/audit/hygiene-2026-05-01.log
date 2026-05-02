@@ -1,0 +1,263 @@
+EventLinqs Hygiene Pass Log
+===========================
+Date:    2026-05-01
+Branch:  feat/sprint1-phase1b-performance-and-visual
+Mode:    Autonomous, no em-dashes, no co-authorship
+
+[2026-05-01T12:42:00Z] TASK A DONE - audit infra committed and pushed
+  Commit: bcc7bc8 chore: add audit infrastructure deps for Lighthouse and axe gates
+  Files:  package.json (+2), package-lock.json (+2488 -159)
+  Push:   bb66937..bcc7bc8 to origin/feat/sprint1-phase1b-performance-and-visual
+  Note:   Track B commit 82d77b9 also pushed in same range (was local before).
+
+[2026-05-01T12:50:00Z] TASK B DONE - working tree triaged into 4 commits
+  Total uncommitted files at start: 22 (8 modified/deleted, 14 untracked dirs/files)
+  Bucketed by intent and committed:
+
+  Commit 031eb98 test(m6): Phase 2 audit infrastructure and results
+    - 32 files (+129045 lines): docs/m6/audit/phase2/ raw outputs,
+      scripts/m6-phase2-* harnesses, tests/fixtures/auth.mts,
+      tsconfig.json .mts excludes, .gitignore .auth/+.tmp/
+
+  Commit e8078e6 perf(m6): static preview route with critical CSS
+    - 6 files (+530 -79): page.tsx removed in favour of route.ts +
+      _body.html + _critical.css; preview-only card twin component;
+      build-preview-critical-css.mjs regenerator
+
+  Commit 150a27e feat(seo): add robots metadata route and favicon stub
+    - 2 files: src/app/robots.ts, src/app/favicon.ico
+
+  Commit 996c5fe fix(a11y): WCAG 2.2 AA polish from Phase 2 audit findings
+    - 4 files: status pill solid backgrounds (contrast),
+      aria-label tightening, /dev hidden from bottom-nav,
+      canonical alternate on payouts page
+
+  Working tree after: only docs/audit/ remains (this hygiene log dir).
+  Final commit at end of pass.
+
+[2026-05-01T13:18:00Z] TASK C DONE - ts-prune dead-code scan, conservative deletions
+  Commit: 010ac07 chore: remove unused exports flagged by ts-prune
+  Push:   bcc7bc8..010ac07 to origin/feat/sprint1-phase1b-performance-and-visual
+
+  ts-prune raw findings: 329
+  After filtering App Router conventions and src/types/database.ts: 231 candidates
+  After grep verification across the codebase: 14 confirmed dead
+
+  Whole files removed (4):
+    - src/components/providers/auth-provider.tsx
+    - src/app/(auth)/logout/actions.ts
+    - src/lib/images/category-video.ts
+    - src/lib/payments/tier-progression.ts
+
+  Inline function removals (10):
+    - src/lib/event-lifecycle.ts: getAllowedTransitions, isTerminalState
+    - src/lib/analytics/plausible.ts: trackTicketPurchaseComplete, trackOrganiserSignup
+    - src/lib/locations/launch-cities.ts: findLaunchCityBySlug + BY_SLUG Map
+    - src/lib/images/category-photo.ts: getCityPhoto, getCityPhotoQuery
+    - src/lib/images/event-media.ts: getEventStillImage
+    - src/components/ui/Button.tsx: buttonCls re-export
+
+  Net diff: 466 lines deleted.
+
+  Retained as intentional scaffolding:
+    - Server actions for unfinished UI (squads/queue/waitlist/seat-maps)
+    - Design system primitives (Section component, spacing tokens)
+    - M5-staged components flagged in pre-task-2 close report
+    - Audit infrastructure (connect-onboarding-card-preview.tsx)
+
+  Typecheck: clean. Lint: 1 pre-existing error (site-header-client.tsx setState in effect; not introduced by these deletions).
+
+[2026-05-01T13:23:00Z] TASK D DONE - eslint unused-vars/imports scan
+  No commits.
+  Result: zero unused imports or unused variables in src/ that the
+  configured @typescript-eslint/no-unused-vars rule doesn't already
+  permit via the leading-underscore convention.
+  Only finding: pre-existing react-hooks/set-state-in-effect error in
+  src/components/layout/site-header-client.tsx:58 (not an unused-vars
+  finding; out of scope for hygiene). Filed as followup.
+
+[2026-05-01T13:28:00Z] TASK E DONE - TODO/FIXME/HACK/XXX classification
+  No commits.
+
+  Findings in src/ (4 distinct comments, ignoring placeholder phone-number
+  text in form inputs and "EL-XXXXXXXX" order-number example text):
+
+  Still-relevant (LEAVE):
+    - src/components/features/contact/ContactForm.tsx:8,55
+        TODO(M11): wire to POST /api/contact -> Resend delivery
+        Reason: M11 not shipped. Actionable in M11.
+    - src/lib/events/fetchers.ts:269
+        TODO(m5-perf): move price filter into SQL to avoid over-fetching
+        Reason: M5 perf optimisation deferred; comment is the reminder.
+    - src/components/templates/CategoryLandingPage.tsx:140,253
+        TODO(Session 2): replace with direct signup once /auth/signup?role=organiser is built
+        Reason: route now exists at /signup?role=organiser, but the
+        category landing-page CTA still points to /contact by design
+        until conversion-flow validation. Comment is still actionable.
+
+  Already-done (DELETE): none.
+
+  No deletions. All 4 comments are accurate forward-references to
+  unfinished work, not stale notes about completed work.
+
+[2026-05-01T13:42:00Z] TASK F DONE - dev-only console statement removal
+  Commit: 6edb92f chore: remove dev-only console statements from production paths
+  Push:   010ac07..6edb92f to origin/feat/sprint1-phase1b-performance-and-visual
+
+  Scope: src/app, src/components, src/lib (excluded src/app/api/webhooks/
+  per legitimate-observability rule).
+
+  Total raw matches for /console\.(log|debug|info|warn)/: 50+
+  After classification, 28 dev-debug console.log lines deleted across 3 files:
+
+    src/app/actions/register-free.ts: 15 lines removed
+      Lines (pre-edit): 43, 47, 52, 56, 65, 68, 85, 93, 108, 113, 117, 128,
+      133, 141, 148. All [registerFreeTickets] prefixed dev breadcrumbs;
+      no information that wouldn't be visible in Sentry breadcrumbs from
+      the surrounding error returns.
+      Also tightened: removed unused tiersError destructure (now { data: tiers }
+      only) since the trace was the only consumer; same for eventError where
+      the surviving console.error already references it.
+
+    src/app/checkout/[reservation_id]/page.tsx: 11 lines removed
+      Lines (pre-edit): 15, 20, 30, 45, 51, 62, 65, 91, 142, 148, 178.
+      [CheckoutPage] prefixed dev breadcrumbs around reservation, event,
+      seat, tier, addon lookups and fee calculation. Also tightened
+      destructures where the *Error binding was only used by the deleted log.
+
+    src/app/(dashboard)/dashboard/events/page.tsx: 2 lines removed
+      Lines (pre-edit): 82, 83. Map dump of reservedEventIds and
+      seatSoldCountMap. No production value.
+
+  KEPT (legitimate observability, not touched):
+    - All console.error / console.warn calls everywhere
+    - src/app/api/webhooks/** (excluded by rule)
+    - cron handlers (squad-expire, waitlist-expire, queue-admit)
+    - src/lib/redis/client.ts:12 Redis-disabled warning
+    - src/lib/analytics/plausible.ts:107 server event-failure warn
+    - src/lib/waitlist/promote.ts:37,62 operational logs
+    - src/app/actions/squads.ts:457 refund note
+    - src/components/features/events/m5-events-map.tsx:212,219,245
+      and venue-map.tsx:122 (map error warns)
+    - src/app/(dashboard)/dashboard/organisation/actions.ts:107
+      Plausible track-failure warn
+    - src/components/features/contact/ContactForm.tsx:56 (intentional
+      stub-form behaviour per the M11 TODO at line 8)
+
+  Typecheck: clean.
+  Lint: same as Task D - 1 pre-existing site-header-client error,
+  no new errors or warnings introduced by these deletions.
+
+[2026-05-01T13:48:00Z] TASK G DONE - final state check
+  No commits.
+
+  Results:
+    npm run lint:    1 error, 10 warnings.
+                     The error is the pre-existing site-header-client.tsx:58
+                     react-hooks/set-state-in-effect, filed as a followup in
+                     Task D. The 10 warnings are all in /scripts/*.mjs and
+                     /tests/fixtures/auth.mts (audit infrastructure, not
+                     production paths). None introduced by this hygiene pass.
+    npx tsc --noEmit: clean.
+    npm run build:   success. All routes compile, sitemap and route manifest
+                     generated, ISR/SSR/SSG segmentation as expected.
+    npm test:        3/3 passing (vitest, 676ms).
+
+  git status: only docs/audit/ untracked (this hygiene log dir).
+  All commits A-F pushed to origin/feat/sprint1-phase1b-performance-and-visual.
+
+[2026-05-01T13:52:00Z] TASK H DONE - hygiene pass report
+
+  Hygiene pass summary
+  ====================
+
+  Branch:  feat/sprint1-phase1b-performance-and-visual
+  Window:  bb66937 (pre-pass tip) -> 6edb92f (post-pass tip)
+  Commits added during this pass: 7
+
+    bcc7bc8  chore: add audit infrastructure deps for Lighthouse and axe gates  (Task A)
+    031eb98  test(m6): Phase 2 audit infrastructure and results                 (Task B)
+    e8078e6  perf(m6): static preview route with critical CSS                   (Task B)
+    150a27e  feat(seo): add robots metadata route and favicon stub              (Task B)
+    996c5fe  fix(a11y): WCAG 2.2 AA polish from Phase 2 audit findings          (Task B)
+    010ac07  chore: remove unused exports flagged by ts-prune                   (Task C)
+    6edb92f  chore: remove dev-only console statements from production paths   (Task F)
+
+  Tasks D and E produced no commits by design (no findings worth deleting).
+
+  Files cleaned by category
+  -------------------------
+
+  Whole files removed (4, all Task C):
+    src/components/providers/auth-provider.tsx
+    src/app/(auth)/logout/actions.ts
+    src/lib/images/category-video.ts
+    src/lib/payments/tier-progression.ts
+
+  Inline removals (Task C - 10 functions/exports):
+    src/lib/event-lifecycle.ts          getAllowedTransitions, isTerminalState
+    src/lib/analytics/plausible.ts      trackTicketPurchaseComplete, trackOrganiserSignup
+    src/lib/locations/launch-cities.ts  findLaunchCityBySlug, BY_SLUG Map
+    src/lib/images/category-photo.ts    getCityPhoto, getCityPhotoQuery
+    src/lib/images/event-media.ts       getEventStillImage
+    src/components/ui/Button.tsx        buttonCls re-export
+
+  Inline removals (Task F - 28 console.log lines):
+    src/app/actions/register-free.ts                  15 dev breadcrumbs
+    src/app/checkout/[reservation_id]/page.tsx        11 dev breadcrumbs
+    src/app/(dashboard)/dashboard/events/page.tsx      2 dev breadcrumbs
+
+  Working-tree triage (Task B):
+    32 audit-infrastructure files committed
+     6 preview-route critical-CSS files committed
+     2 robots/favicon files committed
+     4 a11y-polish files committed
+
+  Net diff across the pass:
+    Task A: package.json (+2), package-lock.json (+2488 -159)
+    Task B: +130k lines (mostly raw audit JSON in docs/m6/audit/phase2/)
+    Task C: -466 lines
+    Task F: -43 lines, +6 lines (some destructure tightening)
+
+  TODO/FIXME/HACK/XXX in src/: 4 comments, all forward-references to
+  unfinished M5/M11/Session-2 work. Zero stale-after-fact comments. Left as-is.
+
+  Deferred follow-ups
+  -------------------
+
+  1. src/components/layout/site-header-client.tsx:58
+     react-hooks/set-state-in-effect lint error.
+     Pre-existing on entry to this hygiene pass (predates the branch).
+     Out of scope: hygiene mandate explicitly excluded refactoring.
+     Fix path: hoist the cookie read into a useSyncExternalStore subscription
+     or lift the setState into a transition. Should be a follow-up commit.
+
+  2. /scripts/*.mjs and /tests/fixtures/auth.mts unused-vars warnings (10).
+     Audit-infrastructure scripts that hold imports for diagnostic shape
+     even when not currently consumed. Not blocking. Optional polish.
+
+  3. Server actions for unfinished UI (squad / queue / waitlist / seat-map
+     builder). Retained intentionally per their inline comments. Will become
+     consumed in M4 Phase 2 / M5.
+
+  4. Pre-task-2 close report flagged M5-staged components with zero current
+     callsites (CityTile, FreeWeekendTile, EventsFilterStrip, FilterSidebar,
+     ThisWeekStrip). Retained intentionally. Will be wired in M5.
+
+  5. ConnectOnboardingCardPreview retained as audit infrastructure for the
+     Connect onboarding visual-regression harness shipped in cff1c1a.
+
+  Final state
+  -----------
+
+  npm run lint:     1 pre-existing error (deferred), no new findings
+  npx tsc --noEmit: clean
+  npm run build:    success
+  npm test:         3/3 passing
+  git status:       only this hygiene log dir untracked
+  origin sync:      everything pushed
+
+  Codebase is hygiene-clean. Brand sweep MAY proceed in a separate session.
+  STOPPING here per the mandate.
+
+

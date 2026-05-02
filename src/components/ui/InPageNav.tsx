@@ -12,7 +12,7 @@ interface InPageNavProps {
 }
 
 /**
- * InPageNav — sticky desktop table-of-contents sidebar.
+ * InPageNav - sticky desktop table-of-contents sidebar.
  *
  * Uses IntersectionObserver to highlight the currently visible section.
  * Hidden on mobile (<lg). Fixed top-24 on desktop.

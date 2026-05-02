@@ -118,6 +118,7 @@ export function PricingPage() {
 
       {/* -- 2. Pricing tiers ---------------------------------------- */}
       <ContentSection surface="base" width="wide">
+        <h2 className="sr-only">Pricing tiers</h2>
         <div className="group/cards grid grid-cols-1 gap-6 md:grid-cols-3">
           {TIERS.map(tier => (
             <div
@@ -131,7 +132,7 @@ export function PricingPage() {
               ].join(' ')}
             >
               {tier.highlighted && (
-                <div className="mb-4 inline-flex items-center rounded-full bg-[var(--brand-accent)]/15 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-[var(--brand-accent)]">
+                <div className="mb-4 inline-flex items-center rounded-full bg-[var(--brand-accent)]/15 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-[var(--brand-accent-strong)]">
                   Most popular
                 </div>
               )}
@@ -192,7 +193,7 @@ export function PricingPage() {
 
       {/* -- 3. FAQ -------------------------------------------------- */}
       <ContentSection surface="alt" width="prose">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent)]">
+        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
           Pricing FAQ
         </p>
         <h2 className="mb-8 font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">
@@ -231,7 +232,7 @@ export function PricingPage() {
         <div className="mt-8 text-center">
           <Link
             href="/help/payments-and-payouts"
-            className="text-sm font-medium text-[var(--brand-accent)] underline underline-offset-2 hover:text-[var(--brand-accent-hover)] transition-colors"
+            className="text-sm font-medium text-[var(--brand-accent-strong)] underline underline-offset-2 hover:text-[var(--brand-accent)] transition-colors"
           >
             More payment and payout questions &rsaquo;
           </Link>

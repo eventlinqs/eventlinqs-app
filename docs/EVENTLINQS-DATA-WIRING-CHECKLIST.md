@@ -1,18 +1,18 @@
-# EventLinqs Homepage — Live Data Wiring Checklist
+# EventLinqs Homepage - Live Data Wiring Checklist
 
 > This is the authoritative list of every piece of dynamic data on the homepage and exactly how it must be wired. When Claude Code builds M4.5, this document is the acceptance test for "is every number real?"
 
 ---
 
-## Rule 1 — No hardcoded numbers anywhere
+## Rule 1 - No hardcoded numbers anywhere
 
 Every integer, percentage, date, price, city count, or "sold today" figure on the homepage MUST come from a live query. If it can't be queried yet, the element hides rather than showing a placeholder.
 
-## Rule 2 — Zero values hide the element
+## Rule 2 - Zero values hide the element
 
 Never show "0 events live now", "0 tickets sold today", "0 upcoming events". Always hide the container entirely when the value is 0.
 
-## Rule 3 — Every query lives server-side
+## Rule 3 - Every query lives server-side
 
 No client-side data fetching for M4.5 homepage. All counts fetched in the server component `src/app/page.tsx` and passed as props. Fresh on every page load. No stale caches for counts.
 
@@ -20,7 +20,7 @@ No client-side data fetching for M4.5 homepage. All counts fetched in the server
 
 ## The five wiring tasks
 
-### Task 1 — Live count strip in hero ("156 events live · 23 cities · This week")
+### Task 1 - Live count strip in hero ("156 events live · 23 cities · This week")
 
 **File:** `src/app/page.tsx`
 
@@ -59,7 +59,7 @@ const uniqueCitiesCount = new Set(
 />
 ```
 
-**Inside FeaturedEventHero — hide rule:**
+**Inside FeaturedEventHero - hide rule:**
 
 ```tsx
 {liveEventCount >= 10 && (
@@ -78,7 +78,7 @@ const uniqueCitiesCount = new Set(
 
 ---
 
-### Task 2 — "X tickets sold today" on ribbon card
+### Task 2 - "X tickets sold today" on ribbon card
 
 **File:** `src/app/page.tsx`
 
@@ -118,11 +118,11 @@ const enrichedSlides = await Promise.all(
 )}
 ```
 
-**Critical:** if `ticketsSoldToday === 0`, the entire row (including the coral pulse dot) must be absent from the DOM. Not hidden with CSS — not rendered at all.
+**Critical:** if `ticketsSoldToday === 0`, the entire row (including the coral pulse dot) must be absent from the DOM. Not hidden with CSS - not rendered at all.
 
 ---
 
-### Task 3 — Hero carousel slides (3-5 slides, real events)
+### Task 3 - Hero carousel slides (3-5 slides, real events)
 
 **File:** `src/app/page.tsx`
 
@@ -168,7 +168,7 @@ while (carouselSlides.length < 3) {
 
 ---
 
-### Task 4 — City photos via Pexels
+### Task 4 - City photos via Pexels
 
 **New file:** `src/lib/images/city-photo.ts`
 
@@ -240,7 +240,7 @@ const cityCounts = await Promise.all(
 
 ---
 
-### Task 5 — Social proof organiser logos (real query, hide when < 6)
+### Task 5 - Social proof organiser logos (real query, hide when < 6)
 
 **File:** `src/app/page.tsx`
 
@@ -266,7 +266,7 @@ const showSocialProof = (featuredOrganisers?.length ?? 0) >= 6
 )}
 ```
 
-**Critical:** if fewer than 6 organisers have logos, the ENTIRE social proof section does not render. Not hidden with CSS — not rendered at all. Empty social proof is worse than no social proof.
+**Critical:** if fewer than 6 organisers have logos, the ENTIRE social proof section does not render. Not hidden with CSS - not rendered at all. Empty social proof is worse than no social proof.
 
 **Each logo renders as:**
 
@@ -283,7 +283,7 @@ const showSocialProof = (featuredOrganisers?.length ?? 0) >= 6
 
 ---
 
-### Task 6 — Testimonial rotation
+### Task 6 - Testimonial rotation
 
 **New file:** `src/lib/content/testimonials.ts`
 
@@ -351,7 +351,7 @@ Before M4.5 is merged, run this checklist against production:
 
 ---
 
-## Summary — what "live, linked, smart" means for M4.5
+## Summary - what "live, linked, smart" means for M4.5
 
 **Live:** every count, every price, every timestamp comes from Supabase or Redis on page load.
 

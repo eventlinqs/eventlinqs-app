@@ -1,7 +1,22 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+
+/**
+ * Read the live query string at call time. We deliberately avoid
+ * `useSearchParams()` so this component does not push the consuming
+ * route into Next.js's CSR-only mode. The hook reads from the router's
+ * search-params snapshot, which is only available at request time;
+ * having it on a client island that ships in a static-rendered route
+ * triggers `missing-suspense-with-csr-bailout` at build time. Reading
+ * `window.location.search` inside an event handler runs strictly after
+ * hydration, so this is always defined and always current.
+ */
+function readCurrentQueryString(): string {
+  if (typeof window === 'undefined') return ''
+  return window.location.search.replace(/^\?/, '')
+}
 import type { DetectedLocation } from '@/lib/geo/detect'
 import type { PickerCity, PickerCityGroups } from '@/lib/locations/picker-cities'
 
@@ -128,13 +143,12 @@ export function LocationPicker({
 }: LocationPickerProps) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
-  const [showDiaspora, setShowDiaspora] = useState(false)
+  const [showGlobalCities, setShowGlobalCities] = useState(false)
   const [geoBusy, setGeoBusy] = useState(false)
   const [geoError, setGeoError] = useState<string | null>(null)
 
   const router = useRouter()
   const pathname = usePathname()
-  const searchParams = useSearchParams()
   const triggerRef = useRef<HTMLButtonElement>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -160,7 +174,7 @@ export function LocationPicker({
   const closeDialog = useCallback(() => {
     setOpen(false)
     setQuery('')
-    setShowDiaspora(false)
+    setShowGlobalCities(false)
     setGeoError(null)
     setTimeout(() => triggerRef.current?.focus(), 0)
   }, [])
@@ -209,7 +223,7 @@ export function LocationPicker({
     // preserving existing filters (preset, category, price, etc.). `page`
     // is dropped so the user sees page 1 of the new city's results.
     if (pathname && pathname.startsWith('/events')) {
-      const next = new URLSearchParams(searchParams?.toString() ?? '')
+      const next = new URLSearchParams(readCurrentQueryString())
       next.delete('page')
       next.delete('country')
       next.delete('city')
@@ -218,13 +232,13 @@ export function LocationPicker({
     } else {
       router.refresh()
     }
-  }, [closeDialog, onChange, pathname, router, searchParams])
+  }, [closeDialog, onChange, pathname, router])
 
   const clearCity = useCallback(() => {
     closeDialog()
     onChange?.()
     if (pathname && pathname.startsWith('/events')) {
-      const next = new URLSearchParams(searchParams?.toString() ?? '')
+      const next = new URLSearchParams(readCurrentQueryString())
       next.delete('page')
       next.delete('country')
       next.delete('city')
@@ -233,7 +247,7 @@ export function LocationPicker({
     } else {
       router.refresh()
     }
-  }, [closeDialog, onChange, pathname, router, searchParams])
+  }, [closeDialog, onChange, pathname, router])
 
   const useMyLocation = useCallback(() => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
@@ -418,10 +432,10 @@ export function LocationPicker({
                   )}
 
                   {cities.internationalByCountry.length > 0 && (
-                    !showDiaspora ? (
+                    !showGlobalCities ? (
                       <button
                         type="button"
-                        onClick={() => setShowDiaspora(true)}
+                        onClick={() => setShowGlobalCities(true)}
                         aria-expanded={false}
                         className={[
                           'mt-4 flex w-full items-center justify-center gap-2 h-10 rounded-lg',
@@ -430,7 +444,7 @@ export function LocationPicker({
                           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]',
                         ].join(' ')}
                       >
-                        Global diaspora cities
+                        Global cities
                       </button>
                     ) : (
                       <div className="mt-5 space-y-4">

@@ -7,9 +7,9 @@ export const dynamic = 'force-dynamic'
  * Cron route: runs every minute via Vercel Crons.
  *
  * 1. Fetches all published high-demand events whose queue is currently open.
- * 2. For each event, calls admit_queue_batch() RPC — atomically moves the next
+ * 2. For each event, calls admit_queue_batch() RPC - atomically moves the next
  *    N waiting entries to 'admitted' and sets their expires_at window.
- * 3. Calls expire_stale_queue_admissions() — globally marks any 'admitted'
+ * 3. Calls expire_stale_queue_admissions() - globally marks any 'admitted'
  *    entries whose window has elapsed back to 'expired'.
  *
  * Protected by CRON_SECRET to prevent public triggering.

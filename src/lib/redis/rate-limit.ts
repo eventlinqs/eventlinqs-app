@@ -8,7 +8,7 @@ export type RateLimitResult = {
 }
 
 type RateLimitOpts = {
-  /** Bucket identifier — usually `${route}:${ip}` or `${route}:${userId}`. */
+  /** Bucket identifier - usually `${route}:${ip}` or `${route}:${userId}`. */
   key: string
   /** Max requests per window. */
   limit: number
@@ -18,7 +18,7 @@ type RateLimitOpts = {
 
 /**
  * Fixed-window rate limiter backed by Upstash Redis. INCR + EXPIRE on the
- * first hit gives ±1 request of slop at window edges — acceptable for
+ * first hit gives ±1 request of slop at window edges - acceptable for
  * abuse prevention; not suitable as a hard billing meter.
  *
  * Fails open: if Redis is unreachable or misconfigured, requests are

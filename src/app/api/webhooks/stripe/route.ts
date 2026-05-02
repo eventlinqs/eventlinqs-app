@@ -7,7 +7,9 @@ import { Resend } from 'resend'
 import { refreshInventoryCache } from '@/lib/redis/inventory-cache'
 import { promoteWaitlist } from '@/lib/waitlist/promote'
 import { trackTicketPurchaseCompleteServer } from '@/lib/analytics/plausible'
+import { handleConnectAccountUpdated } from '@/lib/stripe/connect-handlers'
 import type Stripe from 'stripe'
+import type { PayoutRecordStatus } from '@/types/database'
 
 export const dynamic = 'force-dynamic'
 
@@ -65,6 +67,39 @@ export async function POST(request: NextRequest) {
         await handleChargeRefunded(charge)
         break
       }
+      // M6 Stripe Connect: webhook scaffold (Phase 1).
+      // Stub handlers log + write minimum-viable state. Business logic
+      // wired in Phases 2-5 per docs/m6/m6-implementation-plan.md.
+      case 'account.updated': {
+        const account = event.data.object as Stripe.Account
+        await handleConnectAccountUpdated(account, event.id)
+        break
+      }
+      case 'account.application.deauthorized': {
+        // Stripe sends the connected account ID on event.account, not on
+        // data.object (which is the Application that was deauthorized).
+        await handleConnectAccountDeauthorized(event.account ?? null, event.id)
+        break
+      }
+      case 'payout.created':
+      case 'payout.paid':
+      case 'payout.failed':
+      case 'payout.canceled': {
+        const payout = event.data.object as Stripe.Payout
+        await handleConnectPayoutEvent(event.type, payout, event.id)
+        break
+      }
+      case 'transfer.created': {
+        const transfer = event.data.object as Stripe.Transfer
+        await handleConnectTransferCreated(transfer, event.id)
+        break
+      }
+      case 'charge.dispute.created':
+      case 'charge.dispute.closed': {
+        const dispute = event.data.object as Stripe.Dispute
+        await handleConnectDisputeEvent(event.type, dispute, event.id)
+        break
+      }
       default:
         // Ignore unhandled event types
         break
@@ -84,7 +119,7 @@ async function handlePaymentSucceeded(
   const order_id = intent.metadata?.order_id
   if (!order_id) return
 
-  // Webhooks have no auth session — use admin client to bypass RLS for all writes
+  // Webhooks have no auth session - use admin client to bypass RLS for all writes
   const adminClient = createAdminClient()
 
   // Idempotency: check if already completed
@@ -108,7 +143,7 @@ async function handlePaymentSucceeded(
 
   // Atomically confirm the order: sets status=confirmed, converts reservation,
   // increments sold_count, decrements reserved_count, updates discount uses.
-  // NOTE: do NOT return on error — reserved-seating orders must still have seats marked sold
+  // NOTE: do NOT return on error - reserved-seating orders must still have seats marked sold
   // even if the confirm_order RPC fails (e.g. tier structure mismatch on seat events).
   const { error: confirmError } = await adminClient.rpc('confirm_order', {
     p_order_id: order_id,
@@ -222,7 +257,7 @@ async function handlePaymentSucceeded(
       const tierRelation = item.ticket_tiers as { event_id: string }[] | { event_id: string } | null
       const eventId = Array.isArray(tierRelation) ? tierRelation[0]?.event_id : tierRelation?.event_id
       if (eventId) {
-        // Fire-and-forget — never let cache failure break webhook response
+        // Fire-and-forget - never let cache failure break webhook response
         refreshInventoryCache(item.ticket_tier_id, eventId).catch(err => {
           console.error('[webhook] refreshInventoryCache failed:', err)
         })
@@ -233,7 +268,7 @@ async function handlePaymentSucceeded(
   // Send confirmation email
   await sendConfirmationEmail(adminClient, order_id, receipt_url)
 
-  // Fire Plausible purchase conversion (fire-and-forget — never block webhook).
+  // Fire Plausible purchase conversion (fire-and-forget - never block webhook).
   // Uses the confirmation page URL so the event attributes to the normal funnel.
   try {
     const { data: orderForAnalytics } = await adminClient
@@ -269,7 +304,7 @@ async function handlePaymentFailed(
   _supabase: Awaited<ReturnType<typeof createClient>>,
   intent: Stripe.PaymentIntent
 ) {
-  // Webhook has no auth session — must use admin client for all DB operations
+  // Webhook has no auth session - must use admin client for all DB operations
   const adminClient = createAdminClient()
 
   const { data: payment } = await adminClient
@@ -328,7 +363,7 @@ async function handleRequiresAction(
   _supabase: Awaited<ReturnType<typeof createClient>>,
   intent: Stripe.PaymentIntent
 ) {
-  // Webhook has no auth session — must use admin client for all DB operations
+  // Webhook has no auth session - must use admin client for all DB operations
   const adminClient = createAdminClient()
 
   const { data: payment } = await adminClient
@@ -350,7 +385,7 @@ async function handlePaymentCancelled(
   _supabase: Awaited<ReturnType<typeof createClient>>,
   intent: Stripe.PaymentIntent
 ) {
-  // Webhook has no auth session — must use admin client for all DB operations
+  // Webhook has no auth session - must use admin client for all DB operations
   const adminClient = createAdminClient()
 
   const { data: payment } = await adminClient
@@ -381,7 +416,7 @@ async function handlePaymentCancelled(
       .eq('id', order.reservation_id)
       .eq('status', 'active')
 
-    // Release any seat reservation — return seats to available
+    // Release any seat reservation - return seats to available
     const { data: reservation } = await adminClient
       .from('reservations')
       .select('items, event_id')
@@ -427,7 +462,7 @@ async function handlePaymentCancelled(
       if (cancelledItems && cancelledItems.length > 0) {
         for (const item of cancelledItems) {
           if (!item.ticket_tier_id) continue
-          // Fire-and-forget — never let waitlist promotion failure break webhook
+          // Fire-and-forget - never let waitlist promotion failure break webhook
           promoteWaitlist(reservation.event_id, item.ticket_tier_id, item.quantity).catch(err => {
             console.error('[webhook] promoteWaitlist failed after cancellation:', err)
           })
@@ -505,7 +540,7 @@ async function handleSquadMemberPaymentSucceeded(
 
   if ((paidCount ?? 0) < squad.total_spots) return
 
-  // All members paid — complete the squad
+  // All members paid - complete the squad
   const { error: completeError } = await adminClient
     .from('squads')
     .update({ status: 'completed', completed_at: new Date().toISOString() })
@@ -558,7 +593,7 @@ async function handleSquadMemberPaymentSucceeded(
 }
 
 async function handleChargeRefunded(charge: Stripe.Charge) {
-  // Webhook has no auth session — must use admin client for all DB operations
+  // Webhook has no auth session - must use admin client for all DB operations
   const adminClient = createAdminClient()
 
   // Resolve payment_intent id from the charge object
@@ -595,7 +630,7 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
 
   for (const item of refundedItems) {
     if (!item.ticket_tier_id) continue
-    // Fire-and-forget — never let waitlist promotion failure break webhook
+    // Fire-and-forget - never let waitlist promotion failure break webhook
     promoteWaitlist(order.event_id, item.ticket_tier_id, item.quantity).catch(err => {
       console.error('[webhook] promoteWaitlist failed after charge.refunded:', err)
     })
@@ -691,7 +726,7 @@ function buildConfirmationEmailHtml(
 
   return `
     <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;">
-      <h1 style="color:#1A1A2E;font-size:24px;margin-bottom:4px;">Order Confirmed ✓</h1>
+      <h1 style="color:#1A1A2E;font-size:24px;margin-bottom:4px;">You're in</h1>
       <p style="color:#6B7280;margin-top:0;">Order ${order.order_number}</p>
 
       <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;" />
@@ -711,14 +746,194 @@ function buildConfirmationEmailHtml(
 
       <a href="${orderUrl}"
          style="display:inline-block;background:#4A90D9;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">
-        View Your Order
+        View your order
       </a>
 
       <p style="margin-top:32px;color:#9CA3AF;font-size:12px;">
         Your tickets will be available in your EventLinqs account once our ticketing system is fully activated.
       </p>
 
-      <p style="color:#9CA3AF;font-size:12px;">The EventLinqs Team</p>
+      <p style="color:#9CA3AF;font-size:12px;">The EventLinqs team. The ticketing platform built for every culture.</p>
     </div>
   `
+}
+
+// =====================================================================
+// M6 Stripe Connect: Phase 1 webhook scaffold.
+//
+// These handlers log incoming Connect events and write minimum-viable
+// state. Real business logic (tier promotion, reserve calculation,
+// dispute evidence pack, refund cost allocation) lands in Phases 2-5.
+// See docs/m6/m6-implementation-plan.md.
+//
+// Idempotency: Stripe re-delivers events on retry. Each handler treats
+// the event.id as the natural dedupe key. For Phase 1 the writes are
+// upserts on natural keys (stripe_account_id, stripe_payout_id) so
+// re-delivery is safe.
+// =====================================================================
+
+async function handleConnectAccountDeauthorized(accountId: string | null, eventId: string) {
+  if (!accountId) {
+    console.warn('[m6] account.application.deauthorized missing event.account', { eventId })
+    return
+  }
+
+  const adminClient = createAdminClient()
+
+  // Capture the org id and previous tier before clearing fields so the
+  // audit log keeps a trace of what was demoted.
+  const { data: prevOrg } = await adminClient
+    .from('organisations')
+    .select('id, payout_tier')
+    .eq('stripe_account_id', accountId)
+    .maybeSingle()
+
+  const { error } = await adminClient
+    .from('organisations')
+    .update({
+      stripe_account_id: null,
+      stripe_onboarding_complete: false,
+      stripe_charges_enabled: false,
+      stripe_payouts_enabled: false,
+      stripe_capabilities: {},
+      stripe_requirements: {},
+      payout_destination: null,
+      payout_status: 'restricted',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('stripe_account_id', accountId)
+
+  if (error) {
+    console.error('[m6] account.application.deauthorized update failed', { eventId, accountId, error })
+    return
+  }
+
+  if (prevOrg?.id) {
+    const { error: logError } = await adminClient.from('tier_progression_log').insert({
+      organisation_id: prevOrg.id,
+      from_tier: prevOrg.payout_tier,
+      to_tier: prevOrg.payout_tier,
+      reason: 'admin_demotion',
+      triggered_by: null,
+      metadata: {
+        webhook_event_id: eventId,
+        stripe_account_id: accountId,
+        cause: 'account.application.deauthorized',
+      },
+    })
+    if (logError) {
+      console.error('[m6] deauthorized tier log insert failed', {
+        eventId,
+        orgId: prevOrg.id,
+        error: logError,
+      })
+    }
+  }
+}
+
+async function handleConnectPayoutEvent(
+  eventType: 'payout.created' | 'payout.paid' | 'payout.failed' | 'payout.canceled',
+  payout: Stripe.Payout,
+  eventId: string
+) {
+  const adminClient = createAdminClient()
+
+  // Connected account ID arrives on the event-level account field, not on
+  // payout. Phase 2+ will refactor to thread it through; for Phase 1 the
+  // stub upserts on stripe_payout_id which is globally unique within Stripe.
+  const status: PayoutRecordStatus = (() => {
+    switch (eventType) {
+      case 'payout.created':
+        return 'pending'
+      case 'payout.paid':
+        return 'paid'
+      case 'payout.failed':
+        return 'failed'
+      case 'payout.canceled':
+        return 'canceled'
+    }
+  })()
+
+  // Look up the organisation by stripe_account_id (set on connected account
+  // creation in Phase 2). Phase 1 may have no row yet; the lookup tolerates
+  // a miss and logs.
+  const destinationAccountId = typeof payout.destination === 'string'
+    ? payout.destination
+    : payout.destination?.id ?? null
+
+  if (!destinationAccountId) {
+    console.warn('[m6] payout event missing destination', { eventId, eventType, payoutId: payout.id })
+    return
+  }
+
+  const { data: org } = await adminClient
+    .from('organisations')
+    .select('id')
+    .eq('payout_destination', destinationAccountId)
+    .maybeSingle()
+
+  if (!org) {
+    console.info('[m6] payout event for unmapped account, ignored in Phase 1', {
+      eventId,
+      payoutId: payout.id,
+      destinationAccountId,
+    })
+    return
+  }
+
+  const arrivalDate = payout.arrival_date
+    ? new Date(payout.arrival_date * 1000).toISOString()
+    : null
+
+  const { error } = await adminClient
+    .from('payouts')
+    .upsert(
+      {
+        organisation_id: org.id,
+        stripe_payout_id: payout.id,
+        amount_cents: payout.amount,
+        currency: payout.currency,
+        arrival_date: arrivalDate,
+        status,
+        failure_reason: payout.failure_message ?? null,
+        metadata: { last_event: eventType, last_event_id: eventId },
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'stripe_payout_id' }
+    )
+
+  if (error) {
+    console.error('[m6] payout upsert failed', { eventId, eventType, payoutId: payout.id, error })
+  }
+}
+
+async function handleConnectTransferCreated(transfer: Stripe.Transfer, eventId: string) {
+  // Phase 1 stub: log only. We use destination charges (not separate
+  // charges + transfers) so transfer.created is informational. Phase 5
+  // wires this if the architecture ever changes.
+  console.info('[m6] transfer.created received', {
+    eventId,
+    transferId: transfer.id,
+    amount: transfer.amount,
+    currency: transfer.currency,
+    destination: typeof transfer.destination === 'string' ? transfer.destination : transfer.destination?.id,
+  })
+}
+
+async function handleConnectDisputeEvent(
+  eventType: 'charge.dispute.created' | 'charge.dispute.closed',
+  dispute: Stripe.Dispute,
+  eventId: string
+) {
+  // Phase 1 stub: log only. Phase 5 implements the freeze + evidence pack
+  // + 50/50 fee allocation flow per §1.8 of the implementation plan.
+  console.info('[m6] dispute event received', {
+    eventId,
+    eventType,
+    disputeId: dispute.id,
+    chargeId: typeof dispute.charge === 'string' ? dispute.charge : dispute.charge?.id,
+    amount: dispute.amount,
+    status: dispute.status,
+    reason: dispute.reason,
+  })
 }
