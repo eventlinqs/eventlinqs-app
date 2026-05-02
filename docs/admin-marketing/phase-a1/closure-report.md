@@ -17,7 +17,7 @@ A1 lays the operational foundation for every later admin phase. The deliverables
 
 ### 1.1 Schema (scope §3.1)
 
-`supabase/migrations/20260502000002_admin_foundation.sql`
+`supabase/migrations/20260502000003_admin_foundation.sql`
 
 - `admin_role` enum: super_admin, admin, support, moderator
 - `admin_users` table: pk = auth.users.id, role, display_name, totp_secret_encrypted, totp_enrolled_at, totp_recovery_codes_hashed (jsonb array), last_login_at, last_login_ip, disabled_at, created_at, updated_at, created_by
@@ -140,7 +140,7 @@ Reserved action namespaces (in code): admin.session.login.{success,failure}, adm
 ## 2. Files added
 
 ```
-supabase/migrations/20260502000002_admin_foundation.sql
+supabase/migrations/20260502000003_admin_foundation.sql
 supabase/scripts/admin/bootstrap-super-admin.sql
 
 src/lib/admin/types.ts
@@ -221,7 +221,7 @@ Invite-related actions (admin.invite.{created,accepted,revoked}) reserved in the
 
 | ID | Item | Owner | Status |
 |---|---|---|---|
-| C-A1-01 | Apply migration `20260502000002_admin_foundation.sql` via `supabase db push --linked` | Founder | Pending |
+| C-A1-01 | Apply migration `20260502000003_admin_foundation.sql` via `supabase db push --linked` | Founder | Pending |
 | C-A1-02 | QR rendering for 2FA enrolment - currently text-only | Future polish, non-blocking | Deferred to A1.1 if needed |
 | C-A1-03 | Generate `ADMIN_TOTP_ENC_KEY` (32-byte base64) and add to Vercel + local env | Founder | Pending |
 | C-A1-04 | Wire Sentry hook into `recordAuditEvent` failure path | Session 2 Hardening | Open |

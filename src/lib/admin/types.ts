@@ -6,7 +6,7 @@
  * regenerates database.ts, the admin lib uses these local types as the
  * source of truth for row shape.
  *
- * Mirror of supabase/migrations/20260502000002_admin_foundation.sql.
+ * Mirror of supabase/migrations/20260502000003_admin_foundation.sql.
  */
 
 export type AdminRole = 'super_admin' | 'admin' | 'support' | 'moderator'
