@@ -115,3 +115,29 @@ Owner:    Hardening session
       security is restriction-based, not endpoint-based).
   Note:  Token-scoping summary table retained as audit context for
          Phase 4 (RLS audit, secret rotation policy).
+
+[2026-05-02T19:50:00Z] [F] Observability scaffold (PII scrub + Sentry shim)
+  Commit: 0e326c9 feat(hardening-F): observability scaffold with PII-scrubbed Sentry shim
+  Files:  src/lib/observability/pii-scrub.ts (NEW)
+          src/lib/observability/sentry.ts (NEW, shim until SDK install)
+          src/app/error.tsx (NEW)
+          src/app/global-error.tsx (NEW)
+          src/app/api/health/sentry-error/route.ts (NEW, token-gated)
+          tests/unit/observability/pii-scrub.test.ts (NEW, 17 tests)
+          docs/hardening/phase1/sentry-setup.md (NEW)
+  Note:   Pattern order in scrubString matters. UUIDs scrubbed BEFORE
+          PHONE/CARD so the digit-heavy tail of a UUID is not chewed
+          by the phone-number heuristic. Verified by adversarial test
+          case in pii-scrub.test.ts.
+  Gates:  vitest 20/20, tsc clean, build clean, /api/health/sentry-error
+          in route manifest. Pre-existing site-header-client.tsx lint
+          error unchanged from baseline.
+
+[2026-05-02T19:51:00Z] [F] [COORDINATION] founder + SHARED commit pending
+  After founder runs Sentry actions in docs/hardening/phase1/sentry-setup.md,
+  this session lands two SHARED commits:
+    1. [SHARED] chore(deps): add @sentry/nextjs (package.json + lock)
+    2. [SHARED] feat(observability): wire Sentry into next.config.ts
+  Both will be flagged in commit messages with [SHARED] per CLAUDE.md and
+  will pause the session until partner Claude confirms no conflict with
+  Session 1 / Session 3 work.
