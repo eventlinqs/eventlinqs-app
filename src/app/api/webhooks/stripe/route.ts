@@ -8,6 +8,7 @@ import { refreshInventoryCache } from '@/lib/redis/inventory-cache'
 import { promoteWaitlist } from '@/lib/waitlist/promote'
 import { trackTicketPurchaseCompleteServer } from '@/lib/analytics/plausible'
 import { handleConnectAccountUpdated } from '@/lib/stripe/connect-handlers'
+import { recordOrderConfirmedLedger } from '@/lib/payments/connect-ledger'
 import type Stripe from 'stripe'
 import type { PayoutRecordStatus } from '@/types/database'
 
@@ -150,6 +151,25 @@ async function handlePaymentSucceeded(
   })
   if (confirmError) {
     console.error('[webhook] confirm_order RPC error (non-fatal, continuing):', confirmError)
+  } else {
+    // M6 Phase 3: write destination-charge ledger entries (organiser credit,
+    // reserve hold, mirror debit, org counters). Idempotent on the ledger
+    // table; safe under Stripe webhook retries.
+    try {
+      const ledgerResult = await recordOrderConfirmedLedger(adminClient, {
+        orderId: order_id,
+        stripePaymentIntentId: intent.id,
+        stripeChargeId: typeof charge === 'object' && charge?.id ? charge.id : null,
+      })
+      if (ledgerResult.status !== 'written' && ledgerResult.status !== 'skipped_already_recorded') {
+        console.warn('[webhook] connect ledger write skipped', {
+          orderId: order_id,
+          status: ledgerResult.status,
+        })
+      }
+    } catch (ledgerErr) {
+      console.error('[webhook] connect ledger write threw (non-fatal, continuing):', ledgerErr)
+    }
   }
 
   // ── Mark reserved seats as sold ──────────────────────────────────────────────
@@ -500,6 +520,25 @@ async function handleSquadMemberPaymentSucceeded(
 
   if (orderError) {
     console.error('[webhook] squad order confirm error:', orderError)
+  } else {
+    // M6 Phase 3: write destination-charge ledger entries for the squad member's order.
+    try {
+      const ledgerCharge = intent.latest_charge as Stripe.Charge | null
+      const ledgerResult = await recordOrderConfirmedLedger(adminClient, {
+        orderId,
+        stripePaymentIntentId: intent.id,
+        stripeChargeId:
+          typeof ledgerCharge === 'object' && ledgerCharge?.id ? ledgerCharge.id : null,
+      })
+      if (ledgerResult.status !== 'written' && ledgerResult.status !== 'skipped_already_recorded') {
+        console.warn('[webhook] squad connect ledger write skipped', {
+          orderId,
+          status: ledgerResult.status,
+        })
+      }
+    } catch (ledgerErr) {
+      console.error('[webhook] squad connect ledger write threw (non-fatal, continuing):', ledgerErr)
+    }
   }
 
   // Mark payment as completed
