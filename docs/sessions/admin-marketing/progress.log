@@ -47,3 +47,15 @@ Opened: 2026-05-02
 2026-05-02  [COORDINATION]  C-B1-05 founder + project manager confirm cultural-rail imagery source (Pexels vs Unsplash vs commissioned)
 2026-05-02  [COORDINATION]  C-B1-06 by-city rail curated-imagery pass, blocked on C-B1-05
 2026-05-02  [COORDINATION]  C-B1-07 project manager confirms hero CTA verb-list interpretation (current per-slide CTAs vs scope §4.2 brand-level CTAs)
+2026-05-04  build     redesign-batch-3 separated-card tile rebuilds: CityRailTile, FreeWeekendTile, ThisWeekCard, EventCard - image-top + white card body, gradient label band only on city/venue tiles -> src/components/features/events/{city-rail-tile,free-weekend-tile,this-week-card,event-card}.tsx
+2026-05-04  build     redesign-batch-3 SnapRail / SnapRailScroller / CulturalPicksRail token migration onto --surface-*, --text-*, --brand-accent-strong; arrow-button hover lift; gold focus rings keep ring-offset for AA -> src/components/ui/snap-rail.tsx, src/components/features/events/cultural-picks-rail.tsx
+2026-05-04  build     redesign-batch-3 Pexels relevance rebuild: 18 hero cultures with descriptive multi-word queries + 20 launch AU cities + 14 international markets with landmark-rich queries; size=large, top-5 hash sample, v2 cache key bump -> src/lib/images/{category-photo,city-photo}.ts
+2026-05-04  build     redesign-batch-3 EventRailSection primitive + 6 new homepage rails (This Weekend, Free, Trending, Just Added, Editor's Picks, Community) + FeaturedVenuesSection grouping upcoming by venue_name -> src/components/features/home/{event-rail-section,featured-venues-section}.tsx, src/app/page.tsx
+2026-05-04  build     [SHARED] DESIGN-SYSTEM.md v2.1: section 6.2.1 separated-card tile pattern + on-photo overlay rules; Anti-Patterns updated to forbid event meta on photography, multi-line copy in gradient bands, gold-400 on light surfaces -> docs/DESIGN-SYSTEM.md
+2026-05-04  docs      redesign-batch-3 comparison doc + image-relevance audit + after screenshots at 1440 + 375 -> docs/redesign/{comparison-batch-3,image-relevance-audit}.md, docs/redesign/tiles/after/, docs/redesign/image-relevance/
+2026-05-04  gates     redesign-batch-3 typecheck clean (source), lint 0/0 in src/, npm run build green (122/122 static pages, 9.5 s compile)
+2026-05-04  [GATE]    Redesign Batch 3 code complete - STOP for project manager review
+2026-05-04  [COORDINATION]  C-B3-01 project manager runs Vercel preview Lighthouse median-of-5 mobile on /, /events, /categories/owambe, /events/browse/sydney
+2026-05-04  [COORDINATION]  C-B3-02 project manager runs axe-core scan on the same four routes
+2026-05-04  [COORDINATION]  C-B3-03 visual regression at the 7 canonical viewports listed in BUILD-STANDARDS.md (Vercel preview)
+2026-05-04  [COORDINATION]  C-B3-04 [SHARED] DESIGN-SYSTEM.md v2.1 commit (cbe2e16) flagged for cross-session sign-off before merge
