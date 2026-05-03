@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { LocationPicker } from '@/components/ui/location-picker'
@@ -18,6 +18,24 @@ interface SiteHeaderClientProps {
   location: DetectedLocation
   cities: PickerCityGroups
 }
+
+function readCityCookie(): DetectedLocation | null {
+  if (typeof document === 'undefined') return null
+  const match = document.cookie.match(/(?:^|;\s*)el_city=([^;]+)/)
+  if (!match) return null
+  try {
+    const parsed = JSON.parse(decodeURIComponent(match[1]))
+    if (parsed && typeof parsed.city === 'string') {
+      return { ...parsed, source: 'cookie' as const }
+    }
+  } catch {
+    // ignore malformed cookie
+  }
+  return null
+}
+
+const subscribeCookie = () => () => {}
+const getServerCookieSnapshot = (): DetectedLocation | null => null
 
 /**
  * SiteHeaderClient - sticky top navigation bar client inner.
@@ -38,29 +56,21 @@ interface SiteHeaderClientProps {
  */
 export function SiteHeaderClient({ location, cities }: SiteHeaderClientProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const [displayLocation, setDisplayLocation] = useState(location)
+
+  // Hydrate the picker's currently-displayed location from the `el_city`
+  // cookie. SSR ships a static default so the page is ISR-eligible;
+  // useSyncExternalStore upgrades the display to the cookie value on the
+  // client without a setState-in-effect cascade. Server snapshot returns
+  // null so SSR/hydration uses the prop fallback.
+  const cookieLocation = useSyncExternalStore(
+    subscribeCookie,
+    readCityCookie,
+    getServerCookieSnapshot,
+  )
+  const displayLocation = cookieLocation ?? location
 
   const hamburgerRef  = useRef<HTMLButtonElement>(null)
   const sheetRef      = useRef<HTMLDivElement>(null)
-
-  // Hydrate the picker's currently-displayed location from the `el_city`
-  // cookie post-mount. SSR ships a static default so the page is ISR-
-  // eligible; this effect upgrades the display to whatever the user
-  // selected in a prior visit. No-op when the cookie is absent or
-  // malformed.
-  useEffect(() => {
-    if (typeof document === 'undefined') return
-    const match = document.cookie.match(/(?:^|;\s*)el_city=([^;]+)/)
-    if (!match) return
-    try {
-      const parsed = JSON.parse(decodeURIComponent(match[1]))
-      if (parsed && typeof parsed.city === 'string') {
-        setDisplayLocation({ ...parsed, source: 'cookie' as const })
-      }
-    } catch {
-      // ignore malformed cookie
-    }
-  }, [])
 
   useEffect(() => {
     if (!isOpen) return
