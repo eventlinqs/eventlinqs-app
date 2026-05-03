@@ -1,0 +1,33 @@
+2026-05-03 - Session 3 (Admin / Marketing Polish)
+
+[COORDINATION] Auth fixes flagged for Session 2
+
+Founder reported two production auth defects in the redesign brief:
+- Signup confirmation email does not deliver in production
+- Password reset hangs on "Updating password" indefinitely
+
+Both belong to Session 2 owned paths per CLAUDE.md:
+- src/lib/email/** (Resend SMTP)
+- src/app/api/auth/** (Supabase Auth callback wiring)
+- supabase Auth config (rate limits, redirect URLs, templates)
+
+Session 3 will not touch these paths in the redesign branch. Likely
+investigation order for Session 2:
+1. Check Supabase Auth dashboard SMTP config - is custom Resend SMTP enabled
+   in production, or is the project still on the default 4-emails-per-hour
+   shared sender?
+2. Verify NEXT_PUBLIC_SITE_URL is set on Vercel prod and that Supabase Auth
+   "Site URL" + "Redirect URLs" allowlist matches.
+3. /auth/reset-password/page.tsx: check that the auth handler awaits the
+   updateUser call and surfaces error states instead of perpetual pending.
+4. Check Resend dashboard for delivery logs against confirm-signup template
+   (src/lib/email/templates/auth/confirm-signup.html exists).
+
+This redesign session ships marketing/content work only. Auth is gating
+launch readiness so it should be picked up in Session 2 in parallel.
+
+---
+
+2026-05-03 - Session 3 redesign branch opened: redesign/world-class-rebuild-2026-05-03
+Scope: marketing polish, content build for stub pages, tile/rail layout
+upgrade, footer expansion, legal compliance fixes.
