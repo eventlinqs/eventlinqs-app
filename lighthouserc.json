@@ -21,7 +21,6 @@
       "numberOfRuns": 1,
       "settings": {
         "formFactor": "mobile",
-        "preset": "perf",
         "chromeFlags": "--headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage",
         "extraHeaders": "{\"Cookie\":\"el-audit=1\"}"
       }
