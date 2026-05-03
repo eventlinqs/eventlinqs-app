@@ -14,7 +14,7 @@
  * 'phase2-test-org'` so re-runs do not duplicate.
  */
 
-import { mkdir, writeFile, readFile } from 'node:fs/promises'
+import { mkdir, writeFile } from 'node:fs/promises'
 import { resolve, dirname } from 'node:path'
 import { existsSync, readFileSync } from 'node:fs'
 import { chromium, type BrowserContext } from 'playwright'
