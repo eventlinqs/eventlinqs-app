@@ -28,6 +28,13 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# load test tooling and run artefacts (binary + raw run output not committed; processed summaries are)
+/tools/
+/tests/load/results/raw/
+# fixtures are regenerated per preview deploy and contain throwaway session
+# cookies for the preview Supabase project - never commit
+/tests/load/fixtures/*.json
 .pnpm-debug.log*
 
 # env files (can opt-in for committing if needed)
