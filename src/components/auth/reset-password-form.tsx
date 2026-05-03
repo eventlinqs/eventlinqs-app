@@ -1,13 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import type { AuthChangeEvent } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 
 export function ResetPasswordForm() {
   const supabase = createClient()
-  const router = useRouter()
 
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -56,16 +54,46 @@ export function ResetPasswordForm() {
 
     setLoading(true)
 
-    const { error } = await supabase.auth.updateUser({ password })
+    let succeeded = false
+    try {
+      // Race the update against a hard timeout. Without this, a NavigatorLock
+      // contention between concurrent auth-token reads can leave the call
+      // pending forever, and the global unhandledrejection handler in
+      // src/lib/supabase/client.ts swallows the surfaced error - the button
+      // would otherwise stay stuck on "Updating password" with no feedback.
+      const update = supabase.auth.updateUser({ password })
+      const timeout = new Promise<{ error: { message: string } }>((_, reject) =>
+        setTimeout(() => reject(new Error('Password update timed out. Please try again.')), 15000),
+      )
+      const result = (await Promise.race([update, timeout])) as Awaited<typeof update>
 
-    if (error) {
-      setError(error.message)
+      if (result.error) {
+        setError(result.error.message)
+        return
+      }
+
+      succeeded = true
+
+      // Best-effort sign-out so the user lands on /login fresh and re-authenticates
+      // with the new password. Bounded so a hung lock cannot strand the UI; if it
+      // fails, the redirect still fires and middleware bounces the authenticated
+      // user to /dashboard, which is an acceptable fallback.
+      const signOut = supabase.auth.signOut()
+      const signOutTimeout = new Promise<void>((resolve) => setTimeout(resolve, 3000))
+      await Promise.race([signOut, signOutTimeout]).catch(() => {})
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Could not update password. Please try again.'
+      setError(message)
+    } finally {
       setLoading(false)
-      return
     }
 
-    await supabase.auth.signOut()
-    router.push('/login?reset=success')
+    if (succeeded) {
+      // Hard navigation: avoids the SPA router being intercepted by the
+      // recovery-session cookie state and guarantees the auth cookies are
+      // re-read fresh on /login.
+      window.location.assign('/login?reset=success')
+    }
   }
 
   if (!sessionReady) {
