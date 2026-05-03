@@ -134,3 +134,69 @@ Rate-limit wiring on checkout endpoints. Per founder clarification, the rate-lim
 
 [GATE] Phase 3 v2 complete — STOP for founder review.
 
+
+---
+
+## 2026-05-04 — M6 Phase 5 (Refunds Manager)
+
+### Branch
+- feat/m6-phase5-refunds-manager (off main, separate from gated Phase 4 branch)
+
+### Phase 5-A: Schema + RLS
+- supabase/migrations/20260503000001_refunds_extension.sql: 3 enums (refund_reason, refund_status, refund_initiator), refunds table (22 cols, FKs, audit timestamps), 6 indexes, updated_at trigger
+- 3 SELECT-only RLS policies; writes are admin-client-only via mutations.ts
+
+### Phase 5-B: Server data layer
+- src/lib/refunds/queries.ts: getOrganiserRefunds, getBuyerRefundRequests, getRefundById, getRefundStatistics; pagination clamp 100, parallel stats fetch
+- src/lib/refunds/auth.ts: resolveOrganiserRefundScope (owner-only), resolveBuyerScope
+- src/lib/refunds/mutations.ts: createRefundRequest, processRefund, cancelRefundRequest, escalateToDispute
+
+### Phase 5-C: Stripe Connect refund executor
+- src/lib/stripe/refunds.ts: executeStripeRefund delegates to Phase 3 refundOrder helper (reverse_transfer + refund_application_fee), writes back stripe_refund_id or failure_reason; resolves payment_intent from payments table; normaliseReason maps cannot_attend/other to requested_by_buyer
+
+### Phase 5-D: API routes
+- POST /api/refunds/request (buyer + organiser via asOrganiser flag)
+- GET /api/refunds/list (organiser, with optional includeStats=true)
+- GET /api/refunds/[id] (organiser-first, buyer fallback)
+- POST /api/refunds/[id]/process (organiser)
+- POST /api/refunds/[id]/cancel (buyer self-cancel or organiser-deny)
+- src/lib/rate-limit/policies.ts: 3 new policies (refunds-read 60/min, refunds-request 3/hour, refunds-process 30/min)
+
+### Phase 5-E: Email notifications
+- src/lib/refunds/email.ts: 5 kinds (refund_requested, refund_approved, refund_processed, refund_denied, refund_failed); brand-styled HTML shell; organiser-bound vs buyer-bound recipient routing with guest_email fallback; no-ops without RESEND_API_KEY; swallows transport errors
+
+### Phase 5-F: Organiser dashboard UI
+- src/app/(dashboard)/dashboard/refunds/page.tsx: stats + paginated history server component
+- src/app/(dashboard)/dashboard/refunds/[id]/page.tsx: detail with status pill, dl grid, message/notes panels, action panel
+- src/components/dashboard/refunds/: refund-stats-cards, refunds-history-table (status filter + mobile horizontal scroll), refund-detail-actions (approve/deny), format helpers
+
+### Phase 5-G: Buyer UI
+- src/app/orders/[order_id]/refund-request/: server-guarded form (ownership, status, no active request)
+- src/app/account/refund-requests/page.tsx: buyer's own requests with status pills
+
+### Phase 5-H: Tests
+- 52 new tests across 5 files: queries (10), mutations (12), stripe-refunds (4), api-routes (12), email (6)
+- 157/157 total suite passing
+- vi.hoisted for mocks, FakeDb pattern for Supabase, function MockResend() for Resend SDK, vi.importActual to keep __setStripeClientForTests seam
+
+### Gates
+- Vitest: 157/157 passing
+- TypeScript: clean (after rm -rf .next to drop stale Phase 4 generated types)
+- ESLint --max-warnings=0: clean
+- Production build (SKIP_ENV_VALIDATION=1): success, all /api/refunds/* routes registered
+
+### [SHARED] files touched
+- src/types/database.ts: added Refund, RefundReasonEnum, RefundStatus, RefundInitiatorEnum (committed separately as chore(types)... [SHARED])
+
+### [COORDINATION] Session 2 (hardening)
+New rate-limit policies (rf-r, rf-q, rf-p) live in src/lib/rate-limit/policies.ts. If Sydney Upstash migration changes how policies are keyed, these need the same treatment.
+
+### [COORDINATION] Session 3 (admin)
+M7 admin refunds moderation queue can reuse getOrganiserRefunds shape but will need a getAllRefundsForAdmin query. Do NOT add admin RLS policies on refunds without Session 1 review; the write-only-via-mutations contract is intentional.
+
+### Closure
+- docs/m6/phase5/closure-report.md: full report with deliverables, gates, architectural notes, founder review checklist
+- 9 atomic commits on feat/m6-phase5-refunds-manager
+- Branch pushed to origin
+
+[GATE] Phase 5 complete - STOP for founder review.
