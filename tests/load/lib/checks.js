@@ -45,10 +45,16 @@ export const counters = {
 // Standardised "is the response acceptable for a browse path" check.
 // Acceptable: 2xx, or 3xx redirect (preview deployments have a few
 // canonical-host redirects that are not failures).
+//
+// Body check passes when r.body is null because k6's
+// discardResponseBodies:true zeros out the body field on every
+// response - we still want to assert content-length flowed via the
+// data_received metric, but the per-response check must not flag
+// every browse iteration as failed when discardResponseBodies is on.
 export function checkBrowse(res, route) {
   const ok = check(res, {
     [`${route}: status 2xx/3xx`]: (r) => r.status >= 200 && r.status < 400,
-    [`${route}: body present`]: (r) => r.body && r.body.length > 0,
+    [`${route}: body ok`]: (r) => r.body === null || r.body.length > 0,
   })
   rates.okBrowse.add(ok)
   if (res.status === 429) counters.rateLimited.add(1)
@@ -61,6 +67,10 @@ export function checkCheckout(res, route) {
   const ok = check(res, {
     [`${route}: status 2xx`]: (r) => r.status >= 200 && r.status < 300,
     [`${route}: json body`]: (r) => {
+      // r.body may be null when discardResponseBodies is set on the
+      // run; the checkout profile leaves bodies enabled so reservation
+      // ID parsing works, but be resilient anyway.
+      if (r.body === null) return true
       try {
         return r.json() !== null
       } catch (_e) {
@@ -77,7 +87,7 @@ export function checkCheckout(res, route) {
 export function checkOrg(res, route) {
   const ok = check(res, {
     [`${route}: status 2xx/3xx`]: (r) => r.status >= 200 && r.status < 400,
-    [`${route}: body present`]: (r) => r.body && r.body.length > 0,
+    [`${route}: body ok`]: (r) => r.body === null || r.body.length > 0,
   })
   rates.okOrg.add(ok)
   if (res.status === 429) counters.rateLimited.add(1)

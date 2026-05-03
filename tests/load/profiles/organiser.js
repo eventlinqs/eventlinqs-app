@@ -66,6 +66,7 @@ const ROUTE_WEIGHTS = [
   [25, 'dashboard_insights'],
 ]
 
+// eslint-disable-next-line import/no-anonymous-default-export
 export default function () {
   const route = weightedPick(ROUTE_WEIGHTS)
   const organiser =

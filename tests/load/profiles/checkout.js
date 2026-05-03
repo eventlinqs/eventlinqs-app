@@ -60,6 +60,7 @@ export function setup() {
   return { userCount: testUsers.length }
 }
 
+// eslint-disable-next-line import/no-anonymous-default-export
 export default function () {
   const slug = eventSlugs[randInt(0, eventSlugs.length - 1)]
   const user = testUsers.length > 0 ? testUsers[randInt(0, testUsers.length - 1)] : null

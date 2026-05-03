@@ -1,0 +1,161 @@
+{
+  "label": "browse-50vu-30s",
+  "rawFile": "browse-smoke2-20260503T072433Z.json",
+  "linesProcessed": 8848,
+  "startedAt": "2026-05-03T07:24:34.411Z",
+  "endedAt": "2026-05-03T07:25:47.971Z",
+  "durationSec": 74,
+  "trends": {
+    "http_req_duration:organisers": {
+      "count": 29,
+      "min": 262.99,
+      "p50": 284.1,
+      "p90": 387.41,
+      "p95": 429.17,
+      "p99": 487.05,
+      "max": 487.05,
+      "avg": 302.8
+    },
+    "browse_organisers_ms": {
+      "count": 29,
+      "min": 262.99,
+      "p50": 284.1,
+      "p90": 387.41,
+      "p95": 429.17,
+      "p99": 487.05,
+      "max": 487.05,
+      "avg": 302.8
+    },
+    "http_req_duration:events_city": {
+      "count": 38,
+      "min": 534.22,
+      "p50": 779.07,
+      "p90": 949.75,
+      "p95": 1097.27,
+      "p99": 1162.77,
+      "max": 1162.77,
+      "avg": 798.4
+    },
+    "browse_events_city_ms": {
+      "count": 38,
+      "min": 534.22,
+      "p50": 779.07,
+      "p90": 949.75,
+      "p95": 1097.27,
+      "p99": 1162.77,
+      "max": 1162.77,
+      "avg": 798.4
+    },
+    "http_req_duration:home": {
+      "count": 68,
+      "min": 282.05,
+      "p50": 356.67,
+      "p90": 549.43,
+      "p95": 582.34,
+      "p99": 600.45,
+      "max": 600.45,
+      "avg": 376.36
+    },
+    "browse_home_ms": {
+      "count": 68,
+      "min": 282.05,
+      "p50": 356.67,
+      "p90": 549.43,
+      "p95": 582.34,
+      "p99": 600.45,
+      "max": 600.45,
+      "avg": 376.36
+    },
+    "http_req_duration:event_slug": {
+      "count": 162,
+      "min": 482.57,
+      "p50": 582.26,
+      "p90": 774.58,
+      "p95": 847.67,
+      "p99": 983.29,
+      "max": 1127.21,
+      "avg": 611.69
+    },
+    "browse_event_slug_ms": {
+      "count": 162,
+      "min": 482.57,
+      "p50": 582.26,
+      "p90": 774.58,
+      "p95": 847.67,
+      "p99": 983.29,
+      "max": 1127.21,
+      "avg": 611.69
+    },
+    "http_req_duration:events": {
+      "count": 171,
+      "min": 501.09,
+      "p50": 763.95,
+      "p90": 902.86,
+      "p95": 928.15,
+      "p99": 990.11,
+      "max": 996.64,
+      "avg": 754.68
+    },
+    "browse_events_ms": {
+      "count": 171,
+      "min": 501.09,
+      "p50": 763.95,
+      "p90": 902.86,
+      "p95": 928.15,
+      "p99": 990.11,
+      "max": 996.64,
+      "avg": 754.68
+    },
+    "http_req_duration:pricing": {
+      "count": 14,
+      "min": 269,
+      "p50": 339.65,
+      "p90": 381.38,
+      "p95": 404.44,
+      "p99": 404.44,
+      "max": 404.44,
+      "avg": 328.35
+    },
+    "browse_pricing_ms": {
+      "count": 14,
+      "min": 269,
+      "p50": 339.65,
+      "p90": 381.38,
+      "p95": 404.44,
+      "p99": 404.44,
+      "max": 404.44,
+      "avg": 328.35
+    }
+  },
+  "rates": {
+    "http_req_failed": {
+      "passed": 482,
+      "failed": 0,
+      "rate": 1
+    },
+    "ok_browse": {
+      "passed": 482,
+      "failed": 0,
+      "rate": 1
+    }
+  },
+  "counters": {},
+  "httpStatus": {
+    "429": 0,
+    "2xx": 482,
+    "3xx": 0,
+    "4xx": 0,
+    "5xx": 0,
+    "other": 0
+  },
+  "thresholds": {
+    "http_req_failed:0": {
+      "ok": false,
+      "value": "passed"
+    },
+    "ok_browse:0": {
+      "ok": false,
+      "value": "passed"
+    }
+  }
+}

@@ -17,7 +17,7 @@ import http from 'k6/http'
 import { sleep, group } from 'k6'
 import { BASE_URL, baseHeaders, weightedPick, randInt } from '../lib/config.js'
 import { eventSlugs, cities } from '../lib/fixtures.js'
-import { checkBrowse, trends, THRESHOLDS } from '../lib/checks.js'
+import { checkBrowse, trends } from '../lib/checks.js'
 
 const VUS = parseInt(__ENV.VUS || '10000', 10)
 const DURATION = __ENV.DURATION || '10m'
@@ -62,6 +62,7 @@ const ROUTE_WEIGHTS = [
   [5, 'organisers'],
 ]
 
+// eslint-disable-next-line import/no-anonymous-default-export
 export default function () {
   const route = weightedPick(ROUTE_WEIGHTS)
   group('browse', function () {
