@@ -9,6 +9,7 @@ import { promoteWaitlist } from '@/lib/waitlist/promote'
 import { trackTicketPurchaseCompleteServer } from '@/lib/analytics/plausible'
 import { handleConnectAccountUpdated } from '@/lib/stripe/connect-handlers'
 import { recordOrderConfirmedLedger } from '@/lib/payments/connect-ledger'
+import { sendPayoutEmail, type PayoutEmailKind } from '@/lib/payouts/email'
 import type Stripe from 'stripe'
 import type { PayoutRecordStatus } from '@/types/database'
 
@@ -943,6 +944,35 @@ async function handleConnectPayoutEvent(
 
   if (error) {
     console.error('[m6] payout upsert failed', { eventId, eventType, payoutId: payout.id, error })
+  }
+
+  const emailKind = mapPayoutEventToEmailKind(eventType)
+  if (emailKind) {
+    try {
+      await sendPayoutEmail(adminClient, org.id, emailKind, {
+        amountCents: payout.amount,
+        currency: payout.currency,
+        arrivalDate,
+        failureReason: payout.failure_message ?? null,
+      })
+    } catch (err) {
+      console.error('[m6] payout email send failed', { eventId, eventType, payoutId: payout.id, err })
+    }
+  }
+}
+
+function mapPayoutEventToEmailKind(
+  eventType: 'payout.created' | 'payout.paid' | 'payout.failed' | 'payout.canceled'
+): PayoutEmailKind | null {
+  switch (eventType) {
+    case 'payout.created':
+      return 'payout_initiated'
+    case 'payout.paid':
+      return 'payout_paid'
+    case 'payout.failed':
+      return 'payout_failed'
+    case 'payout.canceled':
+      return null
   }
 }
 
