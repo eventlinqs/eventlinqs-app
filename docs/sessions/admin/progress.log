@@ -31,3 +31,51 @@ launch readiness so it should be picked up in Session 2 in parallel.
 2026-05-03 - Session 3 redesign branch opened: redesign/world-class-rebuild-2026-05-03
 Scope: marketing polish, content build for stub pages, tile/rail layout
 upgrade, footer expansion, legal compliance fixes.
+
+---
+
+2026-05-03 - Session 3 redesign batch 1 shipped to redesign branch
+
+Commits on top of main:
+- 8e46d7f fix(legal): registered address Melbourne -> Geelong VIC
+  Updated cookies, terms, privacy, organiser-terms to Geelong VIC.
+  Removed two HTML em-dash entities in cookies/page.tsx.
+- bb0a47e [COORDINATION] log auth fix handoff for Session 2
+- 30ed0c8 feat(about): replace ComingSoon stub with full About page
+  PageShell + PageHero (premium) + 4 ContentSections. 6 values, founder
+  block, operating principles, dark CTA. ~242 lines.
+- 50dc56a feat(careers): replace ComingSoon stub with full Careers page
+  Pillars, how-we-work, 5 placeholder roles, mailto:careers@eventlinqs.com.
+- 78cd540 feat(press): replace ComingSoon stub with full press kit
+  Fact sheet, founder bio (Lawal Adams, Geelong), story angles, asset
+  request blocks, mailto:press@eventlinqs.com.
+- c2b0053 feat(blog): replace ComingSoon stub with Journal landing
+  4 publishing beats, 6 upcoming pieces with status pills.
+- b0ca69e feat(footer): 6-column rich layout, every link verified
+  Brand | Discover | Cultures | Cities | For organisers | Company.
+  Cultures: 7 hero categories. Cities: 6 launch AU cities. Mobile = 5
+  accordions. Sub-footer Accessibility now points to real page.
+  Adds /legal/accessibility statement (DDA + WCAG 2.1 AA, known
+  limitations published, barrier-report path, adjustment-request path).
+
+Quality gates: npm run lint clean, npx tsc --noEmit clean, npm run build
+passes. New static routes added: /about, /careers, /press, /blog,
+/legal/accessibility (all prerendered).
+
+Branch pushed. PR URL to be opened manually:
+https://github.com/eventlinqs/eventlinqs-app/pull/new/redesign/world-class-rebuild-2026-05-03
+
+Scope deferred to a follow-up session pass:
+- Tile rebuilds (city-rail-tile, this-week-card, free-weekend-tile) to
+  separated-card layout per founder directive (no text overlaid on photos).
+- Pricing/Organisers/Help page polish (current pages are functional and
+  branded, polish not required to merge this batch).
+- DESIGN-SYSTEM.md token review (SHARED file, requires [SHARED] commit
+  prefix and project manager coordination - left untouched in this batch
+  to avoid merge conflicts with Sessions 1 and 2).
+- Reference screenshot capture via Playwright (deprioritised; LLM training
+  covers Ticketmaster/Airbnb/DICE patterns sufficiently for this batch).
+
+Auth defects (signup confirmation email + password reset hang) remain
+flagged for Session 2 per the [COORDINATION] note above. This redesign
+batch does not touch src/lib/email/** or src/app/api/auth/**.
