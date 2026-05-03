@@ -38,7 +38,7 @@ export default function OrganiserTermsPage() {
         use EventLinqs to list an event, sell tickets, or run an
         experience. They form a binding agreement between you and
         EventLinqs (operated by Lawal Adams, ABN 30 837 447 587,
-        Melbourne, Victoria, Australia). If the general Terms and these
+        Geelong, Victoria, Australia). If the general Terms and these
         Organiser Terms conflict, the Organiser Terms take priority for
         organiser conduct.
       </p>
