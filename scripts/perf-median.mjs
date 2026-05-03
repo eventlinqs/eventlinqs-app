@@ -213,7 +213,6 @@ async function main() {
           contaminated: true,
           reason: `chrome reaping failed before run ${i + 1}`,
         }
-        // eslint-disable-next-line no-console
         console.error(
           `[perf-median] CONTAMINATED: chrome reaping failed before run ${
             i + 1
@@ -239,7 +238,6 @@ async function main() {
             ?.selector ?? null,
       }
       samples.push(sample)
-      // eslint-disable-next-line no-console
       console.log(
         `[perf-median] ${route} run ${i + 1}/${RUNS} ` +
           `perf=${(sample.performance ?? 0) * 100} ` +
@@ -263,7 +261,6 @@ async function main() {
         lcpElement: samples[0].lcpElement,
         samples,
       }
-      // eslint-disable-next-line no-console
       console.log(
         `[perf-median] ${route} MEDIAN perf=${summary.routes[route].medianPerformance} ` +
           `lcp=${Math.round(summary.routes[route].medianLcpMs)}ms ` +
@@ -275,12 +272,10 @@ async function main() {
 
   reapChrome()
   await writeFile(resolve(OUT), JSON.stringify(summary, null, 2))
-  // eslint-disable-next-line no-console
   console.log(`[perf-median] wrote ${OUT}`)
 }
 
 main().catch(err => {
-  // eslint-disable-next-line no-console
   console.error(err)
   reapChrome()
   process.exit(1)

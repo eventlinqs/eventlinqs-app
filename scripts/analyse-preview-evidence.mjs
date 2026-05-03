@@ -59,13 +59,6 @@ for (const [label] of routes) {
     console.log(`  LCP element:        ${lcpEl.scoreDisplayMode === 'notApplicable' ? 'NOT APPLICABLE (no LCP fired)' : 'no items'}`)
   }
 
-  // LCP subparts
-  const lcpParts = a['lcp-lazy-loaded'] || a['largest-contentful-paint-element']
-  // Try the explicit phases insight
-  const phases = a['prioritize-lcp-image']
-  // Newer LH has lcp-phases under TimeToFirstByte etc, simpler: pick known audits
-  const ttfb = a['server-response-time']?.numericValue
-
   // Top opportunities (score < 0.9, with overallSavingsMs)
   const opportunities = Object.values(a)
     .filter((x) => x.details?.type === 'opportunity' && (x.score ?? 1) < 0.9 && x.numericValue > 50)

@@ -15,7 +15,6 @@
 import { mkdtemp, writeFile, rm, readFile, mkdir } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { resolve, join } from 'node:path'
-import { tmpdir } from 'node:os'
 import { spawnSync } from 'node:child_process'
 
 const ROOT = resolve(process.cwd())

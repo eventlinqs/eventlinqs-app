@@ -12,7 +12,6 @@ const files = readdirSync(dir).filter(f => f.endsWith('.report.json'))
 const order = ['home', 'events', 'city', 'category', 'event-detail', 'organisers', 'pricing', 'help', 'legal-terms', 'login', 'signup']
 files.sort((a, b) => order.indexOf(a.replace('.report.json', '')) - order.indexOf(b.replace('.report.json', '')))
 
-const fmt = n => (n == null ? 'n/a' : (typeof n === 'number' ? (Number.isInteger(n) ? n : n.toFixed(3).replace(/0+$/, '').replace(/\.$/, '')) : n))
 const pct = n => (n == null ? 'n/a' : Number(n).toFixed(2))
 
 console.log('| Route | Perf | A11y | BP | SEO | LCP (ms) | TBT (ms) | CLS | FCP (ms) |')
@@ -24,7 +23,7 @@ for (const file of files) {
   let json
   try {
     json = JSON.parse(readFileSync(join(dir, file), 'utf8'))
-  } catch (e) {
+  } catch (_e) {
     console.log(`| ${label} | (parse error) | | | | | | | |`)
     continue
   }
@@ -43,11 +42,6 @@ for (const file of files) {
 }
 
 // gate summary
-const passes = (route, perfMin = 0.95) => {
-  if (route.perf == null) return false
-  return route.perf >= perfMin && route.a11y === 1 && route.bp === 1 && route.seo === 1 && route.lcp <= 2500 && route.tbt <= 300 && route.cls <= 0.1
-}
-
 console.log('')
 console.log('## Locked-standard gate per route')
 console.log('')

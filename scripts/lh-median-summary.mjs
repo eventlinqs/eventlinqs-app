@@ -1,5 +1,5 @@
 // Compute median across run1/run2/run3 directories.
-import { readFileSync, readdirSync, existsSync } from 'node:fs'
+import { readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 
 const baseDir = process.argv[2]

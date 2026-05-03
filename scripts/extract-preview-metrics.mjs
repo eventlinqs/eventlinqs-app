@@ -39,7 +39,7 @@ for (const [label, path] of routes) {
       si: a['speed-index']?.numericValue,
       ttfb: a['server-response-time']?.numericValue,
     }
-  } catch (e) {
+  } catch (_e) {
     console.log(`| ${label} | \`${path}\` | ERROR | | | | | | | | | |`)
     continue
   }

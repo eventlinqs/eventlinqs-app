@@ -36,7 +36,7 @@ try {
     ['supabase', 'gen', 'types', 'typescript', '--linked', '--schema', 'public'],
     { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'], shell: process.platform === 'win32' }
   )
-} catch (err) {
+} catch (_err) {
   console.error('[db-types-drift] supabase gen types FAILED. CLI not linked or missing creds.')
   console.error('[db-types-drift] CI environments need SUPABASE_ACCESS_TOKEN + project link.')
   process.exit(2)
