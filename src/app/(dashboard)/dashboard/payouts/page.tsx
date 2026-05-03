@@ -7,6 +7,17 @@ import {
   ConnectOnboardingCard,
   type ConnectOnboardingState,
 } from '@/components/organiser/connect-onboarding-card'
+import {
+  getOrganiserPayouts,
+  getOrganiserPayoutSummary,
+  getReserveReleaseSchedule,
+  getRefundImpact,
+} from '@/lib/payouts/queries'
+import { SummaryCards } from '@/components/payouts/summary-cards'
+import { ReserveReleaseTimeline } from '@/components/payouts/reserve-release-timeline'
+import { PayoutsHistoryTable } from '@/components/payouts/payouts-history-table'
+import { StripeDashboardButton } from '@/components/payouts/stripe-dashboard-button'
+import { RefundsList } from '@/components/payouts/refunds-list'
 import type { Organisation } from '@/types/database'
 
 export const metadata = {
@@ -78,27 +89,60 @@ export default async function PayoutsPage() {
 
   const state = deriveState(org)
   const requirements = readRequirements(org.stripe_requirements)
+  const isOnboarded = state === 'complete'
+
+  if (!isOnboarded) {
+    return (
+      <div className="max-w-3xl">
+        <header className="mb-6 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-ink-900">Payouts</h1>
+            <p className="mt-1 text-sm text-ink-600">
+              Manage how {org.name} gets paid for ticket sales.
+            </p>
+          </div>
+        </header>
+
+        <ConnectOnboardingCard
+          organisationId={org.id}
+          state={state}
+          chargesEnabled={Boolean(org.stripe_charges_enabled)}
+          payoutsEnabled={Boolean(org.stripe_payouts_enabled)}
+          country={org.stripe_account_country}
+          pendingRequirements={requirements}
+          allowedCountries={ALLOWED_CONNECT_COUNTRIES}
+        />
+      </div>
+    )
+  }
+
+  const [summary, schedule, payouts, refunds] = await Promise.all([
+    getOrganiserPayoutSummary(org.id),
+    getReserveReleaseSchedule(org.id, 30),
+    getOrganiserPayouts(org.id, { limit: 20, offset: 0 }),
+    getRefundImpact(org.id, { limit: 10, offset: 0 }),
+  ])
 
   return (
-    <div className="max-w-3xl">
-      <header className="mb-6 flex items-start justify-between gap-4">
+    <div className="space-y-6">
+      <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-ink-900">Payouts</h1>
           <p className="mt-1 text-sm text-ink-600">
-            Manage how {org.name} gets paid for ticket sales.
+            Track every payout, reserve release, and refund for {org.name}.
           </p>
         </div>
+        <StripeDashboardButton enabled={Boolean(org.stripe_account_id)} />
       </header>
 
-      <ConnectOnboardingCard
-        organisationId={org.id}
-        state={state}
-        chargesEnabled={Boolean(org.stripe_charges_enabled)}
-        payoutsEnabled={Boolean(org.stripe_payouts_enabled)}
-        country={org.stripe_account_country}
-        pendingRequirements={requirements}
-        allowedCountries={ALLOWED_CONNECT_COUNTRIES}
-      />
+      <SummaryCards summary={summary} />
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <ReserveReleaseTimeline rows={schedule} />
+        <RefundsList page={refunds} />
+      </div>
+
+      <PayoutsHistoryTable initialPage={payouts} />
     </div>
   )
 }
