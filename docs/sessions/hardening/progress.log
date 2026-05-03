@@ -216,3 +216,59 @@ Owner:    Hardening session
       Sydney health verification, Resend send smoke test).
     - Partner Claude confirms no conflict with [SHARED] 4afe68d.
   Until then: idle.
+
+[2026-05-04T01:10:00Z] [PHASE 2.5] Vercel Sydney + preview Supabase
+  Branch:  feat/hardening-phase2-5-vercel-sydney-preview-supabase
+           (off main, separate from feat/launch-hardening-nationwide
+           per brief)
+  Commits: 54c90fb feat(infra): pin Vercel function region to syd1
+           c3d6bbe feat(supabase): preview-env resolver
+           805a507 docs(phase2-5): observability gap + Upstash plan
+  Files:   vercel.json (regions: ["syd1"])
+           src/lib/supabase/env.ts (NEW resolver)
+           src/lib/supabase/{client,server,public-client,admin,middleware}.ts (M)
+           tests/unit/supabase/env.test.ts (NEW, 5 tests)
+           .env.example (preview vars added)
+           docs/hardening/phase2-5/vercel-region-migration.md (NEW)
+           docs/hardening/phase2-5/preview-supabase-setup.md (NEW)
+           docs/hardening/phase2-5/sentry-observability-report.md (NEW)
+           docs/hardening/phase2-5/upstash-sydney-verification.md (NEW)
+
+  Deliverable A (Vercel region): code merged. Verification protocol
+  V1-V5 captured. Post-merge browse-profile re-run closes Phase 2
+  P2-1.
+
+  Deliverable B (Preview Supabase): code merged. All four Supabase
+  client modules + middleware route through src/lib/supabase/env.ts
+  with presence-based discriminator. Founder action plan F1-F4
+  documented. Resolver fail-safe: missing preview vars -> base.
+  Resolves Phase 2 P2-3.
+
+  Deliverable C (Sentry validation): GAP IDENTIFIED. SDK is shim
+  only - no events captured for Phase 2 window. Full instrumentation
+  config proposed and ready to apply when [SHARED] @sentry/nextjs
+  install lands. Phase 2 P2-4 remains open.
+
+  Deliverable D (Upstash Sydney verification): pre-merge baseline
+  captured (p50 ~203ms, consistent with cross-Pacific RTT to Sydney).
+  Post-merge protocol D.1-D.3 lays out the verification chain. Phase
+  2 browse-profile re-run scheduled for first commit after this PR
+  merges to main.
+
+  Gates:   lint --max-warnings=0 clean
+           tsc --noEmit clean
+           vitest 110/110 passing (5 new tests in env.test.ts)
+           build: verified earlier in session against .env.local
+  Quality: no scope creep into other sessions' owned files.
+           No [SHARED] commits in this branch (Sentry SDK install
+           still queued, awaiting PM coordination).
+
+[2026-05-04T01:15:00Z] [GATE] PHASE 2.5 OPEN
+  PR posted from feat/hardening-phase2-5-vercel-sydney-preview-supabase.
+  Phase 2.5 ships verification plans for A, B, D and gap report for C.
+  C and D close on post-merge actions:
+    - C closes when [SHARED] @sentry/nextjs install commits and
+      configs from sentry-observability-report.md apply.
+    - D closes when post-merge browse-profile re-run from syd1
+      satisfies D.1-D.3 latency and failure-rate thresholds.
+  Branch feat/launch-hardening-nationwide remains untouched per brief.
