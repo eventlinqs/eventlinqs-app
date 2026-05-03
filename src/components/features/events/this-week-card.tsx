@@ -61,39 +61,31 @@ export async function ThisWeekCard({ event }: { event: BentoEvent }) {
   return (
     <Link
       href={`/events/${event.slug}`}
-      className="group relative flex w-[240px] shrink-0 snap-start flex-col overflow-hidden rounded-xl bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg sm:w-[280px]"
+      className="group flex w-[240px] shrink-0 snap-start flex-col overflow-hidden rounded-lg border border-[var(--surface-2)] bg-[var(--surface-0)] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2 sm:w-[280px]"
     >
-      <div className="relative aspect-[16/9] overflow-hidden bg-ink-900">
-        <div className="absolute inset-0 overflow-hidden transition-transform duration-[1400ms] ease-out group-hover:scale-[1.05]">
+      <div className="relative aspect-[3/2] overflow-hidden bg-[var(--surface-1)]">
+        <div className="absolute inset-0 overflow-hidden transition-transform duration-700 ease-out group-hover:scale-105">
           {imageSrc ? (
             <EventCardMedia src={imageSrc} alt={imageAlt} variant="rail" />
           ) : (
             <BrandedPlaceholder category={placeholderCategory} />
           )}
         </div>
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              'linear-gradient(180deg, rgba(10,22,40,0) 60%, rgba(10,22,40,0.7) 100%)',
-          }}
-          aria-hidden
-        />
         {event.category?.name && (
-          <span className="absolute left-3 top-3 rounded-full bg-ink-900/70 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-widest text-white backdrop-blur-md">
+          <span className="absolute left-3 top-3 inline-flex items-center rounded-full bg-[var(--surface-0)]/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-[var(--text-primary)] shadow-sm">
             {event.category.name}
           </span>
         )}
       </div>
-      <div className="flex flex-col p-4">
-        <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-gold-700">
+      <div className="flex flex-1 flex-col p-4">
+        <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-[var(--brand-accent-strong)]">
           {formatDate(event.start_date)}
         </p>
-        <h3 className="mt-1 font-display text-base font-bold leading-snug text-ink-900 line-clamp-2 transition-colors duration-200 group-hover:text-gold-600">
+        <h3 className="mt-1 font-display text-base font-bold leading-snug text-[var(--text-primary)] line-clamp-2 transition-colors duration-200 group-hover:text-[var(--brand-accent-strong)]">
           {event.title}
         </h3>
-        {venue && <p className="mt-1 text-xs text-ink-400 line-clamp-1">{venue}</p>}
-        <p className="mt-2 text-sm font-semibold text-gold-700">
+        {venue && <p className="mt-1 text-xs text-[var(--text-secondary)] line-clamp-1">{venue}</p>}
+        <p className="mt-auto pt-3 font-display text-sm font-bold text-[var(--text-primary)]">
           {formatPrice(event.ticket_tiers ?? null)}
         </p>
       </div>

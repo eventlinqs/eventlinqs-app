@@ -2,8 +2,13 @@ import Link from 'next/link'
 import { CityTileImage } from '@/components/media'
 
 /**
- * CityRailTile: 280px wide, 4:5 aspect-ratio city tile for the By City
- * horizontal rail. Distinct from the fuller-bleed CityTile used in grid layouts.
+ * CityRailTile: 220-280px snap-start city tile for the By City rail.
+ *
+ * Separated-card pattern (rebuilt batch 3):
+ *   - Image at TOP with city name on darkened-gradient label band along
+ *     the lower edge of the image (the one acceptable overlay pattern).
+ *   - White card body BELOW the image with event-count meta.
+ *   - 8px radius, hover lift + shadow.
  *
  * Image rendering is delegated to the CityTileImage media surface, which
  * routes local SVGs through a raw <img> (avoiding the optimizer re-encoding
@@ -22,51 +27,45 @@ export function CityRailTile({ city, slug, eventCount, imageSrc }: Props) {
   return (
     <Link
       href={`/events/browse/${encodeURIComponent(slug)}`}
-      className="group relative block w-[220px] shrink-0 snap-start overflow-hidden rounded-xl bg-ink-900 tile-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 sm:w-[280px]"
+      className="group flex w-[220px] shrink-0 snap-start flex-col overflow-hidden rounded-lg border border-[var(--surface-2)] bg-[var(--surface-0)] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2 sm:w-[260px]"
     >
-      <div className="relative aspect-[4/5] overflow-hidden">
+      <div className="relative aspect-[3/2] overflow-hidden bg-[var(--surface-1)]">
         <CityTileImage
           src={imageSrc}
           alt=""
           className="transition-transform duration-700 ease-out group-hover:scale-105"
         />
         <div
-          className="absolute inset-0"
+          className="absolute inset-x-0 bottom-0 h-2/5"
           style={{
             background:
-              'linear-gradient(180deg, rgba(10,22,40,0) 0%, rgba(10,22,40,0.2) 55%, rgba(10,22,40,0.8) 100%)',
+              'linear-gradient(180deg, rgba(10,22,40,0) 0%, rgba(10,22,40,0.85) 100%)',
           }}
           aria-hidden
         />
-        <div
-          className="pointer-events-none absolute inset-0 rounded-xl border-2 border-transparent transition-colors duration-300 group-hover:border-gold-400/60"
-          aria-hidden
-        />
-
-        <div className="relative z-10 flex h-full flex-col justify-end p-5 text-white">
-          <div className="flex items-end justify-between gap-2">
-            <div>
-              <h3 className="font-display text-2xl font-extrabold leading-tight">{city}</h3>
-              {typeof eventCount === 'number' && (
-                eventCount > 0 ? (
-                  <p className="mt-1 text-xs text-white/70">
-                    {eventCount} upcoming {eventCount === 1 ? 'event' : 'events'}
-                  </p>
-                ) : (
-                  <p className="mt-1 text-xs font-semibold uppercase tracking-widest text-gold-400">
-                    Coming soon
-                  </p>
-                )
-              )}
-            </div>
-            <span
-              className="opacity-0 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100 translate-x-[-6px] text-gold-400"
-              aria-hidden
-            >
-              &rarr;
-            </span>
-          </div>
+        <div className="absolute inset-x-0 bottom-0 px-4 pb-3">
+          <h3 className="font-display text-xl font-extrabold leading-tight text-white">
+            {city}
+          </h3>
         </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-2 px-4 py-3">
+        {typeof eventCount === 'number' && eventCount > 0 ? (
+          <p className="text-xs text-[var(--text-secondary)]">
+            {eventCount} upcoming {eventCount === 1 ? 'event' : 'events'}
+          </p>
+        ) : (
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-[var(--brand-accent-strong)]">
+            Coming soon
+          </p>
+        )}
+        <span
+          className="text-[var(--text-muted)] transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-[var(--brand-accent-strong)]"
+          aria-hidden
+        >
+          &rarr;
+        </span>
       </div>
     </Link>
   )
