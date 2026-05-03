@@ -551,3 +551,41 @@ export interface TierProgressionLog {
   metadata: Record<string, unknown>
   created_at: string
 }
+
+// ─── M6 Phase 5: Refunds ───────────────────────────────────────────────
+
+export type RefundReasonEnum =
+  | 'requested_by_buyer'
+  | 'duplicate'
+  | 'fraudulent'
+  | 'event_cancelled'
+  | 'cannot_attend'
+  | 'other'
+
+export type RefundStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled'
+
+export type RefundInitiatorEnum = 'buyer' | 'organiser' | 'admin' | 'system'
+
+export interface Refund {
+  id: string
+  order_id: string
+  organisation_id: string
+  amount_cents: number
+  currency: string
+  reason: RefundReasonEnum
+  status: RefundStatus
+  initiator: RefundInitiatorEnum
+  stripe_refund_id: string | null
+  stripe_application_fee_refund_id: string | null
+  refund_reverse_transfer: boolean
+  buyer_message: string | null
+  organiser_internal_notes: string | null
+  failure_reason: string | null
+  requested_by: string | null
+  processed_by: string | null
+  requested_at: string
+  processed_at: string | null
+  cancelled_at: string | null
+  created_at: string
+  updated_at: string
+}
