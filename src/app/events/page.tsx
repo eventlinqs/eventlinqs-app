@@ -127,6 +127,7 @@ export default async function EventsPage({ searchParams }: Props) {
               params={raw}
               page={result.page}
               totalPages={result.totalPages}
+              firstCardEager={filterActive}
             />
             <EventsPagination params={raw} page={result.page} totalPages={result.totalPages} />
           </section>
