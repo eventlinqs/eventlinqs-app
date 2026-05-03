@@ -197,3 +197,16 @@ export function isFullyOnboarded(account: Stripe.Account): boolean {
     account.charges_enabled && account.payouts_enabled && account.details_submitted
   )
 }
+
+/**
+ * Generates a single-use Stripe Express dashboard login link for the
+ * connected account. Callers pass it to `window.location.href` (or render
+ * an anchor with `rel="noopener noreferrer"` and `target="_blank"`) - the
+ * link is short-lived (Stripe expires within minutes).
+ *
+ * Used by the M6 Phase 4 Payouts dashboard "Open Stripe Dashboard" button.
+ */
+export async function createDashboardLoginLink(accountId: string): Promise<Stripe.LoginLink> {
+  const stripe = getStripe()
+  return stripe.accounts.createLoginLink(accountId)
+}
