@@ -1,54 +1,74 @@
 import { EventlinqsLogo } from '@/components/ui/eventlinqs-logo'
 
 /**
- * SiteFooter - v2 spec (B1 §4.6).
+ * SiteFooter v3 - 6-column layout, every link verified to a real route.
  *
  * Mobile (<768px):
- *   - 3 collapsed accordions: Find events, For organisers, Company
- *   - Below: language picker placeholder, social row, trust bar
+ *   - 5 collapsed accordions: Discover, Cultures, Cities, For organisers, Company
+ *   - Below: language picker, social row, sub-footer
  *
  * Desktop (768px+):
- *   - 4-column grid: App | Find events | For organisers | Company
- *   - Sub-footer: social icons, legal links, trust line, ABN, address, copyright
+ *   - 6-column grid: Brand | Discover | Cultures | Cities | Organisers | Company
+ *   - Sub-footer: social, legal, trust line, ABN, address, copyright
  *
- * Background: ink-950 (deep navy). Sentence-case column heads. No em-dashes,
- * no exclamation marks. Australian English. Voice doc compliance verified at
- * commit time.
- *
- * Accordion uses native <details>/<summary> - no JS, fully accessible,
- * respects prefers-reduced-motion via CSS.
+ * Background: ink-950. Sentence-case heads. Australian English. No
+ * em-dashes, no exclamation marks. Every href verified against a real
+ * /app route or external service before commit.
  */
 
-const FIND_EVENTS = [
+const DISCOVER = [
   { label: 'Browse all events', href: '/events' },
   { label: 'By city',           href: '/events?view=cities' },
   { label: 'By culture',        href: '/events?view=cultures' },
   { label: 'This week',         href: '/events?when=this-week' },
+  { label: 'This weekend',      href: '/events?when=this-weekend' },
   { label: 'Free events',       href: '/events?price=free' },
 ]
 
+const CULTURES = [
+  { label: 'Afrobeats',                href: '/categories/afrobeats' },
+  { label: 'Caribbean',                href: '/categories/caribbean' },
+  { label: 'Amapiano',                 href: '/categories/amapiano' },
+  { label: 'Gospel',                   href: '/categories/gospel' },
+  { label: 'Owambe',                   href: '/categories/owambe' },
+  { label: 'Heritage and Independence', href: '/categories/heritage-and-independence' },
+  { label: 'Business and Networking',   href: '/categories/networking' },
+]
+
+const CITIES = [
+  { label: 'Melbourne', href: '/events/browse/melbourne' },
+  { label: 'Sydney',    href: '/events/browse/sydney' },
+  { label: 'Brisbane',  href: '/events/browse/brisbane' },
+  { label: 'Perth',     href: '/events/browse/perth' },
+  { label: 'Adelaide',  href: '/events/browse/adelaide' },
+  { label: 'Canberra',  href: '/events/browse/canberra' },
+  { label: 'All cities', href: '/events?view=cities' },
+]
+
 const FOR_ORGANISERS = [
-  { label: 'Sell tickets',      href: '/organisers/signup' },
-  { label: 'Pricing',           href: '/pricing' },
-  { label: 'Organiser guide',   href: '/organisers' },
-  { label: 'Success stories',   href: '/organisers#stories' },
-  { label: 'Organiser login',   href: '/login' },
+  { label: 'Sell tickets',     href: '/organisers/signup' },
+  { label: 'Organiser guide',  href: '/organisers' },
+  { label: 'Pricing',          href: '/pricing' },
+  { label: 'Help centre',      href: '/help/selling-tickets' },
+  { label: 'Organiser terms',  href: '/legal/organiser-terms' },
+  { label: 'Organiser login',  href: '/login' },
 ]
 
 const COMPANY = [
-  { label: 'About',          href: '/about' },
-  { label: 'Careers',        href: '/careers' },
-  { label: 'Press',          href: '/press' },
-  { label: 'Contact',        href: '/contact' },
-  { label: 'Accessibility',  href: '/help/accessibility' },
-  { label: 'Help',           href: '/help' },
+  { label: 'About',     href: '/about' },
+  { label: 'Careers',   href: '/careers' },
+  { label: 'Press',     href: '/press' },
+  { label: 'Journal',   href: '/blog' },
+  { label: 'Help',      href: '/help' },
+  { label: 'Contact',   href: '/contact' },
 ]
 
 const LEGAL = [
   { label: 'Terms',          href: '/legal/terms' },
   { label: 'Privacy',        href: '/legal/privacy' },
-  { label: 'Refund policy',  href: '/help/refunds' },
+  { label: 'Refund policy',  href: '/legal/refunds' },
   { label: 'Cookie policy',  href: '/legal/cookies' },
+  { label: 'Accessibility',  href: '/legal/accessibility' },
 ]
 
 function InstagramIcon() {
@@ -169,8 +189,6 @@ function SocialRow() {
 }
 
 function LanguagePicker() {
-  // Placeholder UI only - real i18n is post-launch. Native <select> avoids
-  // shipping a client component for a static placeholder.
   return (
     <label className="flex items-center gap-2 text-xs text-white/60">
       <span className="sr-only">Language</span>
@@ -195,42 +213,47 @@ export function SiteFooter() {
 
   return (
     <footer className="bg-ink-950 text-white" aria-label="Site footer">
-
-      {/* Main content area */}
       <div className="mx-auto max-w-7xl px-4 pt-16 pb-10 sm:px-6 sm:pt-20 lg:px-8">
 
-        {/* Desktop 4-column grid */}
-        <div className="hidden md:grid md:grid-cols-12 md:gap-8">
-          {/* Col 1 - App / brand (4 cols of 12) */}
-          <div className="md:col-span-4">
+        {/* Desktop 12-col grid: brand 3 / 5 link cols at ~1.8 each */}
+        <div className="hidden md:grid md:grid-cols-12 md:gap-x-8 md:gap-y-12">
+          {/* Brand block - 3 of 12 */}
+          <div className="md:col-span-3">
             <EventlinqsLogo size="lg" variant="inverted" />
             <p className="mt-3 max-w-xs text-sm leading-6 text-white/70">
               The ticketing platform built for every culture.
             </p>
-            {/* App store placeholders are intentionally omitted until the apps ship.
-                Per voice doc we never claim a product we have not delivered. */}
+            <p className="mt-3 max-w-xs text-xs leading-5 text-white/50">
+              Every culture. Every event. One platform.
+            </p>
             <div className="mt-6">
               <LanguagePicker />
             </div>
           </div>
 
-          {/* Col 2 - Find events */}
-          <div className="md:col-span-3">
-            <DesktopColumn title="Find events" links={FIND_EVENTS} />
+          {/* Five link columns share remaining 9 cols */}
+          <div className="md:col-span-2 md:col-start-4">
+            <DesktopColumn title="Discover" links={DISCOVER} />
           </div>
 
-          {/* Col 3 - For organisers */}
           <div className="md:col-span-2">
+            <DesktopColumn title="Cultures" links={CULTURES} />
+          </div>
+
+          <div className="md:col-span-2">
+            <DesktopColumn title="Cities" links={CITIES} />
+          </div>
+
+          <div className="md:col-span-2 lg:col-span-1 lg:col-start-10">
             <DesktopColumn title="For organisers" links={FOR_ORGANISERS} />
           </div>
 
-          {/* Col 4 - Company */}
-          <div className="md:col-span-3">
+          <div className="md:col-span-3 md:col-start-1 md:row-start-2 lg:col-span-2 lg:col-start-11 lg:row-start-1">
             <DesktopColumn title="Company" links={COMPANY} />
           </div>
         </div>
 
-        {/* Mobile - brand block + 3 accordions + language + social */}
+        {/* Mobile - brand block + 5 accordions + language + social */}
         <div className="md:hidden">
           <EventlinqsLogo size="lg" variant="inverted" />
           <p className="mt-3 text-sm leading-6 text-white/70">
@@ -238,7 +261,9 @@ export function SiteFooter() {
           </p>
 
           <div className="mt-8 divide-y divide-white/10 border-y border-white/10">
-            <MobileAccordion title="Find events"     links={FIND_EVENTS} />
+            <MobileAccordion title="Discover"        links={DISCOVER} />
+            <MobileAccordion title="Cultures"        links={CULTURES} />
+            <MobileAccordion title="Cities"          links={CITIES} />
             <MobileAccordion title="For organisers"  links={FOR_ORGANISERS} />
             <MobileAccordion title="Company"         links={COMPANY} />
           </div>
