@@ -1,9 +1,10 @@
-# EventLinqs Design System - v2.0
+# EventLinqs Design System - v2.1
 
-**Status:** Locked v2.0 - living document, evolves with A/B test data
-**Last updated:** 13 April 2026
+**Status:** Locked v2.1 - living document, evolves with A/B test data
+**Last updated:** 4 May 2026
 **Owner:** Lawal Adams + Claude
 **Enforcement:** This document supersedes Claude Code's instincts. Every UI decision must reference it. Deviations require explicit approval and test data.
+**Changelog from v2.0 (Redesign Batch 3, 2026-05-04):** Section 6.2.1 added - canonical separated-card tile pattern + the one allowed image-band overlay (place-name on darkened gradient on city/venue tiles). Anti-Patterns updated to forbid event-meta text on photography and gold-400 on light surfaces. Sub-tagline polished elsewhere; the "WHERE THE CULTURE GATHERS" tagline stays locked.
 **Changelog from v1.0:** Mobile-first patterns rewritten after live TM/DICE mobile analysis. Brand voice section added. Page-by-page templates added. Social proof patterns added. Illustration strategy added. Anti-patterns expanded.
 
 ---
@@ -313,6 +314,41 @@ xl:  1280px  (desktop)
 - Free events: "Free" in `--gold-600`
 - Sold out: strike through + "SOLD OUT" pill in `--ink-900`
 - Low stock: "Only 8 left" in `--coral-500` (only when 10 or less remaining)
+
+### 6.2.1 Tile Patterns (Redesign Batch 3 - 2026-05-04)
+
+The canonical tile shape is **separated-card**: image at the top, white card body below carrying every text field. Event photography is sacred; we do not paint copy on top of it.
+
+**Separated-card layout (event tiles, city tiles, venue tiles, weekend tile):**
+- Image frame: `aspect-[3/2]` for rail tiles, `aspect-[4/3]` for grid event cards, `aspect-video` on mobile.
+- White card body below the image: `bg-[var(--surface-0)]`, padding `--space-4`, holds eyebrow + title + meta + price/CTA.
+- Border: `1px solid var(--surface-2)`. Radius: `8px` (rounded-lg). Resting shadow: `0 1px 2px rgba(10,22,40,0.06)`. Hover: lift 2px + `0 10px 25px rgba(10,22,40,0.10)`.
+- Hover transition on image: `scale(1.05)` over `700ms ease-out`. Hover transition on card: `translateY(-2px)` over `200ms`.
+- Focus-visible: 2px `--color-gold-400` ring with `ring-offset-2`.
+
+**Allowed image-band overlays (the ONE acceptable on-photo pattern):**
+
+For **place** tiles - city, venue - where the place identity itself is the headline, render the place name on a darkened-gradient label band along the lower edge of the image:
+
+```
+linear-gradient(180deg, rgba(10,22,40,0) 0%, rgba(10,22,40,0.85) 100%)
+```
+
+The band occupies the bottom 40% of the image (`h-2/5`, `inset-x-0 bottom-0`). White display type (Manrope 700+ at 18-24px) sits inside the bottom padding zone. The same pattern is allowed for the gold "Free" pill on the FreeWeekendTile because the pill is a status badge, not a label of the photo's subject.
+
+**Forbidden image-band overlays:**
+- Event titles, dates, venue names, or prices on top of event photography. These belong in the white card body below.
+- Full-bleed dark photo cards with all copy stacked on top (the pattern City/FreeWeekend tiles used pre-batch-3).
+- Multi-line copy inside the gradient band - 1 line, 1 piece of identity only.
+
+**Eyebrow / pill / category-chip pattern inside card body:**
+- Eyebrow text (date, "JUST ADDED", "EDITOR'S PICK"): `text-[var(--brand-accent-strong)]`, Manrope 600, 11px, `uppercase`, `tracking-widest`.
+- Category pill on photo (when shown): `bg-[var(--surface-0)]/95` (white-ish), `text-[var(--text-primary)]`, 10px Manrope 700 uppercase tracking-widest, top-left. The white pill replaces the prior dark `bg-ink-900/75` so we never stack white text on potentially-light photography.
+- Status pill (Free, Sold out): solid `--color-gold-400` background, `--color-navy-950` text, top-left, sits *over* the image but only carries 1-2 words.
+
+**Gold on light surfaces:**
+- `--brand-accent` (gold-400) is permitted on dark surfaces only (`--color-navy-950` and below). On light card bodies use `--brand-accent-strong` (gold-800), which carries enough contrast for 4.5:1 against `--surface-0`.
+- Focus rings keep `--color-gold-400` because they paint with `ring-offset-2` so the ring sits on a white halo, restoring contrast.
 
 ### 6.3 Carousels (Horizontal Scroll)
 
@@ -908,6 +944,9 @@ The gold bar is 32px wide, 2px tall `--gold-500` above the eyebrow - borrowed fr
 - Borders on cards when a shadow would do
 - Rounded corners larger than 16px on cards (toy-ish)
 - Square corners on buttons (we are pill-first for primary CTAs)
+- **Text overlaid on event photography** - titles, dates, venues, prices stacked on a photo. Use the separated-card pattern (image top, white card body below). Section 6.2.1.
+- **Multi-line copy inside an image gradient band** - the darkened-gradient band on city/venue tiles is allowed but only carries the place name (1 line). No event meta in the band.
+- **Gold (`--gold-400` / `--brand-accent`) text or fills on light card bodies** - use `--brand-accent-strong` (gold-800) on white. Gold-400 stays on dark surfaces and on focus rings (which use ring-offset).
 
 ### Content
 - Stock photography of diverse people in suits handshaking
