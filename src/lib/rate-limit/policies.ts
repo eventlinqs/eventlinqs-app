@@ -13,6 +13,9 @@ export type PolicyName =
   | 'health-sentry-error'
   | 'location-set'
   | 'cron-job'
+  | 'refunds-read'
+  | 'refunds-request'
+  | 'refunds-process'
 
 export type Policy = {
   /** Stable prefix used to namespace the redis key. Keep short. */
@@ -53,5 +56,26 @@ export const POLICIES: Record<PolicyName, Policy> = {
     windowSec: 60,
     rationale:
       'Vercel Cron tickles each cron route every 5 min at most. 12/min lets manual founder triggers through while bouncing replay attacks if CRON_SECRET ever leaks.',
+  },
+  'refunds-read': {
+    keyPrefix: 'rf-r',
+    limit: 60,
+    windowSec: 60,
+    rationale:
+      'Refunds list and detail reads. Mirrors payouts-read; an organiser polling their refunds dashboard rarely exceeds 1 req/s.',
+  },
+  'refunds-request': {
+    keyPrefix: 'rf-q',
+    limit: 3,
+    windowSec: 3600,
+    rationale:
+      'Buyer-initiated refund requests. 3/hour/user blunts mass-request abuse on shared event links while leaving headroom for retries on a flaky session.',
+  },
+  'refunds-process': {
+    keyPrefix: 'rf-p',
+    limit: 30,
+    windowSec: 60,
+    rationale:
+      'Organiser refund process and cancel writes. Each call hits Stripe and writes the ledger; 30/min is well above any realistic moderator pace.',
   },
 }
