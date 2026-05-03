@@ -13,6 +13,7 @@ export type PolicyName =
   | 'health-sentry-error'
   | 'location-set'
   | 'cron-job'
+  | 'auth-signup'
 
 export type Policy = {
   /** Stable prefix used to namespace the redis key. Keep short. */
@@ -53,5 +54,12 @@ export const POLICIES: Record<PolicyName, Policy> = {
     windowSec: 60,
     rationale:
       'Vercel Cron tickles each cron route every 5 min at most. 12/min lets manual founder triggers through while bouncing replay attacks if CRON_SECRET ever leaks.',
+  },
+  'auth-signup': {
+    keyPrefix: 'auth-signup',
+    limit: 5,
+    windowSec: 600,
+    rationale:
+      'Server-side signup endpoint that drives Resend SMTP. 5 attempts per IP per 10 min covers a legitimate user retrying twice with typos while bouncing scripted account-creation abuse and email-bombing relays. Far tighter than Supabase default SMTP cap (4/hr) was, but applied at the network edge so legitimate single-user signups never hit the floor.',
   },
 }
