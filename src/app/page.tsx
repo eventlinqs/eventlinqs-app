@@ -3,11 +3,7 @@ import Link from 'next/link'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
-import { FeaturedEventHero } from '@/components/features/events/featured-event-hero'
-import type {
-  FeaturedHeroEventSlide,
-} from '@/components/features/events/featured-event-hero'
-import { CATEGORY_HIGHLIGHT_SLIDES } from '@/lib/content/category-highlight-slides'
+import { HomeHero } from '@/components/features/home/home-hero'
 import { BentoGrid, BentoTile, BentoSupportingColumn } from '@/components/features/events/bento-grid'
 import { EventBentoTile } from '@/components/features/events/event-bento-tile'
 import type { BentoEvent } from '@/components/features/events/event-bento-tile'
@@ -28,7 +24,6 @@ import { ThisWeekSection } from '@/components/features/home/this-week-section'
 import { CulturalPicksSection } from '@/components/features/home/cultural-picks-section'
 import { LiveVibeSection } from '@/components/features/home/live-vibe-section'
 import { CityRailSection } from '@/components/features/home/city-rail-section'
-import { TrustBand } from '@/components/marketing/trust-band'
 import {
   ThisWeekSkeleton,
   CulturalPicksSkeleton,
@@ -130,57 +125,13 @@ export default async function HomePage() {
   const featuredRaw = upcomingRawTyped[0] ?? null
   const featuredHero = featuredRaw ? toFeaturedHeroEvent(featuredRaw) : null
 
-  const todayStart = new Date()
-  todayStart.setUTCHours(0, 0, 0, 0)
-
-  // Hero carousel scoring - top 5 soonest events, rank by recency + heat.
-  const heroCandidateRaws = upcomingRawTyped.slice(0, 5)
-  const scoredCandidates = heroCandidateRaws.map(r => {
-    const tiers = r.ticket_tiers ?? []
-    const sold = tiers.reduce((s, t) => s + t.sold_count, 0)
-    const cap = tiers.reduce((s, t) => s + t.total_capacity, 0)
-    const pct = cap > 0 ? (sold / cap) * 100 : 0
-    const createdMs = Date.parse(r.created_at)
-    const startMs = Date.parse(r.start_date)
-    let score = 0
-    if (pct > 70) score += 50
-    if (nowMs - createdMs < 48 * 60 * 60 * 1000) score += 25
-    if (startMs - nowMs < 7 * 24 * 60 * 60 * 1000) score += 20
-    return { raw: r, score }
-  })
-  scoredCandidates.sort((a, b) => b.score - a.score)
-
-  const topCandidates = scoredCandidates.slice(0, 3)
-  const heroEventIds = topCandidates.map(c => c.raw.id)
-
-  // Tickets-sold-today is anonymous, public information (it's just a
-  // count of confirmed orders by event), so it stays in the static
-  // render. Saved-events is per-user and now hydrates client-side via
-  // SaveEventButton, so we ship the shell with everything unsaved and
-  // the button upgrades to the true state post-mount.
-  const soldTodayResult = heroEventIds.length > 0
-    ? await supabase
-        .from('orders')
-        .select('event_id')
-        .in('event_id', heroEventIds)
-        .eq('status', 'confirmed')
-        .gte('created_at', todayStart.toISOString())
-    : { data: [] as { event_id: string }[] }
-
-  const soldTodayByEvent = new Map<string, number>()
-  for (const row of soldTodayResult.data ?? []) {
-    soldTodayByEvent.set(row.event_id, (soldTodayByEvent.get(row.event_id) ?? 0) + 1)
-  }
-
+  // Score remaining events for the bento "What everyone is buying into" row.
+  // Hero now shows a single curated featured event - the carousel and
+  // category-highlight fallback slides are no longer used.
   const savedEventIds = new Set<string>()
-
-  const heroEventSlides = topCandidates.map(({ raw }) => ({
-    event: toFeaturedHeroEvent(raw),
-    ticketsSoldToday: soldTodayByEvent.get(raw.id) ?? 0,
-  })) as FeaturedHeroEventSlide[]
-
-  const highlightSlidesNeeded = Math.max(0, 3 - heroEventSlides.length)
-  const heroHighlightSlides = CATEGORY_HIGHLIGHT_SLIDES.slice(0, highlightSlidesNeeded)
+  void nowMs
+  void liveEventCount
+  void uniqueCitiesCount
 
   const supportingEvents = upcoming.slice(1, 4)
   const thisWeek = upcoming
@@ -192,13 +143,8 @@ export default async function HomePage() {
       <SiteHeader />
 
       <main>
-        {/* 1. Cinematic hero - above fold, rendered inline */}
-        <FeaturedEventHero
-          eventSlides={heroEventSlides}
-          highlightSlides={heroHighlightSlides}
-          liveEventCount={liveEventCount ?? 0}
-          uniqueCitiesCount={uniqueCitiesCount}
-        />
+        {/* 1. Light-bg hero - separated card pattern, no text-on-photo overlay */}
+        <HomeHero featuredEvent={featuredHero} />
 
         {/* 2. Bento grid row 1 - above fold, rendered inline */}
         <section aria-label="Featured events" className={`bg-canvas ${SECTION_DEFAULT}`}>
@@ -265,7 +211,7 @@ export default async function HomePage() {
                     </p>
                     <Link
                       href="/organisers/signup"
-                      className="mt-5 inline-flex items-center rounded-lg bg-gold-500 px-5 py-2.5 text-sm font-semibold text-ink-900 transition-colors hover:bg-gold-600"
+                      className="mt-5 inline-flex items-center rounded-lg bg-[var(--color-navy-950)] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--color-ink-900)]"
                     >
                       List your event
                     </Link>
@@ -276,12 +222,7 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* 3. Trust band - real-numbers strip between lineup and rails */}
-        <Suspense fallback={null}>
-          <TrustBand />
-        </Suspense>
-
-        {/* 4. This Week rail - below fold, Suspense-streamed */}
+        {/* 3. This Week rail - below fold, Suspense-streamed */}
         <Suspense fallback={<ThisWeekSkeleton />}>
           <ThisWeekSection events={thisWeek} />
         </Suspense>
