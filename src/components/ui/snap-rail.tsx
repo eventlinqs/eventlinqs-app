@@ -120,7 +120,7 @@ function ArrowButtons({
         onClick={onPrev}
         disabled={!canPrev}
         aria-label={`Scroll ${railLabel} left`}
-        className="flex h-9 w-9 items-center justify-center rounded-full border border-ink-200 bg-white text-ink-700 transition-colors hover:border-gold-400 hover:text-gold-600 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-ink-200 disabled:hover:text-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+        className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--surface-2)] bg-[var(--surface-0)] text-[var(--text-primary)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent-strong)] hover:text-[var(--brand-accent-strong)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:border-[var(--surface-2)] disabled:hover:text-[var(--text-primary)] disabled:hover:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2"
       >
         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden>
           <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
@@ -131,7 +131,7 @@ function ArrowButtons({
         onClick={onNext}
         disabled={!canNext}
         aria-label={`Scroll ${railLabel} right`}
-        className="flex h-9 w-9 items-center justify-center rounded-full border border-ink-200 bg-white text-ink-700 transition-colors hover:border-gold-400 hover:text-gold-600 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-ink-200 disabled:hover:text-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+        className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--surface-2)] bg-[var(--surface-0)] text-[var(--text-primary)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent-strong)] hover:text-[var(--brand-accent-strong)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:border-[var(--surface-2)] disabled:hover:text-[var(--text-primary)] disabled:hover:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2"
       >
         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden>
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
@@ -143,9 +143,9 @@ function ArrowButtons({
 
 function ProgressBar({ progress }: { progress: number }) {
   return (
-    <div className="h-0.5 w-full max-w-[240px] rounded-full bg-gold-500/15" aria-hidden>
+    <div className="h-0.5 w-full max-w-[240px] rounded-full bg-[var(--surface-2)]" aria-hidden>
       <div
-        className="h-full rounded-full bg-gold-500 transition-[width] duration-200 ease-out"
+        className="h-full rounded-full bg-[var(--brand-accent-strong)] transition-[width] duration-200 ease-out"
         style={{ width: `${Math.max(8, progress * 100)}%` }}
       />
     </div>
@@ -225,14 +225,14 @@ export function SnapRail({
     <div>
       <div className="flex items-end justify-between gap-4">
         <div className="flex items-start gap-3">
-          <div className="mt-1 h-8 w-0.5 shrink-0 bg-gold-500" aria-hidden />
+          <div className="mt-1 h-8 w-0.5 shrink-0 bg-[var(--brand-accent-strong)]" aria-hidden />
           <div>
-            <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-700">
+            <p className="font-display text-xs font-semibold uppercase tracking-widest text-[var(--brand-accent-strong)]">
               {eyebrow}
             </p>
             <h2
               id={headingId}
-              className="font-display text-2xl font-bold text-ink-900 sm:text-3xl"
+              className="font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl"
             >
               {title}
             </h2>
@@ -243,7 +243,7 @@ export function SnapRail({
           {headerLink && (
             <Link
               href={headerLink.href}
-              className="text-sm font-medium text-gold-700 whitespace-nowrap transition-colors hover:text-gold-600"
+              className="text-sm font-medium text-[var(--brand-accent-strong)] whitespace-nowrap transition-colors hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2"
             >
               {headerLink.label} &rsaquo;
             </Link>

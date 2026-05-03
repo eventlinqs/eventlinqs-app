@@ -126,43 +126,40 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
   return (
     <Link
       href={`/events/${slug}`}
-      className="group flex flex-col rounded-lg overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow border border-ink-100"
+      className="group flex flex-col rounded-lg overflow-hidden bg-[var(--surface-0)] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg border border-[var(--surface-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2"
     >
-      {/* ── Image ───────────────────────────────────────────────── */}
-      <div className="relative aspect-video md:aspect-[4/3] overflow-hidden bg-ink-100">
+      <div className="relative aspect-video md:aspect-[4/3] overflow-hidden bg-[var(--surface-1)]">
         {cover_image_url ? (
           <EventCardMedia
             src={cover_image_url}
             alt={title}
             variant={variant}
             priority={priority}
-            className="transition-transform duration-500 group-hover:scale-105"
+            className="transition-transform duration-700 ease-out group-hover:scale-105"
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-ink-200">
+          <div className="flex h-full items-center justify-center text-[var(--text-muted)]">
             <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
           </div>
         )}
 
-        {/* Top-left overlay: M5 badge (priority) or category pill. Exactly one renders. */}
         {m5Mode
           ? badge && (
               <span
                 data-m5-badge={badge}
-                className={`absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-semibold shadow-sm ${BADGE_STYLES[badge]}`}
+                className={`absolute left-3 top-3 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-widest shadow-sm ${BADGE_STYLES[badge]}`}
               >
                 {BADGE_LABELS[badge]}
               </span>
             )
           : category && (
-              <span className="absolute left-3 top-3 rounded-full bg-ink-900/75 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+              <span className="absolute left-3 top-3 inline-flex items-center rounded-full bg-[var(--surface-0)]/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-[var(--text-primary)] shadow-sm">
                 {category.name}
               </span>
             )}
 
-        {/* Heart / save - top-right overlay */}
         <SaveEventButton
           eventId={id}
           initiallySaved={initiallySaved}
@@ -171,24 +168,21 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
         />
       </div>
 
-      {/* ── Card body ───────────────────────────────────────────── */}
       <div className="flex flex-1 flex-col p-4">
         {m5Mode && organisation ? (
-          <p className="text-xs font-medium text-ink-400">{organisation.name}</p>
+          <p className="text-xs font-medium text-[var(--text-secondary)]">{organisation.name}</p>
         ) : (
-          <p className="font-display text-xs font-semibold text-gold-700">
+          <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-[var(--brand-accent-strong)]">
             {formatDate(start_date)}
           </p>
         )}
 
-        {/* Title */}
-        <h3 className="mt-1 font-display text-sm font-bold leading-snug text-ink-900 line-clamp-2 group-hover:text-gold-500 transition-colors">
+        <h3 className="mt-1 font-display text-base font-bold leading-snug text-[var(--text-primary)] line-clamp-2 transition-colors duration-200 group-hover:text-[var(--brand-accent-strong)]">
           {title}
         </h3>
 
-        {/* Date + location (single row in m5 mode) or just location */}
         {m5Mode ? (
-          <p className="mt-1.5 flex items-center gap-1.5 text-xs text-ink-400">
+          <p className="mt-1.5 flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
             <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
             <span>{formatDate(start_date)}</span>
             {location && (
@@ -200,16 +194,15 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
           </p>
         ) : (
           location && (
-            <p className="mt-1.5 flex items-center gap-1 text-xs text-ink-400">
+            <p className="mt-1.5 flex items-center gap-1 text-xs text-[var(--text-secondary)]">
               <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
               {location}
             </p>
           )
         )}
 
-        {/* Price + social proof (inventory chip suppressed in M5 mode) */}
         <div className="mt-auto flex items-center justify-between gap-2 pt-3">
-          <p className="font-display text-sm font-bold text-ink-900">
+          <p className="font-display text-sm font-bold text-[var(--text-primary)]">
             {priceLabel}
           </p>
           {!m5Mode && inventory && (
