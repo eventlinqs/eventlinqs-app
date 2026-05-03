@@ -48,7 +48,7 @@ export function JoinWaitlistModal({
     return () => document.removeEventListener('keydown', handler)
   }, [isOpen, onClose])
 
-  // Reset state when reopened — derive from prop during render (React-recommended pattern)
+  // Reset state when reopened - derive from prop during render (React-recommended pattern)
   const [prevIsOpen, setPrevIsOpen] = useState(isOpen)
   if (isOpen !== prevIsOpen) {
     setPrevIsOpen(isOpen)
@@ -93,7 +93,7 @@ export function JoinWaitlistModal({
         onClick={onClose}
       />
 
-      {/* Modal — full screen on mobile, centered card on md+ */}
+      {/* Modal - full screen on mobile, centered card on md+ */}
       <div
         role="dialog"
         aria-modal="true"

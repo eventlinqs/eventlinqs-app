@@ -1,12 +1,12 @@
 import type { EventMediaInput } from '@/lib/images/event-media'
 
 /**
- * Category highlight slides — used to pad the hero carousel when fewer than
+ * Category highlight slides - used to pad the hero carousel when fewer than
  * three qualifying events exist. Each slide routes to a category or curated
  * filter and uses Pexels-backed category media via getFeaturedHeroBackground.
  *
  * Order is meaningful: Afrobeats anchors, Free-weekend converts, Trending
- * captures FOMO — covers the three primary intents.
+ * captures FOMO - covers the three primary intents.
  */
 
 export interface CategoryHighlightSlide {
@@ -24,7 +24,7 @@ export interface CategoryHighlightSlide {
 export const CATEGORY_HIGHLIGHT_SLIDES: CategoryHighlightSlide[] = [
   {
     key: 'afrobeats',
-    eyebrow: 'Made for the diaspora',
+    eyebrow: 'Made for every culture',
     cardEyebrow: 'Cultural picks',
     cardTitle: 'This week in Afrobeats',
     cardCopy:
@@ -39,7 +39,7 @@ export const CATEGORY_HIGHLIGHT_SLIDES: CategoryHighlightSlide[] = [
     cardEyebrow: 'Zero platform fees',
     cardTitle: 'Free this weekend',
     cardCopy:
-      'Discover events that cost nothing but your Saturday. No platform fees, no catch.',
+      'Find events that cost nothing but your Saturday. No platform fees, no catch.',
     ctaLabel: 'Browse free events',
     ctaHref: '/events?price=free',
     media: { title: 'Free events', category: { slug: 'festival', name: 'Festival' } },
@@ -50,7 +50,7 @@ export const CATEGORY_HIGHLIGHT_SLIDES: CategoryHighlightSlide[] = [
     cardEyebrow: 'Selling fast',
     cardTitle: 'What the culture is buying',
     cardCopy:
-      'The events the diaspora is booking right now. Move before the tickets do.',
+      'The events booking out right now. Move before the tickets do.',
     ctaLabel: 'See what is trending',
     ctaHref: '/events?sort=trending',
     media: { title: 'Trending events', category: { slug: 'music', name: 'Music' } },

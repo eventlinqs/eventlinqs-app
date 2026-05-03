@@ -50,7 +50,7 @@ export default async function OrderDetailPage({ params }: Props) {
 
   if (!org) notFound()
 
-  // Admin client — organiser is not the buyer, RLS blocks session-client reads on orders/payments
+  // Admin client - organiser is not the buyer, RLS blocks session-client reads on orders/payments
   const { data: order } = await adminClient
     .from('orders')
     .select('*, order_items(*), payments(*)')
@@ -62,7 +62,7 @@ export default async function OrderDetailPage({ params }: Props) {
 
   const fullOrder = order as FullOrder
 
-  // Load buyer profile if user order — admin client needed to read another user's profile
+  // Load buyer profile if user order - admin client needed to read another user's profile
   let buyerName = fullOrder.guest_name ?? ''
   let buyerEmail = fullOrder.guest_email ?? ''
 

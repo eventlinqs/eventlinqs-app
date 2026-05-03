@@ -1,7 +1,7 @@
 import { getCategoryPhoto } from './category-photo'
 
 // M6+: add in-app curated image library for organisers. Until then, branded
-// placeholder is the only fallback in tile contexts — no Pexels stock.
+// placeholder is the only fallback in tile contexts - no Pexels stock.
 
 // picsum.photos is a seed-script placeholder, not real imagery. Treat it as
 // "no cover" so the tile falls through to category Pexels / branded SVG.
@@ -127,63 +127,74 @@ export async function getFeaturedEventMedia(event: EventMediaInput): Promise<Eve
 }
 
 /**
- * Hero-only resolver that NEVER uses organiser cover_image_url as the background.
+ * Hero-only resolver. Returns a raster-first shape designed for `<HeroMedia>`.
  *
- * Rationale: the full-bleed hero background should always be a cinematic
- * Pexels clip or curated crowd still — not a static organiser upload that was
- * designed for card contexts.
+ * Contract: `image` is ALWAYS a raster URL (AVIF/JPEG/WebP). The W3C
+ * LargestContentfulPaint spec excludes SVG, so the hero LCP layer must
+ * never receive an SVG - that is what produced the iter-0 NO_LCP error.
  *
  * Priority:
- *   1. organiser-uploaded video_url (self-hosted — no 3rd-party cookies)
- *   2. Pexels category photo (Ken Burns) — routed via next/image proxy
- *   3. Self-hosted curated crowd still
+ *   1. organiser-uploaded video_url → ambient overlay; raster poster comes
+ *      from organiser cover (if real) or the category hero raster
+ *   2. Pexels category photo → ken-burns still
+ *   3. Pre-generated category hero raster from /images/hero/{slug}.jpg
  *
- * NOTE: we deliberately skip Pexels videos. Their Cloudflare-fronted CDN sets
- * the `_cfuvid` cookie on <video src=...> requests, which Lighthouse flags as
- * third-party tracking and drops Best Practices to 77. Pexels stills go
- * through /_next/image so they look same-origin and carry no cookies.
+ * Pexels stills go through /_next/image so they look same-origin and carry
+ * no cookies. Pexels VIDEOS are deliberately skipped - their Cloudflare-
+ * fronted CDN sets `_cfuvid` on <video> requests and Lighthouse flags it
+ * as third-party tracking, dropping Best Practices to 77.
  */
-const HERO_CROWD_VIDEO = '/hero/hero-crowd.mp4'
+export interface HeroBackgroundMedia {
+  /** Raster URL for the HeroMedia LCP layer (never SVG). */
+  image: string
+  /** Alt text for the hero image. */
+  alt: string
+  /** Optional ambient video - overlay only, played after LCP commits. */
+  videoSrc?: string
+  /** When true, ken-burns scale runs on the post-LCP ambient layer. */
+  kenBurns?: boolean
+}
 
-export async function getFeaturedHeroBackground(event: EventMediaInput): Promise<EventMedia> {
+const HERO_RASTER_DIR = '/images/hero'
+
+// Slugs we have on disk (see scripts/fetch-hero-rasters.mjs). Anything not in
+// this set falls back to the canonical "afrobeats" raster - chosen because
+// the multicultural-festival shot reads as "the platform" rather than as any
+// one category.
+const HERO_RASTER_SLUGS = new Set([
+  'afrobeats',
+  'gospel',
+  'amapiano',
+  'owambe',
+  'comedy',
+  'caribbean-carnival',
+  'bollywood',
+  'latin',
+  'filipino',
+  'lunar',
+])
+const HERO_RASTER_DEFAULT = `${HERO_RASTER_DIR}/afrobeats.jpg`
+
+function heroRasterFor(slug: string | null | undefined): string {
+  if (slug && HERO_RASTER_SLUGS.has(slug)) return `${HERO_RASTER_DIR}/${slug}.jpg`
+  return HERO_RASTER_DEFAULT
+}
+
+export async function getFeaturedHeroBackground(
+  event: EventMediaInput,
+): Promise<HeroBackgroundMedia> {
+  const heroImage = heroRasterFor(event.category?.slug)
+  const alt = event.title ?? event.category?.name ?? 'Cultural event'
+
   if (event.video_url) {
-    return {
-      kind: 'video',
-      src: event.video_url,
-      poster: FALLBACK_POSTER,
-      duration: 0,
-    }
+    return { image: heroImage, alt, videoSrc: event.video_url }
   }
 
-  const photo = await getCategoryPhoto(event.category?.slug)
-  if (photo && photo.src !== '/images/event-fallback-hero.svg') {
-    return {
-      kind: 'still-kenburns',
-      src: photo.src,
-      alt: event.title ?? photo.alt,
-    }
-  }
-
-  return {
-    kind: 'video',
-    src: HERO_CROWD_VIDEO,
-    poster: FALLBACK_POSTER,
-    duration: 0,
-  }
+  // Always serve the local AVIF hero raster as the LCP image. Routing the
+  // hero through the Next.js image optimiser (Pexels remote -> /_next/image)
+  // adds ~1100ms of cold-encoding on the LCP path on first request, even on
+  // a warm Vercel runtime. The local AVIFs are pre-curated per cultural
+  // slug and live under /public/images/hero/ for direct CDN delivery.
+  return { image: heroImage, alt, kenBurns: true }
 }
 
-/**
- * Lightweight single-image helper for card contexts that don't need the full
- * EventMedia union. Used for This Week strip + compact tiles where carousel
- * or video would be overkill.
- */
-export async function getEventStillImage(event: EventMediaInput): Promise<string> {
-  if (isRealCover(event.cover_image_url)) return event.cover_image_url
-  if (isRealCover(event.thumbnail_url)) return event.thumbnail_url
-  if (event.gallery_urls && event.gallery_urls.length > 0) {
-    const first = event.gallery_urls.find(isRealCover)
-    if (first) return first
-  }
-  const photo = await getCategoryPhoto(event.category?.slug)
-  return photo.thumb
-}

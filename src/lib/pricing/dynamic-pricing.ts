@@ -3,11 +3,18 @@ import { createAdminClient } from '@/lib/supabase/admin'
 /**
  * Get the current effective price for a ticket tier.
  * Calls the get_current_tier_price RPC which handles dynamic pricing step logic.
- * Uses the admin (service-role) client so this works on public pages too —
+ * Uses the admin (service-role) client so this works on public pages too:
  * the RPC is SECURITY DEFINER and only granted to authenticated + service_role.
  * Falls back to the tier's base price if the RPC fails.
+ *
+ * When SUPABASE_SERVICE_ROLE_KEY is absent (e.g. CI build runners that only
+ * have NEXT_PUBLIC_* env), returns 0 so callers fall back to the static base
+ * price. This keeps /events/[slug] statically pre-renderable in environments
+ * that intentionally withhold the service role secret from the build.
  */
 export async function getCurrentTierPrice(tierId: string): Promise<number> {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return 0
+
   const supabase = createAdminClient()
 
   const { data, error } = await supabase.rpc('get_current_tier_price', {

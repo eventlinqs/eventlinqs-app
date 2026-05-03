@@ -6,6 +6,8 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { PaymentCalculator } from '@/lib/payments/payment-calculator'
 import { getDefaultGateway } from '@/lib/payments/gateway-factory'
+import { createDestinationCharge } from '@/lib/payments/create-destination-charge'
+import { ChargePreconditionError } from '@/lib/payments/application-fee'
 import { validateDiscountCode } from './discount-codes'
 import { getDynamicPriceMap } from '@/lib/pricing/dynamic-pricing'
 import { getGuestSessionId } from '@/lib/auth/guest-session'
@@ -59,7 +61,7 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
   const adminClient = createAdminClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  // 1. Verify reservation is still active — load via admin client so guest
+  // 1. Verify reservation is still active - load via admin client so guest
   // carts (no auth session, RLS-denied) can still find their row. Ownership
   // is then enforced in app code against the guest_session cookie.
   const { data: reservation } = await adminClient
@@ -208,7 +210,14 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
 
   // 5. Calculate fees
   const calculator = new PaymentCalculator()
-  const fees = await calculator.calculate(cartTickets, cartAddons, currency, fee_pass_type, discount_cents)
+  const fees = await calculator.calculate(
+    cartTickets,
+    cartAddons,
+    currency,
+    fee_pass_type,
+    discount_cents,
+    event.organisation_id
+  )
 
   const isFreeOrder = fees.total_cents === 0
 
@@ -296,10 +305,10 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
   const { error: itemsError } = await adminClient.from('order_items').insert(orderItems)
   if (itemsError) {
     console.error('Order items error:', itemsError)
-    // Order is created, don't fail — items issue should be investigated
+    // Order is created, don't fail - items issue should be investigated
   }
 
-  // 8. For free orders — confirm immediately
+  // 8. For free orders - confirm immediately
   if (isFreeOrder) {
     // Mark reservation as converted
     await supabase
@@ -350,14 +359,15 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
     return { error: 'Failed to initialise payment' }
   }
 
-  // 10. Create Stripe PaymentIntent
+  // 10. Create Stripe destination charge (M6 Phase 3)
   try {
     const gateway = getDefaultGateway()
-    const intentResult = await gateway.createPaymentIntent({
-      amount_cents: fees.total_cents,
-      currency,
-      customer_email: buyer_email,
-      idempotency_key,
+    const charge = await createDestinationCharge({
+      gateway,
+      organisationId: event.organisation_id,
+      fees,
+      customerEmail: buyer_email,
+      idempotencyKey: idempotency_key,
       metadata: {
         order_id,
         event_id: event.id,
@@ -366,8 +376,9 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
         reservation_id,
       },
     })
+    const intentResult = charge.intent
 
-    // Save gateway_payment_id and client_secret — use admin client so guest
+    // Save gateway_payment_id and client_secret - use admin client so guest
     // checkouts (no auth session, RLS-denied) can persist the Stripe intent
     // id. Webhook matches payments by gateway_payment_id; if this UPDATE is
     // silently swallowed the order can never be confirmed.
@@ -388,8 +399,27 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
 
     return { client_secret: intentResult.client_secret, order_id }
   } catch (err) {
+    if (err instanceof ChargePreconditionError) {
+      console.error('[checkout] Connect pre-condition failed:', err.reason, err.message)
+      return { error: chargePreconditionMessage(err.reason) }
+    }
     console.error('Stripe PaymentIntent error:', err)
     return { error: 'Payment system error. Please try again.' }
+  }
+}
+
+function chargePreconditionMessage(reason: ChargePreconditionError['reason']): string {
+  switch (reason) {
+    case 'org_not_connected':
+      return 'This organiser has not finished payment setup. Please try again later.'
+    case 'org_charges_disabled':
+      return 'This organiser cannot accept payments right now. Please try again later.'
+    case 'org_payouts_restricted':
+      return 'Payments for this organiser are temporarily paused. Please try again later.'
+    case 'org_country_unsupported':
+      return 'Payments for this region are not yet supported.'
+    case 'fee_breakdown_invalid':
+      return 'There was a pricing issue with this checkout. Please refresh and try again.'
   }
 }
 
@@ -483,7 +513,7 @@ async function processSeatCheckout({
 
   const priceBySeatId = new Map(priceResults.map(r => [r.seat_id, r.price_cents]))
 
-  // Build cartTickets (one "item" per unique tier, aggregated by price — for fee calculator)
+  // Build cartTickets (one "item" per unique tier, aggregated by price - for fee calculator)
   // Use the cheapest price for the fee tier if mixed
   const aggregatedForFee = [{
     tier_id: tierIdsFromSeats[0] ?? fallbackTier?.id ?? 'seat-ticket',
@@ -495,7 +525,14 @@ async function processSeatCheckout({
   }]
 
   const calculator = new PaymentCalculator()
-  const fees = await calculator.calculate(aggregatedForFee, [], currency, fee_pass_type, 0)
+  const fees = await calculator.calculate(
+    aggregatedForFee,
+    [],
+    currency,
+    fee_pass_type,
+    0,
+    event.organisation_id
+  )
   const isFreeOrder = fees.total_cents === 0
 
   // Create order
@@ -601,11 +638,12 @@ async function processSeatCheckout({
 
   try {
     const gateway = getDefaultGateway()
-    const intentResult = await gateway.createPaymentIntent({
-      amount_cents: fees.total_cents,
-      currency,
-      customer_email: buyer_email,
-      idempotency_key: order_id,
+    const charge = await createDestinationCharge({
+      gateway,
+      organisationId: event.organisation_id,
+      fees,
+      customerEmail: buyer_email,
+      idempotencyKey: order_id,
       metadata: {
         order_id,
         event_id: event.id,
@@ -615,6 +653,7 @@ async function processSeatCheckout({
         seat_ids: JSON.stringify(seatIds),
       },
     })
+    const intentResult = charge.intent
 
     await adminClient
       .from('payments')
@@ -632,6 +671,10 @@ async function processSeatCheckout({
 
     return { client_secret: intentResult.client_secret, order_id }
   } catch (err) {
+    if (err instanceof ChargePreconditionError) {
+      console.error('[checkout-seats] Connect pre-condition failed:', err.reason, err.message)
+      return { error: chargePreconditionMessage(err.reason) }
+    }
     console.error('[checkout-seats] Stripe PaymentIntent error:', err)
     return { error: 'Payment system error. Please try again.' }
   }

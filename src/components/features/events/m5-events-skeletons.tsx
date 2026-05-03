@@ -16,7 +16,7 @@ function CardSkeleton() {
 export function EventsRecommendedSkeleton() {
   return (
     <section
-      aria-label="Recommended events — loading"
+      aria-label="Recommended events - loading"
       className="border-b border-ink-100 bg-canvas"
     >
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">

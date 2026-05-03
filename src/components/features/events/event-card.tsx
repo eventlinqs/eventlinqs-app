@@ -1,8 +1,6 @@
-'use client'
-
 import Link from 'next/link'
-import Image from 'next/image'
 import { MapPin } from 'lucide-react'
+import { EventCardMedia, type EventCardMediaVariant } from '@/components/media'
 import { SocialProofBadge } from '@/components/inventory/social-proof-badge'
 import { SaveEventButton } from './save-event-button'
 import type { EventInventory } from '@/lib/redis/inventory-cache'
@@ -10,7 +8,7 @@ import type { SocialProofBadge as M5Badge } from '@/lib/events/types'
 import { BADGE_LABELS, BADGE_STYLES } from '@/lib/events/badges'
 
 /**
- * EventCard — spec §6.2
+ * EventCard - spec §6.2
  *
  * Layout:
  *   - Image: 16:9 mobile (edge-to-edge in grid), 4:3 on md+ (desktop grid)
@@ -18,7 +16,7 @@ import { BADGE_LABELS, BADGE_STYLES } from '@/lib/events/badges'
  *   - Heart/save button: absolute bottom-right of image
  *   - Card body: date (gold), title (Manrope), location, price + social proof
  *
- * Price: "From AUD $X" — Manrope 700, no decimal for round cents
+ * Price: "From AUD $X" - Manrope 700, no decimal for round cents
  *
  * M5 mode: when `event.badge` is explicitly provided (non-undefined),
  * the card shows the M5 single-priority social-proof badge top-left
@@ -58,6 +56,13 @@ type Props = {
   dynamicPrices?: Map<string, number>
   initiallySaved?: boolean
   priority?: boolean
+  /**
+   * Layout context. Drives the underlying EventCardMedia variant so the
+   * srcset hint matches the actual rendered width. Pass `"rail"` when the
+   * card sits in a horizontal rail (fixed ~256-288px tile) so the browser
+   * does not download a 750w image for a 254 CSS px slot.
+   */
+  variant?: Extract<EventCardMediaVariant, 'card' | 'rail'>
 }
 
 function formatDate(iso: string) {
@@ -98,7 +103,7 @@ function buildInventory(tiers: EventCardTier[]): EventInventory {
   return { total_sold, total_reserved, total_capacity, available, percent_sold }
 }
 
-export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = false, priority = false }: Props) {
+export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = false, priority = false, variant = 'card' }: Props) {
   const {
     id, slug, title, cover_image_url, start_date,
     venue_city, venue_country, created_at, category, ticket_tiers,
@@ -126,14 +131,12 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
       {/* ── Image ───────────────────────────────────────────────── */}
       <div className="relative aspect-video md:aspect-[4/3] overflow-hidden bg-ink-100">
         {cover_image_url ? (
-          <Image
+          <EventCardMedia
             src={cover_image_url}
             alt={title}
-            fill
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            variant={variant}
             priority={priority}
-            fetchPriority={priority ? 'high' : 'auto'}
-            className="object-cover transition-transform duration-500 group-hover:scale-105"
+            className="transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
           <div className="flex h-full items-center justify-center text-ink-200">
@@ -159,7 +162,7 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
               </span>
             )}
 
-        {/* Heart / save — top-right overlay */}
+        {/* Heart / save - top-right overlay */}
         <SaveEventButton
           eventId={id}
           initiallySaved={initiallySaved}

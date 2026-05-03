@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 /**
  * Cron route: runs every 5 minutes via Vercel Crons.
  *
- * 1. Calls expire_stale_squads() RPC — atomically finds forming squads past
+ * 1. Calls expire_stale_squads() RPC - atomically finds forming squads past
  *    expires_at, marks them 'expired', marks uninvited members 'timed_out',
  *    cancels their reservation, and RETURNS the expired squad rows.
  * 2. For each expired squad: queries paid members, issues Stripe refunds via
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
   const adminClient = createAdminClient()
 
   try {
-    // Step 1: Expire stale squads via RPC (atomic — expires squads, marks
+    // Step 1: Expire stale squads via RPC (atomic - expires squads, marks
     //         members timed_out, cancels reservations, returns squad details
     //         needed for Stripe refund processing below)
     const { data: rpcResult, error: rpcError } = await adminClient.rpc('expire_stale_squads')
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Guard: after migration the RPC returns TABLE rows (array). Before the
-    // migration is applied it returns an integer — treat that as empty array
+    // migration is applied it returns an integer - treat that as empty array
     // so the route still responds 200 rather than crashing.
     const expiredSquads = (Array.isArray(rpcResult) ? rpcResult : []) as {
       squad_id: string
@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Step 2c: Promote waitlist — reservation already cancelled by RPC;
+      // Step 2c: Promote waitlist - reservation already cancelled by RPC;
       //          calculate released spots as total minus confirmed paid members
       try {
         const paidCount = paidMembers?.length ?? 0

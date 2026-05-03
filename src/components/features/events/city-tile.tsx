@@ -1,10 +1,16 @@
 import Link from 'next/link'
+import { CityTileImage } from '@/components/media'
 
 /**
- * CityTile — editorial city bento tile backed by a local SVG placeholder.
+ * CityTile: editorial city bento tile backed by a local SVG placeholder.
  *
  * Swap placeholder paths for real photography in M5 without changing the
  * component surface.
+ *
+ * Image rendering is delegated to the CityTileImage media surface, which
+ * routes local SVGs through a raw <img> (avoiding Next.js raster
+ * re-encoding of vector cities) and remote rasters through next/image
+ * with the rail sizes/quality presets.
  */
 
 interface Props {
@@ -19,13 +25,11 @@ export function CityTile({ city, slug, eventCount, imageSrc }: Props) {
     <Link
       href={`/events?city=${encodeURIComponent(slug)}`}
       className="group relative block h-full min-h-[220px] overflow-hidden rounded-2xl bg-ink-900 tile-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
-      aria-label={`Events in ${city}`}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      <CityTileImage
         src={imageSrc}
         alt=""
-        className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+        className="transition-transform duration-700 ease-out group-hover:scale-105"
       />
       <div
         className="absolute inset-0"

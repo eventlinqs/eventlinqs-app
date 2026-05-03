@@ -1,4 +1,4 @@
-# SESSION 2C — M4.5 FINISHING LINE
+# SESSION 2C - M4.5 FINISHING LINE
 ## Diagnostic Report + Three-Stream Scope Manifest (FINAL)
 
 **Project:** EventLinqs
@@ -13,15 +13,15 @@
 
 Three parallel CC tabs, no file collisions. Open three PowerShell tabs, each running CC in `C:\Users\61416\OneDrive\Desktop\EventLinqs\eventlinqs-app`. Paste the matching stream prompt into each. Run simultaneously.
 
-- **Stream A — Visceral Public Site (bento grid + smart media + micro-animations)**
-- **Stream B — Seat Selector + Checkout Visual Lift**
-- **Stream C — Bug Fixes + Logo Rollout + M3 Verification**
+- **Stream A - Visceral Public Site (bento grid + smart media + micro-animations)**
+- **Stream B - Seat Selector + Checkout Visual Lift**
+- **Stream C - Bug Fixes + Logo Rollout + M3 Verification**
 
 Expected runtime: 90-120 minutes per tab. Stream A is the biggest because it's the visceral experience layer.
 
 ---
 
-# PART 1 — DIAGNOSTIC REPORT
+# PART 1 - DIAGNOSTIC REPORT
 
 (Same as previous draft. All findings still apply. Summarised:)
 
@@ -36,13 +36,13 @@ Expected runtime: 90-120 minutes per tab. Stream A is the biggest because it's t
 1.9 Dashboard event row drops into edit, skipping view
 1.10 "Networking" hero category mismatches footer "Business & Summits"
 1.11 Logo concept picked but not rolled out (Concept A, Option 2 spacing)
-1.12 Image upload limit 5MB, JPG only — needs 10MB + WEBP
+1.12 Image upload limit 5MB, JPG only - needs 10MB + WEBP
 1.13 M3 polish items unverified after M4 refactors (cover image cropping, inline org creation, organisation nav discoverability)
 1.14 189 instances of off-brand colours across codebase
 
 ---
 
-# PART 2 — NORTH STAR (apply to every change)
+# PART 2 - NORTH STAR (apply to every change)
 
 1. Production-quality on every surface. No stubs, no "data wired later", no placeholder colours, no flat coloured rectangles.
 2. Brand: gold (var(--color-gold-500)), ink-900 for primary text, Australian English, no em/en-dashes as punctuation, no exclamation marks.
@@ -59,33 +59,33 @@ Expected runtime: 90-120 minutes per tab. Stream A is the biggest because it's t
 
 ---
 
-# PART 3 — STREAM A: VISCERAL PUBLIC SITE
+# PART 3 - STREAM A: VISCERAL PUBLIC SITE
 
 **Tab 1.** This is the biggest and most important stream. It transforms the site from "linear and professional" to "magnetic, sticky, kinetic."
 
 **Files:**
 - `src/app/page.tsx` (homepage rebuild)
-- `src/app/events/page.tsx` (events listing — featured + bento)
+- `src/app/events/page.tsx` (events listing - featured + bento)
 - `src/app/events/[slug]/page.tsx` (event detail full lift)
-- `src/components/features/events/event-card.tsx` (existing — extend)
-- `src/components/features/events/event-bento-tile.tsx` (NEW — universal bento tile)
-- `src/components/features/events/featured-event-hero.tsx` (NEW — the big hero tile)
-- `src/components/features/events/bento-grid.tsx` (NEW — grid wrapper with named layouts)
-- `src/components/features/events/city-tile.tsx` (NEW — By City tiles)
-- `src/components/features/events/free-weekend-tile.tsx` (NEW — replaces Gospel)
-- `src/components/features/events/this-week-strip.tsx` (NEW — horizontal scroll strip)
-- `src/components/ui/smart-media.tsx` (NEW — universal media component: still / Ken Burns / video / carousel)
-- `src/components/ui/glass-card.tsx` (NEW — glassmorphism card primitive)
-- `src/lib/images/category-photo.ts` (NEW — Pexels photo pipeline)
-- `src/lib/images/category-video.ts` (NEW — Pexels video pipeline)
-- `src/lib/images/event-media.ts` (NEW — orchestrator: organiser uploads vs Pexels fallback)
+- `src/components/features/events/event-card.tsx` (existing - extend)
+- `src/components/features/events/event-bento-tile.tsx` (NEW - universal bento tile)
+- `src/components/features/events/featured-event-hero.tsx` (NEW - the big hero tile)
+- `src/components/features/events/bento-grid.tsx` (NEW - grid wrapper with named layouts)
+- `src/components/features/events/city-tile.tsx` (NEW - By City tiles)
+- `src/components/features/events/free-weekend-tile.tsx` (NEW - replaces Gospel)
+- `src/components/features/events/this-week-strip.tsx` (NEW - horizontal scroll strip)
+- `src/components/ui/smart-media.tsx` (NEW - universal media component: still / Ken Burns / video / carousel)
+- `src/components/ui/glass-card.tsx` (NEW - glassmorphism card primitive)
+- `src/lib/images/category-photo.ts` (NEW - Pexels photo pipeline)
+- `src/lib/images/category-video.ts` (NEW - Pexels video pipeline)
+- `src/lib/images/event-media.ts` (NEW - orchestrator: organiser uploads vs Pexels fallback)
 - Brand colour sweep across listed offenders
 
 **This stream is the "make it visceral" stream. Bento grid layout + smart media (photo/video/carousel) + micro-animations + glassmorphism + live data signals.**
 
 ---
 
-## A.0 SMART MEDIA PIPELINE — THE FOUNDATION
+## A.0 SMART MEDIA PIPELINE - THE FOUNDATION
 
 Every visual upgrade depends on this. Build first. Everything else consumes it.
 
@@ -98,7 +98,7 @@ Stream A produces a checklist: `docs/PEXELS-API-SETUP.md` with 3 steps:
 2. Copy API key
 3. Add to `.env.local` and Vercel: `PEXELS_API_KEY=xxx`
 
-If env var missing, all functions fall back to local placeholder images (Stream A creates `/public/images/event-fallback-hero.jpg` and `/public/images/event-fallback-thumb.jpg` — solid ink-900 colour with EVENTLINQS gold dot watermark, generated as SVG).
+If env var missing, all functions fall back to local placeholder images (Stream A creates `/public/images/event-fallback-hero.jpg` and `/public/images/event-fallback-thumb.jpg` - solid ink-900 colour with EVENTLINQS gold dot watermark, generated as SVG).
 
 ### A.0.2 New file: `src/lib/images/category-photo.ts`
 
@@ -208,7 +208,7 @@ import { unstable_cache } from 'next/cache'
 const PEXELS_API_KEY = process.env.PEXELS_API_KEY
 const PEXELS_VIDEO_API = 'https://api.pexels.com/videos'
 
-// Tuned video queries — different from photo because video search returns different results
+// Tuned video queries - different from photo because video search returns different results
 const VIDEO_QUERIES: Record<string, string> = {
   'afrobeats': 'concert crowd dancing lights',
   'amapiano': 'club dancing party night',
@@ -280,7 +280,7 @@ export async function getCategoryVideo(categorySlug: string | null | undefined):
 }
 ```
 
-### A.0.4 New file: `src/lib/images/event-media.ts` — the orchestrator
+### A.0.4 New file: `src/lib/images/event-media.ts` - the orchestrator
 
 Decides what media to show for any given event based on what the organiser uploaded vs what Pexels can provide.
 
@@ -537,7 +537,7 @@ Replace the entire homepage section structure (currently: linear stack of Hero +
 4. **This Week strip** (horizontal scroll, 8-12 events)
 5. **Cultural Picks** (refactored, tabbed but with bento layout per tab)
 6. **By City bento** (4-6 cities, image backgrounds)
-7. **Live Vibe section** (NEW — scrolling text marquee of live signals: "DJ Spinall just sold 5 tickets in Sydney · Naija Night gala 80% sold · Comedy showcase 6 days to go")
+7. **Live Vibe section** (NEW - scrolling text marquee of live signals: "DJ Spinall just sold 5 tickets in Sydney · Naija Night gala 80% sold · Comedy showcase 6 days to go")
 8. **For Organisers** (existing dark split, keep, polish only)
 9. SiteFooter (existing)
 
@@ -557,24 +557,24 @@ Full viewport height (min-height: 90vh on desktop, 70vh mobile).
 - Sub-copy in white/80 (max 2 lines)
 - Two CTAs side by side:
   - Primary: "Get tickets" (gold filled, white text, hover: scale 1.03 + subtle gold glow)
-  - Secondary: "Browse all events" (ghost glassmorphism button — uses GlassCard variant='dark' wrapper)
+  - Secondary: "Browse all events" (ghost glassmorphism button - uses GlassCard variant='dark' wrapper)
 
-**Right side — glassmorphism event quick info card:**
+**Right side - glassmorphism event quick info card:**
 - Floating card on the right of hero (hidden mobile, visible from md breakpoint)
 - Uses `<GlassCard variant="dark">` with padding
 - Inside: small thumbnail of event, event title (smaller), date/venue, ticket price range
 - Live signal at bottom: "🔴 47 tickets sold today" (pulsing red dot, real-time data via Supabase)
 
 **Below the hero, just before bento grid starts:**
-- Thin strip with city marquee: "Trusted by organisers in Melbourne · Sydney · London · Toronto · Lagos · Accra ·" — slow horizontal marquee animation (CSS only)
+- Thin strip with city marquee: "Trusted by organisers in Melbourne · Sydney · London · Toronto · Lagos · Accra ·" - slow horizontal marquee animation (CSS only)
 
-### A.1.3 Bento Grid Row 1 — the main attraction
+### A.1.3 Bento Grid Row 1 - the main attraction
 
 **12-column CSS Grid.** 90px row height. 12px gap. Tiles span various grid cells.
 
 **Layout (desktop):**
-- Tile 1 (Featured event): `grid-column: span 7; grid-row: span 4` — the giant tile
-- Tile 2 (Comedy or 2nd-priority event): `grid-column: span 5; grid-row: span 2` — wide horizontal
+- Tile 1 (Featured event): `grid-column: span 7; grid-row: span 4` - the giant tile
+- Tile 2 (Comedy or 2nd-priority event): `grid-column: span 5; grid-row: span 2` - wide horizontal
 - Tile 3 (3rd event, e.g. Amapiano): `grid-column: span 3; grid-row: span 2`
 - Tile 4 (Free Weekend tile, replaces Gospel): `grid-column: span 2; grid-row: span 2`
 
@@ -584,7 +584,7 @@ Full viewport height (min-height: 90vh on desktop, 70vh mobile).
 
 #### `<EventBentoTile>` spec
 
-Props: `event`, `size` ('hero' | 'wide' | 'standard' | 'compact'), `useVideoFallback` (boolean — only true for hero).
+Props: `event`, `size` ('hero' | 'wide' | 'standard' | 'compact'), `useVideoFallback` (boolean - only true for hero).
 
 Renders:
 - Background: `<SmartMedia media={...}>` filling the tile, `position: absolute; inset: 0`
@@ -593,11 +593,11 @@ Renders:
 - Top-right (hero size only): "FEATURED" gold ribbon
 - Bottom content stack:
   - Date (small, gold)
-  - Title (size scales with tile: hero=24px, wide=18px, standard=14px, compact=12px — all bold, white)
+  - Title (size scales with tile: hero=24px, wide=18px, standard=14px, compact=12px - all bold, white)
   - Sub-detail line: venue, city, lineup snippet
   - Bottom row: price + "Get tickets →" CTA on hero/wide, just price chip on smaller
 - **Hover state:** image zooms 105% over 600ms, gold border appears (2px), subtle glow shadow, content slides up 4px, "→" arrow on CTA slides right 4px
-- **Live signal pill (small)** in top-right of hero/wide tiles when applicable: "🔴 47 sold today" / "🔥 80% sold" / "⏰ 3 days left" — pulsing dot, glass-card
+- **Live signal pill (small)** in top-right of hero/wide tiles when applicable: "🔴 47 sold today" / "🔥 80% sold" / "⏰ 3 days left" - pulsing dot, glass-card
 
 **Special rule for hero (7×4) tile:**
 - If event has video → autoplay (autoplay=true on SmartMedia)
@@ -612,12 +612,12 @@ Renders:
 
 ### A.1.4 Free Weekend tile (replaces Gospel)
 
-`<FreeWeekendTile>` — 2×2 in the bento grid.
+`<FreeWeekendTile>` - 2×2 in the bento grid.
 
 Server-side query: get the highest-capacity free event in the user's detected city happening this weekend.
 
 If found: render the tile with that event's media + "FREE" pill + event details.
-If not found: pivot to "Trending now" — show the event with most tickets sold in the last 24h.
+If not found: pivot to "Trending now" - show the event with most tickets sold in the last 24h.
 If neither: show a generic "Discover free events" CTA tile with a happy lifestyle photo (Pexels query: "people enjoying outdoor festival sunset").
 
 ### A.1.5 This Week strip
@@ -627,7 +627,7 @@ Horizontal scroll with CSS scroll-snap. 280px wide cards, 16:9 aspect ratio, 16p
 Server-renders 8-12 events with start_date in the next 7 days, ordered by start_date ASC.
 
 Each card:
-- 280px × 158px image area at top (smart media — Ken Burns if static, carousel if gallery)
+- 280px × 158px image area at top (smart media - Ken Burns if static, carousel if gallery)
 - Below image: small gold date badge, event title (16px bold), venue + city (12px), price (14px gold)
 - On hover: image zooms 1.03, card lifts 4px with subtle shadow
 
@@ -635,15 +635,15 @@ Right-edge gradient fade hints at more content. Custom scroll arrows on desktop 
 
 Section header with gold eyebrow "THIS WEEK" + h2 "What's happening near you" + "View all →" link to /events.
 
-### A.1.6 Cultural Picks — bento per tab
+### A.1.6 Cultural Picks - bento per tab
 
-Keep tab system (Afrobeats, Amapiano, Owambe, Caribbean, Heritage, Networking — drop Gospel for now per Lawal's call, or keep but don't feature on homepage).
+Keep tab system (Afrobeats, Amapiano, Owambe, Caribbean, Heritage, Networking - drop Gospel for now per Lawal's call, or keep but don't feature on homepage).
 
 **Each tab content area is now a bento sub-grid (not a flat row of cards):**
-- Tile 1 (lead event of that genre): 8×3 — large editorial tile with smart media background
-- Tile 2 (2nd event): 4×3 — medium tile
-- Tile 3 (3rd event): 4×3 — medium tile
-- Tile 4 (4th event): 4×3 — medium tile
+- Tile 1 (lead event of that genre): 8×3 - large editorial tile with smart media background
+- Tile 2 (2nd event): 4×3 - medium tile
+- Tile 3 (3rd event): 4×3 - medium tile
+- Tile 4 (4th event): 4×3 - medium tile
 - Below: "View all [Genre] events →" gold CTA
 
 If a tab has fewer than 4 events: gracefully fill with "Be the first to host an [Genre] event" organiser CTA tile (gold ghost, magnetic hover).
@@ -655,10 +655,10 @@ Tab headers: subtle gold underline animation on hover, solid 2px gold underline 
 Section header: gold eyebrow "BY CITY" + h2 "Wherever you are, the culture follows".
 
 4 city tiles in a 4-column grid (2×2 each in our 12-col reference, so each spans 3 cols):
-- Melbourne, Sydney, London, Lagos (start with these 4 — others can be added when expanding)
+- Melbourne, Sydney, London, Lagos (start with these 4 - others can be added when expanding)
 
 Each city tile:
-- Background: city-specific image. Stream A creates `/public/cities/melbourne.svg`, `sydney.svg`, `london.svg`, `lagos.svg` as SVG placeholders FOR NOW (solid coloured panels with city silhouette + name in big white type — see A.1.7.1 below). Easily swappable for real photography in M5.
+- Background: city-specific image. Stream A creates `/public/cities/melbourne.svg`, `sydney.svg`, `london.svg`, `lagos.svg` as SVG placeholders FOR NOW (solid coloured panels with city silhouette + name in big white type - see A.1.7.1 below). Easily swappable for real photography in M5.
 - Dark gradient bottom 50%
 - Bottom overlay: city name (24px bold white) + small line "[N] events" (12px, white/70)
 - Hover: image scales 1.05, gradient lightens, "→" arrow fades in bottom-right
@@ -669,7 +669,7 @@ Each city tile:
 Create 4 SVG files per city. Each one is a 1200×900 SVG with:
 - Background: solid colour from a curated palette (Melbourne = teal-800, Sydney = blue-800, London = purple-800, Lagos = coral-800)
 - Bottom-right: city name in MASSIVE white font (200px+, font-extrabold, slightly transparent so it feels embedded)
-- Optional: subtle abstract skyline silhouette using SVG path (not photoreal — geometric shapes)
+- Optional: subtle abstract skyline silhouette using SVG path (not photoreal - geometric shapes)
 
 These look intentional and editorial, not amateur. The point is they read as a CHOICE, not a placeholder. Real photography swaps in seamlessly later.
 
@@ -680,7 +680,7 @@ Below By City. Single-row horizontal marquee strip on dark background, full blee
 Content: scrolling text of real-time platform activity:
 - "🔴 DJ Spinall just sold 5 tickets in Sydney"
 - "🔥 Afrobeats Melbourne 80% sold"
-- "🎤 New: Comedy showcase added — 200 seats"
+- "🎤 New: Comedy showcase added - 200 seats"
 - "⏰ Owambe Gathering: 3 days to go"
 
 Server-side: query last 10 platform events (sales, new listings, milestones), format as marquee strings. Cache 60 seconds. Animate horizontally infinite loop with CSS keyframe (`@keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }`).
@@ -689,7 +689,7 @@ Background: ink-900. Text: white with gold accents on emoji/numbers. Subtle gold
 
 Pure CSS animation. No JS library. Pause on hover.
 
-### A.1.9 For Organisers section — keep
+### A.1.9 For Organisers section - keep
 
 Already a dark split. Verify CTAs route to /organisers and /pricing. Polish any rogue colours.
 
@@ -708,7 +708,7 @@ When user lands on `/events` with no filters, show a featured event hero at the 
 
 When ANY filter is active: skip the featured hero, go straight to grid (user has intent, don't waste their time).
 
-### A.2.2 Event card grid — bento variation
+### A.2.2 Event card grid - bento variation
 
 Instead of uniform 3-column grid, use a "lazy bento" pattern:
 - Every 7 events, one tile spans 2 cols × 2 rows (a "feature" event in the grid)
@@ -745,13 +745,13 @@ Sticky to top after scrolling past the hero. Contains:
 - Right side: ticket price range, "Get Tickets" gold button (jumps to ticket selector), share button, save heart icon
 - Glassmorphism background (variant='light', opaque enough to be readable)
 
-### A.3.4 Below action bar — content sections
+### A.3.4 Below action bar - content sections
 
-- **About** — proper typography, font-serif option for editorial feel, expand/collapse if 500+ chars
-- **Lineup / Agenda** — if data available, show as cards: artist name, set time, image
-- **Venue** — name, address, embedded static map (Mapbox static API or Google Maps static — Stream A uses Google Maps Static API with a lightweight free tier; Lawal adds GOOGLE_MAPS_API_KEY env var)
-- **Organiser** — small card: org logo, name, "View all events by [Org] →" link
-- **Related events** — 4-card grid: events from same category OR same organiser OR same city, ordered by upcoming
+- **About** - proper typography, font-serif option for editorial feel, expand/collapse if 500+ chars
+- **Lineup / Agenda** - if data available, show as cards: artist name, set time, image
+- **Venue** - name, address, embedded static map (Mapbox static API or Google Maps static - Stream A uses Google Maps Static API with a lightweight free tier; Lawal adds GOOGLE_MAPS_API_KEY env var)
+- **Organiser** - small card: org logo, name, "View all events by [Org] →" link
+- **Related events** - 4-card grid: events from same category OR same organiser OR same city, ordered by upcoming
 
 ### A.3.5 Sold-out integration
 
@@ -803,7 +803,7 @@ Manual tests:
 
 ---
 
-# PART 4 — STREAM B: SEAT SELECTOR + CHECKOUT
+# PART 4 - STREAM B: SEAT SELECTOR + CHECKOUT
 
 (Same as previous draft. Summarised:)
 
@@ -820,7 +820,7 @@ Manual tests:
 
 ---
 
-# PART 5 — STREAM C: BUG FIXES + LOGO + M3 VERIFICATION
+# PART 5 - STREAM C: BUG FIXES + LOGO + M3 VERIFICATION
 
 (Same as previous draft. Summarised:)
 
@@ -834,7 +834,7 @@ Manual tests:
 - Rename Networking hero category → Business & Networking everywhere (slug stays networking)
 - EventlinqsLogo component: Concept A with Option 2 spacing (0.05em margin-left on the gold dot)
 - Roll out logo across site-header, site-footer, dashboard-topbar
-- Build app/icon.tsx (favicon), opengraph-image.tsx, twitter-image.tsx — all "E." gold-on-navy
+- Build app/icon.tsx (favicon), opengraph-image.tsx, twitter-image.tsx - all "E." gold-on-navy
 - Image upload: 5MB → 10MB, add WEBP support
 - Cover image cropping: object-cover → object-contain with proper aspect container
 - Inline org creation on event create page (not separate redirect)
@@ -845,15 +845,15 @@ Manual tests:
 
 ---
 
-# PART 6 — INTEGRATION CHECKLIST
+# PART 6 - INTEGRATION CHECKLIST
 
 After all 3 streams complete, Lawal:
 
-1. `git status` in each tab — non-overlapping changed files
-2. `npm run build` — passes
-3. `npm run lint` — passes
-4. `npm run dev` — clean startup
-5. `.env.local` has `PEXELS_API_KEY` — if not, fallback images render
+1. `git status` in each tab - non-overlapping changed files
+2. `npm run build` - passes
+3. `npm run lint` - passes
+4. `npm run dev` - clean startup
+5. `.env.local` has `PEXELS_API_KEY` - if not, fallback images render
 6. Smoke test full punch list:
    - Homepage cinematic hero plays media
    - Bento grid renders with featured tile dominating, all tiles have category-aware imagery
@@ -874,7 +874,7 @@ After all 3 streams complete, Lawal:
 
 ---
 
-# PART 7 — DELIBERATELY OUT OF SCOPE
+# PART 7 - DELIBERATELY OUT OF SCOPE
 
 Deferred to M5:
 - Real city photography for By City (placeholder SVGs ship now, real images later)
@@ -887,11 +887,11 @@ Deferred to M5:
 
 ---
 
-# PART 8 — FINAL WORD
+# PART 8 - FINAL WORD
 
 After this session lands, EventLinqs holds up to a side-by-side comparison with DICE FM, Resident Advisor, and Ticketmaster on the public-facing surfaces. The dashboard already holds up to Stripe. Auth holds up to Notion. Brand consistency throughout.
 
-The visceral "wow" — the magnetic, sticky, kinetic feeling — comes from:
+The visceral "wow" - the magnetic, sticky, kinetic feeling - comes from:
 - Bento layouts breaking the linear monotony
 - Smart category-aware media on every event tile (Pexels API)
 - Video on the featured hero (autoplay) and on hover for smaller tiles

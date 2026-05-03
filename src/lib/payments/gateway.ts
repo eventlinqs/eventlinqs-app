@@ -1,4 +1,4 @@
-// PaymentGateway interface — all gateways implement this
+// PaymentGateway interface - all gateways implement this
 // M3: Stripe only. Future: Paystack, Flutterwave, PayPal plug in here.
 
 export interface CreatePaymentIntentParams {
@@ -9,15 +9,22 @@ export interface CreatePaymentIntentParams {
     event_id: string
     organisation_id: string
     buyer_email: string
-    // Optional fields for seat reservations — used by webhook to locate and update seats
+    // Optional fields for seat reservations - used by webhook to locate and update seats
     reservation_id?: string
     seat_ids?: string
-    // Optional fields for squad payments — used by webhook to mark member as paid
+    // Optional fields for squad payments - used by webhook to mark member as paid
     squad_id?: string
     squad_member_id?: string
   }
   customer_email: string
   idempotency_key: string
+
+  // Stripe Connect destination-charge fields (M6 Phase 3). Pass all three
+  // together for a destination charge, or omit all three for a platform-only
+  // charge. Mixed states are rejected by the adapter.
+  connected_account_id?: string
+  application_fee_cents?: number
+  on_behalf_of?: string
 }
 
 export interface PaymentIntentResult {

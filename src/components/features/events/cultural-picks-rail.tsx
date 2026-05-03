@@ -5,7 +5,7 @@ import { useState, type ReactNode } from 'react'
 import { SnapRailScroller } from '@/components/ui/snap-rail'
 
 /**
- * CulturalPicksRail — tabbed horizontal rails for the Cultural Picks section.
+ * CulturalPicksRail - tabbed horizontal rails for the Cultural Picks section.
  *
  * The outer section header (eyebrow + title) is owned by the page. This
  * component renders the pill tab strip + the active tab's scroller with

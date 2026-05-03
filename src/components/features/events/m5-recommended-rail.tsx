@@ -63,7 +63,20 @@ export async function RecommendedRail({
               key={c.id}
               className="w-64 shrink-0 snap-start sm:w-72"
             >
-              <EventCard event={c} priority={i === 0} />
+              {/*
+                The first rail card consistently wins the LCP race on
+                /events and /events/browse/[city] because the recommended
+                rail renders above the main grid in DOM order and the
+                EventsHeroStrip is text-only. Iter-13 traces showed
+                Lighthouse picking `li.w-64 > a > div > img.object-cover`
+                with fetchpriority="auto" / loading="lazy". Marking the
+                first rail card priority gives it `fetchpriority="high"`,
+                `loading="eager"`, and an auto-injected
+                `<link rel="preload">` so the LCP candidate is fetched
+                during HTML parse instead of after IntersectionObserver
+                catches up.
+              */}
+              <EventCard event={c} variant="rail" priority={i === 0} />
             </li>
           ))}
         </DragRail>

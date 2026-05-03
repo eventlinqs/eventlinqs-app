@@ -4,7 +4,7 @@
 **Last updated:** 2026-04-25
 **Status:** Friends-launch readiness baseline. Re-test every 90 days.
 
-This document tells whoever is on-call — usually Lawal — how to recover
+This document tells whoever is on-call - usually Lawal - how to recover
 EventLinqs from the five failure modes most likely to hit production
 between now and a million users. Each section has a trigger, a decision
 tree, and step-by-step commands. Follow them. Do not improvise.
@@ -31,16 +31,16 @@ tree, and step-by-step commands. Follow them. Do not improvise.
 **Symptoms:** API routes 5xx on any DB read; login fails; `getUser`
 returns null for every request.
 
-### Step 1 — Confirm it is Supabase, not us.
+### Step 1 - Confirm it is Supabase, not us.
 
 Visit <https://status.supabase.com>. If the region
 (ap-southeast-2 / us-east-1) is red, proceed to Step 2.
 
 If Supabase is green, the issue is our client. Check Vercel function
-logs for `[supabase]` errors — expired service role key, exhausted
+logs for `[supabase]` errors - expired service role key, exhausted
 connection pool, or a migration that left a table locked.
 
-### Step 2 — Enable maintenance banner.
+### Step 2 - Enable maintenance banner.
 
 ```bash
 # In Vercel dashboard, set env var:
@@ -49,16 +49,16 @@ connection pool, or a migration that left a table locked.
 # the status page.
 ```
 
-### Step 3 — Monitor, do not thrash.
+### Step 3 - Monitor, do not thrash.
 
-Supabase regional outages typically resolve in 15–60 minutes. Do not
+Supabase regional outages typically resolve in 15-60 minutes. Do not
 migrate, do not re-point. Wait for green.
 
-### Step 4 — Post-incident.
+### Step 4 - Post-incident.
 
 Write a one-paragraph summary in `docs/ops/incident-log.md`. Include
 start time, end time, root cause per Supabase status page, and user
-impact (login failures, checkout failures, data loss — hopefully none).
+impact (login failures, checkout failures, data loss - hopefully none).
 
 ---
 
@@ -67,12 +67,12 @@ impact (login failures, checkout failures, data loss — hopefully none).
 **Symptoms:** Checkout page loads but payment submission hangs; orders
 stuck in `pending_payment`; webhook log shows > 5 retries on any event.
 
-### Step 1 — Check Stripe status.
+### Step 1 - Check Stripe status.
 
 <https://status.stripe.com>. If red, wait. Do not accept payments
-outside Stripe — that path leads to compliance hell.
+outside Stripe - that path leads to compliance hell.
 
-### Step 2 — If webhooks alone are the issue.
+### Step 2 - If webhooks alone are the issue.
 
 1. In Stripe Dashboard → Developers → Webhooks, inspect the recent
    deliveries. Look for 307 (should be fixed after commit 046bbbf),
@@ -85,7 +85,7 @@ outside Stripe — that path leads to compliance hell.
    stripe events resend evt_XXX --webhook-endpoint we_XXX
    ```
 
-### Step 3 — Stuck orders.
+### Step 3 - Stuck orders.
 
 Orders in `pending_payment` that Stripe reports as `succeeded` but we
 missed: run the reconciliation admin tool (to be built) or manually mark
@@ -104,12 +104,12 @@ WHERE id = $2 AND status = 'pending_payment';
 
 **Symptoms:** A migration or ad-hoc SQL wiped or mangled rows.
 
-### Step 1 — Stop writes.
+### Step 1 - Stop writes.
 
 Put the site into maintenance (Section 1, Step 2) so further writes
 don't overwrite the recovery window.
 
-### Step 2 — Use Supabase Point-in-Time Recovery.
+### Step 2 - Use Supabase Point-in-Time Recovery.
 
 Supabase Pro and above retain PITR for 7 days by default. From the
 dashboard:
@@ -125,7 +125,7 @@ dashboard:
 the damage window is < 1 hour. Full reverts lose every legitimate
 write that happened after the bad query.
 
-### Step 3 — Post-mortem.
+### Step 3 - Post-mortem.
 
 Write up what query ran, who ran it, what guardrails would have caught
 it (RLS policy, migration review, staging dry-run). Add the guardrail.
@@ -137,7 +137,7 @@ it (RLS policy, migration review, staging dry-run). Add the guardrail.
 **Symptoms:** A page that worked 10 minutes ago now 500s or looks
 broken.
 
-### Step 1 — Instant rollback in Vercel.
+### Step 1 - Instant rollback in Vercel.
 
 1. Vercel Dashboard → Deployments.
 2. Find the last deployment with a green "Current" badge before the
@@ -148,7 +148,7 @@ broken.
 This takes < 60 seconds. It is the fastest possible recovery. Always
 do this before debugging.
 
-### Step 2 — Fix forward.
+### Step 2 - Fix forward.
 
 Once rolled back, debug locally:
 
@@ -160,7 +160,7 @@ npm run build
 
 Fix the root cause, push a new commit, let CI pass, redeploy.
 
-### Step 3 — Document.
+### Step 3 - Document.
 
 Add a regression test if one was missing. Update this runbook if the
 symptoms caught you by surprise.
@@ -176,7 +176,7 @@ symptoms caught you by surprise.
 We don't mutate history. Every migration is additive; a "rollback" is a
 new migration that undoes the last one.
 
-### Tested rollback — index migration
+### Tested rollback - index migration
 
 On 2026-04-25 we added `20260425000001_hot_path_indexes.sql`. The
 rollback script:
@@ -222,7 +222,7 @@ project. Without it, Step 3.2 above is impossible.
 
 | Role                     | Contact                                    |
 | ------------------------ | ------------------------------------------ |
-| On-call (always)         | Lawal Adams — lawaladams9@gmail.com        |
+| On-call (always)         | Lawal Adams - lawaladams9@gmail.com        |
 | Stripe support           | <https://support.stripe.com>               |
 | Supabase support         | <https://supabase.com/dashboard/support>   |
 | Vercel support           | <https://vercel.com/help>                  |
@@ -235,5 +235,5 @@ project. Without it, Step 3.2 above is impossible.
 - Re-test Section 4 (rollback) after every 5 deploys or every 2 weeks,
   whichever comes first.
 - Re-read this doc end-to-end the first week of every quarter.
-- Update after every real incident — add the symptoms you actually saw,
+- Update after every real incident - add the symptoms you actually saw,
   not just what you think you would see.

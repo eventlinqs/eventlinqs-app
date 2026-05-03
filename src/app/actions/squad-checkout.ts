@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getDefaultGateway } from '@/lib/payments/gateway-factory'
 import { PaymentCalculator } from '@/lib/payments/payment-calculator'
+import { createDestinationCharge } from '@/lib/payments/create-destination-charge'
+import { ChargePreconditionError } from '@/lib/payments/application-fee'
 import type { FeePassType } from '@/types/database'
 
 function generateOrderNumber(): string {
@@ -23,7 +25,7 @@ export interface SquadMemberPaymentResult {
 
 /**
  * Creates a Stripe PaymentIntent for one squad member paying their share (1 ticket).
- * The squad's shared reservation is held at the squad level — this order has no reservation.
+ * The squad's shared reservation is held at the squad level - this order has no reservation.
  * On payment success, the webhook marks the member as paid and completes the squad if full.
  */
 export async function createSquadMemberPaymentIntent(
@@ -106,7 +108,8 @@ export async function createSquadMemberPaymentIntent(
     [],
     currency,
     fee_pass_type,
-    0
+    0,
+    event.organisation_id
   )
 
   // Create order
@@ -166,7 +169,7 @@ export async function createSquadMemberPaymentIntent(
 
   if (itemError) {
     console.error('[squad-checkout] order_item insert error:', itemError)
-    // Non-fatal — continue
+    // Non-fatal - continue
   }
 
   // Create payment record
@@ -200,14 +203,15 @@ export async function createSquadMemberPaymentIntent(
     console.error('[squad-checkout] member order_id update error:', memberUpdateError)
   }
 
-  // Create Stripe PaymentIntent with squad metadata
+  // Create Stripe destination charge with squad metadata (M6 Phase 3)
   try {
     const gateway = getDefaultGateway()
-    const intentResult = await gateway.createPaymentIntent({
-      amount_cents: fees.total_cents,
-      currency,
-      customer_email: buyerEmail,
-      idempotency_key,
+    const charge = await createDestinationCharge({
+      gateway,
+      organisationId: event.organisation_id,
+      fees,
+      customerEmail: buyerEmail,
+      idempotencyKey: idempotency_key,
       metadata: {
         order_id,
         event_id: event.id,
@@ -217,6 +221,7 @@ export async function createSquadMemberPaymentIntent(
         squad_member_id: memberId,
       },
     })
+    const intentResult = charge.intent
 
     await adminClient
       .from('payments')
@@ -229,7 +234,26 @@ export async function createSquadMemberPaymentIntent(
 
     return { client_secret: intentResult.client_secret, order_id }
   } catch (err) {
+    if (err instanceof ChargePreconditionError) {
+      console.error('[squad-checkout] Connect pre-condition failed:', err.reason, err.message)
+      return { error: chargePreconditionMessage(err.reason) }
+    }
     console.error('[squad-checkout] Stripe createPaymentIntent error:', err)
     return { error: 'Payment provider error. Please try again.' }
+  }
+}
+
+function chargePreconditionMessage(reason: ChargePreconditionError['reason']): string {
+  switch (reason) {
+    case 'org_not_connected':
+      return 'This organiser has not finished payment setup. Please try again later.'
+    case 'org_charges_disabled':
+      return 'This organiser cannot accept payments right now. Please try again later.'
+    case 'org_payouts_restricted':
+      return 'Payments for this organiser are temporarily paused. Please try again later.'
+    case 'org_country_unsupported':
+      return 'Payments for this region are not yet supported.'
+    case 'fee_breakdown_invalid':
+      return 'There was a pricing issue with this checkout. Please refresh and try again.'
   }
 }

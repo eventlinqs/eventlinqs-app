@@ -102,7 +102,7 @@ export async function createSquad(
 
   const timeoutHours = (event.squad_timeout_hours as number) ?? 24
 
-  // Atomically reserve all N tickets via existing RPC — admin client so RLS doesn't block
+  // Atomically reserve all N tickets via existing RPC - admin client so RLS doesn't block
   const { data: reservationData, error: reservationError } = await adminClient.rpc('create_reservation', {
     p_event_id: event_id,
     p_user_id: user.id,
@@ -137,7 +137,7 @@ export async function createSquad(
 
   if (extendError) {
     console.error('[squads] extend reservation TTL error:', extendError)
-    // Non-fatal — reservation still exists, just with shorter TTL
+    // Non-fatal - reservation still exists, just with shorter TTL
   }
 
   // Create the squad row
@@ -399,7 +399,7 @@ export async function leaveSquad(memberId: string): Promise<LeaveSquadResult> {
     return { error: 'You have already paid - contact support to leave a completed squad' }
   }
 
-  // Leaders cannot leave their own squad — they must cancel it
+  // Leaders cannot leave their own squad - they must cancel it
   const { data: squad } = await adminClient
     .from('squads')
     .select('leader_user_id')
@@ -445,7 +445,7 @@ export async function cancelSquad(squadId: string): Promise<LeaveSquadResult> {
     return { error: `Cannot cancel a squad with status "${squad.status}"` }
   }
 
-  // Check for paid members — they will need Stripe refunds (handled in webhook/Commit 5)
+  // Check for paid members - they will need Stripe refunds (handled in webhook/Commit 5)
   const { data: paidMembers } = await adminClient
     .from('squad_members')
     .select('id, order_id')

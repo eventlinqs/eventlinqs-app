@@ -1,13 +1,12 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useDragScroll } from '@/hooks/use-drag-scroll'
-import { BrandedPlaceholder } from '@/components/ui/branded-placeholder'
+import { EventCardMedia, BrandedPlaceholder } from '@/components/media'
 
 /**
- * LiveVibeMarquee — deep navy editorial band of community event cards.
+ * LiveVibeMarquee - deep navy editorial band of community event cards.
  *
  * Dark ink-950 band so the white elevated cards POP with heavy shadow.
  * Auto-scrolls left at ~80s/cycle via a requestAnimationFrame loop driving
@@ -168,12 +167,11 @@ export function LiveVibeMarquee({ items }: Props) {
             >
               <div className="relative aspect-[16/10] w-full overflow-hidden bg-ink-100">
                 {item.src ? (
-                  <Image
+                  <EventCardMedia
                     src={item.src}
                     alt={item.title}
-                    fill
-                    sizes="280px"
-                    className="object-cover transition-transform duration-500 group-hover:scale-105"
+                    variant="marquee"
+                    className="transition-transform duration-500 group-hover:scale-105"
                   />
                 ) : (
                   <BrandedPlaceholder category={item.placeholderCategory ?? null} />

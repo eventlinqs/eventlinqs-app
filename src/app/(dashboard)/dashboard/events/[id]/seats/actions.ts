@@ -75,7 +75,7 @@ export async function holdSeat(
 
   if (holdError) {
     console.error('[seats] seat_holds insert failed:', holdError)
-    // Non-fatal — seat is already marked held
+    // Non-fatal - seat is already marked held
   }
 
   revalidatePath(`/dashboard/events/${eventId}/seats`)

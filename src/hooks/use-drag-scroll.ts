@@ -3,7 +3,7 @@
 import { useEffect, useRef, type RefObject } from 'react'
 
 /**
- * useDragScroll — desktop mouse-drag-to-scroll for horizontal rails.
+ * useDragScroll - desktop mouse-drag-to-scroll for horizontal rails.
  *
  * Wires pointerdown/move/up listeners to a scroll container. While the
  * pointer is down and dragging horizontally, scrollLeft tracks the

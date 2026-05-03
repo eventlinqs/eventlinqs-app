@@ -9,6 +9,7 @@ type Props = {
   params: EventsSearchParams
   page: number
   totalPages: number
+  firstCardEager?: boolean
 }
 
 /**
@@ -18,7 +19,7 @@ type Props = {
  * pages are fetched through the loadMoreEventCards server action, so
  * PEXELS_API_KEY and unstable_cache stay server-only.
  */
-export async function EventsGrid({ events, params, page, totalPages }: Props) {
+export async function EventsGrid({ events, params, page, totalPages, firstCardEager }: Props) {
   if (events.length === 0) {
     return <EventsEmptyState />
   }
@@ -31,6 +32,7 @@ export async function EventsGrid({ events, params, page, totalPages }: Props) {
       params={params}
       startPage={page}
       totalPages={totalPages}
+      firstCardEager={firstCardEager}
     />
   )
 }

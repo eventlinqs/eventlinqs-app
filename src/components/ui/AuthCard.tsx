@@ -4,12 +4,12 @@ interface AuthCardProps {
   title: string
   subtitle?: string
   children: ReactNode
-  /** Footer slot — typically a "Don't have an account? Sign up" link */
+  /** Footer slot - typically a "Don't have an account? Sign up" link */
   footer?: ReactNode
 }
 
 /**
- * AuthCard — the centered card used by /auth/signin and /auth/signup.
+ * AuthCard - the centered card used by /auth/signin and /auth/signup.
  *
  * The outer section uses surface="alt" so the card is visually lifted.
  * The card itself sits on surface="base" (white) with a generous shadow.
@@ -50,7 +50,7 @@ export function AuthCard({ title, subtitle, children, footer }: AuthCardProps) {
           </div>
         </div>
 
-        {/* Footer slot — lives outside the card */}
+        {/* Footer slot - lives outside the card */}
         {footer && (
           <div className="mt-6 text-center text-sm text-[var(--text-secondary)]">
             {footer}

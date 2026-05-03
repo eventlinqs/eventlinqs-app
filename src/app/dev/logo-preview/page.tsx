@@ -59,7 +59,7 @@ function LogoSwatch({
     <div
       className={`flex items-center justify-center rounded-lg border px-6 py-6 ${wrapper}`}
     >
-      {/* Plain img used intentionally — SVGs from /public/ render without next/image */}
+      {/* Plain img used intentionally - SVGs from /public/ render without next/image */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={src}

@@ -5,6 +5,7 @@ export const metadata: Metadata = {
   title: 'Privacy Policy | EventLinqs',
   description:
     'How EventLinqs collects, uses, and protects your personal information. Read our full Privacy Policy.',
+  alternates: { canonical: '/legal/privacy' },
 }
 
 const SECTIONS = [
@@ -31,8 +32,9 @@ export default function PrivacyPolicyPage() {
       <h2 id="introduction">Introduction</h2>
       <p>
         EventLinqs is operated by Lawal Adams (trading as EventLinqs, ABN 30 837 447 587),
-        based in Melbourne, Victoria, Australia. We build technology that connects event
-        organisers and attendees. We take the trust you place in us seriously.
+        based in Melbourne, Victoria, Australia. EventLinqs is the ticketing platform
+        built for every culture, connecting event organisers and attendees. We take the
+        trust you place in us seriously.
       </p>
       <p>
         This Privacy Policy explains what personal information we collect, why we collect

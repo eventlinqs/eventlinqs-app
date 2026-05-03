@@ -1,4 +1,4 @@
-# EventLinqs — Media Upload Spec
+# EventLinqs - Media Upload Spec
 
 **Requirement solved:** set recommended image and video upload limits, benchmarked against competitors, with client-side compression and CDN delivery.
 **Research source:** competitor audit completed in prior session (Eventbrite 10MB / Ticketmaster ~5MB / DICE ~8MB / Humanitix 5MB).
@@ -10,7 +10,7 @@
 | Platform | Image max | Recommended dimensions | Aspect | Formats | Video |
 |---|---|---|---|---|---|
 | Eventbrite | 10 MB | 2160 × 1080 | 2:1 | JPG/PNG/GIF | Host externally (YouTube/Vimeo embed) |
-| Ticketmaster | ~5 MB | 1920 × 1080 | 16:9 | JPG/PNG | Editorial only — partner uploads |
+| Ticketmaster | ~5 MB | 1920 × 1080 | 16:9 | JPG/PNG | Editorial only - partner uploads |
 | DICE | ~8 MB | 1080 × 1350 | 4:5 | JPG/PNG | None on organiser side |
 | Humanitix | 5 MB | 1920 × 1080 | 16:9 | JPG/PNG/GIF | None |
 | **EventLinqs (current)** | **5 MB** | Not enforced | Not enforced | JPG/PNG/WEBP | None |
@@ -23,7 +23,7 @@
 
 | Setting | Value | Rationale |
 |---|---|---|
-| **Max file size** | 10 MB | Match Eventbrite ceiling — highest in the market |
+| **Max file size** | 10 MB | Match Eventbrite ceiling - highest in the market |
 | **Recommended dimensions** | 2160 × 1080 px | Looks sharp on 4K, matches 2:1 card aspect |
 | **Minimum dimensions** | 1200 × 600 px (enforced) | Prevents pixelation on hero use |
 | **Aspect ratio** | 2:1 enforced via crop UI | Consistent card grid |
@@ -31,11 +31,11 @@
 | **Client-side compression** | Yes, before upload | Saves Supabase Storage egress, cuts upload time |
 | **Delivery** | Supabase Storage + Next.js `<Image>` with resize params | On-the-fly sizing for cards vs heroes |
 
-### Video (future — for Session 4.5 / M10 scope)
+### Video (future - for Session 4.5 / M10 scope)
 
 | Setting | Value | Rationale |
 |---|---|---|
-| **Max file size** | 50 MB (organisers), 100 MB (verified organisers) | Eventbrite doesn't allow direct video; DICE doesn't either — this is a differentiator but we throttle |
+| **Max file size** | 50 MB (organisers), 100 MB (verified organisers) | Eventbrite doesn't allow direct video; DICE doesn't either - this is a differentiator but we throttle |
 | **Max duration** | 30 seconds | Short-form, hype clips only |
 | **Recommended dimensions** | 1080 × 1920 (9:16 vertical) OR 1920 × 1080 (16:9) | Match social-first consumption |
 | **Accepted formats** | MP4 (H.264), MOV, WebM | Standard web-compatible |
@@ -79,9 +79,9 @@ Pipeline: user picks file → client validates dims/size → compress → upload
 Enforce in this order. Fail fast with a clear error message.
 
 1. **MIME type whitelist:** `image/jpeg`, `image/png`, `image/webp`, `image/avif`, `image/gif`. Reject anything else.
-2. **Max raw file size 10 MB** (before compression — stops users uploading 50MB phone photos).
-3. **Min dimensions 1200 × 600** (reject immediately with message "Image too small — minimum 1200×600 required").
-4. **Aspect ratio check** — if outside 1.8:1 to 2.2:1, show crop UI. Don't auto-crop silently.
+2. **Max raw file size 10 MB** (before compression - stops users uploading 50MB phone photos).
+3. **Min dimensions 1200 × 600** (reject immediately with message "Image too small - minimum 1200×600 required").
+4. **Aspect ratio check** - if outside 1.8:1 to 2.2:1, show crop UI. Don't auto-crop silently.
 5. **Compress** to WEBP, ≤ 2MB.
 6. **Upload to Supabase Storage** under `event-covers/{event_id}/{uuid}.webp`.
 7. **Store URL in `events.cover_image_url`.**
@@ -94,7 +94,7 @@ Client validation is for UX. Server validation is for security.
 
 On the upload endpoint:
 - Verify the uploaded blob's MIME matches the file extension.
-- Run a quick header check (WEBP signature: `RIFF....WEBP`) — reject spoofed types.
+- Run a quick header check (WEBP signature: `RIFF....WEBP`) - reject spoofed types.
 - Cap at 12 MB at the edge (10 MB user-facing + buffer for metadata).
 - Rate-limit uploads: 20 per organiser per hour.
 
@@ -121,7 +121,7 @@ Card contexts use `width={640}`, hero contexts use `width={1920}`. Supabase resi
 
 ---
 
-## 7. Claude Code Command — Implement Media Pipeline
+## 7. Claude Code Command - Implement Media Pipeline
 
 ```
 Read docs/design/MEDIA-UPLOAD-SPEC.md.
@@ -130,15 +130,15 @@ Implement the image upload pipeline:
 
 1. npm install browser-image-compression
 2. Create lib/upload/compressImage.ts per Section 3 of the spec.
-3. Create lib/upload/validateImage.ts implementing all validation rules from Section 4 — returns { ok: true, file } or { ok: false, error: string }.
-4. Update the event cover image upload component (find it — likely in app/events/new/ or components/events/). Wire up: validate → compress → upload to Supabase Storage bucket 'event-covers' → save URL. Show a progress state during compression and upload. Show clear error toasts for each failure case.
+3. Create lib/upload/validateImage.ts implementing all validation rules from Section 4 - returns { ok: true, file } or { ok: false, error: string }.
+4. Update the event cover image upload component (find it - likely in app/events/new/ or components/events/). Wire up: validate → compress → upload to Supabase Storage bucket 'event-covers' → save URL. Show a progress state during compression and upload. Show clear error toasts for each failure case.
 5. Update next.config.js per Section 6 to add Supabase as a remote image pattern.
 6. Replace every <img> tag in event pages with <Image> from next/image, passing width based on context (640 for cards, 1920 for heroes).
 7. Update the max file size in Supabase Storage bucket policy to 12MB (server-side ceiling).
-8. Add a rate limit of 20 uploads/organiser/hour on the upload route — use Upstash Redis with a counter keyed by organiser_id.
+8. Add a rate limit of 20 uploads/organiser/hour on the upload route - use Upstash Redis with a counter keyed by organiser_id.
 9. Commit: "feat(media): 10MB + WEBP pipeline with client-side compression".
 
-Do NOT implement video upload in this pass — deferred to post-Session 4.
+Do NOT implement video upload in this pass - deferred to post-Session 4.
 ```
 
 ---

@@ -1,7 +1,7 @@
 interface PageHeroProps {
   /** Small uppercase label above the title, e.g. "LEGAL", "HELP" */
   eyebrow?: string
-  /** The page H1 — required */
+  /** The page H1 - required */
   title: string
   /** One-line supporting copy, max ~140 chars */
   subtitle?: string
@@ -12,7 +12,7 @@ interface PageHeroProps {
 }
 
 /**
- * PageHero — the dark hero band at the top of every interior page.
+ * PageHero - the dark hero band at the top of every interior page.
  *
  * Provides consistent height, type scale, and brand rhythm across
  * /legal, /help, /contact, /about, /organiser, etc.
@@ -39,11 +39,11 @@ export function PageHero({ eyebrow, title, subtitle, align = 'left', variant = '
       className="relative bg-[var(--color-navy-950)] text-white py-24 md:py-32 lg:py-40 overflow-hidden"
       aria-labelledby="page-hero-heading"
     >
-      {/* Premium background layers — use backgroundImage (not background shorthand) so
+      {/* Premium background layers - use backgroundImage (not background shorthand) so
           background-color of the section is never overridden by the decorative divs */}
       {isPremium && (
         <>
-          {/* Radial gradient — accent glow top-right */}
+          {/* Radial gradient - accent glow top-right */}
           <div
             aria-hidden="true"
             className="pointer-events-none absolute inset-0"
@@ -51,7 +51,7 @@ export function PageHero({ eyebrow, title, subtitle, align = 'left', variant = '
               backgroundImage: 'radial-gradient(ellipse 80% 60% at 100% 0%, var(--color-gold-400, #E8B738) 12%, transparent 60%)',
             }}
           />
-          {/* Secondary radial — soft white glow bottom-left */}
+          {/* Secondary radial - soft white glow bottom-left */}
           <div
             aria-hidden="true"
             className="pointer-events-none absolute inset-0"

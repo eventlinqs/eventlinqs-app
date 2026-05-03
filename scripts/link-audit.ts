@@ -2,7 +2,7 @@ import { readFileSync, readdirSync, statSync } from 'fs'
 import path from 'path'
 
 /**
- * link-audit — scan src/ for href="..." patterns, then compare against
+ * link-audit - scan src/ for href="..." patterns, then compare against
  * the routes actually present under src/app. Reports any internal link
  * that does not resolve to a page.tsx.
  *

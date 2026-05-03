@@ -35,7 +35,7 @@ export default async function EventOrdersPage({ params }: Props) {
 
   if (!org) notFound()
 
-  // Fetch all orders for this event — admin client bypasses RLS (organiser is not the buyer)
+  // Fetch all orders for this event - admin client bypasses RLS (organiser is not the buyer)
   const { data: orders } = await adminClient
     .from('orders')
     .select('*, order_items(id, item_type, quantity)')
@@ -49,7 +49,7 @@ export default async function EventOrdersPage({ params }: Props) {
   const profileMap = new Map<string, { full_name: string | null; email: string }>()
 
   if (userIds.length > 0) {
-    // Admin client needed — organiser reading other users' profiles
+    // Admin client needed - organiser reading other users' profiles
     const { data: profiles } = await adminClient
       .from('profiles')
       .select('id, full_name, email')
@@ -72,7 +72,7 @@ export default async function EventOrdersPage({ params }: Props) {
     }
   })
 
-  // Stats — include refunded orders in revenue totals so numbers match payouts
+  // Stats - include refunded orders in revenue totals so numbers match payouts
   const confirmedOrders = ordersData.filter(o =>
     ['confirmed', 'partially_refunded', 'refunded'].includes(o.status)
   )
@@ -88,7 +88,7 @@ export default async function EventOrdersPage({ params }: Props) {
 
   const currency = ordersData[0]?.currency ?? 'AUD'
 
-  // Fetch waitlist counts per tier (admin client — organiser reading buyer waitlist data)
+  // Fetch waitlist counts per tier (admin client - organiser reading buyer waitlist data)
   let waitlistCountByTier: { tier_id: string; tier_name: string; waiting: number }[] = []
   if (event.waitlist_enabled) {
     const tiers = (event.ticket_tiers ?? []) as { id: string; name: string; total_capacity: number; sold_count: number }[]

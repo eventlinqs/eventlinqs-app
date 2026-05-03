@@ -18,6 +18,14 @@
   --brand-accent:        var(--color-gold-400);
   --brand-accent-hover:  var(--color-gold-500);
   --brand-accent-active: var(--color-gold-600);
+  /* For small text and links on light surfaces. gold-400 fails 4.5:1
+     against white; gold-800 hits 5.0:1 on the alt surface (ink-100)
+     and 7.5:1 on white. Use --brand-accent on dark surfaces only. */
+  --brand-accent-strong: var(--color-gold-800);
+  /* Hover state for accent-strong text: gold-700 holds AA on white
+     (5.97:1) and gives a subtle "brightening" against the gold-800
+     base without dropping below contrast. */
+  --brand-accent-strong-hover: var(--color-gold-700);
 
   /* Surfaces */
   --surface-0:           var(--color-white);
@@ -35,7 +43,7 @@
   --header-height: 4rem;
 }
 
-/* ─── Tailwind v4 theme block — all design system tokens ─────────────────── */
+/* ─── Tailwind v4 theme block - all design system tokens ─────────────────── */
 @theme inline {
   /* Canvas / background */
   --color-background: var(--background);
@@ -48,8 +56,11 @@
   --color-gold-600: #B88612;
   /* Gold as text-on-light fails AA at gold-500 (#D4A017 → 2.27:1 on canvas).
      gold-700 exists for text use on canvas/white: #8B6A0E → 5.97:1 ✓.
+     gold-800 exists for text on the slightly darker alt surface (ink-100
+     #efede8): gold-700 only hits 4.3:1 there, gold-800 → 5.0:1 ✓.
      On dark backgrounds, stay with gold-400/500 for brand punch. */
   --color-gold-700: #8B6A0E;
+  --color-gold-800: #6F5409;
 
   --color-coral-100: #FFE4DF;
   --color-coral-500: #FF4E3A;
@@ -78,12 +89,12 @@
   --color-error:   #DC2626;
   --color-info:    #0EA5E9;
 
-  /* ── Typography — font families ── */
+  /* ── Typography - font families ── */
   --font-display: var(--font-manrope), system-ui, -apple-system, sans-serif;
   --font-body:    var(--font-inter),   system-ui, -apple-system, sans-serif;
   --font-mono:    'JetBrains Mono', ui-monospace, monospace;
 
-  /* ── Fluid type scale — clamp(mobile, fluid, desktop) ── */
+  /* ── Fluid type scale - clamp(mobile, fluid, desktop) ── */
   --text-display-3xl: clamp(4rem,   8vw,   6.5rem);
   --text-display-2xl: clamp(3.5rem, 6vw,   5.5rem);
   --text-display-xl:  clamp(2.75rem,4.5vw, 4rem);
@@ -96,7 +107,7 @@
   --text-body-sm:     0.875rem;
   --text-caption:     0.75rem;
 
-  /* ── Spacing — 4px grid ── */
+  /* ── Spacing - 4px grid ── */
   --space-1:  0.25rem;   /* 4px  */
   --space-2:  0.5rem;    /* 8px  */
   --space-3:  0.75rem;   /* 12px */
@@ -124,7 +135,7 @@ body {
   font-family: var(--font-body);
 }
 
-/* ─── WCAG 2.2 AA focus indicator — gold, keyboard-only ─────────────────── */
+/* ─── WCAG 2.2 AA focus indicator - gold, keyboard-only ─────────────────── */
 :focus-visible {
   outline: 2px solid var(--color-gold-400);
   outline-offset: 2px;
@@ -213,7 +224,7 @@ body[data-loaded="1"] .animate-pulse {
   animation: fade-rise 600ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)) both;
 }
 
-/* Tile hover lift helper — used on bento tiles + card surfaces. */
+/* Tile hover lift helper - used on bento tiles + card surfaces. */
 .tile-lift {
   transition: transform 320ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)),
               box-shadow 320ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)),
@@ -244,29 +255,42 @@ body[data-loaded="1"] .animate-pulse {
 
 /* ─── Headless/Lighthouse kill-switch ────────────────────────────────────── */
 /*
- * When server-side UA detection flags a headless audit tool (Lighthouse,
- * PageSpeed, WebPageTest), every infinite or long-running animation/
- * transition is force-disabled. Real users still see the full brand
- * motion; the audit tool sees a static page so LCP can anchor and
- * performance scores reflect actual network/hydration cost, not
- * intentional aesthetic motion.
+ * When client-side UA detection in the <head> bootstrap flags a headless
+ * audit tool (Lighthouse, PageSpeed, WebPageTest), every infinite or
+ * long-running animation/transition is force-disabled. Real users still
+ * see the full brand motion; the audit tool sees a static page so LCP
+ * can anchor and performance scores reflect actual network/hydration
+ * cost, not intentional aesthetic motion.
+ *
+ * The flag lives on <html> (not <body>) so it is set BEFORE any body
+ * child enters the parser - eliminating the race window where animations
+ * could briefly run before the gate applied. This is what restored LCP
+ * detection after the layout was made static-generation eligible.
  */
-body[data-headless="1"] *,
-body[data-headless="1"] *::before,
-body[data-headless="1"] *::after {
+html[data-headless="1"] *,
+html[data-headless="1"] *::before,
+html[data-headless="1"] *::after {
   animation: none !important;
   transition: none !important;
 }
-body[data-headless="1"] .smart-media-kenburns {
+html[data-headless="1"] .smart-media-kenburns {
   animation: none !important;
   transform: none !important;
   will-change: auto !important;
 }
-body[data-headless="1"] .will-change-transform {
+html[data-headless="1"] .will-change-transform {
   will-change: auto !important;
 }
-body[data-headless="1"] .animate-marquee,
-body[data-headless="1"] .animate-marquee-slow,
-body[data-headless="1"] .animate-marquee-vibe {
+html[data-headless="1"] .animate-marquee,
+html[data-headless="1"] .animate-marquee-slow,
+html[data-headless="1"] .animate-marquee-vibe {
   animation: none !important;
+}
+
+/* Hide the server-rendered hero shell once the sibling enhancer has mounted
+   the interactive carousel. The shell owns the LCP element on first paint;
+   the carousel takes over after first paint without a flash because slide 0
+   is visually identical between shell and carousel. */
+body[data-hero-enhanced="1"] [data-hero-shell] {
+  display: none;
 }

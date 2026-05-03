@@ -1,8 +1,8 @@
 # EventLinqs Build Standards
 
-## Project Mandate (non-negotiable — highest-level standard)
+## Project Mandate (non-negotiable - highest-level standard)
 
-EventLinqs must surpass Ticketmaster, Eventbrite, and DICE as the MINIMUM bar — functionally the best, aesthetically the best, socially the best. "Matches them" is failure. "Exceeds them in every dimension" is the floor, not the ceiling.
+EventLinqs must surpass Ticketmaster, Eventbrite, and DICE as the MINIMUM bar - functionally the best, aesthetically the best, socially the best. "Matches them" is failure. "Exceeds them in every dimension" is the floor, not the ceiling.
 
 Every feature, every screen, every pixel, every interaction, every error message, every loading state must be held to this standard.
 
@@ -11,7 +11,7 @@ Before marking any work complete, ask:
 2. Does this beat what Eventbrite does? In what specific, measurable way?
 3. Does this beat what DICE does? In what specific, measurable way?
 
-If you cannot articulate the answer for all 3 platforms, the work is incomplete. "N/A" is acceptable only if the platform genuinely does not have that feature (e.g., Eventbrite has no virtual queue) — and even then, EventLinqs must still raise the bar beyond what the others do.
+If you cannot articulate the answer for all 3 platforms, the work is incomplete. "N/A" is acceptable only if the platform genuinely does not have that feature (e.g., Eventbrite has no virtual queue) - and even then, EventLinqs must still raise the bar beyond what the others do.
 
 Functional is the floor. Excellence is the requirement. Surpassing the competition is the mandate.
 
@@ -46,13 +46,13 @@ Reporting "I made the change and the build passes" without browser verification 
 
 EventLinqs must work flawlessly on every modern device. Every page, component, form, modal, and interaction must be verified at:
 
-- iPhone SE — 375x667 (smallest modern target)
-- iPhone 15 Pro — 393x852 (with notch and safe area insets)
-- Samsung Galaxy S24 — 360x800 (Android baseline)
-- iPad Mini — 768x1024 (small tablet)
-- iPad Pro — 1024x1366 (large tablet)
-- Desktop — 1280x800 (standard laptop)
-- Wide desktop — 1920x1080 (full HD)
+- iPhone SE - 375x667 (smallest modern target)
+- iPhone 15 Pro - 393x852 (with notch and safe area insets)
+- Samsung Galaxy S24 - 360x800 (Android baseline)
+- iPad Mini - 768x1024 (small tablet)
+- iPad Pro - 1024x1366 (large tablet)
+- Desktop - 1280x800 (standard laptop)
+- Wide desktop - 1920x1080 (full HD)
 
 Mandatory mobile rules:
 - All touch targets minimum 44x44px (Apple HIG) and ideally 48x48px (Material Design)
@@ -64,7 +64,7 @@ Mandatory mobile rules:
 - Forms use native mobile keyboards via correct input types (tel, email, number, date)
 - Modals are full-screen sheets on mobile, centered on desktop
 - Images use srcset and modern formats (WebP, AVIF) with lazy loading
-- No hover-dependent functionality — every hover state must have a tap equivalent
+- No hover-dependent functionality - every hover state must have a tap equivalent
 
 Verification protocol for every UI change:
 1. Use Playwright MCP, set viewport to 375x667, take screenshot
@@ -88,11 +88,11 @@ For destructive operations (deleting sections, refactoring, removing functions),
 
 You have access to these MCP servers. Use them aggressively. Refusing to use them when relevant is a failure.
 
-- Supabase MCP — query the live database, check schema, verify RLS, run SELECTs to confirm data state. Never guess column names. If a fix involves data, prove the data state with a query before AND after the fix.
-- Playwright MCP — open localhost:3000 in a real browser, set viewport to test mobile and desktop, click buttons, fill forms, take screenshots, verify pixel-level UI behavior. This is the source of truth for "does it work."
-- Stripe MCP — inspect payment intents, trigger test webhooks, verify signatures, check test customer state. Never assume a webhook fired correctly without checking.
-- Gmail MCP — verify confirmation emails are sent and contain correct content (when email features are built).
-- Google Calendar MCP — verify "Add to Calendar" links generate correct events.
+- Supabase MCP - query the live database, check schema, verify RLS, run SELECTs to confirm data state. Never guess column names. If a fix involves data, prove the data state with a query before AND after the fix.
+- Playwright MCP - open localhost:3000 in a real browser, set viewport to test mobile and desktop, click buttons, fill forms, take screenshots, verify pixel-level UI behavior. This is the source of truth for "does it work."
+- Stripe MCP - inspect payment intents, trigger test webhooks, verify signatures, check test customer state. Never assume a webhook fired correctly without checking.
+- Gmail MCP - verify confirmation emails are sent and contain correct content (when email features are built).
+- Google Calendar MCP - verify "Add to Calendar" links generate correct events.
 
 If a fix involves the database, use Supabase MCP. If it involves UI, use Playwright MCP at BOTH mobile and desktop viewports. If it involves payments, use Stripe MCP. There is no excuse for blind code changes.
 
@@ -134,23 +134,23 @@ When asked for permission to run a command:
 
 Before using any Claude Code feature, MCP feature, or SDK feature you are unsure about, search docs.claude.com first using the WebSearch tool. Do not rely on training data because Anthropic's product evolves and your memory may be outdated. The MCP documentation is at docs.claude.com/en/docs/claude-code/mcp. The Claude Code documentation is at docs.claude.com/en/docs/claude-code/overview.
 
-If you encounter an unknown flag, an error message about a deprecated option, or unfamiliar syntax — STOP and search the docs before guessing.
+If you encounter an unknown flag, an error message about a deprecated option, or unfamiliar syntax - STOP and search the docs before guessing.
 
 ## Design Benchmark
 
-Every UI, form, flow, validation, interaction, and error message built for EventLinqs must meet or exceed the standard of Ticketmaster, Eventbrite, and DICE. Before writing any component, mentally compare what you are about to build against what those platforms do. If your version is less smart, less intuitive, less polished, or less professional than theirs — you are not done. This is non-negotiable.
+Every UI, form, flow, validation, interaction, and error message built for EventLinqs must meet or exceed the standard of Ticketmaster, Eventbrite, and DICE. Before writing any component, mentally compare what you are about to build against what those platforms do. If your version is less smart, less intuitive, less polished, or less professional than theirs - you are not done. This is non-negotiable.
 
 ## Specific Standards
 
 ### Forms
-- All date/time fields validate as full datetime units — date and time are never treated separately
+- All date/time fields validate as full datetime units - date and time are never treated separately
 - No form should ever accept logically impossible input (end before start, sale after event, negative prices, zero capacity)
 - Every form field that has a logical relationship to another field must enforce that relationship with inline validation
-- Error messages must be human-readable and specific — never "Something went wrong"
+- Error messages must be human-readable and specific - never "Something went wrong"
 - Forms must block progression until all validation passes
 
 ### UI Responsiveness
-- Every server action that writes data must trigger an immediate UI refresh — no manual page reloads ever required
+- Every server action that writes data must trigger an immediate UI refresh - no manual page reloads ever required
 - Loading states must be shown during all async operations
 - Success/error feedback must appear instantly after every action
 
@@ -159,7 +159,7 @@ Every UI, form, flow, validation, interaction, and error message built for Event
 - Event card thumbnails use object-cover with 16:9 aspect ratio for consistent grid layout
 
 ### Navigation
-- Every feature must be discoverable through the navigation — no hidden pages accessible only via direct URL
+- Every feature must be discoverable through the navigation - no hidden pages accessible only via direct URL
 
 ### Data Integrity
 - All server-side writes use the admin Supabase client (service role)
@@ -179,17 +179,17 @@ This file must be read by Claude Code at the start of every build command. Every
 
 Claude Code MUST NOT start npm run dev in the background. The user runs the dev server in a dedicated PowerShell tab themselves. Claude Code may verify the server is running via curl http://localhost:3000 health check, but never spawns its own. Background dev servers leave zombie node.exe processes that hold port 3000, forcing manual taskkill cleanup. This is forbidden behavior.
 
-If Claude Code needs to verify a build worked, it uses npm run build (which exits cleanly) — not npm run dev.
+If Claude Code needs to verify a build worked, it uses npm run build (which exits cleanly) - not npm run dev.
 
-## Permanent Rules — added 11 Apr 2026
+## Permanent Rules - added 11 Apr 2026
 
 ### A) Benchmark Coverage Rule
 
-Every benchmark comparison in any verification report must explicitly address all 3 platforms: Ticketmaster, Eventbrite, AND DICE. If a platform is not applicable for the specific feature, write "N/A — [specific reason]" rather than omitting it. No shortcuts. No selective comparison.
+Every benchmark comparison in any verification report must explicitly address all 3 platforms: Ticketmaster, Eventbrite, AND DICE. If a platform is not applicable for the specific feature, write "N/A - [specific reason]" rather than omitting it. No shortcuts. No selective comparison.
 
 ### B) Pre-Commit Hygiene Rule
 
-Always run git status before every commit. Inspect the staged files. Source files only — no .playwright-mcp/ artifacts, no verify-*.png screenshots, no temporary scratch files, no .next/ build output. If git status shows test artifacts, unstage them and update .gitignore before committing.
+Always run git status before every commit. Inspect the staged files. Source files only - no .playwright-mcp/ artifacts, no verify-*.png screenshots, no temporary scratch files, no .next/ build output. If git status shows test artifacts, unstage them and update .gitignore before committing.
 
 ### C) Commit Authorship Rule
 
@@ -200,10 +200,10 @@ NEVER add "Co-Authored-By: Claude" or any AI attribution to any commit message. 
 All screenshot and test artifacts are ephemeral. They must never accumulate in the project root or in tracked directories. Rules:
 
 1. **Playwright screenshots** go into `.playwright-mcp/current/` when freshly captured and are immediately moved to the appropriate archive subfolder after review:
-   - `.playwright-mcp/archive/session-N/` — screenshots from session N's verification pass
-   - `.playwright-mcp/archive/verify-runs/` — ad-hoc verify / regression screenshots
-   - `.playwright-mcp/archive/m45-blueprint/` — competitor benchmark reference captures
-   - `.playwright-mcp/archive/misc/` — anything that doesn't fit the above
+   - `.playwright-mcp/archive/session-N/` - screenshots from session N's verification pass
+   - `.playwright-mcp/archive/verify-runs/` - ad-hoc verify / regression screenshots
+   - `.playwright-mcp/archive/m45-blueprint/` - competitor benchmark reference captures
+   - `.playwright-mcp/archive/misc/` - anything that doesn't fit the above
 2. **No PNG/JPG/WebP files ever in the project root.** If one appears, move it to the correct archive folder before the next commit.
 3. **No duplicate source files.** No `.bak`, `.orig`, `.old`, or `-copy` variants of any `.tsx`, `.ts`, `.css`, or `.sql` file. The canonical version is the only version.
 4. **Before every commit**, run `git status` and confirm zero image files are staged. If they are, run `git rm --cached <file>` and ensure `.gitignore` covers the pattern before proceeding.

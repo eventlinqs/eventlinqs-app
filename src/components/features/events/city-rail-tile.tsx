@@ -1,9 +1,14 @@
-import Image from 'next/image'
 import Link from 'next/link'
+import { CityTileImage } from '@/components/media'
 
 /**
- * CityRailTile — 280px wide, 4:5 aspect-ratio city tile for the By City
+ * CityRailTile: 280px wide, 4:5 aspect-ratio city tile for the By City
  * horizontal rail. Distinct from the fuller-bleed CityTile used in grid layouts.
+ *
+ * Image rendering is delegated to the CityTileImage media surface, which
+ * routes local SVGs through a raw <img> (avoiding the optimizer re-encoding
+ * vector cities into rasters) and remote rasters through next/image with
+ * the rail sizes/quality presets.
  */
 
 interface Props {
@@ -14,24 +19,16 @@ interface Props {
 }
 
 export function CityRailTile({ city, slug, eventCount, imageSrc }: Props) {
-  const isLocal = imageSrc.startsWith('/') || imageSrc.startsWith('data:')
   return (
     <Link
       href={`/events/browse/${encodeURIComponent(slug)}`}
       className="group relative block w-[220px] shrink-0 snap-start overflow-hidden rounded-xl bg-ink-900 tile-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 sm:w-[280px]"
-      aria-label={`Events in ${city}`}
     >
       <div className="relative aspect-[4/5] overflow-hidden">
-        <Image
+        <CityTileImage
           src={imageSrc}
           alt=""
-          fill
-          sizes="(min-width: 640px) 280px, 220px"
-          quality={70}
-          loading="lazy"
-          fetchPriority="low"
-          unoptimized={isLocal && imageSrc.endsWith('.svg')}
-          className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+          className="transition-transform duration-700 ease-out group-hover:scale-105"
         />
         <div
           className="absolute inset-0"

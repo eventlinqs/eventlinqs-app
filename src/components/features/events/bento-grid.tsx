@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 
 /**
- * BentoGrid — 12-column split featuring one cinematic hero tile and a
+ * BentoGrid - 12-column split featuring one cinematic hero tile and a
  * right-hand column of three equal-height supporting tiles.
  *
  * Hero occupies lg:col-span-7 and is a minimum 640px tall so the three
@@ -23,7 +23,7 @@ export function BentoGrid({ children, className = '' }: GridProps) {
 }
 
 /**
- * BentoSupportingColumn — stacks three supporting tiles vertically in
+ * BentoSupportingColumn - stacks three supporting tiles vertically in
  * the right 5 columns of the grid. Each child is a supporting BentoTile.
  */
 
@@ -36,7 +36,7 @@ export function BentoSupportingColumn({ children, className = '' }: GridProps) {
 }
 
 /**
- * BentoTile — wraps a single tile with the correct sizing based on
+ * BentoTile - wraps a single tile with the correct sizing based on
  * the `size` token. `hero` is the cinematic anchor (tall, wide);
  * `supporting` tiles are uniform and stack in BentoSupportingColumn.
  *

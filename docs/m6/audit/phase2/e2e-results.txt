@@ -1,0 +1,41 @@
+M6 Phase 2 - Live Stripe Test Mode E2E (RUN COMPLETE)
+=====================================================
+Date:         2026-05-01T12:31:17.167Z
+Branch:       feat/sprint1-phase1b-performance-and-visual
+Mode:         Stripe Test (sk_test_)
+Test org:     cc0e7ba2-f173-41c9-8f15-57bcf0a19ab0
+Test account: acct_1TSG4KGSxBgLYjFv (deleted)
+Webhook:      stripe listen --forward-to http://localhost:3000/api/webhooks/stripe
+Setup at:     2026-05-01T12:21:24.618Z
+Verify at:    2026-05-01T12:31:17.167Z
+Verdict:      PASS
+
+Assertions
+----------
+[PASS] (e) paid event publish blocked before KYC
+        gate.ok=false reason=paid_event_charges_disabled
+[PASS] (a) stripe-cli forwarded account.updated to local webhook
+        org row stripe_charges_enabled flipped to true (proves Stripe -> stripe-cli -> /api/webhooks/stripe -> signature verify -> Supabase update)
+[PASS] (b) capabilities.charges_enabled true after KYC
+        Stripe.account.charges_enabled=true
+[PASS] (c) organisations.payout_tier === tier_1
+        payout_tier=tier_1
+[PASS] (d) tier_progression_log row inserted (auto_promotion)
+        id=f4da8752-4df6-4d05-a675-183662611288 from=tier_1 to=tier_1 reason=auto_promotion
+[PASS] (f) paid event publish allowed after KYC
+        gate.ok=true reason=n/a
+
+Webhook chain proof
+-------------------
+The (a) assertion is intentionally indirect: the test does not parse
+stripe-cli stdout for the event line. Instead it asserts that the
+organisation row in Supabase had stripe_charges_enabled flipped to
+true. That single check covers the entire chain:
+  Stripe -> stripe-cli forwarder -> /api/webhooks/stripe ->
+  signature verification with STRIPE_WEBHOOK_SECRET -> Supabase update.
+If any link breaks, the row stays false and the assertion fails.
+
+Cleanup
+-------
+accounts.del deleted=true
+org row reset to not_started so re-runs are deterministic

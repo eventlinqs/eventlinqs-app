@@ -41,7 +41,7 @@ const variants: Record<Variant, string> = {
 /**
  * Dark-surface variant overrides.
  * Used when the button sits on a dark (navy/black) background section.
- * Primary is unchanged — gold reads clearly on dark with no adjustment needed.
+ * Primary is unchanged - gold reads clearly on dark with no adjustment needed.
  */
 const darkSurface: Partial<Record<Variant, string>> = {
   ghost: [
@@ -114,6 +114,3 @@ export function Button({
     </button>
   )
 }
-
-// Named export for getting classes without the component (useful for <Link> wrappers)
-export { cls as buttonCls }

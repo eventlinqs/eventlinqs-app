@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { revalidatePath, updateTag } from 'next/cache'
 import { canTransition } from '@/lib/event-lifecycle'
+import { checkPublishGate, hasPaidTier } from '@/lib/events/publish-gate'
 import type { EventStatus, EventVisibility, EventType, TicketTierType } from '@/types/database'
 
 function generateSlug(title: string): string {
@@ -23,7 +24,7 @@ export type TicketTierInput = {
   name: string
   description: string
   tier_type: TicketTierType
-  price: number // dollars — converted to cents on insert
+  price: number // dollars - converted to cents on insert
   currency: string
   total_capacity: number
   sale_start: string | null
@@ -93,6 +94,14 @@ export async function createEvent(input: CreateEventInput): Promise<{ error?: st
     .single()
 
   if (!org) return { error: 'Organisation not found or access denied' }
+
+  if (input.status === 'published' || input.status === 'scheduled') {
+    const gate = await checkPublishGate(supabase, {
+      organisationId: input.organisationId,
+      tiersHavePaid: hasPaidTier(input.ticket_tiers),
+    })
+    if (!gate.ok) return { error: gate.message }
+  }
 
   const slug = generateSlug(input.title)
   const now = new Date().toISOString()
@@ -214,6 +223,14 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
 
   if (!event) return { error: 'Event not found' }
 
+  if (input.status === 'published' || input.status === 'scheduled') {
+    const gate = await checkPublishGate(supabase, {
+      organisationId: event.organisation_id,
+      tiersHavePaid: hasPaidTier(input.ticket_tiers),
+    })
+    if (!gate.ok) return { error: gate.message }
+  }
+
   const now = new Date().toISOString()
 
   const admin = createAdminClient()
@@ -315,7 +332,7 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
   if (input.has_reserved_seating && event.slug) {
     revalidatePath(`/events/${event.slug}`)
   }
-  // venue_city may have changed — refresh the picker merge source.
+  // venue_city may have changed - refresh the picker merge source.
   updateTag('picker-cities')
   redirect('/dashboard/events?saved=1')
 }
@@ -327,7 +344,7 @@ export async function publishEvent(eventId: string): Promise<{ error?: string }>
 
   const { data: event } = await supabase
     .from('events')
-    .select('status')
+    .select('status, organisation_id')
     .eq('id', eventId)
     .single()
 
@@ -335,6 +352,17 @@ export async function publishEvent(eventId: string): Promise<{ error?: string }>
   if (!canTransition(event.status as EventStatus, 'published')) {
     return { error: `Cannot publish event in '${event.status}' state` }
   }
+
+  const { data: tiers } = await supabase
+    .from('ticket_tiers')
+    .select('price')
+    .eq('event_id', eventId)
+
+  const gate = await checkPublishGate(supabase, {
+    organisationId: event.organisation_id,
+    tiersHavePaid: hasPaidTier(tiers ?? []),
+  })
+  if (!gate.ok) return { error: gate.message }
 
   const { error } = await supabase
     .from('events')

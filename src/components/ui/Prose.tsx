@@ -6,10 +6,10 @@ interface ProseProps {
 }
 
 /**
- * Prose — typography wrapper for long-form text.
+ * Prose - typography wrapper for long-form text.
  *
  * Applies consistent styling to headings, paragraphs, lists, links,
- * code, and blockquotes — without @tailwindcss/typography or any plugin.
+ * code, and blockquotes - without @tailwindcss/typography or any plugin.
  * Every style is explicit Tailwind utility or CSS-var based.
  *
  * Usage:
@@ -55,10 +55,14 @@ export function Prose({ children, className = '' }: ProseProps) {
         '[&_li>ul]:mt-2 [&_li>ol]:mt-2',
 
         // ── Links ─────────────────────────────────────────────────────────
-        '[&_a]:text-[var(--brand-accent)] [&_a]:underline',
-        '[&_a]:underline-offset-2 [&_a]:decoration-[var(--brand-accent)]',
-        '[&_a:hover]:text-[var(--brand-accent-hover)]',
-        '[&_a:hover]:decoration-[var(--brand-accent-hover)]',
+        // Use the AA-compliant strong accent (gold-800) for links on light
+        // surfaces. Plain --brand-accent (gold-400) is reserved for dark
+        // surfaces or non-text uses; on white it fails 4.5:1 (1.86:1).
+        // Hover lifts to gold-700 which still holds AA on white (5.97:1).
+        '[&_a]:text-[var(--brand-accent-strong)] [&_a]:underline',
+        '[&_a]:underline-offset-2 [&_a]:decoration-[var(--brand-accent-strong)]',
+        '[&_a:hover]:text-[var(--brand-accent-strong-hover)]',
+        '[&_a:hover]:decoration-[var(--brand-accent-strong-hover)]',
 
         // ── Code ──────────────────────────────────────────────────────────
         '[&_code]:rounded [&_code]:bg-[var(--surface-2)]',

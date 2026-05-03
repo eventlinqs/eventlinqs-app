@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * ContactForm — client component.
+ * ContactForm - client component.
  *
  * Receives `initialSubject` pre-computed by the server from ?topic= and ?interest= params.
  * On submit: shows inline success state and console.logs.
@@ -63,7 +63,7 @@ export function ContactForm({ initialSubject = '' }: ContactFormProps) {
   return (
     <div className="grid grid-cols-1 gap-12 lg:grid-cols-2">
 
-      {/* LEFT — Contact form */}
+      {/* LEFT - Contact form */}
       <div>
         <h2 className="font-display text-2xl font-bold text-[var(--text-primary)]">
           Send us a message
@@ -118,7 +118,7 @@ export function ContactForm({ initialSubject = '' }: ContactFormProps) {
               value={email}
               onChange={(e) => setEmail((e.target as HTMLInputElement).value)}
             />
-            {/* Subject: plain text input — pre-filled from ?topic= and ?interest= URL params */}
+            {/* Subject: plain text input - pre-filled from ?topic= and ?interest= URL params */}
             <FormField
               id="contact-subject"
               label="Subject"
@@ -128,7 +128,7 @@ export function ContactForm({ initialSubject = '' }: ContactFormProps) {
               value={subject}
               onChange={(e) => setSubject((e.target as HTMLInputElement).value)}
             />
-            {/* Message: multiline textarea — support added to FormField in Command 2a */}
+            {/* Message: multiline textarea - support added to FormField in Command 2a */}
             <FormField
               id="contact-message"
               label="Message"
@@ -153,7 +153,7 @@ export function ContactForm({ initialSubject = '' }: ContactFormProps) {
         )}
       </div>
 
-      {/* RIGHT — Contact details */}
+      {/* RIGHT - Contact details */}
       <div className="lg:pt-12">
         <h2 className="font-display text-2xl font-bold text-[var(--text-primary)]">
           Other ways to reach us

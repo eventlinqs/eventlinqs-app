@@ -1,23 +1,23 @@
 import Link from 'next/link'
-import { SmartMedia } from '@/components/ui/smart-media'
+import { HeroMedia } from '@/components/media'
 import { GlassCard } from '@/components/ui/glass-card'
 import { getFeaturedHeroBackground, type EventMediaInput } from '@/lib/images/event-media'
 import type { CategoryHighlightSlide } from '@/lib/content/category-highlight-slides'
-import {
-  HeroCarouselClient,
-  type HeroCarouselSlide,
-} from './hero-carousel-client'
+import { type HeroCarouselSlide } from './hero-carousel-client'
+import { HeroCarouselEnhancer } from './hero-carousel-enhancer'
+import { FeaturedHeroStaticShell } from './featured-hero-static-shell'
 
 /**
- * FeaturedEventHero — full-viewport cinematic hero carousel.
+ * FeaturedEventHero - full-viewport cinematic hero carousel.
  *
  * Accepts a mix of real event slides + curated category highlight slides.
  * Pre-resolves each slide's background media in parallel on the server,
  * then hands pre-rendered JSX to the client carousel component.
  *
- * The H1 is always the brand promise ("Where the culture gathers.") — event
- * identity lives in the ribbon card on the right. The eyebrow rotates based
- * on the active slide's signal (soon, trending, or brand default).
+ * The H1 is always the locked brand promise ("Every culture. Every event.
+ * One platform."). Event identity lives in the ribbon card on the right.
+ * The eyebrow rotates based on the active slide's signal: happening soon,
+ * trending, or the brand default.
  */
 
 export interface FeaturedHeroEvent extends EventMediaInput {
@@ -39,7 +39,7 @@ export interface FeaturedHeroEventSlide {
 }
 
 const HERO_SUBCOPY =
-  'Tickets for events that move you. Afrobeats, Gospel, Amapiano, Owambe, Comedy. No hidden fees, ever.'
+  'The ticketing platform built for every culture. Afrobeats, Caribbean, Bollywood, Latin, Italian, Filipino, Lunar, Gospel, Amapiano, Comedy, Spanish, K-Pop, Reggae and more. All-in pricing, no surprise fees.'
 
 function heroEyebrow(event: FeaturedHeroEvent): string {
   const daysToStart = Math.ceil(
@@ -47,7 +47,7 @@ function heroEyebrow(event: FeaturedHeroEvent): string {
   )
   if (daysToStart >= 0 && daysToStart <= 2) return 'Happening this weekend'
   if ((event.percent_sold ?? 0) > 70) return 'Trending now'
-  return 'Made for the diaspora'
+  return 'Made for every culture'
 }
 
 function formatLongDate(iso: string): string {
@@ -74,7 +74,13 @@ function renderBackground(
 ) {
   return (
     <>
-      <SmartMedia media={media} autoplay={priority} priority={priority} />
+      <HeroMedia
+        image={media.image}
+        alt={media.alt}
+        videoSrc={priority ? media.videoSrc : undefined}
+        kenBurns={priority && media.kenBurns}
+        priority={priority}
+      />
       <div
         className="absolute inset-0"
         style={{
@@ -204,12 +210,12 @@ export async function FeaturedEventHero({
   // Fallback: empty-state single slide if somehow we got nothing
   if (slides.length === 0) {
     const fallbackMedia = await getFeaturedHeroBackground({
-      title: 'Where the culture gathers',
+      title: 'Every culture, every event',
       category: { slug: 'festival', name: 'Festival' },
     })
     slides.push({
       key: 'fallback',
-      eyebrow: 'Made for the diaspora',
+      eyebrow: 'Made for every culture',
       background: renderBackground(fallbackMedia, true),
       card: null,
       primaryHref: '/events',
@@ -218,11 +224,21 @@ export async function FeaturedEventHero({
   }
 
   return (
-    <HeroCarouselClient
-      slides={slides}
-      liveEventCount={liveEventCount}
-      uniqueCitiesCount={uniqueCitiesCount}
-      subcopy={HERO_SUBCOPY}
-    />
+    <>
+      <FeaturedHeroStaticShell
+        slide={slides[0]}
+        liveEventCount={liveEventCount}
+        uniqueCitiesCount={uniqueCitiesCount}
+        subcopy={HERO_SUBCOPY}
+        showIndicators={slides.length > 1}
+        totalSlides={slides.length}
+      />
+      <HeroCarouselEnhancer
+        slides={slides}
+        liveEventCount={liveEventCount}
+        uniqueCitiesCount={uniqueCitiesCount}
+        subcopy={HERO_SUBCOPY}
+      />
+    </>
   )
 }

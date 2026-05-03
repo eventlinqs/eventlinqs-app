@@ -60,7 +60,7 @@ export function CategoryLandingPage({ category, liveEvents = [] }: CategoryLandi
 
   return (
     <PageShell>
-      {/* ── 1. Hero — premium variant ─────────────────────────────── */}
+      {/* ── 1. Hero - premium variant ─────────────────────────────── */}
       <PageHero
         eyebrow={eyebrowLabel}
         title={heroHeadline}
@@ -71,7 +71,7 @@ export function CategoryLandingPage({ category, liveEvents = [] }: CategoryLandi
       {/* ── 2. Story / Why this category ─────────────────────────── */}
       <ContentSection surface="base" width="default">
         <div className="max-w-3xl">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent)]">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
             Why {displayName} on EventLinqs
           </p>
           <Prose>
@@ -154,12 +154,12 @@ export function CategoryLandingPage({ category, liveEvents = [] }: CategoryLandi
         )}
       </ContentSection>
 
-      {/* ── 5. Made for organisers like… — pill layout ───────────── */}
+      {/* ── 5. Made for organisers like… - pill layout ───────────── */}
       <ContentSection surface="alt" width="default">
         <div className="flex flex-col gap-10 lg:flex-row lg:gap-16">
           {/* Persona pills */}
           <div className="flex-1">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent)]">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
               Built for
             </p>
             <h3 className="mb-5 font-display text-xl font-semibold text-[var(--text-primary)] sm:text-2xl">
@@ -180,7 +180,7 @@ export function CategoryLandingPage({ category, liveEvents = [] }: CategoryLandi
 
           {/* Active cities */}
           <div className="shrink-0 lg:w-64">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent)]">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
               Active in
             </p>
             <div className="flex flex-wrap gap-2">
@@ -197,7 +197,7 @@ export function CategoryLandingPage({ category, liveEvents = [] }: CategoryLandi
         </div>
       </ContentSection>
 
-      {/* ── 6. Final CTA — dark band, single centred button ──────── */}
+      {/* ── 6. Final CTA - dark band, single centred button ──────── */}
       <section className="relative overflow-hidden bg-[var(--surface-dark)] py-20 md:py-28 lg:py-32">
         {/* Top accent border */}
         <div
@@ -208,7 +208,7 @@ export function CategoryLandingPage({ category, liveEvents = [] }: CategoryLandi
           }}
           aria-hidden="true"
         />
-        {/* Radial glow — brand accent, centre-right */}
+        {/* Radial glow - brand accent, centre-right */}
         <div
           className="pointer-events-none absolute"
           style={{
@@ -221,7 +221,7 @@ export function CategoryLandingPage({ category, liveEvents = [] }: CategoryLandi
           }}
           aria-hidden="true"
         />
-        {/* Radial glow — white, bottom-left */}
+        {/* Radial glow - white, bottom-left */}
         <div
           className="pointer-events-none absolute"
           style={{

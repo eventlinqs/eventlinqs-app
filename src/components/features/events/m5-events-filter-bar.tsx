@@ -39,7 +39,7 @@ type Props = {
   categories: CategoryChip[]
   view: EventsView
   hasGeoSignal: boolean
-  /** /events or /events/browse/{slug} — drives URL building for chips + pagination. */
+  /** /events or /events/browse/{slug} - drives URL building for chips + pagination. */
   basePath?: string
 }
 
@@ -131,7 +131,7 @@ export function EventsFilterBar({ params, categories, view, hasGeoSignal, basePa
       aria-busy={isPending || undefined}
     >
       <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:px-6 lg:px-8">
-        {/* Row 1 — date preset chips + view toggle + more-filters */}
+        {/* Row 1 - date preset chips + view toggle + more-filters */}
         <div className="flex items-center gap-3">
           <div className="flex min-w-0 flex-1 flex-wrap gap-2" role="group" aria-label="Date filters">
             {DATE_PRESETS.map(p => {
@@ -210,7 +210,7 @@ export function EventsFilterBar({ params, categories, view, hasGeoSignal, basePa
           </div>
         </div>
 
-        {/* Row 2 — category chips, horizontal scroll on mobile */}
+        {/* Row 2 - category chips, horizontal scroll on mobile */}
         {categories.length > 0 && (
           <div
             role="group"

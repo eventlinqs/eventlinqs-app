@@ -8,7 +8,7 @@ interface PricingStep {
   step_order: number
   capacity_threshold_percent: number
   price_cents: number
-  // Transient display strings — only exist during user editing, stripped before save
+  // Transient display strings - only exist during user editing, stripped before save
   _priceDisplay?: string
   _percentDisplay?: string
 }
@@ -78,7 +78,7 @@ function TierPricingCard({ tier, eventId }: { tier: Tier; eventId: string }) {
   }
 
   // ── Price input handlers ──────────────────────────────────────────────────
-  // onChange only updates the raw display string — no parsing, no reformatting.
+  // onChange only updates the raw display string - no parsing, no reformatting.
   // onBlur parses, clamps, formats, and commits to price_cents.
   function handlePriceChange(index: number, raw: string) {
     // Allow digits and at most one decimal point; reject anything else
@@ -104,7 +104,7 @@ function TierPricingCard({ tier, eventId }: { tier: Tier; eventId: string }) {
 
   // ── Percent input handlers ────────────────────────────────────────────────
   // onChange allows only digits and updates display string.
-  // onBlur parses and clamps to 1–100.
+  // onBlur parses and clamps to 1-100.
   function handlePercentChange(index: number, raw: string) {
     const digitsOnly = raw.replace(/[^0-9]/g, '')
     setSteps(prev =>
@@ -193,7 +193,7 @@ function TierPricingCard({ tier, eventId }: { tier: Tier; eventId: string }) {
             </div>
             {steps.map((step, i) => (
               <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
-                {/* Percent field — text input, digits only, clamped 1–100 on blur */}
+                {/* Percent field - text input, digits only, clamped 1-100 on blur */}
                 <div className="relative">
                   <input
                     type="text"
@@ -206,7 +206,7 @@ function TierPricingCard({ tier, eventId }: { tier: Tier; eventId: string }) {
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-400">%</span>
                 </div>
-                {/* Price field — text input, decimal allowed, formatted on blur */}
+                {/* Price field - text input, decimal allowed, formatted on blur */}
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-ink-400">$</span>
                   <input

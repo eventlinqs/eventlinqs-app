@@ -1,4 +1,4 @@
-# Sydney Migration — Operational Runbook
+# Sydney Migration - Operational Runbook
 
 **Owner:** Lawal
 **Status as of 2026-04-26:** **Path B (Fresh Start) executed and complete.** Sydney is live with baseline schema + cultural breadth seed. No Mumbai data was migrated.
@@ -6,16 +6,16 @@
 
 ---
 
-## Path Selected: B — Fresh Start (no data migration)
+## Path Selected: B - Fresh Start (no data migration)
 
 Three paths were considered:
 
-- **Path A — Studio Backup + Restore:** required Mumbai to be unpaused with a free-tier daily backup available. Mumbai was paused; backup access was not exercised.
-- **Path B — Fresh Start (selected):** apply baseline schema + cultural breadth seed directly to Sydney, bypassing Mumbai entirely. Mumbai's data was early-stage / pre-launch, so there were no production users, real orders, or paid tickets to preserve.
-- **Path C — `pg_dump` + `psql`:** required local PostgreSQL client install and a Mumbai DB password reset. Not pursued.
+- **Path A - Studio Backup + Restore:** required Mumbai to be unpaused with a free-tier daily backup available. Mumbai was paused; backup access was not exercised.
+- **Path B - Fresh Start (selected):** apply baseline schema + cultural breadth seed directly to Sydney, bypassing Mumbai entirely. Mumbai's data was early-stage / pre-launch, so there were no production users, real orders, or paid tickets to preserve.
+- **Path C - `pg_dump` + `psql`:** required local PostgreSQL client install and a Mumbai DB password reset. Not pursued.
 
 **Why Path B was the right call:**
-- Mumbai contained only test data and seed orgs — no real customer data, no payments, no orders to preserve.
+- Mumbai contained only test data and seed orgs - no real customer data, no payments, no orders to preserve.
 - Fresh start lets Sydney begin with the canonical schema (one consolidated baseline migration, not a long forward-only history).
 - Mumbai was paused and would have required a wake + password reset cycle to extract data of zero business value.
 - Cultural breadth seed (12 orgs, 5 diaspora categories, 24-30 events) gives a richer demo dataset than what Mumbai held.
@@ -44,9 +44,9 @@ Sydney is the destination because:
 3. **Cultural breadth seed** (commit `dc73f06`):
    - 12 organisations across 5 diaspora categories, 24-30 events. Replaces Mumbai's narrow seed.
 4. **All 6 migrations confirmed applied** to Sydney project `gndnldyfudbytbboxesk`.
-5. **Local site verified** — homepage and mobile both returned HTTP 200 against Sydney.
+5. **Local site verified** - homepage and mobile both returned HTTP 200 against Sydney.
 6. **Playwright screenshot pass** (commit `8675a91`) captured baseline visual state, stored in `docs/sprint1/screenshots/`.
-7. **Build / lint / typecheck** — all clean (verified 2026-04-26 post-stale-cache reset).
+7. **Build / lint / typecheck** - all clean (verified 2026-04-26 post-stale-cache reset).
 
 ---
 
@@ -68,10 +68,12 @@ Both Mumbai and Sydney entries are currently present in `.env.local`; Sydney lin
 
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://gndnldyfudbytbboxesk.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_dRfxcx-bSDgfA36UctCVJA_6IELn_bs
-SUPABASE_SERVICE_ROLE_KEY=<paste from Supabase Studio → Settings → API>
-SUPABASE_DB_PASSWORD_SYDNEY=dQ3U4NKL88bBL9VV
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<copy from Supabase Studio → Settings → API → anon public>
+SUPABASE_SERVICE_ROLE_KEY=<paste from Supabase Studio → Settings → API → service_role>
+SUPABASE_DB_PASSWORD_SYDNEY=[REDACTED-ROTATED-2026-04-28]
 ```
+
+> **Security note (2026-04-28):** the original `SUPABASE_DB_PASSWORD_SYDNEY` value that previously lived in this runbook was rotated on 2026-04-28. The new password lives in the operator's password manager and `.env.local` only. It is not stored in Vercel environment variables (the running Next.js app authenticates to Supabase via anon and service-role keys; the DB password is consumed only by ad-hoc local psql / migration tooling). Old git history retains the rotated value but it no longer authenticates against the Sydney project. The previously-displayed anon key was also redacted as a precaution; pull the current value from Supabase Studio when needed.
 
 ---
 
@@ -92,9 +94,9 @@ Sydney is live locally. Production still points at Mumbai until Vercel env vars 
 
 ### Smoke test after deploy
 - Hit the production URL.
-- Open homepage — confirm `ThisWeekStrip` renders with seeded cultural events.
-- Open DevTools Network tab — confirm requests go to `gndnldyfudbytbboxesk.supabase.co`.
-- Sign in as a test user — confirm session persists.
+- Open homepage - confirm `ThisWeekStrip` renders with seeded cultural events.
+- Open DevTools Network tab - confirm requests go to `gndnldyfudbytbboxesk.supabase.co`.
+- Sign in as a test user - confirm session persists.
 - Sentry should be quiet on the deploy (no Supabase connection errors).
 
 ---
@@ -107,10 +109,10 @@ Steps:
 1. Confirm Sydney has been live in production for 7+ days with no Supabase-related Sentry alerts.
 2. Confirm Vercel logs show zero traffic to `cqwdlimwlnyaaowwcyzp.supabase.co`.
 3. In Supabase Studio for Mumbai → Settings → General → **Delete project**.
-4. No final backup needed — Mumbai held only pre-launch test data, fully superseded by Sydney's seed.
+4. No final backup needed - Mumbai held only pre-launch test data, fully superseded by Sydney's seed.
 
 ---
 
 ## Why Path B was chosen over A/C
 
-The original Sprint 1 plan called for in-session migration via Supabase MCP. The available MCP was read-only and locked to Mumbai. Mumbai was paused, requiring a wake + password reset cycle to extract data that turned out to be of no business value (pre-launch test seeds only). Fresh start was the responsible alternative — it gave Sydney a clean canonical baseline, a richer culturally-relevant seed, and avoided destructive credential cycles in chat. Mumbai is preserved for 7 days as a safety net even though the data is non-essential.
+The original Sprint 1 plan called for in-session migration via Supabase MCP. The available MCP was read-only and locked to Mumbai. Mumbai was paused, requiring a wake + password reset cycle to extract data that turned out to be of no business value (pre-launch test seeds only). Fresh start was the responsible alternative - it gave Sydney a clean canonical baseline, a richer culturally-relevant seed, and avoided destructive credential cycles in chat. Mumbai is preserved for 7 days as a safety net even though the data is non-essential.

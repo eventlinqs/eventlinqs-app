@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 
 /**
- * NavSearch — Ticketmaster-pattern pill search bar.
+ * NavSearch - Ticketmaster-pattern pill search bar.
  *
  * Pill-shaped input, magnifying glass left. Submitting navigates to
  * /events?q=<query>. Empty submit goes to /events. Cmd/Ctrl+K focuses

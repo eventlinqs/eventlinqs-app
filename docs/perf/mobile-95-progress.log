@@ -1,0 +1,15 @@
+# Mobile 95+ progress log
+
+Format: timestamp | iter | route | perf | LCP | TBT | SI | TTI | notes
+
+2026-05-02T02:40:00Z | baseline | / | 0.74 | 2153ms | 755ms | 5671ms | 4469ms | render-blocking CSS 1037ms, bootup 2.5s, hero is Pexels via /_next/image
+2026-05-02T02:40:00Z | baseline | /events | 0.86 | 4145ms | 62ms | 1227ms | 4956ms | LCP element first rail card; observed LCP 497ms (Lantern inflates 5x)
+
+2026-05-02T02:55:00Z | iter-1 | / | 0.85 | 2106ms | 467ms | 2718ms | 3235ms | swapped getFeaturedHeroBackground to local AVIFs only; LCP -47ms, TBT -288ms, SI -2953ms
+2026-05-02T02:55:00Z | iter-1 | /events | 0.91 | 3179ms | 163ms | 1255ms | 5165ms | LCP -966ms (less Pexels noise blocking main); TBT +101 (still ok)
+
+2026-05-02T03:15:00Z | iter-2 | / | 0.83-0.91 (avg 0.86) | 2073-2521ms | 246-450ms | 2715-2828ms | - | prefetch={false} on /login /signup links in site-header; supabase chunk no longer prefetched on home/events
+2026-05-02T03:15:00Z | iter-2 | /events | 0.78-0.81 (avg 0.79) | 4597-5877ms | 35-67ms | 1216-1227ms | - | TBT dropped huge (-100ms) but Lantern LCP regressed; Suspense'd rail card was the LCP, projection inflated under simulated 4G
+
+2026-05-02T03:30:00Z | iter-3 | / | 0.84-0.89 (avg 0.86) | 2073-2521ms | 271-468ms | 2719-2734ms | - | also removed vestigial 'use client' from event-card.tsx and site-footer.tsx; element render delay dropped 2058->84ms (huge!) but resource load duration still 1756ms (Lantern simulated AVIF download)
+2026-05-02T03:30:00Z | iter-3 | /events | 0.82-0.92 (avg 0.86) | 3265-4609ms | 34-72ms | 1217-1367ms | - | EventsPopularSection renders synchronously in shell via createPublicClient + unstable_cache; first rail card now in initial HTML (priorityHinted/requestDiscoverable/eagerlyLoaded all pass); supabase chunk no longer loads on /events

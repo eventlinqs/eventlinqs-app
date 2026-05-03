@@ -5,15 +5,15 @@ import Link from 'next/link'
 import { ChevronDown } from 'lucide-react'
 
 /**
- * FilterSidebar — desktop-only collapsible filter panel.
+ * FilterSidebar - desktop-only collapsible filter panel.
  *
  * Groups:
- *   WHEN      — expanded by default (date quick-picks)
- *   CATEGORY  — expanded, top 5 visible + "Show N more" toggle; uses slugs
- *   PRICE     — collapsed, tri-state All / Free only / Paid only
- *   DISTANCE  — collapsed, km radius from detected user location
+ *   WHEN      - expanded by default (date quick-picks)
+ *   CATEGORY  - expanded, top 5 visible + "Show N more" toggle; uses slugs
+ *   PRICE     - collapsed, tri-state All / Free only / Paid only
+ *   DISTANCE  - collapsed, km radius from detected user location
  *
- * Hidden below lg breakpoint — mobile gets EventsFilterStrip + bottom drawer.
+ * Hidden below lg breakpoint - mobile gets EventsFilterStrip + bottom drawer.
  */
 
 type Category = { id: string; name: string; slug: string }
@@ -155,7 +155,7 @@ export function FilterSidebar({
           </div>
         </SidebarGroup>
 
-        {/* CATEGORY — slug-based href (§A.1 fix) */}
+        {/* CATEGORY - slug-based href (§A.1 fix) */}
         <SidebarGroup title="Category" defaultOpen={true}>
           <div className="space-y-0.5">
             <FilterLink
@@ -185,7 +185,7 @@ export function FilterSidebar({
           </div>
         </SidebarGroup>
 
-        {/* PRICE — tri-state All / Free / Paid */}
+        {/* PRICE - tri-state All / Free / Paid */}
         <SidebarGroup title="Price" defaultOpen={false}>
           <div className="space-y-0.5">
             <FilterLink
@@ -209,7 +209,7 @@ export function FilterSidebar({
           </div>
         </SidebarGroup>
 
-        {/* DISTANCE — radius from detected location */}
+        {/* DISTANCE - radius from detected location */}
         <SidebarGroup title="Distance" defaultOpen={false}>
           <div className="space-y-0.5">
             {DISTANCE_OPTIONS.map(opt => (

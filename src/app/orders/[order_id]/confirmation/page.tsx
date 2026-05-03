@@ -21,11 +21,11 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
   const { redirect_status } = await searchParams
 
   const supabase = await createClient()
-  // Admin client — order may belong to a guest (user_id null) or a different user (organiser view),
+  // Admin client - order may belong to a guest (user_id null) or a different user (organiser view),
   // so session-based RLS would block the SELECT. Authorization is by order_id/order_number (unguessable).
   const adminClient = createAdminClient()
 
-  // Fetch order — can be by UUID or by order_number (EL-XXXXXXXX)
+  // Fetch order - can be by UUID or by order_number (EL-XXXXXXXX)
   const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(order_id)
 
   const query = adminClient
@@ -41,7 +41,7 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
   const fullOrder = order as FullOrder
 
   // If Stripe just redirected back with succeeded status, the webhook may still be processing
-  // Show confirmation page anyway — the webhook will confirm the order
+  // Show confirmation page anyway - the webhook will confirm the order
   const isConfirmed = fullOrder.status === 'confirmed' || redirect_status === 'succeeded'
 
   const { data: event } = await adminClient
@@ -105,7 +105,7 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
             </svg>
           </div>
           <h1 className="text-2xl font-bold text-ink-900">
-            {isConfirmed ? 'Order Confirmed' : 'Order Received'}
+            {isConfirmed ? "You're in" : 'Order received'}
           </h1>
           <p className="mt-1 text-ink-400">Order <span className="font-mono font-semibold text-ink-800">{fullOrder.order_number}</span></p>
         </div>
@@ -189,7 +189,7 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
 
         <div className="text-center">
           <Link href="/events" className="text-sm text-[#4A90D9] hover:underline">
-            Browse More Events →
+            Browse more events
           </Link>
         </div>
       </div>

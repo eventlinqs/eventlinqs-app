@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { Calendar, MapPin, PlusCircle } from 'lucide-react'
+import { EventCardMedia } from '@/components/media'
 
 export type UpcomingEvent = {
   id: string
@@ -56,13 +57,12 @@ export function UpcomingEventsPanel({ events }: { events: UpcomingEvent[] }) {
                   className="block px-5 py-4 transition-colors hover:bg-ink-100/60"
                 >
                   <div className="flex items-start gap-4">
-                    <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-ink-100">
+                    <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-ink-100">
                       {event.cover_image_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
+                        <EventCardMedia
                           src={event.cover_image_url}
                           alt=""
-                          className="h-full w-full object-cover"
+                          variant="rail"
                         />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-ink-400">

@@ -1,0 +1,218 @@
+EventLinqs Hardening Session - Progress Log
+=============================================
+
+Worktree: ../eventlinqs-app-hardening/
+Branch:   feat/launch-hardening-nationwide
+Mode:     Autonomous within phase, hard gate at phase boundary
+Owner:    Hardening session
+
+---
+
+[2026-05-02T00:00:00Z] PHASE 1 OPEN - Infrastructure Foundation
+  Read: CLAUDE.md, docs/MASTER-PLAN-V1.md, docs/BUILD-STANDARDS.md,
+        docs/PRODUCTION-READINESS-CHECKLIST.md, docs/audit/hygiene-2026-05-01.log,
+        docs/m6/audit/phase2/closure-report.md, docs/perf/v2/closure-report.md,
+        next.config.ts, package.json, .env.example,
+        src/lib/redis/{client,rate-limit}.ts, src/types/database.ts (553 lines),
+        supabase/migrations/ (10 files on disk).
+  State at entry:
+    - Branch clean
+    - HEAD eee04b8 (docs: add CLAUDE.md - shared architecture context)
+    - Quality baseline per hygiene log: 1 pre-existing lint error, tsc clean,
+      build success, vitest 3/3
+    - Supabase CLI: not in PATH, accessible via npx (v2.98.0)
+  Scope written: docs/hardening/phase1/scope.md
+  Next: deliverable-by-deliverable execution per scope.
+
+[2026-05-02T16:22:00Z] [A] Redis health endpoint and Sydney migration docs
+  Commit: 239319d feat(hardening-A): redis health endpoint plus Sydney migration plan
+  Files:  src/app/api/health/redis/route.ts (NEW)
+          docs/hardening/phase1/upstash-sydney-setup.md (NEW)
+          docs/hardening/phase1/redis-migration-runbook.md (NEW)
+          .env.example (M, +Upstash + Resend + Sentry blocks)
+          docs/hardening/phase1/scope.md (M, /api/_health -> /api/health rename)
+  Note:   Original task spec used /api/_health/redis; Next.js App Router
+          treats _-prefixed folders as private and excludes them from
+          routing. Renamed to /api/health/redis per industry standard.
+  Gates:  tsc clean, build success, route appears in manifest as
+          /api/health/redis, vitest 3/3.
+
+[2026-05-02T16:23:00Z] [A] [COORDINATION] founder action required
+  Provision Sydney Upstash Redis instance per
+  docs/hardening/phase1/upstash-sydney-setup.md.
+  Blocks: deliverable G (rate-limit wiring against Sydney instance)
+          and any Phase 2 load tests against authoritative Redis.
+  Does not block: B, C, D, E, F. Continuing those.
+
+[2026-05-02T17:10:00Z] [B] Resend SMTP setup doc and brand-compliant auth templates
+  Commit: 7730095 feat(hardening-B): Resend SMTP setup doc and brand-compliant auth templates
+  Files:  docs/hardening/phase1/resend-smtp-setup.md (NEW)
+          src/lib/email/templates/auth/{confirm-signup,magic-link,
+            password-reset,email-change,reauthentication}.html (5 NEW)
+          src/lib/email/templates/auth/README.md (NEW)
+  Note:   Templates use 560px max width, EVENTLINQS wordmark text,
+          inline styles only, brand palette (#1A1A2E primary, #4A90D9
+          accent, #FAFAFA background). Supabase placeholders preserved
+          ({{ .ConfirmationURL }}, {{ .Token }}). No em-dashes, no
+          exclamation marks, AU English.
+  Gates:  Lint clean (templates are static HTML, not in TS path),
+          tsc clean, build success.
+
+[2026-05-02T17:10:30Z] [B] [COORDINATION] founder action required
+  Verify eventlinqs.com domain in Resend, generate SMTP credential,
+  configure Supabase Dashboard > Auth > SMTP Settings, paste 5
+  template HTML files into Auth template editor, set RESEND_API_KEY
+  in Vercel (production + preview + development).
+  Blocks: production auth-email cutover (no production blocker for
+          codebase work; founder action only).
+
+[2026-05-02T17:35:00Z] [C] Original deliverable: map token restrictions audit
+  Commit: 1556fd6 feat(hardening-C): map token restrictions audit and founder action
+  File:   docs/hardening/phase1/map-token-restrictions.md (NEW, since renamed)
+  Status: SUPERSEDED by C-REVISED below.
+
+[2026-05-02T18:05:00Z] [E] On-disk migration audit and remote drift handoff
+  Commit: 85f8008 feat(hardening-E): on-disk migration audit and remote drift handoff
+  File:   docs/hardening/phase1/migration-drift-audit.md (NEW)
+  Findings:
+    - 10 migration files on disk enumerated.
+    - Memory item "20260419000001_add_saved_events.sql on disk but
+      never applied" RESOLVED. That file is not on disk; saved_events
+      ships via 20260421000001_m5_phase1_personalisation.sql with
+      CREATE TABLE IF NOT EXISTS at line 18. Production traffic on
+      save-event-button.tsx implies remote application.
+    - Memory item "13 events vs 8 expected" PENDING remote audit.
+      Most likely explanation: seed migration ran cleanly with 8
+      events, then 20260426000001_cultural_breadth_seed.sql added 5
+      more for total 13. Confirms in T2.
+    - .env.local has duplicate NEXT_PUBLIC_SUPABASE_URL line
+      (cqwdlimwlnyaaowwcyzp dead, gndnldyfudbytbboxesk live per
+      dotenv last-write semantics). Founder-managed, not edited.
+
+[2026-05-02T18:05:30Z] [E] [COORDINATION] founder action required
+  Run npx supabase login then
+  npx supabase link --project-ref gndnldyfudbytbboxesk
+  Requires DB password. After link, this session runs
+  supabase migration list --linked and supabase db diff --linked
+  to fill the reconciliation matrix and close the event-count probe.
+  Blocks: full closure of E. Partial closure already in audit doc.
+
+[2026-05-02T19:15:00Z] [C-REVISED] Project manager update absorbed
+  PM directive: Mapbox is fully decommissioned (verified zero hits in
+  src/, package.json, .env.example, plus mapboxgl/MapboxGL/mapbox-gl
+  variants). Original C task is removed. Replaced with: Google Maps
+  API key audit and restrictions verification at
+  docs/hardening/phase1/google-maps-api-restrictions.md.
+  Action taken:
+    - git mv map-token-restrictions.md -> google-maps-api-restrictions.md
+    - Header rewritten: title, status line, scope summary updated.
+    - Mapbox decommission codified as a verification table (4 grep
+      targets, all 0 hits).
+    - Founder action remains: HTTP referrer restrictions on
+      eventlinqs.com/*, www.eventlinqs.com/*, *.vercel.app/*,
+      http://localhost:*/* + Maps JS API + Places API only + quota cap.
+    - No health check needed (key is browser-exposed by design;
+      security is restriction-based, not endpoint-based).
+  Note:  Token-scoping summary table retained as audit context for
+         Phase 4 (RLS audit, secret rotation policy).
+
+[2026-05-02T19:50:00Z] [F] Observability scaffold (PII scrub + Sentry shim)
+  Commit: 0e326c9 feat(hardening-F): observability scaffold with PII-scrubbed Sentry shim
+  Files:  src/lib/observability/pii-scrub.ts (NEW)
+          src/lib/observability/sentry.ts (NEW, shim until SDK install)
+          src/app/error.tsx (NEW)
+          src/app/global-error.tsx (NEW)
+          src/app/api/health/sentry-error/route.ts (NEW, token-gated)
+          tests/unit/observability/pii-scrub.test.ts (NEW, 17 tests)
+          docs/hardening/phase1/sentry-setup.md (NEW)
+  Note:   Pattern order in scrubString matters. UUIDs scrubbed BEFORE
+          PHONE/CARD so the digit-heavy tail of a UUID is not chewed
+          by the phone-number heuristic. Verified by adversarial test
+          case in pii-scrub.test.ts.
+  Gates:  vitest 20/20, tsc clean, build clean, /api/health/sentry-error
+          in route manifest. Pre-existing site-header-client.tsx lint
+          error unchanged from baseline.
+
+[2026-05-02T19:51:00Z] [F] [COORDINATION] founder + SHARED commit pending
+  After founder runs Sentry actions in docs/hardening/phase1/sentry-setup.md,
+  this session lands two SHARED commits:
+    1. [SHARED] chore(deps): add @sentry/nextjs (package.json + lock)
+    2. [SHARED] feat(observability): wire Sentry into next.config.ts
+  Both will be flagged in commit messages with [SHARED] per CLAUDE.md and
+  will pause the session until partner Claude confirms no conflict with
+  Session 1 / Session 3 work.
+
+[2026-05-02T20:25:00Z] [D] DB type generation scripts and migration plan
+  Commit: 66c2ae7 feat(hardening-D): db type generation scripts and migration plan
+  Files:  scripts/gen-db-types.mjs (NEW)
+          scripts/db-types-drift-check.mjs (NEW)
+          docs/hardening/phase1/db-types-automation.md (NEW)
+  Note:   Phase 1 scope explicitly stops at scaffold + migration plan.
+          The actual cutover from hand-written src/types/database.ts
+          (~50 import sites) to re-exports from database.generated.ts
+          is too high blast-radius for a hardening commit. Queued for
+          a later dedicated PR.
+  Smoke:  gen-db-types.mjs exits 1 with the documented link prompt
+          when run against an unlinked tree.
+
+[2026-05-02T20:26:00Z] [D] [SHARED] package.json: add db:types scripts
+  Commit: 4afe68d [SHARED] chore: add db:types and db:types:check npm scripts
+  Pushed to origin/feat/launch-hardening-nationwide.
+  Per CLAUDE.md: pausing further SHARED edits until partner Claude
+  confirms no conflict with Session 1 / Session 3.
+  Owned-files work continues in parallel (G scaffolding, closure draft).
+
+[2026-05-02T20:26:30Z] [D] [COORDINATION] founder action shared with [E]
+  Same `npx supabase link --project-ref gndnldyfudbytbboxesk` action that
+  unblocks remote migration audit also unblocks first-run db:types
+  generation. After link, this session runs `npm run db:types` and
+  commits src/types/database.generated.ts as a non-SHARED follow-up.
+
+[2026-05-02T21:00:00Z] [G] Rate-limit policy layer + Session 1 handoff
+  Commit: 71c191d feat(hardening-G): central rate-limit policy layer and Session 1 handoff
+  Files:  src/lib/rate-limit/policies.ts (NEW)
+          src/lib/rate-limit/middleware.ts (NEW)
+          src/app/api/health/redis/route.ts (M, +health-redis policy)
+          src/app/api/health/sentry-error/route.ts (M, +health-sentry-error policy)
+          tests/unit/rate-limit/policies.test.ts (NEW, 5 tests)
+          docs/hardening/phase1/rate-limit-handoff.md (NEW)
+  Note:   Latency target verification (latencyMs<20 for redis-backed
+          rate-limit miss/pass) gated on A's Sydney Upstash provision.
+          Policy layer itself is production-ready against the existing
+          free-tier client.
+  Gates:  vitest 25/25, tsc clean, build clean, lint baseline preserved.
+
+[2026-05-02T21:30:00Z] [GATE] PHASE 1 DRAFT-CLOSURE
+  Closure report: docs/hardening/phase1/closure-report.md
+  Branch:  feat/launch-hardening-nationwide pushed to origin
+  Commits: 12 commits in this phase (b8170ab through 71c191d)
+  Status:  All 7 deliverables A-G have landed code or scaffolding.
+  Pending founder actions (5):
+    1. A: Provision Upstash Sydney
+    2. B: Verify Resend domain + Supabase SMTP config
+    3. C: Apply Google Maps key restrictions
+    4. D+E: npx supabase link (single action unblocks both)
+    5. F: Create Sentry project + set Vercel env vars
+  Pending [SHARED] coordination:
+    1. 4afe68d (db:types scripts) PUSHED, awaiting confirmation
+    2. (queued) chore(deps): add @sentry/nextjs
+    3. (queued) feat(observability): wire withSentryConfig into next.config.ts
+  Cross-session handoff:
+    - Session 1: wire applyRateLimit into checkout/* and stripe/* routes
+      per docs/hardening/phase1/rate-limit-handoff.md
+  Quality:  lint baseline preserved (1 pre-existing site-header error),
+            tsc clean, build clean, vitest 25/25.
+  Hard gate per scope.md: Phase 2 does not start until partner Claude
+  approves this closure and the founder actions complete. STOP here.
+
+[2026-05-02T22:00:00Z] [GATE] CONDITIONAL APPROVAL received
+  Project manager approval: code-side approved on all 14 commits.
+  Phase 2 (Load Testing & Performance Validation) explicitly GATED on
+  founder actions A.1-A.5. Standing down. No Phase 2 work to start.
+  Resume conditions:
+    - Founder confirms each of A.1-A.5 individually so this session
+      can land the per-deliverable post-action work (Sentry SDK install,
+      first-run db:types, remote migration audit doc fill-in, Upstash
+      Sydney health verification, Resend send smoke test).
+    - Partner Claude confirms no conflict with [SHARED] 4afe68d.
+  Until then: idle.

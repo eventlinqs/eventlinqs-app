@@ -2,7 +2,7 @@ import { cookies } from 'next/headers'
 import { randomUUID } from 'crypto'
 
 /**
- * Guest session cookie — owns anonymous checkouts so the reservations
+ * Guest session cookie - owns anonymous checkouts so the reservations
  * table can satisfy its (user_id IS NOT NULL OR session_id IS NOT NULL)
  * constraint when the buyer is not signed in.
  *
@@ -12,7 +12,7 @@ import { randomUUID } from 'crypto'
  *
  * Both helpers are async because Next 16's cookies() is async.
  * `getOrCreate` calls cookies().set(), which only succeeds inside a
- * Server Action, Route Handler, or Middleware — use it from server
+ * Server Action, Route Handler, or Middleware - use it from server
  * actions that need to attach ownership to a new row. Reads from
  * Server Components use `get` instead.
  */

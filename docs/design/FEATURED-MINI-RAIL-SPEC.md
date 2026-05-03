@@ -1,4 +1,4 @@
-# EventLinqs — Featured Mini-Rail Spec
+# EventLinqs - Featured Mini-Rail Spec
 
 **Requirement solved:** the homepage currently shows only one event card (Stripe Test Event). That makes the platform look empty. Competitors show rails of 4-8 events immediately.
 **Approach:** populate with 4 cards (1 real test event + 3 "announcement" cards for aspirational festivals), styled as a horizontal mini-rail that previews the scroll-snap rails coming in Session 4.
@@ -28,7 +28,7 @@ This is defensible, honest, and doubles as an organiser-acquisition funnel.
 
 ## 2. Data Model
 
-Announcement cards don't belong in the `events` table — they're not events. Two options:
+Announcement cards don't belong in the `events` table - they're not events. Two options:
 
 **Option A (recommended):** add an `announcements` table.
 ```sql
@@ -52,7 +52,7 @@ CREATE POLICY "public read active announcements" ON announcements
   FOR SELECT USING (is_active = true);
 ```
 
-**Option B:** hardcode in `lib/seed/announcements.ts` as a typed array. Faster for now, refactor later. For a 7-day "send to friends" timeline, B is acceptable — but leave a `TODO(M11): move to announcements table` comment.
+**Option B:** hardcode in `lib/seed/announcements.ts` as a typed array. Faster for now, refactor later. For a 7-day "send to friends" timeline, B is acceptable - but leave a `TODO(M11): move to announcements table` comment.
 
 ---
 
@@ -63,9 +63,9 @@ The mini-rail is a **preview of Session 4's scroll-snap rail**. Build the compon
 ### Layout
 
 - Horizontal strip, 4 cards visible on desktop (≥1280px), 2.5 visible on tablet, 1.5 visible on mobile (scroll-snap)
-- Cards are uniform aspect ratio — **3:4 portrait** on mobile, **16:9 landscape** on desktop, matching DICE's responsive card behaviour
+- Cards are uniform aspect ratio - **3:4 portrait** on mobile, **16:9 landscape** on desktop, matching DICE's responsive card behaviour
 - Section header: "Featured this week" (H2) + subcopy "Where the culture's heading" + "View all →" link on the right
-- Section surface: `base` (white) — sits between dark hero and alt-surface Trending rail
+- Section surface: `base` (white) - sits between dark hero and alt-surface Trending rail
 
 ### Announcement card treatment
 
@@ -146,26 +146,26 @@ export function MiniRail({
 
 ---
 
-## 5. Claude Code Command — Implement the Mini-Rail
+## 5. Claude Code Command - Implement the Mini-Rail
 
 ```
 Read docs/design/FEATURED-MINI-RAIL-SPEC.md.
 
 Build the featured mini-rail for the homepage:
 
-1. Create an announcements table via Supabase migration (see Section 2 Option A of the spec). Seed it with 3 rows: Afro Nation Portugal 2026, Homecoming Lagos 2026, Promiseland Festival. Use plausible press photo URLs for cover_image_url — mark these as dev placeholders in comments. Each row gets expected_date, location, and a slug.
-2. Create /announcements/[slug]/page.tsx — a simple landing page showing the announcement details with a "Get in touch" CTA linking to mailto:hello@eventlinqs.com?subject=EventLinqs%20-%20[slug].
+1. Create an announcements table via Supabase migration (see Section 2 Option A of the spec). Seed it with 3 rows: Afro Nation Portugal 2026, Homecoming Lagos 2026, Promiseland Festival. Use plausible press photo URLs for cover_image_url - mark these as dev placeholders in comments. Each row gets expected_date, location, and a slug.
+2. Create /announcements/[slug]/page.tsx - a simple landing page showing the announcement details with a "Get in touch" CTA linking to mailto:hello@eventlinqs.com?subject=EventLinqs%20-%20[slug].
 3. Create components/cards/AnnouncementCard.tsx following the visual treatment in Section 3 of the spec. Corner badge "Coming Soon", ghost CTA "Notify me", small "EventLinqs Coming Soon" watermark bottom-right.
 4. Create components/rails/MiniRail.tsx per Section 4 of the spec. Horizontal scroll-snap, responsive widths.
 5. Update app/page.tsx: replace the current single Featured Event card with <MiniRail title="Featured this week" subtitle="Where the culture's heading" viewAllHref="/events" items={...} />. Fetch the real Stripe Test Event + the 3 announcements and pass them as RailItems.
 6. Wrap the mini-rail in <Section surface="base"> from the rhythm system.
 7. Run npm run build. Commit: "feat(homepage): featured mini-rail with 4 cards + announcements model".
 
-Do not break the existing Stripe Test Event flow — it must still be purchasable.
+Do not break the existing Stripe Test Event flow - it must still be purchasable.
 ```
 
 ---
 
 ## 6. Session 4 Ties In
 
-The MiniRail component built here becomes the component used for **Trending Now** and **Culture Picks** in Session 4. Same scroll-snap, same responsive widths, different data source and section surface. That's the payoff — we build once, use three times.
+The MiniRail component built here becomes the component used for **Trending Now** and **Culture Picks** in Session 4. Same scroll-snap, same responsive widths, different data source and section surface. That's the payoff - we build once, use three times.

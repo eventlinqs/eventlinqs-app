@@ -87,7 +87,7 @@ export function StartSquadModal({
         text: `I'm organising a group. ${totalSpots} spots, everyone pays their own share.`,
         url: shareUrl,
       }).catch(() => {
-        // User dismissed or share failed — fall back to copy
+        // User dismissed or share failed - fall back to copy
         handleCopy()
       })
     } else {
@@ -143,7 +143,7 @@ export function StartSquadModal({
         aria-hidden="true"
       />
 
-      {/* Modal — full-screen sheet on mobile, centered on md+ */}
+      {/* Modal - full-screen sheet on mobile, centered on md+ */}
       <div
         role="dialog"
         aria-modal="true"

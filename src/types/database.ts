@@ -21,6 +21,11 @@ export interface Profile {
   updated_at: string
 }
 
+export type PayoutTier = 'tier_1' | 'tier_2' | 'tier_3'
+export type PayoutSchedule = 'post_event_only' | 'scheduled_plus_on_demand'
+export type RiskTier = 'standard' | 'elevated' | 'high'
+export type PayoutStatus = 'active' | 'on_hold' | 'restricted'
+
 export interface Organisation {
   id: string
   name: string
@@ -34,6 +39,20 @@ export interface Organisation {
   owner_id: string
   stripe_account_id: string | null
   stripe_onboarding_complete: boolean
+  stripe_account_country: string | null
+  stripe_charges_enabled: boolean
+  stripe_payouts_enabled: boolean
+  stripe_capabilities: Record<string, unknown>
+  stripe_requirements: Record<string, unknown>
+  payout_tier: PayoutTier
+  payout_schedule: PayoutSchedule
+  payout_destination: string | null
+  refund_window_days: number
+  risk_tier: RiskTier
+  hold_amount_cents: number
+  total_event_count: number
+  total_volume_cents: number
+  payout_status: PayoutStatus
   metadata: Record<string, unknown>
   created_at: string
   updated_at: string
@@ -442,5 +461,93 @@ export interface SavedCategory {
   id: string
   user_id: string
   category_id: string
+  created_at: string
+}
+
+// =====================================================================
+// M6 Stripe Connect: tiered payout system
+// See docs/m6/m6-implementation-plan.md
+// =====================================================================
+
+export type PayoutRecordStatus = 'pending' | 'in_transit' | 'paid' | 'failed' | 'canceled'
+
+export interface Payout {
+  id: string
+  organisation_id: string
+  stripe_payout_id: string
+  amount_cents: number
+  currency: string
+  arrival_date: string | null
+  status: PayoutRecordStatus
+  failure_reason: string | null
+  metadata: Record<string, unknown>
+  created_at: string
+  updated_at: string
+}
+
+export type PayoutHoldType =
+  | 'reserve'
+  | 'chargeback'
+  | 'admin_manual'
+  | 'negative_balance'
+  | 'new_organiser'
+
+export interface PayoutHold {
+  id: string
+  organisation_id: string
+  event_id: string | null
+  hold_type: PayoutHoldType
+  amount_cents: number
+  currency: string
+  release_at: string
+  released_at: string | null
+  reason_text: string | null
+  metadata: Record<string, unknown>
+  created_at: string
+}
+
+export type LedgerReason =
+  | 'order_confirmed'
+  | 'refund_from_balance'
+  | 'refund_from_reserve'
+  | 'refund_from_gateway'
+  | 'refund_platform_float'
+  | 'chargeback'
+  | 'chargeback_fee'
+  | 'payout'
+  | 'reserve_hold'
+  | 'reserve_release'
+  | 'instant_payout_fee'
+  | 'adjustment'
+
+export type LedgerReferenceType = 'order' | 'payout' | 'hold' | 'dispute' | 'adjustment'
+
+export interface OrganiserBalanceLedger {
+  id: string
+  organisation_id: string
+  delta_cents: number
+  currency: string
+  reason: LedgerReason
+  reference_type: LedgerReferenceType
+  reference_id: string | null
+  metadata: Record<string, unknown>
+  created_at: string
+}
+
+export type TierProgressionReason =
+  | 'auto_promotion'
+  | 'admin_promotion'
+  | 'chargeback_demotion'
+  | 'negative_balance_demotion'
+  | 'admin_demotion'
+
+export interface TierProgressionLog {
+  id: string
+  organisation_id: string
+  from_tier: PayoutTier
+  to_tier: PayoutTier
+  reason: TierProgressionReason
+  triggered_by: string | null
+  metadata: Record<string, unknown>
   created_at: string
 }

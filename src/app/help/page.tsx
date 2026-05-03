@@ -18,6 +18,7 @@ export const metadata: Metadata = {
   title: 'Help Centre | EventLinqs',
   description:
     'Find answers to common questions about buying tickets, selling tickets, payments, and your EventLinqs account.',
+  alternates: { canonical: '/help' },
 }
 
 interface HelpTopic {
@@ -112,7 +113,7 @@ export default function HelpPage() {
                   </p>
                 </div>
 
-                {/* Trailing arrow — appears on hover */}
+                {/* Trailing arrow - appears on hover */}
                 <span
                   className="absolute right-6 top-1/2 -translate-y-1/2 text-[var(--text-muted)] opacity-0 transition-opacity duration-150 group-hover:opacity-100"
                   aria-hidden="true"

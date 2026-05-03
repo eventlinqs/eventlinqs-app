@@ -1,11 +1,11 @@
-# EventLinqs Module 4.5 — Close-Out Manifest
+# EventLinqs Module 4.5 - Close-Out Manifest
 
 > **Purpose:** this is the paste-into-Claude-Code document. Work through streams A → B → C → D in order. Each prompt is self-contained. Paste the prompt, let Claude Code execute, verify against the acceptance test, commit, move on.
 >
 > **Reference files to keep open alongside this manifest:**
-> - `EVENTLINQS-HOMEPAGE-TARGET-V3.html` — visual acceptance test
-> - `EVENTLINQS-INTERACTION-MAP.md` — behavioural acceptance test
-> - `EVENTLINQS-DATA-WIRING-CHECKLIST.md` — data acceptance test
+> - `EVENTLINQS-HOMEPAGE-TARGET-V3.html` - visual acceptance test
+> - `EVENTLINQS-INTERACTION-MAP.md` - behavioural acceptance test
+> - `EVENTLINQS-DATA-WIRING-CHECKLIST.md` - data acceptance test
 >
 > **Repo:** `github.com/eventlinqs/eventlinqs-app`
 > **Working branch:** create `m4.5-close-out` from `main`. Commit after each task. Merge to `main` and tag `m4.5-close-out` when Stream D completes.
@@ -33,21 +33,21 @@ If `npm run build` fails, stop. Do not start the manifest until a clean build pa
 
 ---
 
-# STREAM A — Foundation fixes
+# STREAM A - Foundation fixes
 
 Four tasks. Estimated time: 60-90 minutes. Each fix is small, surgical, and has no dependency on the others.
 
 ---
 
-## Task A1 — Fix GlassCard opacity
+## Task A1 - Fix GlassCard opacity
 
 **File:** `src/components/ui/glass-card.tsx`
-**Reference:** V3 mockup annotation panel "V3 — Hero"; Interaction Map §2.7
+**Reference:** V3 mockup annotation panel "V3 - Hero"; Interaction Map §2.7
 
 **Paste this prompt into Claude Code:**
 
 ```
-Open src/components/ui/glass-card.tsx. Find the dark variant. The current implementation uses bg-ink-900/30 which is too transparent against dark video backgrounds — the "Happening Soon" ribbon card on the homepage hero becomes unreadable.
+Open src/components/ui/glass-card.tsx. Find the dark variant. The current implementation uses bg-ink-900/30 which is too transparent against dark video backgrounds - the "Happening Soon" ribbon card on the homepage hero becomes unreadable.
 
 Change the dark variant's opacity and border to match the production-grade ribbon card pattern:
 
@@ -61,11 +61,11 @@ The light variant stays unchanged. Do not touch it.
 Run npm run build and verify no type errors. Commit with message: "fix: raise GlassCard dark variant opacity for hero ribbon readability"
 ```
 
-**Acceptance test:** open the homepage locally. The HAPPENING SOON ribbon card on the hero must be clearly readable — solid dark navy, gold border glint, never fading into the video background.
+**Acceptance test:** open the homepage locally. The HAPPENING SOON ribbon card on the hero must be clearly readable - solid dark navy, gold border glint, never fading into the video background.
 
 ---
 
-## Task A2 — Sweep unicode escape literals across the codebase
+## Task A2 - Sweep unicode escape literals across the codebase
 
 **Files:** entire `src/` directory
 **Reference:** Interaction Map §14 acceptance criteria item 6
@@ -78,12 +78,12 @@ Search the entire src/ directory for literal unicode escape sequences that are r
 - \u2026 → replace with literal "…" (ellipsis) OR rewrite the sentence to not need it
 - \u00B7 → replace with literal "·" (middle dot)
 - \u2014 → REWRITE THE SENTENCE. Em-dashes are forbidden in EventLinqs copy as per Australian English brand rules. Split into two sentences or restructure.
-- \u2013 → same — rewrite, never en-dash
+- \u2013 → same - rewrite, never en-dash
 - \u2022 → replace with literal "•" only if the bullet is visual; otherwise remove
 
 Use ripgrep or grep -rn across src/. Do not edit .next/, node_modules/, or any build output.
 
-For each file edited, show me the before/after of the line. Do not batch-replace em-dashes blindly — each sentence containing \u2014 needs a human-appropriate rewrite. Examples:
+For each file edited, show me the before/after of the line. Do not batch-replace em-dashes blindly - each sentence containing \u2014 needs a human-appropriate rewrite. Examples:
 
 - "Afrobeats nights, Amapiano fests, Comedy rooms \u2014 tickets with no hidden fees"
   → "Afrobeats nights, Amapiano fests, Comedy rooms. Tickets with no hidden fees."
@@ -100,7 +100,7 @@ Commit with message: "chore: sweep unicode escapes and em-dashes, enforce Austra
 
 ---
 
-## Task A3 — AuthShell must use canonical EventlinqsLogo
+## Task A3 - AuthShell must use canonical EventlinqsLogo
 
 **File:** `src/components/auth/auth-shell.tsx`
 **Reference:** V3 mockup nav annotation; Interaction Map §1.1
@@ -108,7 +108,7 @@ Commit with message: "chore: sweep unicode escapes and em-dashes, enforce Austra
 **Paste this prompt into Claude Code:**
 
 ```
-Open src/components/auth/auth-shell.tsx. Lines 15-22 currently inline the EVENTLINQS wordmark as a raw Link with font classes, which breaks the single-source-of-truth principle — the canonical EventlinqsLogo component exists at src/components/ui/eventlinqs-logo.tsx with the correct 0.05em gold dot margin and brand-accurate styling.
+Open src/components/auth/auth-shell.tsx. Lines 15-22 currently inline the EVENTLINQS wordmark as a raw Link with font classes, which breaks the single-source-of-truth principle - the canonical EventlinqsLogo component exists at src/components/ui/eventlinqs-logo.tsx with the correct 0.05em gold dot margin and brand-accurate styling.
 
 Replace the inline wordmark with:
 
@@ -125,7 +125,7 @@ Commit with message: "fix: AuthShell uses canonical EventlinqsLogo component"
 
 ---
 
-## Task A4 — Add mobile bottom variant to StickyActionBar
+## Task A4 - Add mobile bottom variant to StickyActionBar
 
 **File:** `src/components/features/events/sticky-action-bar.tsx`
 **Reference:** Interaction Map §2 event detail; V3 mockup Organisers section
@@ -133,7 +133,7 @@ Commit with message: "fix: AuthShell uses canonical EventlinqsLogo component"
 **Paste this prompt into Claude Code:**
 
 ```
-Open src/components/features/events/sticky-action-bar.tsx. The current implementation is top-anchored (fixed top-0) which is correct for desktop. On mobile (< 768px), the Ticketmaster and DICE pattern is to pin the primary CTA to the BOTTOM of the viewport — thumb reach territory.
+Open src/components/features/events/sticky-action-bar.tsx. The current implementation is top-anchored (fixed top-0) which is correct for desktop. On mobile (< 768px), the Ticketmaster and DICE pattern is to pin the primary CTA to the BOTTOM of the viewport - thumb reach territory.
 
 Add a mobile bottom variant. Approach:
 
@@ -164,16 +164,16 @@ Commit with message: "feat: add mobile bottom variant to StickyActionBar for thu
 
 ---
 
-# STREAM B — Homepage synchronisation
+# STREAM B - Homepage synchronisation
 
-Seven tasks. Estimated time: 3-4 hours. This stream delivers the V3 mockup homepage. Paste prompts in order — each depends on the previous.
+Seven tasks. Estimated time: 3-4 hours. This stream delivers the V3 mockup homepage. Paste prompts in order - each depends on the previous.
 
 ---
 
-## Task B1 — Hide empty Cultural Picks tabs and empty section entirely
+## Task B1 - Hide empty Cultural Picks tabs and empty section entirely
 
 **File:** `src/app/page.tsx`
-**Reference:** V3 mockup "V3 — Culture" annotation; Interaction Map §6.2
+**Reference:** V3 mockup "V3 - Culture" annotation; Interaction Map §6.2
 
 **Paste this prompt into Claude Code:**
 
@@ -207,15 +207,15 @@ Commit with message: "fix: hide empty Cultural Picks tabs and section entirely w
 
 ---
 
-## Task B2 — Build city-photo.ts Pexels pipeline
+## Task B2 - Build city-photo.ts Pexels pipeline
 
 **New file:** `src/lib/images/city-photo.ts`
-**Reference:** Data Wiring Checklist Task 4; V3 mockup "V3 — Cities" annotation
+**Reference:** Data Wiring Checklist Task 4; V3 mockup "V3 - Cities" annotation
 
 **Paste this prompt into Claude Code:**
 
 ```
-Create a new file at src/lib/images/city-photo.ts. It must mirror the pattern in src/lib/images/category-photo.ts exactly — same unstable_cache usage, same fallback pattern, same Pexels API integration.
+Create a new file at src/lib/images/city-photo.ts. It must mirror the pattern in src/lib/images/category-photo.ts exactly - same unstable_cache usage, same fallback pattern, same Pexels API integration.
 
 Read src/lib/images/category-photo.ts first to understand the pattern, then build city-photo.ts with these 14 city queries:
 
@@ -249,7 +249,7 @@ Commit with message: "feat: add Pexels-backed city photo pipeline mirroring cate
 
 ---
 
-## Task B3 — Wire city photos and event counts into homepage city rail
+## Task B3 - Wire city photos and event counts into homepage city rail
 
 **File:** `src/app/page.tsx`
 **Reference:** Data Wiring Checklist Task 4
@@ -283,7 +283,7 @@ Replace the existing cityCounts block with:
     })
   )
 
-Ensure the CityTile component receives imageSrc from this new field. Verify that the CityTile JSX in page.tsx passes imageSrc correctly — the component already accepts this prop.
+Ensure the CityTile component receives imageSrc from this new field. Verify that the CityTile JSX in page.tsx passes imageSrc correctly - the component already accepts this prop.
 
 Commit with message: "feat: wire real Pexels city photos into homepage By City rail"
 ```
@@ -292,7 +292,7 @@ Commit with message: "feat: wire real Pexels city photos into homepage By City r
 
 ---
 
-## Task B4 — Wire live count strip in hero
+## Task B4 - Wire live count strip in hero
 
 **File:** `src/app/page.tsx` + `src/components/features/events/featured-event-hero.tsx`
 **Reference:** Data Wiring Checklist Task 1; V3 mockup hero annotation
@@ -343,7 +343,7 @@ Render the live count strip between the subcopy and the CTAs, ONLY when liveEven
     </div>
   )}
 
-If liveEventCount < 10 the strip is not rendered at all — not hidden with CSS.
+If liveEventCount < 10 the strip is not rendered at all - not hidden with CSS.
 
 Commit with message: "feat: wire live event/city count strip into hero with zero-state hiding"
 ```
@@ -352,10 +352,10 @@ Commit with message: "feat: wire live event/city count strip into hero with zero
 
 ---
 
-## Task B5 — Fix hero using Pexels video, never organiser cover image as background
+## Task B5 - Fix hero using Pexels video, never organiser cover image as background
 
 **File:** `src/lib/images/event-media.ts` + `src/components/features/events/featured-event-hero.tsx`
-**Reference:** V3 mockup "V3 — Hero" annotation; this was the Stripe-Test-Event bug
+**Reference:** V3 mockup "V3 - Hero" annotation; this was the Stripe-Test-Event bug
 
 **Paste this prompt into Claude Code:**
 
@@ -384,7 +384,7 @@ Commit with message: "fix: hero background always uses Pexels/video, never organ
 
 ---
 
-## Task B6 — Wire tickets-sold-today on ribbon card
+## Task B6 - Wire tickets-sold-today on ribbon card
 
 **File:** `src/app/page.tsx` + `src/components/features/events/featured-event-hero.tsx`
 **Reference:** Data Wiring Checklist Task 2; V3 mockup hero annotation
@@ -426,7 +426,7 @@ Inside FeaturedEventHero, on the ribbon card, render the live signal ONLY when t
     </div>
   )}
 
-If zero, the entire row including the pulse dot is absent from the DOM. Not hidden — not rendered.
+If zero, the entire row including the pulse dot is absent from the DOM. Not hidden - not rendered.
 
 Commit with message: "feat: wire real tickets-sold-today signal on hero ribbon card"
 ```
@@ -435,10 +435,10 @@ Commit with message: "feat: wire real tickets-sold-today signal on hero ribbon c
 
 ---
 
-## Task B7 — Add heart save button to every bento tile and rail card
+## Task B7 - Add heart save button to every bento tile and rail card
 
 **Files:** `src/components/features/events/event-bento-tile.tsx`, `src/components/features/events/event-card.tsx`, new `src/components/features/events/save-event-button.tsx`
-**Reference:** V3 mockup "V3 — Bento" annotation; Interaction Map §3.5
+**Reference:** V3 mockup "V3 - Bento" annotation; Interaction Map §3.5
 
 **Paste this prompt into Claude Code:**
 
@@ -547,13 +547,13 @@ Commit with message: "feat: add heart save button to every event tile and card w
 
 ---
 
-# STREAM C — Event detail, auth, and dashboard synchronisation
+# STREAM C - Event detail, auth, and dashboard synchronisation
 
 Four tasks. Estimated time: 3-4 hours. This stream ensures the rest of the platform matches the homepage's visual language.
 
 ---
 
-## Task C1 — Event detail page full audit
+## Task C1 - Event detail page full audit
 
 **File:** `src/app/events/[slug]/page.tsx` + subcomponents
 
@@ -612,7 +612,7 @@ After all commits, delete AUDIT-EVENT-DETAIL.md.
 
 ---
 
-## Task C2 — Auth pages visual audit and AuthShell integration
+## Task C2 - Auth pages visual audit and AuthShell integration
 
 **Files:** `src/app/(auth)/login/page.tsx`, `src/app/(auth)/signup/page.tsx`, `src/app/(auth)/forgot-password/page.tsx`, `src/app/auth/reset-password/page.tsx`, `src/app/(auth)/verify-email-sent/page.tsx`
 
@@ -650,7 +650,7 @@ Commit each page's fixes as its own commit:
 
 ---
 
-## Task C3 — Dashboard pages visual audit + confirm no seat-config UI
+## Task C3 - Dashboard pages visual audit + confirm no seat-config UI
 
 **Files:** `src/app/(dashboard)/**`, `src/components/dashboard/**`
 
@@ -689,7 +689,7 @@ CRITICAL check on /dashboard/events/create: confirm the event creation form does
 - ACCESS file or access.csv import
 - Any config-file-based seat definition surface whatsoever
 
-For M4.5 close-out, only simple tier-based ticketing input is acceptable (Name + Price + Capacity + Description rows). Reserved seating with a proper visual drag-and-drop seat-map builder belongs to M4 Phase 2 and will be built separately — it is NOT included in M4.5.
+For M4.5 close-out, only simple tier-based ticketing input is acceptable (Name + Price + Capacity + Description rows). Reserved seating with a proper visual drag-and-drop seat-map builder belongs to M4 Phase 2 and will be built separately - it is NOT included in M4.5.
 
 If any CSV/JSON/config-based seat UI is found, REMOVE IT. Leave a TODO comment: "// M4 Phase 2: visual seat builder goes here" at the location where it was removed.
 
@@ -700,11 +700,11 @@ Report findings. Apply fixes. Commit grouped by page:
 (etc)
 ```
 
-**Acceptance test:** log in as an organiser role. Visit every dashboard page. Consistent sidebar, consistent topbar, consistent typography. No visual surprises. Event create form has zero CSV/JSON upload surface — only tier rows with Name, Price, Capacity.
+**Acceptance test:** log in as an organiser role. Visit every dashboard page. Consistent sidebar, consistent topbar, consistent typography. No visual surprises. Event create form has zero CSV/JSON upload surface - only tier rows with Name, Price, Capacity.
 
 ---
 
-## Task C4 — Cross-platform verification
+## Task C4 - Cross-platform verification
 
 **Paste this prompt into Claude Code:**
 
@@ -755,13 +755,13 @@ Fix every ✗. Commit per-page fixes. Delete CROSS-PLATFORM-VERIFICATION.md afte
 
 ---
 
-# STREAM D — Pre-launch polish
+# STREAM D - Pre-launch polish
 
 Four tasks. Estimated time: 60-90 minutes.
 
 ---
 
-## Task D1 — Lint, type-check, build
+## Task D1 - Lint, type-check, build
 
 **Paste this prompt into Claude Code:**
 
@@ -779,7 +779,7 @@ After all three pass green, commit any fixes with message: "chore: lint and type
 
 ---
 
-## Task D2 — Deploy to Vercel preview
+## Task D2 - Deploy to Vercel preview
 
 **Paste this prompt into Claude Code:**
 
@@ -807,7 +807,7 @@ For any section that doesn't match the V3 mockup, identify the root cause and fi
 
 ---
 
-## Task D3 — Lighthouse audit
+## Task D3 - Lighthouse audit
 
 **Paste this prompt into Claude Code:**
 
@@ -831,7 +831,7 @@ Commit fixes, push, re-run Lighthouse until all targets met. Delete LIGHTHOUSE-S
 
 ---
 
-## Task D4 — Merge, tag, deploy
+## Task D4 - Merge, tag, deploy
 
 **Paste this prompt into Claude Code:**
 
@@ -848,7 +848,7 @@ Now finalise:
 
   git checkout main
   git pull origin main
-  git merge m4.5-close-out --no-ff -m "feat: Module 4.5 close-out — homepage synchronised to target mockup"
+  git merge m4.5-close-out --no-ff -m "feat: Module 4.5 close-out - homepage synchronised to target mockup"
   git tag -a m4.5-close-out -m "Module 4.5 complete: hero carousel, search bar, horizontal rails, real data wiring, mobile bottom CTA, full platform consistency pass"
   git push origin main
   git push origin m4.5-close-out
@@ -860,7 +860,7 @@ Report back: "M4.5 close-out complete. Production live. Ready for M5."
 
 ---
 
-# Verification checklist — M4.5 is done when
+# Verification checklist - M4.5 is done when
 
 Every item below must be true before tagging `m4.5-close-out`:
 
@@ -902,11 +902,11 @@ Every item below must be true before tagging `m4.5-close-out`:
 
 ---
 
-# After M4.5 — what's next
+# After M4.5 - what's next
 
 With M4.5 merged, move to **Module 5 (Public Pages)** which is locked in as the next milestone. M5 includes:
 
-- Browse events page (`/events`) — filters, sort, pagination, category pills
+- Browse events page (`/events`) - filters, sort, pagination, category pills
 - Category landing pages (`/events/category/[slug]`)
 - City landing pages (`/events/city/[slug]`)
 - Search modal (the full-screen modal opened by the nav search bar built in M4.5)

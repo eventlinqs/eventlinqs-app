@@ -459,7 +459,7 @@ export function EventForm({
         )
       }
     } catch {
-      // Ignore measurement errors — proceed with upload anyway.
+      // Ignore measurement errors - proceed with upload anyway.
     }
     setImageUploading(true)
     const fd = new FormData()

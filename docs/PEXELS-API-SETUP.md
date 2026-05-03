@@ -21,13 +21,13 @@ From the Pexels dashboard, copy the **API key** (a long alphanumeric string).
 
 ### 3. Add the key to the project
 
-**Local development** — add to `.env.local` at the project root:
+**Local development** - add to `.env.local` at the project root:
 
 ```
 PEXELS_API_KEY=your_key_here
 ```
 
-**Production (Vercel)** — add the same variable in the Vercel project settings:
+**Production (Vercel)** - add the same variable in the Vercel project settings:
 
 1. Vercel dashboard → EventLinqs project → Settings → Environment Variables.
 2. Add `PEXELS_API_KEY` with your key. Apply to Production, Preview, and Development scopes.

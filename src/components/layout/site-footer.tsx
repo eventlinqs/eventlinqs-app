@@ -1,62 +1,55 @@
-'use client'
-
 import { EventlinqsLogo } from '@/components/ui/eventlinqs-logo'
 
 /**
- * SiteFooter — dual-pattern footer.
+ * SiteFooter - v2 spec (B1 §4.6).
  *
- * Spec §6.8:
- *   - Mobile (<768px): 3 accordions (Discover, Organisers, Help) + social icons
- *   - Desktop (768px+): dark 4-col grid (Logo+tagline | Discover | Organisers | Help)
- *   - Background: ink-900 (#0A1628) — deep navy
- *   - CTA strip above footer columns: "Where the culture gathers"
+ * Mobile (<768px):
+ *   - 3 collapsed accordions: Find events, For organisers, Company
+ *   - Below: language picker placeholder, social row, trust bar
  *
- * Uses <details>/<summary> for mobile accordion — no JS, fully accessible,
+ * Desktop (768px+):
+ *   - 4-column grid: App | Find events | For organisers | Company
+ *   - Sub-footer: social icons, legal links, trust line, ABN, address, copyright
+ *
+ * Background: ink-950 (deep navy). Sentence-case column heads. No em-dashes,
+ * no exclamation marks. Australian English. Voice doc compliance verified at
+ * commit time.
+ *
+ * Accordion uses native <details>/<summary> - no JS, fully accessible,
  * respects prefers-reduced-motion via CSS.
  */
 
-const FOOTER_LINKS = {
-  discover: [
-    { label: 'Browse all events',  href: '/events' },
-    { label: 'Afrobeats',          href: '/categories/afrobeats' },
-    { label: 'Amapiano',           href: '/categories/amapiano' },
-    { label: 'Owambe',             href: '/categories/owambe' },
-    { label: 'Caribbean',          href: '/categories/caribbean' },
-    { label: 'Heritage',           href: '/categories/heritage-and-independence' },
-  ],
-  organisers: [
-    { label: 'Start selling tickets', href: '/organisers/signup' },
-    { label: 'How it works',          href: '/organisers' },
-    { label: 'Pricing',               href: '/pricing' },
-    { label: 'Organiser login',       href: '/login' },
-  ],
-  help: [
-    { label: 'Help Centre',   href: '/help' },
-    { label: 'Contact Us',    href: '/contact' },
-    { label: 'Refunds',       href: '/help/refunds' },
-    { label: 'Accessibility', href: '/help/accessibility' },
-  ],
-  company: [
-    { label: 'About EventLinqs', href: '/about' },
-    { label: 'Press',            href: '/press' },
-    { label: 'Careers',          href: '/careers' },
-    { label: 'Blog',             href: '/blog' },
-  ],
-  legal: [
-    { label: 'Privacy Policy',   href: '/legal/privacy' },
-    { label: 'Terms of Use',     href: '/legal/terms' },
-    { label: 'Cookie Policy',    href: '/legal/cookies' },
-    { label: 'Organiser Terms',  href: '/legal/organiser-terms' },
-  ],
-}
+const FIND_EVENTS = [
+  { label: 'Browse all events', href: '/events' },
+  { label: 'By city',           href: '/events?view=cities' },
+  { label: 'By culture',        href: '/events?view=cultures' },
+  { label: 'This week',         href: '/events?when=this-week' },
+  { label: 'Free events',       href: '/events?price=free' },
+]
 
-function TwitterIcon() {
-  return (
-    <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.748l7.73-8.835L1.254 2.25H8.08l4.253 5.622 5.911-5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-    </svg>
-  )
-}
+const FOR_ORGANISERS = [
+  { label: 'Sell tickets',      href: '/organisers/signup' },
+  { label: 'Pricing',           href: '/pricing' },
+  { label: 'Organiser guide',   href: '/organisers' },
+  { label: 'Success stories',   href: '/organisers#stories' },
+  { label: 'Organiser login',   href: '/login' },
+]
+
+const COMPANY = [
+  { label: 'About',          href: '/about' },
+  { label: 'Careers',        href: '/careers' },
+  { label: 'Press',          href: '/press' },
+  { label: 'Contact',        href: '/contact' },
+  { label: 'Accessibility',  href: '/help/accessibility' },
+  { label: 'Help',           href: '/help' },
+]
+
+const LEGAL = [
+  { label: 'Terms',          href: '/legal/terms' },
+  { label: 'Privacy',        href: '/legal/privacy' },
+  { label: 'Refund policy',  href: '/help/refunds' },
+  { label: 'Cookie policy',  href: '/legal/cookies' },
+]
 
 function InstagramIcon() {
   return (
@@ -74,152 +67,243 @@ function TikTokIcon() {
   )
 }
 
+function XIcon() {
+  return (
+    <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.748l7.73-8.835L1.254 2.25H8.08l4.253 5.622 5.911-5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+  )
+}
+
+function LinkedInIcon() {
+  return (
+    <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+    </svg>
+  )
+}
+
+function FacebookIcon() {
+  return (
+    <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+    </svg>
+  )
+}
+
+function ChevronIcon() {
+  return (
+    <svg
+      className="h-4 w-4 text-white/70 transition-transform group-open:rotate-180"
+      fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+    </svg>
+  )
+}
+
+interface FooterColumnProps {
+  title: string
+  links: { label: string; href: string }[]
+}
+
+function DesktopColumn({ title, links }: FooterColumnProps) {
+  return (
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-widest text-white/70">{title}</p>
+      <ul className="mt-4 space-y-3">
+        {links.map(link => (
+          <li key={link.href}>
+            <a href={link.href} className="text-sm text-white/70 transition-colors hover:text-white">
+              {link.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function MobileAccordion({ title, links }: FooterColumnProps) {
+  return (
+    <details className="group">
+      <summary className="flex cursor-pointer list-none items-center justify-between py-4 text-sm font-semibold text-white [&::-webkit-details-marker]:hidden">
+        {title}
+        <ChevronIcon />
+      </summary>
+      <ul className="space-y-3 pb-4">
+        {links.map(link => (
+          <li key={link.href}>
+            <a href={link.href} className="block py-1 text-sm text-white/70 transition-colors hover:text-white">
+              {link.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </details>
+  )
+}
+
+function SocialRow() {
+  const items = [
+    { label: 'Instagram',  href: 'https://instagram.com/eventlinqs', icon: <InstagramIcon /> },
+    { label: 'TikTok',     href: 'https://tiktok.com/@eventlinqs',   icon: <TikTokIcon /> },
+    { label: 'X',          href: 'https://twitter.com/eventlinqs',   icon: <XIcon /> },
+    { label: 'LinkedIn',   href: 'https://linkedin.com/company/eventlinqs', icon: <LinkedInIcon /> },
+    { label: 'Facebook',   href: 'https://facebook.com/eventlinqs',  icon: <FacebookIcon /> },
+  ]
+  return (
+    <div className="flex items-center gap-5">
+      {items.map(it => (
+        <a
+          key={it.label}
+          href={it.href}
+          aria-label={`EventLinqs on ${it.label}`}
+          className="flex h-11 w-11 items-center justify-center text-white/70 transition-colors hover:text-white"
+        >
+          {it.icon}
+        </a>
+      ))}
+    </div>
+  )
+}
+
+function LanguagePicker() {
+  // Placeholder UI only - real i18n is post-launch. Native <select> avoids
+  // shipping a client component for a static placeholder.
+  return (
+    <label className="flex items-center gap-2 text-xs text-white/60">
+      <span className="sr-only">Language</span>
+      <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M2 12h20" />
+        <path d="M12 2a15 15 0 010 20M12 2a15 15 0 000 20" />
+      </svg>
+      <select
+        defaultValue="en-AU"
+        className="bg-transparent text-xs text-white/70 outline-none focus:text-white"
+        aria-label="Language"
+      >
+        <option value="en-AU" className="bg-ink-950">English (AU)</option>
+      </select>
+    </label>
+  )
+}
+
 export function SiteFooter() {
+  const year = new Date().getFullYear()
+
   return (
     <footer className="bg-ink-950 text-white" aria-label="Site footer">
-      {/* Mobile accordion / Desktop 4-col grid */}
-      <div className="mx-auto max-w-7xl px-4 pt-20 pb-10 sm:px-6 lg:px-8">
 
-        {/* Desktop grid (hidden on mobile) — 6 equal columns: Brand + 5 link sections */}
-        <div className="hidden md:grid md:grid-cols-6 md:gap-8">
-          {/* Col 1 — Brand */}
-          <div>
+      {/* Main content area */}
+      <div className="mx-auto max-w-7xl px-4 pt-16 pb-10 sm:px-6 sm:pt-20 lg:px-8">
+
+        {/* Desktop 4-column grid */}
+        <div className="hidden md:grid md:grid-cols-12 md:gap-8">
+          {/* Col 1 - App / brand (4 cols of 12) */}
+          <div className="md:col-span-4">
             <EventlinqsLogo size="lg" variant="inverted" />
-            <p className="mt-3 text-sm leading-6 text-white/70">
-              Built for Africa, its diaspora, and every community that knows how to celebrate.
+            <p className="mt-3 max-w-xs text-sm leading-6 text-white/70">
+              The ticketing platform built for every culture.
             </p>
-            <div className="mt-6 flex gap-4">
-              <a href="https://twitter.com/eventlinqs" aria-label="EventLinqs on X (Twitter)" className="text-white/70 hover:text-white transition-colors">
-                <TwitterIcon />
-              </a>
-              <a href="https://instagram.com/eventlinqs" aria-label="EventLinqs on Instagram" className="text-white/70 hover:text-white transition-colors">
-                <InstagramIcon />
-              </a>
-              <a href="https://tiktok.com/@eventlinqs" aria-label="EventLinqs on TikTok" className="text-white/70 hover:text-white transition-colors">
-                <TikTokIcon />
-              </a>
+            {/* App store placeholders are intentionally omitted until the apps ship.
+                Per voice doc we never claim a product we have not delivered. */}
+            <div className="mt-6">
+              <LanguagePicker />
             </div>
           </div>
 
-          {/* Col 2 — Discover */}
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-white/70">Discover</p>
-            <ul className="mt-4 space-y-3">
-              {FOOTER_LINKS.discover.map(link => (
-                <li key={link.href}>
-                  <a href={link.href} className="text-sm text-white/70 hover:text-white transition-colors">{link.label}</a>
-                </li>
-              ))}
-            </ul>
+          {/* Col 2 - Find events */}
+          <div className="md:col-span-3">
+            <DesktopColumn title="Find events" links={FIND_EVENTS} />
           </div>
 
-          {/* Col 3 — Organisers */}
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-white/70">Organisers</p>
-            <ul className="mt-4 space-y-3">
-              {FOOTER_LINKS.organisers.map(link => (
-                <li key={link.href}>
-                  <a href={link.href} className="text-sm text-white/70 hover:text-white transition-colors">{link.label}</a>
-                </li>
-              ))}
-            </ul>
+          {/* Col 3 - For organisers */}
+          <div className="md:col-span-2">
+            <DesktopColumn title="For organisers" links={FOR_ORGANISERS} />
           </div>
 
-          {/* Col 4 — Help */}
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-white/70">Help</p>
-            <ul className="mt-4 space-y-3">
-              {FOOTER_LINKS.help.map(link => (
-                <li key={link.href}>
-                  <a href={link.href} className="text-sm text-white/70 hover:text-white transition-colors">{link.label}</a>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Col 5 — Company */}
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-white/70">Company</p>
-            <ul className="mt-4 space-y-3">
-              {FOOTER_LINKS.company.map(link => (
-                <li key={link.href}>
-                  <a href={link.href} className="text-sm text-white/70 hover:text-white transition-colors">{link.label}</a>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Col 6 — Legal */}
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-white/70">Legal</p>
-            <ul className="mt-4 space-y-3">
-              {FOOTER_LINKS.legal.map(link => (
-                <li key={link.href}>
-                  <a href={link.href} className="text-sm text-white/70 hover:text-white transition-colors">{link.label}</a>
-                </li>
-              ))}
-            </ul>
+          {/* Col 4 - Company */}
+          <div className="md:col-span-3">
+            <DesktopColumn title="Company" links={COMPANY} />
           </div>
         </div>
 
-        {/* Mobile accordions (hidden on md+) */}
-        <div className="md:hidden space-y-0 divide-y divide-white/10 border-y border-white/10">
-          {[
-            { title: 'Discover',    links: FOOTER_LINKS.discover },
-            { title: 'Organisers',  links: FOOTER_LINKS.organisers },
-            { title: 'Help',        links: FOOTER_LINKS.help },
-            { title: 'Company',     links: FOOTER_LINKS.company },
-            { title: 'Legal',       links: FOOTER_LINKS.legal },
-          ].map(section => (
-            <details key={section.title} className="group">
-              <summary className="flex cursor-pointer list-none items-center justify-between py-4 text-sm font-semibold text-white [&::-webkit-details-marker]:hidden">
-                {section.title}
-                <svg
-                  className="h-4 w-4 text-white/70 transition-transform group-open:rotate-180"
-                  fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </summary>
-              <ul className="pb-4 space-y-3">
-                {section.links.map(link => (
-                  <li key={link.href}>
-                    <a href={link.href} className="text-sm text-white/70 hover:text-white transition-colors">
-                      {link.label}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </details>
-          ))}
-        </div>
+        {/* Mobile - brand block + 3 accordions + language + social */}
+        <div className="md:hidden">
+          <EventlinqsLogo size="lg" variant="inverted" />
+          <p className="mt-3 text-sm leading-6 text-white/70">
+            The ticketing platform built for every culture.
+          </p>
 
-        {/* Mobile social icons */}
-        <div className="md:hidden mt-8 flex justify-center gap-6">
-          <a href="https://twitter.com/eventlinqs" aria-label="EventLinqs on X (Twitter)" className="text-white/70 hover:text-white transition-colors">
-            <TwitterIcon />
-          </a>
-          <a href="https://instagram.com/eventlinqs" aria-label="EventLinqs on Instagram" className="text-white/70 hover:text-white transition-colors">
-            <InstagramIcon />
-          </a>
-          <a href="https://tiktok.com/@eventlinqs" aria-label="EventLinqs on TikTok" className="text-white/70 hover:text-white transition-colors">
-            <TikTokIcon />
-          </a>
+          <div className="mt-8 divide-y divide-white/10 border-y border-white/10">
+            <MobileAccordion title="Find events"     links={FIND_EVENTS} />
+            <MobileAccordion title="For organisers"  links={FOR_ORGANISERS} />
+            <MobileAccordion title="Company"         links={COMPANY} />
+          </div>
+
+          <div className="mt-8">
+            <LanguagePicker />
+          </div>
+
+          <div className="mt-8 flex justify-start">
+            <SocialRow />
+          </div>
         </div>
       </div>
 
-      {/* Bottom bar */}
-      <div className="border-t border-white/10 py-6 px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl flex flex-col items-center gap-2 text-center md:flex-row md:justify-between md:gap-6 md:text-left">
-          <p className="text-xs text-white/70">
-            © {new Date().getFullYear()} EventLinqs. All rights reserved.
+      {/* Sub-footer: social row (desktop) + legal + trust + ABN + copyright */}
+      <div className="border-t border-white/10">
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+
+          {/* Desktop social row + legal */}
+          <div className="hidden md:flex md:flex-wrap md:items-center md:justify-between md:gap-6">
+            <SocialRow />
+            <ul className="flex flex-wrap items-center gap-x-6 gap-y-2">
+              {LEGAL.map(link => (
+                <li key={link.href}>
+                  <a href={link.href} className="text-xs text-white/70 transition-colors hover:text-white">
+                    {link.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Mobile legal */}
+          <ul className="md:hidden flex flex-wrap items-center gap-x-5 gap-y-2">
+            {LEGAL.map(link => (
+              <li key={link.href}>
+                <a href={link.href} className="text-xs text-white/70 transition-colors hover:text-white">
+                  {link.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+
+          {/* Trust line */}
+          <p className="mt-6 text-xs font-medium text-white/80">
+            All-in pricing. No surprise fees.
           </p>
-          <p className="hidden md:block text-xs text-white/70">
-            Built for Africa, its diaspora, and every community that knows how to celebrate.
+
+          {/* Markets line */}
+          <p className="mt-2 text-xs text-white/60">
+            AU, UK, US, EU. More cultures, more cities, soon.
           </p>
-          <p className="text-xs text-white/70">
-            Transparent pricing. Zero hidden fees. Always.
-          </p>
+
+          {/* ABN + address + copyright */}
+          <div className="mt-4 flex flex-col gap-1 text-xs text-white/50 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4">
+            <span>ABN 30 837 447 587</span>
+            <span aria-hidden className="hidden sm:inline">·</span>
+            <span>Registered Geelong VIC, Australia</span>
+            <span aria-hidden className="hidden sm:inline">·</span>
+            <a href="mailto:hello@eventlinqs.com" className="transition-colors hover:text-white/80">
+              hello@eventlinqs.com
+            </a>
+            <span aria-hidden className="hidden sm:inline">·</span>
+            <span>© {year} EventLinqs</span>
+          </div>
         </div>
       </div>
 

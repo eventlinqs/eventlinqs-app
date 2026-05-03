@@ -1,7 +1,7 @@
 import Link from 'next/link'
 
 /**
- * ComingSoon — simple branded stub rendered inside a SiteHeader/SiteFooter
+ * ComingSoon - simple branded stub rendered inside a SiteHeader/SiteFooter
  * shell. Used for marketing pages whose copy hasn't been written yet so
  * that footer and nav links never 404. Replace each usage with a real
  * page when the content lands.

@@ -2,9 +2,9 @@
 -- 20260426000001_cultural_breadth_seed.sql
 --
 -- Cultural breadth seed for fresh Sydney project (Path B: fresh start).
--- 12 organisations across 5 diaspora categories | 27 events | mixed AUD pricing.
+-- 12 organisations across 5 cultural categories | 27 events | mixed AUD pricing.
 --
---   AFRICAN DIASPORA (5): Owambe Sydney, Afrobeats Melbourne, Gospel Brisbane,
+--   AFRICAN (5):          Owambe Sydney, Afrobeats Melbourne, Gospel Brisbane,
 --                         Amapiano Adelaide, Lagos Comedy Tour
 --   CARIBBEAN (2):        Caribbean Carnival Melbourne, Island Vibes Sydney
 --   SOUTH ASIAN (2):      Bollywood Nights Sydney, Diwali Festival Melbourne
@@ -293,7 +293,7 @@ BEGIN
       ('e1030000-0000-4000-8000-000000000002', 'a1000000-0000-4000-8000-000000000003',
         'Brisbane Gospel Choir Showcase',
         'brisbane-gospel-choir-showcase',
-        'Six gospel choirs from Brisbane''s diaspora communities perform in one ticketed evening. Hosted, recorded, and broadcast to the community.',
+        'Six gospel choirs from Brisbane''s cultural communities perform in one ticketed evening. Hosted, recorded, and broadcast to the community.',
         'Six gospel choirs | one ticketed showcase evening',
         'religion',
         '2026-07-19 18:00:00+10', '2026-07-19 22:00:00+10', 'Australia/Brisbane',

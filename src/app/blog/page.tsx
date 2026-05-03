@@ -4,7 +4,7 @@ import { ComingSoon } from '@/components/ui/coming-soon'
 
 export const metadata: Metadata = {
   title: 'Blog | EventLinqs',
-  description: 'Event production, organiser wisdom, and diaspora culture from the EventLinqs team.',
+  description: 'Event production, organiser wisdom, and culture-first ticketing from the EventLinqs team.',
 }
 
 export default function BlogPage() {

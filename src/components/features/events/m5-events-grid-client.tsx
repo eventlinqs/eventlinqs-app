@@ -11,6 +11,14 @@ type Props = {
   params: EventsSearchParams
   startPage: number
   totalPages: number
+  /**
+   * When true, the first card preloads with fetchpriority=high so the
+   * grid's first image is the LCP candidate. Pages that render a rail
+   * above the grid pass false: priority preloads on the grid then
+   * compete with the rail's LCP candidate for bandwidth and inflate
+   * Lantern's simulated LCP.
+   */
+  firstCardEager?: boolean
 }
 
 /**
@@ -25,6 +33,7 @@ export function EventsGridClient({
   params,
   startPage,
   totalPages,
+  firstCardEager = true,
 }: Props) {
   const [cards, setCards] = useState<EventCardData[]>(initialCards)
   const [currentPage, setCurrentPage] = useState(startPage)
@@ -33,7 +42,7 @@ export function EventsGridClient({
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const loadingRef = useRef(false)
 
-  // Reset when filters (params) or startPage change — the server just
+  // Reset when filters (params) or startPage change - the server just
   // rendered a different initial slice, so we throw away the appended tail.
   useEffect(() => {
     setCards(initialCards)
@@ -76,7 +85,7 @@ export function EventsGridClient({
       <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {cards.map((card, i) => (
           <li key={card.id}>
-            <EventCard event={card} priority={i < 4} />
+            <EventCard event={card} priority={firstCardEager && i === 0} />
           </li>
         ))}
         {isPending

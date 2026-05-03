@@ -5,6 +5,7 @@ export const metadata: Metadata = {
   title: 'For Organisers | EventLinqs',
   description:
     'Sell tickets on EventLinqs. Self-serve sign-up, transparent fees, real-time sales tools, and a checkout your audience will actually complete. Open to every organiser and every community.',
+  alternates: { canonical: '/organisers' },
 }
 
 export default function OrganisersPage() {
