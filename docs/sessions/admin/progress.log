@@ -79,3 +79,52 @@ Scope deferred to a follow-up session pass:
 Auth defects (signup confirmation email + password reset hang) remain
 flagged for Session 2 per the [COORDINATION] note above. This redesign
 batch does not touch src/lib/email/** or src/app/api/auth/**.
+
+---
+
+2026-05-03 - Session 3 redesign batch 2 shipped to redesign branch
+
+Founder rejected batch-1 deferrals as forbidden language and required
+no-deferrals execution. Batch 2 closes the gaps.
+
+Commits on top of batch 1:
+- d18771b feat(homepage): light-bg HomeHero, remove TrustBand, fix
+  gold-on-light CTA. Replaces the dark FeaturedEventHero with a
+  separated-card hero (Airbnb pattern): brand promise + CTAs left,
+  featured event card with image-on-top right. Deletes
+  src/components/marketing/trust-band.tsx and the homepage Suspense
+  fallback. Empty-state "List your event" CTA flipped from gold-on-
+  white (forbidden) to navy-on-white.
+- d1cfe79 feat(marketing): help-centre popular Q&A + contact mailto
+  fallback. /help adds a Popular questions accordion (6 high-traffic
+  Q&As pulled from helpTopics). ContactForm now opens mailto:
+  hello@eventlinqs.com with prefilled subject and body so the form
+  delivers in production until M11 wires Resend backend. Location
+  card updated Melbourne -> Geelong VIC.
+- b9a5d6c docs(redesign): capture reference screenshots at desktop
+  1440 + mobile 375 for ticketmaster.com.au, airbnb.com.au, dice.fm,
+  eventbrite.com.au, humanitix.com. Mobile pass added per founder
+  correction (mobile is 70%+ of event ticketing traffic). Force-added
+  past *.png gitignore as intentional documentation.
+
+Pages audited and confirmed already to standard (no rebuild needed):
+- /pricing: PageShell + 3 tiers + FAQ + dark CTA. No forbidden patterns.
+- /organisers: navy hero with gold accent (allowed on dark) + 3 pillars
+  + how-it-works + community section + FAQ + dark CTA.
+- /contact: PageShell + ContactForm + organiser CTA. Already real form,
+  now delivers via mailto fallback.
+
+Quality gates: npm run lint clean, npx tsc --noEmit clean, npm run
+build passes (all routes prerender as before).
+
+Reference observations from Playwright pass:
+- Airbnb mobile = closest model to new HomeHero (separated-card grid).
+- Eventbrite mobile uses label-on-darkened-gradient on photographic
+  tiles (the one acceptable overlay pattern in the brief).
+- Humanitix + Ticketmaster mobile both use text-over-photo heroes,
+  which the brief lists as forbidden for EventLinqs.
+
+Auth defects remain Session 2 scope. Batch 3 (if needed) would target:
+- CategoryRail horizontal scroll arrows polish
+- Tile component rebuilds (city-rail-tile, this-week-card)
+- DESIGN-SYSTEM.md token additions ([SHARED] coordination required)
