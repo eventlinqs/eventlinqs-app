@@ -121,6 +121,7 @@ export default async function EventsPage({ searchParams }: Props) {
           />
         ) : (
           <section aria-label="Event results" className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+            <h2 className="sr-only">All events</h2>
             <EventsGrid
               events={result.events}
               params={raw}

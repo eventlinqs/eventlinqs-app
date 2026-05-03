@@ -168,6 +168,7 @@ export default async function BrowseCityPage({ params, searchParams }: Props) {
               <EmptyCityState city={city} />
             ) : (
               <>
+                <h2 className="sr-only">Events in {city.city}</h2>
                 <EventsGrid
                   events={result.events}
                   params={raw}
