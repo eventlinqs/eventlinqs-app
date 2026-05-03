@@ -216,3 +216,52 @@ Owner:    Hardening session
       Sydney health verification, Resend send smoke test).
     - Partner Claude confirms no conflict with [SHARED] 4afe68d.
   Until then: idle.
+
+[2026-05-03T07:42:00Z] PHASE 2 EXECUTION - 14-step run, [GATE] OPEN
+  Branch: feat/hardening-phase2-load-testing (off origin/main 0d0f5c4)
+  Commits:
+    7d7e45c test(load): phase 2 step 1-3 - k6 profiles + post-processor + seed scripts
+    20d9c69 test(load): phase 2 step 4-10 - browse runs + results doc
+
+  Step 1 - Tool choice: k6 over Artillery. Justification in
+    docs/hardening/phase2/scope.md.
+  Step 2 - Tooling: tools/k6.exe v0.55.2 (gitignored).
+  Step 3 - Profiles: browse, checkout, organiser. All k6-inspect clean.
+  Step 4 - Browse 50 VU smoke: clean (ok 100%, fail 0%, p95 mostly
+    under target except event_slug 848ms vs 800ms cold-cache).
+  Step 5 - Browse 500 VU / 5m sustained: 13% timeout failures BUT
+    zero 5xx, zero 429, server TTFB held. Failures = client bandwidth
+    saturation on residential rig. Platform did not error.
+  Step 5 (checkout) - DEFERRED: project has only one Supabase env
+    (production). Seed scripts refuse prod-ref writes per CLAUDE.md.
+    Logged as P2-3 founder action.
+  Step 6 (organiser) - DEFERRED: same blocker as checkout.
+  Step 7-9 (telemetry) - PARTIAL: pulled Vercel deployment metadata
+    (key finding: function region = iad1, NOT syd1, ~200ms RTT
+    penalty for AU users; logged as P2-1 founder action).
+    Sentry/Upstash/Supabase metrics deferred to founder dashboard
+    pulls (no local creds).
+  Step 10 - Results doc: docs/hardening/phase2/load-test-results.md
+    with full numbers, threshold analysis, root-cause diagnosis,
+    5 founder action items.
+  Step 11 - Quick wins: NONE inline. The browse failures were
+    runner-network, not platform. Highest-impact fix (region switch
+    to syd1) is a Vercel project setting, not code.
+  Step 12 - Atomic commits: 2 commits (setup + results).
+  Step 13 - Pushed to origin/feat/hardening-phase2-load-testing.
+  Step 14 - [GATE] posted. Phase 2 GATED OPEN.
+
+  Quality gates: lint clean, tsc --noEmit clean, vitest 105/105 pass,
+    next build clean.
+
+  Founder actions blocking green-stamp (P2-1 .. P2-5):
+    P2-1: Switch Vercel function region to syd1
+    P2-2: Subscribe to k6 Cloud or set up distributed runners (10K VU
+          target unprovable from single residential rig)
+    P2-3: Provision preview-only Supabase project (unblocks profiles 2+3)
+    P2-4: Pull Sentry/Upstash/Vercel-logs/Supabase-metrics for the
+          run window 2026-05-03T07:26:00Z..07:33:00Z
+    P2-5: Re-run all three profiles after P2-1..P2-3 land
+
+  Until P2-1..P2-5 land + a v2 run happens: Phase 2 is GATED OPEN,
+  not green-stamped for launch.
