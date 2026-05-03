@@ -24,6 +24,8 @@ import { ThisWeekSection } from '@/components/features/home/this-week-section'
 import { CulturalPicksSection } from '@/components/features/home/cultural-picks-section'
 import { LiveVibeSection } from '@/components/features/home/live-vibe-section'
 import { CityRailSection } from '@/components/features/home/city-rail-section'
+import { EventRailSection } from '@/components/features/home/event-rail-section'
+import { FeaturedVenuesSection } from '@/components/features/home/featured-venues-section'
 import {
   ThisWeekSkeleton,
   CulturalPicksSkeleton,
@@ -138,6 +140,57 @@ export default async function HomePage() {
     .filter(e => new Date(e.start_date) <= new Date(nowMs + 7 * 24 * 60 * 60 * 1000))
     .slice(0, 10)
 
+  // ── Rail slices ───────────────────────────────────────────────
+  // Saturday-Sunday window for the upcoming weekend.
+  const weekendStart = (() => {
+    const d = new Date(nowIso)
+    const day = d.getUTCDay()
+    const daysToSat = (6 - day + 7) % 7
+    d.setUTCDate(d.getUTCDate() + daysToSat)
+    d.setUTCHours(0, 0, 0, 0)
+    return d
+  })()
+  const weekendEnd = new Date(weekendStart)
+  weekendEnd.setUTCDate(weekendEnd.getUTCDate() + 2)
+
+  const thisWeekend = upcoming
+    .filter(e => {
+      const t = new Date(e.start_date).getTime()
+      return t >= weekendStart.getTime() && t < weekendEnd.getTime()
+    })
+    .slice(0, 10)
+
+  const freeEvents = upcoming
+    .filter(e => e.is_free === true || (e.ticket_tiers ?? []).every(t => t.price === 0))
+    .slice(0, 10)
+
+  const trending = [...upcoming]
+    .filter(e => (e.percent_sold ?? 0) > 0)
+    .sort((a, b) => (b.percent_sold ?? 0) - (a.percent_sold ?? 0))
+    .slice(0, 10)
+
+  const justAdded = [...upcomingRawTyped]
+    .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
+    .slice(0, 10)
+    .map(toBentoEvent)
+
+  const editorsPicks = (() => {
+    const seen = new Set<string>()
+    const picks: BentoEvent[] = []
+    for (const e of upcoming) {
+      const key = e.category?.slug ?? '_'
+      if (seen.has(key)) continue
+      seen.add(key)
+      picks.push(e)
+      if (picks.length >= 10) break
+    }
+    return picks
+  })()
+
+  const communityEvents = upcoming
+    .filter(e => e.category?.slug === 'community' || e.category?.slug === 'charity')
+    .slice(0, 10)
+
   return (
     <div className="min-h-screen bg-canvas">
       <SiteHeader />
@@ -222,25 +275,101 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* 3. This Week rail - below fold, Suspense-streamed */}
+        {/* Rail 1: This Week */}
         <Suspense fallback={<ThisWeekSkeleton />}>
           <ThisWeekSection events={thisWeek} />
         </Suspense>
 
-        {/* 4. Cultural Picks - below fold, Suspense-streamed (self-fetching) */}
+        {/* Rail 2: This Weekend */}
+        {thisWeekend.length > 0 && (
+          <EventRailSection
+            eyebrow="This weekend"
+            title="Free up the calendar"
+            ariaLabel="Events this weekend"
+            railLabel="Events this weekend"
+            events={thisWeekend}
+            viewAllHref="/events?date=weekend"
+          />
+        )}
+
+        {/* Rail 3: Free */}
+        {freeEvents.length > 0 && (
+          <EventRailSection
+            eyebrow="No ticket needed"
+            title="Free events near you"
+            ariaLabel="Free events"
+            railLabel="Free events"
+            events={freeEvents}
+            viewAllHref="/events?free=1"
+          />
+        )}
+
+        {/* Rail 4: Cultures (cultural picks) */}
         <Suspense fallback={<CulturalPicksSkeleton />}>
           <CulturalPicksSection cityFilter={detectedLocation.city} nowIso={nowIso} />
         </Suspense>
 
-        {/* 5. Live Vibe marquee - below fold, Suspense-streamed */}
+        {/* Rail 5: Trending */}
+        {trending.length > 0 && (
+          <EventRailSection
+            eyebrow="Selling fast"
+            title="Trending now"
+            ariaLabel="Trending events"
+            railLabel="Trending events"
+            events={trending}
+            viewAllHref="/events?sort=trending"
+          />
+        )}
+
+        {/* Rail 6: Live Vibe marquee */}
         <Suspense fallback={<LiveVibeSkeleton />}>
           <LiveVibeSection upcomingRaw={upcomingRawTyped} />
         </Suspense>
 
-        {/* 6. By City rail - below fold, Suspense-streamed (self-fetching) */}
+        {/* Rail 7: Just Added */}
+        {justAdded.length > 0 && (
+          <EventRailSection
+            eyebrow="Just added"
+            title="Fresh on the platform"
+            ariaLabel="Recently added events"
+            railLabel="Recently added events"
+            events={justAdded}
+            viewAllHref="/events?sort=newest"
+          />
+        )}
+
+        {/* Rail 8: Editor's Picks */}
+        {editorsPicks.length > 0 && (
+          <EventRailSection
+            eyebrow="Editor's picks"
+            title="Hand-picked for the week"
+            ariaLabel="Editor's picks"
+            railLabel="Editor's picks"
+            events={editorsPicks}
+            viewAllHref="/events?curated=1"
+          />
+        )}
+
+        {/* Rail 9: Cities */}
         <Suspense fallback={<CityRailSkeleton />}>
           <CityRailSection nowIso={nowIso} />
         </Suspense>
+
+        {/* Rail 10: Community */}
+        {communityEvents.length > 0 && (
+          <EventRailSection
+            eyebrow="Bring everyone"
+            title="Community events"
+            ariaLabel="Community events"
+            railLabel="Community events"
+            events={communityEvents}
+            viewAllHref="/categories/community"
+          />
+        )}
+
+        {/* Rail 11: Featured Venues */}
+        <FeaturedVenuesSection upcoming={upcomingRawTyped} />
+
 
         {/* 7. For Organisers - static, below fold */}
         <section aria-labelledby="organisers-heading" className={`bg-ink-950 ${SECTION_DEFAULT}`}>
