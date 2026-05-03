@@ -76,7 +76,6 @@ export async function FreeWeekendTile({ event, fallbackMode = false }: Props) {
     <Link
       href={href}
       className="group relative flex h-full w-full flex-col overflow-hidden rounded-2xl bg-ink-900 tile-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
-      aria-label={event ? `Free: ${event.title}` : 'Browse free events'}
     >
       <div className="absolute inset-0">
         <div className="absolute inset-0 overflow-hidden transition-transform duration-[1400ms] ease-out group-hover:scale-[1.04]">

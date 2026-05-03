@@ -67,7 +67,6 @@ async function ThisWeekCard({ event }: { event: BentoEvent }) {
     <Link
       href={`/events/${event.slug}`}
       className="group relative flex w-[280px] shrink-0 snap-start flex-col overflow-hidden rounded-xl bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
-      aria-label={event.title ?? 'Event'}
     >
       <div className="relative aspect-[16/9] overflow-hidden bg-ink-900">
         <div className="absolute inset-0 overflow-hidden transition-transform duration-[1400ms] ease-out group-hover:scale-[1.05]">
