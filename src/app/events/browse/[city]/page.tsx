@@ -1,4 +1,3 @@
-import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -6,6 +5,7 @@ import {
   fetchPublicEvents,
   fetchPublicEventsCached,
   fetchActiveCategoriesCached,
+  fetchPopularThisWeekPublic,
 } from '@/lib/events'
 import {
   hasActiveFilters,
@@ -20,8 +20,7 @@ import { EventsFilterBar } from '@/components/features/events/m5-events-filter-b
 import { EventsGrid } from '@/components/features/events/m5-events-grid'
 import { EventsPagination } from '@/components/features/events/m5-events-pagination'
 import { EventsMapLazy } from '@/components/features/events/m5-events-map-lazy'
-import { EventsBrowseRecommendedSection } from '@/components/features/events/m5-events-browse-recommended-section'
-import { EventsRecommendedSkeleton } from '@/components/features/events/m5-events-skeletons'
+import { RecommendedRail } from '@/components/features/events/m5-recommended-rail'
 
 // ISR: pre-render every picker city at build time. Bare /events/browse/[city]
 // (no searchParams) hits the cached static HTML; filtered URLs render
@@ -82,8 +81,6 @@ export default async function BrowseCityPage({ params, searchParams }: Props) {
 
   const { filters, page, view } = parseEventsSearchParams(raw)
 
-  const categories = await fetchActiveCategoriesCached()
-
   // Origin resolves from the city geometry only (city.latitude/longitude),
   // not from a server-side IP lookup. detectLocation() called headers()
   // which silently disqualified this route from ISR; the fallback to a
@@ -100,28 +97,37 @@ export default async function BrowseCityPage({ params, searchParams }: Props) {
 
   // Main catalogue fetch stays inline so mobile browsers can start
   // preloading card imagery as soon as the HTML is parsed. Suspense on
-  // the grid regressed SI on /events mobile for the same reason  - 
+  // the grid regressed SI on /events mobile for the same reason  -
   // images only begin loading after the streamed chunk arrives, which
   // stretches Lighthouse's visual-progress integral.
+  // Parallelise categories + main grid + popular rail. Popular rail data
+  // is now fetched at the page level (not inside EventsPopularSection)
+  // so all three queries run concurrently rather than serially blocking
+  // TTFB. The rail's first card is the LCP candidate; resolving its
+  // image src in the initial render lets the auto-injected preload
+  // emit in <head> instead of in a streamed Suspense chunk.
   const canUseCached =
     !filterActive &&
     typeof effectiveFilters.distance_km !== 'number' &&
     view !== 'map'
-  const result = canUseCached
-    ? await fetchPublicEventsCached({
-        filters: effectiveFilters,
-        page,
-        pageSize: 24,
-      })
-    : await fetchPublicEvents({
-        filters: effectiveFilters,
-        page,
-        pageSize: 24,
-        origin,
-      })
+  const [categories, result, popularEvents] = await Promise.all([
+    fetchActiveCategoriesCached(),
+    canUseCached
+      ? fetchPublicEventsCached({
+          filters: effectiveFilters,
+          page,
+          pageSize: 24,
+        })
+      : fetchPublicEvents({
+          filters: effectiveFilters,
+          page,
+          pageSize: 24,
+          origin,
+        }),
+    !filterActive ? fetchPopularThisWeekPublic(12, city.city) : Promise.resolve([]),
+  ])
 
   const basePath = `/events/browse/${city.slug}`
-  const railSeeAllHref = `${basePath}?sort=popular`
 
   return (
     <div className="flex min-h-screen flex-col bg-canvas">
@@ -143,14 +149,12 @@ export default async function BrowseCityPage({ params, searchParams }: Props) {
           basePath={basePath}
         />
 
-        {!filterActive ? (
-          <Suspense fallback={<EventsRecommendedSkeleton />}>
-            <EventsBrowseRecommendedSection
-              filterActive={filterActive}
-              cityName={city.city}
-              seeAllHref={railSeeAllHref}
-            />
-          </Suspense>
+        {!filterActive && popularEvents.length > 0 ? (
+          <RecommendedRail
+            events={popularEvents}
+            headline="popular"
+            seeAllHref={`${basePath}?sort=popular`}
+          />
         ) : null}
 
         {view === 'map' ? (
@@ -174,6 +178,7 @@ export default async function BrowseCityPage({ params, searchParams }: Props) {
                   params={raw}
                   page={result.page}
                   totalPages={result.totalPages}
+                  firstCardEager={filterActive}
                 />
                 <EventsPagination
                   params={raw}

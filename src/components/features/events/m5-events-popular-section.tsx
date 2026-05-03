@@ -4,6 +4,8 @@ import { RecommendedRail } from './m5-recommended-rail'
 type Props = {
   filterActive: boolean
   city?: string
+  /** Override the rail's "See all" link target. Defaults to /events?sort=popular. */
+  seeAllHref?: string
 }
 
 /**
@@ -18,11 +20,11 @@ type Props = {
  * upgrade to /api/events/recommended via a non-blocking effect later if
  * the product wants the personalised override.
  */
-export async function EventsPopularSection({ filterActive, city }: Props) {
+export async function EventsPopularSection({ filterActive, city, seeAllHref }: Props) {
   if (filterActive) return null
 
   const events = await fetchPopularThisWeekPublic(12, city)
   if (events.length === 0) return null
 
-  return <RecommendedRail events={events} headline="popular" />
+  return <RecommendedRail events={events} headline="popular" seeAllHref={seeAllHref} />
 }
