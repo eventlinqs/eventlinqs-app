@@ -281,7 +281,7 @@ export default async function HomePage() {
         </Suspense>
 
         {/* Rail 2: This Weekend */}
-        {thisWeekend.length > 0 && (
+        {thisWeekend.length >= 3 && (
           <EventRailSection
             eyebrow="This weekend"
             title="Free up the calendar"
@@ -293,7 +293,7 @@ export default async function HomePage() {
         )}
 
         {/* Rail 3: Free */}
-        {freeEvents.length > 0 && (
+        {freeEvents.length >= 3 && (
           <EventRailSection
             eyebrow="No ticket needed"
             title="Free events near you"
@@ -310,7 +310,7 @@ export default async function HomePage() {
         </Suspense>
 
         {/* Rail 5: Trending */}
-        {trending.length > 0 && (
+        {trending.length >= 3 && (
           <EventRailSection
             eyebrow="Selling fast"
             title="Trending now"
@@ -327,7 +327,7 @@ export default async function HomePage() {
         </Suspense>
 
         {/* Rail 7: Just Added */}
-        {justAdded.length > 0 && (
+        {justAdded.length >= 3 && (
           <EventRailSection
             eyebrow="Just added"
             title="Fresh on the platform"
@@ -339,7 +339,7 @@ export default async function HomePage() {
         )}
 
         {/* Rail 8: Editor's Picks */}
-        {editorsPicks.length > 0 && (
+        {editorsPicks.length >= 3 && (
           <EventRailSection
             eyebrow="Editor's picks"
             title="Hand-picked for the week"
@@ -356,7 +356,7 @@ export default async function HomePage() {
         </Suspense>
 
         {/* Rail 10: Community */}
-        {communityEvents.length > 0 && (
+        {communityEvents.length >= 3 && (
           <EventRailSection
             eyebrow="Bring everyone"
             title="Community events"

@@ -16,8 +16,22 @@ export type PublishGateResult =
         | 'organisation_not_found'
         | 'paid_event_charges_disabled'
         | 'organisation_payouts_restricted'
+        | 'cover_image_required'
       message: string
     }
+
+/**
+ * Photo-required gate: every published event must carry a real organiser
+ * cover. Picsum placeholders are not real imagery and are rejected for
+ * parity with the events_published_real_cover DB constraint added in
+ * 20260504000001_event_photo_required.sql.
+ */
+export function hasRealCover(url: string | null | undefined): boolean {
+  if (!url) return false
+  if (typeof url !== 'string' || url.trim() === '') return false
+  if (/^https:\/\/picsum\.photos\//i.test(url)) return false
+  return true
+}
 
 /**
  * Returns true if any tier carries a non-zero price. Accepts either the
@@ -41,8 +55,18 @@ export function hasPaidTier(tiers: Array<{ price: number }>): boolean {
  */
 export async function checkPublishGate(
   client: SupabaseClient,
-  input: { organisationId: string; tiersHavePaid: boolean }
+  input: { organisationId: string; tiersHavePaid: boolean; coverImageUrl?: string | null }
 ): Promise<PublishGateResult> {
+  // Photo-required gate fires for both free and paid events.
+  if ('coverImageUrl' in input && !hasRealCover(input.coverImageUrl)) {
+    return {
+      ok: false,
+      reason: 'cover_image_required',
+      message:
+        'Upload a cover photo before publishing this event. Photo-required helps every event look its best on EventLinqs.',
+    }
+  }
+
   if (!input.tiersHavePaid) return { ok: true }
 
   const { data: org, error } = await client

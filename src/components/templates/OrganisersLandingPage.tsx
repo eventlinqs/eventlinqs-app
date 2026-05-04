@@ -82,77 +82,48 @@ export function OrganisersLandingPage() {
   return (
     <PageShell>
 
-      {/* -- 1. Custom hero (premium styling, ButtonPair CTA) -------- */}
+      {/* -- 1. Light hero - Batch 4 rebuild ------------------------- */}
       <section
-        className="relative bg-[var(--color-navy-950)] text-white py-24 md:py-32 lg:py-40 overflow-hidden"
+        className="relative bg-[var(--surface-0)] py-16 md:py-20 lg:py-24"
         aria-labelledby="organisers-hero-heading"
       >
-        {/* Radial gradient - accent glow top-right */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0"
-          style={{
-            backgroundImage: 'radial-gradient(ellipse 80% 60% at 100% 0%, var(--color-gold-400, #E8B738) 12%, transparent 60%)',
-          }}
-        />
-        {/* Secondary radial - soft white glow bottom-left */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0"
-          style={{
-            backgroundImage: 'radial-gradient(ellipse 60% 50% at 0% 100%, white 5%, transparent 50%)',
-          }}
-        />
-        {/* Grid overlay */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0"
-          style={{
-            backgroundImage:
-              'linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)',
-            backgroundSize: '100px 100px',
-          }}
-        />
-        {/* Thin accent bar at bottom */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute bottom-0 left-0 right-0"
-          style={{
-            height: '2px',
-            backgroundImage: 'linear-gradient(90deg, transparent, rgba(232, 183, 56, 0.5) 50%, transparent)',
-          }}
-        />
-
-        <div className="relative z-10 mx-auto max-w-7xl px-4 md:px-6 lg:px-8">
-          <p className="mb-4 font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-gold-400)]">
+        <div className="relative mx-auto max-w-7xl px-4 md:px-6 lg:px-8">
+          <p className="mb-3 font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-accent-strong)]">
             For Event Organisers
           </p>
           <h1
             id="organisers-hero-heading"
-            className="font-display font-bold leading-[1.05] tracking-tight text-white text-4xl md:text-6xl lg:text-7xl max-w-4xl"
-            style={{ textShadow: '0 2px 24px rgb(0 0 0 / 0.35)' }}
+            className="font-display font-extrabold leading-[1.05] tracking-tight text-[var(--text-primary)] text-4xl sm:text-5xl lg:text-6xl max-w-3xl"
           >
             Sell tickets. Keep more.
           </h1>
-          <p className="mt-5 text-lg md:text-xl text-white/70 max-w-2xl">
+          <p className="mt-5 max-w-2xl text-base leading-relaxed text-[var(--text-secondary)] sm:text-lg">
             Transparent fees, real-time analytics, squad booking, and a checkout your fans will
             actually complete. Built for organisers who take their events seriously.
           </p>
           <div className="mt-8">
             <ButtonPair
               primary={
-                <Button variant="primary" size="lg" onSurface="dark" href="/organisers/signup">
+                <Button variant="primary" size="lg" href="/organisers/signup">
                   Start selling tickets
                 </Button>
               }
               secondary={
-                <Button variant="secondary" size="lg" onSurface="dark" href="/pricing">
+                <Button variant="secondary" size="lg" href="/pricing">
                   View pricing
                 </Button>
               }
             />
           </div>
         </div>
+        <div
+          aria-hidden="true"
+          className="absolute inset-x-0 bottom-0 h-px"
+          style={{
+            background: 'linear-gradient(90deg, transparent 0%, var(--brand-accent) 50%, transparent 100%)',
+            opacity: 0.6,
+          }}
+        />
       </section>
 
       {/* -- 2. Value pillars ---------------------------------------- */}

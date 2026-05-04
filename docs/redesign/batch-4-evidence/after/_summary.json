@@ -1,0 +1,227 @@
+{
+  "phase": "after",
+  "base": "http://localhost:3001",
+  "when": "2026-05-04T11:33:23.300Z",
+  "results": [
+    {
+      "slug": "home",
+      "viewport": "1440",
+      "ok": true
+    },
+    {
+      "slug": "events",
+      "viewport": "1440",
+      "ok": true
+    },
+    {
+      "slug": "events-browse-sydney",
+      "viewport": "1440",
+      "ok": true
+    },
+    {
+      "slug": "events-browse-melbourne",
+      "viewport": "1440",
+      "ok": true
+    },
+    {
+      "slug": "events-browse-brisbane",
+      "viewport": "1440",
+      "ok": true
+    },
+    {
+      "slug": "categories-owambe",
+      "viewport": "1440",
+      "ok": true
+    },
+    {
+      "slug": "categories-bollywood",
+      "viewport": "1440",
+      "ok": true
+    },
+    {
+      "slug": "categories-afrobeats",
+      "viewport": "1440",
+      "ok": true
+    },
+    {
+      "slug": "event-detail-sample",
+      "viewport": "1440",
+      "ok": true
+    },
+    {
+      "slug": "pricing",
+      "viewport": "1440",
+      "ok": true
+    },
+    {
+      "slug": "about",
+      "viewport": "1440",
+      "ok": true
+    },
+    {
+      "slug": "organisers",
+      "viewport": "1440",
+      "ok": true
+    },
+    {
+      "slug": "blog",
+      "viewport": "1440",
+      "ok": true
+    },
+    {
+      "slug": "press",
+      "viewport": "1440",
+      "ok": true
+    },
+    {
+      "slug": "help",
+      "viewport": "1440",
+      "ok": true
+    },
+    {
+      "slug": "help-getting-started",
+      "viewport": "1440",
+      "ok": true
+    },
+    {
+      "slug": "contact",
+      "viewport": "1440",
+      "ok": true
+    },
+    {
+      "slug": "legal-terms",
+      "viewport": "1440",
+      "ok": true
+    },
+    {
+      "slug": "legal-privacy",
+      "viewport": "1440",
+      "ok": true
+    },
+    {
+      "slug": "legal-cookies",
+      "viewport": "1440",
+      "ok": true
+    },
+    {
+      "slug": "legal-organiser-terms",
+      "viewport": "1440",
+      "ok": true
+    },
+    {
+      "slug": "legal-accessibility",
+      "viewport": "1440",
+      "ok": true
+    },
+    {
+      "slug": "home",
+      "viewport": "375",
+      "ok": true
+    },
+    {
+      "slug": "events",
+      "viewport": "375",
+      "ok": true
+    },
+    {
+      "slug": "events-browse-sydney",
+      "viewport": "375",
+      "ok": true
+    },
+    {
+      "slug": "events-browse-melbourne",
+      "viewport": "375",
+      "ok": true
+    },
+    {
+      "slug": "events-browse-brisbane",
+      "viewport": "375",
+      "ok": true
+    },
+    {
+      "slug": "categories-owambe",
+      "viewport": "375",
+      "ok": true
+    },
+    {
+      "slug": "categories-bollywood",
+      "viewport": "375",
+      "ok": true
+    },
+    {
+      "slug": "categories-afrobeats",
+      "viewport": "375",
+      "ok": true
+    },
+    {
+      "slug": "event-detail-sample",
+      "viewport": "375",
+      "ok": true
+    },
+    {
+      "slug": "pricing",
+      "viewport": "375",
+      "ok": true
+    },
+    {
+      "slug": "about",
+      "viewport": "375",
+      "ok": true
+    },
+    {
+      "slug": "organisers",
+      "viewport": "375",
+      "ok": true
+    },
+    {
+      "slug": "blog",
+      "viewport": "375",
+      "ok": true
+    },
+    {
+      "slug": "press",
+      "viewport": "375",
+      "ok": true
+    },
+    {
+      "slug": "help",
+      "viewport": "375",
+      "ok": true
+    },
+    {
+      "slug": "help-getting-started",
+      "viewport": "375",
+      "ok": true
+    },
+    {
+      "slug": "contact",
+      "viewport": "375",
+      "ok": true
+    },
+    {
+      "slug": "legal-terms",
+      "viewport": "375",
+      "ok": true
+    },
+    {
+      "slug": "legal-privacy",
+      "viewport": "375",
+      "ok": true
+    },
+    {
+      "slug": "legal-cookies",
+      "viewport": "375",
+      "ok": true
+    },
+    {
+      "slug": "legal-organiser-terms",
+      "viewport": "375",
+      "ok": true
+    },
+    {
+      "slug": "legal-accessibility",
+      "viewport": "375",
+      "ok": true
+    }
+  ]
+}

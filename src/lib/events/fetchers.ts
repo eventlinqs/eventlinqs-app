@@ -54,6 +54,19 @@ function normaliseRelation<T>(rel: T | T[] | null): T | null {
   return rel
 }
 
+// Batch 4: photo-required public-surface filter.
+// Event cards on every public surface MUST show a real organiser-uploaded
+// cover. Until the DB migration backfills, picsum.photos seed URLs are
+// treated as "no cover" so seed events disappear from the public catalogue
+// rather than rendering as duplicate Pexels-stock collisions in the grid.
+// The migration (20260504000001_event_photo_required.sql) hardens this at
+// the DB layer for new published events.
+export function hasRealCover(url: string | null | undefined): url is string {
+  if (!url) return false
+  if (/^https:\/\/picsum\.photos\//i.test(url)) return false
+  return true
+}
+
 function toPublicEventRow(raw: RawRow): PublicEventRow {
   const row = {
     id: raw.id,
@@ -240,7 +253,7 @@ export async function fetchPublicEvents(
   }
 
   const raw = (data ?? []) as unknown as RawRow[]
-  let events = raw.map(toPublicEventRow)
+  let events = raw.map(toPublicEventRow).filter(e => hasRealCover(e.cover_image_url))
 
   // price_min / price_max arrive in AUD (dollar units) from the URL; tier
   // prices are stored as integer minor units (cents) per the monetary
@@ -394,7 +407,7 @@ async function runFetchPublicEventsAdmin(
   }
 
   const raw = (data ?? []) as unknown as RawRow[]
-  let events = raw.map(toPublicEventRow)
+  let events = raw.map(toPublicEventRow).filter(e => hasRealCover(e.cover_image_url))
 
   const priceFiltered =
     typeof filters.price_min === 'number' || typeof filters.price_max === 'number'
@@ -484,6 +497,7 @@ export async function fetchPopularThisWeek(
     .map(id => byId.get(id))
     .filter((r): r is RawRow => Boolean(r))
     .map(toPublicEventRow)
+    .filter(e => hasRealCover(e.cover_image_url))
 }
 
 /**
@@ -552,8 +566,9 @@ export async function fetchPopularThisWeekPublic(
           .map(id => byId.get(id))
           .filter((r): r is RawRow => Boolean(r))
           .map(toPublicEventRow)
+          .filter(e => hasRealCover(e.cover_image_url))
       }
-      return raw.map(toPublicEventRow)
+      return raw.map(toPublicEventRow).filter(e => hasRealCover(e.cover_image_url))
     },
     keyParts,
     { revalidate: 60 * 30, tags: ['events:popular-public'] },
@@ -620,7 +635,9 @@ export async function fetchRecommendedEvents(
   }
 
   const raw = (data ?? []) as unknown as RawRow[]
-  const events = raw.map(toPublicEventRow)
+  const events = raw
+    .map(toPublicEventRow)
+    .filter(e => hasRealCover(e.cover_image_url))
   if (events.length === 0) return fetchPopularThisWeek(limit, city)
   return events
 }

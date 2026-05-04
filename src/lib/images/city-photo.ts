@@ -115,3 +115,50 @@ export async function getCityPhoto(slug: string): Promise<string | null> {
   if (!query) return null
   return await fetchCityPhoto(query)
 }
+
+/**
+ * Landscape city hero - Batch 4 /events/browse/[city] photographic hero band.
+ *
+ * Returns a horizontally-oriented Pexels photo so the hero crop reads
+ * as a wide cinematic band, not a vertical portrait re-flowed against
+ * a landscape container. The portrait helper above stays in place for
+ * the city tile rail (CityTileImage) which is genuinely portrait.
+ */
+async function fetchCityHeroPhotoRaw(query: string): Promise<string | null> {
+  if (!PEXELS_API_KEY) return null
+
+  try {
+    const res = await fetch(
+      `${PEXELS_API}/search?query=${encodeURIComponent(query)}&per_page=15&orientation=landscape&size=large`,
+      {
+        headers: { Authorization: PEXELS_API_KEY },
+        next: { revalidate: 60 * 60 * 24 * 7 },
+      }
+    )
+    if (!res.ok) return null
+
+    const data = (await res.json()) as { photos?: PexelsApiPhoto[] }
+    if (!data.photos?.length) return null
+
+    const usable = data.photos.filter(p => (p.width ?? 0) >= 1600 && (p.height ?? 0) >= 900)
+    const pool = (usable.length > 0 ? usable : data.photos).slice(0, TOP_N)
+    const photo = pool[simpleHash(query + ':landscape') % pool.length]
+
+    return photo.src.large
+  } catch {
+    return null
+  }
+}
+
+const fetchCityHeroPhoto = unstable_cache(
+  fetchCityHeroPhotoRaw,
+  ['pexels-city-hero-photo-v1'],
+  { revalidate: 60 * 60 * 24 * 7, tags: ['pexels', 'pexels-city'] }
+)
+
+export async function getCityHeroPhoto(slug: string): Promise<string | null> {
+  const key = slug.toLowerCase()
+  const query = CITY_QUERIES[key]
+  if (!query) return null
+  return await fetchCityHeroPhoto(query)
+}

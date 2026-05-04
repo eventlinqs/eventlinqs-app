@@ -7,104 +7,72 @@ interface PageHeroProps {
   subtitle?: string
   /** Text alignment. Default 'left'. */
   align?: 'left' | 'center'
-  /** Visual treatment. 'premium' adds gradient depth, grid overlay, and accent glow. Default 'default'. */
+  /** Visual treatment. 'premium' adds a thin gold accent rule. Default 'default'. */
   variant?: 'default' | 'premium'
 }
 
 /**
- * PageHero - the dark hero band at the top of every interior page.
+ * PageHero - light-surface page hero band for interior marketing pages.
  *
- * Provides consistent height, type scale, and brand rhythm across
- * /legal, /help, /contact, /about, /organiser, etc.
+ * Batch 4 rebuild (2026-05-04): the prior implementation was a dark
+ * navy band with a radial gold ellipse + grid overlay. The founder
+ * audit on live production rejected this treatment as "yellow blob
+ * over black hero" and demanded a light-surface, Ticketmaster-grade
+ * page hero with bold typography against the canvas.
  *
- * Deliberately does NOT use <Section> because Section enforces
- * py-16 md:py-20 lg:py-24, while PageHero needs the taller
- * py-24 md:py-32 lg:py-40 to read as a true hero moment.
+ * Design DNA (per DESIGN-SYSTEM.md and Ticketmaster.com.au reference):
+ *   - light canvas surface, no painted background
+ *   - bold display H1 in primary text colour
+ *   - small accent eyebrow above the title
+ *   - subtitle in secondary text colour
+ *   - 'premium' variant adds a thin gold rule along the bottom edge
+ *     to mark the most-prominent pages (e.g. /pricing, /organisers)
  *
- * Usage:
- *   <PageHero eyebrow="LEGAL" title="Privacy Policy" subtitle="Last updated 15 Apr 2026" />
- *   <PageHero eyebrow="CATEGORY" title="Music" variant="premium" />
+ * Used by: /pricing, /organisers, /about, /blog, /press, /careers,
+ * /help, /help/[slug], /contact, /legal/*, /partners.
  */
 export function PageHero({ eyebrow, title, subtitle, align = 'left', variant = 'default' }: PageHeroProps) {
   const isPremium = variant === 'premium'
   const alignCls = align === 'center' ? 'text-center' : 'text-left'
-  const subtitleCls = align === 'center'
-    ? 'mx-auto max-w-2xl'
-    : 'max-w-2xl'
-  const titleMaxWidth = isPremium ? 'max-w-4xl' : 'max-w-2xl'
-  const titleStyle = isPremium ? { textShadow: '0 2px 24px rgb(0 0 0 / 0.35)' } : undefined
+  const subtitleCls = align === 'center' ? 'mx-auto max-w-2xl' : 'max-w-2xl'
 
   return (
     <section
-      className="relative bg-[var(--color-navy-950)] text-white py-24 md:py-32 lg:py-40 overflow-hidden"
+      className="relative bg-[var(--surface-0)] py-16 md:py-20 lg:py-24"
       aria-labelledby="page-hero-heading"
     >
-      {/* Premium background layers - use backgroundImage (not background shorthand) so
-          background-color of the section is never overridden by the decorative divs */}
-      {isPremium && (
-        <>
-          {/* Radial gradient - accent glow top-right */}
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0"
-            style={{
-              backgroundImage: 'radial-gradient(ellipse 80% 60% at 100% 0%, var(--color-gold-400, #E8B738) 12%, transparent 60%)',
-            }}
-          />
-          {/* Secondary radial - soft white glow bottom-left */}
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0"
-            style={{
-              backgroundImage: 'radial-gradient(ellipse 60% 50% at 0% 100%, white 5%, transparent 50%)',
-            }}
-          />
-          {/* Grid overlay */}
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0"
-            style={{
-              backgroundImage:
-                'linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)',
-              backgroundSize: '100px 100px',
-            }}
-          />
-          {/* Thin accent bar at bottom */}
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute bottom-0 left-0 right-0"
-            style={{
-              height: '2px',
-              backgroundImage: 'linear-gradient(90deg, transparent, rgba(232, 183, 56, 0.5) 50%, transparent)',
-            }}
-          />
-        </>
-      )}
-
-      {/* z-10 ensures content always renders above the decorative layers */}
-      <div className={`relative z-10 mx-auto max-w-7xl px-4 md:px-6 lg:px-8 ${alignCls}`}>
-
+      <div className={`relative mx-auto max-w-7xl px-4 md:px-6 lg:px-8 ${alignCls}`}>
         {eyebrow && (
-          <p className="mb-4 font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-gold-400)]">
+          <p className="mb-3 font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-accent-strong)]">
             {eyebrow}
           </p>
         )}
 
         <h1
           id="page-hero-heading"
-          className={`font-display font-bold leading-[1.05] tracking-tight text-white text-4xl md:text-6xl lg:text-7xl ${titleMaxWidth}`}
-          style={titleStyle}
+          className={`font-display font-extrabold leading-[1.05] tracking-tight text-[var(--text-primary)] text-4xl sm:text-5xl lg:text-6xl ${align === 'center' ? 'mx-auto max-w-4xl' : 'max-w-3xl'}`}
         >
           {title}
         </h1>
 
         {subtitle && (
-          <p className={`mt-5 text-lg md:text-xl text-white/70 ${subtitleCls}`}>
+          <p className={`mt-5 text-base leading-relaxed text-[var(--text-secondary)] sm:text-lg ${subtitleCls}`}>
             {subtitle}
           </p>
         )}
-
       </div>
+
+      {/* Bottom rule: subtle on default, gold accent on premium */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-x-0 bottom-0 h-px"
+        style={{
+          background: isPremium
+            ? 'linear-gradient(90deg, transparent 0%, var(--brand-accent) 50%, transparent 100%)'
+            : 'var(--surface-2)',
+          opacity: isPremium ? 0.6 : 1,
+        }}
+      />
     </section>
   )
 }
