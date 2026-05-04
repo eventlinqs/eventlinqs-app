@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getPickerCities } from '@/lib/locations/picker-cities'
+import { getAllCultures } from '@/lib/cultures/data'
 
 /**
  * Dynamic sitemap for EventLinqs.
@@ -43,6 +44,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: now,
       changeFrequency: 'daily',
       priority: c.isLaunchCity ? 0.8 : 0.6,
+    })
+  }
+
+  // Batch 5 - culture landing pages.
+  for (const culture of getAllCultures()) {
+    entries.push({
+      url: `${baseUrl}/culture/${culture.slug}`,
+      lastModified: now,
+      changeFrequency: 'daily',
+      priority: culture.tier === 1 ? 0.85 : 0.75,
     })
   }
 
