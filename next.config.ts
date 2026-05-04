@@ -6,7 +6,21 @@ const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === 'tr
 const nextConfig: NextConfig = {
   trailingSlash: false,
   async redirects() {
-    return []
+    // Batch 5 - /categories/[slug] → /culture/[slug] migration.
+    // The legacy /categories/[slug] route still serves 7 hero categories
+    // (afrobeats, amapiano, gospel, owambe, caribbean, heritage-and-
+    // independence, networking) but the new taxonomy lives under
+    // /culture/[slug]. We 301 the matching legacy slugs to their new
+    // culture home so existing inbound links and Google index entries
+    // forward to the new pages.
+    return [
+      { source: '/categories/afrobeats',                   destination: '/culture/african',  permanent: true },
+      { source: '/categories/amapiano',                    destination: '/culture/african',  permanent: true },
+      { source: '/categories/owambe',                      destination: '/culture/african',  permanent: true },
+      { source: '/categories/heritage-and-independence',   destination: '/culture/african',  permanent: true },
+      { source: '/categories/caribbean',                   destination: '/culture/caribbean', permanent: true },
+      { source: '/categories/gospel',                      destination: '/culture/gospel',   permanent: true },
+    ]
   },
   async headers() {
     return [
