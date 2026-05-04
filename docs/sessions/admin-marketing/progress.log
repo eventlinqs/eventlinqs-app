@@ -72,3 +72,18 @@ Opened: 2026-05-02
 2026-05-04  [COORDINATION]  C-B4-01 founder runs `supabase db push --linked` to apply 20260504000001_event_photo_required.sql then ALTER TABLE ... VALIDATE CONSTRAINT after dev backfill is verified
 2026-05-04  [COORDINATION]  C-B4-02 project manager runs Vercel preview Lighthouse median-of-5 mobile + axe-core 0 on the 9 critical routes per CLAUDE.md "no localhost performance measurements" rule
 2026-05-04  [GATE]    Batch 4 code complete - STOP for project manager review
+2026-05-04  start     redesign-batch-5 - culture pages build per IA Blueprint v2.0; 14 pages (10 Tier 1 + 4 Tier 2)
+2026-05-04  schema    20260504000002_culture_taxonomy.sql - cultures + event_types tables + events.culture_primary/sub_culture/event_type columns; idempotent seed of 14 cultures + 13 event types; RLS anon-select + admin-write
+2026-05-04  lib       src/lib/cultures/data.ts - canonical content registry for 14 cultures (display name, tagline, hero copy, 3 story paras, 6 sub-cultures, cities, related cultures, organiser personas, SEO keywords); zero em-dashes, zero exclamation marks, zero "diaspora", AU English
+2026-05-04  lib       src/lib/cultures/category-bridge.ts - culture → legacy event_categories.slug bridge so public surface populates today (pre-DB-migration) and keeps populating for imports without culture_primary post-migration
+2026-05-04  lib       src/lib/images/culture-photo.ts - Pexels-backed culture hero helper, landscape orientation, top-5 hash sample, v1 cache key, 7-day revalidate, tag pexels-culture
+2026-05-04  comp      PhotographicCultureHero, CultureLandingPage, SubCulturesRail, CulturesByCityRail, RelatedCulturesRail, CultureOrganiserCtaPanel, AllEventsGridByCulture - composes the locked 7-section culture page
+2026-05-04  route     src/app/culture/[slug]/page.tsx - dynamic route, generateStaticParams over 14 culture slugs, generateMetadata, Schema.org CollectionPage + ItemList JSON-LD, ISR revalidate 300s
+2026-05-04  redirect  next.config.ts redirects() - 6 permanent (301) entries from /categories/{afrobeats,amapiano,owambe,heritage-and-independence,caribbean,gospel} to /culture/{african,african,african,african,caribbean,gospel} [SHARED]
+2026-05-04  sitemap   src/app/sitemap.ts - emits one entry per culture, priority 0.85 Tier 1 / 0.75 Tier 2
+2026-05-04  evidence  28/28 after screenshots captured at 1440+375 (mobile UA) -> docs/redesign/batch-5-evidence/after/; redirect verification in same _summary.json (6/6 OK)
+2026-05-04  gates     batch-5 lint --max-warnings=0 clean, npx tsc --noEmit clean, npm run build green (14 /culture/* routes prerendered), npm test 105/105 across 10 files
+2026-05-04  [COORDINATION]  C-B5-01 founder runs `supabase db push --linked` to apply 20260504000002_culture_taxonomy.sql; no VALIDATE CONSTRAINT step needed (no NOT VALID gates)
+2026-05-04  [COORDINATION]  C-B5-02 [SHARED] next.config.ts + src/app/sitemap.ts touched - PM verifies no conflict with Session 1 / 2 commits before merge
+2026-05-04  [COORDINATION]  C-B5-03 PM runs Vercel preview Lighthouse median-of-5 mobile + axe-core 0 on /culture/{african,south-asian,caribbean,latin,gospel,comedy}
+2026-05-04  [GATE]    Batch 5 code complete - STOP for project manager review

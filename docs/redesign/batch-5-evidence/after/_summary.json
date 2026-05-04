@@ -1,0 +1,191 @@
+{
+  "phase": "after",
+  "base": "http://localhost:3001",
+  "when": "2026-05-04T13:27:25.228Z",
+  "results": [
+    {
+      "slug": "culture-african",
+      "viewport": "1440",
+      "ok": true
+    },
+    {
+      "slug": "culture-south-asian",
+      "viewport": "1440",
+      "ok": true
+    },
+    {
+      "slug": "culture-caribbean",
+      "viewport": "1440",
+      "ok": true
+    },
+    {
+      "slug": "culture-latin",
+      "viewport": "1440",
+      "ok": true
+    },
+    {
+      "slug": "culture-east-asian",
+      "viewport": "1440",
+      "ok": true
+    },
+    {
+      "slug": "culture-filipino",
+      "viewport": "1440",
+      "ok": true
+    },
+    {
+      "slug": "culture-mediterranean",
+      "viewport": "1440",
+      "ok": true
+    },
+    {
+      "slug": "culture-middle-eastern",
+      "viewport": "1440",
+      "ok": true
+    },
+    {
+      "slug": "culture-european",
+      "viewport": "1440",
+      "ok": true
+    },
+    {
+      "slug": "culture-pacific",
+      "viewport": "1440",
+      "ok": true
+    },
+    {
+      "slug": "culture-gospel",
+      "viewport": "1440",
+      "ok": true
+    },
+    {
+      "slug": "culture-comedy",
+      "viewport": "1440",
+      "ok": true
+    },
+    {
+      "slug": "culture-wellness",
+      "viewport": "1440",
+      "ok": true
+    },
+    {
+      "slug": "culture-pride",
+      "viewport": "1440",
+      "ok": true
+    },
+    {
+      "slug": "culture-african",
+      "viewport": "375",
+      "ok": true
+    },
+    {
+      "slug": "culture-south-asian",
+      "viewport": "375",
+      "ok": true
+    },
+    {
+      "slug": "culture-caribbean",
+      "viewport": "375",
+      "ok": true
+    },
+    {
+      "slug": "culture-latin",
+      "viewport": "375",
+      "ok": true
+    },
+    {
+      "slug": "culture-east-asian",
+      "viewport": "375",
+      "ok": true
+    },
+    {
+      "slug": "culture-filipino",
+      "viewport": "375",
+      "ok": true
+    },
+    {
+      "slug": "culture-mediterranean",
+      "viewport": "375",
+      "ok": true
+    },
+    {
+      "slug": "culture-middle-eastern",
+      "viewport": "375",
+      "ok": true
+    },
+    {
+      "slug": "culture-european",
+      "viewport": "375",
+      "ok": true
+    },
+    {
+      "slug": "culture-pacific",
+      "viewport": "375",
+      "ok": true
+    },
+    {
+      "slug": "culture-gospel",
+      "viewport": "375",
+      "ok": true
+    },
+    {
+      "slug": "culture-comedy",
+      "viewport": "375",
+      "ok": true
+    },
+    {
+      "slug": "culture-wellness",
+      "viewport": "375",
+      "ok": true
+    },
+    {
+      "slug": "culture-pride",
+      "viewport": "375",
+      "ok": true
+    }
+  ],
+  "redirectResults": [
+    {
+      "from": "/categories/afrobeats",
+      "expected": "/culture/african",
+      "final": "http://localhost:3001/culture/african",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "from": "/categories/amapiano",
+      "expected": "/culture/african",
+      "final": "http://localhost:3001/culture/african",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "from": "/categories/owambe",
+      "expected": "/culture/african",
+      "final": "http://localhost:3001/culture/african",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "from": "/categories/heritage-and-independence",
+      "expected": "/culture/african",
+      "final": "http://localhost:3001/culture/african",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "from": "/categories/caribbean",
+      "expected": "/culture/caribbean",
+      "final": "http://localhost:3001/culture/caribbean",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "from": "/categories/gospel",
+      "expected": "/culture/gospel",
+      "final": "http://localhost:3001/culture/gospel",
+      "status": 200,
+      "ok": true
+    }
+  ]
+}
