@@ -398,7 +398,7 @@ export default async function HomePage() {
                     'All-in pricing: no surprise fees at checkout',
                     'Real-time sales dashboard and scan app',
                     'Squad booking: your fans buy together',
-                    'Africa-ready: mobile money, WhatsApp sharing',
+                    'Mobile-first checkout: WhatsApp sharing built in',
                   ].map(feature => (
                     <li key={feature} className="flex items-start gap-3 text-sm text-white/80">
                       <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-gold-500/20">
