@@ -14,6 +14,12 @@ interface Props {
   culture: CultureContent
   heroImage: string | null
   liveEvents: EventCardData[]
+  /** Map of sub-culture slug → Pexels landscape URL (null when not available). */
+  subCultureImages: Record<string, string | null>
+  /** Map of city slug → Pexels portrait URL (null when not available). */
+  cityImages: Record<string, string | null>
+  /** Map of city slug → city name (the rail prop expects names). */
+  cityCtaImage: string | null
 }
 
 /**
@@ -28,7 +34,14 @@ interface Props {
  *   6. RelatedCulturesRail (alt surface, top border)
  *   7. CultureOrganiserCtaPanel (dark closer)
  */
-export function CultureLandingPage({ culture, heroImage, liveEvents }: Props) {
+export function CultureLandingPage({
+  culture,
+  heroImage,
+  liveEvents,
+  subCultureImages,
+  cityImages,
+  cityCtaImage,
+}: Props) {
   return (
     <PageShell>
       <PhotographicCultureHero
@@ -56,12 +69,14 @@ export function CultureLandingPage({ culture, heroImage, liveEvents }: Props) {
         cultureSlug={culture.slug}
         cultureName={culture.displayName}
         subCultures={culture.subCultures}
+        images={subCultureImages}
       />
 
       <CulturesByCityRail
         cultureSlug={culture.slug}
         cultureName={culture.displayName}
         cities={culture.cities}
+        images={cityImages}
       />
 
       <AllEventsGridByCulture
@@ -77,6 +92,7 @@ export function CultureLandingPage({ culture, heroImage, liveEvents }: Props) {
         cultureSlug={culture.slug}
         cultureName={culture.displayName}
         organiserPersonas={culture.organiserPersonas}
+        backdropImage={cityCtaImage}
       />
     </PageShell>
   )
