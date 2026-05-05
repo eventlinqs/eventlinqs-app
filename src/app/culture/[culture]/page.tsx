@@ -8,24 +8,26 @@ import {
 } from '@/lib/cultures/data'
 import { getCategorySlugsForCulture } from '@/lib/cultures/category-bridge'
 import { getCultureHeroPhoto } from '@/lib/images/culture-photo'
+import { getSubCulturePhoto } from '@/lib/images/sub-culture-photo'
+import { getCityPhoto, getCityHeroPhoto } from '@/lib/images/city-photo'
 import { CultureLandingPage } from '@/components/templates/CultureLandingPage'
+import { citySlugify } from '@/components/features/culture/cities-rail'
 import type { EventCardData } from '@/components/features/events/event-card'
 
 // ISR: 5-minute revalidate matches /events/[slug] and /categories/[slug].
-// New events appear within crawler retry interval.
 export const revalidate = 300
 
 interface Props {
-  params: Promise<{ slug: string }>
+  params: Promise<{ culture: string }>
 }
 
 export function generateStaticParams() {
-  return getAllCultures().map(c => ({ slug: c.slug }))
+  return getAllCultures().map(c => ({ culture: c.slug }))
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params
-  const culture = getCulture(slug)
+  const { culture: cultureParam } = await params
+  const culture = getCulture(cultureParam)
   if (!culture) return { title: 'Not Found | EventLinqs' }
 
   const description = culture.heroBody.slice(0, 155)
@@ -46,17 +48,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function CulturePage({ params }: Props) {
-  const { slug } = await params
-  if (!isCultureSlug(slug)) notFound()
+  const { culture: cultureParam } = await params
+  if (!isCultureSlug(cultureParam)) notFound()
 
-  const culture = getCulture(slug)!
+  const culture = getCulture(cultureParam)!
 
   const supabase = createPublicClient()
   const categorySlugs = getCategorySlugsForCulture(culture.slug)
 
-  // Fetch a window of live events. We over-fetch (limit 24) and filter
-  // client-side by category slug because Supabase doesn't allow a
-  // nested WHERE on the joined event_categories table.
+  // Fetch a window of live events. Over-fetch (limit 24) and filter
+  // client-side because Supabase doesn't allow a nested WHERE on
+  // the joined event_categories table.
   let liveEvents: EventCardData[] = []
   if (categorySlugs.length > 0) {
     const { data } = await supabase
@@ -78,7 +80,35 @@ export default async function CulturePage({ params }: Props) {
       .slice(0, 12)
   }
 
-  const heroImage = await getCultureHeroPhoto(culture.slug)
+  // Parallelise all image fetches: hero + 6 sub-cultures + N cities + cta backdrop.
+  const subCultureKeys = culture.subCultures.map(sc => sc.slug)
+  const citySlugs = culture.cities.map(citySlugify)
+
+  const [
+    heroImage,
+    cityCtaImage,
+    ...rest
+  ] = await Promise.all([
+    getCultureHeroPhoto(culture.slug),
+    // Use the first city's hero (landscape) as the CTA backdrop. Falls back to null
+    // and the CTA panel renders its dark navy fallback.
+    citySlugs[0] ? getCityHeroPhoto(citySlugs[0]) : Promise.resolve(null),
+    ...culture.subCultures.map(sc => getSubCulturePhoto(culture.slug, sc.slug)),
+    ...citySlugs.map(slug => getCityPhoto(slug)),
+  ])
+
+  const subImages = rest.slice(0, subCultureKeys.length)
+  const cityImageList = rest.slice(subCultureKeys.length)
+
+  const subCultureImages: Record<string, string | null> = {}
+  subCultureKeys.forEach((key, i) => {
+    subCultureImages[key] = subImages[i] ?? null
+  })
+
+  const cityImages: Record<string, string | null> = {}
+  citySlugs.forEach((slug, i) => {
+    cityImages[slug] = cityImageList[i] ?? null
+  })
 
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
   const collectionLd = {
@@ -112,6 +142,9 @@ export default async function CulturePage({ params }: Props) {
         culture={culture}
         heroImage={heroImage}
         liveEvents={liveEvents}
+        subCultureImages={subCultureImages}
+        cityImages={cityImages}
+        cityCtaImage={cityCtaImage}
       />
     </>
   )
