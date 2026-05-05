@@ -23,13 +23,13 @@ export const CULTURE_TO_CATEGORY_SLUGS: Record<CultureSlug, string[]> = {
   'east-asian':    ['lunar'],
   filipino:        ['filipino'],
   mediterranean:   ['italian'],
-  'middle-eastern': [],
-  european:        [],
-  pacific:         [],
+  'middle-eastern': ['middle-eastern'],
+  european:        ['european'],
+  pacific:         ['pacific'],
   gospel:          ['gospel'],
   comedy:          ['comedy'],
   wellness:        ['health-wellness'],
-  pride:           [],
+  pride:           ['pride'],
 }
 
 export function getCategorySlugsForCulture(culture: CultureSlug): string[] {
