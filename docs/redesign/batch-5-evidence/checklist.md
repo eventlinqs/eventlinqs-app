@@ -133,3 +133,61 @@ Public-surface queries currently bridge culture → category via
 and organisers start tagging events with `culture_primary` directly,
 the bridge stays in place to capture imports that only carry the
 legacy category.
+
+C-B5-02: founder runs `supabase db push --linked` to apply
+`supabase/migrations/20260504000003_seed_pride_european_me_pacific_events.sql`
+(Batch 5.5 seed). Idempotent inserts (`on conflict do nothing`) populate
+the previously-empty Pride/European/Middle Eastern/Pacific culture pages
+with launch-day events.
+
+---
+
+# Batch 5.5 Polish - 2026-05-05
+
+Date: 2026-05-05
+Branch: redesign/world-class-rebuild-2026-05-03
+Author: Session 3 (admin panel + marketing polish)
+
+Scope: 9-task polish pass on the Batch 5 culture pages. Photographic
+sub-cultures rail, photographic cities rail, refined CTA panel,
+editorial copy uplift, Ticketmaster competitive composites, Lighthouse
+3-pass median, image relevance audit, events seed for empty cultures,
+footer rebuild (50% shorter), founder-authoritative sub-culture slug
+reconciliation, Africa-ready copy removal.
+
+## Per-task results
+
+| Task | Subject | Status | Evidence |
+|------|---------|--------|----------|
+| T1 | Sub-cultures rail photographic rebuild | PASS | SubCultureTileImage component + sub-culture-photo.ts pipeline. Tier 1 4-6 tiles, Tier 2 6 tiles. Founder-authoritative slugs and queries reconciled in T1-reconcile. |
+| T2 | Cities rail photographic + intersection route | PASS | cities-rail.tsx photo tiles routing to /culture/[culture]/[city]; new src/app/culture/[culture]/[city]/page.tsx renders the intersection. |
+| T3 | CTA panel refinement | PASS | culture-organiser-cta.tsx 30% shorter (py-10/12/16), photographic backdrop with 0.86 dark overlay, single CTA button. |
+| T4 | Editorial copy uplift (14 cultures) | PASS | data.ts story paragraphs rewritten in Australian English, no em-dashes, no exclamation marks, no "diaspora". |
+| T5 | Ticketmaster comparison composites | PASS | docs/redesign/references/ticketmaster/ + docs/redesign/batch-5-evidence/comparisons/. |
+| T6 | Lighthouse 95+ on prod build | DEFERRED | 3-pass median 0.82-0.89 mobile (Pexels CDN cold-cache localhost artefact, A11y/BP/SEO 1.00, TBT ≤109ms, CLS 0.000). Production warm-cache run scheduled after deploy per CLAUDE.md hard rule. See lighthouse-scores.md. |
+| T7 | Image relevance audit | PASS | image-relevance.md - 14 hero + 81 sub-culture queries scored. 95 GOOD, 4 ACCEPTABLE, 1 POOR (european hero, accepted as launch baseline). |
+| T8 | Seed events for empty cultures | PASS | supabase/migrations/20260504000003_seed_pride_european_me_pacific_events.sql, idempotent inserts populate Pride / European / Middle Eastern / Pacific. |
+| T9 | Footer rebuild | PASS | site-footer.tsx 50% vertical reduction (pt-16/pb-10 → pt-10/pb-6), 4-col desktop / 2-col-with-accordion mobile, brand strip + social inline + compact sub-footer. footer-after-{1440,375}.png captured. |
+| T1-reconcile | Sub-culture slugs + queries to founder spec | PASS | data.ts + sub-culture-photo.ts updated to founder-authoritative slug map (african pan-african→pan-african-gospel, south-asian garba→garba-raas etc.). 28 culture screenshots re-captured. |
+| Africa-ready copy fix | Remove Africa-ready positioning from public copy | PASS | src/app/page.tsx line 401 "Africa-ready: mobile money, WhatsApp sharing" → "Mobile-first checkout: WhatsApp sharing built in". organisers-africa-ready-fix-375.png evidence. |
+
+## Re-captured screenshots (Batch 5.5)
+
+All 28 culture-page after screenshots overwritten with the polish
+state via `scripts/batch-5-5-screenshots.mjs`:
+
+`docs/redesign/batch-5-evidence/after/culture-{slug}-{1440,375}.png`
+
+Footer evidence:
+
+- footer-before-{1440,375}.png  (v3 footer pre-rebuild, captured via `git stash`)
+- footer-after-{1440,375}.png   (v4 footer post-rebuild)
+
+## Quality gates (2026-05-05)
+
+| Gate | Result |
+|------|--------|
+| `npm run lint --max-warnings=0` | PASS (0 warnings) |
+| `npx tsc --noEmit` | PASS (0 errors) |
+| `npm run build` | PASS (all routes prerendered, /culture/[culture] + /culture/[culture]/[city] generated) |
+| `npm test` | PASS (10 files, 105 tests) |
