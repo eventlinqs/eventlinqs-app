@@ -129,6 +129,18 @@
 }
 
 /* ─── Body defaults ──────────────────────────────────────────────────────── */
+/* Clip horizontal overflow so off-canvas elements (mobile drawers
+ * positioned at right:0 with translateX(100%), horizontal scroll rails
+ * that bleed past the parent's padding via -mx-4) don't expand
+ * document.scrollWidth past the viewport. Without this, fullPage
+ * screenshots and some mobile browsers show a phantom horizontal
+ * strip on the right of the page. `clip` is preferred over `hidden`
+ * so position:sticky still works. Both html and body need it because
+ * html is the actual scrolling container in modern Chromium. */
+html, body {
+  overflow-x: clip;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
