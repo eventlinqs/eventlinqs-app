@@ -191,3 +191,50 @@ Footer evidence:
 | `npx tsc --noEmit` | PASS (0 errors) |
 | `npm run build` | PASS (all routes prerendered, /culture/[culture] + /culture/[culture]/[city] generated) |
 | `npm test` | PASS (10 files, 105 tests) |
+
+---
+
+# Batch 5.6 - Interactive Rails + Adjacent Scenes - 2026-05-07
+
+Date: 2026-05-07
+Branch: redesign/world-class-rebuild-2026-05-03
+Author: Session 3 (admin panel + marketing polish)
+
+Scope: 3-task interactive uplift on the Batch 5.5 culture pages.
+Cities rail rebuilt as a SnapRailScroller (arrows + drag + native swipe)
+carrying 15-20 AU-first cities. Sub-cultures rail tiles wrapped in Link
+to /events?culture={slug}&sub_culture={subSlug}; backend resolver added
+in `src/lib/events/fetchers.ts` (`resolveCultureCategorySlugs`) so the
+new sub_culture URL param actually narrows the events query when the
+slug matches a bridged category. Adjacent scenes rebuilt from text
+cards into photographic tiles routing back into /culture/[slug].
+
+## Per-task results
+
+| Task | Subject | Status | Evidence |
+|------|---------|--------|----------|
+| T1 | cities-rail-interactive | PASS | cities-rail.tsx uses SnapRailScroller, 15-20 cities AU-first per culture in data.ts. Rail-flow capture in batch-5.6-evidence/rail-flow/ shows initial state + 2 right-arrow click states scrolling Sydney→Gold Coast on /culture/african. |
+| T2 | sub-cultures-clickable | PASS | sub-cultures-rail.tsx tiles wrapped in `<Link href="/events?culture={slug}&sub_culture={sub}">`. Backend wiring in fetchers.ts `resolveCultureCategorySlugs` narrows to the sub-culture's bridged category when the slug matches; otherwise the full culture set applies. search-params.ts + types.ts carry the new `sub_culture` filter. |
+| T3 | adjacent-scenes-visual | PASS | related-cultures-rail.tsx rebuilt from text-only cards into photographic 16:10 tiles with darkened bottom gradient + display-name + tagline anchored bottom-left. Routes to /culture/[slug]. |
+
+## Re-captured screenshots (Batch 5.6)
+
+All 28 culture-page after screenshots overwritten with the interactive
+state via `scripts/batch-5-6-screenshots.mjs`:
+
+`docs/redesign/batch-5-evidence/after/culture-{slug}-{1440,375}.png`
+
+Rail-flow evidence (new):
+
+- `batch-5.6-evidence/rail-flow/cities-rail-african-1440-state-1-initial.png`
+- `batch-5.6-evidence/rail-flow/cities-rail-african-1440-state-2-after-click-1.png`
+- `batch-5.6-evidence/rail-flow/cities-rail-african-1440-state-3-after-click-2.png`
+
+## Quality gates (2026-05-07)
+
+| Gate | Result |
+|------|--------|
+| `npm run lint --max-warnings=0` | PASS (0 warnings) |
+| `npx tsc --noEmit` | PASS (0 errors) |
+| `npm run build` | PASS (14 culture pages + 271 culture/city pages SSG'd, no route regressions) |
+| `npm test` | PASS (10 files, 105 tests) |
