@@ -83,7 +83,12 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
       { slug: 'east-african',        label: 'East African',       blurb: 'Bongo Flava, Gengetone, Taarab.' },
       { slug: 'pan-african-gospel',  label: 'Pan-African Gospel', blurb: 'Faith and family, every Sunday.' },
     ],
-    cities: ['Melbourne', 'Sydney', 'Brisbane', 'Perth', 'London', 'Toronto', 'Houston', 'Atlanta'],
+    cities: [
+      'Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Adelaide',
+      'Gold Coast', 'Canberra', 'Hobart', 'Newcastle', 'Geelong',
+      'Sunshine Coast', 'Wollongong', 'Cairns', 'Darwin', 'Townsville',
+      'London', 'Toronto', 'Houston', 'Atlanta', 'Lagos',
+    ],
     relatedCultures: ['caribbean', 'gospel', 'comedy'],
     organiserPersonas: [
       'Independent promoters running monthly Afrobeats and Amapiano nights',
@@ -115,7 +120,12 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
       { slug: 'tamil-telugu',  label: 'Tamil & Telugu', blurb: 'South Indian cinema and culture.' },
       { slug: 'classical',     label: 'Classical',      blurb: 'Bharatanatyam, Kathak, sitar nights.' },
     ],
-    cities: ['Sydney', 'Melbourne', 'Perth', 'Brisbane', 'London', 'Toronto', 'New York', 'Houston'],
+    cities: [
+      'Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Adelaide',
+      'Gold Coast', 'Canberra', 'Hobart', 'Newcastle', 'Geelong',
+      'Sunshine Coast', 'Wollongong', 'Cairns', 'Darwin', 'Townsville',
+      'London', 'Toronto', 'New York', 'Dubai', 'Mumbai',
+    ],
     relatedCultures: ['middle-eastern', 'east-asian', 'wellness'],
     organiserPersonas: [
       'Bollywood club night promoters in major cities',
@@ -147,7 +157,12 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
       { slug: 'trinidadian',     label: 'Trinidadian',    blurb: 'Mas, J\'ouvert, calypso.' },
       { slug: 'jamaican',        label: 'Jamaican',       blurb: 'Beach parties, riddim culture.' },
     ],
-    cities: ['Sydney', 'Melbourne', 'London', 'Toronto', 'New York', 'Miami', 'Atlanta'],
+    cities: [
+      'Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Adelaide',
+      'Gold Coast', 'Canberra', 'Hobart', 'Newcastle', 'Geelong',
+      'Sunshine Coast', 'Wollongong', 'Cairns', 'Darwin', 'Townsville',
+      'London', 'Toronto', 'New York', 'Miami', 'Kingston',
+    ],
     relatedCultures: ['african', 'latin', 'gospel'],
     organiserPersonas: [
       'Carnival organisers running J\'ouvert and parade events',
@@ -179,7 +194,12 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
       { slug: 'brazilian',     label: 'Brazilian',     blurb: 'Samba, bossa, forró.' },
       { slug: 'spanish-latin', label: 'Spanish-Latin', blurb: 'Flamenco fusion, ibérico.' },
     ],
-    cities: ['Melbourne', 'Sydney', 'New York', 'Miami', 'Los Angeles', 'Houston', 'Toronto', 'London'],
+    cities: [
+      'Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Adelaide',
+      'Gold Coast', 'Canberra', 'Hobart', 'Newcastle', 'Geelong',
+      'Sunshine Coast', 'Wollongong', 'Cairns', 'Darwin', 'Townsville',
+      'Miami', 'Los Angeles', 'New York', 'Madrid',
+    ],
     relatedCultures: ['caribbean', 'mediterranean', 'pride'],
     organiserPersonas: [
       'Salsa and bachata social promoters running weekly nights',
@@ -211,7 +231,12 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
       { slug: 'thai',       label: 'Thai',           blurb: 'Songkran, Loi Krathong.' },
       { slug: 'lunar',      label: 'Lunar New Year', blurb: 'Pan-Asian celebration.' },
     ],
-    cities: ['Sydney', 'Melbourne', 'Perth', 'Brisbane', 'London', 'Toronto', 'New York', 'Los Angeles'],
+    cities: [
+      'Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Adelaide',
+      'Gold Coast', 'Canberra', 'Hobart', 'Newcastle', 'Geelong',
+      'Sunshine Coast', 'Wollongong', 'Cairns', 'Darwin', 'Townsville',
+      'London', 'New York', 'Toronto', 'Vancouver', 'Singapore',
+    ],
     relatedCultures: ['south-asian', 'filipino', 'wellness'],
     organiserPersonas: [
       'K-pop dance crew event organisers',
@@ -241,7 +266,12 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
       { slug: 'sinulog',         label: 'Sinulog',         blurb: 'January street festivals.' },
       { slug: 'modern-filipino', label: 'Modern Filipino', blurb: 'Youth, hip-hop, fusion.' },
     ],
-    cities: ['Sydney', 'Melbourne', 'Perth', 'Brisbane', 'Adelaide', 'Auckland', 'Los Angeles', 'San Diego'],
+    cities: [
+      'Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Adelaide',
+      'Gold Coast', 'Canberra', 'Hobart', 'Newcastle', 'Geelong',
+      'Sunshine Coast', 'Wollongong', 'Cairns', 'Darwin', 'Townsville',
+      'Los Angeles', 'San Francisco', 'New York', 'Toronto', 'Manila',
+    ],
     relatedCultures: ['east-asian', 'pacific', 'gospel'],
     organiserPersonas: [
       'Filipino community fiesta organisers',
@@ -272,7 +302,12 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
       { slug: 'portuguese', label: 'Portuguese', blurb: 'Fado, festa, soul music.' },
       { slug: 'cypriot',    label: 'Cypriot',    blurb: 'Souvla, meze, syrtos.' },
     ],
-    cities: ['Sydney', 'Melbourne', 'Adelaide', 'Perth', 'London', 'Toronto', 'New York', 'Boston'],
+    cities: [
+      'Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Adelaide',
+      'Gold Coast', 'Canberra', 'Hobart', 'Newcastle', 'Geelong',
+      'Sunshine Coast', 'Wollongong', 'Cairns', 'Darwin', 'Townsville',
+      'London', 'New York', 'Toronto', 'Rome', 'Athens',
+    ],
     relatedCultures: ['middle-eastern', 'european', 'latin'],
     organiserPersonas: [
       'Italian sagra committees and Italian club organisers',
@@ -303,7 +338,12 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
       { slug: 'arab',     label: 'Arab',     blurb: 'Tarab, oud, classical.' },
       { slug: 'egyptian', label: 'Egyptian', blurb: 'Shaabi, classical, modern.' },
     ],
-    cities: ['Sydney', 'Melbourne', 'London', 'Toronto', 'New York', 'Los Angeles', 'Detroit'],
+    cities: [
+      'Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Adelaide',
+      'Gold Coast', 'Canberra', 'Hobart', 'Newcastle', 'Geelong',
+      'Sunshine Coast', 'Wollongong', 'Cairns', 'Darwin', 'Townsville',
+      'London', 'New York', 'Toronto', 'Dubai', 'Beirut',
+    ],
     relatedCultures: ['mediterranean', 'south-asian', 'european'],
     organiserPersonas: [
       'Arabic concert promoters booking touring artists',
@@ -335,7 +375,12 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
       { slug: 'hungarian', label: 'Hungarian', blurb: 'Czardas, folk, classical.' },
       { slug: 'romanian',  label: 'Romanian',  blurb: 'Folk dance, Hora, Christmas.' },
     ],
-    cities: ['Melbourne', 'Sydney', 'Adelaide', 'Perth', 'London', 'Berlin', 'Paris', 'Toronto'],
+    cities: [
+      'Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Adelaide',
+      'Gold Coast', 'Canberra', 'Hobart', 'Newcastle', 'Geelong',
+      'Sunshine Coast', 'Wollongong', 'Cairns', 'Darwin', 'Townsville',
+      'London', 'New York', 'Toronto', 'Berlin', 'Paris',
+    ],
     relatedCultures: ['mediterranean', 'middle-eastern', 'east-asian'],
     organiserPersonas: [
       'Oktoberfest and Bavarian beer hall organisers',
@@ -367,7 +412,12 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
       { slug: 'aboriginal',    label: 'Aboriginal',             blurb: 'First Nations, ceremony, dance.' },
       { slug: 'torres-strait', label: 'Torres Strait Islander', blurb: 'Island traditions, song, dance.' },
     ],
-    cities: ['Auckland', 'Sydney', 'Brisbane', 'Melbourne', 'Wellington', 'Christchurch'],
+    cities: [
+      'Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Adelaide',
+      'Gold Coast', 'Canberra', 'Hobart', 'Newcastle', 'Geelong',
+      'Sunshine Coast', 'Wollongong', 'Cairns', 'Darwin', 'Townsville',
+      'Auckland', 'Wellington', 'Honolulu', 'Los Angeles', 'Toronto',
+    ],
     relatedCultures: ['filipino', 'east-asian', 'gospel'],
     organiserPersonas: [
       'Polyfest and Pasifika festival committees',
@@ -402,7 +452,12 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
       { slug: 'latin-christian',  label: 'Latin Christian',  blurb: 'Spanish-language worship.' },
       { slug: 'caribbean-gospel', label: 'Caribbean gospel', blurb: 'Jamaican, Trinidadian gospel.' },
     ],
-    cities: ['Sydney', 'Melbourne', 'Auckland', 'London', 'Toronto', 'Atlanta', 'Houston', 'Los Angeles'],
+    cities: [
+      'Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Adelaide',
+      'Gold Coast', 'Canberra', 'Hobart', 'Newcastle', 'Geelong',
+      'Sunshine Coast', 'Wollongong', 'Cairns', 'Darwin', 'Townsville',
+      'London', 'New York', 'Toronto',
+    ],
     relatedCultures: ['african', 'pacific', 'filipino'],
     organiserPersonas: [
       'Church choir directors booking concerts',
@@ -434,7 +489,12 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
       { slug: 'open-mic',          label: 'Open mic',          blurb: 'New voices, every Tuesday.' },
       { slug: 'improv',            label: 'Improv & sketch',   blurb: 'Live, unscripted, fearless.' },
     ],
-    cities: ['Melbourne', 'Sydney', 'London', 'New York', 'Los Angeles', 'Toronto', 'Auckland'],
+    cities: [
+      'Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Adelaide',
+      'Gold Coast', 'Canberra', 'Hobart', 'Newcastle', 'Geelong',
+      'Sunshine Coast', 'Wollongong', 'Cairns', 'Darwin', 'Townsville',
+      'London', 'New York', 'Toronto',
+    ],
     relatedCultures: ['african', 'south-asian', 'pride'],
     organiserPersonas: [
       'Comedy club bookers programming weekly nights',
@@ -466,7 +526,12 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
       { slug: 'retreats',      label: 'Retreats',      blurb: 'Weekend, week-long, immersive.' },
       { slug: 'tai-chi',       label: 'Tai chi & qigong', blurb: 'East Asian moving meditation.' },
     ],
-    cities: ['Melbourne', 'Sydney', 'Byron Bay', 'Bali', 'Auckland', 'Los Angeles', 'London'],
+    cities: [
+      'Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Adelaide',
+      'Gold Coast', 'Canberra', 'Hobart', 'Newcastle', 'Geelong',
+      'Sunshine Coast', 'Wollongong', 'Cairns', 'Darwin', 'Townsville',
+      'London', 'New York', 'Toronto',
+    ],
     relatedCultures: ['south-asian', 'east-asian', 'pacific'],
     organiserPersonas: [
       'Yoga studio owners selling class packs and series',
@@ -498,7 +563,12 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
       { slug: 'queer-dance', label: 'Queer dance',    blurb: 'Honcho, Heaps Gay, Horse Meat.' },
       { slug: 'pride-fest',  label: 'Pride festivals', blurb: 'City-wide multi-day events.' },
     ],
-    cities: ['Sydney', 'Melbourne', 'Auckland', 'London', 'Berlin', 'New York', 'San Francisco', 'Los Angeles'],
+    cities: [
+      'Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Adelaide',
+      'Gold Coast', 'Canberra', 'Hobart', 'Newcastle', 'Geelong',
+      'Sunshine Coast', 'Wollongong', 'Cairns', 'Darwin', 'Townsville',
+      'London', 'New York', 'Toronto',
+    ],
     relatedCultures: ['comedy', 'latin', 'african'],
     organiserPersonas: [
       'Drag show promoters and brunch organisers',
