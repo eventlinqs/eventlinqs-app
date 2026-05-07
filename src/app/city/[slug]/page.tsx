@@ -8,9 +8,11 @@ import {
   getSuburbsForCity,
   CITY_EVENT_TYPES,
 } from '@/lib/cities/data'
+import { getAllCultures } from '@/lib/cultures/data'
 import { getCityHeroPhoto, getCityPhoto } from '@/lib/images/city-photo'
 import { getSuburbHeroPhoto } from '@/lib/images/suburb-photo'
 import { getCategoryPhoto } from '@/lib/images/category-photo'
+import { getCultureHeroPhoto } from '@/lib/images/culture-photo'
 import { CityLandingPage } from '@/components/templates/CityLandingPage'
 import type { EventCardData } from '@/components/features/events/event-card'
 import type { MapEventPin } from '@/components/features/city/city-map'
@@ -120,12 +122,15 @@ export default async function CityPage({ params }: Props) {
   const suburbs = getSuburbsForCity(city.slug)
   const eventTypeSlugs = CITY_EVENT_TYPES.map(t => t.slug)
 
+  const cultures = getAllCultures()
+
   const heroImage = await getCityHeroPhoto(city.slug)
 
-  const [eventTypePhotos, suburbPhotos, relatedCityPhotos] = await Promise.all([
+  const [eventTypePhotos, suburbPhotos, relatedCityPhotos, culturePhotos] = await Promise.all([
     Promise.all(eventTypeSlugs.map(s => getCategoryPhoto(s))),
     Promise.all(suburbs.map(s => getSuburbHeroPhoto(s.slug))),
     Promise.all(city.relatedCities.map(s => getCityPhoto(s))),
+    Promise.all(cultures.map(c => getCultureHeroPhoto(c.slug))),
   ])
 
   const eventTypeImages: Record<string, string | null> = {}
@@ -141,6 +146,11 @@ export default async function CityPage({ params }: Props) {
   const relatedCityImages: Record<string, string | null> = {}
   city.relatedCities.forEach((s, i) => {
     relatedCityImages[s] = relatedCityPhotos[i] ?? null
+  })
+
+  const cultureImages: Record<string, string | null> = {}
+  cultures.forEach((c, i) => {
+    cultureImages[c.slug] = culturePhotos[i] ?? null
   })
 
   const caption = `${allEvents.length} upcoming event${allEvents.length === 1 ? '' : 's'}`
@@ -191,6 +201,7 @@ export default async function CityPage({ params }: Props) {
         eventTypeImages={eventTypeImages}
         relatedCityImages={relatedCityImages}
         suburbImages={suburbImages}
+        cultureImages={cultureImages}
         suburbs={suburbs}
         mapPins={mapPins}
         mapboxToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? ''}

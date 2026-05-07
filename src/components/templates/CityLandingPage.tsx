@@ -9,8 +9,8 @@ import { EventTypesRail } from '@/components/features/city/event-types-rail'
 import { CityMap, type MapEventPin, type MapSuburbPolygon } from '@/components/features/city/city-map'
 import { CityOrganiserCtaPanel } from '@/components/features/city/city-organiser-cta-panel'
 import { MobileStickyBar } from '@/components/features/city/mobile-sticky-bar'
+import { BrowseByCultureRail } from '@/components/features/city/browse-by-culture-rail'
 import { EventCard, type EventCardData } from '@/components/features/events/event-card'
-import { CulturesByCityRail } from '@/components/features/culture/cities-rail'
 import { CityTileImage } from '@/components/media/CityTileImage'
 import { CategoryHeroEmpty } from '@/components/ui/CategoryHeroEmpty'
 import { Zap, Heart, Wallet } from 'lucide-react'
@@ -33,6 +33,8 @@ interface Props {
   relatedCityImages: Record<string, string | null>
   /** Map of suburb slug → Pexels landscape URL. Tier 1 only. */
   suburbImages: Record<string, string | null>
+  /** Map of culture slug → Pexels landscape URL for the Browse-by-Culture rail. */
+  cultureImages: Record<string, string | null>
   suburbs: SuburbContent[]
   /** Pre-built Mapbox pins (geocoded events). */
   mapPins: MapEventPin[]
@@ -75,6 +77,7 @@ export function CityLandingPage({
   eventTypeImages,
   relatedCityImages,
   suburbImages,
+  cultureImages,
   suburbs,
   mapPins,
   mapboxToken,
@@ -83,8 +86,6 @@ export function CityLandingPage({
   const relatedItems = city.relatedCities
     .map(slug => getCity(slug))
     .filter((x): x is NonNullable<typeof x> => x !== null)
-
-  const suburbCityRailNames = suburbs.map(s => s.name)
 
   const polygons: MapSuburbPolygon[] = suburbs.map(s => ({
     slug: s.slug,
@@ -169,12 +170,13 @@ export function CityLandingPage({
         </ContentSection>
       ) : null}
 
-      {/* S5 Browse by Culture rail - reuses the SnapRail city pattern. */}
-      <CulturesByCityRail
-        cultureSlug=""
-        cultureName={city.name}
-        cities={suburbCityRailNames.length > 0 ? suburbCityRailNames : [city.name]}
-        images={suburbImages}
+      {/* S5 Browse by Culture rail - 14 photographic culture tiles routing
+          to /culture/[culture]/[city] for the cross-culture-city
+          intersection page added in Batch 5.5. */}
+      <BrowseByCultureRail
+        citySlug={city.slug}
+        cityName={city.name}
+        images={cultureImages}
       />
 
       <EventTypesRail
