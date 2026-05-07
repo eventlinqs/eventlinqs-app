@@ -80,9 +80,10 @@ export default async function CulturePage({ params }: Props) {
       .slice(0, 12)
   }
 
-  // Parallelise all image fetches: hero + 6 sub-cultures + N cities + cta backdrop.
+  // Parallelise all image fetches: hero + 6 sub-cultures + N cities + cta backdrop + related cultures.
   const subCultureKeys = culture.subCultures.map(sc => sc.slug)
   const citySlugs = culture.cities.map(citySlugify)
+  const relatedSlugs = culture.relatedCultures
 
   const [
     heroImage,
@@ -95,10 +96,15 @@ export default async function CulturePage({ params }: Props) {
     citySlugs[0] ? getCityHeroPhoto(citySlugs[0]) : Promise.resolve(null),
     ...culture.subCultures.map(sc => getSubCulturePhoto(culture.slug, sc.slug)),
     ...citySlugs.map(slug => getCityPhoto(slug)),
+    ...relatedSlugs.map(slug => getCultureHeroPhoto(slug)),
   ])
 
   const subImages = rest.slice(0, subCultureKeys.length)
-  const cityImageList = rest.slice(subCultureKeys.length)
+  const cityImageList = rest.slice(
+    subCultureKeys.length,
+    subCultureKeys.length + citySlugs.length,
+  )
+  const relatedImageList = rest.slice(subCultureKeys.length + citySlugs.length)
 
   const subCultureImages: Record<string, string | null> = {}
   subCultureKeys.forEach((key, i) => {
@@ -108,6 +114,11 @@ export default async function CulturePage({ params }: Props) {
   const cityImages: Record<string, string | null> = {}
   citySlugs.forEach((slug, i) => {
     cityImages[slug] = cityImageList[i] ?? null
+  })
+
+  const relatedCultureImages: Record<string, string | null> = {}
+  relatedSlugs.forEach((slug, i) => {
+    relatedCultureImages[slug] = relatedImageList[i] ?? null
   })
 
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
@@ -145,6 +156,7 @@ export default async function CulturePage({ params }: Props) {
         subCultureImages={subCultureImages}
         cityImages={cityImages}
         cityCtaImage={cityCtaImage}
+        relatedCultureImages={relatedCultureImages}
       />
     </>
   )

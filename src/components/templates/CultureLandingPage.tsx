@@ -20,6 +20,8 @@ interface Props {
   cityImages: Record<string, string | null>
   /** Map of city slug → city name (the rail prop expects names). */
   cityCtaImage: string | null
+  /** Map of related culture slug → Pexels landscape URL (null when not available). */
+  relatedCultureImages: Record<string, string | null>
 }
 
 /**
@@ -41,6 +43,7 @@ export function CultureLandingPage({
   subCultureImages,
   cityImages,
   cityCtaImage,
+  relatedCultureImages,
 }: Props) {
   return (
     <PageShell>
@@ -86,7 +89,10 @@ export function CultureLandingPage({
         events={liveEvents}
       />
 
-      <RelatedCulturesRail related={culture.relatedCultures} />
+      <RelatedCulturesRail
+        related={culture.relatedCultures}
+        images={relatedCultureImages}
+      />
 
       <CultureOrganiserCtaPanel
         cultureSlug={culture.slug}
