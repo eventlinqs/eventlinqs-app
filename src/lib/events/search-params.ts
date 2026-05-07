@@ -9,6 +9,8 @@ export type EventsSearchParams = {
   q?: string
   preset?: string
   category?: string
+  culture?: string
+  sub_culture?: string
   country?: string
   price_min?: string
   price_max?: string
@@ -80,6 +82,8 @@ export function parseEventsSearchParams(
     q: raw.q?.trim() || undefined,
     preset,
     category: raw.category?.trim() || undefined,
+    culture: raw.culture?.trim() || undefined,
+    sub_culture: raw.sub_culture?.trim() || undefined,
     country: raw.country?.trim() || undefined,
     price_min: parseNonNegativeFloat(raw.price_min),
     price_max: parseNonNegativeFloat(raw.price_max),
@@ -117,6 +121,8 @@ export function hasActiveFilters(filters: FetchPublicEventsFilters): boolean {
     filters.q ||
       filters.preset ||
       filters.category ||
+      filters.culture ||
+      filters.sub_culture ||
       filters.price_min !== undefined ||
       filters.price_max !== undefined ||
       filters.from ||

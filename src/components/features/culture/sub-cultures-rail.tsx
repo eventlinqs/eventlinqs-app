@@ -46,7 +46,7 @@ export function SubCulturesRail({ cultureSlug, cultureName, subCultures, images 
           return (
             <li key={sc.slug}>
               <Link
-                href={`/events?culture=${cultureSlug}&sub=${sc.slug}`}
+                href={`/events?culture=${cultureSlug}&sub_culture=${sc.slug}`}
                 className="group block overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg"
               >
                 <div className="relative aspect-[4/3] w-full overflow-hidden bg-[var(--color-navy-950)]">
