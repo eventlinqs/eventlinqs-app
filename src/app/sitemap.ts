@@ -2,6 +2,7 @@ import type { MetadataRoute } from 'next'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getPickerCities } from '@/lib/locations/picker-cities'
 import { getAllCultures } from '@/lib/cultures/data'
+import { getAllCities, getSuburbsForCity } from '@/lib/cities/data'
 
 /**
  * Dynamic sitemap for EventLinqs.
@@ -55,6 +56,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'daily',
       priority: culture.tier === 1 ? 0.85 : 0.75,
     })
+  }
+
+  // Batch 6 - city + suburb landing pages.
+  for (const city of getAllCities()) {
+    entries.push({
+      url: `${baseUrl}/city/${city.slug}`,
+      lastModified: now,
+      changeFrequency: 'daily',
+      priority: city.tier === 1 ? 0.9 : 0.75,
+    })
+    for (const s of getSuburbsForCity(city.slug)) {
+      const facing = s.slug.startsWith(`${city.slug}-`) ? s.slug.slice(city.slug.length + 1) : s.slug
+      entries.push({
+        url: `${baseUrl}/city/${city.slug}/${facing}`,
+        lastModified: now,
+        changeFrequency: 'daily',
+        priority: 0.65,
+      })
+    }
   }
 
   try {
