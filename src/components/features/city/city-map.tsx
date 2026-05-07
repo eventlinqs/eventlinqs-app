@@ -252,6 +252,10 @@ export function CityMap({ centerLng, centerLat, zoom, pins, suburbs, accessToken
           .addTo(map)
       }
 
+      // Mapbox sometimes lays out before the container has its final
+      // dimensions; an explicit resize on the next animation frame
+      // guarantees pins render in the right places.
+      requestAnimationFrame(() => map.resize())
       setStatus('ready')
     })
 
@@ -286,11 +290,21 @@ export function CityMap({ centerLng, centerLat, zoom, pins, suburbs, accessToken
   }
 
   return (
-    <div className="relative h-[400px] w-full overflow-hidden rounded-xl border border-[var(--surface-2)] sm:h-[500px]">
-      <div ref={containerRef} className="absolute inset-0" aria-label="Interactive map of upcoming events" role="application" />
+    <div className="relative w-full overflow-hidden rounded-xl border border-[var(--surface-2)]">
+      {/* Mapbox container needs concrete dimensions BEFORE the map
+       *  initialises. `position: absolute; inset: 0` was collapsing to
+       *  0 height in some renders (likely a layout-timing race against
+       *  the parent), leaving the map invisible. Giving the container
+       *  explicit `h-[400px] sm:h-[500px]` removes the dependency. */}
+      <div
+        ref={containerRef}
+        className="h-[400px] w-full sm:h-[500px]"
+        aria-label="Interactive map of upcoming events"
+        role="application"
+      />
       {status === 'loading' ? (
         <div
-          className="absolute inset-0 flex items-center justify-center"
+          className="pointer-events-none absolute inset-0 flex items-center justify-center"
           style={{ background: BRAND_COLORS.land }}
           aria-hidden
         >
