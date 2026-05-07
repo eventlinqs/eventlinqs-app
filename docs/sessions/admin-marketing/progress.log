@@ -113,3 +113,26 @@ Opened: 2026-05-02
 2026-05-07  [COORDINATION]  C-B5.6-01 PM runs Vercel preview Lighthouse median-of-5 mobile + axe-core 0 on /culture/{african,south-asian,caribbean,latin,gospel,comedy} - same routes as Batch 5.5 to verify no rail-interactivity regression
 2026-05-07  [COORDINATION]  C-B5.6-02 PM verifies /events?culture=african&sub_culture=amapiano on preview returns the narrowed amapiano-only grid (and degrades gracefully to the full african set when sub_culture has no bridged category)
 2026-05-07  [GATE]    Batch 5.6 code complete - STOP for project manager review
+2026-05-07  start     redesign-batch-6 - city + suburb pages, 20 cities + 24 suburbs, surpass-Ticketmaster scope, Mapbox integration
+2026-05-07  refs      Pre-build competitor captures: Ticketmaster AU + UK city guides, Airbnb Sydney experiences, DICE London - desktop+mobile -> docs/redesign/references/{ticketmaster,airbnb,dice}
+2026-05-07  schema    20260507000001_city_taxonomy.sql - cities (20 AU rows + lat/lng + tier), suburbs (24 across 7 Tier 1 cities), event_types extended with dj-set + cultural, events.city_primary + suburb_primary FKs, soft backfill from venue_city, RLS anon-select + admin-write
+2026-05-07  lib       src/lib/cities/data.ts - canonical content registry for 20 cities (200-300 word community-first editorial each, mentioning 3+ cultural communities + 2+ suburbs + 2+ event types) and 24 suburbs (100-150 word character prose); zero em-dashes, zero exclamation marks, zero "diaspora", AU English
+2026-05-07  lib       src/lib/images/suburb-photo.ts - Pexels-backed suburb hero helper, lifestyle-led queries (Airbnb destination-banner aesthetic), landscape orientation, top-5 sample, 7-day cache
+2026-05-07  comp      7 new components under src/components/features/city/: CityHero, DateFilterChips (sticky URL-driven), CityMap (Mapbox light-v11 base + brand recolor + gold drop-pin markers + suburb circular polygons + branded popups + skeleton loader + static fallback), EventTypesRail (8 type tiles), CityEditorialSection, MobileStickyBar (≤768px gold-on-navy after 200px scroll, safe-area-inset), CityNewsletterCapture, plus CityOrganiserCtaPanel
+2026-05-07  comp      2 new templates: CityLandingPage (15 sections - hero, sticky chips, editorial, weekend+week rails, by-culture rail, event-types rail, mapbox map, popular, by-suburb rail Tier 1, organisers/venues conditional, all events grid, related cities, organiser CTA + newsletter, mobile sticky bar) and SuburbLandingPage (8 sections)
+2026-05-07  route     src/app/city/[slug]/page.tsx and src/app/city/[slug]/[suburb]/page.tsx - dynamic routes, generateStaticParams, generateMetadata, City + ItemList + Place JSON-LD, ISR revalidate 300s
+2026-05-07  api       src/app/api/newsletter/subscribe/route.ts - Zod-validated newsletter capture, v1 stub logs+returns 200, M9 marketing wires Resend audiences
+2026-05-07  sitemap   src/app/sitemap.ts - emits 44 new entries (20 cities Tier1 0.9 / Tier2 0.75, 24 suburbs 0.65) [SHARED]
+2026-05-07  deps      [SHARED] mapbox-gl@3.23.1 + @types/mapbox-gl@3.4.1 added to package.json - PM verifies no conflict with Session 1/2 commits before merge
+2026-05-07  evidence  88 page screenshots (20 cities + 24 suburbs x 1440+375), Sydney Mapbox capture with branded styling + gold pins + suburb polygons, Sydney mobile sticky CTA bar capture, 4 city/competitor side-by-side composite indices -> docs/redesign/batch-6-evidence/{after,map,mobile-sticky-cta.png,comparisons}
+2026-05-07  audit     image-relevance.md - 44 hero queries scored: 34 GOOD (77%) + 10 ACCEPTABLE (23%) + 0 POOR
+2026-05-07  audit     checklist.md - 44 pages graded section-by-section: every page PASS on every gate, every editorial mentions 3+ cultural communities + 2+ suburbs, every page BETTER than Ticketmaster city guide on hero/info-density/mobile-polish/date-filter/map-presence
+2026-05-07  gates     batch-6 lint --max-warnings=0 clean, npx tsc --noEmit clean, npm run build green (20 city + 24 suburb pages SSG'd, full sitemap), npm test 105/105 across 10 files
+2026-05-07  closure   docs/redesign/batch-6-closure-report.md written
+2026-05-07  [COORDINATION]  C-B6-01 founder runs `supabase db push --linked` to apply 20260507000001_city_taxonomy.sql; idempotent, no NOT VALID gates
+2026-05-07  [COORDINATION]  C-B6-02 PM verifies NEXT_PUBLIC_MAPBOX_TOKEN is set in Vercel preview + production, with URL allowlist on the token before promotion
+2026-05-07  [COORDINATION]  C-B6-03 PM runs Vercel preview Lighthouse median-of-5 mobile + axe-core 0 on /city/{sydney,melbourne,brisbane,perth,adelaide,gold-coast,canberra,hobart} per CLAUDE.md "no localhost performance measurements" rule (acknowledged conflict with brief; CLAUDE.md is the higher authority)
+2026-05-07  [COORDINATION]  C-B6-04 PM runs 7-viewport visual regression on Vercel preview for 8 Tier 1 cities + 6 Sydney suburbs
+2026-05-07  [COORDINATION]  C-B6-05 PM verifies side-by-side comparisons against Ticketmaster + Airbnb on Vercel preview - links in docs/redesign/batch-6-evidence/comparisons/
+2026-05-07  [COORDINATION]  C-B6-06 [SHARED] sitemap.ts + package.json + package-lock.json touched - PM verifies no conflict with Session 1/2 commits before merge
+2026-05-07  [GATE]    Batch 6 code complete - STOP for project manager review
