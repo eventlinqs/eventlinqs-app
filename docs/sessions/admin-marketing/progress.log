@@ -136,3 +136,17 @@ Opened: 2026-05-02
 2026-05-07  [COORDINATION]  C-B6-05 PM verifies side-by-side comparisons against Ticketmaster + Airbnb on Vercel preview - links in docs/redesign/batch-6-evidence/comparisons/
 2026-05-07  [COORDINATION]  C-B6-06 [SHARED] sitemap.ts + package.json + package-lock.json touched - PM verifies no conflict with Session 1/2 commits before merge
 2026-05-07  [GATE]    Batch 6 code complete - STOP for project manager review
+2026-05-08  start     redesign-batch-6.5 - 4 critical fixes to Batch 6 (Mapbox blank, black suburb tiles, mobile yellow strip overflow, mobile design polish)
+2026-05-08  diagnose  scripts/batch-6-5-diagnose.mjs + b65-check-overflow.mjs - DOM inspection on /city/sydney 1440 + 375 confirmed: mapboxgl-map h=0 w=1214 (collapse), tileCount=0 in S5 rail (lookup miss), bodyW=441 vs viewport 375 (offscreen drawer expanding scrollWidth), htmlOverflowX=visible
+2026-05-08  fix-f1    src/components/features/city/city-map.tsx - replaced absolute inset-0 container with explicit h-[400px] sm:h-[500px] dimensions; added requestAnimationFrame map.resize() after load
+2026-05-08  fix-f2    new src/components/features/city/browse-by-culture-rail.tsx - 14 photographic culture tiles per spec, routes to /culture/[culture]/[city]; CityLandingPage swaps S5 to use it; app/city/[slug]/page.tsx fetches culture hero photos in parallel and threads through cultureImages prop
+2026-05-08  fix-f3    src/app/globals.css - overflow-x: clip on html + body (was visible on html, breaking Playwright fullPage capture); body alone is insufficient because html is the actual scrolling container in modern Chromium; clip preserves position:sticky behaviour unlike hidden
+2026-05-08  fix-f4    CityHero (mobile hero 64vh + text-[2.25rem] H1 + stacked h-12 CTAs), CityEditorialSection (text-[1.75rem] heading + text-[15px] leading-[1.7] body), MobileStickyBar (h-[60px] + text-[15px] tracking-tight bold + text-[11px] subtitle) - matches Ticketmaster mobile city guide weight bar
+2026-05-08  evidence  docs/redesign/batch-6.5-evidence/ - F1 mapbox captures (4 cities), F2 culture-rail captures (4) + suburb-rail captures (7), F3 mobile fixed captures (3), F4 sticky-bar capture (1); plus 88 page screenshots re-baselined at docs/redesign/batch-6-evidence/after/
+2026-05-08  honesty   docs/redesign/batch-6-evidence/checklist.md rewritten - every PASS now names a specific screenshot or verified shared component; original Batch 6 checklist marked all 44 PASS without per-page visual verification, which was a real accountability failure
+2026-05-08  gates     batch-6.5 lint --max-warnings=0 clean, npx tsc --noEmit clean, npm run build green, npm test 105/105 across 10 files
+2026-05-08  closure   docs/redesign/batch-6.5-closure-report.md written
+2026-05-08  [COORDINATION]  C-B6.5-01 PM runs Vercel preview Lighthouse median-of-5 mobile + axe-core 0 on 8 Tier 1 cities; confirm Mapbox renders on real iOS Safari + Android Chrome (WebGL can be quirky in mobile browsers)
+2026-05-08  [COORDINATION]  C-B6.5-02 PM verifies mobile sticky CTA bar above global BottomNav on real iPhone + Android with safe-area-inset padding for iPhone X+ notch
+2026-05-08  [COORDINATION]  C-B6.5-03 PM verifies overflow-x: clip on html + body doesn't break Batch 5.6 culture pages, homepage, /events horizontal scroll-snap rails (confirmed locally)
+2026-05-08  [GATE]    Batch 6.5 critical fixes complete - STOP for project manager review
