@@ -21,13 +21,13 @@ export function CityEditorialSection({ eyebrow, heading, paragraphs }: Props) {
   return (
     <ContentSection surface="base" width="default" topBorder>
       <div className="mx-auto max-w-3xl">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
+        <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)] sm:text-xs">
           {eyebrow}
         </p>
-        <h2 className="font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">
+        <h2 className="font-display text-[1.75rem] font-bold leading-[1.15] text-[var(--text-primary)] sm:text-3xl">
           {heading}
         </h2>
-        <div className="mt-4 space-y-4 text-sm leading-relaxed text-[var(--text-secondary)] sm:text-base">
+        <div className="mt-5 space-y-4 text-[15px] leading-[1.7] text-[var(--text-secondary)] sm:mt-4 sm:text-base sm:leading-relaxed">
           {paragraphs.map((p, i) => (
             <p key={i}>{p}</p>
           ))}

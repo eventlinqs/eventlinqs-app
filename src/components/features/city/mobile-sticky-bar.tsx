@@ -46,16 +46,16 @@ export function MobileStickyBar({ cityName, weekendCount, anchorId = 'all-events
     >
       <a
         href={`#${anchorId}`}
-        className="flex h-16 w-full items-center justify-center gap-2 bg-[var(--color-navy-950)] px-4 text-[var(--brand-accent)] shadow-[0_-6px_20px_rgba(0,0,0,0.18)]"
+        className="flex h-[60px] w-full items-center justify-center gap-3 bg-[var(--color-navy-950)] px-5 text-[var(--brand-accent)] shadow-[0_-6px_20px_rgba(0,0,0,0.22)]"
       >
         <span className="flex flex-col items-start leading-tight">
-          <span className="text-sm font-bold">Browse all {cityName} events &rarr;</span>
+          <span className="text-[15px] font-bold tracking-tight">Browse all {cityName} events &rarr;</span>
           {weekendCount > 0 ? (
-            <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/85">
+            <span className="mt-0.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/85">
               {weekendCount} this weekend
             </span>
           ) : (
-            <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/85">
+            <span className="mt-0.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/85">
               See what&apos;s on
             </span>
           )}
