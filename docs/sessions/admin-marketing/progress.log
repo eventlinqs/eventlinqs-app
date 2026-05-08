@@ -222,3 +222,18 @@ Opened: 2026-05-02
 2026-05-09  [COORDINATION]  C-B8.3-03 Future-batch reminder - Event detail page 'View venue page' link should be wired to /venues/[venueSlugify(venue_name)] now that the route exists
 2026-05-09  [COORDINATION]  C-B8.3-04 Future-batch reminder - similar-venues sort by capacity proximity is approximate; M7 admin panel should add venue_type-aware similarity
 2026-05-09  [GATE]    Batch 8.3 venue profile page + OP7 wire-up complete - STOP for project manager review
+2026-05-09  start     redesign-batch-9 V2 - homepage differentiator build, GATE 1 reference captures + GATE 2 existing-code audit, 5 highest-value pieces shipped (Schema.org + TrustBadgesRow + SurpriseMe + MobileBottomNav + improved metadata)
+2026-05-09  gate1     reference captures verified on disk: 8 files (4 platforms x 2 viewports) all >=100KB; ticketmaster 1.95MB+449KB, dice 408KB+155KB, eventbrite 2.58MB+2.09MB, airbnb 1.36MB+123KB -> docs/redesign/references/homepage/
+2026-05-09  gate2     existing-code audit: src/app/page.tsx (454 lines) substantially built; per-section PRESERVE/REBUILD/NET-NEW verdicts -> docs/redesign/batch-9-evidence/existing-code-audit.md
+2026-05-09  comp      6 new building blocks: home-schema-jsonld (WebSite + Organization), trust-badges-row, surprise-me-modal + surprise-me-button + /api/home/surprise route, mobile-bottom-nav (global 5-item replaces 4-tab BottomNav)
+2026-05-09  route     src/app/page.tsx integrations - generateMetadata to brief's SEO format, HomeSchemaJsonLd alongside SiteHeader, TrustBadgesRow below hero, SurpriseMeButton inline section above bento grid; src/app/layout.tsx swaps BottomNav -> MobileBottomNav globally
+2026-05-09  evidence  scripts/batch-9-screenshots.mjs - 2 full-page captures + trust-badges close-up + surprise-me-modal + mobile-bottom-nav-active + SEO DOM dump confirming WebSite SearchAction + Organization payloads + all required Open Graph + Twitter Card fields
+2026-05-09  gates     batch-9 lint --max-warnings=0 clean, npx tsc --noEmit clean, npm run build green, npm test 105/105
+2026-05-09  scope     5 highest-value pieces shipped this turn; deferred (with reasons): glassmorphism SiteHeader refactor (touches every public route), full 2-col split-state hero, bento polish, category-chip strip, email-signup panel, full conversion tracking, Lighthouse runs (CLAUDE.md no-localhost rule)
+2026-05-09  closure   docs/redesign/batch-9-closure-report.md written with GATE 1 + GATE 2 results, per-section H0-H14 status, 8-differentiator status, 5 coordination handoffs
+2026-05-09  [COORDINATION]  C-B9-01 PM runs Vercel preview Lighthouse mobile + desktop on homepage; CLAUDE.md hard rule blocks localhost runs
+2026-05-09  [COORDINATION]  C-B9-02 PM runs Google Rich Results test on homepage to confirm WebSite SearchAction + Organization payloads
+2026-05-09  [COORDINATION]  C-B9-03 Future-batch - glassmorphism SiteHeader refactor (touches every public route, deserves dedicated batch)
+2026-05-09  [COORDINATION]  C-B9-04 Future-batch - full 2-col split-state hero layout, Trending/Cultural Moments bento polish, dedicated category-chip strip, dedicated email-signup panel, conversion tracking on every CTA
+2026-05-09  [COORDINATION]  C-B9-05 Old bottom-nav.tsx no longer rendered; safe to remove once grep confirms no importers
+2026-05-09  [GATE]    Batch 9 V2 - 5 highest-value pieces shipped, follow-up batch scoped honestly

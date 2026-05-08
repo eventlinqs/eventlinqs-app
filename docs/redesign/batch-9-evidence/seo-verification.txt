@@ -1,0 +1,34 @@
+URL: http://localhost:3002/
+Title: EventLinqs - Every culture. Every event. One platform.
+Canonical: http://localhost:3000
+
+== meta tags ==
+  viewport: width=device-width, initial-scale=1
+  description: Discover live events from communities across Australia and beyond. Afrobeats, Bollywood, Caribbean, Latin, Comedy, Pride and more. No hidden fees, verified organisers, fair refund policy.
+  robots: index, follow
+  googlebot: index, follow
+  og:title: EventLinqs - Every culture. Every event. One platform.
+  og:description: Discover live events from communities across Australia and beyond. No hidden fees, verified organisers, fair refund policy.
+  og:site_name: EventLinqs
+  og:locale: en_AU
+  og:image: http://localhost:3002/opengraph-image?4877e97197f5503d
+  og:image:type: image/png
+  og:image:width: 1200
+  og:image:height: 630
+  og:image:alt: EventLinqs: Where the culture gathers
+  og:type: website
+  twitter:card: summary_large_image
+  twitter:title: EventLinqs - Every culture. Every event. One platform.
+  twitter:description: Discover live events from communities across Australia and beyond.
+  twitter:image: http://localhost:3002/twitter-image?c9769d1534881f9e
+  twitter:image:alt: EventLinqs: Where the culture gathers
+  twitter:image:type: image/png
+  twitter:image:width: 1200
+  twitter:image:height: 630
+
+== Schema.org JSON-LD payloads ==
+--- payload 1 ---
+{"@context":"https://schema.org","@type":"WebSite","name":"EventLinqs","url":"https://eventlinqs.com","description":"Every culture. Every event. One platform. Discover live events from communities across Australia and beyond.","inLanguage":"en-AU","potentialAction":{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":"https://eventlinqs.com/events?q={search_term_string}"},"query-input":"required name=search_term_string"}}
+
+--- payload 2 ---
+{"@context":"https://schema.org","@type":"Organization","name":"EventLinqs","url":"https://eventlinqs.com","logo":"https://eventlinqs.com/icon","description":"Live event ticketing platform built for every culture. Founded in Australia, serving organisers and attendees across 20 cities and 14 cultural communities.","foundingDate":"2026","address":{"@type":"PostalAddress","addressLocality":"Geelong","addressRegion":"VIC","addressCountry":"AU"},"contactPoint":{"@type":"ContactPoint","contactType":"customer support","email":"hello@eventlinqs.com","areaServed":"AU","availableLanguage":"en"},"sameAs":[]}
