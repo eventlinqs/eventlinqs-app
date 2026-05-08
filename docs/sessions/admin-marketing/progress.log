@@ -194,3 +194,16 @@ Opened: 2026-05-02
 2026-05-09  [COORDINATION]  C-B8.1-04 PM seeds cancelled + postponed events in dev DB for EventStateBanner end-to-end visual verification
 2026-05-09  [COORDINATION]  C-B8.1-05 Future-batch reminder: ED5 highlights / ED10 related cultures rail await M11 data layer; /organisers/[handle] (8.2) and /venues/[handle] (8.3) close deep-link gaps in ED7 + ED8
 2026-05-09  [GATE]    Batch 8.1 event detail launch polish complete - STOP for project manager review
+2026-05-09  start     redesign-batch-8.2 - organiser profile page net-new build, GATE 1 reference captures + GATE 2 existing-code audit, OP1-OP10 composition (skip OP8 reviews per brief)
+2026-05-09  gate1     reference captures verified on disk: 6 files at >=100KB (ticketmaster 373KB+184KB, dice 154KB+112KB w/ /browse/london fallback for headless-blocked artist pages, eventbrite 104KB+127KB) -> docs/redesign/references/organiser-profile/
+2026-05-09  gate2     existing-code audit: /organisers/[handle] route DID NOT EXIST in codebase; brief assumption incorrect; verdict = net-new build with full Batch 6+ standards from start, not preserve-vs-rebuild surgical work -> docs/redesign/batch-8.2-evidence/existing-code-audit.md
+2026-05-09  comp      6 new components: src/components/features/organisers/{organiser-schema-jsonld,organiser-profile-hero,organiser-bio-section,organiser-event-types-breakdown,organiser-contact-panel,organiser-mobile-sticky-bar}.tsx
+2026-05-09  route     src/app/organisers/[handle]/page.tsx - dynamic route, ISR revalidate=300, reads organisations by slug joined to events; computes event-type breakdown + city set in-page; SEO contract met (title format '[Org] - Events & Profile - EventLinqs', og:type=profile, twitter:card=summary_large_image, Schema.org Organization JSON-LD with embedded upcoming Event array)
+2026-05-09  evidence  scripts/batch-8-2-screenshots.mjs - 6 page captures (owambe-sydney + bollywood-nights-sydney + caribbean-carnival-melbourne x 1440 + 375) + 1 mobile sticky bar capture + 1 SEO verification dump confirming Schema.org Organization payload with embedded 3-event array
+2026-05-09  gates     batch-8.2 lint --max-warnings=0 clean, npx tsc --noEmit clean, npm run build green (/organisers/[handle] dynamic route added, all other routes preserved), npm test 105/105
+2026-05-09  closure   docs/redesign/batch-8.2-closure-report.md written with GATE 1 + GATE 2 results, per-section OP1-OP10 status, visual consistency check
+2026-05-09  [COORDINATION]  C-B8.2-01 PM runs Vercel preview Google Rich Results test on /organisers/owambe-sydney to confirm Schema.org Organization passes
+2026-05-09  [COORDINATION]  C-B8.2-02 Future-batch reminder - OP7 Venues rail surfaces in Batch 8.3 once /venues/[handle] route lands; deferred for v1 to avoid always-empty rail
+2026-05-09  [COORDINATION]  C-B8.2-03 Future-batch reminder - M7 admin panel needs typed social-links schema (Instagram/TikTok/Facebook/Twitter); OrganiserContactPanel will pick up automatically when shipped
+2026-05-09  [COORDINATION]  C-B8.2-04 Future-batch reminder - OP8 reviews / testimonials awaits M11+ reviews infrastructure; do not stub UI until data layer exists
+2026-05-09  [GATE]    Batch 8.2 organiser profile page complete - STOP for project manager review
