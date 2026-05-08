@@ -25,17 +25,13 @@ export function BrowseByCultureRail({ citySlug, cityName, images }: Props) {
   const cultures = getAllCultures()
   return (
     <ContentSection surface="base" width="wide" topBorder>
-      <div className="mb-6 flex items-end justify-between gap-4 sm:mb-8">
-        <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
-            By culture
-          </p>
-          <h2 className="font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">
-            {cityName} by culture
-          </h2>
-        </div>
-      </div>
-      <SnapRailScroller railLabel={`${cityName} by culture`}>
+      <SnapRailScroller
+        railLabel={`${cityName} by culture`}
+        header={{
+          eyebrow: 'By culture',
+          title: `${cityName} by culture`,
+        }}
+      >
         {cultures.map(culture => {
           const img = images[culture.slug] ?? null
           return (

@@ -10,6 +10,7 @@ import { CityMap, type MapEventPin, type MapSuburbPolygon } from '@/components/f
 import { CityOrganiserCtaPanel } from '@/components/features/city/city-organiser-cta-panel'
 import { MobileStickyBar } from '@/components/features/city/mobile-sticky-bar'
 import { BrowseByCultureRail } from '@/components/features/city/browse-by-culture-rail'
+import { SnapRailScroller } from '@/components/ui/snap-rail'
 import { EventCard, type EventCardData } from '@/components/features/events/event-card'
 import { CityTileImage } from '@/components/media/CityTileImage'
 import { CategoryHeroEmpty } from '@/components/ui/CategoryHeroEmpty'
@@ -120,53 +121,40 @@ export function CityLandingPage({
 
       {thisWeekendEvents.length >= 4 ? (
         <ContentSection surface="alt" width="wide" topBorder>
-          <div className="mb-6 flex items-end justify-between gap-4">
-            <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
-                This weekend
-              </p>
-              <h2 className="font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">
-                Out this weekend in {city.name}
-              </h2>
-            </div>
-            <Link
-              href={`/events?city=${city.slug}&date=weekend`}
-              className="text-sm font-medium text-[var(--brand-accent)] hover:text-[var(--brand-accent-hover)]"
-            >
-              View all &rsaquo;
-            </Link>
-          </div>
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {thisWeekendEvents.slice(0, 6).map(e => (
-              <EventCard key={e.id} event={e} />
+          <SnapRailScroller
+            railLabel={`Out this weekend in ${city.name}`}
+            containerBg="ink-100"
+            header={{
+              eyebrow: 'This weekend',
+              title: `Out this weekend in ${city.name}`,
+              headerLink: { href: `/events?city=${city.slug}&date=weekend`, label: 'View all' },
+            }}
+          >
+            {thisWeekendEvents.slice(0, 12).map(e => (
+              <div key={e.id} className="w-[280px] shrink-0 snap-start">
+                <EventCard event={e} variant="rail" />
+              </div>
             ))}
-          </div>
+          </SnapRailScroller>
         </ContentSection>
       ) : null}
 
       {thisWeekEvents.length >= 4 ? (
         <ContentSection surface="base" width="wide" topBorder>
-          <div className="mb-6 flex items-end justify-between gap-4">
-            <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
-                This week
-              </p>
-              <h2 className="font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">
-                On this week in {city.name}
-              </h2>
-            </div>
-            <Link
-              href={`/events?city=${city.slug}&date=7d`}
-              className="text-sm font-medium text-[var(--brand-accent)] hover:text-[var(--brand-accent-hover)]"
-            >
-              View all &rsaquo;
-            </Link>
-          </div>
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {thisWeekEvents.slice(0, 6).map(e => (
-              <EventCard key={e.id} event={e} />
+          <SnapRailScroller
+            railLabel={`On this week in ${city.name}`}
+            header={{
+              eyebrow: 'This week',
+              title: `On this week in ${city.name}`,
+              headerLink: { href: `/events?city=${city.slug}&date=7d`, label: 'View all' },
+            }}
+          >
+            {thisWeekEvents.slice(0, 12).map(e => (
+              <div key={e.id} className="w-[280px] shrink-0 snap-start">
+                <EventCard event={e} variant="rail" />
+              </div>
             ))}
-          </div>
+          </SnapRailScroller>
         </ContentSection>
       ) : null}
 
@@ -187,15 +175,13 @@ export function CityLandingPage({
 
       {mapboxToken ? (
         <ContentSection surface="base" width="wide" topBorder>
-          <div className="mb-6 flex items-end justify-between gap-4">
-            <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
-                Map
-              </p>
-              <h2 className="font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">
-                Where {city.name} is happening
-              </h2>
-            </div>
+          <div className="mb-6">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
+              Map
+            </p>
+            <h2 className="font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">
+              Where {city.name} is happening
+            </h2>
           </div>
           <CityMap
             centerLng={city.longitude}
@@ -210,70 +196,68 @@ export function CityLandingPage({
 
       {popularEvents.length >= 4 ? (
         <ContentSection surface="alt" width="wide" topBorder>
-          <div className="mb-6">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
-              Popular this month
-            </p>
-            <h2 className="font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">
-              {city.name} highlights
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-            {popularEvents.slice(0, 8).map(e => (
-              <EventCard key={e.id} event={e} variant="rail" />
+          <SnapRailScroller
+            railLabel={`${city.name} highlights`}
+            containerBg="ink-100"
+            header={{
+              eyebrow: 'Popular this month',
+              title: `${city.name} highlights`,
+            }}
+          >
+            {popularEvents.slice(0, 12).map(e => (
+              <div key={e.id} className="w-[280px] shrink-0 snap-start">
+                <EventCard event={e} variant="rail" />
+              </div>
             ))}
-          </div>
+          </SnapRailScroller>
         </ContentSection>
       ) : null}
 
       {/* S9 By suburb rail - Tier 1 only. */}
       {city.tier === 1 && suburbs.length > 0 ? (
         <ContentSection surface="base" width="wide" topBorder>
-          <div className="mb-6">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
-              By suburb
-            </p>
-            <h2 className="font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">
-              Pick your part of {city.name}
-            </h2>
-          </div>
-          <ul role="list" className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+          <SnapRailScroller
+            railLabel={`Pick your part of ${city.name}`}
+            header={{
+              eyebrow: 'By suburb',
+              title: `Pick your part of ${city.name}`,
+            }}
+          >
             {suburbs.map(s => {
               const img = suburbImages[s.slug] ?? null
               const sub = s.slug.startsWith(`${city.slug}-`) ? s.slug.slice(city.slug.length + 1) : s.slug
               return (
-                <li key={s.slug}>
-                  <Link
-                    href={`/city/${city.slug}/${sub}`}
-                    className="group block overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg"
-                  >
-                    <div className="relative aspect-[4/3] w-full overflow-hidden bg-[var(--color-navy-950)]">
-                      {img ? (
-                        <CityTileImage src={img} alt={`${s.name} - ${city.name}`} />
-                      ) : (
-                        <div
-                          aria-hidden
-                          className="absolute inset-0"
-                          style={{
-                            background:
-                              'linear-gradient(135deg, var(--color-navy-950), color-mix(in oklab, var(--brand-accent) 30%, var(--color-navy-950)))',
-                          }}
-                        />
-                      )}
-                    </div>
-                    <div className="p-3 sm:p-4">
-                      <p className="font-display text-sm font-semibold text-[var(--text-primary)]">
-                        {s.name}
-                      </p>
-                      <p className="mt-1 line-clamp-2 text-xs text-[var(--text-secondary)]">
-                        {s.characterDescriptor}
-                      </p>
-                    </div>
-                  </Link>
-                </li>
+                <Link
+                  key={s.slug}
+                  href={`/city/${city.slug}/${sub}`}
+                  className="group block w-[260px] shrink-0 snap-start overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg sm:w-[280px]"
+                >
+                  <div className="relative aspect-[4/3] w-full overflow-hidden bg-[var(--color-navy-950)]">
+                    {img ? (
+                      <CityTileImage src={img} alt={`${s.name} - ${city.name}`} />
+                    ) : (
+                      <div
+                        aria-hidden
+                        className="absolute inset-0"
+                        style={{
+                          background:
+                            'linear-gradient(135deg, var(--color-navy-950), color-mix(in oklab, var(--brand-accent) 30%, var(--color-navy-950)))',
+                        }}
+                      />
+                    )}
+                  </div>
+                  <div className="p-3 sm:p-4">
+                    <p className="font-display text-sm font-semibold text-[var(--text-primary)]">
+                      {s.name}
+                    </p>
+                    <p className="mt-1 line-clamp-2 text-xs text-[var(--text-secondary)]">
+                      {s.characterDescriptor}
+                    </p>
+                  </div>
+                </Link>
               )
             })}
-          </ul>
+          </SnapRailScroller>
         </ContentSection>
       ) : null}
 
@@ -323,56 +307,54 @@ export function CityLandingPage({
       {/* S13 Related cities rail. */}
       {relatedItems.length > 0 ? (
         <ContentSection surface="alt" width="wide" topBorder>
-          <div className="mb-6">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
-              Around the country
-            </p>
-            <h2 className="font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">
-              Other Australian cities on EventLinqs
-            </h2>
-          </div>
-          <ul role="list" className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+          <SnapRailScroller
+            railLabel="Other Australian cities on EventLinqs"
+            containerBg="ink-100"
+            header={{
+              eyebrow: 'Around the country',
+              title: 'Other Australian cities on EventLinqs',
+            }}
+          >
             {relatedItems.map(c => {
               const img = relatedCityImages[c.slug] ?? null
               return (
-                <li key={c.slug}>
-                  <Link
-                    href={`/city/${c.slug}`}
-                    className="group block overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg"
-                  >
-                    <div className="relative aspect-[4/5] w-full overflow-hidden bg-[var(--color-navy-950)]">
-                      {img ? (
-                        <CityTileImage src={img} alt={`${c.name} on EventLinqs`} />
-                      ) : (
-                        <div
-                          aria-hidden
-                          className="absolute inset-0"
-                          style={{
-                            background:
-                              'linear-gradient(135deg, var(--color-navy-950), color-mix(in oklab, var(--brand-accent) 30%, var(--color-navy-950)))',
-                          }}
-                        />
-                      )}
+                <Link
+                  key={c.slug}
+                  href={`/city/${c.slug}`}
+                  className="group block w-[240px] shrink-0 snap-start overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg sm:w-[260px]"
+                >
+                  <div className="relative aspect-[4/5] w-full overflow-hidden bg-[var(--color-navy-950)]">
+                    {img ? (
+                      <CityTileImage src={img} alt={`${c.name} on EventLinqs`} />
+                    ) : (
                       <div
-                        className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3"
+                        aria-hidden
+                        className="absolute inset-0"
                         style={{
                           background:
-                            'linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.30) 50%, rgba(0,0,0,0) 100%)',
+                            'linear-gradient(135deg, var(--color-navy-950), color-mix(in oklab, var(--brand-accent) 30%, var(--color-navy-950)))',
                         }}
-                        aria-hidden
                       />
-                      <div className="absolute inset-x-0 bottom-0 p-3">
-                        <p className="font-display text-sm font-semibold text-white">{c.name}</p>
-                        <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/85">
-                          {c.state}
-                        </p>
-                      </div>
+                    )}
+                    <div
+                      className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3"
+                      style={{
+                        background:
+                          'linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.30) 50%, rgba(0,0,0,0) 100%)',
+                      }}
+                      aria-hidden
+                    />
+                    <div className="absolute inset-x-0 bottom-0 p-3">
+                      <p className="font-display text-sm font-semibold text-white">{c.name}</p>
+                      <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/85">
+                        {c.state}
+                      </p>
                     </div>
-                  </Link>
-                </li>
+                  </div>
+                </Link>
               )
             })}
-          </ul>
+          </SnapRailScroller>
           <p className="mt-6 text-xs text-[var(--text-secondary)]">
             All {allCities.length} cities on EventLinqs are listed in the
             {' '}

@@ -22,17 +22,13 @@ interface Props {
 export function EventTypesRail({ citySlug, cityName, images }: Props) {
   return (
     <ContentSection surface="alt" width="default" topBorder>
-      <div className="mb-8 flex items-end justify-between gap-4">
-        <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
-            By format
-          </p>
-          <h2 className="font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">
-            Browse {cityName} by event type
-          </h2>
-        </div>
-      </div>
-      <SnapRailScroller railLabel={`${cityName} event types`}>
+      <SnapRailScroller
+        railLabel={`${cityName} event types`}
+        header={{
+          eyebrow: 'By format',
+          title: `Browse ${cityName} by event type`,
+        }}
+      >
         {CITY_EVENT_TYPES.map(t => {
           const img = images[t.slug] ?? null
           return (

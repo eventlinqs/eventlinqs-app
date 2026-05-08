@@ -3,6 +3,7 @@ import { Suspense } from 'react'
 import { PageShell } from '@/components/layout/PageShell'
 import { ContentSection } from '@/components/layout/ContentSection'
 import { CityHero } from '@/components/features/city/city-hero'
+import { SnapRailScroller } from '@/components/ui/snap-rail'
 import { DateFilterChips } from '@/components/features/city/date-filter-chips'
 import { CityEditorialSection } from '@/components/features/city/city-editorial-section'
 import { MobileStickyBar } from '@/components/features/city/mobile-sticky-bar'
@@ -77,19 +78,20 @@ export function SuburbLandingPage({
 
       {weekendEvents.length >= 4 ? (
         <ContentSection surface="alt" width="wide" topBorder>
-          <div className="mb-6">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
-              This week and weekend
-            </p>
-            <h2 className="font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">
-              On in {suburb.name} now
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {weekendEvents.slice(0, 6).map(e => (
-              <EventCard key={e.id} event={e} />
+          <SnapRailScroller
+            railLabel={`On in ${suburb.name} now`}
+            containerBg="ink-100"
+            header={{
+              eyebrow: 'This week and weekend',
+              title: `On in ${suburb.name} now`,
+            }}
+          >
+            {weekendEvents.slice(0, 12).map(e => (
+              <div key={e.id} className="w-[280px] shrink-0 snap-start">
+                <EventCard event={e} variant="rail" />
+              </div>
             ))}
-          </div>
+          </SnapRailScroller>
         </ContentSection>
       ) : null}
 
@@ -137,48 +139,46 @@ export function SuburbLandingPage({
 
       {relatedItems.length > 0 ? (
         <ContentSection surface="alt" width="wide" topBorder>
-          <div className="mb-6">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
-              Across {city.name}
-            </p>
-            <h2 className="font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">
-              Other {city.name} suburbs
-            </h2>
-          </div>
-          <ul role="list" className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+          <SnapRailScroller
+            railLabel={`Other ${city.name} suburbs`}
+            containerBg="ink-100"
+            header={{
+              eyebrow: `Across ${city.name}`,
+              title: `Other ${city.name} suburbs`,
+            }}
+          >
             {relatedItems.map(s => {
               const img = relatedSuburbImages[s.slug] ?? null
               const sub = s.slug.startsWith(`${city.slug}-`) ? s.slug.slice(city.slug.length + 1) : s.slug
               return (
-                <li key={s.slug}>
-                  <Link
-                    href={`/city/${city.slug}/${sub}`}
-                    className="group block overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg"
-                  >
-                    <div className="relative aspect-[4/3] w-full overflow-hidden bg-[var(--color-navy-950)]">
-                      {img ? (
-                        <CityTileImage src={img} alt={`${s.name} - ${city.name}`} />
-                      ) : (
-                        <div
-                          aria-hidden
-                          className="absolute inset-0"
-                          style={{
-                            background:
-                              'linear-gradient(135deg, var(--color-navy-950), color-mix(in oklab, var(--brand-accent) 30%, var(--color-navy-950)))',
-                          }}
-                        />
-                      )}
-                    </div>
-                    <div className="p-3">
-                      <p className="font-display text-sm font-semibold text-[var(--text-primary)]">
-                        {s.name}
-                      </p>
-                    </div>
-                  </Link>
-                </li>
+                <Link
+                  key={s.slug}
+                  href={`/city/${city.slug}/${sub}`}
+                  className="group block w-[260px] shrink-0 snap-start overflow-hidden rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg sm:w-[280px]"
+                >
+                  <div className="relative aspect-[4/3] w-full overflow-hidden bg-[var(--color-navy-950)]">
+                    {img ? (
+                      <CityTileImage src={img} alt={`${s.name} - ${city.name}`} />
+                    ) : (
+                      <div
+                        aria-hidden
+                        className="absolute inset-0"
+                        style={{
+                          background:
+                            'linear-gradient(135deg, var(--color-navy-950), color-mix(in oklab, var(--brand-accent) 30%, var(--color-navy-950)))',
+                        }}
+                      />
+                    )}
+                  </div>
+                  <div className="p-3">
+                    <p className="font-display text-sm font-semibold text-[var(--text-primary)]">
+                      {s.name}
+                    </p>
+                  </div>
+                </Link>
               )
             })}
-          </ul>
+          </SnapRailScroller>
         </ContentSection>
       ) : null}
 

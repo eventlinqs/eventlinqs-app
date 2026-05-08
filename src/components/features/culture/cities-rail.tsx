@@ -35,17 +35,13 @@ export function CulturesByCityRail({ cultureSlug, cultureName, cities, images }:
   if (cities.length === 0) return null
   return (
     <ContentSection surface="base" width="default" topBorder>
-      <div className="mb-8 flex items-end justify-between gap-4">
-        <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
-            Where it lives
-          </p>
-          <h2 className="font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">
-            {cultureName} in cities everywhere
-          </h2>
-        </div>
-      </div>
-      <SnapRailScroller railLabel={`${cultureName} cities`}>
+      <SnapRailScroller
+        railLabel={`${cultureName} cities`}
+        header={{
+          eyebrow: 'Where it lives',
+          title: `${cultureName} in cities everywhere`,
+        }}
+      >
         {cities.map((city) => {
           const slug = citySlugify(city)
           const img = images[slug] ?? null
