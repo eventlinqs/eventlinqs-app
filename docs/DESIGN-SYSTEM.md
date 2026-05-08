@@ -350,23 +350,81 @@ The band occupies the bottom 40% of the image (`h-2/5`, `inset-x-0 bottom-0`). W
 - `--brand-accent` (gold-400) is permitted on dark surfaces only (`--color-navy-950` and below). On light card bodies use `--brand-accent-strong` (gold-800), which carries enough contrast for 4.5:1 against `--surface-0`.
 - Focus rings keep `--color-gold-400` because they paint with `ring-offset-2` so the ring sits on a white halo, restoring contrast.
 
-### 6.3 Carousels (Horizontal Scroll)
+### 6.3 Rails (Horizontal Scroll) - Rail Standard v2.0
 
-**The DICE sliding effect, done properly.**
+**Locked pattern as of Batch 6.6 (2026-05-09).** Every horizontal rail
+on EventLinqs MUST follow this contract. Single source of truth:
+`src/components/ui/snap-rail.tsx` exports `SnapRail` (full-chrome) and
+`SnapRailScroller` (compose-your-own-header with optional `header` prop).
 
-- CSS `scroll-snap-type: x mandatory` on container
+**Layout (locked):**
+
+```
+[eyebrow]                                       [< >] [progress ──]
+[TITLE]
+[ tile ][ tile ][ tile ][ tile ][ tile ][ tile ] →
+```
+
+- Eyebrow: `text-xs font-semibold uppercase tracking-[0.18em]` in `--brand-accent-strong` (gold-800)
+- Title: `font-display text-2xl sm:text-3xl font-bold` in `--text-primary`
+- Header row uses `flex items-end justify-between gap-4` so the
+  controls cluster sits TOP-RIGHT, on the same horizontal line as the
+  title. NEVER place arrows or progress below the scroller.
+
+**Controls (top-right cluster):**
+
+- Progress indicator first: `h-0.5 w-32 lg:w-40` rounded gray track
+  with `--brand-accent-strong` fill that animates with scroll position.
+- Two arrow buttons next to the progress, 36x36 circular, navy icon
+  on white surface with surface-2 border. Disabled state when canPrev
+  / canNext is false. `hidden md:flex` - mobile relies on swipe.
+
+**Scroll mechanics:**
+
+- `scroll-snap-type: x mandatory` on container
 - `scroll-snap-align: start` on each card
-- `overflow-x: auto` with hidden scrollbar on mobile
-- Prev/Next arrow buttons visible on desktop only (44x44px circular, `--ink-900` background, white arrow). On TM mobile they're visible always - we hide on mobile, rely on swipe.
-- 3-4 cards visible on desktop, 1.25 cards on mobile (peek of next card)
-- Gap: `--space-4` (16px)
-- Padding left/right: `--space-6` desktop, `--space-4` mobile
+- `overflow-x: auto` with hidden scrollbar
+- 280px card width (240px mobile minimum, 280px desktop preferred),
+  16px gap, `flex-shrink: 0`, `snap-start`
+- Drag-to-scroll on desktop with cursor: grab (via `useDragScroll` hook)
+- Native swipe on mobile (375px and up), peeks 1.5 cards on mobile
+- Visible: minimum 4 tiles desktop, 1.5 tiles mobile
 - Keyboard accessible: arrow keys navigate, Tab moves between cards
 
-**Section header (above carousel):**
-- Left: Eyebrow label (`--caption` uppercase in `--ink-600`) + Section title (`--heading-xl` Manrope 700)
-- Right: "View all >" link in `--gold-600`
-- Padding bottom before carousel: `--space-6`
+**Optional headerLink** (e.g. "View all"):
+- Right of header, before the controls cluster
+- `text-sm font-medium` in `--brand-accent-strong`, hidden on mobile
+
+**Components:**
+
+- `<SnapRail>`: opinionated full-chrome rail. Use this on the homepage
+  and anywhere you can adopt the standard eyebrow + title + headerLink.
+- `<SnapRailScroller header={{ eyebrow, title, headerLink? }}>`: same
+  output as `<SnapRail>` but tuned for nested ContentSection callers.
+  Pass `header` to render the standard top-right controls cluster
+  inline with the title; omit `header` only when the parent provides
+  custom header content (e.g. a tab bar) and the compact controls
+  should sit just above the scroll track.
+
+**When NOT to use a rail:**
+
+- Browse / paginated grids (e.g. "All [City] events"): use a regular
+  responsive grid with proper page navigation at the bottom. The rail
+  pattern is for curated horizontal slices, not full catalogues.
+- Small fixed sets that fit in a single viewport (e.g. 3-up "Adjacent
+  scenes" on culture pages): use a simple grid. Don't force a rail
+  when scrolling adds no value.
+
+**Migration audit (Batch 6.6):**
+
+City pages: This Weekend, This Week, Popular this month, By Suburb,
+Other Australian cities, Browse by Culture, Browse by Event Type - all
+converted to the standard. Suburb pages: This week + weekend, Other
+suburbs - converted. Culture pages: Cities rail, Sub-cultures (kept as
+6-tile grid - fits single viewport), Adjacent scenes (kept as 3-tile
+grid - fits single viewport). Homepage rails (this-week, this-weekend,
+city-rail, featured-venues): use `<SnapRail>` directly, picked up the
+new top-right controls automatically.
 
 ### 6.4 Filter Sidebar (Desktop) - THE FIX
 
