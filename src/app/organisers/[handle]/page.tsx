@@ -19,6 +19,7 @@ import { OrganiserContactPanel } from '@/components/features/organisers/organise
 import { OrganiserMobileStickyBar } from '@/components/features/organisers/organiser-mobile-sticky-bar'
 import { getCityPhoto } from '@/lib/images/city-photo'
 import { citySlugify } from '@/components/features/culture/cities-rail'
+import { venueSlugify } from '@/lib/venues/resolver'
 import type { Organisation } from '@/types/database'
 
 export const revalidate = 300
@@ -149,6 +150,23 @@ export default async function OrganiserProfilePage({ params }: Props) {
       return [name, slug, await getCityPhoto(slug)] as const
     }),
   )
+
+  // OP7 (Batch 8.3 wire-up) - venues this organiser uses, ordered by
+  // event count. Sourced from events.venue_name across upcoming + past.
+  // The brief deferred this until /venues/[handle] existed; that route
+  // ships in this same Batch 8.3 commit train.
+  const venueCounts = new Map<string, { name: string; count: number }>()
+  for (const e of [...upcoming, ...past]) {
+    const vn = e.venue_name
+    if (!vn) continue
+    const cur = venueCounts.get(vn) ?? { name: vn, count: 0 }
+    cur.count += 1
+    venueCounts.set(vn, cur)
+  }
+  const organiserVenues = Array.from(venueCounts.values())
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 6)
+    .map(v => ({ name: v.name, count: v.count, handle: venueSlugify(v.name) }))
 
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
   const upcomingForSchema = upcoming.slice(0, 12).map(e => ({
@@ -291,10 +309,39 @@ export default async function OrganiserProfilePage({ params }: Props) {
           </ContentSection>
         ) : null}
 
-        {/* OP7 Venues - placeholder until /venues/[handle] lands in Batch 8.3.
-         *  Render a quiet info card instead of an empty rail so the section
-         *  doesn't feel broken when no venue handles exist yet. */}
-        {/* (intentionally not rendered for v1 - see closure report) */}
+        {/* OP7 Venues this organiser uses (Batch 8.3 wire-up). Sourced
+         *  from events.venue_name across upcoming + past, ordered by event
+         *  count. Hidden when fewer than 2 distinct venues. */}
+        {organiserVenues.length >= 2 ? (
+          <ContentSection surface="alt" width="wide" topBorder>
+            <SnapRailScroller
+              railLabel={`Venues ${organisation.name} uses`}
+              containerBg="ink-100"
+              header={{
+                eyebrow: 'Where they show up',
+                title: `Venues ${organisation.name} uses`,
+              }}
+            >
+              {organiserVenues.map(v => (
+                <Link
+                  key={v.handle}
+                  href={`/venues/${v.handle}`}
+                  className="group flex w-[260px] shrink-0 snap-start flex-col gap-2 rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent)]/40 hover:shadow-lg sm:w-[280px]"
+                >
+                  <p className="font-display text-base font-semibold text-[var(--text-primary)]">
+                    {v.name}
+                  </p>
+                  <p className="text-xs text-[var(--text-secondary)]">
+                    {v.count} {v.count === 1 ? 'event' : 'events'}
+                  </p>
+                  <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--brand-accent-strong)]">
+                    View venue &rarr;
+                  </p>
+                </Link>
+              ))}
+            </SnapRailScroller>
+          </ContentSection>
+        ) : null}
 
         {/* OP9 Contact / email capture */}
         <div id="stay-connected">
