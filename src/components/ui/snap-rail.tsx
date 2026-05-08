@@ -11,12 +11,26 @@ import {
 import { useDragScroll } from '@/hooks/use-drag-scroll'
 
 /**
- * SnapRail primitives for horizontal scroll-snap strips.
+ * SnapRail primitives - Rail Standard v2.0 (Batch 6.6).
  *
- * Structure:
- *   - <SnapRail>: full-chrome variant with section eyebrow + title + link + arrows + progress + scroller
- *   - <SnapRailScroller>: bare scroll container used where the outer section already owns the header
- *     (e.g. Cultural Picks tabs). Still renders compact arrow controls + progress.
+ * Layout contract: arrows + progress sit TOP-RIGHT, on the same
+ * horizontal line as the rail headline. Industry standard: every
+ * major platform (Ticketmaster, Airbnb, Eventbrite, Netflix, Spotify,
+ * Amazon Prime Video) places horizontal-rail controls at top-right.
+ *
+ *   [eyebrow]                                    [< >] [progress ──]
+ *   [TITLE]
+ *   [tile][tile][tile][tile][tile][tile] →
+ *
+ * Components:
+ *   - <SnapRail>: full-chrome rail with built-in eyebrow + title +
+ *     optional headerLink. Use this everywhere by default.
+ *   - <SnapRailScroller>: drag/swipe scroller that the caller
+ *     composes its own header around. Now also exposes an optional
+ *     `header` slot so callers can hand in eyebrow/title and get the
+ *     standard top-right controls without writing the layout
+ *     themselves. Used inside parent sections that need custom header
+ *     content (tabs, dual headlines, etc).
  *
  * Cards inside must be 280px wide, flex-shrink-0, snap-start, gap-4.
  */
@@ -39,8 +53,19 @@ interface SnapRailProps {
 interface SnapRailScrollerProps {
   railLabel: string
   containerBg?: 'canvas' | 'ink-100'
-  /** When true, the arrows+progress row sits above the scroller (compact layout). */
-  controlsOnTop?: boolean
+  /**
+   * Optional structured header. When provided, the scroller renders
+   * a full top row with the headline on the left and arrows + progress
+   * top-right. When omitted, the scroller still renders compact
+   * controls top-right above the scroll track so the parent's external
+   * h2 sits cleanly above them.
+   */
+  header?: {
+    eyebrow?: string
+    title: string
+    headingId?: string
+    headerLink?: HeaderLink
+  }
   children: ReactNode
 }
 
@@ -143,7 +168,7 @@ function ArrowButtons({
 
 function ProgressBar({ progress }: { progress: number }) {
   return (
-    <div className="h-0.5 w-full max-w-[240px] rounded-full bg-[var(--surface-2)]" aria-hidden>
+    <div className="hidden h-0.5 w-32 rounded-full bg-[var(--surface-2)] md:block lg:w-40" aria-hidden>
       <div
         className="h-full rounded-full bg-[var(--brand-accent-strong)] transition-[width] duration-200 ease-out"
         style={{ width: `${Math.max(8, progress * 100)}%` }}
@@ -152,58 +177,148 @@ function ProgressBar({ progress }: { progress: number }) {
   )
 }
 
+/**
+ * Compact controls cluster (progress + arrows) for the top-right of a
+ * rail header. Hidden on mobile (md:flex) since arrows are not the
+ * primary scroll mechanism on touch devices - swipe is. Progress sits
+ * to the LEFT of the arrows, fading to track as the rail scrolls.
+ */
+function HeaderControls({
+  progress,
+  canPrev,
+  canNext,
+  onPrev,
+  onNext,
+  railLabel,
+}: {
+  progress: number
+  canPrev: boolean
+  canNext: boolean
+  onPrev: () => void
+  onNext: () => void
+  railLabel: string
+}) {
+  return (
+    <div className="hidden items-center gap-3 md:flex">
+      <ProgressBar progress={progress} />
+      <ArrowButtons
+        canPrev={canPrev}
+        canNext={canNext}
+        onPrev={onPrev}
+        onNext={onNext}
+        railLabel={railLabel}
+      />
+    </div>
+  )
+}
+
+function ScrollTrack({
+  scrollRef,
+  railLabel,
+  onKeyDown,
+  fadeFromClass,
+  canNext,
+  children,
+}: {
+  scrollRef: React.RefObject<HTMLDivElement | null>
+  railLabel: string
+  onKeyDown: (e: React.KeyboardEvent) => void
+  fadeFromClass: string
+  canNext: boolean
+  children: ReactNode
+}) {
+  return (
+    <div className="relative -mx-4 sm:-mx-6 lg:-mx-8">
+      {canNext && (
+        <div
+          aria-hidden
+          className={`pointer-events-none absolute right-0 top-0 z-10 h-full w-16 bg-gradient-to-l ${fadeFromClass} to-transparent sm:w-24`}
+        />
+      )}
+      <div
+        ref={scrollRef}
+        role="region"
+        aria-label={railLabel}
+        tabIndex={0}
+        onKeyDown={onKeyDown}
+        onClickCapture={(e) => {
+          const el = e.currentTarget as HTMLElement
+          if (el.getAttribute('data-dragged') === 'true') {
+            e.preventDefault()
+            e.stopPropagation()
+          }
+        }}
+        className="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-4 pb-4 pt-1 scrollbar-none focus-visible:outline-none sm:px-6 lg:px-8"
+      >
+        {children}
+      </div>
+    </div>
+  )
+}
+
 export function SnapRailScroller({
   railLabel,
   containerBg = 'canvas',
-  controlsOnTop = false,
+  header,
   children,
 }: SnapRailScrollerProps) {
   const { scrollRef, progress, canPrev, canNext, scrollByCards, onKeyDown } = useScrollState()
   useDragScroll(scrollRef)
   const fadeFromClass = containerBg === 'canvas' ? 'from-canvas' : 'from-ink-100'
 
-  const controlsRow = (
-    <div className="flex items-center justify-between gap-4">
-      <ProgressBar progress={progress} />
-      <ArrowButtons
-        canPrev={canPrev}
-        canNext={canNext}
-        onPrev={() => scrollByCards(-1)}
-        onNext={() => scrollByCards(1)}
-        railLabel={railLabel}
-      />
-    </div>
+  const controls = (
+    <HeaderControls
+      progress={progress}
+      canPrev={canPrev}
+      canNext={canNext}
+      onPrev={() => scrollByCards(-1)}
+      onNext={() => scrollByCards(1)}
+      railLabel={railLabel}
+    />
   )
 
   return (
     <div>
-      {controlsOnTop && <div className="mb-4">{controlsRow}</div>}
-      <div className="relative -mx-4 sm:-mx-6 lg:-mx-8">
-        {canNext && (
-          <div
-            aria-hidden
-            className={`pointer-events-none absolute right-0 top-0 z-10 h-full w-16 bg-gradient-to-l ${fadeFromClass} to-transparent sm:w-24`}
-          />
-        )}
-        <div
-          ref={scrollRef}
-          role="region"
-          aria-label={railLabel}
-          tabIndex={0}
-          onKeyDown={onKeyDown}
-          onClickCapture={(e) => {
-            const el = e.currentTarget as HTMLElement
-            if (el.getAttribute('data-dragged') === 'true') {
-              e.preventDefault()
-              e.stopPropagation()
-            }
-          }}
-          className="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-4 pb-4 pt-1 scrollbar-none focus-visible:outline-none sm:px-6 lg:px-8"
-        >
-          {children}
+      {header ? (
+        <div className="mb-5 flex items-end justify-between gap-4 sm:mb-6">
+          <div className="min-w-0">
+            {header.eyebrow ? (
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
+                {header.eyebrow}
+              </p>
+            ) : null}
+            <h2
+              id={header.headingId}
+              className="font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl"
+            >
+              {header.title}
+            </h2>
+          </div>
+          <div className="flex shrink-0 items-center gap-3">
+            {header.headerLink ? (
+              <Link
+                href={header.headerLink.href}
+                className="hidden whitespace-nowrap text-sm font-medium text-[var(--brand-accent-strong)] transition-colors hover:text-[var(--text-primary)] sm:block"
+              >
+                {header.headerLink.label} &rsaquo;
+              </Link>
+            ) : null}
+            {controls}
+          </div>
         </div>
-      </div>
-      {!controlsOnTop && <div className="mt-4">{controlsRow}</div>}
+      ) : (
+        <div className="mb-2 flex justify-end">{controls}</div>
+      )}
+
+      <ScrollTrack
+        scrollRef={scrollRef}
+        railLabel={railLabel}
+        onKeyDown={onKeyDown}
+        fadeFromClass={fadeFromClass}
+        canNext={canNext}
+      >
+        {children}
+      </ScrollTrack>
     </div>
   )
 }
@@ -224,9 +339,9 @@ export function SnapRail({
   return (
     <div>
       <div className="flex items-end justify-between gap-4">
-        <div className="flex items-start gap-3">
+        <div className="flex min-w-0 items-start gap-3">
           <div className="mt-1 h-8 w-0.5 shrink-0 bg-[var(--brand-accent-strong)]" aria-hidden />
-          <div>
+          <div className="min-w-0">
             <p className="font-display text-xs font-semibold uppercase tracking-widest text-[var(--brand-accent-strong)]">
               {eyebrow}
             </p>
@@ -239,16 +354,17 @@ export function SnapRail({
           </div>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex shrink-0 items-center gap-3">
           {headerLink && (
             <Link
               href={headerLink.href}
-              className="text-sm font-medium text-[var(--brand-accent-strong)] whitespace-nowrap transition-colors hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2"
+              className="hidden whitespace-nowrap text-sm font-medium text-[var(--brand-accent-strong)] transition-colors hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2 sm:inline"
             >
               {headerLink.label} &rsaquo;
             </Link>
           )}
-          <ArrowButtons
+          <HeaderControls
+            progress={progress}
             canPrev={canPrev}
             canNext={canNext}
             onPrev={() => scrollByCards(-1)}
@@ -259,33 +375,15 @@ export function SnapRail({
       </div>
 
       <div className="mt-5">
-        <ProgressBar progress={progress} />
-      </div>
-
-      <div className="relative mt-5 -mx-4 sm:-mx-6 lg:-mx-8">
-        {canNext && (
-          <div
-            aria-hidden
-            className={`pointer-events-none absolute right-0 top-0 z-10 h-full w-16 bg-gradient-to-l ${fadeFromClass} to-transparent sm:w-24`}
-          />
-        )}
-        <div
-          ref={scrollRef}
-          role="region"
-          aria-label={railLabel}
-          tabIndex={0}
+        <ScrollTrack
+          scrollRef={scrollRef}
+          railLabel={railLabel}
           onKeyDown={onKeyDown}
-          onClickCapture={(e) => {
-            const el = e.currentTarget as HTMLElement
-            if (el.getAttribute('data-dragged') === 'true') {
-              e.preventDefault()
-              e.stopPropagation()
-            }
-          }}
-          className="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-4 pb-4 pt-1 scrollbar-none focus-visible:outline-none sm:px-6 lg:px-8"
+          fadeFromClass={fadeFromClass}
+          canNext={canNext}
         >
           {children}
-        </div>
+        </ScrollTrack>
       </div>
     </div>
   )
