@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { Inter, Manrope } from 'next/font/google'
 import Script from 'next/script'
 import './globals.css'
-import { BottomNav } from '@/components/layout/bottom-nav'
+import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -88,7 +88,7 @@ export default function RootLayout({
         <div className="pb-16 md:pb-0">
           {children}
         </div>
-        <BottomNav />
+        <MobileBottomNav />
       </body>
     </html>
   )

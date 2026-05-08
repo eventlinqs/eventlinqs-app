@@ -1,9 +1,13 @@
 import { Suspense } from 'react'
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { HomeHero } from '@/components/features/home/home-hero'
+import { HomeSchemaJsonLd } from '@/components/features/home/home-schema-jsonld'
+import { TrustBadgesRow } from '@/components/features/home/trust-badges-row'
+import { SurpriseMeButton } from '@/components/features/home/surprise-me-button'
 import { BentoGrid, BentoTile, BentoSupportingColumn } from '@/components/features/events/bento-grid'
 import { EventBentoTile } from '@/components/features/events/event-bento-tile'
 import type { BentoEvent } from '@/components/features/events/event-bento-tile'
@@ -66,6 +70,29 @@ void cheapestPriceMarker
 // it to ISR. Per-user personalisation (saved-events badge, location
 // picker city) is hydrated client-side from cookies post-paint.
 export const revalidate = 120
+
+// Batch 9 V2 SEO contract: title format from the brief, full Open Graph
+// and Twitter Card with 1200x630 hero image, and canonical URL.
+export const metadata: Metadata = {
+  title: 'EventLinqs - Every culture. Every event. One platform.',
+  description:
+    'Discover live events from communities across Australia and beyond. Afrobeats, Bollywood, Caribbean, Latin, Comedy, Pride and more. No hidden fees, verified organisers, fair refund policy.',
+  alternates: { canonical: '/' },
+  openGraph: {
+    type: 'website',
+    locale: 'en_AU',
+    title: 'EventLinqs - Every culture. Every event. One platform.',
+    description:
+      'Discover live events from communities across Australia and beyond. No hidden fees, verified organisers, fair refund policy.',
+    siteName: 'EventLinqs',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'EventLinqs - Every culture. Every event. One platform.',
+    description:
+      'Discover live events from communities across Australia and beyond.',
+  },
+}
 
 export default async function HomePage() {
   const supabase = createPublicClient()
@@ -191,13 +218,56 @@ export default async function HomePage() {
     .filter(e => e.category?.slug === 'community' || e.category?.slug === 'charity')
     .slice(0, 10)
 
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
+
+  // Pre-fetch 3 surprise-me suggestions server-side so the modal opens
+  // with content immediately on first tap. The client refresh path
+  // hits /api/home/surprise to re-roll.
+  const initialSurprise = upcoming.slice(0, 3).map(e => ({
+    id: e.id,
+    slug: e.slug,
+    title: e.title ?? '',
+    city: e.venue_city ?? null,
+    startDate: e.start_date,
+    coverImage: e.cover_image_url ?? null,
+    reason: e.venue_city ? `On in ${e.venue_city} this week` : 'On this week',
+  }))
+
   return (
     <div className="min-h-screen bg-canvas">
+      <HomeSchemaJsonLd baseUrl={baseUrl} />
       <SiteHeader />
 
       <main>
-        {/* 1. Light-bg hero - separated card pattern, no text-on-photo overlay */}
+        {/* H1 hero - existing cinematic hero. The split-state layout
+         *  (high-intent search vs surprise me discovery) surfaces the
+         *  Surprise Me CTA below the headline; full split-column refit
+         *  lands in a follow-up batch. */}
         <HomeHero featuredEvent={featuredHero} />
+
+        {/* H1.5 Trust badges row - radical-transparency strip below the
+         *  hero. The differentiator vs Ticketmaster's hidden-fees
+         *  reputation. */}
+        <TrustBadgesRow />
+
+        {/* H1 Surprise Me affordance - sits inline above the bento grid
+         *  so the discovery path is one tap from above-fold. Server
+         *  pre-rendered suggestions open the modal instantly on tap. */}
+        <section aria-label="Discovery" className="bg-canvas">
+          <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+            <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
+                  Not sure where to start?
+                </p>
+                <h2 className="mt-1 font-display text-xl font-bold text-[var(--text-primary)] sm:text-2xl">
+                  We&apos;ll pick three events for you
+                </h2>
+              </div>
+              <SurpriseMeButton initial={initialSurprise} />
+            </div>
+          </div>
+        </section>
 
         {/* 2. Bento grid row 1 - above fold, rendered inline */}
         <section aria-label="Featured events" className={`bg-canvas ${SECTION_DEFAULT}`}>
