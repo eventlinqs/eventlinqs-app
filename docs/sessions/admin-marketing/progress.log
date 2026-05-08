@@ -150,3 +150,16 @@ Opened: 2026-05-02
 2026-05-08  [COORDINATION]  C-B6.5-02 PM verifies mobile sticky CTA bar above global BottomNav on real iPhone + Android with safe-area-inset padding for iPhone X+ notch
 2026-05-08  [COORDINATION]  C-B6.5-03 PM verifies overflow-x: clip on html + body doesn't break Batch 5.6 culture pages, homepage, /events horizontal scroll-snap rails (confirmed locally)
 2026-05-08  [GATE]    Batch 6.5 critical fixes complete - STOP for project manager review
+2026-05-09  start     redesign-batch-6.6 - platform-wide rail consistency: arrows top-right per industry standard + convert static city/suburb grids to scrollers
+2026-05-09  refactor  src/components/ui/snap-rail.tsx - SnapRail + SnapRailScroller render arrows + progress as a single right-aligned cluster on the header row, inline with headline; SnapRailScroller gains optional header prop with eyebrow/title/headerLink for internal-header mode; legacy controlsOnTop prop removed; shared ScrollTrack internal component dedupes the track markup; mobile hides headerLink to keep header row clean
+2026-05-09  convert   CityLandingPage 5 static grids -> SnapRailScroller (This Weekend, This Week, Popular this month/[City] highlights, Pick your part of [City] suburb, Other Australian cities); SuburbLandingPage 2 static grids -> SnapRailScroller (This week+weekend, Other [city] suburbs); EventCards inside rails wrapped in w-[280px] shrink-0 snap-start to honour rail-card width contract
+2026-05-09  migrate   3 SnapRailScroller callers (CulturesByCityRail, EventTypesRail, BrowseByCultureRail) migrated to use the new internal-header prop and dropped their own h2/eyebrow markup; visually identical output, single source of truth
+2026-05-09  docs      docs/DESIGN-SYSTEM.md section 6.3 rewritten as Rail Standard v2.0 - defines locked header layout, control cluster spec, scroll mechanics, when not to use a rail, and the Batch 6.6 audit; canonical reference for future rail work
+2026-05-09  audit     docs/redesign/batch-6.6-evidence/rail-audit.md - every public-surface rail listed with PASS / INTENTIONAL-GRID / DEFERRED status; out-of-scope admin/dashboard/account rails listed for future batch
+2026-05-09  evidence  Top-right arrow position verified via close-up captures of city/culture/suburb/home rails at docs/redesign/batch-6.6-evidence/{*-rail.png}; full-page recaptures of Sydney + Melbourne + African + Homepage at 1440+375 baseline the refactor
+2026-05-09  gates     batch-6.6 lint --max-warnings=0 clean, npx tsc --noEmit clean, npm run build green, npm test 105/105 across 10 files
+2026-05-09  closure   docs/redesign/batch-6.6-closure-report.md written
+2026-05-09  [COORDINATION]  C-B6.6-01 PM verifies rail refactor on real iOS Safari + Android Chrome - swipe + drag still work, top-right controls visible
+2026-05-09  [COORDINATION]  C-B6.6-02 PM runs Vercel preview Lighthouse + axe on Sydney + Melbourne + African + Homepage to confirm no regression from refactor
+2026-05-09  [COORDINATION]  C-B6.6-03 Future-batch reminder - admin/dashboard/account rails (OOS for Batch 6.6) must adopt Rail Standard v2.0 when M7 ships
+2026-05-09  [GATE]    Batch 6.6 platform-wide rail consistency complete - STOP for project manager review
