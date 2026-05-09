@@ -54,7 +54,7 @@ export function PhotographicCityHero({ city, country, total, imageSrc }: Props) 
           className="pointer-events-none absolute inset-0"
           style={{
             background:
-              'linear-gradient(180deg, rgba(10,22,40,0.10) 0%, rgba(10,22,40,0.40) 45%, rgba(10,22,40,0.85) 100%)',
+              'linear-gradient(180deg, rgba(10,22,40,0.10) 0%, rgba(10,22,40,0.65) 45%, rgba(10,22,40,0.92) 100%)',
           }}
         />
         {/* Left-anchored content column */}

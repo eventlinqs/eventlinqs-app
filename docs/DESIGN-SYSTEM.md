@@ -652,6 +652,73 @@ Avatar shell rendered in the SiteHeader for authenticated visitors, replacing th
 
 All pills: `4px 10px` padding, `9999px` radius, Inter 500, 12px
 
+### 6.14 Bento Grid Standard (Batch 9.2, 2026-05-09)
+
+Asymmetric content grids used for the homepage Trending events and Cultural Moments sections.
+
+**Layout**
+- Desktop (>=1024px): 4-col x 2-row CSS grid with one 2-col x 2-row featured cell + smaller cells filling the remaining slots.
+- Mobile (<1024px): 2-col grid, featured cell spans both columns and 2 rows; remaining cells in a 2-col row beneath.
+- Gap: `gap-3` (12px) on mobile, `gap-4` (16px) on desktop.
+- Card radius: `rounded-2xl` (16px) for all cells.
+
+**Card content**
+- Photographic hero (Pexels via the existing image helpers) with brand gradient mask: `linear-gradient(180deg, rgba(10,22,40,0.0) 35%, rgba(10,22,40,0.55-0.65) 70%, rgba(10,22,40,0.92) 100%)`.
+- Date badge (top-left): white background pill or gold pill depending on context.
+- Card title: white Manrope 800, sized per featured/medium role.
+- Optional metadata pill (bottom-right): frosted-glass navy background (`rgba(10,22,40,0.55)` + `backdrop-filter: blur(12px)`).
+- Hover: `transform: scale(1.04)` over 500ms with `prefers-reduced-motion: reduce` suppressed.
+
+**Accessibility**
+- Card root is `<a>` with descriptive `aria-label`.
+- Focus-visible ring uses `--brand-accent` with 2px offset.
+- Photographic alt text describes the event/moment (not generic).
+
+**Locked components**
+- `src/components/features/home/trending-events-bento.tsx`
+- `src/components/features/home/cultural-moments-bento.tsx`
+
+### 6.15 Category Chip Strip Standard (Batch 9.2, 2026-05-09)
+
+Horizontal quick-filter pill row beneath the homepage hero.
+
+**Layout**
+- Desktop: chips fit within max-width container, no scroll.
+- Mobile: `scroll-snap-type: x mandatory` with peek-next pattern (next chip's left edge intentionally inside viewport).
+- Each chip: `h-11` (44px), pill shape, gap-2 between icon and label.
+
+**Visual**
+- Default: navy `--color-navy-950` background, white text, gold `--brand-accent` icon.
+- Active: gold background, navy text (used when a filter equivalent to the chip is currently applied to the destination route).
+- Hover: `transform: translateY(-1px)`, `box-shadow: 0 8px 24px rgba(10,22,40,0.18)`. Suppressed under `prefers-reduced-motion: reduce`.
+- Cultural Communities expandable (last chip): outlined style, gold border on transparent background.
+
+**Plausible**
+- Each chip carries `plausible-event-name=category_chip_click` plus `plausible-event-category={Label}` for the chip taxonomy attribution. The cultures expandable fires `nav_cultures_click` instead.
+
+**Locked component**
+- `src/components/features/home/category-chip-strip.tsx`
+
+### 6.16 Plausible Event Naming Convention (Batch 9.2, 2026-05-09)
+
+EventLinqs uses Plausible cookieless analytics. Event names follow these conventions:
+
+**Pattern**: `{surface}_{action}` in lowercase snake_case.
+
+- `surface`: where the event happens. Examples: `hero`, `nav`, `category_chip`, `trending_card`, `cultural_moment`, `culture_card`, `city_card`, `email_signup`, `header_search`, `account_avatar`, `surprise_me`.
+- `action`: what happened. Examples: `click`, `open`, `submit_success`, `submit_error`, `pick_click`.
+
+Compound examples: `hero_browse_click`, `email_signup_submit_success`, `cultural_moment_click`, `header_search_open`.
+
+**Properties** (when needed) live on the same event with key/value pairs. Only include props that are useful for filtering/grouping in Plausible's dashboard. Keep prop values low-cardinality (slugs, taxonomy categories, error reasons).
+
+**Sources**
+- Static links: tagged-events class on the `<a>` (`className="plausible-event-name=foo plausible-event-prop=value"`). No JS round-trip required.
+- Dynamic actions (form submit, modal open): `trackEvent(name, props?)` from `@/lib/analytics/plausible`.
+- Server actions and webhook conversions: `trackEventServer(name, url, props?)` (fire-and-forget; never throws).
+
+The full event matrix lives at `docs/PLAUSIBLE-EVENTS.md`.
+
 ---
 
 ## 7. Page-by-Page Templates

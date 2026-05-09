@@ -43,7 +43,7 @@ export function PhotographicCultureHero({ eyebrow, title, subtitle, imageSrc }: 
           className="pointer-events-none absolute inset-0"
           style={{
             background:
-              'linear-gradient(180deg, rgba(10,22,40,0.10) 0%, rgba(10,22,40,0.45) 45%, rgba(10,22,40,0.85) 100%)',
+              'linear-gradient(180deg, rgba(10,22,40,0.10) 0%, rgba(10,22,40,0.65) 45%, rgba(10,22,40,0.92) 100%)',
           }}
         />
         <div className="relative z-10 mx-auto flex h-full max-w-7xl items-end px-4 pb-10 sm:px-6 sm:pb-12 lg:px-8 lg:pb-14">
