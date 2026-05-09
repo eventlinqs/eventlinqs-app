@@ -1,4 +1,5 @@
 import { HeroMedia } from '@/components/media'
+import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 
 /**
  * PhotographicCategoryHero - Batch 4 replacement for the navy-950 + radial
@@ -47,6 +48,7 @@ export function PhotographicCategoryHero({ slug, eyebrow, title, subtitle }: Pro
       aria-labelledby="category-hero-heading"
       className="relative overflow-hidden"
     >
+      <HeroPresenceMarker />
       <div className="relative h-[64vh] min-h-[420px] max-h-[640px] w-full">
         <HeroMedia image={src} alt={alt} priority />
         {/* Darkened gradient: bottom-up navy so headline stays readable */}

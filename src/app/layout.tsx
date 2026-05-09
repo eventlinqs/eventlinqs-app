@@ -3,6 +3,8 @@ import { Inter, Manrope } from 'next/font/google'
 import Script from 'next/script'
 import './globals.css'
 import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav'
+import { HeaderScrollSentinel } from '@/components/layout/header-scroll-sentinel'
+import { HeroPresenceProvider } from '@/contexts/hero-presence-context'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -85,10 +87,16 @@ export default function RootLayout({
         <Script id="el-real-user-bootstrap" strategy="afterInteractive">
           {BODY_REAL_USER_BOOTSTRAP}
         </Script>
-        <div className="pb-16 md:pb-0">
-          {children}
-        </div>
-        <MobileBottomNav />
+        <a href="#main-content" className="skip-to-content">
+          Skip to main content
+        </a>
+        <HeroPresenceProvider>
+          <HeaderScrollSentinel />
+          <div id="main-content" className="pb-16 md:pb-0">
+            {children}
+          </div>
+          <MobileBottomNav />
+        </HeroPresenceProvider>
       </body>
     </html>
   )

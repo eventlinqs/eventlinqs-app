@@ -15,6 +15,7 @@ import { getDynamicPriceMap } from '@/lib/pricing/dynamic-pricing'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { HeroMedia } from '@/components/media'
+import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 import { GlassCard } from '@/components/ui/glass-card'
 import { getFeaturedHeroBackground } from '@/lib/images/event-media'
 import { StickyActionBar } from '@/components/features/events/sticky-action-bar'
@@ -469,6 +470,7 @@ export default async function EventDetailPage({ params }: Props) {
           aria-label="Event hero"
           className="relative flex min-h-[55vh] items-end overflow-hidden bg-navy-950 md:min-h-[70vh]"
         >
+          <HeroPresenceMarker />
           <div className="absolute inset-0">
             <HeroMedia
               image={media.image}

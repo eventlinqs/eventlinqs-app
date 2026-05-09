@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { HeroMedia } from '@/components/media'
+import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 import { GlassCard } from '@/components/ui/glass-card'
 import { getFeaturedHeroBackground, type EventMediaInput } from '@/lib/images/event-media'
 import type { CategoryHighlightSlide } from '@/lib/content/category-highlight-slides'
@@ -225,6 +226,7 @@ export async function FeaturedEventHero({
 
   return (
     <>
+      <HeroPresenceMarker />
       <FeaturedHeroStaticShell
         slide={slides[0]}
         liveEventCount={liveEventCount}

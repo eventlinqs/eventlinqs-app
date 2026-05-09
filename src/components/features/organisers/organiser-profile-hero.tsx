@@ -1,5 +1,6 @@
 import { CalendarDays, MapPin } from 'lucide-react'
 import { OrganiserAvatar } from '@/components/media/OrganiserAvatar'
+import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 
 interface Props {
   /** Organiser display name. */
@@ -28,6 +29,7 @@ interface Props {
 export function OrganiserProfileHero({ name, coverImage, logoUrl, subtitle, stats, verified }: Props) {
   return (
     <section aria-labelledby="organiser-hero-heading" className="relative overflow-hidden">
+      <HeroPresenceMarker />
       <div className="relative h-[40vh] min-h-[280px] max-h-[420px] w-full">
         {coverImage ? (
           <div

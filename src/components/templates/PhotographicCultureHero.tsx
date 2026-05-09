@@ -1,4 +1,5 @@
 import { HeroMedia } from '@/components/media'
+import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 
 /**
  * PhotographicCultureHero - Batch 5 hero band for /culture/[slug].
@@ -23,6 +24,7 @@ export function PhotographicCultureHero({ eyebrow, title, subtitle, imageSrc }: 
       aria-labelledby="culture-hero-heading"
       className="relative overflow-hidden"
     >
+      <HeroPresenceMarker />
       <div className="relative h-[48vh] min-h-[320px] max-h-[460px] w-full">
         {imageSrc ? (
           <HeroMedia image={imageSrc} alt={`${title} on EventLinqs`} priority />

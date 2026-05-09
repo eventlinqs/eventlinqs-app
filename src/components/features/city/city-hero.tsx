@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { HeroMedia } from '@/components/media'
+import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 
 /**
  * CityHero - Batch 6 hero band for /city/[slug] and /city/[slug]/[suburb].
@@ -47,6 +48,7 @@ export function CityHero({
       aria-labelledby="city-hero-heading"
       className="relative overflow-hidden"
     >
+      <HeroPresenceMarker />
       {/* Hero is taller on mobile (matches Ticketmaster's destination
        *  guide pattern at 375px) so the headline carries weight before
        *  the user scrolls. Desktop reverts to a tighter 52vh band. */}

@@ -1,4 +1,5 @@
 import { HeroMedia } from '@/components/media'
+import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 
 /**
  * PhotographicCityHero - Batch 4 hero band for /events/browse/[city].
@@ -33,6 +34,7 @@ export function PhotographicCityHero({ city, country, total, imageSrc }: Props) 
       aria-labelledby="city-hero-heading"
       className="relative overflow-hidden"
     >
+      <HeroPresenceMarker />
       <div className="relative h-[44vh] min-h-[280px] max-h-[420px] w-full">
         {imageSrc ? (
           <HeroMedia image={imageSrc} alt={alt} priority />

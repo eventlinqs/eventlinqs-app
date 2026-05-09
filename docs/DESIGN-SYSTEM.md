@@ -569,6 +569,50 @@ Additions for v2.0:
 - Helper text: Inter 400, 13px, `--ink-600`, mt `--space-1`
 - Error state: border `--error`, helper text `--error`
 
+### 6.13a Site Header - Dual-State Glassmorphism (Batch 9.1, 2026-05-09)
+
+The site header is a single component with two visual states. Which state renders is a function of `(scrolled past sentinel) OR (page has no hero)`.
+
+**State A - Transparent (top of hero-bearing routes)**
+- Background: `transparent`
+- Border-bottom: `transparent`
+- Backdrop filter: `none`
+- Wordmark: `--white` with gold dot (`--gold-500`)
+- Nav links: `rgba(255,255,255,0.85)` → hover `--brand-accent`
+- No inline search (the hero owns primary search)
+
+**State B - Navy frosted glass (scrolled past 80px, OR no-hero route)**
+- Background: `rgba(10, 22, 40, 0.72)`
+- Backdrop filter: `blur(20px) saturate(180%)` (with `-webkit-` prefix)
+- Border-bottom: `1px solid rgba(212, 164, 55, 0.30)` (gold edge)
+- Compact 360px desktop search pill becomes visible (placeholder "What are you in the mood for?")
+- Mobile retains an icon-only search trigger (44×44, always visible)
+- Degraded fallback for browsers without `backdrop-filter`: `rgba(10, 22, 40, 0.95)` solid navy via `@supports not` rule
+
+**Transition**
+- Duration: `300ms`
+- Easing: `cubic-bezier(0.22, 1, 0.36, 1)`
+- Properties: `background-color, backdrop-filter, border-color, box-shadow`
+- `prefers-reduced-motion: reduce`: instant (no transition)
+
+**Mechanics**
+- `data-scrolled="0|1"` and `data-no-hero="0|1"` attributes on the header element drive styling via CSS, so React does NOT re-render per scroll frame.
+- A 1px / `h-20` `HeaderScrollSentinel` is mounted in `app/layout.tsx` immediately above page content. An IntersectionObserver in `useHeaderScrollState` flips `data-scrolled` when the sentinel leaves the viewport.
+- A `HeroPresenceProvider` (root layout) lets each hero-bearing page register itself by rendering a `<HeroPresenceMarker />` near its `<HeroMedia>` instance. Pages without a hero never register and force State B from initial paint, avoiding an SSR transparent flash.
+- HeroMedia itself is **not mutated** (DO NOT TOUCH); registration uses the marker sibling pattern.
+
+**Accessibility**
+- Skip-to-content link mounted in `app/layout.tsx`, hidden until focused; jumps to `#main-content`.
+- Focus-visible rings use `--brand-accent` with offset against `--color-navy-950` background colour.
+- All touch targets ≥44px (mobile search icon, hamburger, sheet items).
+- Mobile drawer retains existing focus trap, Escape close, scroll lock.
+
+**Search overlay**
+- Triggered by header pill click, mobile search icon click, or global `/` keyboard shortcut (suppressed inside text inputs and contenteditable).
+- Full-screen modal: `rgba(10, 22, 40, 0.92)` + `blur(40px) saturate(160%)`.
+- 4 tabs (Cultures, Cities, Events, Organisers) with hand-curated fallback suggestions; trending/typeahead data layer is deferred to a follow-up batch.
+- `role="dialog"`, `aria-modal="true"`, focus trap, Escape closes, body-scroll lock while open.
+
 ### 6.13 Badges & Pills
 
 | Pill | Background | Text | Use |
