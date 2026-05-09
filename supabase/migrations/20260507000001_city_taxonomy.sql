@@ -187,7 +187,7 @@ create policy "cities_anon_select" on public.cities
 drop policy if exists "cities_admin_all" on public.cities;
 create policy "cities_admin_all" on public.cities
   for all using (
-    exists (select 1 from public.users u where u.id = auth.uid() and u.role = 'admin')
+    exists (select 1 from public.admin_users a where a.id = auth.uid() and a.disabled_at is null and a.role in ('super_admin', 'admin'))
   );
 
 drop policy if exists "suburbs_anon_select" on public.suburbs;
@@ -197,7 +197,7 @@ create policy "suburbs_anon_select" on public.suburbs
 drop policy if exists "suburbs_admin_all" on public.suburbs;
 create policy "suburbs_admin_all" on public.suburbs
   for all using (
-    exists (select 1 from public.users u where u.id = auth.uid() and u.role = 'admin')
+    exists (select 1 from public.admin_users a where a.id = auth.uid() and a.disabled_at is null and a.role in ('super_admin', 'admin'))
   );
 
 -- ----------------------------------------------------------------------

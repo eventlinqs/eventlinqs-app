@@ -9,7 +9,11 @@ import { trackEvent } from '@/lib/analytics/plausible'
 interface Props {
   open: boolean
   onClose: () => void
+  /** Explicit trigger ref. Preferred focus-restore target on close. */
+  triggerRef?: React.RefObject<HTMLElement | null>
 }
+
+const TRIGGER_DOM_ID = 'header-search-trigger'
 
 /**
  * Header search overlay (Batch 9.1, a11y hardened in 9.1.1).
@@ -74,15 +78,19 @@ const FALLBACKS: Record<Tab, { label: string; href: string }[]> = {
 
 const SUGGESTION_ID_PREFIX = 'header-search-suggestion-'
 
-export function HeaderSearchOverlay({ open, onClose }: Props) {
+export function HeaderSearchOverlay({ open, onClose, triggerRef }: Props) {
   const [tab, setTab] = useState<Tab>('events')
   const [query, setQuery] = useState('')
   /** Index into the current tab's suggestion list. -1 = no highlight (input only). */
   const [activeIndex, setActiveIndex] = useState<number>(-1)
   const inputRef = useRef<HTMLInputElement>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
-  /** Element that had focus the moment the overlay opened. Restored on close. */
-  const triggerRef = useRef<HTMLElement | null>(null)
+  /** Element to restore focus to on close. Resolved at open time via the
+   *  3-level fallback chain (Batch 9.2.1):
+   *    1. explicit triggerRef from props (preferred)
+   *    2. document.activeElement at open time
+   *    3. document.getElementById('header-search-trigger') as last resort */
+  const focusRestoreTarget = useRef<HTMLElement | null>(null)
   /** Suggestion link refs for programmatic activation on Enter. */
   const suggestionRefs = useRef<(HTMLAnchorElement | null)[]>([])
   const router = useRouter()
@@ -92,7 +100,20 @@ export function HeaderSearchOverlay({ open, onClose }: Props) {
   // Body scroll lock + analytics + focus capture on open. Focus restore on close.
   useEffect(() => {
     if (!open) return
-    triggerRef.current = (document.activeElement as HTMLElement) ?? null
+    // 3-level fallback chain for focus-restore target.
+    if (triggerRef?.current) {
+      // Level 1: explicit ref from the trigger component.
+      focusRestoreTarget.current = triggerRef.current
+    } else if (document.activeElement instanceof HTMLElement) {
+      // Level 2: whatever had focus at open time (covers '/' shortcut
+      // from a non-trigger surface).
+      focusRestoreTarget.current = document.activeElement
+    } else {
+      // Level 3: ID-based fallback to the search button. Used when the
+      // overlay is opened programmatically and document.activeElement is
+      // body or null.
+      focusRestoreTarget.current = document.getElementById(TRIGGER_DOM_ID)
+    }
     trackEvent('search_overlay_opened')
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -101,13 +122,16 @@ export function HeaderSearchOverlay({ open, onClose }: Props) {
       document.body.style.overflow = prev
       // Defer focus restore until after the dialog has unmounted so React
       // does not race the focus call against the dialog DOM teardown.
-      const target = triggerRef.current
+      const target = focusRestoreTarget.current
       if (target && typeof target.focus === 'function') {
-        setTimeout(() => target.focus(), 0)
+        // requestAnimationFrame defers across the next paint, ensuring
+        // the dialog DOM teardown completes before the trigger receives
+        // focus.
+        requestAnimationFrame(() => target.focus())
       }
-      triggerRef.current = null
+      focusRestoreTarget.current = null
     }
-  }, [open])
+  }, [open, triggerRef])
 
   // Escape closes.
   useEffect(() => {

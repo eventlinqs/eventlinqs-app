@@ -106,3 +106,6 @@ supabase/.temp/
 .tmp/
 
 .vercel
+
+# Batch 9.2.1 test-user credentials (local-only)
+docs/redesign/batch-9-2-1-evidence/test-user-credentials.md

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Search } from 'lucide-react'
 import { HeaderSearchOverlay } from './header-search-overlay'
 
@@ -10,6 +10,8 @@ interface Props {
   variant: 'desktop-pill' | 'mobile-icon'
   className?: string
 }
+
+const TRIGGER_DOM_ID = 'header-search-trigger'
 
 /**
  * HeaderSearchTrigger - opens the global search overlay (Batch 9.1).
@@ -28,6 +30,7 @@ interface Props {
  */
 export function HeaderSearchTrigger({ variant, className = '' }: Props) {
   const [open, setOpen] = useState(false)
+  const triggerRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     function isEditable(el: EventTarget | null): boolean {
@@ -51,6 +54,8 @@ export function HeaderSearchTrigger({ variant, className = '' }: Props) {
     return (
       <>
         <button
+          ref={triggerRef}
+          id={TRIGGER_DOM_ID}
           type="button"
           onClick={() => setOpen(true)}
           className={[
@@ -66,7 +71,7 @@ export function HeaderSearchTrigger({ variant, className = '' }: Props) {
             /
           </kbd>
         </button>
-        <HeaderSearchOverlay open={open} onClose={() => setOpen(false)} />
+        <HeaderSearchOverlay open={open} onClose={() => setOpen(false)} triggerRef={triggerRef} />
       </>
     )
   }
@@ -74,6 +79,8 @@ export function HeaderSearchTrigger({ variant, className = '' }: Props) {
   return (
     <>
       <button
+        ref={triggerRef}
+        id={TRIGGER_DOM_ID}
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Open search"
@@ -85,7 +92,7 @@ export function HeaderSearchTrigger({ variant, className = '' }: Props) {
       >
         <Search className="h-5 w-5" aria-hidden />
       </button>
-      <HeaderSearchOverlay open={open} onClose={() => setOpen(false)} />
+      <HeaderSearchOverlay open={open} onClose={() => setOpen(false)} triggerRef={triggerRef} />
     </>
   )
 }

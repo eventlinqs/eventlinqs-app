@@ -28,6 +28,7 @@ export async function SiteHeader() {
   const cities = await getPickerCities()
 
   let user: AccountUser | null = null
+  let userEmail: string | null = null
   try {
     const supabase = await createClient()
     const { data } = await supabase.auth.getUser()
@@ -36,13 +37,22 @@ export async function SiteHeader() {
         email: data.user.email,
         user_metadata: data.user.user_metadata,
       })
+      userEmail = data.user.email ?? null
     }
   } catch {
     // Auth resolution failures (e.g. malformed cookie, network blip on the
     // Supabase auth server) must NOT block the public surface from
     // rendering. Fall back to anonymous.
     user = null
+    userEmail = null
   }
 
-  return <SiteHeaderClient location={MELBOURNE_FALLBACK} cities={cities} user={user} />
+  return (
+    <SiteHeaderClient
+      location={MELBOURNE_FALLBACK}
+      cities={cities}
+      user={user}
+      userEmail={userEmail}
+    />
+  )
 }

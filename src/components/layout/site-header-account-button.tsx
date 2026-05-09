@@ -40,6 +40,7 @@ export function SiteHeaderAccountButton({ user, size = 'header', className = '' 
       prefetch={false}
       aria-label={`Account menu for ${user.displayName}`}
       className={[
+        'plausible-event-name=account_avatar_click',
         'inline-flex items-center gap-3 rounded-full',
         'transition-transform duration-200 motion-reduce:transition-none',
         'hover:scale-[1.05] motion-reduce:hover:scale-100',

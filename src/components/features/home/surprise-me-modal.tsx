@@ -142,7 +142,8 @@ export function SurpriseMeModal({ open, onClose, initial = [] }: Props) {
                 <Link
                   href={`/events/${s.slug}`}
                   onClick={() => trackEvent('surprise_me_clicked', { event_id: s.id })}
-                  className="group flex gap-4"
+                  data-event-slug={s.slug}
+                  className="plausible-event-name=surprise_me_pick_click group flex gap-4"
                 >
                   <div className="relative h-20 w-28 shrink-0 overflow-hidden rounded-lg bg-[var(--color-navy-950)] sm:h-24 sm:w-32">
                     {s.coverImage ? (

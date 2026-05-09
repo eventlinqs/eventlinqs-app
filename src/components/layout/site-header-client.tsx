@@ -7,6 +7,7 @@ import { LocationPicker } from '@/components/ui/location-picker'
 import { EventlinqsLogo } from '@/components/ui/eventlinqs-logo'
 import { HeaderSearchTrigger } from './header-search-trigger'
 import { SiteHeaderAccountButton, type AccountUser } from './site-header-account-button'
+import { SiteHeaderAccountDropdown } from './site-header-account-dropdown'
 import { useHeaderScrollState } from '@/hooks/use-header-scroll-state'
 import { useHeroPresence } from '@/contexts/hero-presence-context'
 import type { DetectedLocation } from '@/lib/geo/detect'
@@ -24,6 +25,8 @@ interface SiteHeaderClientProps {
   cities: PickerCityGroups
   /** Resolved Supabase user (minimal identity) or null when anonymous. */
   user: AccountUser | null
+  /** Authenticated user's email; surfaces in the avatar dropdown header. */
+  userEmail?: string | null
 }
 
 function readCityCookie(): DetectedLocation | null {
@@ -78,7 +81,8 @@ const getServerCookieSnapshot = (): DetectedLocation | null => null
  *   - Glassmorphism degrades to rgba(10, 22, 40, 0.95) on browsers
  *     without backdrop-filter via the @supports rule in globals.css.
  */
-export function SiteHeaderClient({ location, cities, user }: SiteHeaderClientProps) {
+export function SiteHeaderClient({ location, cities, user, userEmail }: SiteHeaderClientProps) {
+  const dropdownUser = user && userEmail ? { ...user, email: userEmail } : null
   const [isOpen, setIsOpen] = useState(false)
 
   const cookieLocation = useSyncExternalStore(
@@ -208,9 +212,9 @@ export function SiteHeaderClient({ location, cities, user }: SiteHeaderClientPro
               <LocationPicker currentLocation={displayLocation} cities={cities} variant="onDark" />
             </div>
 
-            {user ? (
+            {dropdownUser ? (
               <div className="hidden md:flex items-center">
-                <SiteHeaderAccountButton user={user} size="header" />
+                <SiteHeaderAccountDropdown user={dropdownUser} size="header" />
               </div>
             ) : (
               <>
@@ -228,9 +232,9 @@ export function SiteHeaderClient({ location, cities, user }: SiteHeaderClientPro
             )}
 
             {/* Mobile avatar (authenticated only) - sits left of the hamburger so the nav drawer remains the canonical mobile-nav surface. */}
-            {user ? (
+            {dropdownUser ? (
               <div className="md:hidden">
-                <SiteHeaderAccountButton user={user} size="header" />
+                <SiteHeaderAccountDropdown user={dropdownUser} size="header" />
               </div>
             ) : null}
 

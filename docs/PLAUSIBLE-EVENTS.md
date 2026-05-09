@@ -31,9 +31,11 @@ EventLinqs ships cookieless analytics via Plausible. This document is the source
 | `email_signup_submit_success` | Email signup form succeeded | none (server fires with `domain`) | `email-signup-panel.tsx` (client) + `email-subscribe.ts` (server) |
 | `email_signup_submit_error` | Email signup form errored | `reason` | `email-signup-panel.tsx` |
 | `email_panel_organiser_click` | "Are you an organiser?" link in the email panel | none | `email-signup-panel.tsx` (tagged) |
-| `surprise_me_open` | Surprise Me button click | none | queued for 9.2.1 instrumentation |
-| `surprise_me_pick_click` | Surprise Me modal pick activation | `event_slug` | queued for 9.2.1 instrumentation |
-| `account_avatar_click` | Avatar click on the SiteHeader | none | queued for 9.2.1 (avatar dropdown wires this) |
+| `surprise_me_open` | Surprise Me button click | none | `surprise-me-button.tsx` (tagged) [SHIPPED 9.2.1] |
+| `surprise_me_pick_click` | Surprise Me modal pick activation | `event_slug` | `surprise-me-modal.tsx` (tagged) [SHIPPED 9.2.1] |
+| `account_avatar_click` | Avatar click on the SiteHeader | none | `site-header-account-dropdown.tsx` + `site-header-account-button.tsx` (tagged) [SHIPPED 9.2.1] |
+| `account_sign_out` | Sign-out menu item activated in the avatar dropdown | none | `app/actions/auth.ts` (server-side, fires via trackEventServer) [SHIPPED 9.2.1] |
+| `email_signup_submit_duplicate` | Submitting an already-subscribed email (silent success) | `domain` | `app/actions/email-subscribe.ts` (server-side) [SHIPPED 9.2.1] |
 | `pageview` | Built-in Plausible pageview | path, referrer | Plausible default |
 
 Items marked "queued for 9.2.1" are documented for completeness; the static link sites that already exist via tagged-events are tracked from this batch onward, while the JS-API instrumentation on legacy locked components ships in 9.2.1 alongside the avatar dropdown work.

@@ -103,7 +103,7 @@ BEGIN
       e.venue_name, e.venue_address, e.venue_city, e.venue_state, 'Australia',
       e.venue_latitude::numeric, e.venue_longitude::numeric,
       e.cover_image_url, e.thumbnail_url,
-      'published'::public.event_status,
+      'draft'::public.event_status,
       'public'::public.event_visibility,
       NOW(),
       e.max_capacity,

@@ -73,32 +73,57 @@ export function EmailSignupPanel() {
             You are in. First email Friday.
           </div>
         ) : (
-          <form
-            action={handleSubmit}
-            className="mx-auto mt-10 flex max-w-xl flex-col gap-3 sm:flex-row"
-          >
-            <label htmlFor="email-signup-input" className="sr-only">
-              Email address
+          <form action={handleSubmit} className="mx-auto mt-10 max-w-xl">
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <label htmlFor="email-signup-input" className="sr-only">
+                Email address
+              </label>
+              <input
+                id="email-signup-input"
+                name="email"
+                type="email"
+                required
+                autoComplete="email"
+                placeholder="you@example.com"
+                aria-describedby={error ? 'email-signup-error' : 'email-signup-consent-note'}
+                aria-invalid={status === 'error' ? 'true' : 'false'}
+                disabled={pending}
+                className="h-14 flex-1 rounded-full bg-white px-6 text-base text-ink-900 placeholder:text-ink-400 focus:outline-none focus:ring-2 focus:ring-[var(--brand-accent)] focus:ring-offset-2 focus:ring-offset-[var(--color-navy-950)] disabled:opacity-60"
+              />
+              <button
+                type="submit"
+                disabled={pending}
+                className="h-14 shrink-0 rounded-full bg-[var(--brand-accent)] px-8 text-base font-semibold text-[var(--color-navy-950)] transition-colors hover:bg-[var(--brand-accent-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)] disabled:opacity-60"
+              >
+                {pending ? 'Subscribing…' : 'Subscribe'}
+              </button>
+            </div>
+            <label className="mt-4 flex items-start gap-3 text-left text-sm text-white/80">
+              <input
+                type="checkbox"
+                name="consent"
+                defaultChecked
+                disabled={pending}
+                className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border border-white/30 bg-transparent accent-[var(--brand-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)]"
+              />
+              <span>
+                I agree to receive cultural event updates from EventLinqs.
+              </span>
             </label>
-            <input
-              id="email-signup-input"
-              name="email"
-              type="email"
-              required
-              autoComplete="email"
-              placeholder="you@example.com"
-              aria-describedby={error ? 'email-signup-error' : undefined}
-              aria-invalid={status === 'error' ? 'true' : 'false'}
-              disabled={pending}
-              className="h-14 flex-1 rounded-full bg-white px-6 text-base text-ink-900 placeholder:text-ink-400 focus:outline-none focus:ring-2 focus:ring-[var(--brand-accent)] focus:ring-offset-2 focus:ring-offset-[var(--color-navy-950)] disabled:opacity-60"
-            />
-            <button
-              type="submit"
-              disabled={pending}
-              className="h-14 shrink-0 rounded-full bg-[var(--brand-accent)] px-8 text-base font-semibold text-[var(--color-navy-950)] transition-colors hover:bg-[var(--brand-accent-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)] disabled:opacity-60"
+            <p
+              id="email-signup-consent-note"
+              className="mt-2 text-left text-xs text-white/55 sm:pl-7"
             >
-              {pending ? 'Subscribing…' : 'Subscribe'}
-            </button>
+              We will only email you what we say we will. Read our{' '}
+              <Link
+                href="/legal/privacy"
+                prefetch={false}
+                className="font-semibold text-white/85 underline-offset-4 hover:underline"
+              >
+                Privacy Policy
+              </Link>
+              .
+            </p>
           </form>
         )}
 

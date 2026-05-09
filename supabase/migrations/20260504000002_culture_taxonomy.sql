@@ -138,7 +138,7 @@ create policy "cultures_anon_select" on public.cultures
 drop policy if exists "cultures_admin_all" on public.cultures;
 create policy "cultures_admin_all" on public.cultures
   for all using (
-    exists (select 1 from public.users u where u.id = auth.uid() and u.role = 'admin')
+    exists (select 1 from public.admin_users a where a.id = auth.uid() and a.disabled_at is null and a.role in ('super_admin', 'admin'))
   );
 
 drop policy if exists "event_types_anon_select" on public.event_types;
@@ -148,7 +148,7 @@ create policy "event_types_anon_select" on public.event_types
 drop policy if exists "event_types_admin_all" on public.event_types;
 create policy "event_types_admin_all" on public.event_types
   for all using (
-    exists (select 1 from public.users u where u.id = auth.uid() and u.role = 'admin')
+    exists (select 1 from public.admin_users a where a.id = auth.uid() and a.disabled_at is null and a.role in ('super_admin', 'admin'))
   );
 
 commit;

@@ -34,6 +34,7 @@ export function SurpriseMeButton({ initial = [], className = '' }: Props) {
         type="button"
         onClick={() => setOpen(true)}
         className={[
+          'plausible-event-name=surprise_me_open',
           'inline-flex h-12 items-center gap-2 rounded-full bg-[var(--brand-accent)] px-6 text-sm font-bold text-[var(--color-navy-950)] shadow-md transition hover:-translate-y-0.5 hover:bg-[var(--brand-accent-strong)]',
           className,
         ].join(' ')}
