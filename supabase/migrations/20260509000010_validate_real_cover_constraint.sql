@@ -1,0 +1,25 @@
+-- =====================================================================
+-- Validate the events_published_real_cover constraint against existing
+-- rows. Permanently locks the no-picsum gate (Batch 10).
+--
+-- The constraint was added in 20260504000001_event_photo_required.sql
+-- with NOT VALID so the migration could land while seed events still
+-- carried picsum.photos cover URLs. After the imagery backfill
+-- programme (docs/IMAGERY-MANIFEST.md applied via
+-- scripts/backfill-event-covers.mjs) replaces every picsum URL with a
+-- branded cover, this VALIDATE confirms zero historical violations
+-- and locks the constraint as fully enforced.
+--
+-- PRECONDITION (founder must verify before applying this migration):
+--
+--   SELECT COUNT(*) FROM public.events
+--   WHERE status = 'published'
+--     AND visibility = 'public'
+--     AND cover_image_url ILIKE 'https://picsum.photos/%';
+--
+-- The result MUST be 0. If non-zero, complete the imagery backfill
+-- before applying this migration; ALTER TABLE ... VALIDATE CONSTRAINT
+-- will fail otherwise and identify the violating row(s).
+-- =====================================================================
+
+ALTER TABLE public.events VALIDATE CONSTRAINT events_published_real_cover;

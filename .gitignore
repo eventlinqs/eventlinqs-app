@@ -109,3 +109,7 @@ supabase/.temp/
 
 # Batch 9.2.1 test-user credentials (local-only)
 docs/redesign/batch-9-2-1-evidence/test-user-credentials.md
+
+# Batch 10 - migration debug logs (local-only)
+migration-debug.log
+*.migration.log

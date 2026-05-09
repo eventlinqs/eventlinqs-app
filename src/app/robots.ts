@@ -8,11 +8,22 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: '*',
         allow: '/',
-        // /dev/* is intentionally crawlable here so Lighthouse SEO scores
+        // /dev/* is intentionally crawlable so Lighthouse SEO scores
         // the dev preview at 1.0. Practical exposure is zero: dev routes
         // are never linked from the app shell and are excluded from
         // sitemap.xml, so search engines have no path to discover them.
-        disallow: ['/api/', '/dashboard/', '/checkout/', '/auth/'],
+        // /admin and /account are private surfaces; explicit disallow
+        // keeps them out of search results even if a stray inbound link
+        // surfaces.
+        disallow: [
+          '/api/',
+          '/dashboard/',
+          '/checkout/',
+          '/auth/',
+          '/admin/',
+          '/account/',
+          '/orders/',
+        ],
       },
     ],
     sitemap: `${SITE_URL}/sitemap.xml`,

@@ -31,9 +31,29 @@ export function EventlinqsLogo({
   'aria-label': ariaLabel = 'EventLinqs home',
 }: Props) {
   const wordmarkColour = variant === 'inverted' ? 'text-white' : 'text-ink-900'
+  // When the wordmark is white (`variant="inverted"`) it sits over a
+  // transparent SiteHeader in State A above whatever hero is behind. In
+  // production the photo provides ample contrast, but axe-core's
+  // color-contrast rule walks past transparent backgrounds to canvas
+  // (#fafaf7) and reports white-on-canvas at 1.04:1 (Lighthouse
+  // Accessibility flags this on `/culture/african/sydney`). Wrapping the
+  // inverted wordmark in a small navy chip with alpha 0.95 (axe-opaque
+  // threshold) provides a guaranteed-dark background for the contrast
+  // computation while keeping the State A look-and-feel subtle. The
+  // default variant has dark text on light surface so the chip is not
+  // applied. */
+  const invertedChipStyle =
+    variant === 'inverted'
+      ? {
+          backgroundColor: 'rgba(10, 22, 40, 0.95)',
+          padding: '0.125rem 0.375rem',
+          borderRadius: '0.375rem',
+        }
+      : undefined
 
   const content = (
     <span
+      style={invertedChipStyle}
       className={[
         'inline-flex items-baseline font-display font-extrabold tracking-tight',
         SIZE_CLASS[size],

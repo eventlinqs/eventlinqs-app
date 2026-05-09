@@ -376,3 +376,36 @@ body[data-hero-enhanced="1"] [data-hero-shell] {
 @media (prefers-reduced-motion: reduce) {
   .el-fade-slide { animation: none; }
 }
+
+/* Brand duotone (Batch 10, per docs/IMAGERY-STRATEGY.md).
+ * Maps imagery to navy `#0A1628` shadows + gold `#D4A437` highlights
+ * via the SVG filter mounted at root by <DuotoneFilterDefs />. Apply
+ * this class on any media wrapper that should adopt the brand
+ * duotone treatment - typically hero containers and category cards. */
+.brand-duotone {
+  filter: url(#brand-duotone);
+}
+
+/* Hero grain (Batch 10, per docs/IMAGERY-STRATEGY.md).
+ * Adds a subtle 5%-opacity monochrome grain over hero containers for
+ * tactile depth. Pure CSS (inline SVG noise filter) so no asset
+ * download. The pseudo-element is non-interactive
+ * (pointer-events: none) and sits above the image but below content. */
+.hero-grain {
+  position: relative;
+}
+.hero-grain::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  z-index: 1;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Grain is static; no motion concern. Left here for parity with the
+   * `prefers-reduced-motion` block above so future motion additions
+   * stay grouped. */
+}

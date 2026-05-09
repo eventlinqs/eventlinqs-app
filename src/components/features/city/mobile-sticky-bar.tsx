@@ -35,13 +35,24 @@ export function MobileStickyBar({ cityName, weekendCount, anchorId = 'all-events
   return (
     <div
       aria-hidden={!shown}
+      // `inert` removes the element subtree from the focus order AND
+      // disables interaction while hidden. Required alongside
+      // `aria-hidden` to satisfy axe-core's aria-hidden-focus rule
+      // (Batch 10 a11y fix); without `inert`, the focusable <a> below
+      // remains tab-reachable while the wrapper is aria-hidden.
+      inert={!shown}
       className={[
         // Sits ABOVE the global BottomNav (which is fixed bottom-0 h-16
         // z-40 md:hidden). bottom-16 stacks the sticky CTA on top of it
         // so both are visible without overlap.
         'fixed inset-x-0 bottom-16 z-50 md:hidden',
         'transition-transform duration-300 ease-out',
-        shown ? 'translate-y-0' : 'translate-y-full',
+        // Hidden state translates BEYOND the bottom nav (60px own height
+        // + 64px nav height = 124px). `translate-y-full` alone would
+        // only push 60px down, leaving the bar overlapping the bottom
+        // nav and obscuring its touch targets (Batch 10 a11y fix:
+        // axe-core target-size rule).
+        shown ? 'translate-y-0' : 'translate-y-[calc(100%+4rem)]',
       ].join(' ')}
     >
       <a

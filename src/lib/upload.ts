@@ -2,6 +2,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
+import { rewriteStorageUrl } from '@/lib/storage/url'
 
 /**
  * Server action for image uploads.
@@ -30,6 +31,10 @@ export async function uploadEventImage(formData: FormData): Promise<string | nul
     return null
   }
 
+  // getPublicUrl returns the Supabase project domain. rewriteStorageUrl
+  // swaps to the branded `images.eventlinqs.com` domain when the
+  // NEXT_PUBLIC_STORAGE_DOMAIN env var is configured (Batch 10), so no
+  // user-facing URL ever leaks the Supabase project hostname.
   const { data } = admin.storage.from('event-images').getPublicUrl(fileName)
-  return data.publicUrl
+  return rewriteStorageUrl(data.publicUrl)
 }

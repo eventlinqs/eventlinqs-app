@@ -24,10 +24,16 @@ export function VenueMobileStickyBar({ venueName }: Props) {
   return (
     <div
       aria-hidden={!shown}
+      // `inert` removes the focusable <a> below from the focus order
+      // while the bar is hidden, satisfying axe-core's aria-hidden-focus
+      // rule alongside the `aria-hidden` attribute (Batch 10 a11y fix).
+      inert={!shown}
       className={[
         'fixed inset-x-0 bottom-16 z-50 md:hidden',
         'transition-transform duration-300 ease-out',
-        shown ? 'translate-y-0' : 'translate-y-full',
+        // Hidden state translates beyond the 64px bottom nav so the bar
+        // never overlaps it (Batch 10 a11y fix).
+        shown ? 'translate-y-0' : 'translate-y-[calc(100%+4rem)]',
       ].join(' ')}
     >
       <a

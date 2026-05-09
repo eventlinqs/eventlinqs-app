@@ -5,6 +5,7 @@ import './globals.css'
 import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav'
 import { HeaderScrollSentinel } from '@/components/layout/header-scroll-sentinel'
 import { HeroPresenceProvider } from '@/contexts/hero-presence-context'
+import { DuotoneFilterDefs } from '@/components/ui/DuotoneFilterDefs'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -106,6 +107,9 @@ export default function RootLayout({
         <a href="#main-content" className="skip-to-content">
           Skip to main content
         </a>
+        {/* Brand duotone filter (Batch 10) - referenced by any media
+         *  surface via filter:url(#brand-duotone). Renders 0x0 hidden. */}
+        <DuotoneFilterDefs />
         <HeroPresenceProvider>
           <HeaderScrollSentinel />
           <div id="main-content" className="pb-16 md:pb-0">
