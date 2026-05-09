@@ -12,25 +12,24 @@ interface Props {
 }
 
 /**
- * Header search overlay (Batch 9.1).
+ * Header search overlay (Batch 9.1, a11y hardened in 9.1.1).
  *
- * Full-screen modal with backdrop-blur, centred input, and tabbed
- * suggestion strip. Hand-curated fallback suggestions match the
- * locked taxonomy (14 cultures, top 6 cities, top events). Real-time
- * trending suggestion data layer is OUT OF SCOPE for 9.1 per the
- * brief's deferral clause; the shell ships now and the data layer
- * lands in 9.2.
+ * Full-screen modal with backdrop-blur, centred input, and tabbed suggestion
+ * strip. Hand-curated fallback suggestions match the locked taxonomy.
  *
- * Triggers:
- *   - Header search trigger button click
- *   - Global "/" keyboard shortcut (suppressed inside input/textarea/
- *     contenteditable, see header-search-trigger.tsx)
- *
- * Accessibility:
- *   - role="dialog" + aria-modal="true"
- *   - Focus trap (first/last focusable cycle)
- *   - Escape closes + restores focus to trigger
- *   - aria-labelledby points to the search input label
+ * Accessibility (Batch 9.1.1 closes the WCAG 2.2 AA gaps from 9.1):
+ *   - role="dialog" + aria-modal="true" + accessible name via aria-label
+ *   - Focus trap (Tab cycles within the dialog)
+ *   - Escape closes; focus returns to the element that had focus when the
+ *     overlay opened (WCAG 2.4.3 + 3.2.1)
+ *   - Up/Down arrow keys move a roving "active suggestion" between the
+ *     suggestion list items (WAI-ARIA combobox AP)
+ *   - Home / End jump to first / last suggestion
+ *   - Enter activates the active suggestion when one is highlighted; with
+ *     no highlight, Enter submits the search query
+ *   - aria-activedescendant on the search input mirrors the active suggestion id
+ *   - aria-selected on the active suggestion marks the visual highlight
+ *   - Body scroll lock while open
  */
 
 type Tab = 'cultures' | 'cities' | 'events' | 'organisers'
@@ -73,22 +72,40 @@ const FALLBACKS: Record<Tab, { label: string; href: string }[]> = {
   ],
 }
 
+const SUGGESTION_ID_PREFIX = 'header-search-suggestion-'
+
 export function HeaderSearchOverlay({ open, onClose }: Props) {
   const [tab, setTab] = useState<Tab>('events')
   const [query, setQuery] = useState('')
+  /** Index into the current tab's suggestion list. -1 = no highlight (input only). */
+  const [activeIndex, setActiveIndex] = useState<number>(-1)
   const inputRef = useRef<HTMLInputElement>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
+  /** Element that had focus the moment the overlay opened. Restored on close. */
+  const triggerRef = useRef<HTMLElement | null>(null)
+  /** Suggestion link refs for programmatic activation on Enter. */
+  const suggestionRefs = useRef<(HTMLAnchorElement | null)[]>([])
   const router = useRouter()
 
-  // Body scroll lock + analytics on open.
+  const suggestions = useMemo(() => FALLBACKS[tab], [tab])
+
+  // Body scroll lock + analytics + focus capture on open. Focus restore on close.
   useEffect(() => {
     if (!open) return
+    triggerRef.current = (document.activeElement as HTMLElement) ?? null
     trackEvent('search_overlay_opened')
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     setTimeout(() => inputRef.current?.focus(), 30)
     return () => {
       document.body.style.overflow = prev
+      // Defer focus restore until after the dialog has unmounted so React
+      // does not race the focus call against the dialog DOM teardown.
+      const target = triggerRef.current
+      if (target && typeof target.focus === 'function') {
+        setTimeout(() => target.focus(), 0)
+      }
+      triggerRef.current = null
     }
   }, [open])
 
@@ -102,7 +119,7 @@ export function HeaderSearchOverlay({ open, onClose }: Props) {
     return () => window.removeEventListener('keydown', onKey)
   }, [open, onClose])
 
-  // Focus trap inside the dialog.
+  // Focus trap (Tab/Shift+Tab cycles within the dialog).
   function handleKeyDown(e: KeyboardEvent<HTMLDivElement>) {
     if (e.key !== 'Tab' || !dialogRef.current) return
     const focusable = Array.from(
@@ -122,6 +139,54 @@ export function HeaderSearchOverlay({ open, onClose }: Props) {
     }
   }
 
+  // Roving keyboard navigation on the input. ArrowUp/Down move the active
+  // suggestion; Home/End jump; Enter on highlighted activates the link;
+  // Enter without a highlight submits the query.
+  function handleInputKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    const len = suggestions.length
+    if (len === 0) return
+
+    switch (e.key) {
+      case 'ArrowDown': {
+        e.preventDefault()
+        setActiveIndex(i => (i + 1) % len)
+        return
+      }
+      case 'ArrowUp': {
+        e.preventDefault()
+        setActiveIndex(i => (i <= 0 ? len - 1 : i - 1))
+        return
+      }
+      case 'Home': {
+        e.preventDefault()
+        setActiveIndex(0)
+        return
+      }
+      case 'End': {
+        e.preventDefault()
+        setActiveIndex(len - 1)
+        return
+      }
+      case 'Enter': {
+        if (activeIndex >= 0 && activeIndex < len) {
+          e.preventDefault()
+          const link = suggestionRefs.current[activeIndex]
+          if (link) {
+            link.click()
+          }
+        }
+        // No active suggestion: let the form's onSubmit handler run.
+        return
+      }
+      case 'Escape': {
+        // Handled by global listener; no-op here.
+        return
+      }
+      default:
+        return
+    }
+  }
+
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!query.trim()) return
@@ -131,9 +196,12 @@ export function HeaderSearchOverlay({ open, onClose }: Props) {
     onClose()
   }
 
-  const suggestions = useMemo(() => FALLBACKS[tab], [tab])
-
   if (!open) return null
+
+  const activeId =
+    activeIndex >= 0 && activeIndex < suggestions.length
+      ? `${SUGGESTION_ID_PREFIX}${activeIndex}`
+      : undefined
 
   return (
     <div
@@ -174,8 +242,14 @@ export function HeaderSearchOverlay({ open, onClose }: Props) {
               id="header-search-input"
               ref={inputRef}
               type="search"
+              role="combobox"
+              aria-controls="header-search-suggestions"
+              aria-expanded="true"
+              aria-autocomplete="list"
+              aria-activedescendant={activeId}
               value={query}
               onChange={e => setQuery(e.target.value)}
+              onKeyDown={handleInputKeyDown}
               placeholder="What are you in the mood for?"
               className="h-12 w-full bg-transparent text-lg font-medium text-white placeholder:text-white/55 focus:outline-none sm:h-14 sm:text-2xl"
               autoComplete="off"
@@ -193,7 +267,10 @@ export function HeaderSearchOverlay({ open, onClose }: Props) {
                 type="button"
                 role="tab"
                 aria-selected={active}
-                onClick={() => setTab(t.id)}
+                onClick={() => {
+                  setTab(t.id)
+                  setActiveIndex(-1)
+                }}
                 className={[
                   'inline-flex h-10 shrink-0 items-center rounded-full px-5 text-sm font-semibold transition',
                   active
@@ -211,22 +288,41 @@ export function HeaderSearchOverlay({ open, onClose }: Props) {
           <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/55">
             Suggestions
           </p>
-          <ul role="list" className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {suggestions.map(s => (
-              <li key={s.href}>
-                <Link
-                  href={s.href}
-                  onClick={() => {
-                    trackEvent('search_suggestion_clicked', { tab, label: s.label })
-                    onClose()
-                  }}
-                  className="flex h-12 items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 text-sm font-semibold text-white transition hover:border-[var(--brand-accent)]/50 hover:bg-white/10"
-                >
-                  <Search className="h-4 w-4 text-white/55" aria-hidden />
-                  {s.label}
-                </Link>
-              </li>
-            ))}
+          <ul
+            id="header-search-suggestions"
+            role="listbox"
+            aria-label={`${TABS.find(t => t.id === tab)?.label ?? 'Search'} suggestions`}
+            className="grid grid-cols-1 gap-2 sm:grid-cols-2"
+          >
+            {suggestions.map((s, idx) => {
+              const isActive = idx === activeIndex
+              return (
+                <li key={s.href} role="presentation">
+                  <Link
+                    id={`${SUGGESTION_ID_PREFIX}${idx}`}
+                    role="option"
+                    aria-selected={isActive}
+                    tabIndex={-1}
+                    ref={el => { suggestionRefs.current[idx] = el }}
+                    href={s.href}
+                    onMouseEnter={() => setActiveIndex(idx)}
+                    onClick={() => {
+                      trackEvent('search_suggestion_clicked', { tab, label: s.label })
+                      onClose()
+                    }}
+                    className={[
+                      'flex h-12 items-center gap-3 rounded-xl border px-4 text-sm font-semibold text-white transition',
+                      isActive
+                        ? 'border-[var(--brand-accent)] bg-white/10'
+                        : 'border-white/10 bg-white/5 hover:border-[var(--brand-accent)]/50 hover:bg-white/10',
+                    ].join(' ')}
+                  >
+                    <Search className={isActive ? 'h-4 w-4 text-[var(--brand-accent)]' : 'h-4 w-4 text-white/55'} aria-hidden />
+                    {s.label}
+                  </Link>
+                </li>
+              )
+            })}
           </ul>
         </div>
       </div>

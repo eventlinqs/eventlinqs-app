@@ -6,19 +6,24 @@ import { Button } from '@/components/ui/Button'
 import { LocationPicker } from '@/components/ui/location-picker'
 import { EventlinqsLogo } from '@/components/ui/eventlinqs-logo'
 import { HeaderSearchTrigger } from './header-search-trigger'
+import { SiteHeaderAccountButton, type AccountUser } from './site-header-account-button'
 import { useHeaderScrollState } from '@/hooks/use-header-scroll-state'
 import { useHeroPresence } from '@/contexts/hero-presence-context'
 import type { DetectedLocation } from '@/lib/geo/detect'
 import type { PickerCityGroups } from '@/lib/locations/picker-cities'
 
 const NAV_LINKS = [
-  { label: 'Browse Events', href: '/events' },
+  { label: 'Browse Events',  href: '/events' },
+  { label: 'Cultures',       href: '/cultures' },
+  { label: 'Cities',         href: '/cities' },
   { label: 'For Organisers', href: '/organisers' },
 ]
 
 interface SiteHeaderClientProps {
   location: DetectedLocation
   cities: PickerCityGroups
+  /** Resolved Supabase user (minimal identity) or null when anonymous. */
+  user: AccountUser | null
 }
 
 function readCityCookie(): DetectedLocation | null {
@@ -73,7 +78,7 @@ const getServerCookieSnapshot = (): DetectedLocation | null => null
  *   - Glassmorphism degrades to rgba(10, 22, 40, 0.95) on browsers
  *     without backdrop-filter via the @supports rule in globals.css.
  */
-export function SiteHeaderClient({ location, cities }: SiteHeaderClientProps) {
+export function SiteHeaderClient({ location, cities, user }: SiteHeaderClientProps) {
   const [isOpen, setIsOpen] = useState(false)
 
   const cookieLocation = useSyncExternalStore(
@@ -203,16 +208,31 @@ export function SiteHeaderClient({ location, cities }: SiteHeaderClientProps) {
               <LocationPicker currentLocation={displayLocation} cities={cities} variant="onDark" />
             </div>
 
-            <Link
-              href="/login"
-              prefetch={false}
-              className="hidden md:inline-flex items-center h-9 px-3 text-sm font-medium text-white/85 hover:text-[var(--brand-accent)] transition-colors rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)]"
-            >
-              Sign in
-            </Link>
-            <Button href="/signup" prefetch={false} variant="primary" size="sm" className="hidden md:inline-flex">
-              Get Started
-            </Button>
+            {user ? (
+              <div className="hidden md:flex items-center">
+                <SiteHeaderAccountButton user={user} size="header" />
+              </div>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  prefetch={false}
+                  className="hidden md:inline-flex items-center h-9 px-3 text-sm font-medium text-white/85 hover:text-[var(--brand-accent)] transition-colors rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)]"
+                >
+                  Sign in
+                </Link>
+                <Button href="/signup" prefetch={false} variant="primary" size="sm" className="hidden md:inline-flex">
+                  Get Started
+                </Button>
+              </>
+            )}
+
+            {/* Mobile avatar (authenticated only) - sits left of the hamburger so the nav drawer remains the canonical mobile-nav surface. */}
+            {user ? (
+              <div className="md:hidden">
+                <SiteHeaderAccountButton user={user} size="header" />
+              </div>
+            ) : null}
 
             <button
               ref={hamburgerRef}
@@ -323,12 +343,25 @@ export function SiteHeaderClient({ location, cities }: SiteHeaderClientProps) {
         </nav>
 
         <div className="border-t border-ink-100 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] space-y-3">
-          <Button href="/signup" prefetch={false} variant="primary" size="lg" className="w-full" onClick={closeSheet}>
-            Get Started
-          </Button>
-          <Button href="/login" prefetch={false} variant="ghost" size="lg" className="w-full" onClick={closeSheet}>
-            Sign in
-          </Button>
+          {user ? (
+            <>
+              <div className="flex items-center justify-start py-2">
+                <SiteHeaderAccountButton user={user} size="drawer" />
+              </div>
+              <Button href="/account" prefetch={false} variant="primary" size="lg" className="w-full" onClick={closeSheet}>
+                View account
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button href="/signup" prefetch={false} variant="primary" size="lg" className="w-full" onClick={closeSheet}>
+                Get Started
+              </Button>
+              <Button href="/login" prefetch={false} variant="ghost" size="lg" className="w-full" onClick={closeSheet}>
+                Sign in
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </>

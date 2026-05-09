@@ -612,6 +612,32 @@ The site header is a single component with two visual states. Which state render
 - Full-screen modal: `rgba(10, 22, 40, 0.92)` + `blur(40px) saturate(160%)`.
 - 4 tabs (Cultures, Cities, Events, Organisers) with hand-curated fallback suggestions; trending/typeahead data layer is deferred to a follow-up batch.
 - `role="dialog"`, `aria-modal="true"`, focus trap, Escape closes, body-scroll lock while open.
+- Keyboard navigation (Batch 9.1.1): the search input carries `role="combobox"` with `aria-controls`/`aria-expanded`/`aria-autocomplete="list"`/`aria-activedescendant`. ArrowDown / ArrowUp move a roving "active" suggestion in the listbox; Home / End jump to first / last; Enter on a highlighted suggestion activates its link; Enter without a highlight submits the search query. Escape closes and restores focus to the trigger element that opened the overlay (captured at open time via `document.activeElement`).
+
+### 6.13b Site Header - Account Button (Batch 9.1.1, 2026-05-09)
+
+Avatar shell rendered in the SiteHeader for authenticated visitors, replacing the anonymous Sign In + Get Started pair.
+
+**Visual**
+- 32px circular at the desktop/mobile header (40px in the mobile drawer).
+- Background: `--color-navy-950` (`#0A0E1A`).
+- Border: `1px solid --brand-accent` (gold, `#E8B738`).
+- Initials: white, Manrope display semibold uppercase, derived as first-initial + last-initial from `user_metadata.full_name`, with the first two characters of the email local-part as the fallback when no name is available.
+- Hover: `transform: scale(1.05)` over 200ms `cubic-bezier(0.22, 1, 0.36, 1)`. Suppressed under `prefers-reduced-motion: reduce`.
+- Focus-visible: 2px gold outline with 2px offset against the `--color-navy-950` header background.
+- Click: routes to `/account` (full-page navigation, not a dropdown). The dropdown menu (account, sign out, settings) ships in 9.2 alongside the notification data layer.
+
+**Server-side auth detection**
+- `SiteHeader` (server component) calls `await supabase.auth.getUser()` from `@/lib/supabase/server` and passes a minimal `AccountUser` shape (initials + display name) across the client boundary. The full Supabase user record never reaches the client bundle.
+- Anonymous visitors receive `user={null}` and the SiteHeader falls back to the Sign In + Get Started pair (Batch 9.1 behaviour).
+
+**Mobile placement**
+- The mobile header places the avatar to the left of the hamburger so the drawer remains the canonical mobile-nav surface and the drawer footer surfaces a 40px avatar with the user's display name beside it plus a "View account" primary button.
+
+**Out of scope for 9.1.1 (queued for 9.2)**
+- Notification pulse / unread indicator. Requires the notification data layer.
+- Dropdown menu internals (account, sign out, settings).
+- Authenticated-only nav items (e.g. "My tickets").
 
 ### 6.13 Badges & Pills
 
