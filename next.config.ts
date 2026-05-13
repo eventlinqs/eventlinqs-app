@@ -32,6 +32,17 @@ const nextConfig: NextConfig = {
       },
     ]
   },
+  async rewrites() {
+    // Batch 10 Track 2 - Vercel rewrites for branded storage URLs.
+    // /cdn/* proxies to Supabase storage so users see eventlinqs.com URLs.
+    // Parity vs Eventbrite img.evbuc.com, Ticketmaster s1.ticketm.net, DICE dice-media.imgix.net.
+    return [
+      {
+        source: '/cdn/:path*',
+        destination: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/:path*`,
+      },
+    ]
+  },
   experimental: {
     serverActions: {
       bodySizeLimit: '10mb',

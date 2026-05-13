@@ -50,7 +50,7 @@ export function getStorageUrl(bucket: string, path: string): string {
   const cleanPath = path.startsWith('/') ? path.slice(1) : path
   const branded = readBrandedDomain()
   if (branded) {
-    return `https://${branded}/${bucket}/${cleanPath}`
+    return `https://${branded}/cdn/${bucket}/${cleanPath}`
   }
   const supabaseUrl = readSupabaseUrl()
   if (!supabaseUrl) {
@@ -77,7 +77,7 @@ export function rewriteStorageUrl(url: string): string {
   const supabasePrefix = `${supabaseUrl}/storage/v1/object/public/`
   if (url.startsWith(supabasePrefix)) {
     const tail = url.slice(supabasePrefix.length)
-    return `https://${branded}/${tail}`
+    return `https://${branded}/cdn/${tail}`
   }
   return url
 }

@@ -14,7 +14,7 @@ describe('getStorageUrl', () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://gndnldyfudbytbboxesk.supabase.co'
     process.env.NEXT_PUBLIC_STORAGE_DOMAIN = 'images.eventlinqs.com'
     expect(getStorageUrl('event-images', 'sydney/cover.jpg'))
-      .toBe('https://images.eventlinqs.com/event-images/sydney/cover.jpg')
+      .toBe('https://images.eventlinqs.com/cdn/event-images/sydney/cover.jpg')
   })
 
   it('returns the Supabase fallback URL when the branded domain is not set', () => {
@@ -27,7 +27,7 @@ describe('getStorageUrl', () => {
   it('strips a leading slash on the path so callers can pass either form', () => {
     process.env.NEXT_PUBLIC_STORAGE_DOMAIN = 'images.eventlinqs.com'
     expect(getStorageUrl('bucket', '/with-leading-slash.jpg'))
-      .toBe('https://images.eventlinqs.com/bucket/with-leading-slash.jpg')
+      .toBe('https://images.eventlinqs.com/cdn/bucket/with-leading-slash.jpg')
   })
 
   it('throws when the bucket is empty', () => {
@@ -52,7 +52,7 @@ describe('rewriteStorageUrl', () => {
     process.env.NEXT_PUBLIC_STORAGE_DOMAIN = 'images.eventlinqs.com'
     const supabaseUrl = 'https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/sydney/cover.jpg'
     expect(rewriteStorageUrl(supabaseUrl))
-      .toBe('https://images.eventlinqs.com/event-images/sydney/cover.jpg')
+      .toBe('https://images.eventlinqs.com/cdn/event-images/sydney/cover.jpg')
   })
 
   it('is identity when no branded domain is configured', () => {
