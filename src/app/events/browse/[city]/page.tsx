@@ -13,9 +13,11 @@ import {
   type EventsSearchParams,
 } from '@/lib/events/search-params'
 import { getPickerCities, type PickerCity } from '@/lib/locations/picker-cities'
+import { getCityHeroPhoto } from '@/lib/images/city-photo'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
-import { EventsHeroStrip } from '@/components/features/events/m5-events-hero-strip'
+import { PhotographicCityHero } from '@/components/templates/PhotographicCityHero'
+import { EventsSearchStrip } from '@/components/features/events/m5-events-search-strip'
 import { EventsFilterBar } from '@/components/features/events/m5-events-filter-bar'
 import { EventsGrid } from '@/components/features/events/m5-events-grid'
 import { EventsPagination } from '@/components/features/events/m5-events-pagination'
@@ -110,7 +112,7 @@ export default async function BrowseCityPage({ params, searchParams }: Props) {
     !filterActive &&
     typeof effectiveFilters.distance_km !== 'number' &&
     view !== 'map'
-  const [categories, result, popularEvents] = await Promise.all([
+  const [categories, result, popularEvents, heroImage] = await Promise.all([
     fetchActiveCategoriesCached(),
     canUseCached
       ? fetchPublicEventsCached({
@@ -125,6 +127,7 @@ export default async function BrowseCityPage({ params, searchParams }: Props) {
           origin,
         }),
     !filterActive ? fetchPopularThisWeekPublic(12, city.city) : Promise.resolve([]),
+    getCityHeroPhoto(city.slug),
   ])
 
   const basePath = `/events/browse/${city.slug}`
@@ -133,12 +136,17 @@ export default async function BrowseCityPage({ params, searchParams }: Props) {
     <div className="flex min-h-screen flex-col bg-canvas">
       <SiteHeader />
       <main className="flex-1">
-        <EventsHeroStrip
-          params={raw}
+        <PhotographicCityHero
+          city={city.city}
+          country={city.country}
           total={result.total}
+          imageSrc={heroImage}
+        />
+
+        <EventsSearchStrip
+          params={raw}
           basePath={basePath}
-          heading={`Events in ${city.city}`}
-          subtitle={city.country}
+          placeholder={`Search events in ${city.city}…`}
         />
 
         <EventsFilterBar

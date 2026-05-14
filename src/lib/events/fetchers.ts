@@ -3,11 +3,40 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { withBadge } from './badges'
+import { CULTURE_TO_CATEGORY_SLUGS } from '@/lib/cultures/category-bridge'
+import type { CultureSlug } from '@/lib/cultures/data'
 import type {
+  FetchPublicEventsFilters,
   FetchPublicEventsInput,
   FetchPublicEventsResult,
   PublicEventRow,
 } from './types'
+
+/**
+ * Resolve culture / sub_culture filters into a list of legacy category
+ * slugs to narrow on. Returns null when no culture constraint is set,
+ * an array of slugs when at least one resolves. The caller looks the
+ * slugs up in event_categories and applies .in('category_id', ids).
+ *
+ * If sub_culture matches one of the bridge entries for the chosen
+ * culture, that single slug wins (e.g. /events?culture=african&sub_culture=amapiano
+ * narrows to the amapiano category). Otherwise the full culture set
+ * applies.
+ */
+function resolveCultureCategorySlugs(
+  filters: FetchPublicEventsFilters,
+): string[] | null {
+  if (!filters.culture) return null
+  const cultureSlug = filters.culture as CultureSlug
+  const bridged = (CULTURE_TO_CATEGORY_SLUGS as Record<string, string[]>)[
+    cultureSlug
+  ]
+  if (!bridged) return []
+  if (filters.sub_culture && bridged.includes(filters.sub_culture)) {
+    return [filters.sub_culture]
+  }
+  return bridged
+}
 
 /**
  * Raw row shape as it comes back from the Supabase query.
@@ -52,6 +81,19 @@ function normaliseRelation<T>(rel: T | T[] | null): T | null {
   if (rel === null || rel === undefined) return null
   if (Array.isArray(rel)) return rel[0] ?? null
   return rel
+}
+
+// Batch 4: photo-required public-surface filter.
+// Event cards on every public surface MUST show a real organiser-uploaded
+// cover. Until the DB migration backfills, picsum.photos seed URLs are
+// treated as "no cover" so seed events disappear from the public catalogue
+// rather than rendering as duplicate Pexels-stock collisions in the grid.
+// The migration (20260504000001_event_photo_required.sql) hardens this at
+// the DB layer for new published events.
+export function hasRealCover(url: string | null | undefined): url is string {
+  if (!url) return false
+  if (/^https:\/\/picsum\.photos\//i.test(url)) return false
+  return true
 }
 
 function toPublicEventRow(raw: RawRow): PublicEventRow {
@@ -202,6 +244,24 @@ export async function fetchPublicEvents(
     } else {
       query = query.eq('category_id', '00000000-0000-0000-0000-000000000000')
     }
+  } else {
+    const cultureSlugs = resolveCultureCategorySlugs(filters)
+    if (cultureSlugs !== null) {
+      if (cultureSlugs.length === 0) {
+        query = query.eq('category_id', '00000000-0000-0000-0000-000000000000')
+      } else {
+        const { data: cats } = await supabase
+          .from('event_categories')
+          .select('id')
+          .in('slug', cultureSlugs)
+        const ids = (cats ?? []).map(c => c.id as string)
+        if (ids.length === 0) {
+          query = query.eq('category_id', '00000000-0000-0000-0000-000000000000')
+        } else {
+          query = query.in('category_id', ids)
+        }
+      }
+    }
   }
   if (filters.city) {
     query = query.ilike('venue_city', `%${filters.city}%`)
@@ -240,7 +300,7 @@ export async function fetchPublicEvents(
   }
 
   const raw = (data ?? []) as unknown as RawRow[]
-  let events = raw.map(toPublicEventRow)
+  let events = raw.map(toPublicEventRow).filter(e => hasRealCover(e.cover_image_url))
 
   // price_min / price_max arrive in AUD (dollar units) from the URL; tier
   // prices are stored as integer minor units (cents) per the monetary
@@ -302,6 +362,8 @@ export async function fetchPublicEventsCached(
     `country:${filters.country ?? ''}`,
     `city:${filters.city ?? ''}`,
     `category:${filters.category ?? ''}`,
+    `culture:${filters.culture ?? ''}`,
+    `subc:${filters.sub_culture ?? ''}`,
     `preset:${filters.preset ?? ''}`,
     `sort:${filters.sort ?? ''}`,
     `q:${filters.q ?? ''}`,
@@ -371,6 +433,24 @@ async function runFetchPublicEventsAdmin(
     } else {
       query = query.eq('category_id', '00000000-0000-0000-0000-000000000000')
     }
+  } else {
+    const cultureSlugs = resolveCultureCategorySlugs(filters)
+    if (cultureSlugs !== null) {
+      if (cultureSlugs.length === 0) {
+        query = query.eq('category_id', '00000000-0000-0000-0000-000000000000')
+      } else {
+        const { data: cats } = await supabase
+          .from('event_categories')
+          .select('id')
+          .in('slug', cultureSlugs)
+        const ids = (cats ?? []).map(c => c.id as string)
+        if (ids.length === 0) {
+          query = query.eq('category_id', '00000000-0000-0000-0000-000000000000')
+        } else {
+          query = query.in('category_id', ids)
+        }
+      }
+    }
   }
   if (filters.city) query = query.ilike('venue_city', `%${filters.city}%`)
   if (filters.country) query = query.eq('venue_country', filters.country)
@@ -394,7 +474,7 @@ async function runFetchPublicEventsAdmin(
   }
 
   const raw = (data ?? []) as unknown as RawRow[]
-  let events = raw.map(toPublicEventRow)
+  let events = raw.map(toPublicEventRow).filter(e => hasRealCover(e.cover_image_url))
 
   const priceFiltered =
     typeof filters.price_min === 'number' || typeof filters.price_max === 'number'
@@ -484,6 +564,7 @@ export async function fetchPopularThisWeek(
     .map(id => byId.get(id))
     .filter((r): r is RawRow => Boolean(r))
     .map(toPublicEventRow)
+    .filter(e => hasRealCover(e.cover_image_url))
 }
 
 /**
@@ -552,8 +633,9 @@ export async function fetchPopularThisWeekPublic(
           .map(id => byId.get(id))
           .filter((r): r is RawRow => Boolean(r))
           .map(toPublicEventRow)
+          .filter(e => hasRealCover(e.cover_image_url))
       }
-      return raw.map(toPublicEventRow)
+      return raw.map(toPublicEventRow).filter(e => hasRealCover(e.cover_image_url))
     },
     keyParts,
     { revalidate: 60 * 30, tags: ['events:popular-public'] },
@@ -620,7 +702,9 @@ export async function fetchRecommendedEvents(
   }
 
   const raw = (data ?? []) as unknown as RawRow[]
-  const events = raw.map(toPublicEventRow)
+  const events = raw
+    .map(toPublicEventRow)
+    .filter(e => hasRealCover(e.cover_image_url))
   if (events.length === 0) return fetchPopularThisWeek(limit, city)
   return events
 }

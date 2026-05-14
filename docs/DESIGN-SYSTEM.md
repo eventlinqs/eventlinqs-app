@@ -1,9 +1,10 @@
-# EventLinqs Design System - v2.0
+# EventLinqs Design System - v2.1
 
-**Status:** Locked v2.0 - living document, evolves with A/B test data
-**Last updated:** 13 April 2026
+**Status:** Locked v2.1 - living document, evolves with A/B test data
+**Last updated:** 4 May 2026
 **Owner:** Lawal Adams + Claude
 **Enforcement:** This document supersedes Claude Code's instincts. Every UI decision must reference it. Deviations require explicit approval and test data.
+**Changelog from v2.0 (Redesign Batch 3, 2026-05-04):** Section 6.2.1 added - canonical separated-card tile pattern + the one allowed image-band overlay (place-name on darkened gradient on city/venue tiles). Anti-Patterns updated to forbid event-meta text on photography and gold-400 on light surfaces. Sub-tagline polished elsewhere; the "WHERE THE CULTURE GATHERS" tagline stays locked.
 **Changelog from v1.0:** Mobile-first patterns rewritten after live TM/DICE mobile analysis. Brand voice section added. Page-by-page templates added. Social proof patterns added. Illustration strategy added. Anti-patterns expanded.
 
 ---
@@ -314,23 +315,116 @@ xl:  1280px  (desktop)
 - Sold out: strike through + "SOLD OUT" pill in `--ink-900`
 - Low stock: "Only 8 left" in `--coral-500` (only when 10 or less remaining)
 
-### 6.3 Carousels (Horizontal Scroll)
+### 6.2.1 Tile Patterns (Redesign Batch 3 - 2026-05-04)
 
-**The DICE sliding effect, done properly.**
+The canonical tile shape is **separated-card**: image at the top, white card body below carrying every text field. Event photography is sacred; we do not paint copy on top of it.
 
-- CSS `scroll-snap-type: x mandatory` on container
+**Separated-card layout (event tiles, city tiles, venue tiles, weekend tile):**
+- Image frame: `aspect-[3/2]` for rail tiles, `aspect-[4/3]` for grid event cards, `aspect-video` on mobile.
+- White card body below the image: `bg-[var(--surface-0)]`, padding `--space-4`, holds eyebrow + title + meta + price/CTA.
+- Border: `1px solid var(--surface-2)`. Radius: `8px` (rounded-lg). Resting shadow: `0 1px 2px rgba(10,22,40,0.06)`. Hover: lift 2px + `0 10px 25px rgba(10,22,40,0.10)`.
+- Hover transition on image: `scale(1.05)` over `700ms ease-out`. Hover transition on card: `translateY(-2px)` over `200ms`.
+- Focus-visible: 2px `--color-gold-400` ring with `ring-offset-2`.
+
+**Allowed image-band overlays (the ONE acceptable on-photo pattern):**
+
+For **place** tiles - city, venue - where the place identity itself is the headline, render the place name on a darkened-gradient label band along the lower edge of the image:
+
+```
+linear-gradient(180deg, rgba(10,22,40,0) 0%, rgba(10,22,40,0.85) 100%)
+```
+
+The band occupies the bottom 40% of the image (`h-2/5`, `inset-x-0 bottom-0`). White display type (Manrope 700+ at 18-24px) sits inside the bottom padding zone. The same pattern is allowed for the gold "Free" pill on the FreeWeekendTile because the pill is a status badge, not a label of the photo's subject.
+
+**Forbidden image-band overlays:**
+- Event titles, dates, venue names, or prices on top of event photography. These belong in the white card body below.
+- Full-bleed dark photo cards with all copy stacked on top (the pattern City/FreeWeekend tiles used pre-batch-3).
+- Multi-line copy inside the gradient band - 1 line, 1 piece of identity only.
+
+**Eyebrow / pill / category-chip pattern inside card body:**
+- Eyebrow text (date, "JUST ADDED", "EDITOR'S PICK"): `text-[var(--brand-accent-strong)]`, Manrope 600, 11px, `uppercase`, `tracking-widest`.
+- Category pill on photo (when shown): `bg-[var(--surface-0)]/95` (white-ish), `text-[var(--text-primary)]`, 10px Manrope 700 uppercase tracking-widest, top-left. The white pill replaces the prior dark `bg-ink-900/75` so we never stack white text on potentially-light photography.
+- Status pill (Free, Sold out): solid `--color-gold-400` background, `--color-navy-950` text, top-left, sits *over* the image but only carries 1-2 words.
+
+**Gold on light surfaces:**
+- `--brand-accent` (gold-400) is permitted on dark surfaces only (`--color-navy-950` and below). On light card bodies use `--brand-accent-strong` (gold-800), which carries enough contrast for 4.5:1 against `--surface-0`.
+- Focus rings keep `--color-gold-400` because they paint with `ring-offset-2` so the ring sits on a white halo, restoring contrast.
+
+### 6.3 Rails (Horizontal Scroll) - Rail Standard v2.0
+
+**Locked pattern as of Batch 6.6 (2026-05-09).** Every horizontal rail
+on EventLinqs MUST follow this contract. Single source of truth:
+`src/components/ui/snap-rail.tsx` exports `SnapRail` (full-chrome) and
+`SnapRailScroller` (compose-your-own-header with optional `header` prop).
+
+**Layout (locked):**
+
+```
+[eyebrow]                                       [< >] [progress ──]
+[TITLE]
+[ tile ][ tile ][ tile ][ tile ][ tile ][ tile ] →
+```
+
+- Eyebrow: `text-xs font-semibold uppercase tracking-[0.18em]` in `--brand-accent-strong` (gold-800)
+- Title: `font-display text-2xl sm:text-3xl font-bold` in `--text-primary`
+- Header row uses `flex items-end justify-between gap-4` so the
+  controls cluster sits TOP-RIGHT, on the same horizontal line as the
+  title. NEVER place arrows or progress below the scroller.
+
+**Controls (top-right cluster):**
+
+- Progress indicator first: `h-0.5 w-32 lg:w-40` rounded gray track
+  with `--brand-accent-strong` fill that animates with scroll position.
+- Two arrow buttons next to the progress, 36x36 circular, navy icon
+  on white surface with surface-2 border. Disabled state when canPrev
+  / canNext is false. `hidden md:flex` - mobile relies on swipe.
+
+**Scroll mechanics:**
+
+- `scroll-snap-type: x mandatory` on container
 - `scroll-snap-align: start` on each card
-- `overflow-x: auto` with hidden scrollbar on mobile
-- Prev/Next arrow buttons visible on desktop only (44x44px circular, `--ink-900` background, white arrow). On TM mobile they're visible always - we hide on mobile, rely on swipe.
-- 3-4 cards visible on desktop, 1.25 cards on mobile (peek of next card)
-- Gap: `--space-4` (16px)
-- Padding left/right: `--space-6` desktop, `--space-4` mobile
+- `overflow-x: auto` with hidden scrollbar
+- 280px card width (240px mobile minimum, 280px desktop preferred),
+  16px gap, `flex-shrink: 0`, `snap-start`
+- Drag-to-scroll on desktop with cursor: grab (via `useDragScroll` hook)
+- Native swipe on mobile (375px and up), peeks 1.5 cards on mobile
+- Visible: minimum 4 tiles desktop, 1.5 tiles mobile
 - Keyboard accessible: arrow keys navigate, Tab moves between cards
 
-**Section header (above carousel):**
-- Left: Eyebrow label (`--caption` uppercase in `--ink-600`) + Section title (`--heading-xl` Manrope 700)
-- Right: "View all >" link in `--gold-600`
-- Padding bottom before carousel: `--space-6`
+**Optional headerLink** (e.g. "View all"):
+- Right of header, before the controls cluster
+- `text-sm font-medium` in `--brand-accent-strong`, hidden on mobile
+
+**Components:**
+
+- `<SnapRail>`: opinionated full-chrome rail. Use this on the homepage
+  and anywhere you can adopt the standard eyebrow + title + headerLink.
+- `<SnapRailScroller header={{ eyebrow, title, headerLink? }}>`: same
+  output as `<SnapRail>` but tuned for nested ContentSection callers.
+  Pass `header` to render the standard top-right controls cluster
+  inline with the title; omit `header` only when the parent provides
+  custom header content (e.g. a tab bar) and the compact controls
+  should sit just above the scroll track.
+
+**When NOT to use a rail:**
+
+- Browse / paginated grids (e.g. "All [City] events"): use a regular
+  responsive grid with proper page navigation at the bottom. The rail
+  pattern is for curated horizontal slices, not full catalogues.
+- Small fixed sets that fit in a single viewport (e.g. 3-up "Adjacent
+  scenes" on culture pages): use a simple grid. Don't force a rail
+  when scrolling adds no value.
+
+**Migration audit (Batch 6.6):**
+
+City pages: This Weekend, This Week, Popular this month, By Suburb,
+Other Australian cities, Browse by Culture, Browse by Event Type - all
+converted to the standard. Suburb pages: This week + weekend, Other
+suburbs - converted. Culture pages: Cities rail, Sub-cultures (kept as
+6-tile grid - fits single viewport), Adjacent scenes (kept as 3-tile
+grid - fits single viewport). Homepage rails (this-week, this-weekend,
+city-rail, featured-venues): use `<SnapRail>` directly, picked up the
+new top-right controls automatically.
 
 ### 6.4 Filter Sidebar (Desktop) - THE FIX
 
@@ -475,6 +569,76 @@ Additions for v2.0:
 - Helper text: Inter 400, 13px, `--ink-600`, mt `--space-1`
 - Error state: border `--error`, helper text `--error`
 
+### 6.13a Site Header - Dual-State Glassmorphism (Batch 9.1, 2026-05-09)
+
+The site header is a single component with two visual states. Which state renders is a function of `(scrolled past sentinel) OR (page has no hero)`.
+
+**State A - Transparent (top of hero-bearing routes)**
+- Background: `transparent`
+- Border-bottom: `transparent`
+- Backdrop filter: `none`
+- Wordmark: `--white` with gold dot (`--gold-500`)
+- Nav links: `rgba(255,255,255,0.85)` → hover `--brand-accent`
+- No inline search (the hero owns primary search)
+
+**State B - Navy frosted glass (scrolled past 80px, OR no-hero route)**
+- Background: `rgba(10, 22, 40, 0.72)`
+- Backdrop filter: `blur(20px) saturate(180%)` (with `-webkit-` prefix)
+- Border-bottom: `1px solid rgba(212, 164, 55, 0.30)` (gold edge)
+- Compact 360px desktop search pill becomes visible (placeholder "What are you in the mood for?")
+- Mobile retains an icon-only search trigger (44×44, always visible)
+- Degraded fallback for browsers without `backdrop-filter`: `rgba(10, 22, 40, 0.95)` solid navy via `@supports not` rule
+
+**Transition**
+- Duration: `300ms`
+- Easing: `cubic-bezier(0.22, 1, 0.36, 1)`
+- Properties: `background-color, backdrop-filter, border-color, box-shadow`
+- `prefers-reduced-motion: reduce`: instant (no transition)
+
+**Mechanics**
+- `data-scrolled="0|1"` and `data-no-hero="0|1"` attributes on the header element drive styling via CSS, so React does NOT re-render per scroll frame.
+- A 1px / `h-20` `HeaderScrollSentinel` is mounted in `app/layout.tsx` immediately above page content. An IntersectionObserver in `useHeaderScrollState` flips `data-scrolled` when the sentinel leaves the viewport.
+- A `HeroPresenceProvider` (root layout) lets each hero-bearing page register itself by rendering a `<HeroPresenceMarker />` near its `<HeroMedia>` instance. Pages without a hero never register and force State B from initial paint, avoiding an SSR transparent flash.
+- HeroMedia itself is **not mutated** (DO NOT TOUCH); registration uses the marker sibling pattern.
+
+**Accessibility**
+- Skip-to-content link mounted in `app/layout.tsx`, hidden until focused; jumps to `#main-content`.
+- Focus-visible rings use `--brand-accent` with offset against `--color-navy-950` background colour.
+- All touch targets ≥44px (mobile search icon, hamburger, sheet items).
+- Mobile drawer retains existing focus trap, Escape close, scroll lock.
+
+**Search overlay**
+- Triggered by header pill click, mobile search icon click, or global `/` keyboard shortcut (suppressed inside text inputs and contenteditable).
+- Full-screen modal: `rgba(10, 22, 40, 0.92)` + `blur(40px) saturate(160%)`.
+- 4 tabs (Cultures, Cities, Events, Organisers) with hand-curated fallback suggestions; trending/typeahead data layer is deferred to a follow-up batch.
+- `role="dialog"`, `aria-modal="true"`, focus trap, Escape closes, body-scroll lock while open.
+- Keyboard navigation (Batch 9.1.1): the search input carries `role="combobox"` with `aria-controls`/`aria-expanded`/`aria-autocomplete="list"`/`aria-activedescendant`. ArrowDown / ArrowUp move a roving "active" suggestion in the listbox; Home / End jump to first / last; Enter on a highlighted suggestion activates its link; Enter without a highlight submits the search query. Escape closes and restores focus to the trigger element that opened the overlay (captured at open time via `document.activeElement`).
+
+### 6.13b Site Header - Account Button (Batch 9.1.1, 2026-05-09)
+
+Avatar shell rendered in the SiteHeader for authenticated visitors, replacing the anonymous Sign In + Get Started pair.
+
+**Visual**
+- 32px circular at the desktop/mobile header (40px in the mobile drawer).
+- Background: `--color-navy-950` (`#0A0E1A`).
+- Border: `1px solid --brand-accent` (gold, `#E8B738`).
+- Initials: white, Manrope display semibold uppercase, derived as first-initial + last-initial from `user_metadata.full_name`, with the first two characters of the email local-part as the fallback when no name is available.
+- Hover: `transform: scale(1.05)` over 200ms `cubic-bezier(0.22, 1, 0.36, 1)`. Suppressed under `prefers-reduced-motion: reduce`.
+- Focus-visible: 2px gold outline with 2px offset against the `--color-navy-950` header background.
+- Click: routes to `/account` (full-page navigation, not a dropdown). The dropdown menu (account, sign out, settings) ships in 9.2 alongside the notification data layer.
+
+**Server-side auth detection**
+- `SiteHeader` (server component) calls `await supabase.auth.getUser()` from `@/lib/supabase/server` and passes a minimal `AccountUser` shape (initials + display name) across the client boundary. The full Supabase user record never reaches the client bundle.
+- Anonymous visitors receive `user={null}` and the SiteHeader falls back to the Sign In + Get Started pair (Batch 9.1 behaviour).
+
+**Mobile placement**
+- The mobile header places the avatar to the left of the hamburger so the drawer remains the canonical mobile-nav surface and the drawer footer surfaces a 40px avatar with the user's display name beside it plus a "View account" primary button.
+
+**Out of scope for 9.1.1 (queued for 9.2)**
+- Notification pulse / unread indicator. Requires the notification data layer.
+- Dropdown menu internals (account, sign out, settings).
+- Authenticated-only nav items (e.g. "My tickets").
+
 ### 6.13 Badges & Pills
 
 | Pill | Background | Text | Use |
@@ -487,6 +651,73 @@ Additions for v2.0:
 | Following | `--ink-900` | `--white` | Followed organisers |
 
 All pills: `4px 10px` padding, `9999px` radius, Inter 500, 12px
+
+### 6.14 Bento Grid Standard (Batch 9.2, 2026-05-09)
+
+Asymmetric content grids used for the homepage Trending events and Cultural Moments sections.
+
+**Layout**
+- Desktop (>=1024px): 4-col x 2-row CSS grid with one 2-col x 2-row featured cell + smaller cells filling the remaining slots.
+- Mobile (<1024px): 2-col grid, featured cell spans both columns and 2 rows; remaining cells in a 2-col row beneath.
+- Gap: `gap-3` (12px) on mobile, `gap-4` (16px) on desktop.
+- Card radius: `rounded-2xl` (16px) for all cells.
+
+**Card content**
+- Photographic hero (Pexels via the existing image helpers) with brand gradient mask: `linear-gradient(180deg, rgba(10,22,40,0.0) 35%, rgba(10,22,40,0.55-0.65) 70%, rgba(10,22,40,0.92) 100%)`.
+- Date badge (top-left): white background pill or gold pill depending on context.
+- Card title: white Manrope 800, sized per featured/medium role.
+- Optional metadata pill (bottom-right): frosted-glass navy background (`rgba(10,22,40,0.55)` + `backdrop-filter: blur(12px)`).
+- Hover: `transform: scale(1.04)` over 500ms with `prefers-reduced-motion: reduce` suppressed.
+
+**Accessibility**
+- Card root is `<a>` with descriptive `aria-label`.
+- Focus-visible ring uses `--brand-accent` with 2px offset.
+- Photographic alt text describes the event/moment (not generic).
+
+**Locked components**
+- `src/components/features/home/trending-events-bento.tsx`
+- `src/components/features/home/cultural-moments-bento.tsx`
+
+### 6.15 Category Chip Strip Standard (Batch 9.2, 2026-05-09)
+
+Horizontal quick-filter pill row beneath the homepage hero.
+
+**Layout**
+- Desktop: chips fit within max-width container, no scroll.
+- Mobile: `scroll-snap-type: x mandatory` with peek-next pattern (next chip's left edge intentionally inside viewport).
+- Each chip: `h-11` (44px), pill shape, gap-2 between icon and label.
+
+**Visual**
+- Default: navy `--color-navy-950` background, white text, gold `--brand-accent` icon.
+- Active: gold background, navy text (used when a filter equivalent to the chip is currently applied to the destination route).
+- Hover: `transform: translateY(-1px)`, `box-shadow: 0 8px 24px rgba(10,22,40,0.18)`. Suppressed under `prefers-reduced-motion: reduce`.
+- Cultural Communities expandable (last chip): outlined style, gold border on transparent background.
+
+**Plausible**
+- Each chip carries `plausible-event-name=category_chip_click` plus `plausible-event-category={Label}` for the chip taxonomy attribution. The cultures expandable fires `nav_cultures_click` instead.
+
+**Locked component**
+- `src/components/features/home/category-chip-strip.tsx`
+
+### 6.16 Plausible Event Naming Convention (Batch 9.2, 2026-05-09)
+
+EventLinqs uses Plausible cookieless analytics. Event names follow these conventions:
+
+**Pattern**: `{surface}_{action}` in lowercase snake_case.
+
+- `surface`: where the event happens. Examples: `hero`, `nav`, `category_chip`, `trending_card`, `cultural_moment`, `culture_card`, `city_card`, `email_signup`, `header_search`, `account_avatar`, `surprise_me`.
+- `action`: what happened. Examples: `click`, `open`, `submit_success`, `submit_error`, `pick_click`.
+
+Compound examples: `hero_browse_click`, `email_signup_submit_success`, `cultural_moment_click`, `header_search_open`.
+
+**Properties** (when needed) live on the same event with key/value pairs. Only include props that are useful for filtering/grouping in Plausible's dashboard. Keep prop values low-cardinality (slugs, taxonomy categories, error reasons).
+
+**Sources**
+- Static links: tagged-events class on the `<a>` (`className="plausible-event-name=foo plausible-event-prop=value"`). No JS round-trip required.
+- Dynamic actions (form submit, modal open): `trackEvent(name, props?)` from `@/lib/analytics/plausible`.
+- Server actions and webhook conversions: `trackEventServer(name, url, props?)` (fire-and-forget; never throws).
+
+The full event matrix lives at `docs/PLAUSIBLE-EVENTS.md`.
 
 ---
 
@@ -908,6 +1139,9 @@ The gold bar is 32px wide, 2px tall `--gold-500` above the eyebrow - borrowed fr
 - Borders on cards when a shadow would do
 - Rounded corners larger than 16px on cards (toy-ish)
 - Square corners on buttons (we are pill-first for primary CTAs)
+- **Text overlaid on event photography** - titles, dates, venues, prices stacked on a photo. Use the separated-card pattern (image top, white card body below). Section 6.2.1.
+- **Multi-line copy inside an image gradient band** - the darkened-gradient band on city/venue tiles is allowed but only carries the place name (1 line). No event meta in the band.
+- **Gold (`--gold-400` / `--brand-accent`) text or fills on light card bodies** - use `--brand-accent-strong` (gold-800) on white. Gold-400 stays on dark surfaces and on focus rings (which use ring-offset).
 
 ### Content
 - Stock photography of diverse people in suits handshaking

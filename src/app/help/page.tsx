@@ -12,7 +12,23 @@ import { PageShell } from '@/components/layout/PageShell'
 import { PageHero } from '@/components/layout/PageHero'
 import { ContentSection } from '@/components/layout/ContentSection'
 import { Button } from '@/components/ui/Button'
+import { helpTopics } from '@/lib/help-content'
 import type { ComponentType } from 'react'
+
+const POPULAR_QUESTIONS: { topicSlug: string; q: string }[] = [
+  { topicSlug: 'getting-started',       q: 'How do I list an event on EventLinqs?' },
+  { topicSlug: 'buying-tickets',        q: 'My ticket email has not arrived. What should I do?' },
+  { topicSlug: 'buying-tickets',        q: 'Can I transfer my ticket to someone else?' },
+  { topicSlug: 'selling-tickets',       q: 'What does it cost to sell tickets on EventLinqs?' },
+  { topicSlug: 'payments-and-payouts',  q: 'When do I receive my payout?' },
+  { topicSlug: 'account-and-privacy',   q: 'How do I delete my account?' },
+]
+
+const POPULAR = POPULAR_QUESTIONS.flatMap(({ topicSlug, q }) => {
+  const topic = helpTopics.find(t => t.slug === topicSlug)
+  const article = topic?.articles.find(a => a.q === q)
+  return article ? [{ slug: topicSlug, q: article.q, a: article.a }] : []
+})
 
 export const metadata: Metadata = {
   title: 'Help Centre | EventLinqs',
@@ -126,8 +142,55 @@ export default function HelpPage() {
         </div>
       </ContentSection>
 
+      {/* Popular questions */}
+      {POPULAR.length > 0 && (
+        <ContentSection surface="alt" width="prose">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
+            Popular questions
+          </p>
+          <h2 className="mb-8 font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">
+            What people ask most.
+          </h2>
+
+          <div className="space-y-3">
+            {POPULAR.map((item, i) => (
+              <details
+                key={i}
+                className="group rounded-xl border border-[var(--surface-2)] bg-[var(--surface-0)] open:shadow-sm"
+              >
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-6 py-5 [&::-webkit-details-marker]:hidden">
+                  <span className="font-display text-base font-semibold text-[var(--text-primary)]">
+                    {item.q}
+                  </span>
+                  <svg
+                    className="h-5 w-5 shrink-0 text-[var(--text-muted)] transition-transform duration-200 group-open:rotate-180"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </summary>
+                <div className="border-t border-[var(--surface-2)] px-6 pb-6 pt-4">
+                  <p className="text-sm leading-relaxed text-[var(--text-secondary)]">
+                    {item.a}
+                  </p>
+                  <Link
+                    href={`/help/${item.slug}`}
+                    className="mt-4 inline-flex text-sm font-medium text-[var(--brand-accent-strong)] underline underline-offset-2 hover:text-[var(--text-primary)] transition-colors"
+                  >
+                    See more in this topic &rsaquo;
+                  </Link>
+                </div>
+              </details>
+            ))}
+          </div>
+        </ContentSection>
+      )}
+
       {/* CTA band */}
-      <ContentSection surface="alt" width="default">
+      <ContentSection surface="base" width="default">
         <div className="flex flex-col items-center gap-5 text-center">
           <h2 className="font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">
             Can&apos;t find what you need?

@@ -1,0 +1,21 @@
+URL: http://localhost:3002/organisers/owambe-sydney
+Title: Owambe Sydney - Events & Profile - EventLinqs
+Canonical: http://localhost:3000/organisers/owambe-sydney
+
+== meta tags ==
+  viewport: width=device-width, initial-scale=1
+  description: Sydney's home for Yoruba weddings, naming ceremonies, and West African celebration nights | live bands, jollof, traditional attire welcome.
+  keywords: Owambe Sydney,organiser,events,tickets
+  robots: index, follow
+  googlebot: index, follow
+  og:title: Owambe Sydney
+  og:description: Sydney's home for Yoruba weddings, naming ceremonies, and West African celebration nights | live bands, jollof, traditional attire welcome.
+  og:url: https://eventlinqs.com/organisers/owambe-sydney
+  og:type: profile
+  twitter:card: summary_large_image
+  twitter:title: Owambe Sydney
+  twitter:description: Sydney's home for Yoruba weddings, naming ceremonies, and West African celebration nights | live bands, jollof, traditional attire welcome.
+
+== Schema.org JSON-LD payloads ==
+--- payload 1 ---
+{"@context":"https://schema.org","@type":"Organization","name":"Owambe Sydney","url":"https://eventlinqs.com/organisers/owambe-sydney","description":"Sydney's home for Yoruba weddings, naming ceremonies, and West African celebration nights | live bands, jollof, traditional attire welcome.","email":"hello@owambesydney.com.au","event":[{"@type":"Event","name":"Owambe Sydney: Lagos to Sydney Wedding After-Party","startDate":"2026-05-09T08:00:00+00:00","endDate":"2026-05-09T16:00:00+00:00","url":"https://eventlinqs.com/events/owambe-sydney-lagos-to-sydney-wedding-after-party","image":["https://images.pexels.com/photos/9003000/pexels-photo-9003000.jpeg?auto=compress&cs=tinysrgb&h=650&w=940"],"location":{"@type":"Place","name":"Sydney","address":{"@type":"PostalAddress","addressLocality":"Sydney","addressCountry":"AU"}},"organizer":{"@type":"Organization","name":"Owambe Sydney","url":"https://eventlinqs.com/organisers/owambe-sydney"}},{"@type":"Event","name":"Aso Ebi Affair: Owambe Garden Party","startDate":"2026-06-13T02:00:00+00:00","endDate":"2026-06-13T09:00:00+00:00","url":"https://eventlinqs.com/events/aso-ebi-affair-owambe-garden-party","image":["https://images.pexels.com/photos/28100865/pexels-photo-28100865.jpeg?auto=compress&cs=tinysrgb&h=650&w=940"],"location":{"@type":"Place","name":"Sydney","address":{"@type":"PostalAddress","addressLocality":"Sydney","addressCountry":"AU"}},"organizer":{"@type":"Organization","name":"Owambe Sydney","url":"https://eventlinqs.com/organisers/owambe-sydney"}},{"@type":"Event","name":"Naming Ceremony Showcase: Yoruba Traditions Night","startDate":"2026-07-04T06:00:00+00:00","endDate":"2026-07-04T11:00:00+00:00","url":"https://eventlinqs.com/events/naming-ceremony-showcase-yoruba-traditions-night","image":["https://images.pexels.com/photos/11489982/pexels-photo-11489982.jpeg?auto=compress&cs=tinysrgb&h=650&w=940"],"location":{"@type":"Place","name":"Sydney","address":{"@type":"PostalAddress","addressLocality":"Sydney","addressCountry":"AU"}},"organizer":{"@type":"Organization","name":"Owambe Sydney","url":"https://eventlinqs.com/organisers/owambe-sydney"}}]}

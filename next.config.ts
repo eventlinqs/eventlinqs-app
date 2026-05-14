@@ -6,7 +6,21 @@ const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === 'tr
 const nextConfig: NextConfig = {
   trailingSlash: false,
   async redirects() {
-    return []
+    // Batch 5 - /categories/[slug] → /culture/[slug] migration.
+    // The legacy /categories/[slug] route still serves 7 hero categories
+    // (afrobeats, amapiano, gospel, owambe, caribbean, heritage-and-
+    // independence, networking) but the new taxonomy lives under
+    // /culture/[slug]. We 301 the matching legacy slugs to their new
+    // culture home so existing inbound links and Google index entries
+    // forward to the new pages.
+    return [
+      { source: '/categories/afrobeats',                   destination: '/culture/african',  permanent: true },
+      { source: '/categories/amapiano',                    destination: '/culture/african',  permanent: true },
+      { source: '/categories/owambe',                      destination: '/culture/african',  permanent: true },
+      { source: '/categories/heritage-and-independence',   destination: '/culture/african',  permanent: true },
+      { source: '/categories/caribbean',                   destination: '/culture/caribbean', permanent: true },
+      { source: '/categories/gospel',                      destination: '/culture/gospel',   permanent: true },
+    ]
   },
   async headers() {
     return [
@@ -15,6 +29,17 @@ const nextConfig: NextConfig = {
         headers: [
           { key: 'X-Robots-Tag', value: 'index, follow' },
         ],
+      },
+    ]
+  },
+  async rewrites() {
+    // Batch 10 Track 2 - Vercel rewrites for branded storage URLs.
+    // /cdn/* proxies to Supabase storage so users see eventlinqs.com URLs.
+    // Parity vs Eventbrite img.evbuc.com, Ticketmaster s1.ticketm.net, DICE dice-media.imgix.net.
+    return [
+      {
+        source: '/cdn/:path*',
+        destination: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/:path*`,
       },
     ]
   },
@@ -54,6 +79,14 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'gndnldyfudbytbboxesk.supabase.co',
         pathname: '/storage/v1/object/public/**',
+      },
+      // Batch 10 branded storage domain. Listed here so next/image accepts
+      // the branded host the moment the NEXT_PUBLIC_STORAGE_DOMAIN env var
+      // flips to `images.eventlinqs.com` and DNS + Supabase custom-domain
+      // settings are in place.
+      {
+        protocol: 'https',
+        hostname: 'images.eventlinqs.com',
       },
       {
         protocol: 'https',

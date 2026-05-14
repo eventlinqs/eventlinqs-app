@@ -73,6 +73,12 @@ next-env.d.ts
 !docs/sprint1/phase-1b/**/*.jpeg
 !docs/sprint1/phase-1b/**/*.webp
 
+# Allowlist Batch 4 visual quality gate evidence (before/after screenshots)
+!docs/redesign/**/*.png
+!docs/redesign/**/*.jpg
+!docs/redesign/**/*.jpeg
+!docs/redesign/**/*.webp
+
 # playwright test runner artifacts — local only
 /test-results/
 /playwright-report/
@@ -100,3 +106,10 @@ supabase/.temp/
 .tmp/
 
 .vercel
+
+# Batch 9.2.1 test-user credentials (local-only)
+docs/redesign/batch-9-2-1-evidence/test-user-credentials.md
+
+# Batch 10 - migration debug logs (local-only)
+migration-debug.log
+*.migration.log

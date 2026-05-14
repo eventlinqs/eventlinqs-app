@@ -1,34 +1,33 @@
 import { Suspense } from 'react'
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
-import { FeaturedEventHero } from '@/components/features/events/featured-event-hero'
-import type {
-  FeaturedHeroEventSlide,
-} from '@/components/features/events/featured-event-hero'
-import { CATEGORY_HIGHLIGHT_SLIDES } from '@/lib/content/category-highlight-slides'
-import { BentoGrid, BentoTile, BentoSupportingColumn } from '@/components/features/events/bento-grid'
-import { EventBentoTile } from '@/components/features/events/event-bento-tile'
+import { HeroCarousel } from '@/components/features/home/HeroCarousel'
+import { HomeSchemaJsonLd } from '@/components/features/home/home-schema-jsonld'
+import { SurpriseMeButton } from '@/components/features/home/surprise-me-button'
+import { CategoryChipStrip } from '@/components/features/home/category-chip-strip'
+import { TrendingEventsBento } from '@/components/features/home/trending-events-bento'
+import { CulturalMomentsBento } from '@/components/features/home/cultural-moments-bento'
+import { EmailSignupPanel } from '@/components/features/home/email-signup-panel'
 import type { BentoEvent } from '@/components/features/events/event-bento-tile'
 import { MELBOURNE_FALLBACK } from '@/lib/geo/detect'
-import { LocationFilterBanner } from '@/components/features/events/location-filter-banner'
 import {
   SECTION_DEFAULT,
   CONTAINER,
-  HEADER_TO_CONTENT,
 } from '@/lib/ui/spacing'
 import {
   EVENT_SELECT,
   toBentoEvent,
-  toFeaturedHeroEvent,
   type RawRow,
 } from '@/lib/events/home-queries'
 import { ThisWeekSection } from '@/components/features/home/this-week-section'
 import { CulturalPicksSection } from '@/components/features/home/cultural-picks-section'
 import { LiveVibeSection } from '@/components/features/home/live-vibe-section'
 import { CityRailSection } from '@/components/features/home/city-rail-section'
-import { TrustBand } from '@/components/marketing/trust-band'
+import { EventRailSection } from '@/components/features/home/event-rail-section'
+import { FeaturedVenuesSection } from '@/components/features/home/featured-venues-section'
 import {
   ThisWeekSkeleton,
   CulturalPicksSkeleton,
@@ -69,6 +68,29 @@ void cheapestPriceMarker
 // it to ISR. Per-user personalisation (saved-events badge, location
 // picker city) is hydrated client-side from cookies post-paint.
 export const revalidate = 120
+
+// Batch 9 V2 SEO contract: title format from the brief, full Open Graph
+// and Twitter Card with 1200x630 hero image, and canonical URL.
+export const metadata: Metadata = {
+  title: 'EventLinqs - Every culture. Every event. One platform.',
+  description:
+    'Discover live events from communities across Australia and beyond. Afrobeats, Bollywood, Caribbean, Latin, Comedy, Pride and more. No hidden fees, verified organisers, fair refund policy.',
+  alternates: { canonical: '/' },
+  openGraph: {
+    type: 'website',
+    locale: 'en_AU',
+    title: 'EventLinqs - Every culture. Every event. One platform.',
+    description:
+      'Discover live events from communities across Australia and beyond. No hidden fees, verified organisers, fair refund policy.',
+    siteName: 'EventLinqs',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'EventLinqs - Every culture. Every event. One platform.',
+    description:
+      'Discover live events from communities across Australia and beyond.',
+  },
+}
 
 export default async function HomePage() {
   const supabase = createPublicClient()
@@ -115,7 +137,6 @@ export default async function HomePage() {
   ])
 
   const allUpcomingRaw = allUpcomingResult.data
-  const locationFilterActive = false
   const upcomingRaw = allUpcomingRaw
 
   const upcomingRawTyped = (upcomingRaw ?? []) as unknown as RawRow[]
@@ -127,179 +148,253 @@ export default async function HomePage() {
     (cityRows ?? []).map(r => r.venue_city?.trim().toLowerCase()).filter(Boolean),
   ).size
 
-  const featuredRaw = upcomingRawTyped[0] ?? null
-  const featuredHero = featuredRaw ? toFeaturedHeroEvent(featuredRaw) : null
+  void nowMs
+  void liveEventCount
+  void uniqueCitiesCount
 
-  const todayStart = new Date()
-  todayStart.setUTCHours(0, 0, 0, 0)
-
-  // Hero carousel scoring - top 5 soonest events, rank by recency + heat.
-  const heroCandidateRaws = upcomingRawTyped.slice(0, 5)
-  const scoredCandidates = heroCandidateRaws.map(r => {
-    const tiers = r.ticket_tiers ?? []
-    const sold = tiers.reduce((s, t) => s + t.sold_count, 0)
-    const cap = tiers.reduce((s, t) => s + t.total_capacity, 0)
-    const pct = cap > 0 ? (sold / cap) * 100 : 0
-    const createdMs = Date.parse(r.created_at)
-    const startMs = Date.parse(r.start_date)
-    let score = 0
-    if (pct > 70) score += 50
-    if (nowMs - createdMs < 48 * 60 * 60 * 1000) score += 25
-    if (startMs - nowMs < 7 * 24 * 60 * 60 * 1000) score += 20
-    return { raw: r, score }
-  })
-  scoredCandidates.sort((a, b) => b.score - a.score)
-
-  const topCandidates = scoredCandidates.slice(0, 3)
-  const heroEventIds = topCandidates.map(c => c.raw.id)
-
-  // Tickets-sold-today is anonymous, public information (it's just a
-  // count of confirmed orders by event), so it stays in the static
-  // render. Saved-events is per-user and now hydrates client-side via
-  // SaveEventButton, so we ship the shell with everything unsaved and
-  // the button upgrades to the true state post-mount.
-  const soldTodayResult = heroEventIds.length > 0
-    ? await supabase
-        .from('orders')
-        .select('event_id')
-        .in('event_id', heroEventIds)
-        .eq('status', 'confirmed')
-        .gte('created_at', todayStart.toISOString())
-    : { data: [] as { event_id: string }[] }
-
-  const soldTodayByEvent = new Map<string, number>()
-  for (const row of soldTodayResult.data ?? []) {
-    soldTodayByEvent.set(row.event_id, (soldTodayByEvent.get(row.event_id) ?? 0) + 1)
-  }
-
-  const savedEventIds = new Set<string>()
-
-  const heroEventSlides = topCandidates.map(({ raw }) => ({
-    event: toFeaturedHeroEvent(raw),
-    ticketsSoldToday: soldTodayByEvent.get(raw.id) ?? 0,
-  })) as FeaturedHeroEventSlide[]
-
-  const highlightSlidesNeeded = Math.max(0, 3 - heroEventSlides.length)
-  const heroHighlightSlides = CATEGORY_HIGHLIGHT_SLIDES.slice(0, highlightSlidesNeeded)
-
-  const supportingEvents = upcoming.slice(1, 4)
   const thisWeek = upcoming
     .filter(e => new Date(e.start_date) <= new Date(nowMs + 7 * 24 * 60 * 60 * 1000))
     .slice(0, 10)
 
+  // ── Rail slices ───────────────────────────────────────────────
+  // Saturday-Sunday window for the upcoming weekend.
+  const weekendStart = (() => {
+    const d = new Date(nowIso)
+    const day = d.getUTCDay()
+    const daysToSat = (6 - day + 7) % 7
+    d.setUTCDate(d.getUTCDate() + daysToSat)
+    d.setUTCHours(0, 0, 0, 0)
+    return d
+  })()
+  const weekendEnd = new Date(weekendStart)
+  weekendEnd.setUTCDate(weekendEnd.getUTCDate() + 2)
+
+  const thisWeekend = upcoming
+    .filter(e => {
+      const t = new Date(e.start_date).getTime()
+      return t >= weekendStart.getTime() && t < weekendEnd.getTime()
+    })
+    .slice(0, 10)
+
+  const freeEvents = upcoming
+    .filter(e => e.is_free === true || (e.ticket_tiers ?? []).every(t => t.price === 0))
+    .slice(0, 10)
+
+  const trending = [...upcoming]
+    .filter(e => (e.percent_sold ?? 0) > 0)
+    .sort((a, b) => (b.percent_sold ?? 0) - (a.percent_sold ?? 0))
+    .slice(0, 10)
+
+  const justAdded = [...upcomingRawTyped]
+    .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
+    .slice(0, 10)
+    .map(toBentoEvent)
+
+  const editorsPicks = (() => {
+    const seen = new Set<string>()
+    const picks: BentoEvent[] = []
+    for (const e of upcoming) {
+      const key = e.category?.slug ?? '_'
+      if (seen.has(key)) continue
+      seen.add(key)
+      picks.push(e)
+      if (picks.length >= 10) break
+    }
+    return picks
+  })()
+
+  const communityEvents = upcoming
+    .filter(e => e.category?.slug === 'community' || e.category?.slug === 'charity')
+    .slice(0, 10)
+
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
+
+  // Pre-fetch 3 surprise-me suggestions server-side so the modal opens
+  // with content immediately on first tap. The client refresh path
+  // hits /api/home/surprise to re-roll.
+  const initialSurprise = upcoming.slice(0, 3).map(e => ({
+    id: e.id,
+    slug: e.slug,
+    title: e.title ?? '',
+    city: e.venue_city ?? null,
+    startDate: e.start_date,
+    coverImage: e.cover_image_url ?? null,
+    reason: e.venue_city ? `On in ${e.venue_city} this week` : 'On this week',
+  }))
+
   return (
     <div className="min-h-screen bg-canvas">
+      <HomeSchemaJsonLd baseUrl={baseUrl} />
       <SiteHeader />
 
       <main>
-        {/* 1. Cinematic hero - above fold, rendered inline */}
-        <FeaturedEventHero
-          eventSlides={heroEventSlides}
-          highlightSlides={heroHighlightSlides}
-          liveEventCount={liveEventCount ?? 0}
-          uniqueCitiesCount={uniqueCitiesCount}
-        />
+        {/* H1 - HeroCarousel (Batch 11.0): full-bleed rotating editorial
+         *  hero with 5 AU friends-launch slots (Africultures, Pasifika,
+         *  Diwali Mela, Lebanese Eid, Caribbean Carnival). Server
+         *  component resolves photography then hands the slide manifest
+         *  to a thin client controller for rotation, keyboard nav,
+         *  reduced-motion handling, and ARIA announcements. */}
+        <HeroCarousel />
 
-        {/* 2. Bento grid row 1 - above fold, rendered inline */}
-        <section aria-label="Featured events" className={`bg-canvas ${SECTION_DEFAULT}`}>
-          <div className={CONTAINER}>
-            <div className="mb-4">
-              <LocationFilterBanner
-                location={detectedLocation}
-                filteredActive={locationFilterActive}
-              />
-            </div>
-            <div className="flex items-end justify-between gap-4">
-              <div className="flex items-start gap-3">
-                <div className="mt-1 h-8 w-0.5 shrink-0 bg-gold-500" aria-hidden />
-                <div>
-                  <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-700">
-                    The lineup
-                  </p>
-                  <h2 className="font-display text-2xl font-bold text-ink-900 sm:text-3xl">
-                    What everyone is buying into
-                  </h2>
-                </div>
+        {/* Trust band removed Batch 11.0. The 2026 contextual-trust
+         *  pattern places trust signals at the purchase-decision moment
+         *  (event detail page + checkout) rather than as a sitewide
+         *  band. See docs/redesign/batch-11-evidence/trust-signals-2026.md. */}
+
+        {/* H2 Category chip strip (Batch 9.2): quick-filter chips +
+         *  cultures expandable. Scroll-snap on mobile, fits viewport on
+         *  desktop. Each chip fires a tagged Plausible event. */}
+        <CategoryChipStrip />
+
+        {/* H1 Surprise Me affordance - sits inline above the bento grid
+         *  so the discovery path is one tap from above-fold. Server
+         *  pre-rendered suggestions open the modal instantly on tap. */}
+        <section aria-label="Discovery" className="bg-canvas">
+          <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+            <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
+                  Not sure where to start?
+                </p>
+                <h2 className="mt-1 font-display text-xl font-bold text-[var(--text-primary)] sm:text-2xl">
+                  We&apos;ll pick three events for you
+                </h2>
               </div>
-              <Link
-                href="/events"
-                className="shrink-0 text-sm font-medium text-gold-700 whitespace-nowrap transition-colors hover:text-gold-600"
-              >
-                View all events &rsaquo;
-              </Link>
-            </div>
-
-            <div className={HEADER_TO_CONTENT}>
-              {featuredHero ? (
-                <BentoGrid>
-                  <BentoTile size="hero">
-                    <EventBentoTile
-                      event={featuredHero as BentoEvent}
-                      size="hero"
-                      useVideoFallback
-                      featured
-                      initiallySaved={savedEventIds.has(featuredHero.id)}
-                    />
-                  </BentoTile>
-
-                  <BentoSupportingColumn>
-                    {supportingEvents.map(event => (
-                      <BentoTile key={event.id} size="supporting">
-                        <EventBentoTile
-                          event={event}
-                          size="supporting"
-                          initiallySaved={savedEventIds.has(event.id)}
-                        />
-                      </BentoTile>
-                    ))}
-                  </BentoSupportingColumn>
-                </BentoGrid>
-              ) : (
-                <div className="flex items-center justify-center rounded-2xl border border-dashed border-ink-200 bg-white py-20 text-center">
-                  <div>
-                    <p className="font-display text-xl font-bold text-ink-900">
-                      Events loading soon
-                    </p>
-                    <p className="mt-2 text-sm text-ink-400">
-                      The first organisers are getting set up. Check back shortly.
-                    </p>
-                    <Link
-                      href="/organisers/signup"
-                      className="mt-5 inline-flex items-center rounded-lg bg-gold-500 px-5 py-2.5 text-sm font-semibold text-ink-900 transition-colors hover:bg-gold-600"
-                    >
-                      List your event
-                    </Link>
-                  </div>
-                </div>
-              )}
+              <SurpriseMeButton initial={initialSurprise} />
             </div>
           </div>
         </section>
 
-        {/* 3. Trust band - real-numbers strip between lineup and rails */}
-        <Suspense fallback={null}>
-          <TrustBand />
-        </Suspense>
+        {/* H8 - Trending events bento (Batch 9.2): asymmetric 1+3+1 grid
+         *  on desktop (2x2 featured, 4 medium), 1 large + 4 medium on
+         *  mobile. Replaces the prior "What everyone is buying into"
+         *  inline bento. */}
+        {upcoming.length >= 5 ? (
+          <TrendingEventsBento events={upcoming.slice(0, 6)} />
+        ) : (
+          <section aria-label="Featured events" className="bg-canvas">
+            <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
+              <div className="flex items-center justify-center rounded-2xl border border-dashed border-ink-200 bg-white py-20 text-center">
+                <div>
+                  <p className="font-display text-xl font-bold text-ink-900">
+                    Events loading soon
+                  </p>
+                  <p className="mt-2 text-sm text-ink-400">
+                    The first organisers are getting set up. Check back shortly.
+                  </p>
+                  <Link
+                    href="/organisers/signup"
+                    prefetch={false}
+                    className="mt-5 inline-flex items-center rounded-lg bg-[var(--color-navy-950)] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--color-ink-900)]"
+                  >
+                    List your event
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
 
-        {/* 4. This Week rail - below fold, Suspense-streamed */}
+        {/* Rail 1: This Week */}
         <Suspense fallback={<ThisWeekSkeleton />}>
           <ThisWeekSection events={thisWeek} />
         </Suspense>
 
-        {/* 4. Cultural Picks - below fold, Suspense-streamed (self-fetching) */}
+        {/* Rail 2: This Weekend */}
+        {thisWeekend.length >= 3 && (
+          <EventRailSection
+            eyebrow="This weekend"
+            title="Free up the calendar"
+            ariaLabel="Events this weekend"
+            railLabel="Events this weekend"
+            events={thisWeekend}
+            viewAllHref="/events?date=weekend"
+          />
+        )}
+
+        {/* Rail 3: Free */}
+        {freeEvents.length >= 3 && (
+          <EventRailSection
+            eyebrow="No ticket needed"
+            title="Free events near you"
+            ariaLabel="Free events"
+            railLabel="Free events"
+            events={freeEvents}
+            viewAllHref="/events?free=1"
+          />
+        )}
+
+        {/* Rail 4: Cultures (cultural picks) */}
         <Suspense fallback={<CulturalPicksSkeleton />}>
           <CulturalPicksSection cityFilter={detectedLocation.city} nowIso={nowIso} />
         </Suspense>
 
-        {/* 5. Live Vibe marquee - below fold, Suspense-streamed */}
+        {/* Rail 5: Trending */}
+        {trending.length >= 3 && (
+          <EventRailSection
+            eyebrow="Selling fast"
+            title="Trending now"
+            ariaLabel="Trending events"
+            railLabel="Trending events"
+            events={trending}
+            viewAllHref="/events?sort=trending"
+          />
+        )}
+
+        {/* H10 - Cultural Moments bento (Batch 9.2): unique-to-EventLinqs
+         *  upcoming cultural moments rendered from the curated
+         *  calendar at @/lib/cultural-moments/calendar.ts. */}
+        <CulturalMomentsBento />
+
+        {/* Rail 6: Live Vibe marquee */}
         <Suspense fallback={<LiveVibeSkeleton />}>
           <LiveVibeSection upcomingRaw={upcomingRawTyped} />
         </Suspense>
 
-        {/* 6. By City rail - below fold, Suspense-streamed (self-fetching) */}
+        {/* Rail 7: Just Added */}
+        {justAdded.length >= 3 && (
+          <EventRailSection
+            eyebrow="Just added"
+            title="Fresh on the platform"
+            ariaLabel="Recently added events"
+            railLabel="Recently added events"
+            events={justAdded}
+            viewAllHref="/events?sort=newest"
+          />
+        )}
+
+        {/* Rail 8: Editor's Picks */}
+        {editorsPicks.length >= 3 && (
+          <EventRailSection
+            eyebrow="Editor's picks"
+            title="Hand-picked for the week"
+            ariaLabel="Editor's picks"
+            railLabel="Editor's picks"
+            events={editorsPicks}
+            viewAllHref="/events?curated=1"
+          />
+        )}
+
+        {/* Rail 9: Cities */}
         <Suspense fallback={<CityRailSkeleton />}>
           <CityRailSection nowIso={nowIso} />
         </Suspense>
+
+        {/* Rail 10: Community */}
+        {communityEvents.length >= 3 && (
+          <EventRailSection
+            eyebrow="Bring everyone"
+            title="Community events"
+            ariaLabel="Community events"
+            railLabel="Community events"
+            events={communityEvents}
+            viewAllHref="/categories/community"
+          />
+        )}
+
+        {/* Rail 11: Featured Venues */}
+        <FeaturedVenuesSection upcoming={upcomingRawTyped} />
+
 
         {/* 7. For Organisers - static, below fold */}
         <section aria-labelledby="organisers-heading" className={`bg-ink-950 ${SECTION_DEFAULT}`}>
@@ -328,7 +423,7 @@ export default async function HomePage() {
                     'All-in pricing: no surprise fees at checkout',
                     'Real-time sales dashboard and scan app',
                     'Squad booking: your fans buy together',
-                    'Africa-ready: mobile money, WhatsApp sharing',
+                    'Mobile-first checkout: WhatsApp sharing built in',
                   ].map(feature => (
                     <li key={feature} className="flex items-start gap-3 text-sm text-white/80">
                       <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-gold-500/20">
@@ -376,6 +471,10 @@ export default async function HomePage() {
             </div>
           </div>
         </section>
+
+        {/* H13 - Email signup panel (Batch 9.2): editorial brand-voice
+         *  copy + inline form + dual-path organiser link. */}
+        <EmailSignupPanel />
       </main>
 
       <SiteFooter />

@@ -1,0 +1,260 @@
+import { notFound } from 'next/navigation'
+import type { Metadata } from 'next'
+import { createPublicClient } from '@/lib/supabase/public-client'
+import {
+  getCulture,
+  getAllCultures,
+  isCultureSlug,
+  type CultureSlug,
+} from '@/lib/cultures/data'
+import { getCity, isCitySlug } from '@/lib/cities/data'
+import { getCategorySlugsForCulture } from '@/lib/cultures/category-bridge'
+import { getCityHeroPhoto } from '@/lib/images/city-photo'
+import { getCultureHeroPhoto } from '@/lib/images/culture-photo'
+import { getSubCulturePhoto } from '@/lib/images/sub-culture-photo'
+import { citySlugify } from '@/components/features/culture/cities-rail'
+import {
+  getIntersectionEditorial,
+  getIntersectionHeroSubtitle,
+} from '@/lib/cultures/intersection-editorial'
+import { CultureCityLandingPage } from '@/components/templates/CultureCityLandingPage'
+import type { EventCardData } from '@/components/features/events/event-card'
+import type { MapEventPin } from '@/components/features/city/city-map'
+
+export const revalidate = 300
+
+interface Props {
+  params: Promise<{ culture: string; city: string }>
+}
+
+/**
+ * Build the cross-product of every culture × its listed cities so the
+ * intersection page is statically rendered for known traffic. Unknown
+ * culture-city combinations 404 (notFound) rather than render an empty
+ * shell - the value of this page is curation.
+ */
+export function generateStaticParams() {
+  const params: { culture: string; city: string }[] = []
+  for (const c of getAllCultures()) {
+    for (const city of c.cities) {
+      params.push({ culture: c.slug, city: citySlugify(city) })
+    }
+  }
+  return params
+}
+
+function findCityName(cultureSlug: string, citySlug: string): string | null {
+  const culture = getCulture(cultureSlug)
+  if (!culture) return null
+  return culture.cities.find(c => citySlugify(c) === citySlug) ?? null
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { culture: cultureParam, city: cityParam } = await params
+  const culture = getCulture(cultureParam)
+  const cityName = culture ? findCityName(cultureParam, cityParam) : null
+  if (!culture || !cityName) return { title: 'Not Found | EventLinqs' }
+
+  const title = `${culture.displayName} events in ${cityName} | EventLinqs`
+  const description = `${culture.displayName} events on tonight in ${cityName}. ${culture.tagline}`.slice(0, 155)
+
+  return {
+    title,
+    description,
+    keywords: [
+      ...culture.keywords,
+      `${culture.displayName} ${cityName}`,
+      `${cityName} ${culture.displayName.toLowerCase()} events`,
+    ],
+    alternates: { canonical: `/culture/${culture.slug}/${cityParam}` },
+    openGraph: {
+      title,
+      description,
+      url: `/culture/${culture.slug}/${cityParam}`,
+      type: 'website',
+    },
+  }
+}
+
+function weekendWindow(now: Date) {
+  const day = now.getDay()
+  const start = new Date(now)
+  if (day === 6) start.setHours(0, 0, 0, 0)
+  else if (day === 0) { start.setDate(now.getDate() - 1); start.setHours(0, 0, 0, 0) }
+  else { start.setDate(now.getDate() + (6 - day)); start.setHours(0, 0, 0, 0) }
+  const end = new Date(start); end.setDate(start.getDate() + 1); end.setHours(23, 59, 59, 999)
+  return { weekendStartIso: start.toISOString(), weekendEndIso: end.toISOString() }
+}
+
+export default async function CultureByCityPage({ params }: Props) {
+  const { culture: cultureParam, city: cityParam } = await params
+  if (!isCultureSlug(cultureParam)) notFound()
+
+  const culture = getCulture(cultureParam)!
+  const cityName = findCityName(cultureParam, cityParam)
+  if (!cityName) notFound()
+
+  // City record lookup (for lat/lng + state). Many international or
+  // smaller cities listed in CultureContent.cities won't have a record
+  // in the cities table; the map section hides cleanly when null.
+  const cityRecord = isCitySlug(cityParam) ? getCity(cityParam) : null
+
+  const supabase = createPublicClient()
+  const categorySlugs = getCategorySlugsForCulture(culture.slug)
+  const now = new Date()
+  const w = weekendWindow(now)
+  const sevenDays = new Date(now); sevenDays.setDate(now.getDate() + 7)
+
+  // Filter to events in the city + the culture's bridged categories.
+  // Over-fetch and filter client-side because Supabase doesn't support
+  // a nested WHERE on event_categories in a single query.
+  const baseSelect =
+    'id, slug, title, cover_image_url, thumbnail_url, start_date, venue_name, venue_city, venue_country, venue_latitude, venue_longitude, created_at, is_free, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
+
+  let allEvents: EventCardData[] = []
+  let mapPins: MapEventPin[] = []
+  if (categorySlugs.length > 0) {
+    const { data } = await supabase
+      .from('events')
+      .select(baseSelect)
+      .eq('status', 'published')
+      .eq('visibility', 'public')
+      .gte('start_date', now.toISOString())
+      .ilike('venue_city', `%${cityName}%`)
+      .order('start_date', { ascending: true })
+      .limit(120)
+
+    const raw = (data ?? []) as unknown as (EventCardData & {
+      venue_latitude?: number | null
+      venue_longitude?: number | null
+    })[]
+
+    const filtered = raw.filter(e => categorySlugs.includes(e.category?.slug ?? ''))
+    allEvents = filtered
+
+    mapPins = filtered
+      .filter(r => typeof r.venue_latitude === 'number' && typeof r.venue_longitude === 'number')
+      .slice(0, 100)
+      .map(r => {
+        const cheapest = r.ticket_tiers && r.ticket_tiers.length > 0 ? Math.min(...r.ticket_tiers.map(t => t.price)) : 0
+        const dateStr = new Date(r.start_date).toLocaleDateString('en-AU', {
+          weekday: 'short', day: 'numeric', month: 'short',
+        })
+        return {
+          id: r.id, slug: r.slug, title: r.title,
+          date: dateStr,
+          suburb: r.venue_city,
+          price: cheapest > 0 ? `From AUD $${(cheapest / 100).toFixed(0)}` : 'Free',
+          cover: r.cover_image_url,
+          latitude: r.venue_latitude as number,
+          longitude: r.venue_longitude as number,
+        }
+      })
+  }
+
+  const thisWeekendEvents = allEvents.filter(
+    e => e.start_date >= w.weekendStartIso && e.start_date <= w.weekendEndIso,
+  )
+  const thisWeekEvents = allEvents.filter(
+    e => e.start_date >= now.toISOString() && e.start_date <= sevenDays.toISOString(),
+  )
+  const popularEvents = allEvents.slice(0, 12)
+
+  // Image fetches: hero + sub-cultures + related-cities + related-cultures.
+  // The "[Culture] in other cities" rail uses the OTHER cities for this
+  // culture (everything in culture.cities minus the current one).
+  const otherCityNames = culture.cities.filter(c => citySlugify(c) !== cityParam)
+  const relatedCitiesEntries = otherCityNames.slice(0, 8).map(name => ({
+    cultureSlug: culture.slug,
+    cultureLabel: culture.displayName,
+    citySlug: citySlugify(name),
+    cityLabel: name,
+  }))
+
+  // The "Other cultures in [city]" rail uses culture.relatedCultures
+  // (3 cultures the editorial team flagged as adjacent scenes).
+  const otherCultures = (culture.relatedCultures as CultureSlug[])
+    .map(slug => getCulture(slug))
+    .filter((x): x is NonNullable<typeof x> => x !== null)
+    .slice(0, 6)
+
+  const subCultureSlugs = culture.subCultures.map(s => s.slug)
+
+  const heroImage = await getCityHeroPhoto(cityParam) ?? await getCultureHeroPhoto(culture.slug)
+
+  const [subCulturePhotos, relatedCityPhotos, relatedCulturePhotos] = await Promise.all([
+    Promise.all(subCultureSlugs.map(s => getSubCulturePhoto(culture.slug, s))),
+    Promise.all(relatedCitiesEntries.map(r => getCityHeroPhoto(r.citySlug))),
+    Promise.all(otherCultures.map(c => getCultureHeroPhoto(c.slug))),
+  ])
+
+  const subCultureImages: Record<string, string | null> = {}
+  subCultureSlugs.forEach((s, i) => { subCultureImages[s] = subCulturePhotos[i] ?? null })
+
+  const relatedCities = relatedCitiesEntries.map((entry, i) => ({
+    ...entry,
+    image: relatedCityPhotos[i] ?? null,
+  }))
+
+  const relatedCultures = otherCultures.map((c, i) => ({
+    slug: c.slug,
+    label: c.displayName,
+    tagline: c.tagline,
+    image: relatedCulturePhotos[i] ?? null,
+  }))
+
+  const editorial = getIntersectionEditorial(culture, cityParam, cityName, cityRecord)
+  const heroSubtitle = getIntersectionHeroSubtitle(culture, cityParam, cityName)
+
+  const caption = `${allEvents.length} upcoming event${allEvents.length === 1 ? '' : 's'}`
+
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
+  const collectionLd = {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: `${culture.displayName} events in ${cityName} on EventLinqs`,
+    description: `${culture.displayName} events in ${cityName}. ${culture.tagline}`.slice(0, 200),
+    url: `${baseUrl}/culture/${culture.slug}/${cityParam}`,
+    inLanguage: 'en-AU',
+    mainEntity: {
+      '@type': 'ItemList',
+      itemListOrder: 'https://schema.org/ItemListOrderAscending',
+      numberOfItems: allEvents.length,
+      itemListElement: allEvents.slice(0, 12).map((e, i) => ({
+        '@type': 'ListItem',
+        position: i + 1,
+        url: `${baseUrl}/events/${e.slug}`,
+        name: e.title,
+      })),
+    },
+  }
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        suppressHydrationWarning
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionLd) }}
+      />
+      <CultureCityLandingPage
+        culture={culture}
+        cityName={cityName}
+        citySlug={cityParam}
+        cityRecord={cityRecord}
+        heroImage={heroImage}
+        editorial={editorial}
+        heroSubtitle={heroSubtitle}
+        caption={caption}
+        thisWeekEvents={thisWeekEvents}
+        thisWeekendEvents={thisWeekendEvents}
+        popularEvents={popularEvents}
+        allEvents={allEvents}
+        subCultureImages={subCultureImages}
+        relatedCities={relatedCities}
+        relatedCultures={relatedCultures}
+        mapPins={mapPins}
+        mapboxToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? ''}
+      />
+    </>
+  )
+}

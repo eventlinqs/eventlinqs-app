@@ -86,8 +86,8 @@ interface LocationPickerProps {
   currentLocation: DetectedLocation
   /** Curated + dynamic picker cities. Fetched server-side and passed in. */
   cities: PickerCityGroups
-  /** Visual variant. `pill` = main bar button. `inline` = full-width row in mobile sheet. */
-  variant?: 'pill' | 'inline'
+  /** Visual variant. `pill` = main bar button (light bg). `onDark` = pill on dark/glass header. `inline` = full-width row in mobile sheet. */
+  variant?: 'pill' | 'onDark' | 'inline'
   /** Optional callback fired after selection closes (e.g. to close mobile sheet). */
   onChange?: () => void
 }
@@ -278,21 +278,30 @@ export function LocationPicker({
     )
   }, [allCities, applyCity])
 
-  const triggerClasses = variant === 'pill'
-    ? [
-        'inline-flex items-center gap-1.5 h-9 px-3 rounded-full',
-        'text-sm font-medium text-ink-700 bg-transparent',
-        'border border-ink-200',
-        'hover:border-gold-500 hover:text-gold-600 transition-colors',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2',
-      ].join(' ')
-    : [
-        'flex w-full min-h-[44px] items-center gap-2 rounded-lg px-4 py-3',
-        'text-base font-medium text-ink-700 hover:bg-ink-100 hover:text-ink-900',
-        'border border-ink-100 bg-white',
-        'transition-colors focus-visible:outline-none focus-visible:ring-2',
-        'focus-visible:ring-[var(--brand-accent)] focus-visible:ring-inset',
-      ].join(' ')
+  const triggerClasses =
+    variant === 'pill'
+      ? [
+          'inline-flex items-center gap-1.5 h-9 px-3 rounded-full',
+          'text-sm font-medium text-ink-700 bg-transparent',
+          'border border-ink-200',
+          'hover:border-gold-500 hover:text-gold-600 transition-colors',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2',
+        ].join(' ')
+      : variant === 'onDark'
+      ? [
+          'inline-flex items-center gap-1.5 h-9 px-3 rounded-full',
+          'text-sm font-medium text-white/90 bg-white/10',
+          'border border-white/15',
+          'hover:bg-white/15 hover:border-[var(--brand-accent)]/60 hover:text-white transition-colors',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)]',
+        ].join(' ')
+      : [
+          'flex w-full min-h-[44px] items-center gap-2 rounded-lg px-4 py-3',
+          'text-base font-medium text-ink-700 hover:bg-ink-100 hover:text-ink-900',
+          'border border-ink-100 bg-white',
+          'transition-colors focus-visible:outline-none focus-visible:ring-2',
+          'focus-visible:ring-[var(--brand-accent)] focus-visible:ring-inset',
+        ].join(' ')
 
   return (
     <>

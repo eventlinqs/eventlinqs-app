@@ -1,54 +1,60 @@
 import { EventlinqsLogo } from '@/components/ui/eventlinqs-logo'
 
 /**
- * SiteFooter - v2 spec (B1 §4.6).
+ * SiteFooter v4 (Batch 5.5) - 4-column desktop, 2-column mobile, ~50%
+ * shorter vertical than v3.
  *
- * Mobile (<768px):
- *   - 3 collapsed accordions: Find events, For organisers, Company
- *   - Below: language picker placeholder, social row, trust bar
+ * Mobile (<768px): 2-col grid of 4 accordions, brand strip above,
+ * compact sub-footer below.
+ * Desktop (768px+): horizontal brand strip on top, 4-col link grid,
+ * compact sub-footer.
  *
- * Desktop (768px+):
- *   - 4-column grid: App | Find events | For organisers | Company
- *   - Sub-footer: social icons, legal links, trust line, ABN, address, copyright
+ * Link sets simplified to founder spec: Discover (6), Cultures (top 6
+ * marketed-rhythm + All cultures), For organisers (4), Company (4).
  *
- * Background: ink-950 (deep navy). Sentence-case column heads. No em-dashes,
- * no exclamation marks. Australian English. Voice doc compliance verified at
- * commit time.
- *
- * Accordion uses native <details>/<summary> - no JS, fully accessible,
- * respects prefers-reduced-motion via CSS.
+ * Background: ink-950. Sentence-case heads. Australian English. No
+ * em-dashes, no exclamation marks.
  */
 
-const FIND_EVENTS = [
+const DISCOVER = [
   { label: 'Browse all events', href: '/events' },
   { label: 'By city',           href: '/events?view=cities' },
   { label: 'By culture',        href: '/events?view=cultures' },
   { label: 'This week',         href: '/events?when=this-week' },
+  { label: 'This weekend',      href: '/events?when=this-weekend' },
   { label: 'Free events',       href: '/events?price=free' },
 ]
 
+const CULTURES = [
+  { label: 'Afrobeats',     href: '/culture/african' },
+  { label: 'Caribbean',     href: '/culture/caribbean' },
+  { label: 'Bollywood',     href: '/culture/south-asian' },
+  { label: 'Latin',         href: '/culture/latin' },
+  { label: 'Italian',       href: '/culture/mediterranean' },
+  { label: 'Filipino',      href: '/culture/filipino' },
+  { label: 'All cultures',  href: '/events?view=cultures' },
+]
+
 const FOR_ORGANISERS = [
-  { label: 'Sell tickets',      href: '/organisers/signup' },
-  { label: 'Pricing',           href: '/pricing' },
-  { label: 'Organiser guide',   href: '/organisers' },
-  { label: 'Success stories',   href: '/organisers#stories' },
-  { label: 'Organiser login',   href: '/login' },
+  { label: 'Sell tickets',     href: '/organisers/signup' },
+  { label: 'Pricing',          href: '/pricing' },
+  { label: 'Organiser guide',  href: '/organisers' },
+  { label: 'Help centre',      href: '/help/selling-tickets' },
 ]
 
 const COMPANY = [
-  { label: 'About',          href: '/about' },
-  { label: 'Careers',        href: '/careers' },
-  { label: 'Press',          href: '/press' },
-  { label: 'Contact',        href: '/contact' },
-  { label: 'Accessibility',  href: '/help/accessibility' },
-  { label: 'Help',           href: '/help' },
+  { label: 'About',     href: '/about' },
+  { label: 'Careers',   href: '/careers' },
+  { label: 'Press',     href: '/press' },
+  { label: 'Contact',   href: '/contact' },
 ]
 
 const LEGAL = [
   { label: 'Terms',          href: '/legal/terms' },
   { label: 'Privacy',        href: '/legal/privacy' },
-  { label: 'Refund policy',  href: '/help/refunds' },
+  { label: 'Refund policy',  href: '/legal/refunds' },
   { label: 'Cookie policy',  href: '/legal/cookies' },
+  { label: 'Accessibility',  href: '/legal/accessibility' },
 ]
 
 function InstagramIcon() {
@@ -111,7 +117,7 @@ function DesktopColumn({ title, links }: FooterColumnProps) {
   return (
     <div>
       <p className="text-xs font-semibold uppercase tracking-widest text-white/70">{title}</p>
-      <ul className="mt-4 space-y-3">
+      <ul className="mt-3 space-y-2">
         {links.map(link => (
           <li key={link.href}>
             <a href={link.href} className="text-sm text-white/70 transition-colors hover:text-white">
@@ -127,11 +133,11 @@ function DesktopColumn({ title, links }: FooterColumnProps) {
 function MobileAccordion({ title, links }: FooterColumnProps) {
   return (
     <details className="group">
-      <summary className="flex cursor-pointer list-none items-center justify-between py-4 text-sm font-semibold text-white [&::-webkit-details-marker]:hidden">
+      <summary className="flex cursor-pointer list-none items-center justify-between py-3 text-sm font-semibold text-white [&::-webkit-details-marker]:hidden">
         {title}
         <ChevronIcon />
       </summary>
-      <ul className="space-y-3 pb-4">
+      <ul className="space-y-2 pb-3">
         {links.map(link => (
           <li key={link.href}>
             <a href={link.href} className="block py-1 text-sm text-white/70 transition-colors hover:text-white">
@@ -153,7 +159,7 @@ function SocialRow() {
     { label: 'Facebook',   href: 'https://facebook.com/eventlinqs',  icon: <FacebookIcon /> },
   ]
   return (
-    <div className="flex items-center gap-5">
+    <div className="flex items-center gap-4">
       {items.map(it => (
         <a
           key={it.label}
@@ -169,8 +175,6 @@ function SocialRow() {
 }
 
 function LanguagePicker() {
-  // Placeholder UI only - real i18n is post-launch. Native <select> avoids
-  // shipping a client component for a static placeholder.
   return (
     <label className="flex items-center gap-2 text-xs text-white/60">
       <span className="sr-only">Language</span>
@@ -195,72 +199,57 @@ export function SiteFooter() {
 
   return (
     <footer className="bg-ink-950 text-white" aria-label="Site footer">
+      <div className="mx-auto max-w-7xl px-4 pt-10 pb-6 sm:px-6 sm:pt-12 lg:px-8">
 
-      {/* Main content area */}
-      <div className="mx-auto max-w-7xl px-4 pt-16 pb-10 sm:px-6 sm:pt-20 lg:px-8">
-
-        {/* Desktop 4-column grid */}
-        <div className="hidden md:grid md:grid-cols-12 md:gap-8">
-          {/* Col 1 - App / brand (4 cols of 12) */}
-          <div className="md:col-span-4">
-            <EventlinqsLogo size="lg" variant="inverted" />
-            <p className="mt-3 max-w-xs text-sm leading-6 text-white/70">
-              The ticketing platform built for every culture.
-            </p>
-            {/* App store placeholders are intentionally omitted until the apps ship.
-                Per voice doc we never claim a product we have not delivered. */}
-            <div className="mt-6">
+        {/* Desktop: brand strip + 4-col link grid */}
+        <div className="hidden md:block">
+          <div className="flex flex-wrap items-center justify-between gap-6 border-b border-white/10 pb-6">
+            <div className="flex items-center gap-5">
+              <EventlinqsLogo size="md" variant="inverted" />
+              <p className="max-w-xs text-sm leading-6 text-white/70">
+                The ticketing platform built for every culture.
+              </p>
+            </div>
+            <div className="flex items-center gap-6">
+              <SocialRow />
               <LanguagePicker />
             </div>
           </div>
 
-          {/* Col 2 - Find events */}
-          <div className="md:col-span-3">
-            <DesktopColumn title="Find events" links={FIND_EVENTS} />
-          </div>
-
-          {/* Col 3 - For organisers */}
-          <div className="md:col-span-2">
-            <DesktopColumn title="For organisers" links={FOR_ORGANISERS} />
-          </div>
-
-          {/* Col 4 - Company */}
-          <div className="md:col-span-3">
-            <DesktopColumn title="Company" links={COMPANY} />
+          <div className="grid grid-cols-4 gap-x-8 gap-y-6 pt-8">
+            <DesktopColumn title="Discover"        links={DISCOVER} />
+            <DesktopColumn title="Cultures"        links={CULTURES} />
+            <DesktopColumn title="For organisers"  links={FOR_ORGANISERS} />
+            <DesktopColumn title="Company"         links={COMPANY} />
           </div>
         </div>
 
-        {/* Mobile - brand block + 3 accordions + language + social */}
+        {/* Mobile: brand strip + 2-col accordion grid */}
         <div className="md:hidden">
-          <EventlinqsLogo size="lg" variant="inverted" />
-          <p className="mt-3 text-sm leading-6 text-white/70">
-            The ticketing platform built for every culture.
-          </p>
+          <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-5">
+            <EventlinqsLogo size="md" variant="inverted" />
+            <SocialRow />
+          </div>
 
-          <div className="mt-8 divide-y divide-white/10 border-y border-white/10">
-            <MobileAccordion title="Find events"     links={FIND_EVENTS} />
+          <div className="grid grid-cols-2 gap-x-6 pt-2">
+            <MobileAccordion title="Discover"        links={DISCOVER} />
+            <MobileAccordion title="Cultures"        links={CULTURES} />
             <MobileAccordion title="For organisers"  links={FOR_ORGANISERS} />
             <MobileAccordion title="Company"         links={COMPANY} />
           </div>
 
-          <div className="mt-8">
+          <div className="mt-4 border-t border-white/10 pt-4">
             <LanguagePicker />
-          </div>
-
-          <div className="mt-8 flex justify-start">
-            <SocialRow />
           </div>
         </div>
       </div>
 
-      {/* Sub-footer: social row (desktop) + legal + trust + ABN + copyright */}
+      {/* Sub-footer: legal + trust + ABN + copyright */}
       <div className="border-t border-white/10">
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
 
-          {/* Desktop social row + legal */}
-          <div className="hidden md:flex md:flex-wrap md:items-center md:justify-between md:gap-6">
-            <SocialRow />
-            <ul className="flex flex-wrap items-center gap-x-6 gap-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+            <ul className="flex flex-wrap items-center gap-x-5 gap-y-1">
               {LEGAL.map(link => (
                 <li key={link.href}>
                   <a href={link.href} className="text-xs text-white/70 transition-colors hover:text-white">
@@ -269,34 +258,15 @@ export function SiteFooter() {
                 </li>
               ))}
             </ul>
+            <p className="text-xs font-medium text-white/80">
+              All-in pricing. No surprise fees.
+            </p>
           </div>
 
-          {/* Mobile legal */}
-          <ul className="md:hidden flex flex-wrap items-center gap-x-5 gap-y-2">
-            {LEGAL.map(link => (
-              <li key={link.href}>
-                <a href={link.href} className="text-xs text-white/70 transition-colors hover:text-white">
-                  {link.label}
-                </a>
-              </li>
-            ))}
-          </ul>
-
-          {/* Trust line */}
-          <p className="mt-6 text-xs font-medium text-white/80">
-            All-in pricing. No surprise fees.
-          </p>
-
-          {/* Markets line */}
-          <p className="mt-2 text-xs text-white/60">
-            AU, UK, US, EU. More cultures, more cities, soon.
-          </p>
-
-          {/* ABN + address + copyright */}
-          <div className="mt-4 flex flex-col gap-1 text-xs text-white/50 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4">
+          <div className="mt-3 flex flex-col gap-1 text-xs text-white/50 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3">
             <span>ABN 30 837 447 587</span>
             <span aria-hidden className="hidden sm:inline">·</span>
-            <span>Registered Geelong VIC, Australia</span>
+            <span>Geelong VIC, Australia</span>
             <span aria-hidden className="hidden sm:inline">·</span>
             <a href="mailto:hello@eventlinqs.com" className="transition-colors hover:text-white/80">
               hello@eventlinqs.com

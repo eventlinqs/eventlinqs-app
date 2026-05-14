@@ -13,7 +13,7 @@ import {
   type LucideProps,
 } from 'lucide-react'
 import { PageShell } from '@/components/layout/PageShell'
-import { PageHero } from '@/components/layout/PageHero'
+import { PhotographicCategoryHero } from '@/components/templates/PhotographicCategoryHero'
 import { ContentSection } from '@/components/layout/ContentSection'
 import { Prose } from '@/components/ui/Prose'
 import { Button } from '@/components/ui/Button'
@@ -60,12 +60,14 @@ export function CategoryLandingPage({ category, liveEvents = [] }: CategoryLandi
 
   return (
     <PageShell>
-      {/* ── 1. Hero - premium variant ─────────────────────────────── */}
-      <PageHero
+      {/* Batch 4: replace dark navy-950 + radial-gold PageHero with a
+          photographic culture hero. Light primary surface picks up
+          immediately below in the next ContentSection. */}
+      <PhotographicCategoryHero
+        slug={slug}
         eyebrow={eyebrowLabel}
         title={heroHeadline}
         subtitle={heroBody}
-        variant="premium"
       />
 
       {/* ── 2. Story / Why this category ─────────────────────────── */}

@@ -1,14 +1,24 @@
 /**
- * Curated 32-city launch list for the EventLinqs location picker and
- * /events/browse/{city-slug} path-based routing. Chosen for cultural
- * community density across Africa, the Caribbean, South Asia, East
- * Asia, Latin America, and Anglo markets, rather than raw population.
- * Ticketmaster's city list is generic; ours is cultural.
+ * Curated AU-only launch list for the EventLinqs location picker and
+ * /events/browse/{city-slug} path-based routing.
+ *
+ * Batch 11.0 Round 3 AU-first launch lock: international markets
+ * (NZ, UK, Ireland, Canada, US, Nigeria, Ghana, Kenya, South Africa,
+ * UAE) are deferred to a later regional expansion. Until then no
+ * non-AU slug should be routable on the public surface. The previous
+ * 32-city list leaked international slugs to Vercel runtime (`GET
+ * 200 /events/browse/manchester`, `london`, `new-york`, `lagos`,
+ * `dublin`, `accra` etc.) - those routes now return 404 because the
+ * non-AU rows are removed from this list AND a `country = 'AU'`
+ * check constraint hardens the `cities` table at the DB layer.
  *
  * These cities ALWAYS appear in the picker and sitemap regardless of
  * current event count, so they accumulate Google authority for when
  * events arrive. Cities with zero events remain clickable and land
  * on the empty-state page.
+ *
+ * To re-enable an international market, add the rows back here AND
+ * relax the cities.country check constraint via a new migration.
  */
 
 export type LaunchCity = {
@@ -36,39 +46,6 @@ export const LAUNCH_TARGET_CITIES: readonly LaunchCity[] = [
   { city: 'Canberra',      slug: 'canberra',      country: 'Australia', countryCode: 'AU', latitude: -35.2809, longitude: 149.1300, isAustralia: true },
   { city: 'Darwin',        slug: 'darwin',        country: 'Australia', countryCode: 'AU', latitude: -12.4634, longitude: 130.8456, isAustralia: true },
   { city: 'Cairns',        slug: 'cairns',        country: 'Australia', countryCode: 'AU', latitude: -16.9186, longitude: 145.7781, isAustralia: true },
-
-  // New Zealand
-  { city: 'Auckland',      slug: 'auckland',      country: 'New Zealand', countryCode: 'NZ', latitude: -36.8485, longitude: 174.7633, isAustralia: false },
-
-  // United Kingdom
-  { city: 'London',        slug: 'london',        country: 'United Kingdom', countryCode: 'GB', latitude: 51.5074, longitude:  -0.1278, isAustralia: false },
-  { city: 'Manchester',    slug: 'manchester',    country: 'United Kingdom', countryCode: 'GB', latitude: 53.4808, longitude:  -2.2426, isAustralia: false },
-  { city: 'Birmingham',    slug: 'birmingham',    country: 'United Kingdom', countryCode: 'GB', latitude: 52.4862, longitude:  -1.8904, isAustralia: false },
-
-  // Ireland
-  { city: 'Dublin',        slug: 'dublin',        country: 'Ireland', countryCode: 'IE', latitude: 53.3498, longitude: -6.2603, isAustralia: false },
-
-  // Canada
-  { city: 'Toronto',       slug: 'toronto',       country: 'Canada', countryCode: 'CA', latitude: 43.6532, longitude: -79.3832, isAustralia: false },
-  { city: 'Montreal',      slug: 'montreal',      country: 'Canada', countryCode: 'CA', latitude: 45.5017, longitude: -73.5673, isAustralia: false },
-  { city: 'Ottawa',        slug: 'ottawa',        country: 'Canada', countryCode: 'CA', latitude: 45.4215, longitude: -75.6972, isAustralia: false },
-
-  // United States
-  { city: 'New York',      slug: 'new-york',      country: 'United States', countryCode: 'US', latitude: 40.7128, longitude: -74.0060, isAustralia: false },
-  { city: 'Houston',       slug: 'houston',       country: 'United States', countryCode: 'US', latitude: 29.7604, longitude: -95.3698, isAustralia: false },
-  { city: 'Atlanta',       slug: 'atlanta',       country: 'United States', countryCode: 'US', latitude: 33.7490, longitude: -84.3880, isAustralia: false },
-  { city: 'Washington DC', slug: 'washington-dc', country: 'United States', countryCode: 'US', latitude: 38.9072, longitude: -77.0369, isAustralia: false },
-  { city: 'Minneapolis',   slug: 'minneapolis',   country: 'United States', countryCode: 'US', latitude: 44.9778, longitude: -93.2650, isAustralia: false },
-
-  // Africa
-  { city: 'Lagos',         slug: 'lagos',         country: 'Nigeria',      countryCode: 'NG', latitude:   6.5244, longitude:   3.3792, isAustralia: false },
-  { city: 'Abuja',         slug: 'abuja',         country: 'Nigeria',      countryCode: 'NG', latitude:   9.0765, longitude:   7.3986, isAustralia: false },
-  { city: 'Accra',         slug: 'accra',         country: 'Ghana',        countryCode: 'GH', latitude:   5.6037, longitude:  -0.1870, isAustralia: false },
-  { city: 'Nairobi',       slug: 'nairobi',       country: 'Kenya',        countryCode: 'KE', latitude:  -1.2921, longitude:  36.8219, isAustralia: false },
-  { city: 'Johannesburg',  slug: 'johannesburg',  country: 'South Africa', countryCode: 'ZA', latitude: -26.2041, longitude:  28.0473, isAustralia: false },
-
-  // UAE
-  { city: 'Dubai',         slug: 'dubai',         country: 'United Arab Emirates', countryCode: 'AE', latitude: 25.2048, longitude: 55.2708, isAustralia: false },
 ]
 
 export function toCitySlug(name: string): string {

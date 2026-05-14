@@ -1,0 +1,8 @@
+{
+  "url": "http://localhost:3007/city/sydney",
+  "timestamp": "2026-05-14T01:07:22.540Z",
+  "violations": [],
+  "passCount": 32,
+  "incompleteCount": 1,
+  "inapplicableCount": 29
+}

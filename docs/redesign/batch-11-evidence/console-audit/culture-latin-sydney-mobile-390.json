@@ -1,0 +1,48 @@
+{
+  "route": "/culture/latin/sydney",
+  "viewport": "mobile-390",
+  "status": 200,
+  "ok": true,
+  "consoleErrors": [],
+  "consoleWarns": [
+    "Ignoring Event: localhost"
+  ],
+  "console404s": [],
+  "failedRequests": [
+    {
+      "url": "http://localhost:3007/?_rsc=1fh6n",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/organisers?city=sydney&culture=latin&_rsc=b41pd",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/organisers?_rsc=b41pd",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=latin&sub_culture=colombian&city=sydney&_rsc=1fh6n",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=latin&sub_culture=mexican&city=sydney&_rsc=1fh6n",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=latin&sub_culture=colombian&city=sydney&_rsc=b41pd",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=latin&sub_culture=mexican&city=sydney&_rsc=b41pd",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    }
+  ]
+}

@@ -52,8 +52,11 @@ export function ContactForm({ initialSubject = '' }: ContactFormProps) {
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setSubmitting(true)
-    // TODO(M11): replace with POST /api/contact → Resend delivery
-    console.log('[Contact form submission]', { name, email, subject, message })
+    const body = `${message}\n\n---\nFrom: ${name}\nReply-to: ${email}`
+    const mailto = `mailto:hello@eventlinqs.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+    if (typeof window !== 'undefined') {
+      window.location.href = mailto
+    }
     setTimeout(() => {
       setSubmitting(false)
       setSubmitted(true)
@@ -174,7 +177,7 @@ export function ContactForm({ initialSubject = '' }: ContactFormProps) {
 
           <div>
             <dt className="font-semibold text-[var(--text-primary)]">Location</dt>
-            <dd className="mt-1 text-[var(--text-secondary)]">Melbourne, Australia</dd>
+            <dd className="mt-1 text-[var(--text-secondary)]">Geelong VIC, Australia</dd>
           </div>
 
           <div>

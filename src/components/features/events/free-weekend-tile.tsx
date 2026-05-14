@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { EventCardMedia, BrandedPlaceholder } from '@/components/media'
-import { GlassCard } from '@/components/ui/glass-card'
 import { getEventMedia, type EventMediaInput } from '@/lib/images/event-media'
 import { getCategoryPhoto } from '@/lib/images/category-photo'
 import type { BentoEvent } from './event-bento-tile'
@@ -9,6 +8,12 @@ import type { BentoEvent } from './event-bento-tile'
  * FreeWeekendTile: bento cell that highlights the highest-capacity free
  * event this weekend. Falls back to "Discover free events" generic CTA
  * when no free-weekend event exists.
+ *
+ * Separated-card pattern (rebuilt batch 3):
+ *   - Image at TOP (3/2 aspect) with gold "Free" pill on a darkened
+ *     gradient label band along the lower edge of the image.
+ *   - White card body BELOW the image with date / title / venue / CTA.
+ *   - 8px radius, hover lift + shadow.
  */
 
 interface Props {
@@ -75,52 +80,40 @@ export async function FreeWeekendTile({ event, fallbackMode = false }: Props) {
   return (
     <Link
       href={href}
-      className="group relative flex h-full w-full flex-col overflow-hidden rounded-2xl bg-ink-900 tile-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
+      className="group flex h-full w-full flex-col overflow-hidden rounded-lg border border-[var(--surface-2)] bg-[var(--surface-0)] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2"
     >
-      <div className="absolute inset-0">
-        <div className="absolute inset-0 overflow-hidden transition-transform duration-[1400ms] ease-out group-hover:scale-[1.04]">
-          {imageSrc ? (
-            <EventCardMedia src={imageSrc} alt={imageAlt} variant="bento-hero" />
-          ) : (
-            <BrandedPlaceholder category={placeholderCategory} />
-          )}
-        </div>
+      <div className="relative aspect-[3/2] overflow-hidden bg-[var(--surface-1)]">
+        {imageSrc ? (
+          <EventCardMedia src={imageSrc} alt={imageAlt} variant="bento-supporting" />
+        ) : (
+          <BrandedPlaceholder category={placeholderCategory} />
+        )}
         <div
-          className="absolute inset-0"
+          className="absolute inset-x-0 bottom-0 h-2/5"
           style={{
             background:
-              'linear-gradient(180deg, rgba(10,22,40,0) 0%, rgba(10,22,40,0.2) 45%, rgba(10,22,40,0.9) 100%)',
+              'linear-gradient(180deg, rgba(10,22,40,0) 0%, rgba(10,22,40,0.7) 100%)',
           }}
           aria-hidden
         />
-        <div
-          className="pointer-events-none absolute inset-0 rounded-2xl border-2 border-transparent transition-colors duration-300 group-hover:border-gold-400/70"
-          aria-hidden
-        />
-      </div>
-
-      <div className="relative z-10 flex items-start justify-between p-4">
-        <GlassCard
-          variant="dark"
-          className="rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-gold-400"
-        >
+        <span className="absolute left-3 top-3 inline-flex items-center rounded-full bg-[var(--color-gold-400)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-[var(--color-navy-950)] shadow-sm">
           Free
-        </GlassCard>
+        </span>
       </div>
 
-      <div className="flex-1" />
-
-      <div className="relative z-10 p-4 text-white">
+      <div className="flex flex-1 flex-col p-4">
         {event && (
-          <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-gold-400">
+          <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-[var(--brand-accent-strong)]">
             {formatDate(event.start_date)}
           </p>
         )}
-        <h3 className="mt-1 font-display text-lg font-extrabold leading-tight line-clamp-2">
+        <h3 className="mt-1 font-display text-base font-extrabold leading-tight text-[var(--text-primary)] line-clamp-2">
           {title}
         </h3>
-        <p className="mt-1.5 text-xs text-white/75 line-clamp-2">{venue}</p>
-        <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-gold-400 transition-transform duration-300 group-hover:translate-x-1">
+        <p className="mt-1.5 text-xs text-[var(--text-secondary)] line-clamp-2">
+          {venue}
+        </p>
+        <span className="mt-auto inline-flex items-center gap-1 pt-3 text-[11px] font-semibold text-[var(--brand-accent-strong)] transition-transform duration-200 group-hover:translate-x-0.5">
           {event ? 'RSVP' : 'Find free'} <span aria-hidden>&rarr;</span>
         </span>
       </div>

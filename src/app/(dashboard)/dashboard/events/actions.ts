@@ -99,6 +99,7 @@ export async function createEvent(input: CreateEventInput): Promise<{ error?: st
     const gate = await checkPublishGate(supabase, {
       organisationId: input.organisationId,
       tiersHavePaid: hasPaidTier(input.ticket_tiers),
+      coverImageUrl: input.cover_image_url,
     })
     if (!gate.ok) return { error: gate.message }
   }
@@ -227,6 +228,7 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
     const gate = await checkPublishGate(supabase, {
       organisationId: event.organisation_id,
       tiersHavePaid: hasPaidTier(input.ticket_tiers),
+      coverImageUrl: input.cover_image_url,
     })
     if (!gate.ok) return { error: gate.message }
   }
@@ -344,7 +346,7 @@ export async function publishEvent(eventId: string): Promise<{ error?: string }>
 
   const { data: event } = await supabase
     .from('events')
-    .select('status, organisation_id')
+    .select('status, organisation_id, cover_image_url')
     .eq('id', eventId)
     .single()
 
@@ -361,6 +363,7 @@ export async function publishEvent(eventId: string): Promise<{ error?: string }>
   const gate = await checkPublishGate(supabase, {
     organisationId: event.organisation_id,
     tiersHavePaid: hasPaidTier(tiers ?? []),
+    coverImageUrl: event.cover_image_url,
   })
   if (!gate.ok) return { error: gate.message }
 

@@ -48,11 +48,11 @@ export function CulturalPicksRail({ tabs }: Props) {
               aria-selected={isActive}
               onClick={() => setActiveSlug(t.slug)}
               className={[
-                'shrink-0 rounded-full px-4 py-1.5 text-sm font-medium border transition-colors',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2',
+                'shrink-0 rounded-full px-4 py-1.5 text-sm font-medium border transition-all duration-200',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2',
                 isActive
-                  ? 'bg-gold-500 border-gold-500 text-ink-900'
-                  : 'bg-white border-ink-200 text-ink-700 hover:border-gold-400 hover:text-gold-600',
+                  ? 'border-[var(--color-navy-950)] bg-[var(--color-navy-950)] text-white shadow-sm'
+                  : 'border-[var(--surface-2)] bg-[var(--surface-0)] text-[var(--text-primary)] hover:-translate-y-0.5 hover:border-[var(--brand-accent-strong)] hover:text-[var(--brand-accent-strong)] hover:shadow-sm',
               ].join(' ')}
             >
               {t.label}
@@ -61,13 +61,12 @@ export function CulturalPicksRail({ tabs }: Props) {
         })}
       </div>
 
-      {/* Active tab rail */}
       <div key={active.slug} className="mt-8">
         <div className="flex items-baseline justify-between">
-          <h3 className="font-display text-xl font-bold text-ink-900">{active.label}</h3>
+          <h3 className="font-display text-xl font-bold text-[var(--text-primary)]">{active.label}</h3>
           <Link
             href={active.href}
-            className="text-xs font-medium text-gold-700 whitespace-nowrap transition-colors hover:text-gold-600"
+            className="text-xs font-medium text-[var(--brand-accent-strong)] whitespace-nowrap transition-colors hover:text-[var(--text-primary)]"
           >
             View all {active.label} &rsaquo;
           </Link>

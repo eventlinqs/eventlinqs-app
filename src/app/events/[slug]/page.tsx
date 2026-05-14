@@ -5,7 +5,6 @@ import type { Metadata } from 'next'
 import type {
   Event, TicketTier, Organisation, EventCategory, EventAddon,
 } from '@/types/database'
-import { CopyLinkButton } from '@/components/features/events/copy-link-button'
 import {
   SeatSelector, type SeatData, type SectionData,
 } from '@/components/checkout/seat-selector'
@@ -16,6 +15,7 @@ import { getDynamicPriceMap } from '@/lib/pricing/dynamic-pricing'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { HeroMedia } from '@/components/media'
+import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 import { GlassCard } from '@/components/ui/glass-card'
 import { getFeaturedHeroBackground } from '@/lib/images/event-media'
 import { StickyActionBar } from '@/components/features/events/sticky-action-bar'
@@ -24,6 +24,7 @@ import type { EventCardData } from '@/components/features/events/event-card'
 import { projectToCardData } from '@/lib/events/event-card-projection'
 import type { PublicEventRow } from '@/lib/events/types'
 import dynamic from 'next/dynamic'
+import { EventTrustSignals } from '@/components/features/event/EventTrustSignals'
 
 // VenueMap pulls in @googlemaps/js-api-loader (~290KB). Loading it statically
 // makes it part of the event-detail route chunk, which Next.js eagerly
@@ -35,6 +36,10 @@ const VenueMap = dynamic(
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { EventSoldOut, type EventSoldOutRelated } from '@/components/features/events/event-sold-out'
 import { EventViewTracker } from '@/components/features/events/event-view-tracker'
+import { EventSchemaJsonLd } from '@/components/features/events/event-schema-jsonld'
+import { EventShareBar } from '@/components/features/events/event-share-bar'
+import { EventStateBanner } from '@/components/features/events/event-state-banner'
+import { SaveEventButton } from '@/components/features/events/save-event-button'
 
 // Why ISR: every published event detail page is the same for all anonymous
 // visitors, so the shell ships as static HTML (revalidated every 5 minutes
@@ -165,14 +170,45 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return { title: 'Event not found | EventLinqs' }
   }
 
+  // SEO format per Batch 8.1 brief: "[Event Name] - [Date] - [Venue] - EventLinqs".
+  // Description: city + culture/category + date packed into 155 chars for click-through.
+  const dateLabel = formatShortDate(event.start_date, event.timezone)
+  const venueLabel = [event.venue_name, event.venue_city].filter(Boolean).join(', ')
+  const titleParts = [event.title, dateLabel, venueLabel || null].filter(Boolean) as string[]
+  const title = `${titleParts.join(' - ')} - EventLinqs`
+
+  const summarySource = event.summary
+    ?? (event.description ? event.description.replace(/<[^>]*>/g, '') : '')
+  const cityLine = event.venue_city ? `In ${event.venue_city}. ` : ''
+  const description = (cityLine + summarySource).slice(0, 155)
+
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
+
   return {
-    title: `${event.title} | EventLinqs`,
-    description: event.summary ?? event.description?.replace(/<[^>]*>/g, '').slice(0, 160) ?? '',
+    title,
+    description,
+    keywords: [
+      event.title,
+      event.venue_city ?? '',
+      event.category?.name ?? '',
+      'tickets',
+      'events',
+    ].filter(Boolean) as string[],
     alternates: { canonical: `/events/${slug}` },
     openGraph: {
       title: event.title,
-      description: event.summary ?? '',
-      images: event.cover_image_url ? [{ url: event.cover_image_url }] : [],
+      description,
+      url: `${baseUrl}/events/${slug}`,
+      type: 'website',
+      images: event.cover_image_url
+        ? [{ url: event.cover_image_url, width: 1200, height: 630, alt: event.title }]
+        : [],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: event.title,
+      description,
+      images: event.cover_image_url ? [event.cover_image_url] : [],
     },
   }
 }
@@ -219,49 +255,17 @@ export default async function EventDetailPage({ params }: Props) {
   // so by the time we get here, the visitor either holds a valid admission
   // token or the event isn't gated at all.
 
-  // Non-public state screens - gentle brand-aligned treatments.
-  if (event.status === 'cancelled') {
-    return (
-      <div className="min-h-screen bg-canvas">
-        <SiteHeader />
-        <main className="mx-auto flex max-w-3xl flex-col items-center px-4 py-24 text-center sm:px-6 lg:px-8">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-coral-100">
-            <svg className="h-8 w-8 text-coral-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </div>
-          <h1 className="mt-6 font-display text-3xl font-bold text-ink-900">{event.title}</h1>
-          <p className="mt-2 text-base text-ink-600">This event has been cancelled.</p>
-          <Link
-            href="/events"
-            className="mt-6 inline-flex items-center rounded-lg bg-gold-500 px-5 py-2.5 text-sm font-semibold text-ink-900 transition-colors hover:bg-gold-600"
-          >
-            Browse other events
-          </Link>
-        </main>
-        <SiteFooter />
-      </div>
-    )
-  }
-
-  if (event.status === 'completed') {
-    return (
-      <div className="min-h-screen bg-canvas">
-        <SiteHeader />
-        <main className="mx-auto flex max-w-3xl flex-col items-center px-4 py-24 text-center sm:px-6 lg:px-8">
-          <h1 className="font-display text-3xl font-bold text-ink-900">{event.title}</h1>
-          <p className="mt-2 text-base text-ink-600">This event has ended.</p>
-          <Link
-            href="/events"
-            className="mt-6 inline-flex items-center rounded-lg bg-gold-500 px-5 py-2.5 text-sm font-semibold text-ink-900 transition-colors hover:bg-gold-600"
-          >
-            Browse upcoming events
-          </Link>
-        </main>
-        <SiteFooter />
-      </div>
-    )
-  }
+  // Non-public visibility / state screens.
+  // - cancelled / completed (past) / postponed: render the full event
+  //   page so the URL retains SEO + archive + customer-service value,
+  //   with a state banner above the hero (Batch 8.1).
+  // - private / draft / scheduled: still hard-block - those events
+  //   shouldn't surface to anyone without explicit access.
+  const eventBannerState =
+    event.status === 'cancelled' ? 'cancelled' as const :
+    event.status === 'postponed' ? 'postponed' as const :
+    event.status === 'completed' ? 'past' as const :
+    null
 
   if (event.visibility === 'private') {
     return (
@@ -420,8 +424,23 @@ export default async function EventDetailPage({ params }: Props) {
     }
   })
 
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
+  const eventStateForSchema =
+    eventBannerState === 'cancelled' ? 'cancelled' as const :
+    eventBannerState === 'postponed' ? 'postponed' as const :
+    eventBannerState === 'past' ? 'past' as const :
+    isSoldOut ? 'sold-out' as const :
+    'upcoming' as const
+
   return (
     <div className="min-h-screen bg-canvas">
+      <EventSchemaJsonLd
+        event={event}
+        organisation={event.organisation}
+        ticketTiers={allTiers}
+        state={eventStateForSchema}
+        baseUrl={baseUrl}
+      />
       <EventViewTracker
         eventId={event.id}
         eventTitle={event.title}
@@ -430,6 +449,13 @@ export default async function EventDetailPage({ params }: Props) {
         priceRange={priceLabel ?? 'Free'}
       />
       <SiteHeader />
+
+      {eventBannerState ? (
+        <EventStateBanner
+          state={eventBannerState}
+          organiserHandle={event.organisation.slug ?? null}
+        />
+      ) : null}
 
       <StickyActionBar
         title={event.title}
@@ -445,6 +471,7 @@ export default async function EventDetailPage({ params }: Props) {
           aria-label="Event hero"
           className="relative flex min-h-[55vh] items-end overflow-hidden bg-navy-950 md:min-h-[70vh]"
         >
+          <HeroPresenceMarker />
           <div className="absolute inset-0">
             <HeroMedia
               image={media.image}
@@ -505,16 +532,34 @@ export default async function EventDetailPage({ params }: Props) {
               )}
 
               <div className="mt-8 flex flex-wrap items-center gap-3">
-                <Link
-                  href="#tickets"
-                  className="inline-flex items-center rounded-lg bg-gold-500 px-6 py-3 text-base font-semibold text-ink-900 shadow-lg shadow-gold-500/20 transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.02] hover:bg-gold-600"
-                >
-                  Get tickets
-                </Link>
-                <span className="inline-flex items-center gap-2 text-sm text-white/80">
-                  <span className="font-display font-bold text-gold-400">{priceLabel ?? 'Free entry'}</span>
-                </span>
+                {eventBannerState === 'cancelled' || eventBannerState === 'past' ? (
+                  <Link
+                    href="/events"
+                    className="inline-flex items-center rounded-lg bg-gold-500 px-6 py-3 text-base font-semibold text-ink-900 shadow-lg shadow-gold-500/20 transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.02] hover:bg-gold-600"
+                  >
+                    Browse upcoming events
+                  </Link>
+                ) : (
+                  <Link
+                    href="#tickets"
+                    className="inline-flex items-center rounded-lg bg-gold-500 px-6 py-3 text-base font-semibold text-ink-900 shadow-lg shadow-gold-500/20 transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.02] hover:bg-gold-600"
+                  >
+                    Get tickets
+                  </Link>
+                )}
+                {!eventBannerState ? (
+                  <span className="inline-flex items-center gap-2 text-sm text-white/80">
+                    <span className="font-display font-bold text-gold-400">{priceLabel ?? 'Free entry'}</span>
+                  </span>
+                ) : null}
+                <SaveEventButton eventId={event.id} variant="dark" />
               </div>
+              {/* Batch 11.0 - Trust signals at the purchase-decision
+               *  moment, the 2026 contextual pattern. The legacy
+               *  sitewide trust band was removed from the homepage in
+               *  this batch; trust now lives at the moment that drives
+               *  the conversion. */}
+              <EventTrustSignals variant="dark" />
             </div>
           </div>
         </section>
@@ -636,10 +681,19 @@ export default async function EventDetailPage({ params }: Props) {
                   </div>
                 )}
 
-                {/* Share */}
-                <div className="mt-8 flex items-center gap-3">
-                  <span className="text-sm text-ink-600">Share:</span>
-                  <CopyLinkButton />
+                {/* Share - WhatsApp first per Batch 8.1 brief (cultural events
+                 *  spread through WhatsApp more than any other channel in the
+                 *  EventLinqs target communities). */}
+                <div className="mt-8">
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-ink-500">
+                    Share this event
+                  </p>
+                  <EventShareBar
+                    eventTitle={event.title}
+                    eventDate={shortDate}
+                    eventUrl={`${baseUrl}/events/${event.slug}`}
+                    variant="light"
+                  />
                 </div>
               </div>
 

@@ -1,0 +1,68 @@
+{
+  "route": "/culture/caribbean/melbourne",
+  "viewport": "desktop-1440",
+  "status": 200,
+  "ok": true,
+  "consoleErrors": [],
+  "consoleWarns": [
+    "Ignoring Event: localhost"
+  ],
+  "console404s": [],
+  "failedRequests": [
+    {
+      "url": "http://localhost:3007/organisers?_rsc=1k5od",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=caribbean&sub_culture=trinidadian&city=melbourne&_rsc=1k5od",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=caribbean&sub_culture=afro-caribbean&city=melbourne&_rsc=1k5od",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=caribbean&sub_culture=dancehall&city=melbourne&_rsc=1k5od",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=caribbean&sub_culture=soca&city=melbourne&_rsc=1k5od",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=caribbean&sub_culture=reggae&city=melbourne&_rsc=1k5od",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=caribbean&sub_culture=trinidadian&city=melbourne&_rsc=40ggo",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=caribbean&sub_culture=afro-caribbean&city=melbourne&_rsc=40ggo",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=caribbean&sub_culture=dancehall&city=melbourne&_rsc=40ggo",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=caribbean&sub_culture=reggae&city=melbourne&_rsc=40ggo",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=caribbean&sub_culture=soca&city=melbourne&_rsc=40ggo",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    }
+  ]
+}

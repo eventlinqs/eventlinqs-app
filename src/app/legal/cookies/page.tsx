@@ -38,7 +38,7 @@ export default function CookiesPage() {
       <h2 id="how-we-use-them">How We Use Cookies</h2>
       <p>
         EventLinqs (operated by Lawal Adams, ABN 30 837 447 587,
-        Melbourne, Victoria, Australia) uses cookies for four things:
+        Geelong, Victoria, Australia) uses cookies for four things:
         keeping your session secure, remembering your preferences,
         understanding aggregate usage, and preventing abuse. We do not
         use cookies for third-party advertising and we never sell cookie
@@ -90,7 +90,7 @@ export default function CookiesPage() {
         </li>
         <li>
           <strong>Plausible Analytics</strong> (see the next section for
-          the full details) is cookieless by design &mdash; no cookies are
+          the full details) is cookieless by design - no cookies are
           set on your device for analytics.
         </li>
       </ul>
@@ -127,9 +127,9 @@ export default function CookiesPage() {
       </ul>
       <p>
         Alongside page views, we track a small set of named conversion
-        events &mdash; viewing an event, starting checkout, completing a
-        purchase, saving an event, searching, and organisers signing up
-        &mdash; so we can improve the product. These events carry only
+        events: viewing an event, starting checkout, completing a
+        purchase, saving an event, searching, and organisers signing up.
+        These events let us improve the product. They carry only
         non-identifying metadata (e.g. event id, category, city, price
         range). They never carry your name, email, or payment details.
       </p>

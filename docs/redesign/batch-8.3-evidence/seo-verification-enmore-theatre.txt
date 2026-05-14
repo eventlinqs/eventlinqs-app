@@ -1,0 +1,21 @@
+URL: http://localhost:3002/venues/enmore-theatre
+Title: Enmore Theatre - Events & Info - Sydney - EventLinqs
+Canonical: http://localhost:3000/venues/enmore-theatre
+
+== meta tags ==
+  viewport: width=device-width, initial-scale=1
+  description: In Sydney. Live music venue. 
+  keywords: Enmore Theatre,Sydney,venue,events,tickets
+  robots: index, follow
+  googlebot: index, follow
+  og:title: Enmore Theatre
+  og:description: In Sydney. Live music venue. 
+  og:url: https://eventlinqs.com/venues/enmore-theatre
+  og:type: website
+  twitter:card: summary_large_image
+  twitter:title: Enmore Theatre
+  twitter:description: In Sydney. Live music venue. 
+
+== Schema.org JSON-LD payloads ==
+--- payload 1 ---
+{"@context":"https://schema.org","@type":"Place","name":"Enmore Theatre","url":"https://eventlinqs.com/venues/enmore-theatre","address":{"@type":"PostalAddress","streetAddress":"118-132 Enmore Rd, Newtown","addressLocality":"Sydney","addressRegion":"NSW","addressCountry":"Australia"},"geo":{"@type":"GeoCoordinates","latitude":-33.8979,"longitude":151.1747},"event":[{"@type":"Event","name":"Lagos Comedy Tour: Sydney Showcase","startDate":"2026-05-30T09:30:00+00:00","endDate":"2026-05-30T12:30:00+00:00","url":"https://eventlinqs.com/events/lagos-comedy-tour-sydney-showcase","image":["https://images.pexels.com/photos/6727476/pexels-photo-6727476.jpeg?auto=compress&cs=tinysrgb&h=650&w=940"],"location":{"@type":"Place","name":"Enmore Theatre","address":{"@type":"PostalAddress","streetAddress":"118-132 Enmore Rd, Newtown","addressLocality":"Sydney","addressRegion":"NSW","addressCountry":"Australia"}},"organizer":{"@type":"Organization","name":"Lagos Comedy Tour","url":"https://eventlinqs.com/organisers/lagos-comedy-tour"}},{"@type":"Event","name":"Reggaeton and Bachata: Latin Heat","startDate":"2026-07-11T11:00:00+00:00","endDate":"2026-07-11T18:00:00+00:00","url":"https://eventlinqs.com/events/reggaeton-and-bachata-latin-heat","image":["https://images.pexels.com/photos/18704290/pexels-photo-18704290.jpeg?auto=compress&cs=tinysrgb&h=650&w=940"],"location":{"@type":"Place","name":"Enmore Theatre","address":{"@type":"PostalAddress","streetAddress":"118-132 Enmore Rd, Newtown","addressLocality":"Sydney","addressRegion":"NSW","addressCountry":"Australia"}},"organizer":{"@type":"Organization","name":"Latin Sabor Sydney","url":"https://eventlinqs.com/organisers/latin-sabor-sydney"}}]}

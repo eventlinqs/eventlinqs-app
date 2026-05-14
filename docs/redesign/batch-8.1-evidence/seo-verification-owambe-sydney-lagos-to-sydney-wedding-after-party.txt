@@ -1,0 +1,26 @@
+URL: http://localhost:3002/events/owambe-sydney-lagos-to-sydney-wedding-after-party
+Title: Owambe Sydney: Lagos to Sydney Wedding After-Party - Sat, 9 May - Hordern Pavilion, Sydney - EventLinqs
+Canonical: http://localhost:3000/events/owambe-sydney-lagos-to-sydney-wedding-after-party
+
+== meta tags ==
+  viewport: width=device-width, initial-scale=1
+  description: In Sydney. Live band, jollof cook-off, Yoruba celebration | Sydney
+  keywords: Owambe Sydney: Lagos to Sydney Wedding After-Party,Sydney,Nightlife,tickets,events
+  robots: index, follow
+  googlebot: index, follow
+  og:title: Owambe Sydney: Lagos to Sydney Wedding After-Party
+  og:description: In Sydney. Live band, jollof cook-off, Yoruba celebration | Sydney
+  og:url: https://eventlinqs.com/events/owambe-sydney-lagos-to-sydney-wedding-after-party
+  og:image: https://images.pexels.com/photos/9003000/pexels-photo-9003000.jpeg?auto=compress&cs=tinysrgb&h=650&w=940
+  og:image:width: 1200
+  og:image:height: 630
+  og:image:alt: Owambe Sydney: Lagos to Sydney Wedding After-Party
+  og:type: website
+  twitter:card: summary_large_image
+  twitter:title: Owambe Sydney: Lagos to Sydney Wedding After-Party
+  twitter:description: In Sydney. Live band, jollof cook-off, Yoruba celebration | Sydney
+  twitter:image: https://images.pexels.com/photos/9003000/pexels-photo-9003000.jpeg?auto=compress&cs=tinysrgb&h=650&w=940
+
+== Schema.org JSON-LD payloads ==
+--- payload 1 ---
+{"@context":"https://schema.org","@type":"Event","name":"Owambe Sydney: Lagos to Sydney Wedding After-Party","startDate":"2026-05-09T08:00:00+00:00","endDate":"2026-05-09T16:00:00+00:00","eventStatus":"https://schema.org/EventScheduled","eventAttendanceMode":"https://schema.org/OfflineEventAttendanceMode","location":{"@type":"Place","name":"Hordern Pavilion","address":{"@type":"PostalAddress","streetAddress":"1 Driver Ave, Moore Park","addressLocality":"Sydney","addressRegion":"NSW","addressCountry":"Australia"},"geo":{"@type":"GeoCoordinates","latitude":-33.8927,"longitude":151.2244}},"image":["https://images.pexels.com/photos/9003000/pexels-photo-9003000.jpeg?auto=compress&cs=tinysrgb&h=650&w=940"],"description":"Live band, jollof cook-off, Yoruba celebration | Sydney","organizer":{"@type":"Organization","name":"Owambe Sydney","url":"https://eventlinqs.com/organisers/owambe-sydney"},"offers":{"@type":"AggregateOffer","priceCurrency":"AUD","lowPrice":"65.00","highPrice":"280.00","offerCount":2,"availability":"https://schema.org/InStock","url":"https://eventlinqs.com/events/owambe-sydney-lagos-to-sydney-wedding-after-party"},"url":"https://eventlinqs.com/events/owambe-sydney-lagos-to-sydney-wedding-after-party"}

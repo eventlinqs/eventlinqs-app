@@ -2,7 +2,10 @@ import type { Metadata } from 'next'
 import { Inter, Manrope } from 'next/font/google'
 import Script from 'next/script'
 import './globals.css'
-import { BottomNav } from '@/components/layout/bottom-nav'
+import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav'
+import { HeaderScrollSentinel } from '@/components/layout/header-scroll-sentinel'
+import { HeroPresenceProvider } from '@/contexts/hero-presence-context'
+import { DuotoneFilterDefs } from '@/components/ui/DuotoneFilterDefs'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -61,15 +64,20 @@ export const metadata: Metadata = {
  *    present BEFORE the first body child renders - same observable
  *    behaviour as iter-3's SSR-rendered `<body data-headless="1">`.
  *
- * 2. BODY script - real-visitor analytics + animation reveal.
+ * 2. BODY script - real-visitor animation reveal.
  *    Runs once <body> is open. Skips itself entirely if the html
  *    element is already flagged as headless. For real users it
  *    schedules `data-loaded` on requestIdleCallback (post-LCP
- *    decorative animation reveal) and injects Plausible
- *    (cookieless, EU-hosted, async + defer).
+ *    decorative animation reveal). Plausible install was extracted
+ *    in Batch 9.2 into the dedicated <Script> element below; the
+ *    queue stub is preserved here so `window.plausible(...)` calls
+ *    made before the deferred Plausible script lands are replayed
+ *    once it boots.
  */
 const HEAD_HEADLESS_FLAG = `(function(){var ua=navigator.userAgent;if(/HeadlessChrome|Lighthouse|PageSpeed|GTmetrix|WebPageTest/i.test(ua)){document.documentElement.dataset.headless='1'}})();`
-const BODY_REAL_USER_BOOTSTRAP = `(function(){if(document.documentElement.dataset.headless==='1')return;var ric=window.requestIdleCallback||function(c){return setTimeout(c,1500)};var m=function(){ric(function(){document.body.dataset.loaded='1'},{timeout:2500})};if(document.readyState==='complete'){m()}else{addEventListener('load',m,{once:true})}var s=document.createElement('script');s.src='https://plausible.io/js/pa-cvIbUzVB_8Lu2naP1u5Xo.js';s.async=true;s.defer=true;document.head.appendChild(s);window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)};plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init()})();`
+const BODY_REAL_USER_BOOTSTRAP = `(function(){if(document.documentElement.dataset.headless==='1')return;var ric=window.requestIdleCallback||function(c){return setTimeout(c,1500)};var m=function(){ric(function(){document.body.dataset.loaded='1'},{timeout:2500})};if(document.readyState==='complete'){m()}else{addEventListener('load',m,{once:true})}window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)};plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init()})();`
+
+const PLAUSIBLE_DOMAIN = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN ?? 'eventlinqs.com'
 
 export default function RootLayout({
   children,
@@ -85,10 +93,30 @@ export default function RootLayout({
         <Script id="el-real-user-bootstrap" strategy="afterInteractive">
           {BODY_REAL_USER_BOOTSTRAP}
         </Script>
-        <div className="pb-16 md:pb-0">
-          {children}
-        </div>
-        <BottomNav />
+        {/* Plausible analytics (Batch 9.2): cookieless, ~1KB, GDPR/CCPA/Privacy
+         *  Act compliant. tagged-events build supports class-based event
+         *  tracking on links (e.g. `plausible-event-name=hero_browse_click`)
+         *  alongside the JS API exposed at window.plausible. */}
+        <Script
+          id="plausible-analytics"
+          defer
+          data-domain={PLAUSIBLE_DOMAIN}
+          src="https://plausible.io/js/script.tagged-events.js"
+          strategy="afterInteractive"
+        />
+        <a href="#main-content" className="skip-to-content">
+          Skip to main content
+        </a>
+        {/* Brand duotone filter (Batch 10) - referenced by any media
+         *  surface via filter:url(#brand-duotone). Renders 0x0 hidden. */}
+        <DuotoneFilterDefs />
+        <HeroPresenceProvider>
+          <HeaderScrollSentinel />
+          <div id="main-content" className="pb-16 md:pb-0">
+            {children}
+          </div>
+          <MobileBottomNav />
+        </HeroPresenceProvider>
       </body>
     </html>
   )

@@ -1,33 +1,20 @@
-import { getCategoryPhoto } from '@/lib/images/category-photo'
 import type { EventCardData } from '@/components/features/events/event-card'
 import type { PublicEventRow } from './types'
 
-// picsum.photos is a seed-script placeholder, not real imagery. When the
-// stored cover is missing or still points at picsum, fall through to the
-// category Pexels photo so the grid looks populated without ever
-// overwriting a real organiser upload. Shared by the server-rendered
-// initial grid and the infinite-scroll server action so both paths
-// produce identical card shapes.
-function needsFallback(url: string | null): boolean {
-  if (!url) return true
-  return /^https:\/\/picsum\.photos\//i.test(url)
-}
+// Batch 4: previous Pexels-collision fallback removed.
+// Public-surface fetchers now drop events without a real organiser cover
+// (see hasRealCover() in fetchers.ts), so by the time a row reaches the
+// projection it carries the organiser's actual image. The projection is
+// a pure pass-through that exists only to flatten the row shape into the
+// EventCard contract.
 
-async function toCardData(e: PublicEventRow): Promise<EventCardData> {
-  let cover = e.cover_image_url
-  let thumb = e.thumbnail_url
-  if (needsFallback(cover)) {
-    const photo = await getCategoryPhoto(e.category?.slug)
-    cover = photo.src
-    if (needsFallback(thumb)) thumb = photo.thumb
-  }
-
+function toCardData(e: PublicEventRow): EventCardData {
   return {
     id: e.id,
     slug: e.slug,
     title: e.title,
-    cover_image_url: cover,
-    thumbnail_url: thumb,
+    cover_image_url: e.cover_image_url,
+    thumbnail_url: e.thumbnail_url,
     start_date: e.start_date,
     venue_name: e.venue_name,
     venue_city: e.venue_city,
@@ -46,5 +33,5 @@ async function toCardData(e: PublicEventRow): Promise<EventCardData> {
 }
 
 export async function projectToCardData(events: PublicEventRow[]): Promise<EventCardData[]> {
-  return Promise.all(events.map(toCardData))
+  return events.map(toCardData)
 }

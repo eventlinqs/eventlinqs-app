@@ -43,7 +43,7 @@ export default function TermsOfUsePage() {
       <p>
         These terms form a legally binding agreement between you and EventLinqs
         (operated by Lawal Adams, trading as EventLinqs, ABN 30 837 447 587,
-        Melbourne, Victoria, Australia). References to &ldquo;EventLinqs&rdquo;,
+        Geelong, Victoria, Australia). References to &ldquo;EventLinqs&rdquo;,
         &ldquo;we&rdquo;, &ldquo;us&rdquo; or &ldquo;our&rdquo; refer to that entity.
       </p>
 

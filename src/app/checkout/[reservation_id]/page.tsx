@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { PaymentCalculator } from '@/lib/payments/payment-calculator'
 import { CheckoutForm } from './checkout-form'
 import { getGuestSessionId } from '@/lib/auth/guest-session'
+import { CheckoutTrustSignals } from '@/components/features/checkout/CheckoutTrustSignals'
 import type { FeePassType, TicketTier, EventAddon } from '@/types/database'
 
 type Props = {
@@ -215,23 +216,33 @@ export default async function CheckoutPage({ params }: Props) {
   const venue = [event.venue_name, event.venue_city, event.venue_country].filter(Boolean).join(', ') || null
 
   return (
-    <CheckoutForm
-      reservationId={reservation_id}
-      expiresAt={reservation.expires_at}
-      eventId={event.id}
-      eventTitle={event.title}
-      eventDate={eventDate}
-      venue={venue}
-      initialFees={initialFees!}
-      ticketSlots={ticketSlots}
-      tierIds={tierIds}
-      seatMode={isSeatReservation}
-      seatSlots={seatSlots}
-      userId={user?.id ?? null}
-      userFirstName={userFirstName}
-      userLastName={userLastName}
-      userEmail={userEmail}
-      currency={currency}
-    />
+    <div className="mx-auto grid max-w-7xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[1fr_320px] lg:gap-12 lg:px-8 lg:py-12">
+      <div className="min-w-0">
+        <CheckoutForm
+          reservationId={reservation_id}
+          expiresAt={reservation.expires_at}
+          eventId={event.id}
+          eventTitle={event.title}
+          eventDate={eventDate}
+          venue={venue}
+          initialFees={initialFees!}
+          ticketSlots={ticketSlots}
+          tierIds={tierIds}
+          seatMode={isSeatReservation}
+          seatSlots={seatSlots}
+          userId={user?.id ?? null}
+          userFirstName={userFirstName}
+          userLastName={userLastName}
+          userEmail={userEmail}
+          currency={currency}
+        />
+      </div>
+      {/* Batch 11.0 - Trust signals sidebar at the payment-decision
+       *  moment, 2026 contextual-trust pattern. Stacks below the form
+       *  on mobile, sits to the right on desktop. */}
+      <aside className="order-2 lg:order-1">
+        <CheckoutTrustSignals />
+      </aside>
+    </div>
   )
 }

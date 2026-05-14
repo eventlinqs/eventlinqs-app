@@ -5,18 +5,28 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { LocationPicker } from '@/components/ui/location-picker'
 import { EventlinqsLogo } from '@/components/ui/eventlinqs-logo'
-import { NavSearch } from './nav-search'
+import { HeaderSearchTrigger } from './header-search-trigger'
+import { SiteHeaderAccountButton, type AccountUser } from './site-header-account-button'
+import { SiteHeaderAccountDropdown } from './site-header-account-dropdown'
+import { useHeaderScrollState } from '@/hooks/use-header-scroll-state'
+import { useHeroPresence } from '@/contexts/hero-presence-context'
 import type { DetectedLocation } from '@/lib/geo/detect'
 import type { PickerCityGroups } from '@/lib/locations/picker-cities'
 
 const NAV_LINKS = [
-  { label: 'Browse Events', href: '/events' },
+  { label: 'Browse Events',  href: '/events' },
+  { label: 'Cultures',       href: '/cultures' },
+  { label: 'Cities',         href: '/cities' },
   { label: 'For Organisers', href: '/organisers' },
 ]
 
 interface SiteHeaderClientProps {
   location: DetectedLocation
   cities: PickerCityGroups
+  /** Resolved Supabase user (minimal identity) or null when anonymous. */
+  user: AccountUser | null
+  /** Authenticated user's email; surfaces in the avatar dropdown header. */
+  userEmail?: string | null
 }
 
 function readCityCookie(): DetectedLocation | null {
@@ -38,30 +48,43 @@ const subscribeCookie = () => () => {}
 const getServerCookieSnapshot = (): DetectedLocation | null => null
 
 /**
- * SiteHeaderClient - sticky top navigation bar client inner.
+ * SiteHeaderClient - dual-state glassmorphism navigation (Batch 9.1).
  *
- * Desktop (md+):
- *   Logo left · Nav centre · LocationPicker + Sign in + Get Started right
+ * State A (top of page on hero-bearing routes):
+ *   - Fully transparent background, no border, no backdrop filter
+ *   - White wordmark, white nav links, gold dot in EventLinqs logo
+ *   - Sits above the hero raster painted by HeroMedia
+ *   - Inline search hidden (the hero contains its own primary search)
  *
- * Mobile (<md):
- *   Logo left · Get Started (compact) · Hamburger button right
- *   Hamburger opens a full-screen sheet nav with:
- *     - All nav links (44px touch targets)
- *     - LocationPicker row
- *     - Sign in + Get Started CTAs
- *     - Focus trap (Tab cycles within sheet)
- *     - Closes on: Esc key, route change, backdrop click
+ * State B (scrolled past 80px, OR no-hero route):
+ *   - Background: rgba(10, 22, 40, 0.72)
+ *   - backdrop-filter: blur(20px) saturate(180%) (with -webkit prefix)
+ *   - 1px solid rgba(212, 164, 55, 0.30) gold border-bottom
+ *   - Compact 360px desktop search pill becomes visible
+ *   - Mobile retains an icon-only search trigger always
  *
- * Hover: nav links use gold hover to match the logo and overall brand accent.
+ * Transition: 300ms cubic-bezier(0.22, 1, 0.36, 1). Reduced-motion users
+ * get instant transitions via the prefers-reduced-motion media query
+ * which is enforced globally in globals.css.
+ *
+ * Implementation notes:
+ *   - Scroll state is sentinel-based (IntersectionObserver), not a scroll
+ *     listener. See use-header-scroll-state.ts. Sentinel is mounted in
+ *     app/layout.tsx as a 1px / h-20 element.
+ *   - State is exposed via `data-scrolled` and `data-no-hero` attributes
+ *     so styling is CSS-driven; React does not re-render per scroll
+ *     frame (state only flips when sentinel crosses the viewport edge).
+ *   - On no-hero routes (HeroPresence.hasHero === false) State B is
+ *     forced from initial paint to avoid SSR transparent flash.
+ *   - HeroMedia itself is NOT mutated; only a thin tracker wrapper
+ *     registers with the HeroPresenceProvider.
+ *   - Glassmorphism degrades to rgba(10, 22, 40, 0.95) on browsers
+ *     without backdrop-filter via the @supports rule in globals.css.
  */
-export function SiteHeaderClient({ location, cities }: SiteHeaderClientProps) {
+export function SiteHeaderClient({ location, cities, user, userEmail }: SiteHeaderClientProps) {
+  const dropdownUser = user && userEmail ? { ...user, email: userEmail } : null
   const [isOpen, setIsOpen] = useState(false)
 
-  // Hydrate the picker's currently-displayed location from the `el_city`
-  // cookie. SSR ships a static default so the page is ISR-eligible;
-  // useSyncExternalStore upgrades the display to the cookie value on the
-  // client without a setState-in-effect cascade. Server snapshot returns
-  // null so SSR/hydration uses the prop fallback.
   const cookieLocation = useSyncExternalStore(
     subscribeCookie,
     readCityCookie,
@@ -69,19 +92,24 @@ export function SiteHeaderClient({ location, cities }: SiteHeaderClientProps) {
   )
   const displayLocation = cookieLocation ?? location
 
-  const hamburgerRef  = useRef<HTMLButtonElement>(null)
-  const sheetRef      = useRef<HTMLDivElement>(null)
+  const scrolled = useHeaderScrollState('header-scroll-sentinel')
+  const { hasHero } = useHeroPresence()
+
+  // State B is active when scrolled past sentinel OR there is no hero on
+  // the page at all. Both lock the header into the navy frosted state.
+  const stateB = scrolled || !hasHero
+
+  const hamburgerRef = useRef<HTMLButtonElement>(null)
+  const sheetRef     = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!isOpen) return
-
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setIsOpen(false)
         hamburgerRef.current?.focus()
       }
     }
-
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [isOpen])
@@ -104,18 +132,14 @@ export function SiteHeaderClient({ location, cities }: SiteHeaderClientProps) {
 
   const handleSheetKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key !== 'Tab' || !sheetRef.current) return
-
     const focusable = Array.from(
       sheetRef.current.querySelectorAll<HTMLElement>(
         'a[href], button:not([disabled]), input, [tabindex]:not([tabindex="-1"])'
       )
     ).filter(el => el.offsetParent !== null)
-
     if (focusable.length === 0) return
-
     const first = focusable[0]
     const last  = focusable[focusable.length - 1]
-
     if (e.shiftKey) {
       if (document.activeElement === first) {
         e.preventDefault()
@@ -136,48 +160,88 @@ export function SiteHeaderClient({ location, cities }: SiteHeaderClientProps) {
 
   return (
     <>
-      <header className="sticky top-0 z-50 w-full border-b border-ink-100 bg-white/95 backdrop-blur-sm">
+      <header
+        data-scrolled={stateB ? '1' : '0'}
+        data-no-hero={!hasHero ? '1' : '0'}
+        className={[
+          'site-header-glass',
+          'sticky top-0 z-50 w-full',
+          'transition-[background-color,backdrop-filter,border-color,box-shadow] duration-300',
+          'motion-reduce:transition-none',
+        ].join(' ')}
+        style={{
+          transitionTimingFunction: 'cubic-bezier(0.22, 1, 0.36, 1)',
+        }}
+      >
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-5 px-4 sm:px-6 lg:px-8">
 
-          {/* Logo */}
-          <EventlinqsLogo asLink size="md" />
+          <EventlinqsLogo asLink size="md" variant="inverted" />
 
-
-          {/* Desktop nav links (hidden below md) */}
           <nav aria-label="Primary navigation" className="hidden md:flex items-center gap-6 shrink-0">
             {NAV_LINKS.map(link => (
               <Link
                 key={link.href}
                 href={link.href}
-                className="text-sm font-medium text-ink-600 hover:text-gold-600 transition-colors whitespace-nowrap"
+                className="text-sm font-medium text-white/85 hover:text-[var(--brand-accent)] transition-colors whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)] rounded-sm"
               >
                 {link.label}
               </Link>
             ))}
           </nav>
 
-          {/* Desktop search - Ticketmaster pill, centred */}
-          <NavSearch variant="desktop" />
+          {/* Desktop search pill - State B only. `inert` removes the
+           *  trigger from the focus order entirely while State A is
+           *  active; `aria-hidden` mirrors it for AT. This pair is the
+           *  axe-recommended remedy for aria-hidden-focus violations. */}
+          <div
+            className={[
+              'hidden md:flex flex-1 justify-center',
+              'transition-opacity duration-300 motion-reduce:transition-none',
+              stateB ? 'opacity-100' : 'pointer-events-none opacity-0',
+            ].join(' ')}
+            aria-hidden={stateB ? undefined : true}
+            inert={!stateB}
+            style={{ transitionTimingFunction: 'cubic-bezier(0.22, 1, 0.36, 1)' }}
+          >
+            <HeaderSearchTrigger variant="desktop-pill" />
+          </div>
 
-          {/* Right side - desktop CTAs + mobile hamburger */}
-          <div className="flex items-center gap-3 shrink-0 ml-auto md:ml-0">
-            {/* Desktop location picker */}
-            <div className="hidden md:block">
-              <LocationPicker currentLocation={displayLocation} cities={cities} />
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto md:ml-0">
+            {/* Mobile search icon - always visible */}
+            <div className="md:hidden">
+              <HeaderSearchTrigger variant="mobile-icon" />
             </div>
 
-            <Link
-              href="/login"
-              prefetch={false}
-              className="hidden md:inline-flex items-center h-9 px-3 text-sm font-medium text-ink-700 hover:text-gold-600 transition-colors rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2"
-            >
-              Sign in
-            </Link>
-            <Button href="/signup" prefetch={false} variant="primary" size="sm" className="hidden md:inline-flex">
-              Get Started
-            </Button>
+            <div className="hidden md:block">
+              <LocationPicker currentLocation={displayLocation} cities={cities} variant="onDark" />
+            </div>
 
-            {/* Mobile hamburger (hidden on md+) */}
+            {dropdownUser ? (
+              <div className="hidden md:flex items-center">
+                <SiteHeaderAccountDropdown user={dropdownUser} size="header" />
+              </div>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  prefetch={false}
+                  className="hidden md:inline-flex items-center h-9 px-3 text-sm font-medium text-white/85 hover:text-[var(--brand-accent)] transition-colors rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)]"
+                >
+                  Sign in
+                </Link>
+                <Button href="/signup" prefetch={false} variant="primary" size="sm" className="hidden md:inline-flex">
+                  Get Started
+                </Button>
+              </>
+            )}
+
+            {/* Mobile avatar (authenticated only) - sits left of the hamburger so the nav drawer remains the canonical mobile-nav surface. */}
+            {dropdownUser ? (
+              <div className="md:hidden">
+                <SiteHeaderAccountDropdown user={dropdownUser} size="header" />
+              </div>
+            ) : null}
+
             <button
               ref={hamburgerRef}
               type="button"
@@ -187,9 +251,9 @@ export function SiteHeaderClient({ location, cities }: SiteHeaderClientProps) {
               aria-controls="mobile-nav-sheet"
               className={[
                 'md:hidden flex h-11 w-11 items-center justify-center rounded-lg',
-                'text-ink-700 hover:bg-ink-100 hover:text-gold-600 transition-colors',
+                'text-white/90 hover:bg-white/10 hover:text-[var(--brand-accent)] transition-colors',
                 'focus-visible:outline-none focus-visible:ring-2',
-                'focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2',
+                'focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)]',
               ].join(' ')}
             >
               <span className="sr-only">{isOpen ? 'Close menu' : 'Open menu'}</span>
@@ -210,11 +274,6 @@ export function SiteHeaderClient({ location, cities }: SiteHeaderClientProps) {
             </button>
           </div>
 
-        </div>
-
-        {/* Mobile search - full-width second row below the nav */}
-        <div className="md:hidden border-t border-ink-100 bg-white/95 px-4 py-2.5">
-          <NavSearch variant="mobile" />
         </div>
       </header>
 
@@ -292,12 +351,25 @@ export function SiteHeaderClient({ location, cities }: SiteHeaderClientProps) {
         </nav>
 
         <div className="border-t border-ink-100 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] space-y-3">
-          <Button href="/signup" prefetch={false} variant="primary" size="lg" className="w-full" onClick={closeSheet}>
-            Get Started
-          </Button>
-          <Button href="/login" prefetch={false} variant="ghost" size="lg" className="w-full" onClick={closeSheet}>
-            Sign in
-          </Button>
+          {user ? (
+            <>
+              <div className="flex items-center justify-start py-2">
+                <SiteHeaderAccountButton user={user} size="drawer" />
+              </div>
+              <Button href="/account" prefetch={false} variant="primary" size="lg" className="w-full" onClick={closeSheet}>
+                View account
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button href="/signup" prefetch={false} variant="primary" size="lg" className="w-full" onClick={closeSheet}>
+                Get Started
+              </Button>
+              <Button href="/login" prefetch={false} variant="ghost" size="lg" className="w-full" onClick={closeSheet}>
+                Sign in
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </>

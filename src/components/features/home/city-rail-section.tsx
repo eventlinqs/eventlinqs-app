@@ -31,6 +31,17 @@ export async function CityRailSection({ nowIso }: Props) {
     }),
   )
 
+  // Batch 11.0 fix: NEVER render a `Coming soon` tile as primary city
+  // surface (memory item 25). Cities with zero upcoming events are
+  // filtered out of the rail entirely so it surfaces only real
+  // discovery value (Sydney, Melbourne, Brisbane during friends-launch).
+  // Zero-event cities re-enter the rail automatically the moment a
+  // published event lands at their venue_city. If the filter strips the
+  // rail to zero tiles the section bails out instead of rendering an
+  // empty rail header.
+  const liveCities = cityCounts.filter(c => c.count > 0)
+  if (liveCities.length === 0) return null
+
   return (
     <section
       aria-labelledby="cities-heading"
@@ -44,7 +55,7 @@ export async function CityRailSection({ nowIso }: Props) {
           railLabel="Events by city"
           containerBg="canvas"
         >
-          {cityCounts.map(c => (
+          {liveCities.map(c => (
             <CityRailTile
               key={c.slug}
               city={c.city}
