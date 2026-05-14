@@ -52,6 +52,12 @@ export interface HeroMediaProps {
    * candidate. Non-priority slides drop fetchPriority="high" and lazy-load.
    */
   priority?: boolean
+  /**
+   * CSS object-position value for the cover crop. Defaults to "50% 50%".
+   * Override per slide when the subject sits off-centre (e.g. carousel
+   * slides where the desktop crop otherwise lops off heads or hands).
+   */
+  objectPosition?: string
 }
 
 function assertRaster(url: string): void {
@@ -74,6 +80,7 @@ export function HeroMedia({
   className = '',
   fillParent = true,
   priority = true,
+  objectPosition = '50% 50%',
 }: HeroMediaProps) {
   assertRaster(image)
 
@@ -99,6 +106,7 @@ export function HeroMedia({
         sizes={sizes}
         quality={MEDIA_QUALITY.hero}
         className="object-cover"
+        style={{ objectPosition }}
       />
 
       {/*

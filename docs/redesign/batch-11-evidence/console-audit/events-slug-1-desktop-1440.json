@@ -1,0 +1,128 @@
+{
+  "route": "/events/diwali-festival-melbourne-festival-of-lights",
+  "viewport": "desktop-1440",
+  "status": 200,
+  "ok": true,
+  "consoleErrors": [],
+  "consoleWarns": [
+    "Ignoring Event: localhost"
+  ],
+  "console404s": [],
+  "failedRequests": [
+    {
+      "url": "http://localhost:3007/organisers?_rsc=1l96x",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/cities?_rsc=1l96x",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/cultures?_rsc=1l96x",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?_rsc=1l96x",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/?_rsc=1l96x",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/organisers?_rsc=1k0r6",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/cities?_rsc=1k0r6",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/cultures?_rsc=1k0r6",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?_rsc=1k0r6",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/?_rsc=1k0r6",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events/diwali-festival-melbourne-festival-of-lights?_rsc=1k0r6",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?q=lights&_rsc=1l96x",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?q=south-asian&_rsc=1l96x",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?q=free&_rsc=1l96x",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?q=family&_rsc=1l96x",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?q=festival&_rsc=1l96x",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?q=diwali&_rsc=1l96x",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?q=lights&_rsc=1k0r6",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?q=south-asian&_rsc=1k0r6",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?q=free&_rsc=1k0r6",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?q=family&_rsc=1k0r6",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?q=festival&_rsc=1k0r6",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?q=diwali&_rsc=1k0r6",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    }
+  ]
+}

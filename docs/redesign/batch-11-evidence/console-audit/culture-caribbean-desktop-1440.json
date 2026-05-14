@@ -1,0 +1,158 @@
+{
+  "route": "/culture/caribbean",
+  "viewport": "desktop-1440",
+  "status": 200,
+  "ok": true,
+  "consoleErrors": [],
+  "consoleWarns": [
+    "Ignoring Event: localhost"
+  ],
+  "console404s": [],
+  "failedRequests": [
+    {
+      "url": "http://localhost:3007/organisers?_rsc=7p888",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/cities?_rsc=7p888",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/cultures?_rsc=7p888",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?_rsc=7p888",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/?_rsc=7p888",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/organisers?_rsc=1d1tw",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/cities?_rsc=1d1tw",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/cultures?_rsc=1d1tw",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/?_rsc=1d1tw",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?_rsc=1d1tw",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/culture/caribbean/perth?_rsc=7p888",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/culture/caribbean/brisbane?_rsc=7p888",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/culture/caribbean/melbourne?_rsc=7p888",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/culture/caribbean/sydney?_rsc=7p888",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=caribbean&sub_culture=dancehall&_rsc=7p888",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=caribbean&sub_culture=jamaican&_rsc=7p888",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=caribbean&sub_culture=trinidadian&_rsc=7p888",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=caribbean&sub_culture=afro-caribbean&_rsc=7p888",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=caribbean&sub_culture=soca&_rsc=7p888",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=caribbean&sub_culture=reggae&_rsc=7p888",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/culture/caribbean/brisbane?_rsc=1d1tw",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/culture/caribbean/melbourne?_rsc=1d1tw",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/culture/caribbean/sydney?_rsc=1d1tw",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=caribbean&sub_culture=jamaican&_rsc=1d1tw",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=caribbean&sub_culture=trinidadian&_rsc=1d1tw",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=caribbean&sub_culture=afro-caribbean&_rsc=1d1tw",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=caribbean&sub_culture=soca&_rsc=1d1tw",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=caribbean&sub_culture=dancehall&_rsc=1d1tw",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=caribbean&sub_culture=reggae&_rsc=1d1tw",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    }
+  ]
+}

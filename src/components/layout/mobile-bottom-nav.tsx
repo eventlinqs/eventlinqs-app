@@ -44,12 +44,18 @@ const HIDDEN_PREFIXES = [
   '/verify-email-sent',
 ]
 
+// Batch 11.0 fix: `/search` and `/saved` previously 404'd (no routes
+// shipped at those paths). Search now routes to `/events?focus=1` (the
+// filterable browse surface, autofocuses its query input on mount).
+// Saved routes to the authenticated `/account/saved` route shipped in
+// Batch 9.2.1. The 5-item bar shape is unchanged; only the
+// destinations move to existing routes.
 const ITEMS = [
-  { href: '/',         label: 'Home',    Icon: Home,       matchExact: true },
-  { href: '/events',   label: 'Browse',  Icon: LayoutGrid, matchExact: false },
-  { href: '/search',   label: 'Search',  Icon: Search,     matchExact: false },
-  { href: '/saved',    label: 'Saved',   Icon: Heart,      matchExact: false },
-  { href: '/account',  label: 'Account', Icon: User,       matchExact: false },
+  { href: '/',               label: 'Home',    Icon: Home,       matchExact: true },
+  { href: '/events',         label: 'Browse',  Icon: LayoutGrid, matchExact: false },
+  { href: '/events?focus=1', label: 'Search',  Icon: Search,     matchExact: false },
+  { href: '/account/saved',  label: 'Saved',   Icon: Heart,      matchExact: false },
+  { href: '/account',        label: 'Account', Icon: User,       matchExact: false },
 ] as const
 
 export function MobileBottomNav() {

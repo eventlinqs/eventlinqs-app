@@ -1,0 +1,108 @@
+{
+  "route": "/events/afrobeats-live-headline-concert",
+  "viewport": "desktop-1440",
+  "status": 200,
+  "ok": true,
+  "consoleErrors": [],
+  "consoleWarns": [
+    "Ignoring Event: localhost"
+  ],
+  "console404s": [],
+  "failedRequests": [
+    {
+      "url": "http://localhost:3007/organisers?_rsc=166qm",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/cities?_rsc=166qm",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/cultures?_rsc=166qm",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?_rsc=166qm",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/?_rsc=166qm",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/cities?_rsc=r1abd",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/organisers?_rsc=r1abd",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?_rsc=r1abd",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/cultures?_rsc=r1abd",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/?_rsc=r1abd",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events/afrobeats-live-headline-concert?_rsc=r1abd",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?q=music&_rsc=166qm",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?q=premium&_rsc=166qm",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?q=headline-concert&_rsc=166qm",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?q=afrobeats&_rsc=166qm",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?q=music&_rsc=r1abd",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?q=headline-concert&_rsc=r1abd",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?q=afrobeats&_rsc=r1abd",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?q=premium&_rsc=r1abd",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    }
+  ]
+}

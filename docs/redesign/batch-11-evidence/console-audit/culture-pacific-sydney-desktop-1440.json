@@ -1,0 +1,63 @@
+{
+  "route": "/culture/pacific/sydney",
+  "viewport": "desktop-1440",
+  "status": 200,
+  "ok": true,
+  "consoleErrors": [],
+  "consoleWarns": [
+    "Ignoring Event: localhost"
+  ],
+  "console404s": [],
+  "failedRequests": [
+    {
+      "url": "http://localhost:3007/organisers?city=sydney&culture=pacific&_rsc=jwkqx",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=pacific&sub_culture=aboriginal&city=sydney&_rsc=jwkqx",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=pacific&sub_culture=fijian&city=sydney&_rsc=jwkqx",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=pacific&sub_culture=tongan&city=sydney&_rsc=jwkqx",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=pacific&sub_culture=samoan&city=sydney&_rsc=jwkqx",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=pacific&sub_culture=aboriginal&city=sydney&_rsc=umgaj",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=pacific&sub_culture=fijian&city=sydney&_rsc=umgaj",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=pacific&sub_culture=tongan&city=sydney&_rsc=umgaj",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=pacific&sub_culture=samoan&city=sydney&_rsc=umgaj",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=pacific&sub_culture=maori&city=sydney&_rsc=umgaj",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    }
+  ]
+}

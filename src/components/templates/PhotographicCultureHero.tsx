@@ -38,12 +38,18 @@ export function PhotographicCultureHero({ eyebrow, title, subtitle, imageSrc }: 
             }}
           />
         )}
+        {/* Top scrim (0% to 12%) ensures the sticky header's white nav
+         *  remains AA-readable when the underlying photograph contains
+         *  a bright sky band. Beneath it the original bottom-up ramp
+         *  continues, leaving the centre of the hero photo unobscured.
+         *  Fix from Batch 11.0 founder review (header-bleed on bright
+         *  /culture and /city heroes). */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0"
           style={{
             background:
-              'linear-gradient(180deg, rgba(10,22,40,0.10) 0%, rgba(10,22,40,0.65) 45%, rgba(10,22,40,0.92) 100%)',
+              'linear-gradient(180deg, rgba(10,22,40,0.55) 0%, rgba(10,22,40,0.20) 12%, rgba(10,22,40,0.65) 45%, rgba(10,22,40,0.92) 100%)',
           }}
         />
         <div className="relative z-10 mx-auto flex h-full max-w-7xl items-end px-4 pb-10 sm:px-6 sm:pb-12 lg:px-8 lg:pb-14">

@@ -1,0 +1,118 @@
+{
+  "route": "/events",
+  "viewport": "mobile-390",
+  "status": 200,
+  "ok": true,
+  "consoleErrors": [],
+  "consoleWarns": [
+    "Ignoring Event: localhost"
+  ],
+  "console404s": [],
+  "failedRequests": [
+    {
+      "url": "http://localhost:3007/account?_rsc=put1f",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/account/saved?_rsc=put1f",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?focus=1&_rsc=put1f",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/?_rsc=put1f",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?sort=popular&_rsc=put1f",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/cities?_rsc=put1f",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events/amapiano-adelaide-log-drum-sessions?_rsc=put1f",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events/island-vibes-sydney-roots-and-culture-night?_rsc=put1f",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/account?_rsc=1fg1w",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/account/saved?_rsc=1fg1w",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?_rsc=1fg1w",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?focus=1&_rsc=1fg1w",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/?_rsc=1fg1w",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?sort=popular&_rsc=1fg1w",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/organisers?_rsc=1fg1w",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/cities?_rsc=1fg1w",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/cultures?_rsc=1fg1w",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events/amapiano-adelaide-log-drum-sessions?_rsc=1fg1w",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events/island-vibes-sydney-roots-and-culture-night?_rsc=1fg1w",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events/lagos-comedy-tour-sydney-showcase?_rsc=put1f",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events/gospel-on-the-river-brisbane-worship-night?_rsc=1fg1w",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    }
+  ]
+}

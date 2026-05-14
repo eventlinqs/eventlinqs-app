@@ -189,7 +189,10 @@ export function SiteHeaderClient({ location, cities, user, userEmail }: SiteHead
             ))}
           </nav>
 
-          {/* Desktop search pill - State B only */}
+          {/* Desktop search pill - State B only. `inert` removes the
+           *  trigger from the focus order entirely while State A is
+           *  active; `aria-hidden` mirrors it for AT. This pair is the
+           *  axe-recommended remedy for aria-hidden-focus violations. */}
           <div
             className={[
               'hidden md:flex flex-1 justify-center',
@@ -197,6 +200,7 @@ export function SiteHeaderClient({ location, cities, user, userEmail }: SiteHead
               stateB ? 'opacity-100' : 'pointer-events-none opacity-0',
             ].join(' ')}
             aria-hidden={stateB ? undefined : true}
+            inert={!stateB}
             style={{ transitionTimingFunction: 'cubic-bezier(0.22, 1, 0.36, 1)' }}
           >
             <HeaderSearchTrigger variant="desktop-pill" />

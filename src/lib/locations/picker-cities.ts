@@ -50,7 +50,14 @@ function launchToPicker(c: LaunchCity): PickerCity {
 async function buildPickerCitiesRaw(): Promise<PickerCityGroups> {
   // Admin client may be unavailable during build (CI has placeholder env with
   // no SUPABASE_SERVICE_ROLE_KEY). Fall through to launch-target cities only;
-  // DB-sourced global cities fill in at runtime once ISR revalidates.
+  // DB-sourced cities fill in at runtime once ISR revalidates.
+  //
+  // Batch 11.0 Round 3 AU-first launch lock: filter DB-sourced cities to
+  // `venue_country = 'Australia'`. Without this guard, an organiser
+  // seeding a London event would add `london` back to the picker even
+  // after the LAUNCH_TARGET_CITIES list was trimmed to AU. The cities
+  // table itself has a `country = 'AU'` check constraint at the DB
+  // layer; this client-side filter is belt-and-braces.
   let rows: Array<{ venue_city: string | null; venue_country: string | null }> = []
   try {
     const supabase = createAdminClient()
@@ -59,6 +66,7 @@ async function buildPickerCitiesRaw(): Promise<PickerCityGroups> {
       .select('venue_city, venue_country')
       .eq('status', 'published')
       .eq('visibility', 'public')
+      .eq('venue_country', 'Australia')
       .not('venue_city', 'is', null)
     rows = data ?? []
   } catch {

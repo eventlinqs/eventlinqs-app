@@ -1,0 +1,68 @@
+{
+  "route": "/culture/african/sydney",
+  "viewport": "desktop-1440",
+  "status": 200,
+  "ok": true,
+  "consoleErrors": [],
+  "consoleWarns": [
+    "Ignoring Event: localhost"
+  ],
+  "console404s": [],
+  "failedRequests": [
+    {
+      "url": "http://localhost:3007/organisers?city=sydney&culture=african&_rsc=1nsyc",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=african&sub_culture=east-african&city=sydney&_rsc=1d32s",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=african&sub_culture=west-african&city=sydney&_rsc=1d32s",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=african&sub_culture=owambe&city=sydney&_rsc=1d32s",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=african&sub_culture=amapiano&city=sydney&_rsc=1d32s",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=african&sub_culture=afrobeats&city=sydney&_rsc=1d32s",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=african&sub_culture=east-african&city=sydney&_rsc=1nsyc",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=african&sub_culture=west-african&city=sydney&_rsc=1nsyc",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=african&sub_culture=owambe&city=sydney&_rsc=1nsyc",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=african&sub_culture=amapiano&city=sydney&_rsc=1nsyc",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=african&sub_culture=afrobeats&city=sydney&_rsc=1nsyc",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    }
+  ]
+}

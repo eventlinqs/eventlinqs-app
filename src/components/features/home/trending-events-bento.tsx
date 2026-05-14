@@ -157,10 +157,15 @@ export function TrendingEventsBento({ events, viewAllHref = '/events?sort=trendi
         </div>
 
         <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 lg:[grid-template-rows:repeat(2,minmax(240px,1fr))]">
+          {/* No aria-label on these Links: the visible CardContent
+           *  provides date + title + venue + price as the accessible
+           *  name, and the section's aria-labelledby anchors trend
+           *  context. Adding aria-label="Trending: ..." caused
+           *  label-content-name-mismatch (axe 4.11) because the visible
+           *  text wasn't a subset of the label. */}
           <Link
             href={`/events/${featured.slug}`}
             prefetch={false}
-            aria-label={`Trending: ${featured.title}`}
             data-event-slug={featured.slug}
             className={`plausible-event-name=trending_card_click plausible-event-event_slug=${featured.slug} ${CARD_BASE} col-span-2 row-span-2 aspect-square sm:aspect-[4/3] lg:aspect-auto`}
           >
@@ -171,7 +176,6 @@ export function TrendingEventsBento({ events, viewAllHref = '/events?sort=trendi
               key={event.id}
               href={`/events/${event.slug}`}
               prefetch={false}
-              aria-label={`Trending: ${event.title}`}
               data-event-slug={event.slug}
               className={`plausible-event-name=trending_card_click plausible-event-event_slug=${event.slug} ${CARD_BASE} aspect-[4/5] sm:aspect-[5/4] lg:aspect-auto`}
             >
@@ -183,7 +187,6 @@ export function TrendingEventsBento({ events, viewAllHref = '/events?sort=trendi
               key={event.id}
               href={`/events/${event.slug}`}
               prefetch={false}
-              aria-label={`Trending: ${event.title}`}
               data-event-slug={event.slug}
               className={`plausible-event-name=trending_card_click plausible-event-event_slug=${event.slug} ${CARD_BASE} aspect-[4/5] sm:aspect-[5/4] lg:aspect-auto`}
             >

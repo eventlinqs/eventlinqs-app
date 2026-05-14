@@ -580,8 +580,37 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
   },
 }
 
+/**
+ * Batch 11.0 Round 3 AU-first launch lock: filter culture.cities to
+ * AU display-names only before exposing to consumers. The raw
+ * CULTURES table keeps the global lists for SEO copy + future
+ * regional expansion, but every public surface that iterates
+ * culture.cities (the intersection static-param generator, the
+ * other-cities-in-this-culture rail, related intersections, etc.)
+ * sees an AU-only view.
+ *
+ * To re-enable international intersections, drop the filter below
+ * AND update LAUNCH_TARGET_CITIES in `@/lib/locations/launch-cities`
+ * AND relax the `cities.country='AU'` check constraint via a new
+ * Supabase migration.
+ */
+const AU_CITY_DISPLAY_NAMES = new Set<string>([
+  'Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Adelaide',
+  'Gold Coast', 'Canberra', 'Hobart', 'Newcastle', 'Geelong',
+  'Sunshine Coast', 'Wollongong', 'Cairns', 'Darwin',
+  'Townsville', 'Toowoomba', 'Ballarat', 'Bendigo', 'Albury',
+  'Launceston',
+])
+
+function filterToAuCities(culture: CultureContent): CultureContent {
+  const auCities = culture.cities.filter(c => AU_CITY_DISPLAY_NAMES.has(c))
+  if (auCities.length === culture.cities.length) return culture
+  return { ...culture, cities: auCities }
+}
+
 export function getCulture(slug: string): CultureContent | null {
-  return CULTURES[slug as CultureSlug] ?? null
+  const c = CULTURES[slug as CultureSlug]
+  return c ? filterToAuCities(c) : null
 }
 
 export function isCultureSlug(slug: string): slug is CultureSlug {
@@ -589,15 +618,15 @@ export function isCultureSlug(slug: string): slug is CultureSlug {
 }
 
 export function getAllCultures(): CultureContent[] {
-  return Object.values(CULTURES)
+  return Object.values(CULTURES).map(filterToAuCities)
 }
 
 export function getTier1Cultures(): CultureContent[] {
-  return Object.values(CULTURES).filter(c => c.tier === 1)
+  return Object.values(CULTURES).filter(c => c.tier === 1).map(filterToAuCities)
 }
 
 export function getTier2Cultures(): CultureContent[] {
-  return Object.values(CULTURES).filter(c => c.tier === 2)
+  return Object.values(CULTURES).filter(c => c.tier === 2).map(filterToAuCities)
 }
 
 export const CULTURE_SLUGS: CultureSlug[] = Object.keys(CULTURES) as CultureSlug[]

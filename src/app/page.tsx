@@ -4,9 +4,8 @@ import type { Metadata } from 'next'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
-import { SplitStateHero } from '@/components/features/home/split-state-hero'
+import { HeroCarousel } from '@/components/features/home/HeroCarousel'
 import { HomeSchemaJsonLd } from '@/components/features/home/home-schema-jsonld'
-import { TrustBadgesRow } from '@/components/features/home/trust-badges-row'
 import { SurpriseMeButton } from '@/components/features/home/surprise-me-button'
 import { CategoryChipStrip } from '@/components/features/home/category-chip-strip'
 import { TrendingEventsBento } from '@/components/features/home/trending-events-bento'
@@ -229,14 +228,18 @@ export default async function HomePage() {
       <SiteHeader />
 
       <main>
-        {/* H1 - SplitStateHero (Batch 9.2): editorial copy left,
-         *  brand-duotone hero right, dual-path CTAs (browse + organiser). */}
-        <SplitStateHero />
+        {/* H1 - HeroCarousel (Batch 11.0): full-bleed rotating editorial
+         *  hero with 5 AU friends-launch slots (Africultures, Pasifika,
+         *  Diwali Mela, Lebanese Eid, Caribbean Carnival). Server
+         *  component resolves photography then hands the slide manifest
+         *  to a thin client controller for rotation, keyboard nav,
+         *  reduced-motion handling, and ARIA announcements. */}
+        <HeroCarousel />
 
-        {/* H1.5 Trust badges row - radical-transparency strip below the
-         *  hero. The differentiator vs Ticketmaster's hidden-fees
-         *  reputation. */}
-        <TrustBadgesRow />
+        {/* Trust band removed Batch 11.0. The 2026 contextual-trust
+         *  pattern places trust signals at the purchase-decision moment
+         *  (event detail page + checkout) rather than as a sitewide
+         *  band. See docs/redesign/batch-11-evidence/trust-signals-2026.md. */}
 
         {/* H2 Category chip strip (Batch 9.2): quick-filter chips +
          *  cultures expandable. Scroll-snap on mobile, fits viewport on

@@ -57,7 +57,7 @@ export function PhotographicCategoryHero({ slug, eyebrow, title, subtitle }: Pro
           className="pointer-events-none absolute inset-0"
           style={{
             background:
-              'linear-gradient(180deg, rgba(10,22,40,0.10) 0%, rgba(10,22,40,0.35) 45%, rgba(10,22,40,0.85) 100%)',
+              'linear-gradient(180deg, rgba(10,22,40,0.55) 0%, rgba(10,22,40,0.18) 12%, rgba(10,22,40,0.35) 45%, rgba(10,22,40,0.85) 100%)',
           }}
         />
         {/* Left-anchored content column - no body copy on the brightest band */}

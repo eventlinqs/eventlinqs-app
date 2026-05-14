@@ -1,0 +1,68 @@
+{
+  "route": "/culture/south-asian/melbourne",
+  "viewport": "desktop-1440",
+  "status": 200,
+  "ok": true,
+  "consoleErrors": [],
+  "consoleWarns": [
+    "Ignoring Event: localhost"
+  ],
+  "console404s": [],
+  "failedRequests": [
+    {
+      "url": "http://localhost:3007/organisers?city=melbourne&culture=south-asian&_rsc=1p9rx",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=south-asian&sub_culture=tamil-telugu&city=melbourne&_rsc=1p9rx",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=south-asian&sub_culture=holi-diwali&city=melbourne&_rsc=1p9rx",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=south-asian&sub_culture=garba-raas&city=melbourne&_rsc=1p9rx",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=south-asian&sub_culture=bhangra&city=melbourne&_rsc=1p9rx",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=south-asian&sub_culture=bollywood&city=melbourne&_rsc=1p9rx",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=south-asian&sub_culture=tamil-telugu&city=melbourne&_rsc=t2bff",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=south-asian&sub_culture=holi-diwali&city=melbourne&_rsc=t2bff",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=south-asian&sub_culture=garba-raas&city=melbourne&_rsc=t2bff",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=south-asian&sub_culture=bhangra&city=melbourne&_rsc=t2bff",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://localhost:3007/events?culture=south-asian&sub_culture=bollywood&city=melbourne&_rsc=t2bff",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    }
+  ]
+}

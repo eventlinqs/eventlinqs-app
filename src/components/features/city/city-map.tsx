@@ -226,9 +226,20 @@ export function CityMap({ centerLng, centerLat, zoom, pins, suburbs, accessToken
         el.onmouseenter = () => { el.style.transform = 'scale(1.15)' }
         el.onmouseleave = () => { el.style.transform = 'scale(1)' }
 
+        // Route the popup cover image through the same-origin
+        // /_next/image proxy so the popup pre-render (Mapbox builds
+        // popup DOM eagerly even before display) does not fetch
+        // directly from third-party origins. This was the source of
+        // the /city/[slug] Lighthouse Best Practices 77: Pexels
+        // origin returns Cloudflare __cf_bm and _cfuvid bot cookies
+        // which Lighthouse third-party-cookies audit flags. Same-
+        // origin proxy strips those cookies.
+        const proxiedCover = pin.cover
+          ? `/_next/image?url=${encodeURIComponent(pin.cover)}&w=384&q=70`
+          : null
         const popupHtml = `
           <div class="elinqs-map-popup" style="font-family:system-ui;min-width:240px;max-width:280px;">
-            ${pin.cover ? `<div style="position:relative;width:100%;aspect-ratio:16/10;background:#0A1628;overflow:hidden;border-top-left-radius:8px;border-top-right-radius:8px;"><img src="${pin.cover}" alt="${pin.title.replace(/"/g, '&quot;')}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"/></div>` : ''}
+            ${proxiedCover ? `<div style="position:relative;width:100%;aspect-ratio:16/10;background:#0A1628;overflow:hidden;border-top-left-radius:8px;border-top-right-radius:8px;"><img src="${proxiedCover}" alt="${pin.title.replace(/"/g, '&quot;')}" loading="lazy" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"/></div>` : ''}
             <div style="padding:12px 14px;">
               <p style="font-weight:700;color:${BRAND_COLORS.navy};font-size:14px;line-height:1.25;margin:0 0 4px 0;">${pin.title.replace(/</g, '&lt;')}</p>
               <p style="color:${BRAND_COLORS.gold};font-size:12px;font-weight:600;margin:0;">${pin.date}</p>

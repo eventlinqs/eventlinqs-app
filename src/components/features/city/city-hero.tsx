@@ -65,12 +65,15 @@ export function CityHero({
             }}
           />
         )}
+        {/* Top scrim plus bottom-up navy ramp. Top scrim covers the
+         *  header zone so the white sticky nav reads on bright sky
+         *  photos. Fix from Batch 11.0 founder review. */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0"
           style={{
             background:
-              'linear-gradient(180deg, rgba(10,22,40,0.10) 0%, rgba(10,22,40,0.45) 45%, rgba(10,22,40,0.88) 100%)',
+              'linear-gradient(180deg, rgba(10,22,40,0.55) 0%, rgba(10,22,40,0.18) 12%, rgba(10,22,40,0.45) 45%, rgba(10,22,40,0.88) 100%)',
           }}
         />
         <div className="relative z-10 mx-auto flex h-full max-w-7xl items-end px-5 pb-10 sm:px-6 sm:pb-12 lg:px-8 lg:pb-14">

@@ -48,13 +48,16 @@ export function PhotographicCityHero({ city, country, total, imageSrc }: Props) 
             }}
           />
         )}
-        {/* Darkened gradient: bottom-up navy so headline stays readable */}
+        {/* Top scrim (0% to 12%) plus the original bottom-up ramp.
+         *  Top scrim ensures the sticky header's white nav remains
+         *  AA-readable when the photograph has a bright sky band.
+         *  Fix from Batch 11.0 founder review. */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0"
           style={{
             background:
-              'linear-gradient(180deg, rgba(10,22,40,0.10) 0%, rgba(10,22,40,0.65) 45%, rgba(10,22,40,0.92) 100%)',
+              'linear-gradient(180deg, rgba(10,22,40,0.55) 0%, rgba(10,22,40,0.20) 12%, rgba(10,22,40,0.65) 45%, rgba(10,22,40,0.92) 100%)',
           }}
         />
         {/* Left-anchored content column */}

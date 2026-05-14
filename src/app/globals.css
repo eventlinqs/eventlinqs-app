@@ -322,22 +322,42 @@ body[data-hero-enhanced="1"] [data-hero-shell] {
  * children, so child elements (logo, nav links) inherit a clean
  * crossfade rather than each transitioning independently.
  */
+/* State A (over hero): a top-to-fade navy gradient sits behind the
+ * white wordmark and nav so the text reads on ANY underlying surface.
+ * The PageShell layout puts the sticky header in flex flow with body
+ * bg directly beneath it (the hero starts BELOW the header in
+ * /culture, /city, and intersection pages); without this backdrop
+ * the white nav becomes invisible the moment the client hydrates and
+ * drops the header out of the SSR State B default. Founder review
+ * Batch 11.0 follow-up surfaced this on bright-sky heroes. */
 .site-header-glass {
   background-color: transparent;
+  background-image: linear-gradient(
+    180deg,
+    rgba(10, 22, 40, 0.70) 0%,
+    rgba(10, 22, 40, 0.55) 50%,
+    rgba(10, 22, 40, 0.20) 100%
+  );
   border-bottom: 1px solid transparent;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
+/* Batch 11.0 header scroll bug fix: State B was rgba(10,22,40,0.72) +
+ * backdrop-blur, which let high-contrast page content bleed through
+ * during mid-scroll on long pages (the brief surfaced this as a
+ * readability regression). State B now uses solid navy with the gold
+ * accent border-bottom. The frosted-glass aesthetic stayed valuable
+ * over the hero (state A is still transparent), but State B prioritises
+ * legibility once the user has scrolled past it. */
 .site-header-glass[data-scrolled="1"] {
-  background-color: rgba(10, 22, 40, 0.72);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  background-color: rgb(10, 22, 40);
+  /* Clear the State A gradient so State B paints fully solid navy
+   * (the gradient's rgba alpha would otherwise overlay and produce a
+   * subtle banding effect). */
+  background-image: none;
   border-bottom-color: rgba(212, 164, 55, 0.30);
-}
-@supports not ((backdrop-filter: blur(20px)) or (-webkit-backdrop-filter: blur(20px))) {
-  .site-header-glass[data-scrolled="1"] {
-    background-color: rgba(10, 22, 40, 0.95);
-  }
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 /* Skip-to-content link (Batch 9.1).
@@ -408,4 +428,13 @@ body[data-hero-enhanced="1"] [data-hero-shell] {
   /* Grain is static; no motion concern. Left here for parity with the
    * `prefers-reduced-motion` block above so future motion additions
    * stay grouped. */
+}
+
+/* Hero carousel progress bar (Batch 11.0).
+ * Fills from 0 to 100% over the per-slot rotation interval (default
+ * 6s). The React render path unmounts the bar entirely under
+ * prefers-reduced-motion so no @media guard is needed in CSS. */
+@keyframes el-hero-progress {
+  from { transform: scaleX(0); transform-origin: left center; }
+  to   { transform: scaleX(1); transform-origin: left center; }
 }

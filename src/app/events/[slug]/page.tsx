@@ -24,6 +24,7 @@ import type { EventCardData } from '@/components/features/events/event-card'
 import { projectToCardData } from '@/lib/events/event-card-projection'
 import type { PublicEventRow } from '@/lib/events/types'
 import dynamic from 'next/dynamic'
+import { EventTrustSignals } from '@/components/features/event/EventTrustSignals'
 
 // VenueMap pulls in @googlemaps/js-api-loader (~290KB). Loading it statically
 // makes it part of the event-detail route chunk, which Next.js eagerly
@@ -553,6 +554,12 @@ export default async function EventDetailPage({ params }: Props) {
                 ) : null}
                 <SaveEventButton eventId={event.id} variant="dark" />
               </div>
+              {/* Batch 11.0 - Trust signals at the purchase-decision
+               *  moment, the 2026 contextual pattern. The legacy
+               *  sitewide trust band was removed from the homepage in
+               *  this batch; trust now lives at the moment that drives
+               *  the conversion. */}
+              <EventTrustSignals variant="dark" />
             </div>
           </div>
         </section>

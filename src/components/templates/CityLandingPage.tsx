@@ -272,9 +272,11 @@ export function CityLandingPage({
               All {city.name} events
             </h2>
           </div>
+          {/* gold-800 (--brand-accent-strong) keeps the gold accent
+           *  while clearing AA contrast on white. gold-400 fails 4.5:1. */}
           <Link
             href={`/events?city=${city.slug}`}
-            className="text-sm font-medium text-[var(--brand-accent)] hover:text-[var(--brand-accent-hover)]"
+            className="text-sm font-medium text-[var(--brand-accent-strong)] hover:text-[var(--brand-accent-strong-hover)]"
           >
             Open in browse view &rsaquo;
           </Link>
