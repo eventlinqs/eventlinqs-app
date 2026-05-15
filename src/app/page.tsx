@@ -388,7 +388,7 @@ export default async function HomePage() {
             ariaLabel="Community events"
             railLabel="Community events"
             events={communityEvents}
-            viewAllHref="/categories/community"
+            viewAllHref="/events?category=community"
           />
         )}
 

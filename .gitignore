@@ -113,3 +113,4 @@ docs/redesign/batch-9-2-1-evidence/test-user-credentials.md
 # Batch 10 - migration debug logs (local-only)
 migration-debug.log
 *.migration.log
+docs/redesign/batch-*-evidence/lighthouse/*.json

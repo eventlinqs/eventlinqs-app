@@ -166,9 +166,22 @@ export function LocationPicker({
   const filteredMatches = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return allCities
-    return allCities.filter(c =>
-      c.city.toLowerCase().includes(q) || c.country.toLowerCase().includes(q),
-    )
+    // Normalised form strips spaces and hyphens so a user typing
+    // "goldcoast" or "gold-coast" matches the "Gold Coast" entry, and
+    // "newsouthwales" would match a city slugged that way. Defends
+    // against Geelong-class "I typed it and got nothing" reports
+    // (Batch 11.1 D1 lesson: any single missed search input is a
+    // launch blocker).
+    const qNorm = q.replace(/[\s-]+/g, '')
+    return allCities.filter(c => {
+      const city = c.city.toLowerCase()
+      const country = c.country.toLowerCase()
+      const slug = c.slug.toLowerCase()
+      if (city.includes(q) || country.includes(q) || slug.includes(q)) return true
+      const cityNorm = city.replace(/[\s-]+/g, '')
+      const slugNorm = slug.replace(/[\s-]+/g, '')
+      return cityNorm.includes(qNorm) || slugNorm.includes(qNorm)
+    })
   }, [allCities, query])
 
   const closeDialog = useCallback(() => {
