@@ -183,8 +183,29 @@ function heroRasterFor(slug: string | null | undefined): string {
 export async function getFeaturedHeroBackground(
   event: EventMediaInput,
 ): Promise<HeroBackgroundMedia> {
-  const heroImage = heroRasterFor(event.category?.slug)
   const alt = event.title ?? event.category?.name ?? 'Cultural event'
+
+  // Priority 1: entity-specific real cover image (event's actual cover).
+  // This was missing in the original implementation, which caused every
+  // event hero to fall through to the category raster, producing identical
+  // images across unrelated events on BOTH the event detail page AND the
+  // homepage carousel event slides. Category-only callers (homepage
+  // CATEGORY_HIGHLIGHT_SLIDES) don't pass cover_image_url, so they
+  // naturally fall through to the category raster below - unchanged.
+  if (isRealCover(event.cover_image_url)) {
+    const image = event.cover_image_url
+
+    if (event.video_url) {
+      return { image, alt, videoSrc: event.video_url }
+    }
+
+    return { image, alt, kenBurns: true }
+  }
+
+  // Priority 2: pre-generated category raster (fast LCP, no remote fetch).
+  // Used when no event-specific cover is available (e.g. category highlight
+  // slides on the homepage carousel that exist to fill empty event slots).
+  const heroImage = heroRasterFor(event.category?.slug)
 
   if (event.video_url) {
     return { image: heroImage, alt, videoSrc: event.video_url }
