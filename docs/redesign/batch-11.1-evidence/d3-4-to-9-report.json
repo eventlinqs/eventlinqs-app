@@ -1,0 +1,521 @@
+{
+  "generatedAt": "2026-05-14T15:08:16.594Z",
+  "base": "http://localhost:3007",
+  "sections": {
+    "3.4-header": [
+      {
+        "label": "EVENTLINQS. -> /",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Browse Events -> /events",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Cultures -> /cultures",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Cities -> /cities",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "For Organisers -> /organisers",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Sign in -> /login",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Get Started -> /signup",
+        "ok": true,
+        "detail": "HTTP 200"
+      }
+    ],
+    "3.4-footer": [
+      {
+        "label": "Browse all events -> /events",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "By city -> /events?view=cities",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "By culture -> /events?view=cultures",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "This week -> /events?when=this-week",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "This weekend -> /events?when=this-weekend",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Free events -> /events?price=free",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Afrobeats -> /culture/african",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Caribbean -> /culture/caribbean",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Bollywood -> /culture/south-asian",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Latin -> /culture/latin",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Italian -> /culture/mediterranean",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Filipino -> /culture/filipino",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "All cultures -> /events?view=cultures",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Sell tickets -> /organisers/signup",
+        "ok": true,
+        "detail": "HTTP 307"
+      },
+      {
+        "label": "Pricing -> /pricing",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Organiser guide -> /organisers",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Help centre -> /help/selling-tickets",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "About -> /about",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Careers -> /careers",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Press -> /press",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Contact -> /contact",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Browse all events -> /events",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "By city -> /events?view=cities",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "By culture -> /events?view=cultures",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "This week -> /events?when=this-week",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "This weekend -> /events?when=this-weekend",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Free events -> /events?price=free",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Afrobeats -> /culture/african",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Caribbean -> /culture/caribbean",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Bollywood -> /culture/south-asian",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Latin -> /culture/latin",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Italian -> /culture/mediterranean",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Filipino -> /culture/filipino",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "All cultures -> /events?view=cultures",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Sell tickets -> /organisers/signup",
+        "ok": true,
+        "detail": "HTTP 307"
+      },
+      {
+        "label": "Pricing -> /pricing",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Organiser guide -> /organisers",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Help centre -> /help/selling-tickets",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "About -> /about",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Careers -> /careers",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Press -> /press",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Contact -> /contact",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Terms -> /legal/terms",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Privacy -> /legal/privacy",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Refund policy -> /legal/refunds",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Cookie policy -> /legal/cookies",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Accessibility -> /legal/accessibility",
+        "ok": true,
+        "detail": "HTTP 200"
+      }
+    ],
+    "3.4-mobile-bottom-nav": [
+      {
+        "label": "Browse Events -> /events",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Cultures -> /cultures",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Cities -> /cities",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "For Organisers -> /organisers",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Home -> /",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Browse -> /events",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Search -> /events?focus=1",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "Saved -> /account/saved",
+        "ok": true,
+        "detail": "HTTP 307"
+      },
+      {
+        "label": "Account -> /account",
+        "ok": true,
+        "detail": "HTTP 307"
+      }
+    ],
+    "3.5-hero-cta": [
+      {
+        "label": "slot 1 -> /events/africultures-festival-sydney-2027",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "slot 2 -> /events/africultures-festival-sydney-2027",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "slot 3 -> /events/africultures-festival-sydney-2027",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "slot 4 -> /events/africultures-festival-sydney-2027",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "slot 5 -> /events/africultures-festival-sydney-2027",
+        "ok": true,
+        "detail": "HTTP 200"
+      }
+    ],
+    "3.5-event-card": [
+      {
+        "label": "/events/africultures-festival-sydney-2027",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "/events/pasifika-festival-melbourne-2027",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "/events/diwali-mela-brisbane-2026",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "/events/lebanese-eid-festival-sydney-2027",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "/events/caribbean-carnival-melbourne-2027",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "/events/amapiano-adelaide-log-drum-sessions",
+        "ok": true,
+        "detail": "HTTP 200"
+      }
+    ],
+    "3.5-tile": [
+      {
+        "label": "/culture/african",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "/culture/caribbean",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "/culture/south-asian",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "/culture/latin",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "/culture/mediterranean",
+        "ok": true,
+        "detail": "HTTP 200"
+      },
+      {
+        "label": "/culture/filipino",
+        "ok": true,
+        "detail": "HTTP 200"
+      }
+    ],
+    "3.6-auth-form": [
+      {
+        "label": "/login",
+        "ok": true,
+        "detail": "HTTP 200 form=true email=true submit=true"
+      },
+      {
+        "label": "/signup",
+        "ok": true,
+        "detail": "HTTP 200 form=true email=true submit=true"
+      },
+      {
+        "label": "/forgot-password",
+        "ok": true,
+        "detail": "HTTP 200 form=true email=true submit=true"
+      }
+    ],
+    "3.7-dashboard": [
+      {
+        "label": "/dashboard",
+        "ok": true,
+        "detail": "HTTP 307 -> /login?redirect=%2Fdashboard"
+      },
+      {
+        "label": "/dashboard/events",
+        "ok": true,
+        "detail": "HTTP 307 -> /login?redirect=%2Fdashboard%2Fevents"
+      },
+      {
+        "label": "/dashboard/events/create",
+        "ok": true,
+        "detail": "HTTP 307 -> /login?redirect=%2Fdashboard%2Fevents%2Fcreate"
+      }
+    ],
+    "3.8-search": [
+      {
+        "label": "query \"festival\"",
+        "ok": true,
+        "detail": "21 results"
+      },
+      {
+        "label": "query \"African\"",
+        "ok": true,
+        "detail": "21 results"
+      },
+      {
+        "label": "query \"Sydney\"",
+        "ok": true,
+        "detail": "21 results"
+      }
+    ],
+    "3.9-picker": [
+      {
+        "label": "desktop-1440 search \"Geelong\"",
+        "ok": true,
+        "detail": "expected match, got match"
+      },
+      {
+        "label": "desktop-1440 search \"London\"",
+        "ok": true,
+        "detail": "expected no match, got no match"
+      },
+      {
+        "label": "desktop-1440 search \"Sydney\"",
+        "ok": true,
+        "detail": "expected match, got match"
+      },
+      {
+        "label": "desktop-1440 search \"Toowoomba\"",
+        "ok": true,
+        "detail": "expected match, got match"
+      },
+      {
+        "label": "desktop-1440 search \"Sunshine Coast\"",
+        "ok": true,
+        "detail": "expected match, got match"
+      },
+      {
+        "label": "mobile-390 search \"Geelong\"",
+        "ok": true,
+        "detail": "expected match, got match"
+      },
+      {
+        "label": "mobile-390 search \"London\"",
+        "ok": true,
+        "detail": "expected no match, got no match"
+      },
+      {
+        "label": "mobile-390 search \"Sydney\"",
+        "ok": true,
+        "detail": "expected match, got match"
+      },
+      {
+        "label": "mobile-390 search \"Toowoomba\"",
+        "ok": true,
+        "detail": "expected match, got match"
+      },
+      {
+        "label": "mobile-390 search \"Sunshine Coast\"",
+        "ok": true,
+        "detail": "expected match, got match"
+      }
+    ]
+  }
+}

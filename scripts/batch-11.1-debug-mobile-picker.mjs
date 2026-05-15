@@ -1,0 +1,20 @@
+import { chromium } from 'playwright'
+const browser = await chromium.launch({ headless: true })
+const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 })
+const page = await ctx.newPage()
+await page.goto('http://localhost:3007/', { waitUntil: 'networkidle' })
+await page.waitForTimeout(700)
+console.log('All buttons with aria-label on page:')
+const buttons = await page.$$eval('button[aria-label]', els => els.map(el => ({ label: el.getAttribute('aria-label'), visible: el.offsetParent !== null })))
+for (const b of buttons.slice(0, 30)) console.log(' ', b.visible ? 'V' : 'H', b.label)
+console.log('\nTrying to click hamburger...')
+const hb = await page.$('button[aria-label*="Open navigation"], button[aria-label*="Open menu"]')
+console.log('  hamburger button found:', !!hb)
+if (hb) {
+  await hb.click()
+  await page.waitForTimeout(1000)
+  console.log('  After click, change-location buttons:')
+  const buttons2 = await page.$$eval('button[aria-label]', els => els.filter(el => el.offsetParent !== null).map(el => el.getAttribute('aria-label')))
+  for (const b of buttons2.slice(0, 30)) console.log('   ', b)
+}
+await browser.close()

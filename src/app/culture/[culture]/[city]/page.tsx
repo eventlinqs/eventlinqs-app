@@ -46,7 +46,22 @@ export function generateStaticParams() {
 function findCityName(cultureSlug: string, citySlug: string): string | null {
   const culture = getCulture(cultureSlug)
   if (!culture) return null
-  return culture.cities.find(c => citySlugify(c) === citySlug) ?? null
+  // 1. Curated culture.cities list (always wins - editorial pairs).
+  const fromCulture = culture.cities.find(c => citySlugify(c) === citySlug)
+  if (fromCulture) return fromCulture
+  // 2. Fallback: any AU city slug from the `cities` table renders the
+  //    intersection page even if the culture's curated list does not
+  //    name it. The events query downstream may return zero rows; the
+  //    page handles empty state. This closes the Batch 11.1 D3.3 link
+  //    audit gap where /city/[slug] pages emitted intersection links
+  //    for smaller AU cities (Albury, Ballarat, Bendigo, Launceston,
+  //    Sunshine Coast, Toowoomba, Townsville) that 404'd because no
+  //    culture's curated list included them.
+  if (isCitySlug(citySlug)) {
+    const cityRecord = getCity(citySlug)
+    if (cityRecord) return cityRecord.name
+  }
+  return null
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

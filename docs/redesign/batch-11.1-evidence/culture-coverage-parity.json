@@ -1,0 +1,133 @@
+{
+  "generatedAt": "2026-05-14T14:58:18.688Z",
+  "base": "http://localhost:3007",
+  "totalCultures": 14,
+  "perCulture": [
+    {
+      "slug": "african",
+      "cultureStatus": 200,
+      "intersectionCity": "sydney",
+      "intersectionStatus": 200,
+      "inIndex": true,
+      "inSitemap": true,
+      "verdict": "PASS"
+    },
+    {
+      "slug": "south-asian",
+      "cultureStatus": 200,
+      "intersectionCity": "sydney",
+      "intersectionStatus": 200,
+      "inIndex": true,
+      "inSitemap": true,
+      "verdict": "PASS"
+    },
+    {
+      "slug": "caribbean",
+      "cultureStatus": 200,
+      "intersectionCity": "sydney",
+      "intersectionStatus": 200,
+      "inIndex": true,
+      "inSitemap": true,
+      "verdict": "PASS"
+    },
+    {
+      "slug": "latin",
+      "cultureStatus": 200,
+      "intersectionCity": "sydney",
+      "intersectionStatus": 200,
+      "inIndex": true,
+      "inSitemap": true,
+      "verdict": "PASS"
+    },
+    {
+      "slug": "east-asian",
+      "cultureStatus": 200,
+      "intersectionCity": "sydney",
+      "intersectionStatus": 200,
+      "inIndex": true,
+      "inSitemap": true,
+      "verdict": "PASS"
+    },
+    {
+      "slug": "filipino",
+      "cultureStatus": 200,
+      "intersectionCity": "sydney",
+      "intersectionStatus": 200,
+      "inIndex": true,
+      "inSitemap": true,
+      "verdict": "PASS"
+    },
+    {
+      "slug": "mediterranean",
+      "cultureStatus": 200,
+      "intersectionCity": "sydney",
+      "intersectionStatus": 200,
+      "inIndex": true,
+      "inSitemap": true,
+      "verdict": "PASS"
+    },
+    {
+      "slug": "middle-eastern",
+      "cultureStatus": 200,
+      "intersectionCity": "sydney",
+      "intersectionStatus": 200,
+      "inIndex": true,
+      "inSitemap": true,
+      "verdict": "PASS"
+    },
+    {
+      "slug": "european",
+      "cultureStatus": 200,
+      "intersectionCity": "sydney",
+      "intersectionStatus": 200,
+      "inIndex": true,
+      "inSitemap": true,
+      "verdict": "PASS"
+    },
+    {
+      "slug": "pacific",
+      "cultureStatus": 200,
+      "intersectionCity": "sydney",
+      "intersectionStatus": 200,
+      "inIndex": true,
+      "inSitemap": true,
+      "verdict": "PASS"
+    },
+    {
+      "slug": "gospel",
+      "cultureStatus": 200,
+      "intersectionCity": "sydney",
+      "intersectionStatus": 200,
+      "inIndex": true,
+      "inSitemap": true,
+      "verdict": "PASS"
+    },
+    {
+      "slug": "comedy",
+      "cultureStatus": 200,
+      "intersectionCity": "sydney",
+      "intersectionStatus": 200,
+      "inIndex": true,
+      "inSitemap": true,
+      "verdict": "PASS"
+    },
+    {
+      "slug": "wellness",
+      "cultureStatus": 200,
+      "intersectionCity": "sydney",
+      "intersectionStatus": 200,
+      "inIndex": true,
+      "inSitemap": true,
+      "verdict": "PASS"
+    },
+    {
+      "slug": "pride",
+      "cultureStatus": 200,
+      "intersectionCity": "sydney",
+      "intersectionStatus": 200,
+      "inIndex": true,
+      "inSitemap": true,
+      "verdict": "PASS"
+    }
+  ]
+}

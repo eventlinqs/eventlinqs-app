@@ -58,19 +58,37 @@ async function buildPickerCitiesRaw(): Promise<PickerCityGroups> {
   // after the LAUNCH_TARGET_CITIES list was trimmed to AU. The cities
   // table itself has a `country = 'AU'` check constraint at the DB
   // layer; this client-side filter is belt-and-braces.
-  let rows: Array<{ venue_city: string | null; venue_country: string | null }> = []
+  //
+  // Batch 11.1 D1 root-cause expansion: pull from `public.cities`
+  // directly (not just `events.venue_city`). Without this, any city
+  // that exists in the cities table but has no published event yet
+  // (Toowoomba, Bendigo, Launceston, Sunshine Coast, Townsville,
+  // Ballarat, Albury at the time of fix) was absent from the picker
+  // even though it had a valid /city/[slug] landing page. The picker
+  // now reflects every AU city the platform supports.
+  let eventRows: Array<{ venue_city: string | null; venue_country: string | null }> = []
+  let citiesRows: Array<{ slug: string; name: string; state: string; country: string | null; latitude: number | null; longitude: number | null }> = []
   try {
     const supabase = createAdminClient()
-    const { data } = await supabase
-      .from('events')
-      .select('venue_city, venue_country')
-      .eq('status', 'published')
-      .eq('visibility', 'public')
-      .eq('venue_country', 'Australia')
-      .not('venue_city', 'is', null)
-    rows = data ?? []
+    const [eventsResult, citiesResult] = await Promise.all([
+      supabase
+        .from('events')
+        .select('venue_city, venue_country')
+        .eq('status', 'published')
+        .eq('visibility', 'public')
+        .eq('venue_country', 'Australia')
+        .not('venue_city', 'is', null),
+      supabase
+        .from('cities')
+        .select('slug, name, state, country, latitude, longitude')
+        .eq('country', 'AU')
+        .order('slug', { ascending: true }),
+    ])
+    eventRows = eventsResult.data ?? []
+    citiesRows = citiesResult.data ?? []
   } catch {
-    rows = []
+    eventRows = []
+    citiesRows = []
   }
 
   const bySlug = new Map<string, PickerCity>()
@@ -78,7 +96,26 @@ async function buildPickerCitiesRaw(): Promise<PickerCityGroups> {
     bySlug.set(c.slug, launchToPicker(c))
   }
 
-  for (const row of rows) {
+  // Cities table is the authoritative AU city list. Add every row not
+  // already in bySlug so the picker covers every supported city.
+  for (const row of citiesRows) {
+    if (!row.slug) continue
+    if (bySlug.has(row.slug)) continue
+    bySlug.set(row.slug, {
+      city: row.name,
+      slug: row.slug,
+      country: 'Australia',
+      countryCode: 'AU',
+      latitude: row.latitude,
+      longitude: row.longitude,
+      isLaunchCity: false,
+    })
+  }
+
+  // Backstop: any organiser-seeded venue_city not yet in `cities` (e.g.
+  // a regional venue that hasn't been added to the taxonomy) still
+  // surfaces in the picker as a launch-candidate.
+  for (const row of eventRows) {
     const cityName = row.venue_city?.trim()
     if (!cityName) continue
     const slug = toCitySlug(cityName)

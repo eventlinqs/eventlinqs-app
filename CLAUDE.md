@@ -187,6 +187,7 @@ A module/phase is "done" when ALL of these are true:
 
 Every session reads these on session start:
 - `CLAUDE.md` (this file)
+- `docs/PRE-LAUNCH-HARDENING.md` (locked pre-launch hardening list - friends-launch cannot ship with any item open)
 - `docs/EventLinqs_Scope_v5.md`
 - `docs/MASTER-PLAN-V1.md`
 - `docs/BUILD-STANDARDS.md`
