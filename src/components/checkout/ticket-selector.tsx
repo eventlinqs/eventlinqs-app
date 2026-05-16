@@ -96,6 +96,7 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
     }
 
     startTransition(async () => {
+     try {
       // Free-only cart: skip checkout page entirely for logged-in users
       if (allFree && addon_items.length === 0) {
         const result = await registerFreeTickets({ event_id: eventId, ticket_items })
@@ -127,6 +128,15 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
       }
 
       router.push(`/checkout/${result.reservation_id}`)
+     } catch (err) {
+        // A thrown server action used to reject the transition silently:
+        // no error, no navigation, no DB write - the guest free-RSVP
+        // dead-end. Surface it so the user is never left stuck.
+        console.error('[checkout] start failed:', err)
+        setError(
+          'Something went wrong starting your checkout. Please try again. If it keeps happening, contact support.',
+        )
+      }
     })
   }
 
