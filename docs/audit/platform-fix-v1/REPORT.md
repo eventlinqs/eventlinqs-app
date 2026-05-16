@@ -38,7 +38,7 @@ All three PRs pass the full local gate: `eslint` (0 errors), `tsc --noEmit`, `vi
 |----|--------|-------|------|
 | **#11** | `fix/culture-browse-funnel` | Defects 1 + 2. New `src/lib/cultures/tag-bridge.ts` matches events by `tags` jsonb containment; repointed `/events` fetchers, `/culture` + `/culture/[city]` landings, and `/cultures` index counts. Dead "Coming soon" replaced with honest "Be the first". `/cities` subheading corrected. **Validated on live data: 10/14 cultures now resolve to real events (african 9, caribbean 4, south-asian 4, comedy 3, east-asian 2, filipino 2, gospel 2, latin 1, middle-eastern 1, pacific 1); the 4 with no inventory show the honest state.** | https://github.com/eventlinqs/eventlinqs-app/pull/11 |
 | **#12** | `fix/pricing-fee-consistency` | Defect 3. New `src/lib/pricing/public-fee.ts` canonical constant mirroring the `pricing_rules` AU/GLOBAL baseline; `/pricing` Paid tier + metadata now state the definite **2.5% + AUD 0.50**; removed "From" and the indicative/may-vary hedge; confident risk-reversal line instead. Charged rates unchanged. | https://github.com/eventlinqs/eventlinqs-app/pull/12 |
-| **#13** | `fix/marketing-consistency-404` | Defects 4 + 5. `/about` culture stat 18 -> 14 (matches every other surface). New `/for-organisers` route permanent-redirects (308) to `/organisers`. | (opened this run - see PR list) |
+| **#13** | `fix/marketing-consistency-404` | Defects 4 + 5 + this report. `/about` culture stat 18 -> 14 (matches every other surface). New `/for-organisers` route permanent-redirects (308) to `/organisers`. | https://github.com/eventlinqs/eventlinqs-app/pull/13 |
 
 ## 4. Still open / deferred (with reason)
 
@@ -49,14 +49,20 @@ All three PRs pass the full local gate: `eslint` (0 errors), `tsc --noEmit`, `vi
 
 ## 5. Production verification
 
-Branch protection prevents merging to `main`, and production deploys from `main`, so the fixes are not yet live on www.eventlinqs.com - this is by design and per the run's safety constraints. Verification performed:
+Branch protection prevents merging to `main`, and production deploys from `main`, so the fixes are not yet live on www.eventlinqs.com - by design. Each PR was instead verified on its **real Vercel preview deployment** (production-equivalent build + runtime), not just locally:
 
-- **Local full gate** green on all three branches (tsc, eslint, vitest 117, `next build` - the same compile/type/render path Vercel runs).
-- **Data-level proof for the headline fix (PR #11):** the tag-bridge OR-logic was executed against the **live production Supabase** dataset, returning 10/14 cultures with real event counts (vs 0/14 under the old bridge). This verifies the fix on real production data without needing the deploy.
-- **Fee fix (PR #12):** the corrected figure (2.5% + AUD 0.50) was taken directly from a live `pricing_rules` query, so the displayed copy now provably matches the billing system.
-- **PR CI / Vercel preview:** each PR triggers the repo's checks/preview build; merge to `main` is gated on those passing (CI must be green before any human merge - not bypassed here).
+**PR #11 (culture funnel) - VERIFIED on preview:**
+- All routes 200 on the preview, including `/events` and `/events?culture=african`.
+- `/cultures` now renders real counts: African 9, South Asian 4, Caribbean 4, Comedy 3, East Asian 2, Filipino 2, Gospel 2, Latin 1, Middle Eastern 1, Pacific 1 - exactly matching the independent live-DB query. The 4 with no inventory (Mediterranean, European, Wellness, Pride) show the honest "Be the first", zero "Coming soon" remaining.
+- `/culture/gospel` now renders a "Live Gospel events" section listing its 2 real events (was zero before).
 
-Recommended go-live verification once merged: re-run the Phase 1 status sweep + Firecrawl render check on production, confirming `/cultures` shows real counts, `/culture/african` and `/culture/gospel` list events, `/pricing` reads "2.5% + AUD 0.50", `/for-organisers` 308 -> `/organisers`, `/about` reads 14.
+**PR #12 (pricing) - VERIFIED on preview:** `/pricing` renders "2.5% + AUD 0.50"; grep for "indicative" / "may vary by event" returns nothing (hedge removed).
+
+**PR #13 (consistency/404) - VERIFIED on preview:** `/for-organisers` returns 308 -> `/organisers`; `/about` renders "14 Cultures from day one".
+
+**Lighthouse CI note (PR #11):** the "Lighthouse mobile gate" check failed with `ERRORED_DOCUMENT_REQUEST: Status code 500` on `http://localhost:3000/events` in the CI runner. Investigated: on the real preview `/events` returns 200 (5.2s cold-start). This is the documented CLAUDE.md known `/events` cold-cache CI measurement issue ("do not block on it"), not a regression - PR #11 only changes a server-side query shape, the `lint·typecheck·build` check passed, and the Vercel deploy is Ready. It must still be acknowledged by whoever merges (do not auto-merge past a red check without this context).
+
+**Local gate** (all three branches): tsc, eslint (0 errors), vitest (117 passed), `next build` - all green.
 
 ## 6. Next-session recommendations (priority order)
 
