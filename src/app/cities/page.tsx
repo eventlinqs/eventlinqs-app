@@ -74,7 +74,7 @@ export default async function CitiesIndexPage() {
 
         <Section
           heading="Capital Cities"
-          subheading="Eight capital and major metro markets. The platform launches with full event catalogues in each."
+          subheading="Eight capital and major metro markets, each with its own events directory and culture rails."
           tier={1}
         >
           <CitiesGrid entries={tier1} priority />
@@ -161,10 +161,14 @@ async function CityTile({
   priority: boolean
 }) {
   const image = await getCityPhoto(entry.slug)
+  // Never render a dead "Coming soon" state. A city with no live events
+  // yet still has a real landing (culture rails, formats, organiser
+  // invite), so the tile invites the first organiser instead of
+  // advertising absence.
   const countLabel =
     entry.eventCount > 0
       ? `${entry.eventCount} event${entry.eventCount === 1 ? '' : 's'}`
-      : 'Coming soon'
+      : 'Be the first'
 
   return (
     <Link
