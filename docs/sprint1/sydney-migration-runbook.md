@@ -31,7 +31,7 @@ Three paths were considered:
 
 Sydney is the destination because:
 - ap-southeast-2 is closer to Australian users (~30ms vs Mumbai's ~140ms RTT from Melbourne).
-- Mumbai stays alive as a 7-day archive window before being decommissioned on 2026-05-03.
+- Mumbai was kept as a short archive window after Sydney went live, then decommissioned (project deleted 16 May 2026, later than the originally scheduled 2026-05-03).
 
 ---
 
