@@ -6,6 +6,7 @@ import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav'
 import { HeaderScrollSentinel } from '@/components/layout/header-scroll-sentinel'
 import { HeroPresenceProvider } from '@/contexts/hero-presence-context'
 import { DuotoneFilterDefs } from '@/components/ui/DuotoneFilterDefs'
+import { getSiteUrl } from '@/lib/site-url'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -21,7 +22,11 @@ const manrope = Manrope({
   weight: ['600', '700', '800'],
 })
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
+// metadataBase resolves relative OG/Twitter image routes and relative
+// canonicals for every page that inherits this layout. Resolved via the
+// shared site-url helper so it can never fall back to localhost in a
+// deployed environment (see src/lib/site-url.ts).
+const SITE_URL = getSiteUrl()
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

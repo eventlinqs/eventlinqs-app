@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getPickerCities } from '@/lib/locations/picker-cities'
 import { getAllCultures } from '@/lib/cultures/data'
 import { getAllCities, getSuburbsForCity } from '@/lib/cities/data'
+import { getSiteUrl } from '@/lib/site-url'
 
 /**
  * Dynamic sitemap for EventLinqs.
@@ -15,7 +16,7 @@ import { getAllCities, getSuburbsForCity } from '@/lib/cities/data'
  *  - every published, public event under /events/{slug}.
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
+  const baseUrl = getSiteUrl()
   const now = new Date()
 
   const entries: MetadataRoute.Sitemap = [
