@@ -14,7 +14,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
 
 export const metadata: Metadata = {
   title: 'Browse by Culture | EventLinqs',
-  description: 'Browse 14 cultural communities across Australia and beyond. Afrobeats, Bollywood, K-Pop, Latin, Caribbean, Filipino, Mediterranean and more.',
+  description: 'Browse 21 cultural heritages across Australia, led by Aboriginal and Torres Strait Islander peoples, plus five faith communities and every event type.',
   alternates: { canonical: '/cultures' },
   openGraph: {
     title: 'Browse by Culture | EventLinqs',
@@ -28,32 +28,23 @@ export const metadata: Metadata = {
   },
 }
 
-/**
- * Optional Tier 2 long-form descriptors used only on the index page card
- * subtitle. The /culture/[slug] landing keeps the short displayName + tagline.
- */
-const TIER2_DESCRIPTOR: Partial<Record<string, string>> = {
-  pride:    'Pride and Inclusion',
-  gospel:   'Gospel and Worship',
-  comedy:   'Comedy',
-  wellness: 'Wellness and Spirituality',
-}
-
 export default async function CulturesIndexPage() {
   const [entries, heroImage] = await Promise.all([
     getCultureIndexEntries(),
     getCultureHeroPhoto('african'),
   ])
 
-  const tier1 = entries.filter(e => e.tier === 1)
-  const tier2 = entries.filter(e => e.tier === 2)
+  // v2: one ordered list. getCultureIndexEntries() is sorted by
+  // heritageOrder, so Aboriginal & Torres Strait Islander is always
+  // entries[0]. No tier split in v2 (every heritage is a first-class
+  // heritage; Decision A-G locked).
 
-  // Schema.org BreadcrumbList + ItemList for the 14 cultures.
+  // Schema.org BreadcrumbList + ItemList for the 21 heritages.
   const itemListSchema = {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
-    name: 'EventLinqs Cultures',
-    description: 'Browse 14 cultural communities across Australia and beyond.',
+    name: 'EventLinqs Cultural Heritages',
+    description: 'Browse 21 cultural heritages across Australia, led by Aboriginal and Torres Strait Islander peoples.',
     numberOfItems: entries.length,
     itemListElement: entries.map((e, i) => ({
       '@type': 'ListItem',
@@ -78,24 +69,15 @@ export default async function CulturesIndexPage() {
         <PhotographicCultureHero
           eyebrow="Browse by culture"
           title="Every culture. Every event."
-          subtitle="Browse 14 communities across Australia and beyond. Find what moves you."
+          subtitle="21 cultural heritages, led by Aboriginal and Torres Strait Islander peoples. Each with its own home, sub-cultures and city pages."
           imageSrc={heroImage}
         />
 
         <Section
-          heading="Cultural Communities"
-          subheading="Ten communities at the heart of the platform. Each gets its own landing with rails, sub-cultures, and city pages."
-          tier={1}
+          heading="Cultural Heritages"
+          subheading="Twenty-one heritages, First Nations always first. Faith communities and event types are browseable as their own dimensions."
         >
-          <CulturesGrid entries={tier1} priority />
-        </Section>
-
-        <Section
-          heading="Cross-Cultural"
-          subheading="Communities the platform serves alongside the core ten."
-          tier={2}
-        >
-          <CulturesGrid entries={tier2} priority={false} />
+          <CulturesGrid entries={entries} priority />
         </Section>
       </main>
       <SiteFooter />
@@ -115,22 +97,20 @@ export default async function CulturesIndexPage() {
 function Section({
   heading,
   subheading,
-  tier,
   children,
 }: {
   heading: string
   subheading: string
-  tier: 1 | 2
   children: React.ReactNode
 }) {
   return (
     <section
-      aria-labelledby={`cultures-tier-${tier}-heading`}
+      aria-labelledby="cultures-heritages-heading"
       className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20"
     >
       <div className="mb-8 max-w-2xl sm:mb-10">
         <h2
-          id={`cultures-tier-${tier}-heading`}
+          id="cultures-heritages-heading"
           className="font-display text-2xl font-extrabold tracking-tight text-ink-900 sm:text-3xl lg:text-4xl"
         >
           {heading}
@@ -171,7 +151,7 @@ async function CultureTile({
   priority: boolean
 }) {
   const image = await getCultureHeroPhoto(entry.slug)
-  const subtitle = TIER2_DESCRIPTOR[entry.slug] ?? entry.tagline
+  const subtitle = entry.tagline
   // Never render a dead "Coming soon" state. When a culture has no live
   // events yet, the landing is still a real, useful page (sub-cultures,
   // cities, organiser invite), so the tile invites the first organiser
