@@ -551,3 +551,57 @@ export interface TierProgressionLog {
   metadata: Record<string, unknown>
   created_at: string
 }
+
+// ─── Ticketing System V1 (migration 20260517000001) ──────────────────────
+// Hand-maintained to match this file's curated convention. Do NOT
+// regenerate over src/types/database.ts: raw `supabase gen types` output
+// belongs in src/types/database.generated.ts via `npm run db:types`
+// (see docs/hardening/phase1/db-types-automation.md).
+
+export type TicketStatus =
+  | 'valid'
+  | 'scanned'
+  | 'refunded'
+  | 'void'
+  | 'transferred'
+
+export interface Ticket {
+  id: string
+  order_id: string
+  order_item_id: string
+  event_id: string
+  ticket_tier_id: string | null
+  seat_id: string | null
+  idx_in_item: number
+  ticket_code: string
+  secret: string
+  holder_name: string | null
+  holder_email: string
+  status: TicketStatus
+  scan_count: number
+  first_scanned_at: string | null
+  last_scanned_at: string | null
+  scanned_by: string | null
+  transferred_to_email: string | null
+  refunded_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type TicketScanResult =
+  | 'admitted'
+  | 'already_scanned'
+  | 'invalid'
+  | 'wrong_event'
+  | 'refunded'
+  | 'void'
+
+export interface TicketScan {
+  id: string
+  ticket_id: string
+  event_id: string
+  scanned_by: string | null
+  result: TicketScanResult
+  scanned_at: string
+  device_info: Record<string, unknown>
+}
