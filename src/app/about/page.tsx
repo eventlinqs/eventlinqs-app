@@ -55,7 +55,7 @@ const VALUES = [
 const STATS = [
   { value: '2026', label: 'Founded' },
   { value: 'AU · UK · US · EU', label: 'Launch markets' },
-  { value: '14', label: 'Cultures from day one' },
+  { value: '21', label: 'Cultural heritages' },
   { value: '100%', label: 'All-in pricing' },
 ]
 
