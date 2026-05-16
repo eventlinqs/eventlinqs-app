@@ -33,7 +33,7 @@ const VALUES = [
   {
     title: 'Culture-led, not generic',
     body:
-      'Afrobeats, Caribbean, Bollywood, Latin, Italian, Filipino, Lunar, Gospel, Amapiano, Comedy, Spanish, K-Pop, Reggae, and more. We learn the rhythms before we promise discovery.',
+      'Twenty-one cultural heritages, led by Aboriginal and Torres Strait Islander peoples, alongside five faith communities and every event type. We learn each culture before we promise discovery.',
   },
   {
     title: 'Built for trust',
@@ -73,7 +73,7 @@ const PRINCIPLES = [
   {
     title: 'Every culture, marketed properly',
     body:
-      'Discovery is organised by cultural rhythm, not generic genre buckets. Browse by Afrobeats, Caribbean, Bollywood, Latin, Italian, Filipino, Lunar, Gospel, Amapiano, Comedy, Spanish, K-Pop, Reggae, West African, European, Asian, African, South Asian.',
+      'Discovery is organised across three honest dimensions: 21 cultural heritages led by First Nations Australians, five faith communities, and event type. Heritage, faith and format are kept distinct, never collapsed into one generic bucket.',
   },
   {
     title: 'Sustainable economics',
@@ -106,10 +106,11 @@ export default function AboutPage() {
                 Australian ticketing has spent two decades being run by global
                 gatekeepers who treat every cultural event the same: a search
                 box, a stack of fees, a checkout that fights the buyer. The
-                people putting on Afrobeats nights in Melbourne, Bollywood
-                weddings in Sydney, Caribbean carnivals on the Gold Coast,
-                Filipino festivals in Brisbane, and Lunar New Year galas in
-                Perth deserve better infrastructure than that.
+                people putting on NAIDOC community days in Naarm, Afrobeats
+                nights in Melbourne, Diwali galas in Sydney, Caribbean
+                carnivals on the Gold Coast, Filipino fiestas in Brisbane,
+                and Lunar New Year banquets in Perth deserve better
+                infrastructure than that.
               </p>
               <p>
                 EventLinqs is a fan-first ticketing platform that takes every

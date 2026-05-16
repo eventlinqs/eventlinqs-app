@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+import { notFound, permanentRedirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import {
@@ -7,6 +7,7 @@ import {
   isCultureSlug,
   type CultureSlug,
 } from '@/lib/cultures/data'
+import { getCultureRedirect } from '@/lib/cultures/redirects'
 import { getCity, isCitySlug } from '@/lib/cities/data'
 import { buildCultureTagOrFilter } from '@/lib/cultures/tag-bridge'
 import { getCityHeroPhoto } from '@/lib/images/city-photo'
@@ -103,6 +104,8 @@ function weekendWindow(now: Date) {
 
 export default async function CultureByCityPage({ params }: Props) {
   const { culture: cultureParam, city: cityParam } = await params
+  const redirectTarget = getCultureRedirect(cultureParam, cityParam)
+  if (redirectTarget) permanentRedirect(redirectTarget)
   if (!isCultureSlug(cultureParam)) notFound()
 
   const culture = getCulture(cultureParam)!

@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+import { notFound, permanentRedirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import {
@@ -6,6 +6,7 @@ import {
   getAllCultures,
   isCultureSlug,
 } from '@/lib/cultures/data'
+import { getCultureRedirect } from '@/lib/cultures/redirects'
 import { buildCultureTagOrFilter } from '@/lib/cultures/tag-bridge'
 import { getCultureHeroPhoto } from '@/lib/images/culture-photo'
 import { getSubCulturePhoto } from '@/lib/images/sub-culture-photo'
@@ -49,6 +50,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function CulturePage({ params }: Props) {
   const { culture: cultureParam } = await params
+  const redirectTarget = getCultureRedirect(cultureParam)
+  if (redirectTarget) permanentRedirect(redirectTarget)
   if (!isCultureSlug(cultureParam)) notFound()
 
   const culture = getCulture(cultureParam)!
