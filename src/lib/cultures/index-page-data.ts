@@ -1,7 +1,7 @@
 import { unstable_cache } from 'next/cache'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { getAllCultures, type CultureContent, type CultureSlug } from './data'
-import { getCategorySlugsForCulture } from './category-bridge'
+import { buildCultureTagOrFilter } from './tag-bridge'
 
 export interface CultureIndexEntry {
   slug: CultureSlug
@@ -17,9 +17,12 @@ export interface CultureIndexEntry {
  *
  * Fetches the static culture taxonomy (14 entries) and joins it with the
  * live upcoming-event count per culture. Counts are derived through the
- * existing category-bridge: each culture maps to one or more event_category
- * slugs, and we count `events` rows whose category slug is in that set,
- * filtered to status=published, visibility=public, start_date>=now.
+ * tag-bridge: each culture maps to a set of identifying tag tokens, and
+ * we count `events` rows whose `tags` jsonb array contains any of them,
+ * filtered to status=published, visibility=public, start_date>=now. The
+ * legacy category-bridge resolved every culture to zero (live events
+ * carry generic categories), which made this index read "Coming soon"
+ * for all 14 cultures. See src/lib/cultures/tag-bridge.ts.
  *
  * Result is cached for 5 minutes (matches the ISR cadence used across
  * `/culture/[culture]`, `/city/[slug]`, and `/events/[slug]`). The cache
@@ -33,34 +36,24 @@ async function getCultureIndexEntriesRaw(): Promise<CultureIndexEntry[]> {
   const supabase = createPublicClient()
 
   const counts: Record<CultureSlug, number> = {} as Record<CultureSlug, number>
+  const nowIso = new Date().toISOString()
   await Promise.all(
     cultures.map(async (c: CultureContent) => {
-      const categorySlugs = getCategorySlugsForCulture(c.slug)
-      if (categorySlugs.length === 0) {
+      const tagOr = buildCultureTagOrFilter(c.slug)
+      if (tagOr === null) {
         counts[c.slug] = 0
         return
       }
-      // Counting via head: count + categories(slug.in.(...)) is not directly
-      // expressible without a join filter, so we approximate by counting
-      // category rows then filtering client-side. Volume is bounded
-      // (200 upcoming events per culture max), so this is cheap and
-      // deterministic without a stored procedure.
-      const { data, error } = await supabase
+      // Exact head count: published, public, upcoming events whose tags
+      // jsonb array contains any identifying token for this culture.
+      const { count, error } = await supabase
         .from('events')
-        .select('id, category:event_categories(slug)')
+        .select('id', { count: 'exact', head: true })
         .eq('status', 'published')
         .eq('visibility', 'public')
-        .gte('start_date', new Date().toISOString())
-        .limit(500)
-      if (error || !data) {
-        counts[c.slug] = 0
-        return
-      }
-      counts[c.slug] = data.filter(row => {
-        // Supabase typings widen this nested join; narrow defensively.
-        const slug = (row as { category?: { slug?: string } | null }).category?.slug
-        return typeof slug === 'string' && categorySlugs.includes(slug)
-      }).length
+        .gte('start_date', nowIso)
+        .or(tagOr)
+      counts[c.slug] = error || count === null ? 0 : count
     }),
   )
 
