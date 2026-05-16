@@ -47,11 +47,11 @@ const TABS: { id: Tab; label: string; route: (q: string) => string }[] = [
 
 const FALLBACKS: Record<Tab, { label: string; href: string }[]> = {
   cultures: [
+    { label: 'First Nations',  href: '/culture/aboriginal-torres-strait-islander' },
     { label: 'African',        href: '/culture/african' },
-    { label: 'South Asian',    href: '/culture/south-asian' },
+    { label: 'Indian',         href: '/culture/indian' },
     { label: 'Caribbean',      href: '/culture/caribbean' },
-    { label: 'Latin',          href: '/culture/latin' },
-    { label: 'Comedy',         href: '/culture/comedy' },
+    { label: 'Latin American', href: '/culture/latin-american' },
   ],
   cities: [
     { label: 'Sydney',     href: '/city/sydney' },

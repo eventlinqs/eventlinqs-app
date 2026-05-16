@@ -26,13 +26,13 @@ const DISCOVER = [
 ]
 
 const CULTURES = [
-  { label: 'Afrobeats',     href: '/culture/african' },
-  { label: 'Caribbean',     href: '/culture/caribbean' },
-  { label: 'Bollywood',     href: '/culture/south-asian' },
-  { label: 'Latin',         href: '/culture/latin' },
-  { label: 'Italian',       href: '/culture/mediterranean' },
-  { label: 'Filipino',      href: '/culture/filipino' },
-  { label: 'All cultures',  href: '/events?view=cultures' },
+  { label: 'First Nations',  href: '/culture/aboriginal-torres-strait-islander' },
+  { label: 'African',        href: '/culture/african' },
+  { label: 'Caribbean',      href: '/culture/caribbean' },
+  { label: 'Indian',         href: '/culture/indian' },
+  { label: 'Latin American', href: '/culture/latin-american' },
+  { label: 'Italian',        href: '/culture/italian' },
+  { label: 'All cultures',   href: '/cultures' },
 ]
 
 const FOR_ORGANISERS = [
