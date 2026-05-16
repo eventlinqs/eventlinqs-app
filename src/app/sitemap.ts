@@ -2,6 +2,7 @@ import type { MetadataRoute } from 'next'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getPickerCities } from '@/lib/locations/picker-cities'
 import { getAllCultures } from '@/lib/cultures/data'
+import { getAllFaiths } from '@/lib/faiths/data'
 import { getAllCities, getSuburbsForCity } from '@/lib/cities/data'
 import { getSiteUrl } from '@/lib/site-url'
 
@@ -117,6 +118,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: now,
       changeFrequency: 'daily',
       priority: culture.tier === 1 ? 0.85 : 0.75,
+    })
+  }
+
+  // Culture Taxonomy v2 - faith landing pages.
+  for (const faith of getAllFaiths()) {
+    entries.push({
+      url: `${baseUrl}/faith/${faith.slug}`,
+      lastModified: now,
+      changeFrequency: 'daily',
+      priority: 0.8,
     })
   }
 
