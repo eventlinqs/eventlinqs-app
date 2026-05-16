@@ -10,6 +10,7 @@ import { ContentSection } from '@/components/layout/ContentSection'
 import { Button } from '@/components/ui/Button'
 import { ButtonPair } from '@/components/ui/ButtonPair'
 import { helpTopics } from '@/lib/help-content'
+import { FeeStatement } from '@/components/marketing/pricing-copy'
 
 /**
  * OrganisersLandingPage - /organisers
@@ -25,8 +26,11 @@ import { helpTopics } from '@/lib/help-content'
 
 // Pull a subset of selling-tickets Q&As for the inline FAQ
 const SELLING_TICKETS_TOPIC = helpTopics.find(t => t.slug === 'selling-tickets')
+// "What does it cost" is intentionally omitted here: the canonical
+// FeeStatement block answers it definitively and consistently on-page.
+// The help-centre article still covers it on its own surface; updating
+// that shared copy is tracked as a follow-up coordination item.
 const FAQ_QUESTIONS = [
-  'What does it cost to sell tickets on EventLinqs?',
   'When do I receive my payout?',
   'Can I offer early bird pricing and multiple ticket tiers?',
   'Can I create discount codes?',
@@ -146,6 +150,12 @@ export function OrganisersLandingPage() {
             </div>
           ))}
         </div>
+      </ContentSection>
+
+      {/* -- 2b. Canonical fee statement (shared verbatim with /pricing
+          and the homepage via pricing-copy.tsx) ---------------------- */}
+      <ContentSection surface="base" width="default">
+        <FeeStatement variant="light" showCta className="mx-auto max-w-2xl text-center" />
       </ContentSection>
 
       {/* -- 3. How it works ----------------------------------------- */}

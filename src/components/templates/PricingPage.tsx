@@ -4,16 +4,19 @@ import { PageShell } from '@/components/layout/PageShell'
 import { PageHero } from '@/components/layout/PageHero'
 import { ContentSection } from '@/components/layout/ContentSection'
 import { Button } from '@/components/ui/Button'
+import { FeeStatement } from '@/components/marketing/pricing-copy'
 
 /**
  * PricingPage - /pricing
  *
- * NOTE ON FEE NUMBERS: The placeholder rates below ("From 2.9% + AUD 0.59 per paid ticket")
- * need to be reviewed and confirmed by Lawal before launch. The actual fee structure is
- * database-driven via the pricing_rules table and payment-calculator.ts. The copy on this
- * page should reflect whatever rates are configured in the admin panel once those are locked.
+ * FEE NUMBERS: confirmed against the live production pricing_rules engine
+ * (AU/AUD platform_fee_percentage 2.5 + platform_fee_fixed 50 cents),
+ * verified 2026-05-16. The canonical public wording lives in
+ * src/components/marketing/pricing-copy.tsx and is shared verbatim with
+ * /organisers and the homepage. Do not restate the fee inline; if the
+ * pricing_rules table changes, update the canonical module.
  *
- * Session 2a: initial build.
+ * Session 2a: initial build. Fee-consistency pass: Phase 3.
  */
 
 // ---- Pricing tier data ----
@@ -39,8 +42,8 @@ const TIERS = [
   {
     id: 'paid',
     name: 'Paid Events',
-    // NOTE: Placeholder rate. Update to reflect pricing_rules config before launch.
-    price: 'From 2.9% + AUD 0.59',
+    // Canonical rate, sourced from pricing_rules (AU/AUD). No hedging.
+    price: '2.5% + 50¢ AUD',
     priceDetail: 'per paid ticket sold',
     description:
       'Transparent, industry-leading rates. Pass the fee to buyers or absorb it into your ticket price. Your choice.',
@@ -184,11 +187,10 @@ export function PricingPage() {
           ))}
         </div>
 
-        {/* Disclaimer note */}
-        <p className="mt-6 text-center text-xs text-[var(--text-muted)]">
-          All fees shown are indicative. Actual rates are configured in the organiser dashboard
-          and may vary by event type. Free events always have zero platform fees.
-        </p>
+        {/* Canonical fee statement + worked example (shared verbatim with
+            /organisers and the homepage via pricing-copy.tsx). Replaces the
+            previous hedged "indicative / may vary" disclaimer. */}
+        <FeeStatement variant="light" className="mx-auto mt-8 max-w-xl text-center" />
       </ContentSection>
 
       {/* -- 3. FAQ -------------------------------------------------- */}
