@@ -99,7 +99,11 @@ If a session needs to modify a shared file, commit the change as a separate comm
 - Australian English (-ise, -our, -re)
 - Tagline: "Every culture. Every event. One platform."
 - Sub-tagline: "The ticketing platform built for every culture."
-- Cultures list (canonical, 14 cultures, live browse-system order, never alphabetised, never repeated differently across surfaces; source of truth is the CultureSlug union in src/lib/cultures/data.ts. This supersedes the former 18-item marketed-rhythm list per the founder decision Option A: align strategy with browse reality, 14 not 18): African · South Asian · Caribbean · Latin · East Asian · Filipino · Mediterranean · Middle Eastern · European · Pacific · Gospel · Comedy · Wellness · Pride
+- Culture taxonomy (v2, founder Decisions A-G locked 2026-05-16). Three orthogonal dimensions, never collapsed into one list:
+  - Cultural Heritage: 21 heritages, Aboriginal & Torres Strait Islander always first, then the documented blend order. Source of truth: the CultureSlug union in src/lib/cultures/data.ts. Slugs: aboriginal-torres-strait-islander, african, caribbean, indian, chinese, filipino, latin-american, vietnamese, lebanese-levantine, greek, italian, korean, japanese, pacific-pasifika, maori, persian-iranian, turkish, arab, other-south-asian, other-east-southeast-asian, other-european.
+  - Faith Community: 5 with dedicated /faith/[slug] landings (christian, muslim, hindu, buddhist, jewish); smaller faiths filter-only. Source of truth: src/lib/faiths/data.ts.
+  - Event Type: genre/format (Comedy, Wellness, Music, Festival, ...). Gospel is faith, Comedy/Wellness are event type, Pride is the Identity facet - none are heritages.
+  - Roll-ups (Asian, European, Middle Eastern & North African, African, Pacific) are optional discovery filters layered over the 21, never primary categories. This supersedes the v1 14-list and the original 18-item marketed-rhythm list.
 
 ### Visual Standard
 - Hollywood / luxury / Ticketmaster-or-better
