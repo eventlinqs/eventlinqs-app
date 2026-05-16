@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { withBadge } from './badges'
-import { CULTURE_TO_CATEGORY_SLUGS } from '@/lib/cultures/category-bridge'
+import { buildCultureTagOrFilter } from '@/lib/cultures/tag-bridge'
 import type { CultureSlug } from '@/lib/cultures/data'
 import type {
   FetchPublicEventsFilters,
@@ -13,29 +13,24 @@ import type {
 } from './types'
 
 /**
- * Resolve culture / sub_culture filters into a list of legacy category
- * slugs to narrow on. Returns null when no culture constraint is set,
- * an array of slugs when at least one resolves. The caller looks the
- * slugs up in event_categories and applies .in('category_id', ids).
+ * Resolve culture / sub_culture filters into a PostgREST OR-filter that
+ * matches events whose `tags` jsonb array contains any identifying tag
+ * for the culture. Returns null when no culture constraint is set.
  *
- * If sub_culture matches one of the bridge entries for the chosen
- * culture, that single slug wins (e.g. /events?culture=african&sub_culture=amapiano
- * narrows to the amapiano category). Otherwise the full culture set
- * applies.
+ * Replaces the legacy category-slug bridge: live events carry generic
+ * categories ('music', 'nightlife', 'community', ...) so the old path
+ * resolved every culture to zero rows and silently emptied the entire
+ * culture surface. Tag containment is the reliable signal. See
+ * src/lib/cultures/tag-bridge.ts.
  */
-function resolveCultureCategorySlugs(
+function resolveCultureTagOrFilter(
   filters: FetchPublicEventsFilters,
-): string[] | null {
+): string | null {
   if (!filters.culture) return null
-  const cultureSlug = filters.culture as CultureSlug
-  const bridged = (CULTURE_TO_CATEGORY_SLUGS as Record<string, string[]>)[
-    cultureSlug
-  ]
-  if (!bridged) return []
-  if (filters.sub_culture && bridged.includes(filters.sub_culture)) {
-    return [filters.sub_culture]
-  }
-  return bridged
+  return buildCultureTagOrFilter(
+    filters.culture as CultureSlug,
+    filters.sub_culture,
+  )
 }
 
 /**
@@ -244,23 +239,14 @@ export async function fetchPublicEvents(
     } else {
       query = query.eq('category_id', '00000000-0000-0000-0000-000000000000')
     }
-  } else {
-    const cultureSlugs = resolveCultureCategorySlugs(filters)
-    if (cultureSlugs !== null) {
-      if (cultureSlugs.length === 0) {
-        query = query.eq('category_id', '00000000-0000-0000-0000-000000000000')
-      } else {
-        const { data: cats } = await supabase
-          .from('event_categories')
-          .select('id')
-          .in('slug', cultureSlugs)
-        const ids = (cats ?? []).map(c => c.id as string)
-        if (ids.length === 0) {
-          query = query.eq('category_id', '00000000-0000-0000-0000-000000000000')
-        } else {
-          query = query.in('category_id', ids)
-        }
-      }
+  } else if (filters.culture) {
+    const tagOr = resolveCultureTagOrFilter(filters)
+    if (tagOr === null) {
+      // Unknown culture slug: force an empty result rather than leak
+      // the entire catalogue under a culture URL.
+      query = query.eq('id', '00000000-0000-0000-0000-000000000000')
+    } else {
+      query = query.or(tagOr)
     }
   }
   if (filters.city) {
@@ -433,23 +419,14 @@ async function runFetchPublicEventsAdmin(
     } else {
       query = query.eq('category_id', '00000000-0000-0000-0000-000000000000')
     }
-  } else {
-    const cultureSlugs = resolveCultureCategorySlugs(filters)
-    if (cultureSlugs !== null) {
-      if (cultureSlugs.length === 0) {
-        query = query.eq('category_id', '00000000-0000-0000-0000-000000000000')
-      } else {
-        const { data: cats } = await supabase
-          .from('event_categories')
-          .select('id')
-          .in('slug', cultureSlugs)
-        const ids = (cats ?? []).map(c => c.id as string)
-        if (ids.length === 0) {
-          query = query.eq('category_id', '00000000-0000-0000-0000-000000000000')
-        } else {
-          query = query.in('category_id', ids)
-        }
-      }
+  } else if (filters.culture) {
+    const tagOr = resolveCultureTagOrFilter(filters)
+    if (tagOr === null) {
+      // Unknown culture slug: force an empty result rather than leak
+      // the entire catalogue under a culture URL.
+      query = query.eq('id', '00000000-0000-0000-0000-000000000000')
+    } else {
+      query = query.or(tagOr)
     }
   }
   if (filters.city) query = query.ilike('venue_city', `%${filters.city}%`)
