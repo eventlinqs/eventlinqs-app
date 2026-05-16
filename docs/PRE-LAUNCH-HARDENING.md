@@ -53,6 +53,30 @@
 
 ---
 
+## Launch readiness flagged by Vercel audit
+
+### Preview deployments are publicly indexable (x-robots-tag: index, follow)
+
+**Problem:** Vercel MCP audit confirmed all preview deployments return `x-robots-tag: index, follow` and `HTTP/1.1 200 OK` with no authentication. Work-in-progress builds are crawlable and publicly accessible on the open web ahead of a real-money Australian launch.
+
+**Required changes:**
+
+1. Enable Vercel Authentication with Standard Protection scope in Deployment Protection settings
+2. Generate Protection Bypass for Automation secret
+3. Add VERCEL_AUTOMATION_BYPASS_SECRET to GitHub Actions secrets
+4. Update Playwright tests to send x-vercel-protection-bypass header on preview requests
+5. Update Lighthouse CI workflow to send x-vercel-protection-bypass header
+6. Verify CI passes on next PR
+
+**Verification:** Preview `.vercel.app` URLs return 401 with `x-robots-tag: noindex`. `www.eventlinqs.com` still returns 200 publicly. Playwright and Lighthouse CI pass on the next PR via the automation bypass header.
+
+**Owned by:** Hardening session
+**Priority:** Pre-launch (must be done before public Australian launch)
+**Deferred from:** Tonight's session (15 May 2026) - foundation setup priority
+**Flagged by:** Vercel MCP audit, see session log
+
+---
+
 ## EXISTING (from prior pre-launch hardening list)
 
 1. Confirm Supabase Auth Site URL is https://www.eventlinqs.com (verify in Dashboard → Authentication → URL Configuration)
