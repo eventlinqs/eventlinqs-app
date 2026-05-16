@@ -40,7 +40,18 @@ export function LoginForm() {
       return
     }
 
-    router.push('/dashboard')
+    // Honour the ?redirect= deep-link set by middleware/guards when an
+    // unauthenticated user was bounced. Only allow safe internal paths
+    // (no protocol-relative // or absolute URLs) to prevent open redirect.
+    const redirectParam = searchParams.get('redirect')
+    const safeRedirect =
+      redirectParam &&
+      redirectParam.startsWith('/') &&
+      !redirectParam.startsWith('//') &&
+      !redirectParam.includes('://')
+        ? redirectParam
+        : '/dashboard'
+    router.push(safeRedirect)
     router.refresh()
   }
 
