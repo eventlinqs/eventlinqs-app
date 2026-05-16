@@ -35,7 +35,7 @@ GRANT EXECUTE ON FUNCTION public.create_reservation TO anon;
 -- expands to N tickets, idx_in_item 0..N-1).
 -- ------------------------------------------------------------
 CREATE TABLE public.tickets (
-  id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   order_id            UUID NOT NULL REFERENCES public.orders(id) ON DELETE CASCADE,
   order_item_id       UUID NOT NULL REFERENCES public.order_items(id) ON DELETE CASCADE,
   event_id            UUID NOT NULL REFERENCES public.events(id) ON DELETE CASCADE,
@@ -49,7 +49,7 @@ CREATE TABLE public.tickets (
   seat_id             UUID REFERENCES public.seats(id) ON DELETE SET NULL,
   idx_in_item         INT  NOT NULL,                       -- 0..quantity-1
   ticket_code         TEXT NOT NULL UNIQUE,                -- EL-XXXX-XXXX
-  secret              UUID NOT NULL DEFAULT uuid_generate_v4(), -- bearer credential, QR encodes code+secret
+  secret              UUID NOT NULL DEFAULT gen_random_uuid(), -- bearer credential, QR encodes code+secret
   holder_name         TEXT,
   holder_email        TEXT NOT NULL,
   status              TEXT NOT NULL DEFAULT 'valid'
@@ -120,7 +120,7 @@ CREATE POLICY "Service role manages tickets"
 -- 2. ticket_scans  (append-only audit; no UPDATE/DELETE policies)
 -- ------------------------------------------------------------
 CREATE TABLE public.ticket_scans (
-  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   ticket_id   UUID NOT NULL REFERENCES public.tickets(id) ON DELETE CASCADE,
   event_id    UUID NOT NULL REFERENCES public.events(id) ON DELETE CASCADE,
   scanned_by  UUID REFERENCES auth.users(id) ON DELETE SET NULL,
