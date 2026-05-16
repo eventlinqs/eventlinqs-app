@@ -99,7 +99,7 @@ If a session needs to modify a shared file, commit the change as a separate comm
 - Australian English (-ise, -our, -re)
 - Tagline: "Every culture. Every event. One platform."
 - Sub-tagline: "The ticketing platform built for every culture."
-- Cultures list (canonical, marketed-rhythm order, never alphabetised, never repeated differently across surfaces): Afrobeats · Caribbean · Bollywood · Latin · Italian · Filipino · Lunar · Gospel · Amapiano · Comedy · Spanish · K-Pop · Reggae · West African · European · Asian · African · South Asian
+- Cultures list (canonical, 14 cultures, live browse-system order, never alphabetised, never repeated differently across surfaces; source of truth is the CultureSlug union in src/lib/cultures/data.ts. This supersedes the former 18-item marketed-rhythm list per the founder decision Option A: align strategy with browse reality, 14 not 18): African · South Asian · Caribbean · Latin · East Asian · Filipino · Mediterranean · Middle Eastern · European · Pacific · Gospel · Comedy · Wellness · Pride
 
 ### Visual Standard
 - Hollywood / luxury / Ticketmaster-or-better
