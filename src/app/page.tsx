@@ -28,6 +28,7 @@ import { LiveVibeSection } from '@/components/features/home/live-vibe-section'
 import { CityRailSection } from '@/components/features/home/city-rail-section'
 import { EventRailSection } from '@/components/features/home/event-rail-section'
 import { FeaturedVenuesSection } from '@/components/features/home/featured-venues-section'
+import { FeeStatement } from '@/components/marketing/pricing-copy'
 import {
   ThisWeekSkeleton,
   CulturalPicksSkeleton,
@@ -435,6 +436,12 @@ export default async function HomePage() {
                     </li>
                   ))}
                 </ul>
+
+                {/* Canonical fee statement + worked example (shared
+                    verbatim with /pricing and /organisers via
+                    pricing-copy.tsx). The existing "View pricing" CTA
+                    below is the adjacent thumb-zone link to /pricing. */}
+                <FeeStatement variant="dark" className="mt-8" />
 
                 <div className="mt-10 flex flex-wrap gap-3">
                   <Link
