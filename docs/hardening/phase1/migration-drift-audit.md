@@ -38,11 +38,11 @@ Code consumer `src/components/features/events/save-event-button.tsx` reads/write
 
 Will resolve in T2 below.
 
-### .env.local has duplicate NEXT_PUBLIC_SUPABASE_URL
+### .env.local NEXT_PUBLIC_SUPABASE_URL - RESOLVED 16 May 2026
 
-`.env.local` line 1 (commented out or earlier) sets `https://cqwdlimwlnyaaowwcyzp.supabase.co`; later in the same file `https://gndnldyfudbytbboxesk.supabase.co` overrides. dotenv last-write semantics mean `gndnldyfudbytbboxesk` is the live project. The earlier value is dead config.
+Original finding (now historical): `.env.local` was reported to carry a dead `https://cqwdlimwlnyaaowwcyzp.supabase.co` line overridden later by `https://gndnldyfudbytbboxesk.supabase.co` under dotenv last-write semantics.
 
-Action: founder-managed file, will not edit. Recommended cleanup: remove the dead line in a future founder commit. Logged for visibility only.
+Current reality (verified 16 May 2026): `.env.local` contains only Sydney config. There is no Mumbai line, commented or otherwise. `NEXT_PUBLIC_SUPABASE_URL` and both Supabase keys resolve to `gndnldyfudbytbboxesk`. The Mumbai project `cqwdlimwlnyaaowwcyzp` has been deleted from Supabase and verified gone via the Supabase MCP, so the value cannot be reused even if reintroduced. No further action.
 
 ## Remote audit - founder action required
 
