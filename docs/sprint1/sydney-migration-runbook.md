@@ -26,7 +26,7 @@ Three paths were considered:
 
 | Region | Project Ref | URL | Status |
 |---|---|---|---|
-| Mumbai (legacy) | `cqwdlimwlnyaaowwcyzp` | `https://cqwdlimwlnyaaowwcyzp.supabase.co` | **Scheduled for deletion 2026-05-03** |
+| Mumbai (legacy) | `cqwdlimwlnyaaowwcyzp` | `https://cqwdlimwlnyaaowwcyzp.supabase.co` | **DELETED 16 May 2026** |
 | Sydney (production) | `gndnldyfudbytbboxesk` | `https://gndnldyfudbytbboxesk.supabase.co` | **Live, all migrations applied** |
 
 Sydney is the destination because:
@@ -101,15 +101,15 @@ Sydney is live locally. Production still points at Mumbai until Vercel env vars 
 
 ---
 
-## Decommission Mumbai
+## Decommission Mumbai - COMPLETE 16 May 2026
 
-**Scheduled deletion date: 2026-05-03** (7 days after Sydney went live).
+**Scheduled deletion date: 2026-05-03** (7 days after Sydney went live). **Actual completion: 16 May 2026** - delayed past the scheduled date, closed out during the Vercel and Supabase audit session.
 
-Steps:
-1. Confirm Sydney has been live in production for 7+ days with no Supabase-related Sentry alerts.
-2. Confirm Vercel logs show zero traffic to `cqwdlimwlnyaaowwcyzp.supabase.co`.
-3. In Supabase Studio for Mumbai → Settings → General → **Delete project**.
-4. No final backup needed - Mumbai held only pre-launch test data, fully superseded by Sydney's seed.
+Steps (all complete):
+1. [x] Confirmed Sydney live in production with no Supabase-related Sentry alerts.
+2. [x] Confirmed zero operational traffic to `cqwdlimwlnyaaowwcyzp.supabase.co`. Pre-deletion codebase safety check found only non-operational doc and log references; all live config is Sydney-only.
+3. [x] Mumbai project deleted by founder via Supabase Dashboard, Settings, General, Delete project.
+4. [x] No final backup needed - Mumbai held only pre-launch test data, fully superseded by Sydney's seed. Deletion verified read-only via Supabase MCP `list_projects` (only `gndnldyfudbytbboxesk` remains).
 
 ---
 
