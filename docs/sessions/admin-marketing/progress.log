@@ -237,3 +237,14 @@ Opened: 2026-05-02
 2026-05-09  [COORDINATION]  C-B9-04 Future-batch - full 2-col split-state hero layout, Trending/Cultural Moments bento polish, dedicated category-chip strip, dedicated email-signup panel, conversion tracking on every CTA
 2026-05-09  [COORDINATION]  C-B9-05 Old bottom-nav.tsx no longer rendered; safe to remove once grep confirms no importers
 2026-05-09  [GATE]    Batch 9 V2 - 5 highest-value pieces shipped, follow-up batch scoped honestly
+2026-05-16  start     Phase 2 OG localhost leak (launch blocker #1) - root-cause investigation reported, robust fix approved by founder
+2026-05-16  cause     layout.tsx metadataBase fell back to http://localhost:3000 (NEXT_PUBLIC_SITE_URL unset in Vercel prod, proven by production Firecrawl scrape); all marketing pages inherit it; event detail unaffected (sets absolute OG image + url)
+2026-05-16  fix       src/lib/site-url.ts new getSiteUrl() (precedence NEXT_PUBLIC_SITE_URL > VERCEL_PROJECT_PRODUCTION_URL > VERCEL_URL > https://eventlinqs.com); src/app/layout.tsx metadataBase + robots.ts + sitemap.ts resolve via helper; no deployed env can fall back to localhost; preview deployments resolve to own VERCEL_URL; no env-var change required
+2026-05-16  scope     in-scope: helper + layout/robots/sitemap. Excluded: Session 1 payment NEXT_PUBLIC_APP_URL files (off-limits, different var), ~14 JSON-LD pages already defaulting to eventlinqs.com (consistency follow-up), .env.example (Session 2 owned)
+2026-05-16  gates     lint 0 errors (2 pre-existing warnings in untouched scripts/batch-11-screenshots.mjs), npx tsc --noEmit clean, npm run build green, npm test 117/117
+2026-05-16  [SHARED]  e11dca7 touches src/app/layout.tsx (root layout, every session inherits) + new src/lib/site-url.ts. Branch fix/og-metadata-base pushed. NOT merged - merge stays with PM per CLAUDE.md.
+2026-05-16  [COORDINATION]  C-OG-01 PM to confirm no conflict with Session 1/2 in-flight changes to root layout.tsx or src/lib, then merge fix/og-metadata-base to main (launch blocker, high priority)
+2026-05-16  [COORDINATION]  C-OG-02 PM-routed follow-up - standardise ~14 public JSON-LD baseUrl sites and Session 1 payment NEXT_PUBLIC_APP_URL sites onto getSiteUrl() for consistency; out of Session 3 scope, not bug-critical
+2026-05-16  [COORDINATION]  C-OG-03 Session 2 task - document NEXT_PUBLIC_SITE_URL in .env.example (Session 2 owns .env.example additions)
+2026-05-16  [COORDINATION]  C-OG-04 Verification - re-scrape homepage + one marketing page on the fix/og-metadata-base Vercel preview, assert og:image/twitter:image/canonical non-localhost, re-scrape event detail as regression guard; result recorded in this turn's report
+2026-05-16  [GATE]    Phase 2 OG fix shipped to branch fix/og-metadata-base, all gates green - STOP for project manager review and merge
