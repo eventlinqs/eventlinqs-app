@@ -650,6 +650,25 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
 
   if (!payment?.order_id) return
 
+  // Step 6: void this order's tickets on refund. Idempotent - a
+  // duplicate charge.refunded webhook is a no-op because rows already
+  // void/refunded are excluded by the filter. Voided tickets cannot be
+  // admitted (enforced by the scan flow, Step 7) and the bearer view
+  // suppresses their QR. This only marks tickets; it does not touch
+  // money-capture or ledger logic.
+  const { error: voidTicketsErr } = await adminClient
+    .from('tickets')
+    .update({ status: 'void', refunded_at: new Date().toISOString() })
+    .eq('order_id', payment.order_id)
+    .not('status', 'in', '("void","refunded")')
+  if (voidTicketsErr) {
+    console.error(
+      '[webhook] charge.refunded: failed to void tickets for order',
+      payment.order_id,
+      voidTicketsErr,
+    )
+  }
+
   const { data: order } = await adminClient
     .from('orders')
     .select('event_id')
