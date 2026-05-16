@@ -8,7 +8,7 @@ import {
   type CultureSlug,
 } from '@/lib/cultures/data'
 import { getCity, isCitySlug } from '@/lib/cities/data'
-import { getCategorySlugsForCulture } from '@/lib/cultures/category-bridge'
+import { buildCultureTagOrFilter } from '@/lib/cultures/tag-bridge'
 import { getCityHeroPhoto } from '@/lib/images/city-photo'
 import { getCultureHeroPhoto } from '@/lib/images/culture-photo'
 import { getSubCulturePhoto } from '@/lib/images/sub-culture-photo'
@@ -115,20 +115,21 @@ export default async function CultureByCityPage({ params }: Props) {
   const cityRecord = isCitySlug(cityParam) ? getCity(cityParam) : null
 
   const supabase = createPublicClient()
-  const categorySlugs = getCategorySlugsForCulture(culture.slug)
+  const tagOr = buildCultureTagOrFilter(culture.slug)
   const now = new Date()
   const w = weekendWindow(now)
   const sevenDays = new Date(now); sevenDays.setDate(now.getDate() + 7)
 
-  // Filter to events in the city + the culture's bridged categories.
-  // Over-fetch and filter client-side because Supabase doesn't support
-  // a nested WHERE on event_categories in a single query.
+  // Events in this city whose `tags` jsonb array contains any
+  // identifying token for the culture (tag-bridge). The legacy
+  // category-bridge resolved every culture to zero on live
+  // generic-category events.
   const baseSelect =
     'id, slug, title, cover_image_url, thumbnail_url, start_date, venue_name, venue_city, venue_country, venue_latitude, venue_longitude, created_at, is_free, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
 
   let allEvents: EventCardData[] = []
   let mapPins: MapEventPin[] = []
-  if (categorySlugs.length > 0) {
+  if (tagOr !== null) {
     const { data } = await supabase
       .from('events')
       .select(baseSelect)
@@ -136,6 +137,7 @@ export default async function CultureByCityPage({ params }: Props) {
       .eq('visibility', 'public')
       .gte('start_date', now.toISOString())
       .ilike('venue_city', `%${cityName}%`)
+      .or(tagOr)
       .order('start_date', { ascending: true })
       .limit(120)
 
@@ -144,7 +146,7 @@ export default async function CultureByCityPage({ params }: Props) {
       venue_longitude?: number | null
     })[]
 
-    const filtered = raw.filter(e => categorySlugs.includes(e.category?.slug ?? ''))
+    const filtered = raw
     allEvents = filtered
 
     mapPins = filtered

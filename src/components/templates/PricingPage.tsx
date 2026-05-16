@@ -4,16 +4,16 @@ import { PageShell } from '@/components/layout/PageShell'
 import { PageHero } from '@/components/layout/PageHero'
 import { ContentSection } from '@/components/layout/ContentSection'
 import { Button } from '@/components/ui/Button'
+import { PUBLIC_FEE_LABEL } from '@/lib/pricing/public-fee'
 
 /**
  * PricingPage - /pricing
  *
- * NOTE ON FEE NUMBERS: The placeholder rates below ("From 2.9% + AUD 0.59 per paid ticket")
- * need to be reviewed and confirmed by Lawal before launch. The actual fee structure is
- * database-driven via the pricing_rules table and payment-calculator.ts. The copy on this
- * page should reflect whatever rates are configured in the admin panel once those are locked.
- *
- * Session 2a: initial build.
+ * The paid-ticket fee is stated as ONE definite number sourced from
+ * `@/lib/pricing/public-fee`, which mirrors the live AU / GLOBAL
+ * `pricing_rules` baseline (2.5% + AUD 0.50) that payment-calculator.ts
+ * actually charges. No "from", no "indicative", no "may vary" hedging:
+ * the table has a single fee for every event type.
  */
 
 // ---- Pricing tier data ----
@@ -39,9 +39,8 @@ const TIERS = [
   {
     id: 'paid',
     name: 'Paid Events',
-    // NOTE: Placeholder rate. Update to reflect pricing_rules config before launch.
-    price: 'From 2.9% + AUD 0.59',
-    priceDetail: 'per paid ticket sold',
+    price: PUBLIC_FEE_LABEL,
+    priceDetail: 'per paid ticket sold. That is the whole fee.',
     description:
       'Transparent, industry-leading rates. Pass the fee to buyers or absorb it into your ticket price. Your choice.',
     features: [
@@ -184,10 +183,11 @@ export function PricingPage() {
           ))}
         </div>
 
-        {/* Disclaimer note */}
+        {/* Fee promise */}
         <p className="mt-6 text-center text-xs text-[var(--text-muted)]">
-          All fees shown are indicative. Actual rates are configured in the organiser dashboard
-          and may vary by event type. Free events always have zero platform fees.
+          Free events always have zero platform fees. The paid-ticket fee is the same for
+          every event type. No setup fees, no monthly fees, no card required until you sell
+          a paid ticket.
         </p>
       </ContentSection>
 

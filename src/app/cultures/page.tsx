@@ -172,10 +172,14 @@ async function CultureTile({
 }) {
   const image = await getCultureHeroPhoto(entry.slug)
   const subtitle = TIER2_DESCRIPTOR[entry.slug] ?? entry.tagline
+  // Never render a dead "Coming soon" state. When a culture has no live
+  // events yet, the landing is still a real, useful page (sub-cultures,
+  // cities, organiser invite), so the tile invites the first organiser
+  // rather than advertising absence.
   const countLabel =
     entry.eventCount > 0
       ? `${entry.eventCount} event${entry.eventCount === 1 ? '' : 's'}`
-      : 'Coming soon'
+      : 'Be the first'
 
   return (
     <Link

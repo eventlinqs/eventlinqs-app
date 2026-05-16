@@ -6,7 +6,7 @@ import {
   getAllCultures,
   isCultureSlug,
 } from '@/lib/cultures/data'
-import { getCategorySlugsForCulture } from '@/lib/cultures/category-bridge'
+import { buildCultureTagOrFilter } from '@/lib/cultures/tag-bridge'
 import { getCultureHeroPhoto } from '@/lib/images/culture-photo'
 import { getSubCulturePhoto } from '@/lib/images/sub-culture-photo'
 import { getCityPhoto, getCityHeroPhoto } from '@/lib/images/city-photo'
@@ -54,13 +54,14 @@ export default async function CulturePage({ params }: Props) {
   const culture = getCulture(cultureParam)!
 
   const supabase = createPublicClient()
-  const categorySlugs = getCategorySlugsForCulture(culture.slug)
+  const tagOr = buildCultureTagOrFilter(culture.slug)
 
-  // Fetch a window of live events. Over-fetch (limit 24) and filter
-  // client-side because Supabase doesn't allow a nested WHERE on
-  // the joined event_categories table.
+  // Live events whose `tags` jsonb array contains any identifying token
+  // for this culture (tag-bridge). The legacy category-bridge resolved
+  // every culture to zero because live events carry generic categories
+  // ('music', 'nightlife', ...), which emptied every culture landing.
   let liveEvents: EventCardData[] = []
-  if (categorySlugs.length > 0) {
+  if (tagOr !== null) {
     const { data } = await supabase
       .from('events')
       .select(
@@ -69,15 +70,11 @@ export default async function CulturePage({ params }: Props) {
       .eq('status', 'published')
       .eq('visibility', 'public')
       .gte('start_date', new Date().toISOString())
+      .or(tagOr)
       .order('start_date', { ascending: true })
-      .limit(24)
+      .limit(12)
 
-    liveEvents = ((data ?? []) as unknown as EventCardData[])
-      .filter(e => {
-        const catSlug = e.category?.slug ?? ''
-        return categorySlugs.includes(catSlug)
-      })
-      .slice(0, 12)
+    liveEvents = ((data ?? []) as unknown as EventCardData[]).slice(0, 12)
   }
 
   // Parallelise all image fetches: hero + 6 sub-cultures + N cities + cta backdrop + related cultures.
