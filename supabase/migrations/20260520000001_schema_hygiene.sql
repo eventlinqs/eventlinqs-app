@@ -11,11 +11,15 @@
 --
 -- Closes audit findings:
 --   P1-1  pricing_rules RLS (region-default public, org-override scoped)
---   P1-2  ledger/payouts/payout_holds member policies gain role filter
+--   P1-2  ledger/payouts/payout_holds/tier_progression_log member
+--         policies gain owner/admin/manager role filter
 --   P1-3  orders/order_items/payments money columns INT4 -> BIGINT
 --   P1-4  discount_codes.discount_value split into typed columns
---         (+ P1-4b pricing_rules.value whole-number guard for
---          fixed/integer rows - see rationale in the plan doc)
+--         (+ P1-4b pricing_rules.value split into value_percentage /
+--          value_cents / value_integer - industry-standard
+--          tagged-union split; supersedes the CHECK-only draft.
+--          Refs: Stripe Coupon amount_off/percent_off, Cybertec
+--          SQL-polymorphism, Crunchy money-in-Postgres. See plan.)
 --   P1-5  non-negative CHECK on orders/order_items cents
 --   P1-6  squads.leader_user_id FK CASCADE -> SET NULL
 --   P1-7  squads RLS: replace USING(true) with leader+member scope
@@ -183,25 +187,95 @@ COMMENT ON COLUMN public.discount_codes.discount_percentage IS
   'Percentage discount, 0 < pct <= 100. Set only when discount_type = percentage; NULL for fixed_amount. P1-4.';
 
 -- ------------------------------------------------------------
--- P1-4b  pricing_rules.value whole-number guard
+-- P1-4b  pricing_rules.value -> typed tagged-union split
 -- The audit line "ALTER pricing_rules.value to integer cents
--- where appropriate" is deliberately NOT executed as a column
--- type change: pricing_rules.value is polymorphic - it holds
--- percentages (e.g. 2.5000), fixed cents (e.g. 30), and integer
--- enum codes (e.g. 1, 3) disambiguated by value_type. Casting
--- the column to integer would destroy percentage precision and
--- corrupt every platform_fee_percentage / reserve_percentage
--- row. The genuine, non-destructive hygiene intent - that
--- money/integer rows are not stored with stray fractional
--- digits - is enforced with a CHECK instead. percentage rows
--- keep full NUMERIC precision.
+-- where appropriate" is resolved by research, not a CHECK
+-- compromise and not a founder question:
+--   * Stripe Coupon stores a discount as two separate,
+--     mutually-exclusive fields - amount_off (integer, minor
+--     units) and percent_off (float) - never one polymorphic
+--     field. (docs.stripe.com/api/coupons/object)
+--   * The PostgreSQL community pattern for a tagged union is
+--     one typed column per variant + the type tag + a CHECK
+--     enforcing exactly-one-by-tag.
+--     (cybertec-postgresql.com SQL polymorphism)
+--   * Money is stored as integer minor units (bigint) or
+--     NUMERIC, never float.
+--     (crunchydata.com working-with-money-in-postgres)
+-- pricing_rules.value is genuinely THREE-way (verified live:
+-- 26 percentage rows, fractional, max 20.0000, scale 4;
+-- 16 fixed rows, whole, 20..10000; 17 integer rows, 1..3), so
+-- the correct split is three typed columns. NUMERIC(7,4) is
+-- used for the percentage (the audit's literal NUMERIC(5,4)
+-- would overflow the existing 20.0000 rows; max 9.9999).
+-- A coordinated Pricing Service read-path change is required
+-- before apply - documented in the plan as a post-apply
+-- requirement (same coordination class as the P1-4
+-- discount_codes split and db:types regen).
 -- ------------------------------------------------------------
-ALTER TABLE public.pricing_rules DROP CONSTRAINT IF EXISTS pricing_rules_whole_fixed_value_check;
 ALTER TABLE public.pricing_rules
-  ADD CONSTRAINT pricing_rules_whole_fixed_value_check CHECK (
-    value_type = 'percentage' OR value = trunc(value)
+  ADD COLUMN IF NOT EXISTS value_percentage NUMERIC(7,4),
+  ADD COLUMN IF NOT EXISTS value_cents       BIGINT,
+  ADD COLUMN IF NOT EXISTS value_integer     INTEGER;
+
+-- Backfill from the legacy column while it still exists.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'pricing_rules'
+      AND column_name = 'value'
+  ) THEN
+    UPDATE public.pricing_rules
+       SET value_percentage = value::NUMERIC(7,4)
+     WHERE value_type = 'percentage' AND value_percentage IS NULL;
+
+    UPDATE public.pricing_rules
+       SET value_cents = ROUND(value)::BIGINT
+     WHERE value_type = 'fixed' AND value_cents IS NULL;
+
+    UPDATE public.pricing_rules
+       SET value_integer = ROUND(value)::INTEGER
+     WHERE value_type = 'integer' AND value_integer IS NULL;
+  END IF;
+END $$;
+
+-- Drop the prior draft's CHECK name too, so a re-run from the
+-- earlier draft state is idempotent.
+ALTER TABLE public.pricing_rules DROP CONSTRAINT IF EXISTS pricing_rules_whole_fixed_value_check;
+ALTER TABLE public.pricing_rules DROP CONSTRAINT IF EXISTS pricing_rules_value_split_check;
+ALTER TABLE public.pricing_rules
+  ADD CONSTRAINT pricing_rules_value_split_check CHECK (
+    (value_type = 'percentage'
+       AND value_percentage IS NOT NULL
+       AND value_percentage > 0
+       AND value_percentage <= 100
+       AND value_cents IS NULL
+       AND value_integer IS NULL)
+    OR
+    (value_type = 'fixed'
+       AND value_cents IS NOT NULL
+       AND value_cents >= 0
+       AND value_percentage IS NULL
+       AND value_integer IS NULL)
+    OR
+    (value_type = 'integer'
+       AND value_integer IS NOT NULL
+       AND value_integer >= 0
+       AND value_percentage IS NULL
+       AND value_cents IS NULL)
   ) NOT VALID;
-ALTER TABLE public.pricing_rules VALIDATE CONSTRAINT pricing_rules_whole_fixed_value_check;
+ALTER TABLE public.pricing_rules VALIDATE CONSTRAINT pricing_rules_value_split_check;
+
+ALTER TABLE public.pricing_rules DROP COLUMN IF EXISTS value;
+
+COMMENT ON COLUMN public.pricing_rules.value_percentage IS
+  'Percentage rate, 0 < pct <= 100, full NUMERIC precision. Set only when value_type = percentage. P1-4b.';
+COMMENT ON COLUMN public.pricing_rules.value_cents IS
+  'Fixed amount in the smallest currency unit (cents). Set only when value_type = fixed. P1-4b.';
+COMMENT ON COLUMN public.pricing_rules.value_integer IS
+  'Integer enum code or count (e.g. pass_through mode, payout schedule days). Set only when value_type = integer. P1-4b.';
 
 -- ------------------------------------------------------------
 -- P1-1  pricing_rules RLS: region-default public,
@@ -246,10 +320,16 @@ ALTER TABLE public.pricing_rules
 ALTER TABLE public.pricing_rules VALIDATE CONSTRAINT pricing_rules_created_by_fkey;
 
 -- ------------------------------------------------------------
--- P1-2  ledger / payouts / payout_holds member SELECT policies
--- gain a role filter. Previously ANY member (including the
--- lowest 'member' role) could read financial ledgers. Owner
--- policies are unchanged.
+-- P1-2  ledger / payouts / payout_holds / tier_progression_log
+-- member SELECT policies gain a role filter. Previously ANY
+-- member (including the lowest 'member' role) could read
+-- financial ledgers and tier promotion/demotion history
+-- (chargeback_demotion, negative_balance_demotion reasons are
+-- financial-adjacent). Least-privilege per Supabase RLS docs
+-- and OWASP A01:2021 (Broken Access Control - #1 web vuln
+-- class). Owner / admin policies are unchanged. The
+-- tier_progression_log fix is the same pattern smell as the
+-- other three and is now resolved here, not deferred.
 -- ------------------------------------------------------------
 DROP POLICY IF EXISTS "Organisation members can view their payouts" ON public.payouts;
 CREATE POLICY "Organisation members can view their payouts"
@@ -286,6 +366,20 @@ CREATE POLICY "Organisation members can view their ledger"
         AND m.role IN ('owner', 'admin', 'manager')
     )
   );
+
+DROP POLICY IF EXISTS "Organisation members can view their tier history" ON public.tier_progression_log;
+CREATE POLICY "Organisation members can view their tier history"
+  ON public.tier_progression_log FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.organisation_members m
+      WHERE m.organisation_id = tier_progression_log.organisation_id
+        AND m.user_id = auth.uid()
+        AND m.role IN ('owner', 'admin', 'manager')
+    )
+  );
+-- The "Organisation owners can view their tier history" and
+-- "Admins can view all tier progression" policies are unchanged.
 
 -- ------------------------------------------------------------
 -- P1-11  waitlist org-view policy gains organisation_members
@@ -465,8 +559,9 @@ COMMIT;
 --    constraints DROP IF EXISTS then ADD; policies DROP IF
 --    EXISTS then CREATE; indexes CREATE/DROP ... IF [NOT]
 --    EXISTS; triggers DROP IF EXISTS then CREATE; the
---    discount_value backfill is guarded by a column-existence
---    check so a re-run after the column is dropped is a no-op.
+--    discount_value and pricing_rules.value backfills are each
+--    guarded by a column-existence check so a re-run after the
+--    legacy column is dropped is a no-op.
 -- 2. FK explicit ON DELETE .. PASS. squads.leader_user_id and
 --    pricing_rules.created_by -> SET NULL; new
 --    orders/squads.reservation_id FKs -> SET NULL. No implicit
@@ -474,15 +569,21 @@ COMMIT;
 -- 3. Constraint validation .. PASS. Every CHECK / FK on a
 --    populated table (orders, pricing_rules) added NOT VALID
 --    then VALIDATE so writers are not long-locked. Empty
---    tables (squads) use a plain ADD (instant).
+--    tables (squads) use a plain ADD (instant). The
+--    pricing_rules.value split CHECK is NOT VALID then
+--    VALIDATE over the 59 live rows (0 offenders confirmed).
 -- 4. Money fields BIGINT .... PASS. All *_cents widened to
---    BIGINT; new discount_amount_cents is BIGINT.
+--    BIGINT; new discount_amount_cents and pricing_rules
+--    value_cents are BIGINT; percentages stay NUMERIC, never
+--    float (Crunchy money-in-Postgres guidance).
 -- 5. Audit fields ........... PASS. updated_at added to the
 --    six tables missing it, with the canonical trigger.
--- 6. RLS posture ............ PASS. pricing_rules org overrides
---    no longer world-readable; financial ledgers require an
---    elevated org role; squads no longer world-readable;
---    waitlist org view reaches minimum-privilege parity.
+-- 6. RLS posture ............ PASS. Least-privilege per
+--    Supabase RLS docs + OWASP A01:2021. pricing_rules org
+--    overrides no longer world-readable; financial ledgers
+--    AND tier_progression_log require an elevated org role;
+--    squads no longer world-readable; waitlist org view
+--    reaches minimum-privilege parity.
 -- 7. Indexes ................ PASS. Unindexed FKs / hot
 --    lookups (discount_code_id, ticket_tier_id,
 --    squad_members.order_id) and the two new reservation_id

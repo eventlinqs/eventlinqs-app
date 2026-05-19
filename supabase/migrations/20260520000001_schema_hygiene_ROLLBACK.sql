@@ -19,12 +19,16 @@
 --    written after the forward apply exceeds 2,147,483,647.
 --    Guarded by an information_schema type check; review the
 --    plan doc before relying on it with live data.
---  * Restoring discount_codes.discount_value reconstructs the
---    polymorphic column from the split columns. Lossless for
---    the data shapes this schema produces.
---  * Re-imposing NOT NULL on squads.leader_user_id and
---    discount_codes.discount_value fails if a NULL row was
---    written post-apply. Empty at draft time.
+--  * Restoring discount_codes.discount_value and
+--    pricing_rules.value reconstructs each polymorphic column
+--    from its split columns. Lossless for the data shapes this
+--    schema produces (percentage scale <= 4, fixed/integer
+--    whole).
+--  * Re-imposing NOT NULL on squads.leader_user_id,
+--    discount_codes.discount_value and pricing_rules.value
+--    fails if a NULL row was written post-apply. pricing_rules
+--    has 59 rows at draft time (all reconstructable); the
+--    transactional tables are empty.
 -- Idempotent. Australian English, no em-dashes.
 -- ============================================================
 
@@ -126,6 +130,17 @@ CREATE POLICY "Organisation members can view their ledger"
     )
   );
 
+DROP POLICY IF EXISTS "Organisation members can view their tier history" ON public.tier_progression_log;
+CREATE POLICY "Organisation members can view their tier history"
+  ON public.tier_progression_log FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.organisation_members m
+      WHERE m.organisation_id = tier_progression_log.organisation_id
+        AND m.user_id = auth.uid()
+    )
+  );
+
 -- ---- reverse P1-8: created_by FK back to NO ACTION ----
 ALTER TABLE public.pricing_rules DROP CONSTRAINT IF EXISTS pricing_rules_created_by_fkey;
 ALTER TABLE public.pricing_rules
@@ -140,8 +155,52 @@ CREATE POLICY "Pricing rules are readable by everyone"
   ON public.pricing_rules FOR SELECT
   USING (true);
 
--- ---- reverse P1-4b: drop pricing_rules whole-number guard ----
+-- ---- reverse P1-4b: rebuild pricing_rules.value ----
+-- Reconstruct the legacy polymorphic NUMERIC(10,4) column from
+-- the three typed columns, then drop them. Lossless for the
+-- data shapes this schema produces (percentage scale <= 4,
+-- fixed/integer whole).
+ALTER TABLE public.pricing_rules
+  ADD COLUMN IF NOT EXISTS value NUMERIC(10, 4);
+
+UPDATE public.pricing_rules
+   SET value = value_percentage::NUMERIC(10, 4)
+ WHERE value_type = 'percentage'
+   AND value IS NULL
+   AND value_percentage IS NOT NULL;
+
+UPDATE public.pricing_rules
+   SET value = value_cents::NUMERIC(10, 4)
+ WHERE value_type = 'fixed'
+   AND value IS NULL
+   AND value_cents IS NOT NULL;
+
+UPDATE public.pricing_rules
+   SET value = value_integer::NUMERIC(10, 4)
+ WHERE value_type = 'integer'
+   AND value IS NULL
+   AND value_integer IS NOT NULL;
+
+-- Drop both the split CHECK and (defensively) the earlier
+-- draft's CHECK name so rollback is idempotent from either
+-- forward state.
+ALTER TABLE public.pricing_rules DROP CONSTRAINT IF EXISTS pricing_rules_value_split_check;
 ALTER TABLE public.pricing_rules DROP CONSTRAINT IF EXISTS pricing_rules_whole_fixed_value_check;
+
+-- Restore the original NOT NULL only when every row was
+-- reconstructed (no NULL value remains).
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM public.pricing_rules WHERE value IS NULL
+  ) THEN
+    ALTER TABLE public.pricing_rules ALTER COLUMN value SET NOT NULL;
+  END IF;
+END $$;
+
+ALTER TABLE public.pricing_rules DROP COLUMN IF EXISTS value_percentage;
+ALTER TABLE public.pricing_rules DROP COLUMN IF EXISTS value_cents;
+ALTER TABLE public.pricing_rules DROP COLUMN IF EXISTS value_integer;
 
 -- ---- reverse P1-4: rebuild discount_codes.discount_value ----
 ALTER TABLE public.discount_codes
