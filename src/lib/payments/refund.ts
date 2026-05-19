@@ -1,4 +1,5 @@
 import Stripe from 'stripe'
+import { captureException } from '@/lib/observability/sentry'
 
 /**
  * M6 Phase 3 refund core. Pure Stripe-side refund with reverse_transfer and
@@ -97,22 +98,39 @@ export async function refundOrder(input: RefundOrderInput): Promise<RefundResult
   const stripe = getStripeClient()
   const idempotencyKey = `refund:${input.orderId}:${input.amountCents}:${input.initiatedBy}`
 
-  const refund = await stripe.refunds.create(
-    {
-      payment_intent: input.paymentIntentId,
-      amount: input.amountCents,
-      reason: mapStripeReason(input.reason),
-      reverse_transfer: true,
-      refund_application_fee: true,
-      metadata: {
-        order_id: input.orderId,
-        initiated_by: input.initiatedBy,
-        platform_reason: input.reason,
-        ...(input.metadata ?? {}),
+  let refund: Stripe.Refund
+  try {
+    refund = await stripe.refunds.create(
+      {
+        payment_intent: input.paymentIntentId,
+        amount: input.amountCents,
+        reason: mapStripeReason(input.reason),
+        reverse_transfer: true,
+        refund_application_fee: true,
+        metadata: {
+          order_id: input.orderId,
+          initiated_by: input.initiatedBy,
+          platform_reason: input.reason,
+          ...(input.metadata ?? {}),
+        },
       },
-    },
-    { idempotencyKey }
-  )
+      { idempotencyKey }
+    )
+  } catch (err) {
+    // P3-1: a Stripe-side refund failure is money-movement-critical. Capture
+    // with context before rethrowing so the caller still handles it and
+    // Sentry also sees it. The PII scrub redacts ids; we keep them for
+    // correlation (refund failures are operator-actioned).
+    captureException(err, {
+      scope: 'payments-refund',
+      order_id: input.orderId,
+      payment_intent_id: input.paymentIntentId,
+      amount_cents: input.amountCents,
+      initiated_by: input.initiatedBy,
+      reason: input.reason,
+    })
+    throw err
+  }
 
   return {
     stripeRefundId: refund.id,
