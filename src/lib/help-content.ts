@@ -43,7 +43,7 @@ export const helpTopics: HelpTopic[] = [
       },
       {
         q: 'How do I create an account?',
-        a: "Click 'Sign up' at the top of any page. You can sign up with your email address or continue with your Google account. Creating an account is free. You only need an account to buy tickets if you want to save your purchase history or transfer tickets. Guest checkout is available for one-off purchases.",
+        a: "Click 'Sign up' at the top of any page. You can sign up with your email address or continue with your Google account. Creating an account is free. You only need an account to buy tickets if you want to save your purchase history. Guest checkout is available for one-off purchases.",
       },
       {
         q: 'Can I sign in with Google?',
@@ -51,7 +51,7 @@ export const helpTopics: HelpTopic[] = [
       },
       {
         q: 'Do I need an account to buy tickets?',
-        a: "No. Guest checkout is available on all events. Enter your name, email address, and payment details to complete your purchase. Your ticket will be sent to the email you provide. If you want to access your tickets later or transfer them, create a free account using the same email address you used at checkout.",
+        a: "No. Guest checkout is available on all events. Enter your name, email address, and payment details to complete your purchase. Your ticket will be sent to the email you provide. If you want to access your tickets later, create a free account using the same email address you used at checkout.",
       },
       {
         q: 'How do I list an event on EventLinqs?',
@@ -79,7 +79,7 @@ export const helpTopics: HelpTopic[] = [
   {
     slug: 'buying-tickets',
     title: 'Buying Tickets',
-    description: 'Purchases, delivery, transfers, refunds, and everything in between.',
+    description: 'Purchases, delivery, refunds, and everything in between.',
     articles: [
       {
         q: 'How will I receive my ticket?',
@@ -91,11 +91,11 @@ export const helpTopics: HelpTopic[] = [
       },
       {
         q: 'Can I transfer my ticket to someone else?',
-        a: "Yes. Ticket transfers are free and take effect immediately. Log in to your account, go to 'My Tickets', select the ticket you want to transfer, and enter the recipient's email address. Once you transfer a ticket, you lose access to it and the new holder receives it by email. The transfer is one-way and cannot be reversed by you.",
+        a: "Ticket transfers are not available at this time. If you cannot attend an event, check the organiser's refund policy on the event page, or contact the organiser directly using the details listed on the event.",
       },
       {
         q: 'Can I resell my ticket above face value?',
-        a: "No. Reselling tickets above face value is a violation of our terms of use and may result in the ticket being cancelled without refund. If you cannot attend, transfer your ticket for free to another person using the transfer feature in your account.",
+        a: "No. Reselling tickets above face value is a violation of our terms of use and may result in the ticket being cancelled without refund. If you cannot attend, check the organiser's refund policy on the event page, or contact the organiser directly.",
       },
       {
         q: 'The event I want is sold out. Is there a waitlist?',
@@ -103,7 +103,7 @@ export const helpTopics: HelpTopic[] = [
       },
       {
         q: 'Am I entitled to a refund if I cannot attend?',
-        a: "Refund eligibility depends on the organiser's refund policy, which is displayed on the event page before you purchase. Most events are sold on a no-refund basis unless stated otherwise. EventLinqs guarantees a full refund if an event is cancelled by the organiser or materially rescheduled. For all other refund requests, contact the organiser first. If you do not receive a response within 7 days, escalate to us via the support form and we will step in.",
+        a: "Refund eligibility depends on the organiser's refund policy, which is displayed on the event page before you purchase. Most events are sold on a no-refund basis unless stated otherwise. If an organiser cancels an event, you are entitled to a refund of the amount you paid, and we are committed to processing these refunds promptly. For all other refund requests, contact the organiser using the details on the event page. If you cannot reach them, contact us via the support form and we will help where we can.",
       },
       {
         q: 'Will I need ID at the door?',
@@ -111,7 +111,7 @@ export const helpTopics: HelpTopic[] = [
       },
       {
         q: 'Can I buy tickets without creating an account?',
-        a: "Yes. Guest checkout is available on all events. Enter your name, email address, and payment details. Your ticket will be sent by email. If you later want to transfer your ticket or access your purchase history, create a free account with the same email address you used at checkout.",
+        a: "Yes. Guest checkout is available on all events. Enter your name, email address, and payment details. Your ticket will be sent by email. If you later want to access your purchase history, create a free account with the same email address you used at checkout.",
       },
       {
         q: 'What if I lose my phone or cannot access my ticket on the day?',
@@ -123,7 +123,7 @@ export const helpTopics: HelpTopic[] = [
       },
       {
         q: 'Can I change the name on a ticket after purchase?',
-        a: "Tickets are issued to the purchaser. Name changes on existing tickets are not supported. If you need to give a ticket to someone else, use the free ticket transfer feature in your account. The new holder's details are not displayed on the ticket itself.",
+        a: "Tickets are issued to the purchaser, and the attendee name is not printed on the ticket. Name changes on existing tickets are not supported. If you cannot attend, check the organiser's refund policy on the event page, or contact the organiser directly.",
       },
       {
         q: 'How do age restrictions work on events?',
@@ -167,7 +167,7 @@ export const helpTopics: HelpTopic[] = [
       },
       {
         q: 'Can I set my own refund policy?',
-        a: "Yes. You set your own refund policy for each event, and it is displayed to buyers before they complete their purchase. Whatever policy you set, you are bound by it. EventLinqs also applies overriding guarantees: if an event is cancelled or materially rescheduled, all ticket holders are entitled to a full refund regardless of your stated policy.",
+        a: "Yes. You set your own refund policy for each event, and it is displayed to buyers before they complete their purchase. Whatever policy you set, you are bound by it. If you cancel an event, ticket holders are entitled to a refund of the amount they paid, and you remain responsible for those refunds. We are committed to working with you to process them promptly.",
       },
       {
         q: 'Can I offer early bird pricing and multiple ticket tiers?',
@@ -239,7 +239,7 @@ export const helpTopics: HelpTopic[] = [
       },
       {
         q: 'Can I get a receipt for my ticket purchase?',
-        a: "Yes. Your purchase confirmation email serves as your receipt and includes the full breakdown of everything you paid. If you need a formal tax invoice, contact us at hello@eventlinqs.com with your order reference and we will send one.",
+        a: "Yes. Your purchase confirmation email serves as your receipt and includes the full breakdown of everything you paid. EventLinqs is not currently GST-registered, so this confirmation email is your receipt for the purchase.",
       },
       {
         q: 'What happens if a buyer files a chargeback?',
@@ -247,7 +247,7 @@ export const helpTopics: HelpTopic[] = [
       },
       {
         q: 'What happens to payments if an event is cancelled?',
-        a: "If an organiser cancels an event, EventLinqs initiates a full refund to all ticket holders, including any service fees. Refunds are processed automatically within 5 business days of the cancellation being confirmed. Ticket holders do not need to contact us to receive a refund for a cancelled event.",
+        a: "If an organiser cancels an event, ticket holders are entitled to a refund of the full amount paid, including any service fees. We are committed to processing these refunds promptly once a cancellation is confirmed. If you have a question about a refund for a cancelled event, contact us via the support form with your order reference.",
       },
     ],
   },
