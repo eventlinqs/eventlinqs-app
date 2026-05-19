@@ -12,6 +12,13 @@ import { promoteWaitlist } from '@/lib/waitlist/promote'
 import { trackTicketPurchaseCompleteServer } from '@/lib/analytics/plausible'
 import { handleConnectAccountUpdated } from '@/lib/stripe/connect-handlers'
 import { recordOrderConfirmedLedger } from '@/lib/payments/connect-ledger'
+import {
+  claimWebhookEvent,
+  markWebhookEventProcessed,
+  markWebhookEventFailed,
+  WebhookProcessingError,
+} from '@/lib/payments/webhook-events'
+import { captureException } from '@/lib/observability/sentry'
 import type Stripe from 'stripe'
 import type { PayoutRecordStatus } from '@/types/database'
 
@@ -32,25 +39,75 @@ export async function POST(request: NextRequest) {
   try {
     event = (await adapter.constructWebhookEvent(body, signature)) as Stripe.Event
   } catch (err) {
+    captureException(err, { scope: 'stripe-webhook', event_type: 'signature' })
     console.error('Stripe webhook signature verification failed:', err)
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
+  }
+
+  // ── Money path: event-level dedupe + atomic gate + retry-on-failure ──────
+  // payment_intent.succeeded is the only path that returns non-2xx on
+  // failure, so Stripe retries the idempotent handler on its backoff.
+  // confirm_order is the authoritative gate (P2-7); the payment row is
+  // marked completed only after it succeeds (P2-1); a failure is no longer
+  // swallowed behind a 200 (P2-2). See docs/TRIAD-REFACTOR-DESIGN.md.
+  if (event.type === 'payment_intent.succeeded') {
+    const intent = event.data.object as Stripe.PaymentIntent
+
+    // Squad member payments keep the existing best-effort behaviour for
+    // this draft (idempotent on natural keys; event-level dedupe extension
+    // is a documented follow-up - design section 4.4).
+    if (intent.metadata?.squad_member_id) {
+      try {
+        const squadAdmin = createAdminClient()
+        await handleSquadMemberPaymentSucceeded(squadAdmin, intent)
+      } catch (err) {
+        captureException(err, {
+          scope: 'stripe-webhook',
+          event_type: event.type,
+          event_id: event.id,
+          handler: 'squad',
+        })
+        console.error(`Error processing webhook ${event.type} (squad):`, err)
+      }
+      return NextResponse.json({ received: true })
+    }
+
+    const adminClient = createAdminClient()
+    const claim = await claimWebhookEvent(adminClient, event.id, event.type)
+    if (claim.outcome === 'duplicate') {
+      // Already fully processed by an earlier delivery. True no-op (P2-6).
+      return NextResponse.json({ received: true, duplicate: true })
+    }
+
+    const supabaseMoney = await createClient()
+    try {
+      await handlePaymentSucceeded(supabaseMoney, intent)
+      await markWebhookEventProcessed(adminClient, event.id)
+      return NextResponse.json({ received: true })
+    } catch (err) {
+      await markWebhookEventFailed(adminClient, event.id, err)
+      captureException(err, {
+        scope: 'stripe-webhook',
+        event_type: event.type,
+        event_id: event.id,
+        payment_intent_id: intent.id,
+        order_id: intent.metadata?.order_id ?? null,
+        retryable: err instanceof WebhookProcessingError,
+      })
+      console.error(`Error processing webhook ${event.type}:`, err)
+      // confirm_order / transition / missing-payment failures are
+      // retryable. Return 500 so Stripe redelivers; the handler is
+      // idempotent (confirm_order early-returns when already confirmed,
+      // the dedupe ledger skips a delivery already marked processed). An
+      // unexpected post-gate throw lands here too and 500 is still safe.
+      return NextResponse.json({ error: 'Processing failed, retry' }, { status: 500 })
+    }
   }
 
   const supabase = await createClient()
 
   try {
     switch (event.type) {
-      case 'payment_intent.succeeded': {
-        const intent = event.data.object as Stripe.PaymentIntent
-        // Route squad member payments to a dedicated handler to avoid double-processing
-        if (intent.metadata?.squad_member_id) {
-          const adminClient = createAdminClient()
-          await handleSquadMemberPaymentSucceeded(adminClient, intent)
-        } else {
-          await handlePaymentSucceeded(supabase, intent)
-        }
-        break
-      }
       case 'payment_intent.payment_failed': {
         const intent = event.data.object as Stripe.PaymentIntent
         await handlePaymentFailed(supabase, intent)
@@ -109,8 +166,15 @@ export async function POST(request: NextRequest) {
         break
     }
   } catch (err) {
+    captureException(err, {
+      scope: 'stripe-webhook',
+      event_type: event.type,
+      event_id: event.id,
+    })
     console.error(`Error processing webhook ${event.type}:`, err)
-    // Return 200 anyway so Stripe doesn't retry (we log for debugging)
+    // Non-money-path events keep best-effort semantics for this draft
+    // (Phase-1 Connect stubs, idempotent on natural keys): capture for
+    // visibility, return 200 so Stripe does not retry the stubs.
   }
 
   return NextResponse.json({ received: true })
@@ -126,53 +190,91 @@ async function handlePaymentSucceeded(
   // Webhooks have no auth session - use admin client to bypass RLS for all writes
   const adminClient = createAdminClient()
 
-  // Idempotency: check if already completed
   const { data: payment } = await adminClient
     .from('payments')
     .select('id, status, order_id')
     .eq('gateway_payment_id', intent.id)
     .maybeSingle()
 
-  if (!payment || payment.status === 'completed') return
+  // P2-1/P2-2: a missing payment row is a race (checkout writes the row and
+  // its gateway_payment_id before the intent is confirmable). Signal
+  // retryable so Stripe redelivers, instead of swallowing it behind a 200.
+  if (!payment) {
+    throw new WebhookProcessingError(
+      `payments row not found for gateway_payment_id ${intent.id}`,
+      { context: { order_id, payment_intent_id: intent.id } }
+    )
+  }
 
   const charge = intent.latest_charge as Stripe.Charge | null
   const receipt_url = typeof charge === 'object' && charge?.receipt_url ? charge.receipt_url : null
 
-  // Transition payment → completed
-  await adminClient.rpc('transition_payment_status', {
-    p_payment_id: payment.id,
-    p_new_status: 'completed',
-    p_gateway_data: { receipt_url, stripe_event_id: intent.id },
-  })
-
-  // Atomically confirm the order: sets status=confirmed, converts reservation,
-  // increments sold_count, decrements reserved_count, updates discount uses.
-  // NOTE: do NOT return on error - reserved-seating orders must still have seats marked sold
-  // even if the confirm_order RPC fails (e.g. tier structure mismatch on seat events).
+  // ── Authoritative gate FIRST (P2-7) ──────────────────────────────────────
+  // confirm_order is SECURITY DEFINER, FOR UPDATE on the order row, and
+  // idempotent (early-returns TRUE when already confirmed). Ticket issuance
+  // fires inside the same UPDATE. The payment is NOT marked completed until
+  // this succeeds, and we no longer short-circuit on an already-completed
+  // payment: that completed-guard was exactly what blocked replay recovery
+  // of orders the old (payment-completed-first) ordering left unconfirmed.
   const { error: confirmError } = await adminClient.rpc('confirm_order', {
     p_order_id: order_id,
   })
   if (confirmError) {
-    console.error('[webhook] confirm_order RPC error (non-fatal, continuing):', confirmError)
-  } else {
-    // M6 Phase 3: write destination-charge ledger entries (organiser credit,
-    // reserve hold, mirror debit, org counters). Idempotent on the ledger
-    // table; safe under Stripe webhook retries.
-    try {
-      const ledgerResult = await recordOrderConfirmedLedger(adminClient, {
-        orderId: order_id,
-        stripePaymentIntentId: intent.id,
-        stripeChargeId: typeof charge === 'object' && charge?.id ? charge.id : null,
-      })
-      if (ledgerResult.status !== 'written' && ledgerResult.status !== 'skipped_already_recorded') {
-        console.warn('[webhook] connect ledger write skipped', {
-          orderId: order_id,
-          status: ledgerResult.status,
-        })
-      }
-    } catch (ledgerErr) {
-      console.error('[webhook] connect ledger write threw (non-fatal, continuing):', ledgerErr)
+    // Retryable: throw so POST returns non-2xx and Stripe retries the
+    // idempotent handler on its backoff (P2-2).
+    throw new WebhookProcessingError(
+      `confirm_order failed for order ${order_id}: ${confirmError.message}`,
+      { cause: confirmError, context: { order_id, payment_intent_id: intent.id } }
+    )
+  }
+
+  // ── Payment status follows the gate (P2-1) ───────────────────────────────
+  // Only now is the buyer-facing payment marked completed. Skip the
+  // transition if a prior (buggy) delivery already completed it - the gate
+  // above still ran, which is the repair for that legacy state.
+  if (payment.status !== 'completed') {
+    const { error: transitionError } = await adminClient.rpc('transition_payment_status', {
+      p_payment_id: payment.id,
+      p_new_status: 'completed',
+      p_gateway_data: { receipt_url, stripe_event_id: intent.id },
+    })
+    if (transitionError) {
+      // Order is confirmed but the payment row did not flip. Retryable: a
+      // redelivery re-runs confirm_order (idempotent) then re-attempts this.
+      throw new WebhookProcessingError(
+        `transition_payment_status failed for payment ${payment.id}: ${transitionError.message}`,
+        { cause: transitionError, context: { order_id, payment_id: payment.id } }
+      )
     }
+  }
+
+  // ── Post-gate side effects ───────────────────────────────────────────────
+  // Each is independently idempotent or fire-and-forget and MUST NOT throw
+  // out of the handler: re-running the whole webhook to retry, say, a Redis
+  // refresh would resend the confirmation email. Faults are captured.
+
+  // M6 Phase 3: destination-charge ledger entries (organiser credit, reserve
+  // hold, mirror debit, org counters). Idempotent on the ledger table.
+  try {
+    const ledgerResult = await recordOrderConfirmedLedger(adminClient, {
+      orderId: order_id,
+      stripePaymentIntentId: intent.id,
+      stripeChargeId: typeof charge === 'object' && charge?.id ? charge.id : null,
+    })
+    if (ledgerResult.status !== 'written' && ledgerResult.status !== 'skipped_already_recorded') {
+      console.warn('[webhook] connect ledger write skipped', {
+        orderId: order_id,
+        status: ledgerResult.status,
+      })
+    }
+  } catch (ledgerErr) {
+    captureException(ledgerErr, {
+      scope: 'stripe-webhook',
+      handler: 'connect-ledger',
+      order_id,
+      payment_intent_id: intent.id,
+    })
+    console.error('[webhook] connect ledger write threw (non-fatal, continuing):', ledgerErr)
   }
 
   // ── Mark reserved seats as sold ──────────────────────────────────────────────
@@ -225,6 +327,12 @@ async function handlePaymentSucceeded(
       .select('id')
 
     if (seatSoldError) {
+      captureException(seatSoldError, {
+        scope: 'stripe-webhook',
+        handler: 'seats-sold',
+        order_id,
+        payment_intent_id: intent.id,
+      })
       console.error('[webhook] failed to mark seats as sold:', seatSoldError)
     } else {
       const updatedCount = updatedSeats?.length ?? 0
@@ -267,6 +375,12 @@ async function handlePaymentSucceeded(
     .not('ticket_tier_id', 'is', null)
 
   if (itemsError) {
+    captureException(itemsError, {
+      scope: 'stripe-webhook',
+      handler: 'cache-refresh-items',
+      order_id,
+      payment_intent_id: intent.id,
+    })
     console.error('[webhook] Failed to load order items for cache refresh:', itemsError)
   }
 
@@ -288,8 +402,22 @@ async function handlePaymentSucceeded(
     }
   }
 
-  // Send confirmation email
-  await sendConfirmationEmail(adminClient, order_id, receipt_url)
+  // Send confirmation email. Wrapped so a mail/render fault cannot escape
+  // the handler and trigger a Stripe retry (which would re-confirm and, on
+  // a still-valid ticket, re-send). sendConfirmationEmail already swallows
+  // the Resend send error internally; this guards the DB reads and QR
+  // generation before it.
+  try {
+    await sendConfirmationEmail(adminClient, order_id, receipt_url)
+  } catch (emailErr) {
+    captureException(emailErr, {
+      scope: 'stripe-webhook',
+      handler: 'confirmation-email',
+      order_id,
+      payment_intent_id: intent.id,
+    })
+    console.error('[webhook] confirmation email threw (non-fatal, continuing):', emailErr)
+  }
 
   // Fire Plausible purchase conversion (fire-and-forget - never block webhook).
   // Uses the confirmation page URL so the event attributes to the normal funnel.
@@ -319,6 +447,12 @@ async function handlePaymentSucceeded(
       ).catch(err => console.warn('[webhook] plausible purchase track failed:', err))
     }
   } catch (err) {
+    captureException(err, {
+      scope: 'stripe-webhook',
+      handler: 'plausible-purchase',
+      order_id,
+      payment_intent_id: intent.id,
+    })
     console.warn('[webhook] plausible purchase track setup failed:', err)
   }
 }
@@ -522,6 +656,12 @@ async function handleSquadMemberPaymentSucceeded(
     .eq('status', 'pending')
 
   if (orderError) {
+    captureException(orderError, {
+      scope: 'stripe-webhook',
+      handler: 'squad-order-confirm',
+      order_id: orderId,
+      payment_intent_id: intent.id,
+    })
     console.error('[webhook] squad order confirm error:', orderError)
   } else {
     // M6 Phase 3: write destination-charge ledger entries for the squad member's order.
@@ -540,6 +680,12 @@ async function handleSquadMemberPaymentSucceeded(
         })
       }
     } catch (ledgerErr) {
+      captureException(ledgerErr, {
+        scope: 'stripe-webhook',
+        handler: 'squad-connect-ledger',
+        order_id: orderId,
+        payment_intent_id: intent.id,
+      })
       console.error('[webhook] squad connect ledger write threw (non-fatal, continuing):', ledgerErr)
     }
   }
@@ -561,6 +707,12 @@ async function handleSquadMemberPaymentSucceeded(
     .eq('status', 'invited')
 
   if (memberError) {
+    captureException(memberError, {
+      scope: 'stripe-webhook',
+      handler: 'squad-member-paid',
+      order_id: orderId,
+      payment_intent_id: intent.id,
+    })
     console.error('[webhook] squad member paid update error:', memberError)
     return
   }
@@ -590,6 +742,12 @@ async function handleSquadMemberPaymentSucceeded(
     .eq('status', 'forming')
 
   if (completeError) {
+    captureException(completeError, {
+      scope: 'stripe-webhook',
+      handler: 'squad-completion',
+      order_id: orderId,
+      payment_intent_id: intent.id,
+    })
     console.error('[webhook] squad completion error:', completeError)
     return
   }
@@ -625,6 +783,12 @@ async function handleSquadMemberPaymentSucceeded(
     for (const m of paidMembers) {
       if (m.order_id) {
         await sendConfirmationEmail(adminClient, m.order_id, null).catch(err => {
+          captureException(err, {
+            scope: 'stripe-webhook',
+            handler: 'squad-confirmation-email',
+            order_id: m.order_id,
+            payment_intent_id: intent.id,
+          })
           console.error('[webhook] squad confirmation email error for member:', err)
         })
       }
@@ -653,18 +817,28 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
 
   if (!payment?.order_id) return
 
-  // Step 6: void this order's tickets on refund. Idempotent - a
-  // duplicate charge.refunded webhook is a no-op because rows already
-  // void/refunded are excluded by the filter. Voided tickets cannot be
-  // admitted (enforced by the scan flow, Step 7) and the bearer view
-  // suppresses their QR. This only marks tickets; it does not touch
-  // money-capture or ledger logic.
+  // P3-5: void this order's tickets on refund. Idempotent and provably
+  // retry-safe - the `.not('status','in', ...)` exclusion means a duplicate
+  // charge.refunded delivery (or an operator re-drive) updates zero rows,
+  // so this is a natural no-op on replay. We deliberately do NOT make this
+  // path retryable at the POST level: the Stripe refund already succeeded,
+  // so retrying the whole event would re-run waitlist promotion and is not
+  // the corrective action. Instead a void failure is captured for an
+  // operator to re-drive (safe, given the idempotent filter). A refunded
+  // buyer holding a still-valid QR is a real admission risk, so a silent
+  // failure here must be visible.
   const { error: voidTicketsErr } = await adminClient
     .from('tickets')
     .update({ status: 'void', refunded_at: new Date().toISOString() })
     .eq('order_id', payment.order_id)
     .not('status', 'in', '("void","refunded")')
   if (voidTicketsErr) {
+    captureException(voidTicketsErr, {
+      scope: 'stripe-webhook',
+      handler: 'charge-refunded-void-tickets',
+      order_id: payment.order_id,
+      payment_intent_id: paymentIntentId,
+    })
     console.error(
       '[webhook] charge.refunded: failed to void tickets for order',
       payment.order_id,
