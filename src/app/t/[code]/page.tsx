@@ -86,6 +86,7 @@ export default async function TicketBearerPage({ params, searchParams }: Props) 
   )
 
   const status = STATUS_COPY[ticket.status] ?? STATUS_COPY.valid
+  const isVoided = ticket.status === 'void' || ticket.status === 'refunded'
   const ev = ticket.event
 
   return (
@@ -106,16 +107,31 @@ export default async function TicketBearerPage({ params, searchParams }: Props) 
           </p>
         )}
 
-        <div
-          className="mt-6 flex items-center justify-center rounded-xl bg-white p-4 [&>svg]:h-auto [&>svg]:w-full [&>svg]:max-w-[280px]"
-          // Our own server-generated SVG QR (no third-party HTML, no raw
-          // <img> so the media/ESLint rules are satisfied).
-          dangerouslySetInnerHTML={{ __html: qrSvg }}
-        />
+        {isVoided ? (
+          // Step 6: a refunded/void ticket must never present a scannable
+          // QR. Show an unambiguous not-valid state instead.
+          <div className="mt-6 rounded-xl border border-error/30 bg-error/10 p-6 text-center">
+            <p className="font-display text-lg font-extrabold text-error">
+              Refunded
+            </p>
+            <p className="mt-1 text-sm text-ink-700">
+              This ticket has been refunded and is not valid for entry.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div
+              className="mt-6 flex items-center justify-center rounded-xl bg-white p-4 [&>svg]:h-auto [&>svg]:w-full [&>svg]:max-w-[280px]"
+              // Our own server-generated SVG QR (no third-party HTML, no raw
+              // <img> so the media/ESLint rules are satisfied).
+              dangerouslySetInnerHTML={{ __html: qrSvg }}
+            />
 
-        <p className="mt-4 text-center text-sm text-ink-700">
-          Show this QR code at entry. Have your screen brightness up.
-        </p>
+            <p className="mt-4 text-center text-sm text-ink-700">
+              Show this QR code at entry. Have your screen brightness up.
+            </p>
+          </>
+        )}
 
         <dl className="mt-6 space-y-2 text-sm">
           <div className="flex justify-between gap-4">
