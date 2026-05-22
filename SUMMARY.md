@@ -1,240 +1,181 @@
-# Autonomous Batch Summary - Triad Refactor (draft)
+# SUMMARY - Schema Hygiene Migration Draft
 
-Branch: `autonomous/triad-refactor-draft` (based on `feat/ticketing-v1-steps-5-6`, HEAD `08a3688`).
-Run mode: unsupervised autonomous batch, Tab C.
-Constraints honoured: no `git push`, no `supabase db push`, no merge. One
-commit, prefixed `[AUTONOMOUS-BATCH]`. SUMMARY.md written. Stopped after commit.
+Branch: `autonomous/schema-hygiene-draft` (base: `feat/ticketing-v1-steps-5-6` @ `08a3688`)
+Mode: AUTONOMOUS BATCH (Tab B). DRAFT ONLY - not applied, not pushed.
 
-Gates at commit time:
-- `npx tsc --noEmit`: clean (exit 0).
-- `npm run lint`: 0 errors (2 pre-existing warnings in
-  `scripts/batch-11-screenshots.mjs`, unrelated, untouched).
-- `npm test`: 127 passed (117 prior + 10 new). 0 failures.
+Revision 2: the three previously-flagged items are now RESOLVED BY
+RESEARCH (industry/Stripe/Postgres/Supabase/OWASP best practice), not
+left as founder decisions, per the founder rule update.
 
-This is an initial draft and architectural foundation. Full production
-hardening will require iteration on return; the items in "Still needs
-iteration" are explicit, not silent deferrals, and require project-manager
-sign-off per CLAUDE.md "Definition of Done".
+## P-IDs closed by this migration
 
----
+| ID | Fix |
+|---|---|
+| P1-1 | pricing_rules RLS: region-default rows public, per-org override rows scoped to owning org owner OR member with owner/admin/manager |
+| P1-2 | organiser_balance_ledger / payouts / payout_holds / **tier_progression_log** member SELECT policies gain `role IN ('owner','admin','manager')` filter |
+| P1-3 | orders (7 cents cols), order_items (2), payments.amount_cents: INT4 -> BIGINT |
+| P1-4 | discount_codes.discount_value split into discount_amount_cents BIGINT + discount_percentage NUMERIC(5,2); migrated by discount_type; legacy column dropped |
+| P1-4b | pricing_rules.value split into value_percentage NUMERIC(7,4) + value_cents BIGINT + value_integer INTEGER (industry-standard tagged-union split); 59 rows migrated by value_type; strict CHECK; legacy column dropped |
+| P1-5 | non-negative CHECK on all orders / order_items cents columns (NOT VALID then VALIDATE) |
+| P1-6 | squads.leader_user_id FK CASCADE -> SET NULL (+ DROP NOT NULL, required for SET NULL) |
+| P1-7 | squads RLS: USING(true) replaced with leader + member scope |
+| P1-8 | pricing_rules.created_by FK -> ON DELETE SET NULL |
+| P1-9 | indexes on orders.discount_code_id, tickets.ticket_tier_id, squad_members.order_id |
+| P1-10 | updated_at + set_updated_at trigger on order_items, reservations, squads, squad_members, waitlist, payout_holds |
+| P1-11 | waitlist org-view policy gains organisation_members parity |
+| P3-6 | drop redundant idx_orders_order_number (UNIQUE orders_order_number_key already enforces DB-level uniqueness) |
+| P3-7 | payments.idempotency_key promoted to UNIQUE index (true DB-level idempotency) |
+| P3-9 | orders.reservation_id + squads.reservation_id missing FK -> reservations ON DELETE SET NULL, each indexed |
+| P4-6 | orders.currency CHECK = 'AUD' (v1 single-currency guard) |
 
-## 1. What was implemented
+## Files created / modified
 
-### Design
+- `supabase/migrations/20260520000001_schema_hygiene.sql` - forward migration (DRAFT, NOT applied)
+- `supabase/migrations/20260520000001_schema_hygiene_ROLLBACK.sql` - reverse migration (`_ROLLBACK` suffix keeps it out of the `db push` set)
+- `docs/SCHEMA-HYGIENE-MIGRATION-PLAN.md` - rationale per P-ID, section 0b "Research resolutions" (cited URLs), risk assessment, order of operations, rollout (incl. Pricing Service coordination prerequisite), post-apply MCP verification checklist
+- `SUMMARY.md` - this file
 
-- `docs/TRIAD-REFACTOR-DESIGN.md` - full design: current defect chain, new
-  confirm_order-first flow, POST result contract, Sentry wiring policy,
-  dedupe table + claim-first lifecycle, composite idempotency key, cancel
-  idempotency, the "wrapper is confirm_order itself" decision, refund
-  void retry-safety classification, test plan, and explicit follow-ups.
+No application code touched. No shared files touched. MCP used read-only only (schema conflict check + data-distribution checks).
 
-### Code (closes / advances P2-1, P2-2, P2-6, P2-7, P2-8, P2-9, P3-1, P3-5)
+## Resolved items (formerly flagged)
 
-- **`src/app/api/webhooks/stripe/route.ts`** (the core refactor):
-  - `payment_intent.succeeded` (non-squad) now runs **confirm_order FIRST**
-    as the authoritative gate. The payment row is transitioned to
-    `completed` **only after** confirm_order succeeds (P2-1, P2-7).
-  - The old completed-guard short-circuit
-    (`if (!payment || payment.status === 'completed') return`) is removed:
-    a missing payment row throws retryable, and an already-completed
-    payment still runs the gate so legacy stuck orders self-repair on
-    replay (P2-1).
-  - confirm_order / transition / missing-payment failures throw
-    `WebhookProcessingError`; POST returns **HTTP 500** so Stripe retries
-    the idempotent handler instead of the failure being swallowed behind a
-    200 (P2-2).
-  - Event-level dedupe wraps the money path via claim-first
-    `claimWebhookEvent` / `markWebhookEventProcessed` /
-    `markWebhookEventFailed`. A replayed already-processed event is a true
-    200 no-op (P2-6).
-  - `captureException` added to every catch / hard-error branch in the
-    money path: signature failure, top-level dispatch, confirm_order,
-    transition, connect-ledger, seats-sold, cache-items, confirmation
-    email, plausible, charge.refunded void, and all four squad branches
-    (P3-1).
-  - `charge.refunded` ticket-void: deliberately NOT made POST-retryable
-    (the refund already settled); the idempotent `.not('status','in',...)`
-    filter is documented as the retry-safety guarantee and a void failure
-    is now captured for operator re-drive (P3-5).
-- **`src/lib/payments/webhook-events.ts`** (new): `WebhookProcessingError`
-  + claim-first dedupe helpers. Fails open if the dedupe table is
-  unreachable (a dedupe outage must not drop a real confirmation).
-- **`src/lib/payments/idempotency.ts`** (new):
-  `buildPaymentIntentIdempotencyKey({ orderId, amountCents, attempt })`
-  -> `pi:<order>:<amount>:a<attempt>` (P2-8).
-- **`src/app/actions/checkout.ts`**: both the standard flow and the seat
-  flow now use the composite key helper instead of a bare `order_id`, so
-  the two flows cannot drift (P2-8).
-- **`src/lib/payments/stripe-adapter.ts`**: `cancelPaymentIntent` now
-  passes `idempotencyKey: cancel:<intent>` so a retried cancel is a safe
-  no-op instead of an error (P2-9).
-- **`src/lib/payments/refund.ts`**: the Stripe `refunds.create` call is
-  wrapped to `captureException` (order/intent/amount/initiator context)
-  then rethrow - caller behaviour unchanged, Sentry now sees it (P3-1).
-- **`src/lib/payments/connect-ledger.ts`**: `captureException` added to the
-  three hard-abort branches (order not found, org not found,
-  order_confirmed credit insert failed). Soft skips stay `console.warn`
-  by design (P3-1).
+### Item 1 - pricing_rules.value polymorphic column -> RESOLVED: typed split
+Industry standard is a typed split, not a polymorphic column:
+- Stripe Coupon stores `amount_off` (integer minor units) and `percent_off` (float) as separate mutually-exclusive fields - https://docs.stripe.com/api/coupons/object
+- Postgres tagged-union standard = one typed column per variant + type tag + CHECK - https://www.cybertec-postgresql.com/en/conditional-foreign-keys-polymorphism-in-sql/
+- Money as bigint minor units or NUMERIC, never float - https://www.crunchydata.com/blog/working-with-money-in-postgres
+- PCI DSS governs cardholder data, not amount representation; integer-minor-units is the applicable amount standard.
+Action taken: replaced the CHECK-only draft with a three-column split
+(`value_percentage NUMERIC(7,4)`, `value_cents BIGINT`, `value_integer
+INTEGER`). `value` is genuinely three-way (verified live: 26 pct rows
+max 20.0000 scale 4; 16 fixed 20..10000; 17 integer 1..3); the audit's
+literal `NUMERIC(5,4)` would overflow 20.0000, so `NUMERIC(7,4)` is the
+data-correct precision. Recommendation: ship the split; it is the
+documented industry pattern and removes the last polymorphic column.
 
-## 2. Test coverage added (+10 tests)
+### Item 2 - P3-6/7/9 interpretations -> RESOLVED: all confirmed correct
+- P3-6 redundant index: PostgreSQL auto-creates a unique index for a UNIQUE constraint; a second manual index is redundant - https://www.postgresql.org/docs/current/indexes-unique.html. Implementation correct, unchanged.
+- P3-7 idempotency uniqueness: Stripe requires idempotency keys be sufficiently unique to identify one operation; UNIQUE enforces it, a plain index does not - https://docs.stripe.com/api/idempotent_requests. Implementation correct, unchanged.
+- P3-9 FK referential integrity: a foreign key is the standard Postgres referential-integrity mechanism; an untyped UUID with no FK is a gap - https://www.postgresql.org/docs/current/ddl-constraints.html. Implementation correct, unchanged.
 
-- `tests/unit/webhook-handlers/payment-intent-succeeded.test.ts` (4):
-  1. happy path: confirm_order is called strictly before
-     transition_payment_status; event marked processed; 200.
-  2. confirm_order failure: HTTP 500; transition NOT called; event marked
-     failed; captureException called.
-  3. replay of an already-processed event_id: 200 `{duplicate:true}`;
-     handler (gate) never runs.
-  4. signature verification failure: 400; no dispatch; captured.
-- `tests/unit/payments/payment-calculator.test.ts` (6): pins CURRENT
-  rounding/composition behaviour - platform fee Math.round half-up,
-  platform fixed-cents is per-ticket while processing fixed-cents is not,
-  discount clamp + absorb hides fees, free-order short circuit (no
-  pricing-rules read), tax half-up on discounted subtotal, explicit
-  fee_pass_type override. These lock behaviour so the P2-4 fix in PR3 is a
-  deliberate reviewed change and pre-PR3 drift fails loudly.
+### Item 3 - RLS least-privilege + tier_progression_log -> RESOLVED: confirmed + extended
+- Supabase: grant only the permissions each role needs; restrict to what is necessary - https://supabase.com/docs/guides/database/postgres/row-level-security
+- OWASP Top 10 2021 A01 Broken Access Control = #1 web vuln class (94% of apps) - https://owasp.org/Top10/A01_2021-Broken_Access_Control/
+Action taken: P1-1 / P1-7 tightening confirmed correct (no founder
+decision). The same `role IN ('owner','admin','manager')` filter is now
+also applied to `tier_progression_log` (folded into P1-2), since it
+shared the identical pattern smell. Informational, not actioned: a
+repo-wide `TO <role>` clause hardening pass is recommended separately to
+the project manager (the existing schema uses none).
 
-## 3. The webhook_dedupe migration draft - FOUNDER ACTION REQUIRED
+## Jaguar 9-criterion self-audit result
 
-`supabase/migrations/20260520000002_webhook_dedupe.sql` is **DRAFT ONLY and
-NOT APPLIED**. It creates `public.processed_webhook_events`
-(event_id PK, event_type, status check, attempts, last_error, timestamps,
-status+created_at index, RLS on with no policy, service_role grants).
+1. Idempotency - PASS (IF [NOT] EXISTS, DROP-then-ADD, info_schema-guarded type changes, column-existence-guarded backfills for both discount_value and pricing_rules.value)
+2. FK explicit ON DELETE - PASS (all in-scope FKs -> SET NULL)
+3. Constraint validation - PASS (NOT VALID then VALIDATE on populated tables incl. the 59-row pricing_rules split CHECK; plain ADD on empty tables)
+4. Money fields BIGINT cents - PASS (all *_cents + discount_amount_cents + pricing_rules.value_cents BIGINT; percentages NUMERIC, never float)
+5. Audit fields - PASS (updated_at added where missing)
+6. RLS minimum privilege - PASS (P1-1/2/7/11 + tier_progression_log; Supabase + OWASP cited)
+7. Indexes - PASS (P1-9 + new FK columns indexed; redundant index removed)
+8. Stripe alignment - N/A (no Stripe-facing schema; money columns are internal ledger fields)
+9. Schema conflict check via MCP - PASS (live Sydney project introspected read-only; zero drift; row counts + value distribution captured for risk basis)
 
-The runtime code (`webhook-events.ts`) **fails open** if the table does not
-exist yet: `claimWebhookEvent` logs and returns `claimed`, so the webhook
-still processes payments correctly using the per-resource idempotency that
-already exists. Dedupe becomes active only once the founder applies the
-migration via `supabase db push --linked` (then `npm run db:types`), per the
-CLAUDE.md security rule. Do not apply via Dashboard or MCP.
+## Founder review checklist (before any push or apply)
 
-Until the migration is applied, `src/types/database.ts` has no
-`processed_webhook_events` type; the helper avoids typed table generics so
-this does not break `tsc` (verified clean). Regenerate types after apply.
+- [ ] Confirm (not decide) the research resolutions in plan section 0b - all three were settled by cited best practice
+- [ ] COORDINATION PREREQUISITE: P1-4 + P1-4b drop `discount_codes.discount_value` and `pricing_rules.value`. The Pricing Service (`src/lib/services/pricing.ts` + pricing-rules read path) and any discount_codes consumer must be updated to read the new typed columns, landed in the same coordinated change-set as this migration + `npm run db:types`. Notify the project manager (cross-session [SHARED]).
+- [ ] Confirm P1-7 / P1-1 behavioural tightening: anon clients can no longer read squads / per-org pricing overrides directly; guest squad-share and fee calc use the service role server-side (verify those paths do not use the anon client for those reads)
+- [ ] Confirm P4-6 AUD-only guard acceptable for the current v1 window
+- [ ] Review rollback caveats (BIGINT->INT narrowing; NOT NULL re-imposition incl. pricing_rules.value) in the rollback header and plan section 2
+- [ ] Apply path: `supabase db push --linked --include-all` from PowerShell in the migrations-owning worktree, then `npm run db:types` ([SHARED]), then run the post-apply MCP verification checklist (plan section 5)
 
-## 4. Still needs iteration (explicit, not silent deferrals)
+## Gates run (revision 2)
 
-- **P2-4 rounding correctness fix is PR3, not this PR.** The calculator
-  tests here pin current behaviour only.
-- Event-level dedupe currently wraps only the `payment_intent.succeeded`
-  money path. Squad payments and Connect/payout/dispute branches keep
-  existing best-effort + natural-key idempotency. Extending the wrapper is
-  a mechanical follow-up (design section 4.4).
-- Persisted per-payment `attempt` counter feeding the idempotency composite
-  is not wired (the helper is attempt-aware, defaulting to 1). A real
-  retry path needs the counter on the `payments` row.
-- Confirmation-email send-once ledger: claim-first dedupe closes the
-  common replay case; the narrow concurrent-first-delivery-plus-retry
-  window for a duplicate email is not separately ledgered yet.
-- A single combined `confirm_order_and_complete_payment(order_id,
-  payment_id)` RPC was deliberately NOT introduced (would mean rewriting
-  the audited money-path confirm_order body). Sequencing against the
-  existing atomic gate is the lower-risk draft choice; a combined RPC is a
-  future hardening item.
-- `@sentry/nextjs` is not installed (SHARED `package.json` change requiring
-  project-manager coordination). All `captureException` calls are no-ops
-  via the existing stable shim until that lands; wiring them now is free
-  and means every payment failure path is instrumented on the day Sentry
-  is enabled.
+- `npx tsc --noEmit` - sanity only (migration is .sql, not .ts)
+- `npm run lint`
+- `npm test` (vitest)
 
-## 5. Files touched
-
-New: `docs/TRIAD-REFACTOR-DESIGN.md`, `src/lib/payments/idempotency.ts`,
-`src/lib/payments/webhook-events.ts`,
-`supabase/migrations/20260520000002_webhook_dedupe.sql`,
-`tests/unit/webhook-handlers/payment-intent-succeeded.test.ts`,
-`tests/unit/payments/payment-calculator.test.ts`, `SUMMARY.md`.
-
-Modified: `src/app/api/webhooks/stripe/route.ts`,
-`src/app/actions/checkout.ts`, `src/lib/payments/stripe-adapter.ts`,
-`src/lib/payments/refund.ts`, `src/lib/payments/connect-ledger.ts`.
-
-Note: `package.json` / `package-lock.json` / `src/types/database.ts` were
-NOT modified - no SHARED-file coordination event was triggered by this batch.
+See the commit for gate results. The migration draft itself must not be
+modified once the resolution is committed; further schema corrections
+are a follow-up migration. (Merge-only edits below do not touch the
+migration files.)
 
 ---
 
-# PR #26 unblock: migration recovery + merge with main (2026-05-20)
+## Merge into main (2026-05-23)
 
-Follow-up autonomous batch to make PR #26 mergeable. Three steps, three
-commits, no push / no db push / no merge (Lawal runs those manually).
-Gates re-run green on the final merged tree: `npx tsc --noEmit` exit 0,
-`npm run lint` 0 errors (same 2 pre-existing unrelated warnings),
-`npm test` 127 passed.
+Branch brought up to date with `origin/main`, which since the `08a3688`
+base gained PR #25 (Tab A: copy fixes + CI vitest gate) and PR #26
+(Tab C: triad webhook-atomicity refactor + `webhook_dedupe` migration).
 
-## STEP 1 - recover missing migration files (commit `106374c`)
+### Migration file recovery - finding
 
-Two migrations were applied to the remote Sydney DB but the task reported
-them as absent from this worktree. Findings on investigation, with two
-corrections to the task's stated premise that LAWAL SHOULD NOTE:
+Both migration files the task flagged as possibly needing local
+recovery were already present in `origin/main`, so the `git merge
+origin/main` brought them in directly - no separate recovery commit was
+needed:
 
-1. **The prompt path was wrong.** The files do not live in
-   `...\eventlinqs-app\supabase\migrations\` (that worktree has neither).
-   They exist in the `eventlinqs-app-admin` and `eventlinqs-app-backend`
-   sibling worktrees, and in git history on `origin/feat/m6-phase5-refunds-manager`.
+- `20260503000001_refunds_extension.sql` - arrived via the merge. Its
+  blob in `origin/main` (`639d06c`) is byte-identical to the canonical
+  blob on `origin/feat/m6-phase5-refunds-manager`.
+- `20260520000002_webhook_dedupe.sql` - arrived via the merge (added to
+  main by PR #26).
 
-2. **`20260502000002_pricing_rules_extension.sql` was NOT actually
-   missing.** It was already tracked in this branch via ancestor commit
-   `b477b70` (which is also an ancestor of `origin/main`, and the file is
-   present in `origin/main`). The recovery write produced byte-identical
-   content, so it correctly did not appear in the commit. Net effect: no
-   change, file already present and canonical.
+Post-merge migration ordering is correct:
+`...20260502000003_admin_foundation`,
+`20260503000001_refunds_extension`, `...`,
+`20260517000001_ticketing_system_v1`,
+`20260520000001_schema_hygiene`,
+`20260520000001_schema_hygiene_ROLLBACK`,
+`20260520000002_webhook_dedupe` - i.e. the schema-hygiene draft is
+ordered before `webhook_dedupe`, as intended.
 
-3. **`20260503000001_refunds_extension.sql` WAS genuinely missing** and is
-   the only file added by commit `106374c`. It was recovered from the
-   canonical committed blob `4c9e286` (commit "feat(refunds): add refunds
-   schema with enums, RLS, and indexes" on `origin/feat/m6-phase5-refunds-manager`).
+### Prompt-premise corrections
 
-   DISCREPANCY TO RECONCILE: the `eventlinqs-app-admin` worktree copy of
-   this file has DIVERGED from the canonical committed version (admin raw
-   8673 bytes vs canonical 5761 bytes; the `eventlinqs-app-backend`
-   worktree copy IS byte-identical to the canonical commit after newline
-   normalisation). The prompt instructed recovery "from the admin
-   worktree", but the admin copy is not what is committed/on the remote
-   branch. I recovered the canonical committed version (== backend
-   worktree) because that is the source of truth for what `supabase db
-   push` would have applied. If the LARGER admin version is in fact what is
-   live on the remote Sydney DB, that is a separate schema-drift problem
-   Lawal must reconcile before applying anything - flagged here, not
-   silently resolved.
+1. The task framed `20260503000001_refunds_extension.sql` as living
+   only on `origin/feat/m6-phase5-refunds-manager` and "NOT in the
+   eventlinqs-app worktree", implying recovery from git history or a
+   sibling worktree (`eventlinqs-app-admin` / `eventlinqs-app-backend`).
+   In fact it is already in `origin/main` - Tab C's commit `106374c`
+   recovered it there - and identical to the canonical blob. No
+   sibling-worktree fallback was required.
+2. The task called `4c9e286` a "canonical committed blob". `4c9e286` is
+   a commit, not a blob. (The refunds_extension blob is `639d06c`.)
+3. STEP 1 (a separate `[AUTONOMOUS-BATCH] migrations: recover missing
+   files` commit) was not created. It was the right move for Tab C,
+   which was first to recover those files into main; for Tab B both
+   files already exist in `origin/main`, so a pre-merge recovery commit
+   would only duplicate content the immediately-following merge adds.
+   Creating it would be misleading history. The merge alone achieves
+   the "ordering match with remote" goal.
 
-## STEP 2 - merge `origin/main` (merge commit `18643bb`)
+### Conflict resolution
 
-The anticipated `src/app/api/webhooks/stripe/route.ts` conflict DID NOT
-occur. PR #25's Step 5 confirmation-email work landed in commit `08a3688`,
-which is exactly the base this branch's triad refactor was built on, so
-Step 5's `route.ts` changes were already present and already integrated by
-the original triad refactor. `origin/main` since the merge-base only
-changed `.github/workflows/ci.yml`, `src/lib/help-content.ts`, and
-`SUMMARY.md`; the first two auto-merged cleanly.
+Only `SUMMARY.md` conflicted (add/add: the `08a3688` base had no
+`SUMMARY.md`; Tab B and main each added their own). Resolved to the
+Tab B (schema-hygiene) version per instruction. Tab C's `SUMMARY.md`
+content remains preserved in main's history (commit `c0bfff9`). No
+other conflicts - Tab B's scope is schema-only and disjoint from the
+Tab A copy edits and the Tab C triad/webhook refactor.
 
-The only real conflict was `SUMMARY.md` (add/add: PR #25's batch summary
-vs this branch's triad summary). Resolved to this branch's version -
-SUMMARY.md is a per-PR artifact, PR #25's summary is preserved in `main`'s
-git history, and STEP 3 rewrites this file anyway.
+### Gates (post-merge)
 
-Step 5 email integration into the triad structure was VERIFIED on the
-merged tree (not just assumed). Confirmed ordering in `route.ts`:
-`confirm_order` rpc (gate, first) -> throws `WebhookProcessingError` on
-failure (HTTP 500, Stripe retries) -> payment transitioned to `completed`
-only after the gate -> `sendConfirmationEmail` runs after both -> email
-failure is caught, sent to `captureException`, non-fatal, webhook still
-returns 200. This is exactly the required money-flow-governs / email-is-
-non-critical structure; no code change was needed because the original
-refactor already integrated Step 5 correctly.
+- `npx tsc --noEmit` - exit 0, clean.
+- `npm run lint` - 0 errors (2 pre-existing warnings in
+  `scripts/batch-11-screenshots.mjs`, untouched).
+- `npm test` - 127/127 passed across 13 files (up from 117/11 - Tab C
+  added the payment-calculator and payment-intent-succeeded suites).
 
-## STEP 3 - this documentation (commit follows)
+### Observation for the founder / project manager (not actioned here)
 
-Both the migration recovery (with the two premise corrections and the
-admin-worktree divergence flag) and the merge resolution are documented
-above. Stopped after this commit. No push, no `supabase db push`, no
-merge - Lawal runs those manually.
-
-## Commit chain for PR #26 unblock
-
-- `106374c` [AUTONOMOUS-BATCH] migrations: recover refunds and
-  pricing_rules ext files applied remote but missing locally
-- `18643bb` [AUTONOMOUS-BATCH] merge: resolve conflict with main
-  (Step 5 email integration into triad structure)
-- (this commit) [AUTONOMOUS-BATCH] docs: SUMMARY for migration recovery
-  + merge resolution
+`supabase/migrations/` now holds two files sharing the version stamp
+`20260520000001`: `20260520000001_schema_hygiene.sql` and
+`20260520000001_schema_hygiene_ROLLBACK.sql`. The Supabase CLI derives a
+migration's version from that leading timestamp, so `supabase db push`
+may reject or mis-handle the duplicate version. The plan doc's claim
+that the `_ROLLBACK` suffix "keeps it out of the `db push` set" is not
+reliable - the CLI does not exclude files by suffix. Before running
+`db push`, the rollback file should be moved out of `supabase/migrations/`
+(e.g. to `supabase/rollback/` or `docs/`) or given a distinct version.
+This is pre-existing (introduced in `97b092f`), out of scope for this
+merge task, and flagged here for a follow-up.
