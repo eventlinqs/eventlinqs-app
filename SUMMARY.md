@@ -95,6 +95,87 @@ the project manager (the existing schema uses none).
 - `npm run lint`
 - `npm test` (vitest)
 
-See the commit for gate results. This draft must not be modified once
-the resolution is committed; further corrections are a follow-up
-migration.
+See the commit for gate results. The migration draft itself must not be
+modified once the resolution is committed; further schema corrections
+are a follow-up migration. (Merge-only edits below do not touch the
+migration files.)
+
+---
+
+## Merge into main (2026-05-23)
+
+Branch brought up to date with `origin/main`, which since the `08a3688`
+base gained PR #25 (Tab A: copy fixes + CI vitest gate) and PR #26
+(Tab C: triad webhook-atomicity refactor + `webhook_dedupe` migration).
+
+### Migration file recovery - finding
+
+Both migration files the task flagged as possibly needing local
+recovery were already present in `origin/main`, so the `git merge
+origin/main` brought them in directly - no separate recovery commit was
+needed:
+
+- `20260503000001_refunds_extension.sql` - arrived via the merge. Its
+  blob in `origin/main` (`639d06c`) is byte-identical to the canonical
+  blob on `origin/feat/m6-phase5-refunds-manager`.
+- `20260520000002_webhook_dedupe.sql` - arrived via the merge (added to
+  main by PR #26).
+
+Post-merge migration ordering is correct:
+`...20260502000003_admin_foundation`,
+`20260503000001_refunds_extension`, `...`,
+`20260517000001_ticketing_system_v1`,
+`20260520000001_schema_hygiene`,
+`20260520000001_schema_hygiene_ROLLBACK`,
+`20260520000002_webhook_dedupe` - i.e. the schema-hygiene draft is
+ordered before `webhook_dedupe`, as intended.
+
+### Prompt-premise corrections
+
+1. The task framed `20260503000001_refunds_extension.sql` as living
+   only on `origin/feat/m6-phase5-refunds-manager` and "NOT in the
+   eventlinqs-app worktree", implying recovery from git history or a
+   sibling worktree (`eventlinqs-app-admin` / `eventlinqs-app-backend`).
+   In fact it is already in `origin/main` - Tab C's commit `106374c`
+   recovered it there - and identical to the canonical blob. No
+   sibling-worktree fallback was required.
+2. The task called `4c9e286` a "canonical committed blob". `4c9e286` is
+   a commit, not a blob. (The refunds_extension blob is `639d06c`.)
+3. STEP 1 (a separate `[AUTONOMOUS-BATCH] migrations: recover missing
+   files` commit) was not created. It was the right move for Tab C,
+   which was first to recover those files into main; for Tab B both
+   files already exist in `origin/main`, so a pre-merge recovery commit
+   would only duplicate content the immediately-following merge adds.
+   Creating it would be misleading history. The merge alone achieves
+   the "ordering match with remote" goal.
+
+### Conflict resolution
+
+Only `SUMMARY.md` conflicted (add/add: the `08a3688` base had no
+`SUMMARY.md`; Tab B and main each added their own). Resolved to the
+Tab B (schema-hygiene) version per instruction. Tab C's `SUMMARY.md`
+content remains preserved in main's history (commit `c0bfff9`). No
+other conflicts - Tab B's scope is schema-only and disjoint from the
+Tab A copy edits and the Tab C triad/webhook refactor.
+
+### Gates (post-merge)
+
+- `npx tsc --noEmit` - exit 0, clean.
+- `npm run lint` - 0 errors (2 pre-existing warnings in
+  `scripts/batch-11-screenshots.mjs`, untouched).
+- `npm test` - 127/127 passed across 13 files (up from 117/11 - Tab C
+  added the payment-calculator and payment-intent-succeeded suites).
+
+### Observation for the founder / project manager (not actioned here)
+
+`supabase/migrations/` now holds two files sharing the version stamp
+`20260520000001`: `20260520000001_schema_hygiene.sql` and
+`20260520000001_schema_hygiene_ROLLBACK.sql`. The Supabase CLI derives a
+migration's version from that leading timestamp, so `supabase db push`
+may reject or mis-handle the duplicate version. The plan doc's claim
+that the `_ROLLBACK` suffix "keeps it out of the `db push` set" is not
+reliable - the CLI does not exclude files by suffix. Before running
+`db push`, the rollback file should be moved out of `supabase/migrations/`
+(e.g. to `supabase/rollback/` or `docs/`) or given a distinct version.
+This is pre-existing (introduced in `97b092f`), out of scope for this
+merge task, and flagged here for a follow-up.
