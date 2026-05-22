@@ -1,0 +1,20 @@
+{
+  "competitor": "DICE",
+  "page": "homepage",
+  "url": "https://dice.fm/",
+  "capturedDate": "2026-05-23",
+  "desktop": {
+    "eventsAboveFold": 1,
+    "filterOptionsVisible": 5,
+    "ctasAboveFold": 5
+  },
+  "mobile": {
+    "eventsAboveFold": 1,
+    "filterOptionsVisible": 1,
+    "ctasAboveFold": 3
+  },
+  "notes": [
+    "DICE geolocates to San Francisco via Firecrawl proxy - AU events not available via server-side scrape",
+    "Density measured on actual rendered homepage at each viewport"
+  ]
+}

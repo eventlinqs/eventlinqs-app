@@ -1,0 +1,89 @@
+{
+  "competitor": "humanitix",
+  "page": "homepage",
+  "url": "https://www.humanitix.com/au/",
+  "capturedDate": "2026-05-23",
+  "playwrightWorked": true,
+  "typography": {
+    "h1": {
+      "selectorUsed": "h1.sc-225c3114-0",
+      "fontFamily": "Satoshi, Montserrat, \"DejaVu Sans\", Verdana, sans-serif",
+      "fontSizePx": 42,
+      "fontWeight": "900",
+      "lineHeight": "50.4px",
+      "letterSpacing": "normal"
+    },
+    "h2": {
+      "selectorUsed": "h2.sc-903ce683-0",
+      "fontFamily": "Satoshi, Montserrat, \"DejaVu Sans\", Verdana, sans-serif",
+      "fontSizePx": 30,
+      "fontWeight": "900",
+      "lineHeight": "36px",
+      "letterSpacing": "normal"
+    },
+    "h3": {
+      "selectorUsed": "h3.sc-903ce683-0",
+      "fontFamily": "Satoshi, Montserrat, \"DejaVu Sans\", Verdana, sans-serif",
+      "fontSizePx": 20,
+      "fontWeight": "700",
+      "lineHeight": "38px",
+      "letterSpacing": "normal"
+    },
+    "body": {
+      "selectorUsed": "body",
+      "fontFamily": "Satoshi, Montserrat, \"DejaVu Sans\", Verdana, sans-serif",
+      "fontSizePx": 14,
+      "fontWeight": "500",
+      "lineHeight": "16.8px",
+      "letterSpacing": "normal"
+    },
+    "small": {
+      "selectorUsed": "small",
+      "fontFamily": null,
+      "fontSizePx": null,
+      "fontWeight": null,
+      "lineHeight": null,
+      "letterSpacing": null
+    }
+  },
+  "h1FontSizeMobilePx": 22,
+  "spacing": {
+    "heroPaddingTopPx": 0,
+    "heroPaddingBottomPx": 0,
+    "eventCardPaddingPx": 0,
+    "cardGridGapPx": 24,
+    "mainContainerPaddingXDesktopPx": 0,
+    "mainContainerPaddingXMobilePx": 0
+  },
+  "colour": {
+    "primaryTextColour": "#151414",
+    "pageBackground": "#ffffff",
+    "accentColoursTop5": [
+      "#1b1b1b",
+      "#f7f7f7",
+      "#ffb08f",
+      "#101010",
+      "#2d2825"
+    ]
+  },
+  "imageRendering": {
+    "eventCardImageAspectRatio": 2,
+    "eventCardImageRatioWH": "2:1",
+    "heroImageAspectRatio": 2,
+    "heroImageRatioWH": "2:1",
+    "imageFormat": "WebP"
+  },
+  "motion": {
+    "elementDescribed": "button",
+    "transitionDuration": "0s",
+    "transitionTimingFunction": "ease"
+  },
+  "notes": [
+    "pageBackground computed as transparent on body element (rgba(0,0,0,0)); browser renders white by default. Recorded as #ffffff.",
+    "heroPaddingTopPx and heroPaddingBottomPx are 0 - hero section is full-bleed with no CSS padding.",
+    "eventCardPaddingPx is 0 - cards are image-first links with no padding wrapper.",
+    "cardGridGapPx of 24 measured on the primary trending/this-weekend card grid container.",
+    "mainContainerPaddingX is 0 at desktop - content width is controlled by child wrappers, not main element padding.",
+    "small element not found on homepage (no small/caption/figcaption elements present in scraped DOM)."
+  ]
+}

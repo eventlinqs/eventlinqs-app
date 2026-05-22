@@ -1,0 +1,88 @@
+{
+  "competitor": "humanitix",
+  "page": "event-detail",
+  "url": "https://events.humanitix.com/bangladesh-night-2026",
+  "capturedDate": "2026-05-23",
+  "playwrightWorked": true,
+  "typography": {
+    "h1": {
+      "selectorUsed": "h1.f-heading-8",
+      "fontFamily": "Satoshi, \"Arial Fallback for Satoshi\", \"Roboto Fallback for Satoshi\", sans-serif",
+      "fontSizePx": 52,
+      "fontWeight": "700",
+      "lineHeight": "57.2px",
+      "letterSpacing": "-1.04px"
+    },
+    "h2": {
+      "selectorUsed": "h2.title",
+      "fontFamily": "Satoshi, \"Arial Fallback for Satoshi\", \"Roboto Fallback for Satoshi\", sans-serif",
+      "fontSizePx": 32,
+      "fontWeight": "700",
+      "lineHeight": "35.2px",
+      "letterSpacing": "-0.64px"
+    },
+    "h3": {
+      "selectorUsed": "h3.f-heading-1",
+      "fontFamily": "Satoshi, \"Arial Fallback for Satoshi\", \"Roboto Fallback for Satoshi\", sans-serif",
+      "fontSizePx": 18,
+      "fontWeight": "700",
+      "lineHeight": "19.8px",
+      "letterSpacing": "-0.36px"
+    },
+    "body": {
+      "selectorUsed": "body",
+      "fontFamily": "Satoshi, \"Arial Fallback for Satoshi\", \"Roboto Fallback for Satoshi\", sans-serif",
+      "fontSizePx": 14,
+      "fontWeight": "500",
+      "lineHeight": "16.8px",
+      "letterSpacing": "normal"
+    },
+    "small": {
+      "selectorUsed": "time.f-label-3",
+      "fontFamily": "Satoshi, \"Arial Fallback for Satoshi\", \"Roboto Fallback for Satoshi\", sans-serif",
+      "fontSizePx": 16,
+      "fontWeight": "500",
+      "lineHeight": "19.2px",
+      "letterSpacing": "normal"
+    }
+  },
+  "h1FontSizeMobilePx": 36,
+  "spacing": {
+    "heroPaddingTopPx": 0,
+    "heroPaddingBottomPx": 0,
+    "eventCardPaddingPx": null,
+    "cardGridGapPx": null,
+    "mainContainerPaddingXDesktopPx": 16,
+    "mainContainerPaddingXMobilePx": 16
+  },
+  "colour": {
+    "primaryTextColour": "#000000",
+    "pageBackground": "#ffffff",
+    "accentColoursTop5": [
+      "#0d0d0d",
+      "#ac4f3b",
+      "#e5e5e5",
+      "#7a7a7a",
+      "#666666"
+    ]
+  },
+  "imageRendering": {
+    "eventCardImageAspectRatio": 1,
+    "eventCardImageRatioWH": "1:1",
+    "heroImageAspectRatio": 2,
+    "heroImageRatioWH": "2:1",
+    "imageFormat": "WEBP"
+  },
+  "motion": {
+    "elementDescribed": "button",
+    "transitionDuration": "0s",
+    "transitionTimingFunction": "ease"
+  },
+  "notes": [
+    "pageBackground computed as transparent on body element; recorded as #ffffff (browser default).",
+    "heroPaddingTopPx 0 - banner image is full-bleed inside a picture element with no CSS padding.",
+    "eventCardPaddingPx null - no event card grid present on event detail page.",
+    "cardGridGapPx null - no event card grid present on event detail page.",
+    "Accent colour #ac4f3b is the Humanitix brand salmon/terracotta used for the logo and primary CTA button."
+  ]
+}

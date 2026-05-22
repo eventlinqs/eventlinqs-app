@@ -1,0 +1,17 @@
+{
+  "competitor": "humanitix",
+  "page": "homepage",
+  "url": "https://www.humanitix.com/au/",
+  "capturedDate": "2026-05-23",
+  "desktop": {
+    "eventsAboveFold": 6,
+    "filterOptionsVisible": 3,
+    "ctasAboveFold": 15
+  },
+  "mobile": {
+    "eventsAboveFold": 6,
+    "filterOptionsVisible": 3,
+    "ctasAboveFold": 11
+  },
+  "notes": []
+}

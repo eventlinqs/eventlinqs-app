@@ -1,0 +1,85 @@
+{
+  "competitor": "DICE",
+  "page": "event-detail",
+  "url": "https://dice.fm/event/k6gby8-all-day-i-dream-of-golden-days-6th-jun-golden-gate-park-san-francisco-tickets",
+  "capturedDate": "2026-05-23",
+  "playwrightWorked": true,
+  "typography": {
+    "h1": {
+      "selectorUsed": "h1",
+      "fontFamily": "Favorit, Helvetica, Arial, sans-serif",
+      "fontSizePx": 64,
+      "fontWeight": "400",
+      "lineHeight": "70.4px",
+      "letterSpacing": "normal"
+    },
+    "h2": {
+      "selectorUsed": "h2",
+      "fontFamily": "Favorit, Helvetica, Arial, sans-serif",
+      "fontSizePx": 28,
+      "fontWeight": "400",
+      "lineHeight": "33.6px",
+      "letterSpacing": "0.28px"
+    },
+    "h3": {
+      "selectorUsed": "h3",
+      "fontFamily": "Favorit, Helvetica, Arial, sans-serif",
+      "fontSizePx": 18,
+      "fontWeight": "400",
+      "lineHeight": "21.6px",
+      "letterSpacing": "0.36px"
+    },
+    "body": {
+      "selectorUsed": "p",
+      "fontFamily": "Favorit, Helvetica, Arial, sans-serif",
+      "fontSizePx": 14,
+      "fontWeight": "400",
+      "lineHeight": "18.2px",
+      "letterSpacing": "0.28px"
+    },
+    "small": {
+      "selectorUsed": "small",
+      "fontFamily": "Favorit, Helvetica, Arial, sans-serif",
+      "fontSizePx": 14,
+      "fontWeight": "400",
+      "lineHeight": "18.2px",
+      "letterSpacing": "0.28px"
+    }
+  },
+  "h1FontSizeMobilePx": 35,
+  "spacing": {
+    "heroPaddingTopPx": null,
+    "heroPaddingBottomPx": null,
+    "eventCardPaddingPx": null,
+    "cardGridGapPx": null,
+    "mainContainerPaddingXDesktopPx": 0,
+    "mainContainerPaddingXMobilePx": 0
+  },
+  "colour": {
+    "primaryTextColour": "#ffffff",
+    "pageBackground": "#000000",
+    "accentColoursTop5": [
+      "#ffffff",
+      "#333333",
+      "#ffffff",
+      "#f2ef1d",
+      "#000000"
+    ]
+  },
+  "imageRendering": {
+    "eventCardImageAspectRatio": null,
+    "eventCardImageRatioWH": null,
+    "heroImageAspectRatio": 1,
+    "heroImageRatioWH": "328:328",
+    "imageFormat": "JPG"
+  },
+  "motion": {
+    "elementDescribed": "BUTTON.ButtonBase-sc-2d3bc5db-0.Button-sc-ad124a2f-0.IconButton__Btn-sc-40191453-0.jHvCzz.seSCW.jTcJqV.IconButton-sc-40191453-1.bcgHtY",
+    "transitionDuration": "0.2s",
+    "transitionTimingFunction": "ease"
+  },
+  "notes": [
+    "Page title (desktop): \"All Day I Dream of Golden Days Tickets | From $56.65 | 6 Jun @ Golden Gate Park, San Francisco | DICE\"",
+    "Page title (mobile): \"All Day I Dream of Golden Days Tickets | From $56.65 | 6 Jun @ Golden Gate Park, San Francisco | DICE\""
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "competitor": "eventbrite",
+  "page": "homepage",
+  "url": "https://www.eventbrite.com.au/",
+  "capturedDate": "2026-05-23",
+  "playwrightWorked": true,
+  "typography": {
+    "h1": {
+      "selectorUsed": "h1",
+      "fontFamily": "\"Neue Plak Condensed\", -apple-system, blinkmacsystemfont, roboto, \"Helvetica Neue\", helvetica, tahoma, arial, sans-serif",
+      "fontSizePx": "56px",
+      "fontWeight": "700",
+      "lineHeight": "56px",
+      "letterSpacing": "1px"
+    },
+    "h2": {
+      "selectorUsed": "h2",
+      "fontFamily": "\"Neue Plak\", -apple-system, blinkmacsystemfont, roboto, \"Helvetica Neue\", helvetica, tahoma, arial, sans-serif",
+      "fontSizePx": "18px",
+      "fontWeight": "600",
+      "lineHeight": "24px",
+      "letterSpacing": "0.25px"
+    },
+    "h3": {
+      "selectorUsed": "h3",
+      "fontFamily": "\"Neue Plak\", -apple-system, blinkmacsystemfont, roboto, \"Helvetica Neue\", helvetica, tahoma, arial, sans-serif",
+      "fontSizePx": "18px",
+      "fontWeight": "600",
+      "lineHeight": "24px",
+      "letterSpacing": "0.25px"
+    },
+    "body": {
+      "selectorUsed": "p",
+      "fontFamily": "__foundersGroteskRegular_8ef22f, __foundersGroteskRegular_Fallback_8ef22f",
+      "fontSizePx": "10px",
+      "fontWeight": "400",
+      "lineHeight": "11px",
+      "letterSpacing": "0.1px"
+    },
+    "small": {
+      "selectorUsed": "[class*=\"small\"]",
+      "fontFamily": "\"Neue Plak Text\", \"Neue Plak\"",
+      "fontSizePx": "14px",
+      "fontWeight": "600",
+      "lineHeight": "0px",
+      "letterSpacing": "normal"
+    }
+  },
+  "h1FontSizeMobilePx": "40px",
+  "spacing": {
+    "heroPaddingTopPx": "8px",
+    "heroPaddingBottomPx": "8px",
+    "eventCardPaddingPx": "0px",
+    "cardGridGapPx": null,
+    "mainContainerPaddingXDesktopPx": "0px",
+    "mainContainerPaddingXMobilePx": "0px"
+  },
+  "colour": {
+    "primaryTextColour": "rgb(57, 54, 79)",
+    "pageBackground": "rgba(0, 0, 0, 0)",
+    "accentColoursTop5": [
+      "rgb(54, 89, 227)",
+      "rgb(194, 194, 204)",
+      "rgb(0, 0, 0)",
+      "rgb(255, 255, 255)",
+      "rgb(240, 240, 240)"
+    ]
+  },
+  "imageRendering": {
+    "eventCardImageAspectRatio": "2.000",
+    "eventCardImageRatioWH": "2.00:1",
+    "heroImageAspectRatio": "2.000",
+    "heroImageRatioWH": "2.00:1",
+    "imageFormat": "unknown"
+  },
+  "motion": {
+    "elementDescribed": "button ()",
+    "transitionDuration": "0s",
+    "transitionTimingFunction": "ease"
+  },
+  "notes": [
+    "Desktop loaded OK. Title: Eventbrite - Discover the Best Local Events & Things to Do",
+    "Mobile loaded OK. Title: Eventbrite - Discover the Best Local Events & Things to Do",
+    "Card images served via Eventbrite CDN image proxy (img.evbuc.com) with format=auto; WebP delivered to modern browsers",
+    "Homepage geo-defaults to Pyrmont (Sydney) based on IP location"
+  ]
+}

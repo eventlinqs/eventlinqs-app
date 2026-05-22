@@ -1,0 +1,22 @@
+{
+  "competitor": "ticketmaster",
+  "page": "homepage",
+  "url": "https://www.ticketmaster.com.au/",
+  "capturedDate": "2026-05-23",
+  "desktop": {
+    "eventsAboveFold": 1,
+    "filterOptionsVisible": 0,
+    "ctasAboveFold": 7
+  },
+  "mobile": {
+    "eventsAboveFold": 1,
+    "filterOptionsVisible": 0,
+    "ctasAboveFold": 10
+  },
+  "notes": [
+    "Desktop (1440x900): eventsAboveFold=1 reflects that the hero is a large single-event promotional banner (BTS). The 'Popular tickets' rail starts below the fold at 1440x900. filterOptionsVisible=0 because the nav category links (Music, Sport, Arts, etc.) matched zero elements with the filter/category selectors used; the nav links are present but use custom class names not matching standard patterns. ctasAboveFold=7 includes nav utility links (Gift cards, Group Bookings, Help, Sell Tickets), the hero Find Tickets CTA, and Search button.",
+    "Mobile (375x812): Similar pattern. Hero BTS card is prominent above fold. ctasAboveFold=10 is higher due to smaller viewport counting more link elements in relative positions. filterOptionsVisible=0 same reason as desktop.",
+    "Actual nav category filters visible above fold on desktop: Music, Sport, Arts/Theatre/Comedy, Family/Attractions, Cities, More = 6 items. Not captured by density selector due to custom class names.",
+    "eventsAboveFold is conservative. Visually the homepage shows 1 large hero event + partial view of 2 cards in the Popular Tickets rail at 1440x900 desktop."
+  ]
+}

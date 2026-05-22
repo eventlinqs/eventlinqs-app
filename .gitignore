@@ -114,3 +114,6 @@ docs/redesign/batch-9-2-1-evidence/test-user-credentials.md
 migration-debug.log
 *.migration.log
 docs/redesign/batch-*-evidence/lighthouse/*.json
+
+# Competitor research screenshots are committed deliverables (overrides *.png)
+!research/competitors/**/*.png

@@ -1,0 +1,77 @@
+{
+  "competitor": "DICE",
+  "page": "homepage",
+  "url": "https://dice.fm/",
+  "capturedDate": "2026-05-23",
+  "playwrightWorked": true,
+  "typography": {
+    "h1": {
+      "selectorUsed": "h1",
+      "fontFamily": "Foggy, sans-serif",
+      "fontSizePx": 106,
+      "fontWeight": "400",
+      "lineHeight": "88px",
+      "letterSpacing": "normal"
+    },
+    "h2": {
+      "selectorUsed": "h2",
+      "fontFamily": "Favorit, Helvetica, Arial, sans-serif",
+      "fontSizePx": 18,
+      "fontWeight": "700",
+      "lineHeight": "22px",
+      "letterSpacing": "normal"
+    },
+    "h3": null,
+    "body": {
+      "selectorUsed": "p",
+      "fontFamily": "Favorit, Helvetica, Arial, sans-serif",
+      "fontSizePx": 18,
+      "fontWeight": "350",
+      "lineHeight": "22px",
+      "letterSpacing": "normal"
+    },
+    "small": {
+      "selectorUsed": "span",
+      "fontFamily": "Favorit, Helvetica, Arial, sans-serif",
+      "fontSizePx": 12,
+      "fontWeight": "700",
+      "lineHeight": "16px",
+      "letterSpacing": "0.72px"
+    }
+  },
+  "h1FontSizeMobilePx": 48,
+  "spacing": {
+    "heroPaddingTopPx": 60,
+    "heroPaddingBottomPx": 80,
+    "eventCardPaddingPx": 0,
+    "cardGridGapPx": null,
+    "mainContainerPaddingXDesktopPx": 0,
+    "mainContainerPaddingXMobilePx": 0
+  },
+  "colour": {
+    "primaryTextColour": "#000000",
+    "pageBackground": "#000000",
+    "accentColoursTop5": [
+      "#eeeeee",
+      "#595959",
+      "#ffffff",
+      "#f2f2f2"
+    ]
+  },
+  "imageRendering": {
+    "eventCardImageAspectRatio": 1,
+    "eventCardImageRatioWH": "204:204",
+    "heroImageAspectRatio": 1,
+    "heroImageRatioWH": "2200:2200",
+    "imageFormat": "JPG"
+  },
+  "motion": {
+    "elementDescribed": "BUTTON.ButtonBase-sc-2d3bc5db-0.Button-sc-ad124a2f-0.IconButton__Btn-sc-40191453-0.jHvCzz.XDnPJ.jTcJqV.IconButton-sc-40191453-1.bcgHtY",
+    "transitionDuration": "0.2s",
+    "transitionTimingFunction": "ease"
+  },
+  "notes": [
+    "Page title (desktop): \"DICE | Tickets for your kind of shows\"",
+    "Page title (mobile): \"DICE | Tickets for your kind of shows\""
+  ]
+}
