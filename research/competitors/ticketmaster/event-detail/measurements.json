@@ -1,0 +1,72 @@
+{
+  "competitor": "ticketmaster",
+  "page": "event-detail",
+  "url": "https://www.ticketmaster.com.au/anyma-presents-den-sydney-17-10-2026/event/1300643CD30D7773",
+  "capturedDate": "2026-05-23",
+  "playwrightWorked": true,
+  "typography": {
+    "h1": {
+      "selectorUsed": "h1",
+      "fontFamily": "Averta, helvetica, arial, sans-serif",
+      "fontSizePx": "18px",
+      "fontWeight": "600",
+      "lineHeight": "26px",
+      "letterSpacing": "0.36px"
+    },
+    "h2": null,
+    "h3": null,
+    "body": {
+      "selectorUsed": "body",
+      "fontFamily": "Averta, helvetica, arial, sans-serif",
+      "fontSizePx": "16px",
+      "fontWeight": "400",
+      "lineHeight": "22.4px",
+      "letterSpacing": "0.32px"
+    },
+    "small": null
+  },
+  "h1FontSizeMobilePx": "18px",
+  "spacing": {
+    "heroPaddingTopPx": "0px",
+    "heroPaddingBottomPx": "0px",
+    "eventCardPaddingPx": "0px",
+    "cardGridGapPx": "normal",
+    "mainContainerPaddingXDesktopPx": "0px",
+    "mainContainerPaddingXMobilePx": null
+  },
+  "colour": {
+    "primaryTextColour": "rgb(18, 18, 18)",
+    "pageBackground": "rgba(0, 0, 0, 0)",
+    "accentColoursTop5": [
+      "#ffffff",
+      "#000000",
+      "#024ddf",
+      "#d6d6d6",
+      "#646464"
+    ]
+  },
+  "imageRendering": {
+    "eventCardImageAspectRatio": 1.78,
+    "eventCardImageRatioWH": "143:80",
+    "heroImageAspectRatio": 1.78,
+    "heroImageRatioWH": "143:80",
+    "imageFormat": "JPG",
+    "imageSrcSample": "https://s1.ticketm.net/dam/a/e93/9331128a-5918-4df9-ba70-bd3306e53e93_EVENT_DETAIL_PAGE_16_9.jpg"
+  },
+  "motion": {
+    "elementDescribed": "button.sc-35dd93c5-5.iZtiLn",
+    "transitionDuration": "0s",
+    "transitionTimingFunction": "ease"
+  },
+  "notes": [
+    "mainContainerPaddingXMobilePx not separately measured; mobile pass used for h1FontSizeMobilePx only.",
+    "Desktop capture title was 'Loading...' at domcontentloaded. Page body did render (screenshot verified: event title, venue, ticket prices visible). h1 measured at desktop may reflect a loading state element (fontSizePx 18px matches body text size, suggesting the main h1 was not yet injected by React when getComputedStyle ran). Mobile pass captured correctly with full page title.",
+    "eventCardImageAspectRatio 1.78 and format JPG confirmed from og:image CDN URL: s1.ticketm.net/.../EVENT_DETAIL_PAGE_16_9.jpg. Dimensions from Playwright bounding rect at 143x80 (scaled thumbnail in the page).",
+    "heroImageAspectRatio: same image as card thumbnail in this layout (event detail uses a single 16:9 hero image, not a separate hero component).",
+    "Playwright captured both viewports successfully. Screenshots verified as real Ticketmaster AU event detail pages.",
+    "pageBackground: rgba(0,0,0,0) indicates transparent body background; visual background is white (#ffffff) from a parent element. Header/nav is black (#121212).",
+    "small/caption element: no <small> or [class*=caption] found in the DOM at measurement time.",
+    "h2 and h3: null - the event detail page layout uses a single h1 for event name and does not use h2/h3 headings in the measurable DOM.",
+    "Primary button (Find Tickets): background-color #00783a (green), colour #ffffff. transition-duration 0s indicates no CSS transition on the button at rest state."
+  ]
+}

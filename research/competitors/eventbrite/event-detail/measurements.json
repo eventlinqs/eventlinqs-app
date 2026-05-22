@@ -1,0 +1,88 @@
+{
+  "competitor": "eventbrite",
+  "page": "event-detail",
+  "url": "https://www.eventbrite.com.au/e/sounds-on-sunday-june-long-weekend-2026-tickets-1982642744821",
+  "capturedDate": "2026-05-23",
+  "playwrightWorked": true,
+  "typography": {
+    "h1": {
+      "selectorUsed": "h1",
+      "fontFamily": "\"Neue Plak\", -apple-system, BlinkMacSystemFont, Roboto, \"Helvetica Neue\", Helvetica, Tahoma, Arial, sans-serif",
+      "fontSizePx": "32px",
+      "fontWeight": "800",
+      "lineHeight": "35.2px",
+      "letterSpacing": "normal"
+    },
+    "h2": {
+      "selectorUsed": "h2",
+      "fontFamily": "\"Neue Plak\"",
+      "fontSizePx": "24px",
+      "fontWeight": "600",
+      "lineHeight": "31.992px",
+      "letterSpacing": "normal"
+    },
+    "h3": {
+      "selectorUsed": "h3",
+      "fontFamily": "\"Neue Plak\", -apple-system, blinkmacsystemfont, roboto, \"Helvetica Neue\", helvetica, tahoma, arial, sans-serif",
+      "fontSizePx": "24px",
+      "fontWeight": "600",
+      "lineHeight": "31.92px",
+      "letterSpacing": "normal"
+    },
+    "body": {
+      "selectorUsed": "p",
+      "fontFamily": "\"Neue Plak\", -apple-system, BlinkMacSystemFont, Roboto, \"Helvetica Neue\", Helvetica, Tahoma, Arial, sans-serif",
+      "fontSizePx": "18px",
+      "fontWeight": "400",
+      "lineHeight": "23.94px",
+      "letterSpacing": "0.1px"
+    },
+    "small": {
+      "selectorUsed": "[class*=\"small\"]",
+      "fontFamily": "\"Neue Plak Text\", \"Neue Plak\"",
+      "fontSizePx": "14px",
+      "fontWeight": "600",
+      "lineHeight": "0px",
+      "letterSpacing": "normal"
+    }
+  },
+  "h1FontSizeMobilePx": "24px",
+  "spacing": {
+    "heroPaddingTopPx": "0px",
+    "heroPaddingBottomPx": "0px",
+    "eventCardPaddingPx": "24px",
+    "cardGridGapPx": null,
+    "mainContainerPaddingXDesktopPx": "0px",
+    "mainContainerPaddingXMobilePx": "0px"
+  },
+  "colour": {
+    "primaryTextColour": "rgb(0, 0, 0)",
+    "pageBackground": "rgba(0, 0, 0, 0)",
+    "accentColoursTop5": [
+      "rgb(38, 27, 54)",
+      "rgb(57, 54, 79)",
+      "rgb(255, 255, 255)",
+      "rgb(111, 114, 135)",
+      "rgb(240, 240, 240)"
+    ]
+  },
+  "imageRendering": {
+    "eventCardImageAspectRatio": null,
+    "eventCardImageRatioWH": null,
+    "heroImageAspectRatio": "2.000",
+    "heroImageRatioWH": "2.00:1",
+    "imageFormat": null
+  },
+  "motion": {
+    "elementDescribed": "button ()",
+    "transitionDuration": "0s",
+    "transitionTimingFunction": "ease"
+  },
+  "notes": [
+    "Desktop loaded OK. Title: Sounds On Sunday - June Long Weekend 2026 Tickets, Sunday, June 7  •  1 PM - 10:30 PM | Eventbrite",
+    "Mobile loaded OK. Title: Sounds On Sunday - June Long Weekend 2026 Tickets, Sunday, June 7  •  1 PM - 10:30 PM | Eventbrite",
+    "Event: Sounds On Sunday - June Long Weekend 2026. Music event, North Sydney AU, Sun 7 June 2026",
+    "Hero image on event detail is event cover art (2:1 crop), not a separate section hero",
+    "\"Get tickets\" sticky CTA visible on right side column (desktop) and bottom bar (mobile)"
+  ]
+}

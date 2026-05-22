@@ -1,0 +1,22 @@
+{
+  "competitor": "eventbrite",
+  "page": "homepage",
+  "url": "https://www.eventbrite.com.au/",
+  "capturedDate": "2026-05-23",
+  "desktop": {
+    "eventsAboveFold": 0,
+    "filterOptionsVisible": 6,
+    "ctasAboveFold": 3
+  },
+  "mobile": {
+    "eventsAboveFold": 0,
+    "filterOptionsVisible": 3,
+    "ctasAboveFold": 1
+  },
+  "notes": [
+    "Density counted at initial viewport (before scroll) at domcontentloaded + 4s wait",
+    "Desktop viewport 1440x900, mobile viewport 375x812",
+    "Filter count includes nav category links, time filter tabs (All/For you/Today/This weekend), and category pill links",
+    "CTA count includes nav links, sign-in buttons, and any prominent action elements above fold"
+  ]
+}

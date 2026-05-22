@@ -1,0 +1,83 @@
+{
+  "competitor": "ticketmaster",
+  "page": "homepage",
+  "url": "https://www.ticketmaster.com.au/",
+  "capturedDate": "2026-05-23",
+  "playwrightWorked": true,
+  "typography": {
+    "h1": {
+      "selectorUsed": "h1",
+      "fontFamily": "Averta, helvetica, arial, sans-serif",
+      "fontSizePx": "32px",
+      "fontWeight": "700",
+      "lineHeight": "44.8px",
+      "letterSpacing": "0.32px"
+    },
+    "h2": {
+      "selectorUsed": "h2",
+      "fontFamily": "Averta, helvetica, arial, sans-serif",
+      "fontSizePx": "24px",
+      "fontWeight": "700",
+      "lineHeight": "33.6px",
+      "letterSpacing": "0.32px"
+    },
+    "h3": {
+      "selectorUsed": "h3",
+      "fontFamily": "Averta, helvetica, arial, sans-serif",
+      "fontSizePx": "32px",
+      "fontWeight": "800",
+      "lineHeight": "44.8px",
+      "letterSpacing": "0.32px"
+    },
+    "body": {
+      "selectorUsed": "p",
+      "fontFamily": "Averta, helvetica, arial, sans-serif",
+      "fontSizePx": "18px",
+      "fontWeight": "600",
+      "lineHeight": "26px",
+      "letterSpacing": "0.36px"
+    },
+    "small": null
+  },
+  "h1FontSizeMobilePx": "32px",
+  "spacing": {
+    "heroPaddingTopPx": "0px",
+    "heroPaddingBottomPx": "0px",
+    "eventCardPaddingPx": "10px",
+    "cardGridGapPx": "normal",
+    "mainContainerPaddingXDesktopPx": "0px",
+    "mainContainerPaddingXMobilePx": null
+  },
+  "colour": {
+    "primaryTextColour": "rgb(18, 18, 18)",
+    "pageBackground": "rgba(0, 0, 0, 0)",
+    "accentColoursTop5": [
+      "#000000",
+      "#ffffff",
+      "#646464",
+      "#024ddf",
+      "#949494"
+    ]
+  },
+  "imageRendering": {
+    "eventCardImageAspectRatio": 1.78,
+    "eventCardImageRatioWH": "368:207",
+    "heroImageAspectRatio": 1.78,
+    "heroImageRatioWH": "720:405",
+    "imageFormat": "WebP",
+    "imageSrcSample": "https://uk.tmconst.com/ccp-salesforce-images/AU/AU_Beetlejuice_2026_v3_368x207.jpg?auto=webp"
+  },
+  "motion": {
+    "elementDescribed": "button.sc-fb3ba952-2.ftjibA",
+    "transitionDuration": "0s",
+    "transitionTimingFunction": "ease"
+  },
+  "notes": [
+    "mainContainerPaddingXMobilePx not separately measured; mobile pass used for h1FontSizeMobilePx and density only.",
+    "Image rendering data: Playwright img selector matched a Facebook pixel tracking URL (1x1 transparent). Image format and ratio derived from Firecrawl-captured CDN URLs in raw.md (e.g. UK.tmconst.com 368x207 and 720x405 event card and hero images served as WebP via ?auto=webp query param).",
+    "Playwright captured page successfully. Screenshots verified as real Ticketmaster AU pages, not CAPTCHA or bot walls.",
+    "cardGridGapPx reported as 'normal' by getComputedStyle on the ul element - indicates no explicit CSS gap set; cards rely on margin/flow layout.",
+    "pageBackground: rgba(0,0,0,0) indicates transparent body background; visual background is white (#ffffff) from a parent element.",
+    "small/caption element: no <small> or [class*=caption] found in the DOM at measurement time."
+  ]
+}
