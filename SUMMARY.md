@@ -1,179 +1,181 @@
-# Autonomous Batch Summary - Tab A
+# SUMMARY - Schema Hygiene Migration Draft
 
-Branch: `autonomous/ci-gate-and-copy-fix`
-Base: `feat/ticketing-v1-steps-5-6` HEAD (`08a3688`)
-Date: 2026-05-19
+Branch: `autonomous/schema-hygiene-draft` (base: `feat/ticketing-v1-steps-5-6` @ `08a3688`)
+Mode: AUTONOMOUS BATCH (Tab B). DRAFT ONLY - not applied, not pushed.
 
-Two scopes completed. No git push, no Supabase, no merge to main.
+Revision 2: the three previously-flagged items are now RESOLVED BY
+RESEARCH (industry/Stripe/Postgres/Supabase/OWASP best practice), not
+left as founder decisions, per the founder rule update.
+
+## P-IDs closed by this migration
+
+| ID | Fix |
+|---|---|
+| P1-1 | pricing_rules RLS: region-default rows public, per-org override rows scoped to owning org owner OR member with owner/admin/manager |
+| P1-2 | organiser_balance_ledger / payouts / payout_holds / **tier_progression_log** member SELECT policies gain `role IN ('owner','admin','manager')` filter |
+| P1-3 | orders (7 cents cols), order_items (2), payments.amount_cents: INT4 -> BIGINT |
+| P1-4 | discount_codes.discount_value split into discount_amount_cents BIGINT + discount_percentage NUMERIC(5,2); migrated by discount_type; legacy column dropped |
+| P1-4b | pricing_rules.value split into value_percentage NUMERIC(7,4) + value_cents BIGINT + value_integer INTEGER (industry-standard tagged-union split); 59 rows migrated by value_type; strict CHECK; legacy column dropped |
+| P1-5 | non-negative CHECK on all orders / order_items cents columns (NOT VALID then VALIDATE) |
+| P1-6 | squads.leader_user_id FK CASCADE -> SET NULL (+ DROP NOT NULL, required for SET NULL) |
+| P1-7 | squads RLS: USING(true) replaced with leader + member scope |
+| P1-8 | pricing_rules.created_by FK -> ON DELETE SET NULL |
+| P1-9 | indexes on orders.discount_code_id, tickets.ticket_tier_id, squad_members.order_id |
+| P1-10 | updated_at + set_updated_at trigger on order_items, reservations, squads, squad_members, waitlist, payout_holds |
+| P1-11 | waitlist org-view policy gains organisation_members parity |
+| P3-6 | drop redundant idx_orders_order_number (UNIQUE orders_order_number_key already enforces DB-level uniqueness) |
+| P3-7 | payments.idempotency_key promoted to UNIQUE index (true DB-level idempotency) |
+| P3-9 | orders.reservation_id + squads.reservation_id missing FK -> reservations ON DELETE SET NULL, each indexed |
+| P4-6 | orders.currency CHECK = 'AUD' (v1 single-currency guard) |
+
+## Files created / modified
+
+- `supabase/migrations/20260520000001_schema_hygiene.sql` - forward migration (DRAFT, NOT applied)
+- `supabase/migrations/20260520000001_schema_hygiene_ROLLBACK.sql` - reverse migration (`_ROLLBACK` suffix keeps it out of the `db push` set)
+- `docs/SCHEMA-HYGIENE-MIGRATION-PLAN.md` - rationale per P-ID, section 0b "Research resolutions" (cited URLs), risk assessment, order of operations, rollout (incl. Pricing Service coordination prerequisite), post-apply MCP verification checklist
+- `SUMMARY.md` - this file
+
+No application code touched. No shared files touched. MCP used read-only only (schema conflict check + data-distribution checks).
+
+## Resolved items (formerly flagged)
+
+### Item 1 - pricing_rules.value polymorphic column -> RESOLVED: typed split
+Industry standard is a typed split, not a polymorphic column:
+- Stripe Coupon stores `amount_off` (integer minor units) and `percent_off` (float) as separate mutually-exclusive fields - https://docs.stripe.com/api/coupons/object
+- Postgres tagged-union standard = one typed column per variant + type tag + CHECK - https://www.cybertec-postgresql.com/en/conditional-foreign-keys-polymorphism-in-sql/
+- Money as bigint minor units or NUMERIC, never float - https://www.crunchydata.com/blog/working-with-money-in-postgres
+- PCI DSS governs cardholder data, not amount representation; integer-minor-units is the applicable amount standard.
+Action taken: replaced the CHECK-only draft with a three-column split
+(`value_percentage NUMERIC(7,4)`, `value_cents BIGINT`, `value_integer
+INTEGER`). `value` is genuinely three-way (verified live: 26 pct rows
+max 20.0000 scale 4; 16 fixed 20..10000; 17 integer 1..3); the audit's
+literal `NUMERIC(5,4)` would overflow 20.0000, so `NUMERIC(7,4)` is the
+data-correct precision. Recommendation: ship the split; it is the
+documented industry pattern and removes the last polymorphic column.
+
+### Item 2 - P3-6/7/9 interpretations -> RESOLVED: all confirmed correct
+- P3-6 redundant index: PostgreSQL auto-creates a unique index for a UNIQUE constraint; a second manual index is redundant - https://www.postgresql.org/docs/current/indexes-unique.html. Implementation correct, unchanged.
+- P3-7 idempotency uniqueness: Stripe requires idempotency keys be sufficiently unique to identify one operation; UNIQUE enforces it, a plain index does not - https://docs.stripe.com/api/idempotent_requests. Implementation correct, unchanged.
+- P3-9 FK referential integrity: a foreign key is the standard Postgres referential-integrity mechanism; an untyped UUID with no FK is a gap - https://www.postgresql.org/docs/current/ddl-constraints.html. Implementation correct, unchanged.
+
+### Item 3 - RLS least-privilege + tier_progression_log -> RESOLVED: confirmed + extended
+- Supabase: grant only the permissions each role needs; restrict to what is necessary - https://supabase.com/docs/guides/database/postgres/row-level-security
+- OWASP Top 10 2021 A01 Broken Access Control = #1 web vuln class (94% of apps) - https://owasp.org/Top10/A01_2021-Broken_Access_Control/
+Action taken: P1-1 / P1-7 tightening confirmed correct (no founder
+decision). The same `role IN ('owner','admin','manager')` filter is now
+also applied to `tier_progression_log` (folded into P1-2), since it
+shared the identical pattern smell. Informational, not actioned: a
+repo-wide `TO <role>` clause hardening pass is recommended separately to
+the project manager (the existing schema uses none).
+
+## Jaguar 9-criterion self-audit result
+
+1. Idempotency - PASS (IF [NOT] EXISTS, DROP-then-ADD, info_schema-guarded type changes, column-existence-guarded backfills for both discount_value and pricing_rules.value)
+2. FK explicit ON DELETE - PASS (all in-scope FKs -> SET NULL)
+3. Constraint validation - PASS (NOT VALID then VALIDATE on populated tables incl. the 59-row pricing_rules split CHECK; plain ADD on empty tables)
+4. Money fields BIGINT cents - PASS (all *_cents + discount_amount_cents + pricing_rules.value_cents BIGINT; percentages NUMERIC, never float)
+5. Audit fields - PASS (updated_at added where missing)
+6. RLS minimum privilege - PASS (P1-1/2/7/11 + tier_progression_log; Supabase + OWASP cited)
+7. Indexes - PASS (P1-9 + new FK columns indexed; redundant index removed)
+8. Stripe alignment - N/A (no Stripe-facing schema; money columns are internal ledger fields)
+9. Schema conflict check via MCP - PASS (live Sydney project introspected read-only; zero drift; row counts + value distribution captured for risk basis)
+
+## Founder review checklist (before any push or apply)
+
+- [ ] Confirm (not decide) the research resolutions in plan section 0b - all three were settled by cited best practice
+- [ ] COORDINATION PREREQUISITE: P1-4 + P1-4b drop `discount_codes.discount_value` and `pricing_rules.value`. The Pricing Service (`src/lib/services/pricing.ts` + pricing-rules read path) and any discount_codes consumer must be updated to read the new typed columns, landed in the same coordinated change-set as this migration + `npm run db:types`. Notify the project manager (cross-session [SHARED]).
+- [ ] Confirm P1-7 / P1-1 behavioural tightening: anon clients can no longer read squads / per-org pricing overrides directly; guest squad-share and fee calc use the service role server-side (verify those paths do not use the anon client for those reads)
+- [ ] Confirm P4-6 AUD-only guard acceptable for the current v1 window
+- [ ] Review rollback caveats (BIGINT->INT narrowing; NOT NULL re-imposition incl. pricing_rules.value) in the rollback header and plan section 2
+- [ ] Apply path: `supabase db push --linked --include-all` from PowerShell in the migrations-owning worktree, then `npm run db:types` ([SHARED]), then run the post-apply MCP verification checklist (plan section 5)
+
+## Gates run (revision 2)
+
+- `npx tsc --noEmit` - sanity only (migration is .sql, not .ts)
+- `npm run lint`
+- `npm test` (vitest)
+
+See the commit for gate results. The migration draft itself must not be
+modified once the resolution is committed; further schema corrections
+are a follow-up migration. (Merge-only edits below do not touch the
+migration files.)
 
 ---
 
-## SCOPE 1 - PR0 - CI gate (P5-5 CRITICAL)
+## Merge into main (2026-05-23)
 
-Commit: `7ff3a47` `[AUTONOMOUS-BATCH] ci: add vitest test job to PR/push gates`
+Branch brought up to date with `origin/main`, which since the `08a3688`
+base gained PR #25 (Tab A: copy fixes + CI vitest gate) and PR #26
+(Tab C: triad webhook-atomicity refactor + `webhook_dedupe` migration).
 
-File: `.github/workflows/ci.yml`
+### Migration file recovery - finding
 
-The existing workflow had a single `verify` job running lint, typecheck,
-and build as sequential steps. Added a separate, parallel `test` job that
-runs `npm test` (`vitest run`).
+Both migration files the task flagged as possibly needing local
+recovery were already present in `origin/main`, so the `git merge
+origin/main` brought them in directly - no separate recovery commit was
+needed:
 
-Rationale for a separate job rather than an extra step: a GitHub Actions
-*job* is an independently-requireable status check in branch protection.
-A step inside `verify` cannot be required on its own. A standalone `test`
-job runs in parallel with `verify` and becomes its own required check
-alongside lint/typecheck/build, which is what the scope asked for. The
-job mirrors the placeholder build-time env from `verify` so module
-imports that validate client-bundle env do not break under vitest.
+- `20260503000001_refunds_extension.sql` - arrived via the merge. Its
+  blob in `origin/main` (`639d06c`) is byte-identical to the canonical
+  blob on `origin/feat/m6-phase5-refunds-manager`.
+- `20260520000002_webhook_dedupe.sql` - arrived via the merge (added to
+  main by PR #26).
 
-Local verification:
-- `vitest.config.ts` includes only `tests/unit/**/*.test.ts`; the
-  Playwright `tests/e2e/**` specs are excluded, so the CI job will not
-  attempt to run browser specs under vitest.
-- `npm test` locally: 11 test files, 117 tests passed.
-- YAML parsed and confirmed: `jobs: [verify, test]`; test job steps
-  Checkout / Setup Node / Install / Test.
+Post-merge migration ordering is correct:
+`...20260502000003_admin_foundation`,
+`20260503000001_refunds_extension`, `...`,
+`20260517000001_ticketing_system_v1`,
+`20260520000001_schema_hygiene`,
+`20260520000001_schema_hygiene_ROLLBACK`,
+`20260520000002_webhook_dedupe` - i.e. the schema-hygiene draft is
+ordered before `webhook_dedupe`, as intended.
 
----
+### Prompt-premise corrections
 
-## SCOPE 2 - PR5 - Copy correction (P4-3 CRITICAL, P4-9 HIGH, P4-7 MEDIUM)
+1. The task framed `20260503000001_refunds_extension.sql` as living
+   only on `origin/feat/m6-phase5-refunds-manager` and "NOT in the
+   eventlinqs-app worktree", implying recovery from git history or a
+   sibling worktree (`eventlinqs-app-admin` / `eventlinqs-app-backend`).
+   In fact it is already in `origin/main` - Tab C's commit `106374c`
+   recovered it there - and identical to the canonical blob. No
+   sibling-worktree fallback was required.
+2. The task called `4c9e286` a "canonical committed blob". `4c9e286` is
+   a commit, not a blob. (The refunds_extension blob is `639d06c`.)
+3. STEP 1 (a separate `[AUTONOMOUS-BATCH] migrations: recover missing
+   files` commit) was not created. It was the right move for Tab C,
+   which was first to recover those files into main; for Tab B both
+   files already exist in `origin/main`, so a pre-merge recovery commit
+   would only duplicate content the immediately-following merge adds.
+   Creating it would be misleading history. The merge alone achieves
+   the "ordering match with remote" goal.
 
-Commit: `[AUTONOMOUS-BATCH] copy: remove unimplemented feature promises per PHASE 4 audit P4-3, P4-7, P4-9`
+### Conflict resolution
 
-File: `src/lib/help-content.ts` (all changes; see cross-check note below
-for why no other file was modified).
+Only `SUMMARY.md` conflicted (add/add: the `08a3688` base had no
+`SUMMARY.md`; Tab B and main each added their own). Resolved to the
+Tab B (schema-hygiene) version per instruction. Tab C's `SUMMARY.md`
+content remains preserved in main's history (commit `c0bfff9`). No
+other conflicts - Tab B's scope is schema-only and disjoint from the
+Tab A copy edits and the Tab C triad/webhook refactor.
 
-Gates after edits: `npx tsc --noEmit` exit 0; `npm test` 117/117 passed.
-Voice rules confirmed: no em-dashes, no en-dashes, no exclamation marks,
-Australian English, no "diaspora".
+### Gates (post-merge)
 
-### The 6 scope-specified lines
+- `npx tsc --noEmit` - exit 0, clean.
+- `npm run lint` - 0 errors (2 pre-existing warnings in
+  `scripts/batch-11-screenshots.mjs`, untouched).
+- `npm test` - 127/127 passed across 13 files (up from 117/11 - Tab C
+  added the payment-calculator and payment-intent-succeeded suites).
 
-**1. "Am I entitled to a refund if I cannot attend?" (was ~line 106) - refund escalation promise**
+### Observation for the founder / project manager (not actioned here)
 
-Before:
-> Refund eligibility depends on the organiser's refund policy, which is displayed on the event page before you purchase. Most events are sold on a no-refund basis unless stated otherwise. EventLinqs guarantees a full refund if an event is cancelled by the organiser or materially rescheduled. For all other refund requests, contact the organiser first. If you do not receive a response within 7 days, escalate to us via the support form and we will step in.
-
-After:
-> Refund eligibility depends on the organiser's refund policy, which is displayed on the event page before you purchase. Most events are sold on a no-refund basis unless stated otherwise. If an organiser cancels an event, you are entitled to a refund of the amount you paid, and we are committed to processing these refunds promptly. For all other refund requests, contact the organiser using the details on the event page. If you cannot reach them, contact us via the support form and we will help where we can.
-
-Removed: the hard "guarantees a full refund ... materially rescheduled"
-automated promise and the "within 7 days ... escalate ... we will step
-in" SLA/intervention workflow that is not implemented. Replaced with an
-honest entitlement + commitment statement consistent with the legal
-refunds policy.
-
-**2. "Can I set my own refund policy?" (organiser, was ~line 170) - refund guarantee "regardless of stated policy"**
-
-Before:
-> Yes. You set your own refund policy for each event, and it is displayed to buyers before they complete their purchase. Whatever policy you set, you are bound by it. EventLinqs also applies overriding guarantees: if an event is cancelled or materially rescheduled, all ticket holders are entitled to a full refund regardless of your stated policy.
-
-After:
-> Yes. You set your own refund policy for each event, and it is displayed to buyers before they complete their purchase. Whatever policy you set, you are bound by it. If you cancel an event, ticket holders are entitled to a refund of the amount they paid, and you remain responsible for those refunds. We are committed to working with you to process them promptly.
-
-Removed: the "EventLinqs also applies overriding guarantees ...
-regardless of your stated policy" automated-override claim. Kept the
-honest organiser-responsibility statement.
-
-**3. "What happens to payments if an event is cancelled?" (was ~line 250) - automatic refund within 5 business days**
-
-Before:
-> If an organiser cancels an event, EventLinqs initiates a full refund to all ticket holders, including any service fees. Refunds are processed automatically within 5 business days of the cancellation being confirmed. Ticket holders do not need to contact us to receive a refund for a cancelled event.
-
-After:
-> If an organiser cancels an event, ticket holders are entitled to a refund of the full amount paid, including any service fees. We are committed to processing these refunds promptly once a cancellation is confirmed. If you have a question about a refund for a cancelled event, contact us via the support form with your order reference.
-
-Removed: "processed automatically within 5 business days" and "do not
-need to contact us" - the false automation promise (P4-3 CRITICAL).
-
-**4. "Can I transfer my ticket to someone else?" (was ~line 94) - free ticket transfer steps**
-
-Before:
-> Yes. Ticket transfers are free and take effect immediately. Log in to your account, go to 'My Tickets', select the ticket you want to transfer, and enter the recipient's email address. Once you transfer a ticket, you lose access to it and the new holder receives it by email. The transfer is one-way and cannot be reversed by you.
-
-After:
-> Ticket transfers are not available at this time. If you cannot attend an event, check the organiser's refund policy on the event page, or contact the organiser directly using the details listed on the event.
-
-Feature claim removed entirely (transfer deferred post-launch, P4-9).
-
-**5. "Can I resell my ticket above face value?" (was ~line 98) - free transfer as anti-resale remedy**
-
-Before:
-> No. Reselling tickets above face value is a violation of our terms of use and may result in the ticket being cancelled without refund. If you cannot attend, transfer your ticket for free to another person using the transfer feature in your account.
-
-After:
-> No. Reselling tickets above face value is a violation of our terms of use and may result in the ticket being cancelled without refund. If you cannot attend, check the organiser's refund policy on the event page, or contact the organiser directly.
-
-Transfer-feature remedy reference removed (P4-9).
-
-**6. "Can I get a receipt for my ticket purchase?" (was ~line 242) - formal tax invoice promise**
-
-Before:
-> Yes. Your purchase confirmation email serves as your receipt and includes the full breakdown of everything you paid. If you need a formal tax invoice, contact us at hello@eventlinqs.com with your order reference and we will send one.
-
-After:
-> Yes. Your purchase confirmation email serves as your receipt and includes the full breakdown of everything you paid. EventLinqs is not currently GST-registered, so this confirmation email is your receipt for the purchase.
-
-Tax-invoice promise replaced with the GST-registration reality
-(P4-7 MEDIUM). Consistent with the sole-trader status in CLAUDE.md.
-
-### Additional same-claim consistency fixes in the SAME file (P4-9)
-
-The scope step 4 instruction is to correct "the same false claims".
-Within `help-content.ts` four further answers asserted the
-non-existent transfer feature. Leaving them would have produced a
-self-contradicting Help Centre (one answer saying transfers are
-unavailable while another tells users to "use the free ticket transfer
-feature in your account"). These were corrected for internal
-consistency under the same P4-9 finding:
-
-- **"How do I create an account?"** - removed "or transfer tickets"
-  from the reasons to make an account.
-- **"Do I need an account to buy tickets?"** - removed "or transfer
-  them".
-- **"Can I buy tickets without creating an account?"** - removed
-  "transfer your ticket or" so it reads "access your purchase history".
-- **"Can I change the name on a ticket after purchase?"** - removed the
-  "use the free ticket transfer feature in your account" remedy; now
-  states the attendee name is not printed and points to the organiser's
-  refund policy / direct contact.
-- **"Buying Tickets" topic description** - removed the word "transfers"
-  from the topic blurb so the discovery nav does not imply a transfer
-  capability.
-
-### Cross-check of the other files (scope step 4)
-
-`src/components/layout/site-footer.tsx`, `src/app/sitemap.ts`, and
-`src/app/legal/*/page.tsx` were inspected. None contain the flagged
-false claims, so none were modified:
-
-- **site-footer.tsx**: only a nav link `Refund policy -> /legal/refunds`.
-- **sitemap.ts**: only a URL entry for `/legal/refunds`.
-- **legal/terms/page.tsx**: states an *account* "may not be ... transferred
-  to another person" - about accounts, not tickets, and consistent with
-  there being no ticket-transfer feature. No false claim.
-- **legal/privacy/page.tsx**: "transfer" matches are GDPR
-  international-data-transfer and data-portability language. Not ticket
-  transfer. No false claim.
-- **legal/refunds/page.tsx**: contains a legal *policy commitment* for
-  cancelled / rescheduled / materially-changed events that is grounded
-  in Australian Consumer Law. It does NOT make the flagged false claims:
-  no "automatic refund within 5 business days with no contact needed",
-  no ticket-transfer feature, no tax-invoice promise. It already uses
-  honest framing ("Once a refund has been approved, we process it
-  immediately"; card settlement "5 to 10 business days" is bank time,
-  factually accurate). Deliberately NOT modified: weakening a
-  consumer-law refund commitment in a legal document is a substantive
-  legal change, not a copy correction, and is the opposite of the task
-  intent (keep honest commitments, remove fake automation).
-
-### Observation flagged for founder review (no change made - out of scope)
-
-`legal/refunds/page.tsx` "How to Request a Refund" describes an
-in-account flow: "Log in, go to your tickets ... click Request refund".
-This implies a self-serve refund-request UI. Backend refund mechanics
-exist (commit `22b1c61` "Step 6 - refund voids tickets"), but whether
-the buyer-facing "Request refund" button is wired is unverified. This
-is not one of the six scoped lines, lives in a legal document, and is
-not the same claim as P4-3/P4-7/P4-9, so it was left untouched and is
-noted here for the founder / project manager to verify separately.
+`supabase/migrations/` now holds two files sharing the version stamp
+`20260520000001`: `20260520000001_schema_hygiene.sql` and
+`20260520000001_schema_hygiene_ROLLBACK.sql`. The Supabase CLI derives a
+migration's version from that leading timestamp, so `supabase db push`
+may reject or mis-handle the duplicate version. The plan doc's claim
+that the `_ROLLBACK` suffix "keeps it out of the `db push` set" is not
+reliable - the CLI does not exclude files by suffix. Before running
+`db push`, the rollback file should be moved out of `supabase/migrations/`
+(e.g. to `supabase/rollback/` or `docs/`) or given a distinct version.
+This is pre-existing (introduced in `97b092f`), out of scope for this
+merge task, and flagged here for a follow-up.

@@ -85,7 +85,14 @@ export class StripeAdapter implements PaymentGateway {
 
   async cancelPaymentIntent(gateway_payment_id: string): Promise<void> {
     const stripe = getStripeClient()
-    await stripe.paymentIntents.cancel(gateway_payment_id)
+    // P2-9: deterministic idempotency key. Cancelling an already-cancelled
+    // intent throws; under the retry-on-failure webhook regime a cancel can
+    // be re-attempted. With a stable key Stripe replays the original cancel
+    // response instead of erroring, making cancel a safe no-op on retry,
+    // consistent with the keyed refunds.create and paymentIntents.create.
+    await stripe.paymentIntents.cancel(gateway_payment_id, undefined, {
+      idempotencyKey: `cancel:${gateway_payment_id}`,
+    })
   }
 
   async constructWebhookEvent(payload: string | Buffer, signature: string): Promise<unknown> {

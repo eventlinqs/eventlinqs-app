@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { PaymentCalculator } from '@/lib/payments/payment-calculator'
 import { getDefaultGateway } from '@/lib/payments/gateway-factory'
 import { createDestinationCharge } from '@/lib/payments/create-destination-charge'
+import { buildPaymentIntentIdempotencyKey } from '@/lib/payments/idempotency'
 import { ChargePreconditionError } from '@/lib/payments/application-fee'
 import { validateDiscountCode } from './discount-codes'
 import { getDynamicPriceMap } from '@/lib/pricing/dynamic-pricing'
@@ -340,7 +341,14 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
 
   // 9. Create payment record
   const payment_id = crypto.randomUUID()
-  const idempotency_key = order_id
+  // P2-8: composite key (order id + amount + attempt) instead of a bare
+  // order id, so a corrected amount cannot replay a stale Stripe intent.
+  // attempt defaults to 1; a persisted retry counter is a documented
+  // follow-up (docs/TRIAD-REFACTOR-DESIGN.md section 5).
+  const idempotency_key = buildPaymentIntentIdempotencyKey({
+    orderId: order_id,
+    amountCents: fees.total_cents,
+  })
 
   const { error: paymentError } = await adminClient
     .from('payments')
@@ -619,6 +627,13 @@ async function processSeatCheckout({
 
   // Paid: create payment record and Stripe PaymentIntent
   const payment_id = crypto.randomUUID()
+  // P2-8: composite key, same rationale as the standard checkout flow.
+  // Both flows go through buildPaymentIntentIdempotencyKey so they cannot
+  // drift (docs/TRIAD-REFACTOR-DESIGN.md section 5).
+  const idempotency_key = buildPaymentIntentIdempotencyKey({
+    orderId: order_id,
+    amountCents: fees.total_cents,
+  })
   const { error: paymentError } = await adminClient
     .from('payments')
     .insert({
@@ -628,7 +643,7 @@ async function processSeatCheckout({
       status: 'initiated',
       amount_cents: fees.total_cents,
       currency,
-      idempotency_key: order_id,
+      idempotency_key,
     })
 
   if (paymentError) {
@@ -643,7 +658,7 @@ async function processSeatCheckout({
       organisationId: event.organisation_id,
       fees,
       customerEmail: buyer_email,
-      idempotencyKey: order_id,
+      idempotencyKey: idempotency_key,
       metadata: {
         order_id,
         event_id: event.id,
