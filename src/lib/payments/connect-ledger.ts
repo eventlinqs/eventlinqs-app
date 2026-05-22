@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getReservePercentage, getPayoutScheduleDays } from './pricing-rules'
+import { captureException } from '@/lib/observability/sentry'
 
 type AdminClient = SupabaseClient
 
@@ -104,6 +105,11 @@ export async function recordOrderConfirmedLedger(
 
   const order = await loadOrder(adminClient, params.orderId)
   if (!order) {
+    captureException(new Error('connect-ledger: order not found'), {
+      scope: 'payments-connect-ledger',
+      order_id: params.orderId,
+      payment_intent_id: params.stripePaymentIntentId,
+    })
     console.error('[connect-ledger] order not found', { orderId: params.orderId })
     return { status: 'skipped_unconfirmed_order' }
   }
@@ -118,6 +124,12 @@ export async function recordOrderConfirmedLedger(
 
   const org = await loadOrg(adminClient, order.organisation_id)
   if (!org) {
+    captureException(new Error('connect-ledger: organisation not found'), {
+      scope: 'payments-connect-ledger',
+      order_id: params.orderId,
+      organisation_id: order.organisation_id,
+      payment_intent_id: params.stripePaymentIntentId,
+    })
     console.error('[connect-ledger] organisation not found', {
       orderId: params.orderId,
       organisationId: order.organisation_id,
@@ -161,6 +173,13 @@ export async function recordOrderConfirmedLedger(
       },
     })
   if (creditError) {
+    captureException(creditError, {
+      scope: 'payments-connect-ledger',
+      handler: 'order_confirmed-credit-insert',
+      order_id: params.orderId,
+      organisation_id: order.organisation_id,
+      payment_intent_id: params.stripePaymentIntentId,
+    })
     console.error('[connect-ledger] order_confirmed insert failed', {
       orderId: params.orderId,
       error: creditError,
