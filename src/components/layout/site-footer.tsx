@@ -17,16 +17,24 @@ import { FirstNationsFlags } from '@/components/features/home/cultural-calendar-
  * em-dashes, no exclamation marks.
  */
 
-const DISCOVER = [
+// Exported so tests/unit/footer-links.test.ts can assert every /events?…
+// href the footer emits is recognised by the parser at
+// src/lib/events/search-params.ts. Adding a new link with a wrong param
+// name (e.g. `?free=1`, `?when=this-week`) will fail that test.
+export const DISCOVER = [
   { label: 'Browse all events', href: '/events' },
-  { label: 'By city',           href: '/events?view=cities' },
-  { label: 'By culture',        href: '/events?view=cultures' },
-  { label: 'This week',         href: '/events?when=this-week' },
-  { label: 'This weekend',      href: '/events?when=this-weekend' },
-  { label: 'Free events',       href: '/events?price=free' },
+  // "By city" and "By culture" go to the dedicated index pages, not to
+  // an /events view mode - the parser only recognises view=grid|map.
+  { label: 'By city',           href: '/cities' },
+  { label: 'By culture',        href: '/cultures' },
+  // Preset values come from PRESETS in search-params.ts:
+  //   7d = next 7 days, weekend = upcoming weekend, free = preset=free.
+  { label: 'This week',         href: '/events?preset=7d' },
+  { label: 'This weekend',      href: '/events?preset=weekend' },
+  { label: 'Free events',       href: '/events?preset=free' },
 ]
 
-const CULTURES = [
+export const CULTURES = [
   { label: 'First Nations',  href: '/culture/aboriginal-torres-strait-islander' },
   { label: 'African',        href: '/culture/african' },
   { label: 'Caribbean',      href: '/culture/caribbean' },
@@ -36,21 +44,21 @@ const CULTURES = [
   { label: 'All cultures',   href: '/cultures' },
 ]
 
-const FOR_ORGANISERS = [
+export const FOR_ORGANISERS = [
   { label: 'Sell tickets',     href: '/organisers/signup' },
   { label: 'Pricing',          href: '/pricing' },
   { label: 'Organiser guide',  href: '/organisers' },
   { label: 'Help centre',      href: '/help/selling-tickets' },
 ]
 
-const COMPANY = [
+export const COMPANY = [
   { label: 'About',     href: '/about' },
   { label: 'Careers',   href: '/careers' },
   { label: 'Press',     href: '/press' },
   { label: 'Contact',   href: '/contact' },
 ]
 
-const LEGAL = [
+export const LEGAL = [
   { label: 'Terms',          href: '/legal/terms' },
   { label: 'Privacy',        href: '/legal/privacy' },
   { label: 'Refund policy',  href: '/legal/refunds' },
