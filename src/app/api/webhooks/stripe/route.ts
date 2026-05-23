@@ -19,6 +19,11 @@ import {
   WebhookProcessingError,
 } from '@/lib/payments/webhook-events'
 import { captureException } from '@/lib/observability/sentry'
+import {
+  buildRefundConfirmationHtml,
+  buildRefundConfirmationSubject,
+  buildRefundConfirmationText,
+} from '@/lib/email/templates/refund-confirmation'
 import type Stripe from 'stripe'
 import type { PayoutRecordStatus } from '@/types/database'
 
@@ -869,6 +874,145 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
     promoteWaitlist(order.event_id, item.ticket_tier_id, item.quantity).catch(err => {
       console.error('[webhook] promoteWaitlist failed after charge.refunded:', err)
     })
+  }
+
+  // Refund confirmation email to the buyer. Closes
+  // AUDIT-FUNCTIONALITY-2026-05-23.md MEDIUM-1. Non-fatal on send failure
+  // (catches inside, matching the existing sendConfirmationEmail pattern):
+  // the refund and ticket-void state already persisted, so a missing email
+  // does not undo the refund. A failed send is captured for an operator
+  // to re-drive if needed.
+  await sendRefundConfirmationEmail(adminClient, payment.order_id, charge).catch(err => {
+    captureException(err, {
+      scope: 'stripe-webhook',
+      handler: 'charge-refunded-confirmation-email',
+      order_id: payment.order_id,
+    })
+    console.error('[webhook] sendRefundConfirmationEmail failed:', err)
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Refund confirmation email (closes AUDIT-FUNCTIONALITY-2026-05-23.md
+// MEDIUM-1).
+//
+// Fires on every charge.refunded webhook event after the ticket void
+// has persisted. Pure side-effect: no DB writes, only DB reads to
+// hydrate the template props. The Resend send is wrapped in try/catch
+// so a Resend outage cannot break the webhook idempotency.
+//
+// Partial-refund caveat: Stripe emits one charge.refunded event per
+// refund, but the charge object carries `amount_refunded` as the
+// cumulative refunded value. For full refunds (the dominant case at
+// friends-launch) this matches the buyer's expectation exactly. For
+// staggered partial refunds the buyer would see two emails, each
+// showing the cumulative refunded amount at that point in time; this
+// is acceptable for v1. A per-refund amount can be threaded through
+// later by inspecting `charge.refunds.data[0].amount`.
+// ---------------------------------------------------------------------------
+
+async function sendRefundConfirmationEmail(
+  db: ReturnType<typeof createAdminClient>,
+  order_id: string,
+  charge: Stripe.Charge,
+) {
+  const resendKey = process.env.RESEND_API_KEY
+  if (!resendKey) return
+
+  const { data: order } = await db
+    .from('orders')
+    .select('order_number, total_cents, currency, event_id, user_id, guest_email, guest_name')
+    .eq('id', order_id)
+    .single()
+  if (!order) return
+
+  // Buyer email resolution mirrors sendConfirmationEmail: prefer the
+  // explicit guest_email captured at checkout, fall back to the
+  // profile email for logged-in buyers.
+  let buyerEmail: string | null = order.guest_email ?? null
+  let buyerName: string | null = order.guest_name ?? null
+  if (order.user_id) {
+    const { data: profile } = await db
+      .from('profiles')
+      .select('email, full_name')
+      .eq('id', order.user_id)
+      .single()
+    buyerEmail = buyerEmail ?? profile?.email ?? null
+    buyerName = buyerName ?? profile?.full_name ?? null
+  }
+  if (!buyerEmail) return
+
+  const { data: event } = await db
+    .from('events')
+    .select('title, organisation_id')
+    .eq('id', order.event_id)
+    .single()
+  if (!event) return
+
+  // Optional organiser contact for the support line. Soft-fail to null
+  // if the organisation row is unreachable; the template renders the
+  // platform-support fallback in that case.
+  let organiserName: string | null = null
+  let organiserContactEmail: string | null = null
+  if (event.organisation_id) {
+    const { data: org } = await db
+      .from('organisations')
+      .select('name, email')
+      .eq('id', event.organisation_id)
+      .single()
+    if (org) {
+      organiserName = org.name ?? null
+      organiserContactEmail = org.email ?? null
+    }
+  }
+
+  // Count tickets currently in refunded/void state for this order as a
+  // proxy for "tickets refunded by this event". On the first refund
+  // delivery this equals the freshly-voided count; on retries it stays
+  // stable (idempotent ticket void).
+  const { count: refundedTicketCount } = await db
+    .from('tickets')
+    .select('id', { count: 'exact', head: true })
+    .eq('order_id', order_id)
+    .in('status', ['void', 'refunded'])
+
+  const refundAmountCents = charge.amount_refunded ?? order.total_cents
+  const currency = (charge.currency ?? order.currency ?? 'AUD').toUpperCase()
+
+  const resend = new Resend(resendKey)
+  try {
+    await resend.emails.send({
+      from: 'EventLinqs <noreply@eventlinqs.com>',
+      to: buyerEmail,
+      replyTo: 'hello@eventlinqs.com',
+      subject: buildRefundConfirmationSubject(event.title),
+      html: buildRefundConfirmationHtml({
+        buyerName,
+        orderNumber: order.order_number,
+        eventTitle: event.title,
+        ticketCount: refundedTicketCount ?? 0,
+        refundAmountCents,
+        currency,
+        customMessage: null,
+        organiserName,
+        organiserContactEmail,
+      }),
+      text: buildRefundConfirmationText({
+        buyerName,
+        orderNumber: order.order_number,
+        eventTitle: event.title,
+        ticketCount: refundedTicketCount ?? 0,
+        refundAmountCents,
+        currency,
+        customMessage: null,
+        organiserName,
+        organiserContactEmail,
+      }),
+    })
+  } catch (err) {
+    // Non-fatal: match the sendConfirmationEmail pattern. Log so an
+    // operator can re-drive via the Resend dashboard if necessary.
+    console.error('Failed to send refund confirmation email:', err)
   }
 }
 
