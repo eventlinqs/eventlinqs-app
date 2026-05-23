@@ -29,18 +29,46 @@ interface SiteHeaderClientProps {
   userEmail?: string | null
 }
 
-function readCityCookie(): DetectedLocation | null {
+// Stable snapshot cache for the el_city cookie reader.
+//
+// useSyncExternalStore's getSnapshot contract requires referentially
+// identical returns when the underlying data has not changed - React
+// calls getSnapshot on every render and uses Object.is to detect store
+// changes. The previous implementation returned a fresh object literal
+// (`{ ...parsed, source: 'cookie' as const }`) on every call when the
+// cookie was set, which fails Object.is, causing React to schedule
+// another render to "catch up" indefinitely - triggering React #185
+// (Maximum update depth exceeded) the moment a second render fired
+// (HeroPresenceProvider update after HeroMedia mounts, scroll-sentinel
+// flip, mobile menu toggle, etc). 2026-05-24 production incident.
+//
+// Cache keyed on the raw cookie segment so identical cookie values
+// resolve to identical references; any change in the segment yields a
+// new reference, which is exactly the change signal
+// useSyncExternalStore is designed to detect.
+let cachedCookieSegment: string | null = null
+let cachedSnapshot: DetectedLocation | null = null
+
+export function readCityCookie(): DetectedLocation | null {
   if (typeof document === 'undefined') return null
   const match = document.cookie.match(/(?:^|;\s*)el_city=([^;]+)/)
-  if (!match) return null
+  const raw = match ? match[1] : null
+  if (raw === cachedCookieSegment) return cachedSnapshot
+  cachedCookieSegment = raw
+  if (!raw) {
+    cachedSnapshot = null
+    return null
+  }
   try {
-    const parsed = JSON.parse(decodeURIComponent(match[1]))
+    const parsed = JSON.parse(decodeURIComponent(raw))
     if (parsed && typeof parsed.city === 'string') {
-      return { ...parsed, source: 'cookie' as const }
+      cachedSnapshot = { ...parsed, source: 'cookie' as const }
+      return cachedSnapshot
     }
   } catch {
     // ignore malformed cookie
   }
+  cachedSnapshot = null
   return null
 }
 
