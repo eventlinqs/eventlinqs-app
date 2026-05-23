@@ -1,0 +1,28 @@
+{
+  "url": "https://www.eventlinqs.com/",
+  "viewport": "iPhone 12 Pro",
+  "steps": [
+    {
+      "name": "navigate",
+      "t": 1779569921144
+    },
+    {
+      "name": "observe-20s-after-load",
+      "t": 1779569922973
+    },
+    {
+      "name": "scroll-to-bottom",
+      "t": 1779569942987
+    },
+    {
+      "name": "cookie-write-clear-3x",
+      "t": 1779569947019
+    },
+    {
+      "name": "done",
+      "t": 1779569953091
+    }
+  ],
+  "pageErrors": [],
+  "reactErrors": []
+}

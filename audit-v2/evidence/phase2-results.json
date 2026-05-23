@@ -1,0 +1,734 @@
+[
+  {
+    "path": "/",
+    "viewport": "mobile",
+    "httpStatus": 200,
+    "loadTimeMs": 4557,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/root_mobile.png",
+    "navError": null
+  },
+  {
+    "path": "/events",
+    "viewport": "mobile",
+    "httpStatus": 200,
+    "loadTimeMs": 776,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootevents_mobile.png",
+    "navError": null
+  },
+  {
+    "path": "/events/africultures-festival-sydney-2027",
+    "viewport": "mobile",
+    "httpStatus": 200,
+    "loadTimeMs": 1823,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootevents_africultures-festival-sydney-2027_mobile.png",
+    "navError": null
+  },
+  {
+    "path": "/events/pasifika-festival-melbourne-2027",
+    "viewport": "mobile",
+    "httpStatus": 200,
+    "loadTimeMs": 2854,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootevents_pasifika-festival-melbourne-2027_mobile.png",
+    "navError": null
+  },
+  {
+    "path": "/events/diwali-mela-brisbane-2026",
+    "viewport": "mobile",
+    "httpStatus": 200,
+    "loadTimeMs": 2094,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootevents_diwali-mela-brisbane-2026_mobile.png",
+    "navError": null
+  },
+  {
+    "path": "/city/sydney",
+    "viewport": "mobile",
+    "httpStatus": 200,
+    "loadTimeMs": 2582,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootcity_sydney_mobile.png",
+    "navError": null
+  },
+  {
+    "path": "/city/melbourne",
+    "viewport": "mobile",
+    "httpStatus": 200,
+    "loadTimeMs": 2283,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootcity_melbourne_mobile.png",
+    "navError": null
+  },
+  {
+    "path": "/city/brisbane",
+    "viewport": "mobile",
+    "httpStatus": 200,
+    "loadTimeMs": 1547,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootcity_brisbane_mobile.png",
+    "navError": null
+  },
+  {
+    "path": "/culture/african",
+    "viewport": "mobile",
+    "httpStatus": 200,
+    "loadTimeMs": 2470,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootculture_african_mobile.png",
+    "navError": null
+  },
+  {
+    "path": "/culture/indian",
+    "viewport": "mobile",
+    "httpStatus": 200,
+    "loadTimeMs": 1481,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootculture_indian_mobile.png",
+    "navError": null
+  },
+  {
+    "path": "/culture/filipino",
+    "viewport": "mobile",
+    "httpStatus": 200,
+    "loadTimeMs": 2056,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootculture_filipino_mobile.png",
+    "navError": null
+  },
+  {
+    "path": "/organisers",
+    "viewport": "mobile",
+    "httpStatus": 200,
+    "loadTimeMs": 1184,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootorganisers_mobile.png",
+    "navError": null
+  },
+  {
+    "path": "/organisers/owambe-sydney",
+    "viewport": "mobile",
+    "httpStatus": 200,
+    "loadTimeMs": 2218,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootorganisers_owambe-sydney_mobile.png",
+    "navError": null
+  },
+  {
+    "path": "/organisers/afrobeats-melbourne",
+    "viewport": "mobile",
+    "httpStatus": 200,
+    "loadTimeMs": 2010,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootorganisers_afrobeats-melbourne_mobile.png",
+    "navError": null
+  },
+  {
+    "path": "/organisers/gospel-brisbane",
+    "viewport": "mobile",
+    "httpStatus": 200,
+    "loadTimeMs": 1613,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootorganisers_gospel-brisbane_mobile.png",
+    "navError": null
+  },
+  {
+    "path": "/pricing",
+    "viewport": "mobile",
+    "httpStatus": 200,
+    "loadTimeMs": 1209,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootpricing_mobile.png",
+    "navError": null
+  },
+  {
+    "path": "/help",
+    "viewport": "mobile",
+    "httpStatus": 200,
+    "loadTimeMs": 1796,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/roothelp_mobile.png",
+    "navError": null
+  },
+  {
+    "path": "/contact",
+    "viewport": "mobile",
+    "httpStatus": 200,
+    "loadTimeMs": 1452,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootcontact_mobile.png",
+    "navError": null
+  },
+  {
+    "path": "/for-organisers",
+    "viewport": "mobile",
+    "httpStatus": 200,
+    "loadTimeMs": 1332,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootfor-organisers_mobile.png",
+    "navError": null
+  },
+  {
+    "path": "/legal/terms",
+    "viewport": "mobile",
+    "httpStatus": 200,
+    "loadTimeMs": 1400,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootlegal_terms_mobile.png",
+    "navError": null
+  },
+  {
+    "path": "/legal/privacy",
+    "viewport": "mobile",
+    "httpStatus": 200,
+    "loadTimeMs": 1440,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootlegal_privacy_mobile.png",
+    "navError": null
+  },
+  {
+    "path": "/legal/refunds",
+    "viewport": "mobile",
+    "httpStatus": 200,
+    "loadTimeMs": 1331,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootlegal_refunds_mobile.png",
+    "navError": null
+  },
+  {
+    "path": "/legal/cookies",
+    "viewport": "mobile",
+    "httpStatus": 200,
+    "loadTimeMs": 971,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootlegal_cookies_mobile.png",
+    "navError": null
+  },
+  {
+    "path": "/legal/organiser-terms",
+    "viewport": "mobile",
+    "httpStatus": 200,
+    "loadTimeMs": 2156,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootlegal_organiser-terms_mobile.png",
+    "navError": null
+  },
+  {
+    "path": "/sign-in",
+    "viewport": "mobile",
+    "httpStatus": 404,
+    "loadTimeMs": 871,
+    "consoleErrors": [
+      {
+        "text": "Failed to load resource: the server responded with a status of 404 ()",
+        "location": {
+          "url": "https://www.eventlinqs.com/sign-in",
+          "lineNumber": 0,
+          "columnNumber": 0
+        }
+      }
+    ],
+    "pageErrors": [],
+    "badResponses": [
+      {
+        "url": "https://www.eventlinqs.com/sign-in",
+        "status": 404,
+        "method": "GET"
+      }
+    ],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootsign-in_mobile.png",
+    "navError": null
+  },
+  {
+    "path": "/sign-up",
+    "viewport": "mobile",
+    "httpStatus": 404,
+    "loadTimeMs": 644,
+    "consoleErrors": [
+      {
+        "text": "Failed to load resource: the server responded with a status of 404 ()",
+        "location": {
+          "url": "https://www.eventlinqs.com/sign-up",
+          "lineNumber": 0,
+          "columnNumber": 0
+        }
+      }
+    ],
+    "pageErrors": [],
+    "badResponses": [
+      {
+        "url": "https://www.eventlinqs.com/sign-up",
+        "status": 404,
+        "method": "GET"
+      }
+    ],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootsign-up_mobile.png",
+    "navError": null
+  },
+  {
+    "path": "/tickets",
+    "viewport": "mobile",
+    "httpStatus": 200,
+    "loadTimeMs": 1579,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/roottickets_mobile.png",
+    "navError": null
+  },
+  {
+    "path": "/admin/login",
+    "viewport": "mobile",
+    "httpStatus": 200,
+    "loadTimeMs": 1697,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootadmin_login_mobile.png",
+    "navError": null
+  },
+  {
+    "path": "/",
+    "viewport": "desktop",
+    "httpStatus": 200,
+    "loadTimeMs": 2358,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/root_desktop.png",
+    "navError": null
+  },
+  {
+    "path": "/events",
+    "viewport": "desktop",
+    "httpStatus": 200,
+    "loadTimeMs": 1593,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootevents_desktop.png",
+    "navError": null
+  },
+  {
+    "path": "/events/africultures-festival-sydney-2027",
+    "viewport": "desktop",
+    "httpStatus": 200,
+    "loadTimeMs": 2221,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootevents_africultures-festival-sydney-2027_desktop.png",
+    "navError": null
+  },
+  {
+    "path": "/events/pasifika-festival-melbourne-2027",
+    "viewport": "desktop",
+    "httpStatus": 200,
+    "loadTimeMs": 2381,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootevents_pasifika-festival-melbourne-2027_desktop.png",
+    "navError": null
+  },
+  {
+    "path": "/events/diwali-mela-brisbane-2026",
+    "viewport": "desktop",
+    "httpStatus": 200,
+    "loadTimeMs": 2359,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootevents_diwali-mela-brisbane-2026_desktop.png",
+    "navError": null
+  },
+  {
+    "path": "/city/sydney",
+    "viewport": "desktop",
+    "httpStatus": 200,
+    "loadTimeMs": 2062,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootcity_sydney_desktop.png",
+    "navError": null
+  },
+  {
+    "path": "/city/melbourne",
+    "viewport": "desktop",
+    "httpStatus": 200,
+    "loadTimeMs": 3914,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootcity_melbourne_desktop.png",
+    "navError": null
+  },
+  {
+    "path": "/city/brisbane",
+    "viewport": "desktop",
+    "httpStatus": 200,
+    "loadTimeMs": 1880,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootcity_brisbane_desktop.png",
+    "navError": null
+  },
+  {
+    "path": "/culture/african",
+    "viewport": "desktop",
+    "httpStatus": 200,
+    "loadTimeMs": 1865,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootculture_african_desktop.png",
+    "navError": null
+  },
+  {
+    "path": "/culture/indian",
+    "viewport": "desktop",
+    "httpStatus": 200,
+    "loadTimeMs": 1871,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootculture_indian_desktop.png",
+    "navError": null
+  },
+  {
+    "path": "/culture/filipino",
+    "viewport": "desktop",
+    "httpStatus": 200,
+    "loadTimeMs": 1768,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootculture_filipino_desktop.png",
+    "navError": null
+  },
+  {
+    "path": "/organisers",
+    "viewport": "desktop",
+    "httpStatus": 200,
+    "loadTimeMs": 1132,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootorganisers_desktop.png",
+    "navError": null
+  },
+  {
+    "path": "/organisers/owambe-sydney",
+    "viewport": "desktop",
+    "httpStatus": 200,
+    "loadTimeMs": 1981,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootorganisers_owambe-sydney_desktop.png",
+    "navError": null
+  },
+  {
+    "path": "/organisers/afrobeats-melbourne",
+    "viewport": "desktop",
+    "httpStatus": 200,
+    "loadTimeMs": 1927,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootorganisers_afrobeats-melbourne_desktop.png",
+    "navError": null
+  },
+  {
+    "path": "/organisers/gospel-brisbane",
+    "viewport": "desktop",
+    "httpStatus": 200,
+    "loadTimeMs": 1884,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootorganisers_gospel-brisbane_desktop.png",
+    "navError": null
+  },
+  {
+    "path": "/pricing",
+    "viewport": "desktop",
+    "httpStatus": 200,
+    "loadTimeMs": 1312,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootpricing_desktop.png",
+    "navError": null
+  },
+  {
+    "path": "/help",
+    "viewport": "desktop",
+    "httpStatus": 200,
+    "loadTimeMs": 580,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/roothelp_desktop.png",
+    "navError": null
+  },
+  {
+    "path": "/contact",
+    "viewport": "desktop",
+    "httpStatus": 200,
+    "loadTimeMs": 1308,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootcontact_desktop.png",
+    "navError": null
+  },
+  {
+    "path": "/for-organisers",
+    "viewport": "desktop",
+    "httpStatus": 200,
+    "loadTimeMs": 1500,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootfor-organisers_desktop.png",
+    "navError": null
+  },
+  {
+    "path": "/legal/terms",
+    "viewport": "desktop",
+    "httpStatus": 200,
+    "loadTimeMs": 712,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootlegal_terms_desktop.png",
+    "navError": null
+  },
+  {
+    "path": "/legal/privacy",
+    "viewport": "desktop",
+    "httpStatus": 200,
+    "loadTimeMs": 1146,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootlegal_privacy_desktop.png",
+    "navError": null
+  },
+  {
+    "path": "/legal/refunds",
+    "viewport": "desktop",
+    "httpStatus": 200,
+    "loadTimeMs": 1045,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootlegal_refunds_desktop.png",
+    "navError": null
+  },
+  {
+    "path": "/legal/cookies",
+    "viewport": "desktop",
+    "httpStatus": 200,
+    "loadTimeMs": 1171,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootlegal_cookies_desktop.png",
+    "navError": null
+  },
+  {
+    "path": "/legal/organiser-terms",
+    "viewport": "desktop",
+    "httpStatus": 200,
+    "loadTimeMs": 637,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootlegal_organiser-terms_desktop.png",
+    "navError": null
+  },
+  {
+    "path": "/sign-in",
+    "viewport": "desktop",
+    "httpStatus": 404,
+    "loadTimeMs": 1057,
+    "consoleErrors": [
+      {
+        "text": "Failed to load resource: the server responded with a status of 404 ()",
+        "location": {
+          "url": "https://www.eventlinqs.com/sign-in",
+          "lineNumber": 0,
+          "columnNumber": 0
+        }
+      }
+    ],
+    "pageErrors": [],
+    "badResponses": [
+      {
+        "url": "https://www.eventlinqs.com/sign-in",
+        "status": 404,
+        "method": "GET"
+      }
+    ],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootsign-in_desktop.png",
+    "navError": null
+  },
+  {
+    "path": "/sign-up",
+    "viewport": "desktop",
+    "httpStatus": 404,
+    "loadTimeMs": 1110,
+    "consoleErrors": [
+      {
+        "text": "Failed to load resource: the server responded with a status of 404 ()",
+        "location": {
+          "url": "https://www.eventlinqs.com/sign-up",
+          "lineNumber": 0,
+          "columnNumber": 0
+        }
+      }
+    ],
+    "pageErrors": [],
+    "badResponses": [
+      {
+        "url": "https://www.eventlinqs.com/sign-up",
+        "status": 404,
+        "method": "GET"
+      }
+    ],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootsign-up_desktop.png",
+    "navError": null
+  },
+  {
+    "path": "/tickets",
+    "viewport": "desktop",
+    "httpStatus": 200,
+    "loadTimeMs": 1281,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/roottickets_desktop.png",
+    "navError": null
+  },
+  {
+    "path": "/admin/login",
+    "viewport": "desktop",
+    "httpStatus": 200,
+    "loadTimeMs": 760,
+    "consoleErrors": [],
+    "pageErrors": [],
+    "badResponses": [],
+    "visibleErrorText": null,
+    "screenshot": "screenshots/rootadmin_login_desktop.png",
+    "navError": null
+  }
+]
