@@ -166,8 +166,36 @@ export async function POST(request: NextRequest) {
         await handleConnectDisputeEvent(event.type, dispute, event.id)
         break
       }
+      // Intentional no-op branches. These four event types remain
+      // subscribed on the Stripe endpoint but carry no business action
+      // on our side. We acknowledge them explicitly (rather than
+      // falling into the default branch) so they show up in Vercel
+      // logs as known-handled and so a future "why isn't this firing"
+      // search lands on a deliberate decision rather than a silent
+      // skip. Rationale per event in
+      // docs/observability/stripe-webhook-subscriptions.md.
+      //
+      // charge.succeeded   - payment_intent.succeeded above is the
+      //                      authoritative money path; the matching
+      //                      charge.succeeded delivery is duplicative.
+      // charge.updated     - charge-level metadata edits we do not act on.
+      // checkout.session.* - we use Stripe Elements (PaymentElement) and
+      //                      do not use Stripe Checkout Sessions, so these
+      //                      events never originate from our flows in the
+      //                      first place; subscribing keeps the endpoint
+      //                      future-proof if we ever opt in to hosted
+      //                      checkout.
+      case 'charge.succeeded':
+      case 'charge.updated':
+      case 'checkout.session.completed':
+      case 'checkout.session.expired':
+        // No-op by design. See comment above and the subscriptions doc.
+        break
       default:
-        // Ignore unhandled event types
+        // Unknown event type. Log so an operator notices if Stripe begins
+        // delivering something we did not anticipate (e.g. a new event
+        // type added to the endpoint config without a matching handler).
+        console.info(`[stripe-webhook] unhandled event type: ${event.type} (event ${event.id})`)
         break
     }
   } catch (err) {
