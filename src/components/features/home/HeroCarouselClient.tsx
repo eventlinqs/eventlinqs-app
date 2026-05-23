@@ -171,44 +171,80 @@ export function HeroCarouselClient({ slides }: Props) {
                 }}
               />
             )}
-            {/* Diagonal gradient mask: navy 80% bottom-left fading to transparent top-right. */}
+            {/* Gradient overlay per docs/M5-DESIGN-SPEC.md / Information
+             *  architecture: "Hero band ... gradient overlay (navy ->
+             *  transparent from bottom)". Bottom-anchored linear so the
+             *  title sits on a darker band while the upper half of the
+             *  photograph reads unobstructed. */}
             <div
               aria-hidden
               className="pointer-events-none absolute inset-0"
               style={{
                 background:
-                  'linear-gradient(45deg, rgba(10,22,40,0.85) 0%, rgba(10,22,40,0.65) 35%, rgba(10,22,40,0.25) 65%, rgba(10,22,40,0.05) 100%)',
+                  'linear-gradient(to top, rgba(10,22,40,0.85) 0%, rgba(10,22,40,0.55) 35%, rgba(10,22,40,0.20) 65%, rgba(10,22,40,0.00) 100%)',
               }}
             />
             {/* Content block - bottom-left anchored. */}
             <div className="relative z-10 mx-auto flex h-full max-w-7xl items-end px-6 pb-16 sm:px-8 sm:pb-20 lg:px-24 lg:pb-28">
               <div className="max-w-3xl">
-                <p className="font-display text-[11px] font-bold uppercase tracking-[0.28em] text-[var(--brand-accent)] sm:text-xs">
+                {/* Kicker - per M5-DESIGN-SPEC.md Typography: --type-micro
+                 *  (12px, weight 500), gold accent on dark surfaces. */}
+                <p
+                  className="type-micro font-display uppercase tracking-[0.18em] text-[var(--brand-accent)]"
+                  style={{ fontWeight: 600 }}
+                >
                   {slide.kicker}
                 </p>
+                {/* Title - per M5-DESIGN-SPEC.md: --type-hero-display
+                 *  (96px desktop / 48px mobile, weight 800). Serif
+                 *  rejected by spec ("None of the four competitors use
+                 *  serif"); using Manrope sans via .type-hero-display. */}
                 <h3
-                  className="mt-3 font-serif font-bold leading-[1.05] tracking-tight text-white sm:mt-4"
-                  style={{
-                    fontFamily: 'var(--font-playfair, "Playfair Display"), Georgia, serif',
-                    fontSize: 'clamp(2.25rem, 5vw + 1rem, 5.5rem)',
-                  }}
+                  className="type-hero-display mt-3 tracking-tight text-white sm:mt-4"
                 >
                   {slide.title}
                 </h3>
-                <p className="mt-4 text-base font-medium text-white/90 sm:mt-5 sm:text-lg lg:text-xl">
+                {/* Subtitle - per M5-DESIGN-SPEC.md: --type-h3 (28px
+                 *  desktop / 22px mobile, weight 600). */}
+                <p className="type-h3 mt-4 text-white/90 sm:mt-5">
                   {slide.venue}
                   <span aria-hidden className="mx-2 text-white/40">|</span>
                   {slide.city}
                   <span aria-hidden className="mx-2 text-white/40">|</span>
                   {slide.date}
                 </p>
-                <div className="mt-8">
+                {/* CTAs - per M5-DESIGN-SPEC.md: "One primary CTA (gold),
+                 *  one secondary (navy outline)". Gold primary to the
+                 *  slot's event, navy/white-outline secondary to the
+                 *  marketplace browse (supports the marketplace-breadth
+                 *  positioning that distinguishes EventLinqs from DICE's
+                 *  single-hero CTA approach). */}
+                <div className="mt-8 flex flex-wrap items-center" style={{ gap: 'var(--space-element-gap)' }}>
                   <Link
                     href={slide.cta}
                     prefetch={false}
-                    className="plausible-event-name=hero_get_tickets_click inline-flex h-14 items-center justify-center rounded-full bg-[var(--brand-accent)] px-7 text-base font-semibold text-[var(--color-navy-950)] shadow-lg shadow-black/30 transition-transform duration-200 motion-reduce:transition-none hover:scale-[1.03] hover:shadow-[0_12px_40px_rgba(212,164,55,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)]"
+                    className="plausible-event-name=hero_get_tickets_click inline-flex h-14 items-center justify-center rounded-full bg-[var(--brand-accent)] px-7 text-[var(--color-navy-950)] shadow-lg shadow-black/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)] hover:scale-[1.02] hover:shadow-[0_12px_40px_rgba(212,164,55,0.45)] motion-reduce:transition-none motion-reduce:hover:scale-100"
+                    style={{
+                      fontSize: 'var(--type-body)',
+                      fontWeight: 600,
+                      transition:
+                        'transform var(--motion-quick), box-shadow var(--motion-quick)',
+                    }}
                   >
                     Get tickets
+                  </Link>
+                  <Link
+                    href="/events"
+                    prefetch={false}
+                    className="inline-flex h-14 items-center justify-center rounded-full border-2 border-white/80 px-7 text-white hover:border-white hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)] motion-reduce:transition-none"
+                    style={{
+                      fontSize: 'var(--type-body)',
+                      fontWeight: 600,
+                      transition:
+                        'background-color var(--motion-quick), border-color var(--motion-quick)',
+                    }}
+                  >
+                    Browse all events
                   </Link>
                 </div>
               </div>

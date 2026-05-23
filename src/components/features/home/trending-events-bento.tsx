@@ -141,7 +141,7 @@ export function TrendingEventsBento({ events, viewAllHref = '/events?sort=trendi
               </p>
               <h2
                 id="trending-bento-heading"
-                className="font-display text-2xl font-extrabold tracking-tight text-ink-900 sm:text-3xl lg:text-4xl"
+                className="type-h2 font-display tracking-tight text-ink-900"
               >
                 Trending now
               </h2>

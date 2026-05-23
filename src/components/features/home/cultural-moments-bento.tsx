@@ -52,7 +52,7 @@ export async function CulturalMomentsBento() {
           </p>
           <h2
             id="moments-bento-heading"
-            className="mt-1 font-display text-2xl font-extrabold tracking-tight text-ink-900 sm:text-3xl lg:text-4xl"
+            className="type-h2 mt-1 font-display tracking-tight text-ink-900"
           >
             Cultural moments ahead
           </h2>

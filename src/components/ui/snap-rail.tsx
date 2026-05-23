@@ -289,7 +289,7 @@ export function SnapRailScroller({
             ) : null}
             <h2
               id={header.headingId}
-              className="font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl"
+              className="type-h2 font-display text-[var(--text-primary)]"
             >
               {header.title}
             </h2>
@@ -347,7 +347,7 @@ export function SnapRail({
             </p>
             <h2
               id={headingId}
-              className="font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl"
+              className="type-h2 font-display text-[var(--text-primary)]"
             >
               {title}
             </h2>

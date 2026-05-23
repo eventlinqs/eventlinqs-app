@@ -128,6 +128,98 @@
   --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+/* ─── M5 Design Spec tokens (LOCKED) ─────────────────────────────────────── */
+/*
+ * Source of truth: docs/M5-DESIGN-SPEC.md (23 May 2026).
+ *
+ * Fixed-px typography, semantic spacing, combined motion tokens.
+ * These DO NOT replace the older Tailwind-style --text-*, --space-N, --ease-*
+ * tokens in @theme; older surfaces still consume those. M5+ public-page
+ * components use the tokens below only. No fluid clamp() on M5 type.
+ */
+:root {
+  /* Typography per M5-DESIGN-SPEC.md / Typography section.
+     Manrope is the existing display family (kept). Weights: 800 display,
+     700 h1-h2, 600 h3-h4, 500 body. NEVER 400 (reads as cheap per spec). */
+  --type-hero-display:         96px;   /* desktop only */
+  --type-hero-display-mobile:  48px;
+  --type-h1:                   56px;
+  --type-h1-mobile:            36px;
+  --type-h2:                   40px;
+  --type-h2-mobile:            28px;
+  --type-h3:                   28px;
+  --type-h3-mobile:            22px;
+  --type-h4:                   22px;
+  --type-h4-mobile:            18px;
+  --type-body:                 17px;
+  --type-body-mobile:          16px;
+  --type-small:                14px;
+  --type-micro:                12px;
+
+  /* Spacing per M5-DESIGN-SPEC.md / Spacing section.
+     Confident, not lavish: hero uses real padding (64/80) but sections
+     and containers stay tight. */
+  --space-section-y-desktop:    80px;
+  --space-section-y-mobile:     48px;
+  --space-container-x-desktop:  32px;
+  --space-container-x-mobile:   16px;
+  --space-card-gap:             24px;  /* matches Humanitix measured grid gap */
+  --space-card-padding-y:       20px;
+  --space-card-padding-x:       20px;
+  --space-hero-padding-top:     64px;
+  --space-hero-padding-bottom:  80px;
+  --space-element-gap:          16px;
+  --space-tight-gap:            8px;
+
+  /* Motion per M5-DESIGN-SPEC.md / Motion section.
+     Each token bundles duration + easing in CSS shorthand form, ready
+     for `transition: <property> var(--motion-quick)`.
+     Curve: ease-out-expo (the Linear/Vercel reference). */
+  --motion-quick: 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-exit:  150ms cubic-bezier(0.7,  0, 0.84, 0);
+  --motion-page:  300ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ─── M5 motion utility classes ─────────────────────────────────────────── */
+/*
+ * Token-bound transitions. Use these on card surfaces and image holders
+ * instead of `transition-all duration-200` (the spec forbids
+ * `transition-all`). They preserve declarative className usage while
+ * binding the duration + easing to --motion-quick.
+ */
+.card-hover-transition {
+  transition: transform var(--motion-quick), box-shadow var(--motion-quick);
+}
+.card-hover-img {
+  transition: transform var(--motion-quick);
+  transform-origin: center;
+}
+
+/* ─── M5 typography utility classes ──────────────────────────────────────── */
+/*
+ * Pair font-size + line-height + weight per spec in one class.
+ * Mobile values switch at 768px (spec's mobile breakpoint).
+ * Components apply e.g. <h1 className="type-hero-display"> with no inline
+ * style needed.
+ */
+.type-hero-display { font-size: var(--type-hero-display); line-height: 0.95; font-weight: 800; }
+.type-h1           { font-size: var(--type-h1);           line-height: 1.05; font-weight: 700; }
+.type-h2           { font-size: var(--type-h2);           line-height: 1.15; font-weight: 700; }
+.type-h3           { font-size: var(--type-h3);           line-height: 1.25; font-weight: 600; }
+.type-h4           { font-size: var(--type-h4);           line-height: 1.30; font-weight: 600; }
+.type-body         { font-size: var(--type-body);         line-height: 1.55; font-weight: 500; }
+.type-small        { font-size: var(--type-small);        line-height: 1.40; font-weight: 500; }
+.type-micro        { font-size: var(--type-micro);        line-height: 1.35; font-weight: 500; }
+
+@media (max-width: 768px) {
+  .type-hero-display { font-size: var(--type-hero-display-mobile); line-height: 1.00; }
+  .type-h1           { font-size: var(--type-h1-mobile);           line-height: 1.10; }
+  .type-h2           { font-size: var(--type-h2-mobile);           line-height: 1.20; }
+  .type-h3           { font-size: var(--type-h3-mobile);           line-height: 1.30; }
+  .type-h4           { font-size: var(--type-h4-mobile);           line-height: 1.35; }
+  .type-body         { font-size: var(--type-body-mobile);         line-height: 1.55; }
+}
+
 /* ─── Body defaults ──────────────────────────────────────────────────────── */
 /* Clip horizontal overflow so off-canvas elements (mobile drawers
  * positioned at right:0 with translateX(100%), horizontal scroll rails

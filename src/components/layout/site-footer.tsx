@@ -1,4 +1,5 @@
 import { EventlinqsLogo } from '@/components/ui/eventlinqs-logo'
+import { FirstNationsFlags } from '@/components/features/home/cultural-calendar-widget'
 
 /**
  * SiteFooter v4 (Batch 5.5) - 4-column desktop, 2-column mobile, ~50%
@@ -240,6 +241,32 @@ export function SiteFooter() {
 
           <div className="mt-4 border-t border-white/10 pt-4">
             <LanguagePicker />
+          </div>
+        </div>
+      </div>
+
+      {/* First Nations acknowledgement.
+       *  Per docs/M5-DESIGN-SPEC.md "What EventLinqs has that no competitor
+       *  has": "Aboriginal and Torres Strait Islander Flag SVG in footer
+       *  + first position in heritage filtering". Both flags are placed
+       *  at first position with attribution carried in their inline SVG
+       *  <title> elements. Acknowledgement copy follows the standard
+       *  Reconciliation Australia template; refresh on community review. */}
+      <div className="border-t border-white/10">
+        <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
+            {/* Light wrapper so the flags remain legible against the
+             *  ink-950 footer background (the Aboriginal flag's black
+             *  top half would otherwise blend with the surface). */}
+            <span className="inline-flex items-center rounded-md bg-white/5 px-2 py-1.5 ring-1 ring-white/10">
+              <FirstNationsFlags />
+            </span>
+            <p className="max-w-3xl text-xs leading-relaxed text-white/70 sm:text-sm">
+              EventLinqs acknowledges the Traditional Custodians of Country
+              throughout Australia and recognises their continuing connection
+              to land, waters, and culture. We pay our respects to Elders
+              past and present.
+            </p>
           </div>
         </div>
       </div>
