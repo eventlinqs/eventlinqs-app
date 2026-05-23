@@ -117,3 +117,6 @@ docs/redesign/batch-*-evidence/lighthouse/*.json
 
 # Competitor research screenshots are committed deliverables (overrides *.png)
 !research/competitors/**/*.png
+
+# Iteration snapshot screenshots are committed deliverables (overrides *.png)
+!research/snapshots/**/*.png
