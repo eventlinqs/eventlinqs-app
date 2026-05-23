@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import bundleAnalyzer from "@next/bundle-analyzer";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === 'true' });
 
@@ -100,4 +101,35 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withBundleAnalyzer(nextConfig);
+// Sentry webpack plugin options. Source map upload requires
+// SENTRY_AUTH_TOKEN; when the token is absent the plugin skips upload
+// silently (build still succeeds). The runtime SDK still captures
+// events on every deploy via NEXT_PUBLIC_SENTRY_DSN.
+const sentryWebpackPluginOptions = {
+  org: process.env.SENTRY_ORG || "eventlinqs",
+  project: process.env.SENTRY_PROJECT || "javascript-nextjs",
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  // Keep CI build logs clean; emit verbose info on local builds.
+  silent: !!process.env.CI,
+  widenClientFileUpload: true,
+  hideSourceMaps: true,
+  // Route Sentry ingest through /api/monitoring so ad-blockers that
+  // drop requests to sentry.io still let events through. Vercel
+  // handles the rewrite automatically.
+  tunnelRoute: "/api/monitoring",
+  // Webpack-bundled options (v10+ shape). Tree-shaking removes Sentry
+  // SDK debug logging from production bundles. automaticVercelMonitors
+  // synthesises Vercel monitors for the project on each deploy.
+  webpack: {
+    treeshake: { removeDebugLogging: true },
+    automaticVercelMonitors: true,
+  },
+};
+
+// Wrapping order matters: withBundleAnalyzer must run before
+// withSentryConfig so the Sentry plugin sees the analyser-augmented
+// webpack config rather than the other way round.
+export default withSentryConfig(
+  withBundleAnalyzer(nextConfig),
+  sentryWebpackPluginOptions,
+);
