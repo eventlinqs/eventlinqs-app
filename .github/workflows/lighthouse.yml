@@ -83,12 +83,24 @@ jobs:
         # NEXT_PUBLIC_* must be present BEFORE `next build` so the values
         # are inlined into the client bundle. Pull them from the running
         # local stack and write to $GITHUB_ENV for subsequent steps.
+        #
+        # SUPABASE_SERVICE_ROLE_KEY is also exported here so the cached
+        # public-read fetchers that use createAdminClient (notably
+        # fetchPublicEventsCached and fetchActiveCategoriesCached called
+        # from src/app/events/page.tsx) can construct their client at SSR
+        # time. Without this, `/events` server-renders a 500 and Lighthouse
+        # aborts the run on ERRORED_DOCUMENT_REQUEST. The key is freshly
+        # minted by `supabase start` for the local stack and is not a
+        # production secret; no GitHub Actions secret is required.
         run: |
           status=$(supabase status -o env)
           api_url=$(echo "$status" | grep '^API_URL=' | cut -d= -f2- | tr -d '"')
           anon_key=$(echo "$status" | grep '^ANON_KEY=' | cut -d= -f2- | tr -d '"')
+          service_role_key=$(echo "$status" | grep '^SERVICE_ROLE_KEY=' | cut -d= -f2- | tr -d '"')
           echo "NEXT_PUBLIC_SUPABASE_URL=$api_url" >> $GITHUB_ENV
           echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$anon_key" >> $GITHUB_ENV
+          echo "::add-mask::$service_role_key"
+          echo "SUPABASE_SERVICE_ROLE_KEY=$service_role_key" >> $GITHUB_ENV
 
       - name: Build
         run: npm run build
