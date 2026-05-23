@@ -126,7 +126,14 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
   return (
     <Link
       href={`/events/${slug}`}
-      className="group flex flex-col rounded-lg overflow-hidden bg-[var(--surface-0)] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg border border-[var(--surface-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2"
+      // M5 card hover per docs/M5-DESIGN-SPEC.md / Card design:
+      //   200ms ease-out (--motion-quick), 0 -> 4px navy/8% shadow on hover.
+      //   `transition-all` is explicitly forbidden by the spec; we declare
+      //   transform + box-shadow explicitly on transition via globals.css
+      //   .card-hover-transition utility. Aspect ratio (1:1 per spec) is
+      //   deferred to a follow-up because event-card.tsx ships site-wide;
+      //   see SUMMARY.md.
+      className="group card-hover-transition flex flex-col rounded-lg overflow-hidden bg-[var(--surface-0)] border border-[var(--surface-2)] hover:shadow-[0_4px_12px_rgba(10,22,40,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2 motion-reduce:transition-none"
     >
       <div className="relative aspect-video md:aspect-[4/3] overflow-hidden bg-[var(--surface-1)]">
         {cover_image_url ? (
@@ -135,7 +142,10 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
             alt={title}
             variant={variant}
             priority={priority}
-            className="transition-transform duration-700 ease-out group-hover:scale-105"
+            // Image scale-up per spec card hover: subtle 1.02 (2%).
+            // Previous 1.05 / 700ms ease-out replaced with .card-hover-img
+            // utility (transform: scale 1.02 under --motion-quick).
+            className="card-hover-img group-hover:scale-[1.02] motion-reduce:group-hover:scale-100"
           />
         ) : (
           <div className="flex h-full items-center justify-center text-[var(--text-muted)]">
@@ -168,21 +178,45 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
         />
       </div>
 
-      <div className="flex flex-1 flex-col p-4">
+      {/* Card body per docs/M5-DESIGN-SPEC.md / Card design:
+       *   20px top padding, left-aligned (never centred), title at
+       *   --type-h4, date/venue at --type-small, price at --type-body
+       *   (17/600). Price kept prominent at the bottom-right of the
+       *   metadata row. */}
+      <div
+        className="flex flex-1 flex-col"
+        style={{
+          paddingTop: 'var(--space-card-padding-y)',
+          paddingBottom: 'var(--space-card-padding-y)',
+          paddingLeft: 'var(--space-card-padding-x)',
+          paddingRight: 'var(--space-card-padding-x)',
+        }}
+      >
         {m5Mode && organisation ? (
-          <p className="text-xs font-medium text-[var(--text-secondary)]">{organisation.name}</p>
+          <p className="type-small text-[var(--text-secondary)]">{organisation.name}</p>
         ) : (
-          <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-[var(--brand-accent-strong)]">
+          <p
+            className="type-micro font-display uppercase tracking-widest text-[var(--brand-accent-strong)]"
+            style={{ fontWeight: 600 }}
+          >
             {formatDate(start_date)}
           </p>
         )}
 
-        <h3 className="mt-1 font-display text-base font-bold leading-snug text-[var(--text-primary)] line-clamp-2 transition-colors duration-200 group-hover:text-[var(--brand-accent-strong)]">
+        {/* Title - --type-h4 (22/600/1.3 desktop, 18/600/1.35 mobile).
+         *  Hover: navy stays, gold underline added (spec). */}
+        <h3
+          className="type-h4 mt-1 text-[var(--text-primary)] line-clamp-2 underline-offset-4 decoration-[var(--brand-accent)] decoration-2 group-hover:underline"
+          style={{ transition: 'text-decoration-color var(--motion-quick)' }}
+        >
           {title}
         </h3>
 
         {m5Mode ? (
-          <p className="mt-1.5 flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
+          <p
+            className="type-small mt-1.5 flex items-center gap-1.5 text-[var(--text-secondary)]"
+            style={{ gap: 'var(--space-tight-gap)' }}
+          >
             <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
             <span>{formatDate(start_date)}</span>
             {location && (
@@ -194,15 +228,26 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
           </p>
         ) : (
           location && (
-            <p className="mt-1.5 flex items-center gap-1 text-xs text-[var(--text-secondary)]">
+            <p
+              className="type-small mt-1.5 flex items-center gap-1 text-[var(--text-secondary)]"
+              style={{ gap: 'var(--space-tight-gap)' }}
+            >
               <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
               {location}
             </p>
           )
         )}
 
-        <div className="mt-auto flex items-center justify-between gap-2 pt-3">
-          <p className="font-display text-sm font-bold text-[var(--text-primary)]">
+        {/* Price row - --type-body 17/600 per spec. mt-auto pushes to
+         *  bottom of the card. */}
+        <div
+          className="mt-auto flex items-center justify-between"
+          style={{ gap: 'var(--space-tight-gap)', paddingTop: 'var(--space-tight-gap)' }}
+        >
+          <p
+            className="font-display text-[var(--text-primary)]"
+            style={{ fontSize: 'var(--type-body)', fontWeight: 600 }}
+          >
             {priceLabel}
           </p>
           {!m5Mode && inventory && (

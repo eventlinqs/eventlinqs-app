@@ -348,7 +348,7 @@ export function CulturalCalendarWidget({
         {moment.markers.length > 0 && (
           <div className="mt-6">
             <p
-              className="uppercase tracking-wider text-[var(--text-muted)]"
+              className="uppercase tracking-wider text-[var(--text-secondary)]"
               style={{ fontSize: 'var(--type-micro)', fontWeight: 600 }}
             >
               What this section supports
@@ -383,7 +383,7 @@ export function CulturalCalendarWidget({
             </svg>
           </Link>
           <span
-            className="text-[var(--text-muted)]"
+            className="text-[var(--text-secondary)]"
             style={{ fontSize: 'var(--type-micro)' }}
           >
             Placeholder content for founder and community review
