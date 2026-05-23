@@ -120,7 +120,7 @@ export async function CulturalPicksSection({ cityFilter, nowIso }: Props) {
               <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-700">
                 Made for every culture
               </p>
-              <h2 id="culture-heading" className="font-display text-2xl font-bold text-ink-900 sm:text-3xl">
+              <h2 id="culture-heading" className="type-h2 font-display text-ink-900">
                 Cultural picks
               </h2>
             </div>

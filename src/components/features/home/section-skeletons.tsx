@@ -30,10 +30,13 @@ function RailHeaderSkeleton({ eyebrow, title }: { eyebrow: string; title: string
       <div className="flex items-start gap-3">
         <div className="mt-1 h-8 w-0.5 shrink-0 bg-gold-500/40" aria-hidden />
         <div>
-          <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-700/60">
+          {/* Opacity removed: text-gold-700/60 produced #b7a46b on canvas
+           *  #fafaf7 = 2.35:1, failing WCAG AA. Full text-gold-700 (#8B6A0E)
+           *  gives 5.97:1 on canvas. Lighthouse desktop a11y regression fix. */}
+          <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-700">
             {eyebrow}
           </p>
-          <h2 className="font-display text-2xl font-bold text-ink-900/70 sm:text-3xl">
+          <h2 className="type-h2 font-display text-ink-900/70">
             {title}
           </h2>
         </div>

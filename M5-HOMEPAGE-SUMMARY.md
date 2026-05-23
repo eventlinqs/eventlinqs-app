@@ -252,3 +252,156 @@ In priority order:
 | Summary written | DONE (`M5-HOMEPAGE-SUMMARY.md`, renamed from `SUMMARY.md` to avoid collision with Tab B work already at root) |
 | No push, no merge | held |
 | Commit prefix `[M5-HOMEPAGE]` | held |
+
+---
+
+# Iteration 2
+
+Date: 23 May 2026 (same day as iter 1).
+Scope: close the iter 1 gaps. Six tasks per founder direction.
+
+## i2-1. Items closed from iteration 1's deferred list
+
+| Iter 1 follow-up | Status in iter 2 | Where |
+|---|---|---|
+| Desktop color-contrast regression (text-muted-using element outside widget) | CLOSED | Root cause was `section-skeletons.tsx` line 33 rendering `text-gold-700/60` against canvas which computes to `#b7a46b` on `#fafaf7` = 2.35:1, failing AA. Opacity removed; full `text-gold-700` (`#8B6A0E`) gives 5.97:1 against canvas. |
+| First Nations flag in footer | CLOSED | `FirstNationsFlags` from `cultural-calendar-widget.tsx` imported into `site-footer.tsx`. New section above the legal sub-footer renders both flags inside a light-bg wrapper (so the Aboriginal flag's black band stays legible on the ink-950 footer) alongside the standard Reconciliation Australia acknowledgement: "EventLinqs acknowledges the Traditional Custodians of Country throughout Australia and recognises their continuing connection to land, waters, and culture. We pay our respects to Elders past and present." |
+| Featured Organisers row | CLOSED (placeholder) | New component `src/components/features/home/featured-organisers-section.tsx`. 4-column desktop / 2 tablet / 1 mobile grid of organiser cards. Each card: `OrganiserAvatar` (size lg, 96px circular, initials fallback) + name at `.type-h4` + event-count badge + next-event preview block + "View organiser" link. Inserted into `page.tsx` immediately after `CulturalCalendarWidget` (spec IA position 4). Placeholder data carries the same caption pattern as the Cultural Calendar widget: "Placeholder content for founder review. Real verified-organiser data will populate from the platform registry when seeded." |
+| Rail wrapper retrofits to M5 tokens | PARTIAL | The highest-leverage retrofits applied: `SnapRail` (used by both `EventRailSection` and `ThisWeekSection`) heading swapped to `.type-h2 font-display`; `cultural-picks-section.tsx`, `cultural-moments-bento.tsx`, `trending-events-bento.tsx`, `email-signup-panel.tsx`, and `section-skeletons.tsx` headings swapped to `.type-h2`. The inline `clamp()` heading in the For-Organisers block in `page.tsx` swapped to `.type-h2` (removes the spec-forbidden fluid value). Files NOT retrofitted in detail this iteration are listed in i2-6 below. |
+| Event-card 1:1 aspect | DEFERRED (founder sign-off) | Per brief direction, explicit defer. |
+| NAIDOC content | DEFERRED (community sourcing) | Per brief direction, explicit defer. |
+| Vercel preview Lighthouse | DEFERRED (out of scope) | Per brief direction, explicit defer. |
+
+## i2-2. New components and modifications
+
+### New files
+
+| File | Purpose |
+|---|---|
+| `src/components/features/home/featured-organisers-section.tsx` | Featured Organisers section. Server component. `OrganiserCard` sub-component uses `OrganiserAvatar` (size lg) from the media library. Token-bound spacing (`--space-card-padding-x`, `--space-element-gap`, `--space-tight-gap`, `--space-card-gap`). Token-bound typography (`.type-h4`, `.type-small`, `var(--type-body)`, `var(--type-micro)`). Hover under `--motion-quick` via the `.card-hover-transition` utility. Placeholder data: 4 organisers across Melbourne / Sydney / Brisbane / Perth, AU. |
+| `research/snapshots/m5-homepage-after-iter2/homepage-{desktop,tablet,mobile}.png` | Iter 2 AFTER screenshots, production build, 3 viewports. |
+| `research/snapshots/m5-homepage-after-iter2/lighthouse-{desktop,mobile}.json` | Iter 2 AFTER Lighthouse reports. |
+
+### Modified files (this iteration)
+
+| File | Change |
+|---|---|
+| `src/components/features/home/section-skeletons.tsx` | `text-gold-700/60` -> `text-gold-700` on the rail-header eyebrow skeleton (contrast fix). Heading retrofitted to `.type-h2 font-display`. |
+| `src/components/layout/site-footer.tsx` | Imported `FirstNationsFlags`. Added new section above legal sub-footer with dual flags and acknowledgement of Country. |
+| `src/components/ui/snap-rail.tsx` | Section heading `font-display text-2xl font-bold ... sm:text-3xl` -> `.type-h2 font-display` on both header sites (the `<RailHeader>` slot and the inline `SnapRail` wrapper). |
+| `src/components/features/home/cultural-picks-section.tsx` | Heading retrofitted to `.type-h2 font-display`. |
+| `src/components/features/home/cultural-moments-bento.tsx` | Heading retrofitted to `.type-h2 mt-1 font-display tracking-tight`. |
+| `src/components/features/home/trending-events-bento.tsx` | Heading retrofitted to `.type-h2 font-display tracking-tight`. |
+| `src/components/features/home/email-signup-panel.tsx` | Heading retrofitted to `.type-h2 mt-3 font-display tracking-tight`. |
+| `src/app/page.tsx` | Imported `FeaturedOrganisersSection`, inserted after `CulturalCalendarWidget`. For-Organisers heading inline `style={{ fontSize: 'clamp(...) }}` removed and replaced with `.type-h2 font-display`. |
+
+## i2-3. Naming protocol note
+
+The placeholder organiser name "Sydney Diaspora Stage" was written and then immediately corrected to "Western Sydney Sound" because CLAUDE.md forbids "diaspora" anywhere in public copy. Caught in the same edit session; no commit shipped with the violation. Flagging because the misstep happened.
+
+## i2-4. Iter 2 measurements (localhost prod, single-run with `el-audit=1` cookie)
+
+Source files: `research/snapshots/m5-homepage-after-iter2/lighthouse-{desktop,mobile}.json`.
+
+| Surface | Perf | A11y | BP | SEO | LCP | CLS | TBT | FCP |
+|---|---|---|---|---|---|---|---|---|
+| Desktop | 0 (NO_LCP) | **100** | **100** | 100 | n/a | 0 | n/a | 0.8 s |
+| Mobile  | **75**     | **100** | **100** | 100 | 3.8 s | 0 | 420 ms | 2.2 s |
+
+### Comparison to iter 1 AFTER and to BEFORE baseline
+
+| Metric | BEFORE | Iter 1 AFTER | Iter 2 AFTER | Iter 2 delta vs BEFORE |
+|---|---|---|---|---|
+| Desktop a11y | 100 | 97 | **100** | 0 (HELD) |
+| Desktop BP | 100 | 0 (trace artifact) | **100** | 0 (HELD) |
+| Desktop perf | 0 (NO_LCP) | 0 (NO_LCP) | 0 (NO_LCP) | 0 (HELD; pre-existing) |
+| Mobile a11y | 100 | 100 (after contrast fix) | **100** | 0 (HELD) |
+| Mobile BP | 100 | 100 | **100** | 0 (HELD) |
+| Mobile perf | 86 | 84 / NO_LCP (variable) | **75** | **-11 (REGRESS)** |
+| Mobile LCP | 3.5 s | 4.1 s / n/a (variable) | 3.8 s | +0.3 s slower |
+| Mobile TBT | 170 ms | 110 ms | **420 ms** | **+250 ms** |
+| CLS | 0 | 0 | 0 | held |
+| SEO | 100 | 100 | 100 | held |
+
+### Interpretation
+
+- **A11y, BP, SEO all at 100/100** across both surfaces. The contrast fix and rail-heading retrofits did not introduce new violations and closed the iter 1 desktop regression.
+- **Mobile perf regressed 86 to 75.** The added Cultural Calendar widget (iter 1) and Featured Organisers section (iter 2) added markup, additional inline SVGs (the flags + sensitivity icons + organiser cards) and additional DOM nodes that the browser must paint and the trace engine must analyse. The TBT jump from 170ms to 420ms is the strongest signal; the page is doing more work on the main thread during the audit window.
+- **Components added do not add new client-side JavaScript:** the Cultural Calendar widget and Featured Organisers section are both server components with no `'use client'` boundary. The TBT regression is render/layout-time, not JS-execution-time. Plausible causes: additional CSS-in-attribute style strings being parsed, more DOM nodes for the trace engine, hydration markers for additional Server Component slots.
+- **Lighthouse single-run is genuinely noisy on this page.** The iter 1 BEFORE TBT 170ms vs iter 2 AFTER TBT 420ms is the biggest delta and could be amplified by single-run variance. Median-of-5 on a Vercel preview deployment is the proper measurement context per CLAUDE.md. That is OUT OF SCOPE for this branch by founder direction.
+- **Mobile LCP 3.8s is faster than iter 1's 4.1s** while still slower than the 3.5s baseline. Within the noise band.
+- **Desktop NO_LCP is unchanged and not regressed** by iter 2 work.
+
+### Regression honesty
+
+The brief's iter 2 phrasing was "close the gaps from iteration 1 to bring this branch to merge-ready state". Against that goal:
+
+- A11y desktop regression: CLOSED.
+- BP desktop trace artifact: CLOSED.
+- First Nations flag in footer: CLOSED.
+- Featured Organisers section: CLOSED (placeholder content).
+- Rail wrapper retrofits: PARTIAL (high-leverage components retrofitted; some remain).
+- Mobile perf regression: NEW (86 -> 75). Was not flagged as iter 1 follow-up; surfaced by iter 2 measurement.
+
+## i2-5. axe-core results (iter 2)
+
+Lighthouse a11y category = axe-core under the hood:
+
+- AFTER iter 2 mobile: 0 violations. A11y = 100.
+- AFTER iter 2 desktop: 0 violations. A11y = 100.
+
+The brief's "axe-core 0 violations" gate is now PASSED on both surfaces.
+
+## i2-6. Files explicitly NOT retrofitted this iteration
+
+| File | Why deferred |
+|---|---|
+| `src/components/features/home/this-week-section.tsx` | Thin wrapper around `SnapRail`; SnapRail heading retrofit covers it. No direct typography to retrofit. |
+| `src/components/features/home/event-rail-section.tsx` | Same as above. Empty-state has `font-display text-sm font-bold` for the empty title and `text-xs` for the body which are not section headings; could be retrofitted to `.type-h4` + `.type-small` in a follow-up. |
+| `src/components/features/home/cultural-picks-section.tsx` | Heading RETROFITTED. Internal rail rendering goes through the same shared card components. |
+| `src/components/features/home/live-vibe-section.tsx` | Wrapper around the live-vibe marquee. No top-level h2 (the marquee is a horizontal scrolling band, not a sectioned rail). The marquee internal copy (`live-vibe-marquee.tsx`) still has fluid clamp + text-2xl patterns; deferred. |
+| `src/components/features/home/city-rail-section.tsx` | Self-fetching server component that imports `SnapRail` and `CityRailTile`. SnapRail heading retrofit covers the section heading. City tile internals not touched. |
+| `src/components/features/home/featured-venues-section.tsx` | Has a single `<h3 className="font-display text-lg font-extrabold ...">` for venue tile heading at `text-lg` (18px). `.type-h4` would push this to 22px; deferred for visual review (venue tile titles risk overflow at larger sizes inside the rail cards). |
+| `src/components/features/home/trending-events-bento.tsx` | Section heading RETROFITTED. Bento-tile inner typography still uses Tailwind utilities. Deferred. |
+| `src/components/features/home/cultural-moments-bento.tsx` | Section heading RETROFITTED. Internal bento-tile typography not retrofitted; deferred. |
+| `src/components/features/home/category-chip-strip.tsx` | Chips are interactive filter pills (not section headings). No major heading to retrofit; uses chip-specific sizing. |
+| `src/components/features/home/email-signup-panel.tsx` | Heading RETROFITTED. Form input + helper text typography uses standard utilities; deferred. |
+| `src/components/features/events/live-vibe-marquee.tsx` | Marquee item internal typography (`text-2xl`, fluid weights) not retrofitted because the marquee is a visual-rhythm band, not a card grid; needs separate visual review for which spec token applies. Deferred. |
+| `src/app/page.tsx` "Surprise Me" prompt and stat tiles inside For-Organisers section | Surprise Me prompt at `text-xl ... sm:text-2xl` is utility prompt copy, not a top-level heading. Stat-tile values inside For-Organisers (`font-display text-3xl font-extrabold text-gold-400`) are statement numbers; would map to `.type-h2` but the visual intent (large stat number, not heading) makes a literal swap inappropriate. Deferred for design review. |
+
+## i2-7. Merge-readiness assessment
+
+A blunt read against the brief's "merge-ready state" target:
+
+| Gate | Status | Comment |
+|---|---|---|
+| BEFORE+AFTER screenshots at 3 viewports | PASS | iter 2 set saved to `m5-homepage-after-iter2/`. |
+| Lighthouse a11y 100 desktop and mobile | PASS | 0 axe violations on both. |
+| Lighthouse BP 100 | PASS | Both surfaces. |
+| Lighthouse SEO 100 | PASS | Both surfaces. |
+| No regression in a11y/BP/SEO vs baseline | PASS | All categories held or recovered. |
+| No regression in performance vs baseline | FAIL | Mobile perf 86 -> 75. Mobile TBT 170 -> 420. May be single-run noise but the brief asked for honest reporting. |
+| Competitive Benchmark Gate | PASS (with one documented trade-off) | Unchanged from iter 1 dimensions. |
+| Cultural Calendar widget shipped with dual flags + sensitivity markers + partnership slot | PASS | Iter 1 deliverable. |
+| First Nations flag in footer | PASS | iter 2 deliverable. |
+| Featured Organisers row | PASS (placeholder data) | iter 2 deliverable. |
+| Rail wrapper full retrofit | PARTIAL | Headings retrofitted across high-leverage components; full token discipline on internal typography across all rails remains a follow-up. |
+| event-card 1:1 aspect | NOT DONE (explicit defer) | Founder sign-off required. |
+| NAIDOC content sourcing | NOT DONE (explicit defer) | Community-led work. |
+| Vercel preview median-of-5 Lighthouse | NOT DONE (out of scope) | Founder direction. |
+
+Honest read: the branch is **closer to merge-ready** than iter 1 left it, but it is not pristine. The two open issues a thoughtful reviewer will flag:
+
+1. Mobile perf regression 86 -> 75. Almost certainly amplified by single-run noise but the size of the TBT jump (170 -> 420) is large enough to want a Vercel-preview median-of-5 to confirm before merging.
+2. Some internal typography in rails / bento tiles / marquee / event-card aspect ratio still uses pre-M5 tokens. Visually the homepage now reads as M5 at the section-heading level, but the atom-level typography in some rails is mixed-token. Whether this blocks merge is the founder's call.
+
+The Aboriginal-flag-in-footer protocol and Featured Organisers placement satisfy the spec's "What EventLinqs has that no competitor has" list more fully than iter 1 did. The desktop a11y regression that worried iter 1 is closed.
+
+## i2-8. Commits planned for iter 2
+
+1. `[M5-HOMEPAGE] fix: desktop a11y - remove opacity from gold-700 skeleton eyebrow (contrast 2.35 -> 5.97)`
+2. `[M5-HOMEPAGE] feat: First Nations flags in site-footer, Featured Organisers section, rail header retrofits to M5 tokens`
+3. `[M5-HOMEPAGE] docs: iter 2 measurements, screenshots, SUMMARY update`
+
+A single combined commit is also acceptable if the founder prefers (`[M5-HOMEPAGE] feat: iter 2 - a11y fix, footer flags, Featured Organisers, rail header token retrofit, AFTER measurements`). The codebase changes are coherent.
+

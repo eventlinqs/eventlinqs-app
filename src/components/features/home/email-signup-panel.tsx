@@ -51,7 +51,7 @@ export function EmailSignupPanel() {
         </p>
         <h2
           id="email-signup-heading"
-          className="mt-3 font-display text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl lg:text-5xl"
+          className="type-h2 mt-3 font-display tracking-tight"
         >
           Get the best events for your scene, every Friday.
         </h2>
