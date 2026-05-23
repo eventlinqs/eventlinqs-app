@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback, useSyncExternalStore } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { LocationPicker } from '@/components/ui/location-picker'
@@ -12,6 +12,18 @@ import { useHeaderScrollState } from '@/hooks/use-header-scroll-state'
 import { useHeroPresence } from '@/contexts/hero-presence-context'
 import type { DetectedLocation } from '@/lib/geo/detect'
 import type { PickerCityGroups } from '@/lib/locations/picker-cities'
+
+/**
+ * Custom event name dispatched on `window` after LocationPicker writes a
+ * new el_city cookie (success path of /api/location/set). This is how
+ * the header gets notified of in-app cookie changes - cookies have no
+ * native change event the browser fires for us, and a noop "subscribe"
+ * via useSyncExternalStore was the misuse that produced the 2026-05-24
+ * React #185 incident (see PR #34). LocationPicker.applyCity and
+ * .clearCity dispatch this; any future caller that mutates el_city
+ * client-side must dispatch it too.
+ */
+export const EL_CITY_UPDATED_EVENT = 'el_city_updated'
 
 const NAV_LINKS = [
   { label: 'Browse Events',  href: '/events' },
@@ -29,51 +41,39 @@ interface SiteHeaderClientProps {
   userEmail?: string | null
 }
 
-// Stable snapshot cache for the el_city cookie reader.
-//
-// useSyncExternalStore's getSnapshot contract requires referentially
-// identical returns when the underlying data has not changed - React
-// calls getSnapshot on every render and uses Object.is to detect store
-// changes. The previous implementation returned a fresh object literal
-// (`{ ...parsed, source: 'cookie' as const }`) on every call when the
-// cookie was set, which fails Object.is, causing React to schedule
-// another render to "catch up" indefinitely - triggering React #185
-// (Maximum update depth exceeded) the moment a second render fired
-// (HeroPresenceProvider update after HeroMedia mounts, scroll-sentinel
-// flip, mobile menu toggle, etc). 2026-05-24 production incident.
-//
-// Cache keyed on the raw cookie segment so identical cookie values
-// resolve to identical references; any change in the segment yields a
-// new reference, which is exactly the change signal
-// useSyncExternalStore is designed to detect.
-let cachedCookieSegment: string | null = null
-let cachedSnapshot: DetectedLocation | null = null
-
+/**
+ * Read the el_city cookie and parse it to a DetectedLocation. Returns
+ * null when the cookie is absent, malformed, or the parsed payload
+ * has no city string. Safe on SSR (returns null when document is
+ * undefined).
+ *
+ * Called once per mount from the useState+useEffect pair below, and
+ * again from the EL_CITY_UPDATED_EVENT listener after LocationPicker
+ * writes a new cookie. Exported for unit testing
+ * (see tests/unit/site-header-cookie-snapshot.test.ts; regression for
+ * PR #34 / React #185 incident).
+ *
+ * Returns a fresh object each call - referential stability is NOT
+ * required here because the consumer uses useState, which only
+ * re-renders on setState. The 2026-05-24 incident was caused by
+ * passing a fresh-literal getSnapshot into useSyncExternalStore, which
+ * does compare with Object.is on every render. That misuse is now
+ * gone.
+ */
 export function readCityCookie(): DetectedLocation | null {
   if (typeof document === 'undefined') return null
   const match = document.cookie.match(/(?:^|;\s*)el_city=([^;]+)/)
-  const raw = match ? match[1] : null
-  if (raw === cachedCookieSegment) return cachedSnapshot
-  cachedCookieSegment = raw
-  if (!raw) {
-    cachedSnapshot = null
-    return null
-  }
+  if (!match) return null
   try {
-    const parsed = JSON.parse(decodeURIComponent(raw))
+    const parsed = JSON.parse(decodeURIComponent(match[1]))
     if (parsed && typeof parsed.city === 'string') {
-      cachedSnapshot = { ...parsed, source: 'cookie' as const }
-      return cachedSnapshot
+      return { ...parsed, source: 'cookie' as const }
     }
   } catch {
     // ignore malformed cookie
   }
-  cachedSnapshot = null
   return null
 }
-
-const subscribeCookie = () => () => {}
-const getServerCookieSnapshot = (): DetectedLocation | null => null
 
 /**
  * SiteHeaderClient - dual-state glassmorphism navigation (Batch 9.1).
@@ -113,11 +113,25 @@ export function SiteHeaderClient({ location, cities, user, userEmail }: SiteHead
   const dropdownUser = user && userEmail ? { ...user, email: userEmail } : null
   const [isOpen, setIsOpen] = useState(false)
 
-  const cookieLocation = useSyncExternalStore(
-    subscribeCookie,
-    readCityCookie,
-    getServerCookieSnapshot,
-  )
+  // Cookie-backed location, hydrated post-mount so the route stays
+  // statically renderable (no cookies() at the server). Initial state
+  // is null so SSR matches first client render; the effect below
+  // upgrades to the cookie value after hydration and listens for
+  // in-app cookie changes via the custom EL_CITY_UPDATED_EVENT
+  // dispatched by LocationPicker after /api/location/set succeeds.
+  //
+  // Cookies have no native change event the browser fires; the custom
+  // event is how this component stays in sync without polling and
+  // without the useSyncExternalStore misuse that produced PR #34's
+  // React #185 incident.
+  const [cookieLocation, setCookieLocation] = useState<DetectedLocation | null>(null)
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: hydrate cookie value post-mount. A lazy useState initialiser would also work in isolation but would render the cookie value on the very first client render, breaking SSR/hydration parity (server cannot read this cookie under the static-rendering contract; see project doc on ISR eligibility).
+    setCookieLocation(readCityCookie())
+    const onUpdate = (): void => setCookieLocation(readCityCookie())
+    window.addEventListener(EL_CITY_UPDATED_EVENT, onUpdate)
+    return () => window.removeEventListener(EL_CITY_UPDATED_EVENT, onUpdate)
+  }, [])
   const displayLocation = cookieLocation ?? location
 
   const scrolled = useHeaderScrollState('header-scroll-sentinel')

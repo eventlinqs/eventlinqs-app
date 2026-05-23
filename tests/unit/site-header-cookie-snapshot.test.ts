@@ -2,32 +2,39 @@
  * site-header-cookie-snapshot.test.ts
  *
  * Regression test for the React #185 ("Maximum update depth exceeded")
- * incident on 2026-05-24.
+ * incident on 2026-05-24 (PR #34).
  *
- * Background:
- *   src/components/layout/site-header-client.tsx uses useSyncExternalStore
- *   to read the `el_city` cookie. React's contract for that hook is that
- *   the `getSnapshot` argument MUST return a referentially stable value
- *   when the underlying data has not changed - React calls getSnapshot
- *   on every render and uses Object.is to detect store changes.
+ * Architecture history:
+ *   - 2026-05-03 (commit 2df3e9e): cookie sync migrated from
+ *     useState+useEffect to useSyncExternalStore, with a no-op
+ *     subscribe. The getSnapshot returned a fresh object literal
+ *     every call when the cookie was set, violating the hook's
+ *     referential-stability contract and producing React #185 once a
+ *     second render fired post-mount.
+ *   - 2026-05-24 (PR #34): hotfix added a module-level cache so the
+ *     getSnapshot returned identical references for identical cookie
+ *     values. Closed #185.
+ *   - 2026-05-24 (PR after this one): refactored back to
+ *     useState+useEffect with a synthetic 'el_city_updated' event
+ *     dispatched by LocationPicker after the cookie write. The cache
+ *     was removed because useState only re-renders on setState, not
+ *     on every getSnapshot call, so reference stability is no longer
+ *     a contract.
  *
- *   The original implementation returned a fresh object literal
- *   `{ ...parsed, source: 'cookie' as const }` on every call when the
- *   cookie was set. That fails Object.is, so React kept seeing "store
- *   changed" and rescheduling renders until the safety limit kicked in
- *   and threw #185. Manifested in any session that had picked a city
- *   via the LocationPicker once HeroPresenceProvider or the scroll
- *   sentinel triggered a post-mount re-render.
+ * Contract under test (current architecture):
+ *   1. readCityCookie returns a parsed DetectedLocation with
+ *      source: 'cookie' when the cookie holds a valid payload, and
+ *      identical cookies produce value-equal results across calls.
+ *   2. Changing the cookie value yields a result reflecting the new
+ *      city.
+ *   3. Absent cookie -> null.
+ *   4. Malformed JSON -> null, no throw.
+ *   5. document undefined (SSR path) -> null.
  *
- * Contract under test:
- *   1. When document.cookie is unchanged between calls, readCityCookie
- *      returns the SAME object reference (Object.is true).
- *   2. When document.cookie changes, readCityCookie returns a NEW
- *      object reflecting the new value.
- *   3. When the cookie is absent, readCityCookie returns null and
- *      consecutive calls remain referentially stable (null === null).
- *   4. When the cookie value is malformed, readCityCookie returns null
- *      without throwing.
+ * NOTE: This test does NOT assert Object.is reference equality, which
+ * the PR #34 hotfix cache provided but the PR-following refactor
+ * intentionally removes. The useSyncExternalStore misuse that needed
+ * that invariant is gone.
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -45,7 +52,7 @@ function clearDoc(): void {
   ;(globalThis as { document?: unknown }).document = undefined
 }
 
-describe('readCityCookie - useSyncExternalStore snapshot stability', () => {
+describe('readCityCookie - cookie parsing contract', () => {
   beforeEach(() => {
     clearDoc()
   })
@@ -53,36 +60,36 @@ describe('readCityCookie - useSyncExternalStore snapshot stability', () => {
     ;(globalThis as { document?: unknown }).document = originalDocument
   })
 
-  it('returns referentially-stable snapshot for identical cookie values (the React #185 invariant)', () => {
+  it('parses a valid Melbourne cookie payload and returns it value-equal across calls', () => {
     setDocCookie('el_city=' + encodeURIComponent(JSON.stringify({ city: 'Melbourne', country: 'AU' })))
     const first = readCityCookie()
     const second = readCityCookie()
-    const third = readCityCookie()
     expect(first).not.toBeNull()
     expect(first?.city).toBe('Melbourne')
-    // The critical assertion: Object.is across calls. If this fails,
-    // useSyncExternalStore re-schedules renders forever -> React #185.
-    expect(Object.is(first, second)).toBe(true)
-    expect(Object.is(second, third)).toBe(true)
+    expect(first?.source).toBe('cookie')
+    // Value equality is what the consumer (useState + render) relies
+    // on. Reference equality is no longer required (the
+    // useSyncExternalStore misuse that needed it is gone, see PR #34).
+    expect(second).toEqual(first)
   })
 
-  it('returns a new reference when the cookie value changes', () => {
+  it('returns the new city after the cookie value changes', () => {
     setDocCookie('el_city=' + encodeURIComponent(JSON.stringify({ city: 'Melbourne', country: 'AU' })))
     const melbourne = readCityCookie()
     setDocCookie('el_city=' + encodeURIComponent(JSON.stringify({ city: 'Sydney', country: 'AU' })))
     const sydney = readCityCookie()
     expect(melbourne?.city).toBe('Melbourne')
     expect(sydney?.city).toBe('Sydney')
-    expect(Object.is(melbourne, sydney)).toBe(false)
+    expect(sydney).not.toEqual(melbourne)
   })
 
-  it('returns null when the cookie is absent', () => {
+  it('returns null when the el_city cookie is absent', () => {
     setDocCookie('other_cookie=foo')
     expect(readCityCookie()).toBeNull()
     expect(readCityCookie()).toBeNull()
   })
 
-  it('returns null when the cookie value is malformed JSON', () => {
+  it('returns null when the cookie value is malformed JSON, without throwing', () => {
     setDocCookie('el_city=' + encodeURIComponent('{not valid json'))
     expect(readCityCookie()).toBeNull()
   })

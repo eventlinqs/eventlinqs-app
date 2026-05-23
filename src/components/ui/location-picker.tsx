@@ -226,6 +226,14 @@ export function LocationPicker({
           longitude: city.longitude,
         }),
       })
+      // Notify SiteHeaderClient (and any other in-app listener) that
+      // the el_city cookie just changed. Cookies have no native change
+      // event the browser fires, so we dispatch a synthetic one. See
+      // EL_CITY_UPDATED_EVENT in site-header-client.tsx for context
+      // (PR #34 follow-up: replaces a useSyncExternalStore misuse).
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('el_city_updated'))
+      }
     } catch {
       // Network error swallowed; router.refresh() will no-op gracefully.
     }
@@ -248,6 +256,13 @@ export function LocationPicker({
   }, [closeDialog, onChange, pathname, router])
 
   const clearCity = useCallback(() => {
+    // "All events" / no city filter. We do not write a cleared cookie
+    // here (server route owns el_city lifecycle), but we still dispatch
+    // the change event so the header re-reads whatever the server-set
+    // state ends up being after router.refresh().
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('el_city_updated'))
+    }
     closeDialog()
     onChange?.()
     if (pathname && pathname.startsWith('/events')) {
