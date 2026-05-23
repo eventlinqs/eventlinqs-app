@@ -1,0 +1,100 @@
+[
+  {
+    "id": "flow-1-paid",
+    "name": "Anonymous browse → paid event → checkout page renders",
+    "result": "PARTIAL",
+    "steps": [
+      {
+        "at": "navigate-to-event",
+        "url": "https://www.eventlinqs.com/events/lebanese-eid-festival-sydney-2027",
+        "httpStatus": 200,
+        "screenshot": "screenshots/phase3/flow1-01-event-page.png",
+        "pageTitle": "Lebanese Eid Festival - Mon, 19 Apr - Sydney Olympic Park, Sydney - EventLinqs"
+      },
+      {
+        "at": "find-cta",
+        "foundCta": "Continue",
+        "screenshot": "screenshots/phase3/flow1-02-after-scroll.png"
+      },
+      {
+        "at": "click-cta",
+        "ctaText": "Continue",
+        "clickError": "locator.click: Timeout 5000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /Continue/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"w-full",
+        "urlAfterClick": "https://www.eventlinqs.com/events/lebanese-eid-festival-sydney-2027",
+        "screenshot": "screenshots/phase3/flow1-03-after-cta.png"
+      },
+      {
+        "at": "not-on-checkout",
+        "currentUrl": "https://www.eventlinqs.com/events/lebanese-eid-festival-sydney-2027",
+        "screenshot": "screenshots/phase3/flow1-04-not-checkout.png"
+      }
+    ],
+    "failurePoint": "Expected redirect to /checkout/[reservation_id] after CTA click, but landed on https://www.eventlinqs.com/events/lebanese-eid-festival-sydney-2027",
+    "errors": {
+      "pageErrors": [],
+      "consoleErrors": [],
+      "badResponses": []
+    }
+  },
+  {
+    "id": "flow-2-squad",
+    "name": "Squad checkout",
+    "result": "REQUIRES_MANUAL_VERIFICATION",
+    "failurePoint": "No published events have squad_booking_enabled=true in production DB. Squad checkout cannot be E2E tested without first seeding a squad-enabled event or toggling the flag on an existing one. Code paths (handleSquadMemberPaymentSucceeded, squad completion flow) are static-verified in webhook handler.",
+    "steps": [
+      {
+        "at": "data-check-only",
+        "note": "DB query confirmed 0 squad-enabled events across all status filters."
+      }
+    ]
+  },
+  {
+    "id": "flow-3-free",
+    "name": "Anonymous free RSVP → reservation",
+    "result": "PARTIAL",
+    "steps": [
+      {
+        "at": "navigate-to-free-event",
+        "url": "https://www.eventlinqs.com/events/filipino-fiesta-brisbane-sariwa-sunday",
+        "httpStatus": 200,
+        "pageTitle": "Filipino Fiesta Brisbane: Sariwa Sunday - Sun, 21 June - Roma Street Parkland, Brisbane - EventLinqs",
+        "screenshot": "screenshots/phase3/flow3-01-free-event.png"
+      },
+      {
+        "at": "find-free-cta",
+        "foundCta": "Continue",
+        "screenshot": "screenshots/phase3/flow3-02-after-scroll.png"
+      },
+      {
+        "at": "click-free-cta",
+        "ctaText": "Continue",
+        "clickError": "locator.click: Timeout 5000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /Continue/i }).first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"button\" class=\"w-full",
+        "urlAfterClick": "https://www.eventlinqs.com/events/filipino-fiesta-brisbane-sariwa-sunday",
+        "screenshot": "screenshots/phase3/flow3-03-after-cta.png"
+      },
+      {
+        "at": "unexpected-url",
+        "url": "https://www.eventlinqs.com/events/filipino-fiesta-brisbane-sariwa-sunday",
+        "screenshot": "screenshots/phase3/flow3-04-unexpected.png"
+      }
+    ],
+    "failurePoint": "Unexpected destination https://www.eventlinqs.com/events/filipino-fiesta-brisbane-sariwa-sunday after free-CTA click.",
+    "errors": {
+      "pageErrors": [],
+      "consoleErrors": [],
+      "badResponses": []
+    }
+  },
+  {
+    "id": "flow-4-refund",
+    "name": "Refund via Stripe Dashboard / admin panel",
+    "result": "REQUIRES_MANUAL_VERIFICATION",
+    "failurePoint": "Triggering a refund requires either Stripe Dashboard (out-of-band, manual) or the admin panel (requires admin auth + an existing test order). Webhook code path (charge.refunded, sendRefundConfirmationEmail) is static-verified."
+  },
+  {
+    "id": "flow-5-connect",
+    "name": "Organiser signup → Stripe Connect Express onboarding with test BSB",
+    "result": "REQUIRES_MANUAL_VERIFICATION",
+    "failurePoint": "Stripe Connect Express onboarding launches a Stripe-hosted onboarding flow on connect.stripe.com that requires interactive input of the test BSB (110-000) and account number (000123456) and the test verification documents. Cross-domain Stripe-hosted UI is not reliably automatable. Code path (api/stripe/connect/onboard, return, refresh) and handleConnectAccountUpdated webhook are static-verified."
+  }
+]
