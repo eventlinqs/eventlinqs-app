@@ -530,3 +530,184 @@ environment with disk space before any launch sign-off.
 `/api/tickets/[code]/qr`, `/api/webhooks/stripe`,
 `/auth/callback`, `/auth/confirm`,
 `/dev/connect-onboarding-preview`.
+
+---
+
+## MEDIUM-1 RESOLVED
+
+Date: 23 May 2026.
+Branch: `fix/medium-refund-email-and-insights-nav`.
+
+### Summary
+
+The platform now sends a refund confirmation email to the buyer when
+the `charge.refunded` webhook fires. Matches the Eventbrite and
+Humanitix industry pattern (subject names the event, body carries
+order id, refund amount, ticket count, timeframe statement, optional
+organiser custom message, organiser support contacts).
+
+### Template path
+
+`src/lib/email/templates/refund-confirmation.ts`
+
+Pure template module. Exports:
+
+- `buildRefundConfirmationSubject(eventTitle: string): string` -
+  returns `"Refund processed: <event_title>"`.
+- `buildRefundConfirmationHtml(props: RefundConfirmationProps): string` -
+  forced-light HTML matching the existing purchase-confirmation email
+  style. Renders the refund details table (order, event, tickets
+  refunded, refund amount in AUD via `formatMoney`), the timeframe
+  sentence ("Your refund of $X will appear on your statement within
+  3 to 5 business days. Some banks may take up to 10 days."), the
+  optional organiser custom-message block (only when non-empty after
+  trimming), the support-contact line (organiser name + email when
+  available, falls back to platform support), and the EventLinqs
+  footer with ABN.
+- `buildRefundConfirmationText(props: RefundConfirmationProps): string` -
+  plain-text counterpart for clients that prefer text/plain.
+- `buildRefundTimeframeSentence(cents, currency): string` - shared
+  helper so the same sentence renders in both HTML and text and is
+  unit-testable in isolation.
+
+All user-controlled and DB-derived strings are HTML-escaped before
+interpolation (defends against organiser custom messages containing
+markup or quotes).
+
+### Integration point
+
+`src/app/api/webhooks/stripe/route.ts` `handleChargeRefunded(charge)`.
+
+After the existing void-tickets and waitlist-promotion steps, a new
+call:
+
+```ts
+await sendRefundConfirmationEmail(adminClient, payment.order_id, charge)
+  .catch(err => { captureException(...); console.error(...) })
+```
+
+The `sendRefundConfirmationEmail` function in the same file:
+
+1. Hydrates the order, the buyer (guest_email or profile.email +
+   full_name), the event title and organisation id, and the
+   organisation name and contact email.
+2. Counts refunded/void tickets for the order as a proxy for "tickets
+   refunded by this event".
+3. Uses `charge.amount_refunded` as the refund amount (cumulative on
+   the charge; matches the full-refund dominant case at
+   friends-launch; partial-refund nuance documented inline).
+4. Sends via Resend from `EventLinqs <noreply@eventlinqs.com>`,
+   `replyTo: hello@eventlinqs.com`. Identical sender pattern to the
+   purchase confirmation email.
+5. Wrapped in try/catch with `console.error` on Resend send failure,
+   matching the existing `sendConfirmationEmail` non-fatal pattern.
+6. The outer `.catch` in `handleChargeRefunded` also routes any
+   pre-Resend errors (DB lookups, organisation fetch) to
+   `captureException` so an operator can re-drive.
+
+### Test path
+
+`tests/unit/email/refund-confirmation.test.ts`
+
+26 tests, all passing under `npx vitest run`. Coverage:
+
+- Renders subject, HTML, and text without throwing for valid props.
+- Subject contains the event title.
+- HTML and text bodies contain the refund amount as `AUD 125.00`.
+- Bodies contain the order id (`ORD-12345`).
+- Bodies contain the timeframe sentence ("within 3 to 5 business
+  days").
+- Bodies contain the event title.
+- Ticket count label switches between `1 ticket` and `N tickets`.
+- Custom message renders in HTML and text when provided, with the
+  "Message from the organiser" heading.
+- Custom message block is suppressed when null, empty string, or
+  whitespace only.
+- Greeting falls back to `Hi there,` when buyer name is null or
+  whitespace; uses first name when buyer name is supplied.
+- Support contact line falls back gracefully through three cases:
+  organiser name + contact, contact only, no organiser contact at all.
+- Voice rules: no em-dashes, no en-dashes, no exclamation marks in
+  visible copy (the doctype-line `!` is intentionally excluded via
+  tag stripping in the assertion).
+- HTML safety: event title and custom message HTML-escaped against
+  injection (verified with `<script>` payload).
+
+### Sample render
+
+Reading the HTML produced for the test base props (order
+`ORD-12345`, Pasifika Festival 2027, 2 tickets, AUD 125.00):
+
+> Subject: `Refund processed: Pasifika Festival 2027`
+>
+> Body (visible content, condensed):
+>
+> > EVENTLINQS
+> >
+> > **Your refund has been processed**
+> >
+> > Hi Lawal,
+> >
+> > Your refund of AUD 125.00 will appear on your statement within 3
+> > to 5 business days. Some banks may take up to 10 days.
+> >
+> > | | |
+> > |---|---|
+> > | Order | ORD-12345 |
+> > | Event | Pasifika Festival 2027 |
+> > | Tickets refunded | 2 tickets |
+> > | Refund amount | AUD 125.00 |
+> >
+> > Questions? Reply to this email or contact Pasifika Inc. at
+> > hello@pasifika.example.
+> >
+> > EventLinqs, Geelong VIC, Australia. ABN 30 837 447 587. All-in
+> > pricing. No surprise fees.
+
+---
+
+## MEDIUM-4 RESOLVED
+
+Date: 23 May 2026.
+Branch: `fix/medium-refund-email-and-insights-nav`.
+
+### Summary
+
+The `/dashboard/insights` nav entry has been removed from the
+dashboard sidebar. The route file at `src/app/dashboard/insights/page.tsx`
+stays on disk for when the Insights feature ships; the entry only
+hides from the sidebar so organisers do not click into a soft empty
+state from primary nav.
+
+### Nav component path
+
+`src/components/dashboard/dashboard-sidebar.tsx`
+
+### Removed entry
+
+Previously line 46:
+
+```ts
+{ href: '/dashboard/insights', label: 'Insights', icon: BarChart3, organiserOnly: true, badge: 'Soon' },
+```
+
+Now commented out with a restoration marker (current lines
+46 to 50):
+
+```ts
+// /dashboard/insights nav entry hidden 23 May 2026 per
+// AUDIT-FUNCTIONALITY-2026-05-23.md MEDIUM-4. Restore when insights
+// feature ships. Route file at src/app/dashboard/insights/page.tsx
+// stays on disk and remains reachable by direct URL.
+// { href: '/dashboard/insights', label: 'Insights', icon: BarChart3, organiserOnly: true, badge: 'Soon' },
+```
+
+The `BarChart3` lucide import is also commented out (it was the icon
+for the removed entry; left as a comment with the same restoration
+marker so the import can be uncommented alongside the entry).
+
+### Restoration marker
+
+Search for the literal string `MEDIUM-4` in the codebase to find both
+sites (the import comment block and the nav-entry comment block) and
+re-enable when the Insights feature is ready.

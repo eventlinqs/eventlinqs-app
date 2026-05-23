@@ -4,7 +4,9 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import {
-  BarChart3,
+  // BarChart3 import removed alongside the hidden /dashboard/insights
+  // nav entry (AUDIT-FUNCTIONALITY-2026-05-23.md MEDIUM-4). Restore
+  // when the Insights feature ships and the nav entry comes back.
   Calendar,
   ChevronLeft,
   ChevronRight,
@@ -43,7 +45,11 @@ const ITEMS: Item[] = [
   { href: '/dashboard/tickets', label: 'My tickets', icon: Ticket },
   { href: '/dashboard/my-waitlists', label: 'Waitlists', icon: Hourglass },
   { href: '/dashboard/my-squads', label: 'Squads', icon: Users },
-  { href: '/dashboard/insights', label: 'Insights', icon: BarChart3, organiserOnly: true, badge: 'Soon' },
+  // /dashboard/insights nav entry hidden 23 May 2026 per
+  // AUDIT-FUNCTIONALITY-2026-05-23.md MEDIUM-4. Restore when insights
+  // feature ships. Route file at src/app/dashboard/insights/page.tsx
+  // stays on disk and remains reachable by direct URL.
+  // { href: '/dashboard/insights', label: 'Insights', icon: BarChart3, organiserOnly: true, badge: 'Soon' },
   { href: '/dashboard/payouts', label: 'Payouts', icon: Wallet, organiserOnly: true, badge: 'Soon' },
   { href: '/dashboard/organisation', label: 'Organisation', icon: Settings, organiserOnly: true },
   { href: '/help', label: 'Help', icon: HelpCircle, external: true },
