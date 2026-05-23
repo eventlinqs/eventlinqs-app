@@ -42,7 +42,12 @@ export function AllEventsGridByCulture({
             </div>
             <Link
               href={`/events?culture=${cultureSlug}`}
-              className="shrink-0 text-sm font-medium text-[var(--brand-accent)] transition-colors hover:text-[var(--brand-accent-hover)]"
+              // brand-accent (gold-400) on white was 1.86:1 (WCAG fail).
+              // brand-accent-strong (gold-800) is the documented
+              // white-surface variant in globals.css (see the comment on
+              // --brand-accent-strong). Matches the sibling "On now"
+              // eyebrow above, which already uses the -strong token.
+              className="shrink-0 text-sm font-medium text-[var(--brand-accent-strong)] transition-colors hover:text-[var(--brand-accent-strong-hover)]"
             >
               View all &rsaquo;
             </Link>
