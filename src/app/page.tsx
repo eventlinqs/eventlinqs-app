@@ -5,6 +5,7 @@ import { createPublicClient } from '@/lib/supabase/public-client'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { HeroCarousel } from '@/components/features/home/HeroCarousel'
+import { CulturalCalendarWidget } from '@/components/features/home/cultural-calendar-widget'
 import { HomeSchemaJsonLd } from '@/components/features/home/home-schema-jsonld'
 import { SurpriseMeButton } from '@/components/features/home/surprise-me-button'
 import { CategoryChipStrip } from '@/components/features/home/category-chip-strip'
@@ -240,6 +241,15 @@ export default async function HomePage() {
          *  pattern places trust signals at the purchase-decision moment
          *  (event detail page + checkout) rather than as a sitewide
          *  band. See docs/redesign/batch-11-evidence/trust-signals-2026.md. */}
+
+        {/* M5 - Cultural Calendar widget. Per docs/M5-DESIGN-SPEC.md
+         *  "What EventLinqs has that no competitor has", this is the
+         *  moat element. Positioned directly below the hero so the
+         *  first impression includes the platform's First Nations
+         *  positioning, current cultural moment, sensitivity markers,
+         *  and partnership slot. Content is placeholder pending
+         *  community-sourced copy (see SUMMARY.md follow-ups). */}
+        <CulturalCalendarWidget />
 
         {/* H2 Category chip strip (Batch 9.2): quick-filter chips +
          *  cultures expandable. Scroll-snap on mobile, fits viewport on
