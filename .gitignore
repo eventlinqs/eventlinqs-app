@@ -105,6 +105,13 @@ supabase/.temp/
 # Local scratch state (e.g. M6 Phase 2 E2E orchestrator state)
 .tmp/
 
+# Local diagnostic scratch (forensic dumps, ad-hoc verification
+# scripts, screenshot evidence). Anything reusable should be promoted
+# to tests/e2e/ or docs/. Convention established 2026-05-24 after PR #34.
+.diagnostic/
+.diagnostic-*.log
+.diagnostic-*.html
+
 .vercel
 
 # Batch 9.2.1 test-user credentials (local-only)

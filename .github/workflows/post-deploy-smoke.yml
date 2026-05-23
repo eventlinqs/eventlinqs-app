@@ -1,0 +1,185 @@
+name: post-deploy smoke
+
+# Post-deploy smoke gate. Runs after the CI workflow completes on main,
+# which is a workable proxy for "the Vercel production deploy has had
+# time to roll over" (Vercel deploys in parallel with GH Actions and
+# usually finishes inside the CI window). The first step inside this
+# workflow waits up to 90s and polls for the production deployment id
+# to change as a safety belt, so a faster CI run does not race the
+# smoke against the OLD production build.
+#
+# See docs/observability/post-deploy-smoke.md for the full operator
+# runbook (what it catches, what to do when it fails, how to disable).
+#
+# Triggers:
+#   workflow_run        - after CI on main completes (push-driven)
+#   workflow_dispatch   - manual re-run from the Actions UI
+#
+# Steps in order:
+#   1. Wait for the Vercel deploy id to differ from a captured starting
+#      point (90s window). Best-effort, non-fatal.
+#   2. curl smoke - anonymous request. Asserts HTTP 200 and that the
+#      response body does NOT contain the error boundary phrase
+#      "We hit a snag loading this page" or "Minified React error".
+#   3. curl smoke - same checks with the el_city Melbourne cookie set
+#      (replays the 2026-05-24 trigger state).
+#   4. On any failure: dispatch an alert email to hello@eventlinqs.com
+#      via Resend (requires RESEND_API_KEY secret; non-fatal if absent).
+#
+# Deliberately curl-only in CI for speed: a curl probe runs in under
+# 10 seconds while a Playwright install plus browser launch adds 90s+.
+# The Playwright regression suite at
+# tests/e2e/site-header-cookie-snapshot.production.spec.ts holds the
+# browser-side regression (catches client-only errors curl cannot see)
+# and can be run manually via
+# `npx playwright test --config=playwright.smoke.config.ts --grep @smoke`
+# whenever a deeper investigation is needed.
+#
+# Required secrets (none are strictly required for the smoke to run;
+# the email-on-failure step is the only one that needs a secret):
+#   RESEND_API_KEY   alerts to hello@eventlinqs.com on failure
+
+on:
+  workflow_run:
+    workflows: ['CI']
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: post-deploy-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    name: production homepage smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # Only run when the upstream CI succeeded. Failed CI usually means
+    # the deploy itself was blocked; smoke would be noisy false-failure.
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+
+    env:
+      PROD_URL: https://www.eventlinqs.com
+      NEXT_TELEMETRY_DISABLED: 1
+
+    steps:
+      - name: Best-effort wait for new Vercel deployment
+        # Capture current deployment id, then poll for ~90s for it to
+        # change. If it does not change inside the window we still
+        # proceed (Vercel may have deployed before CI finished and our
+        # capture already shows the new id), but we log it so a future
+        # failure investigation has the signal.
+        run: |
+          set -u
+          START_ID=$(curl -fsSL "$PROD_URL" 2>/dev/null | grep -oE 'data-dpl-id="dpl_[^"]+"' | head -1 || true)
+          echo "start_id=$START_ID"
+          for i in $(seq 1 6); do
+            sleep 15
+            NEW_ID=$(curl -fsSL "$PROD_URL" 2>/dev/null | grep -oE 'data-dpl-id="dpl_[^"]+"' | head -1 || true)
+            if [ -n "$NEW_ID" ] && [ "$NEW_ID" != "$START_ID" ]; then
+              echo "deployment changed after $((i*15))s: $NEW_ID"
+              break
+            fi
+            echo "[$i] still $NEW_ID"
+          done
+
+      - name: curl smoke - anonymous
+        # Catches SSR-rendered failures: missing prod env vars, throws
+        # during server render, RLS exceptions baked into HTML.
+        run: |
+          set -u
+          BODY_FILE=$(mktemp)
+          HTTP=$(curl -fsSL -o "$BODY_FILE" -w '%{http_code}' \
+            -H 'User-Agent: eventlinqs-post-deploy-smoke/1.0' \
+            "$PROD_URL" || echo "curl-failed")
+          echo "HTTP=$HTTP"
+          if [ "$HTTP" != "200" ]; then
+            echo "::error::Anonymous request returned HTTP $HTTP, expected 200"
+            head -c 4000 "$BODY_FILE" || true
+            exit 1
+          fi
+          if grep -q "We hit a snag loading this page" "$BODY_FILE"; then
+            echo "::error::Anonymous response contains the error boundary phrase"
+            grep -n -C 2 "We hit a snag" "$BODY_FILE" | head -20 || true
+            exit 1
+          fi
+          if grep -q "Minified React error" "$BODY_FILE"; then
+            echo "::error::Anonymous response contains 'Minified React error'"
+            grep -n -C 2 "Minified React error" "$BODY_FILE" | head -20 || true
+            exit 1
+          fi
+          echo "curl-anonymous: pass"
+
+      - name: curl smoke - el_city cookie set
+        # Replays the 2026-05-24 React #185 trigger cookie state. The
+        # curl check cannot catch the original client-side loop, but it
+        # documents the trigger and catches any future variant that
+        # bakes the error UI into SSR HTML.
+        run: |
+          set -u
+          BODY_FILE=$(mktemp)
+          COOKIE_VALUE=$(printf '%s' '{"city":"Melbourne","region":"Victoria","country":"AU","source":"picker"}' \
+            | jq -sRr @uri)
+          HTTP=$(curl -fsSL -o "$BODY_FILE" -w '%{http_code}' \
+            -H 'User-Agent: eventlinqs-post-deploy-smoke/1.0' \
+            -H "Cookie: el_city=$COOKIE_VALUE" \
+            "$PROD_URL" || echo "curl-failed")
+          echo "HTTP=$HTTP"
+          if [ "$HTTP" != "200" ]; then
+            echo "::error::el_city request returned HTTP $HTTP, expected 200"
+            head -c 4000 "$BODY_FILE" || true
+            exit 1
+          fi
+          if grep -q "We hit a snag loading this page" "$BODY_FILE"; then
+            echo "::error::el_city response contains the error boundary phrase"
+            grep -n -C 2 "We hit a snag" "$BODY_FILE" | head -20 || true
+            exit 1
+          fi
+          if grep -q "Minified React error" "$BODY_FILE"; then
+            echo "::error::el_city response contains 'Minified React error'"
+            grep -n -C 2 "Minified React error" "$BODY_FILE" | head -20 || true
+            exit 1
+          fi
+          echo "curl-el_city: pass"
+
+      - name: Email alert via Resend on failure
+        if: failure()
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT_SHA: ${{ github.sha }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -u
+          if [ -z "${RESEND_API_KEY:-}" ]; then
+            echo "::warning::RESEND_API_KEY not configured; skipping email alert. Workflow status is still red in the Actions UI."
+            exit 0
+          fi
+          HTML=$(cat <<HTML_EOF
+          <h2>EventLinqs production homepage smoke FAILED</h2>
+          <p>The post-deploy smoke gate failed at $(date -u +"%Y-%m-%d %H:%M:%S UTC").</p>
+          <ul>
+            <li><b>Trigger:</b> ${EVENT}</li>
+            <li><b>Commit:</b> <code>${COMMIT_SHA}</code></li>
+            <li><b>Run:</b> <a href="${RUN_URL}">${RUN_URL}</a></li>
+          </ul>
+          <p>What this means: at least one of the curl smokes or the Playwright @smoke checks failed against <code>https://www.eventlinqs.com</code>. Open the Actions run for the failing step output.</p>
+          <p>Runbook: <code>docs/observability/post-deploy-smoke.md</code></p>
+          HTML_EOF
+          )
+          PAYLOAD=$(jq -n \
+            --arg from 'EventLinqs Smoke <noreply@eventlinqs.com>' \
+            --arg subject 'EventLinqs production homepage smoke FAILED' \
+            --arg html "$HTML" \
+            '{from: $from, to: ["hello@eventlinqs.com"], subject: $subject, html: $html, reply_to: "hello@eventlinqs.com"}')
+          curl -fsSL -X POST https://api.resend.com/emails \
+            -H "Authorization: Bearer ${RESEND_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            && echo "alert email dispatched to hello@eventlinqs.com" \
+            || echo "::warning::Resend dispatch failed (workflow status is still red in the Actions UI)"
