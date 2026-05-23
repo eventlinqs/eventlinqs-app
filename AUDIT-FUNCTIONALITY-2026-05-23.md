@@ -3,12 +3,33 @@
 Branch: `chore/functionality-audit` (forked from `main` @ `923e0f0`).
 No code changes. Audit only.
 
-> **2026-05-23 follow-up**: HIGH-2 is RESOLVED on branch
-> `fix/footer-filter-links` (commit immediately following this audit's
-> cherry-pick). HIGH-1, every MEDIUM, and every LOW remain open. The
-> live verification items in section "Items requiring live verification"
-> are still owed. See the **HIGH-2 RESOLVED** section directly below
+> **2026-05-23 follow-up**: HIGH-1 and HIGH-2 are RESOLVED on `main`
+> (PR #31 closed HIGH-1; PR #32 closes HIGH-2). Every MEDIUM, every
+> LOW, and the live-verification items remain open. See the
+> **HIGH-1 RESOLVED** and **HIGH-2 RESOLVED** sections directly below
 > for the full before/after.
+
+## HIGH-1 RESOLVED - `/dev/*` routes gated in production + rail-rule fix
+
+Closed by PR #31 (commit `16ac400`).
+
+**`/dev/*` production gate.** The three `/dev/*` preview routes
+(`logo-preview`, `shell-preview`, `connect-onboarding-preview`) are
+gated by `src/proxy.ts`: in production the proxy returns 404 for any
+path starting with `/dev/` (or `/dev` exactly) before the route
+handler runs. In development the routes remain reachable for the
+design-preview use case the source comments describe. The gate is
+synchronous and runs before any DB or auth call, so it adds no
+latency to non-`/dev` requests.
+
+**Rail-rule fix (bonus).** PR #31 also changed all six homepage rail
+conditionals from `.length >= 3` to `.length >= 1` in
+`src/app/page.tsx` (This Weekend, Free, Trending, Just Added,
+Editor's picks, Community). The rail wrapper components retain their
+internal `events.length === 0` guards for the truly-empty case, so a
+rail with 1 or 2 events now renders with whatever exists (matching
+Humanitix / Ticketmaster / Eventbrite behaviour) instead of being
+hidden behind an arbitrary threshold.
 
 ## HIGH-2 RESOLVED - footer + homepage filter link rewrites
 
