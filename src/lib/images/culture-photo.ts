@@ -85,11 +85,42 @@ const fetchCultureHeroPhoto = unstable_cache(
   { revalidate: 60 * 60 * 24 * 7, tags: ['pexels', 'pexels-culture'] }
 )
 
+// Bundled per-culture hero raster shipped in public/images/hero/. Used as
+// a deterministic fallback when the Pexels lookup returns null (missing
+// PEXELS_API_KEY, network failure, rate limit, zero search results). The
+// Pexels path stays the primary source so production keeps its varied
+// stock photography; this is purely the safety net.
+//
+// Why this exists: PhotographicCultureHero only renders a CSS gradient
+// when imageSrc is null, which means Lighthouse cannot observe any
+// LCP-eligible element and the audit returns NO_LCP for the page. That
+// degraded the perf score to null in CI (no PEXELS_API_KEY available)
+// and would also degrade real-user LCP on any Pexels outage. A bundled
+// raster gives HeroMedia a real <img> with priority + fetchPriority, so
+// LCP is always measurable, regardless of upstream Pexels availability.
+//
+// Only the culture slugs with an obvious-match bundled file are mapped.
+// Cultures without a match keep the prior null behaviour (CSS gradient
+// fallback); the lighthouse gate currently only audits /culture/african
+// so this is enough to close the CI gap without inventing new imagery.
+const CULTURE_BUNDLED_FALLBACK: Record<string, string> = {
+  'african':     '/images/hero/afrobeats.jpg',
+  'south-asian': '/images/hero/bollywood.jpg',
+  'caribbean':   '/images/hero/caribbean-carnival.jpg',
+  'latin':       '/images/hero/latin.jpg',
+  'east-asian':  '/images/hero/lunar.jpg',
+  'filipino':    '/images/hero/filipino.jpg',
+  'gospel':      '/images/hero/gospel.jpg',
+  'comedy':      '/images/hero/comedy.jpg',
+}
+
 export async function getCultureHeroPhoto(slug: string): Promise<string | null> {
   const key = slug.toLowerCase()
   const query = CULTURE_QUERIES[key]
   if (!query) return null
-  return await fetchCultureHeroPhoto(query)
+  const pexels = await fetchCultureHeroPhoto(query)
+  if (pexels) return pexels
+  return CULTURE_BUNDLED_FALLBACK[key] ?? null
 }
 
 export function isKnownCultureQuerySlug(slug: string): boolean {
