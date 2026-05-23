@@ -318,8 +318,18 @@ export default async function HomePage() {
           <ThisWeekSection events={thisWeek} />
         </Suspense>
 
+        {/*
+         * Rail threshold rule (corrective, 23 May 2026):
+         * Rails render whenever they have at least one event. The rail
+         * component's own internal guard (`events.length === 0 -> return null`)
+         * handles the truly-empty case. Previous iterations used `>= 3`
+         * and `>= 5` thresholds which hid rails with 1-2 events; the
+         * competitor research (research/competitors/REPORT.md and the
+         * Humanitix / Ticketmaster / Eventbrite homepage screenshots)
+         * shows no competitor does this. Rails show whatever exists.
+         */}
         {/* Rail 2: This Weekend */}
-        {thisWeekend.length >= 3 && (
+        {thisWeekend.length >= 1 && (
           <EventRailSection
             eyebrow="This weekend"
             title="Free up the calendar"
@@ -331,7 +341,7 @@ export default async function HomePage() {
         )}
 
         {/* Rail 3: Free */}
-        {freeEvents.length >= 3 && (
+        {freeEvents.length >= 1 && (
           <EventRailSection
             eyebrow="No ticket needed"
             title="Free events near you"
@@ -348,7 +358,7 @@ export default async function HomePage() {
         </Suspense>
 
         {/* Rail 5: Trending */}
-        {trending.length >= 3 && (
+        {trending.length >= 1 && (
           <EventRailSection
             eyebrow="Selling fast"
             title="Trending now"
@@ -370,7 +380,7 @@ export default async function HomePage() {
         </Suspense>
 
         {/* Rail 7: Just Added */}
-        {justAdded.length >= 3 && (
+        {justAdded.length >= 1 && (
           <EventRailSection
             eyebrow="Just added"
             title="Fresh on the platform"
@@ -382,7 +392,7 @@ export default async function HomePage() {
         )}
 
         {/* Rail 8: Editor's Picks */}
-        {editorsPicks.length >= 3 && (
+        {editorsPicks.length >= 1 && (
           <EventRailSection
             eyebrow="Editor's picks"
             title="Hand-picked for the week"
@@ -399,7 +409,7 @@ export default async function HomePage() {
         </Suspense>
 
         {/* Rail 10: Community */}
-        {communityEvents.length >= 3 && (
+        {communityEvents.length >= 1 && (
           <EventRailSection
             eyebrow="Bring everyone"
             title="Community events"
