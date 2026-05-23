@@ -326,7 +326,7 @@ export default async function HomePage() {
             ariaLabel="Events this weekend"
             railLabel="Events this weekend"
             events={thisWeekend}
-            viewAllHref="/events?date=weekend"
+            viewAllHref="/events?preset=weekend"
           />
         )}
 
@@ -338,7 +338,7 @@ export default async function HomePage() {
             ariaLabel="Free events"
             railLabel="Free events"
             events={freeEvents}
-            viewAllHref="/events?free=1"
+            viewAllHref="/events?preset=free"
           />
         )}
 
@@ -355,7 +355,7 @@ export default async function HomePage() {
             ariaLabel="Trending events"
             railLabel="Trending events"
             events={trending}
-            viewAllHref="/events?sort=trending"
+            viewAllHref="/events?sort=popularity"
           />
         )}
 
@@ -377,7 +377,7 @@ export default async function HomePage() {
             ariaLabel="Recently added events"
             railLabel="Recently added events"
             events={justAdded}
-            viewAllHref="/events?sort=newest"
+            viewAllHref="/events?sort=date_asc"
           />
         )}
 
@@ -389,7 +389,7 @@ export default async function HomePage() {
             ariaLabel="Editor's picks"
             railLabel="Editor's picks"
             events={editorsPicks}
-            viewAllHref="/events?curated=1"
+            viewAllHref="/events"
           />
         )}
 

@@ -3,6 +3,86 @@
 Branch: `chore/functionality-audit` (forked from `main` @ `923e0f0`).
 No code changes. Audit only.
 
+> **2026-05-23 follow-up**: HIGH-2 is RESOLVED on branch
+> `fix/footer-filter-links` (commit immediately following this audit's
+> cherry-pick). HIGH-1, every MEDIUM, and every LOW remain open. The
+> live verification items in section "Items requiring live verification"
+> are still owed. See the **HIGH-2 RESOLVED** section directly below
+> for the full before/after.
+
+## HIGH-2 RESOLVED - footer + homepage filter link rewrites
+
+The audit's HIGH-2 finding (parser-rejecting query params) was verified
+against `src/lib/events/search-params.ts` on current main and was
+correct in every particular. Option A (rewrite the hrefs to match the
+parser - parser is the source of truth) was applied. The parser was
+not extended.
+
+**Parser-accepted values (verified):**
+- `PRESETS`: `all`, `today`, `tomorrow`, `weekend`, `7d`, `month`, `free`
+- `SORTS`: `relevance`, `date_asc`, `price_asc`, `popularity`
+- `VIEWS`: `grid`, `map`
+- Other recognised keys: `q`, `category`, `culture`, `sub_culture`,
+  `country`, `price_min`, `price_max`, `from`, `to`, `distance_km`,
+  `page`. No `free`, `when`, `date`, `curated`, `price`, or
+  `view=cities|cultures`.
+
+### Footer rewrites (`src/components/layout/site-footer.tsx`)
+
+| Label | Before | After | Why |
+|---|---|---|---|
+| By city | `/events?view=cities` | **`/cities`** | `cities` is not a parser-recognised view; `/cities` is the existing dedicated index page. |
+| By culture | `/events?view=cultures` | **`/cultures`** | Same as above; `/cultures` exists. |
+| This week | `/events?when=this-week` | **`/events?preset=7d`** | No `when` param; `7d` is the parser's next-7-days preset. |
+| This weekend | `/events?when=this-weekend` | **`/events?preset=weekend`** | No `when` param; `weekend` is a recognised preset. |
+| Free events | `/events?price=free` | **`/events?preset=free`** | No `price` (only `price_min`/`price_max`); `free` is a recognised preset. |
+
+The footer link arrays (`DISCOVER`, `CULTURES`, `FOR_ORGANISERS`,
+`COMPANY`, `LEGAL`) are now `export`ed so the unit test below can
+import them.
+
+### Homepage rail rewrites (`src/app/page.tsx`)
+
+| Rail | Before | After | Why |
+|---|---|---|---|
+| This Weekend | `/events?date=weekend` | **`/events?preset=weekend`** | No `date` param. |
+| Free events | `/events?free=1` | **`/events?preset=free`** | No `free` param. |
+| Trending now | `/events?sort=trending` | **`/events?sort=popularity`** | `trending` is not in SORTS; `popularity` is the parser's selling-fast sort. |
+| Just added | `/events?sort=newest` | **`/events?sort=date_asc`** | `newest` is not in SORTS. **Semantic compromise**: `date_asc` orders by soonest start date, not most-recently-created. The parser has no `created_at desc` sort. Acceptable as a "what's coming up" proxy; a future correctness fix would extend SORTS with `created_desc` (out of scope for this fix per brief instruction to use Option A only). |
+| Editor's picks | `/events?curated=1` | **`/events`** | No `curated` param and no parser concept of editor curation; the rail itself is curated server-side. The View all is now a plain "browse all events". |
+| Community | `/events?category=community` | (unchanged) | `category` IS a parser-accepted key; this link already works. |
+
+### Regression test added
+
+`tests/unit/footer-links.test.ts` imports the five exported footer
+link arrays and, for every link whose `href` starts with `/events?`,
+parses the query string through `parseEventsSearchParams` and asserts
+the result produces at least one of: an active filter, a non-default
+sort, or a non-default view. A future link with an unrecognised param
+fails the test before it ships. The test also pins the six homepage
+rail `viewAllHref` strings to the same contract.
+
+### What is NOT changed by this fix
+
+- Parser extension is intentionally not done. The brief specified
+  Option A (rewrite hrefs only).
+- The Editor's picks rail's "View all" loses semantic narrowing (it
+  is now plain `/events`). A future parser extension with a
+  `?curated=1` flag or removal of the rail entirely is a separate
+  decision.
+- The "Just added" rail's semantic compromise (date_asc instead of
+  created_desc) is documented above; future correctness fix is to
+  extend SORTS.
+
+### Verification status
+
+- `tsc --noEmit`, `npm run lint`, `npx vitest tests/unit/footer-links.test.ts`,
+  and `npm run build` results recorded in the commit message of the
+  follow-up `[AUDIT-FIX]` commit.
+- Live browser verification of each rewritten URL **still owed** (the
+  audit's environment limitation remains; the test exercises the
+  parser end-to-end which is the next-best gate).
+
 ## Audit method and honest constraints
 
 The audit brief asked for `npm run build && npm run start`, live HTTP probes
