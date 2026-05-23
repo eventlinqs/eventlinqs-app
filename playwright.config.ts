@@ -7,6 +7,11 @@ import { defineConfig, devices } from '@playwright/test'
  */
 export default defineConfig({
   testDir: './tests/e2e',
+  // *.production.spec.ts files run against live https://www.eventlinqs.com
+  // from playwright.smoke.config.ts (no webServer). Exclude them here so
+  // the local-build config does not try to drive a remote target through
+  // the local Next server.
+  testIgnore: ['**/*.production.spec.ts'],
   fullyParallel: false,
   retries: 0,
   workers: 1,
