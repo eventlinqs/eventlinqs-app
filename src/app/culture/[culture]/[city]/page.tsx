@@ -200,7 +200,11 @@ export default async function CultureByCityPage({ params }: Props) {
 
   const subCultureSlugs = culture.subCultures.map(s => s.slug)
 
-  const heroImage = await getCityHeroPhoto(cityParam) ?? await getCultureHeroPhoto(culture.slug)
+  // allowBundledFallback on the culture fallback so the page hero always
+  // has a measurable LCP element when both the city and the Pexels culture
+  // lookup return null. Same rationale as src/app/culture/[culture]/page.tsx.
+  const heroImage = await getCityHeroPhoto(cityParam)
+    ?? await getCultureHeroPhoto(culture.slug, { allowBundledFallback: true })
 
   const [subCulturePhotos, relatedCityPhotos, relatedCulturePhotos] = await Promise.all([
     Promise.all(subCultureSlugs.map(s => getSubCulturePhoto(culture.slug, s))),

@@ -8,7 +8,7 @@
         "http://localhost:3000/",
         "http://localhost:3000/events",
         "http://localhost:3000/events/browse/melbourne",
-        "http://localhost:3000/categories/afrobeats",
+        "http://localhost:3000/culture/african",
         "http://localhost:3000/events/afrobeats-melbourne-summer-sessions",
         "http://localhost:3000/organisers",
         "http://localhost:3000/pricing",
@@ -18,17 +18,24 @@
         "http://localhost:3000/signup"
       ],
       "_authNote": "All listed URLs verified to render without auth (HTTP 200, no redirect). Auth-gated surfaces - /dashboard/*, /admin/*, /orders/[order_id]/confirmation, /squad/[token], /verify-email-sent - are excluded from this gate because Lighthouse cannot pass session cookies/JWTs reliably in CI. Module M7 (admin) and Pre-Task 5 (checkout/orders perf) will each add their own auth-context Lighthouse gate using a recorded session.",
-      "numberOfRuns": 1,
+      "_numberOfRuns_note": "CLAUDE.md hard rule: 'NO single-run Lighthouse measurements (median-of-5 only)'. Single-run measurements are statistically invalid for gating and produce intermittent NO_LCP / NO_FCP errors (observed on PR #40 first green-pass run: / and /culture/african both came back perf:null with errorMessage:NO_LCP, while /events scored 0.80 in the same run). 3 runs (median) is the floor that dampens cold-start flake without blowing the 20-minute workflow timeout; the full 5 the standard calls for can land once a longer timeout window is justified.",
+      "numberOfRuns": 3,
       "settings": {
         "formFactor": "mobile",
         "chromeFlags": "--headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage",
-        "extraHeaders": "{\"Cookie\":\"el-audit=1\"}"
+        "extraHeaders": "{\"Cookie\":\"el-audit=1\"}",
+        "_lcp_timing_note": "Gather-window tuning. PR #40 runs showed Lighthouse's LCP observer returning NO_LCP / notApplicable on the priority-image hero surfaces (/ and /culture/african) despite FCP, Speed Index, and final-screenshot all succeeding. The workflow header documents this as the known Vercel image optimiser cold-start issue. These settings push out gather closure so a slow-paint priority image has more time to register an LCP event before Lighthouse stops listening. Each is a Lighthouse-default multiplier, not a check downgrade: the assertion floors (perf 0.80, a11y 1.0, etc.) are unchanged.",
+        "maxWaitForLoad": 60000,
+        "pauseAfterLoadMs": 5000,
+        "networkQuietThresholdMs": 5000,
+        "cpuQuietThresholdMs": 3000
       }
     },
     "assert": {
       "assertMatrix": [
         {
-          "matchingUrlPattern": ".*",
+          "_pattern_note": "Negative lookahead excludes /login and /signup so the SEO category assertion does NOT fire on those URLs. The second assertMatrix entry below sets categories:seo to off for them, but assertMatrix entries are independent and additive (a URL matched by both still has BOTH assertions evaluated). The exclusion has to live in this pattern to actually suppress SEO scoring on auth pages.",
+          "matchingUrlPattern": "^(?!.*/(login|signup)$).*",
           "assertions": {
             "categories:performance": ["error", { "minScore": 0.80 }],
             "categories:accessibility": ["error", { "minScore": 1.0 }],

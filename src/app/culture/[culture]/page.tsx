@@ -90,12 +90,18 @@ export default async function CulturePage({ params }: Props) {
     cityCtaImage,
     ...rest
   ] = await Promise.all([
-    getCultureHeroPhoto(culture.slug),
+    // allowBundledFallback so the page hero always has a measurable LCP
+    // element when Pexels returns null (CI without PEXELS_API_KEY, or any
+    // Pexels outage in production). PhotographicCultureHero's null branch
+    // renders a CSS gradient only, which Lighthouse cannot score (NO_LCP).
+    getCultureHeroPhoto(culture.slug, { allowBundledFallback: true }),
     // Use the first city's hero (landscape) as the CTA backdrop. Falls back to null
     // and the CTA panel renders its dark navy fallback.
     citySlugs[0] ? getCityHeroPhoto(citySlugs[0]) : Promise.resolve(null),
     ...culture.subCultures.map(sc => getSubCulturePhoto(culture.slug, sc.slug)),
     ...citySlugs.map(slug => getCityPhoto(slug)),
+    // Related-culture tiles below the fold do not need the fallback - they
+    // are small thumbnails, not LCP candidates.
     ...relatedSlugs.map(slug => getCultureHeroPhoto(slug)),
   ])
 
