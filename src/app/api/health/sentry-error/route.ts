@@ -42,12 +42,17 @@ export async function GET(request: Request) {
     timestamp: new Date().toISOString(),
   })
 
+  // Snapshot the enabled status once so the JSON body and the note can
+  // never disagree. isSentryEnabled() forwards to Sentry.isInitialized()
+  // which is the canonical SDK-side check that init succeeded.
+  const enabled = isSentryEnabled()
+
   return NextResponse.json({
     ok: true,
-    sentryEnabled: isSentryEnabled(),
-    note: isSentryEnabled()
-      ? 'Synthetic error sent to Sentry. Check the EventLinqs project for an event tagged synthetic=true within ~30s.'
-      : 'Sentry not yet enabled (NEXT_PUBLIC_SENTRY_DSN unset or NODE_ENV != production). Error captured to console only.',
+    sentryEnabled: enabled,
+    note: enabled
+      ? 'Synthetic error dispatched to Sentry. Within ~30s an event tagged synthetic=true should appear in the project.'
+      : 'Sentry.isInitialized() returned false at request time. The synthetic error was routed through the dev console fallback in src/lib/observability/sentry.ts and did NOT reach Sentry. Check the Vercel build log for the @sentry/nextjs webpack plugin output (a missing or empty log indicates withSentryConfig did not wrap the build), and verify SENTRY_DSN is set in the runtime env for this environment.',
     timestamp: new Date().toISOString(),
   })
 }
