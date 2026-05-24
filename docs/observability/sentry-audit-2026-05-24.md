@@ -2,7 +2,9 @@
 
 Audit performed as part of the post-PR #34 hardening pass (PR 3 of three follow-ups closing the React #185 retrospective items).
 
-## Executive summary
+> **STATUS: SDK INSTALLED (2026-05-24).** Closed by PR #41 (`feat/sentry-sdk-install`, merge commit `0ca9ab1`, deployed as `dpl_3i35hyR99cGzGnoiZDE3aL2rpcjU`). See the "SDK installation closure" section at the bottom of this doc for the verification trail and the deferred manual round-trip the founder runs at convenience. The original audit narrative below is kept verbatim for the change record.
+
+## Executive summary (audit as written 2026-05-24, pre-PR #41)
 
 **The Sentry SDK is not installed.** The error-boundary scaffold (`error.tsx`, `global-error.tsx`, the shim at `src/lib/observability/sentry.ts`) is wired correctly but every `captureException` call routes through a no-op shim in production. Events do not reach the Sentry ingest endpoint regardless of whether `NEXT_PUBLIC_SENTRY_DSN` is configured.
 
@@ -155,3 +157,72 @@ The last command's "appears in Sentry dashboard" is the single verification gate
 ## Recommended next action
 
 Route to partner Claude (project manager). The work has been scoped, documented, and is ready to execute as a SHARED PR. Estimated wall time once unblocked: 30 minutes (npm install, three config files, instrumentation.ts, swap shim, smoke via `/api/health/sentry-error`).
+
+---
+
+## SDK installation closure (2026-05-24, post-PR #41)
+
+Status when this section was added: **SDK INSTALLED.**
+
+PR #41 (`feat/sentry-sdk-install`, merge commit `0ca9ab1`, merged 2026-05-24 21:43 AEST) closes the gap surfaced above. Deployed as Vercel deployment `dpl_3i35hyR99cGzGnoiZDE3aL2rpcjU`.
+
+### What landed
+
+| Asset | New status (after PR #41) |
+| - | - |
+| `@sentry/nextjs` in `package.json` | PRESENT - version `^10.53.1` |
+| `node_modules/@sentry/nextjs` | PRESENT, plus the SDK's full transitive tree |
+| `sentry.client.config.ts` / `sentry.server.config.ts` / `sentry.edge.config.ts` | PRESENT at repo root, with `beforeSend` wired to `scrubValue` from `pii-scrub.ts` |
+| `instrumentation.ts` registering `Sentry.init` via runtime-conditional dynamic imports | PRESENT |
+| `instrumentation-client.ts` Next.js 15.3+ client init hook | PRESENT |
+| `next.config.ts` wrapped with `withSentryConfig` | PRESENT, with the wrap gated behind DSN presence at build time so CI builds (which deliberately have no Sentry env) stay un-Sentry-wrapped |
+| `src/lib/observability/sentry.ts` shim | UPDATED - forwards to `Sentry.captureException` / `Sentry.captureMessage` when `Sentry.isInitialized()` is true; dev-mode `console.error` fallback preserved |
+
+### Sentry config defaults that landed
+
+| Setting | Value | Where |
+| - | - | - |
+| `tracesSampleRate` | `0.1` | client + server + edge |
+| `profilesSampleRate` | `0.1` | server only |
+| `replaysSessionSampleRate` | `0` | client |
+| `replaysOnErrorSampleRate` | `1.0` | client |
+| `replayIntegration` with `maskAllText: false, blockAllMedia: false` | enabled | client |
+| `tunnelRoute` | `/api/monitoring` | webpack plugin options |
+| `beforeSend` filtering ResizeObserver loops, AbortError, browser-extension origins | enabled | client |
+| `beforeSend` + `beforeSendTransaction` PII scrub via `scrubValue` | enabled | client + server + edge |
+
+### Verification trail (indirect signals - direct round-trip deferred)
+
+What was verified at merge time without the `HEALTH_CHECK_TOKEN` round-trip:
+
+- New deployment `dpl_3i35hyR99cGzGnoiZDE3aL2rpcjU` live on Vercel within 60s of merge.
+- `https://www.eventlinqs.com/` and other public routes serve normally (no regression from the SDK wrap).
+- `/api/health/sentry-error` returns `HTTP 401 {"ok":false,"error":"unauthorized"}` to anonymous and wrong-token requests, confirming `HEALTH_CHECK_TOKEN` IS set in Vercel Production (the endpoint moved past the `if (!token)` 503 branch).
+- `package.json` records `@sentry/nextjs ^10.53.1` and `package-lock.json` has the resolved tree.
+- Local prod build with DSN-set successfully ran the Sentry webpack plugin (replayed at `0ca9ab1`).
+- Pre-merge gates green: `npx tsc --noEmit`, `npm run lint`, `npx vitest run` (192/192), `npm run build`, `npx playwright test tests/e2e/site-header-cookie-snapshot.spec.ts` (4/4).
+- Pre-existing Lighthouse mobile CI failure tracked separately as issue #43; PR #41 merged under one-time founder-authorised admin override because the failure was verifiably pre-existing (38 of 40 recent Lighthouse runs failed before this PR existed). PR #40 is the active work-stream taking that gate green.
+
+### Deferred manual founder verification
+
+The single check that proves end-to-end event delivery is the synthetic-error round-trip. Token-gated so it cannot be run from this agent's session. Founder runs at convenience:
+
+```bash
+curl "https://www.eventlinqs.com/api/health/sentry-error?token=<HEALTH_CHECK_TOKEN>"
+```
+
+Expected response:
+
+```json
+{ "ok": true, "sentryEnabled": true, "note": "Synthetic error sent to Sentry. ..." }
+```
+
+Then within ~30 seconds, an event tagged `synthetic=true` appears in the Sentry `javascript-nextjs` project at https://sentry.io/organizations/eventlinqs/issues/?project=4511144328101888 .
+
+If `sentryEnabled` reads `true` but no event lands, the most likely cause is `NEXT_PUBLIC_SENTRY_DSN` differing from what Sentry expects (key rotated, project moved). If `sentryEnabled` reads `false`, the SDK did not initialise at runtime - check the Vercel build log for the Sentry plugin's "Created release" line or "No auth token provided" warnings.
+
+### Follow-up still open
+
+- Configure the dashboard alert rules documented in `docs/observability/sentry-alerts.md`.
+- Add `SENTRY_AUTH_TOKEN` to Vercel Production if not already set. Without it, source maps do not upload and Sentry stack traces will show minified function names (`rh`, `rp`, ...) instead of resolved frames. Token is created at `https://sentry.io/settings/account/api/auth-tokens/` with `project:releases` + `org:read` scopes.
+- Issue #43 tracks the Lighthouse mobile gate regression that PR #41 merged around.
