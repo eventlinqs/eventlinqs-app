@@ -23,7 +23,12 @@
       "settings": {
         "formFactor": "mobile",
         "chromeFlags": "--headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage",
-        "extraHeaders": "{\"Cookie\":\"el-audit=1\"}"
+        "extraHeaders": "{\"Cookie\":\"el-audit=1\"}",
+        "_lcp_timing_note": "Gather-window tuning. PR #40 runs showed Lighthouse's LCP observer returning NO_LCP / notApplicable on the priority-image hero surfaces (/ and /culture/african) despite FCP, Speed Index, and final-screenshot all succeeding. The workflow header documents this as the known Vercel image optimiser cold-start issue. These settings push out gather closure so a slow-paint priority image has more time to register an LCP event before Lighthouse stops listening. Each is a Lighthouse-default multiplier, not a check downgrade: the assertion floors (perf 0.80, a11y 1.0, etc.) are unchanged.",
+        "maxWaitForLoad": 60000,
+        "pauseAfterLoadMs": 5000,
+        "networkQuietThresholdMs": 5000,
+        "cpuQuietThresholdMs": 3000
       }
     },
     "assert": {
