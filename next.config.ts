@@ -126,21 +126,21 @@ const sentryWebpackPluginOptions = {
   },
 };
 
-// Skip the Sentry wrap entirely when no DSN is present at build time.
-// CI runs (which deliberately have no Sentry env) and local dev runs
-// without .env.local DSN both get the un-Sentry build path, matching
-// pre-Sentry-install behaviour. Vercel Production (DSN set per
-// docs/observability/sentry-audit-2026-05-24.md) gets the full
-// withSentryConfig wrap so source maps upload and runtime tracking
-// stays on. This guards against @sentry/nextjs webpack-plugin
-// wrappers that depend on Sentry being initialised at runtime; with
-// no DSN the wrappers can fail server-component renders (observed:
-// /events SSR returning 500 in CI on PR #41 first run).
+// Always wrap with withSentryConfig. The Sentry webpack plugin is what
+// tells webpack to bundle the repo-root sentry.{client,server,edge}.config.ts
+// files into the deployed functions; without the wrap, the dynamic
+// `await import('./sentry.server.config')` in instrumentation.ts resolves
+// to nothing on the deployed server and Sentry.init never runs at boot -
+// which surfaces as sentryEnabled:false on /api/health/sentry-error even
+// when every DSN env var is correctly set in the runtime environment.
+//
+// The earlier defensive "skip when no DSN at build time" gate (PR #41
+// commit dd8157b) is removed because the original /events 500 it was
+// guarding against turned out to be LCP-timing-driven, not Sentry-wrap-
+// driven (PR #40 fixed it via lighthouserc gather-window timing). The
+// runtime sentry.*.config.ts files each have their own `if (dsn)` guard,
+// so a build with no DSN in env still produces a working binary that
+// just doesn't init Sentry at boot. No need to gate the wrap.
 const baseConfig = withBundleAnalyzer(nextConfig);
-const sentryDsnPresent = Boolean(
-  process.env.NEXT_PUBLIC_SENTRY_DSN || process.env.SENTRY_DSN,
-);
 
-export default sentryDsnPresent
-  ? withSentryConfig(baseConfig, sentryWebpackPluginOptions)
-  : baseConfig;
+export default withSentryConfig(baseConfig, sentryWebpackPluginOptions);
