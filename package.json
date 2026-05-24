@@ -16,6 +16,7 @@
     "@googlemaps/js-api-loader": "^2.0.2",
     "@googlemaps/markerclusterer": "^2.6.2",
     "@react-email/components": "^1.0.11",
+    "@sentry/nextjs": "^10.53.1",
     "@stripe/react-stripe-js": "^6.1.0",
     "@stripe/stripe-js": "^9.0.1",
     "@supabase/ssr": "^0.10.0",

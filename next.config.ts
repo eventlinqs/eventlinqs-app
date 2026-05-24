@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import bundleAnalyzer from "@next/bundle-analyzer";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === 'true' });
 
@@ -100,4 +101,46 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withBundleAnalyzer(nextConfig);
+// Sentry webpack plugin options. Source map upload requires
+// SENTRY_AUTH_TOKEN; when the token is absent the plugin skips upload
+// silently (build still succeeds). The runtime SDK still captures
+// events on every deploy via NEXT_PUBLIC_SENTRY_DSN.
+const sentryWebpackPluginOptions = {
+  org: process.env.SENTRY_ORG || "eventlinqs",
+  project: process.env.SENTRY_PROJECT || "javascript-nextjs",
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  // Keep CI build logs clean; emit verbose info on local builds.
+  silent: !!process.env.CI,
+  widenClientFileUpload: true,
+  hideSourceMaps: true,
+  // Route Sentry ingest through /api/monitoring so ad-blockers that
+  // drop requests to sentry.io still let events through. Vercel
+  // handles the rewrite automatically.
+  tunnelRoute: "/api/monitoring",
+  // Webpack-bundled options (v10+ shape). Tree-shaking removes Sentry
+  // SDK debug logging from production bundles. automaticVercelMonitors
+  // synthesises Vercel monitors for the project on each deploy.
+  webpack: {
+    treeshake: { removeDebugLogging: true },
+    automaticVercelMonitors: true,
+  },
+};
+
+// Skip the Sentry wrap entirely when no DSN is present at build time.
+// CI runs (which deliberately have no Sentry env) and local dev runs
+// without .env.local DSN both get the un-Sentry build path, matching
+// pre-Sentry-install behaviour. Vercel Production (DSN set per
+// docs/observability/sentry-audit-2026-05-24.md) gets the full
+// withSentryConfig wrap so source maps upload and runtime tracking
+// stays on. This guards against @sentry/nextjs webpack-plugin
+// wrappers that depend on Sentry being initialised at runtime; with
+// no DSN the wrappers can fail server-component renders (observed:
+// /events SSR returning 500 in CI on PR #41 first run).
+const baseConfig = withBundleAnalyzer(nextConfig);
+const sentryDsnPresent = Boolean(
+  process.env.NEXT_PUBLIC_SENTRY_DSN || process.env.SENTRY_DSN,
+);
+
+export default sentryDsnPresent
+  ? withSentryConfig(baseConfig, sentryWebpackPluginOptions)
+  : baseConfig;
