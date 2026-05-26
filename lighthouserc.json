@@ -34,8 +34,8 @@
     "assert": {
       "assertMatrix": [
         {
-          "_pattern_note": "Negative lookahead excludes /login and /signup (SEO category - they are deliberately noindex), AND /culture/* (perf score - Issue #42 cold-start image-optimiser race; see the third assertMatrix entry below). Each excluded path has its own dedicated assertMatrix entry that re-applies whichever assertions still need to fire at error-level for that path. assertMatrix entries are independent and additive (a URL matched by multiple entries has all matching assertions evaluated), so excluding here is the only way to suppress the default error-level threshold from also firing.",
-          "matchingUrlPattern": "^(?!.*/(login|signup)$)(?!.*/culture/.+$).*",
+          "_pattern_note": "Negative lookahead excludes /login and /signup (SEO category - they are deliberately noindex), /culture/* (perf score - Issue #42 cold-start image-optimiser race; see the third assertMatrix entry below), AND the homepage / (same Issue #42 class per CLAUDE.md docs/perf/v2/closure-report.md flagging 'Mobile homepage and /events have known cold-cache measurement issue ... do not block on it'; see the fourth assertMatrix entry below). Each excluded path has its own dedicated assertMatrix entry that re-applies whichever assertions still need to fire at error-level for that path. assertMatrix entries are independent and additive (a URL matched by multiple entries has all matching assertions evaluated), so excluding here is the only way to suppress the default error-level threshold from also firing.",
+          "matchingUrlPattern": "^(?!.*/(login|signup)$)(?!.*/culture/.+$)(?!http://localhost:3000/$).*",
           "assertions": {
             "categories:performance": ["error", { "minScore": 0.80 }],
             "categories:accessibility": ["error", { "minScore": 1.0 }],
@@ -66,6 +66,21 @@
         {
           "_note": "Culture landing pages (/culture/<slug>) hit a cold-start Vercel image optimiser race that drops mobile performance score below the global 0.80 floor on heavy hero rasters. Surfaced after PR #40 fixed the /events 500 that previously masked Lighthouse from reaching this URL's assertion phase at all. Issue #42 tracks the proper fix (image-optimiser pre-warm or static raster hero on culture pages). Until then, performance is gated at warn-level on this route only - the score is still measured and visible in CI, just non-blocking - while accessibility, best-practices, and SEO stay at the full error-level 1.0 floor. Restore performance to error-level when Issue #42 closes.",
           "matchingUrlPattern": "/culture/.+$",
+          "assertions": {
+            "categories:performance": ["warn", { "minScore": 0.80 }],
+            "categories:accessibility": ["error", { "minScore": 1.0 }],
+            "categories:best-practices": ["error", { "minScore": 1.0 }],
+            "categories:seo": ["error", { "minScore": 1.0 }],
+            "largest-contentful-paint": ["warn", { "maxNumericValue": 4000 }],
+            "total-blocking-time": ["warn", { "maxNumericValue": 600 }],
+            "cumulative-layout-shift": ["error", { "maxNumericValue": 0.1 }],
+            "first-contentful-paint": ["warn", { "maxNumericValue": 2000 }],
+            "speed-index": ["warn", { "maxNumericValue": 4500 }]
+          }
+        },
+        {
+          "_note": "Homepage / mobile cold-cache image-optimiser race - same class as /culture/* per Issue #42 and CLAUDE.md docs/perf/v2/closure-report.md ('Mobile homepage and /events have known cold-cache measurement issue to be revisited with production warm-cache data, do not block on it'). The homepage hero is a heavy priority-painted raster on mobile and trips the same Vercel image optimiser cold-start race already documented for /culture/*. Observed in this PR's run (median-of-3): perf 0.76 on /, while /culture/african produced null/NaN for perf/LCP/TBT in the same run - both routes are stuck below the 0.80 floor for the same documented reason. Performance is gated at warn-level so the score stays visible in CI without blocking deploys; accessibility, best-practices, SEO, and CLS remain at the full error-level. Restore performance to error-level when the underlying cold-cache fix lands (same fix horizon as Issue #42). /events is also flagged in CLAUDE.md as having the same issue but is left at error-level for now because the current run still measured it above 0.80 - relax it only when it actually fails.",
+          "matchingUrlPattern": "^http://localhost:3000/$",
           "assertions": {
             "categories:performance": ["warn", { "minScore": 0.80 }],
             "categories:accessibility": ["error", { "minScore": 1.0 }],
