@@ -47,12 +47,26 @@ export async function GET(request: Request) {
   // which is the canonical SDK-side check that init succeeded.
   const enabled = isSentryEnabled()
 
+  // [DIAG 2026-05-26] Surface the per-step init diagnostics written by
+  // instrumentation.ts and sentry.server.config.ts. When sentryEnabled
+  // is false, the diag object reveals exactly which step failed:
+  //   - registerCalledAt missing  -> instrumentation.register() never ran
+  //   - registerError present     -> the dynamic config import threw
+  //   - serverConfigLoadedAt missing -> import resolved but module body didn't execute
+  //   - serverDsnPresent: false   -> DSN env var was undefined at module evaluation
+  //   - serverInitError present   -> Sentry.init threw synchronously
+  //   - serverInitOk: false       -> Sentry.init returned but isInitialized was false
+  const diag = (globalThis as typeof globalThis & {
+    __el_sentry_diag?: Record<string, unknown>
+  }).__el_sentry_diag ?? null
+
   return NextResponse.json({
     ok: true,
     sentryEnabled: enabled,
     note: enabled
       ? 'Synthetic error dispatched to Sentry. Within ~30s an event tagged synthetic=true should appear in the project.'
-      : 'Sentry.isInitialized() returned false at request time. The synthetic error was routed through the dev console fallback in src/lib/observability/sentry.ts and did NOT reach Sentry. Check the Vercel build log for the @sentry/nextjs webpack plugin output (a missing or empty log indicates withSentryConfig did not wrap the build), and verify SENTRY_DSN is set in the runtime env for this environment.',
+      : 'Sentry.isInitialized() returned false at request time. The synthetic error was routed through the dev console fallback in src/lib/observability/sentry.ts and did NOT reach Sentry. Inspect the `diag` field below for the per-step init state - the missing or failing step is the root cause.',
+    diag,
     timestamp: new Date().toISOString(),
   })
 }
