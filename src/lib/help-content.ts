@@ -91,7 +91,7 @@ export const helpTopics: HelpTopic[] = [
       },
       {
         q: 'Can I transfer my ticket to someone else?',
-        a: "Ticket transfers are not available at this time. If you cannot attend an event, check the organiser's refund policy on the event page, or contact the organiser directly using the details listed on the event.",
+        a: "Ticket transfer between buyers is not currently supported. Contact the event organiser directly for any ticket changes.",
       },
       {
         q: 'Can I resell my ticket above face value?',
@@ -103,7 +103,7 @@ export const helpTopics: HelpTopic[] = [
       },
       {
         q: 'Am I entitled to a refund if I cannot attend?',
-        a: "Refund eligibility depends on the organiser's refund policy, which is displayed on the event page before you purchase. Most events are sold on a no-refund basis unless stated otherwise. If an organiser cancels an event, you are entitled to a refund of the amount you paid, and we are committed to processing these refunds promptly. For all other refund requests, contact the organiser using the details on the event page. If you cannot reach them, contact us via the support form and we will help where we can.",
+        a: "Refund eligibility depends on the organiser's refund policy, which is displayed on the event page before you purchase. Most events are sold on a no-refund basis unless stated otherwise. If you cannot attend, contact the organiser using the details on the event page. If an event is cancelled by the organiser, refunds are processed at the organiser's discretion in line with their refund policy stated at point of purchase. If you cannot reach the organiser, contact us via the support form and we will help where we can.",
       },
       {
         q: 'Will I need ID at the door?',
@@ -167,7 +167,7 @@ export const helpTopics: HelpTopic[] = [
       },
       {
         q: 'Can I set my own refund policy?',
-        a: "Yes. You set your own refund policy for each event, and it is displayed to buyers before they complete their purchase. Whatever policy you set, you are bound by it. If you cancel an event, ticket holders are entitled to a refund of the amount they paid, and you remain responsible for those refunds. We are committed to working with you to process them promptly.",
+        a: "Yes. You set your own refund policy for each event, and it is displayed to buyers before they complete their purchase. Whatever policy you set, you are bound by it. If you cancel an event, ticket holders are entitled to a refund in line with that policy, and you remain responsible for processing those refunds.",
       },
       {
         q: 'Can I offer early bird pricing and multiple ticket tiers?',
@@ -239,7 +239,7 @@ export const helpTopics: HelpTopic[] = [
       },
       {
         q: 'Can I get a receipt for my ticket purchase?',
-        a: "Yes. Your purchase confirmation email serves as your receipt and includes the full breakdown of everything you paid. EventLinqs is not currently GST-registered, so this confirmation email is your receipt for the purchase.",
+        a: "A receipt is issued at point of purchase. For tax invoicing requirements, contact the event organiser.",
       },
       {
         q: 'What happens if a buyer files a chargeback?',
@@ -247,7 +247,7 @@ export const helpTopics: HelpTopic[] = [
       },
       {
         q: 'What happens to payments if an event is cancelled?',
-        a: "If an organiser cancels an event, ticket holders are entitled to a refund of the full amount paid, including any service fees. We are committed to processing these refunds promptly once a cancellation is confirmed. If you have a question about a refund for a cancelled event, contact us via the support form with your order reference.",
+        a: "If an event is cancelled by the organiser, refunds are processed at the organiser's discretion in line with their refund policy stated at point of purchase. If you have a question about a refund for a cancelled event, contact us via the support form with your order reference.",
       },
     ],
   },
