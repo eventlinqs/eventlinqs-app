@@ -5,6 +5,7 @@ import type { Metadata } from 'next'
 import type {
   Event, TicketTier, Organisation, EventCategory, EventAddon,
 } from '@/types/database'
+import { jsonAsStringArray } from '@/lib/json-narrow'
 import {
   SeatSelector, type SeatData, type SectionData,
 } from '@/components/checkout/seat-selector'
@@ -337,7 +338,8 @@ export default async function EventDetailPage({ params }: Props) {
       title: event.title,
       cover_image_url: event.cover_image_url,
       thumbnail_url: event.thumbnail_url,
-      gallery_urls: event.gallery_urls,
+      // gallery_urls is jsonb in the live schema; narrow Json -> string[].
+      gallery_urls: jsonAsStringArray(event.gallery_urls),
       category: event.category ? { slug: event.category.slug ?? null, name: event.category.name } : null,
     }),
     fetchRelatedEvents(
@@ -671,10 +673,13 @@ export default async function EventDetailPage({ params }: Props) {
                   </div>
                 </div>
 
-                {/* Tags */}
-                {event.tags.length > 0 && (
+                {/* Tags - events.tags is jsonb in the live schema; narrow
+                    Json -> string[] before iterating. */}
+                {(() => {
+                  const tags = jsonAsStringArray(event.tags)
+                  return tags.length > 0 && (
                   <div className="mt-8 flex flex-wrap gap-2">
-                    {event.tags.map(tag => (
+                    {tags.map(tag => (
                       <Link
                         key={tag}
                         href={`/events?q=${encodeURIComponent(tag)}`}
@@ -684,7 +689,8 @@ export default async function EventDetailPage({ params }: Props) {
                       </Link>
                     ))}
                   </div>
-                )}
+                  )
+                })()}
 
                 {/* Share - WhatsApp first per Batch 8.1 brief (cultural events
                  *  spread through WhatsApp more than any other channel in the
