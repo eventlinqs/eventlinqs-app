@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -71,6 +72,12 @@ export default async function CheckoutPage({ params }: Props) {
   let initialFees: Awaited<ReturnType<typeof PaymentCalculator.prototype.calculate>> | null = null
   let ticketSlots: { tier_id: string; tier_name: string; quantity: number }[] = []
   let tierIds: string[] = []
+  // [FIX-CHECKOUT 2026-05-28] Wrap fee calc so any downstream failure
+  // (pricing_rules schema drift, Redis cache hiccup, Supabase blip)
+  // renders a clean handled state instead of crashing the server render
+  // through to the app-router error boundary. The reservation has NOT
+  // been consumed at this point so a retry is safe.
+  let feesError: unknown = null
 
   if (isSeatReservation) {
     const seatIds = (rawItems as { seat_ids: string[] }).seat_ids
@@ -104,16 +111,21 @@ export default async function CheckoutPage({ params }: Props) {
       const avgPriceCents = Math.round(totalSeatCents / seatSlots.length)
       const fee_pass_type = (event.fee_pass_type ?? 'pass_to_buyer') as FeePassType
       const calculator = new PaymentCalculator()
-      initialFees = await calculator.calculate(
-        [{ tier_id: 'seat', tier_name: 'Reserved Seat', quantity: seatSlots.length, unit_price_cents: avgPriceCents }],
-        [],
-        currency,
-        fee_pass_type,
-        0,
-        event.organisation_id
-      )
-      // Override subtotal with exact seat sum
-      initialFees = { ...initialFees, subtotal_cents: totalSeatCents, total_cents: totalSeatCents + initialFees.platform_fee_cents + initialFees.payment_processing_fee_cents + initialFees.tax_cents }
+      try {
+        const computed = await calculator.calculate(
+          [{ tier_id: 'seat', tier_name: 'Reserved Seat', quantity: seatSlots.length, unit_price_cents: avgPriceCents }],
+          [],
+          currency,
+          fee_pass_type,
+          0,
+          event.organisation_id
+        )
+        // Override subtotal with exact seat sum
+        initialFees = { ...computed, subtotal_cents: totalSeatCents, total_cents: totalSeatCents + computed.platform_fee_cents + computed.payment_processing_fee_cents + computed.tax_cents }
+      } catch (err) {
+        feesError = err
+        console.error('[checkout] PaymentCalculator.calculate failed (seat path):', err)
+      }
     } else {
       redirect('/events?error=reservation_not_found')
     }
@@ -163,14 +175,19 @@ export default async function CheckoutPage({ params }: Props) {
       }))
 
     const calculator = new PaymentCalculator()
-    initialFees = await calculator.calculate(
-      cartTickets,
-      cartAddons,
-      currency,
-      fee_pass_type,
-      0,
-      event.organisation_id
-    )
+    try {
+      initialFees = await calculator.calculate(
+        cartTickets,
+        cartAddons,
+        currency,
+        fee_pass_type,
+        0,
+        event.organisation_id
+      )
+    } catch (err) {
+      feesError = err
+      console.error('[checkout] PaymentCalculator.calculate failed (GA path):', err)
+    }
 
     ticketSlots = cartTickets.map(t => ({
       tier_id: t.tier_id,
@@ -215,6 +232,47 @@ export default async function CheckoutPage({ params }: Props) {
 
   const venue = [event.venue_name, event.venue_city, event.venue_country].filter(Boolean).join(', ') || null
 
+  // [FIX-CHECKOUT 2026-05-28] If fee calculation failed, render a clean
+  // handled state instead of asserting initialFees! and crashing through
+  // to the app-router error boundary. The reservation is still active
+  // and unconsumed; the "Try again" link forces a fresh server render.
+  if (feesError !== null || initialFees === null) {
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-12 sm:px-6 lg:px-8">
+        <div className="rounded-xl border border-error/30 bg-error/5 p-8 text-center">
+          <h1 className="text-xl font-bold text-ink-900">We could not load checkout</h1>
+          <p className="mt-3 text-sm text-ink-700">
+            Your reservation is safe and your tickets are still held until it
+            expires. This is a temporary issue on our side. Try again in a
+            moment, or reach out and a real person will help you finish the
+            purchase.
+          </p>
+          <p className="mt-2 text-xs text-ink-500">Reservation: {reservation_id}</p>
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <Link
+              href={`/checkout/${reservation_id}`}
+              className="rounded-md bg-ink-900 px-5 py-2 text-sm font-semibold text-white hover:bg-ink-800"
+            >
+              Try again
+            </Link>
+            <Link
+              href="/events"
+              className="rounded-md border border-ink-300 px-5 py-2 text-sm font-semibold text-ink-900 hover:bg-ink-50"
+            >
+              Back to events
+            </Link>
+            <a
+              href={`mailto:hello@eventlinqs.com?subject=Checkout%20error%20${encodeURIComponent(reservation_id)}`}
+              className="rounded-md border border-ink-300 px-5 py-2 text-sm font-semibold text-ink-900 hover:bg-ink-50"
+            >
+              Email support
+            </a>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="mx-auto grid max-w-7xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[1fr_320px] lg:gap-12 lg:px-8 lg:py-12">
       <div className="min-w-0">
@@ -225,7 +283,7 @@ export default async function CheckoutPage({ params }: Props) {
           eventTitle={event.title}
           eventDate={eventDate}
           venue={venue}
-          initialFees={initialFees!}
+          initialFees={initialFees}
           ticketSlots={ticketSlots}
           tierIds={tierIds}
           seatMode={isSeatReservation}

@@ -46,6 +46,24 @@ export type PricingRuleType =
 
 export type PricingRuleValueType = 'percentage' | 'fixed' | 'integer'
 
+// [FIX-CHECKOUT 2026-05-28] Schema-vs-code drift recovered.
+//
+// Migration 20260520000001_schema_hygiene (P1-4b in the audit) dropped
+// public.pricing_rules.value and split it into three typed columns:
+//   value_percentage NUMERIC(7,4)  - when value_type='percentage'
+//   value_cents       BIGINT       - when value_type='fixed'
+//   value_integer     INTEGER      - when value_type='integer'
+// The migration backfilled but this consuming module was not updated,
+// so every pricing_rules lookup since the migration applied has thrown
+// `column pricing_rules.value does not exist`. That throw crashed the
+// /checkout/[reservation_id] server-component render and blocked every
+// purchase attempt.
+//
+// PostgREST serialises NUMERIC and BIGINT as strings (JSON-safe for the
+// full numeric range); INTEGER stays as a JS number. The Row type below
+// reflects what comes off the wire. resolveRuleValue() narrows to a
+// single number based on value_type so every downstream caller can keep
+// reading rule.value as a plain number without change.
 export interface PricingRuleRow {
   id: string
   rule_type: PricingRuleType
@@ -54,11 +72,53 @@ export interface PricingRuleRow {
   event_type: string
   organiser_tier: string
   organisation_id: string | null
-  value: number
+  value_percentage: string | null
+  value_cents: string | null
+  value_integer: number | null
   value_type: PricingRuleValueType
   version: number
   effective_from: string
   effective_until: string | null
+}
+
+// Single resolver from the typed-union storage to the legacy `number`
+// the rest of the payment pipeline consumes. Throws a precise error if
+// a row's value_type does not match the populated column (data-integrity
+// issue, should never happen because the migration's CHECK constraint
+// enforces the split - but we throw rather than silently coerce so a
+// future regression surfaces immediately).
+function resolveRuleValue(row: PricingRuleRow): number {
+  switch (row.value_type) {
+    case 'percentage':
+      if (row.value_percentage === null) {
+        throw new Error(
+          `pricing_rules row ${row.id} (${row.rule_type}): value_type='percentage' but value_percentage is NULL`
+        )
+      }
+      return Number(row.value_percentage)
+    case 'fixed':
+      if (row.value_cents === null) {
+        throw new Error(
+          `pricing_rules row ${row.id} (${row.rule_type}): value_type='fixed' but value_cents is NULL`
+        )
+      }
+      return Number(row.value_cents)
+    case 'integer':
+      if (row.value_integer === null) {
+        throw new Error(
+          `pricing_rules row ${row.id} (${row.rule_type}): value_type='integer' but value_integer is NULL`
+        )
+      }
+      return Number(row.value_integer)
+    default: {
+      // Exhaustiveness check: TS will fail this line if a new value_type
+      // is added to the union without a case branch here.
+      const _exhaustive: never = row.value_type
+      throw new Error(
+        `pricing_rules row ${row.id} (${row.rule_type}): unknown value_type ${String(_exhaustive)}`
+      )
+    }
+  }
 }
 
 export interface PricingRuleQuery {
@@ -141,7 +201,7 @@ export async function getPricingRule(query: PricingRuleQuery): Promise<{
     })
     if (orgMatch) {
       const entry: CachedEntry = {
-        value: Number(orgMatch.value),
+        value: resolveRuleValue(orgMatch),
         valueType: orgMatch.value_type,
         ruleId: orgMatch.id,
         source: 'org_override',
@@ -160,7 +220,7 @@ export async function getPricingRule(query: PricingRuleQuery): Promise<{
   })
   if (regionMatch) {
     const entry: CachedEntry = {
-      value: Number(regionMatch.value),
+      value: resolveRuleValue(regionMatch),
       valueType: regionMatch.value_type,
       ruleId: regionMatch.id,
       source: 'region_default',
@@ -178,7 +238,7 @@ export async function getPricingRule(query: PricingRuleQuery): Promise<{
   })
   if (globalCurrencyMatch) {
     const entry: CachedEntry = {
-      value: Number(globalCurrencyMatch.value),
+      value: resolveRuleValue(globalCurrencyMatch),
       valueType: globalCurrencyMatch.value_type,
       ruleId: globalCurrencyMatch.id,
       source: 'global_currency',
@@ -197,7 +257,7 @@ export async function getPricingRule(query: PricingRuleQuery): Promise<{
   })
   if (globalWildcardMatch) {
     const entry: CachedEntry = {
-      value: Number(globalWildcardMatch.value),
+      value: resolveRuleValue(globalWildcardMatch),
       valueType: globalWildcardMatch.value_type,
       ruleId: globalWildcardMatch.id,
       source: 'global_wildcard',
@@ -241,7 +301,7 @@ async function selectActiveRule(
   let builder = admin
     .from('pricing_rules')
     .select(
-      'id, rule_type, country_code, currency, event_type, organiser_tier, organisation_id, value, value_type, version, effective_from, effective_until'
+      'id, rule_type, country_code, currency, event_type, organiser_tier, organisation_id, value_percentage, value_cents, value_integer, value_type, version, effective_from, effective_until'
     )
     .eq('rule_type', q.rule_type)
     .eq('country_code', q.country_code)
@@ -270,7 +330,7 @@ async function selectActiveRuleAnyCurrency(
   let builder = admin
     .from('pricing_rules')
     .select(
-      'id, rule_type, country_code, currency, event_type, organiser_tier, organisation_id, value, value_type, version, effective_from, effective_until'
+      'id, rule_type, country_code, currency, event_type, organiser_tier, organisation_id, value_percentage, value_cents, value_integer, value_type, version, effective_from, effective_until'
     )
     .eq('rule_type', q.rule_type)
     .eq('country_code', q.country_code)

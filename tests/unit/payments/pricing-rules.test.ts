@@ -22,6 +22,14 @@ import {
 
 type AnyRecord = Record<string, unknown>
 
+// [FIX-CHECKOUT 2026-05-28] Post-schema-hygiene shape. The live
+// pricing_rules table no longer has a `value` column; it has typed
+// columns value_percentage (NUMERIC, serialised as string),
+// value_cents (BIGINT, serialised as string), value_integer (INTEGER,
+// serialised as number). resolveRuleValue() in the production code
+// reads the right one based on value_type. The test factory keeps
+// the ergonomic `value: number` input but emits all three typed
+// columns so the production resolver reads the expected value.
 interface RuleRow {
   id: string
   rule_type: string
@@ -31,19 +39,28 @@ interface RuleRow {
   value: number
   value_type: 'percentage' | 'fixed' | 'integer'
   version: number
+  value_percentage: string | null
+  value_cents: string | null
+  value_integer: number | null
 }
 
 function buildRule(overrides: Partial<RuleRow> = {}): RuleRow {
-  return {
+  const base = {
     id: `rule_${Math.random().toString(36).slice(2, 8)}`,
     rule_type: 'platform_fee_percentage',
     country_code: 'AU',
-    currency: 'AUD',
-    organisation_id: null,
+    currency: 'AUD' as string | null,
+    organisation_id: null as string | null,
     value: 5,
-    value_type: 'percentage',
+    value_type: 'percentage' as 'percentage' | 'fixed' | 'integer',
     version: 1,
     ...overrides,
+  }
+  return {
+    ...base,
+    value_percentage: base.value_type === 'percentage' ? String(base.value) : null,
+    value_cents: base.value_type === 'fixed' ? String(base.value) : null,
+    value_integer: base.value_type === 'integer' ? base.value : null,
   }
 }
 
