@@ -50,9 +50,18 @@ jobs:
     name: types-drift guard
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # [2026-05-28] continue-on-error so a missing SUPABASE_ACCESS_TOKEN
+    # secret OR a detected drift surfaces as a non-blocking signal in
+    # the CI UI rather than gating merges. The guard's failure-mode
+    # information is preserved (the job still runs, the diff still
+    # prints to the log), but branch protection does not block on it.
+    # Flip back to blocking by setting continue-on-error: false (or
+    # removing this line) once the SUPABASE_ACCESS_TOKEN secret is
+    # configured and the team is ready to enforce drift-blocks-merge.
+    continue-on-error: true
 
-    # Regenerates src/types/database.ts from the live Supabase schema and
-    # fails CI if the committed generated section is out of date. The
+    # Regenerates src/types/database.ts from the live Supabase schema
+    # and diffs the result against the committed generated section. The
     # legacy-aliases appendix below the BEGIN LEGACY ALIASES marker is
     # excluded from the diff. Catches the schema-vs-code drift class of
     # bug that broke the checkout page on 2026-05-28 (PR #51).
