@@ -285,9 +285,12 @@ export function DiscountCodesClient({ eventId, currency, initialCodes, tiers }: 
                 <tr key={code.id} className="hover:bg-ink-100">
                   <td className="px-4 py-3 font-mono font-semibold text-ink-900">{code.code}</td>
                   <td className="px-4 py-3 text-ink-600">
+                    {/* discount_codes.discount_value was split into typed columns
+                        (discount_percentage NUMERIC, discount_amount_cents BIGINT)
+                        by migration 20260520000001_schema_hygiene (audit P1-4b). */}
                     {code.discount_type === 'percentage'
-                      ? `${code.discount_value}%`
-                      : `${(code.currency ?? currency).toUpperCase()} ${(code.discount_value / 100).toFixed(2)}`}
+                      ? `${code.discount_percentage ?? 0}%`
+                      : `${(code.currency ?? currency).toUpperCase()} ${((code.discount_amount_cents ?? 0) / 100).toFixed(2)}`}
                   </td>
                   <td className="px-4 py-3 text-ink-400">
                     {code.current_uses}{code.max_uses !== null ? ` / ${code.max_uses}` : ''}

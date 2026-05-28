@@ -8,6 +8,7 @@ import {
   type ConnectOnboardingState,
 } from '@/components/organiser/connect-onboarding-card'
 import type { Organisation } from '@/types/database'
+import { jsonAsRecord } from '@/lib/json-narrow'
 
 export const metadata = {
   title: 'Payouts | EventLinqs Dashboard',
@@ -77,7 +78,9 @@ export default async function PayoutsPage() {
   }
 
   const state = deriveState(org)
-  const requirements = readRequirements(org.stripe_requirements)
+  // organisations.stripe_requirements is jsonb (Stripe Account requirements
+  // payload). Narrow from Json union to Record before passing.
+  const requirements = readRequirements(jsonAsRecord(org.stripe_requirements))
 
   return (
     <div className="max-w-3xl">

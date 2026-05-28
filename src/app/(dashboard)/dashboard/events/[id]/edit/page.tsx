@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { EventForm } from '@/components/features/events/event-form'
 import { RevenueSummary } from '@/components/orders/revenue-summary'
 import type { Event, TicketTier, EventCategory } from '@/types/database'
+import { jsonAsStringArray } from '@/lib/json-narrow'
 
 type Props = {
   params: Promise<{ id: string }>
@@ -66,7 +67,11 @@ export default async function EditEventPage({ params }: Props) {
   const processingFeeCents = revenue.reduce((s: number, o: { processing_fee_cents: number }) => s + o.processing_fee_cents, 0)
   const revCurrency = revenue[0]?.currency ?? event.ticket_tiers?.[0]?.currency ?? 'AUD'
 
-  const { ticket_tiers, ...eventData } = event
+  const { ticket_tiers, ...restEvent } = event
+  // events.tags is jsonb in the live schema; narrow to the string[] shape
+  // EventForm.fromExistingEvent expects. Non-string array elements are
+  // filtered out by jsonAsStringArray; non-array values yield [].
+  const eventData = { ...restEvent, tags: jsonAsStringArray(restEvent.tags) }
 
   return (
     <div>

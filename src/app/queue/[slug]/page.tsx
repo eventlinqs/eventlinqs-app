@@ -48,15 +48,26 @@ export default async function QueuePage({ params }: Props) {
     .sort()
   const saleStartAt = saleDates[0] ?? null
 
+  // events.queue_open_at and events.queue_admission_rate are NOT in the
+  // live schema (verified against information_schema.columns 2026-05-29).
+  // The virtual-queue feature was scaffolded with these props in
+  // QueueRoom but the schema columns to source them from were never
+  // added. Until that migration ships, pass:
+  //   - queueOpenAt = null  (no pre-queue countdown, QueueRoom handles null)
+  //   - admissionRate = DEFAULT_ADMISSION_RATE_PER_MIN (10/min, sensible
+  //     default for a v1 high-demand event; configurable per-event when
+  //     the schema lands).
+  // events.queue_admission_window_minutes DOES exist and is used as-is.
+  const DEFAULT_ADMISSION_RATE_PER_MIN = 10
   return (
     <QueueRoom
       eventId={event.id}
       eventSlug={event.slug}
       eventTitle={event.title}
       coverImageUrl={event.cover_image_url}
-      queueOpenAt={event.queue_open_at}
+      queueOpenAt={null}
       saleStartAt={saleStartAt}
-      admissionRate={event.queue_admission_rate}
+      admissionRate={DEFAULT_ADMISSION_RATE_PER_MIN}
       admissionWindowMinutes={event.queue_admission_window_minutes}
     />
   )
