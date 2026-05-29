@@ -100,7 +100,7 @@ export function CategoryChipStrip() {
               ].join(' ')}
             >
               <Globe className="h-4 w-4 text-[var(--brand-accent-strong)]" aria-hidden />
-              <span>Cultural Communities</span>
+              <span>Communities</span>
               <span aria-hidden className="text-[var(--brand-accent-strong)]">›</span>
             </Link>
           </li>

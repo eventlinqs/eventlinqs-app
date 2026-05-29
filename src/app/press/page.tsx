@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/Button'
 export const metadata: Metadata = {
   title: 'Press | EventLinqs',
   description:
-    'Press resources, founder bio, brand assets, and media contact for EventLinqs - the ticketing platform built for every culture.',
+    'Press resources, founder bio, brand assets, and media contact for EventLinqs - the ticketing platform built for every community.',
   alternates: { canonical: '/press' },
   openGraph: {
     title: 'Press | EventLinqs',
@@ -26,7 +26,7 @@ const FACTS = [
   { label: 'Headquarters', value: 'Geelong, Victoria, Australia' },
   { label: 'Business entity', value: 'Australian sole trader, ABN 30 837 447 587' },
   { label: 'Launch markets', value: 'Australia, United Kingdom, United States, European Union' },
-  { label: 'Categories supported at launch', value: '18 cultural rhythms across music, festival, comedy, family, and community events' },
+  { label: 'Categories supported at launch', value: '18 community rhythms across music, festival, comedy, family, and more' },
   { label: 'Payments', value: 'Stripe (PCI-DSS, GDPR aligned)' },
   { label: 'Press email', value: 'press@eventlinqs.com' },
 ]
@@ -59,12 +59,12 @@ const STORYLINES = [
   {
     title: 'Why Australian ticketing was overdue for rebuild',
     body:
-      'Booking fees as high as 18%, drip pricing, generic genre buckets, and checkout flows still optimised for desktop. The cultural events market was being served by infrastructure built for stadium tours.',
+      'Booking fees as high as 18%, drip pricing, generic genre buckets, and checkout flows still optimised for desktop. The community events market was being served by infrastructure built for stadium tours.',
   },
   {
-    title: 'Culture-first discovery, by design',
+    title: 'Community-first discovery, by design',
     body:
-      'Browse rails are organised by cultural rhythm rather than generic music genre. Afrobeats, Caribbean, Bollywood, Latin, Italian, Filipino, Lunar, Gospel, Amapiano, Comedy, Spanish, K-Pop, Reggae, West African, European, Asian, African, South Asian.',
+      'Browse rails are organised by community rhythm rather than generic music genre. Afrobeats, Caribbean, Bollywood, Latin, Italian, Filipino, Lunar, Gospel, Amapiano, Comedy, Spanish, K-Pop, Reggae, West African, European, Asian, African, South Asian.',
   },
   {
     title: 'A solo Australian-Nigerian founder',
@@ -95,7 +95,7 @@ export default function PressPage() {
               Company at a glance
             </p>
             <h2 className="mt-3 font-display text-3xl font-bold leading-tight text-[var(--text-primary)] md:text-4xl">
-              The ticketing platform built for every culture.
+              The ticketing platform built for every community.
             </h2>
             <div className="mt-6 space-y-4 text-base leading-relaxed text-[var(--text-secondary)] md:text-lg">
               <p>
@@ -104,7 +104,7 @@ export default function PressPage() {
                 United Kingdom, the United States, and the European Union
                 in mid-2026. The product is designed mobile-first, prices
                 tickets all-in by default, and organises discovery around
-                18 cultural rhythms rather than generic genre buckets.
+                18 community rhythms rather than generic genre buckets.
               </p>
               <p>
                 The platform is operated by sole founder Lawal Adams, who
@@ -151,7 +151,7 @@ export default function PressPage() {
             <p>
               Lawal Adams is the sole founder of EventLinqs. Australian-Nigerian,
               based in Geelong, he started EventLinqs after years of watching
-              the ticketing infrastructure available to cultural organisers
+              the ticketing infrastructure available to community organisers
               in Australia stay stuck a decade behind what artists and
               audiences actually need.
             </p>
@@ -160,7 +160,7 @@ export default function PressPage() {
               ticketing experience with all-in pricing and guest checkout,
               an organiser dashboard that treats event runners as business
               partners rather than catalogue listings, and a discovery
-              system that takes cultural rhythm seriously. He is reachable
+              system that takes community rhythm seriously. He is reachable
               for interviews via the press email below.
             </p>
           </div>

@@ -8,12 +8,12 @@ import { Button } from '@/components/ui/Button'
 export const metadata: Metadata = {
   title: 'Journal | EventLinqs',
   description:
-    'Organiser playbooks, culture spotlights, product notes, and the working notebook of EventLinqs - the ticketing platform built for every culture.',
+    'Organiser playbooks, community spotlights, product notes, and the working notebook of EventLinqs - the ticketing platform built for every community.',
   alternates: { canonical: '/blog' },
   openGraph: {
     title: 'Journal | EventLinqs',
     description:
-      'Organiser playbooks, culture spotlights, and product notes from the EventLinqs team.',
+      'Organiser playbooks, community spotlights, and product notes from the EventLinqs team.',
     url: '/blog',
     type: 'website',
   },
@@ -42,7 +42,7 @@ const UPCOMING: Beat[] = [
     status: 'In edit',
   },
   {
-    eyebrow: 'Culture spotlight',
+    eyebrow: 'Community spotlight',
     title: 'Detty December: the global circuit of West African end-of-year events',
     blurb:
       'Detty December is no longer just a Lagos phenomenon. We map the calendar from Accra to Houston to Melbourne and break down what makes the week between Christmas and New Year the most productive ticketing window of the year for African-rooted events.',
@@ -50,7 +50,7 @@ const UPCOMING: Beat[] = [
   },
   {
     eyebrow: 'Engineering',
-    title: 'Streaming-SSR and Lighthouse on a culturally rich homepage',
+    title: 'Streaming-SSR and Lighthouse on a community-rich homepage',
     blurb:
       'How the EventLinqs homepage flushes a static shell, streams below-fold rails in parallel Suspense boundaries, and stays in the Lighthouse 90+ band on mobile while still rendering 30+ rich event cards on first paint.',
     status: 'Drafting',
@@ -63,10 +63,10 @@ const UPCOMING: Beat[] = [
     status: 'Outlined',
   },
   {
-    eyebrow: 'Culture spotlight',
+    eyebrow: 'Community spotlight',
     title: 'How Bollywood weddings became a ticketed business in Sydney',
     blurb:
-      'Wedding-adjacent celebrations like sangeet, mehendi, and reception nights are now a measurable secondary market for cultural organisers. We talk to three Sydney organisers about pricing, programming, and platform expectations.',
+      'Wedding-adjacent celebrations like sangeet, mehendi, and reception nights are now a measurable secondary market for community organisers. We talk to three Sydney organisers about pricing, programming, and platform expectations.',
     status: 'Outlined',
   },
 ]
@@ -77,8 +77,8 @@ const BEATS = [
     body: 'Pricing strategy, marketing playbooks, ops checklists, and post-event reviews from organisers who fill rooms.',
   },
   {
-    title: 'Culture spotlight',
-    body: 'Deep features on the cultural rhythms EventLinqs serves: Afrobeats, Caribbean, Bollywood, Latin, Lunar, Gospel, Amapiano, K-Pop, Reggae and beyond.',
+    title: 'Community spotlight',
+    body: 'Deep features on the community rhythms EventLinqs serves: Afrobeats, Caribbean, Bollywood, Latin, Lunar, Gospel, Amapiano, K-Pop, Reggae and beyond.',
   },
   {
     title: 'Product notes',
@@ -96,7 +96,7 @@ export default function BlogPage() {
       <PageHero
         eyebrow="JOURNAL"
         title="The EventLinqs Journal"
-        subtitle="Organiser playbooks, culture spotlights, product notes, and the occasional engineering deep-dive. Coming weekly from launch in mid-2026."
+        subtitle="Organiser playbooks, community spotlights, product notes, and the occasional engineering deep-dive. Coming weekly from launch in mid-2026."
         variant="premium"
       />
 

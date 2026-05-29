@@ -30,7 +30,7 @@ const SITE_URL = getSiteUrl()
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: 'EventLinqs | The ticketing platform built for every culture',
+  title: 'EventLinqs | The ticketing platform built for every community',
   description: 'Every culture. Every event. One platform. Browse Afrobeats, Caribbean, Bollywood, Latin, Italian, Filipino, Lunar, Gospel, Amapiano, Comedy, Spanish, K-Pop, Reggae and more. All-in pricing, no surprise fees.',
   alternates: { canonical: '/' },
   robots: {
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: 'website',
-    title: 'EventLinqs | The ticketing platform built for every culture',
+    title: 'EventLinqs | The ticketing platform built for every community',
     description: 'Every culture. Every event. One platform. All-in pricing, no surprise fees.',
     siteName: 'EventLinqs',
     locale: 'en_AU',
@@ -48,7 +48,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'EventLinqs',
-    description: 'The ticketing platform built for every culture.',
+    description: 'The ticketing platform built for every community.',
   },
 }
 

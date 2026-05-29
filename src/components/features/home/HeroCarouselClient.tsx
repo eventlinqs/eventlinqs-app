@@ -129,7 +129,7 @@ export function HeroCarouselClient({ slides }: Props) {
     <div
       role="region"
       aria-roledescription="carousel"
-      aria-label="Featured cultural events"
+      aria-label="Featured community events"
       tabIndex={0}
       onKeyDown={handleKeyDown}
       onMouseEnter={() => setPaused(true)}

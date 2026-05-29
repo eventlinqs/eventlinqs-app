@@ -55,11 +55,11 @@ const FAITHS: Record<FaithSlug, FaithContent> = {
     order: 1,
     censusNote: 'Australia largest religion (ABS 2021: 43.9%).',
     tagline: 'Worship, gospel, choir and community.',
-    heroHeadline: 'Christian events, across every culture.',
+    heroHeadline: 'Christian events, across every community.',
     heroBody:
       'Gospel and worship nights, choir showcases, Easter and Christmas services, conferences and community celebrations. Worship music crosses every heritage and EventLinqs supports them all.',
     storyParagraphs: [
-      'Where Lagos meets Atlanta meets Samoa under the same praise break. Christian events span African gospel concerts, Pacific church choirs, Filipino praise nights, Latin Christian festivals, Black gospel and Caribbean gospel. Easter and Christmas fill halls across every community. Faith is a dimension, not a culture, so a Nigerian gospel night is heritage:African and faith:Christian at once.',
+      'Where Lagos meets Atlanta meets Samoa under the same praise break. Christian events span African gospel concerts, Pacific church choirs, Filipino praise nights, Latin Christian festivals, Black gospel and Caribbean gospel. Easter and Christmas fill halls across every community. Faith is a dimension, not a community label, so a Nigerian gospel night is heritage:African and faith:Christian at once.',
       'EventLinqs supports churches and choirs with not-for-profit pricing, recurring weekly service ticket flows, multi-language listings, and family bundles.',
       'If you run gospel concerts, worship nights, choir showcases or church festivals, list with us.',
     ],
@@ -84,7 +84,7 @@ const FAITHS: Record<FaithSlug, FaithContent> = {
     order: 2,
     censusNote: 'ABS 2021: 3.2% (813,392 people).',
     tagline: 'Ramadan, Eid, and the whole community.',
-    heroHeadline: 'Muslim events, across every culture.',
+    heroHeadline: 'Muslim events, across every community.',
     heroBody:
       'Ramadan iftars and night markets, Eid al-Fitr and Eid al-Adha celebrations, nasheed and community festivals across the Arab, Turkish, South Asian, African and Southeast Asian communities.',
     storyParagraphs: [
@@ -113,7 +113,7 @@ const FAITHS: Record<FaithSlug, FaithContent> = {
     order: 3,
     censusNote: 'Fastest-growing major religion (ABS 2021: 2.7%, +55%).',
     tagline: 'Diwali, Holi, Navratri and the festival calendar.',
-    heroHeadline: 'Hindu events, across every culture.',
+    heroHeadline: 'Hindu events, across every community.',
     heroBody:
       'Diwali festivals of light, Holi colour parties, Navratri and garba nights, temple celebrations and community galas across the Indian, Nepali, Sri Lankan and Fijian communities.',
     storyParagraphs: [
@@ -142,7 +142,7 @@ const FAITHS: Record<FaithSlug, FaithContent> = {
     order: 4,
     censusNote: 'A significant minority faith (ABS 2021).',
     tagline: 'Vesak, lantern festivals and quiet practice.',
-    heroHeadline: 'Buddhist events, across every culture.',
+    heroHeadline: 'Buddhist events, across every community.',
     heroBody:
       'Vesak celebrations, lantern festivals, temple open days, meditation retreats and community days across the Vietnamese, Chinese, Thai, Sri Lankan and Tibetan communities.',
     storyParagraphs: [
@@ -171,11 +171,11 @@ const FAITHS: Record<FaithSlug, FaithContent> = {
     order: 5,
     censusNote: 'An established minority faith (ABS 2021).',
     tagline: 'Hanukkah, Passover, and community life.',
-    heroHeadline: 'Jewish events, culture and community.',
+    heroHeadline: 'Jewish events, heritage and community.',
     heroBody:
       'Hanukkah candle-lightings, Passover seders, High Holy Days, Jewish film and food festivals, klezmer concerts and community celebrations.',
     storyParagraphs: [
-      'Where the menorah is lit one night at a time and the table is long. Jewish events span Hanukkah candle-lightings and parties, communal Passover seders, High Holy Days, Jewish film and food festivals, and klezmer concerts. Faith sits alongside heritage and culture as its own community here.',
+      'Where the menorah is lit one night at a time and the table is long. Jewish events span Hanukkah candle-lightings and parties, communal Passover seders, High Holy Days, Jewish film and food festivals, and klezmer concerts. Faith sits alongside heritage as its own community here.',
       'EventLinqs supports community organisations with family bundles, festival passes, accessible pricing, and transparent fees.',
       'If you run Hanukkah, Passover, film festivals or community events, list with us.',
     ],
@@ -189,7 +189,7 @@ const FAITHS: Record<FaithSlug, FaithContent> = {
     organiserPersonas: [
       'Community centre and synagogue event committees',
       'Jewish film and food festival organisers',
-      'Klezmer and cultural concert promoters',
+      'Klezmer and community concert promoters',
       'Community celebration organisers',
     ],
     keywords: ['Hanukkah Sydney', 'Passover seder', 'Jewish film festival', 'klezmer concert', 'Jewish community events', 'High Holy Days'],

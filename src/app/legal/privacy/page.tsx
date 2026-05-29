@@ -33,7 +33,7 @@ export default function PrivacyPolicyPage() {
       <p>
         EventLinqs is operated by Lawal Adams (trading as EventLinqs, ABN 30 837 447 587),
         based in Geelong, Victoria, Australia. EventLinqs is the ticketing platform
-        built for every culture, connecting event organisers and attendees. We take the
+        built for every community, connecting event organisers and attendees. We take the
         trust you place in us seriously.
       </p>
       <p>
