@@ -24,7 +24,7 @@ interface MenuItem {
 
 const ITEMS: MenuItem[] = [
   { label: 'Account',        href: '/account',          Icon: User },
-  { label: 'My tickets',     href: '/account/tickets',  Icon: Ticket },
+  { label: 'My tickets',     href: '/tickets',          Icon: Ticket },
   { label: 'Saved events',   href: '/account/saved',    Icon: Bookmark },
   { label: 'For organisers', href: '/organisers',       Icon: Building2 },
 ]

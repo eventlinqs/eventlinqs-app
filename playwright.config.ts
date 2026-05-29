@@ -11,7 +11,9 @@ export default defineConfig({
   // from playwright.smoke.config.ts (no webServer). Exclude them here so
   // the local-build config does not try to drive a remote target through
   // the local Next server.
-  testIgnore: ['**/*.production.spec.ts'],
+  // tickets-spine runs only via playwright.tickets.config.ts (it needs a
+  // seeded fixture + next dev), so keep it out of the default suite and CI.
+  testIgnore: ['**/*.production.spec.ts', '**/tickets-spine.spec.ts'],
   fullyParallel: false,
   retries: 0,
   workers: 1,
