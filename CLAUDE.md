@@ -139,7 +139,9 @@ If a session needs to modify a shared file, commit the change as a separate comm
 Permanent. Every session inherits these automatically; the founder should never have to re-issue them. They harden the standards above - where this section sets a stricter bar, it wins.
 
 ### 1. Competitive benchmark - surpass, never just match
-Fixed competitor set: Ticketmaster.com.au, DICE.fm, Eventbrite.com.au, Humanitix.com. Every UI, UX, page, and flow aims to SURPASS this set, not reach parity. On any visual or flow work, run a Playwright side-by-side against the most relevant competitor at desktop 1440 and mobile 375, with explicit pass/fail on each of: information density, typography, image quality, filter UX, mobile polish. Surpassing them is the mission, not a reminder to wait for.
+Fixed competitor set: Ticketmaster.com.au, DICE.fm, Eventbrite.com.au, Humanitix.com. Every UI, UX, page, and flow aims to SURPASS this set, not reach parity. Surpassing them is the mission, not a reminder to wait for.
+
+The Playwright side-by-side is REQUIRED on any PR that changes user-facing UI or a user flow (new or redesigned pages or components; checkout, browse, or event changes). It is NOT required on backend-only, docs-only, or config-only PRs, where a competitor comparison adds no value. When required, compare against the most relevant competitor at desktop 1440 and mobile 375, with explicit pass/fail on each of: information density, typography, image quality, filter UX, mobile polish.
 
 ### 2. Quality gates - every PR, all green before merge
 - typecheck: 0 errors
