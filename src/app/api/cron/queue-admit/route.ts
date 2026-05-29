@@ -31,14 +31,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Expire RPC failed' }, { status: 500 })
     }
 
-    // Step 2: Find all high-demand events with an open queue
+    // Step 2: Find all high-demand published events. queue_open_at and
+    // queue_admission_rate are deferred (no live schema columns), so the
+    // queue is open as soon as the event is published and the admission rate
+    // falls back to a sensible default (mirrors /queue/[slug] and proxy.ts).
+    const DEFAULT_ADMISSION_RATE_PER_MIN = 10
     const now = new Date().toISOString()
     const { data: events, error: eventsError } = await admin
       .from('events')
-      .select('id, title, queue_admission_rate, queue_admission_window_minutes')
+      .select('id, title, queue_admission_window_minutes')
       .eq('is_high_demand', true)
       .eq('status', 'published')
-      .lte('queue_open_at', now)
 
     if (eventsError) {
       console.error('[cron/queue-admit] failed to fetch active queue events:', eventsError)
@@ -54,7 +57,7 @@ export async function GET(request: NextRequest) {
     for (const event of events) {
       const { data: admitted, error: admitError } = await admin.rpc('admit_queue_batch', {
         p_event_id: event.id,
-        p_batch_size: event.queue_admission_rate,
+        p_batch_size: DEFAULT_ADMISSION_RATE_PER_MIN,
         p_admission_window_minutes: event.queue_admission_window_minutes,
       })
 
