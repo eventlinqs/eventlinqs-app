@@ -35,7 +35,7 @@ export function CulturalPicksRail({ tabs }: Props) {
       {/* Tab strip */}
       <div
         role="tablist"
-        aria-label="Cultural picks categories"
+        aria-label="Community picks categories"
         className="mt-6 flex gap-2 overflow-x-auto pb-1 scrollbar-none"
       >
         {tabs.map(t => {

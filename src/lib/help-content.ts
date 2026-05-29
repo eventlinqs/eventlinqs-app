@@ -31,15 +31,15 @@ export const helpTopics: HelpTopic[] = [
     articles: [
       {
         q: 'What is EventLinqs?',
-        a: "EventLinqs is the ticketing platform built for every culture. Afrobeats, Caribbean, Bollywood, Latin, Italian, Filipino, Lunar, Gospel, Amapiano, Comedy, Spanish, K-Pop, Reggae and beyond. The features we prioritise show it: WhatsApp sharing, squad bookings, all-in pricing, and a checkout that actually works on mobile. Anyone can organise any kind of event here. Our launch markets are Australia, the UK, Canada, Europe, and the United States, with expansion across Africa underway.",
+        a: "EventLinqs is the ticketing platform built for every community. Afrobeats, Caribbean, Bollywood, Latin, Italian, Filipino, Lunar, Gospel, Amapiano, Comedy, Spanish, K-Pop, Reggae and beyond. The features we prioritise show it: WhatsApp sharing, squad bookings, all-in pricing, and a checkout that actually works on mobile. Anyone can organise any kind of event here. Our launch markets are Australia, the UK, Canada, Europe, and the United States, with expansion across Africa underway.",
       },
       {
         q: 'Who is EventLinqs for?',
-        a: "EventLinqs is for anyone who organises or attends events. The platform is built for every culture, and organisers running Afrobeats nights, gospel concerts, Owambe celebrations, Caribbean fetes, Bollywood club nights, Latin socials, Lunar festivals, heritage galas, and cultural business events will feel right at home. The platform is open to everyone. Weddings, birthday parties, corporate events, community festivals, and any other event that brings people together are all welcome. Buyers can use the platform as guests or with a free account.",
+        a: "EventLinqs is for anyone who organises or attends events. The platform is built for every community, and organisers running Afrobeats nights, gospel concerts, Owambe celebrations, Caribbean fetes, Bollywood club nights, Latin socials, Lunar festivals, heritage galas, and community business events will feel right at home. The platform is open to everyone. Weddings, birthday parties, corporate events, community festivals, and any other event that brings people together are all welcome. Buyers can use the platform as guests or with a free account.",
       },
       {
         q: 'Where does EventLinqs operate?',
-        a: "Our launch markets are Australia, the UK, Canada, Europe, and the United States, serving cultural communities of every background in those regions. We are expanding to support events across Africa, and we want to hear from organisers and buyers on the continent. If you are based in Africa, contact us via the support form on our website and select Partnership as the topic.",
+        a: "Our launch markets are Australia, the UK, Canada, Europe, and the United States, serving communities of every background in those regions. We are expanding to support events across Africa, and we want to hear from organisers and buyers on the continent. If you are based in Africa, contact us via the support form on our website and select Partnership as the topic.",
       },
       {
         q: 'How do I create an account?',
@@ -63,7 +63,7 @@ export const helpTopics: HelpTopic[] = [
       },
       {
         q: 'How is EventLinqs different from Ticketmaster or Eventbrite?',
-        a: "EventLinqs is built for every culture, and open to every organiser and every community that wants a platform that gets it right. Mainstream platforms treat cultural events as a small subset of their business. For us, they are the whole business. That means all-in pricing with no hidden fees at checkout, WhatsApp-native sharing, squad bookings so whole groups can buy together, and support from a team that understands the events we serve. We are also built on transparency: what you see at checkout is what you pay. No convenience fee surprises at the final step.",
+        a: "EventLinqs is built for every community, and open to every organiser and every community that wants a platform that gets it right. Mainstream platforms treat community events as a small subset of their business. For us, they are the whole business. That means all-in pricing with no hidden fees at checkout, WhatsApp-native sharing, squad bookings so whole groups can buy together, and support from a team that understands the events we serve. We are also built on transparency: what you see at checkout is what you pay. No convenience fee surprises at the final step.",
       },
       {
         q: 'How do I contact EventLinqs support?',
@@ -71,7 +71,7 @@ export const helpTopics: HelpTopic[] = [
       },
       {
         q: 'I am an organiser based in Africa. Can I work with EventLinqs?',
-        a: "Yes, we want to hear from you. Our launch focus is cultural communities across Australia, the UK, Canada, Europe, and the United States. We are expanding to support events across Africa, and we want to be in conversation with the right people ahead of that. Reach out through the support form on our website and select Partnership as the topic. We are actively speaking with promoters, venues, and cultural organisations on the continent.",
+        a: "Yes, we want to hear from you. Our launch focus is communities across Australia, the UK, Canada, Europe, and the United States. We are expanding to support events across Africa, and we want to be in conversation with the right people ahead of that. Reach out through the support form on our website and select Partnership as the topic. We are actively speaking with promoters, venues, and cultural organisations on the continent.",
       },
     ],
   },
@@ -139,7 +139,7 @@ export const helpTopics: HelpTopic[] = [
     articles: [
       {
         q: 'Can anyone sell tickets on EventLinqs?',
-        a: "Yes. Anyone can create an organiser account and start building events straight away. We welcome organisers from every community and for every kind of event, from concerts and cultural festivals to birthday parties, weddings, and corporate events. Every event goes through a content and safety review before it publishes, usually within 24 to 48 hours. The review is on the event, not on you as an organiser.",
+        a: "Yes. Anyone can create an organiser account and start building events straight away. We welcome organisers from every community and for every kind of event, from concerts and community festivals to birthday parties, weddings, and corporate events. Every event goes through a content and safety review before it publishes, usually within 24 to 48 hours. The review is on the event, not on you as an organiser.",
       },
       {
         q: 'How do I become an organiser?',

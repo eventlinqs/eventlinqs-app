@@ -42,7 +42,7 @@ const SLOTS: Omit<HeroSlide, 'image'>[] = [
   // Slot 1 - African - Africultures Festival (Sydney, 12 March 2027)
   {
     id: 'africultures-festival-sydney-2027',
-    kicker: 'AFRICAN CULTURE',
+    kicker: 'AFRICAN COMMUNITY',
     title: 'Africultures Festival',
     venue: 'Wyatt Park, Auburn',
     city: 'Sydney',
@@ -58,7 +58,7 @@ const SLOTS: Omit<HeroSlide, 'image'>[] = [
   // Seeded by 20260514004634 migration.
   {
     id: 'pasifika-festival-melbourne-2027',
-    kicker: 'PACIFIC CULTURE',
+    kicker: 'PACIFIC COMMUNITY',
     title: 'Pasifika Festival 2027',
     venue: 'Federation Square',
     city: 'Melbourne',
@@ -72,7 +72,7 @@ const SLOTS: Omit<HeroSlide, 'image'>[] = [
   // Slot 3 - South Asian - Diwali Mela Brisbane (Brisbane, 24 Oct 2026)
   {
     id: 'diwali-mela-brisbane-2026',
-    kicker: 'SOUTH ASIAN CULTURE',
+    kicker: 'SOUTH ASIAN COMMUNITY',
     title: 'Diwali Mela Brisbane',
     venue: 'Brisbane Powerhouse',
     city: 'Brisbane',
@@ -84,7 +84,7 @@ const SLOTS: Omit<HeroSlide, 'image'>[] = [
   // Seeded by 20260514004634 migration.
   {
     id: 'lebanese-eid-festival-sydney-2027',
-    kicker: 'MIDDLE EASTERN CULTURE',
+    kicker: 'MIDDLE EASTERN COMMUNITY',
     title: 'Lebanese Eid Festival',
     venue: 'Sydney Olympic Park',
     city: 'Sydney',
@@ -95,7 +95,7 @@ const SLOTS: Omit<HeroSlide, 'image'>[] = [
   // Slot 5 - Caribbean - Caribbean Carnival Melbourne (Melbourne, 14 Feb 2027)
   {
     id: 'caribbean-carnival-melbourne-2027',
-    kicker: 'CARIBBEAN CULTURE',
+    kicker: 'CARIBBEAN COMMUNITY',
     title: 'Caribbean Carnival Melbourne',
     venue: 'Birrarung Marr',
     city: 'Melbourne',
@@ -123,7 +123,7 @@ export async function HeroCarousel() {
     >
       <HeroPresenceMarker />
       <h2 id="hero-carousel-heading" className="sr-only">
-        Featured cultural events
+        Featured community events
       </h2>
       <HeroCarouselClient slides={slides} />
     </section>

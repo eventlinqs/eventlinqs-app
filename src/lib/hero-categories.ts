@@ -40,7 +40,7 @@ export const heroCategories: Record<HeroCategorySlug, HeroCategory> = {
     displayName: 'Afrobeats',
     eyebrowLabel: 'AFROBEATS',
     tagline: 'Where Afrobeats lives in your city.',
-    heroHeadline: 'The sound of every culture. The energy of every weekend.',
+    heroHeadline: 'The sound of every community. The energy of every weekend.',
     heroBody:
       'From Lagos to Naarm, London to Toronto. Afrobeats is the heartbeat of every dance floor it lands on. EventLinqs is built for the promoters, DJs, and crews making it happen.',
     storyHeadline: 'Afrobeats on EventLinqs',
@@ -56,12 +56,12 @@ export const heroCategories: Record<HeroCategorySlug, HeroCategory> = {
     ],
     sampleOrganiserPersonas: [
       'Independent promoters running monthly Afrobeats nights',
-      'Festival organisers booking African and global culture artists',
+      'Festival organisers booking African and global headline artists',
       'University African society party committees',
       'DJ collectives building community dance floors',
     ],
     relatedCities: ['Melbourne', 'Sydney', 'Brisbane', 'Perth', 'London', 'Toronto', 'Houston'],
-    keywords: ['Afrobeats events', 'Afrobeats Melbourne', 'Afrobeats Sydney', 'Afrobeats London', 'Nigerian events', 'Ghanaian events', 'African club night', 'global culture events'],
+    keywords: ['Afrobeats events', 'Afrobeats Melbourne', 'Afrobeats Sydney', 'Afrobeats London', 'Nigerian events', 'Ghanaian events', 'African club night', 'global community events'],
   },
 
   amapiano: {
@@ -74,8 +74,8 @@ export const heroCategories: Record<HeroCategorySlug, HeroCategory> = {
       'Born in Pretoria. Played in Lagos. Loved in Naarm. Amapiano is the genre rewriting global dance music, and the EventLinqs platform is built for the parties driving it forward.',
     storyHeadline: 'Amapiano on EventLinqs',
     storyParagraphs: [
-      "Amapiano went from South African townships to global dance floors in five years. By 2026 it's the sound of every serious culture party. DJ Maphorisa, Kabza De Small, and Uncle Waffles soundtrack nights from Soweto to Sydney. The scene is growing faster than the platforms serving it.",
-      "EventLinqs is built for Amapiano organisers who want to run real events without giving 30% to a platform that doesn't understand the culture. Yanos nights, festival sets, all-day parties, log drum tours: set them up in minutes, share them where your audience actually lives, and get paid in 7 days.",
+      "Amapiano went from South African townships to global dance floors in five years. By 2026 it's the sound of every serious community party. DJ Maphorisa, Kabza De Small, and Uncle Waffles soundtrack nights from Soweto to Sydney. The scene is growing faster than the platforms serving it.",
+      "EventLinqs is built for Amapiano organisers who want to run real events without giving 30% to a platform that doesn't understand the community. Yanos nights, festival sets, all-day parties, log drum tours: set them up in minutes, share them where your audience actually lives, and get paid in 7 days.",
       "If you're running the Amapiano scene in your city, this is your home base.",
     ],
     valuePillars: [
@@ -184,14 +184,14 @@ export const heroCategories: Record<HeroCategorySlug, HeroCategory> = {
     slug: 'heritage-and-independence',
     displayName: 'Heritage & Independence',
     eyebrowLabel: 'HERITAGE & INDEPENDENCE',
-    tagline: 'Celebrating the cultures that made us.',
+    tagline: 'Celebrating the communities that made us.',
     heroHeadline: 'Independence Day, every weekend, somewhere.',
     heroBody:
       "Nigerian Independence. Ghanaian Independence. Jamaican Independence. New Year galas. Heritage festivals. The community doesn't wait for one day a year. EventLinqs is built for the organisers keeping these moments alive.",
     storyHeadline: 'Heritage & Independence on EventLinqs',
     storyParagraphs: [
-      "Across global communities, every nation's Independence Day becomes a season: concerts, galas, family festivals, cultural exhibitions, parade after-parties. Heritage events, cultural anniversaries, language and dress celebrations, New Year galas tied to specific homelands. These are the events that anchor cultural identity.",
-      "They're also some of the hardest events to organise. Big guest lists, multi-generational audiences, cultural protocols, sponsorship coordination. EventLinqs handles the ticketing infrastructure so you can focus on the cultural curation.",
+      "Across global communities, every nation's Independence Day becomes a season: concerts, galas, family festivals, community exhibitions, parade after-parties. Heritage events, community anniversaries, language and dress celebrations, New Year galas tied to specific homelands. These are the events that anchor community identity.",
+      "They're also some of the hardest events to organise. Big guest lists, multi-generational audiences, cultural protocols, sponsorship coordination. EventLinqs handles the ticketing infrastructure so you can focus on the community curation.",
       'Whether it\'s a 200-person community gala or a 5,000-person Independence Day festival, the platform scales with the celebration.',
     ],
     valuePillars: [
@@ -206,7 +206,7 @@ export const heroCategories: Record<HeroCategorySlug, HeroCategory> = {
       'New Year cultural gala hosts',
     ],
     relatedCities: ['Melbourne', 'Sydney', 'London', 'Birmingham', 'Toronto', 'New York'],
-    keywords: ['Independence day celebration', 'Nigerian independence', 'Ghanaian independence', 'Jamaican independence', 'cultural gala', 'heritage festival', 'cultural celebration', 'African festival Melbourne'],
+    keywords: ['Independence day celebration', 'Nigerian independence', 'Ghanaian independence', 'Jamaican independence', 'community gala', 'heritage festival', 'community celebration', 'African festival Melbourne'],
   },
 
   networking: {
@@ -237,7 +237,7 @@ export const heroCategories: Record<HeroCategorySlug, HeroCategory> = {
       'Masterclass and professional development workshop organisers',
     ],
     relatedCities: ['Melbourne', 'Sydney', 'London', 'Toronto', 'New York', 'Washington DC'],
-    keywords: ['business events', 'conferences', 'summits', 'professional development', 'executive networking', 'founder events', 'industry summit', 'business conference', 'networking event', 'cultural networking', 'African professionals', 'women in business', 'Black professional networking', 'masterclass'],
+    keywords: ['business events', 'conferences', 'summits', 'professional development', 'executive networking', 'founder events', 'industry summit', 'business conference', 'networking event', 'community networking', 'African professionals', 'women in business', 'Black professional networking', 'masterclass'],
   },
 }
 

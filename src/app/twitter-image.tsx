@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og'
 
-export const alt = 'EventLinqs: Where the culture gathers'
+export const alt = 'EventLinqs: Where the community gathers'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
@@ -65,7 +65,7 @@ export default function TwitterImage() {
             lineHeight: 1.2,
           }}
         >
-          Where the culture gathers.
+          Where the community gathers.
         </div>
 
         <div

@@ -200,7 +200,7 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
     heritageOrder: 4,
     rollUp: 'asian',
     tagline: 'Bollywood, bhangra, garba and beyond.',
-    heroHeadline: 'Indian culture, the way it deserves to be sold.',
+    heroHeadline: 'Indian community, the way it deserves to be sold.',
     heroBody:
       'Bollywood nights, garba and Navratri, Diwali parties, Holi celebrations, bhangra raves, Tamil and Telugu cinema events. Every rhythm of India in one place.',
     storyParagraphs: [
@@ -235,7 +235,7 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
     heritageOrder: 5,
     rollUp: 'asian',
     tagline: 'Lunar New Year, lion dance, lanterns and beyond.',
-    heroHeadline: 'Chinese culture, every season.',
+    heroHeadline: 'Chinese community, every season.',
     heroBody:
       'Lunar New Year parades, Mid-Autumn lantern festivals, lion dance, Mandarin and Cantonese concerts, banquets and community galas. The calendar runs all year.',
     storyParagraphs: [
@@ -406,7 +406,7 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
     heritageOrder: 10,
     rollUp: 'european',
     tagline: 'Glendi, bouzouki, and the whole village.',
-    heroHeadline: 'Greek culture, every season.',
+    heroHeadline: 'Greek community, every season.',
     heroBody:
       'Glendi nights, festival panigiri, bouzouki and rebetiko, Greek Orthodox Easter, dance groups and food festivals. One of Australia great cultural-event traditions.',
     storyParagraphs: [
@@ -440,7 +440,7 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
     heritageOrder: 11,
     rollUp: 'european',
     tagline: 'Sagra, festa, opera: la dolce vita.',
-    heroHeadline: 'Italian culture, every season.',
+    heroHeadline: 'Italian community, every season.',
     heroBody:
       'Sagra food festivals, festa saint-day celebrations, opera nights, Italian film, regional clubs and long-table dinners. A founding thread of multicultural Australia.',
     storyParagraphs: [
@@ -474,7 +474,7 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
     heritageOrder: 12,
     rollUp: 'asian',
     tagline: 'K-pop, hallyu, and the whole wave.',
-    heroHeadline: 'Korean culture, every weekend.',
+    heroHeadline: 'Korean community, every weekend.',
     heroBody:
       'K-pop concerts and dance covers, fan meets, Chuseok and Seollal, Korean film, food festivals and language exchanges. The Korean wave, live.',
     storyParagraphs: [
@@ -508,7 +508,7 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
     heritageOrder: 13,
     rollUp: 'asian',
     tagline: 'Matsuri, anime, taiko and J-culture.',
-    heroHeadline: 'Japanese culture, every season.',
+    heroHeadline: 'Japanese community, every season.',
     heroBody:
       'Matsuri festivals, anime conventions, taiko and J-rock, cherry blossom events, tea ceremony and Japanese film. A deep and growing event vertical.',
     storyParagraphs: [
@@ -542,7 +542,7 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
     heritageOrder: 14,
     rollUp: 'pacific',
     tagline: 'Samoan, Tongan, Fijian: islands in the room.',
-    heroHeadline: 'Pasifika culture, where the islands meet the city.',
+    heroHeadline: 'Pasifika community, where the islands meet the city.',
     heroBody:
       'Pasifika festivals, Samoan flag day, Tongan and Fijian church concerts, island dance and family fundraisers. The islands live wherever the families settled.',
     storyParagraphs: [
@@ -576,11 +576,11 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
     heritageOrder: 15,
     rollUp: 'pacific',
     tagline: 'Kapa haka, te ao Maori, in the room.',
-    heroHeadline: 'Maori culture, carried across the Tasman.',
+    heroHeadline: 'Maori community, carried across the Tasman.',
     heroBody:
-      'Kapa haka, Matariki, te reo Maori events, waiata and community days. A distinct culture with a large and growing community in Australia.',
+      'Kapa haka, Matariki, te reo Maori events, waiata and community days. A distinct community with a large and growing presence in Australia.',
     storyParagraphs: [
-      'Where Aotearoa meets Australia under the same haka. Where the kapa haka is precise and powerful, Matariki marks the new year, and the waiata fills the hall. Maori events span kapa haka competitions and performances, Matariki celebrations, te reo Maori and waiata events, and community days for the large Maori community across Australia. Maori is a distinct culture, not a sub-set of anything, and is given its own home here.',
+      'Where Aotearoa meets Australia under the same haka. Where the kapa haka is precise and powerful, Matariki marks the new year, and the waiata fills the hall. Maori events span kapa haka competitions and performances, Matariki celebrations, te reo Maori and waiata events, and community days for the large Maori community across Australia. Maori is a distinct community, not a sub-set of anything, and is given its own home here.',
       'EventLinqs supports community-led organising, family bundles, te reo Maori listings, and transparent pricing.',
       'If you run kapa haka, Matariki, te reo events or Maori community days, list with us.',
     ],
@@ -609,11 +609,11 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
     heritageOrder: 16,
     rollUp: 'mena',
     tagline: 'Nowruz, classical, and the thirteen days.',
-    heroHeadline: 'Persian culture, every season.',
+    heroHeadline: 'Persian community, every season.',
     heroBody:
       'Nowruz celebrations, Chaharshanbe Suri fire-jumping, Persian classical and pop concerts, Yalda night and poetry evenings. A deep calendar, beautifully kept.',
     storyParagraphs: [
-      'Where Tehran meets Sydney under the same haft-sin. Where the haft-sin gets set, the fire gets jumped before the new year, and Yalda runs until the poetry is finished and the pomegranate is gone. Persian events span Nowruz celebrations stretching across thirteen days, Chaharshanbe Suri fire festivals, Persian classical and diaspora-pop concerts, Yalda night, and Hafez poetry evenings. Communities are tight-knit and events sell out before they are advertised.',
+      'Where Tehran meets Sydney under the same haft-sin. Where the haft-sin gets set, the fire gets jumped before the new year, and Yalda runs until the poetry is finished and the pomegranate is gone. Persian events span Nowruz celebrations stretching across thirteen days, Chaharshanbe Suri fire festivals, Persian classical and modern pop concerts, Yalda night, and Hafez poetry evenings. Communities are tight-knit and events sell out before they are advertised.',
       'EventLinqs supports multi-language listings (Farsi, English), family bookings, and WhatsApp share flows.',
       'If you run Nowruz events, concerts, Yalda nights or Persian cultural celebrations, list with us.',
     ],
@@ -621,7 +621,7 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
       { slug: 'nowruz',      label: 'Nowruz',       blurb: 'Persian new year, haft-sin, sizdah.' },
       { slug: 'yalda',       label: 'Yalda',        blurb: 'Longest night, poetry, pomegranate.' },
       { slug: 'classical',   label: 'Classical',    blurb: 'Tar, setar, tradition.' },
-      { slug: 'diaspora-pop', label: 'Diaspora Pop', blurb: 'Modern Persian concerts, tours.' },
+      { slug: 'diaspora-pop', label: 'Modern Persian Pop', blurb: 'Modern Persian concerts, tours.' },
     ],
     cities: AU_CORE,
     relatedCultures: ['arab', 'lebanese-levantine', 'turkish'],
@@ -642,7 +642,7 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
     heritageOrder: 17,
     rollUp: 'mena',
     tagline: 'Saz, sema, and the long table.',
-    heroHeadline: 'Turkish culture, every weekend.',
+    heroHeadline: 'Turkish community, every weekend.',
     heroBody:
       'Turkish festivals, Ramadan and Eid events, saz and folk concerts, sema ceremonies, food festivals and community nights. A warm and well-organised community.',
     storyParagraphs: [
@@ -675,7 +675,7 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
     heritageOrder: 18,
     rollUp: 'mena',
     tagline: 'Tarab, oud, and the whole region.',
-    heroHeadline: 'Arab culture, every weekend.',
+    heroHeadline: 'Arab community, every weekend.',
     heroBody:
       'Egyptian, Iraqi, Syrian and Gulf events, Arabic concerts, Eid celebrations, oud and tarab recitals and community festivals across the Arab world.',
     storyParagraphs: [

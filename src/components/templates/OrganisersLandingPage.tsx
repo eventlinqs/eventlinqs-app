@@ -188,7 +188,7 @@ export function OrganisersLandingPage() {
             Open to every community.
           </h2>
           <p className="mt-4 text-base leading-relaxed text-[var(--text-secondary)]">
-            EventLinqs is the ticketing platform built for every culture. Afrobeats, Caribbean,
+            EventLinqs is the ticketing platform built for every community. Afrobeats, Caribbean,
             Bollywood, Latin, Italian, Filipino, Lunar, Gospel, Amapiano, Comedy, Spanish, K-Pop,
             Reggae and beyond. Our platform is open to every organiser and every community.
             Weddings, birthday parties, cultural festivals, concerts, corporate events,
@@ -201,7 +201,7 @@ export function OrganisersLandingPage() {
               'Gospel concerts and faith events',
               'Owambe celebrations and cultural ceremonies',
               'Caribbean fetes and independence galas',
-              'Cultural business summits and networking events',
+              'Community business summits and networking events',
               'Weddings, birthdays, and family milestones',
               'Corporate events and conferences',
               'Any event that brings a community together',

@@ -54,7 +54,7 @@ export async function CulturalMomentsBento() {
             id="moments-bento-heading"
             className="type-h2 mt-1 font-display tracking-tight text-ink-900"
           >
-            Cultural moments ahead
+            Community moments ahead
           </h2>
           <p className="mt-3 text-sm text-ink-600 sm:text-base">
             Plan around the celebrations that matter.

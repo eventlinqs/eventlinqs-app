@@ -78,9 +78,9 @@ const CITIES: Record<CitySlug, CityContent> = {
   sydney: {
     slug: 'sydney', name: 'Sydney', state: 'NSW', region: 'Greater Sydney',
     tier: 1, population: 5312000, latitude: -33.8688, longitude: 151.2093,
-    descriptor: "Australia's largest city, every culture in one harbour.",
+    descriptor: "Australia's largest city, every community in one harbour.",
     editorial:
-      "From Lakemba's Ramadan night markets to Bondi's summer beach parties, Sydney runs on diversity and rhythm. Filipino fiestas in Blacktown, Mardi Gras parades in Darlinghurst, Lebanese mahrajan in Punchbowl, Korean street food festivals in Strathfield, Yoruba owambe in Chatswood, Greek paneghiri in Marrickville. Every weekend, every borough, another community celebrating. Concerts under the Harbour Bridge, comedy in Newtown, warehouse DJ sets in Marrickville, tasting menus in the eastern suburbs and afterparties in the inner west. EventLinqs is built for the Sydney organisers running it all - the auntie booking the hall, the DJ keeping the floor moving, the festival chair making sure every culture in this city has a stage.",
+      "From Lakemba's Ramadan night markets to Bondi's summer beach parties, Sydney runs on diversity and rhythm. Filipino fiestas in Blacktown, Mardi Gras parades in Darlinghurst, Lebanese mahrajan in Punchbowl, Korean street food festivals in Strathfield, Yoruba owambe in Chatswood, Greek paneghiri in Marrickville. Every weekend, every borough, another community celebrating. Concerts under the Harbour Bridge, comedy in Newtown, warehouse DJ sets in Marrickville, tasting menus in the eastern suburbs and afterparties in the inner west. EventLinqs is built for the Sydney organisers running it all - the auntie booking the hall, the DJ keeping the floor moving, the festival chair making sure every community in this city has a stage.",
     mapZoom: 10,
     relatedCities: ['melbourne', 'newcastle', 'wollongong', 'gold-coast', 'canberra', 'brisbane'],
     suburbs: ['sydney-inner-west', 'sydney-north-shore', 'sydney-eastern-suburbs', 'sydney-western-sydney', 'sydney-northern-beaches', 'sydney-sutherland-shire'],
@@ -113,7 +113,7 @@ const CITIES: Record<CitySlug, CityContent> = {
     tier: 1, population: 2192000, latitude: -31.9523, longitude: 115.8613,
     descriptor: 'Western capital with deep multicultural roots.',
     editorial:
-      "Perth is a city of Indian Ocean sunsets, Sunday markets and a global festival calendar tucked into the western edge of the country. Filipino fiestas in Mirrabooka, Italian community feasts in Balcatta, Burmese new year water festivals in Cannington, South African braais in Joondalup, Korean lunar new year in Northbridge, Croatian club dances in Fremantle. Beach DJs at Scarborough every summer Sunday. Concerts at RAC Arena. Comedy at the Astor. Theatre at His Majesty's. Workshop weekends at PICA. Cultural festivals in Hyde Park year round. EventLinqs gives Perth organisers fees that make sense, share flows that respect WhatsApp, and a platform tuned for a city that runs on long days and warm nights.",
+      "Perth is a city of Indian Ocean sunsets, Sunday markets and a global festival calendar tucked into the western edge of the country. Filipino fiestas in Mirrabooka, Italian community feasts in Balcatta, Burmese new year water festivals in Cannington, South African braais in Joondalup, Korean lunar new year in Northbridge, Croatian club dances in Fremantle. Beach DJs at Scarborough every summer Sunday. Concerts at RAC Arena. Comedy at the Astor. Theatre at His Majesty's. Workshop weekends at PICA. Community festivals in Hyde Park year round. EventLinqs gives Perth organisers fees that make sense, share flows that respect WhatsApp, and a platform tuned for a city that runs on long days and warm nights.",
     mapZoom: 11,
     relatedCities: ['adelaide', 'sydney', 'melbourne', 'brisbane', 'darwin', 'hobart'],
     suburbs: ['perth-inner-perth', 'perth-northern-suburbs', 'perth-southern-suburbs', 'perth-coastal'],
@@ -135,7 +135,7 @@ const CITIES: Record<CitySlug, CityContent> = {
     tier: 1, population: 727000, latitude: -28.0167, longitude: 153.4000,
     descriptor: 'Beach city, festival weekends, year-round sunshine.',
     editorial:
-      "Gold Coast is 70km of beach, theme parks, surf culture and a steady rhythm of festival weekends. Bleach Festival turns the coast into outdoor theatre every winter. SWELL Sculpture Festival lines the beach with art for ten days. Korean Cultural Festival at Broadbeach, Filipino fiestas in Southport, Pacific Island youth festivals at Burleigh, Indian Diwali in Robina, Brazilian beach parties at Surfers Paradise. Cooly Rocks On runs vintage music down the Coolangatta strip. Theatre at HOTA. Comedy at the Star. Workshops at the Surf Club. Cultural family days at Kurrawa Park. EventLinqs gives Gold Coast organisers a platform tuned for short-form weekend events and a beach city that never quite turns off.",
+      "Gold Coast is 70km of beach, theme parks, surf culture and a steady rhythm of festival weekends. Bleach Festival turns the coast into outdoor theatre every winter. SWELL Sculpture Festival lines the beach with art for ten days. Korean Cultural Festival at Broadbeach, Filipino fiestas in Southport, Pacific Island youth festivals at Burleigh, Indian Diwali in Robina, Brazilian beach parties at Surfers Paradise. Cooly Rocks On runs vintage music down the Coolangatta strip. Theatre at HOTA. Comedy at the Star. Workshops at the Surf Club. Community family days at Kurrawa Park. EventLinqs gives Gold Coast organisers a platform tuned for short-form weekend events and a beach city that never quite turns off.",
     mapZoom: 11,
     relatedCities: ['brisbane', 'sunshine-coast', 'toowoomba', 'sydney', 'cairns', 'newcastle'],
     suburbs: ['gold-coast-surfers-paradise', 'gold-coast-broadbeach'],
@@ -324,7 +324,7 @@ const SUBURBS: Record<SuburbSlug, SuburbContent> = {
   },
   'sydney-western-sydney': {
     slug: 'sydney-western-sydney', citySlug: 'sydney', name: 'Western Sydney',
-    characterDescriptor: "Every culture in one postcode.",
+    characterDescriptor: "Every community in one postcode.",
     latitude: -33.8150, longitude: 150.9953,
     editorial:
       "Western Sydney is the most diverse postcode in the country: Parramatta, Blacktown, Liverpool, Cabramatta, Bankstown. Filipino fiestas at Mt Druitt, Indian Diwali at Parramatta, Lebanese mahrajan at Punchbowl, Vietnamese new year in Cabramatta, Sudanese weddings in Blacktown, Pacific Island youth festivals at Penrith. Concerts at Western Sydney Stadium. Live music at the Factory Theatre. Theatre at the Riverside Theatres. Family festival days at Parramatta Park.",
@@ -414,7 +414,7 @@ const SUBURBS: Record<SuburbSlug, SuburbContent> = {
   },
   'brisbane-south-side': {
     slug: 'brisbane-south-side', citySlug: 'brisbane', name: 'South Side',
-    characterDescriptor: 'Sunnybank, Mt Gravatt, Asian-Australian food and culture.',
+    characterDescriptor: 'Sunnybank, Mt Gravatt, Asian-Australian food and community.',
     latitude: -27.5400, longitude: 153.0600,
     editorial:
       "South Side Brisbane is Sunnybank, Mt Gravatt, Eight Mile Plains, Calamvale and Inala: the heart of Asian-Australian Brisbane. Vietnamese new year at Inala. Korean cultural festivals at Sunnybank. Lunar new year at Sunnybank Plaza. Filipino Barrio Fiesta at Inala. Live music at the Robertson Hotel. Theatre at the Sunnybank Hotel. Family festivals at Mt Gravatt Showgrounds.",

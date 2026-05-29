@@ -76,7 +76,7 @@ export function RelatedCulturesRail({ related, images }: Props) {
                   />
                   <div className="absolute inset-x-0 bottom-0 p-5">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/85">
-                      {culture.tier === 1 ? 'Culture' : 'Cross-cultural'}
+                      {culture.tier === 1 ? 'Community' : 'Cross-community'}
                     </p>
                     <p className="mt-1 font-display text-lg font-bold text-white drop-shadow-sm sm:text-xl">
                       {culture.displayName}

@@ -52,7 +52,7 @@ export const CULTURAL_MOMENTS: CulturalMoment[] = [
   { slug: 'eid-al-adha-2026',     name: 'Eid al-Adha',               start: '2026-05-26', end: '2026-05-29', culture: null,                blurb: 'Festival of sacrifice, four days of community celebration.',                     imageQuery: 'eid al adha celebration mosque lights crescent' },
 
   // Indian
-  { slug: 'holi-2026',            name: 'Holi',                      start: '2026-03-04', end: '2026-03-04', culture: 'indian',            blurb: 'Festival of colours. Powder, music, every culture welcome.',                     imageQuery: 'holi festival colours powder dance celebration india' },
+  { slug: 'holi-2026',            name: 'Holi',                      start: '2026-03-04', end: '2026-03-04', culture: 'indian',            blurb: 'Festival of colours. Powder, music, every community welcome.',                     imageQuery: 'holi festival colours powder dance celebration india' },
   { slug: 'diwali-2026',          name: 'Diwali',                    start: '2026-11-08', end: '2026-11-12', culture: 'indian',            blurb: 'Festival of lights. Five nights of lamps, sweets, fireworks.',                   imageQuery: 'diwali lamps lights celebration india festival' },
 
   // Chinese / Vietnamese / Korean / SE Asian
@@ -78,7 +78,7 @@ export const CULTURAL_MOMENTS: CulturalMoment[] = [
   { slug: 'flores-de-mayo-2026',  name: 'Flores de Mayo',            start: '2026-05-01', end: '2026-05-31', culture: 'filipino',          blurb: 'May procession, flowers and Santacruzan parades.',                               imageQuery: 'flores de mayo filipino procession flowers celebration' },
 
   // Identity - Pride (no heritage chip; identity facet)
-  { slug: 'mardi-gras-2026',      name: 'Sydney Mardi Gras',         start: '2026-02-21', end: '2026-03-01', culture: null,                blurb: 'Two weeks, every culture, parade Saturday March 1.',                             imageQuery: 'sydney mardi gras parade rainbow celebration pride' },
+  { slug: 'mardi-gras-2026',      name: 'Sydney Mardi Gras',         start: '2026-02-21', end: '2026-03-01', culture: null,                blurb: 'Two weeks, every community, parade Saturday March 1.',                             imageQuery: 'sydney mardi gras parade rainbow celebration pride' },
   { slug: 'pride-month-2026',     name: 'Pride Month',               start: '2026-06-01', end: '2026-06-30', culture: null,                blurb: 'Thirty days of community events, fundraisers, and parties.',                     imageQuery: 'pride parade rainbow community celebration' },
 
   // European
