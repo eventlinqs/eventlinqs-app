@@ -2,7 +2,6 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
-import { rewriteStorageUrl } from '@/lib/storage/url'
 
 /**
  * Server action for image uploads.
@@ -31,10 +30,13 @@ export async function uploadEventImage(formData: FormData): Promise<string | nul
     return null
   }
 
-  // getPublicUrl returns the Supabase project domain. rewriteStorageUrl
-  // swaps to the branded `images.eventlinqs.com` domain when the
-  // NEXT_PUBLIC_STORAGE_DOMAIN env var is configured (Batch 10), so no
-  // user-facing URL ever leaks the Supabase project hostname.
+  // Return the working Supabase storage URL. We deliberately do NOT rewrite to
+  // a branded domain here: the previous rewrite produced dead
+  // `eventlinqs.com/cdn/...` URLs whenever NEXT_PUBLIC_STORAGE_DOMAIN pointed at
+  // a domain that served nothing, which broke covers and 500d pages. This host
+  // is in next.config images.remotePatterns, so it always renders. Branded
+  // display, if ever wanted, belongs in the render layer behind a reachable
+  // domain, not baked into stored URLs.
   const { data } = admin.storage.from('event-images').getPublicUrl(fileName)
-  return rewriteStorageUrl(data.publicUrl)
+  return data.publicUrl
 }

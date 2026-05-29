@@ -1,6 +1,8 @@
 import Image from 'next/image'
 import { MEDIA_QUALITY } from './quality'
 import { MEDIA_SIZES } from './sizes'
+import { resolveImageSrc } from './safe-image-src'
+import { BrandedPlaceholder } from './decorative/branded-placeholder'
 
 /**
  * SubCultureTileImage - the only allowed surface for sub-culture tile
@@ -18,9 +20,13 @@ interface Props {
 }
 
 export function SubCultureTileImage({ src, alt, className = '' }: Props) {
+  const safeSrc = resolveImageSrc(src)
+  if (!safeSrc) {
+    return <BrandedPlaceholder className={className} />
+  }
   return (
     <Image
-      src={src}
+      src={safeSrc}
       alt={alt}
       fill
       sizes={MEDIA_SIZES.card}
