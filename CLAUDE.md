@@ -91,7 +91,7 @@ If a session needs to modify a shared file, commit the change as a separate comm
 - Mobile homepage and /events have known cold-cache measurement issue documented in docs/perf/v2/closure-report.md - to be revisited with production warm-cache data, do not block on it
 
 ### Brand and Copy
-- Public copy: culture-first language only
+- Public copy: community-first language, never culture-first
 - NO "diaspora" in any public surface (codebase, copy, commits, PR descriptions, UI labels, meta descriptions, emails, structured data)
 - NO em-dashes anywhere - use hyphens, colons, pipes, commas
 - NO en-dashes
@@ -133,6 +133,36 @@ If a session needs to modify a shared file, commit the change as a separate comm
 - Tier 1 default for all new organisers, 3-day post-event payout, 20% reserve
 - Destination charges with transfer_data.destination + application_fee_amount + on_behalf_of
 - v1 geography: AU/UK/US/EU only
+
+## NON-NEGOTIABLE COMPETITIVE AND QUALITY STANDARDS
+
+Permanent. Every session inherits these automatically; the founder should never have to re-issue them. They harden the standards above - where this section sets a stricter bar, it wins.
+
+### 1. Competitive benchmark - surpass, never just match
+Fixed competitor set: Ticketmaster.com.au, DICE.fm, Eventbrite.com.au, Humanitix.com. Every UI, UX, page, and flow aims to SURPASS this set, not reach parity. Surpassing them is the mission, not a reminder to wait for.
+
+The Playwright side-by-side is REQUIRED on any PR that changes user-facing UI or a user flow (new or redesigned pages or components; checkout, browse, or event changes). It is NOT required on backend-only, docs-only, or config-only PRs, where a competitor comparison adds no value. When required, compare against the most relevant competitor at desktop 1440 and mobile 375, with explicit pass/fail on each of: information density, typography, image quality, filter UX, mobile polish.
+
+### 2. Quality gates - every PR, all green before merge
+- typecheck: 0 errors
+- lint: 0 errors
+- vitest: pass
+- production build: pass
+- Lighthouse 95+ on BOTH desktop and mobile, on a production build (never dev), median-of-5 on Vercel preview or warmed production (never localhost)
+- axe-core: 0 violations
+- Playwright at 3 viewports: 1440, 768, 375
+- All CI green before merge. No `gh pr merge --admin` except a declared emergency.
+
+### 3. Robustness - production-verified or not done
+Every component works end to end and is verified in production before it is called done. No partial fixes. No "works locally, fails in prod." A green local run is progress, not done.
+
+### 4. Copy and design
+- No em-dashes or en-dashes anywhere. Hyphens, colons, pipes, commas only.
+- Australian English (-ise, -our, -re).
+- No exclamation marks, including UI copy.
+- Community-first language, never culture-first (full voice rules in "### Brand and Copy" above).
+- Never improvise design. Inherit exact tokens (colour, type, spacing, radius, shadow) from the live homepage (`src/app/page.tsx`), the event detail page (`src/app/events/[slug]/page.tsx`), and `docs/DESIGN-SYSTEM.md`.
+- `docs/EventLinqs_Scope_v5.md` is the authoritative scope. Build nothing that contradicts it.
 
 ## Architectural Decisions (immutable)
 
