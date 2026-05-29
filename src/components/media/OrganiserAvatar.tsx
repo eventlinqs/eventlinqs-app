@@ -4,6 +4,7 @@ import Image from 'next/image'
 import { useState } from 'react'
 import { MEDIA_QUALITY } from './quality'
 import { MEDIA_SIZES } from './sizes'
+import { resolveImageSrc } from './safe-image-src'
 
 /**
  * OrganiserAvatar - the only allowed surface for any avatar on EventLinqs:
@@ -63,7 +64,10 @@ export function OrganiserAvatar({
 }: Props) {
   const [errored, setErrored] = useState(false)
   const px = PIXELS_BY_SIZE[size]
-  const showImage = src && !errored
+  // Resolve to a renderable URL; a disallowed host would otherwise throw in
+  // next/image SSR before onError can fall back to initials.
+  const resolvedSrc = resolveImageSrc(src)
+  const showImage = resolvedSrc && !errored
 
   const baseClasses =
     `inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full ` +
@@ -76,7 +80,7 @@ export function OrganiserAvatar({
         style={{ width: px, height: px }}
       >
         <Image
-          src={src}
+          src={resolvedSrc}
           alt={name}
           width={px}
           height={px}

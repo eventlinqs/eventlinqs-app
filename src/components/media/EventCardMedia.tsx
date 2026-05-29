@@ -1,6 +1,8 @@
 import Image from 'next/image'
 import { MEDIA_QUALITY } from './quality'
 import { MEDIA_SIZES } from './sizes'
+import { resolveImageSrc } from './safe-image-src'
+import { BrandedPlaceholder } from './decorative/branded-placeholder'
 
 /**
  * EventCardMedia - the only allowed surface for event imagery in card,
@@ -62,9 +64,14 @@ export function EventCardMedia({
   objectFit = 'cover',
   className = '',
 }: Props) {
+  // A bad/missing/disallowed URL must never 500 the card or its rail.
+  const safeSrc = resolveImageSrc(src)
+  if (!safeSrc) {
+    return <BrandedPlaceholder className={className} />
+  }
   return (
     <Image
-      src={src}
+      src={safeSrc}
       alt={alt}
       fill
       sizes={SIZES_BY_VARIANT[variant]}

@@ -2,6 +2,8 @@ import Image from 'next/image'
 import { MEDIA_QUALITY } from './quality'
 import { MEDIA_SIZES } from './sizes'
 import { HeroAmbientLayer } from './hero-ambient-layer'
+import { resolveImageSrc } from './safe-image-src'
+import { BrandedPlaceholder } from './decorative/branded-placeholder'
 
 /**
  * HeroMedia - the only allowed surface for above-fold full-bleed hero
@@ -88,6 +90,17 @@ export function HeroMedia({
     ? `absolute inset-0 overflow-hidden ${className}`
     : `relative h-full w-full overflow-hidden ${className}`
 
+  // A bad/missing/disallowed hero URL must never 500 the page. Fall back to
+  // the branded placeholder as the hero layer instead.
+  const safeSrc = resolveImageSrc(image)
+  if (!safeSrc) {
+    return (
+      <div className={wrapClasses}>
+        <BrandedPlaceholder chromeless />
+      </div>
+    )
+  }
+
   return (
     <div className={wrapClasses}>
       {/*
@@ -97,7 +110,7 @@ export function HeroMedia({
         download lazily and never out-compete the active LCP candidate.
       */}
       <Image
-        src={image}
+        src={safeSrc}
         alt={alt}
         fill
         priority={priority}
@@ -120,7 +133,7 @@ export function HeroMedia({
         <HeroAmbientLayer
           videoSrc={videoSrc}
           kenBurns={kenBurns}
-          posterImage={image}
+          posterImage={safeSrc}
         />
       )}
     </div>
