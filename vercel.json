@@ -9,6 +9,10 @@
       "schedule": "*/5 * * * *"
     },
     {
+      "path": "/api/cron/reservation-expire",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/cron/warm",
       "schedule": "* * * * *"
     }
