@@ -97,8 +97,8 @@ If a session needs to modify a shared file, commit the change as a separate comm
 - NO en-dashes
 - NO exclamation marks in user-facing copy
 - Australian English (-ise, -our, -re)
-- Tagline: "Every culture. Every event. One platform."
-- Sub-tagline: "The ticketing platform built for every culture."
+- Tagline: "Every culture. Every event. One platform." (main tagline retained this round, pending a separate founder decision)
+- Sub-tagline: "The ticketing platform built for every community."
 - Culture taxonomy (v2, founder Decisions A-G locked 2026-05-16). Three orthogonal dimensions, never collapsed into one list:
   - Cultural Heritage: 21 heritages, Aboriginal & Torres Strait Islander always first, then the documented blend order. Source of truth: the CultureSlug union in src/lib/cultures/data.ts. Slugs: aboriginal-torres-strait-islander, african, caribbean, indian, chinese, filipino, latin-american, vietnamese, lebanese-levantine, greek, italian, korean, japanese, pacific-pasifika, maori, persian-iranian, turkish, arab, other-south-asian, other-east-southeast-asian, other-european.
   - Faith Community: 5 with dedicated /faith/[slug] landings (christian, muslim, hindu, buddhist, jewish); smaller faiths filter-only. Source of truth: src/lib/faiths/data.ts.
