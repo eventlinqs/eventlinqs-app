@@ -36,6 +36,8 @@ const VenueMap = dynamic(
 )
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { EventSoldOut, type EventSoldOutRelated } from '@/components/features/events/event-sold-out'
+import { TicketsNotOnSale } from '@/components/features/events/tickets-not-on-sale'
+import { eventIsPaid, isOrganiserSellable } from '@/lib/payments/sale-status'
 import { EventViewTracker } from '@/components/features/events/event-view-tracker'
 import { EventSchemaJsonLd } from '@/components/features/events/event-schema-jsonld'
 import { EventShareBar } from '@/components/features/events/event-share-bar'
@@ -415,6 +417,14 @@ export default async function EventDetailPage({ params }: Props) {
     eventInventory.total_capacity > 0 &&
     eventInventory.available === 0
 
+  // Organiser-Stripe sale guard (single source of truth in
+  // @/lib/payments/sale-status). A PAID event whose organiser has no
+  // connected, charges-enabled Stripe account cannot be checked out, so we
+  // show the not-on-sale state and render no selection. FREE events need no
+  // Stripe and stay fully sellable.
+  const saleBlocked =
+    eventIsPaid(allTiers) && !isOrganiserSellable(event.organisation)
+
   const soldOutRelated: EventSoldOutRelated[] = related.slice(0, 3).map(e => {
     const firstTier = e.ticket_tiers?.[0]
     return {
@@ -720,6 +730,8 @@ export default async function EventDetailPage({ params }: Props) {
                       <p className="rounded-lg bg-warning/10 px-4 py-3 text-sm text-warning">
                         Ticketing is temporarily paused for this event.
                       </p>
+                    ) : saleBlocked ? (
+                      <TicketsNotOnSale embedded />
                     ) : (
                       <SeatSelector
                         eventId={event.id}
@@ -732,7 +744,7 @@ export default async function EventDetailPage({ params }: Props) {
                       />
                     )}
                   </div>
-                ) : isSoldOut ? (
+                ) : isSoldOut && !saleBlocked ? (
                   <div className="sticky top-20">
                     <EventSoldOut
                       event={{ id: event.id, slug: event.slug, title: event.title }}
@@ -754,6 +766,7 @@ export default async function EventDetailPage({ params }: Props) {
                       waitlistEnabled={event.waitlist_enabled ?? false}
                       squadBookingEnabled={event.squad_booking_enabled ?? false}
                       tierInventory={tierInventory}
+                      saleBlocked={saleBlocked}
                     />
                   </div>
                 )}

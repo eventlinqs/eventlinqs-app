@@ -127,3 +127,6 @@ docs/redesign/batch-*-evidence/lighthouse/*.json
 
 # Iteration snapshot screenshots are committed deliverables (overrides *.png)
 !research/snapshots/**/*.png
+
+# Local Playwright tickets-spine fixture (seeded test data, never commit)
+tests/e2e/.ticket-fixture.json

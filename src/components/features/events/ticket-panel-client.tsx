@@ -29,6 +29,9 @@ interface Props {
   waitlistEnabled: boolean
   squadBookingEnabled: boolean
   tierInventory: Record<string, TierInventory | null>
+  // Paid event whose organiser has not finished Stripe setup: render the
+  // not-on-sale state through the selector and show no buy controls.
+  saleBlocked?: boolean
 }
 
 function isTierVisible(tier: EnrichedTier, now: Date, unlockedIds: string[]): boolean {
@@ -61,6 +64,22 @@ export function TicketPanelClient(props: Props) {
       showAccessCodeInput: hasLocked(props.allTiers, now, unlockedIds),
     }
   }, [props.allTiers, unlockedIds])
+
+  // Organiser cannot sell yet: show only the not-on-sale state. No social
+  // proof, no access-code unlock, no selection. (Hooks above still run, so
+  // this early return is rules-of-hooks safe.)
+  if (props.saleBlocked) {
+    return (
+      <TicketSelector
+        eventId={props.eventId}
+        tiers={[]}
+        addons={[]}
+        isTicketingSuspended={props.isTicketingSuspended}
+        currency={props.defaultCurrency}
+        saleBlocked
+      />
+    )
+  }
 
   return (
     <>
