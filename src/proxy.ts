@@ -58,16 +58,18 @@ async function gateHighDemandEvent(request: NextRequest): Promise<NextResponse |
 
   const { data: event } = await supabase
     .from('events')
-    .select('is_high_demand, queue_open_at, status')
+    .select('is_high_demand, status')
     .eq('slug', slug)
-    .maybeSingle<{ is_high_demand: boolean; queue_open_at: string | null; status: string }>()
+    .maybeSingle<{ is_high_demand: boolean; status: string }>()
 
   if (!event) return null
   if (event.status !== 'published') return null
   if (!event.is_high_demand) return null
 
-  const queueOpen = event.queue_open_at && new Date(event.queue_open_at) <= new Date()
-  if (!queueOpen) return null
+  // queue_open_at is deferred (no live schema column), so a high-demand
+  // published event gates immediately. Selecting the missing column here used
+  // to error on every /events/<slug> request and silently fail the gate open.
+  // Pre-queue scheduling returns when the column ships.
 
   const queueToken = request.nextUrl.searchParams.get('queue_token')
   const tokenValid = queueToken ? validateAdmissionToken(queueToken).valid : false

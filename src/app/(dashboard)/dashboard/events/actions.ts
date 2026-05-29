@@ -73,11 +73,11 @@ export type CreateEventInput = {
   // Phase 3B: Squad booking
   squad_booking_enabled: boolean
   squad_timeout_hours: number
-  // Phase 3C: Virtual queue
+  // Phase 3C: Virtual queue. queue_admission_rate and queue_open_at are
+  // deferred - they have no columns in the live events schema. Only
+  // is_high_demand and queue_admission_window_minutes exist and are written.
   is_high_demand: boolean
-  queue_admission_rate: number
   queue_admission_window_minutes: number
-  queue_open_at: string | null
 }
 
 export async function createEvent(input: CreateEventInput): Promise<{ error?: string }> {
@@ -151,9 +151,7 @@ export async function createEvent(input: CreateEventInput): Promise<{ error?: st
       squad_booking_enabled: input.squad_booking_enabled,
       squad_timeout_hours: input.squad_timeout_hours,
       is_high_demand: input.is_high_demand,
-      queue_admission_rate: input.queue_admission_rate,
       queue_admission_window_minutes: input.queue_admission_window_minutes,
-      queue_open_at: input.is_high_demand ? (input.queue_open_at || null) : null,
     })
 
   if (eventError) {
@@ -282,9 +280,7 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
       squad_booking_enabled: input.squad_booking_enabled,
       squad_timeout_hours: input.squad_timeout_hours,
       is_high_demand: input.is_high_demand,
-      queue_admission_rate: input.queue_admission_rate,
       queue_admission_window_minutes: input.queue_admission_window_minutes,
-      queue_open_at: input.is_high_demand ? (input.queue_open_at || null) : null,
     })
     .eq('id', input.eventId)
 

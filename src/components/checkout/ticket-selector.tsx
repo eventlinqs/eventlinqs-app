@@ -8,6 +8,10 @@ import type { TicketTier, EventAddon } from '@/types/database'
 import { JoinWaitlistButton } from '@/components/waitlist/join-waitlist-button'
 import { StartSquadButton } from '@/components/squads/start-squad-button'
 import { trackTicketCheckoutStart } from '@/lib/analytics/plausible'
+import {
+  TICKETS_NOT_ON_SALE_BODY,
+  TICKETS_NOT_ON_SALE_HEADING,
+} from '@/lib/payments/sale-status'
 
 type TierWithDisplayPrice = TicketTier & { display_price_cents?: number }
 
@@ -19,6 +23,9 @@ interface TicketSelectorProps {
   currency: string
   waitlistEnabled?: boolean
   squadBookingEnabled?: boolean
+  // Paid event whose organiser has not finished Stripe setup: render the
+  // not-on-sale state and allow no selection so no inventory is consumed.
+  saleBlocked?: boolean
 }
 
 function formatPrice(priceCents: number, currency: string) {
@@ -26,7 +33,7 @@ function formatPrice(priceCents: number, currency: string) {
   return `${currency.toUpperCase()} ${(priceCents / 100).toFixed(2)}`
 }
 
-export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, currency, waitlistEnabled = false, squadBookingEnabled = false }: TicketSelectorProps) {
+export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, currency, waitlistEnabled = false, squadBookingEnabled = false, saleBlocked = false }: TicketSelectorProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -150,6 +157,20 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
     if (qty < 2) return null
     return { tier, qty }
   })()
+
+  // Paid event whose organiser has not finished Stripe setup: render the
+  // not-on-sale state and no selection controls, so no inventory is consumed.
+  // Mirrors the server-side guard in createReservation.
+  if (saleBlocked) {
+    return (
+      <div className="rounded-xl border border-ink-200 bg-ink-100/40 px-4 py-5 text-center">
+        <p className="font-display text-base font-bold text-ink-900">
+          {TICKETS_NOT_ON_SALE_HEADING}
+        </p>
+        <p className="mt-2 text-sm text-ink-600">{TICKETS_NOT_ON_SALE_BODY}</p>
+      </div>
+    )
+  }
 
   const now = new Date()
   const activeTiers = tiers.filter(t => t.is_visible && t.is_active)

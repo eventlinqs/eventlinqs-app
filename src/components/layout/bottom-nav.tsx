@@ -34,7 +34,7 @@ type TabConfig = {
 const TABS: TabConfig[] = [
   { href: '/',                       label: 'Home',    icon: Home,        matchExact: true },
   { href: '/events',                 label: 'Events',  icon: CalendarDays, matchExact: false },
-  { href: '/dashboard/tickets',      label: 'Tickets', icon: Ticket,      matchExact: false },
+  { href: '/tickets',                label: 'Tickets', icon: Ticket,      matchExact: false },
   { href: '/dashboard',              label: 'Account', icon: User,        matchExact: true },
 ]
 
