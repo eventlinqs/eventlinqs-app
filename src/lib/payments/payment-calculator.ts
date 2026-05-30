@@ -6,7 +6,6 @@ import {
   getProcessingFeePassThrough,
   type ProcessingFeePassThrough,
 } from './pricing-rules'
-import { createClient } from '@/lib/supabase/server'
 
 /**
  * M6 Phase 3 (rework). PaymentCalculator now reads from the long-format
@@ -78,23 +77,6 @@ function countryFromCurrency(currency: string): string {
 }
 
 export class PaymentCalculator {
-  private async getTaxPercent(currency: string): Promise<number> {
-    const supabase = await createClient()
-    const country = countryFromCurrency(currency)
-    if (country === 'GLOBAL') return 0
-    const { data } = await supabase
-      .from('tax_rules')
-      .select('tax_rate')
-      .eq('country_code', country)
-      .eq('is_active', true)
-      .maybeSingle()
-    if (!data) return 0
-    const rate = Number((data as { tax_rate: number | string }).tax_rate)
-    if (!Number.isFinite(rate)) return 0
-    // tax_rules.tax_rate is stored as a fraction (0.10 = 10%). Convert to percent.
-    return rate * 100
-  }
-
   /**
    * @param fee_pass_type If supplied, overrides the pricing_rules default.
    *   This is how `events.fee_pass_type` (per-event organiser setting)
@@ -158,14 +140,12 @@ export class PaymentCalculator {
       processingFeePercent,
       processingFeeFixedCents,
       passThroughDefault,
-      taxPercent,
     ] = await Promise.all([
       getPlatformFeePercentage(country, currency, orgId),
       getPlatformFeeFixedCents(country, currency, orgId),
       getProcessingFeePercentage(country, currency, orgId),
       getProcessingFeeFixedCents(country, currency, orgId),
       getProcessingFeePassThrough(country, currency, orgId),
-      this.getTaxPercent(currency),
     ])
 
     const ticketCount = tickets.reduce((sum, t) => sum + t.quantity, 0)
@@ -176,7 +156,20 @@ export class PaymentCalculator {
     const payment_processing_fee_cents = Math.round(
       (discounted_subtotal * processingFeePercent) / 100 + processingFeeFixedCents
     )
-    const tax_cents = Math.round((discounted_subtotal * taxPercent) / 100)
+    // GST is inclusive in EventLinqs all-in pricing (platform philosophy:
+    // all-in pricing shown from the first click, no hidden fees). In
+    // Australia the ticket face value and the platform fee are GST-inclusive:
+    // the organiser is merchant of record under destination charges and
+    // remits GST on the ticket, and EventLinqs remits GST on its own fee
+    // (one eleventh of the fee). A separate GST amount is therefore never
+    // added on top of the buyer total. Adding 10 per cent of the ticket
+    // subtotal here was the source of the 16.6 per cent over-charge on
+    // order EL-6HBNEYY9 (AUD 65 face value billed as AUD 75.82).
+    //
+    // A tax-exclusive jurisdiction (for example US sales tax added at the
+    // till) would need an explicit inclusive vs exclusive tax mode. None is
+    // active today, so no consumption tax is added to the all-in total.
+    const tax_cents = 0
 
     const resolvedPassType: FeePassType = fee_pass_type ?? passThroughToFeePassType(passThroughDefault)
 
