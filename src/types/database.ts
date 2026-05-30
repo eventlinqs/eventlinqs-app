@@ -114,6 +114,39 @@ export type Database = {
           },
         ]
       }
+      artists: {
+        Row: {
+          bio: string | null
+          created_at: string
+          id: string
+          image_url: string | null
+          name: string
+          slug: string
+          spotify_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          name: string
+          slug: string
+          spotify_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          name?: string
+          slug?: string
+          spotify_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       audit_log: {
         Row: {
           action: string
@@ -493,6 +526,45 @@ export type Database = {
           },
         ]
       }
+      event_artists: {
+        Row: {
+          artist_id: string
+          billing_order: number
+          created_at: string
+          event_id: string
+          id: string
+        }
+        Insert: {
+          artist_id: string
+          billing_order?: number
+          created_at?: string
+          event_id: string
+          id?: string
+        }
+        Update: {
+          artist_id?: string
+          billing_order?: number
+          created_at?: string
+          event_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_artists_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_artists_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_categories: {
         Row: {
           created_at: string
@@ -567,6 +639,7 @@ export type Database = {
           event_type: Database["public"]["Enums"]["event_type"]
           fee_pass_type: Database["public"]["Enums"]["fee_pass_type"]
           gallery_urls: Json | null
+          genre_slug: string | null
           has_reserved_seating: boolean
           id: string
           is_age_restricted: boolean
@@ -589,6 +662,7 @@ export type Database = {
           start_date: string
           status: Database["public"]["Enums"]["event_status"]
           sub_culture: string | null
+          subgenre_slug: string | null
           suburb_primary: string | null
           summary: string | null
           tags: Json | null
@@ -623,6 +697,7 @@ export type Database = {
           event_type?: Database["public"]["Enums"]["event_type"]
           fee_pass_type?: Database["public"]["Enums"]["fee_pass_type"]
           gallery_urls?: Json | null
+          genre_slug?: string | null
           has_reserved_seating?: boolean
           id?: string
           is_age_restricted?: boolean
@@ -645,6 +720,7 @@ export type Database = {
           start_date: string
           status?: Database["public"]["Enums"]["event_status"]
           sub_culture?: string | null
+          subgenre_slug?: string | null
           suburb_primary?: string | null
           summary?: string | null
           tags?: Json | null
@@ -679,6 +755,7 @@ export type Database = {
           event_type?: Database["public"]["Enums"]["event_type"]
           fee_pass_type?: Database["public"]["Enums"]["fee_pass_type"]
           gallery_urls?: Json | null
+          genre_slug?: string | null
           has_reserved_seating?: boolean
           id?: string
           is_age_restricted?: boolean
@@ -701,6 +778,7 @@ export type Database = {
           start_date?: string
           status?: Database["public"]["Enums"]["event_status"]
           sub_culture?: string | null
+          subgenre_slug?: string | null
           suburb_primary?: string | null
           summary?: string | null
           tags?: Json | null
@@ -752,6 +830,13 @@ export type Database = {
             referencedColumns: ["slug"]
           },
           {
+            foreignKeyName: "events_genre_slug_fkey"
+            columns: ["genre_slug"]
+            isOneToOne: false
+            referencedRelation: "genres"
+            referencedColumns: ["slug"]
+          },
+          {
             foreignKeyName: "events_organisation_id_fkey"
             columns: ["organisation_id"]
             isOneToOne: false
@@ -773,6 +858,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "events_subgenre_slug_fkey"
+            columns: ["subgenre_slug"]
+            isOneToOne: false
+            referencedRelation: "subgenres"
+            referencedColumns: ["slug"]
+          },
+          {
             foreignKeyName: "events_suburb_primary_fkey"
             columns: ["suburb_primary"]
             isOneToOne: false
@@ -787,6 +879,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      follows: {
+        Row: {
+          created_at: string
+          followable_id: string
+          followable_type: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          followable_id: string
+          followable_type: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          followable_id?: string
+          followable_type?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      genres: {
+        Row: {
+          created_at: string
+          display_order: number
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       order_items: {
         Row: {
@@ -2080,6 +2220,41 @@ export type Database = {
           },
         ]
       }
+      subgenres: {
+        Row: {
+          created_at: string
+          display_order: number
+          genre_slug: string
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          genre_slug: string
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          genre_slug?: string
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subgenres_genre_slug_fkey"
+            columns: ["genre_slug"]
+            isOneToOne: false
+            referencedRelation: "genres"
+            referencedColumns: ["slug"]
+          },
+        ]
+      }
       suburbs: {
         Row: {
           city_slug: string
@@ -2784,6 +2959,7 @@ export type Database = {
           event_type: Database["public"]["Enums"]["event_type"]
           fee_pass_type: Database["public"]["Enums"]["fee_pass_type"]
           gallery_urls: Json | null
+          genre_slug: string | null
           has_reserved_seating: boolean
           id: string
           is_age_restricted: boolean
@@ -2806,6 +2982,7 @@ export type Database = {
           start_date: string
           status: Database["public"]["Enums"]["event_status"]
           sub_culture: string | null
+          subgenre_slug: string | null
           suburb_primary: string | null
           summary: string | null
           tags: Json | null
@@ -3189,73 +3366,3 @@ export const Constants = {
     },
   },
 } as const
-// BEGIN LEGACY ALIASES (handwritten, not regenerated)
-// ============================================================================
-// Convenience aliases the codebase imports by name. The previous handwritten
-// src/types/database.ts exposed these as inline string-literal unions and
-// standalone interfaces; the Supabase type generator does not emit them.
-// Each alias here resolves to the canonical Database['public']... shape or
-// Postgres enum so the consuming import surface stays ergonomic while the
-// source of truth remains the live schema.
-//
-// CI guard: .github/workflows/ci.yml > types-drift-guard regenerates the
-// types from the live DB on every CI run and diffs against the committed
-// generated section. This appendix is BELOW the BEGIN LEGACY ALIASES marker
-// so the guard strips it before diffing and append-only changes here do not
-// cause false-positive drift alerts. Modifying anything ABOVE the marker
-// requires a corresponding live-schema change.
-//
-// Maintenance rules:
-//   1. Row-shape aliases derive from Database['public']['Tables'][X]['Row'].
-//      They auto-sync; nothing to maintain.
-//   2. Enum aliases derive from Database['public']['Enums'][X]. They
-//      auto-sync; nothing to maintain.
-//   3. TEXT + CHECK column aliases are pinned as explicit string-literal
-//      unions, each with a comment naming the table.column.check_name the
-//      union MUST stay in sync with. Adding a value to the CHECK in a
-//      migration requires updating the matching alias below or a runtime
-//      cast will widen-silently. The CI guard does not catch this class;
-//      review the migration diff manually when CHECK lists change.
-// ============================================================================
-
-// --- Row-shape aliases ------------------------------------------------------
-
-export type Event         = Database['public']['Tables']['events']['Row']
-export type Order         = Database['public']['Tables']['orders']['Row']
-export type OrderItem     = Database['public']['Tables']['order_items']['Row']
-export type Payment       = Database['public']['Tables']['payments']['Row']
-export type TicketTier    = Database['public']['Tables']['ticket_tiers']['Row']
-export type EventAddon    = Database['public']['Tables']['event_addons']['Row']
-export type EventCategory = Database['public']['Tables']['event_categories']['Row']
-export type Organisation  = Database['public']['Tables']['organisations']['Row']
-export type DiscountCode  = Database['public']['Tables']['discount_codes']['Row']
-export type Squad         = Database['public']['Tables']['squads']['Row']
-export type SquadMember   = Database['public']['Tables']['squad_members']['Row']
-
-// --- Enum aliases (real Postgres enums, auto-derived) -----------------------
-
-export type EventStatus        = Database['public']['Enums']['event_status']
-export type EventVisibility    = Database['public']['Enums']['event_visibility']
-export type EventType          = Database['public']['Enums']['event_type']
-export type FeePassType        = Database['public']['Enums']['fee_pass_type']
-export type TicketTierType     = Database['public']['Enums']['ticket_tier_type']
-export type SquadStatus        = Database['public']['Enums']['squad_status']
-export type SquadMemberStatus  = Database['public']['Enums']['squad_member_status']
-
-// --- TEXT + CHECK column aliases (manually pinned, see header rule 3) ------
-
-// public.payouts.status (TEXT column, CHECK constraint payouts_status_check).
-// Live constraint (verified via pg_constraint on 2026-05-29):
-//   CHECK (status = ANY (ARRAY['pending','in_transit','paid','failed','canceled']))
-// Note 'canceled' (US spelling) is the Stripe-API value; AU spelling is not
-// used for this column because the payouts table mirrors Stripe payout states.
-export type PayoutRecordStatus =
-  | 'pending'
-  | 'in_transit'
-  | 'paid'
-  | 'failed'
-  | 'canceled'
-
-// ============================================================================
-// END LEGACY ALIASES
-// ============================================================================
