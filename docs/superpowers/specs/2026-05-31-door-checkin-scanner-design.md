@@ -53,6 +53,20 @@ From `supabase/migrations/20260517000001_ticketing_system_v1.sql` and
 
 New file `supabase/migrations/<ts>_checkin_scanner.sql`. Contents:
 
+### A0. Lookup index + audit enum
+
+- `tickets.ticket_code` is already `TEXT NOT NULL UNIQUE`, which creates a unique
+  btree index, so the scan lookup is an instant index probe under a door queue.
+  The migration documents this and does NOT add a duplicate index.
+- Extend the `ticket_scans.result` CHECK to add `'transferred'` so a transferred
+  ticket is logged with its own distinct reason rather than collapsed to
+  `invalid`:
+  ```sql
+  ALTER TABLE public.ticket_scans DROP CONSTRAINT ticket_scans_result_check;
+  ALTER TABLE public.ticket_scans ADD CONSTRAINT ticket_scans_result_check
+    CHECK (result IN ('admitted','already_scanned','invalid','wrong_event','refunded','void','transferred'));
+  ```
+
 ### A1. `scan_ticket` RPC (the atomic heart)
 
 ```
@@ -99,12 +113,20 @@ Logic, in order:
    - `status = 'scanned'` -> `already_scanned`.
    - `status = 'refunded'` -> `refunded`.
    - `status = 'void'` -> `void`.
-   - `status = 'transferred'` -> `invalid` (not admittable).
+   - `status = 'transferred'` -> `transferred` (audited as `transferred`; a
+     distinct reason, never generic invalid).
    For any branch where the ticket exists, insert the matching `ticket_scans`
    row, then return REJECT with the reason.
 
-Result-to-UI mapping: `admitted` = ADMIT; everything else = REJECT with reason
-text (already used / refunded / void / wrong event / not found).
+Result-to-UI mapping (each reject is a clear, distinct reason for door staff):
+- `admitted` -> ADMIT (green).
+- `already_scanned` -> REJECT "Already used".
+- `refunded` -> REJECT "Refunded".
+- `void` -> REJECT "Void".
+- `transferred` -> REJECT "Transferred away".
+- `wrong_event` -> REJECT "Wrong event".
+- `not_found` -> REJECT "Not found" (covers no row and secret mismatch, so a bad
+  secret is not an oracle).
 
 ### A2. RLS
 
@@ -140,7 +162,13 @@ Client scanner:
   request, auto-clear the result after a short delay so the next attendee can be
   scanned. No double submit.
 - Manual fallback: a code-entry input (and `?k` secret) for an unreadable QR,
-  calling the same action.
+  calling the same action. The manual form is ALWAYS available, not only after a
+  camera failure.
+- Camera failure handling: if `getUserMedia` is denied, unavailable, or throws,
+  the UI never shows a blank screen. It renders a visible prompt ("Camera
+  unavailable - enter the code manually") and focuses the manual entry form, so
+  staff can keep working. The same fallback covers browsers without camera
+  support.
 - Token-only styling, 44px targets, clear camera-permission and no-camera
   states, no em or en dashes, mobile-first (primary viewport 375).
 
@@ -158,7 +186,9 @@ cookie-based client so `auth.uid()` is the staff user. Returns a typed
   (valid URL, raw code, missing secret, wrong host, garbage). A pure
   `lib/scanner/result.ts` mapping RPC result codes to UI label/tone/reason, fully
   tested. These hold the parsing and presentation logic out of the component.
-- **Concurrency + e2e (deferred to staging, HOLD MERGE):** a runnable test that,
+- **Concurrency + e2e (deferred to staging, HOLD MERGE - these are the tests
+  that prove the door cannot double-admit; deferred, not optional; merge holds
+  until they pass on staging):** a runnable test that,
   against a real Postgres, mints a real ticket via the purchase flow, fires two
   concurrent `scan_ticket` calls and asserts exactly one `admitted` and one
   `already_scanned` with `scan_count = 1` and one `first_scanned_at`; then the
@@ -178,6 +208,11 @@ cookie-based client so `auth.uid()` is the staff user. Returns a typed
 - `package.json` gains `jsqr` (QR decode). CLAUDE.md designates `package.json` a
   `[SHARED]` file; the dependency-adding commit uses the `[SHARED]` prefix.
 - Offline scanning is an explicit deferral; the launch scanner is online-only.
+- **Follow-up (accepted for launch):** the not-found case writes no audit row
+  because `ticket_scans.ticket_id` is `NOT NULL`. A later migration should make
+  `ticket_scans.ticket_id` nullable (and add a nullable `attempted_code` column)
+  so fraudulent or garbage scans are also logged for security review. Out of
+  scope for this PR.
 
 ## Out of scope
 
