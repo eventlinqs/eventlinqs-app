@@ -29,13 +29,18 @@ interface BearerTicket {
   event: {
     title: string
     start_date: string
+    timezone: string | null
     venue_name: string | null
     venue_city: string | null
   } | null
   order_item: { item_name: string } | null
 }
 
-function formatAuDateTime(iso: string): string {
+// Render the event start in the event's own local timezone, matching the
+// confirmation email and the event detail page. Without timeZone the
+// formatter falls back to the server zone (UTC on Vercel), which showed
+// "1:25 am" for a Sydney event that starts at "11:25 am AEST".
+function formatAuDateTime(iso: string, timeZone: string | null): string {
   try {
     return new Intl.DateTimeFormat('en-AU', {
       weekday: 'short',
@@ -45,18 +50,24 @@ function formatAuDateTime(iso: string): string {
       hour: 'numeric',
       minute: '2-digit',
       hour12: true,
+      timeZone: timeZone ?? undefined,
+      timeZoneName: 'short',
     }).format(new Date(iso))
   } catch {
     return iso
   }
 }
 
+// Status-coloured tint backgrounds with dark ink text. The semantic text
+// colours (text-success / text-error) fail WCAG AA contrast on their own
+// light tints and there is no darker success token, so the tint carries the
+// status signal and the dark label guarantees an accessible contrast ratio.
 const STATUS_COPY: Record<string, { label: string; tone: string }> = {
-  valid:       { label: 'Valid',       tone: 'bg-success/15 text-success' },
-  scanned:     { label: 'Checked in',  tone: 'bg-ink-200 text-ink-700' },
-  refunded:    { label: 'Refunded',    tone: 'bg-error/15 text-error' },
-  void:        { label: 'Void',        tone: 'bg-error/15 text-error' },
-  transferred: { label: 'Transferred', tone: 'bg-ink-200 text-ink-700' },
+  valid:       { label: 'Valid',       tone: 'bg-success/15 text-ink-900' },
+  scanned:     { label: 'Checked in',  tone: 'bg-ink-200 text-ink-900' },
+  refunded:    { label: 'Refunded',    tone: 'bg-error/15 text-ink-900' },
+  void:        { label: 'Void',        tone: 'bg-error/15 text-ink-900' },
+  transferred: { label: 'Transferred', tone: 'bg-ink-200 text-ink-900' },
 }
 
 export default async function TicketBearerPage({ params, searchParams }: Props) {
@@ -72,7 +83,7 @@ export default async function TicketBearerPage({ params, searchParams }: Props) 
   const { data } = await admin
     .from('tickets')
     .select(
-      'ticket_code, secret, status, holder_name, holder_email, event:events(title, start_date, venue_name, venue_city), order_item:order_items(item_name)',
+      'ticket_code, secret, status, holder_name, holder_email, event:events(title, start_date, timezone, venue_name, venue_city), order_item:order_items(item_name)',
     )
     .eq('ticket_code', code)
     .maybeSingle()
@@ -99,7 +110,7 @@ export default async function TicketBearerPage({ params, searchParams }: Props) 
           {ev?.title ?? 'Your event'}
         </h1>
         {ev?.start_date && (
-          <p className="mt-1 text-sm text-ink-700">{formatAuDateTime(ev.start_date)}</p>
+          <p className="mt-1 text-sm text-ink-700">{formatAuDateTime(ev.start_date, ev.timezone)}</p>
         )}
         {(ev?.venue_name || ev?.venue_city) && (
           <p className="text-sm text-ink-600">

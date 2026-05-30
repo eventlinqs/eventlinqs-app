@@ -120,14 +120,21 @@ describe('PaymentCalculator rounding + composition (current behaviour)', () => {
     expect(pricingRules.getProcessingFeePercentage).not.toHaveBeenCalled()
   })
 
-  test('tax is half-up and computed on the discounted subtotal (100.5 -> 101)', async () => {
-    h.taxRow = { tax_rate: 0.1 } // stored as fraction -> 10%
+  test('GST is inclusive: no consumption tax is added on top of the all-in total', async () => {
+    // Regression for order EL-6HBNEYY9: AUD 65 face value was billed as
+    // AUD 75.82 because 10 per cent GST was added on top of the ticket
+    // subtotal. Under all-in pricing the ticket and the platform fee are
+    // GST-inclusive, so no separate GST amount is ever added to the buyer.
+    h.taxRow = { tax_rate: 0.1 } // an active GST rule must NOT change the total
+    h.rules.platformPct = 2.5
+    h.rules.platformFixed = 50
     const calc = new PaymentCalculator()
-    // discounted_subtotal 1005, tax = round(1005 * 10 / 100) = round(100.5) = 101
-    const fb = await calc.calculate([ticket(1, 1005)], [], 'AUD')
+    // platform = round(6500 * 2.5 / 100 + 50) = round(212.5) = 213
+    const fb = await calc.calculate([ticket(1, 6500)], [], 'AUD')
 
-    expect(fb.tax_cents).toBe(101)
-    expect(fb.total_cents).toBe(1005 + 0 + 0 + 101)
+    expect(fb.platform_fee_cents).toBe(213)
+    expect(fb.tax_cents).toBe(0)
+    expect(fb.total_cents).toBe(6500 + 213)
   })
 
   test('explicit fee_pass_type overrides the pricing-rules default', async () => {
