@@ -6,7 +6,68 @@ import { redirect } from 'next/navigation'
 import { revalidatePath, updateTag } from 'next/cache'
 import { canTransition } from '@/lib/event-lifecycle'
 import { checkPublishGate, hasPaidTier } from '@/lib/events/publish-gate'
+import { resolveGenreSelection } from '@/lib/genres/resolve'
+import { normaliseLineup, buildEventArtistRows, type LineupInput } from '@/lib/artists/lineup'
 import type { EventStatus, EventVisibility, EventType, TicketTierType } from '@/types/database'
+
+/**
+ * Reconciles an event's artist lineup. Pure ordering/dedup lives in
+ * normaliseLineup; here we resolve names to artist rows (find-or-create by slug)
+ * and replace the event_artists join.
+ *
+ * `artists === undefined` means "not provided, leave the lineup untouched".
+ * `artists === []` clears the lineup.
+ */
+async function syncEventArtists(
+  admin: ReturnType<typeof createAdminClient>,
+  eventId: string,
+  artists: LineupInput[] | undefined,
+): Promise<{ error?: string }> {
+  if (artists === undefined) return {}
+
+  const lineup = normaliseLineup(artists)
+
+  if (lineup.length === 0) {
+    await admin.from('event_artists').delete().eq('event_id', eventId)
+    return {}
+  }
+
+  // Resolve artist ids for entries that arrived as a name only.
+  const idBySlug = new Map<string, string>()
+  const needSlugs = [...new Set(lineup.filter((e) => !e.artist_id).map((e) => e.slug))]
+
+  if (needSlugs.length > 0) {
+    const toCreate = needSlugs.map((slug) => {
+      const entry = lineup.find((e) => e.slug === slug)!
+      return { slug, name: entry.name }
+    })
+    // Insert only artists that do not exist yet; never overwrite an existing
+    // artist's name. onConflict on the unique slug makes this safe to retry.
+    const { error: upsertError } = await admin
+      .from('artists')
+      .upsert(toCreate, { onConflict: 'slug', ignoreDuplicates: true })
+    if (upsertError) return { error: `Failed to save artists: ${upsertError.message}` }
+
+    const { data: rows, error: selectError } = await admin
+      .from('artists')
+      .select('id, slug')
+      .in('slug', needSlugs)
+    if (selectError) return { error: `Failed to load artists: ${selectError.message}` }
+    for (const row of rows ?? []) idBySlug.set(row.slug, row.id)
+  }
+
+  const eventArtistRows = buildEventArtistRows(eventId, lineup, idBySlug)
+
+  // Replace the lineup: delete then insert (mirrors the ticket-tier pattern).
+  await admin.from('event_artists').delete().eq('event_id', eventId)
+
+  if (eventArtistRows.length > 0) {
+    const { error: insertError } = await admin.from('event_artists').insert(eventArtistRows)
+    if (insertError) return { error: `Failed to save lineup: ${insertError.message}` }
+  }
+
+  return {}
+}
 
 function generateSlug(title: string): string {
   const base = title
@@ -66,6 +127,10 @@ export type CreateEventInput = {
   status: EventStatus
   scheduled_publish_at: string | null
   ticket_tiers: TicketTierInput[]
+  // Genre Phase 2: music taxonomy + lineup
+  genre_slug?: string | null
+  subgenre_slug?: string | null
+  artists?: LineupInput[]
   // M4: Reserved seating
   has_reserved_seating: boolean
   venue_id: string | null
@@ -106,6 +171,7 @@ export async function createEvent(input: CreateEventInput): Promise<{ error?: st
 
   const slug = generateSlug(input.title)
   const now = new Date().toISOString()
+  const { genre_slug, subgenre_slug } = resolveGenreSelection(input.genre_slug, input.subgenre_slug)
 
   const admin = createAdminClient()
 
@@ -145,6 +211,8 @@ export async function createEvent(input: CreateEventInput): Promise<{ error?: st
       status: input.status,
       published_at: input.status === 'published' ? now : null,
       scheduled_publish_at: input.status === 'scheduled' ? input.scheduled_publish_at : null,
+      genre_slug,
+      subgenre_slug,
       has_reserved_seating: input.has_reserved_seating,
       venue_id: input.has_reserved_seating ? (input.venue_id || null) : null,
       seat_map_id: input.has_reserved_seating ? (input.seat_map_id || null) : null,
@@ -158,6 +226,9 @@ export async function createEvent(input: CreateEventInput): Promise<{ error?: st
     console.error('Event insert error:', eventError)
     return { error: `Failed to create event: ${eventError.message}` }
   }
+
+  const lineupResult = await syncEventArtists(admin, input.eventId, input.artists)
+  if (lineupResult.error) return lineupResult
 
   if (input.ticket_tiers.length > 0) {
     const tiers = input.ticket_tiers.map((tier, i) => ({
@@ -201,6 +272,7 @@ export async function createEvent(input: CreateEventInput): Promise<{ error?: st
   }
   // New city may have appeared in the picker merge source.
   updateTag('picker-cities')
+  revalidatePath('/music')
   return {}
 }
 
@@ -232,6 +304,7 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
   }
 
   const now = new Date().toISOString()
+  const { genre_slug, subgenre_slug } = resolveGenreSelection(input.genre_slug, input.subgenre_slug)
 
   const admin = createAdminClient()
 
@@ -274,6 +347,8 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
       status: input.status,
       published_at: input.status === 'published' && !event.status.includes('published') ? now : undefined,
       scheduled_publish_at: input.status === 'scheduled' ? input.scheduled_publish_at : null,
+      genre_slug,
+      subgenre_slug,
       has_reserved_seating: input.has_reserved_seating,
       venue_id: input.has_reserved_seating ? (input.venue_id || null) : null,
       seat_map_id: input.has_reserved_seating ? (input.seat_map_id || null) : null,
@@ -309,6 +384,9 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
     if (tiersError) return { error: `Failed to update ticket tiers: ${tiersError.message}` }
   }
 
+  const lineupResult = await syncEventArtists(admin, input.eventId, input.artists)
+  if (lineupResult.error) return { error: lineupResult.error }
+
   // Re-materialise seats if seat map changed or reserved seating was just enabled
   const seatMapChanged =
     input.has_reserved_seating &&
@@ -332,6 +410,7 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
   }
   // venue_city may have changed - refresh the picker merge source.
   updateTag('picker-cities')
+  revalidatePath('/music')
   redirect('/dashboard/events?saved=1')
 }
 

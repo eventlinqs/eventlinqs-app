@@ -48,3 +48,28 @@ export function normaliseLineup(artists: LineupInput[]): NormalisedLineupEntry[]
 
   return result
 }
+
+export type EventArtistRow = {
+  event_id: string
+  artist_id: string
+  billing_order: number
+}
+
+/**
+ * Maps a normalised lineup to event_artists rows, resolving artist ids from a
+ * slug -> id map for name-only entries. Entries that still have no id (creation
+ * failed or was skipped) are dropped so we never write a null artist_id.
+ */
+export function buildEventArtistRows(
+  eventId: string,
+  lineup: NormalisedLineupEntry[],
+  idBySlug: ReadonlyMap<string, string>,
+): EventArtistRow[] {
+  return lineup
+    .map((entry) => ({
+      event_id: eventId,
+      artist_id: entry.artist_id ?? idBySlug.get(entry.slug) ?? null,
+      billing_order: entry.billing_order,
+    }))
+    .filter((row): row is EventArtistRow => Boolean(row.artist_id))
+}
