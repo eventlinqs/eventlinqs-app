@@ -17,6 +17,10 @@ export type AdminCapability =
   | 'admin.audit.read'
   | 'admin.invites.manage'
   | 'admin.profile.read'
+  // M7 operational controls
+  | 'admin.pricing.manage'
+  | 'admin.users.manage'
+  | 'admin.events.manage'
 
 const ROLE_CAPABILITIES: Record<AdminRole, ReadonlySet<AdminCapability>> = {
   super_admin: new Set<AdminCapability>([
@@ -24,21 +28,29 @@ const ROLE_CAPABILITIES: Record<AdminRole, ReadonlySet<AdminCapability>> = {
     'admin.audit.read',
     'admin.invites.manage',
     'admin.profile.read',
+    'admin.pricing.manage',
+    'admin.users.manage',
+    'admin.events.manage',
   ]),
   admin: new Set<AdminCapability>([
     'admin.dashboard.view',
     'admin.audit.read',
     'admin.invites.manage',
     'admin.profile.read',
+    'admin.pricing.manage',
+    'admin.users.manage',
+    'admin.events.manage',
   ]),
   support: new Set<AdminCapability>([
     'admin.dashboard.view',
     'admin.audit.read',
     'admin.profile.read',
   ]),
+  // Moderator can action events (moderation) but not pricing or users.
   moderator: new Set<AdminCapability>([
     'admin.dashboard.view',
     'admin.profile.read',
+    'admin.events.manage',
   ]),
 }
 
