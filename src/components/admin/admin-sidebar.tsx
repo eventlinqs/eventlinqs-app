@@ -10,13 +10,17 @@ interface NavItem {
 }
 
 const NAV: NavItem[] = [
-  { label: 'Dashboard',  href: '/admin',            capability: 'admin.dashboard.view' },
-  { label: 'Organisers', href: '/admin/organisers', capability: 'admin.dashboard.view', comingSoon: true },
-  { label: 'Events',     href: '/admin/events',     capability: 'admin.dashboard.view', comingSoon: true },
-  { label: 'Financials', href: '/admin/financials', capability: 'admin.dashboard.view', comingSoon: true },
-  { label: 'Support',    href: '/admin/support',    capability: 'admin.dashboard.view', comingSoon: true },
-  { label: 'Audit',      href: '/admin/audit',      capability: 'admin.audit.read' },
-  { label: 'Settings',   href: '/admin/settings',   capability: 'admin.profile.read', comingSoon: true },
+  { label: 'Dashboard',        href: '/admin',            capability: 'admin.dashboard.view' },
+  { label: 'Pricing and fees', href: '/admin/pricing',    capability: 'admin.pricing.manage' },
+  { label: 'Organisers',       href: '/admin/organisers', capability: 'admin.users.manage' },
+  { label: 'Users',            href: '/admin/users',      capability: 'admin.users.manage' },
+  { label: 'Events',           href: '/admin/events',     capability: 'admin.events.manage' },
+  { label: 'Audit',            href: '/admin/audit',      capability: 'admin.audit.read' },
+  // Deferred (visible, disabled) per M7 scope: build later.
+  { label: 'KYC review',       href: '/admin/kyc',        capability: 'admin.dashboard.view', comingSoon: true },
+  { label: 'Payouts',          href: '/admin/payouts',    capability: 'admin.dashboard.view', comingSoon: true },
+  { label: 'Analytics (GMV)',  href: '/admin/analytics',  capability: 'admin.dashboard.view', comingSoon: true },
+  { label: 'Country toggles',  href: '/admin/countries',  capability: 'admin.dashboard.view', comingSoon: true },
 ]
 
 /**
