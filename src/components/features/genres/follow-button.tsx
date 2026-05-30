@@ -29,24 +29,28 @@ export function FollowButton({ type, id, name }: FollowButtonProps) {
   useEffect(() => {
     let active = true
     const supabase = createClient()
-    supabase.auth.getUser().then(({ data: { user } }) => {
+
+    async function load() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
       if (!user) {
         if (active) setReady(true)
         return
       }
-      supabase
+      const { data } = await supabase
         .from('follows')
         .select('id')
         .eq('user_id', user.id)
         .eq('followable_type', type)
         .eq('followable_id', id)
         .maybeSingle()
-        .then(({ data }) => {
-          if (!active) return
-          setFollowing(Boolean(data))
-          setReady(true)
-        })
-    })
+      if (!active) return
+      setFollowing(Boolean(data))
+      setReady(true)
+    }
+
+    void load()
     return () => {
       active = false
     }
@@ -80,13 +84,13 @@ export function FollowButton({ type, id, name }: FollowButtonProps) {
         aria-label={following ? `Unfollow ${name}` : `Follow ${name}`}
         className={
           following
-            ? 'inline-flex items-center justify-center min-h-[44px] px-5 rounded-lg border border-gray-300 bg-surface text-textPrimary font-medium transition-colors hover:bg-background focus:ring-2 focus:ring-accent outline-none disabled:opacity-50'
-            : 'inline-flex items-center justify-center min-h-[44px] px-5 rounded-lg bg-primary text-white font-medium transition-colors hover:bg-accent focus:ring-2 focus:ring-accent outline-none disabled:opacity-50'
+            ? 'inline-flex items-center justify-center min-h-[44px] px-5 rounded-lg border border-ink-200 bg-white text-ink-900 font-medium transition-colors hover:bg-ink-100 focus:outline-none focus:ring-1 focus:ring-gold-500 disabled:opacity-50'
+            : 'inline-flex items-center justify-center min-h-[44px] px-5 rounded-lg bg-[var(--color-navy-950)] text-white font-medium transition-colors hover:bg-ink-800 focus:outline-none focus:ring-1 focus:ring-gold-500 disabled:opacity-50'
         }
       >
         {following ? 'Following' : 'Follow'}
       </button>
-      {error && <p className="text-xs text-error">{error}</p>}
+      {error && <p className="text-xs text-red-500">{error}</p>}
     </div>
   )
 }

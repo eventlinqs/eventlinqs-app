@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
-import { M5EventsGrid } from '@/components/features/events/m5-events-grid'
+import { EventCardGrid } from '@/components/features/events/event-card-grid'
 import { type EventCardData } from '@/components/features/events/event-card'
 import { getFollowTargets, EVENT_CARD_SELECT } from '@/lib/follows/server'
 
@@ -89,7 +89,7 @@ export default async function FollowingPage() {
               </Link>
             </div>
           ) : (
-            <M5EventsGrid
+            <EventCardGrid
               events={events}
               emptyMessage="No upcoming events from your follows right now. Check back soon."
             />

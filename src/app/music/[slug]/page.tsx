@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
-import { M5EventsGrid } from '@/components/features/events/m5-events-grid'
+import { EventCardGrid } from '@/components/features/events/event-card-grid'
 import { type EventCardData } from '@/components/features/events/event-card'
 import { FollowButton } from '@/components/features/genres/follow-button'
 import {
@@ -96,7 +96,7 @@ export default async function MusicSlugPage({ params }: Props) {
                 ))}
               </div>
             )}
-            <M5EventsGrid
+            <EventCardGrid
               events={events}
               emptyMessage={`No upcoming ${genre.name} events right now. Check back soon.`}
             />
@@ -147,7 +147,7 @@ export default async function MusicSlugPage({ params }: Props) {
               </div>
               <FollowButton type="subgenre" id={subgenre.slug} name={subgenre.name} />
             </div>
-            <M5EventsGrid
+            <EventCardGrid
               events={events}
               emptyMessage={`No upcoming ${subgenre.name} events right now. Follow to be the first to know.`}
             />

@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
-import { M5EventsGrid } from '@/components/features/events/m5-events-grid'
+import { EventCardGrid } from '@/components/features/events/event-card-grid'
 import { type EventCardData } from '@/components/features/events/event-card'
 import { FollowButton } from '@/components/features/genres/follow-button'
 import { EVENT_CARD_SELECT } from '@/lib/follows/server'
@@ -77,7 +77,7 @@ export default async function ArtistPage({ params }: Props) {
             <FollowButton type="artist" id={artist.id} name={artist.name} />
           </div>
           <h2 className="text-xl font-semibold text-textPrimary mb-4">Upcoming events</h2>
-          <M5EventsGrid
+          <EventCardGrid
             events={events}
             emptyMessage={`No upcoming events for ${artist.name} right now. Follow to be the first to know.`}
           />

@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
-import { M5EventsGrid } from '@/components/features/events/m5-events-grid'
+import { EventCardGrid } from '@/components/features/events/event-card-grid'
 import { type EventCardData } from '@/components/features/events/event-card'
 import { getGenre, getSubgenre, isGenreSlug, isSubgenreSlug } from '@/lib/genres/data'
 import { getCity } from '@/lib/cities/data'
@@ -79,7 +79,7 @@ export default async function MusicCityPage({ params }: Props) {
           <p className="text-textSecondary mb-8 max-w-2xl">
             Live {music.name} events happening in and around {cityData.name}.
           </p>
-          <M5EventsGrid
+          <EventCardGrid
             events={events}
             emptyMessage={`No upcoming ${music.name} events in ${cityData.name} right now.`}
           />
