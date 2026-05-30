@@ -1,6 +1,10 @@
 {
   "crons": [
     {
+      "path": "/api/cron/reservation-expire",
+      "schedule": "* * * * *"
+    },
+    {
       "path": "/api/cron/waitlist-expire",
       "schedule": "*/5 * * * *"
     },

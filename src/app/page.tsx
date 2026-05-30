@@ -5,8 +5,6 @@ import { createPublicClient } from '@/lib/supabase/public-client'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { HeroCarousel } from '@/components/features/home/HeroCarousel'
-import { CulturalCalendarWidget } from '@/components/features/home/cultural-calendar-widget'
-import { FeaturedOrganisersSection } from '@/components/features/home/featured-organisers-section'
 import { HomeSchemaJsonLd } from '@/components/features/home/home-schema-jsonld'
 import { SurpriseMeButton } from '@/components/features/home/surprise-me-button'
 import { CategoryChipStrip } from '@/components/features/home/category-chip-strip'
@@ -243,21 +241,9 @@ export default async function HomePage() {
          *  (event detail page + checkout) rather than as a sitewide
          *  band. See docs/redesign/batch-11-evidence/trust-signals-2026.md. */}
 
-        {/* M5 - Cultural Calendar widget. Per docs/M5-DESIGN-SPEC.md
-         *  "What EventLinqs has that no competitor has", this is the
-         *  moat element. Positioned directly below the hero so the
-         *  first impression includes the platform's First Nations
-         *  positioning, current cultural moment, sensitivity markers,
-         *  and partnership slot. Content is placeholder pending
-         *  community-sourced copy (see SUMMARY.md follow-ups). */}
-        <CulturalCalendarWidget />
-
-        {/* M5 - Featured Organisers row. Per docs/M5-DESIGN-SPEC.md / IA
-         *  position 4 (between Cultural Calendar widget and Browse-by-city).
-         *  Community-first signal showing 3-4 verified organisers with their
-         *  next event. Avatars via OrganiserAvatar from the media library.
-         *  Placeholder data until the verified-organiser registry seeds. */}
-        <FeaturedOrganisersSection />
+        {/* The placeholder Cultural Calendar widget and Featured Organisers
+         *  row were removed to keep the homepage reading like a premium
+         *  ticketing platform (real event rails, not editorial placeholders). */}
 
         {/* H2 Category chip strip (Batch 9.2): quick-filter chips +
          *  cultures expandable. Scroll-snap on mobile, fits viewport on

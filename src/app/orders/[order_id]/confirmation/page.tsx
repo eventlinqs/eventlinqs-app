@@ -1,9 +1,13 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import QRCode from 'qrcode'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getSiteUrl } from '@/lib/site-url'
 import { ConfirmationActions } from '@/components/orders/confirmation-actions'
 import type { Order, OrderItem } from '@/types/database'
+
+export const runtime = 'nodejs'
 
 type Props = {
   params: Promise<{ order_id: string }>
@@ -11,6 +15,20 @@ type Props = {
 }
 
 type FullOrder = Order & { order_items: OrderItem[] }
+
+// Statuses that still admit entry and therefore carry a scannable QR. Mirrors
+// QR_STATUSES in the confirmation email (src/app/api/webhooks/stripe/route.ts)
+// so the page and the email agree on what counts as an issued ticket.
+const QR_STATUSES = new Set(['valid', 'scanned'])
+
+type IssuedTicket = {
+  ticket_code: string
+  secret: string
+  status: string
+  holder_name: string | null
+  holder_email: string | null
+  order_item: { item_name: string } | null
+}
 
 function formatCents(cents: number, currency: string) {
   return `${currency.toUpperCase()} ${(cents / 100).toFixed(2)}`
@@ -88,6 +106,38 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
     tierGroups.set(item.item_name, (tierGroups.get(item.item_name) ?? 0) + item.quantity)
   }
 
+  // Issued tickets: surface them inline with their QR and a View ticket link,
+  // exactly like the confirmation email. Only valid/scanned tickets carry a
+  // QR; the generic "being prepared" message is shown only when no tickets
+  // have been generated yet (a genuine pending state while the webhook runs).
+  const { data: ticketRows } = await adminClient
+    .from('tickets')
+    .select('ticket_code, secret, status, holder_name, holder_email, order_item:order_items(item_name)')
+    .eq('order_id', fullOrder.id)
+    .order('created_at', { ascending: true })
+
+  const allTickets = (ticketRows ?? []) as unknown as IssuedTicket[]
+  const siteUrl = getSiteUrl()
+  const issuedTickets = await Promise.all(
+    allTickets
+      .filter(t => QR_STATUSES.has(t.status))
+      .map(async t => {
+        const href = `/t/${encodeURIComponent(t.ticket_code)}?k=${encodeURIComponent(t.secret)}`
+        const qrSvg = await QRCode.toString(`${siteUrl}${href}`, {
+          type: 'svg',
+          margin: 2,
+          errorCorrectionLevel: 'M',
+        })
+        return {
+          ticket_code: t.ticket_code,
+          href,
+          qrSvg,
+          itemName: t.order_item?.item_name || 'Admission',
+          holder: t.holder_name ?? t.holder_email ?? 'Ticket holder',
+        }
+      })
+  )
+
   return (
     <div className="min-h-screen bg-ink-100">
       <nav className="border-b border-ink-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
@@ -107,7 +157,7 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
           <h1 className="text-2xl font-bold text-ink-900">
             {isConfirmed ? "You're in" : 'Order received'}
           </h1>
-          <p className="mt-1 text-ink-400">Order <span className="font-mono font-semibold text-ink-800">{fullOrder.order_number}</span></p>
+          <p className="mt-1 text-ink-600">Order <span className="font-mono font-semibold text-ink-900">{fullOrder.order_number}</span></p>
         </div>
 
         {/* Event details */}
@@ -157,11 +207,56 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
           </div>
         </div>
 
-        {/* Ticket availability message */}
-        <div className="rounded-xl border border-gold-100 bg-gold-100 p-4 mb-6 text-sm text-gold-600">
-          <p className="font-medium">Your tickets will be available in your account</p>
-          <p className="mt-1 text-gold-500">Digital tickets and QR codes will be sent to your email once activated.</p>
-        </div>
+        {/* Issued tickets: inline QR + View ticket link, matching the email */}
+        {issuedTickets.length > 0 ? (
+          <section className="rounded-xl border border-ink-200 bg-white p-6 mb-6">
+            <h3 className="text-base font-semibold text-ink-900 mb-4">
+              Your {issuedTickets.length === 1 ? 'ticket' : 'tickets'}
+            </h3>
+            <div className="space-y-6">
+              {issuedTickets.map(t => (
+                <div key={t.ticket_code} className="rounded-xl border border-ink-200 bg-ink-100 p-5">
+                  <div
+                    className="flex items-center justify-center rounded-lg bg-white p-4 [&>svg]:h-auto [&>svg]:w-full [&>svg]:max-w-[220px]"
+                    // Server-generated SVG QR (no raw img, satisfies the media rules).
+                    dangerouslySetInnerHTML={{ __html: t.qrSvg }}
+                  />
+                  <dl className="mt-4 space-y-1.5 text-sm">
+                    <div className="flex justify-between gap-4">
+                      <dt className="text-ink-600">Ticket type</dt>
+                      <dd className="font-medium text-ink-900">{t.itemName}</dd>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <dt className="text-ink-600">Ticket code</dt>
+                      <dd className="font-mono font-semibold text-ink-900">{t.ticket_code}</dd>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <dt className="text-ink-600">Holder</dt>
+                      <dd className="font-medium text-ink-900">{t.holder}</dd>
+                    </div>
+                  </dl>
+                  <Link
+                    href={t.href}
+                    className="mt-4 flex min-h-[44px] items-center justify-center rounded-lg bg-ink-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-ink-800"
+                  >
+                    View ticket
+                  </Link>
+                  <p className="mt-2 text-center text-xs text-ink-600">
+                    Show this QR at entry. One QR admits one person.
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : allTickets.length === 0 ? (
+          // Genuine pending state: order received but tickets not generated yet
+          // (the webhook is still processing). Once issued they render above and
+          // are emailed to the buyer.
+          <div className="rounded-xl border border-gold-100 bg-gold-100 p-4 mb-6 text-sm text-gold-600">
+            <p className="font-medium">Your tickets are being prepared</p>
+            <p className="mt-1 text-gold-500">Your digital tickets and QR codes will appear here and arrive in your email within a few minutes.</p>
+          </div>
+        ) : null}
 
         {/* Actions */}
         <ConfirmationActions
@@ -188,7 +283,7 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
         )}
 
         <div className="text-center">
-          <Link href="/events" className="text-sm text-[#4A90D9] hover:underline">
+          <Link href="/events" className="text-sm font-medium text-gold-800 underline hover:text-gold-700">
             Browse more events
           </Link>
         </div>

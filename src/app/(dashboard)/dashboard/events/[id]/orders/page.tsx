@@ -117,6 +117,29 @@ export default async function EventOrdersPage({ params }: Props) {
         <span className="text-sm text-ink-600">{event.title}</span>
       </div>
 
+      {/* Export actions: orders report carries the financial and buyer
+          transaction detail; attendees has its own list and door list. */}
+      <div className="mb-6 flex flex-wrap items-center gap-2">
+        <a
+          href={`/dashboard/events/${eventId}/orders/export?format=csv`}
+          className="inline-flex min-h-[44px] items-center rounded-lg border border-ink-200 bg-white px-4 py-2 text-sm font-semibold text-ink-900 hover:bg-ink-100"
+        >
+          Export orders CSV
+        </a>
+        <a
+          href={`/dashboard/events/${eventId}/orders/export?format=xlsx`}
+          className="inline-flex min-h-[44px] items-center rounded-lg border border-ink-200 bg-white px-4 py-2 text-sm font-semibold text-ink-900 hover:bg-ink-100"
+        >
+          Export orders Excel
+        </a>
+        <Link
+          href={`/dashboard/events/${eventId}/attendees`}
+          className="inline-flex min-h-[44px] items-center px-2 py-2 text-sm font-medium text-gold-800 underline hover:text-gold-700"
+        >
+          Attendee list and door list
+        </Link>
+      </div>
+
       {/* Stat cards */}
       <div className={`grid grid-cols-2 gap-4 mb-6 ${event.waitlist_enabled ? 'sm:grid-cols-5' : 'sm:grid-cols-4'}`}>
         <div className="rounded-xl border border-ink-200 bg-white p-5">

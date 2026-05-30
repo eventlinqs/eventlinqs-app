@@ -34,12 +34,31 @@ const KNOWN_ACTIONS = [
   'admin.invite.revoked',
   'admin.dashboard.view',
   'admin.audit.viewed',
+  // M7 pricing controls
+  'admin.pricing.view',
+  'admin.pricing.updated',
+  // M7 organiser moderation
+  'admin.organisers.view',
+  'admin.organiser.approved',
+  'admin.organiser.rejected',
+  'admin.organiser.suspended',
+  'admin.organiser.reinstated',
+  // M7 user role management
+  'admin.users.view',
+  'admin.user.role_changed',
+  // M7 event moderation
+  'admin.events.view',
+  'admin.event.paused',
+  'admin.event.resumed',
+  'admin.event.cancelled',
 ]
 
 const KNOWN_TARGET_TYPES = [
   'admin_user',
   'admin_invite',
   'organisation',
+  'profile',
+  'pricing_rule',
   'event',
   'order',
   'refund_request',
