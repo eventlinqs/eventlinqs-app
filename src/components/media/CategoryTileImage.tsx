@@ -1,6 +1,8 @@
 import Image from 'next/image'
 import { MEDIA_QUALITY } from './quality'
 import { MEDIA_SIZES } from './sizes'
+import { resolveImageSrc } from './safe-image-src'
+import { BrandedPlaceholder } from './decorative/branded-placeholder'
 
 /**
  * CategoryTileImage - the only allowed surface for category-tile imagery
@@ -27,9 +29,13 @@ export function CategoryTileImage({
   priority = false,
   className = '',
 }: Props) {
+  const safeSrc = resolveImageSrc(src)
+  if (!safeSrc) {
+    return <BrandedPlaceholder className={className} />
+  }
   return (
     <Image
-      src={src}
+      src={safeSrc}
       alt={alt}
       fill
       sizes={MEDIA_SIZES.category}
