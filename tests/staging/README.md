@@ -45,6 +45,13 @@ node tests/staging/scenario-e2e.mjs
 
 Each exits non-zero on any failed assertion and prints a clear PASS/FAIL summary.
 
+These scripts were authored against the committed schema (baseline + ticketing
+migrations) but could not be executed in the build worktree, which has no
+database. The first staging run is their real verification: if any insert in
+`harness.mjs` hits a column the live staging schema names differently, adjust the
+insert there. The scan_ticket assertions themselves (the invariant under test)
+do not depend on those setup column names.
+
 ## What they prove
 
 `concurrency-proof.mjs`

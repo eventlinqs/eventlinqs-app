@@ -76,10 +76,22 @@ export async function setupScenario({ staffRole = 'manager' } = {}) {
   if (staffErr) throw new Error(`create staff failed: ${staffErr.message}`)
   created.userIds.push(staffUser.user.id)
 
+  // organisations.owner_id and events.created_by reference profiles(id). Ensure a
+  // profile row exists for each auth user (id = auth user id). Upsert so this is
+  // a no-op if a signup trigger already created the profile on staging.
+  const ensureProfile = async (user, email) => {
+    const { error } = await db
+      .from('profiles')
+      .upsert({ id: user.id, email }, { onConflict: 'id' })
+    if (error) throw new Error(`ensure profile failed for ${email}: ${error.message}`)
+  }
+  await ensureProfile(ownerUser.user, ownerEmail)
+  await ensureProfile(staffUser.user, staffEmail)
+
   // Org owned by the owner user.
   const { data: org, error: orgErr } = await db
     .from('organisations')
-    .insert({ name: `Staging Co ${stamp}`, owner_id: ownerUser.user.id })
+    .insert({ name: `Staging Co ${stamp}`, slug: `staging-co-${stamp}`, owner_id: ownerUser.user.id })
     .select('id')
     .single()
   if (orgErr) throw new Error(`create org failed: ${orgErr.message}`)
@@ -109,7 +121,7 @@ export async function setupScenario({ staffRole = 'manager' } = {}) {
         timezone: 'Australia/Melbourne',
         status: 'published',
         visibility: 'public',
-        event_type: 'in_person',
+        event_type: 'physical',
       })
       .select('id')
       .single()
@@ -133,13 +145,15 @@ export async function setupScenario({ staffRole = 'manager' } = {}) {
     const { data: order, error: orderErr } = await db
       .from('orders')
       .insert({
+        order_number: `EL-STG-${stamp}-${created.orderIds.length}`,
         event_id: eId,
         organisation_id: org.id,
         user_id: ownerUser.user.id,
         guest_email: ownerEmail,
         status: 'pending',
         subtotal_cents: 1000,
-        fees_cents: 0,
+        platform_fee_cents: 0,
+        processing_fee_cents: 0,
         total_cents: 1000,
       })
       .select('id')
@@ -154,7 +168,7 @@ export async function setupScenario({ staffRole = 'manager' } = {}) {
       item_name: 'General Admission',
       quantity: 1,
       unit_price_cents: 1000,
-      total_price_cents: 1000,
+      total_cents: 1000,
     })
     if (itemErr) throw new Error(`create order_item failed: ${itemErr.message}`)
 
