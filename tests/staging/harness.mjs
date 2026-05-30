@@ -121,7 +121,7 @@ export async function setupScenario({ staffRole = 'manager' } = {}) {
         timezone: 'Australia/Melbourne',
         status: 'published',
         visibility: 'public',
-        event_type: 'physical',
+        event_type: 'in_person',
       })
       .select('id')
       .single()
