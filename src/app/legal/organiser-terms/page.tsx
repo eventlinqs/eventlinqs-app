@@ -114,6 +114,13 @@ export default function OrganiserTermsPage() {
         the Australian Privacy Principles and any other applicable data
         protection law (including the GDPR where relevant).
       </p>
+      <p>
+        Our commitment to you: you own 100% of your buyer data. EventLinqs
+        will never market another organiser&apos;s event to your buyers, sell or
+        rent your attendee list, or share it with another organiser. You can
+        export your full attendee and orders data at any time as CSV, Excel,
+        or a printable door list, and take it with you if you leave.
+      </p>
 
       <h2 id="prohibited">Prohibited Conduct</h2>
       <ul>
