@@ -182,10 +182,20 @@ Feed query (launch version, simple and robust):
 
 Clean, crawlable, human-readable paths. These pages are search-engine landing pages as much as on-site filters. The structure matters for ranking in Google for queries like "electronic concerts Melbourne".
 
+URL model (resolved 2026-05-30): parent genres and sub-genres share one
+`/music/{slug}` namespace, so every slug is unique across both levels. Parent
+slugs are compound to stay collision-free against their lead sub-genre (for
+example the Electronic and dance parent is `electronic-and-dance`, distinct from
+its House and Techno sub-genres). The four parents whose category name matches
+one of their own sub-genres (Pop, Metal, Latin, Classical) therefore take the
+compound parent slug while the sub-genre keeps the plain slug. Source of truth
+for every slug: `src/lib/genres/data.ts`.
+
 Patterns:
-- Parent genre, all cities: `/music/{parent-slug}` (example `/music/electronic`)
+- Parent genre, all cities: `/music/{parent-slug}` (example `/music/electronic-and-dance`)
 - Sub-genre, all cities: `/music/{sub-slug}` (example `/music/techno`)
 - Sub-genre in a city: `/music/{sub-slug}/{city-slug}` (example `/music/techno/melbourne`)
+- Parent genre in a city: `/music/{parent-slug}/{city-slug}` (example `/music/electronic-and-dance/melbourne`)
 - Artist page: `/artists/{artist-slug}`
 
 Each page must emit:
