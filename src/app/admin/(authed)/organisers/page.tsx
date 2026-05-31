@@ -154,7 +154,7 @@ function OrganiserRow({ row, returnTo }: { row: AdminOrganiserRow; returnTo: str
   return (
     <tr className="border-t border-white/[0.06] align-top">
       <td className="px-4 py-3">
-        <div className="font-medium text-white">{row.name}</div>
+        <Link href={`/admin/organisers/${row.id}`} className="font-medium text-[var(--brand-accent)] hover:underline">{row.name}</Link>
         <div className="text-[11px] text-white/40">{row.slug}</div>
         {row.email ? <div className="text-[11px] text-white/40">{row.email}</div> : null}
       </td>
