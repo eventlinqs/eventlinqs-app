@@ -3,6 +3,10 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Order, OrderItem, Payment } from '@/types/database'
+import { getOrderForAdmin } from '@/lib/admin/orders'
+import { OrganiserRefundPanel } from './refund-panel'
+
+const REFUNDABLE_ORDER_STATUSES = new Set(['confirmed', 'partially_refunded'])
 
 type Props = {
   params: Promise<{ id: string; orderId: string }>
@@ -85,6 +89,12 @@ export default async function OrderDetailPage({ params }: Props) {
   const addonItems = fullOrder.order_items.filter(i => i.item_type === 'addon')
 
   const organiserRevenue = fullOrder.total_cents - fullOrder.platform_fee_cents - fullOrder.processing_fee_cents
+
+  // Refund panel data (tickets + per-ticket face value). Only loaded/shown for
+  // refundable orders; the refund itself is authorised again server-side.
+  const refundData = REFUNDABLE_ORDER_STATUSES.has(fullOrder.status)
+    ? await getOrderForAdmin(orderId)
+    : null
 
   return (
     <div>
@@ -171,6 +181,18 @@ export default async function OrderDetailPage({ params }: Props) {
                 )}
               </div>
             </div>
+          )}
+
+          {/* Refund */}
+          {refundData && refundData.tickets.length > 0 && (
+            <OrganiserRefundPanel
+              eventId={eventId}
+              orderId={orderId}
+              currency={fullOrder.currency}
+              totalCents={fullOrder.total_cents}
+              allFaceCents={refundData.allFaceCents}
+              tickets={refundData.tickets}
+            />
           )}
         </div>
 
