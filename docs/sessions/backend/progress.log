@@ -134,3 +134,89 @@ Rate-limit wiring on checkout endpoints. Per founder clarification, the rate-lim
 
 [GATE] Phase 3 v2 complete — STOP for founder review.
 
+---
+
+## 2026-05-31 — M6 Payout Disbursement (app layer)
+
+Branch: feat/m6-payout-disbursement. Spec: docs/m6/payout-disbursement-spec.md.
+
+### Migration integrity fix (version collision)
+- The payout migration was authored as 20260531000001 but refund (merged to main
+  first, PR #71) already holds 20260531000001_refund_reconcile.sql and
+  20260531000002_fix_reconcile_refund_status_cast.sql. Renamed the payout
+  migration to 20260531000003_m6_payout_disbursement.sql. Verified the collision
+  meant the payout objects NEVER landed: a direct pg probe of the live Sydney DB
+  showed zero of disburse_payout/void_payout/release_holds/organiser_available_balance,
+  stripe_payout_id still NOT NULL, and no initiated_by/reversed_at columns.
+- Applied 20260531000003 via `supabase db push --linked` from this worktree.
+  Re-probe confirmed all four functions live with correct signatures,
+  stripe_payout_id nullable, initiated_by + reversed_at added, version recorded.
+
+### App layer (this PR, backend-only per spec)
+- src/lib/payments/payout.ts (new): createPayout (reads org stripe_account_id,
+  reads the REAL connected-account Stripe available balance as a hard cap, claims
+  via disburse_payout, creates the Stripe payout ON the connected account with
+  idempotency_key = payout id, back-fills stripe_payout_id + status in_transit,
+  voids via void_payout on any failure), voidPayoutById, runReserveRelease.
+  Mirrors refund.ts/connect-ledger.ts. 13 unit tests.
+- src/app/api/webhooks/stripe/route.ts: payout.paid sets status=paid + arrival_date
+  (NO paid_at column on payouts; arrival_date is the settlement timestamp), and is
+  the source of truth for terminal success. payout.failed/canceled call void_payout
+  to compensate the ledger; on a void failure the handler throws WebhookProcessingError
+  and the POST returns HTTP 500 so Stripe redelivers (void_payout is idempotent via
+  reversed_at, so the retry is a safe no-op). Platform-initiated rows are finalised by
+  stripe_payout_id; the Phase-1 external-payout path is preserved.
+- src/app/api/cron/payout-holds-release/route.ts (new, CRON_SECRET-gated, hourly):
+  calls runReserveRelease -> release_holds(). Added to vercel.json crons.
+
+### Verification
+- Gates: tsc --noEmit 0 errors; eslint 0 errors; vitest 260/260; production build pass.
+- Live E2E against the real Oragniser rows (org f6f8b30d..., available 5720,
+  reserve hold 1430), Stripe TEST mode, service-role locally, all rows restored:
+  38/38 assertions passed covering overpay-refused, Stripe-throws-after-claim ->
+  voided + ledger restored, payout.failed -> void -> restore -> idempotent replay,
+  forced reserve-hold release via the cron helper, and a REAL funded Stripe payout
+  on the connected account (full 5720 disbursed, payout retrieved, second disburse
+  a nothing_to_disburse no-op, payout.paid finalisation). State verified back to the
+  exact snapshot afterwards.
+- NOTE for founder: the live connected account acct_1TcWaWGtNOwOpaL9 is on a Stripe
+  payout schedule of daily/delay_days 2, NOT manual. The locked model requires a
+  MANUAL schedule so the reserve stays in the connected balance until release_holds
+  matures it; on an automatic schedule Stripe will sweep available funds on its own.
+  Flip every connected account to manual before live. (Also: that account's 7150 was
+  still pending at test time, so available was 0 - the hard cap correctly refused a
+  real payout until I funded the test balance.)
+
+### [COORDINATION] Payout UI — Session 3 (admin) + Session 2 (email), AFTER M7 merges
+Per founder decision (2026-05-31), this PR is backend-only. The payout UI is built
+on top of the now-proven RPCs AFTER the M7 admin branch (feat/m7-admin-panel) merges,
+in the admin tree, referencing this PR (feat/m6-payout-disbursement). Do NOT build it
+in this branch — editing the admin/email/RBAC trees now recreates today's collision.
+
+Hand-off, in the OWNING session's worktree:
+- Session 3 (admin tree): admin payouts page under src/app/admin/(authed)/payouts.
+  - List org balances; "Disburse" action calls a server action that uses a
+    service-role client and `createPayout(adminClient, getStripeClient(), { organisationId,
+    currency, amountCents?, actor: adminUserId })` from @/lib/payments/payout. Surface
+    the structured failures verbatim: organisation_not_found | payouts_not_active |
+    nothing_to_disburse | exceeds_available | stripe_account_not_set |
+    exceeds_stripe_balance | invalid_input.
+  - RBAC: add a `payouts.disburse` capability to the admin capability set and gate the
+    action behind requireAdminSession + that capability (matches the M7 pattern from PR #64).
+  - Audit: write an admin audit row on every disburse/void with actor, org, amount,
+    payout_id, result (reuse the M7 audit helper; add a payout action type to its enum).
+  - void path: admin "mark failed/cancel" tooling calls
+    `voidPayoutById(adminClient, payoutId, 'failed'|'canceled', reason)`.
+- Organiser balance/holds/history view (dashboard owner): read-only. available =
+  SUM(organiser_balance_ledger.delta_cents) for the org+currency (organiser RLS-scoped,
+  NOT the service_role organiser_available_balance RPC); holds from payout_holds; history
+  from payouts. No new RPCs needed.
+- Session 2 (src/lib/email): payout-sent + payout-paid email templates, sent from the
+  webhook payout.paid path (or the disburse action). New template files only.
+
+All five UI pieces depend ONLY on the four RPCs and payout.ts proven here; no further
+schema work is required for them.
+
+[GATE] M6 payout app layer complete — backend-only PR open, no admin merge. Payout
+merges SECOND, after refund.
+

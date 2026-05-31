@@ -12,6 +12,7 @@ import { promoteWaitlist } from '@/lib/waitlist/promote'
 import { trackTicketPurchaseCompleteServer } from '@/lib/analytics/plausible'
 import { handleConnectAccountUpdated } from '@/lib/stripe/connect-handlers'
 import { recordOrderConfirmedLedger } from '@/lib/payments/connect-ledger'
+import { voidPayoutById } from '@/lib/payments/payout'
 import {
   claimWebhookEvent,
   markWebhookEventProcessed,
@@ -205,9 +206,16 @@ export async function POST(request: NextRequest) {
       event_id: event.id,
     })
     console.error(`Error processing webhook ${event.type}:`, err)
-    // Non-money-path events keep best-effort semantics for this draft
-    // (Phase-1 Connect stubs, idempotent on natural keys): capture for
-    // visibility, return 200 so Stripe does not retry the stubs.
+    // Money-path Connect events (payout void on payout.failed/canceled) signal
+    // retryable via WebhookProcessingError: return non-2xx so Stripe redelivers.
+    // The handler is idempotent (reversed_at), so the retry is a safe no-op once
+    // the ledger is reversed.
+    if (err instanceof WebhookProcessingError) {
+      return NextResponse.json({ error: 'Processing failed, retry' }, { status: 500 })
+    }
+    // Other non-money-path events keep best-effort semantics (Phase-1 Connect
+    // stubs, idempotent on natural keys): capture for visibility, return 200 so
+    // Stripe does not retry the stubs.
   }
 
   return NextResponse.json({ received: true })
@@ -1598,9 +1606,108 @@ async function handleConnectPayoutEvent(
 ) {
   const adminClient = createAdminClient()
 
-  // Connected account ID arrives on the event-level account field, not on
-  // payout. Phase 2+ will refactor to thread it through; for Phase 1 the
-  // stub upserts on stripe_payout_id which is globally unique within Stripe.
+  const arrivalDate = payout.arrival_date
+    ? new Date(payout.arrival_date * 1000).toISOString()
+    : null
+
+  // M6 payout disbursement: platform-initiated payouts are created in the DB
+  // FIRST (disburse_payout, status 'pending', stripe_payout_id NULL), then the
+  // Stripe payout is created with idempotency_key = payout id and the row is
+  // back-filled to 'in_transit'. Finalise the SAME row by looking it up on
+  // stripe_payout_id, rather than the Phase-1 destination match.
+  const { data: existing } = await adminClient
+    .from('payouts')
+    .select('id, status, metadata')
+    .eq('stripe_payout_id', payout.id)
+    .maybeSingle()
+
+  if (existing) {
+    const isPlatformInitiated =
+      (existing.metadata as { source?: string } | null)?.source === 'operator_disbursement'
+
+    // payout.paid is the source of truth for terminal success. There is no
+    // paid_at column; arrival_date is the settlement timestamp. Guarded so a
+    // webhook replay is a no-op.
+    if (eventType === 'payout.paid') {
+      if (existing.status !== 'paid') {
+        const { error } = await adminClient
+          .from('payouts')
+          .update({ status: 'paid', arrival_date: arrivalDate, updated_at: new Date().toISOString() })
+          .eq('id', existing.id)
+        if (error) {
+          // Stripe has SETTLED the payout. Swallowing this would leave the row
+          // in_transit forever. Signal retryable (-> HTTP 500) so Stripe
+          // redelivers; the status !== 'paid' guard makes the retry a no-op.
+          throw new WebhookProcessingError(
+            `payout.paid finalise failed for payout ${existing.id}`,
+            { cause: error, context: { eventId, payoutId: payout.id } }
+          )
+        }
+      }
+      return
+    }
+
+    // payout.failed / payout.canceled: compensate the ledger via the idempotent
+    // void_payout RPC. It marks the row failed/canceled AND writes the
+    // offsetting positive ledger entry so the organiser's available balance is
+    // restored. reversed_at makes a replay a no-op. Only platform-initiated
+    // payouts carry a negative `payout` ledger entry to reverse; an externally
+    // observed payout just gets its status recorded.
+    if (eventType === 'payout.failed' || eventType === 'payout.canceled') {
+      const voidStatus = eventType === 'payout.failed' ? 'failed' : 'canceled'
+      if (isPlatformInitiated) {
+        // Money path: a void failure must NOT be swallowed. Signal retryable
+        // (WebhookProcessingError -> HTTP 500) so Stripe redelivers; void_payout
+        // is idempotent via reversed_at, so the retry settles to already_reversed
+        // and a clean 200. This is the only way the ledger self-heals without a
+        // human, because the org's available balance stays wrong until reversed.
+        let voidResult: Awaited<ReturnType<typeof voidPayoutById>>
+        try {
+          voidResult = await voidPayoutById(adminClient, existing.id, voidStatus, payout.failure_message ?? eventType)
+        } catch (err) {
+          throw new WebhookProcessingError(
+            `void_payout RPC failed for payout ${existing.id} (${eventType})`,
+            { cause: err, context: { eventId, payoutId: payout.id } }
+          )
+        }
+        // cannot_void_paid is terminal (the payout already settled as paid, which
+        // wins): do not retry. Any other logical failure is retryable.
+        if (!voidResult.success && voidResult.error !== 'cannot_void_paid') {
+          throw new WebhookProcessingError(
+            `void_payout returned ${voidResult.error} for payout ${existing.id} (${eventType})`,
+            { context: { eventId, payoutId: payout.id } }
+          )
+        }
+      } else {
+        const { error } = await adminClient
+          .from('payouts')
+          .update({
+            status: voidStatus,
+            failure_reason: payout.failure_message ?? null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existing.id)
+        if (error) {
+          console.error('[m6] payout status update failed', { eventId, payoutId: payout.id, error })
+        }
+      }
+      return
+    }
+
+    // payout.created for an already-tracked row: never downgrade in_transit /
+    // paid back to pending. Only record arrival_date if newly known.
+    if (arrivalDate) {
+      await adminClient
+        .from('payouts')
+        .update({ arrival_date: arrivalDate, updated_at: new Date().toISOString() })
+        .eq('id', existing.id)
+    }
+    return
+  }
+
+  // ── No tracked row: externally observed payout (Phase-1 safety net) ─────────
+  // Map the Stripe state and upsert by connected destination. These payouts
+  // were not created by our disburse flow, so they carry no ledger entry.
   const status: PayoutRecordStatus = (() => {
     switch (eventType) {
       case 'payout.created':
@@ -1614,9 +1721,6 @@ async function handleConnectPayoutEvent(
     }
   })()
 
-  // Look up the organisation by stripe_account_id (set on connected account
-  // creation in Phase 2). Phase 1 may have no row yet; the lookup tolerates
-  // a miss and logs.
   const destinationAccountId = typeof payout.destination === 'string'
     ? payout.destination
     : payout.destination?.id ?? null
@@ -1633,17 +1737,13 @@ async function handleConnectPayoutEvent(
     .maybeSingle()
 
   if (!org) {
-    console.info('[m6] payout event for unmapped account, ignored in Phase 1', {
+    console.info('[m6] payout event for unmapped account, ignored', {
       eventId,
       payoutId: payout.id,
       destinationAccountId,
     })
     return
   }
-
-  const arrivalDate = payout.arrival_date
-    ? new Date(payout.arrival_date * 1000).toISOString()
-    : null
 
   const { error } = await adminClient
     .from('payouts')
