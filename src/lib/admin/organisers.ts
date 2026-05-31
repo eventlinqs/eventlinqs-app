@@ -1,5 +1,8 @@
+import type Stripe from 'stripe'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { recordAuditEvent } from '@/lib/admin/audit'
+import { retrieveAccount } from '@/lib/stripe/connect'
+import { captureException } from '@/lib/observability/sentry'
 import type { AdminSession } from '@/lib/admin/types'
 import type { Database } from '@/types/database'
 
@@ -199,4 +202,98 @@ export async function applyOrganiserAction(
   })
 
   return { ok: true }
+}
+
+// ---------------------------------------------------------------------------
+// Organiser detail + Stripe Connect verification (KYC for a Connect platform).
+// EventLinqs has no custom KYC schema by design: identity verification is the
+// connected account's, so "verification" is read straight from Stripe. No
+// invented columns.
+// ---------------------------------------------------------------------------
+
+export interface VerificationView {
+  hasAccount: boolean
+  onboarded: boolean
+  chargesEnabled: boolean
+  payoutsEnabled: boolean
+  detailsSubmitted: boolean
+  requirementsDue: string[]
+  disabledReason: string | null
+  /** Set when the live Stripe lookup failed; the page still renders. */
+  lookupError: boolean
+}
+
+/** Pure mapper: a Stripe account (or null) -> the verification view. */
+export function summariseVerification(account: Stripe.Account | null, lookupError = false): VerificationView {
+  if (!account) {
+    return {
+      hasAccount: false, onboarded: false, chargesEnabled: false, payoutsEnabled: false,
+      detailsSubmitted: false, requirementsDue: [], disabledReason: null, lookupError,
+    }
+  }
+  const req = account.requirements
+  return {
+    hasAccount: true,
+    onboarded: Boolean(account.charges_enabled && account.payouts_enabled && account.details_submitted),
+    chargesEnabled: Boolean(account.charges_enabled),
+    payoutsEnabled: Boolean(account.payouts_enabled),
+    detailsSubmitted: Boolean(account.details_submitted),
+    requirementsDue: req?.currently_due ?? [],
+    disabledReason: req?.disabled_reason ?? null,
+    lookupError: false,
+  }
+}
+
+export interface AdminOrganiserDetail {
+  id: string
+  name: string
+  slug: string
+  status: OrgStatus
+  email: string | null
+  payoutStatus: string
+  totalEventCount: number
+  totalVolumeCents: number
+  stripeAccountId: string | null
+  createdAt: string
+  availableActions: OrganiserAction[]
+  verification: VerificationView
+}
+
+export async function getOrganiserDetail(orgId: string): Promise<AdminOrganiserDetail | null> {
+  const admin = createAdminClient()
+  const { data: org } = await admin
+    .from('organisations')
+    .select('id, name, slug, status, email, payout_status, total_event_count, total_volume_cents, stripe_account_id, created_at')
+    .eq('id', orgId)
+    .maybeSingle()
+  if (!org) return null
+
+  // Live Stripe verification. Read-only; never let a Stripe error break the page.
+  let verification: VerificationView
+  if (org.stripe_account_id) {
+    try {
+      const account = await retrieveAccount(org.stripe_account_id)
+      verification = summariseVerification(account)
+    } catch (err) {
+      captureException(err, { scope: 'admin-organisers', handler: 'retrieve-account', organisation_id: orgId })
+      verification = summariseVerification(null, true)
+    }
+  } else {
+    verification = summariseVerification(null)
+  }
+
+  return {
+    id: org.id,
+    name: org.name,
+    slug: org.slug,
+    status: org.status,
+    email: org.email,
+    payoutStatus: org.payout_status,
+    totalEventCount: org.total_event_count ?? 0,
+    totalVolumeCents: org.total_volume_cents ?? 0,
+    stripeAccountId: org.stripe_account_id ?? null,
+    createdAt: org.created_at,
+    availableActions: actionsForStatus(org.status),
+    verification,
+  }
 }

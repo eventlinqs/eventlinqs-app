@@ -1,10 +1,43 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { requireAdminSession } from '@/lib/admin/auth'
 import { assertCapability } from '@/lib/admin/rbac'
 import { applyOrganiserAction } from '@/lib/admin/organisers'
+
+export type OrganiserActionResponse = { ok: true } | { ok: false; error: string }
+
+const TypedActionSchema = z.object({
+  organisationId: z.string().uuid(),
+  action: z.enum(['approve', 'reject', 'suspend', 'reinstate']),
+  reason: z.string().max(500).nullable().optional(),
+})
+
+/** Typed organiser lifecycle action for the detail view (returns a result). */
+export async function applyOrganiserActionTyped(input: {
+  organisationId: string
+  action: 'approve' | 'reject' | 'suspend' | 'reinstate'
+  reason?: string | null
+}): Promise<OrganiserActionResponse> {
+  const session = await requireAdminSession()
+  assertCapability(session.admin.role, 'admin.users.manage')
+
+  const parsed = TypedActionSchema.safeParse(input)
+  if (!parsed.success) return { ok: false, error: 'Invalid request.' }
+
+  const res = await applyOrganiserAction(
+    { organisationId: parsed.data.organisationId, action: parsed.data.action, reason: parsed.data.reason ?? undefined },
+    session,
+  )
+  if (res.invalidTransition) return { ok: false, error: 'That action is not allowed from the current status (it may have changed).' }
+  if (!res.ok) return { ok: false, error: res.error ?? 'Action failed.' }
+
+  revalidatePath('/admin/organisers')
+  revalidatePath(`/admin/organisers/${parsed.data.organisationId}`)
+  return { ok: true }
+}
 
 const ActionSchema = z.object({
   organisationId: z.string().uuid(),
