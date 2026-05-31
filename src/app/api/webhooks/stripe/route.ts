@@ -1635,8 +1635,13 @@ async function handleConnectPayoutEvent(
           .update({ status: 'paid', arrival_date: arrivalDate, updated_at: new Date().toISOString() })
           .eq('id', existing.id)
         if (error) {
-          captureException(error, { scope: 'stripe-webhook', handler: 'payout-paid-finalise', event_id: eventId })
-          console.error('[m6] payout.paid finalise failed', { eventId, payoutId: payout.id, error })
+          // Stripe has SETTLED the payout. Swallowing this would leave the row
+          // in_transit forever. Signal retryable (-> HTTP 500) so Stripe
+          // redelivers; the status !== 'paid' guard makes the retry a no-op.
+          throw new WebhookProcessingError(
+            `payout.paid finalise failed for payout ${existing.id}`,
+            { cause: error, context: { eventId, payoutId: payout.id } }
+          )
         }
       }
       return
