@@ -17,10 +17,10 @@ const NAV: NavItem[] = [
   { label: 'Events',           href: '/admin/events',     capability: 'admin.events.manage' },
   { label: 'Orders',           href: '/admin/orders',     capability: 'admin.refunds.process' },
   { label: 'Payouts',          href: '/admin/payouts',    capability: 'admin.payouts.disburse' },
+  { label: 'Analytics (GMV)',  href: '/admin/analytics',  capability: 'admin.pricing.manage' },
   { label: 'Audit',            href: '/admin/audit',      capability: 'admin.audit.read' },
   // Deferred (visible, disabled) per M7 scope: build later.
   { label: 'KYC review',       href: '/admin/kyc',        capability: 'admin.dashboard.view', comingSoon: true },
-  { label: 'Analytics (GMV)',  href: '/admin/analytics',  capability: 'admin.dashboard.view', comingSoon: true },
   { label: 'Country toggles',  href: '/admin/countries',  capability: 'admin.dashboard.view', comingSoon: true },
 ]
 
