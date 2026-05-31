@@ -1591,6 +1591,42 @@ export type Database = {
           },
         ]
       }
+      refund_tickets: {
+        Row: {
+          created_at: string
+          is_active: boolean
+          refund_id: string
+          ticket_id: string
+        }
+        Insert: {
+          created_at?: string
+          is_active?: boolean
+          refund_id: string
+          ticket_id: string
+        }
+        Update: {
+          created_at?: string
+          is_active?: boolean
+          refund_id?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refund_tickets_refund_id_fkey"
+            columns: ["refund_id"]
+            isOneToOne: false
+            referencedRelation: "refunds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refund_tickets_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reservations: {
         Row: {
           converted_at: string | null
@@ -2740,6 +2776,30 @@ export type Database = {
         Returns: number
       }
       confirm_order: { Args: { p_order_id: string }; Returns: boolean }
+      create_refund_request: {
+        Args: {
+          p_actor_id: string
+          p_buyer_message?: string
+          p_initiator: Database["public"]["Enums"]["refund_initiator"]
+          p_order_id: string
+          p_reason: Database["public"]["Enums"]["refund_reason"]
+          p_ticket_ids: string[]
+        }
+        Returns: {
+          amount_cents: number
+          currency: string
+          payment_intent_id: string
+          refund_id: string
+        }[]
+      }
+      reconcile_refund: {
+        Args: {
+          p_charge_id: string
+          p_refund_amount_cents: number
+          p_stripe_refund_id: string
+        }
+        Returns: string
+      }
       create_reservation: {
         Args: {
           p_event_id: string

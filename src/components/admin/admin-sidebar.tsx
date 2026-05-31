@@ -15,6 +15,7 @@ const NAV: NavItem[] = [
   { label: 'Organisers',       href: '/admin/organisers', capability: 'admin.users.manage' },
   { label: 'Users',            href: '/admin/users',      capability: 'admin.users.manage' },
   { label: 'Events',           href: '/admin/events',     capability: 'admin.events.manage' },
+  { label: 'Orders',           href: '/admin/orders',     capability: 'admin.refunds.process' },
   { label: 'Audit',            href: '/admin/audit',      capability: 'admin.audit.read' },
   // Deferred (visible, disabled) per M7 scope: build later.
   { label: 'KYC review',       href: '/admin/kyc',        capability: 'admin.dashboard.view', comingSoon: true },

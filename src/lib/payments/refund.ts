@@ -33,7 +33,15 @@ export function __setStripeClientForTests(client: Stripe | null): void {
   cachedClient = client
 }
 
-export type RefundReason = 'requested_by_buyer' | 'duplicate' | 'fraudulent' | 'event_cancelled'
+// Mirrors the public.refund_reason DB enum exactly so the full reason set is
+// usable end to end (UI dropdown -> service -> Stripe metadata).
+export type RefundReason =
+  | 'requested_by_buyer'
+  | 'duplicate'
+  | 'fraudulent'
+  | 'event_cancelled'
+  | 'cannot_attend'
+  | 'other'
 
 export type RefundInitiator = 'buyer' | 'organiser' | 'admin' | 'system'
 
@@ -43,6 +51,13 @@ export interface RefundOrderInput {
   amountCents: number
   reason: RefundReason
   initiatedBy: RefundInitiator
+  /**
+   * Explicit Stripe idempotency key. When the caller owns a persistent refund
+   * row, pass `refund:{refundId}` so each refund row is uniquely keyed and a
+   * retry of the same row reuses the key. Falls back to the legacy
+   * `refund:{orderId}:{amount}:{initiator}` key when omitted.
+   */
+  idempotencyKey?: string
   metadata?: Record<string, string>
 }
 
@@ -68,6 +83,8 @@ function mapStripeReason(reason: RefundReason): Stripe.RefundCreateParams.Reason
       return 'fraudulent'
     case 'requested_by_buyer':
     case 'event_cancelled':
+    case 'cannot_attend':
+    case 'other':
       return 'requested_by_customer'
   }
 }
@@ -96,7 +113,8 @@ export async function refundOrder(input: RefundOrderInput): Promise<RefundResult
   }
 
   const stripe = getStripeClient()
-  const idempotencyKey = `refund:${input.orderId}:${input.amountCents}:${input.initiatedBy}`
+  const idempotencyKey =
+    input.idempotencyKey ?? `refund:${input.orderId}:${input.amountCents}:${input.initiatedBy}`
 
   let refund: Stripe.Refund
   try {
