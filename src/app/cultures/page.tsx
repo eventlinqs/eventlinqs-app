@@ -13,18 +13,18 @@ export const revalidate = 300
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
 
 export const metadata: Metadata = {
-  title: 'Browse by Culture | EventLinqs',
-  description: 'Browse 21 cultural heritages across Australia, led by Aboriginal and Torres Strait Islander peoples, plus five faith communities and every event type.',
+  title: 'Browse by Community | EventLinqs',
+  description: 'Browse 21 community heritages across Australia, led by Aboriginal and Torres Strait Islander peoples, plus five faith communities and every event type.',
   alternates: { canonical: '/cultures' },
   openGraph: {
-    title: 'Browse by Culture | EventLinqs',
-    description: 'Every culture. Every event. One platform.',
+    title: 'Browse by Community | EventLinqs',
+    description: 'Every community. Every event. One platform.',
     url: '/cultures',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Browse by Culture | EventLinqs',
+    title: 'Browse by Community | EventLinqs',
   },
 }
 
@@ -43,8 +43,8 @@ export default async function CulturesIndexPage() {
   const itemListSchema = {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
-    name: 'EventLinqs Cultural Heritages',
-    description: 'Browse 21 cultural heritages across Australia, led by Aboriginal and Torres Strait Islander peoples.',
+    name: 'EventLinqs Community Heritages',
+    description: 'Browse 21 community heritages across Australia, led by Aboriginal and Torres Strait Islander peoples.',
     numberOfItems: entries.length,
     itemListElement: entries.map((e, i) => ({
       '@type': 'ListItem',
@@ -58,7 +58,7 @@ export default async function CulturesIndexPage() {
     '@type': 'BreadcrumbList',
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'Home',     item: SITE_URL },
-      { '@type': 'ListItem', position: 2, name: 'Cultures', item: `${SITE_URL}/cultures` },
+      { '@type': 'ListItem', position: 2, name: 'Communities', item: `${SITE_URL}/cultures` },
     ],
   }
 
@@ -67,14 +67,14 @@ export default async function CulturesIndexPage() {
       <SiteHeader />
       <main className="flex-1">
         <PhotographicCultureHero
-          eyebrow="Browse by culture"
-          title="Every culture. Every event."
-          subtitle="21 cultural heritages, led by Aboriginal and Torres Strait Islander peoples. Each with its own home, sub-cultures and city pages."
+          eyebrow="Browse by community"
+          title="Every community. Every event."
+          subtitle="21 community heritages, led by Aboriginal and Torres Strait Islander peoples. Each with its own home, sub-communities and city pages."
           imageSrc={heroImage}
         />
 
         <Section
-          heading="Cultural Heritages"
+          heading="Community Heritages"
           subheading="Twenty-one heritages, First Nations always first. Faith communities and event types are browseable as their own dimensions."
         >
           <CulturesGrid entries={entries} priority />
@@ -168,7 +168,7 @@ async function CultureTile({
     >
       <div className="relative aspect-[4/5] w-full overflow-hidden rounded-2xl bg-ink-200">
         {image ? (
-          <CategoryTileImage src={image} alt={`${entry.displayName} culture`} priority={priority} />
+          <CategoryTileImage src={image} alt={`${entry.displayName} community`} priority={priority} />
         ) : (
           <div
             aria-hidden

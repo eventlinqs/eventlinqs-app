@@ -40,7 +40,7 @@ export const heroCategories: Record<HeroCategorySlug, HeroCategory> = {
     displayName: 'Afrobeats',
     eyebrowLabel: 'AFROBEATS',
     tagline: 'Where Afrobeats lives in your city.',
-    heroHeadline: 'The sound of every culture. The energy of every weekend.',
+    heroHeadline: 'The sound of every community. The energy of every weekend.',
     heroBody:
       'From Lagos to Naarm, London to Toronto. Afrobeats is the heartbeat of every dance floor it lands on. EventLinqs is built for the promoters, DJs, and crews making it happen.',
     storyHeadline: 'Afrobeats on EventLinqs',
@@ -56,12 +56,12 @@ export const heroCategories: Record<HeroCategorySlug, HeroCategory> = {
     ],
     sampleOrganiserPersonas: [
       'Independent promoters running monthly Afrobeats nights',
-      'Festival organisers booking African and global culture artists',
+      'Festival organisers booking African and global community artists',
       'University African society party committees',
       'DJ collectives building community dance floors',
     ],
     relatedCities: ['Melbourne', 'Sydney', 'Brisbane', 'Perth', 'London', 'Toronto', 'Houston'],
-    keywords: ['Afrobeats events', 'Afrobeats Melbourne', 'Afrobeats Sydney', 'Afrobeats London', 'Nigerian events', 'Ghanaian events', 'African club night', 'global culture events'],
+    keywords: ['Afrobeats events', 'Afrobeats Melbourne', 'Afrobeats Sydney', 'Afrobeats London', 'Nigerian events', 'Ghanaian events', 'African club night', 'global community events'],
   },
 
   amapiano: {
@@ -74,8 +74,8 @@ export const heroCategories: Record<HeroCategorySlug, HeroCategory> = {
       'Born in Pretoria. Played in Lagos. Loved in Naarm. Amapiano is the genre rewriting global dance music, and the EventLinqs platform is built for the parties driving it forward.',
     storyHeadline: 'Amapiano on EventLinqs',
     storyParagraphs: [
-      "Amapiano went from South African townships to global dance floors in five years. By 2026 it's the sound of every serious culture party. DJ Maphorisa, Kabza De Small, and Uncle Waffles soundtrack nights from Soweto to Sydney. The scene is growing faster than the platforms serving it.",
-      "EventLinqs is built for Amapiano organisers who want to run real events without giving 30% to a platform that doesn't understand the culture. Yanos nights, festival sets, all-day parties, log drum tours: set them up in minutes, share them where your audience actually lives, and get paid in 7 days.",
+      "Amapiano went from South African townships to global dance floors in five years. By 2026 it's the sound of every serious community party. DJ Maphorisa, Kabza De Small, and Uncle Waffles soundtrack nights from Soweto to Sydney. The scene is growing faster than the platforms serving it.",
+      "EventLinqs is built for Amapiano organisers who want to run real events without giving 30% to a platform that doesn't understand the community. Yanos nights, festival sets, all-day parties, log drum tours: set them up in minutes, share them where your audience actually lives, and get paid in 7 days.",
       "If you're running the Amapiano scene in your city, this is your home base.",
     ],
     valuePillars: [
@@ -132,7 +132,7 @@ export const heroCategories: Record<HeroCategorySlug, HeroCategory> = {
       'Owambe is a way of life: the Nigerian art of throwing the celebration that people talk about for years. EventLinqs handles the tickets so you can handle the vibes.',
     storyHeadline: 'Owambe on EventLinqs',
     storyParagraphs: [
-      'Owambe (the Yoruba word for "it is there") is the celebration culture that has defined Nigerian and West African gatherings for generations. Weddings, milestone birthdays, traditional ceremonies, anniversary parties, baby showers, naming ceremonies. The food is endless. The aso ebi is colour-coordinated. The dance floor never closes.',
+      'Owambe (the Yoruba word for "it is there") is the spirit of celebration that has defined Nigerian and West African community gatherings for generations. Weddings, milestone birthdays, traditional ceremonies, anniversary parties, baby showers, naming ceremonies. The food is endless. The aso ebi is colour-coordinated. The dance floor never closes.',
       'For ticketed Owambe (wedding receptions where the venue requires a guest count, milestone birthday parties, paid anniversary celebrations) EventLinqs gives you the tools to manage RSVPs, control numbers, share invites on WhatsApp, and collect payments without losing the warmth of the occasion.',
       'No more shared spreadsheets. No more chasing payments. Just elegant invites, clean ticketing, and a celebration that actually starts on time.',
     ],
@@ -158,15 +158,15 @@ export const heroCategories: Record<HeroCategorySlug, HeroCategory> = {
     tagline: 'Soca, dancehall, reggae, and everything in between.',
     heroHeadline: 'The Caribbean takes the room. Every time.',
     heroBody:
-      'From Notting Hill Carnival to Caribana to your local fete: Caribbean culture sets the global standard for how to throw a party. EventLinqs is built for the promoters keeping the tradition alive.',
+      'From Notting Hill Carnival to Caribana to your local fete: the Caribbean community sets the global standard for how to throw a party. EventLinqs is built for the promoters keeping the tradition alive.',
     storyHeadline: 'Caribbean on EventLinqs',
     storyParagraphs: [
-      "Caribbean communities throw some of the most influential parties on earth. Soca fetes, dancehall nights, reggae concerts, Carnival after-parties, Caribbean Independence celebrations, J'ouvert mornings: these aren't just events, they're cultural institutions.",
+      "Caribbean communities throw some of the most influential parties on earth. Soca fetes, dancehall nights, reggae concerts, Carnival after-parties, Caribbean Independence celebrations, J'ouvert mornings: these aren't just events, they're community institutions.",
       "EventLinqs is for the Caribbean promoters running these scenes in Melbourne, Sydney, London, Toronto, New York, and beyond. Transparent fees that don't insult the value you bring. Squad bookings so the whole massive comes through together. Real human support that understands the difference between a soca fete and a sit-down concert.",
       'Trinidad to Tottenham, Jamaica to Naarm. Your scene has a home here.',
     ],
     valuePillars: [
-      { icon: 'Users', title: 'Squad pricing', body: 'Group tickets for the whole crew, with discounts that make sense for fete culture.' },
+      { icon: 'Users', title: 'Squad pricing', body: 'Group tickets for the whole crew, with discounts that make sense for the fete community.' },
       { icon: 'Globe2', title: 'Global, multi-currency', body: 'London promoter, Trinidad audience? Sorted.' },
       { icon: 'Zap', title: 'Last-minute friendly', body: 'Mobile-first checkout for the door-rush ticket buyers.' },
     ],
@@ -184,14 +184,14 @@ export const heroCategories: Record<HeroCategorySlug, HeroCategory> = {
     slug: 'heritage-and-independence',
     displayName: 'Heritage & Independence',
     eyebrowLabel: 'HERITAGE & INDEPENDENCE',
-    tagline: 'Celebrating the cultures that made us.',
+    tagline: 'Celebrating the communities that made us.',
     heroHeadline: 'Independence Day, every weekend, somewhere.',
     heroBody:
       "Nigerian Independence. Ghanaian Independence. Jamaican Independence. New Year galas. Heritage festivals. The community doesn't wait for one day a year. EventLinqs is built for the organisers keeping these moments alive.",
     storyHeadline: 'Heritage & Independence on EventLinqs',
     storyParagraphs: [
-      "Across global communities, every nation's Independence Day becomes a season: concerts, galas, family festivals, cultural exhibitions, parade after-parties. Heritage events, cultural anniversaries, language and dress celebrations, New Year galas tied to specific homelands. These are the events that anchor cultural identity.",
-      "They're also some of the hardest events to organise. Big guest lists, multi-generational audiences, cultural protocols, sponsorship coordination. EventLinqs handles the ticketing infrastructure so you can focus on the cultural curation.",
+      "Across global communities, every nation's Independence Day becomes a season: concerts, galas, family festivals, community exhibitions, parade after-parties. Heritage events, community anniversaries, language and dress celebrations, New Year galas tied to specific homelands. These are the events that anchor community identity.",
+      "They're also some of the hardest events to organise. Big guest lists, multi-generational audiences, community protocols, sponsorship coordination. EventLinqs handles the ticketing infrastructure so you can focus on the community curation.",
       'Whether it\'s a 200-person community gala or a 5,000-person Independence Day festival, the platform scales with the celebration.',
     ],
     valuePillars: [
@@ -201,12 +201,12 @@ export const heroCategories: Record<HeroCategorySlug, HeroCategory> = {
     ],
     sampleOrganiserPersonas: [
       'Independence Day celebration committees',
-      'Cultural association annual galas',
+      'Community association annual galas',
       'Heritage festival organisers',
-      'New Year cultural gala hosts',
+      'New Year community gala hosts',
     ],
     relatedCities: ['Melbourne', 'Sydney', 'London', 'Birmingham', 'Toronto', 'New York'],
-    keywords: ['Independence day celebration', 'Nigerian independence', 'Ghanaian independence', 'Jamaican independence', 'cultural gala', 'heritage festival', 'cultural celebration', 'African festival Melbourne'],
+    keywords: ['Independence day celebration', 'Nigerian independence', 'Ghanaian independence', 'Jamaican independence', 'community gala', 'heritage festival', 'community celebration', 'African festival Melbourne'],
   },
 
   networking: {
@@ -219,7 +219,7 @@ export const heroCategories: Record<HeroCategorySlug, HeroCategory> = {
       'Conferences, industry summits, founder mixers, executive masterclasses, women-in-business panels, and professional networking nights. EventLinqs takes business events as seriously as music ones, with the ticketing, attendee management, and sponsor tools to match.',
     storyHeadline: 'Business & Networking on EventLinqs',
     storyParagraphs: [
-      "Business events cover more ground than any other category on EventLinqs. Multi-day conferences, industry summits, founder mixers, executive masterclasses, women-in-business panels, professional associations, cultural chambers of commerce, leadership workshops, and the everyday networking breakfasts that keep cities humming. Each has its own rhythm, its own attendee expectations, and its own ticketing needs.",
+      "Business events cover more ground than any other category on EventLinqs. Multi-day conferences, industry summits, founder mixers, executive masterclasses, women-in-business panels, professional associations, community chambers of commerce, leadership workshops, and the everyday networking breakfasts that keep cities humming. Each has its own rhythm, its own attendee expectations, and its own ticketing needs.",
       "EventLinqs gives business organisers the polish these events demand: clean, corporate-friendly event pages, multi-tier ticketing for early bird and VIP pricing, sponsor and corporate purchase flows, attendee export, branded check-in, and the kind of checkout experience that doesn't make a CFO or a keynote speaker roll their eyes. All without the corporate-platform price tag.",
       "Whether you're running a 40-person founder breakfast, a 400-person industry summit, a multi-day professional development conference, or a recurring executive networking series, list it here.",
     ],
@@ -233,11 +233,11 @@ export const heroCategories: Record<HeroCategorySlug, HeroCategory> = {
       'Professional associations and community chambers of commerce',
       'Founder mixers, startup demo nights, and investor events',
       'Women-in-business and executive networking series',
-      'Industry-specific cultural networks (tech, finance, healthcare, law)',
+      'Industry-specific community networks (tech, finance, healthcare, law)',
       'Masterclass and professional development workshop organisers',
     ],
     relatedCities: ['Melbourne', 'Sydney', 'London', 'Toronto', 'New York', 'Washington DC'],
-    keywords: ['business events', 'conferences', 'summits', 'professional development', 'executive networking', 'founder events', 'industry summit', 'business conference', 'networking event', 'cultural networking', 'African professionals', 'women in business', 'Black professional networking', 'masterclass'],
+    keywords: ['business events', 'conferences', 'summits', 'professional development', 'executive networking', 'founder events', 'industry summit', 'business conference', 'networking event', 'community networking', 'African professionals', 'women in business', 'Black professional networking', 'masterclass'],
   },
 }
 

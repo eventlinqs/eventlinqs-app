@@ -28,7 +28,7 @@ export function CityOrganiserCtaPanel({ cityName, citySlug }: Props) {
               id="city-cta-heading"
               className="font-display text-2xl font-bold text-white sm:text-3xl"
             >
-              Throwing an event in {cityName}? Reach every culture across the city.
+              Throwing an event in {cityName}? Reach every community across the city.
             </h2>
             <ul className="mt-6 space-y-3 text-sm text-white/85 sm:text-base">
               <li className="flex items-start gap-3">

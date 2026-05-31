@@ -73,7 +73,7 @@ export function CultureOrganiserCtaPanel({
               Built for the people who run {cultureName} events.
             </h2>
             <p className="mt-3 text-sm leading-relaxed text-white/75 sm:text-base">
-              Transparent fees, real human support, and a platform that respects {cultureName} culture instead of treating it like an afterthought.
+              Transparent fees, real human support, and a platform that respects the {cultureName} community instead of treating it like an afterthought.
             </p>
             <div className="mt-6">
               <Button

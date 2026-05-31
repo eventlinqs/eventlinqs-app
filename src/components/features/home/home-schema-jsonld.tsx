@@ -27,7 +27,7 @@ export function HomeSchemaJsonLd({ baseUrl }: Props) {
     name: 'EventLinqs',
     url: baseUrl,
     description:
-      'Every culture. Every event. One platform. Discover live events from communities across Australia and beyond.',
+      'Every community. Every event. One platform. Discover live events from communities across Australia and beyond.',
     inLanguage: 'en-AU',
     potentialAction: {
       '@type': 'SearchAction',
@@ -46,7 +46,7 @@ export function HomeSchemaJsonLd({ baseUrl }: Props) {
     url: baseUrl,
     logo: `${baseUrl}/icon`,
     description:
-      'Live event ticketing platform built for every culture. Founded in Australia, serving organisers and attendees across 20 cities and 14 cultural communities.',
+      'Live event ticketing platform built for every community. Founded in Australia, serving organisers and attendees across 20 cities and 14 community heritages.',
     foundingDate: '2026',
     address: {
       '@type': 'PostalAddress',

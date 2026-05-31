@@ -26,7 +26,7 @@ export const DISCOVER = [
   // "By city" and "By culture" go to the dedicated index pages, not to
   // an /events view mode - the parser only recognises view=grid|map.
   { label: 'By city',           href: '/cities' },
-  { label: 'By culture',        href: '/cultures' },
+  { label: 'By community',        href: '/cultures' },
   // Preset values come from PRESETS in search-params.ts:
   //   7d = next 7 days, weekend = upcoming weekend, free = preset=free.
   { label: 'This week',         href: '/events?preset=7d' },
@@ -41,7 +41,7 @@ export const CULTURES = [
   { label: 'Indian',         href: '/culture/indian' },
   { label: 'Latin American', href: '/culture/latin-american' },
   { label: 'Italian',        href: '/culture/italian' },
-  { label: 'All cultures',   href: '/cultures' },
+  { label: 'All communities',   href: '/cultures' },
 ]
 
 export const FOR_ORGANISERS = [
@@ -216,7 +216,7 @@ export function SiteFooter() {
             <div className="flex items-center gap-5">
               <EventlinqsLogo size="md" variant="inverted" />
               <p className="max-w-xs text-sm leading-6 text-white/70">
-                The ticketing platform built for every culture.
+                The ticketing platform built for every community.
               </p>
             </div>
             <div className="flex items-center gap-6">
@@ -227,7 +227,7 @@ export function SiteFooter() {
 
           <div className="grid grid-cols-4 gap-x-8 gap-y-6 pt-8">
             <DesktopColumn title="Discover"        links={DISCOVER} />
-            <DesktopColumn title="Cultures"        links={CULTURES} />
+            <DesktopColumn title="Communities"        links={CULTURES} />
             <DesktopColumn title="For organisers"  links={FOR_ORGANISERS} />
             <DesktopColumn title="Company"         links={COMPANY} />
           </div>
@@ -242,7 +242,7 @@ export function SiteFooter() {
 
           <div className="grid grid-cols-2 gap-x-6 pt-2">
             <MobileAccordion title="Discover"        links={DISCOVER} />
-            <MobileAccordion title="Cultures"        links={CULTURES} />
+            <MobileAccordion title="Communities"        links={CULTURES} />
             <MobileAccordion title="For organisers"  links={FOR_ORGANISERS} />
             <MobileAccordion title="Company"         links={COMPANY} />
           </div>

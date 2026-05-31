@@ -16,11 +16,11 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
 
 export const metadata: Metadata = {
   title: 'Browse by City | EventLinqs',
-  description: '20 cities across Australia, from Sydney and Melbourne to Hobart and Darwin. Find culturally-relevant events near you.',
+  description: '20 cities across Australia, from Sydney and Melbourne to Hobart and Darwin. Find community-relevant events near you.',
   alternates: { canonical: '/cities' },
   openGraph: {
     title: 'Browse by City | EventLinqs',
-    description: 'Find culturally-relevant events in 20 cities across Australia.',
+    description: 'Find community-relevant events in 20 cities across Australia.',
     url: '/cities',
     type: 'website',
   },
@@ -68,13 +68,13 @@ export default async function CitiesIndexPage() {
         <PhotographicCultureHero
           eyebrow="Browse by city"
           title="20 cities. From Sydney to Hobart."
-          subtitle="Find culturally-relevant events near you."
+          subtitle="Find community-relevant events near you."
           imageSrc={heroImage}
         />
 
         <Section
           heading="Capital Cities"
-          subheading="Eight capital and major metro markets, each with its own events directory and culture rails."
+          subheading="Eight capital and major metro markets, each with its own events directory and community rails."
           tier={1}
         >
           <CitiesGrid entries={tier1} priority />
@@ -82,7 +82,7 @@ export default async function CitiesIndexPage() {
 
         <Section
           heading="Regional Cities"
-          subheading="Twelve regional centres where culturally-relevant events deserve a stage as much as the capitals."
+          subheading="Twelve regional centres where community-relevant events deserve a stage as much as the capitals."
           tier={2}
         >
           <CitiesGrid entries={tier2} priority={false} />

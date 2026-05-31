@@ -87,7 +87,7 @@ const PLACEHOLDER_ORGANISERS: FeaturedOrganiser[] = [
   },
   {
     id: 'p-org-4',
-    name: 'Perth Cultural Hub',
+    name: 'Perth Community Hub',
     handle: 'perth-cultural-hub',
     avatarSrc: null,
     eventCount: 6,

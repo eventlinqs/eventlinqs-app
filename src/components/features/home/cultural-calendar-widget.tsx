@@ -146,7 +146,7 @@ const MARKER_LABEL: Record<SensitivityMarker, string> = {
   'wheelchair-accessible': 'Wheelchair accessible',
   'auslan-interpreted':    'Auslan interpreted',
   'sensory-friendly':      'Sensory-friendly',
-  'culturally-safe':       'Culturally safe space',
+  'culturally-safe':       'Community-safe space',
 }
 
 function MarkerIcon({ marker }: { marker: SensitivityMarker }) {
@@ -316,7 +316,7 @@ export function CulturalCalendarWidget({
                 className="uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]"
                 style={{ fontSize: 'var(--type-micro)', fontWeight: 600 }}
               >
-                Cultural Calendar
+                Community Calendar
               </p>
               <h2
                 id="cultural-calendar-heading"

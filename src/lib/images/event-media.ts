@@ -183,7 +183,7 @@ function heroRasterFor(slug: string | null | undefined): string {
 export async function getFeaturedHeroBackground(
   event: EventMediaInput,
 ): Promise<HeroBackgroundMedia> {
-  const alt = event.title ?? event.category?.name ?? 'Cultural event'
+  const alt = event.title ?? event.category?.name ?? 'Community event'
 
   // Priority 1: entity-specific real cover image (event's actual cover).
   // This was missing in the original implementation, which caused every

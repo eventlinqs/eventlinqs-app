@@ -21,7 +21,7 @@ export default async function SignupPage({ searchParams }: Props) {
       subtitle={
         isOrganiser
           ? 'Set up your organiser account, create your first event, and share the link. Your first event is on us.'
-          : 'Find events from every culture and host your own in minutes.'
+          : 'Find events from every community and host your own in minutes.'
       }
       footer={
         <>

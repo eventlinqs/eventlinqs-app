@@ -27,7 +27,7 @@ export const EL_CITY_UPDATED_EVENT = 'el_city_updated'
 
 const NAV_LINKS = [
   { label: 'Browse Events',  href: '/events' },
-  { label: 'Cultures',       href: '/cultures' },
+  { label: 'Communities',       href: '/cultures' },
   { label: 'Cities',         href: '/cities' },
   { label: 'For Organisers', href: '/organisers' },
 ]

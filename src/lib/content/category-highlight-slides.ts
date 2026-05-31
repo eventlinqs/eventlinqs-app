@@ -24,11 +24,11 @@ export interface CategoryHighlightSlide {
 export const CATEGORY_HIGHLIGHT_SLIDES: CategoryHighlightSlide[] = [
   {
     key: 'afrobeats',
-    eyebrow: 'Made for every culture',
-    cardEyebrow: 'Cultural picks',
+    eyebrow: 'Made for every community',
+    cardEyebrow: 'Community picks',
     cardTitle: 'This week in Afrobeats',
     cardCopy:
-      'Naija nights, culture sessions, and the beats that never sleep. Fresh drops every weekend.',
+      'Naija nights, community sessions, and the beats that never sleep. Fresh drops every weekend.',
     ctaLabel: 'Explore Afrobeats',
     ctaHref: '/categories/afrobeats',
     media: { title: 'Afrobeats', category: { slug: 'afrobeats', name: 'Afrobeats' } },
@@ -48,7 +48,7 @@ export const CATEGORY_HIGHLIGHT_SLIDES: CategoryHighlightSlide[] = [
     key: 'trending',
     eyebrow: 'Trending now',
     cardEyebrow: 'Selling fast',
-    cardTitle: 'What the culture is buying',
+    cardTitle: 'What the community is buying',
     cardCopy:
       'The events booking out right now. Move before the tickets do.',
     ctaLabel: 'See what is trending',

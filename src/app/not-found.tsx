@@ -14,7 +14,7 @@ export default function NotFound() {
       <PageHero
         eyebrow="404"
         title="We can't find that page"
-        subtitle="It may have moved, or it was never here. Let's get you back to the culture."
+        subtitle="It may have moved, or it was never here. Let's get you back to the community."
         align="center"
       />
 
