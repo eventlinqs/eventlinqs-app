@@ -206,9 +206,16 @@ export async function POST(request: NextRequest) {
       event_id: event.id,
     })
     console.error(`Error processing webhook ${event.type}:`, err)
-    // Non-money-path events keep best-effort semantics for this draft
-    // (Phase-1 Connect stubs, idempotent on natural keys): capture for
-    // visibility, return 200 so Stripe does not retry the stubs.
+    // Money-path Connect events (payout void on payout.failed/canceled) signal
+    // retryable via WebhookProcessingError: return non-2xx so Stripe redelivers.
+    // The handler is idempotent (reversed_at), so the retry is a safe no-op once
+    // the ledger is reversed.
+    if (err instanceof WebhookProcessingError) {
+      return NextResponse.json({ error: 'Processing failed, retry' }, { status: 500 })
+    }
+    // Other non-money-path events keep best-effort semantics (Phase-1 Connect
+    // stubs, idempotent on natural keys): capture for visibility, return 200 so
+    // Stripe does not retry the stubs.
   }
 
   return NextResponse.json({ received: true })
@@ -1644,13 +1651,27 @@ async function handleConnectPayoutEvent(
     if (eventType === 'payout.failed' || eventType === 'payout.canceled') {
       const voidStatus = eventType === 'payout.failed' ? 'failed' : 'canceled'
       if (isPlatformInitiated) {
+        // Money path: a void failure must NOT be swallowed. Signal retryable
+        // (WebhookProcessingError -> HTTP 500) so Stripe redelivers; void_payout
+        // is idempotent via reversed_at, so the retry settles to already_reversed
+        // and a clean 200. This is the only way the ledger self-heals without a
+        // human, because the org's available balance stays wrong until reversed.
+        let voidResult: Awaited<ReturnType<typeof voidPayoutById>>
         try {
-          await voidPayoutById(adminClient, existing.id, voidStatus, payout.failure_message ?? eventType)
+          voidResult = await voidPayoutById(adminClient, existing.id, voidStatus, payout.failure_message ?? eventType)
         } catch (err) {
-          // Money-critical, but rethrowing here would make Stripe retry the
-          // whole event. void_payout already captured to Sentry; log for the
-          // operator re-drive (the RPC is idempotent on a manual re-run).
-          console.error('[m6] void_payout from webhook failed', { eventId, payoutId: payout.id, err })
+          throw new WebhookProcessingError(
+            `void_payout RPC failed for payout ${existing.id} (${eventType})`,
+            { cause: err, context: { eventId, payoutId: payout.id } }
+          )
+        }
+        // cannot_void_paid is terminal (the payout already settled as paid, which
+        // wins): do not retry. Any other logical failure is retryable.
+        if (!voidResult.success && voidResult.error !== 'cannot_void_paid') {
+          throw new WebhookProcessingError(
+            `void_payout returned ${voidResult.error} for payout ${existing.id} (${eventType})`,
+            { context: { eventId, payoutId: payout.id } }
+          )
         }
       } else {
         const { error } = await adminClient
