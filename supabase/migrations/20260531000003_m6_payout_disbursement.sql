@@ -1,4 +1,8 @@
--- Migration: 20260531000001_m6_payout_disbursement.sql
+-- Migration: 20260531000003_m6_payout_disbursement.sql
+-- (renumbered from 20260531000001 to resolve a version collision with the
+--  refund work now on main: 20260531000001_refund_reconcile.sql and
+--  20260531000002_fix_reconcile_refund_status_cast.sql. Refund holds 0001/0002;
+--  payout takes 0003. Renumber only; body unchanged.)
 --
 -- M6 launch-gate item 4: organiser payout disbursement + reserve-hold release.
 --
@@ -25,10 +29,10 @@
 -- mirrored in the ledger) can never cause an overpay.
 --
 -- This migration is DATA-MODEL + RPC only. It does not move money; the app
--- layer (src/lib/payments/payout.ts) calls Stripe. Apply with:
---   npx supabase link --project-ref <ref>
---   npx supabase db push --linked
--- Then verify table count, not the "up to date" line.
+-- layer (src/lib/payments/payout.ts) calls Stripe. Apply with (npx is broken
+-- on this machine; use the supabase binary directly, from this worktree):
+--   supabase db push --linked
+-- Then verify the functions exist by probing pg_proc, not the "up to date" line.
 
 -- ============================================================
 -- 1. payouts table: support platform-initiated payouts

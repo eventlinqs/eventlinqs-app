@@ -1,11 +1,12 @@
 # M6 Payout Disbursement: app-layer build spec
 
-Status: locked. Derived from the applied migration
-`supabase/migrations/20260531000001_m6_payout_disbursement.sql` (commit
-`3789d17`), which is the authoritative data model and is already applied to
-the live Sydney DB. The connected-account payout schedule has been flipped to
-manual. This spec covers only the application layer that the migration's
-header points to: `src/lib/payments/payout.ts`.
+Status: locked. Derived from the migration
+`supabase/migrations/20260531000003_m6_payout_disbursement.sql` (renumbered
+from `20260531000001` to resolve a version collision with the refund work that
+landed on main first), which is the authoritative data model. The
+connected-account payout schedule has been flipped to manual. This spec covers
+only the application layer that the migration's header points to:
+`src/lib/payments/payout.ts`.
 
 ## Model (locked, do not re-litigate)
 
