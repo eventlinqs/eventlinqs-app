@@ -180,6 +180,43 @@ describe('refundOrder', () => {
     ).rejects.toThrow(/positive integer/)
   })
 
+  test('uses an explicit idempotency key and forwards refund_id metadata', async () => {
+    const { stripe, calls } = makeStubStripe()
+    __setStripeClientForTests(stripe)
+
+    await refundOrder({
+      orderId: 'order_7',
+      paymentIntentId: 'pi_test_7',
+      amountCents: 500,
+      reason: 'requested_by_buyer',
+      initiatedBy: 'admin',
+      idempotencyKey: 'refund:rf_7',
+      metadata: { refund_id: 'rf_7' },
+    })
+
+    expect(calls[0].options?.idempotencyKey).toBe('refund:rf_7')
+    expect(calls[0].params.metadata).toMatchObject({ refund_id: 'rf_7' })
+  })
+
+  test('maps cannot_attend and other to requested_by_customer, preserving platform_reason', async () => {
+    const { stripe, calls } = makeStubStripe()
+    __setStripeClientForTests(stripe)
+
+    await refundOrder({
+      orderId: 'order_8', paymentIntentId: 'pi_8', amountCents: 100,
+      reason: 'cannot_attend', initiatedBy: 'organiser',
+    })
+    await refundOrder({
+      orderId: 'order_9', paymentIntentId: 'pi_9', amountCents: 100,
+      reason: 'other', initiatedBy: 'admin',
+    })
+
+    expect(calls[0].params.reason).toBe('requested_by_customer')
+    expect((calls[0].params.metadata as Record<string, string>).platform_reason).toBe('cannot_attend')
+    expect(calls[1].params.reason).toBe('requested_by_customer')
+    expect((calls[1].params.metadata as Record<string, string>).platform_reason).toBe('other')
+  })
+
   test('rejects empty paymentIntentId', async () => {
     const { stripe } = makeStubStripe()
     __setStripeClientForTests(stripe)
