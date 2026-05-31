@@ -146,7 +146,9 @@ function UserRow({ row, returnTo }: { row: AdminUserListRow; returnTo: string })
   return (
     <tr className="border-t border-white/[0.06] align-middle">
       <td className="px-4 py-3">
-        <div className="font-medium text-white">{row.name ?? '(no name)'}</div>
+        <Link href={`/admin/users/${row.id}`} className="font-medium text-[var(--brand-accent)] hover:underline">
+          {row.name ?? '(no name)'}
+        </Link>
         <div className="text-[11px] text-white/40">{row.email}</div>
       </td>
       <td className="px-4 py-3">
