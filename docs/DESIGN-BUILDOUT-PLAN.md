@@ -49,8 +49,8 @@ The single dimension where a competitor beats us is DICE on type. That is the he
 Per `DESIGN-SYSTEM.md` section 16:
 
 - Primary gold `--gold-500` (`#D4A017`).
-- Tagline "WHERE THE CULTURE GATHERS".
-- **Font families (Manrope + Inter).**
+- ~~Tagline "WHERE THE CULTURE GATHERS"~~ - SUPERSEDED 2026-06-01 (founder): removed entirely. New tagline: **"Every community. Every event. One platform."** Display form: **"EVERY COMMUNITY. EVERY EVENT. ONE PLATFORM."** This is part of the locked community sweep - there is no culture exception anywhere in user-facing copy.
+- **Font families (Manrope + Inter).** Superseded 2026-06-01 per section 6.1 below.
 - The anti-patterns list (section 15).
 - WCAG 2.2 AA floor.
 - Performance targets (LCP < 2.5s, INP < 200ms, CLS < 0.1, mobile Lighthouse 95+).
@@ -86,14 +86,14 @@ The `frontend-design` skill: "What makes this UNFORGETTABLE? What's the one thin
 
 This respects "elevate, never fork": the brand, palette, spacing, and component shapes are untouched; we are adding a voice to the top of the type ramp, exactly where DICE beats us.
 
-**Direction options (founder decision, section 6.1):**
+**Direction - LOCKED 2026-06-01 (founder): Direction A, Editorial luxury.**
 
-- **Direction A - Editorial luxury (recommended).** A high-contrast, optically-sized display face with character (recommended candidate: **Fraunces**, variable, open-licensed). This gives a Hollywood/Airbnb editorial-luxury voice that no competitor in the set has - all four are sans-serif. It reads premium, cultural, and celebratory, and it differentiates by category, not just by degree. Pairs with a clean grotesque body.
-- **Direction B - Bold grotesque (out-DICE DICE).** A heavier, more characterful display sans (candidate: **Clash Display** or **Bricolage Grotesque**, both variable, open-licensed) used at large sizes with tight tracking. Beats DICE at its own game with more warmth and breadth.
+- **Direction A - Editorial luxury (CHOSEN).** A high-contrast, optically-sized display face with character (lead candidate: **Fraunces**, variable, open-licensed). This gives a Hollywood/Airbnb editorial-luxury voice that no competitor in the set has - all four are sans-serif. It reads premium, cultural, and celebratory, and it differentiates by category, not just by degree. Pairs with a clean grotesque body.
+- ~~Direction B - Bold grotesque (Clash Display / Bricolage Grotesque).~~ Not chosen.
 
-Both candidate sets are variable fonts available for self-hosting via `next/font`, so the performance budget (preload display weights, swap the rest) is preserved.
+Fraunces is a variable font available for self-hosting via `next/font`, so the performance budget (preload display weights, swap the rest) is preserved.
 
-**Body face:** Replace Inter with a refined neutral (candidate: **Geist** or **Hanken Grotesk**) or, if we want zero new body risk, promote Manrope to also serve body and drop Inter. Decision rides with the display direction.
+**Body face - LOCKED 2026-06-01 (founder): refined neutral, Inter retired.** Replace Inter with a refined neutral (lead candidate: **Geist** or **Hanken Grotesk**) so body copy stops reading as a generic SaaS template. Manrope stays for UI and card titles.
 
 **Work:**
 1. Founder approves direction + display candidate (section 6.1).
@@ -190,14 +190,13 @@ Each surface lists: current state, specific gaps versus the named competitors, a
 **Current state:** Top filter **bar** + popular rail + responsive grid + pagination + map view. Functional and ISR-fast.
 
 **Gaps versus the set:**
-- **The discovery moat is under-expressed.** The culture/language filter is our one feature no competitor has (system 6.4, 17). On the current bar it is one control among many. DICE and Ticketmaster lean hard on their filtering UX; ours should make the cultural dimension feel like the headline.
-- **Sidebar versus bar.** The design system (6.4) specifies a rich, grouped left sidebar with show-more, active-filter chips, and the culture/language group as the moat. The live page uses a simpler bar. Either is defensible; the decision should be explicit (section 6.2) - the bar is more modern and mobile-friendly, the sidebar carries more discovery surface.
+- **The discovery moat is under-expressed.** The Community filter is our one feature no competitor has (system 6.4, 17). On the current bar it is one control among many. DICE and Ticketmaster lean hard on their filtering UX; ours should make the community dimension feel like the headline.
 - **Empty/loading states** are generic (2.3).
 - **Display voice** on the page title and the result-count line (2.1).
 
 **Ordered work:**
-1. Founder decision on sidebar versus enhanced bar (section 6.2).
-2. Make the cultural/heritage/faith dimension the visual headline of discovery (prominent, beautifully-rendered filter affordance, not buried in a chip row).
+1. Enhanced horizontal filter bar (locked, section 6.2) with the **Community** filter promoted to the hero element.
+2. Make the community/heritage/faith dimension the visual headline of discovery (prominent, beautifully-rendered filter affordance, not buried in a chip row).
 3. Branded empty state ("no events match your filters") and skeletons (2.3).
 4. Display face on title + sort; colour-rhythm pass.
 5. Competitive Playwright versus Ticketmaster search + Humanitix browse; pass on filter UX and density.
@@ -318,9 +317,9 @@ The font families are a locked token. To beat DICE on display typography we need
 
 Plus the body face: replace Inter with a refined neutral (Geist / Hanken Grotesk), or retire Inter and let Manrope serve body.
 
-### 6.2 Browse: rich sidebar versus enhanced filter bar
+### 6.2 Browse layout - LOCKED 2026-06-01 (founder)
 
-The design system specifies a rich left sidebar (6.4); the live page uses a modern top bar. Both can hit the bar. The decision affects how loudly the cultural discovery moat is expressed.
+Enhanced horizontal filter bar (the current shape), with the **Community** filter promoted to the hero element of discovery. Not the sidebar. The Community filter is our one moat no competitor has and must read as the headline of the bar.
 
 ### 6.3 Illustration sourcing
 
