@@ -21,7 +21,6 @@ import { config } from 'dotenv'
 config({ path: '.env.local' })
 import pg from 'pg'
 import { randomUUID } from 'node:crypto'
-import { readFileSync } from 'node:fs'
 
 const client = new pg.Client({
   host: 'db.gndnldyfudbytbboxesk.supabase.co',
@@ -54,10 +53,9 @@ await client.connect()
 try {
   await q('BEGIN')
 
-  // Apply the reconcile_refund cast fix (migration 20260531000002) INSIDE the
-  // transaction so this run validates the corrected function. It rolls back
-  // with everything else - the founder applies the migration for real.
-  await q(readFileSync('supabase/migrations/20260531000002_fix_reconcile_refund_status_cast.sql', 'utf8'))
+  // Verifies the LIVE applied reconcile_refund (migration 20260531000002 is
+  // applied to the database). No in-transaction patch: this proves the real
+  // function on the DB is the fixed version.
 
   // --- Users / org / event / tier ---
   // auth.users insert fires a profile-creation trigger; give each a real email
