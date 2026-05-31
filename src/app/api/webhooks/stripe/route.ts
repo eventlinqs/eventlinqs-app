@@ -832,14 +832,131 @@ async function handleSquadMemberPaymentSucceeded(
 }
 
 async function handleChargeRefunded(charge: Stripe.Charge) {
-  // Webhook has no auth session - must use admin client for all DB operations
+  // Webhook has no auth session - must use admin client for all DB operations.
   const adminClient = createAdminClient()
 
-  // Resolve payment_intent id from the charge object
+  // The webhook is the sole money source of truth. For each Stripe refund on
+  // this charge, run the atomic reconcile RPC (void tickets, return inventory,
+  // reverse the ledger, release/reduce the reserve hold, set statuses). The
+  // RPC is idempotent on stripe_refund_id, so webhook replays and multiple
+  // refunds on one charge are both safe.
+  const stripeRefunds = charge.refunds?.data ?? []
+  let matchedAnyRow = false
+
+  for (const r of stripeRefunds) {
+    const { data: result, error } = await adminClient.rpc('reconcile_refund', {
+      p_stripe_refund_id: r.id,
+      p_charge_id: charge.id,
+      p_refund_amount_cents: r.amount,
+    })
+    if (error) {
+      // Throw so the webhook returns non-2xx and Stripe retries. reconcile_refund
+      // is idempotent (already-completed -> no-op), so a retry is corrective and safe.
+      captureException(error, {
+        scope: 'stripe-webhook',
+        handler: 'reconcile-refund',
+        stripe_refund_id: r.id,
+        charge_id: charge.id,
+      })
+      throw new Error(`reconcile_refund failed for ${r.id}: ${error.message}`)
+    }
+    if (result !== 'no_refund_row') matchedAnyRow = true
+    if (result === 'reconciled') {
+      // Side effects (waitlist promotion + per-refund email) are non-fatal: the
+      // money/ticket state already persisted atomically in the RPC.
+      await postReconcileSideEffects(adminClient, charge, r).catch(err => {
+        captureException(err, {
+          scope: 'stripe-webhook',
+          handler: 'post-reconcile-side-effects',
+          stripe_refund_id: r.id,
+        })
+        console.error('[webhook] post-reconcile side effects failed:', err)
+      })
+    }
+  }
+
+  // Orphan safety net: a refund created directly in Stripe with no refunds row.
+  // Valid ONLY under the hard operating rule that refunds are always initiated
+  // in the app, never in the Stripe dashboard. Voids tickets at the order level
+  // so a refunded buyer never holds a valid QR, and sends a cumulative email.
+  // No ledger reversal is possible without a refunds row.
+  if (!matchedAnyRow) {
+    await orphanOrderLevelVoid(adminClient, charge)
+  }
+}
+
+/**
+ * Waitlist promotion + per-refund confirmation email for a successfully
+ * reconciled refund. Reads the refund's exact tickets so the email shows this
+ * refund's amount and ticket count (not the charge's cumulative amount_refunded).
+ */
+async function postReconcileSideEffects(
+  adminClient: ReturnType<typeof createAdminClient>,
+  charge: Stripe.Charge,
+  stripeRefund: Stripe.Refund,
+) {
+  const { data: refund } = await adminClient
+    .from('refunds')
+    .select('id, order_id')
+    .eq('stripe_refund_id', stripeRefund.id)
+    .maybeSingle()
+  if (!refund?.order_id) return
+
+  const { data: order } = await adminClient
+    .from('orders')
+    .select('event_id')
+    .eq('id', refund.order_id)
+    .maybeSingle()
+
+  const { data: rtRows } = await adminClient
+    .from('refund_tickets')
+    .select('ticket_id')
+    .eq('refund_id', refund.id)
+  const ticketIds = (rtRows ?? []).map(row => row.ticket_id as string)
+  const ticketCount = ticketIds.length
+
+  if (order?.event_id && ticketIds.length > 0) {
+    const { data: tks } = await adminClient
+      .from('tickets')
+      .select('ticket_tier_id')
+      .in('id', ticketIds)
+    const perTier = new Map<string, number>()
+    for (const t of tks ?? []) {
+      const tier = t.ticket_tier_id as string | null
+      if (tier) perTier.set(tier, (perTier.get(tier) ?? 0) + 1)
+    }
+    for (const [tier, qty] of perTier) {
+      promoteWaitlist(order.event_id, tier, qty).catch(err => {
+        console.error('[webhook] promoteWaitlist failed after reconcile:', err)
+      })
+    }
+  }
+
+  await sendRefundConfirmationEmail(adminClient, refund.order_id, charge, {
+    amountCents: stripeRefund.amount,
+    ticketCount,
+  }).catch(err => {
+    captureException(err, {
+      scope: 'stripe-webhook',
+      handler: 'refund-confirmation-email',
+      order_id: refund.order_id,
+    })
+    console.error('[webhook] sendRefundConfirmationEmail failed:', err)
+  })
+}
+
+/**
+ * Orphan path (no refunds row): order-level idempotent ticket void + waitlist +
+ * cumulative email. Retained as a safety net under the in-app-only operating
+ * rule. The `.not('status','in', ...)` filter makes the void a no-op on replay.
+ */
+async function orphanOrderLevelVoid(
+  adminClient: ReturnType<typeof createAdminClient>,
+  charge: Stripe.Charge,
+) {
   const paymentIntentId = typeof charge.payment_intent === 'string'
     ? charge.payment_intent
     : (charge.payment_intent as Stripe.PaymentIntent | null)?.id
-
   if (!paymentIntentId) return
 
   const { data: payment } = await adminClient
@@ -847,19 +964,8 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
     .select('id, order_id')
     .eq('gateway_payment_id', paymentIntentId)
     .maybeSingle()
-
   if (!payment?.order_id) return
 
-  // P3-5: void this order's tickets on refund. Idempotent and provably
-  // retry-safe - the `.not('status','in', ...)` exclusion means a duplicate
-  // charge.refunded delivery (or an operator re-drive) updates zero rows,
-  // so this is a natural no-op on replay. We deliberately do NOT make this
-  // path retryable at the POST level: the Stripe refund already succeeded,
-  // so retrying the whole event would re-run waitlist promotion and is not
-  // the corrective action. Instead a void failure is captured for an
-  // operator to re-drive (safe, given the idempotent filter). A refunded
-  // buyer holding a still-valid QR is a real admission risk, so a silent
-  // failure here must be visible.
   const { error: voidTicketsErr } = await adminClient
     .from('tickets')
     .update({ status: 'void', refunded_at: new Date().toISOString() })
@@ -868,15 +974,11 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
   if (voidTicketsErr) {
     captureException(voidTicketsErr, {
       scope: 'stripe-webhook',
-      handler: 'charge-refunded-void-tickets',
+      handler: 'charge-refunded-orphan-void',
       order_id: payment.order_id,
       payment_intent_id: paymentIntentId,
     })
-    console.error(
-      '[webhook] charge.refunded: failed to void tickets for order',
-      payment.order_id,
-      voidTicketsErr,
-    )
+    console.error('[webhook] orphan charge.refunded: failed to void tickets for order', payment.order_id, voidTicketsErr)
   }
 
   const { data: order } = await adminClient
@@ -884,7 +986,6 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
     .select('event_id')
     .eq('id', payment.order_id)
     .single()
-
   if (!order?.event_id) return
 
   const { data: refundedItems } = await adminClient
@@ -893,30 +994,20 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
     .eq('order_id', payment.order_id)
     .eq('item_type', 'ticket')
     .not('ticket_tier_id', 'is', null)
-
-  if (!refundedItems || refundedItems.length === 0) return
-
-  for (const item of refundedItems) {
+  for (const item of refundedItems ?? []) {
     if (!item.ticket_tier_id) continue
-    // Fire-and-forget - never let waitlist promotion failure break webhook
     promoteWaitlist(order.event_id, item.ticket_tier_id, item.quantity).catch(err => {
-      console.error('[webhook] promoteWaitlist failed after charge.refunded:', err)
+      console.error('[webhook] promoteWaitlist failed after orphan charge.refunded:', err)
     })
   }
 
-  // Refund confirmation email to the buyer. Closes
-  // AUDIT-FUNCTIONALITY-2026-05-23.md MEDIUM-1. Non-fatal on send failure
-  // (catches inside, matching the existing sendConfirmationEmail pattern):
-  // the refund and ticket-void state already persisted, so a missing email
-  // does not undo the refund. A failed send is captured for an operator
-  // to re-drive if needed.
   await sendRefundConfirmationEmail(adminClient, payment.order_id, charge).catch(err => {
     captureException(err, {
       scope: 'stripe-webhook',
-      handler: 'charge-refunded-confirmation-email',
+      handler: 'charge-refunded-orphan-email',
       order_id: payment.order_id,
     })
-    console.error('[webhook] sendRefundConfirmationEmail failed:', err)
+    console.error('[webhook] sendRefundConfirmationEmail (orphan) failed:', err)
   })
 }
 
@@ -943,6 +1034,7 @@ async function sendRefundConfirmationEmail(
   db: ReturnType<typeof createAdminClient>,
   order_id: string,
   charge: Stripe.Charge,
+  override?: { amountCents?: number; ticketCount?: number },
 ) {
   const resendKey = process.env.RESEND_API_KEY
   if (!resendKey) return
@@ -1004,7 +1096,11 @@ async function sendRefundConfirmationEmail(
     .eq('order_id', order_id)
     .in('status', ['void', 'refunded'])
 
-  const refundAmountCents = charge.amount_refunded ?? order.total_cents
+  // Prefer the per-refund overrides (in-app reconcile path) so the buyer sees
+  // this refund's amount and ticket count; fall back to the charge's cumulative
+  // amount_refunded and the order-level voided count (orphan path).
+  const ticketCount = override?.ticketCount ?? refundedTicketCount ?? 0
+  const refundAmountCents = override?.amountCents ?? charge.amount_refunded ?? order.total_cents
   const currency = (charge.currency ?? order.currency ?? 'AUD').toUpperCase()
 
   const resend = new Resend(resendKey)
@@ -1018,7 +1114,7 @@ async function sendRefundConfirmationEmail(
         buyerName,
         orderNumber: order.order_number,
         eventTitle: event.title,
-        ticketCount: refundedTicketCount ?? 0,
+        ticketCount,
         refundAmountCents,
         currency,
         customMessage: null,
@@ -1029,7 +1125,7 @@ async function sendRefundConfirmationEmail(
         buyerName,
         orderNumber: order.order_number,
         eventTitle: event.title,
-        ticketCount: refundedTicketCount ?? 0,
+        ticketCount,
         refundAmountCents,
         currency,
         customMessage: null,
