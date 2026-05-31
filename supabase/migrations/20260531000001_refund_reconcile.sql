@@ -103,3 +103,140 @@ CREATE POLICY "Read refund_tickets via parent refund"
 
 COMMENT ON TABLE public.refund_tickets IS
   'Links a refund to the exact tickets it covers (by-ticket model). is_active enforces a single active claim per ticket via uq_refund_tickets_active_ticket.';
+
+-- 5. create_refund_request RPC (Phase A, atomic intent) ------
+-- Locks the order FOR UPDATE (serialises concurrent initiations),
+-- re-checks authorisation, validates refundability and the selected
+-- tickets, allocates the gross amount proportionally to the selected
+-- tickets' face value, and writes the 'processing' refund + its
+-- refund_tickets claims. NO money/ticket/inventory change here.
+CREATE OR REPLACE FUNCTION public.create_refund_request(
+  p_order_id      UUID,
+  p_ticket_ids    UUID[],
+  p_reason        public.refund_reason,
+  p_initiator     public.refund_initiator,
+  p_actor_id      UUID,
+  p_buyer_message TEXT DEFAULT NULL
+)
+RETURNS TABLE (refund_id UUID, amount_cents BIGINT, currency TEXT, payment_intent_id TEXT)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_order      public.orders%ROWTYPE;
+  v_is_admin   BOOLEAN;
+  v_owns_org   BOOLEAN;
+  v_sel_face   BIGINT;
+  v_all_face   BIGINT;
+  v_amount     BIGINT;
+  v_pi         TEXT;
+  v_refund_id  UUID;
+  v_sel_count  INT;
+  v_req_count  INT;
+BEGIN
+  v_req_count := COALESCE(array_length(p_ticket_ids, 1), 0);
+  IF v_req_count = 0 THEN
+    RAISE EXCEPTION 'no tickets selected' USING ERRCODE = 'check_violation';
+  END IF;
+
+  -- Lock the order: serialises all refunds for this order.
+  SELECT * INTO v_order FROM public.orders WHERE id = p_order_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'order not found' USING ERRCODE = 'no_data_found';
+  END IF;
+
+  -- Authorisation (defence in depth; the service also checks).
+  v_is_admin := EXISTS (
+    SELECT 1 FROM public.admin_users a
+    WHERE a.id = p_actor_id AND a.disabled_at IS NULL
+      AND a.role IN ('super_admin','admin','support')
+  );
+  v_owns_org := EXISTS (
+    SELECT 1 FROM public.organisations o
+    WHERE o.id = v_order.organisation_id AND o.owner_id = p_actor_id
+  ) OR EXISTS (
+    SELECT 1 FROM public.organisation_members m
+    WHERE m.organisation_id = v_order.organisation_id AND m.user_id = p_actor_id
+      AND m.role IN ('owner','admin','manager')
+  );
+  IF NOT (v_is_admin OR v_owns_org) THEN
+    RAISE EXCEPTION 'not authorised to refund this order'
+      USING ERRCODE = 'insufficient_privilege';
+  END IF;
+
+  -- Refundability.
+  IF v_order.status NOT IN ('confirmed','partially_refunded') THEN
+    RAISE EXCEPTION 'order not refundable in status %', v_order.status
+      USING ERRCODE = 'check_violation';
+  END IF;
+  IF v_order.total_cents <= 0 THEN
+    RAISE EXCEPTION 'free orders are not refundable' USING ERRCODE = 'check_violation';
+  END IF;
+
+  -- Validate selected tickets: belong to the order, refundable status,
+  -- and not already claimed by an active refund.
+  SELECT count(*) INTO v_sel_count
+  FROM public.tickets t
+  WHERE t.id = ANY(p_ticket_ids)
+    AND t.order_id = p_order_id
+    AND t.status IN ('valid','scanned')
+    AND NOT EXISTS (
+      SELECT 1 FROM public.refund_tickets rt
+      WHERE rt.ticket_id = t.id AND rt.is_active
+    );
+  IF v_sel_count <> v_req_count THEN
+    RAISE EXCEPTION 'one or more tickets are not refundable or already claimed'
+      USING ERRCODE = 'check_violation';
+  END IF;
+
+  -- Proportional amount by selected tickets' face value (order_item unit price).
+  SELECT COALESCE(SUM(oi.unit_price_cents), 0) INTO v_all_face
+  FROM public.tickets t
+  JOIN public.order_items oi ON oi.id = t.order_item_id
+  WHERE t.order_id = p_order_id;
+
+  SELECT COALESCE(SUM(oi.unit_price_cents), 0) INTO v_sel_face
+  FROM public.tickets t
+  JOIN public.order_items oi ON oi.id = t.order_item_id
+  WHERE t.id = ANY(p_ticket_ids);
+
+  IF v_all_face <= 0 THEN
+    RAISE EXCEPTION 'cannot allocate refund amount (zero face value)'
+      USING ERRCODE = 'check_violation';
+  END IF;
+
+  v_amount := round(v_order.total_cents::numeric * v_sel_face / v_all_face)::BIGINT;
+  IF v_amount <= 0 THEN
+    RAISE EXCEPTION 'computed refund amount must be positive'
+      USING ERRCODE = 'check_violation';
+  END IF;
+
+  -- Most recent Stripe payment intent for the order.
+  SELECT p.gateway_payment_id INTO v_pi
+  FROM public.payments p
+  WHERE p.order_id = p_order_id AND p.gateway_payment_id IS NOT NULL
+  ORDER BY p.created_at DESC LIMIT 1;
+  IF v_pi IS NULL THEN
+    RAISE EXCEPTION 'no payment intent for order' USING ERRCODE = 'no_data_found';
+  END IF;
+
+  INSERT INTO public.refunds (
+    order_id, organisation_id, amount_cents, currency, reason, status,
+    initiator, requested_by, buyer_message
+  ) VALUES (
+    p_order_id, v_order.organisation_id, v_amount, v_order.currency, p_reason, 'processing',
+    p_initiator, p_actor_id, p_buyer_message
+  ) RETURNING id INTO v_refund_id;
+
+  -- Claim the tickets. The partial unique index is the hard backstop
+  -- if two transactions somehow race past the order lock.
+  INSERT INTO public.refund_tickets (refund_id, ticket_id, is_active)
+  SELECT v_refund_id, unnest(p_ticket_ids), TRUE;
+
+  RETURN QUERY SELECT v_refund_id, v_amount, v_order.currency, v_pi;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.create_refund_request(UUID, UUID[], public.refund_reason, public.refund_initiator, UUID, TEXT)
+  FROM PUBLIC;
