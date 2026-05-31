@@ -23,6 +23,8 @@ export type AdminCapability =
   | 'admin.events.manage'
   // M6 refund operator path
   | 'admin.refunds.process'
+  // M6 payout management
+  | 'admin.payouts.disburse'
 
 const ROLE_CAPABILITIES: Record<AdminRole, ReadonlySet<AdminCapability>> = {
   super_admin: new Set<AdminCapability>([
@@ -34,6 +36,7 @@ const ROLE_CAPABILITIES: Record<AdminRole, ReadonlySet<AdminCapability>> = {
     'admin.users.manage',
     'admin.events.manage',
     'admin.refunds.process',
+    'admin.payouts.disburse',
   ]),
   admin: new Set<AdminCapability>([
     'admin.dashboard.view',
@@ -44,6 +47,7 @@ const ROLE_CAPABILITIES: Record<AdminRole, ReadonlySet<AdminCapability>> = {
     'admin.users.manage',
     'admin.events.manage',
     'admin.refunds.process',
+    'admin.payouts.disburse',
   ]),
   support: new Set<AdminCapability>([
     'admin.dashboard.view',
