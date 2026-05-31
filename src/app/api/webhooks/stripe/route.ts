@@ -12,6 +12,7 @@ import { promoteWaitlist } from '@/lib/waitlist/promote'
 import { trackTicketPurchaseCompleteServer } from '@/lib/analytics/plausible'
 import { handleConnectAccountUpdated } from '@/lib/stripe/connect-handlers'
 import { recordOrderConfirmedLedger } from '@/lib/payments/connect-ledger'
+import { voidPayoutById } from '@/lib/payments/payout'
 import {
   claimWebhookEvent,
   markWebhookEventProcessed,
@@ -1598,9 +1599,89 @@ async function handleConnectPayoutEvent(
 ) {
   const adminClient = createAdminClient()
 
-  // Connected account ID arrives on the event-level account field, not on
-  // payout. Phase 2+ will refactor to thread it through; for Phase 1 the
-  // stub upserts on stripe_payout_id which is globally unique within Stripe.
+  const arrivalDate = payout.arrival_date
+    ? new Date(payout.arrival_date * 1000).toISOString()
+    : null
+
+  // M6 payout disbursement: platform-initiated payouts are created in the DB
+  // FIRST (disburse_payout, status 'pending', stripe_payout_id NULL), then the
+  // Stripe payout is created with idempotency_key = payout id and the row is
+  // back-filled to 'in_transit'. Finalise the SAME row by looking it up on
+  // stripe_payout_id, rather than the Phase-1 destination match.
+  const { data: existing } = await adminClient
+    .from('payouts')
+    .select('id, status, metadata')
+    .eq('stripe_payout_id', payout.id)
+    .maybeSingle()
+
+  if (existing) {
+    const isPlatformInitiated =
+      (existing.metadata as { source?: string } | null)?.source === 'operator_disbursement'
+
+    // payout.paid is the source of truth for terminal success. There is no
+    // paid_at column; arrival_date is the settlement timestamp. Guarded so a
+    // webhook replay is a no-op.
+    if (eventType === 'payout.paid') {
+      if (existing.status !== 'paid') {
+        const { error } = await adminClient
+          .from('payouts')
+          .update({ status: 'paid', arrival_date: arrivalDate, updated_at: new Date().toISOString() })
+          .eq('id', existing.id)
+        if (error) {
+          captureException(error, { scope: 'stripe-webhook', handler: 'payout-paid-finalise', event_id: eventId })
+          console.error('[m6] payout.paid finalise failed', { eventId, payoutId: payout.id, error })
+        }
+      }
+      return
+    }
+
+    // payout.failed / payout.canceled: compensate the ledger via the idempotent
+    // void_payout RPC. It marks the row failed/canceled AND writes the
+    // offsetting positive ledger entry so the organiser's available balance is
+    // restored. reversed_at makes a replay a no-op. Only platform-initiated
+    // payouts carry a negative `payout` ledger entry to reverse; an externally
+    // observed payout just gets its status recorded.
+    if (eventType === 'payout.failed' || eventType === 'payout.canceled') {
+      const voidStatus = eventType === 'payout.failed' ? 'failed' : 'canceled'
+      if (isPlatformInitiated) {
+        try {
+          await voidPayoutById(adminClient, existing.id, voidStatus, payout.failure_message ?? eventType)
+        } catch (err) {
+          // Money-critical, but rethrowing here would make Stripe retry the
+          // whole event. void_payout already captured to Sentry; log for the
+          // operator re-drive (the RPC is idempotent on a manual re-run).
+          console.error('[m6] void_payout from webhook failed', { eventId, payoutId: payout.id, err })
+        }
+      } else {
+        const { error } = await adminClient
+          .from('payouts')
+          .update({
+            status: voidStatus,
+            failure_reason: payout.failure_message ?? null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existing.id)
+        if (error) {
+          console.error('[m6] payout status update failed', { eventId, payoutId: payout.id, error })
+        }
+      }
+      return
+    }
+
+    // payout.created for an already-tracked row: never downgrade in_transit /
+    // paid back to pending. Only record arrival_date if newly known.
+    if (arrivalDate) {
+      await adminClient
+        .from('payouts')
+        .update({ arrival_date: arrivalDate, updated_at: new Date().toISOString() })
+        .eq('id', existing.id)
+    }
+    return
+  }
+
+  // ── No tracked row: externally observed payout (Phase-1 safety net) ─────────
+  // Map the Stripe state and upsert by connected destination. These payouts
+  // were not created by our disburse flow, so they carry no ledger entry.
   const status: PayoutRecordStatus = (() => {
     switch (eventType) {
       case 'payout.created':
@@ -1614,9 +1695,6 @@ async function handleConnectPayoutEvent(
     }
   })()
 
-  // Look up the organisation by stripe_account_id (set on connected account
-  // creation in Phase 2). Phase 1 may have no row yet; the lookup tolerates
-  // a miss and logs.
   const destinationAccountId = typeof payout.destination === 'string'
     ? payout.destination
     : payout.destination?.id ?? null
@@ -1633,17 +1711,13 @@ async function handleConnectPayoutEvent(
     .maybeSingle()
 
   if (!org) {
-    console.info('[m6] payout event for unmapped account, ignored in Phase 1', {
+    console.info('[m6] payout event for unmapped account, ignored', {
       eventId,
       payoutId: payout.id,
       destinationAccountId,
     })
     return
   }
-
-  const arrivalDate = payout.arrival_date
-    ? new Date(payout.arrival_date * 1000).toISOString()
-    : null
 
   const { error } = await adminClient
     .from('payouts')
