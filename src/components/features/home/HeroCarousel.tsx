@@ -42,7 +42,7 @@ const SLOTS: Omit<HeroSlide, 'image'>[] = [
   // Slot 1 - African - Africultures Festival (Sydney, 12 March 2027)
   {
     id: 'africultures-festival-sydney-2027',
-    kicker: 'AFRICAN CULTURE',
+    kicker: 'AFRICAN COMMUNITY',
     title: 'Africultures Festival',
     venue: 'Wyatt Park, Auburn',
     city: 'Sydney',
@@ -123,7 +123,7 @@ export async function HeroCarousel() {
     >
       <HeroPresenceMarker />
       <h2 id="hero-carousel-heading" className="sr-only">
-        Featured cultural events
+        Featured community events
       </h2>
       <HeroCarouselClient slides={slides} />
     </section>

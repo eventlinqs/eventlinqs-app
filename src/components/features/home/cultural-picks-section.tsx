@@ -118,10 +118,10 @@ export async function CulturalPicksSection({ cityFilter, nowIso }: Props) {
             <div className="mt-1 h-8 w-0.5 shrink-0 bg-gold-500" aria-hidden />
             <div>
               <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-700">
-                Made for every culture
+                Made for every community
               </p>
               <h2 id="culture-heading" className="type-h2 font-display text-ink-900">
-                Cultural picks
+                Community picks
               </h2>
             </div>
           </div>
@@ -129,7 +129,7 @@ export async function CulturalPicksSection({ cityFilter, nowIso }: Props) {
             href="/events"
             className="shrink-0 text-sm font-medium text-gold-700 whitespace-nowrap transition-colors hover:text-gold-600"
           >
-            Explore culture &rsaquo;
+            Explore communities &rsaquo;
           </Link>
         </div>
 

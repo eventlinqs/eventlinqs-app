@@ -44,16 +44,16 @@ export async function SplitStateHero() {
         {/* COPY column - mobile order 1, desktop columns 1-7 (60% on tablet, 50% on desktop>1280) */}
         <div className="order-1 flex flex-col justify-center lg:col-span-7 xl:col-span-6">
           <p className="font-display text-xs font-bold uppercase tracking-[0.22em] text-[var(--brand-accent-strong)]">
-            Every culture. Every event.
+            Every community. Every event.
           </p>
           <h1
             id="split-hero-heading"
             className="mt-3 font-display text-4xl font-extrabold leading-[1.05] tracking-tight text-ink-900 sm:text-5xl lg:text-6xl xl:text-7xl"
           >
-            Where the culture<br />gathers.
+            Every community.<br />Every event.
           </h1>
           <p className="mt-5 max-w-xl text-base text-ink-600 sm:text-lg">
-            Find cultural events. Or run your own.
+            Find community events. Or run your own.
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:gap-4">
@@ -82,7 +82,7 @@ export async function SplitStateHero() {
         <div className="relative order-2 lg:col-span-5 xl:col-span-6">
           <div className="relative aspect-[4/5] w-full overflow-hidden rounded-3xl bg-ink-200 sm:aspect-[5/4] lg:aspect-[4/5]">
             {heroImage ? (
-              <HeroMedia image={heroImage} alt="Cultural events on EventLinqs" priority />
+              <HeroMedia image={heroImage} alt="Community events on EventLinqs" priority />
             ) : (
               <div
                 aria-hidden

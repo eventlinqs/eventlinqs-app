@@ -8,12 +8,12 @@ import { Button } from '@/components/ui/Button'
 export const metadata: Metadata = {
   title: 'Careers | EventLinqs',
   description:
-    'Help build the ticketing platform for every culture. Australian-based, fully remote, sole-founder team scaling toward national launch in mid-2026. Roles open as we grow.',
+    'Help build the ticketing platform for every community. Australian-based, fully remote, sole-founder team scaling toward national launch in mid-2026. Roles open as we grow.',
   alternates: { canonical: '/careers' },
   openGraph: {
     title: 'Careers | EventLinqs',
     description:
-      'Help build the ticketing platform for every culture. Engineering, design, organiser support, and community roles will open as we scale.',
+      'Help build the ticketing platform for every community. Engineering, design, organiser support, and community roles will open as we scale.',
     url: '/careers',
     type: 'website',
   },
@@ -26,7 +26,7 @@ const PILLARS = [
       'Small team, no committee design, no jira purgatory. Ship the work, watch the funnel respond, iterate the next morning.',
   },
   {
-    title: 'Outsized cultural reach',
+    title: 'Outsized community reach',
     body:
       'You will work on a product used by Afrobeats, Caribbean, Bollywood, Latin, Italian, Filipino, Lunar, Gospel, Amapiano, Comedy, Spanish, K-Pop, and Reggae communities across Australia, the UK, the US, and Europe.',
   },
@@ -54,7 +54,7 @@ const HOW_WE_WORK = [
       'Production deploys multiple times a day. Feature flags for risky rollouts. Lighthouse + axe gates on every pull request. We refuse to let the test suite go red.',
   },
   {
-    title: 'Strong written culture',
+    title: 'Strong written habits',
     body:
       'Decisions land in docs, not Slack threads. PRs link to context. We keep the conversation history future-team-readable.',
   },
@@ -82,12 +82,12 @@ const ROLES = [
     state: 'Opens Q4 2026',
   },
   {
-    title: 'Community manager (Africa-rooted cultures)',
+    title: 'Community manager (Africa-rooted communities)',
     detail: 'Afrobeats, Amapiano, Highlife, West African, Caribbean',
     state: 'Opens Q4 2026',
   },
   {
-    title: 'Community manager (Asia and Lunar cultures)',
+    title: 'Community manager (Asia and Lunar communities)',
     detail: 'Bollywood, K-Pop, Filipino, Lunar, South Asian',
     state: 'Opens Q4 2026',
   },
@@ -98,8 +98,8 @@ export default function CareersPage() {
     <PageShell>
       <PageHero
         eyebrow="CAREERS"
-        title="Build the home for every culture."
-        subtitle="EventLinqs is hiring carefully. We are not racing to fill seats. We are looking for the small group who can make the next decade of cultural ticketing actually work."
+        title="Build the home for every community."
+        subtitle="EventLinqs is hiring carefully. We are not racing to fill seats. We are looking for the small group who can make the next decade of community ticketing actually work."
         variant="premium"
       />
 
@@ -115,9 +115,9 @@ export default function CareersPage() {
             <div className="mt-6 space-y-4 text-base leading-relaxed text-[var(--text-secondary)] md:text-lg">
               <p>
                 The dominant Australian ticketing platforms charge double-digit
-                booking fees, drip-price the buyer, and treat every cultural
+                booking fees, drip-price the buyer, and treat every community
                 event as a generic SKU. We are building the alternative:
-                all-in pricing, guest checkout, real cultural depth, and
+                all-in pricing, guest checkout, real community depth, and
                 an organiser dashboard that respects the work of putting on
                 a show.
               </p>

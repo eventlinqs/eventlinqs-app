@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og'
 
-export const alt = 'EventLinqs: Where the culture gathers'
+export const alt = 'EventLinqs: Every community. Every event. One platform.'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
@@ -65,7 +65,7 @@ export default function OpengraphImage() {
             lineHeight: 1.2,
           }}
         >
-          Where the culture gathers.
+          Every community. Every event. One platform.
         </div>
 
         <div

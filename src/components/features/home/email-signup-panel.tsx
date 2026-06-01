@@ -107,7 +107,7 @@ export function EmailSignupPanel() {
                 className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border border-white/30 bg-transparent accent-[var(--brand-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)]"
               />
               <span>
-                I agree to receive cultural event updates from EventLinqs.
+                I agree to receive community event updates from EventLinqs.
               </span>
             </label>
             <p

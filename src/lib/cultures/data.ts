@@ -94,13 +94,13 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
     tier: 1,
     heritageOrder: 1,
     rollUp: null,
-    tagline: 'The oldest living cultures on earth, front and centre.',
-    heroHeadline: 'First Nations culture, led by First Nations people.',
+    tagline: 'The oldest living communities on earth, front and centre.',
+    heroHeadline: 'First Nations community, led by First Nations people.',
     heroBody:
       'NAIDOC events, community gatherings, dance and song, language and art, Torres Strait Islander celebrations. Listed by and for First Nations communities, on a platform that puts them first.',
     storyParagraphs: [
-      'More than 65,000 years of continuous culture, 250-plus language groups, and a living calendar that runs from NAIDOC Week to community days, corroboree, dance and song, art markets, film and storytelling. Aboriginal and Torres Strait Islander events are community-led by design: organised by mob, for mob and for everyone who wants to listen and learn properly. The Torres Strait carries its own island traditions, song lines and dance distinct again. EventLinqs leads with First Nations because an Australian platform that does not is not an Australian platform.',
-      'EventLinqs supports First Nations organisers with transparent fees, community pricing for not-for-profit and grassroots events, accessible ticket tiers, and human support. Cultural protocols and community ownership of content sit with the community, always.',
+      'More than 65,000 years of continuous community, 250-plus language groups, and a living calendar that runs from NAIDOC Week to community days, corroboree, dance and song, art markets, film and storytelling. Aboriginal and Torres Strait Islander events are community-led by design: organised by mob, for mob and for everyone who wants to listen and learn properly. The Torres Strait carries its own island traditions, song lines and dance distinct again. EventLinqs leads with First Nations because an Australian platform that does not is not an Australian platform.',
+      'EventLinqs supports First Nations organisers with transparent fees, community pricing for not-for-profit and grassroots events, accessible ticket tiers, and human support. Community protocols and community ownership of content sit with the community, always.',
       'If you run NAIDOC events, community gatherings, dance, art markets or First Nations festivals, list with us. Community-led, on your terms.',
     ],
     subCultures: [
@@ -118,9 +118,9 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
       'First Nations community organisations and land councils',
       'NAIDOC Week committees and community event groups',
       'Aboriginal and Torres Strait Islander artists and dance groups',
-      'Community-controlled organisations running family and culture days',
+      'Community-controlled organisations running family and community days',
     ],
-    keywords: ['First Nations events', 'NAIDOC Week', 'Aboriginal events Australia', 'Torres Strait Islander', 'Indigenous culture events', 'community day'],
+    keywords: ['First Nations events', 'NAIDOC Week', 'Aboriginal events Australia', 'Torres Strait Islander', 'Indigenous community events', 'community day'],
   },
 
   african: {
@@ -136,7 +136,7 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
     storyParagraphs: [
       "Where Lagos meets Lagos in Sydney. Where the gele goes on, the aso ebi gets cut, and the DJ knows exactly when to drop Amapiano right after Owambe. African nights are a continent moving through every dance floor: Afrobeats from West Africa, Amapiano from South Africa, Bongo Flava from East Africa, Owambe celebrations spilling out of community halls, festival weekends in Naarm. The crews are family, the food is real, and the phones come out for the line dances and the moments nobody planned.",
       'EventLinqs gives African organisers transparent fees, WhatsApp-first share flows, squad bookings so the whole crew comes together, and real human support. No platform tax disguised as convenience.',
-      'If you run African nights, festivals, concerts or cultural events, list with us. The first event is on us.',
+      'If you run African nights, festivals, concerts or community events, list with us. The first event is on us.',
     ],
     subCultures: [
       { slug: 'afrobeats',     label: 'Afrobeats',     blurb: 'West African pop, Lagos to London.' },
@@ -151,7 +151,7 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
     relatedFaiths: ['christian'],
     organiserPersonas: [
       'Independent promoters running monthly Afrobeats and Amapiano nights',
-      'Festival organisers booking continental and global culture artists',
+      'Festival organisers booking continental and global community artists',
       'University African society party committees',
       'Owambe planners coordinating weddings, naming ceremonies and milestones',
     ],
@@ -178,7 +178,7 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
       { slug: 'dancehall',      label: 'Dancehall',      blurb: 'Jamaica sound, world riddim.' },
       { slug: 'reggae',         label: 'Reggae',         blurb: 'Roots, dub, lovers rock.' },
       { slug: 'trinidadian',    label: 'Trinidadian',    blurb: 'Mas, Jouvert, calypso.' },
-      { slug: 'jamaican',       label: 'Jamaican',       blurb: 'Beach parties, riddim culture.' },
+      { slug: 'jamaican',       label: 'Jamaican',       blurb: 'Beach parties, riddim community.' },
       { slug: 'afro-caribbean', label: 'Afro-Caribbean', blurb: 'Drumming, fusion rhythm.' },
     ],
     cities: AU_CORE,
@@ -200,7 +200,7 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
     heritageOrder: 4,
     rollUp: 'asian',
     tagline: 'Bollywood, bhangra, garba and beyond.',
-    heroHeadline: 'Indian culture, the way it deserves to be sold.',
+    heroHeadline: 'Indian community, the way it deserves to be sold.',
     heroBody:
       'Bollywood nights, garba and Navratri, Diwali parties, Holi celebrations, bhangra raves, Tamil and Telugu cinema events. Every rhythm of India in one place.',
     storyParagraphs: [
@@ -213,7 +213,7 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
       { slug: 'bhangra',      label: 'Bhangra',        blurb: 'Punjabi rhythms, full energy.' },
       { slug: 'garba-raas',   label: 'Garba & Raas',   blurb: 'Navratri devotional dance.' },
       { slug: 'holi-diwali',  label: 'Holi & Diwali',  blurb: 'Colours and the festival of lights.' },
-      { slug: 'tamil-telugu', label: 'Tamil & Telugu', blurb: 'South Indian cinema and culture.' },
+      { slug: 'tamil-telugu', label: 'Tamil & Telugu', blurb: 'South Indian cinema and community.' },
       { slug: 'classical',    label: 'Classical',      blurb: 'Bharatanatyam, Kathak, sitar nights.' },
     ],
     cities: AU_CORE,
@@ -223,7 +223,7 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
       'Bollywood club night promoters in major cities',
       'Garba and Navratri organisers running 9-night events',
       'Wedding and sangeet planners selling guest tickets',
-      'University Indian society and cultural club committees',
+      'University Indian society and community club committees',
     ],
     keywords: ['Indian events', 'Bollywood Sydney', 'Garba Melbourne', 'Diwali events Australia', 'Holi parties', 'bhangra night'],
   },
@@ -235,7 +235,7 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
     heritageOrder: 5,
     rollUp: 'asian',
     tagline: 'Lunar New Year, lion dance, lanterns and beyond.',
-    heroHeadline: 'Chinese culture, every season.',
+    heroHeadline: 'Chinese community, every season.',
     heroBody:
       'Lunar New Year parades, Mid-Autumn lantern festivals, lion dance, Mandarin and Cantonese concerts, banquets and community galas. The calendar runs all year.',
     storyParagraphs: [
@@ -257,7 +257,7 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
       'Lunar New Year community festival committees',
       'Chinese community association gala organisers',
       'Mandarin and Cantonese concert promoters',
-      'Cultural society and university committees',
+      'Community society and university committees',
     ],
     keywords: ['Chinese events', 'Lunar New Year Sydney', 'Mid-Autumn festival Melbourne', 'lion dance', 'Cantopop concert', 'Chinese gala'],
   },
@@ -338,11 +338,11 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
     heritageOrder: 8,
     rollUp: 'asian',
     tagline: 'Tet, ao dai, V-pop and the whole table.',
-    heroHeadline: 'Vietnamese culture, every weekend.',
+    heroHeadline: 'Vietnamese community, every weekend.',
     heroBody:
       'Tet Lunar New Year festivals, Mid-Autumn lantern nights, V-pop concerts, ao dai showcases and community fundraisers. One of Australia largest and most established communities.',
     storyParagraphs: [
-      'Where Saigon meets Cabramatta under the same Tet banner. Where the lion dance runs the markets, the ao dai comes out for the new year, and the whole community shows for the Tet festival. Vietnamese events span Tet street festivals that fill showgrounds, Mid-Autumn lantern parades, V-pop concerts when the artists tour, ao dai and culture showcases, and community fundraisers run with serious organisation. Vietnamese is one of the top languages spoken at home in Australia.',
+      'Where Saigon meets Cabramatta under the same Tet banner. Where the lion dance runs the markets, the ao dai comes out for the new year, and the whole community shows for the Tet festival. Vietnamese events span Tet street festivals that fill showgrounds, Mid-Autumn lantern parades, V-pop concerts when the artists tour, ao dai and community showcases, and community fundraisers run with serious organisation. Vietnamese is one of the top languages spoken at home in Australia.',
       'EventLinqs supports community committees with festival multi-day passes, family bundles, multilingual listings, and transparent fees.',
       'If you run Tet festivals, Mid-Autumn events, V-pop concerts or community celebrations, list with us.',
     ],
@@ -350,7 +350,7 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
       { slug: 'tet',          label: 'Tet',           blurb: 'Lunar New Year, the big one.' },
       { slug: 'mid-autumn',   label: 'Mid-Autumn',    blurb: 'Lantern parades, mooncakes.' },
       { slug: 'v-pop',        label: 'V-pop',         blurb: 'Modern Vietnamese pop tours.' },
-      { slug: 'ao-dai',       label: 'Ao Dai & Culture', blurb: 'Showcases, heritage nights.' },
+      { slug: 'ao-dai',       label: 'Ao Dai & Community', blurb: 'Showcases, heritage nights.' },
       { slug: 'community',    label: 'Community',     blurb: 'Fundraisers, association events.' },
     ],
     cities: AU_CORE,
@@ -360,7 +360,7 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
       'Vietnamese community association Tet committees',
       'Mid-Autumn festival organisers',
       'V-pop concert promoters',
-      'Cultural and university society committees',
+      'Community and university society committees',
     ],
     keywords: ['Vietnamese events', 'Tet festival Sydney', 'Mid-Autumn Melbourne', 'V-pop concert', 'ao dai showcase', 'Vietnamese community'],
   },
@@ -372,9 +372,9 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
     heritageOrder: 9,
     rollUp: 'mena',
     tagline: 'Dabke, mahrajan, mezze and the long table.',
-    heroHeadline: 'Lebanese and Levantine culture, every weekend.',
+    heroHeadline: 'Lebanese and Levantine community, every weekend.',
     heroBody:
-      'Mahrajan festivals, dabke nights, Eid and Easter celebrations, oud and tarab concerts, mezze long-tables. One of Australia strongest cultural-event communities.',
+      'Mahrajan festivals, dabke nights, Eid and Easter celebrations, oud and tarab concerts, mezze long-tables. One of Australia strongest community-event scenes.',
     storyParagraphs: [
       "Where Beirut meets Sydney under the same dabke line. Where the table never stops filling, the dabke pulls the whole room in whether you know the steps or not, and the oud cuts through every conversation after midnight. Lebanese and Levantine events span mahrajan festivals, dabke nights, Eid and Easter celebrations, tarab and oud concerts, and mezze long-tables that turn into all-nighters. The community is large, organised and loyal.",
       'EventLinqs supports family bundles, long-table booking flows, multilingual listings (Arabic, English), and WhatsApp share because that is where the audience lives.',
@@ -385,7 +385,7 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
       { slug: 'mahrajan',  label: 'Mahrajan',   blurb: 'Festivals, food, live music.' },
       { slug: 'tarab-oud', label: 'Tarab & Oud', blurb: 'Classical, concerts, recitals.' },
       { slug: 'syrian',    label: 'Syrian',     blurb: 'Levantine music and food.' },
-      { slug: 'palestinian', label: 'Palestinian', blurb: 'Heritage nights, dabke, culture.' },
+      { slug: 'palestinian', label: 'Palestinian', blurb: 'Heritage nights, dabke, community.' },
     ],
     cities: AU_CORE,
     relatedCultures: ['arab', 'turkish', 'persian-iranian'],
@@ -406,9 +406,9 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
     heritageOrder: 10,
     rollUp: 'european',
     tagline: 'Glendi, bouzouki, and the whole village.',
-    heroHeadline: 'Greek culture, every season.',
+    heroHeadline: 'Greek community, every season.',
     heroBody:
-      'Glendi nights, festival panigiri, bouzouki and rebetiko, Greek Orthodox Easter, dance groups and food festivals. One of Australia great cultural-event traditions.',
+      'Glendi nights, festival panigiri, bouzouki and rebetiko, Greek Orthodox Easter, dance groups and food festivals. One of Australia great community-event traditions.',
     storyParagraphs: [
       "Where Thessaloniki meets Melbourne under the same bouzouki. Where the glendi runs until the plates are gone, the dance circle never quite closes, and someone's yiayia is still bringing out food at midnight. Greek events are glendi nights with live bouzouki and rebetiko, festival panigiri and food festivals, Greek Orthodox Easter, and dance groups that have run for generations. Melbourne holds one of the largest Greek communities in the world outside Greece.",
       'EventLinqs supports long-table communal dinners with set seating, festival multi-day passes, family bundles, and transparent fees.',
@@ -440,7 +440,7 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
     heritageOrder: 11,
     rollUp: 'european',
     tagline: 'Sagra, festa, opera: la dolce vita.',
-    heroHeadline: 'Italian culture, every season.',
+    heroHeadline: 'Italian community, every season.',
     heroBody:
       'Sagra food festivals, festa saint-day celebrations, opera nights, Italian film, regional clubs and long-table dinners. A founding thread of multicultural Australia.',
     storyParagraphs: [
@@ -474,20 +474,20 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
     heritageOrder: 12,
     rollUp: 'asian',
     tagline: 'K-pop, hallyu, and the whole wave.',
-    heroHeadline: 'Korean culture, every weekend.',
+    heroHeadline: 'Korean community, every weekend.',
     heroBody:
       'K-pop concerts and dance covers, fan meets, Chuseok and Seollal, Korean film, food festivals and language exchanges. The Korean wave, live.',
     storyParagraphs: [
       'Where Seoul meets Sydney under the same K-pop chant. Where the fan chant is letter-perfect, the dance cover crew has rehearsed for months, and the concert sells out in ninety seconds. Korean events span stadium-scale K-pop concerts, dance cover competitions, fan meets, Chuseok and Seollal community days, Korean film seasons, and food and language events. The hallyu wave keeps the calendar full all year.',
       'EventLinqs supports reserved seating for concerts, group bookings for fan crews, multi-language listings, and transparent pricing.',
-      'If you run K-pop events, dance covers, fan meets or Korean cultural festivals, list with us.',
+      'If you run K-pop events, dance covers, fan meets or Korean community festivals, list with us.',
     ],
     subCultures: [
       { slug: 'k-pop',        label: 'K-pop',         blurb: 'Concerts, tours, dance covers.' },
       { slug: 'fan-meet',     label: 'Fan Meets',     blurb: 'Cup sleeve, birthday, fandom.' },
       { slug: 'seollal-chuseok', label: 'Seollal & Chuseok', blurb: 'New Year, harvest, family.' },
       { slug: 'korean-film',  label: 'Korean Film',   blurb: 'Film seasons and screenings.' },
-      { slug: 'korean-food',  label: 'Food & Culture', blurb: 'Festivals, markets, language.' },
+      { slug: 'korean-food',  label: 'Food & Community', blurb: 'Festivals, markets, language.' },
     ],
     cities: AU_CORE,
     relatedCultures: ['japanese', 'chinese', 'other-east-southeast-asian'],
@@ -507,14 +507,14 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
     tier: 1,
     heritageOrder: 13,
     rollUp: 'asian',
-    tagline: 'Matsuri, anime, taiko and J-culture.',
-    heroHeadline: 'Japanese culture, every season.',
+    tagline: 'Matsuri, anime, taiko and Japanese community.',
+    heroHeadline: 'Japanese community, every season.',
     heroBody:
       'Matsuri festivals, anime conventions, taiko and J-rock, cherry blossom events, tea ceremony and Japanese film. A deep and growing event vertical.',
     storyParagraphs: [
-      'Where Osaka meets Sydney under the same matsuri lantern. Where the taiko shakes the floor, the cosplay takes over the convention centre, and the cherry blossom event books out the park for a weekend. Japanese events span matsuri street festivals, anime and pop-culture conventions with multi-day passes, taiko and J-rock concerts, hanami cherry blossom gatherings, tea ceremony and Japanese film. The community and the fandom both run deep.',
+      'Where Osaka meets Sydney under the same matsuri lantern. Where the taiko shakes the floor, the cosplay takes over the convention centre, and the cherry blossom event books out the park for a weekend. Japanese events span matsuri street festivals, anime and fan conventions with multi-day passes, taiko and J-rock concerts, hanami cherry blossom gatherings, tea ceremony and Japanese film. The community and the fandom both run deep.',
       'EventLinqs supports multi-day convention passes, reserved seating, group bookings, and transparent pricing.',
-      'If you run matsuri, anime conventions, taiko concerts or Japanese cultural events, list with us.',
+      'If you run matsuri, anime conventions, taiko concerts or Japanese community events, list with us.',
     ],
     subCultures: [
       { slug: 'matsuri',   label: 'Matsuri',    blurb: 'Street festivals, food, dance.' },
@@ -530,7 +530,7 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
       'Matsuri and Japan festival committees',
       'Anime convention organisers',
       'Taiko ensemble and J-rock promoters',
-      'Japanese cultural society and film programmers',
+      'Japanese community society and film programmers',
     ],
     keywords: ['Japanese events', 'matsuri Sydney', 'anime convention Melbourne', 'taiko concert', 'hanami', 'Japanese film festival'],
   },
@@ -542,20 +542,20 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
     heritageOrder: 14,
     rollUp: 'pacific',
     tagline: 'Samoan, Tongan, Fijian: islands in the room.',
-    heroHeadline: 'Pasifika culture, where the islands meet the city.',
+    heroHeadline: 'Pasifika community, where the islands meet the city.',
     heroBody:
       'Pasifika festivals, Samoan flag day, Tongan and Fijian church concerts, island dance and family fundraisers. The islands live wherever the families settled.',
     storyParagraphs: [
       "Where Apia meets Sydney under the same siva. Where the church choir runs the night past closing, the dance is fierce, and somebody's aunty is feeding the whole hall whether you ate already or not. Pasifika events span Pasifika festivals in Sydney and Brisbane, Samoan flag day, Tongan and Fijian church-led concerts, island dance, and family fundraisers that pull a thousand people together on a single weekend. The community is tight and family-led.",
       'EventLinqs supports family ticket bundles, group church-led organising, multilingual listings (Samoan, Tongan, Fijian, English), and transparent pricing.',
-      'If you run Pasifika events, flag days, church concerts or island cultural celebrations, list with us.',
+      'If you run Pasifika events, flag days, church concerts or island community celebrations, list with us.',
     ],
     subCultures: [
       { slug: 'samoan',     label: 'Samoan',     blurb: 'Flag day, fiafia, Lotu Tamaiti.' },
       { slug: 'tongan',     label: 'Tongan',     blurb: 'Faka-Tonga, church concerts.' },
       { slug: 'fijian',     label: 'Fijian',     blurb: 'Meke, community, fundraisers.' },
       { slug: 'cook-islands', label: 'Cook Islands', blurb: 'Drumming, dance, language week.' },
-      { slug: 'pasifika-fest', label: 'Pasifika Festivals', blurb: 'City-wide multi-culture events.' },
+      { slug: 'pasifika-fest', label: 'Pasifika Festivals', blurb: 'City-wide multi-community events.' },
     ],
     cities: AU_CORE,
     relatedCultures: ['maori', 'aboriginal-torres-strait-islander', 'filipino'],
@@ -563,7 +563,7 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
     organiserPersonas: [
       'Pasifika festival committees',
       'Samoan, Tongan and Fijian church event organisers',
-      'Island dance group and cultural committees',
+      'Island dance group and community committees',
       'Pacific community fundraiser organisers',
     ],
     keywords: ['Pasifika events', 'Pasifika Sydney', 'Samoan flag day', 'Tongan church concert', 'Fijian community', 'island dance'],
@@ -576,11 +576,11 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
     heritageOrder: 15,
     rollUp: 'pacific',
     tagline: 'Kapa haka, te ao Maori, in the room.',
-    heroHeadline: 'Maori culture, carried across the Tasman.',
+    heroHeadline: 'Maori community, carried across the Tasman.',
     heroBody:
-      'Kapa haka, Matariki, te reo Maori events, waiata and community days. A distinct culture with a large and growing community in Australia.',
+      'Kapa haka, Matariki, te reo Maori events, waiata and community days. A distinct community with a large and growing presence in Australia.',
     storyParagraphs: [
-      'Where Aotearoa meets Australia under the same haka. Where the kapa haka is precise and powerful, Matariki marks the new year, and the waiata fills the hall. Maori events span kapa haka competitions and performances, Matariki celebrations, te reo Maori and waiata events, and community days for the large Maori community across Australia. Maori is a distinct culture, not a sub-set of anything, and is given its own home here.',
+      'Where Aotearoa meets Australia under the same haka. Where the kapa haka is precise and powerful, Matariki marks the new year, and the waiata fills the hall. Maori events span kapa haka competitions and performances, Matariki celebrations, te reo Maori and waiata events, and community days for the large Maori community across Australia. Maori is a distinct community, not a sub-set of anything, and is given its own home here.',
       'EventLinqs supports community-led organising, family bundles, te reo Maori listings, and transparent pricing.',
       'If you run kapa haka, Matariki, te reo events or Maori community days, list with us.',
     ],
@@ -609,13 +609,13 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
     heritageOrder: 16,
     rollUp: 'mena',
     tagline: 'Nowruz, classical, and the thirteen days.',
-    heroHeadline: 'Persian culture, every season.',
+    heroHeadline: 'Persian community, every season.',
     heroBody:
       'Nowruz celebrations, Chaharshanbe Suri fire-jumping, Persian classical and pop concerts, Yalda night and poetry evenings. A deep calendar, beautifully kept.',
     storyParagraphs: [
       'Where Tehran meets Sydney under the same haft-sin. Where the haft-sin gets set, the fire gets jumped before the new year, and Yalda runs until the poetry is finished and the pomegranate is gone. Persian events span Nowruz celebrations stretching across thirteen days, Chaharshanbe Suri fire festivals, Persian classical and diaspora-pop concerts, Yalda night, and Hafez poetry evenings. Communities are tight-knit and events sell out before they are advertised.',
       'EventLinqs supports multi-language listings (Farsi, English), family bookings, and WhatsApp share flows.',
-      'If you run Nowruz events, concerts, Yalda nights or Persian cultural celebrations, list with us.',
+      'If you run Nowruz events, concerts, Yalda nights or Persian community celebrations, list with us.',
     ],
     subCultures: [
       { slug: 'nowruz',      label: 'Nowruz',       blurb: 'Persian new year, haft-sin, sizdah.' },
@@ -630,7 +630,7 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
       'Nowruz community celebration organisers',
       'Persian classical and pop concert promoters',
       'Yalda and poetry night hosts',
-      'Iranian community and cultural society committees',
+      'Iranian community and community society committees',
     ],
     keywords: ['Persian events', 'Nowruz Sydney', 'Yalda Melbourne', 'Persian concert', 'Iranian community', 'Chaharshanbe Suri'],
   },
@@ -642,7 +642,7 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
     heritageOrder: 17,
     rollUp: 'mena',
     tagline: 'Saz, sema, and the long table.',
-    heroHeadline: 'Turkish culture, every weekend.',
+    heroHeadline: 'Turkish community, every weekend.',
     heroBody:
       'Turkish festivals, Ramadan and Eid events, saz and folk concerts, sema ceremonies, food festivals and community nights. A warm and well-organised community.',
     storyParagraphs: [
@@ -663,7 +663,7 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
       'Turkish community association festival committees',
       'Saz and folk concert promoters',
       'Eid and Ramadan event organisers',
-      'Turkish cultural society committees',
+      'Turkish community society committees',
     ],
     keywords: ['Turkish events', 'Turkish festival Sydney', 'Eid Melbourne', 'saz concert', 'Turkish community', 'sema'],
   },
@@ -675,7 +675,7 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
     heritageOrder: 18,
     rollUp: 'mena',
     tagline: 'Tarab, oud, and the whole region.',
-    heroHeadline: 'Arab culture, every weekend.',
+    heroHeadline: 'Arab community, every weekend.',
     heroBody:
       'Egyptian, Iraqi, Syrian and Gulf events, Arabic concerts, Eid celebrations, oud and tarab recitals and community festivals across the Arab world.',
     storyParagraphs: [
@@ -686,7 +686,7 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
     subCultures: [
       { slug: 'egyptian',  label: 'Egyptian',  blurb: 'Shaabi, classical, modern.' },
       { slug: 'iraqi',     label: 'Iraqi',     blurb: 'Maqam, community, heritage.' },
-      { slug: 'gulf-khaleeji', label: 'Khaleeji', blurb: 'Gulf music and culture.' },
+      { slug: 'gulf-khaleeji', label: 'Khaleeji', blurb: 'Gulf music and community.' },
       { slug: 'tarab-oud', label: 'Tarab & Oud', blurb: 'Classical recitals, concerts.' },
     ],
     cities: AU_CORE,
@@ -720,7 +720,7 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
       { slug: 'nepali',       label: 'Nepali',       blurb: 'Dashain, Tihar, community.' },
       { slug: 'sri-lankan',   label: 'Sri Lankan',   blurb: 'Sinhala and Tamil New Year.' },
       { slug: 'pakistani',    label: 'Pakistani',    blurb: 'Concerts, Eid, qawwali.' },
-      { slug: 'bangladeshi',  label: 'Bangladeshi',  blurb: 'Pohela Boishakh, music, culture.' },
+      { slug: 'bangladeshi',  label: 'Bangladeshi',  blurb: 'Pohela Boishakh, music, community.' },
     ],
     cities: AU_CORE,
     relatedCultures: ['indian', 'arab', 'other-east-southeast-asian'],
@@ -780,7 +780,7 @@ const CULTURES: Record<CultureSlug, CultureContent> = {
     storyParagraphs: [
       "Where Bavaria, Krakow, Dublin and the Balkans meet Australia. Other European events run a hundred traditions: Oktoberfest beer halls with brass and full-room singing, Polish polka and Wigilia, Ukrainian folk dance in hand-embroidered vyshyvanka, Irish trad sessions and St Patrick, Balkan brass nights, Maltese feasts, and the great democratic ritual of a Eurovision watch party. Every community keeps its own calendar alive.",
       'EventLinqs supports festival multi-day passes, intimate folk evenings, language-specific listings, and squad bookings.',
-      'If you run European cultural events, festivals, folk evenings or community celebrations, list with us.',
+      'If you run European community events, festivals, folk evenings or community celebrations, list with us.',
     ],
     subCultures: [
       { slug: 'german',     label: 'German',     blurb: 'Oktoberfest, brass, beer halls.' },

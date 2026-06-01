@@ -249,7 +249,7 @@ export function CategoryLandingPage({ category, liveEvents = [] }: CategoryLandi
               </h2>
               <p className="mt-4 text-base leading-relaxed text-white/65 sm:text-lg">
                 Join the organisers who&apos;ve made EventLinqs their home. Transparent fees,
-                real human support, and a platform that actually understands the culture.
+                real human support, and a platform that actually understands the community.
               </p>
             </div>
             {/* TODO(Session 2): replace with /auth/signup?role=organiser once built */}

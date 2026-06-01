@@ -8,12 +8,12 @@ import { Button } from '@/components/ui/Button'
 export const metadata: Metadata = {
   title: 'About | EventLinqs',
   description:
-    'EventLinqs is the ticketing platform built for every culture. All-in pricing, guest checkout, and tools that respect both organisers and attendees. Headquartered in Geelong, Australia, serving organisers nationwide.',
+    'EventLinqs is the ticketing platform built for every community. All-in pricing, guest checkout, and tools that respect both organisers and attendees. Headquartered in Geelong, Australia, serving organisers nationwide.',
   alternates: { canonical: '/about' },
   openGraph: {
     title: 'About | EventLinqs',
     description:
-      'The ticketing platform built for every culture. All-in pricing, guest checkout, and tools that respect both organisers and attendees.',
+      'The ticketing platform built for every community. All-in pricing, guest checkout, and tools that respect both organisers and attendees.',
     url: '/about',
     type: 'website',
   },
@@ -31,9 +31,9 @@ const VALUES = [
       'The price you see on the listing is the price you pay at checkout. No drip pricing, no surprise service fees, no resort-fee tactics imported from US ticketing.',
   },
   {
-    title: 'Culture-led, not generic',
+    title: 'Community-led, not generic',
     body:
-      'Twenty-one cultural heritages, led by Aboriginal and Torres Strait Islander peoples, alongside five faith communities and every event type. We learn each culture before we promise discovery.',
+      'Twenty-one community heritages, led by Aboriginal and Torres Strait Islander peoples, alongside five faith communities and every event type. We learn each community before we promise discovery.',
   },
   {
     title: 'Built for trust',
@@ -55,7 +55,7 @@ const VALUES = [
 const STATS = [
   { value: '2026', label: 'Founded' },
   { value: 'AU · UK · US · EU', label: 'Launch markets' },
-  { value: '21', label: 'Cultural heritages' },
+  { value: '21', label: 'Community heritages' },
   { value: '100%', label: 'All-in pricing' },
 ]
 
@@ -71,9 +71,9 @@ const PRINCIPLES = [
       'You should not have to create an account to buy a ticket. Email + payment, two taps, done. Account creation is opt-in afterwards.',
   },
   {
-    title: 'Every culture, marketed properly',
+    title: 'Every community, marketed properly',
     body:
-      'Discovery is organised across three honest dimensions: 21 cultural heritages led by First Nations Australians, five faith communities, and event type. Heritage, faith and format are kept distinct, never collapsed into one generic bucket.',
+      'Discovery is organised across three honest dimensions: 21 community heritages led by First Nations Australians, five faith communities, and event type. Heritage, faith and format are kept distinct, never collapsed into one generic bucket.',
   },
   {
     title: 'Sustainable economics',
@@ -87,8 +87,8 @@ export default function AboutPage() {
     <PageShell>
       <PageHero
         eyebrow="ABOUT"
-        title="Built for every culture"
-        subtitle="The ticketing platform built for every culture. All-in pricing, guest checkout, and tools that respect both organisers and attendees."
+        title="Built for every community"
+        subtitle="The ticketing platform built for every community. All-in pricing, guest checkout, and tools that respect both organisers and attendees."
         variant="premium"
       />
 
@@ -104,7 +104,7 @@ export default function AboutPage() {
             <div className="mt-6 space-y-4 text-base leading-relaxed text-[var(--text-secondary)] md:text-lg">
               <p>
                 Australian ticketing has spent two decades being run by global
-                gatekeepers who treat every cultural event the same: a search
+                gatekeepers who treat every community event the same: a search
                 box, a stack of fees, a checkout that fights the buyer. The
                 people putting on NAIDOC community days in Naarm, Afrobeats
                 nights in Melbourne, Diwali galas in Sydney, Caribbean
@@ -114,7 +114,7 @@ export default function AboutPage() {
               </p>
               <p>
                 EventLinqs is a fan-first ticketing platform that takes every
-                culture seriously, treats every organiser like an actual
+                community seriously, treats every organiser like an actual
                 business partner, and refuses to dress up a checkout fee as
                 a service charge. The product is the work. We measure ourselves
                 against the global benchmarks (Ticketmaster, DICE, Eventbrite,
@@ -182,7 +182,7 @@ export default function AboutPage() {
                 Australian-Nigerian, sole founder, building the platform he
                 wished existed when his community had to use a patchwork of
                 Eventbrite, Facebook events, and bank-transfer DMs to put on
-                cultural events that mattered.
+                community events that mattered.
               </p>
               <p>
                 The platform is operated as an Australian sole trader (ABN
@@ -221,11 +221,11 @@ export default function AboutPage() {
               Get involved
             </p>
             <h2 className="mt-3 font-display text-3xl font-bold leading-tight text-white md:text-5xl">
-              Every culture. Every event. One platform.
+              Every community. Every event. One platform.
             </h2>
             <p className="mt-5 max-w-xl text-base leading-relaxed text-white/70 md:text-lg">
               Whether you are putting on your first event or running a
-              cultural calendar that fills venues every weekend, the
+              community calendar that fills venues every weekend, the
               platform is built to work for you. Free for free events.
               Transparent for paid ones.
             </p>

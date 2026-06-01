@@ -1444,7 +1444,7 @@ function buildConfirmationEmailHtml(
 
   <p style="margin:0 0 12px;color:#6B7280;font-size:13px;">This email is your receipt.</p>
 
-  <p style="margin:0 0 4px;color:#9CA3AF;font-size:12px;">The EventLinqs team. The ticketing platform built for every culture.</p>
+  <p style="margin:0 0 4px;color:#9CA3AF;font-size:12px;">The EventLinqs team. The ticketing platform built for every community.</p>
   <p style="margin:0 0 4px;color:#9CA3AF;font-size:12px;">Refunds are handled under our refund policy: <a href="${siteUrl}/legal/refunds" style="color:#9CA3AF;">eventlinqs.com/legal/refunds</a></p>
   <p style="margin:0 0 4px;color:#9CA3AF;font-size:12px;">EventLinqs (Lawal Adams), ABN 30 837 447 587, Geelong VIC, Australia.</p>
   <p style="margin:0;color:#9CA3AF;font-size:12px;">You received this because you bought tickets on EventLinqs.</p>
@@ -1518,7 +1518,7 @@ function buildConfirmationEmailText(
   lines.push('')
   lines.push('This email is your receipt.')
   lines.push('')
-  lines.push('The EventLinqs team. The ticketing platform built for every culture.')
+  lines.push('The EventLinqs team. The ticketing platform built for every community.')
   lines.push(`Refund policy: ${siteUrl}/legal/refunds`)
   lines.push('EventLinqs (Lawal Adams), ABN 30 837 447 587, Geelong VIC, Australia.')
   lines.push('You received this because you bought tickets on EventLinqs.')

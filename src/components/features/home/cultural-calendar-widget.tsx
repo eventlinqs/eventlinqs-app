@@ -316,7 +316,7 @@ export function CulturalCalendarWidget({
                 className="uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]"
                 style={{ fontSize: 'var(--type-micro)', fontWeight: 600 }}
               >
-                Cultural Calendar
+                Community Calendar
               </p>
               <h2
                 id="cultural-calendar-heading"

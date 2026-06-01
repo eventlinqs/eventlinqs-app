@@ -26,10 +26,10 @@ export function BrowseByCultureRail({ citySlug, cityName, images }: Props) {
   return (
     <ContentSection surface="base" width="wide" topBorder>
       <SnapRailScroller
-        railLabel={`${cityName} by culture`}
+        railLabel={`${cityName} by community`}
         header={{
-          eyebrow: 'By culture',
-          title: `${cityName} by culture`,
+          eyebrow: 'By community',
+          title: `${cityName} by community`,
         }}
       >
         {cultures.map(culture => {

@@ -40,7 +40,7 @@ export interface FeaturedHeroEventSlide {
 }
 
 const HERO_SUBCOPY =
-  'The ticketing platform built for every culture. Afrobeats, Caribbean, Bollywood, Latin, Italian, Filipino, Lunar, Gospel, Amapiano, Comedy, Spanish, K-Pop, Reggae and more. All-in pricing, no surprise fees.'
+  'The ticketing platform built for every community. Afrobeats, Caribbean, Bollywood, Latin, Italian, Filipino, Lunar, Gospel, Amapiano, Comedy, Spanish, K-Pop, Reggae and more. All-in pricing, no surprise fees.'
 
 function heroEyebrow(event: FeaturedHeroEvent): string {
   const daysToStart = Math.ceil(
@@ -48,7 +48,7 @@ function heroEyebrow(event: FeaturedHeroEvent): string {
   )
   if (daysToStart >= 0 && daysToStart <= 2) return 'Happening this weekend'
   if ((event.percent_sold ?? 0) > 70) return 'Trending now'
-  return 'Made for every culture'
+  return 'Made for every community'
 }
 
 function formatLongDate(iso: string): string {
@@ -211,12 +211,12 @@ export async function FeaturedEventHero({
   // Fallback: empty-state single slide if somehow we got nothing
   if (slides.length === 0) {
     const fallbackMedia = await getFeaturedHeroBackground({
-      title: 'Every culture, every event',
+      title: 'Every community, every event',
       category: { slug: 'festival', name: 'Festival' },
     })
     slides.push({
       key: 'fallback',
-      eyebrow: 'Made for every culture',
+      eyebrow: 'Made for every community',
       background: renderBackground(fallbackMedia, true),
       card: null,
       primaryHref: '/events',

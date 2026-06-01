@@ -181,7 +181,7 @@ export function CultureCityLandingPage({
       {showSubCulturesRail ? (
         <ContentSection surface="alt" width="wide" topBorder>
           <SnapRailScroller
-            railLabel={`${culture.displayName} sub-cultures in ${cityName}`}
+            railLabel={`${culture.displayName} sub-communities in ${cityName}`}
             containerBg="ink-100"
             header={{
               eyebrow: `${culture.displayName} in ${cityName}`,
@@ -372,10 +372,10 @@ export function CultureCityLandingPage({
       {relatedCultures.length > 0 ? (
         <ContentSection surface="base" width="wide" topBorder>
           <SnapRailScroller
-            railLabel={`Other cultures in ${cityName}`}
+            railLabel={`Other communities in ${cityName}`}
             header={{
               eyebrow: 'Wander next door',
-              title: `Other cultures in ${cityName}`,
+              title: `Other communities in ${cityName}`,
             }}
           >
             {relatedCultures.map(item => (

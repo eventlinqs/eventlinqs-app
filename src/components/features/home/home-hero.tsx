@@ -114,7 +114,7 @@ export async function HomeHero({ featuredEvent }: Props) {
                 className="h-px w-10 bg-[var(--brand-accent)]"
               />
               <p className="font-display text-xs font-semibold uppercase tracking-[0.22em] text-[var(--brand-accent)]">
-                Every culture. Every event. One platform.
+                Every community. Every event. One platform.
               </p>
             </div>
 
@@ -123,12 +123,12 @@ export async function HomeHero({ featuredEvent }: Props) {
               className="mt-5 font-display font-extrabold leading-[1.05] tracking-tight text-[var(--text-primary)]"
               style={{ fontSize: 'clamp(2.25rem, 5.4vw, 4.25rem)' }}
             >
-              The ticketing platform built for every culture.
+              The ticketing platform built for every community.
             </h1>
 
             <p className="mt-6 max-w-2xl text-base leading-relaxed text-[var(--text-secondary)] sm:text-lg">
               All-in pricing from the first click. Guest checkout in two
-              taps. Discovery built around the cultural rhythms your city
+              taps. Discovery built around the community rhythms your city
               actually celebrates, not generic genre buckets.
             </p>
 

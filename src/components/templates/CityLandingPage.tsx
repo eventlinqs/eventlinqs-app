@@ -101,7 +101,7 @@ export function CityLandingPage({
       <CityHero
         eyebrow={`${city.name.toUpperCase()} · ${city.state}`}
         title={`Things to do in ${city.name}`}
-        subtitle="Every culture. Every event. One platform."
+        subtitle="Every community. Every event. One platform."
         imageSrc={heroImage}
         primaryCtaLabel={`Browse all ${city.name} events`}
         secondaryCtaLabel="Sell tickets"

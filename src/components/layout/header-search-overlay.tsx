@@ -39,7 +39,7 @@ const TRIGGER_DOM_ID = 'header-search-trigger'
 type Tab = 'cultures' | 'cities' | 'events' | 'organisers'
 
 const TABS: { id: Tab; label: string; route: (q: string) => string }[] = [
-  { id: 'cultures',   label: 'Cultures',   route: q => `/events?q=${encodeURIComponent(q)}&tab=cultures` },
+  { id: 'cultures',   label: 'Communities',   route: q => `/events?q=${encodeURIComponent(q)}&tab=cultures` },
   { id: 'cities',     label: 'Cities',     route: q => `/events?q=${encodeURIComponent(q)}&tab=cities` },
   { id: 'events',     label: 'Events',     route: q => `/events?q=${encodeURIComponent(q)}` },
   { id: 'organisers', label: 'Organisers', route: q => `/events?q=${encodeURIComponent(q)}&tab=organisers` },
