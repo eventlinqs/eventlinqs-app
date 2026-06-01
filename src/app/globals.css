@@ -90,9 +90,10 @@
   --color-info:    #0EA5E9;
 
   /* ── Typography - font families ── */
-  --font-display: var(--font-manrope), system-ui, -apple-system, sans-serif;
-  --font-body:    var(--font-inter),   system-ui, -apple-system, sans-serif;
-  --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+  --font-display:  var(--font-manrope), system-ui, -apple-system, sans-serif;
+  --font-headline: var(--font-archivo), var(--font-manrope), system-ui, -apple-system, sans-serif;
+  --font-body:     var(--font-hanken),  system-ui, -apple-system, sans-serif;
+  --font-mono:     'JetBrains Mono', ui-monospace, monospace;
 
   /* ── Fluid type scale - clamp(mobile, fluid, desktop) ── */
   --text-display-3xl: clamp(4rem,   8vw,   6.5rem);
