@@ -88,9 +88,9 @@ describe('site-footer link integrity', () => {
     expect(byCity?.href, '"By city" should route to /cities, not /events?view=cities').toBe('/cities')
   })
 
-  test('DISCOVER "By culture" routes to the dedicated /cultures page, not /events', () => {
-    const byCulture = DISCOVER.find(l => l.label === 'By culture')
-    expect(byCulture?.href, '"By culture" should route to /cultures, not /events?view=cultures').toBe('/cultures')
+  test('DISCOVER "By community" routes to the dedicated /cultures page, not /events', () => {
+    const byCommunity = DISCOVER.find(l => l.label === 'By community')
+    expect(byCommunity?.href, '"By community" should route to /cultures, not /events?view=cultures').toBe('/cultures')
   })
 })
 
