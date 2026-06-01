@@ -210,7 +210,7 @@ export async function EventBentoTile({
         <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-gold-400">
           {formatDate(event.start_date)}
         </p>
-        <h3 className={`mt-1 font-display font-extrabold leading-tight ${titleSize(size)} line-clamp-2`}>
+        <h3 className={`mt-1 font-headline font-extrabold leading-tight ${titleSize(size)} line-clamp-2`}>
           {event.title}
         </h3>
         {venue && (

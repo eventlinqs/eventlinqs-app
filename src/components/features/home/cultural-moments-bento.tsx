@@ -52,7 +52,7 @@ export async function CulturalMomentsBento() {
           </p>
           <h2
             id="moments-bento-heading"
-            className="type-h2 mt-1 font-display tracking-tight text-ink-900"
+            className="type-h2 mt-1 font-headline tracking-tight text-ink-900"
           >
             Community moments ahead
           </h2>
@@ -146,7 +146,7 @@ function MomentCard({ moment, image, isFeatured }: MomentCardProps) {
 
       {/* Bottom content */}
       <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
-        <h3 className={`font-display text-white ${titleSize}`}>
+        <h3 className={`font-headline text-white ${titleSize}`}>
           {moment.name}
         </h3>
         <p className={`mt-1 ${isFeatured ? 'text-sm sm:text-base' : 'text-xs sm:text-sm'} font-medium text-white/85`}>

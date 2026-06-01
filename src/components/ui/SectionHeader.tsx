@@ -28,7 +28,7 @@ export function SectionHeader({
         <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-700">
           {eyebrow}
         </p>
-        <h2 id={id} className={`font-display ${titleSizes[size]} font-bold text-ink-900`}>
+        <h2 id={id} className={`font-headline tracking-tight ${titleSizes[size]} font-bold text-ink-900`}>
           {title}
         </h2>
       </div>

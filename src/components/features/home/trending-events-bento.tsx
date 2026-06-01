@@ -94,7 +94,7 @@ function CardContent({ event, sizeRole }: { event: BentoEvent; sizeRole: 'featur
 
       {/* Bottom content */}
       <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
-        <h3 className={`font-display text-white ${titleSize}`}>
+        <h3 className={`font-headline text-white ${titleSize}`}>
           {event.title}
         </h3>
         {event.venue_city ? (
@@ -141,7 +141,7 @@ export function TrendingEventsBento({ events, viewAllHref = '/events?sort=trendi
               </p>
               <h2
                 id="trending-bento-heading"
-                className="type-h2 font-display tracking-tight text-ink-900"
+                className="type-h2 font-headline tracking-tight text-ink-900"
               >
                 Trending now
               </h2>

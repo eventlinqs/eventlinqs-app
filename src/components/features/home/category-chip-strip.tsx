@@ -37,17 +37,19 @@ interface ChipDef {
   icon: typeof Moon
   /** Plausible event name (tagged-events class). */
   event: string
+  /** Per-category accent tint (CSS token) painted on the chip icon. */
+  tint: string
 }
 
 const CHIPS: ChipDef[] = [
-  { label: 'Tonight',      href: '/events?when=tonight',  icon: Moon,            event: 'category_chip_click' },
-  { label: 'This Weekend', href: '/events?when=weekend',  icon: Calendar,        event: 'category_chip_click' },
-  { label: 'Free',         href: '/events?free=1',        icon: Tag,             event: 'category_chip_click' },
-  { label: 'Music',        href: '/events?category=music',     icon: Music,            event: 'category_chip_click' },
-  { label: 'Food',         href: '/events?category=food',      icon: UtensilsCrossed,  event: 'category_chip_click' },
-  { label: 'Comedy',       href: '/events?category=comedy',    icon: Mic2,             event: 'category_chip_click' },
-  { label: 'Wellness',     href: '/events?category=wellness',  icon: Heart,            event: 'category_chip_click' },
-  { label: 'Family',       href: '/events?category=family',    icon: Users,            event: 'category_chip_click' },
+  { label: 'Tonight',      href: '/events?when=tonight',  icon: Moon,            event: 'category_chip_click', tint: 'var(--color-gold-400)' },
+  { label: 'This Weekend', href: '/events?when=weekend',  icon: Calendar,        event: 'category_chip_click', tint: 'var(--color-gold-400)' },
+  { label: 'Free',         href: '/events?free=1',        icon: Tag,             event: 'category_chip_click', tint: 'var(--color-success)' },
+  { label: 'Music',        href: '/events?category=music',     icon: Music,            event: 'category_chip_click', tint: 'var(--color-coral-500)' },
+  { label: 'Food',         href: '/events?category=food',      icon: UtensilsCrossed,  event: 'category_chip_click', tint: 'var(--color-warning)' },
+  { label: 'Comedy',       href: '/events?category=comedy',    icon: Mic2,             event: 'category_chip_click', tint: 'var(--color-coral-500)' },
+  { label: 'Wellness',     href: '/events?category=wellness',  icon: Heart,            event: 'category_chip_click', tint: 'var(--color-success)' },
+  { label: 'Family',       href: '/events?category=family',    icon: Users,            event: 'category_chip_click', tint: 'var(--color-info)' },
 ]
 
 export function CategoryChipStrip() {
@@ -80,7 +82,7 @@ export function CategoryChipStrip() {
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2',
                   ].join(' ')}
                 >
-                  <Icon className="h-4 w-4 text-[var(--brand-accent)]" aria-hidden />
+                  <Icon className="h-4 w-4" style={{ color: c.tint }} aria-hidden />
                   <span>{c.label}</span>
                 </Link>
               </li>

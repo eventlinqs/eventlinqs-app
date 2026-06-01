@@ -200,7 +200,7 @@ export function HeroCarouselClient({ slides }: Props) {
                  *  rejected by spec ("None of the four competitors use
                  *  serif"); using Manrope sans via .type-hero-display. */}
                 <h3
-                  className="type-hero-display mt-3 tracking-tight text-white sm:mt-4"
+                  className="type-hero-display font-headline mt-3 tracking-tight text-white sm:mt-4"
                 >
                   {slide.title}
                 </h3>

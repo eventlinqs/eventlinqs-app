@@ -260,7 +260,7 @@ export default async function HomePage() {
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
                   Not sure where to start?
                 </p>
-                <h2 className="mt-1 font-display text-xl font-bold text-[var(--text-primary)] sm:text-2xl">
+                <h2 className="mt-1 font-headline tracking-tight text-xl font-bold text-[var(--text-primary)] sm:text-2xl">
                   We&apos;ll pick three events for you
                 </h2>
               </div>
@@ -280,7 +280,7 @@ export default async function HomePage() {
             <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
               <div className="flex items-center justify-center rounded-2xl border border-dashed border-ink-200 bg-white py-20 text-center">
                 <div>
-                  <p className="font-display text-xl font-bold text-ink-900">
+                  <p className="font-headline tracking-tight text-xl font-bold text-ink-900">
                     Events loading soon
                   </p>
                   <p className="mt-2 text-sm text-ink-400">
@@ -423,7 +423,7 @@ export default async function HomePage() {
                  *  inline clamp() removed (spec forbids fluid values). */}
                 <h2
                   id="organisers-heading"
-                  className="type-h2 mt-3 font-display text-white"
+                  className="type-h2 mt-3 font-headline text-white"
                 >
                   Sell tickets.
                   <br />

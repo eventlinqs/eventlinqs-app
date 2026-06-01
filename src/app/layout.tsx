@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Inter, Manrope } from 'next/font/google'
+import { Manrope, Archivo, Hanken_Grotesk } from 'next/font/google'
 import Script from 'next/script'
 import './globals.css'
 import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav'
@@ -8,11 +8,22 @@ import { HeroPresenceProvider } from '@/contexts/hero-presence-context'
 import { DuotoneFilterDefs } from '@/components/ui/DuotoneFilterDefs'
 import { getSiteUrl } from '@/lib/site-url'
 
-const inter = Inter({
+// Body face: refined neutral grotesque (replaces Inter). Manrope stays for UI.
+const hanken = Hanken_Grotesk({
   subsets: ['latin'],
-  variable: '--font-inter',
+  variable: '--font-hanken',
   display: 'optional',
-  weight: ['400', '500'],
+  weight: ['400', '500', '600', '700'],
+})
+
+// Headline face: bold, characterful display grotesque for the hero and
+// section titles only - broad, high-energy, mainstream (Ticketmaster-leaning).
+// DICE-grade typographic quality enters as an accent here, not the whole look.
+const archivo = Archivo({
+  subsets: ['latin'],
+  variable: '--font-archivo',
+  display: 'optional',
+  weight: ['600', '700', '800', '900'],
 })
 
 const manrope = Manrope({
@@ -91,7 +102,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} ${manrope.variable}`}>
+      <body className={`${hanken.variable} ${archivo.variable} ${manrope.variable}`}>
         <Script id="el-headless-flag" strategy="beforeInteractive">
           {HEAD_HEADLESS_FLAG}
         </Script>
