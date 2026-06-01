@@ -6,18 +6,13 @@ import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { HeroCarousel } from '@/components/features/home/HeroCarousel'
 import { HomeSchemaJsonLd } from '@/components/features/home/home-schema-jsonld'
-import { SurpriseMeButton } from '@/components/features/home/surprise-me-button'
 import { CategoryChipStrip } from '@/components/features/home/category-chip-strip'
 import { BrowseByScene } from '@/components/features/home/browse-by-scene'
-import { TrendingEventsBento } from '@/components/features/home/trending-events-bento'
-import { CulturalMomentsBento } from '@/components/features/home/cultural-moments-bento'
+import { CulturalMomentsRail } from '@/components/features/home/cultural-moments-bento'
 import { EmailSignupPanel } from '@/components/features/home/email-signup-panel'
 import type { BentoEvent } from '@/components/features/events/event-bento-tile'
 import { MELBOURNE_FALLBACK } from '@/lib/geo/detect'
-import {
-  SECTION_DEFAULT,
-  CONTAINER,
-} from '@/lib/ui/spacing'
+import { CONTAINER } from '@/lib/ui/spacing'
 import {
   EVENT_SELECT,
   toBentoEvent,
@@ -25,14 +20,12 @@ import {
 } from '@/lib/events/home-queries'
 import { ThisWeekSection } from '@/components/features/home/this-week-section'
 import { CulturalPicksSection } from '@/components/features/home/cultural-picks-section'
-import { LiveVibeSection } from '@/components/features/home/live-vibe-section'
 import { CityRailSection } from '@/components/features/home/city-rail-section'
 import { EventRailSection } from '@/components/features/home/event-rail-section'
 import { FeaturedVenuesSection } from '@/components/features/home/featured-venues-section'
 import {
   ThisWeekSkeleton,
   CulturalPicksSkeleton,
-  LiveVibeSkeleton,
   CityRailSkeleton,
 } from '@/components/features/home/section-skeletons'
 
@@ -210,19 +203,6 @@ export default async function HomePage() {
 
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
 
-  // Pre-fetch 3 surprise-me suggestions server-side so the modal opens
-  // with content immediately on first tap. The client refresh path
-  // hits /api/home/surprise to re-roll.
-  const initialSurprise = upcoming.slice(0, 3).map(e => ({
-    id: e.id,
-    slug: e.slug,
-    title: e.title ?? '',
-    city: e.venue_city ?? null,
-    startDate: e.start_date,
-    coverImage: e.cover_image_url ?? null,
-    reason: e.venue_city ? `On in ${e.venue_city} this week` : 'On this week',
-  }))
-
   return (
     <div className="min-h-screen bg-canvas">
       <HomeSchemaJsonLd baseUrl={baseUrl} />
@@ -256,35 +236,14 @@ export default async function HomePage() {
          *  high, in our navy/gold field. Wired routes only. */}
         <BrowseByScene />
 
-        {/* H1 Surprise Me affordance - sits inline above the bento grid
-         *  so the discovery path is one tap from above-fold. Server
-         *  pre-rendered suggestions open the modal instantly on tap. */}
-        <section aria-label="Discovery" className="bg-canvas">
-          <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-            <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
-                  Not sure where to start?
-                </p>
-                <h2 className="mt-1 font-headline tracking-tight text-xl font-bold text-[var(--text-primary)] sm:text-2xl">
-                  We&apos;ll pick three events for you
-                </h2>
-              </div>
-              <SurpriseMeButton initial={initialSurprise} />
-            </div>
-          </div>
-        </section>
-
-        {/* H8 - Trending events bento (Batch 9.2): asymmetric 1+3+1 grid
-         *  on desktop (2x2 featured, 4 medium), 1 large + 4 medium on
-         *  mobile. Replaces the prior "What everyone is buying into"
-         *  inline bento. */}
-        {upcoming.length >= 5 ? (
-          <TrendingEventsBento events={upcoming.slice(0, 6)} />
-        ) : (
+        {/* Empty-state only: with zero upcoming events every rail below
+         *  self-hides, so surface one clean prompt. The Trending bento was
+         *  removed in the structural overhaul - "Trending now" ships as a
+         *  plain separated-card rail below, like every other rail. */}
+        {upcoming.length === 0 && (
           <section aria-label="Featured events" className="bg-canvas">
-            <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
-              <div className="flex items-center justify-center rounded-2xl border border-dashed border-ink-200 bg-white py-20 text-center">
+            <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+              <div className="flex items-center justify-center rounded-2xl border border-ink-200 bg-white py-16 text-center">
                 <div>
                   <p className="font-headline tracking-tight text-xl font-bold text-ink-900">
                     Events loading soon
@@ -361,15 +320,9 @@ export default async function HomePage() {
           />
         )}
 
-        {/* H10 - Cultural Moments bento (Batch 9.2): unique-to-EventLinqs
-         *  upcoming cultural moments rendered from the curated
-         *  calendar at @/lib/cultural-moments/calendar.ts. */}
-        <CulturalMomentsBento />
-
-        {/* Rail 6: Live Vibe marquee */}
-        <Suspense fallback={<LiveVibeSkeleton />}>
-          <LiveVibeSection upcomingRaw={upcomingRawTyped} />
-        </Suspense>
+        {/* Community moments - a plain separated-card rail (was a dark
+         *  bento). Curated calendar moments from @/lib/cultural-moments. */}
+        <CulturalMomentsRail />
 
         {/* Rail 7: Just Added */}
         {justAdded.length >= 1 && (
@@ -417,7 +370,7 @@ export default async function HomePage() {
 
 
         {/* 7. For Organisers - static, below fold */}
-        <section aria-labelledby="organisers-heading" className={`bg-ink-950 ${SECTION_DEFAULT}`}>
+        <section aria-labelledby="organisers-heading" className="bg-[var(--color-ink-900)] py-14 sm:py-16">
           <div className={CONTAINER}>
             <div className="flex flex-col gap-12 lg:flex-row lg:items-center lg:gap-16">
               <div className="lg:max-w-lg">

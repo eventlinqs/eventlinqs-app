@@ -55,16 +55,16 @@ export function BrowseByScene() {
                 <Link
                   href={s.href}
                   prefetch={false}
-                  className="tile-lift group flex h-full min-h-[7.5rem] flex-col justify-between rounded-2xl border border-white/10 bg-[var(--color-navy-950)] p-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2"
+                  className="tile-lift group flex h-full min-h-[7.5rem] flex-col justify-between rounded-2xl border border-[var(--surface-2)] bg-[var(--surface-0)] p-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2"
                 >
-                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
+                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[var(--surface-1)]">
                     <Icon className="h-5 w-5" style={{ color: s.tint }} aria-hidden />
                   </span>
                   <span className="mt-5">
-                    <span className="block font-headline text-lg font-bold tracking-tight text-white">
+                    <span className="block font-headline text-lg font-bold tracking-tight text-[var(--text-primary)]">
                       {s.label}
                     </span>
-                    <span className="mt-0.5 block text-xs text-white/60">{s.sub}</span>
+                    <span className="mt-0.5 block text-xs text-[var(--text-secondary)]">{s.sub}</span>
                   </span>
                 </Link>
               </li>

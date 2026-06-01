@@ -28,7 +28,7 @@ export async function EventRailSection({
   if (events.length === 0 && !emptyTitle) return null
 
   return (
-    <section aria-label={ariaLabel} className={`bg-canvas ${SECTION_TIGHT}`}>
+    <section aria-label={ariaLabel} className={`border-t border-ink-200 bg-canvas ${SECTION_TIGHT}`}>
       <div className={CONTAINER}>
         <SnapRail
           eyebrow={eyebrow}
