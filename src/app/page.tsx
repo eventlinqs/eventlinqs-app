@@ -8,10 +8,8 @@ import { HeroCarousel } from '@/components/features/home/HeroCarousel'
 import { HomeSchemaJsonLd } from '@/components/features/home/home-schema-jsonld'
 import { CategoryChipStrip } from '@/components/features/home/category-chip-strip'
 import { CulturalMomentsRail } from '@/components/features/home/cultural-moments-bento'
-import { EmailSignupPanel } from '@/components/features/home/email-signup-panel'
 import type { BentoEvent } from '@/components/features/events/event-bento-tile'
 import { MELBOURNE_FALLBACK } from '@/lib/geo/detect'
-import { CONTAINER } from '@/lib/ui/spacing'
 import {
   EVENT_SELECT,
   toBentoEvent,
@@ -360,89 +358,6 @@ export default async function HomePage() {
 
         {/* Rail 11: Featured Venues */}
         <FeaturedVenuesSection upcoming={upcomingRawTyped} />
-
-
-        {/* 7. For Organisers - static, below fold */}
-        <section aria-labelledby="organisers-heading" className="bg-[var(--color-ink-900)] py-14 sm:py-16">
-          <div className={CONTAINER}>
-            <div className="flex flex-col gap-12 lg:flex-row lg:items-center lg:gap-16">
-              <div className="lg:max-w-lg">
-                <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-400">
-                  For event organisers
-                </p>
-                {/* For Organisers heading - retrofitted to .type-h2
-                 *  per docs/M5-DESIGN-SPEC.md / Typography. Previous
-                 *  inline clamp() removed (spec forbids fluid values). */}
-                <h2
-                  id="organisers-heading"
-                  className="type-h2 mt-3 font-display text-white"
-                >
-                  Sell tickets.
-                  <br />
-                  Keep more.
-                </h2>
-                <p className="mt-5 text-base text-white/70">
-                  Transparent fees, real-time analytics, squad booking, and a checkout your fans will actually complete. Built for organisers who take their events seriously.
-                </p>
-
-                <ul className="mt-8 space-y-3">
-                  {[
-                    'Open to every community and every kind of event',
-                    'All-in pricing: no surprise fees at checkout',
-                    'Real-time sales dashboard and scan app',
-                    'Squad booking: your fans buy together',
-                    'Mobile-first checkout: WhatsApp sharing built in',
-                  ].map(feature => (
-                    <li key={feature} className="flex items-start gap-3 text-sm text-white/80">
-                      <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-gold-500/20">
-                        <svg className="h-2.5 w-2.5 text-gold-400" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      </span>
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-
-                <div className="mt-10 flex flex-wrap gap-3">
-                  <Link
-                    href="/organisers/signup"
-                    className="inline-flex items-center rounded-lg bg-gold-500 px-6 py-3 text-sm font-semibold text-ink-900 transition-colors hover:bg-gold-600"
-                  >
-                    Start selling tickets
-                  </Link>
-                  <Link
-                    href="/pricing"
-                    className="inline-flex items-center rounded-lg border border-white/20 px-6 py-3 text-sm font-semibold text-white/80 transition-colors hover:border-white/40 hover:text-white"
-                  >
-                    View pricing
-                  </Link>
-                </div>
-              </div>
-
-              <div className="group/cards grid grid-cols-2 gap-4 lg:flex-1">
-                {[
-                  { value: '0%',     label: 'Platform fees on free events' },
-                  { value: '2-tap',  label: 'Checkout: fastest in market' },
-                  { value: '5+',     label: 'Payment gateways supported' },
-                  { value: '24/7',   label: 'Real-time ticket scanning' },
-                ].map(stat => (
-                  <div
-                    key={stat.label}
-                    className="rounded-xl border border-white/10 bg-white/5 p-5 transition-all duration-200 group-hover/cards:opacity-60 hover:!opacity-100 hover:-translate-y-0.5 hover:border-gold-500/60"
-                  >
-                    <p className="font-display text-3xl font-extrabold text-gold-400">{stat.value}</p>
-                    <p className="mt-1 text-xs leading-relaxed text-white/60">{stat.label}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* H13 - Email signup panel (Batch 9.2): editorial brand-voice
-         *  copy + inline form + dual-path organiser link. */}
-        <EmailSignupPanel />
       </main>
 
       <SiteFooter />
