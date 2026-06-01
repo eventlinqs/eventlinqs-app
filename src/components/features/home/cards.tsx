@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { EventCardMedia } from '@/components/media'
+import { CityTileImage } from '@/components/media/CityTileImage'
 
 /**
  * Home card system (Phase 1).
@@ -137,7 +138,7 @@ export function CityTile({ city }: { city: CityTileData }) {
   return (
     <Link href={city.href} prefetch={false} className={`flex w-full flex-col ${SURFACE}`}>
       <div className={`${IMG_WRAP} aspect-[3/2]`}>
-        <EventCardMedia src={city.imageSrc} alt={city.alt} variant="card" priority={city.priority} className={IMG_MOTION} />
+        <CityTileImage src={city.imageSrc} alt={city.alt} priority={city.priority} className={IMG_MOTION} />
       </div>
       <div className="flex items-center justify-between gap-2 p-4">
         <span className={`text-lg ${TITLE}`}>{city.name}</span>

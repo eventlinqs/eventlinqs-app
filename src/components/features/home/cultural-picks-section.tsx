@@ -94,7 +94,7 @@ export async function CulturalPicksSection({ cityFilter, nowIso }: Props) {
     CANONICAL_CULTURE_TABS.map(async tab => {
       const rows = await fetchEventsForCulture(supabase, tab.tags, cityFilter, nowIso)
       const events = rows.map(toBentoEvent)
-      const cards = events.map(e => <ThisWeekCard key={e.id} event={e} />)
+      const cards = events.map(e => <ThisWeekCard key={e.id} event={e} variant="square" />)
       return { tab, events, cards }
     }),
   )

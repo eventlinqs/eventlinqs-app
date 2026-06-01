@@ -1,6 +1,6 @@
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { SnapRail } from '@/components/ui/snap-rail'
-import { CityRailTile } from '@/components/features/events/city-rail-tile'
+import { CityTile } from '@/components/features/home/cards'
 import { getCityPhoto } from '@/lib/images/city-photo'
 import { CONTAINER, SECTION_DEFAULT } from '@/lib/ui/spacing'
 import { CITY_TILES, LOCAL_CITY_SVG } from '@/lib/events/home-queries'
@@ -56,13 +56,17 @@ export async function CityRailSection({ nowIso }: Props) {
           containerBg="canvas"
         >
           {liveCities.map(c => (
-            <CityRailTile
-              key={c.slug}
-              city={c.city}
-              slug={c.slug}
-              eventCount={c.count}
-              imageSrc={c.imageSrc}
-            />
+            <div key={c.slug} className="w-[240px] shrink-0 snap-start sm:w-[280px]">
+              <CityTile
+                city={{
+                  href: `/city/${c.slug}`,
+                  imageSrc: c.imageSrc,
+                  alt: c.city,
+                  name: c.city,
+                  metaLabel: `${c.count} ${c.count === 1 ? 'event' : 'events'}`,
+                }}
+              />
+            </div>
           ))}
         </SnapRail>
       </div>
