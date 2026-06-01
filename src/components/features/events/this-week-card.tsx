@@ -1,4 +1,4 @@
-import { EventCardLandscape, EventCardSquare, type HomeCardEvent } from '@/components/features/home/cards'
+import { EventCardLandscape, EventCardSquare, EventCardFeature, type HomeCardEvent } from '@/components/features/home/cards'
 import { getEventMedia } from '@/lib/images/event-media'
 import { getCategoryPhoto } from '@/lib/images/category-photo'
 import type { BentoEvent } from './event-bento-tile'
@@ -41,7 +41,7 @@ export async function ThisWeekCard({
   variant = 'landscape',
 }: {
   event: BentoEvent
-  variant?: 'landscape' | 'square'
+  variant?: 'landscape' | 'square' | 'feature'
 }) {
   const media = await getEventMedia(event)
 
@@ -75,13 +75,21 @@ export async function ThisWeekCard({
   }
 
   const cell =
-    variant === 'square'
-      ? 'w-[180px] shrink-0 snap-start sm:w-[200px]'
-      : 'w-[240px] shrink-0 snap-start sm:w-[280px]'
+    variant === 'feature'
+      ? 'w-[300px] shrink-0 snap-start sm:w-[420px]'
+      : variant === 'square'
+        ? 'w-[180px] shrink-0 snap-start sm:w-[200px]'
+        : 'w-[240px] shrink-0 snap-start sm:w-[280px]'
 
   return (
     <div className={cell}>
-      {variant === 'square' ? <EventCardSquare event={card} /> : <EventCardLandscape event={card} />}
+      {variant === 'feature' ? (
+        <EventCardFeature event={card} />
+      ) : variant === 'square' ? (
+        <EventCardSquare event={card} />
+      ) : (
+        <EventCardLandscape event={card} />
+      )}
     </div>
   )
 }

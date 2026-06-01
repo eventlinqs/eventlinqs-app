@@ -111,7 +111,7 @@ export async function CulturalPicksSection({ cityFilter, nowIso }: Props) {
   if (culturalPicksTabs.length === 0) return null
 
   return (
-    <section aria-labelledby="culture-heading" className={`bg-canvas ${SECTION_TIGHT}`}>
+    <section aria-labelledby="culture-heading" className={`border-t border-ink-200 bg-canvas ${SECTION_TIGHT}`}>
       <div className={CONTAINER}>
         <div className="flex items-end justify-between gap-4">
           <div className="flex items-start gap-3">

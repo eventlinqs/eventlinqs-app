@@ -248,7 +248,7 @@ function ScrollTrack({
             e.stopPropagation()
           }
         }}
-        className="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-4 pb-4 pt-1 scrollbar-none focus-visible:outline-none sm:px-6 lg:px-8"
+        className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth px-4 pb-4 pt-1 scrollbar-none focus-visible:outline-none sm:px-6 lg:px-8"
       >
         {children}
       </div>
@@ -289,7 +289,7 @@ export function SnapRailScroller({
             ) : null}
             <h2
               id={header.headingId}
-              className="type-h2 font-display text-[var(--text-primary)]"
+              className="type-h2 font-headline uppercase tracking-tight text-[var(--text-primary)]"
             >
               {header.title}
             </h2>
@@ -347,7 +347,7 @@ export function SnapRail({
             </p>
             <h2
               id={headingId}
-              className="type-h2 font-display text-[var(--text-primary)]"
+              className="type-h2 font-headline uppercase tracking-tight text-[var(--text-primary)]"
             >
               {title}
             </h2>

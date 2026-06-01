@@ -58,7 +58,7 @@ export async function FeaturedVenuesSection({ upcoming }: Props) {
   if (top.length === 0) return null
 
   return (
-    <section aria-label="Featured venues" className={`bg-canvas ${SECTION_TIGHT}`}>
+    <section aria-label="Featured venues" className={`border-t border-ink-200 bg-canvas ${SECTION_TIGHT}`}>
       <div className={CONTAINER}>
         <SnapRail
           eyebrow="Featured venues"

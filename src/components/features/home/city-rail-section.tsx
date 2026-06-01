@@ -45,13 +45,14 @@ export async function CityRailSection({ nowIso }: Props) {
   return (
     <section
       aria-labelledby="cities-heading"
-      className={`bg-canvas ${SECTION_DEFAULT} [content-visibility:auto] [contain-intrinsic-size:auto_600px]`}
+      className={`border-t border-ink-200 bg-canvas ${SECTION_DEFAULT} [content-visibility:auto] [contain-intrinsic-size:auto_600px]`}
     >
       <div className={CONTAINER}>
         <SnapRail
           eyebrow="By city"
           title="Browse by city"
           headingId="cities-heading"
+          headerLink={{ href: '/cities', label: 'See all cities' }}
           railLabel="Events by city"
           containerBg="canvas"
         >

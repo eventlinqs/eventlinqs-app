@@ -207,7 +207,7 @@ export function SiteFooter() {
   const year = new Date().getFullYear()
 
   return (
-    <footer className="bg-ink-950 text-white" aria-label="Site footer">
+    <footer className="bg-[var(--color-ink-900)] text-white" aria-label="Site footer">
       <div className="mx-auto max-w-7xl px-4 pt-10 pb-6 sm:px-6 sm:pt-12 lg:px-8">
 
         {/* Desktop: brand strip + 4-col link grid */}
@@ -225,11 +225,10 @@ export function SiteFooter() {
             </div>
           </div>
 
-          <div className="grid grid-cols-4 gap-x-8 gap-y-6 pt-8">
-            <DesktopColumn title="Discover"        links={DISCOVER} />
-            <DesktopColumn title="Communities"        links={CULTURES} />
-            <DesktopColumn title="For organisers"  links={FOR_ORGANISERS} />
-            <DesktopColumn title="Company"         links={COMPANY} />
+          <div className="grid grid-cols-3 gap-x-8 gap-y-6 pt-8">
+            <DesktopColumn title="Discover"     links={DISCOVER} />
+            <DesktopColumn title="Communities"  links={CULTURES} />
+            <DesktopColumn title="Company"      links={COMPANY} />
           </div>
         </div>
 
@@ -241,10 +240,9 @@ export function SiteFooter() {
           </div>
 
           <div className="grid grid-cols-2 gap-x-6 pt-2">
-            <MobileAccordion title="Discover"        links={DISCOVER} />
-            <MobileAccordion title="Communities"        links={CULTURES} />
-            <MobileAccordion title="For organisers"  links={FOR_ORGANISERS} />
-            <MobileAccordion title="Company"         links={COMPANY} />
+            <MobileAccordion title="Discover"     links={DISCOVER} />
+            <MobileAccordion title="Communities"  links={CULTURES} />
+            <MobileAccordion title="Company"      links={COMPANY} />
           </div>
 
           <div className="mt-4 border-t border-white/10 pt-4">
@@ -283,7 +281,7 @@ export function SiteFooter() {
       <div className="border-t border-white/10">
         <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
 
-          <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
             <ul className="flex flex-wrap items-center gap-x-5 gap-y-1">
               {LEGAL.map(link => (
                 <li key={link.href}>
@@ -293,9 +291,6 @@ export function SiteFooter() {
                 </li>
               ))}
             </ul>
-            <p className="text-xs font-medium text-white/80">
-              All-in pricing. No surprise fees.
-            </p>
           </div>
 
           <div className="mt-3 flex flex-col gap-1 text-xs text-white/50 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3">
