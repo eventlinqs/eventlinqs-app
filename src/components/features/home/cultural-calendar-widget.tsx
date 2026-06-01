@@ -146,7 +146,7 @@ const MARKER_LABEL: Record<SensitivityMarker, string> = {
   'wheelchair-accessible': 'Wheelchair accessible',
   'auslan-interpreted':    'Auslan interpreted',
   'sensory-friendly':      'Sensory-friendly',
-  'culturally-safe':       'Community-safe space',
+  'culturally-safe':       'Culturally safe space',
 }
 
 function MarkerIcon({ marker }: { marker: SensitivityMarker }) {
