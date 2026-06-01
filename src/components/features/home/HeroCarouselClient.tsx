@@ -199,11 +199,11 @@ export function HeroCarouselClient({ slides }: Props) {
                  *  (96px desktop / 48px mobile, weight 800). Serif
                  *  rejected by spec ("None of the four competitors use
                  *  serif"); using Manrope sans via .type-hero-display. */}
-                <h3
+                <h2
                   className="type-hero-display font-headline mt-3 tracking-tight text-white sm:mt-4"
                 >
                   {slide.title}
-                </h3>
+                </h2>
                 {/* Subtitle - per M5-DESIGN-SPEC.md: --type-h3 (28px
                  *  desktop / 22px mobile, weight 600). */}
                 <p className="type-h3 mt-4 text-white/90 sm:mt-5">
