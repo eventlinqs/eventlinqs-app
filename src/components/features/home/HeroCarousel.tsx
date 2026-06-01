@@ -122,9 +122,11 @@ export async function HeroCarousel() {
       className="relative w-full overflow-hidden bg-[var(--color-navy-950)]"
     >
       <HeroPresenceMarker />
-      <h2 id="hero-carousel-heading" className="sr-only">
-        Featured community events
-      </h2>
+      {/* Page h1 (sr-only): the homepage needs exactly one h1 for a11y
+       *  and SEO. Event/breadth-forward; the slide titles below are h2. */}
+      <h1 id="hero-carousel-heading" className="sr-only">
+        Live events across Australia: music, comedy, food, festivals and more
+      </h1>
       <HeroCarouselClient slides={slides} />
     </section>
   )

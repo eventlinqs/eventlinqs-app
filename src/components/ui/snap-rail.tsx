@@ -237,7 +237,7 @@ function ScrollTrack({
       )}
       <div
         ref={scrollRef}
-        role="region"
+        role="group"
         aria-label={railLabel}
         tabIndex={0}
         onKeyDown={onKeyDown}
