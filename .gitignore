@@ -131,3 +131,6 @@ docs/redesign/batch-*-evidence/lighthouse/*.json
 
 # Local Playwright tickets-spine fixture (seeded test data, never commit)
 tests/e2e/.ticket-fixture.json
+
+design-captures/
+scripts/design-capture.mjs

@@ -8,6 +8,7 @@ import { HeroCarousel } from '@/components/features/home/HeroCarousel'
 import { HomeSchemaJsonLd } from '@/components/features/home/home-schema-jsonld'
 import { SurpriseMeButton } from '@/components/features/home/surprise-me-button'
 import { CategoryChipStrip } from '@/components/features/home/category-chip-strip'
+import { BrowseByScene } from '@/components/features/home/browse-by-scene'
 import { TrendingEventsBento } from '@/components/features/home/trending-events-bento'
 import { CulturalMomentsBento } from '@/components/features/home/cultural-moments-bento'
 import { EmailSignupPanel } from '@/components/features/home/email-signup-panel'
@@ -249,6 +250,11 @@ export default async function HomePage() {
          *  cultures expandable. Scroll-snap on mobile, fits viewport on
          *  desktop. Each chip fires a tagged Plausible event. */}
         <CategoryChipStrip />
+
+        {/* Breadth + music/genre entry - leads with sound and scene, then
+         *  widens to comedy/food/time. Ticketmaster-style breadth surfaced
+         *  high, in our navy/gold field. Wired routes only. */}
+        <BrowseByScene />
 
         {/* H1 Surprise Me affordance - sits inline above the bento grid
          *  so the discovery path is one tap from above-fold. Server
