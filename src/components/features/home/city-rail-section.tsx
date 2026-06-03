@@ -45,7 +45,7 @@ export async function CityRailSection({ nowIso }: Props) {
   return (
     <section
       aria-labelledby="cities-heading"
-      className={`border-t border-ink-200 bg-canvas ${SECTION_DEFAULT} [content-visibility:auto] [contain-intrinsic-size:auto_600px]`}
+      className={`border-t border-ink-200 bg-canvas ${SECTION_DEFAULT}`}
     >
       <div className={CONTAINER}>
         <SnapRail
