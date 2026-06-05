@@ -35,6 +35,36 @@ Eventbrite page with Playwright at 1440 and 390.
 
 Never skip Phase A. Never invent a layout the evidence does not support.
 
+## Law 3: Australia-smart
+
+Every taxonomy, scene, category, content, and copy decision is verified against
+current Australian market data before it ships. Never inherit taxonomy from an
+old draft without re-verifying it.
+
+- Demographics (ABS): 32 percent of people are overseas-born. India is the
+  largest overseas-born group; China, New Zealand, the Philippines and Nepal
+  are among the fastest-growing.
+- Ticketing (LPA): contemporary music is about 54 percent of ticketing revenue;
+  comedy is the fastest-growing category.
+
+## Scene layer (locked, national)
+
+Scenes are the EventLinqs differentiator layered on top of the general
+catalogue, in this order:
+
+1. First Nations (position one)
+2. South Asian
+3. Asian
+4. Pasifika & Maori
+5. Afrobeats & Amapiano (Owambe within)
+6. Latin
+7. Pride
+8. Mediterranean
+9. Faith & Worship (Gospel within)
+10. Caribbean
+
+Business & Networking is a general category, never a scene.
+
 ## Design system
 
 Inherit exactly. No new colours, sizes, or type.
