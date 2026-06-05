@@ -5,8 +5,9 @@ import {
   Tag,
   Music,
   UtensilsCrossed,
-  Mic2,
-  Heart,
+  Wine,
+  Sparkles,
+  Palette,
   Users,
   Globe,
 } from 'lucide-react'
@@ -39,15 +40,20 @@ interface ChipDef {
   event: string
 }
 
+// Approved category taxonomy only: Music, Food & Drink, Festival, Arts &
+// Culture, Nightlife, Community. Slugs match event_categories in the
+// schema. Comedy is intentionally absent (no category, no events). Time
+// quick-filters (Tonight / This Weekend / Free) lead the strip.
 const CHIPS: ChipDef[] = [
-  { label: 'Tonight',      href: '/events?when=tonight',  icon: Moon,            event: 'category_chip_click' },
-  { label: 'This Weekend', href: '/events?when=weekend',  icon: Calendar,        event: 'category_chip_click' },
-  { label: 'Free',         href: '/events?free=1',        icon: Tag,             event: 'category_chip_click' },
-  { label: 'Music',        href: '/events?category=music',     icon: Music,            event: 'category_chip_click' },
-  { label: 'Food',         href: '/events?category=food',      icon: UtensilsCrossed,  event: 'category_chip_click' },
-  { label: 'Comedy',       href: '/events?category=comedy',    icon: Mic2,             event: 'category_chip_click' },
-  { label: 'Wellness',     href: '/events?category=wellness',  icon: Heart,            event: 'category_chip_click' },
-  { label: 'Family',       href: '/events?category=family',    icon: Users,            event: 'category_chip_click' },
+  { label: 'Tonight',       href: '/events?when=tonight',           icon: Moon,            event: 'category_chip_click' },
+  { label: 'This Weekend',  href: '/events?when=weekend',           icon: Calendar,        event: 'category_chip_click' },
+  { label: 'Free',          href: '/events?free=1',                 icon: Tag,             event: 'category_chip_click' },
+  { label: 'Music',         href: '/events?category=music',         icon: Music,           event: 'category_chip_click' },
+  { label: 'Food & Drink',  href: '/events?category=food-drink',    icon: UtensilsCrossed, event: 'category_chip_click' },
+  { label: 'Nightlife',     href: '/events?category=nightlife',     icon: Wine,            event: 'category_chip_click' },
+  { label: 'Festival',      href: '/events?category=festival',      icon: Sparkles,        event: 'category_chip_click' },
+  { label: 'Arts & Culture',href: '/events?category=arts-culture',  icon: Palette,         event: 'category_chip_click' },
+  { label: 'Community',     href: '/events?category=community',     icon: Users,           event: 'category_chip_click' },
 ]
 
 export function CategoryChipStrip() {

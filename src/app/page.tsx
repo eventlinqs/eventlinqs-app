@@ -4,25 +4,23 @@ import type { Metadata } from 'next'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
-import { HeroCarousel } from '@/components/features/home/HeroCarousel'
+import { FeaturedHero } from '@/components/features/home/FeaturedHero'
 import { HomeSchemaJsonLd } from '@/components/features/home/home-schema-jsonld'
 import { CategoryChipStrip } from '@/components/features/home/category-chip-strip'
+import { SceneRail } from '@/components/features/home/scene-rail'
 import { CulturalMomentsRail } from '@/components/features/home/cultural-moments-bento'
 import type { BentoEvent } from '@/components/features/events/event-bento-tile'
-import { MELBOURNE_FALLBACK } from '@/lib/geo/detect'
 import {
   EVENT_SELECT,
   toBentoEvent,
   type RawRow,
 } from '@/lib/events/home-queries'
 import { ThisWeekSection } from '@/components/features/home/this-week-section'
-import { CulturalPicksSection } from '@/components/features/home/cultural-picks-section'
 import { CityRailSection } from '@/components/features/home/city-rail-section'
 import { EventRailSection } from '@/components/features/home/event-rail-section'
 import { FeaturedVenuesSection } from '@/components/features/home/featured-venues-section'
 import {
   ThisWeekSkeleton,
-  CulturalPicksSkeleton,
   CityRailSkeleton,
 } from '@/components/features/home/section-skeletons'
 
@@ -65,7 +63,7 @@ export const revalidate = 120
 export const metadata: Metadata = {
   title: 'EventLinqs - Every community. Every event. One platform.',
   description:
-    'Discover live events from communities across Australia and beyond. Afrobeats, Bollywood, Caribbean, Latin, Comedy, Pride and more. No hidden fees, verified organisers, fair refund policy.',
+    'Discover live events from communities across Australia and beyond. Afrobeats, Amapiano, Gospel, Caribbean, Owambe and more. No hidden fees, verified organisers, fair refund policy.',
   alternates: { canonical: '/' },
   openGraph: {
     type: 'website',
@@ -87,8 +85,6 @@ export default async function HomePage() {
   const supabase = createPublicClient()
   const nowIso = new Date().toISOString()
   const nowMs = Date.parse(nowIso)
-
-  const detectedLocation = MELBOURNE_FALLBACK
 
   // ── Above-fold data ──────────────────────────────────────────────────
   // These queries feed the hero + bento grid that render at first paint.
@@ -198,6 +194,10 @@ export default async function HomePage() {
     .filter(e => e.category?.slug === 'community' || e.category?.slug === 'charity')
     .slice(0, 10)
 
+  const musicEvents = upcoming
+    .filter(e => e.category?.slug === 'music' || e.category?.slug === 'nightlife')
+    .slice(0, 10)
+
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
 
   return (
@@ -206,13 +206,13 @@ export default async function HomePage() {
       <SiteHeader />
 
       <main>
-        {/* H1 - HeroCarousel (Batch 11.0): full-bleed rotating editorial
-         *  hero with 5 AU friends-launch slots (Africultures, Pasifika,
-         *  Diwali Mela, Lebanese Eid, Caribbean Carnival). Server
-         *  component resolves photography then hands the slide manifest
-         *  to a thin client controller for rotation, keyboard nav,
-         *  reduced-motion handling, and ARIA announcements. */}
-        <HeroCarousel />
+        {/* H1 - FeaturedHero: one strong, real featured event at a time,
+         *  roughly half the old hero height. SSR priority AVIF raster as
+         *  the LCP layer, restrained scrim, single CTA. When two or three
+         *  featured events exist the visitor steps between them with arrows
+         *  and dots - user-controlled only, never auto-rolling. This is the
+         *  only homepage surface where text sits on a photo. */}
+        <FeaturedHero events={upcoming} />
 
         {/* Trust band removed Batch 11.0. The 2026 contextual-trust
          *  pattern places trust signals at the purchase-decision moment
@@ -227,6 +227,14 @@ export default async function HomePage() {
          *  cultures expandable. Scroll-snap on mobile, fits viewport on
          *  desktop. Each chip fires a tagged Plausible event. */}
         <CategoryChipStrip />
+
+        {/* Scene discovery (early): the genre and scene rail surfaces the
+         *  real scene landing pages (Afrobeats, Amapiano, Gospel, Caribbean,
+         *  Owambe, Heritage & Independence, Business & Networking). Static
+         *  navigation, always present - the landing pages handle their own
+         *  empty states - so the page reads as a blend of scenes, not just
+         *  a dated event list. */}
+        <SceneRail />
 
         {/* Empty-state only: with zero upcoming events every rail below
          *  self-hides. The Surprise block and the Trending bento were
@@ -259,6 +267,19 @@ export default async function HomePage() {
         <Suspense fallback={<ThisWeekSkeleton />}>
           <ThisWeekSection events={thisWeek} />
         </Suspense>
+
+        {/* Rail: Live music - reinforces the music blend. Self-hides when
+         *  no music or nightlife events exist. */}
+        {musicEvents.length >= 1 && (
+          <EventRailSection
+            eyebrow="On the lineup"
+            title="Live music"
+            ariaLabel="Live music events"
+            railLabel="Live music events"
+            events={musicEvents}
+            viewAllHref="/events?category=music"
+          />
+        )}
 
         {/*
          * Rail threshold rule (corrective, 23 May 2026):
@@ -294,10 +315,10 @@ export default async function HomePage() {
           />
         )}
 
-        {/* Rail 4: Cultures (cultural picks) */}
-        <Suspense fallback={<CulturalPicksSkeleton />}>
-          <CulturalPicksSection cityFilter={detectedLocation.city} nowIso={nowIso} />
-        </Suspense>
+        {/* Scene-grouped event picks now live in the SceneRail above and on
+         *  the dedicated /categories landing pages, so the old culture-picks
+         *  tab rail (which also surfaced Comedy and could link to scenes
+         *  without a landing page) was retired from the homepage. */}
 
         {/* Rail 5: Trending */}
         {trending.length >= 1 && (

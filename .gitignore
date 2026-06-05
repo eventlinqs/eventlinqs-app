@@ -134,3 +134,4 @@ tests/e2e/.ticket-fixture.json
 design-captures/
 scripts/design-capture.mjs
 scripts/axe-scene.mjs
+qa/
