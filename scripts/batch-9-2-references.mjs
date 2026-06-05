@@ -1,5 +1,5 @@
 // Batch 9.2 - Competitor reference captures.
-// 9 sites × 2 viewports = 18 captures. iPhone 13 device profile on mobile.
+// 8 sites × 2 viewports = 16 captures. iPhone 13 device profile on mobile.
 import { chromium, devices } from 'playwright'
 import { existsSync, mkdirSync, statSync } from 'node:fs'
 
@@ -12,7 +12,6 @@ const TARGETS = [
   { slug: 'linear',             url: 'https://linear.app',                    label: 'split-hero' },
   { slug: 'ticketmaster',       url: 'https://www.ticketmaster.com.au',       label: 'home' },
   { slug: 'apple',              url: 'https://www.apple.com',                 label: 'bento' },
-  { slug: 'spotify',            url: 'https://www.spotify.com',               label: 'bento' },
   { slug: 'airbnb-home',        url: 'https://www.airbnb.com.au',             label: 'chip-strip' },
   { slug: 'stripe-pricing',     url: 'https://stripe.com/au/pricing',         label: 'editorial-signup' },
   { slug: 'plausible',          url: 'https://plausible.io',                  label: 'analytics' },

@@ -1,4 +1,4 @@
-// Batch 9.2.1 - 4 desktop reference captures of competitor headers (anonymous).
+// Batch 9.2.1 - 3 desktop reference captures of competitor headers (anonymous).
 import { chromium } from 'playwright'
 import { existsSync, mkdirSync, statSync } from 'node:fs'
 
@@ -6,7 +6,6 @@ const OUT = 'docs/redesign/batch-9-2-1-evidence/references'
 if (!existsSync(OUT)) mkdirSync(OUT, { recursive: true })
 
 const TARGETS = [
-  { slug: 'spotify',     url: 'https://open.spotify.com',          label: 'header-anon' },
   { slug: 'airbnb',      url: 'https://www.airbnb.com.au',         label: 'header-anon' },
   { slug: 'dice',        url: 'https://dice.fm',                   label: 'header-anon' },
   { slug: 'eventbrite',  url: 'https://www.eventbrite.com.au',     label: 'header-anon' },
