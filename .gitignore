@@ -135,3 +135,6 @@ design-captures/
 scripts/design-capture.mjs
 scripts/axe-scene.mjs
 qa/
+
+# Dev-only homepage density fixture (regenerate via scripts/seed-events-catalogue.mjs --fixture)
+src/lib/dev/home-seed-fixture.json

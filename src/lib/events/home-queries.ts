@@ -1,3 +1,4 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
 import type { BentoEvent } from '@/components/features/events/event-bento-tile'
 import type {
   FeaturedHeroEvent,
@@ -54,6 +55,51 @@ export function toFeaturedHeroEvent(r: RawRow): FeaturedHeroEvent {
     ...toBentoEvent(r),
     organisation: r.organisation,
   }
+}
+
+/**
+ * Loads the upcoming-events list the homepage leads with.
+ *
+ * Normal path (prod, preview, every deployed environment): queries Supabase
+ * for published, public, future events ordered by start date.
+ *
+ * Dev density path (HOMEPAGE_SEED_FIXTURE=1 only): returns the local
+ * general-breadth catalogue fixture produced by
+ * `scripts/seed-events-catalogue.mjs --fixture`, so the homepage can be built
+ * and benchmarked at Ticketmaster-rival density while staging is not yet up.
+ * The fixture is read at runtime via fs (never statically imported), so its
+ * absence in a deployed build is a no-op and the flag is the only switch.
+ */
+export async function loadHomeUpcoming(
+  supabase: SupabaseClient,
+  nowIso: string,
+  limit = 24,
+): Promise<RawRow[]> {
+  if (process.env.HOMEPAGE_SEED_FIXTURE === '1') {
+    const { readFile } = await import('node:fs/promises')
+    const { resolve } = await import('node:path')
+    try {
+      const raw = await readFile(
+        resolve(process.cwd(), 'src/lib/dev/home-seed-fixture.json'),
+        'utf8',
+      )
+      const rows = JSON.parse(raw) as RawRow[]
+      return rows
+        .filter(r => r.start_date >= nowIso)
+        .sort((a, b) => a.start_date.localeCompare(b.start_date))
+    } catch {
+      // Fixture missing - fall through to the live query rather than break.
+    }
+  }
+  const { data } = await supabase
+    .from('events')
+    .select(EVENT_SELECT)
+    .eq('status', 'published')
+    .eq('visibility', 'public')
+    .gte('start_date', nowIso)
+    .order('start_date', { ascending: true })
+    .limit(limit)
+  return (data ?? []) as unknown as RawRow[]
 }
 
 export const CULTURE_TABS: { slug: string; label: string; tag: string; href: string }[] = [

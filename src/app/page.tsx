@@ -8,12 +8,10 @@ import { FeaturedHero } from '@/components/features/home/FeaturedHero'
 import { HomeSchemaJsonLd } from '@/components/features/home/home-schema-jsonld'
 import { CategoryChipStrip } from '@/components/features/home/category-chip-strip'
 import { SceneRail } from '@/components/features/home/scene-rail'
-import { CulturalMomentsRail } from '@/components/features/home/cultural-moments-bento'
 import type { BentoEvent } from '@/components/features/events/event-bento-tile'
 import {
-  EVENT_SELECT,
+  loadHomeUpcoming,
   toBentoEvent,
-  type RawRow,
 } from '@/lib/events/home-queries'
 import { ThisWeekSection } from '@/components/features/home/this-week-section'
 import { CityRailSection } from '@/components/features/home/city-rail-section'
@@ -63,7 +61,7 @@ export const revalidate = 120
 export const metadata: Metadata = {
   title: 'EventLinqs - Every community. Every event. One platform.',
   description:
-    'Discover live events from communities across Australia and beyond. Afrobeats, Amapiano, Gospel, Caribbean, Owambe and more. No hidden fees, verified organisers, fair refund policy.',
+    'Discover live events across Australia: music, food and drink, festivals, comedy, theatre, arts, nightlife, sports and family, plus the community scenes you follow. No hidden fees, verified organisers, fair refund policy.',
   alternates: { canonical: '/' },
   openGraph: {
     type: 'website',
@@ -87,57 +85,34 @@ export default async function HomePage() {
   const nowMs = Date.parse(nowIso)
 
   // ── Above-fold data ──────────────────────────────────────────────────
-  // These queries feed the hero + bento grid that render at first paint.
-  // Everything else streams via Suspense boundaries below.
+  // One query feeds the hero plus every below-fold rail (each derived by
+  // slicing this list). The homepage is a static, anonymous shell, no city
+  // filter, no session, no per-user query; SiteHeader and the saved-events
+  // button hydrate user state post-mount.
   //
-  // Static-rendered: no city filter (geo detection is now client-side),
-  // no session lookup, no per-user saved-events query. The anonymous
-  // shell is identical for every visitor; the SiteHeader and the
-  // saved-events button hydrate user state post-mount.
-  const [
-    allUpcomingResult,
-    liveEventCountResult,
-    cityRowsResult,
-  ] = await Promise.all([
-    supabase
-      .from('events')
-      .select(EVENT_SELECT)
-      .eq('status', 'published')
-      .eq('visibility', 'public')
-      .gte('start_date', nowIso)
-      .order('start_date', { ascending: true })
-      .limit(24),
-    supabase
-      .from('events')
-      .select('id', { count: 'exact', head: true })
-      .eq('status', 'published')
-      .eq('visibility', 'public')
-      .gte('start_date', nowIso),
-    supabase
-      .from('events')
-      .select('venue_city')
-      .eq('status', 'published')
-      .eq('visibility', 'public')
-      .gte('start_date', nowIso)
-      .not('venue_city', 'is', null)
-      .limit(200),
-  ])
-
-  const allUpcomingRaw = allUpcomingResult.data
-  const upcomingRaw = allUpcomingRaw
-
-  const upcomingRawTyped = (upcomingRaw ?? []) as unknown as RawRow[]
+  // Source: loadHomeUpcoming queries Supabase normally, and only under the
+  // dev flag HOMEPAGE_SEED_FIXTURE=1 returns the local general-breadth
+  // catalogue so the page can be built and benchmarked at full density while
+  // staging is not yet provisioned.
+  const upcomingRawTyped = await loadHomeUpcoming(supabase, nowIso, 60)
   const upcoming = upcomingRawTyped.map(toBentoEvent)
 
-  const liveEventCount = liveEventCountResult.count
-  const cityRows = cityRowsResult.data
-  const uniqueCitiesCount = new Set(
-    (cityRows ?? []).map(r => r.venue_city?.trim().toLowerCase()).filter(Boolean),
-  ).size
-
   void nowMs
-  void liveEventCount
-  void uniqueCitiesCount
+
+  // General category breadth: the page leads with these, the way a general
+  // ticketing platform does. Each rail self-hides when it has no events.
+  const byCategory = (slug: string, max = 12) =>
+    upcoming.filter(e => e.category?.slug === slug).slice(0, max)
+
+  const musicEvents = byCategory('music')
+  const foodEvents = byCategory('food-drink')
+  const festivalEvents = byCategory('festival')
+  const artsEvents = byCategory('arts-culture')
+  const nightlifeEvents = byCategory('nightlife')
+  const comedyEvents = byCategory('comedy')
+  const sportsEvents = byCategory('sports')
+  const familyEvents = byCategory('family')
+  const businessEvents = byCategory('business-networking')
 
   const thisWeek = upcoming
     .filter(e => new Date(e.start_date) <= new Date(nowMs + 7 * 24 * 60 * 60 * 1000))
@@ -190,14 +165,6 @@ export default async function HomePage() {
     return picks
   })()
 
-  const communityEvents = upcoming
-    .filter(e => e.category?.slug === 'community' || e.category?.slug === 'charity')
-    .slice(0, 10)
-
-  const musicEvents = upcoming
-    .filter(e => e.category?.slug === 'music' || e.category?.slug === 'nightlife')
-    .slice(0, 10)
-
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
 
   return (
@@ -223,22 +190,12 @@ export default async function HomePage() {
          *  row were removed to keep the homepage reading like a premium
          *  ticketing platform (real event rails, not editorial placeholders). */}
 
-        {/* H2 Category chip strip (Batch 9.2): quick-filter chips +
-         *  cultures expandable. Scroll-snap on mobile, fits viewport on
-         *  desktop. Each chip fires a tagged Plausible event. */}
+        {/* H2 Category chip strip: quick-filter chips, cultures expandable.
+         *  Scroll-snap on mobile, fits viewport on desktop. */}
         <CategoryChipStrip />
 
-        {/* Scene discovery (early): the genre and scene rail surfaces the
-         *  real scene landing pages (Afrobeats, Amapiano, Gospel, Caribbean,
-         *  Owambe, Heritage & Independence, Business & Networking). Static
-         *  navigation, always present - the landing pages handle their own
-         *  empty states - so the page reads as a blend of scenes, not just
-         *  a dated event list. */}
-        <SceneRail />
-
         {/* Empty-state only: with zero upcoming events every rail below
-         *  self-hides. The Surprise block and the Trending bento were
-         *  removed in the rebuild; Trending now ships as a plain rail. */}
+         *  self-hides, so this stands in for the catalogue. */}
         {upcoming.length === 0 && (
           <section aria-label="Featured events" className="border-t border-ink-200 bg-canvas">
             <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
@@ -263,64 +220,45 @@ export default async function HomePage() {
           </section>
         )}
 
-        {/* Rail 1: This Week */}
+        {/*
+         * STRUCTURE (strategic correction, 6 June 2026):
+         * EventLinqs is a complete general ticketing platform first. General
+         * category breadth LEADS the page, the way Ticketmaster and Eventbrite
+         * do it. Community is one curated thread (SceneRail) placed mid-page,
+         * never the lead. Strip the SceneRail out and the page still stands as
+         * a full general ticketing rival. Each rail self-hides when empty.
+         */}
+
+        {/* Lead rail: This Week (general, time-based) */}
         <Suspense fallback={<ThisWeekSkeleton />}>
           <ThisWeekSection events={thisWeek} />
         </Suspense>
 
-        {/* Rail: Live music - reinforces the music blend. Self-hides when
-         *  no music or nightlife events exist. */}
+        {/* General category breadth leads. */}
         {musicEvents.length >= 1 && (
           <EventRailSection
             eyebrow="On the lineup"
-            title="Live music"
-            ariaLabel="Live music events"
-            railLabel="Live music events"
+            title="Music"
+            ariaLabel="Music events"
+            railLabel="Music events"
             events={musicEvents}
             viewAllHref="/events?category=music"
+            leadFeature
           />
         )}
 
-        {/*
-         * Rail threshold rule (corrective, 23 May 2026):
-         * Rails render whenever they have at least one event. The rail
-         * component's own internal guard (`events.length === 0 -> return null`)
-         * handles the truly-empty case. Previous iterations used `>= 3`
-         * and `>= 5` thresholds which hid rails with 1-2 events; the
-         * competitor research (research/competitors/REPORT.md and the
-         * Humanitix / Ticketmaster / Eventbrite homepage screenshots)
-         * shows no competitor does this. Rails show whatever exists.
-         */}
-        {/* Rail 2: This Weekend */}
-        {thisWeekend.length >= 1 && (
+        {foodEvents.length >= 1 && (
           <EventRailSection
-            eyebrow="This weekend"
-            title="Free up the calendar"
-            ariaLabel="Events this weekend"
-            railLabel="Events this weekend"
-            events={thisWeekend}
-            viewAllHref="/events?preset=weekend"
+            eyebrow="Taste the city"
+            title="Food and drink"
+            ariaLabel="Food and drink events"
+            railLabel="Food and drink events"
+            events={foodEvents}
+            viewAllHref="/events?category=food-drink"
           />
         )}
 
-        {/* Rail 3: Free */}
-        {freeEvents.length >= 1 && (
-          <EventRailSection
-            eyebrow="No ticket needed"
-            title="Free events near you"
-            ariaLabel="Free events"
-            railLabel="Free events"
-            events={freeEvents}
-            viewAllHref="/events?preset=free"
-          />
-        )}
-
-        {/* Scene-grouped event picks now live in the SceneRail above and on
-         *  the dedicated /categories landing pages, so the old culture-picks
-         *  tab rail (which also surfaced Comedy and could link to scenes
-         *  without a landing page) was retired from the homepage. */}
-
-        {/* Rail 5: Trending */}
+        {/* Trending (general, demand-based) */}
         {trending.length >= 1 && (
           <EventRailSection
             eyebrow="Selling fast"
@@ -329,14 +267,125 @@ export default async function HomePage() {
             railLabel="Trending events"
             events={trending}
             viewAllHref="/events?sort=popularity"
-            leadFeature
           />
         )}
 
-        {/* Community moments - a plain separated-card rail (was a dark bento). */}
-        <CulturalMomentsRail />
+        {festivalEvents.length >= 1 && (
+          <EventRailSection
+            eyebrow="All day, all weekend"
+            title="Festivals"
+            ariaLabel="Festival events"
+            railLabel="Festival events"
+            events={festivalEvents}
+            viewAllHref="/events?category=festival"
+          />
+        )}
 
-        {/* Rail 7: Just Added */}
+        {artsEvents.length >= 1 && (
+          <EventRailSection
+            eyebrow="On stage and in the gallery"
+            title="Arts and theatre"
+            ariaLabel="Arts and theatre events"
+            railLabel="Arts and theatre events"
+            events={artsEvents}
+            viewAllHref="/events?category=arts-culture"
+          />
+        )}
+
+        {/* This Weekend (general, time-based) */}
+        {thisWeekend.length >= 1 && (
+          <EventRailSection
+            eyebrow="This weekend"
+            title="On this weekend"
+            ariaLabel="Events this weekend"
+            railLabel="Events this weekend"
+            events={thisWeekend}
+            viewAllHref="/events?preset=weekend"
+          />
+        )}
+
+        {nightlifeEvents.length >= 1 && (
+          <EventRailSection
+            eyebrow="After dark"
+            title="Nightlife"
+            ariaLabel="Nightlife events"
+            railLabel="Nightlife events"
+            events={nightlifeEvents}
+            viewAllHref="/events?category=nightlife"
+          />
+        )}
+
+        {comedyEvents.length >= 1 && (
+          <EventRailSection
+            eyebrow="Have a laugh"
+            title="Comedy"
+            ariaLabel="Comedy events"
+            railLabel="Comedy events"
+            events={comedyEvents}
+            viewAllHref="/events?category=comedy"
+          />
+        )}
+
+        {/* Free (general, price-based) */}
+        {freeEvents.length >= 1 && (
+          <EventRailSection
+            eyebrow="No ticket needed"
+            title="Free events"
+            ariaLabel="Free events"
+            railLabel="Free events"
+            events={freeEvents}
+            viewAllHref="/events?preset=free"
+          />
+        )}
+
+        {/* ── Community thread (one rail, mid-page) ──────────────────────
+         *  The single community/scene moment: Afrobeats, Amapiano, Gospel,
+         *  Caribbean, Owambe, Heritage & Independence, Business & Networking.
+         *  This is the differentiating layer, roughly 10-20% of the page,
+         *  not its identity. It sits here, after the general breadth, never
+         *  at the lead. */}
+        <SceneRail />
+
+        {/* General breadth continues below the community thread. */}
+        {sportsEvents.length >= 1 && (
+          <EventRailSection
+            eyebrow="Game on"
+            title="Sport"
+            ariaLabel="Sport events"
+            railLabel="Sport events"
+            events={sportsEvents}
+            viewAllHref="/events?category=sports"
+          />
+        )}
+
+        {familyEvents.length >= 1 && (
+          <EventRailSection
+            eyebrow="Bring everyone"
+            title="Family"
+            ariaLabel="Family events"
+            railLabel="Family events"
+            events={familyEvents}
+            viewAllHref="/events?category=family"
+          />
+        )}
+
+        {businessEvents.length >= 1 && (
+          <EventRailSection
+            eyebrow="Make the connection"
+            title="Business and networking"
+            ariaLabel="Business and networking events"
+            railLabel="Business and networking events"
+            events={businessEvents}
+            viewAllHref="/events?category=business-networking"
+          />
+        )}
+
+        {/* Browse by City */}
+        <Suspense fallback={<CityRailSkeleton />}>
+          <CityRailSection nowIso={nowIso} />
+        </Suspense>
+
+        {/* Editorial tail */}
         {justAdded.length >= 1 && (
           <EventRailSection
             eyebrow="Just added"
@@ -348,7 +397,6 @@ export default async function HomePage() {
           />
         )}
 
-        {/* Rail 8: Editor's Picks */}
         {editorsPicks.length >= 1 && (
           <EventRailSection
             eyebrow="Editor's picks"
@@ -360,24 +408,6 @@ export default async function HomePage() {
           />
         )}
 
-        {/* Rail 9: Cities */}
-        <Suspense fallback={<CityRailSkeleton />}>
-          <CityRailSection nowIso={nowIso} />
-        </Suspense>
-
-        {/* Rail 10: Community */}
-        {communityEvents.length >= 1 && (
-          <EventRailSection
-            eyebrow="Bring everyone"
-            title="Community events"
-            ariaLabel="Community events"
-            railLabel="Community events"
-            events={communityEvents}
-            viewAllHref="/events?category=community"
-          />
-        )}
-
-        {/* Rail 11: Featured Venues */}
         <FeaturedVenuesSection upcoming={upcomingRawTyped} />
       </main>
 
