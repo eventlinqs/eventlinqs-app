@@ -89,6 +89,17 @@ function prefersReducedMotion(): boolean {
 function useScrollState() {
   const scrollRef = useRef<HTMLDivElement>(null)
   const rafRef = useRef<number | null>(null)
+  // The rails ship with NO scroll-snap active on first paint. scroll-snap-type
+  // mandatory (and even proximity) forces Chrome to re-snap the container every
+  // time a lazy card image loads and reflows it, firing browser-induced scroll
+  // events that STOP Largest Contentful Paint recording before the hero raster
+  // paints - this was the homepage/culture NO_LCP defect (zero LCP entries while
+  // event-detail measured fine). Snap is a scroll-interaction affordance, so we
+  // arm it only once the user actually grabs the rail (see cancelGlide). Until
+  // then snapBaseRef stays 'none' and the hero image anchors LCP normally.
+  // Do NOT move scroll-snap back into the static className - it reintroduces the
+  // measurement-stopping on-load re-snap. (docs/benchmark/system-pass Unit 3.)
+  const snapBaseRef = useRef<'none' | 'x mandatory'>('none')
   const [progress, setProgress] = useState(0)
   const [canPrev, setCanPrev] = useState(false)
   const [canNext, setCanNext] = useState(true)
@@ -109,9 +120,12 @@ function useScrollState() {
     setCanNext(el.scrollLeft < maxScroll - 4)
   }, [])
 
-  // Stop any in-flight glide and restore the CSS snap/scroll behaviour. Called
-  // when the user grabs the rail (pointer/touch/wheel) so we never fight their
-  // own natural scroll, and on unmount.
+  // Stop any in-flight glide and hand the rail back to the user's natural
+  // scroll. Called the instant the user grabs the rail (pointer/touch/wheel, and
+  // via scrollByCards for the arrow keys) - which is also where we ARM
+  // scroll-snap for the first time. Arming it here (never on load) keeps the
+  // snap engine from re-snapping during the LCP window; the set is applied
+  // synchronously in the engage event so it takes effect for that same gesture.
   const cancelGlide = useCallback(() => {
     if (rafRef.current !== null) {
       cancelAnimationFrame(rafRef.current)
@@ -119,7 +133,8 @@ function useScrollState() {
     }
     const el = scrollRef.current
     if (el) {
-      el.style.scrollSnapType = ''
+      snapBaseRef.current = 'x mandatory'
+      el.style.scrollSnapType = snapBaseRef.current
       el.style.scrollBehavior = ''
     }
   }, [])
@@ -186,7 +201,9 @@ function useScrollState() {
         rafRef.current = requestAnimationFrame(step)
       } else {
         el.scrollLeft = dest
-        el.style.scrollSnapType = ''
+        // Restore to the armed base (cancelGlide ran above, so it is now
+        // 'x mandatory'); the arrow glide lands on a card snap boundary.
+        el.style.scrollSnapType = snapBaseRef.current
         el.style.scrollBehavior = ''
         rafRef.current = null
       }
@@ -325,6 +342,10 @@ function ScrollTrack({
           className={`pointer-events-none absolute right-0 top-0 z-10 h-full w-16 bg-gradient-to-l ${fadeFromClass} to-transparent sm:w-24`}
         />
       )}
+      {/* No static snap-x/snap-mandatory on the scroller: scroll-snap is armed
+          on first user engagement (useScrollState/cancelGlide) so the load-time
+          re-snap never stops LCP. Cards keep their snap-start; it activates with
+          snap. */}
       <div
         ref={scrollRef}
         role="group"
@@ -338,7 +359,7 @@ function ScrollTrack({
             e.stopPropagation()
           }
         }}
-        className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth px-4 pb-4 pt-1 scrollbar-none focus-visible:outline-none sm:px-6 lg:px-8"
+        className="flex gap-3 overflow-x-auto scroll-smooth px-4 pb-4 pt-1 scrollbar-none focus-visible:outline-none sm:px-6 lg:px-8"
       >
         {children}
       </div>

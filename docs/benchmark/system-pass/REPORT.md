@@ -1482,3 +1482,96 @@ Never lower a threshold, never mark a check optional, never accept a warning as 
 new normal. Full gates + per-unit commits + push after each unit. No merge to main.
 The hero LCP fix reworks the most important page - get founder sign-off on the
 hero-structural direction before shipping it.
+
+---
+
+## Unit 3 CLOSED - homepage/culture NO_LCP root-caused + fixed (2026-06-07)
+
+The hero was innocent. NO hero-structural change was needed (so no founder
+sign-off gate applied). The defect was in the shared horizontal-rail primitive,
+not the hero, and the fix is a behaviour change to that primitive.
+
+### Root cause (proven, not inferred)
+The homepage and /culture/* rails (`ScrollTrack` in `src/components/ui/snap-rail.tsx`)
+shipped with `scroll-snap-type: x mandatory` in their static className. When the
+rails' lazy card images load and reflow the scroll container, Chrome's snap engine
+**re-snaps the container and fires browser-induced `scroll` events** (isTrusted, but
+no JS behind them - confirmed by trapping `scrollLeft`/`scrollTo`/`scrollIntoView`/
+`focus`: zero programmatic calls). Chrome **stops Largest Contentful Paint recording
+on the first scroll**, and these re-snap scrolls fire at ~870-1150ms - BEFORE the
+hero raster paints (~2.5s on the cold next/image optimiser, Issue #42). So LCP
+recording was killed before any candidate could register: zero LCP entries ->
+NO_LCP -> null perf/LCP/TBT. event-detail measured fine because its hero raster is
+the LCP and its only snap rail (m5-recommended-rail) is far below the fold, loading
+*after* LCP had already settled.
+
+This corrects the Unit 3 handoff's framing in one detail: the killer scroll is NOT
+a window scroll (window scrollY stayed 0 throughout) and NOT an on-mount JS call -
+it is the rails' own horizontal re-snap. FCP (~856ms) fired well before the first
+scroll (~1100ms) yet still produced zero LCP candidates, because the element that
+triggers FCP is LCP-ineligible and the hero raster paints only after the re-snap
+has already stopped recording.
+
+### Decisive evidence (local, mobile, el-audit=1 - mirrors the gate)
+Same machine, same build harness, A/B by injecting `scroll-snap-type` via response
+interception (no DOMContentLoaded race):
+
+| snap-type on the rails | rail scroll events on load | LCP entries |
+|---|---|---|
+| `x mandatory` (shipped) | 13 | **[] (NO_LCP)** |
+| `x proximity` | 13-22 | **[] (NO_LCP)** - proximity re-snaps too |
+| `none` | **0** | **IMG registers** (~900ms) |
+
+And the full-Lighthouse A/B (median of 3, same machine):
+
+| URL | pre-fix (stash baseline) | post-fix |
+|---|---|---|
+| `/` | perf **null**, **NO_LCP** (all 3 runs) | perf 0.70, **LCP 3946ms (real)** |
+| `/events` | perf 0.66, LCP 5835ms | perf 0.68, LCP 5146ms (unregressed) |
+
+The baseline column reproduces NO_LCP cleanly and the post-fix column shows a real
+LCP - proving the fix is *the* cause of the restoration, and that `/events` (an
+error-level perf URL that uses the same primitive) is unregressed (marginally
+better, within noise). Note: local `/events` perf 0.66 sits below the error-level
+0.80 floor YET CI is green on that same commit (63ab13b) - direct proof the local
+box is slower than the CI runner and local perf scores are NOT the gate authority
+(CLAUDE.md: "never a single localhost run"). The cold-optimiser LCP gap
+(observedLCP ~1.1-1.3s vs simulated 5-6s) is the unchanged Issue #42 condition.
+
+### The fix (primitive-level, design-preserving)
+`src/components/ui/snap-rail.tsx` - scroll-snap is no longer static. It is **armed
+on the user's first engagement with the rail** (pointerdown/wheel/touchstart, and
+via the arrow-key glide), inside `cancelGlide` where the rail is already "handed
+back to the user". Until then the scroller carries no snap-type, so the load-time
+re-snap never fires and the hero raster anchors LCP normally. Snap is a
+scroll-interaction affordance, so a user perceives no difference - it is active the
+instant they touch the rail (set synchronously in the engage event, so it applies
+to that same gesture). The "next-card peek", eased arrow glide, drag-scroll, and
+card `snap-start` are all untouched. A guard comment in the file warns against
+moving snap back into the static className.
+
+This fixes the field too, not just the synthetic audit: real Chrome users were also
+losing LCP/CrUX on these pages and eating a tiny on-load rail jank.
+
+### Verification
+- Local Lighthouse mobile (3 runs, el-audit=1): `/` median **LCP 3946ms (real, was
+  NO_LCP)**, perf 0.70, a11y 1.0, bp 1.0, seo 1.0; `/culture/african` real LCP
+  restored (probe IMG @588ms; LH median LCP 5666ms, a11y/bp/seo 1.0).
+- Controls unregressed: `/events` 0.66->0.68 (A/B above); event-detail and
+  `/events/browse/melbourne` untouched by the change, a11y/bp/seo 1.0.
+- Gates: tsc 0, eslint 0 errors (32 pre-existing warnings in research/scripts only),
+  vitest 329/329, next build exit 0.
+- CI Lighthouse gate: expected to stay GREEN (error-level a11y/bp/seo/CLS unaffected;
+  `/` and `/culture/*` perf remain warn-level per Issue #42; LCP warn-level
+  everywhere). Confirmed on the pushed tip.
+
+### Deliberately NOT done (scope discipline)
+- **Did not re-tighten the homepage/culture perf gate to error-level.** That is
+  Issue #42 (next/image optimiser cold-start), a separate defect; the perf SCORE is
+  still optimiser-bound (~0.6-0.7 local). Unit 3 fixed *measurability* (real LCP),
+  not the cold-start score. No threshold was lowered; the existing warn-level
+  homepage/culture perf entries are pre-existing, not a new concession.
+- **Did not change `m5-recommended-rail.tsx`** (the other `snap-mandatory` rail). It
+  carries the same latent pattern but is below the fold on event-detail, loading
+  after LCP settles, so it is benign today. Logged as a follow-up: give it the same
+  deferred-arm treatment when that rail is next touched.
