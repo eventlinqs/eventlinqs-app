@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { AdminStatTile } from '@/components/admin/admin-stat-tile'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { requireAdminSession } from '@/lib/admin/auth'
+import { formatMoneyDisplay } from '@/lib/money/format'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -108,9 +109,8 @@ async function GmvTile({ label, sinceMsAgo }: { label: string; sinceMsAgo: numbe
     const audCents = (data ?? [])
       .filter(r => (r.currency ?? 'AUD').toUpperCase() === 'AUD')
       .reduce((sum, r) => sum + (r.total_amount_cents ?? 0), 0)
-    const formatted = new Intl.NumberFormat('en-AU', {
-      style: 'currency', currency: 'AUD', maximumFractionDigits: 0,
-    }).format(audCents / 100)
+    // Exact-cents display (item 9 fix): never round revenue to whole dollars.
+    const formatted = formatMoneyDisplay(audCents, 'AUD')
     return <AdminStatTile label={label} value={formatted} hint="AUD only; multi-currency view in A4" />
   } catch {
     return <AdminStatTile label={label} value="-" hint="orders table query failed" status="warn" />

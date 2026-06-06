@@ -5,6 +5,7 @@ import { hasCapability } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { AdminStatTile } from '@/components/admin/admin-stat-tile'
 import { getAnalyticsDashboard, ANALYTICS_CURRENCY } from '@/lib/admin/analytics'
+import { formatMoneyDisplay } from '@/lib/money/format'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -14,8 +15,9 @@ export const metadata = {
   robots: { index: false, follow: false },
 }
 
+// Exact-cents display (item 9 fix): never round revenue to whole dollars.
 function money(cents: number): string {
-  return new Intl.NumberFormat('en-AU', { style: 'currency', currency: ANALYTICS_CURRENCY, maximumFractionDigits: 0 }).format(cents / 100)
+  return formatMoneyDisplay(cents, ANALYTICS_CURRENCY)
 }
 function monthLabel(ym: string): string {
   const [y, m] = ym.split('-')

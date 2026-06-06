@@ -90,12 +90,17 @@
    - State grouping: NSW | VIC | QLD | WA | SA | ACT | TAS | NT
    - Desktop dropdown panel, mobile modal
    - Persist selection in cookie/localStorage
-7. Replace `supabase.auth.getSession()` with `supabase.auth.getUser()` where user identity is trusted server-side
+7. ~~Replace `supabase.auth.getSession()` with `supabase.auth.getUser()` where user identity is trusted server-side~~ AUDITED AND SATISFIED (2026-05-31, folded from PR #72; re-verified 2026-06-06 on chore/launch-hardening)
+   - Server-side already uses the revalidating `getUser()`: middleware (`src/lib/supabase/middleware.ts:36`, gates `/dashboard` + auth-page redirects) plus ~57 server components / route handlers / server actions (all of `src/app/actions/*.ts`, dashboard pages, `src/app/api/stripe/connect/*/route.ts`, `src/lib/admin/auth.ts`, `src/lib/reporting/attendees.ts`, etc.). Zero server-side `getSession()` usages.
+   - The only two `getSession()` reads are client-only and safe to leave (the security rationale applies to server code trusting an incoming request cookie; on the client the session is the user's own and the server is the real gate):
+     - `src/components/auth/reset-password-form.tsx:22` (`'use client'`) - gates showing the password form vs a "validating link" message; the actual `auth.updateUser({password})` is revalidated server-side by Supabase.
+     - `src/components/features/events/save-event-button.tsx:39` (`'use client'`) - login redirect + `session.user.id` for an RLS-protected `saved_events` write; the server authority is RLS (`user_id = auth.uid()`). Switching to `getUser()` would add an auth-server round-trip per click with no security gain.
+   - Regression guard: `tests/unit/security/no-server-side-getsession.test.ts` fails the build if any non-`'use client'` file calls `auth.getSession(`.
 8. Missing /public/cities/*.svg assets 404ing on homepage (audit which still missing post-Batch-11)
-9. Stripe revenue card rounding display bug
+9. ~~Stripe revenue card rounding display bug~~ FIXED (2026-06-06): admin GMV/revenue tiles used `maximumFractionDigits: 0` (rounded to whole dollars, broke reconciliation). Now render exact cents via `formatMoneyDisplay`. Before/after in `docs/launch-hardening/stripe-rounding-before-after.md`; test `tests/unit/money/format.test.ts`.
 10. Authed + organiser E2E smoke test
 11. M4.5 Close-out Steps E and A2
-12. Run `npx supabase migration list --linked` and reconcile all local migrations against remote applied list before launch
+12. ~~Run `supabase migration list --linked` and reconcile all local migrations against remote applied list before launch~~ DONE (2026-06-06): no drift, 34 local = 34 remote, all matched. See `docs/launch-hardening/migration-drift-2026-06-06.md`. Re-run if migrations are added before launch.
 13. Migrate src/types/database.ts (423 lines, handwritten) to `supabase gen types typescript --linked` before launch
 14. ABN 30 837 447 587 inserted into /legal/terms and /legal/privacy (replace "pending registration" text)
 15. Street address or PO Box in legal pages

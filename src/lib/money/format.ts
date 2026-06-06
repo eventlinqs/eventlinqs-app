@@ -28,3 +28,27 @@ export function formatMoney(cents: number, currency: string): string {
   const minorUnits = Math.round(Number.isFinite(cents) ? cents : 0)
   return `${currency.toUpperCase()} ${(minorUnits / 100).toFixed(2)}`
 }
+
+/**
+ * Grouped, symbol-prefixed money display for admin finance surfaces, e.g.
+ * `"$1,234.56"` for AUD under the en-AU locale.
+ *
+ * Fixes pre-launch hardening item 9 (the Stripe revenue card rounding display
+ * bug): the admin GMV / revenue tiles formatted with `maximumFractionDigits: 0`,
+ * which rounded every figure to whole dollars. That overstated revenue by up to
+ * 99c per tile and broke reconciliation, since gross, refunded and net were each
+ * rounded independently (shown gross minus shown refunded no longer equalled
+ * shown net). Always render the exact cents at two decimal places.
+ *
+ * @param cents Integer amount in the smallest currency unit.
+ * @param currency ISO 4217 code (case-insensitive).
+ */
+export function formatMoneyDisplay(cents: number, currency: string): string {
+  const minorUnits = Math.round(Number.isFinite(cents) ? cents : 0)
+  return new Intl.NumberFormat('en-AU', {
+    style: 'currency',
+    currency: currency.toUpperCase(),
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(minorUnits / 100)
+}
