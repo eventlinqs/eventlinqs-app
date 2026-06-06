@@ -1,5 +1,5 @@
 import { EventlinqsLogo } from '@/components/ui/eventlinqs-logo'
-import { FirstNationsFlags } from '@/components/features/home/cultural-calendar-widget'
+import { FirstNationsFlags } from '@/components/features/home/first-nations-flags'
 
 /**
  * SiteFooter v4 (Batch 5.5) - 4-column desktop, 2-column mobile, ~50%
