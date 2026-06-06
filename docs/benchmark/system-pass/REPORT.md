@@ -1098,3 +1098,26 @@ block. We benchmark to surpass EB's framed list (the cleaner of the two).
 
 No aspect BELOW -> no code change (the surface-1 browse skeleton already covers
 search). Query framing + designed empty state verified live at 1440 + 390.
+
+### Surface 4: City page (/city/[slug]) - RE-AUDITED, AT/ABOVE BAR (no code change)
+Captures: `surface-4/audit-2026-06-06/{ours-city,eb-city,tm-city}-*`. Live URLs:
+ours = preview /city/sydney; EB = eventbrite Sydney listing; TM =
+ticketmaster.com.au/discover/sydney.
+
+Stronger pattern (stated): TM city is the stronger competitor here - a promo
+banner carousel (BTS / Matildas / Lion King) + "Popular concerts/sports in
+Sydney" category rails. EB city is just its filtered browse list + sidebar +
+map. We benchmark to surpass TM's category-rail city page.
+
+| Aspect | Verdict | Evidence (1440 + 390) |
+|---|---|---|
+| Density | SURPASS | A true editorial place-landing: cinematic harbour hero + intro, Sydney-by-community rail, browse-by-event-type tiles, highlights rail, by-suburb tiles, all-events grid, discover-more-cities, organiser CTA. TM = a promo carousel + 2 category rails; EB = one filtered list. |
+| Imagery | SURPASS | Real city / community / suburb photography throughout vs TM promo banners. |
+| Typography | SURPASS | Editorial display headings + sectioned eyebrows vs TM's flat rail labels. |
+| UX | SURPASS | Community + suburb + culture discovery, live map, date-chip filter, organiser CTA - none of which the competitors carry. |
+| Hierarchy | SURPASS | Clear editorial sectioning; photographic heroes use the allowed photo+navy-overlay pattern, the rest is light canvas (dark-sweep compliant). |
+| Motion | SURPASS | Below-hero ContentSections fade-rise (the `reveal` prop), shared rail glide + card hover. |
+| Loading | PARITY | SSR full-page (no client spinner / blank flash); on par with the competitors' SSR loads. A designed skeleton is an optional discovery-surface polish item (the buyer journey - browse/detail/checkout - carries the designed skeletons). |
+| Mobile (390) | SURPASS | Stacked rails, horizontal-scroll chips, full-width 44px CTAs, photographic tiles. |
+
+No aspect BELOW -> no code change. Verified at 1440 + 390 on the preview.
