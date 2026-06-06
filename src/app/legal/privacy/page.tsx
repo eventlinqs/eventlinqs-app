@@ -320,7 +320,7 @@ export default function PrivacyPolicyPage() {
         </li>
         <li>
           <strong>By post:</strong> EventLinqs (Lawal Adams, ABN 30 837 447 587),
-          PO Box, Newcomb VIC 3219, Australia
+          PO Box 141, Newcomb VIC 3219, Australia
         </li>
       </ul>
       <p>

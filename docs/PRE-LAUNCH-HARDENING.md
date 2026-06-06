@@ -103,7 +103,7 @@
 12. ~~Run `supabase migration list --linked` and reconcile all local migrations against remote applied list before launch~~ DONE (2026-06-06): no drift, 34 local = 34 remote, all matched. See `docs/launch-hardening/migration-drift-2026-06-06.md`. Re-run if migrations are added before launch.
 13. ~~Migrate src/types/database.ts to `supabase gen types typescript --linked`~~ DONE (2026-06-06): `database.ts` was already generated-derived (not 423-line handwritten). Regenerated the section above the `// BEGIN LEGACY ALIASES` marker from the live schema to pick up the genre layer (`artists`, `event_artists`, `genre_slug`/`subgenre_slug`/`is_featured`); the handwritten aliases appendix is preserved. Verified against `scripts/check-types-drift.sh`; tsc 0.
 14. ~~ABN 30 837 447 587 inserted into /legal/terms and /legal/privacy (replace "pending registration" text)~~ DONE (2026-06-06): ABN present in both pages; no "pending registration" text anywhere under /legal.
-15. ~~Street address or PO Box in legal pages~~ DONE (2026-06-06): PO Box at Newcomb VIC 3219 added to the terms entity line and the privacy Contact section. Box number to be inserted by the founder when available.
+15. ~~Street address or PO Box in legal pages~~ DONE (2026-06-06): PO Box 141, Newcomb VIC 3219 added to the terms entity line and the privacy Contact section.
 16. /legal/cookies and /legal/organiser-terms still ComingSoon placeholders
 17. Logo delivery (Fiverr Pro brief in progress)
 18. Plausible analytics installation (cookieless, matches Privacy Policy)
