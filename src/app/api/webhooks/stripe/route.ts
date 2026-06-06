@@ -25,6 +25,7 @@ import {
   buildRefundConfirmationSubject,
   buildRefundConfirmationText,
 } from '@/lib/email/templates/refund-confirmation'
+import { sendPayoutEmail, type PayoutEmailKind } from '@/lib/payouts/email'
 import type Stripe from 'stripe'
 import type { PayoutRecordStatus } from '@/types/database'
 
@@ -1617,7 +1618,7 @@ async function handleConnectPayoutEvent(
   // stripe_payout_id, rather than the Phase-1 destination match.
   const { data: existing } = await adminClient
     .from('payouts')
-    .select('id, status, metadata')
+    .select('id, status, metadata, organisation_id')
     .eq('stripe_payout_id', payout.id)
     .maybeSingle()
 
@@ -1643,6 +1644,16 @@ async function handleConnectPayoutEvent(
             { cause: error, context: { eventId, payoutId: payout.id } }
           )
         }
+        // Notify the organiser once, only on the real pending/in_transit -> paid
+        // transition (this block is skipped on a webhook replay, so no dupes).
+        await notifyOrganiserPayout(
+          adminClient,
+          existing.organisation_id,
+          eventType,
+          payout,
+          arrivalDate,
+          eventId
+        )
       }
       return
     }
@@ -1678,6 +1689,18 @@ async function handleConnectPayoutEvent(
             { context: { eventId, payoutId: payout.id } }
           )
         }
+        // Notify only on a fresh void; a replay returns already_reversed and
+        // must not re-email. (payout.canceled maps to no email.)
+        if (voidResult.success && !voidResult.already_reversed) {
+          await notifyOrganiserPayout(
+            adminClient,
+            existing.organisation_id,
+            eventType,
+            payout,
+            arrivalDate,
+            eventId
+          )
+        }
       } else {
         const { error } = await adminClient
           .from('payouts')
@@ -1689,6 +1712,16 @@ async function handleConnectPayoutEvent(
           .eq('id', existing.id)
         if (error) {
           console.error('[m6] payout status update failed', { eventId, payoutId: payout.id, error })
+        } else if (existing.status !== voidStatus) {
+          // Externally observed payout: notify once on the real transition.
+          await notifyOrganiserPayout(
+            adminClient,
+            existing.organisation_id,
+            eventType,
+            payout,
+            arrivalDate,
+            eventId
+          )
         }
       }
       return
@@ -1702,6 +1735,18 @@ async function handleConnectPayoutEvent(
         .update({ arrival_date: arrivalDate, updated_at: new Date().toISOString() })
         .eq('id', existing.id)
     }
+    // payout.created reaches here (paid/failed/canceled returned earlier). The
+    // organiser did not initiate this payout themselves (operator/cron disburse),
+    // so a "payout on the way" note is useful. Best-effort; payout.created is
+    // delivered once on a 200 response so redelivery is rare.
+    await notifyOrganiserPayout(
+      adminClient,
+      existing.organisation_id,
+      eventType,
+      payout,
+      arrivalDate,
+      eventId
+    )
     return
   }
 
@@ -1764,6 +1809,60 @@ async function handleConnectPayoutEvent(
 
   if (error) {
     console.error('[m6] payout upsert failed', { eventId, eventType, payoutId: payout.id, error })
+  } else {
+    // First time we have seen this externally observed payout. A redelivery of
+    // the same event finds the row above and takes the tracked-row path, so this
+    // notify fires at most once per payout event.
+    await notifyOrganiserPayout(adminClient, org.id, eventType, payout, arrivalDate, eventId)
+  }
+}
+
+/**
+ * Maps a Stripe payout event type to the organiser email kind. payout.canceled
+ * intentionally sends no email (the organiser-facing dashboard shows the state;
+ * a cancel is usually an internal void with no action for the organiser).
+ */
+function mapPayoutEventToEmailKind(
+  eventType: 'payout.created' | 'payout.paid' | 'payout.failed' | 'payout.canceled'
+): PayoutEmailKind | null {
+  switch (eventType) {
+    case 'payout.created':
+      return 'payout_initiated'
+    case 'payout.paid':
+      return 'payout_paid'
+    case 'payout.failed':
+      return 'payout_failed'
+    case 'payout.canceled':
+      return null
+  }
+}
+
+/**
+ * Best-effort organiser payout notification. Never throws: sendPayoutEmail
+ * already no-ops without RESEND_API_KEY and swallows send errors, and this
+ * wrapper guards the owner lookup too, so the money path is never affected by
+ * email failures. Callers gate this on genuine state transitions so Stripe
+ * webhook redeliveries do not re-notify.
+ */
+async function notifyOrganiserPayout(
+  adminClient: ReturnType<typeof createAdminClient>,
+  organisationId: string,
+  eventType: 'payout.created' | 'payout.paid' | 'payout.failed' | 'payout.canceled',
+  payout: Stripe.Payout,
+  arrivalDate: string | null,
+  eventId: string
+) {
+  const kind = mapPayoutEventToEmailKind(eventType)
+  if (!kind) return
+  try {
+    await sendPayoutEmail(adminClient, organisationId, kind, {
+      amountCents: payout.amount,
+      currency: payout.currency,
+      arrivalDate,
+      failureReason: payout.failure_message ?? null,
+    })
+  } catch (err) {
+    console.error('[m6] payout email send failed', { eventId, eventType, payoutId: payout.id, err })
   }
 }
 
