@@ -831,6 +831,76 @@ Locked 1400 + the derivation into the page-build skill (Container width
 standard). Side-by-side vs Ticketmaster lives in the same evidence folder
 (tm-*-1440/1920 beside ours-after).
 
-### REMAINING this session (in order): #8 buyer journey flow, #3 interior
-reveals completion, #4 designed loading + dark rebuilds, #9 per-surface
-re-audit. All capture-gated items can now proceed at the locked 1400 width.
+### Unit 2 - BUYER JOURNEY FLOW (#8) - checkout core DONE (commit ed7b37e, pushed)
+Benchmarked ours as one flow vs the captured Eventbrite checkout + documented
+Ticketmaster pattern; ours is already one-page (hold, trust signals, all-in
+pricing, cart timer, promo code). Closed the craft gaps on the checkout surface:
+- CTA unification: the bespoke navy (bg-ink-900) + off-palette emerald (#10B981)
+  pay/continue/register/try-again buttons all use the canonical gold Button now,
+  so one gold thread runs Get-tickets -> Checkout -> Continue to payment -> Pay.
+  Discount Apply -> Button secondary; checkout-load-error recovery -> Button
+  primary+secondary (also kills undefined ink-300/ink-50 literals).
+- Form fields -> shared FIELD_CLS (44px+ touch, 16px text, no iOS zoom).
+- Ticket quantity steppers 36/32px -> 44px; expired-reservation state -> premium
+  card with the --color-error token + gold CTA. discount error -> text-error.
+Gate-verified (tsc/eslint/vitest/build). The live checkout FORM + on-sale
+steppers are unreachable locally (all prod Sydney events are sale-blocked), so
+that visual proof stays deferred to staging, same as the existing checkout/
+confirmation/ticket deferrals. #4A90D9/#F0F6FF live only in squad (auth) +
+queue-room (its light rebuild). NOT-DONE in #8 (minor): the named "calendar/date
+picker" is a browse-filter, not a purchase-flow component (handle under #9);
+checkout form->payment "step transition" is an instant swap (minor polish).
+
+### Unit 3 - INTERIOR REVEALS (#3) - DONE (commit bb94745, pushed)
+Wired the shared Reveal / ContentSection `reveal` prop (LCP-safe, data-motion
+gated) through the interior surfaces:
+- /events: browse grid fade-rises only when the popular rail is above it (below
+  fold); filtered view's LCP-eager grid + the popular rail (the /events LCP) are
+  never wrapped. Search = /events?q= inherits this.
+- /city (x7), /culture city pages (x8), /organisers (x4): reveal on every
+  below-hero ContentSection. /culture landing: story + all four culture rails.
+- event detail: revealed individual left-column blocks (When+Where, Venue,
+  Organiser) - transform+opacity only, sticky ticket panel untouched.
+Verified (scripts/reveal-verify.mjs): event detail + /culture/african + /events
+show 0 stuck-hidden after scroll and 0 opacity<1 under reduced-motion; sticky
+two-column intact. Gate-verified.
+
+### Unit 4 - DESIGNED LOADING + DARK (#4) - marketing light DONE (commit ac50045)
+Rebuilt the about/blog/careers/press dark CTA closers light (surface dark->alt,
+white text -> ink, gold-400 eyebrow -> AA-safe gold-800, dropped onSurface=dark).
+Verified 0 dark sections on all four at 1440 (only the intentional footer stays
+dark). Gate-verified.
+REMAINING in #4 (queue/squad are auth/queue-gated, gate-verify only):
+- queue-room LIGHT rebuild (photo+overlay when the event has an image, per the
+  standing ruling) + its #4A90D9/#10B981 sweep + the bare-circle SpinnerIcon.
+  Design drafted (computed light/photo-overlay theme + gold Button + success
+  token); NOT yet applied - deferred when the build interrupt took priority.
+- squad-pay-form bare-circle loader + #4A90D9 (auth-gated); connect-onboarding +
+  surprise-me use contextual icon-spins (Loader2 / RefreshCw), judged acceptable.
+
+### PRIORITY INTERRUPT - Vercel build failure FIXED (commit 985e46d, [SHARED])
+The preview build of 78afde7 failed: 509 build-time pages x ~29 export workers
+exhausted the live Supabase pool (PGRST003 + ~57k statement timeouts);
+/events/[slug] exited the build. Three defences (see commit + next.config):
+1. [SHARED] next.config: experimental.cpus=8 (was ~29 workers),
+   staticGenerationMaxConcurrency=4 (was 8), staticGenerationRetryCount=3 ->
+   <=32 concurrent renders (was ~230).
+2. Head/long-tail split: events/[slug], city/[slug]/[suburb],
+   culture/[culture]/[city], events/browse/[city] now defer to on-demand ISR
+   (generateStaticParams -> [], dynamicParams=true, existing revalidate). Build
+   prerender 509 -> 118 pages; prerender-manifest shows 0 prebuilt DB-backed
+   pages. notFound() still guards unknown slugs; sitemap still complete.
+3. withBuildRetry (src/lib/supabase/build-retry.ts): bounded retry+backoff on
+   transient pool errors, soft-fallback to ISR, never masks real errors; wired
+   into the head routes (city/culture/categories/faith).
+VERIFIED: Vercel preview build GREEN; preview live (no auth wall) at
+https://eventlinqs-app-git-feat-home-rebuild-lawals-projects-c20c0be8.vercel.app
+with the full 55-event density rendering on the homepage. Note: city/culture/
+categories/faith were already dynamic (ƒ) pre-fix (not contributing to the
+build-time prerender load); the deferred SSG routes were the ~391-page DB-heavy
+prerender that failed.
+
+### REMAINING after this session (in order): #4 queue-room LIGHT rebuild +
+squad spinner/blue (auth/queue-gated); #9 per-surface new-bar re-audit (fresh
+live TM+EB captures, SURPASS/PARITY/BELOW tables incl loading, at the locked
+1400 width). All can proceed on the now-green preview.
