@@ -1074,3 +1074,27 @@ prerendering (the Supabase-pool risk the team deliberately removed). Real events
 are unaffected; this only touches dead/By crawled links. TM event-detail fresh
 capture is blocked by Ticketmaster bot protection (401) - the one fresh-capture
 exception on this surface.
+
+### Surface 3: Search results (/events?q=) - RE-AUDITED, AT/ABOVE BAR (no code change)
+Captures: `surface-3/audit-2026-06-06/{ours-search,ours-search-empty,eb-search,tm-search}-*`.
+Live URLs: ours = preview `/events?q=afrobeats` (+ empty `?q=quokkazzznonexistent`);
+EB = eventbrite all-events?q=music; TM = ticketmaster.com.au/search?q=music.
+
+Stronger pattern (stated): both competitors frame search as "results for X" over
+their browse layout. EB = a single-column flyer list + Filters sidebar + side
+map. TM = "TOP SUGGESTIONS" + a 10,000-row text list flanked by a "BE SAFE" ad
+block. We benchmark to surpass EB's framed list (the cleaner of the two).
+
+| Aspect | Verdict | Evidence (1440 + 390) |
+|---|---|---|
+| Query framing | SURPASS | H1 becomes `Results for "afrobeats"`, the box is pre-filled, and a no-result search reads `No results for "quokkazzznonexistent"` with a designed empty state (search-off icon + widen/clear guidance + Clear-filters / Browse-all CTAs). EB frames the H1; neither competitor has a zero-result recovery this clean. |
+| Density | SURPASS | Inherits the 4-up real-photo browse grid vs EB's single-column list and TM's text list. |
+| Imagery | SURPASS | Real-photo result cards vs EB poster flyers / TM mixed + ads. |
+| UX | SURPASS | Full filter set (date presets, category chips, grid/map, more-filters sheet) still applies to a search; clean zero-result recovery. |
+| Typography | PARITY | "Results for ..." at the display scale. |
+| Loading | SURPASS | /events?q= IS the /events route, so it inherits the designed browse `loading.tsx` added in Surface 1. |
+| Motion | SURPASS | Inherits the browse grid reveal + shared rail glide + card hover. |
+| Mobile (390) | PARITY | Query framing + single-column results + sticky solid filter bar + 44px targets. |
+
+No aspect BELOW -> no code change (the surface-1 browse skeleton already covers
+search). Query framing + designed empty state verified live at 1440 + 390.
