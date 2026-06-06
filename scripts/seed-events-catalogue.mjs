@@ -196,21 +196,37 @@ function slugify(s) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 }
 
-// Spread dates from 6 days out, stepping ~4 days, wrapping the time of day.
+// Dates are assigned by a category round-robin "slot" rather than catalogue
+// order, so the earliest slots span different categories. That makes the
+// time-based This Week lead rail varied (one event per category up front),
+// not nine Music events. Anchored to a fixed base for idempotency; ids and
+// slugs are index-based, so changing dates never breaks re-runs.
 const DAY = 24 * 60 * 60 * 1000
-function startDate(i) {
-  // Base must be static for idempotency across runs in the same window. We
-  // anchor to a fixed ISO date rather than Date.now so re-runs are stable.
-  const base = Date.parse('2026-06-12T08:00:00Z')
-  const d = new Date(base + (6 + i * 4) * DAY)
-  d.setUTCHours([8, 9, 10, 19][i % 4], 0, 0, 0)
+function computeSlots() {
+  const catIndex = {}
+  let nCats = 0
+  for (const e of CATALOGUE) if (!(e.cat.slug in catIndex)) catIndex[e.cat.slug] = nCats++
+  const rank = {}
+  return CATALOGUE.map(e => {
+    const r = rank[e.cat.slug] ?? 0
+    rank[e.cat.slug] = r + 1
+    return r * nCats + catIndex[e.cat.slug]
+  })
+}
+function startDate(slot) {
+  // First full round (one per category) lands inside 7 days so This Week
+  // leads; the rest spread over the following weeks for the category rails.
+  const base = Date.parse('2026-06-07T00:00:00Z')
+  const d = new Date(base + Math.round(slot * 0.7 * DAY))
+  d.setUTCHours([8, 9, 10, 6][slot % 4], 0, 0, 0) // 6pm/7pm/8pm/4pm AEST
   return d
 }
 
 function buildRows() {
+  const slots = computeSlots()
   return CATALOGUE.map((e, i) => {
     const venue = VENUES[e.city][e.v]
-    const start = startDate(i)
+    const start = startDate(slots[i])
     const end = new Date(start.getTime() + 3 * 60 * 60 * 1000)
     const slug = `cat-${slugify(e.title)}-${e.city.toLowerCase()}`
     const tiers = e.tiers.map((t, ti) => ({
