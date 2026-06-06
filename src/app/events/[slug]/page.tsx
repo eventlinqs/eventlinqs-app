@@ -24,6 +24,7 @@ import { RelatedEventsGrid } from '@/components/features/events/related-events-g
 import { Reveal } from '@/components/ui/reveal'
 import type { EventCardData } from '@/components/features/events/event-card'
 import { projectToCardData } from '@/lib/events/event-card-projection'
+import { buildEventMetaDescription } from '@/lib/events/event-meta'
 import type { PublicEventRow } from '@/lib/events/types'
 import nextDynamic from 'next/dynamic'
 import { EventTrustSignals } from '@/components/features/event/EventTrustSignals'
@@ -176,10 +177,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const titleParts = [event.title, dateLabel, venueLabel || null].filter(Boolean) as string[]
   const title = `${titleParts.join(' - ')} - EventLinqs`
 
-  const summarySource = event.summary
-    ?? (event.description ? event.description.replace(/<[^>]*>/g, '') : '')
-  const cityLine = event.venue_city ? `In ${event.venue_city}. ` : ''
-  const description = (cityLine + summarySource).slice(0, 155)
+  // Always non-empty (root fix for the SEO meta-description failure on events
+  // with no summary/description/venue_city - see buildEventMetaDescription).
+  const description = buildEventMetaDescription({
+    title: event.title,
+    summary: event.summary,
+    description: event.description,
+    venueCity: event.venue_city,
+    venueName: event.venue_name,
+    dateLabel,
+    categoryName: event.category?.name,
+  })
 
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
 

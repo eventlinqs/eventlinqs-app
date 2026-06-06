@@ -41,6 +41,21 @@ const SECURITY_HEADERS = [
 
 const nextConfig: NextConfig = {
   trailingSlash: false,
+  // Render page metadata (<title>, <meta name="description">, etc.) in the
+  // initial <head> for EVERY user agent, opting out of Next's streaming-
+  // metadata optimisation. By default Next streams metadata into the body for
+  // "browser" UAs (hoisted to <head> client-side) and only blocks it in <head>
+  // for UAs in its built-in crawler list. Lighthouse 13's mobile UA is a pure
+  // "moto g power" device string with no "Chrome-Lighthouse" token, so it was
+  // treated as a browser: the meta description streamed into the body and
+  // Lighthouse's head-only meta-description audit scored SEO 0.92 on event
+  // detail. Any crawler/preview tool not on Next's list would be hidden the same
+  // way. `htmlLimitedBots: '.'` matches every UA, so metadata is always
+  // head-blocking - SEO-safe for all crawlers, not just the ones Next ships.
+  // This affects metadata placement ONLY; body/Suspense streaming (the /events
+  // grid + event-detail loading skeletons) is governed by Next's separate
+  // built-in bot regex and is unchanged.
+  htmlLimitedBots: /./,
   // Preview-density fixture. The homepage reads the 55-event catalogue fixture
   // (src/lib/dev/home-seed-fixture.json) at runtime via fs when
   // HOMEPAGE_SEED_FIXTURE=1. Trace it into the homepage serverless bundle so
