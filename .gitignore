@@ -93,8 +93,9 @@ next-env.d.ts
 lighthouse-reports/
 .lighthouse/
 
-# Claude Code local settings
-.claude/
+# Claude Code local settings (ignore everything except shared skills)
+.claude/*
+!.claude/skills/
 
 supabase/.temp/
 
