@@ -33,13 +33,14 @@ copy, no placeholder imagery, no em-dashes, Australian English throughout.
    (theatre and comedy live here as genre, not as their own category),
    `family`, `festival`, `food-drink`, `nightlife`, `business-networking`. Then
    add the scene layer as the EventLinqs differentiator on top, roughly 10 to 20
-   percent. Seed scenes only from the locked national list in `CLAUDE.md`
-   (Scene layer), First Nations first: First Nations, South Asian, Asian,
-   Pasifika & Maori, Afrobeats & Amapiano (Owambe within), Latin, Pride,
-   Mediterranean, Faith & Worship (Gospel within), Caribbean. Business &
-   Networking is a general category, never a scene. Per Law 3, re-verify the
-   taxonomy against current Australian market data; never inherit it from an old
-   draft.
+   percent. Seed scenes only from the locked V2 national list in `CLAUDE.md`
+   (Scene layer). Music and sound first: Electronic & Dance, Country, Indie &
+   Rock, Hip-Hop & RnB, Pop, Folk & Acoustic, Blues & Roots, Afrobeats &
+   Amapiano, Latin, Caribbean & Dancehall, Jazz & Soul, Metal & Hardcore. Then
+   community and culture: First Nations, South Asian, Asian, Pasifika & Maori,
+   Mediterranean, Pride, Faith & Worship. Business & Networking is a general
+   category, never a scene. Per Law 3, re-verify the taxonomy against current
+   Australian market data; never inherit it from an old draft.
 
 3. **Real content.** Each event needs a real Australian venue, a sensible
    future date and time, an organiser, and ticket tiers with realistic prices
@@ -74,7 +75,8 @@ copy, no placeholder imagery, no em-dashes, Australian English throughout.
 |---|---|
 | General (the spine) | sports, music, arts-culture, family, festival, food-drink, nightlife, business-networking |
 | Genre within arts-culture | comedy, theatre, film |
-| Scene (EventLinqs touch, locked) | First Nations (first), South Asian, Asian, Pasifika & Maori, Afrobeats & Amapiano (Owambe within), Latin, Pride, Mediterranean, Faith & Worship (Gospel within), Caribbean |
+| Scene - music and sound (V2, locked) | Electronic & Dance, Country, Indie & Rock, Hip-Hop & RnB, Pop, Folk & Acoustic, Blues & Roots, Afrobeats & Amapiano, Latin, Caribbean & Dancehall, Jazz & Soul, Metal & Hardcore |
+| Scene - community and culture (V2, locked) | First Nations (first), South Asian, Asian, Pasifika & Maori, Mediterranean, Pride, Faith & Worship |
 
 ## Data rules
 

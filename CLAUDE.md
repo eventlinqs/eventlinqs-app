@@ -47,23 +47,42 @@ old draft without re-verifying it.
 - Ticketing (LPA): contemporary music is about 54 percent of ticketing revenue;
   comedy is the fastest-growing category.
 
-## Scene layer (locked, national)
+## Scene layer (locked, national) - V2, research-backed
 
 Scenes are the EventLinqs differentiator layered on top of the general
-catalogue, in this order:
+catalogue. Two families in ONE scrollable rail, music and sound first (the
+dominant festival + streaming demand; Australia is the world's top dance-music
+streaming nation), then community and culture.
 
-1. First Nations (position one)
-2. South Asian
-3. Asian
-4. Pasifika & Maori
-5. Afrobeats & Amapiano (Owambe within)
-6. Latin
-7. Pride
-8. Mediterranean
-9. Faith & Worship (Gospel within)
-10. Caribbean
+Music and sound scenes, in this order:
 
-Business & Networking is a general category, never a scene.
+1. Electronic & Dance
+2. Country
+3. Indie & Rock
+4. Hip-Hop & RnB
+5. Pop
+6. Folk & Acoustic
+7. Blues & Roots
+8. Afrobeats & Amapiano
+9. Latin
+10. Caribbean & Dancehall
+11. Jazz & Soul
+12. Metal & Hardcore
+
+Then community and culture scenes:
+
+13. First Nations
+14. South Asian
+15. Asian
+16. Pasifika & Maori
+17. Mediterranean
+18. Pride
+19. Faith & Worship
+
+Each tile links to its landing route where one exists, otherwise the filtered
+events view as an interim. Missing scene landing pages are tracked for the
+post-photos taxonomy mission. Business & Networking is a general category,
+never a scene.
 
 ## Design system
 
