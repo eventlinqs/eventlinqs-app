@@ -10,6 +10,7 @@ import {
   useElements,
 } from '@stripe/react-stripe-js'
 import { processCheckout } from '@/app/actions/checkout'
+import { Button } from '@/components/ui/Button'
 import { CartTimer } from '@/components/checkout/cart-timer'
 import { CheckoutSummary } from '@/components/checkout/checkout-summary'
 import { DiscountCodeInput } from '@/components/checkout/discount-code-input'
@@ -18,6 +19,11 @@ import type { FeeBreakdown } from '@/lib/payments/payment-calculator'
 import type { AttendeeDetails } from '@/components/checkout/attendee-form'
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
+
+// Shared field styling: 44px+ touch target and 16px text so iOS never
+// zoom-jumps the viewport on focus. Gold focus ring per the design system.
+const FIELD_CLS =
+  'w-full rounded-lg border border-ink-200 px-3.5 py-2.5 text-base text-ink-900 placeholder:text-ink-400 focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500'
 
 interface CheckoutFormProps {
   reservationId: string
@@ -86,15 +92,11 @@ function PaymentForm({
         </div>
       )}
 
-      <button
-        type="submit"
-        disabled={paying || !stripe}
-        className="mt-6 w-full rounded-lg bg-ink-900 px-4 py-3.5 text-sm font-bold text-white disabled:opacity-50 hover:bg-ink-800 transition-colors"
-      >
+      <Button type="submit" size="lg" disabled={paying || !stripe} className="mt-6 w-full">
         {paying
           ? 'Processing…'
           : `Pay ${currency.toUpperCase()} ${(totalCents / 100).toFixed(2)}`}
-      </button>
+      </Button>
 
       <p className="mt-3 text-center text-xs text-ink-400">
         Secured by Stripe. Your payment info is never stored on our servers.
@@ -231,21 +233,18 @@ export function CheckoutForm({
 
   if (expired) {
     return (
-      <div className="min-h-screen bg-canvas flex items-center justify-center px-4">
-        <div className="text-center max-w-sm">
-          <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
-            <svg className="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div className="min-h-screen bg-canvas flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md rounded-2xl border border-ink-200 bg-white p-8 text-center shadow-sm">
+          <div className="mb-5 inline-flex h-16 w-16 items-center justify-center rounded-full bg-error/10">
+            <svg className="h-8 w-8 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h2 className="text-xl font-bold text-ink-900">Your reservation has expired</h2>
-          <p className="mt-2 text-ink-400 text-sm">The 10-minute hold on your tickets has ended. The tickets may have been taken by another buyer.</p>
-          <a
-            href={`/events`}
-            className="mt-6 inline-block rounded-lg bg-ink-900 px-6 py-3 text-sm font-semibold text-white hover:bg-ink-800"
-          >
-            Try Again
-          </a>
+          <h2 className="font-display text-2xl font-bold text-ink-900">Your reservation has expired</h2>
+          <p className="mt-2 text-sm text-ink-600">The 10-minute hold on your tickets has ended. They may have been taken by another buyer.</p>
+          <Button href="/events" size="lg" className="mt-6 w-full">
+            Find tickets again
+          </Button>
         </div>
       </div>
     )
@@ -318,25 +317,25 @@ export function CheckoutForm({
                 <h3 className="text-base font-semibold text-ink-900 mb-4">Your Details</h3>
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-xs text-ink-400 mb-1">Full name</label>
+                    <label className="block text-xs text-ink-600 mb-1">Full name</label>
                     <input
                       type="text"
                       value={buyerName}
                       onChange={e => setBuyerName(e.target.value)}
                       required
                       placeholder="Jane Smith"
-                      className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
+                      className={FIELD_CLS}
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-ink-400 mb-1">Email</label>
+                    <label className="block text-xs text-ink-600 mb-1">Email</label>
                     <input
                       type="email"
                       value={buyerEmail}
                       onChange={e => setBuyerEmail(e.target.value)}
                       required
                       placeholder="you@example.com"
-                      className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
+                      className={FIELD_CLS}
                     />
                     <p className="mt-1 text-xs text-ink-400">Confirmation sent to this address</p>
                   </div>
@@ -390,25 +389,19 @@ export function CheckoutForm({
                 </div>
               )}
 
-              {/* For free events - direct register button */}
+              {/* Free vs paid: the same canonical gold CTA carries the whole
+                  buyer thread (Get tickets -> Checkout -> this), free events
+                  just register straight away. */}
               {fees.total_cents === 0 ? (
-                <button
-                  type="submit"
-                  disabled={isPending}
-                  className="w-full rounded-lg bg-[#10B981] px-4 py-3.5 text-sm font-bold text-white disabled:opacity-50 hover:bg-[#059669] transition-colors"
-                >
-                  {isPending ? 'Registering…' : 'Register for Free'}
-                </button>
+                <Button type="submit" size="lg" disabled={isPending} className="w-full">
+                  {isPending ? 'Registering…' : 'Register for free'}
+                </Button>
               ) : (
-                <button
-                  type="submit"
-                  disabled={isPending}
-                  className="w-full rounded-lg bg-ink-900 px-4 py-3.5 text-sm font-bold text-white disabled:opacity-50 hover:bg-ink-800 transition-colors"
-                >
+                <Button type="submit" size="lg" disabled={isPending} className="w-full">
                   {isPending
                     ? 'Processing…'
-                    : `Continue to Payment - ${currency.toUpperCase()} ${(fees.total_cents / 100).toFixed(2)}`}
-                </button>
+                    : `Continue to payment - ${currency.toUpperCase()} ${(fees.total_cents / 100).toFixed(2)}`}
+                </Button>
               )}
             </div>
 
