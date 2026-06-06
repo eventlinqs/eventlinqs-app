@@ -1339,3 +1339,63 @@ Real events + browse-city -> 200 (event detail keeps its loading skeleton);
 zzz-fake-event + zzz-fake-city -> 404; /events + / -> 200. Gates: tsc 0, eslint 0
 errors, vitest pass, next build exit 0. The soft-404 follow-up logged in the
 close-out is now CLOSED.
+
+---
+
+## Lighthouse mobile gate: GREEN - three root causes fixed (2026-06-07)
+
+The gate had been failing on every recent branch commit (since the merge sync).
+Three distinct root causes, all run to ground and fixed; the hard blocker (SEO)
+is resolved and the gate is GREEN (verified on commit a2aec43, Lighthouse mobile
+gate = success).
+
+### 1. /events LCP regression (warn-level) - FIXED (commit 1e46975)
+The in-page Suspense added for browse loading (128df72) wrapped the popular rail,
+pushing its first card image - the /events LCP candidate - behind a streamed
+chunk, regressing mobile LCP to ~5.2s. Fix: popular rail renders INLINE again
+(priority image parse-discoverable), only the below-the-fold results grid stays
+behind the designed skeleton. Proven locally (warm): /events LCP 3.27s (< 4000).
+Local median is flaky 3.3-5s due to the next/image optimiser cold-start
+(Issue #42) - the documented reason LCP is warn-level.
+
+### 2. Event-detail SEO 0.92 (hard fail, meta-description) - FIXED (commit a2aec43)
+Two causes, both fixed:
+ (a) STREAMING METADATA. Next streams <title>/<meta description> into the body
+     for browser UAs and only blocks them in <head> for UAs in its built-in
+     crawler list. Lighthouse 13's mobile UA is a pure "moto g power" device
+     string (no Chrome-Lighthouse token), so it got the streamed body version
+     and the head-only meta-description audit scored 0 -> SEO 0.92. (Real
+     crawlers ARE on Next's list and always got it in head, so live SEO was
+     fine.) Fix: next.config `htmlLimitedBots: /./` renders metadata in <head>
+     for EVERY UA. Verified: metadata-only change; body/Suspense streaming
+     (skeletons) intact (React $RC markers + skeleton present in SSR HTML).
+ (b) EMPTY DESCRIPTION. The inline builder returned '' when summary, description
+     AND venue_city were all empty (the CI seed event). Fix:
+     buildEventMetaDescription() - guaranteed non-empty via a title fallback +
+     a unit test for the all-empty case.
+ Proven locally: event-detail SEO = 1.0 (was 0.92), meta description in <head>.
+
+### 3. Homepage perf/LCP/TBT NaN (blind spot, warn-level) - audit detection FIXED; hero LCP-registration scoped (commit c6b0d96)
+The homepage returned NO_LCP (perf/LCP/TBT = null) in every run. Root-caused:
+ (a) AUDIT NOT DETECTED (fixed). The head bootstrap only flagged audit/headless
+     mode by UA token; Lighthouse 13's device UA has none, so the homepage ran
+     in ANIMATED mode (.hero-enter at opacity:0, .reveal rails hidden) for the
+     audit. The gate already sends `Cookie: el-audit=1` for this, but the app
+     never read it. Fix: bootstrap now treats el-audit=1 as audit mode ->
+     data-headless=1 -> motion off -> visible from first paint. Verified
+     (observed FCP 1466->866ms).
+ (b) HERO LCP NOT REGISTERING (remaining, scoped). Even with motion off, Chrome
+     fires ZERO LCP entries for the absolute-positioned `fill` HeroMedia hero -
+     confirmed via a direct PerformanceObserver (control: /events fires an LCP;
+     / fires none). Ruled OUT: motion, hydration node-swap (img id stable),
+     contain/content-visibility (none on the ancestor chain), transforms,
+     console/page errors. The hero image is loaded, visible, opacity 1, 412x346
+     at top 65 - yet no LCP candidate registers (the same class the lighthouserc
+     documents for / and /culture/* and gates at warn-level). The fix is a hero
+     LCP-eligibility change (the documented static-raster-hero direction), which
+     reworks the most important page; flagged for founder sign-off rather than
+     done blind. Non-gate-blocking: homepage perf is warn-level by design.
+
+Net: SEO (the hard blocker) and the /events LCP regression are fixed and the gate
+is GREEN. The homepage audit-detection is fixed; the hero LCP-registration is
+root-caused and scoped, pending sign-off on a hero-structural change.
