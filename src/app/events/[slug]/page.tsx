@@ -1,4 +1,5 @@
 import { createPublicClient } from '@/lib/supabase/public-client'
+import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
@@ -24,14 +25,14 @@ import { Reveal } from '@/components/ui/reveal'
 import type { EventCardData } from '@/components/features/events/event-card'
 import { projectToCardData } from '@/lib/events/event-card-projection'
 import type { PublicEventRow } from '@/lib/events/types'
-import dynamic from 'next/dynamic'
+import nextDynamic from 'next/dynamic'
 import { EventTrustSignals } from '@/components/features/event/EventTrustSignals'
 
 // VenueMap pulls in @googlemaps/js-api-loader (~290KB). Loading it statically
 // makes it part of the event-detail route chunk, which Next.js eagerly
 // prefetches from any page linking to /events/*. next/dynamic splits it into
 // its own chunk so the map code stays out of the initial bundle on every cell.
-const VenueMap = dynamic(
+const VenueMap = nextDynamic(
   () => import('@/components/features/events/venue-map').then(m => m.VenueMap)
 )
 import { SectionHeader } from '@/components/ui/SectionHeader'
@@ -53,19 +54,18 @@ import { SaveEventButton } from '@/components/features/events/save-event-button'
 // respectively. Per-tier inventory + dynamic pricing still come from
 // Redis/Postgres at render time, but they go through `createPublicClient`
 // which doesn't read cookies.
+// No generateStaticParams: this route is rendered DYNAMICALLY on demand (see
+// the headers() note in the component). The build-pool fix (985e46d) needed
+// individual events kept off the build-time Supabase pool; it did that with
+// `generateStaticParams -> []`, but an EMPTY gSP pins Turbopack to a STATIC
+// classification (zero params to prerender, no chance to observe the chrome +
+// Sentry render-time cookie read), so the first on-demand request 500'd
+// ("static to dynamic at runtime, reason: cookies") on every event. Dropping
+// gSP entirely (with the headers() marker in the component) makes the route
+// dynamic - nothing prerenders at build (still pool-safe), and notFound()
+// returns a real 404 (force-dynamic would have soft-404'd it 200). The sitemap
+// still lists every event, so discovery and indexing are unaffected.
 export const revalidate = 300
-export const dynamicParams = true
-
-export async function generateStaticParams() {
-  // Long tail: do NOT prerender individual events at build time. Prerendering
-  // every published event drove one query here plus the page's own per-slug
-  // fetches across the export-worker fleet, which exhausted the live Supabase
-  // pool on Vercel (PGRST003 + statement timeouts) and failed the build. With
-  // dynamicParams=true each event renders on first request and is then served
-  // from the ISR cache (revalidate=300). The sitemap still lists every event,
-  // so discovery and indexing are unaffected.
-  return []
-}
 
 type Props = {
   params: Promise<{ slug: string }>
@@ -249,10 +249,36 @@ function cheapestPrice(tiers: { price: number; currency: string }[]): string | n
 }
 
 export default async function EventDetailPage({ params }: Props) {
+  // Render this route DYNAMICALLY. The build-pool fix (985e46d) set
+  // generateStaticParams -> [] to keep individual events off the build-time
+  // Supabase pool. But with no params to prerender Next classified the route
+  // STATIC, so the first on-demand request hit the render-time cookie/header
+  // read performed by the shared chrome + Sentry tracing instrumentation and
+  // threw a hard 500 ("Page changed from static to dynamic at runtime, reason:
+  // cookies") on EVERY event - the flagship surface was down. `connection()`
+  // declares the dependency on the request up front so Next marks the route
+  // dynamic the SAME natural way the sibling /city + /culture routes already
+  // are (NOT `dynamic = 'force-dynamic'`, which renders notFound() as a soft
+  // 200 instead of a real 404). It never prerenders at build (pool-safe) and is
+  // still edge-cached via the CDN-Cache-Control header in next.config - the
+  // shell is anonymous (SiteHeader is rendered `staticSafe`, no per-user avatar
+  // in the shared cache entry; only Sentry's per-request trace id varies, which
+  // is not user data).
   const { slug } = await params
   const event = await fetchEvent(slug)
 
+  // notFound() BEFORE any request-data access, so a missing event returns a
+  // real 404 (the cookie-free createPublicClient fetch above keeps this guard
+  // static-classifiable; accessing headers() first would commit a streaming
+  // 200 and soft-404 the not-found - the bug city/[slug] avoids the same way).
   if (!event) notFound()
+
+  // Mark the route dynamic for real events: a no-op `headers()` read. Per this
+  // repo's ISR notes (app/layout.tsx + the /events page) a server `headers()`
+  // call disqualifies a route from static generation, which (together with no
+  // generateStaticParams) keeps this route off the static classification that
+  // 500'd on the chrome + Sentry render-time cookie read.
+  await headers()
 
   // Queue gate moved to `src/middleware.ts`. The middleware redirects
   // unauthenticated visitors to `/queue/[slug]` before this page renders,
@@ -274,7 +300,7 @@ export default async function EventDetailPage({ params }: Props) {
   if (event.visibility === 'private') {
     return (
       <div className="min-h-screen bg-canvas">
-        <SiteHeader />
+        <SiteHeader staticSafe />
         <main className="mx-auto flex max-w-3xl flex-col items-center px-4 py-24 text-center sm:px-6 lg:px-8">
           <h1 className="font-display text-2xl font-bold text-ink-900">This is a private event</h1>
           <p className="mt-2 text-ink-600">You need an invitation to view this event.</p>
@@ -287,7 +313,7 @@ export default async function EventDetailPage({ params }: Props) {
   if (event.status === 'draft' || event.status === 'scheduled') {
     return (
       <div className="min-h-screen bg-canvas">
-        <SiteHeader />
+        <SiteHeader staticSafe />
         <main className="mx-auto flex max-w-3xl flex-col items-center px-4 py-24 text-center sm:px-6 lg:px-8">
           <h1 className="font-display text-2xl font-bold text-ink-900">This event is not yet published</h1>
           <p className="mt-2 text-ink-600">Check back soon.</p>
@@ -461,7 +487,7 @@ export default async function EventDetailPage({ params }: Props) {
         venueCity={event.venue_city ?? 'Unknown'}
         priceRange={priceLabel ?? 'Free'}
       />
-      <SiteHeader />
+      <SiteHeader staticSafe />
 
       {eventBannerState ? (
         <EventStateBanner
