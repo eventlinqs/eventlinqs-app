@@ -114,6 +114,36 @@ export type Database = {
           },
         ]
       }
+      artists: {
+        Row: {
+          bio: string | null
+          created_at: string
+          id: string
+          image_url: string | null
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       audit_log: {
         Row: {
           action: string
@@ -493,6 +523,45 @@ export type Database = {
           },
         ]
       }
+      event_artists: {
+        Row: {
+          artist_id: string
+          billing_order: number
+          created_at: string
+          event_id: string
+          id: string
+        }
+        Insert: {
+          artist_id: string
+          billing_order?: number
+          created_at?: string
+          event_id: string
+          id?: string
+        }
+        Update: {
+          artist_id?: string
+          billing_order?: number
+          created_at?: string
+          event_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_artists_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_artists_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_categories: {
         Row: {
           created_at: string
@@ -567,9 +636,11 @@ export type Database = {
           event_type: Database["public"]["Enums"]["event_type"]
           fee_pass_type: Database["public"]["Enums"]["fee_pass_type"]
           gallery_urls: Json | null
+          genre_slug: string | null
           has_reserved_seating: boolean
           id: string
           is_age_restricted: boolean
+          is_featured: boolean
           is_free: boolean | null
           is_high_demand: boolean
           is_multi_day: boolean
@@ -589,6 +660,7 @@ export type Database = {
           start_date: string
           status: Database["public"]["Enums"]["event_status"]
           sub_culture: string | null
+          subgenre_slug: string | null
           suburb_primary: string | null
           summary: string | null
           tags: Json | null
@@ -623,9 +695,11 @@ export type Database = {
           event_type?: Database["public"]["Enums"]["event_type"]
           fee_pass_type?: Database["public"]["Enums"]["fee_pass_type"]
           gallery_urls?: Json | null
+          genre_slug?: string | null
           has_reserved_seating?: boolean
           id?: string
           is_age_restricted?: boolean
+          is_featured?: boolean
           is_free?: boolean | null
           is_high_demand?: boolean
           is_multi_day?: boolean
@@ -645,6 +719,7 @@ export type Database = {
           start_date: string
           status?: Database["public"]["Enums"]["event_status"]
           sub_culture?: string | null
+          subgenre_slug?: string | null
           suburb_primary?: string | null
           summary?: string | null
           tags?: Json | null
@@ -679,9 +754,11 @@ export type Database = {
           event_type?: Database["public"]["Enums"]["event_type"]
           fee_pass_type?: Database["public"]["Enums"]["fee_pass_type"]
           gallery_urls?: Json | null
+          genre_slug?: string | null
           has_reserved_seating?: boolean
           id?: string
           is_age_restricted?: boolean
+          is_featured?: boolean
           is_free?: boolean | null
           is_high_demand?: boolean
           is_multi_day?: boolean
@@ -701,6 +778,7 @@ export type Database = {
           start_date?: string
           status?: Database["public"]["Enums"]["event_status"]
           sub_culture?: string | null
+          subgenre_slug?: string | null
           suburb_primary?: string | null
           summary?: string | null
           tags?: Json | null
@@ -752,6 +830,13 @@ export type Database = {
             referencedColumns: ["slug"]
           },
           {
+            foreignKeyName: "events_genre_slug_fkey"
+            columns: ["genre_slug"]
+            isOneToOne: false
+            referencedRelation: "genres"
+            referencedColumns: ["slug"]
+          },
+          {
             foreignKeyName: "events_organisation_id_fkey"
             columns: ["organisation_id"]
             isOneToOne: false
@@ -773,6 +858,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "events_subgenre_slug_fkey"
+            columns: ["subgenre_slug"]
+            isOneToOne: false
+            referencedRelation: "subgenres"
+            referencedColumns: ["slug"]
+          },
+          {
             foreignKeyName: "events_suburb_primary_fkey"
             columns: ["suburb_primary"]
             isOneToOne: false
@@ -787,6 +879,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      follows: {
+        Row: {
+          created_at: string
+          followable_id: string
+          followable_type: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          followable_id: string
+          followable_type: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          followable_id?: string
+          followable_type?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      genres: {
+        Row: {
+          created_at: string
+          display_order: number
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       order_items: {
         Row: {
@@ -1313,10 +1453,12 @@ export type Database = {
           currency: string
           failure_reason: string | null
           id: string
+          initiated_by: string | null
           metadata: Json
           organisation_id: string
+          reversed_at: string | null
           status: string
-          stripe_payout_id: string
+          stripe_payout_id: string | null
           updated_at: string
         }
         Insert: {
@@ -1326,10 +1468,12 @@ export type Database = {
           currency: string
           failure_reason?: string | null
           id?: string
+          initiated_by?: string | null
           metadata?: Json
           organisation_id: string
+          reversed_at?: string | null
           status?: string
-          stripe_payout_id: string
+          stripe_payout_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -1339,13 +1483,22 @@ export type Database = {
           currency?: string
           failure_reason?: string | null
           id?: string
+          initiated_by?: string | null
           metadata?: Json
           organisation_id?: string
+          reversed_at?: string | null
           status?: string
-          stripe_payout_id?: string
+          stripe_payout_id?: string | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "payouts_initiated_by_fkey"
+            columns: ["initiated_by"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "payouts_organisation_id_fkey"
             columns: ["organisation_id"]
@@ -1498,6 +1651,42 @@ export type Database = {
         }
         Relationships: []
       }
+      refund_tickets: {
+        Row: {
+          created_at: string
+          is_active: boolean
+          refund_id: string
+          ticket_id: string
+        }
+        Insert: {
+          created_at?: string
+          is_active?: boolean
+          refund_id: string
+          ticket_id: string
+        }
+        Update: {
+          created_at?: string
+          is_active?: boolean
+          refund_id?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refund_tickets_refund_id_fkey"
+            columns: ["refund_id"]
+            isOneToOne: false
+            referencedRelation: "refunds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refund_tickets_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       refunds: {
         Row: {
           amount_cents: number
@@ -1587,42 +1776,6 @@ export type Database = {
             columns: ["organisation_id"]
             isOneToOne: false
             referencedRelation: "organisations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      refund_tickets: {
-        Row: {
-          created_at: string
-          is_active: boolean
-          refund_id: string
-          ticket_id: string
-        }
-        Insert: {
-          created_at?: string
-          is_active?: boolean
-          refund_id: string
-          ticket_id: string
-        }
-        Update: {
-          created_at?: string
-          is_active?: boolean
-          refund_id?: string
-          ticket_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "refund_tickets_refund_id_fkey"
-            columns: ["refund_id"]
-            isOneToOne: false
-            referencedRelation: "refunds"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "refund_tickets_ticket_id_fkey"
-            columns: ["ticket_id"]
-            isOneToOne: false
-            referencedRelation: "tickets"
             referencedColumns: ["id"]
           },
         ]
@@ -2113,6 +2266,41 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "ticket_tiers"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      subgenres: {
+        Row: {
+          created_at: string
+          display_order: number
+          genre_slug: string
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          genre_slug: string
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          genre_slug?: string
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subgenres_genre_slug_fkey"
+            columns: ["genre_slug"]
+            isOneToOne: false
+            referencedRelation: "genres"
+            referencedColumns: ["slug"]
           },
         ]
       }
@@ -2792,14 +2980,6 @@ export type Database = {
           refund_id: string
         }[]
       }
-      reconcile_refund: {
-        Args: {
-          p_charge_id: string
-          p_refund_amount_cents: number
-          p_stripe_refund_id: string
-        }
-        Returns: string
-      }
       create_reservation: {
         Args: {
           p_event_id: string
@@ -2816,6 +2996,15 @@ export type Database = {
           p_seat_ids: string[]
           p_ttl_minutes?: number
           p_user_id: string
+        }
+        Returns: Json
+      }
+      disburse_payout: {
+        Args: {
+          p_actor?: string
+          p_amount_cents?: number
+          p_currency: string
+          p_organisation_id: string
         }
         Returns: Json
       }
@@ -2844,9 +3033,11 @@ export type Database = {
           event_type: Database["public"]["Enums"]["event_type"]
           fee_pass_type: Database["public"]["Enums"]["fee_pass_type"]
           gallery_urls: Json | null
+          genre_slug: string | null
           has_reserved_seating: boolean
           id: string
           is_age_restricted: boolean
+          is_featured: boolean
           is_free: boolean | null
           is_high_demand: boolean
           is_multi_day: boolean
@@ -2866,6 +3057,7 @@ export type Database = {
           start_date: string
           status: Database["public"]["Enums"]["event_status"]
           sub_culture: string | null
+          subgenre_slug: string | null
           suburb_primary: string | null
           summary: string | null
           tags: Json | null
@@ -2925,6 +3117,10 @@ export type Database = {
         Args: { p_event_id: string; p_seat_map_id: string }
         Returns: number
       }
+      organiser_available_balance: {
+        Args: { p_currency: string; p_organisation_id: string }
+        Returns: number
+      }
       promote_waitlist: {
         Args: {
           p_event_id: string
@@ -2934,6 +3130,15 @@ export type Database = {
         }
         Returns: number
       }
+      reconcile_refund: {
+        Args: {
+          p_charge_id: string
+          p_refund_amount_cents: number
+          p_stripe_refund_id: string
+        }
+        Returns: string
+      }
+      release_holds: { Args: never; Returns: number }
       transition_payment_status: {
         Args: {
           p_gateway_data?: Json
@@ -2941,6 +3146,10 @@ export type Database = {
           p_payment_id: string
         }
         Returns: boolean
+      }
+      void_payout: {
+        Args: { p_payout_id: string; p_reason?: string; p_status?: string }
+        Returns: Json
       }
     }
     Enums: {

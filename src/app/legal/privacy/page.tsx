@@ -318,6 +318,10 @@ export default function PrivacyPolicyPage() {
           <strong>General enquiries:</strong>{' '}
           <a href="mailto:hello@eventlinqs.com">hello@eventlinqs.com</a>
         </li>
+        <li>
+          <strong>By post:</strong> EventLinqs (Lawal Adams, ABN 30 837 447 587),
+          PO Box 141, Newcomb VIC 3219, Australia
+        </li>
       </ul>
       <p>
         We aim to respond to all privacy requests within 30 days. For urgent
