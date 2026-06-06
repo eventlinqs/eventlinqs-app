@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { EventCardMedia } from '@/components/media'
 import { CityTileImage } from '@/components/media/CityTileImage'
+import { CategoryTileImage } from '@/components/media/CategoryTileImage'
 
 /**
  * Home card system (Phase 1).
@@ -143,6 +144,37 @@ export function CityTile({ city }: { city: CityTileData }) {
       <div className="flex items-center justify-between gap-2 p-4">
         <span className={`text-lg ${TITLE}`}>{city.name}</span>
         <span className="text-xs text-[var(--text-secondary)]">{city.metaLabel}</span>
+      </div>
+    </Link>
+  )
+}
+
+export interface CategoryTileData {
+  href: string
+  imageSrc: string
+  alt: string
+  name: string
+  /** e.g. "24 events" or "Explore". */
+  metaLabel: string
+  priority?: boolean
+}
+
+/**
+ * 5. Category tile - the homepage category entry, replacing the old pill
+ * strip. Same separated-tile finish as CityTile: a representative photo in a
+ * 3/2 frame with the category name and a small meta BELOW it, never on the
+ * image. Image flows through CategoryTileImage. This is the Ticketmaster
+ * "Discover" / Eventbrite category-browse job, built in the locked system.
+ */
+export function CategoryTile({ category }: { category: CategoryTileData }) {
+  return (
+    <Link href={category.href} prefetch={false} className={`flex w-full flex-col ${SURFACE}`}>
+      <div className={`${IMG_WRAP} aspect-[3/2]`}>
+        <CategoryTileImage src={category.imageSrc} alt={category.alt} priority={category.priority} className={IMG_MOTION} />
+      </div>
+      <div className="flex items-center justify-between gap-2 p-4">
+        <span className={`text-lg ${TITLE}`}>{category.name}</span>
+        <span className="text-xs text-[var(--text-secondary)]">{category.metaLabel}</span>
       </div>
     </Link>
   )

@@ -6,7 +6,7 @@ import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { FeaturedHero } from '@/components/features/home/FeaturedHero'
 import { HomeSchemaJsonLd } from '@/components/features/home/home-schema-jsonld'
-import { CategoryChipStrip } from '@/components/features/home/category-chip-strip'
+import { CategoryNavRail } from '@/components/features/home/category-nav-rail'
 import { SceneRail } from '@/components/features/home/scene-rail'
 import type { BentoEvent } from '@/components/features/events/event-bento-tile'
 import {
@@ -104,6 +104,13 @@ export default async function HomePage() {
   const byCategory = (slug: string, max = 12) =>
     upcoming.filter(e => e.category?.slug === slug).slice(0, max)
 
+  // Live counts per category for the category nav tiles under the hero.
+  const categoryCounts = upcoming.reduce<Record<string, number>>((acc, e) => {
+    const slug = e.category?.slug
+    if (slug) acc[slug] = (acc[slug] ?? 0) + 1
+    return acc
+  }, {})
+
   const musicEvents = byCategory('music')
   const foodEvents = byCategory('food-drink')
   const festivalEvents = byCategory('festival')
@@ -190,9 +197,10 @@ export default async function HomePage() {
          *  row were removed to keep the homepage reading like a premium
          *  ticketing platform (real event rails, not editorial placeholders). */}
 
-        {/* H2 Category chip strip: quick-filter chips, cultures expandable.
-         *  Scroll-snap on mobile, fits viewport on desktop. */}
-        <CategoryChipStrip />
+        {/* H2 Browse by category: image-tile category entry under the hero,
+         *  in the locked system (separated tile, label below the image, no
+         *  pills). Replaces the early-concept CategoryChipStrip. */}
+        <CategoryNavRail counts={categoryCounts} />
 
         {/* Empty-state only: with zero upcoming events every rail below
          *  self-hides, so this stands in for the catalogue. */}
