@@ -126,7 +126,7 @@ export function EventsFilterBar({ params, categories, view, hasGeoSignal, basePa
 
   return (
     <div
-      className="sticky z-40 border-b border-ink-100 bg-white/95 backdrop-blur-sm"
+      className="sticky z-40 border-b border-ink-100 bg-white"
       style={{ top: 'var(--header-height)' }}
       aria-busy={isPending || undefined}
     >

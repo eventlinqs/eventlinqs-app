@@ -120,8 +120,67 @@ no new JS or imagery, so the surface-0 Lighthouse headroom holds.
 
 ---
 
+## Surface 2: /events browse and discovery - DONE
+
+Goal: benchmark the browse surface against the captured competitors and apply
+evidence-based refinement. No churn; the page is already mature (the m5 browse
+system: hero strip, sticky filter bar, popular rail, grid + map, pagination).
+
+### Evidence (captured competitors, 1440 + 390)
+- Ticketmaster (MUSIC browse): solid blue header + category sub-nav, an H1, a
+  few filter dropdowns, then a 2-up large-card grid with a gift-card ad rail.
+  `design-captures/ticketmaster/browse-discovery-*`.
+- Eventbrite (browse): left Filters sidebar (Category, Date, Neighborhood), a
+  single-column list of horizontal cards, a right-side map.
+  `design-captures/eventbrite/browse-discovery-*`.
+
+### Reality audit
+Strong, complete surface. Hero strip (H1 + count + search), sticky filter bar
+(date presets, Grid/Map toggle, More-filters sheet with price/date/distance/
+sort, category chips), popular rail, a 4-up real-photography grid (24/pg),
+pagination, ISR-tuned for LCP. Empty state is fully handled (icon, copy, Clear
+filters + Browse all CTAs). Grid cards use the no-blur "light" save button and
+opaque badges. All states covered.
+
+### Evidence-based refinement (the change)
+The sticky filter bar was glassmorphism: `bg-white/95 backdrop-blur-sm`, the
+exact treatment CLAUDE.md forbids and that surface 1 purged from the header.
+Both competitors use solid, opaque filter/sub-nav bars. Fixes:
+1. Filter bar -> solid `bg-white` (was `bg-white/95 backdrop-blur-sm`). On
+   scroll the bar is now fully opaque; grid cards no longer bleed through it.
+2. Filter sheet scrim -> solid dim `bg-ink-900/60` (was `bg-ink-900/40
+   backdrop-blur-sm`). Modal overlay now dims without a frosted blur.
+No layout change; density, cards, and imagery untouched (already above bar).
+
+### Captures
+- Before: `surface-2/before/events-{1440,768,390}.png`,
+  `events-empty-{1440,768,390}.png` (empty-state proof).
+- After: `surface-2/after/events-{1440,768,390}.png` plus
+  `events-scrolled-filterbar-1440.png` (solid bar over scrolled grid).
+
+### Benchmark verdict vs Ticketmaster + Eventbrite (1440 + 390)
+| Dimension | Verdict | Note |
+|---|---|---|
+| Density | Surpass | 4-up real-photo grid (24/pg) vs TM 2-up + ad and EB single-column list. |
+| Typography | Parity | H1 display, chip labels, card titles at the locked scale. |
+| Imagery | Surpass | Every card real photography, image-alone, details below; no ads. |
+| UX | Surpass | Date presets + category chips + price/distance/sort sheet + Grid/Map, all keyboard reachable with aria-pressed; solid sticky bar; full empty state. |
+| Mobile (390) | Parity | Horizontal-scroll chips, single-column grid, sticky solid bar, 44px targets. |
+
+### Cross-surface follow-up (logged, not churned here)
+Remaining `backdrop-blur` glassmorphism lives on other surfaces and is left to
+their passes: event-sold-out badge, sticky-action-bar, hero-carousel/featured
+hero buttons, save-button "dark" variant, this-week-strip (surfaces 0/3). The
+SaveEventButton "dark" frosted variant is unused on browse (cards use "light").
+
+### Gates
+lint 0 errors, build pass (509 pages), vitest 275 pass, axe-core 0 violations
+(/events desktop + mobile). Lighthouse on the Vercel preview (CI gate); change
+is two CSS tokens, no new JS or imagery, so surface-0 headroom holds.
+
+---
+
 ## Remaining (run in fresh sessions, one surface each)
-2. /events browse and discovery
 3. Event detail page
 4. Search results = the /events?q= experience
 5. City page
