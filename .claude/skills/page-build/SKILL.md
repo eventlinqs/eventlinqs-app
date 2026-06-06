@@ -67,8 +67,14 @@ Work the steps in order. Do not jump ahead.
 
 A page is not done until a Playwright side-by-side against the competitor
 equivalent passes with an explicit verdict on each of: density, typography,
-imagery, UX, and mobile. Parity is the floor; the goal is to surpass. Anything
-not clearly at the bar gets reworked before delivery.
+imagery, UX, loading, and mobile. Parity is the floor; the goal is to surpass.
+Anything not clearly at the bar gets reworked before delivery.
+
+Density-proof rule (locked): every benchmark capture and every verdict is taken
+at full fixture density (`HOMEPAGE_SEED_FIXTURE=1`), with every rail populated
+and flowing and the grid full. Never judge or screenshot a thin-rail or
+half-empty surface: a sparse rail flatters the layout and hides the real density
+contest against the competitor. Thin-rail evidence is not evidence.
 
 ## Rail standard (locked, Surface 0)
 
@@ -82,20 +88,44 @@ Ticketmaster and Eventbrite homepages at 1440 and 390:
   about 1.7x the competitor bar (both sit at 24px). Eyebrow stays 12px uppercase.
 - Uniform card dimensions within a rail. No feature-card size mixing in a
   category rail (no `leadFeature` on a category rail).
-- World-class glide: eased arrow scroll, CSS scroll-snap, a partial next-card
-  peek at every viewport, drag on touch and pointer, `prefers-reduced-motion`
-  respected. No auto-rolling anywhere, including the hero. Manual only.
+- World-class glide: the raised programmatic glide (see Glide standard below),
+  CSS scroll-snap, a partial next-card peek at every viewport, drag on touch and
+  pointer, `prefers-reduced-motion` respected. No auto-rolling anywhere,
+  including the hero. Manual only.
+
+## Glide standard (locked)
+
+The rail arrow glide lives in `src/components/ui/snap-rail.tsx` (`useScrollState`)
+and is the only rail-scroll behaviour. Do not reintroduce native `scrollBy`
+smooth or a fixed-step jump:
+
+- Distance-eased rAF glide: cubic ease-out, ~400 to 550ms scaled by distance,
+  always landing on a card snap boundary. Snap is suspended for the glide so the
+  per-frame `scrollLeft` writes do not fight the snap engine, then restored.
+- Arrows page by the live visible-card count (measured pitch = child offset
+  delta), never a hardcoded step.
+- Arrow press state (`active:scale-90`), end-of-rail disabled fades, and a
+  symmetric left/right edge gradient so the peek invites scroll both ways.
+- Keyboard ArrowLeft/Right on the focused rail drive the same glide.
+- Natural touch/trackpad scrolling is untouched; any pointer/touch/wheel input
+  cancels an in-flight glide and hands the rail straight back to the user.
+- `prefers-reduced-motion` jumps to the destination instantly.
+- The rail must feel like it has weight and lands softly: never linear, never
+  abrupt.
 
 ## Motion standard (locked)
 
 The engine is CSS-first: no framer-motion (founder approval only, per CLAUDE.md).
 Reuse the shared primitives, never hand-roll per surface:
 
-- Reveal on scroll: wrap below-the-fold blocks in the shared `Reveal` /
-  `RevealGroup` (IntersectionObserver, fires once, unobserves after). Children
-  stagger 50 to 80ms left to right, a 12 to 16px rise, 150 to 300ms ease-out.
-  Reading is never blocked: content is visible by default and the reveal is a
-  progressive enhancement that no-ops without JS or under reduced-motion.
+- Reveal on scroll: wrap below-the-fold blocks in the shared `Reveal`
+  (`src/components/ui/reveal.tsx`; IntersectionObserver, fires once, unobserves
+  after). Pass `stagger` and render the row/grid container so its direct children
+  fade up 50 to 80ms apart left to right, a 12 to 16px rise, 150 to 300ms
+  ease-out. Reading is never blocked: content is visible by default and the
+  reveal is a progressive enhancement that no-ops without JS, under
+  reduced-motion, or for headless audit agents (armed only under
+  `html[data-motion="1"]`, set pre-paint by the head bootstrap).
 - Hero entrance: stagger the hero CONTENT (headline, meta, CTA) 60 to 80ms apart
   on load. The LCP image never animates (media architecture law).
 - Hover: cards use `.card-hover-lift` (2 to 4px lift, shadow deepen, 1.02 to
