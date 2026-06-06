@@ -58,6 +58,26 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: '10mb',
     },
+    // ── Build stability against the live Supabase pool ──
+    // Static generation runs page data fetchers against the live Sydney
+    // Supabase pool at build time. On Vercel's 30-core builders Next spawned
+    // ~29 export workers x 8 concurrent pages each (~230 concurrent
+    // prerenders), which exhausted the connection pool (PGRST003) and
+    // produced statement timeouts that killed the build (notably
+    // /events/[slug] after its retries). Local builds pass only because they
+    // run far fewer workers at higher latency.
+    //
+    // Cap to <=8 workers (cpus) x 4 pages/worker (staticGenerationMaxConcurrency)
+    // = <=32 concurrent renders, and let Next retry a flaky page a few times
+    // (staticGenerationRetryCount) before failing the build. This is the
+    // first of three defences; the others are bounded retry/backoff in the
+    // build-time fetchers and a head/long-tail prerender split that moves the
+    // bulk of dynamic DB-backed routes to on-demand ISR (see each route's
+    // generateStaticParams). cpus also throttles compile parallelism, an
+    // acceptable build-time cost for deploy reliability.
+    cpus: 8,
+    staticGenerationMaxConcurrency: 4,
+    staticGenerationRetryCount: 3,
     // Tree-shake barrel imports per Next.js docs. Without this, importing
     // `{ Home } from 'lucide-react'` drags the full icon barrel into the
     // shared chunk on every route. Phase 1B Pre-Task 3 iter-2 measured

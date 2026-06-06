@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { createPublicClient } from '@/lib/supabase/public-client'
+import { withBuildRetry } from '@/lib/supabase/build-retry'
 import {
   getCity,
   getAllCities,
@@ -76,15 +77,19 @@ export default async function CityPage({ params }: Props) {
   const baseSelect =
     'id, slug, title, cover_image_url, thumbnail_url, start_date, end_date, venue_name, venue_city, venue_country, venue_latitude, venue_longitude, created_at, is_free, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
 
-  const { data: rows } = await supabase
-    .from('events')
-    .select(baseSelect)
-    .eq('status', 'published')
-    .eq('visibility', 'public')
-    .gte('start_date', w.nowIso)
-    .ilike('venue_city', `%${city.name}%`)
-    .order('start_date', { ascending: true })
-    .limit(120)
+  const { data: rows } = await withBuildRetry(
+    () =>
+      supabase
+        .from('events')
+        .select(baseSelect)
+        .eq('status', 'published')
+        .eq('visibility', 'public')
+        .gte('start_date', w.nowIso)
+        .ilike('venue_city', `%${city.name}%`)
+        .order('start_date', { ascending: true })
+        .limit(120),
+    { label: `city/${city.slug}` },
+  )
 
   const allRaw = (rows ?? []) as unknown as (EventCardData & { end_date?: string; venue_latitude?: number | null; venue_longitude?: number | null })[]
 

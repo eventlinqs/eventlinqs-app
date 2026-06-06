@@ -3,7 +3,6 @@ import type { Metadata } from 'next'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import {
   getCulture,
-  getAllCultures,
   isCultureSlug,
   type CultureSlug,
 } from '@/lib/cultures/data'
@@ -29,19 +28,16 @@ interface Props {
 }
 
 /**
- * Build the cross-product of every culture × its listed cities so the
- * intersection page is statically rendered for known traffic. Unknown
- * culture-city combinations 404 (notFound) rather than render an empty
- * shell - the value of this page is curation.
+ * Long tail: culture x city intersections multiply to hundreds of DB-backed
+ * pages, which loaded the build-time Supabase pool heavily. Defer them to
+ * on-demand ISR (dynamicParams=true, revalidate=300 above): each renders on
+ * first request and is then cached. Curation is preserved at runtime - the
+ * page still notFound()s unknown culture-city combinations rather than render
+ * an empty shell. The sitemap still lists the curated intersections.
  */
-export function generateStaticParams() {
-  const params: { culture: string; city: string }[] = []
-  for (const c of getAllCultures()) {
-    for (const city of c.cities) {
-      params.push({ culture: c.slug, city: citySlugify(city) })
-    }
-  }
-  return params
+export const dynamicParams = true
+export function generateStaticParams(): { culture: string; city: string }[] {
+  return []
 }
 
 function findCityName(cultureSlug: string, citySlug: string): string | null {

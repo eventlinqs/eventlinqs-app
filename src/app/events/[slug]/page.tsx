@@ -57,18 +57,14 @@ export const revalidate = 300
 export const dynamicParams = true
 
 export async function generateStaticParams() {
-  const supabase = createPublicClient()
-  const { data, error } = await supabase
-    .from('events')
-    .select('slug')
-    .eq('status', 'published')
-    .eq('visibility', 'public')
-
-  if (error || !data) {
-    console.error('[event-detail] generateStaticParams failed:', error)
-    return []
-  }
-  return data.map(row => ({ slug: row.slug as string }))
+  // Long tail: do NOT prerender individual events at build time. Prerendering
+  // every published event drove one query here plus the page's own per-slug
+  // fetches across the export-worker fleet, which exhausted the live Supabase
+  // pool on Vercel (PGRST003 + statement timeouts) and failed the build. With
+  // dynamicParams=true each event renders on first request and is then served
+  // from the ISR cache (revalidate=300). The sitemap still lists every event,
+  // so discovery and indexing are unaffected.
+  return []
 }
 
 type Props = {

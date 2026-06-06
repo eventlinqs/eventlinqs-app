@@ -3,9 +3,7 @@ import type { Metadata } from 'next'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import {
   getCity,
-  getAllCities,
   getSuburb,
-  getSuburbsForCity,
   isCitySlug,
 } from '@/lib/cities/data'
 import { getSuburbHeroPhoto } from '@/lib/images/suburb-photo'
@@ -18,16 +16,14 @@ interface Props {
   params: Promise<{ slug: string; suburb: string }>
 }
 
-export function generateStaticParams() {
-  const out: { slug: string; suburb: string }[] = []
-  for (const c of getAllCities()) {
-    const subs = getSuburbsForCity(c.slug)
-    for (const s of subs) {
-      const facing = s.slug.startsWith(`${c.slug}-`) ? s.slug.slice(c.slug.length + 1) : s.slug
-      out.push({ slug: c.slug, suburb: facing })
-    }
-  }
-  return out
+// Long tail: cities x suburbs multiplies to hundreds of DB-backed pages. Defer
+// them to on-demand ISR (dynamicParams=true, revalidate=300 above) so they
+// never load the build-time Supabase pool; each renders on first request and
+// is then cached. The page still notFound()s unknown suburbs. The sitemap
+// still lists every suburb.
+export const dynamicParams = true
+export function generateStaticParams(): { slug: string; suburb: string }[] {
+  return []
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

@@ -30,13 +30,12 @@ import { RecommendedRail } from '@/components/features/events/m5-recommended-rai
 export const revalidate = 120
 export const dynamicParams = true
 
-export async function generateStaticParams() {
-  const groups = await getPickerCities()
-  const all = [
-    ...groups.australia,
-    ...groups.internationalByCountry.flatMap(g => g.cities),
-  ]
-  return all.map(c => ({ city: c.slug }))
+// Long tail: per-city browse pages are DB-backed and bounded only by the picker
+// city list. Defer them to on-demand ISR (dynamicParams=true, revalidate=120
+// above) so they stay off the build-time Supabase pool; each renders on first
+// request and is then cached. The sitemap still lists every browse city.
+export function generateStaticParams(): { city: string }[] {
+  return []
 }
 
 type Props = {

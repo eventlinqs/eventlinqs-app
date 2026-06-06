@@ -1,6 +1,7 @@
 import { notFound, permanentRedirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import { createPublicClient } from '@/lib/supabase/public-client'
+import { withBuildRetry } from '@/lib/supabase/build-retry'
 import {
   getCulture,
   getAllCultures,
@@ -65,17 +66,21 @@ export default async function CulturePage({ params }: Props) {
   // ('music', 'nightlife', ...), which emptied every culture landing.
   let liveEvents: EventCardData[] = []
   if (tagOr !== null) {
-    const { data } = await supabase
-      .from('events')
-      .select(
-        'id, slug, title, cover_image_url, thumbnail_url, start_date, venue_name, venue_city, venue_country, created_at, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)',
-      )
-      .eq('status', 'published')
-      .eq('visibility', 'public')
-      .gte('start_date', new Date().toISOString())
-      .or(tagOr)
-      .order('start_date', { ascending: true })
-      .limit(12)
+    const { data } = await withBuildRetry(
+      () =>
+        supabase
+          .from('events')
+          .select(
+            'id, slug, title, cover_image_url, thumbnail_url, start_date, venue_name, venue_city, venue_country, created_at, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)',
+          )
+          .eq('status', 'published')
+          .eq('visibility', 'public')
+          .gte('start_date', new Date().toISOString())
+          .or(tagOr)
+          .order('start_date', { ascending: true })
+          .limit(12),
+      { label: `culture/${culture.slug}` },
+    )
 
     liveEvents = ((data ?? []) as unknown as EventCardData[]).slice(0, 12)
   }
