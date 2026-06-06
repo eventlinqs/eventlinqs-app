@@ -16,13 +16,12 @@ create table if not exists public.artists (
   name text not null,
   bio text,
   image_url text,
-  spotify_url text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
 comment on table public.artists is
-  'Artist entities for artist-level discovery and future Spotify / Bandsintown sync.';
+  'Artist entities for artist-level discovery (native, platform-owned).';
 
 create index if not exists artists_name_idx on public.artists (name);
 
