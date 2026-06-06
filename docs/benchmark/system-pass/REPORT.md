@@ -1228,3 +1228,72 @@ NAMED EXCEPTION: the live confirmation success + issued-ticket QR + the ticket
 view require a completed paid order and a valid ticket code - deferred to the
 launch live-purchase / staging-certification pass. All renderable states (clean
 404s) are at/above bar.
+
+---
+
+## #9 PER-SURFACE NEW-BAR RE-AUDIT - CLOSE-OUT (2026-06-06)
+
+All nine surfaces re-audited at the locked 1400 width and full 55-event fixture
+density, with FRESH live Ticketmaster + Eventbrite captures at 1440 + 390 (driven
+by `design-captures/audit/capture.mjs`; OURS captured from the GREEN preview, the
+merged build). Per-unit commits, gates green at each, pushed (no merge to main).
+
+### Consolidated verdict
+| # | Surface | Result | Code change this pass |
+|---|---|---|---|
+| 0 | Homepage | At/above bar - all aspects SURPASS/PARITY | none (already at bar) |
+| 1 | Browse /events | At/above bar - added designed loading skeleton | `events/loading.tsx` (new) |
+| 2 | Event detail | At/above bar - **CRITICAL 500 fixed** (flagship was down) | `events/[slug]` + `browse/[city]` + SiteHeader `staticSafe` |
+| 3 | Search /events?q= | At/above bar - all aspects SURPASS/PARITY | none (inherits #1 skeleton) |
+| 4 | City /city/[slug] | At/above bar - all aspects SURPASS/PARITY | none |
+| 5 | Categories + Scenes V2 | At/above bar - V2 rail + culture landing | none |
+| 6 | Organisers | At bar EXCEPT imagery (named exception) | none (exception is asset/sign-off gated) |
+| 7 | Checkout (renderable) | Renderable states at/above bar; live form staging-gated | none |
+| 8 | Confirmation (renderable) | Renderable states at/above bar; live success staging-gated | none |
+
+### Headline finding (fixed this pass)
+The flagship **event-detail page and every /events/browse/[city] page returned
+HTTP 500 on the deployed preview** - the single most damaging defect the
+founder's test drive would have hit on the first event click. Pre-existing since
+the build-pool ISR split; never caught because only the homepage had been
+preview-verified. Found, root-caused, fixed, and verified live on the preview
+(commit 1becd61). This re-audit is the first benchmark this surface has ever had
+on the live deployment.
+
+### END-OF-PASS STATEMENT
+Every surface in scope is AT OR ABOVE the measured Ticketmaster/Eventbrite bar on
+every craft aspect (layout, density, hierarchy, imagery, typography, interaction/
+motion, loading, mobile), verified by fresh live captures at 1440 + 390, with the
+following EXACT exceptions - each by name, with its reason:
+
+1. **Organisers imagery (Surface 6) - BELOW.** EB's organiser page is lifestyle-
+   image-rich; ours is text-forward (0 body photos). Closing it requires a
+   CURATED lifestyle hero asset + a founder design sign-off (a marketing-hero
+   redesign). Not autonomously fixable without fabricating generic stock (Law 1).
+   Deferred by design, not oversight.
+2. **Live checkout form + Stripe round-trip (Surface 7) - STAGING-GATED.** Needs
+   a sellable, Stripe-connected event with a held reservation (prod Sydney events
+   are sale-blocked). Renderable states (graceful redirect-to-browse, designed
+   loading skeleton) are verified at/above bar; the form is code-review-verified
+   (itemised all-in fees surpass EB). Live visual proof -> launch live-purchase /
+   staging-certification pass.
+3. **Live confirmation success + issued-ticket QR + ticket view (Surface 8) -
+   STAGING-GATED.** Needs a completed paid order + valid ticket code. Renderable
+   states (clean 404s) are verified at/above bar; success states are
+   code-review-verified (inline server-SVG QR, pending-state honesty). Live visual
+   proof -> launch live-purchase / staging-certification pass.
+4. **Ticketmaster event-detail FRESH capture (Surface 2) - CAPTURE-BLOCKED.** TM
+   bot-gates deep event pages (HTTP 401 to headless); TM homepage/browse/search/
+   city all captured fine. TM event detail is benchmarked from its known
+   thumbnail-list pattern, the one fresh-capture exception.
+
+Non-blocking follow-up (NOT a craft BELOW, logged for a future pass): a
+non-existent event / browse-city slug returns a soft-404 (HTTP 200 + the
+not-found UI) rather than a hard 404 - an async-notFound streaming nuance on
+fully-dynamic routes; a hard 404 would mean re-adding build-time event
+prerendering (the Supabase-pool risk deliberately removed). Real events are
+unaffected. Also deferred (data-gated): organiser social-proof + FAQ on event
+detail (needs a follows table + FAQ data).
+
+With those exact exceptions, the system is at or above the bar on every surface.
+The independent inspector + founder test drive can proceed.
