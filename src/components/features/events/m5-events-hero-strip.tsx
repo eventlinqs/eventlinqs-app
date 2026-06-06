@@ -3,13 +3,16 @@ import type { EventsSearchParams } from '@/lib/events/search-params'
 
 type Props = {
   params: EventsSearchParams
-  total: number
+  /**
+   * The "N events available" line, passed as a SLOT (not a resolved number) so
+   * the hero renders IMMEDIATELY while the count streams in behind its own
+   * <Suspense>. The events fetch never blocks the hero strip / LCP.
+   */
+  countSlot: React.ReactNode
   /** Form action target. Defaults to /events; browse pages pass /events/browse/{slug}. */
   basePath?: string
   /** Optional heading override (e.g. "Events in Melbourne"). */
   heading?: string
-  /** Optional subtitle override below the count. */
-  subtitle?: string
 }
 
 const PASSTHROUGH_KEYS = [
@@ -26,10 +29,9 @@ const PASSTHROUGH_KEYS = [
 
 export function EventsHeroStrip({
   params,
-  total,
+  countSlot,
   basePath = '/events',
   heading = 'Find your next event',
-  subtitle,
 }: Props) {
   return (
     <section className="border-b border-ink-100 bg-white">
@@ -38,8 +40,7 @@ export function EventsHeroStrip({
           {heading}
         </h1>
         <p className="mt-1 text-sm text-ink-400">
-          {total} event{total === 1 ? '' : 's'} available
-          {subtitle ? ` · ${subtitle}` : ''}
+          {countSlot}
         </p>
 
         <form method="GET" action={basePath} className="mt-4">
