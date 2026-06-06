@@ -580,3 +580,86 @@ Surfaces 1-8 above were assessed against the cached competitor captures and the
 prior bar, then brought into dark-background + glassmorphism + token compliance.
 They are NOT yet re-proven with FRESH live captures + the full SURPASS/PARITY/
 BELOW table + Phase-B polish. That re-audit is the first task of the next pass.
+
+---
+
+## Session: directive cleanup + first Phase-B loading pass (2026-06-06)
+
+Paid down the report's concrete REMAINING cleanup items (fully gate-verified)
+and made the first Phase-B buyer-journey loading contribution. Per-unit commits
+on feat/home-rebuild; gates green at each step (tsc 0, eslint 0, vitest 275,
+next build exit 0).
+
+### Shipped
+1. Off-brand #1A1A2E navy sweep - APP SURFACES (commit 3ef2da0). Mapped the
+   ~31 off-brand-navy uses to the brand palette: `bg-[#1A1A2E]` -> `bg-ink-900`
+   (#0A1628), `hover:bg-[#2d2d4a]` -> `hover:bg-ink-800` (the surface-8
+   precedent), `text-[#1A1A2E]` -> `text-ink-900`, inline hex -> `#0A1628`,
+   and the Stripe Elements `colorPrimary` -> `#0A1628`. Files: checkout-form,
+   refund-dialog, start-squad-modal, squad-join-panel, squad-pay-form,
+   queue-room, global-error, discounts-client, join-waitlist-modal. Verified no
+   `#1A1A2E`/`#2d2d4a` remains in any .tsx/.ts app component.
+2. Dead legacy components deleted (commit 3aa5985): filter-sidebar.tsx,
+   this-week-strip.tsx, free-weekend-tile.tsx - exported but imported nowhere
+   (verified kebab-path + PascalCase grep across src). 477 lines removed.
+3. Adjacent dark panels rebuilt light (commit 478fdb7), per the
+   no-dark-backgrounds directive: organiser-contact-panel (flat navy-950 ->
+   light surface-1 matching city-organiser-cta-panel, newsletter tone=light);
+   culture-organiser-cta (now adaptive - light on canvas by default, dark only
+   with a photographic backdrop, the allowed photo+overlay pattern);
+   SuburbLandingPage city-directory closer (ContentSection dark -> alt, text ->
+   ink/gold-strong); Prose block code (surface-dark panel -> light surface-2 +
+   ink-200 border, matching inline code).
+4. Phase-B buyer-journey loading skeletons (commit 20f75ef): added the missing
+   route-level loading.tsx for events/[slug] and checkout/[reservation_id] - the
+   two purchase-flow steps that had none, so browse -> detail -> checkout shows a
+   designed settle, not a blank flash. No spinners; brand-palette shimmer on the
+   light canvas, gold-tinted CTA placeholder, dark photo-hero mirror on detail.
+   Captured + visually confirmed at 1440 + 390 (premium, not generic):
+   `docs/benchmark/system-pass/phase-b/loading/{event-detail,checkout}-loading-{1440,390}.png`
+   (local; system-pass PNGs are gitignored by project convention and referenced
+   here, not committed).
+
+### REMAINING after this session (in priority order)
+
+PHASE B (founder's named priority - the "reads generic" fix):
+- MOTION audit + raise per surface, per the Motion law: staggered fade-and-rise
+  reveals on load, gentle scroll reveals, subtle card hover lift, eased rail
+  glide, 150-300ms ease-out, prefers-reduced-motion respected. (Event detail
+  already has `animate-fade-rise` on the hero and hover-lift on the CTA; homepage
+  rails glide. Most interior/buyer surfaces are unaudited for motion.)
+- More designed loading: confirmation already has an in-page pending state (ok);
+  consider loading.tsx for city/[slug], search, organiser profile if their
+  navigations flash. Replace remaining spinners (`animate-spin`) with designed
+  states: queue-room, squad-pay-form, surprise-me-modal, connect-onboarding-card.
+- BUYER JOURNEY FLOW PASS proper: capture TM + EB full purchase flows step by
+  step, benchmark ours as ONE flow, elevate calendar/date picker, ticket
+  quantity selectors, price summary, form fields, button states, step
+  transitions, expired-reservation state. Live PAID order capture stays deferred
+  to staging certification.
+
+PER-SURFACE NEW-BAR RE-AUDIT (surfaces 0-9): still owed FRESH live TM + EB
+captures at 1440 + 390 per surface folder, stronger-pattern choice stated, and a
+PROOF table with SURPASS/PARITY/BELOW per aspect incl LOADING; iterate any BELOW.
+
+DARK SURFACES newly discovered this session (beyond the report's adjacent list -
+triage + sweep next; some may be intentional photo/media and exempt):
+- Marketing pages on `ContentSection surface="dark"`: about, blog, careers,
+  press (and dev preview routes /dev/logo-preview, /dev/shell-preview - dev only).
+- `cultural-calendar-widget.tsx` (surface-dark).
+- `queue/[slug]/queue-room.tsx` - full-screen FLAT dark (bg-ink-900 after the
+  token fix). A deliberate waiting-room pattern; rebuilding it light is a design
+  decision worth founder input. Its wordmark also uses an off-brand blue
+  `text-[#4A90D9]`.
+- `home/section-skeletons.tsx` LiveVibeSkeleton uses `bg-ink-950` (matches the
+  homepage live-vibe media rail; likely intentional, confirm).
+
+OTHER OFF-BRAND COLOURS found during the navy sweep (separate from #1A1A2E,
+not yet swept): `#4A90D9` (blue - queue-room, squads), `#6B7280` (grey -
+refund-dialog, global-error), `#F0F6FF` (squad summary tint). Map to brand
+neutrals/accents in a follow-up.
+
+EMAIL off-brand navy (separate surface family, literal hex required, NOT in the
+~31 app-surface count): auth templates (confirm-signup, password-reset,
+magic-link, reauthentication, email-change), the Stripe webhook ticket email,
+and waitlist promote.ts still use `#1A1A2E`. Map to `#0A1628` in an email pass.
