@@ -15,7 +15,10 @@
  *
  * Inner content:
  *   CONTAINER           - max-w-7xl mx-auto px-4 sm:px-6 lg:px-8. ALL section
- *                         content uses this. No exceptions.
+ *                         content uses this. No exceptions. `max-w-7xl` is the
+ *                         sitewide cap; it resolves to 1400px (the EventLinqs
+ *                         page width, evidence-derived - see globals.css
+ *                         `--container-7xl`), not Tailwind's 1280 default.
  *   HEADER_TO_CONTENT   - mt-8 on the body wrapper below a section header.
  *   ITEM_GAP            - gap-4 between cards/tiles in rails or grids.
  */

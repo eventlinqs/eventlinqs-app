@@ -93,6 +93,26 @@ Ticketmaster and Eventbrite homepages at 1440 and 390:
   pointer, `prefers-reduced-motion` respected. No auto-rolling anywhere,
   including the hero. Manual only.
 
+## Container width standard (locked)
+
+The sitewide content container is **1400px** (`max-w-7xl`, overridden from
+Tailwind's 1280 default via `--container-7xl: 87.5rem` in the `:root` block of
+`src/app/globals.css`). `max-w-7xl` is the canonical cap used on every surface
+(header, footer, heroes, rails, content, checkout, event detail), so the one
+token governs them all and they stay aligned. Never hand-pick a different
+section max-width; use `max-w-7xl` (or `ContentSection width="wide"`).
+
+Derived from live captures at 1440 and 1920
+(`docs/benchmark/system-pass/phase-b/container-width/`): Ticketmaster's general
+content container is ~1360px at 1440 (fluid, ~40px gutters, no hard cap until
+~1840); Eventbrite browse ~1392px; Eventbrite home capped ~1272px. 1280 sat
+narrower than all three. 1400px surpasses the cluster at 1440 and caps cleanly
+on ultra-wide (1920 -> 1400 content, ~260px gutters) rather than stretching
+rails thin. Mobile and tablet are untouched: at 390/768 content is far below
+1400 so the cap never binds, and the `px-4 sm:px-6` gutters are unchanged. If
+this number ever changes, re-derive it from fresh live TM + EB captures, never
+from taste, and re-verify cards-per-row and rail peek at the new width.
+
 ## Glide standard (locked)
 
 The rail arrow glide lives in `src/components/ui/snap-rail.tsx` (`useScrollState`)

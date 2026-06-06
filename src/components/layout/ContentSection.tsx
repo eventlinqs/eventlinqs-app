@@ -34,7 +34,8 @@ const surfaces: Record<SurfaceName, string> = {
  * max-w values:
  *   prose   → max-w-3xl  (~672px)  - long-form reading (legal, help, articles)
  *   default → max-w-6xl  (~1152px) - standard content, most interior sections
- *   wide    → max-w-7xl  (~1280px) - full-width grids, matching homepage sections
+ *   wide    → max-w-7xl  (1400px)  - full-width grids, matching homepage sections
+ *             (the sitewide page width; see globals.css `--container-7xl`)
  */
 const widths: Record<WidthName, string> = {
   prose:   'max-w-3xl',
