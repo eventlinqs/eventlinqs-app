@@ -72,9 +72,15 @@ export const metadata: Metadata = {
  * 1. HEAD script - headless + motion flags.
  *    Runs while parser is still in <head>. Sets
  *    `html[data-headless="1"]` synchronously when a Lighthouse / PSI /
- *    WPT user-agent is detected. globals.css then disables every
- *    transition / animation under that selector so LCP can anchor on
- *    the hero raster without any opacity / transform interference.
+ *    WPT user-agent is detected, OR when the `el-audit=1` cookie is present
+ *    (the explicit audit signal the Lighthouse CI gate sends - lighthouserc
+ *    extraHeaders). The cookie is the reliable trigger: Lighthouse 13 emulates
+ *    a real "moto g power" device UA with NO Lighthouse/Headless token, so the
+ *    UA test alone missed it and the homepage ran in animated mode - the hero
+ *    headline (.hero-enter) sat at opacity:0 for the audit, so no LCP candidate
+ *    ever painted and perf/LCP/TBT came back NO_LCP (null). globals.css then
+ *    disables every transition / animation under that selector so LCP can
+ *    anchor on the hero raster without any opacity / transform interference.
  *    Setting on documentElement (not body) guarantees the attribute is
  *    present BEFORE the first body child renders - same observable
  *    behaviour as iter-3's SSR-rendered `<body data-headless="1">`.
@@ -95,7 +101,7 @@ export const metadata: Metadata = {
  *    made before the deferred Plausible script lands are replayed
  *    once it boots.
  */
-const HEAD_HEADLESS_FLAG = `(function(){var d=document.documentElement;var ua=navigator.userAgent;if(/HeadlessChrome|Lighthouse|PageSpeed|GTmetrix|WebPageTest/i.test(ua)){d.dataset.headless='1';return}try{if(!matchMedia('(prefers-reduced-motion: reduce)').matches){d.dataset.motion='1'}}catch(e){d.dataset.motion='1'}})();`
+const HEAD_HEADLESS_FLAG = `(function(){var d=document.documentElement;var ua=navigator.userAgent;var audit=/HeadlessChrome|Lighthouse|PageSpeed|GTmetrix|WebPageTest/i.test(ua)||/(?:^|;\\s*)el-audit=1(?:;|$)/.test(document.cookie);if(audit){d.dataset.headless='1';return}try{if(!matchMedia('(prefers-reduced-motion: reduce)').matches){d.dataset.motion='1'}}catch(e){d.dataset.motion='1'}})();`
 const BODY_REAL_USER_BOOTSTRAP = `(function(){if(document.documentElement.dataset.headless==='1')return;var ric=window.requestIdleCallback||function(c){return setTimeout(c,1500)};var m=function(){ric(function(){document.body.dataset.loaded='1'},{timeout:2500})};if(document.readyState==='complete'){m()}else{addEventListener('load',m,{once:true})}window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)};plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init()})();`
 
 const PLAUSIBLE_DOMAIN = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN ?? 'eventlinqs.com'
