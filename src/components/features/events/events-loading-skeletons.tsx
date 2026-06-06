@@ -1,16 +1,17 @@
 /**
  * In-page loading skeletons for /events browse.
  *
- * These back the page-level <Suspense> boundaries around the popular rail and
- * the results grid (NOT a segment-level loading.tsx - that would wrap the
+ * These back the page-level <Suspense> boundaries around the results grid and
+ * the hero count (NOT a segment-level loading.tsx - that would wrap the
  * /events/[slug] and /events/browse/[city] child routes and break their hard
- * 404s). The hero strip + filter bar render immediately; only these
- * below-the-shell data regions stream behind a fallback. Brand light-canvas
- * shimmer matching the event-detail + checkout skeletons; dimensions mirror the
- * real RecommendedRail / EventsGrid so the swap into real content is zero-CLS.
+ * 404s). The hero strip, filter bar, AND popular rail render immediately (the
+ * rail's first card image is the LCP, kept parse-discoverable); only the
+ * below-the-fold results grid + the hero count streams behind a fallback. Brand
+ * light-canvas shimmer matching the event-detail + checkout skeletons;
+ * dimensions mirror the real EventsGrid so the swap to real content is zero-CLS.
  */
 
-/** One card placeholder - shared by the rail + grid skeletons (Surface-1 craft). */
+/** One card placeholder for the results-grid skeleton (Surface-1 craft). */
 function EventCardSkeleton() {
   return (
     <div className="space-y-3">
@@ -20,31 +21,6 @@ function EventCardSkeleton() {
       <div className="h-3 w-3/5 rounded bg-ink-200/40 animate-pulse" />
       <div className="h-3 w-1/3 rounded bg-gold-500/25 animate-pulse" />
     </div>
-  )
-}
-
-/**
- * Popular-rail fallback. Mirrors RecommendedRail exactly: the bordered canvas
- * section, the heading row, and the horizontal w-64/sm:w-72 card row, so the
- * real rail streams into the same footprint.
- */
-export function PopularRailSkeleton() {
-  return (
-    <section className="border-b border-ink-100 bg-canvas" aria-hidden>
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-        <div className="flex items-end justify-between gap-4">
-          <div className="h-6 w-44 rounded bg-ink-200/70 animate-pulse sm:h-7 sm:w-52" />
-          <div className="h-4 w-16 shrink-0 rounded bg-ink-200/50 animate-pulse" />
-        </div>
-        <div className="mt-4 -mx-4 flex items-stretch gap-3 overflow-hidden px-4 pb-2 sm:mx-0 sm:gap-4 sm:px-0">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="w-64 shrink-0 sm:w-72">
-              <EventCardSkeleton />
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
   )
 }
 

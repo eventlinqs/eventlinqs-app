@@ -18,7 +18,6 @@ import { EventsMapLazy } from '@/components/features/events/m5-events-map-lazy'
 import { EventsPopularSection } from '@/components/features/events/m5-events-popular-section'
 import { EventsCount, EventsResults } from '@/components/features/events/events-results'
 import {
-  PopularRailSkeleton,
   EventsGridSkeleton,
   EventsCountSkeleton,
 } from '@/components/features/events/events-loading-skeletons'
@@ -114,14 +113,14 @@ export default async function EventsPage({ searchParams }: Props) {
           hasGeoSignal={hasGeoSignal}
         />
 
-        {/* Below-the-shell data regions stream behind designed, zero-CLS
-            skeletons. The hero + filter bar above render immediately, so the
-            LCP anchors on the hero (text H1), never behind a fallback, and the
-            popular rail's first card image is no longer the LCP. */}
+        {/* Popular rail renders INLINE (not behind Suspense): its first card
+            image is the /events LCP candidate and must be discoverable in the
+            initial HTML (priority preload) during parse. Wrapping it in Suspense
+            pushed the LCP image behind a streamed chunk and regressed mobile LCP
+            to ~5.2s (Lighthouse). The rail's own fetch (anon, cached) is fast.
+            Only the below-the-fold results grid streams behind a skeleton. */}
         {!filterActive ? (
-          <Suspense fallback={<PopularRailSkeleton />}>
-            <EventsPopularSection filterActive={filterActive} />
-          </Suspense>
+          <EventsPopularSection filterActive={filterActive} />
         ) : null}
 
         {view === 'map' ? (
@@ -132,6 +131,9 @@ export default async function EventsPage({ searchParams }: Props) {
         ) : (
           <section aria-label="Event results" className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
             <h2 className="sr-only">All events</h2>
+            {/* Results grid streams behind the designed zero-CLS skeleton - it is
+                below the fold (and below the popular rail), so this never affects
+                the LCP. Hero + filter bar render immediately above. */}
             <Suspense fallback={<EventsGridSkeleton />}>
               <EventsResults
                 resultPromise={resultPromise}
