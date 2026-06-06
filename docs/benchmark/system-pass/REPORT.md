@@ -1399,3 +1399,86 @@ The homepage returned NO_LCP (perf/LCP/TBT = null) in every run. Root-caused:
 Net: SEO (the hard blocker) and the /events LCP regression are fixed and the gate
 is GREEN. The homepage audit-detection is fixed; the hero LCP-registration is
 root-caused and scoped, pending sign-off on a hero-structural change.
+
+---
+
+## Unit 3 HANDOFF - homepage NO_LCP investigation, deferred to next session (2026-06-07)
+
+Stopping cleanly. The next diagnostic step touches the homepage (the platform's
+most important page) and must not be done by a context-exhausted session. The
+working tree matches the green tip exactly; nothing below is committed except this
+handoff entry.
+
+### State at handoff
+- **Gate GREEN on `63ab13b`** (current branch tip, `feat/home-rebuild`). Lighthouse
+  mobile CI run = success. No merge to main (branch-only, per mandate).
+- **Unit 1 shipped** - /events LCP fallback: popular rail renders INLINE
+  (priority image parse-discoverable), only the below-the-fold results grid stays
+  behind the designed `<Suspense>` skeleton. Hero strip + sticky filter render
+  immediately. (commits 128df72, 1e46975)
+- **Unit 2 shipped** - SEO = 1.0 at root: `next.config htmlLimitedBots: /./`
+  (metadata in `<head>` for every UA) + `buildEventMetaDescription()` (guaranteed
+  non-empty meta description, unit-tested for the all-empty case). Streaming
+  verified intact (React `$RC` markers + skeleton present in SSR HTML; metadata-only
+  change). (commit a2aec43)
+- **el-audit cookie wired** - head bootstrap treats `el-audit=1` as audit mode ->
+  `data-headless=1` -> motion off -> hero content visible from first paint.
+  Observed FCP 1466 -> 866ms. (commit c6b0d96)
+
+### Remaining defect (NOT a gate blocker - homepage perf is warn-level by design)
+The homepage AND /culture/* produce **ZERO Chrome-level LCP entries** (NO_LCP ->
+null perf/LCP/TBT in Lighthouse), while **event-detail and /events fire LCP
+normally**. So this is specific to the hero-led pages, not a global problem.
+
+**Ruled OUT with direct evidence (do not re-investigate these):**
+- Motion / `.hero-enter` opacity (NO_LCP persists with `data-headless=1`, motion off).
+- Hydration node-swap (hero `<img>` node id is STABLE across the first frames -
+  probe samples it at 30/60/100/150/250/500/1000/2500/5000ms).
+- `contain` / `content-visibility` (clean ancestor chain - none present).
+- CSS transforms on the hero or an ancestor.
+- Carousel structure - **single-hero /culture/* is ALSO affected**, so it is not the
+  `hidden` inactive-slide mechanism.
+- Console / page errors (none captured).
+- The hero image IS loaded, visible, opacity 1, ~412x346 at top ~65 - it simply
+  never registers as an LCP candidate.
+
+### LIVE HYPOTHESIS (this is the very next thing to test)
+**LCP recording is being STOPPED EARLY by an on-mount input/scroll event.** Chrome
+stops collecting LCP candidates on the first user interaction - and scroll counts.
+Direct probe finding: `/` fires `scroll@~1488ms` events (8+, then more at ~1662ms)
+while event-detail fires NONE. If something scrolls the page on mount before the
+hero raster paints its LCP entry, that explains the asymmetry exactly (hero pages
+have whatever-it-is; event-detail doesn't).
+
+The instrumented probe `design-captures/audit/lcp-probe.mjs` has ALREADY been
+updated to capture each early event's **target** + **scrollY** (lines 16-23). It is
+ready to run and is THE NEXT ACTION. Find what scrolls on mount (candidates to check
+once you see the target: scroll-reveal engine, a `scrollIntoView`/focus call, the
+`HeaderScrollSentinel`, an `IntersectionObserver` callback, or hash/anchor focus),
+then eliminate the on-mount scroll so the hero raster can anchor LCP.
+
+### Exact repro commands (run from the real repo, NOT the sweeper CWD)
+```
+cd C:/Users/61416/OneDrive/Desktop/EventLinqs/eventlinqs-app
+npm run build && npm run start          # clean prod server on :3000 (NOT next dev - HMR destroys the probe context)
+```
+Then, in a second shell:
+```
+# Probe LCP entries + early input/scroll targets (the next action):
+node design-captures/audit/lcp-probe.mjs "http://localhost:3000/"
+node design-captures/audit/lcp-probe.mjs "http://localhost:3000/culture/african"   # also NO_LCP - compare
+node design-captures/audit/lcp-probe.mjs "http://localhost:3000/events/<real-slug>" # control - fires LCP normally
+
+# Full Lighthouse-mobile harness (mirrors lighthouserc.json collect settings):
+node design-captures/audit/lh.mjs "http://localhost:3000/" 3
+node design-captures/audit/lh.mjs "http://localhost:3000/events/<real-slug>" 3
+```
+The probe sets `el-audit=1` + the mobile moto-g UA, matching the gate. Diagnostic
+scripts under `design-captures/audit/` are gitignored (design-captures/ + *.png)
+and are intentionally excepted from the clean-tree requirement.
+
+### Hard constraints carried forward
+Never lower a threshold, never mark a check optional, never accept a warning as the
+new normal. Full gates + per-unit commits + push after each unit. No merge to main.
+The hero LCP fix reworks the most important page - get founder sign-off on the
+hero-structural direction before shipping it.
