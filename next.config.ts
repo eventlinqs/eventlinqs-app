@@ -6,6 +6,16 @@ const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === 'tr
 
 const nextConfig: NextConfig = {
   trailingSlash: false,
+  // Preview-density fixture. The homepage reads the 55-event catalogue fixture
+  // (src/lib/dev/home-seed-fixture.json) at runtime via fs when
+  // HOMEPAGE_SEED_FIXTURE=1. Trace it into the homepage serverless bundle so
+  // PREVIEW deployments - where the prebuild step regenerates it - can read it
+  // at runtime. On normal/production builds the file is absent and this is a
+  // no-op; the flag is never honoured in production (VERCEL_ENV guard in
+  // loadHomeUpcoming + the prebuild abort).
+  outputFileTracingIncludes: {
+    '/': ['./src/lib/dev/home-seed-fixture.json'],
+  },
   async redirects() {
     // Batch 5 - /categories/[slug] → /culture/[slug] migration.
     // The legacy /categories/[slug] route still serves 7 hero categories

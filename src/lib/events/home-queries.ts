@@ -63,19 +63,26 @@ export function toFeaturedHeroEvent(r: RawRow): FeaturedHeroEvent {
  * Normal path (prod, preview, every deployed environment): queries Supabase
  * for published, public, future events ordered by start date.
  *
- * Dev density path (HOMEPAGE_SEED_FIXTURE=1 only): returns the local
- * general-breadth catalogue fixture produced by
- * `scripts/seed-events-catalogue.mjs --fixture`, so the homepage can be built
- * and benchmarked at Ticketmaster-rival density while staging is not yet up.
- * The fixture is read at runtime via fs (never statically imported), so its
- * absence in a deployed build is a no-op and the flag is the only switch.
+ * Density path (HOMEPAGE_SEED_FIXTURE=1, Preview + local only): returns the
+ * local general-breadth catalogue fixture (the 55-event catalogue) produced by
+ * `scripts/seed-events-catalogue.mjs --fixture`. On Vercel the prebuild step
+ * regenerates that fixture at build time when the flag is set and the file is
+ * traced into the serverless bundle (next.config outputFileTracingIncludes), so
+ * PREVIEW deployments render the full catalogue at Ticketmaster-rival density
+ * while staging is not yet up. The fixture is read at runtime via fs (never
+ * statically imported), so its absence is a no-op.
+ *
+ * HARD GUARD: the flag is honoured only when VERCEL_ENV is not 'production'.
+ * Even if HOMEPAGE_SEED_FIXTURE were ever set on a Production deployment, the
+ * homepage would still serve real data, never the fixture. The flag is a
+ * Preview-only Vercel env var (see .env.example).
  */
 export async function loadHomeUpcoming(
   supabase: SupabaseClient,
   nowIso: string,
   limit = 24,
 ): Promise<RawRow[]> {
-  if (process.env.HOMEPAGE_SEED_FIXTURE === '1') {
+  if (process.env.HOMEPAGE_SEED_FIXTURE === '1' && process.env.VERCEL_ENV !== 'production') {
     const { readFile } = await import('node:fs/promises')
     const { resolve } = await import('node:path')
     try {
