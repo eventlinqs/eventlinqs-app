@@ -69,8 +69,26 @@ interface SnapRailScrollerProps {
   children: ReactNode
 }
 
+/** Measure the card pitch (card width + gap) from the live DOM so paging and
+ *  snap-boundary landing track the real layout at any viewport, not a guess. */
+function measurePitch(el: HTMLElement): number {
+  const first = el.firstElementChild as HTMLElement | null
+  const second = first?.nextElementSibling as HTMLElement | null
+  if (first && second) {
+    const pitch = second.offsetLeft - first.offsetLeft
+    if (pitch > 0) return pitch
+  }
+  if (first && first.offsetWidth > 0) return first.offsetWidth + 16
+  return 296 // 280px card + 16px gap fallback
+}
+
+function prefersReducedMotion(): boolean {
+  return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
 function useScrollState() {
   const scrollRef = useRef<HTMLDivElement>(null)
+  const rafRef = useRef<number | null>(null)
   const [progress, setProgress] = useState(0)
   const [canPrev, setCanPrev] = useState(false)
   const [canNext, setCanNext] = useState(true)
@@ -91,6 +109,21 @@ function useScrollState() {
     setCanNext(el.scrollLeft < maxScroll - 4)
   }, [])
 
+  // Stop any in-flight glide and restore the CSS snap/scroll behaviour. Called
+  // when the user grabs the rail (pointer/touch/wheel) so we never fight their
+  // own natural scroll, and on unmount.
+  const cancelGlide = useCallback(() => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current)
+      rafRef.current = null
+    }
+    const el = scrollRef.current
+    if (el) {
+      el.style.scrollSnapType = ''
+      el.style.scrollBehavior = ''
+    }
+  }, [])
+
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
@@ -99,18 +132,67 @@ function useScrollState() {
     const ro = new ResizeObserver(updateScrollState)
     ro.observe(el)
     el.addEventListener('scroll', updateScrollState, { passive: true })
+    // Hand the rail straight back to the user the instant they touch it.
+    el.addEventListener('pointerdown', cancelGlide, { passive: true })
+    el.addEventListener('wheel', cancelGlide, { passive: true })
+    el.addEventListener('touchstart', cancelGlide, { passive: true })
     return () => {
       ro.disconnect()
       el.removeEventListener('scroll', updateScrollState)
+      el.removeEventListener('pointerdown', cancelGlide)
+      el.removeEventListener('wheel', cancelGlide)
+      el.removeEventListener('touchstart', cancelGlide)
+      cancelGlide()
     }
-  }, [updateScrollState])
+  }, [updateScrollState, cancelGlide])
 
+  // Distance-eased programmatic glide: cubic ease-out, ~400-550ms for a page of
+  // cards, scaled by distance, always landing on a card snap boundary. Snap is
+  // suspended for the duration so the per-frame scrollLeft writes do not fight
+  // the snap engine, then restored on the boundary we land on. Touch/trackpad
+  // scrolling is never touched - only the arrows and keyboard drive this.
   const scrollByCards = useCallback((direction: 1 | -1) => {
     const el = scrollRef.current
     if (!el) return
-    const step = 296 // 280px card + 16px gap
-    el.scrollBy({ left: direction * step * 1.5, behavior: 'smooth' })
-  }, [])
+    const pitch = measurePitch(el)
+    const max = el.scrollWidth - el.clientWidth
+    const visible = Math.max(1, Math.floor(el.clientWidth / pitch))
+    const rawTarget = el.scrollLeft + direction * visible * pitch
+    // Snap the destination to the nearest card boundary, then clamp to the rail.
+    const dest = Math.max(0, Math.min(max, Math.round(rawTarget / pitch) * pitch))
+
+    if (prefersReducedMotion()) {
+      cancelGlide()
+      el.scrollLeft = dest
+      return
+    }
+
+    const start = el.scrollLeft
+    const delta = dest - start
+    if (Math.abs(delta) < 1) return
+
+    cancelGlide()
+    const cards = Math.abs(delta) / pitch
+    const duration = Math.min(550, Math.max(400, cards * 120))
+    el.style.scrollSnapType = 'none'
+    el.style.scrollBehavior = 'auto'
+    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
+    let startTs: number | null = null
+    const step = (ts: number) => {
+      if (startTs === null) startTs = ts
+      const t = Math.min(1, (ts - startTs) / duration)
+      el.scrollLeft = start + delta * easeOutCubic(t)
+      if (t < 1) {
+        rafRef.current = requestAnimationFrame(step)
+      } else {
+        el.scrollLeft = dest
+        el.style.scrollSnapType = ''
+        el.style.scrollBehavior = ''
+        rafRef.current = null
+      }
+    }
+    rafRef.current = requestAnimationFrame(step)
+  }, [cancelGlide])
 
   const onKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'ArrowRight') {
@@ -145,7 +227,7 @@ function ArrowButtons({
         onClick={onPrev}
         disabled={!canPrev}
         aria-label={`Scroll ${railLabel} left`}
-        className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--surface-2)] bg-[var(--surface-0)] text-[var(--text-primary)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent-strong)] hover:text-[var(--brand-accent-strong)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:border-[var(--surface-2)] disabled:hover:text-[var(--text-primary)] disabled:hover:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2"
+        className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--surface-2)] bg-[var(--surface-0)] text-[var(--text-primary)] transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-[var(--brand-accent-strong)] hover:text-[var(--brand-accent-strong)] hover:shadow-md active:scale-90 active:duration-75 active:shadow-sm disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:border-[var(--surface-2)] disabled:hover:text-[var(--text-primary)] disabled:hover:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2"
       >
         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden>
           <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
@@ -156,7 +238,7 @@ function ArrowButtons({
         onClick={onNext}
         disabled={!canNext}
         aria-label={`Scroll ${railLabel} right`}
-        className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--surface-2)] bg-[var(--surface-0)] text-[var(--text-primary)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent-strong)] hover:text-[var(--brand-accent-strong)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:border-[var(--surface-2)] disabled:hover:text-[var(--text-primary)] disabled:hover:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2"
+        className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--surface-2)] bg-[var(--surface-0)] text-[var(--text-primary)] transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-[var(--brand-accent-strong)] hover:text-[var(--brand-accent-strong)] hover:shadow-md active:scale-90 active:duration-75 active:shadow-sm disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:border-[var(--surface-2)] disabled:hover:text-[var(--text-primary)] disabled:hover:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2"
       >
         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden>
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
@@ -217,6 +299,7 @@ function ScrollTrack({
   railLabel,
   onKeyDown,
   fadeFromClass,
+  canPrev,
   canNext,
   children,
 }: {
@@ -224,11 +307,18 @@ function ScrollTrack({
   railLabel: string
   onKeyDown: (e: React.KeyboardEvent) => void
   fadeFromClass: string
+  canPrev: boolean
   canNext: boolean
   children: ReactNode
 }) {
   return (
     <div className="relative -mx-4 sm:-mx-6 lg:-mx-8">
+      {canPrev && (
+        <div
+          aria-hidden
+          className={`pointer-events-none absolute left-0 top-0 z-10 h-full w-16 bg-gradient-to-r ${fadeFromClass} to-transparent sm:w-24`}
+        />
+      )}
       {canNext && (
         <div
           aria-hidden
@@ -315,6 +405,7 @@ export function SnapRailScroller({
         railLabel={railLabel}
         onKeyDown={onKeyDown}
         fadeFromClass={fadeFromClass}
+        canPrev={canPrev}
         canNext={canNext}
       >
         {children}
@@ -380,6 +471,7 @@ export function SnapRail({
           railLabel={railLabel}
           onKeyDown={onKeyDown}
           fadeFromClass={fadeFromClass}
+          canPrev={canPrev}
           canNext={canNext}
         >
           {children}
