@@ -17,6 +17,7 @@ import { EventsGrid } from '@/components/features/events/m5-events-grid'
 import { EventsPagination } from '@/components/features/events/m5-events-pagination'
 import { EventsMapLazy } from '@/components/features/events/m5-events-map-lazy'
 import { EventsPopularSection } from '@/components/features/events/m5-events-popular-section'
+import { Reveal } from '@/components/ui/reveal'
 
 const MELBOURNE_FALLBACK = { lat: -37.8136, lng: 144.9631 }
 
@@ -133,13 +134,30 @@ export default async function EventsPage({ searchParams }: Props) {
         ) : (
           <section aria-label="Event results" className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
             <h2 className="sr-only">All events</h2>
-            <EventsGrid
-              events={result.events}
-              params={raw}
-              page={result.page}
-              totalPages={result.totalPages}
-              firstCardEager={filterActive}
-            />
+            {/* Reveal the grid only when the popular rail sits above it, so the
+                grid is genuinely below the fold. On a filtered view there is no
+                popular rail and the first grid card is LCP-eager, so it must
+                paint immediately (no opacity reveal). The popular rail itself is
+                never reveal-wrapped - its first card is the /events LCP. */}
+            {filterActive ? (
+              <EventsGrid
+                events={result.events}
+                params={raw}
+                page={result.page}
+                totalPages={result.totalPages}
+                firstCardEager={filterActive}
+              />
+            ) : (
+              <Reveal>
+                <EventsGrid
+                  events={result.events}
+                  params={raw}
+                  page={result.page}
+                  totalPages={result.totalPages}
+                  firstCardEager={filterActive}
+                />
+              </Reveal>
+            )}
             <EventsPagination params={raw} page={result.page} totalPages={result.totalPages} />
           </section>
         )}

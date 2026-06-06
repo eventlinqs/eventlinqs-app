@@ -127,7 +127,7 @@ export function OrganisersLandingPage() {
       </section>
 
       {/* -- 2. Value pillars ---------------------------------------- */}
-      <ContentSection surface="alt" width="default" topBorder>
+      <ContentSection surface="alt" width="default" topBorder reveal>
         <div className="group/cards grid grid-cols-1 gap-6 md:grid-cols-3">
           {PILLARS.map(({ icon: Icon, title, body }) => (
             <div
@@ -149,7 +149,7 @@ export function OrganisersLandingPage() {
       </ContentSection>
 
       {/* -- 3. How it works ----------------------------------------- */}
-      <ContentSection surface="base" width="default">
+      <ContentSection surface="base" width="default" reveal>
         <div className="max-w-3xl">
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
             How it works
@@ -179,7 +179,7 @@ export function OrganisersLandingPage() {
       </ContentSection>
 
       {/* -- 4. Open to every community ------------------------------ */}
-      <ContentSection surface="alt" width="default">
+      <ContentSection surface="alt" width="default" reveal>
         <div className="max-w-3xl">
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
             Who can use EventLinqs
@@ -220,7 +220,7 @@ export function OrganisersLandingPage() {
 
       {/* -- 5. FAQ -------------------------------------------------- */}
       {FAQ_ARTICLES.length > 0 && (
-        <ContentSection surface="base" width="prose">
+        <ContentSection surface="base" width="prose" reveal>
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
             Common questions
           </p>

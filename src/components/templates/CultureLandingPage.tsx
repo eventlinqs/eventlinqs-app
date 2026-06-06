@@ -54,7 +54,7 @@ export function CultureLandingPage({
         imageSrc={heroImage}
       />
 
-      <ContentSection surface="base" width="default">
+      <ContentSection surface="base" width="default" reveal>
         <div className="max-w-3xl">
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
             Why {culture.displayName} on EventLinqs

@@ -608,8 +608,9 @@ export default async function EventDetailPage({ params }: Props) {
                   </div>
                 )}
 
-                {/* When + Where */}
-                <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2">
+                {/* When + Where. Reveal each discrete block (transform+opacity,
+                    no reflow) so the sticky ticket panel is untouched. */}
+                <Reveal as="div" className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2">
                   <div className="rounded-2xl border border-ink-200 bg-white p-5">
                     <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-gold-700">
                       When
@@ -643,11 +644,11 @@ export default async function EventDetailPage({ params }: Props) {
                       </p>
                     )}
                   </div>
-                </div>
+                </Reveal>
 
                 {/* Venue map */}
                 {event.event_type !== 'virtual' && (fullAddress || event.venue_name) && (
-                  <div className="mt-10">
+                  <Reveal as="div" className="mt-10">
                     <SectionHeader eyebrow="Location" title="Venue" size="sm" />
                     <div className="mt-5">
                       <VenueMap
@@ -660,11 +661,11 @@ export default async function EventDetailPage({ params }: Props) {
                         longitude={event.venue_longitude}
                       />
                     </div>
-                  </div>
+                  </Reveal>
                 )}
 
                 {/* Organiser card */}
-                <div className="mt-10">
+                <Reveal as="div" className="mt-10">
                   <SectionHeader eyebrow="Organised by" title={event.organisation.name} size="sm" />
                   <div className="mt-5 rounded-2xl border border-ink-200 bg-white p-6">
                     <div className="flex items-start gap-4">
@@ -678,7 +679,7 @@ export default async function EventDetailPage({ params }: Props) {
                       </div>
                     </div>
                   </div>
-                </div>
+                </Reveal>
 
                 {/* Tags - events.tags is jsonb in the live schema; narrow
                     Json -> string[] before iterating. */}
