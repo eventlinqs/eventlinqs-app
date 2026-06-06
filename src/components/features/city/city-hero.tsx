@@ -106,7 +106,7 @@ export function CityHero({
               </a>
               <Link
                 href={secondaryCtaHref}
-                className="inline-flex h-12 min-w-[44px] items-center justify-center rounded-full border border-white/70 bg-white/10 px-6 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/20 sm:h-11"
+                className="inline-flex h-12 min-w-[44px] items-center justify-center rounded-full border border-white/70 bg-white/10 px-6 text-sm font-semibold text-white transition hover:bg-white/20 sm:h-11"
               >
                 {secondaryCtaLabel}
               </Link>

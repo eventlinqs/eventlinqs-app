@@ -293,8 +293,52 @@ change is a conditional heading string + one prop, no new JS or imagery.
 
 ---
 
+## Surface 5: City page (/city/[slug]) - DONE
+
+Goal: benchmark the city landing and apply evidence-based refinement. No churn.
+
+### Evidence (captured competitors, 1440 + 390)
+- Eventbrite city page: a filtered event list ("Events and Things to do in
+  Sydney") with a Filters sidebar and a side map. A search view, not a place
+  landing. `design-captures/eventbrite/city-page-*`.
+- Ticketmaster: a city venue/event list. `design-captures/ticketmaster/city-page-*`.
+
+### Reality audit
+A true editorial city landing, far richer than either competitor: cinematic
+hero with caption, an editorial intro, this-weekend rail, browse-by-event-type
+tiles, a live "where the city is happening" map, highlights rail, popular-by-
+organiser, by-suburb tiles, by-community tiles, an organiser CTA panel, and a
+newsletter capture. CityLandingPage template; all rails handle their data.
+
+### Evidence-based refinement (the change)
+Glassmorphism purge, continuing the sweep thread (CLAUDE.md):
+1. Sticky date-filter chip bar: `bg-[var(--surface-0)]/95 backdrop-blur` ->
+   solid `bg-[var(--surface-0)]` (same fix as the surface-2 /events filter bar).
+2. Hero secondary CTA: dropped `backdrop-blur` (kept the bordered ghost button
+   `border-white/70 bg-white/10`; translucency without backdrop-filter is fine).
+No structural/content change; the editorial rails were already above bar.
+
+### Captures
+- Before: `surface-5/before/city-{1440,768,390}.png`
+- After: `surface-5/after/city-{1440,768,390}.png`
+
+### Benchmark verdict vs Ticketmaster + Eventbrite (1440 + 390)
+| Dimension | Verdict | Note |
+|---|---|---|
+| Density | Surpass | A full place-landing (hero, intro, multiple rails, map, suburbs, cultures) vs a single filtered list. |
+| Typography | Surpass | Editorial display headings + sectioned rails vs flat list type. |
+| Imagery | Surpass | Real city/suburb/culture/event photography throughout. |
+| UX | Surpass | Date-chip quick filter, live map, suburb + culture discovery, organiser CTA; solid sticky date bar. |
+| Mobile (390) | Surpass | Stacked rails, horizontal-scroll chips, full-width CTAs at 44px. |
+
+### Gates
+lint 0 errors, build pass, vitest 275 pass, axe-core 0 violations (city desktop
++ mobile). Lighthouse on the Vercel preview (CI gate); change removes two
+backdrop-filters, no new JS or imagery.
+
+---
+
 ## Remaining (run in fresh sessions, one surface each)
-5. City page
 6. Organiser landing (/organisers)
 7. Checkout flow surfaces
 8. Order confirmation and ticket view

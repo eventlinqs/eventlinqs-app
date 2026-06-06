@@ -64,7 +64,7 @@ export function DateFilterChips({ anchorId = 'all-events', initial }: Props) {
     <div
       role="tablist"
       aria-label="Filter events by date"
-      className="sticky top-[var(--site-nav-height,64px)] z-30 border-y border-[var(--surface-2)] bg-[var(--surface-0)]/95 backdrop-blur"
+      className="sticky top-[var(--site-nav-height,64px)] z-30 border-y border-[var(--surface-2)] bg-[var(--surface-0)]"
     >
       <div className="mx-auto flex max-w-7xl gap-2 overflow-x-auto px-4 py-3 sm:px-6 lg:px-8">
         {CHIPS.map(c => {
