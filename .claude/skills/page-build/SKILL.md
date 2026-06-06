@@ -86,6 +86,29 @@ Ticketmaster and Eventbrite homepages at 1440 and 390:
   peek at every viewport, drag on touch and pointer, `prefers-reduced-motion`
   respected. No auto-rolling anywhere, including the hero. Manual only.
 
+## Motion standard (locked)
+
+The engine is CSS-first: no framer-motion (founder approval only, per CLAUDE.md).
+Reuse the shared primitives, never hand-roll per surface:
+
+- Reveal on scroll: wrap below-the-fold blocks in the shared `Reveal` /
+  `RevealGroup` (IntersectionObserver, fires once, unobserves after). Children
+  stagger 50 to 80ms left to right, a 12 to 16px rise, 150 to 300ms ease-out.
+  Reading is never blocked: content is visible by default and the reveal is a
+  progressive enhancement that no-ops without JS or under reduced-motion.
+- Hero entrance: stagger the hero CONTENT (headline, meta, CTA) 60 to 80ms apart
+  on load. The LCP image never animates (media architecture law).
+- Hover: cards use `.card-hover-lift` (2 to 4px lift, shadow deepen, 1.02 to
+  1.03 inner image scale, 150 to 200ms). Buttons use the canonical `Button`
+  press/hover states. No bespoke hover.
+- Sticky header: smooth elevation + background transition on scroll, not a hard
+  swap.
+- `prefers-reduced-motion`: every reveal, lift, and entrance collapses to the
+  final state instantly. Verify with the media query forced on.
+- The feel is FELT, not watched. Alive, not busy. Tune timings until a
+  scroll-through at 1440 and 390 reads premium, and confirm Lighthouse mobile
+  still clears 95+ on the preview (motion never costs the gate).
+
 ## QA agent brief
 
 Spin up a separate best-in-class reviewer. It does not mark the page complete

@@ -87,12 +87,31 @@ Copy:
 
 ## Motion
 
-Framer Motion only, restrained and purposeful. Motion reads premium and almost
-invisible: Ticketmaster restraint, never showy.
+The engine is CSS-first: IntersectionObserver-driven reveals plus CSS keyframes
+and transitions, 150 to 300ms, ease-out, `prefers-reduced-motion` always
+honoured. Framer Motion is not a default dependency; reach for it only with
+founder approval for a single component that genuinely needs orchestration the
+CSS engine cannot express. Speed is part of the design: Lighthouse 95+ on mobile
+remains law, so motion never costs the gate.
 
-- Use: staggered fade-and-rise reveals on load, gentle scroll reveals, a subtle
-  card hover lift. Durations 150 to 300ms, ease-out. Always respect
-  `prefers-reduced-motion`.
+Motion reads premium and almost invisible: Ticketmaster restraint, never showy.
+The bar is alive and breathing, best in the world. Motion is FELT, not watched:
+tune it alive, never busy.
+
+The choreography (deliver all of it with the CSS engine):
+
+- Page entrance: hero content staggers in once (headline, meta, CTA, 60 to 80ms
+  apart). The hero LCP image itself never animates (media architecture law).
+- Scroll reveals: every below-the-fold section fade-rises as it enters the
+  viewport, cards staggered 50 to 80ms left to right, once only, subtle (12 to
+  16px rise), never blocking reading.
+- Hover: cards lift 2 to 4px with the shadow deepening and a 1.02 to 1.03 image
+  scale at 150 to 200ms; buttons get press states; tasteful link interactions.
+- Rails: the eased arrow glide stays, the next-card peek invites the scroll.
+- Sticky header: a smooth elevation and background transition on scroll.
+- Loading: designed skeletons settle into real content with zero layout shift.
+- `prefers-reduced-motion` disables all of it cleanly.
+
 - Forbidden: GSAP, scroll-hijacking (Lenis), parallax overload, glassmorphism,
   glow kits (Aceternity, MagicUI), bento grids, auto-rolling carousels.
 
