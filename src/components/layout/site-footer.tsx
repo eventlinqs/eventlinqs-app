@@ -225,10 +225,11 @@ export function SiteFooter() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-x-8 gap-y-6 pt-8">
-            <DesktopColumn title="Discover"     links={DISCOVER} />
-            <DesktopColumn title="Communities"  links={CULTURES} />
-            <DesktopColumn title="Company"      links={COMPANY} />
+          <div className="grid grid-cols-4 gap-x-8 gap-y-6 pt-8">
+            <DesktopColumn title="Discover"       links={DISCOVER} />
+            <DesktopColumn title="Communities"    links={CULTURES} />
+            <DesktopColumn title="For organisers" links={FOR_ORGANISERS} />
+            <DesktopColumn title="Company"        links={COMPANY} />
           </div>
         </div>
 
@@ -240,9 +241,10 @@ export function SiteFooter() {
           </div>
 
           <div className="grid grid-cols-2 gap-x-6 pt-2">
-            <MobileAccordion title="Discover"     links={DISCOVER} />
-            <MobileAccordion title="Communities"  links={CULTURES} />
-            <MobileAccordion title="Company"      links={COMPANY} />
+            <MobileAccordion title="Discover"       links={DISCOVER} />
+            <MobileAccordion title="Communities"    links={CULTURES} />
+            <MobileAccordion title="For organisers" links={FOR_ORGANISERS} />
+            <MobileAccordion title="Company"        links={COMPANY} />
           </div>
 
           <div className="mt-4 border-t border-white/10 pt-4">

@@ -76,17 +76,24 @@ export function readCityCookie(): DetectedLocation | null {
 }
 
 /**
- * SiteHeaderClient - dual-state glassmorphism navigation (Batch 9.1).
+ * SiteHeaderClient - dual-state solid-navy navigation.
+ *
+ * The header is opaque navy in both resting states: no backdrop blur, no
+ * glassmorphism. This mirrors the captured Ticketmaster (solid blue bar)
+ * and Eventbrite (solid white bar) evidence, and honours the CLAUDE.md
+ * design law that forbids glassmorphism. The earlier frosted State B was
+ * dropped in the Batch 11.0 legibility fix; the docstring and the
+ * `.site-header-bar` class were renamed to match (was `.site-header-glass`).
  *
  * State A (top of page on hero-bearing routes):
- *   - Fully transparent background, no border, no backdrop filter
+ *   - Transparent base with a top-to-fade navy gradient so the white
+ *     wordmark and nav read on ANY underlying hero raster
  *   - White wordmark, white nav links, gold dot in EventLinqs logo
  *   - Sits above the hero raster painted by HeroMedia
  *   - Inline search hidden (the hero contains its own primary search)
  *
  * State B (scrolled past 80px, OR no-hero route):
- *   - Background: rgba(10, 22, 40, 0.72)
- *   - backdrop-filter: blur(20px) saturate(180%) (with -webkit prefix)
+ *   - Solid navy #0A1628 background, no gradient, no blur
  *   - 1px solid rgba(212, 164, 55, 0.30) gold border-bottom
  *   - Compact 360px desktop search pill becomes visible
  *   - Mobile retains an icon-only search trigger always
@@ -106,8 +113,6 @@ export function readCityCookie(): DetectedLocation | null {
  *     forced from initial paint to avoid SSR transparent flash.
  *   - HeroMedia itself is NOT mutated; only a thin tracker wrapper
  *     registers with the HeroPresenceProvider.
- *   - Glassmorphism degrades to rgba(10, 22, 40, 0.95) on browsers
- *     without backdrop-filter via the @supports rule in globals.css.
  */
 export function SiteHeaderClient({ location, cities, user, userEmail }: SiteHeaderClientProps) {
   const dropdownUser = user && userEmail ? { ...user, email: userEmail } : null
@@ -206,7 +211,7 @@ export function SiteHeaderClient({ location, cities, user, userEmail }: SiteHead
         data-scrolled={stateB ? '1' : '0'}
         data-no-hero={!hasHero ? '1' : '0'}
         className={[
-          'site-header-glass',
+          'site-header-bar',
           'sticky top-0 z-50 w-full',
           'transition-[background-color,backdrop-filter,border-color,box-shadow] duration-300',
           'motion-reduce:transition-none',

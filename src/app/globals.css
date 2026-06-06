@@ -406,30 +406,35 @@ body[data-hero-enhanced="1"] [data-hero-shell] {
   display: none;
 }
 
-/* ─── Site Header: dual-state glassmorphism (Batch 9.1) ───────────────────── */
+/* ─── Site Header: dual-state solid-navy bar ──────────────────────────────── */
 /*
+ * Opaque navy in both states, no backdrop blur, no glassmorphism. This
+ * matches the captured Ticketmaster (solid blue) and Eventbrite (solid
+ * white) header evidence and honours the CLAUDE.md law forbidding
+ * glassmorphism. (This block and its `.site-header-bar` class were
+ * formerly named `.site-header-glass`; the frosted State B was removed
+ * in the Batch 11.0 legibility fix and the name now reflects reality.)
+ *
  * State A (default - top of page on hero-bearing routes):
- *   transparent background, no border, no backdrop filter. The white
- *   wordmark sits over the hero raster painted by HeroMedia.
+ *   transparent base with a top-to-fade navy gradient so the white
+ *   wordmark and nav read on ANY underlying hero raster. The PageShell
+ *   layout puts the sticky header in flex flow with the body bg directly
+ *   beneath it (the hero starts BELOW the header on /culture, /city, and
+ *   intersection pages); without this gradient the white nav would
+ *   disappear the moment the client hydrates out of the SSR State B
+ *   default. Founder review Batch 11.0 surfaced this on bright-sky heroes.
  *
  * State B (data-scrolled="1" - scrolled past sentinel, OR no-hero):
- *   navy frosted glass with gold edge. backdrop-filter degrades to a
- *   solid navy 0.95 background on browsers without backdrop-filter
- *   support (older Edge, some embedded webviews).
+ *   fully solid navy #0A1628 with a gold accent border-bottom. State B
+ *   was once rgba(10,22,40,0.72) + backdrop-blur; that frosted treatment
+ *   let high-contrast page content bleed through mid-scroll on long
+ *   pages, so the Batch 11.0 fix made it solid for legibility.
  *
- * The transition is intentionally on the header element, not on
- * children, so child elements (logo, nav links) inherit a clean
- * crossfade rather than each transitioning independently.
+ * The transition is intentionally on the header element, not on its
+ * children, so the logo and nav links inherit a clean crossfade rather
+ * than each transitioning independently.
  */
-/* State A (over hero): a top-to-fade navy gradient sits behind the
- * white wordmark and nav so the text reads on ANY underlying surface.
- * The PageShell layout puts the sticky header in flex flow with body
- * bg directly beneath it (the hero starts BELOW the header in
- * /culture, /city, and intersection pages); without this backdrop
- * the white nav becomes invisible the moment the client hydrates and
- * drops the header out of the SSR State B default. Founder review
- * Batch 11.0 follow-up surfaced this on bright-sky heroes. */
-.site-header-glass {
+.site-header-bar {
   background-color: transparent;
   background-image: linear-gradient(
     180deg,
@@ -438,25 +443,14 @@ body[data-hero-enhanced="1"] [data-hero-shell] {
     rgba(10, 22, 40, 0.20) 100%
   );
   border-bottom: 1px solid transparent;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
 }
-/* Batch 11.0 header scroll bug fix: State B was rgba(10,22,40,0.72) +
- * backdrop-blur, which let high-contrast page content bleed through
- * during mid-scroll on long pages (the brief surfaced this as a
- * readability regression). State B now uses solid navy with the gold
- * accent border-bottom. The frosted-glass aesthetic stayed valuable
- * over the hero (state A is still transparent), but State B prioritises
- * legibility once the user has scrolled past it. */
-.site-header-glass[data-scrolled="1"] {
+.site-header-bar[data-scrolled="1"] {
   background-color: rgb(10, 22, 40);
   /* Clear the State A gradient so State B paints fully solid navy
    * (the gradient's rgba alpha would otherwise overlay and produce a
    * subtle banding effect). */
   background-image: none;
   border-bottom-color: rgba(212, 164, 55, 0.30);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
 }
 
 /* Skip-to-content link (Batch 9.1).
