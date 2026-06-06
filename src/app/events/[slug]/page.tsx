@@ -20,6 +20,7 @@ import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 import { getFeaturedHeroBackground } from '@/lib/images/event-media'
 import { StickyActionBar } from '@/components/features/events/sticky-action-bar'
 import { RelatedEventsGrid } from '@/components/features/events/related-events-grid'
+import { Reveal } from '@/components/ui/reveal'
 import type { EventCardData } from '@/components/features/events/event-card'
 import { projectToCardData } from '@/lib/events/event-card-projection'
 import type { PublicEventRow } from '@/lib/events/types'
@@ -771,9 +772,11 @@ export default async function EventDetailPage({ params }: Props) {
           </div>
         </section>
 
-        {/* Related events */}
+        {/* Related events - fade-rise on scroll-in (below-fold). */}
         {related.length > 0 && (
-          <RelatedEventsGrid events={relatedCards} dynamicPrices={relatedPrices} />
+          <Reveal>
+            <RelatedEventsGrid events={relatedCards} dynamicPrices={relatedPrices} />
+          </Reveal>
         )}
       </main>
 

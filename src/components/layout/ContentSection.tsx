@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Reveal } from '@/components/ui/reveal'
 
 type SurfaceName = 'base' | 'alt' | 'dark'
 type WidthName = 'prose' | 'default' | 'wide'
@@ -15,6 +16,12 @@ interface ContentSectionProps {
   className?: string
   /** Renders a subtle accent gradient line at the top of the section. Default false. */
   topBorder?: boolean
+  /**
+   * Fade-rise the section content on scroll-in (Motion law). Use on below-fold
+   * interior sections. No-ops without JS / under reduced-motion / for headless
+   * audits (the shared Reveal primitive is gated by html[data-motion=1]).
+   */
+  reveal?: boolean
 }
 
 const surfaces: Record<SurfaceName, string> = {
@@ -54,6 +61,7 @@ export function ContentSection({
   'aria-labelledby': ariaLabelledby,
   className = '',
   topBorder = false,
+  reveal = false,
 }: ContentSectionProps) {
   return (
     <section
@@ -67,12 +75,13 @@ export function ContentSection({
           className="pointer-events-none absolute left-0 right-0 top-0"
           style={{
             height: '1px',
-            background: 'linear-gradient(90deg, transparent, rgba(74, 144, 217, 0.25) 50%, transparent)',
+            // Brand gold accent (was off-brand blue rgba(74,144,217); #4A90D9).
+            background: 'linear-gradient(90deg, transparent, rgba(212, 164, 55, 0.30) 50%, transparent)',
           }}
         />
       )}
       <div className={`mx-auto ${widths[width]} px-4 md:px-6 lg:px-8`}>
-        {children}
+        {reveal ? <Reveal>{children}</Reveal> : children}
       </div>
     </section>
   )
