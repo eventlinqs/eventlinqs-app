@@ -865,18 +865,27 @@ Verified (scripts/reveal-verify.mjs): event detail + /culture/african + /events
 show 0 stuck-hidden after scroll and 0 opacity<1 under reduced-motion; sticky
 two-column intact. Gate-verified.
 
-### Unit 4 - DESIGNED LOADING + DARK (#4) - marketing light DONE (commit ac50045)
-Rebuilt the about/blog/careers/press dark CTA closers light (surface dark->alt,
-white text -> ink, gold-400 eyebrow -> AA-safe gold-800, dropped onSurface=dark).
-Verified 0 dark sections on all four at 1440 (only the intentional footer stays
-dark). Gate-verified.
-REMAINING in #4 (queue/squad are auth/queue-gated, gate-verify only):
-- queue-room LIGHT rebuild (photo+overlay when the event has an image, per the
-  standing ruling) + its #4A90D9/#10B981 sweep + the bare-circle SpinnerIcon.
-  Design drafted (computed light/photo-overlay theme + gold Button + success
-  token); NOT yet applied - deferred when the build interrupt took priority.
-- squad-pay-form bare-circle loader + #4A90D9 (auth-gated); connect-onboarding +
-  surprise-me use contextual icon-spins (Loader2 / RefreshCw), judged acceptable.
+### Unit 4 - DESIGNED LOADING + DARK (#4) - DONE
+- Marketing light (ac50045): about/blog/careers/press dark CTA closers -> light
+  (surface dark->alt, white->ink, gold-400 eyebrow->AA gold-800, dropped
+  onSurface=dark). 0 dark sections on all four at 1440 (footer intentionally
+  dark). Verified.
+- Queue-room LIGHT rebuild (f44b9f9): adaptive `onPhoto` theme - photo backdrop +
+  navy overlay when the event has an image (the allowed pattern), else clean
+  light canvas; one token map drives all six phases. #4A90D9 -> gold, #10B981 ->
+  text-success, bespoke blue buttons -> gold Button, SpinnerIcon -> gold ring.
+  Hook logic untouched. Gate-verified (queue-gated: is_high_demand only, none
+  locally -> visual deferred to staging).
+- Squad off-brand blue sweep (71eaf94): squad-pay-form (navy Pay -> gold Button,
+  ring -> gold, Stripe colorPrimary -> #0A1628) + the squad family (join/start/
+  modal/button, squad page + my-squads progress bars): all #4A90D9/#F0F6FF ->
+  brand gold (buttons gold+ink-900, focus rings gold, tint gold-100/40, accents
+  gold-700). Kept the bg-ink-900 navy secondaries + the #25D366 WhatsApp button.
+  Gate-verified (auth-gated -> visual deferred). No #4A90D9/#F0F6FF remains in any
+  app surface now (queue + squad were the last; emails are a separate pass).
+- Accepted as-is: connect-onboarding-card (Loader2) + surprise-me-modal
+  (RefreshCw) use contextual icon-spins inside buttons, not generic page
+  spinners - judged designed/acceptable per the Motion law.
 
 ### PRIORITY INTERRUPT - Vercel build failure FIXED (commit 985e46d, [SHARED])
 The preview build of 78afde7 failed: 509 build-time pages x ~29 export workers
@@ -900,7 +909,17 @@ categories/faith were already dynamic (ƒ) pre-fix (not contributing to the
 build-time prerender load); the deferred SSG routes were the ~391-page DB-heavy
 prerender that failed.
 
-### REMAINING after this session (in order): #4 queue-room LIGHT rebuild +
-squad spinner/blue (auth/queue-gated); #9 per-surface new-bar re-audit (fresh
-live TM+EB captures, SURPASS/PARITY/BELOW tables incl loading, at the locked
-1400 width). All can proceed on the now-green preview.
+### REMAINING after this session
+Mission items 1-4 (container width #11, buyer-journey checkout #8, interior
+reveals #3, designed-loading + dark #4) are DONE and pushed; the Vercel preview
+is GREEN with full density. The one open mission item:
+- #9 PER-SURFACE NEW-BAR RE-AUDIT: fresh live TM + EB captures per surface at
+  1440 + 390, a SURPASS/PARITY/BELOW proof table per surface (incl loading),
+  iterate any BELOW, at the locked 1400 width and full fixture density. Not
+  started (it was the "whatever budget remains" item; the priority build-failure
+  interrupt + items 1-4 consumed the budget). Start with the homepage (surface 0)
+  since the 1400 width changed it most, then the buyer surfaces.
+Smaller deferred (staging, gate-verified here): live PAID checkout-form + on-sale
+stepper captures (prod events sale-blocked); queue-room + squad visual proof
+(auth/queue-gated); #8 form->payment step-transition polish; the email-template
+#1A1A2E/#4A90D9 pass (separate surface family).
