@@ -1366,7 +1366,7 @@ function buildConfirmationEmailHtml(
       if (invalid) {
         return `
       <div style="background:#FAFAFA;border:1px solid #e5e7eb;border-radius:10px;padding:20px;margin:16px 0;">
-        <p style="margin:0 0 6px;color:#1A1A2E;font-size:16px;font-weight:600;">${holder}</p>
+        <p style="margin:0 0 6px;color:#0A1628;font-size:16px;font-weight:600;">${holder}</p>
         <p style="margin:0;color:#6B7280;font-size:14px;">${escapeHtml(invalid)}</p>
       </div>`
       }
@@ -1382,13 +1382,13 @@ function buildConfirmationEmailHtml(
 
       return `
       <div style="background:#FFFFFF;border:1px solid #e5e7eb;border-radius:10px;padding:20px;margin:16px 0;text-align:center;">
-        <p style="margin:0 0 12px;color:#1A1A2E;font-size:16px;font-weight:600;">${holder}</p>
+        <p style="margin:0 0 12px;color:#0A1628;font-size:16px;font-weight:600;">${holder}</p>
         <div style="display:inline-block;background:#FFFFFF;border:1px solid #e5e7eb;border-radius:8px;padding:16px;">
           <img src="cid:${qrCid(ticket.ticket_code)}" width="220" height="220" alt="${alt}" style="display:block;width:220px;height:220px;border:0;background:#FFFFFF;" />
         </div>
-        <p style="margin:14px 0 4px;color:#1A1A2E;font-size:15px;font-family:monospace;letter-spacing:1px;">${code}</p>
+        <p style="margin:14px 0 4px;color:#0A1628;font-size:15px;font-family:monospace;letter-spacing:1px;">${code}</p>
         <p style="margin:0 0 16px;">
-          <a href="${bearerUrl}" style="display:inline-block;background:#4A90D9;color:#FFFFFF;padding:11px 22px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">Open ticket</a>
+          <a href="${bearerUrl}" style="display:inline-block;background:#0A1628;color:#FFFFFF;padding:11px 22px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">Open ticket</a>
         </p>
         <p style="margin:0;color:#6B7280;font-size:13px;">${note}</p>
       </div>`
@@ -1396,7 +1396,7 @@ function buildConfirmationEmailHtml(
     .join('')
 
   const receiptHtml = receipt_url
-    ? `<p style="margin:8px 0 0;"><a href="${escapeHtml(receipt_url)}" style="color:#4A90D9;font-size:14px;">View your Stripe receipt</a></p>`
+    ? `<p style="margin:8px 0 0;"><a href="${escapeHtml(receipt_url)}" style="color:#0A1628;font-size:14px;">View your Stripe receipt</a></p>`
     : ''
 
   return `<!DOCTYPE html>
@@ -1408,18 +1408,18 @@ function buildConfirmationEmailHtml(
 <meta name="supported-color-schemes" content="light" />
 <style>:root { color-scheme: light; supported-color-schemes: light; }</style>
 </head>
-<body style="margin:0;padding:0;background-color:#FAFAFA;color:#1A1A2E;">
+<body style="margin:0;padding:0;background-color:#FAFAFA;color:#0A1628;">
 <div style="display:none;max-height:0;max-width:0;overflow:hidden;opacity:0;color:transparent;">${preheader}</div>
-<div style="max-width:600px;margin:0 auto;padding:24px;background-color:#FFFFFF;color:#1A1A2E;font-family:Helvetica,Arial,sans-serif;">
+<div style="max-width:600px;margin:0 auto;padding:24px;background-color:#FFFFFF;color:#0A1628;font-family:Helvetica,Arial,sans-serif;">
 
-  <p style="margin:0 0 20px;font-size:18px;font-weight:800;letter-spacing:2px;color:#1A1A2E;">EVENTLINQS</p>
+  <p style="margin:0 0 20px;font-size:18px;font-weight:800;letter-spacing:2px;color:#0A1628;">EVENTLINQS</p>
 
-  <h1 style="margin:0 0 8px;color:#1A1A2E;font-size:22px;">${greeting}</h1>
+  <h1 style="margin:0 0 8px;color:#0A1628;font-size:22px;">${greeting}</h1>
   <p style="margin:0;color:#374151;font-size:15px;">Your order is confirmed and your ticket is ready below. No app needed.</p>
 
   ${hr}
 
-  <h2 style="margin:0 0 8px;color:#1A1A2E;font-size:18px;">${title}</h2>
+  <h2 style="margin:0 0 8px;color:#0A1628;font-size:18px;">${title}</h2>
   <p style="margin:0 0 4px;color:#374151;font-size:15px;">${escapeHtml(eventDateLong)}</p>
   ${venueHtml}
   <p style="margin:12px 0 0;color:#6B7280;font-size:14px;">Order ${escapeHtml(order.order_number)}</p>
@@ -1427,18 +1427,18 @@ function buildConfirmationEmailHtml(
 
   ${hr}
 
-  <p style="margin:0 0 4px;color:#1A1A2E;font-size:13px;font-weight:700;letter-spacing:1px;">YOUR TICKETS</p>
+  <p style="margin:0 0 4px;color:#0A1628;font-size:13px;font-weight:700;letter-spacing:1px;">YOUR TICKETS</p>
   ${ticketBlocks}
 
   ${hr}
 
-  <p style="margin:0;color:#1A1A2E;font-size:17px;font-weight:700;">Total paid: ${escapeHtml(total)}</p>
+  <p style="margin:0;color:#0A1628;font-size:17px;font-weight:700;">Total paid: ${escapeHtml(total)}</p>
   ${receiptHtml}
 
   ${hr}
 
   <p style="margin:0 0 10px;color:#374151;font-size:14px;">Any questions, just reply to this email and a real person will help you.</p>
-  <p style="margin:0;color:#6B7280;font-size:13px;">Lost this email? Your tickets are always at <a href="${siteUrl}/tickets" style="color:#4A90D9;">eventlinqs.com/tickets</a> when you are signed in, or use a ticket link above.</p>
+  <p style="margin:0;color:#6B7280;font-size:13px;">Lost this email? Your tickets are always at <a href="${siteUrl}/tickets" style="color:#0A1628;">eventlinqs.com/tickets</a> when you are signed in, or use a ticket link above.</p>
 
   ${hr}
 
