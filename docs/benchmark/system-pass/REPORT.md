@@ -458,8 +458,63 @@ page run in the launch live-purchase pass.
 
 ---
 
+## Surface 8: Order confirmation + ticket view - DONE
+
+Goal: benchmark the post-purchase confirmation and the digital ticket, refine on
+evidence. Both render only for a real completed order, so the live Playwright
+capture is deferred to the launch live-purchase pass (per
+[[project_refund_verification_checklist]]); benchmarked here by code review.
+
+### Reality audit
+- Order confirmation (`/orders/[order_id]/confirmation`): success header
+  ("You're in" / "Order received"), order number, event card, "Tickets
+  Purchased" with total paid, an issued-tickets section rendering each ticket's
+  server-generated SVG QR inline ("Show this QR at entry. One QR admits one
+  person.") with a View-ticket link, a genuine pending state while the Stripe
+  webhook runs, a guest "create an account" CTA, and add-to-calendar actions.
+  Guest + auth + organiser-aware logo link. All states handled.
+- Ticket view (`/t/[code]`): mobile-first (max-w-md) ticket card, large server
+  SVG QR, token-compliant (`bg-canvas`, `text-ink-900`), a clean error state for
+  an invalid code. No glassmorphism, no hardcoded colours.
+
+### Evidence-based refinement (the change)
+Design-system compliance (CLAUDE.md "No new colours; navy #0A1628"). The order
+confirmation hardcoded an OFF-BRAND navy `#1A1A2E` (and `#2d2d4a` hover) on the
+wordmark and the "Create Account" button, while the same page's "View ticket"
+button already used the correct `bg-ink-900` (and `--color-ink-900` is exactly
+#0A1628, the brand navy). Mapped both off-brand instances to the brand token:
+- wordmark `text-[#1A1A2E]` -> `text-ink-900`
+- Create-account button `bg-[#1A1A2E] hover:bg-[#2d2d4a]` -> `bg-ink-900 hover:bg-ink-800`
+The ticket view needed no change (already token-compliant).
+
+### Cross-surface follow-up (logged, not churned here)
+`#1A1A2E` / `#2d2d4a` is a systemic off-brand navy (31 uses) beyond this
+surface: checkout-form (incl the Stripe Elements `colorPrimary`), queue-room,
+squad-pay, dashboard discounts, refund-dialog, global-error. A focused
+token-compliance sweep should map them to `ink-900` / `navy-950`; the Stripe
+`colorPrimary` needs care (verify the Elements theme against the brand navy).
+Logged in [[project_system_pass_sweep]].
+
+### Captures
+- Live confirmation + ticket captures deferred to the launch live-purchase pass
+  (need a completed order + valid ticket code). Code-review benchmark stands.
+
+### Benchmark verdict (code review)
+| Dimension | Verdict | Note |
+|---|---|---|
+| Density | Surpass | Confirmation packs event + tickets + inline QR + calendar + guest CTA; ticket is a focused single-purpose card. |
+| Typography | Parity | Display headings + mono for codes/order numbers. |
+| Imagery | N/A | QR is server SVG (media-rules compliant, no raw img). |
+| UX | Surpass | Inline scannable QR on confirmation (no extra hop), pending-state honesty, add-to-calendar, guest account capture, one-QR-one-person clarity. |
+| Mobile (390) | Surpass | Ticket view is mobile-first max-w-md, QR sized for door scanning. |
+
+### Gates
+build pass, lint 0 errors, vitest 275 pass. Live axe/Lighthouse run in the
+launch live-purchase pass. Copy clean (no em/en-dashes).
+
+---
+
 ## Remaining (run in fresh sessions, one surface each)
-8. Order confirmation and ticket view
 9. Category landing template (/categories/[slug])
 
 Each: run the page-build skill, capture the competitor equivalent at 1440+390,

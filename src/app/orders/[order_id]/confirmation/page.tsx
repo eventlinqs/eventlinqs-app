@@ -142,7 +142,7 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
     <div className="min-h-screen bg-ink-100">
       <nav className="border-b border-ink-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl">
-          <Link href={logoHref} className="text-xl font-bold text-[#1A1A2E]">EVENTLINQS</Link>
+          <Link href={logoHref} className="text-xl font-bold text-ink-900">EVENTLINQS</Link>
         </div>
       </nav>
 
@@ -275,7 +275,7 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
             <p className="mt-1 text-xs text-ink-400">Access order history, digital tickets, and more</p>
             <Link
               href="/signup"
-              className="mt-3 inline-block rounded-lg bg-[#1A1A2E] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#2d2d4a]"
+              className="mt-3 inline-block rounded-lg bg-ink-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-ink-800"
             >
               Create Account
             </Link>
