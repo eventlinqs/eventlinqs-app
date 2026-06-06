@@ -100,7 +100,7 @@
 9. Stripe revenue card rounding display bug
 10. Authed + organiser E2E smoke test
 11. M4.5 Close-out Steps E and A2
-12. Run `npx supabase migration list --linked` and reconcile all local migrations against remote applied list before launch
+12. ~~Run `supabase migration list --linked` and reconcile all local migrations against remote applied list before launch~~ DONE (2026-06-06): no drift, 34 local = 34 remote, all matched. See `docs/launch-hardening/migration-drift-2026-06-06.md`. Re-run if migrations are added before launch.
 13. Migrate src/types/database.ts (423 lines, handwritten) to `supabase gen types typescript --linked` before launch
 14. ABN 30 837 447 587 inserted into /legal/terms and /legal/privacy (replace "pending registration" text)
 15. Street address or PO Box in legal pages
