@@ -214,16 +214,16 @@ export default function AboutPage() {
         </div>
       </ContentSection>
 
-      <ContentSection surface="dark" width="wide">
+      <ContentSection surface="alt" width="wide">
         <div className="grid gap-10 lg:grid-cols-[1.4fr_1fr] lg:items-end lg:gap-16">
           <div>
-            <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-gold-400)]">
+            <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-accent-strong)]">
               Get involved
             </p>
-            <h2 className="mt-3 font-display text-3xl font-bold leading-tight text-white md:text-5xl">
+            <h2 className="mt-3 font-display text-3xl font-bold leading-tight text-ink-900 md:text-5xl">
               Every community. Every event. One platform.
             </h2>
-            <p className="mt-5 max-w-xl text-base leading-relaxed text-white/70 md:text-lg">
+            <p className="mt-5 max-w-xl text-base leading-relaxed text-ink-600 md:text-lg">
               Whether you are putting on your first event or running a
               community calendar that fills venues every weekend, the
               platform is built to work for you. Free for free events.
@@ -237,8 +237,7 @@ export default function AboutPage() {
             </Button>
             <Button
               href="/events"
-              variant="secondary"
-              onSurface="dark"
+              variant="secondary"
               size="lg"
               className="w-full sm:w-auto"
             >
@@ -246,7 +245,7 @@ export default function AboutPage() {
             </Button>
             <Link
               href="/contact"
-              className="inline-flex h-12 items-center justify-center rounded-lg px-6 text-base font-medium text-white/90 underline-offset-4 hover:underline"
+              className="inline-flex h-12 items-center justify-center rounded-lg px-6 text-base font-medium text-ink-700 underline-offset-4 hover:text-gold-700 hover:underline"
             >
               Talk to a human
             </Link>

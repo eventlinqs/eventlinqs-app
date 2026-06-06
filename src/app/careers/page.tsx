@@ -212,16 +212,16 @@ export default function CareersPage() {
         </ul>
       </ContentSection>
 
-      <ContentSection surface="dark" width="default">
+      <ContentSection surface="alt" width="default">
         <div className="grid gap-10 md:grid-cols-[1.4fr_1fr] md:items-end">
           <div>
-            <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-gold-400)]">
+            <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-accent-strong)]">
               Register interest
             </p>
-            <h2 className="mt-3 font-display text-3xl font-bold leading-tight text-white md:text-5xl">
+            <h2 className="mt-3 font-display text-3xl font-bold leading-tight text-ink-900 md:text-5xl">
               We will reach out when we are hiring.
             </h2>
-            <p className="mt-5 max-w-xl text-base leading-relaxed text-white/70 md:text-lg">
+            <p className="mt-5 max-w-xl text-base leading-relaxed text-ink-600 md:text-lg">
               Email a short note about who you are, what you have shipped,
               and which role looks like a fit. We read every message. We
               reply when an opening matches.
@@ -239,7 +239,7 @@ export default function CareersPage() {
             </Button>
             <Link
               href="/about"
-              className="inline-flex h-12 items-center justify-center rounded-lg px-6 text-base font-medium text-white/90 underline-offset-4 hover:underline"
+              className="inline-flex h-12 items-center justify-center rounded-lg px-6 text-base font-medium text-ink-700 underline-offset-4 hover:text-gold-700 hover:underline"
             >
               About EventLinqs
             </Link>
