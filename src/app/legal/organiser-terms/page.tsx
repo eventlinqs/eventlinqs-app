@@ -16,7 +16,7 @@ const SECTIONS = [
   { id: 'attendee-duties',title: 'Duties to Attendees' },
   { id: 'cancellations',  title: 'Cancellations and Reschedules' },
   { id: 'data',           title: 'Attendee Data and Privacy' },
-  { id: 'prohibited',     title: 'Prohibited Conduct' },
+  { id: 'prohibited',     title: 'Prohibited Events and Conduct' },
   { id: 'suspension',     title: 'Suspension and Termination' },
   { id: 'disputes',       title: 'Chargebacks and Disputes' },
   { id: 'liability',      title: 'Liability' },
@@ -37,10 +37,10 @@ export default function OrganiserTermsPage() {
         <a href="/legal/terms">Terms of Use</a> and apply whenever you
         use EventLinqs to list an event, sell tickets, or run an
         experience. They form a binding agreement between you and
-        EventLinqs (operated by Lawal Adams, ABN 30 837 447 587,
-        Geelong, Victoria, Australia). If the general Terms and these
-        Organiser Terms conflict, the Organiser Terms take priority for
-        organiser conduct.
+        EventLinqs (operated by Lawal Adams trading as EventLinqs,
+        ABN 30 837 447 587, PO Box 141, Newcomb VIC 3219, Australia). If the
+        general Terms and these Organiser Terms conflict, the Organiser Terms
+        take priority for organiser conduct.
       </p>
 
       <h2 id="eligibility">Eligibility</h2>
@@ -50,6 +50,15 @@ export default function OrganiserTermsPage() {
         Australia) hold a valid ABN or equivalent business registration.
         You must provide accurate business and payout details and keep
         them current. Free events may be run by any verified account.
+      </p>
+      <p>
+        Before you can receive payouts, you must complete identity and
+        business verification (KYC) through our payments partner, Stripe
+        Connect. Stripe collects and verifies your identity, business, and
+        bank details directly. EventLinqs does not store your full identity
+        documents. Payouts stay on hold until Stripe reports your connected
+        account as verified and payouts-enabled, and we may pause payouts if
+        Stripe later requires further information.
       </p>
 
       <h2 id="your-content">Your Content and Listings</h2>
@@ -76,10 +85,17 @@ export default function OrganiserTermsPage() {
       </p>
       <p>
         Payouts are processed through Stripe Connect to the bank account
-        you nominate. Standard payout cadence is after event completion,
-        minus refunds, chargebacks, and applicable fees. Holdbacks may
-        apply for new accounts, high-risk categories, or events with a
-        history of chargebacks.
+        you nominate, on a tiered schedule. New organisers start on the
+        default tier, where the payout is released a set number of days
+        after the event completes and a reserve (a percentage of the
+        event&apos;s sales) is held to cover potential refunds and
+        chargebacks. As your track record on the platform builds, you may
+        move to faster payout cadences and lower reserves. Every payout is
+        net of refunds, chargebacks, and applicable fees, and additional
+        holdbacks may apply for high-risk categories or accounts with a
+        history of chargebacks. The current payout tier, cadence, and
+        reserve that apply to your account are shown in your organiser
+        dashboard.
       </p>
       <p>
         Free events incur no platform fees. No exceptions, no conditions.
@@ -122,8 +138,22 @@ export default function OrganiserTermsPage() {
         or a printable door list, and take it with you if you leave.
       </p>
 
-      <h2 id="prohibited">Prohibited Conduct</h2>
+      <h2 id="prohibited">Prohibited Events and Conduct</h2>
+      <p>You may not list or run, and may not use EventLinqs for:</p>
       <ul>
+        <li>
+          Events that are illegal, or that require a licence or permit you
+          do not hold (including liquor, gambling, and public-assembly
+          permits).
+        </li>
+        <li>
+          Events promoting hate, violence, terrorism, illegal weapons, or
+          illegal drugs.
+        </li>
+        <li>
+          Phantom or fraudulent events, or events you do not genuinely
+          intend to hold as described.
+        </li>
         <li>Listing events you do not have the rights to run.</li>
         <li>
           Scalping, bulk reselling, or running bots to secure tickets on

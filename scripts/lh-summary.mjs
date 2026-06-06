@@ -55,5 +55,5 @@ for (const r of rows) {
   if (r.lcp != null && r.lcp > 2500) reasons.push(`lcp ${Math.round(r.lcp)}ms > 2500`)
   if (r.tbt != null && r.tbt > 300) reasons.push(`tbt ${Math.round(r.tbt)}ms > 300`)
   if (r.cls != null && r.cls > 0.1) reasons.push(`cls ${r.cls.toFixed(3)} > 0.1`)
-  console.log(`- **${r.label}**: ${reasons.length === 0 ? 'PASS' : 'FAIL — ' + reasons.join(', ')}`)
+  console.log(`- **${r.label}**: ${reasons.length === 0 ? 'PASS' : 'FAIL - ' + reasons.join(', ')}`)
 }

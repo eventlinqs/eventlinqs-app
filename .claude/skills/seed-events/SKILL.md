@@ -47,15 +47,17 @@ copy, no placeholder imagery, no em-dashes, Australian English throughout.
    (including some free events). Write distinctive titles and descriptions in
    Australian English. No filler, no "Sample Event 1".
 
-4. **Imagery pipeline.** For each event, pick a fitting image from the provided
-   library and optimise it: convert to AVIF (and WebP fallback) at the
-   responsive sizes the media library expects, matching the project image
-   config (AVIF first, qualities 70 to 85). Host the optimised files (Supabase
-   Storage public bucket, or `/public` for local), then set `cover_image_url`
-   and `thumbnail_url` to the hosted URLs. A published event must carry a real
-   cover: the `events_published_real_cover` constraint rejects placeholders.
-   Feature surfaces render these through `EventCardMedia` and `HeroMedia`, so
-   never wire raw `<img>` or `next/image`.
+4. **Imagery pipeline.** Run `scripts/ingest-imagery.mjs` against the provided
+   stock-library folder (`hero/`, `categories/*`, `cities/`, `scenes/*`,
+   `venues/`). It converts each image to responsive AVIF, uploads to the
+   `event-images` storage bucket, and writes `supabase/seed/imagery-map.json`.
+   Pick a fitting image per event from that map by `role` (and `group` for
+   categories and scenes), and set `cover_image_url` / `thumbnail_url` to the
+   mapped URLs. A published event must carry a real cover: the
+   `events_published_real_cover` constraint rejects placeholders. Feature
+   surfaces render these through `EventCardMedia` and `HeroMedia`, so never wire
+   raw `<img>` or `next/image`. The bucket must allow `image/avif` first (see
+   `docs/launch-hardening/imagery-pipeline.md`).
 
 5. **Write the seed.** Put the inserts in a migration file (or a seed script),
    never run ad-hoc writes against a live database. Keep it idempotent and

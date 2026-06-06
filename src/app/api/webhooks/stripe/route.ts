@@ -25,6 +25,7 @@ import {
   buildRefundConfirmationSubject,
   buildRefundConfirmationText,
 } from '@/lib/email/templates/refund-confirmation'
+import { sendPayoutEmail, type PayoutEmailKind } from '@/lib/payouts/email'
 import type Stripe from 'stripe'
 import type { PayoutRecordStatus } from '@/types/database'
 
@@ -1366,7 +1367,7 @@ function buildConfirmationEmailHtml(
       if (invalid) {
         return `
       <div style="background:#FAFAFA;border:1px solid #e5e7eb;border-radius:10px;padding:20px;margin:16px 0;">
-        <p style="margin:0 0 6px;color:#1A1A2E;font-size:16px;font-weight:600;">${holder}</p>
+        <p style="margin:0 0 6px;color:#0A1628;font-size:16px;font-weight:600;">${holder}</p>
         <p style="margin:0;color:#6B7280;font-size:14px;">${escapeHtml(invalid)}</p>
       </div>`
       }
@@ -1382,13 +1383,13 @@ function buildConfirmationEmailHtml(
 
       return `
       <div style="background:#FFFFFF;border:1px solid #e5e7eb;border-radius:10px;padding:20px;margin:16px 0;text-align:center;">
-        <p style="margin:0 0 12px;color:#1A1A2E;font-size:16px;font-weight:600;">${holder}</p>
+        <p style="margin:0 0 12px;color:#0A1628;font-size:16px;font-weight:600;">${holder}</p>
         <div style="display:inline-block;background:#FFFFFF;border:1px solid #e5e7eb;border-radius:8px;padding:16px;">
           <img src="cid:${qrCid(ticket.ticket_code)}" width="220" height="220" alt="${alt}" style="display:block;width:220px;height:220px;border:0;background:#FFFFFF;" />
         </div>
-        <p style="margin:14px 0 4px;color:#1A1A2E;font-size:15px;font-family:monospace;letter-spacing:1px;">${code}</p>
+        <p style="margin:14px 0 4px;color:#0A1628;font-size:15px;font-family:monospace;letter-spacing:1px;">${code}</p>
         <p style="margin:0 0 16px;">
-          <a href="${bearerUrl}" style="display:inline-block;background:#4A90D9;color:#FFFFFF;padding:11px 22px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">Open ticket</a>
+          <a href="${bearerUrl}" style="display:inline-block;background:#0A1628;color:#FFFFFF;padding:11px 22px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">Open ticket</a>
         </p>
         <p style="margin:0;color:#6B7280;font-size:13px;">${note}</p>
       </div>`
@@ -1396,7 +1397,7 @@ function buildConfirmationEmailHtml(
     .join('')
 
   const receiptHtml = receipt_url
-    ? `<p style="margin:8px 0 0;"><a href="${escapeHtml(receipt_url)}" style="color:#4A90D9;font-size:14px;">View your Stripe receipt</a></p>`
+    ? `<p style="margin:8px 0 0;"><a href="${escapeHtml(receipt_url)}" style="color:#0A1628;font-size:14px;">View your Stripe receipt</a></p>`
     : ''
 
   return `<!DOCTYPE html>
@@ -1408,18 +1409,18 @@ function buildConfirmationEmailHtml(
 <meta name="supported-color-schemes" content="light" />
 <style>:root { color-scheme: light; supported-color-schemes: light; }</style>
 </head>
-<body style="margin:0;padding:0;background-color:#FAFAFA;color:#1A1A2E;">
+<body style="margin:0;padding:0;background-color:#FAFAFA;color:#0A1628;">
 <div style="display:none;max-height:0;max-width:0;overflow:hidden;opacity:0;color:transparent;">${preheader}</div>
-<div style="max-width:600px;margin:0 auto;padding:24px;background-color:#FFFFFF;color:#1A1A2E;font-family:Helvetica,Arial,sans-serif;">
+<div style="max-width:600px;margin:0 auto;padding:24px;background-color:#FFFFFF;color:#0A1628;font-family:Helvetica,Arial,sans-serif;">
 
-  <p style="margin:0 0 20px;font-size:18px;font-weight:800;letter-spacing:2px;color:#1A1A2E;">EVENTLINQS</p>
+  <p style="margin:0 0 20px;font-size:18px;font-weight:800;letter-spacing:2px;color:#0A1628;">EVENTLINQS</p>
 
-  <h1 style="margin:0 0 8px;color:#1A1A2E;font-size:22px;">${greeting}</h1>
+  <h1 style="margin:0 0 8px;color:#0A1628;font-size:22px;">${greeting}</h1>
   <p style="margin:0;color:#374151;font-size:15px;">Your order is confirmed and your ticket is ready below. No app needed.</p>
 
   ${hr}
 
-  <h2 style="margin:0 0 8px;color:#1A1A2E;font-size:18px;">${title}</h2>
+  <h2 style="margin:0 0 8px;color:#0A1628;font-size:18px;">${title}</h2>
   <p style="margin:0 0 4px;color:#374151;font-size:15px;">${escapeHtml(eventDateLong)}</p>
   ${venueHtml}
   <p style="margin:12px 0 0;color:#6B7280;font-size:14px;">Order ${escapeHtml(order.order_number)}</p>
@@ -1427,18 +1428,18 @@ function buildConfirmationEmailHtml(
 
   ${hr}
 
-  <p style="margin:0 0 4px;color:#1A1A2E;font-size:13px;font-weight:700;letter-spacing:1px;">YOUR TICKETS</p>
+  <p style="margin:0 0 4px;color:#0A1628;font-size:13px;font-weight:700;letter-spacing:1px;">YOUR TICKETS</p>
   ${ticketBlocks}
 
   ${hr}
 
-  <p style="margin:0;color:#1A1A2E;font-size:17px;font-weight:700;">Total paid: ${escapeHtml(total)}</p>
+  <p style="margin:0;color:#0A1628;font-size:17px;font-weight:700;">Total paid: ${escapeHtml(total)}</p>
   ${receiptHtml}
 
   ${hr}
 
   <p style="margin:0 0 10px;color:#374151;font-size:14px;">Any questions, just reply to this email and a real person will help you.</p>
-  <p style="margin:0;color:#6B7280;font-size:13px;">Lost this email? Your tickets are always at <a href="${siteUrl}/tickets" style="color:#4A90D9;">eventlinqs.com/tickets</a> when you are signed in, or use a ticket link above.</p>
+  <p style="margin:0;color:#6B7280;font-size:13px;">Lost this email? Your tickets are always at <a href="${siteUrl}/tickets" style="color:#0A1628;">eventlinqs.com/tickets</a> when you are signed in, or use a ticket link above.</p>
 
   ${hr}
 
@@ -1617,7 +1618,7 @@ async function handleConnectPayoutEvent(
   // stripe_payout_id, rather than the Phase-1 destination match.
   const { data: existing } = await adminClient
     .from('payouts')
-    .select('id, status, metadata')
+    .select('id, status, metadata, organisation_id')
     .eq('stripe_payout_id', payout.id)
     .maybeSingle()
 
@@ -1643,6 +1644,16 @@ async function handleConnectPayoutEvent(
             { cause: error, context: { eventId, payoutId: payout.id } }
           )
         }
+        // Notify the organiser once, only on the real pending/in_transit -> paid
+        // transition (this block is skipped on a webhook replay, so no dupes).
+        await notifyOrganiserPayout(
+          adminClient,
+          existing.organisation_id,
+          eventType,
+          payout,
+          arrivalDate,
+          eventId
+        )
       }
       return
     }
@@ -1678,6 +1689,18 @@ async function handleConnectPayoutEvent(
             { context: { eventId, payoutId: payout.id } }
           )
         }
+        // Notify only on a fresh void; a replay returns already_reversed and
+        // must not re-email. (payout.canceled maps to no email.)
+        if (voidResult.success && !voidResult.already_reversed) {
+          await notifyOrganiserPayout(
+            adminClient,
+            existing.organisation_id,
+            eventType,
+            payout,
+            arrivalDate,
+            eventId
+          )
+        }
       } else {
         const { error } = await adminClient
           .from('payouts')
@@ -1689,6 +1712,16 @@ async function handleConnectPayoutEvent(
           .eq('id', existing.id)
         if (error) {
           console.error('[m6] payout status update failed', { eventId, payoutId: payout.id, error })
+        } else if (existing.status !== voidStatus) {
+          // Externally observed payout: notify once on the real transition.
+          await notifyOrganiserPayout(
+            adminClient,
+            existing.organisation_id,
+            eventType,
+            payout,
+            arrivalDate,
+            eventId
+          )
         }
       }
       return
@@ -1702,6 +1735,18 @@ async function handleConnectPayoutEvent(
         .update({ arrival_date: arrivalDate, updated_at: new Date().toISOString() })
         .eq('id', existing.id)
     }
+    // payout.created reaches here (paid/failed/canceled returned earlier). The
+    // organiser did not initiate this payout themselves (operator/cron disburse),
+    // so a "payout on the way" note is useful. Best-effort; payout.created is
+    // delivered once on a 200 response so redelivery is rare.
+    await notifyOrganiserPayout(
+      adminClient,
+      existing.organisation_id,
+      eventType,
+      payout,
+      arrivalDate,
+      eventId
+    )
     return
   }
 
@@ -1764,6 +1809,60 @@ async function handleConnectPayoutEvent(
 
   if (error) {
     console.error('[m6] payout upsert failed', { eventId, eventType, payoutId: payout.id, error })
+  } else {
+    // First time we have seen this externally observed payout. A redelivery of
+    // the same event finds the row above and takes the tracked-row path, so this
+    // notify fires at most once per payout event.
+    await notifyOrganiserPayout(adminClient, org.id, eventType, payout, arrivalDate, eventId)
+  }
+}
+
+/**
+ * Maps a Stripe payout event type to the organiser email kind. payout.canceled
+ * intentionally sends no email (the organiser-facing dashboard shows the state;
+ * a cancel is usually an internal void with no action for the organiser).
+ */
+function mapPayoutEventToEmailKind(
+  eventType: 'payout.created' | 'payout.paid' | 'payout.failed' | 'payout.canceled'
+): PayoutEmailKind | null {
+  switch (eventType) {
+    case 'payout.created':
+      return 'payout_initiated'
+    case 'payout.paid':
+      return 'payout_paid'
+    case 'payout.failed':
+      return 'payout_failed'
+    case 'payout.canceled':
+      return null
+  }
+}
+
+/**
+ * Best-effort organiser payout notification. Never throws: sendPayoutEmail
+ * already no-ops without RESEND_API_KEY and swallows send errors, and this
+ * wrapper guards the owner lookup too, so the money path is never affected by
+ * email failures. Callers gate this on genuine state transitions so Stripe
+ * webhook redeliveries do not re-notify.
+ */
+async function notifyOrganiserPayout(
+  adminClient: ReturnType<typeof createAdminClient>,
+  organisationId: string,
+  eventType: 'payout.created' | 'payout.paid' | 'payout.failed' | 'payout.canceled',
+  payout: Stripe.Payout,
+  arrivalDate: string | null,
+  eventId: string
+) {
+  const kind = mapPayoutEventToEmailKind(eventType)
+  if (!kind) return
+  try {
+    await sendPayoutEmail(adminClient, organisationId, kind, {
+      amountCents: payout.amount,
+      currency: payout.currency,
+      arrivalDate,
+      failureReason: payout.failure_message ?? null,
+    })
+  } catch (err) {
+    console.error('[m6] payout email send failed', { eventId, eventType, payoutId: payout.id, err })
   }
 }
 

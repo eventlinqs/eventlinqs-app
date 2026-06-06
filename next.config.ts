@@ -4,6 +4,41 @@ import { withSentryConfig } from "@sentry/nextjs";
 
 const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === 'true' });
 
+// Content-Security-Policy. Shipped REPORT-ONLY first so violations surface in
+// the browser console without breaking anything; flip the header key to
+// 'Content-Security-Policy' to enforce once the report run is clean. Sources
+// are the real third parties the app loads: Stripe (checkout iframe + API),
+// Plausible (cookieless analytics), Supabase (data + storage images), Mapbox
+// and Google Maps (city/venue maps), Pexels/Picsum (stock imagery). Sentry is
+// same-origin via the /api/monitoring tunnel, so it needs no external source.
+const CSP_REPORT_ONLY = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'self'",
+  "form-action 'self'",
+  "img-src 'self' data: blob: https://*.supabase.co https://images.pexels.com https://picsum.photos https://*.mapbox.com https://maps.googleapis.com https://maps.gstatic.com",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://plausible.io https://maps.googleapis.com https://api.mapbox.com",
+  "style-src 'self' 'unsafe-inline' https://api.mapbox.com",
+  "font-src 'self' data:",
+  "connect-src 'self' https://*.supabase.co https://api.stripe.com https://plausible.io https://*.upstash.io https://api.mapbox.com https://*.tiles.mapbox.com https://events.mapbox.com https://maps.googleapis.com",
+  "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com",
+  "worker-src 'self' blob:",
+].join('; ')
+
+// Security response headers, applied to every route. HSTS, nosniff, frame and
+// referrer protection, a tight permissions policy that still allows the
+// features the app uses (Stripe payment, geolocation city detection), and the
+// CSP above in report-only mode.
+const SECURITY_HEADERS = [
+  { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), browsing-topics=()' },
+  { key: 'Content-Security-Policy-Report-Only', value: CSP_REPORT_ONLY },
+]
+
 const nextConfig: NextConfig = {
   trailingSlash: false,
   // Preview-density fixture. The homepage reads the 55-event catalogue fixture
@@ -39,6 +74,31 @@ const nextConfig: NextConfig = {
         source: '/:path*',
         headers: [
           { key: 'X-Robots-Tag', value: 'index, follow' },
+          ...SECURITY_HEADERS,
+        ],
+      },
+      // Edge-cache the discovery surfaces so a crawler burst (e.g. Facebook
+      // scraping Open Graph tags) is served from Vercel's CDN instead of
+      // re-rendering against the database on every hit. CDN-Cache-Control only
+      // affects Vercel's edge cache, NOT the browser Cache-Control, so it does
+      // not fight Next's per-page no-store. Both routes are anonymous (no
+      // cookies in the render path), so a shared cached response is safe.
+      {
+        // /events is dynamic (reads searchParams), so without this it is
+        // never edge-cached. s-maxage 60s with 5-minute stale-while-revalidate
+        // matches the page's `revalidate = 60`.
+        source: '/events',
+        headers: [
+          { key: 'CDN-Cache-Control', value: 'public, s-maxage=60, stale-while-revalidate=300' },
+        ],
+      },
+      {
+        // Event detail is ISR (revalidate 300) and already edge-cached on
+        // Vercel; this makes the edge policy explicit and serves stale for up
+        // to a day while revalidating.
+        source: '/events/:slug',
+        headers: [
+          { key: 'CDN-Cache-Control', value: 'public, s-maxage=300, stale-while-revalidate=86400' },
         ],
       },
     ]

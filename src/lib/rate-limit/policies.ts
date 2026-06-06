@@ -13,6 +13,8 @@ export type PolicyName =
   | 'health-sentry-error'
   | 'location-set'
   | 'cron-job'
+  | 'payouts-read'
+  | 'payouts-stripe-link'
 
 export type Policy = {
   /** Stable prefix used to namespace the redis key. Keep short. */
@@ -53,5 +55,19 @@ export const POLICIES: Record<PolicyName, Policy> = {
     windowSec: 60,
     rationale:
       'Vercel Cron tickles each cron route every 5 min at most. 12/min lets manual founder triggers through while bouncing replay attacks if CRON_SECRET ever leaks.',
+  },
+  'payouts-read': {
+    keyPrefix: 'pay-r',
+    limit: 60,
+    windowSec: 60,
+    rationale:
+      'Organiser dashboard list/summary reads. 60/min per user covers tab switching, polling refreshes, and chart redraws while bouncing scrapers.',
+  },
+  'payouts-stripe-link': {
+    keyPrefix: 'pay-l',
+    limit: 6,
+    windowSec: 60,
+    rationale:
+      'Stripe Express dashboard login-link mint. Short-lived single-use links, low legitimate cadence (one click per minute is generous), tight cap to avoid burning Stripe quota or leaking link tokens at scale.',
   },
 }

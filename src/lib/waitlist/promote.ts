@@ -166,7 +166,7 @@ function buildPromotionEmailHtml(p: EmailParams): string {
 
   return `
     <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;">
-      <h1 style="color:#1A1A2E;font-size:22px;margin-bottom:4px;">A spot just opened up 🎟</h1>
+      <h1 style="color:#0A1628;font-size:22px;margin-bottom:4px;">A spot just opened up</h1>
       <p style="color:#6B7280;margin-top:0;font-size:14px;">
         Good news: a <strong>${p.tierName}</strong> ticket for <strong>${p.eventTitle}</strong> is now available for you.
       </p>
@@ -177,7 +177,7 @@ function buildPromotionEmailHtml(p: EmailParams): string {
         </p>
       </div>
 
-      <h2 style="color:#1A1A2E;font-size:16px;margin-bottom:4px;">${p.eventTitle}</h2>
+      <h2 style="color:#0A1628;font-size:16px;margin-bottom:4px;">${p.eventTitle}</h2>
       <p style="color:#374151;font-size:14px;margin:4px 0;">${p.eventDate}</p>
       ${location ? `<p style="color:#6B7280;font-size:14px;margin:4px 0;">${location}</p>` : ''}
       <p style="color:#374151;font-size:14px;margin:4px 0;">
@@ -186,7 +186,7 @@ function buildPromotionEmailHtml(p: EmailParams): string {
 
       <div style="margin:28px 0;">
         <a href="${p.checkoutUrl}"
-           style="display:inline-block;background:#1A1A2E;color:white;padding:14px 28px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">
+           style="display:inline-block;background:#0A1628;color:white;padding:14px 28px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">
           Get your ticket
         </a>
       </div>

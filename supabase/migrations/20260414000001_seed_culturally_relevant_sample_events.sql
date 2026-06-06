@@ -1,6 +1,6 @@
 -- Migration: Seed 8 culturally-relevant sample events
--- Purpose: Session 2 visual verification — real content for card/layout rebuild
--- Cover images: picsum.photos seed URLs — replaced by Unsplash API in Session 3
+-- Purpose: Session 2 visual verification - real content for card/layout rebuild
+-- Cover images: picsum.photos seed URLs - replaced by Unsplash API in Session 3
 -- Ticket prices stored in cents (AUD). Events use explicit UUIDs for referential stability.
 
 DO $$
@@ -61,7 +61,7 @@ BEGIN
           'Afrobeats Melbourne Summer Sessions',
           'afrobeats-melbourne-summer-sessions-2026',
           'The biggest Afrobeats event of the Melbourne summer. Three stages, international DJs, Nigerian street food, and a crowd that knows every word.',
-          'Live Afrobeats, 3 stages, street food — Melbourne Showgrounds',
+          'Live Afrobeats, 3 stages, street food - Melbourne Showgrounds',
           'b62551e2-4010-45fa-be8c-f9353ba0f39d',
           '2026-04-26 18:00:00+10', '2026-04-27 02:00:00+10',
           'Australia/Melbourne',
@@ -71,13 +71,13 @@ BEGIN
           1500,
           '["afrobeats","music","culture","african"]'
         ),
-        -- 2. Afrobeats All Night — London
+        -- 2. Afrobeats All Night - London
         (
           '11111111-1111-4111-8111-111111111102',
-          'Afrobeats All Night — London',
+          'Afrobeats All Night - London',
           'afrobeats-all-night-london-2026',
           'London''s premier monthly Afrobeats session returns for a special extended night. The freshest Afrobeats, Afropop, and Alte sounds from a world-class DJ lineup.',
-          'London''s top Afrobeats night — extended session, world-class DJs',
+          'London''s top Afrobeats night - extended session, world-class DJs',
           'b62551e2-4010-45fa-be8c-f9353ba0f39d',
           '2026-05-02 21:00:00+01', '2026-05-03 04:00:00+01',
           'Europe/London',
@@ -87,13 +87,13 @@ BEGIN
           2000,
           '["afrobeats","afropop","alte","music","london"]'
         ),
-        -- 3. Amapiano Takeover — Sydney
+        -- 3. Amapiano Takeover - Sydney
         (
           '11111111-1111-4111-8111-111111111103',
-          'Amapiano Takeover — Sydney',
+          'Amapiano Takeover - Sydney',
           'amapiano-takeover-sydney-2026',
           'Sydney''s wildest Amapiano party is back. Log drums, wailing piano, and a dancefloor that never stops. This is the sound of South Africa in the heart of the city.',
-          'Sydney''s biggest Amapiano night — log drums, wailing piano, all night',
+          'Sydney''s biggest Amapiano night - log drums, wailing piano, all night',
           '2443fb27-a02c-412c-b05c-06d1a8e070a6',
           '2026-05-03 20:00:00+10', '2026-05-04 03:00:00+10',
           'Australia/Sydney',
@@ -103,13 +103,13 @@ BEGIN
           800,
           '["amapiano","south-african","nightlife","music"]'
         ),
-        -- 4. Highlife Heritage Night — Brisbane
+        -- 4. Highlife Heritage Night - Brisbane
         (
           '11111111-1111-4111-8111-111111111104',
-          'Highlife Heritage Night — Brisbane',
+          'Highlife Heritage Night - Brisbane',
           'highlife-heritage-night-brisbane-2026',
           'A celebration of West African Highlife music across the decades. Live band, traditional attire welcome, authentic Ghanaian and Nigerian cuisine.',
-          'Live Highlife band, traditional attire, West African cuisine — Brisbane',
+          'Live Highlife band, traditional attire, West African cuisine - Brisbane',
           'b62551e2-4010-45fa-be8c-f9353ba0f39d',
           '2026-05-10 17:00:00+10', '2026-05-10 23:00:00+10',
           'Australia/Brisbane',
@@ -119,13 +119,13 @@ BEGIN
           400,
           '["highlife","west-african","live-band","ghanaian","nigerian"]'
         ),
-        -- 5. Gospel on the Hills — Melbourne
+        -- 5. Gospel on the Hills - Melbourne
         (
           '11111111-1111-4111-8111-111111111105',
-          'Gospel on the Hills — Melbourne',
+          'Gospel on the Hills - Melbourne',
           'gospel-on-the-hills-melbourne-2026',
           'An uplifting evening of Gospel music bringing together choirs and soloists from across Melbourne''s African and Pacific Islander communities. Family-friendly.',
-          'Gospel night — choirs, soloists, African community, all welcome',
+          'Gospel night - choirs, soloists, African community, all welcome',
           '310ec098-563e-46cb-97d2-fea1eb048bb7',
           '2026-05-17 15:00:00+10', '2026-05-17 20:00:00+10',
           'Australia/Melbourne',
@@ -135,13 +135,13 @@ BEGIN
           600,
           '["gospel","christian","choir","family","community"]'
         ),
-        -- 6. African Comedy Night — The Showcase
+        -- 6. African Comedy Night - The Showcase
         (
           '11111111-1111-4111-8111-111111111106',
-          'African Comedy Night — The Showcase',
+          'African Comedy Night - The Showcase',
           'african-comedy-night-the-showcase-2026',
           'Six of Australia''s funniest African comedians take the stage for a night of stories, cultural observations, and laughs that hit different. Doors open 7pm.',
-          '6 African comedians, cultural humour, Melbourne — an unmissable night',
+          '6 African comedians, cultural humour, Melbourne - an unmissable night',
           '0fcd5166-fcba-4df3-95f8-26fa0e8ff1bc',
           '2026-05-09 19:00:00+10', '2026-05-09 23:00:00+10',
           'Australia/Melbourne',
@@ -167,13 +167,13 @@ BEGIN
           300,
           '["business","networking","cultural","entrepreneurship","summit"]'
         ),
-        -- 8. Owambe — The Gathering
+        -- 8. Owambe - The Gathering
         (
           '11111111-1111-4111-8111-111111111108',
-          'Owambe — The Gathering',
+          'Owambe - The Gathering',
           'owambe-the-gathering-2026',
-          'Owambe is the Yoruba word for "it is there" — and this party will be there in every sense. Traditional wear, live band, jollof rice cook-off, West African culture.',
-          'West African cultural celebration — live band, jollof cook-off, traditional attire',
+          'Owambe is the Yoruba word for "it is there" - and this party will be there in every sense. Traditional wear, live band, jollof rice cook-off, West African culture.',
+          'West African cultural celebration - live band, jollof cook-off, traditional attire',
           'db15a8f5-6aa2-40b7-b018-3d1087e3eb73',
           '2026-06-07 14:00:00+10', '2026-06-07 23:00:00+10',
           'Australia/Melbourne',

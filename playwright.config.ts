@@ -13,7 +13,9 @@ export default defineConfig({
   // the local Next server.
   // tickets-spine runs only via playwright.tickets.config.ts (it needs a
   // seeded fixture + next dev), so keep it out of the default suite and CI.
-  testIgnore: ['**/*.production.spec.ts', '**/tickets-spine.spec.ts', '**/event-render-proxy.spec.ts', '**/homepage-image-robustness.spec.ts', '**/homepage-declutter.spec.ts'],
+  // certification.spec.ts runs only via playwright.certification.config.ts
+  // against a real wired deployment (CERT_BASE_URL), never the local suite/CI.
+  testIgnore: ['**/*.production.spec.ts', '**/tickets-spine.spec.ts', '**/event-render-proxy.spec.ts', '**/homepage-image-robustness.spec.ts', '**/homepage-declutter.spec.ts', '**/certification.spec.ts'],
   fullyParallel: false,
   retries: 0,
   workers: 1,
