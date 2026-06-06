@@ -89,7 +89,13 @@ export const CITY_TILES = [
   { city: 'Accra',        slug: 'accra' },
 ]
 
-export const LOCAL_CITY_SVG = new Set(['lagos', 'london', 'melbourne', 'sydney'])
+// Cities that have a real local SVG silhouette in public/cities/. This MUST
+// match the files actually present there: a slug listed here without a
+// corresponding public/cities/<slug>.svg renders /cities/<slug>.svg and 404s.
+// Everything not in this set falls back to public/cities/_fallback.svg (which
+// always exists), and a real Pexels/stock photo is preferred over both. Keep
+// this set in sync when city SVGs are added or removed.
+export const LOCAL_CITY_SVG = new Set(['melbourne', 'sydney'])
 
 export const FALLBACK_SEEDS = [
   { id: 'f1', href: '/events/browse/melbourne', title: 'Afrobeats scene in Melbourne', community: 'Melbourne, VIC',   categorySlug: 'afrobeats' },
