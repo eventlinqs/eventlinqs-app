@@ -1000,3 +1000,30 @@ while keeping a cinematic hero neither competitor has.
 No aspect BELOW -> no code change. The homepage already carries the locked 1400
 width, full-density rails, the motion engine, and designed loading. The single
 seed-imagery-variety observation is logged (data, not design) and does not gate.
+
+### Surface 1: Browse /events - RE-AUDITED, one BELOW fixed (loading skeleton)
+Captures: `surface-1/audit-2026-06-06/{ours,tm,eb}-{events,browse}-{1440-fold,1440-full,390-full}.png`
+plus the loading skeleton `ours-events-loading-{1440,390}.png`.
+Live URLs: ours = preview `/events`; TM = ticketmaster.com.au/discover/concerts
+(MUSIC browse); EB = eventbrite.com.au/d/australia--sydney/events/.
+
+Stronger pattern (stated): EB browse is the stronger competitor pattern - a
+city-led listing (hero + neighbourhood chips + category sub-rows of cards) with
+real discovery intent. TM browse is weaker: 4 image cards then an IMAGELESS text
+list ("10000 results", date|name|venue|Find-tickets rows) interrupted by a
+Gift-Cards banner ad and a Wallabies ad. We benchmark to surpass EB's listing.
+
+| Aspect | Verdict | Evidence (1440 + 390) |
+|---|---|---|
+| Density | SURPASS | 4-up real-photo grid (~24/pg) + a "Popular this week" curated rail above it. EB: category sub-rows of mixed-craft poster flyers. TM: 4 cards + an imageless text list + ad banners. |
+| Imagery | SURPASS | Every card real landscape photography with price/badge/save. EB poster flyers vary in craft; TM browse is nearly imageless below the fold. |
+| Filters / UX | SURPASS | Date-preset chips + category chips + Grid/Map toggle + a More-filters sheet (price/date/distance/sort), all keyboard reachable. EB: neighbourhood chips only. TM: 3 dropdowns. |
+| Hierarchy | SURPASS | Hero strip (H1 + count + search) -> solid sticky filter bar -> popular rail -> grid. TM is ad-interrupted; EB busier. |
+| Typography | PARITY | H1, chip labels, card titles at the locked scale. |
+| Motion | SURPASS | Grid + popular rail fade-rise (`.reveal`), shared eased rail glide + card hover. Competitors near-static. |
+| Loading | **FIXED (was BELOW)** | The browse entry point had no `loading.tsx` while its downstream steps (event-detail, checkout) did - an inconsistent designed-loading layer. Added `src/app/events/loading.tsx`: a zero-CLS skeleton mirroring the real shell (solid SiteHeader chrome + white hero strip + sticky filter chips + popular 5-up rail + 4-up grid, brand light-canvas shimmer, gold price placeholder, no spinners). Verified by rendering it via a throwaway dev route and capturing at 1440 + 390 (premium, structurally identical to the loaded page). Now SURPASS - competitors flash plain/spinner loads. |
+| Mobile (390) | PARITY | Single-column grid, horizontal-scroll chips, solid sticky filter bar, 44px targets; matches EB's mobile, cleaner than TM's. |
+
+Fix shipped: `src/app/events/loading.tsx` (new). Gates green: tsc 0, eslint 0
+errors, vitest 322, `next build` exit 0 (118 prerendered, /events dynamic with
+its new route skeleton). Nothing remains BELOW on this surface.
