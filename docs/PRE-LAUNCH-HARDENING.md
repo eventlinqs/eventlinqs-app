@@ -96,7 +96,7 @@
      - `src/components/auth/reset-password-form.tsx:22` (`'use client'`) - gates showing the password form vs a "validating link" message; the actual `auth.updateUser({password})` is revalidated server-side by Supabase.
      - `src/components/features/events/save-event-button.tsx:39` (`'use client'`) - login redirect + `session.user.id` for an RLS-protected `saved_events` write; the server authority is RLS (`user_id = auth.uid()`). Switching to `getUser()` would add an auth-server round-trip per click with no security gain.
    - Regression guard: `tests/unit/security/no-server-side-getsession.test.ts` fails the build if any non-`'use client'` file calls `auth.getSession(`.
-8. Missing /public/cities/*.svg assets 404ing on homepage (audit which still missing post-Batch-11)
+8. ~~Missing /public/cities/*.svg assets 404ing on homepage~~ FIXED (2026-06-06): `LOCAL_CITY_SVG` listed `lagos` and `london`, which have no file in `public/cities/` (only `melbourne.svg`, `sydney.svg`, `_fallback.svg` exist), so the city rail 404d on those. Trimmed the set to slugs with real files; all other cities use `_fallback.svg`. Locked by `tests/unit/media/city-svg-exists.test.ts`. Real city photography replaces these when the stock library lands.
 9. ~~Stripe revenue card rounding display bug~~ FIXED (2026-06-06): admin GMV/revenue tiles used `maximumFractionDigits: 0` (rounded to whole dollars, broke reconciliation). Now render exact cents via `formatMoneyDisplay`. Before/after in `docs/launch-hardening/stripe-rounding-before-after.md`; test `tests/unit/money/format.test.ts`.
 10. Authed + organiser E2E smoke test
 11. M4.5 Close-out Steps E and A2 - AUDITED (2026-06-06): **A2** (unicode escape sweep) DONE, zero `\u20` escapes and zero em-dashes or en-dashes in `src/`. **Step E** is not defined in the M4.5 manifest (Streams A-D only), so it cannot be actioned; the documented close-out is merged to main. Founder to confirm what "E" referred to. See `docs/launch-hardening/m4.5-closeout-EA2-audit.md`.
@@ -104,9 +104,9 @@
 13. ~~Migrate src/types/database.ts to `supabase gen types typescript --linked`~~ DONE (2026-06-06): `database.ts` was already generated-derived (not 423-line handwritten). Regenerated the section above the `// BEGIN LEGACY ALIASES` marker from the live schema to pick up the genre layer (`artists`, `event_artists`, `genre_slug`/`subgenre_slug`/`is_featured`); the handwritten aliases appendix is preserved. Verified against `scripts/check-types-drift.sh`; tsc 0.
 14. ~~ABN 30 837 447 587 inserted into /legal/terms and /legal/privacy (replace "pending registration" text)~~ DONE (2026-06-06): ABN present in both pages; no "pending registration" text anywhere under /legal.
 15. ~~Street address or PO Box in legal pages~~ DONE (2026-06-06): PO Box 141, Newcomb VIC 3219 added to the terms entity line and the privacy Contact section.
-16. /legal/cookies and /legal/organiser-terms still ComingSoon placeholders
+16. ~~/legal/cookies and /legal/organiser-terms still ComingSoon placeholders~~ DONE (2026-06-06): both pages were already fully written (not placeholders, so this item was stale). Reconciled to reality and to the other legal pages: canonical entity line with PO Box 141; cookies page corrected to essential-cookies-only with cookieless Plausible and no consent banner; organiser terms gained KYC via Stripe Connect, the tiered payout/reserve architecture, and prohibited event types. Exact payout tier/reserve figures and liability clauses flagged for founder legal review.
 17. Logo delivery (Fiverr Pro brief in progress)
-18. Plausible analytics installation (cookieless, matches Privacy Policy)
+18. ~~Plausible analytics installation (cookieless, matches Privacy Policy)~~ DONE (2026-06-06): cookieless `script.tagged-events.js` with `window.plausible` queue and trackEvent/trackEventServer was already wired; gated to load only on the production deployment (`VERCEL_ENV === 'production'`) so dev/preview traffic no longer counts against the domain. No consent banner needed (no tracking cookies).
 19. Em-dash scrub pass across all seed data and components before launch
 
 ---
