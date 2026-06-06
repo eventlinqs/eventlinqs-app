@@ -15,7 +15,7 @@ import { useDragScroll } from '@/hooks/use-drag-scroll'
  *
  * Layout contract: arrows + progress sit TOP-RIGHT, on the same
  * horizontal line as the rail headline. Industry standard: every
- * major platform (Ticketmaster, Airbnb, Eventbrite, Netflix, Spotify,
+ * major platform (Ticketmaster, Airbnb, Eventbrite, Netflix,
  * Amazon Prime Video) places horizontal-rail controls at top-right.
  *
  *   [eyebrow]                                    [< >] [progress ──]
