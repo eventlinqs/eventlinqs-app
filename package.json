@@ -8,9 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "db:types": "node scripts/gen-db-types.mjs",
-    "db:types:check": "node scripts/db-types-drift-check.mjs"
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@googlemaps/js-api-loader": "^2.0.2",
