@@ -17,6 +17,7 @@
 
 import * as Sentry from '@sentry/nextjs'
 import { scrubValue } from '@/lib/observability/pii-scrub'
+import { shouldInitSentry, sentryEnvironment } from '@/lib/observability/sentry-env'
 
 type SentryDiag = {
   registerCalledAt?: string
@@ -52,13 +53,23 @@ console.log('[sentry-server-config] module loaded', {
   timestamp: diag.serverConfigLoadedAt,
 })
 
-if (dsn) {
+// shouldInitSentry() is the development kill-switch: a local `next dev`
+// server never initialises the SDK, so no server-side event can be sent
+// from a developer machine even when SENTRY_DSN is set locally.
+if (dsn && !shouldInitSentry()) {
+  console.log('[sentry-server-config] skipping init: development build', {
+    nodeEnv: process.env.NODE_ENV,
+    timestamp: diag.serverConfigLoadedAt,
+  })
+}
+
+if (dsn && shouldInitSentry()) {
   try {
     Sentry.init({
       dsn,
       tracesSampleRate: 0.1,
       profilesSampleRate: 0.1,
-      environment: process.env.NEXT_PUBLIC_VERCEL_ENV || process.env.VERCEL_ENV || 'development',
+      environment: sentryEnvironment(false),
       release: process.env.VERCEL_GIT_COMMIT_SHA || 'local',
       beforeSend(event) {
         try {

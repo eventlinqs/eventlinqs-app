@@ -33,6 +33,7 @@
 
 import * as Sentry from '@sentry/nextjs'
 import { scrubValue } from './pii-scrub'
+import { shouldInitSentry, sentryEnvironment } from './sentry-env'
 
 type SentryContext = Record<string, unknown>
 
@@ -68,12 +69,24 @@ function ensureServerSentryInitialized(): void {
     return
   }
 
+  // Development kill-switch. In a local `next dev` process the shim is
+  // imported by error boundaries and route handlers; without this guard a
+  // DSN in .env.local would trigger Sentry.init at import time and dev
+  // errors would be sent. Block init so the SDK stays a no-op in dev.
+  if (!shouldInitSentry()) {
+    console.log('[observability/sentry] shim load: skipping init, development build', {
+      nodeEnv: process.env.NODE_ENV,
+      timestamp: diag.shimLoadedAt,
+    })
+    return
+  }
+
   try {
     Sentry.init({
       dsn,
       tracesSampleRate: 0.1,
       profilesSampleRate: 0.1,
-      environment: process.env.NEXT_PUBLIC_VERCEL_ENV || process.env.VERCEL_ENV || 'development',
+      environment: sentryEnvironment(false),
       release: process.env.VERCEL_GIT_COMMIT_SHA || 'local',
       beforeSend(event) {
         try {
