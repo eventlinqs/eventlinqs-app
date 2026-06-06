@@ -1027,3 +1027,50 @@ Gift-Cards banner ad and a Wallabies ad. We benchmark to surpass EB's listing.
 Fix shipped: `src/app/events/loading.tsx` (new). Gates green: tsc 0, eslint 0
 errors, vitest 322, `next build` exit 0 (118 prerendered, /events dynamic with
 its new route skeleton). Nothing remains BELOW on this surface.
+
+### Surface 2: Event detail - RE-AUDITED, CRITICAL 500 FIXED
+Captures: `surface-2/audit-2026-06-06/{ours-detail,eb-detail}-*` + the preview
+recapture `ours-detail-preview-1440-full.png`. Live URLs: ours = preview
+`/events/africultures-festival-sydney-2027`; EB = a live eventbrite.com.au event.
+
+**CRITICAL FINDING (fixed this pass, commit 1becd61):** every event detail page
+AND every /events/browse/[city] page returned HTTP 500 on the deployed preview -
+the flagship surface was down on the first event click. Pre-existing since the
+build-pool ISR split (985e46d), never caught because only the homepage was
+preview-verified. Root cause + fix are in the sync-session "Surface 2" code
+commit; verified live on the preview AFTER the fix: africultures + browse/sydney
+now 200 (Vercel status success). The proof table below is therefore the FIRST
+real benchmark this surface has ever had on the live deployment.
+
+Stronger pattern (stated): EB is the stronger capturable competitor - a poster-
+flyer hero (organiser-uploaded, busy/low-craft) + sticky ticket sidebar +
+organiser Follow ("TOP ORGANIZER") + About + FAQ. TM event detail is BOT-GATED
+(HTTP 401 to headless Playwright on deep event pages - homepage/browse load 200,
+event pages do not), so TM is benchmarked from its known thumbnail-list pattern,
+not a fresh capture. We benchmark to surpass EB.
+
+| Aspect | Verdict | Evidence (1440 + 390, preview) |
+|---|---|---|
+| Layout / structure | SURPASS | Cinematic full-bleed hero -> About -> When/Where cards -> venue map (renders with gold pin on preview) -> organiser card -> tags -> WhatsApp-first share -> related grid, with a sticky ticket panel. EB: flyer hero + sidebar + About/FAQ. |
+| Imagery | SURPASS | Cinematic photographic hero + navy gradient. EB leads with the organiser's busy promo flyer; TM with a small poster thumbnail. |
+| Typography | SURPASS | Display H1 clamp + sectioned eyebrows; competitors run flat system type. |
+| Density | SURPASS | Full detail set incl venue map + related events; EB is About + FAQ + sidebar. |
+| Hierarchy | SURPASS | Clear sectioned scan; trust signals (secure checkout / community organiser / refund policy) under the CTA. |
+| Motion | SURPASS | `hero-enter` content stagger (LCP image never animates), related-grid `reveal`, CTA hover-lift, sticky panel. Competitors near-static. |
+| Loading | SURPASS | Route `loading.tsx` (dark photo-hero mirror + light two-column shimmer) shipped a prior session; competitors flash. |
+| Mobile (390) | SURPASS | Hero + stacked content + solid bottom action bar; 44px targets. |
+| Social proof / FAQ | PARITY-minus | EB shows organiser follower count + Follow + an FAQ accordion. Ours defers both (needs a follows table + event FAQ data) - a DATA gap, not a craft gap; logged in the surface-3 deferrals. |
+
+Verdict: no CRAFT aspect BELOW; the one sub-bar item (organiser social-proof +
+FAQ) is data-gated and explicitly deferred. The flagship 500 is fixed and
+verified on the preview, the venue map renders there (the local capture's map
+error was a missing local Mapbox token, not a defect).
+
+Known follow-up (logged, not a craft BELOW): a NON-EXISTENT event/browse-city
+slug returns a soft-404 (HTTP 200 + the not-found UI) instead of a hard 404,
+because async `notFound()` on a fully-dynamic route soft-404s in this
+Next/Turbopack version; a hard 404 would mean re-adding build-time event
+prerendering (the Supabase-pool risk the team deliberately removed). Real events
+are unaffected; this only touches dead/By crawled links. TM event-detail fresh
+capture is blocked by Ticketmaster bot protection (401) - the one fresh-capture
+exception on this surface.
