@@ -514,9 +514,69 @@ launch live-purchase pass. Copy clean (no em/en-dashes).
 
 ---
 
-## Remaining (run in fresh sessions, one surface each)
-9. Category landing template (/categories/[slug])
+## QUALITY DIRECTIVE - mid-mission escalation (received during Surface 9)
 
-Each: run the page-build skill, capture the competitor equivalent at 1440+390,
-Phase A mirror, Phase B touch, inherit the locked design system and rail
-standard, full gates, benchmark gate, commit per surface, do not merge.
+A higher bar landed mid-run and applies to every surface, including completed
+ones. Summary and status below; this RAISES the standard above the surface
+sections above (which were done to the prior bar and now need a fresh-capture +
+proof-table + Phase-B pass to fully satisfy it).
+
+### Directive requirements
+1. FRESH live Ticketmaster AND Eventbrite captures per surface at 1440 + 390
+   (not the cached `design-captures/`), pick the stronger pattern, justify it.
+2. Phase A: match or surpass that evidence on layout, density, hierarchy,
+   imagery, typography, interaction, mobile. Equal is the floor.
+3. Phase B: then layer EventLinqs polish - navy/gold identity, restrained
+   premium motion (staggered reveals, hover, eased glide), designed skeleton
+   loading (no layout shift, no spinners-on-white), expensive micro-interactions.
+4. HARD BANS: no legacy components, no old section treatments, and NO DARK
+   BACKGROUNDS - every page is the light, airy navy-on-canvas homepage system.
+   Boundary (founder-clarified): darkness from a PHOTOGRAPH + navy overlay
+   (the homepage hero pattern) stays; darkness from a FLAT PAINTED surface gets
+   rebuilt to light. Checkout + confirmation move to light canvas.
+5. PROOF per surface: a comparison table vs the chosen competitor with
+   SURPASS / PARITY / BELOW per aspect incl loading; BELOW = iterate.
+6. AUDIT every completed surface against this before proceeding.
+
+### Done this session under the directive
+- Verified live competitor capture is feasible here (EB + TM both load 200 via
+  Playwright) - the fresh-capture requirement is achievable.
+- AUDITED all completed buyer surfaces for dark backgrounds + legacy.
+- DARK-BACKGROUND SWEEP shipped (commit 919b51f): rebuilt every flat-dark,
+  obsidian-era section to light navy-on-canvas - Organiser CTA band, Category
+  CTA band + CategoryHeroEmpty default mode, Pricing CTA band, City
+  organiser-CTA panel + its newsletter (tone prop), order-confirmation page +
+  ticket cards, checkout page backgrounds. Photographic heroes KEPT (event
+  detail, city, category) per the boundary. Verified light by fresh capture
+  (city, categories, organisers at 1440/768/390). Gates green.
+- Logremaining dark items below.
+
+### REMAINING to fully satisfy the directive (continue next session, in order)
+Per surface (0-9), still owed at the new bar:
+- FRESH live TM + EB captures at 1440 + 390 saved under each surface folder,
+  stronger-pattern choice stated.
+- PROOF table with SURPASS/PARITY/BELOW per aspect incl LOADING; iterate any BELOW.
+- PHASE B polish: audit/raise motion (staggered reveals, hover lift, eased
+  rail glide per the Motion law), replace any spinner/blank loading with
+  DESIGNED skeletons (no layout shift), add premium micro-interactions.
+- Finish Surface 9's full new-bar benchmark (dark sweep already applied to it).
+
+Remaining DARK treatments on ADJACENT surfaces (outside the core 9, sweep next):
+- `culture-organiser-cta.tsx` (flat bg-surface-dark) on /culture/* pages, where
+  most /categories/* slugs 308-redirect.
+- `SuburbLandingPage` uses `ContentSection surface="dark"`.
+- `organiser-contact-panel.tsx` (/organisers/[handle]) still renders the
+  newsletter on dark (kept via the tone default; rebuild that surface light).
+- `Prose` dark code blocks (`[&_pre]:bg-surface-dark`) in rich-text descriptions.
+
+LEGACY dead components to delete (unused, do not render but must not survive):
+`filter-sidebar.tsx`, `this-week-strip.tsx`, `free-weekend-tile.tsx`.
+
+Deferred captures (need live order/reservation - launch live-purchase pass):
+checkout page, order confirmation, ticket view live Playwright + axe/Lighthouse.
+
+### Note on the surface sections above
+Surfaces 1-8 above were assessed against the cached competitor captures and the
+prior bar, then brought into dark-background + glassmorphism + token compliance.
+They are NOT yet re-proven with FRESH live captures + the full SURPASS/PARITY/
+BELOW table + Phase-B polish. That re-audit is the first task of the next pass.
