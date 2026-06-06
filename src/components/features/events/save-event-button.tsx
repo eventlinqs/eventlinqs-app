@@ -23,7 +23,7 @@ export function SaveEventButton({
   const router = useRouter()
 
   const base = variant === 'dark'
-    ? 'bg-white/20 backdrop-blur-md border border-white/30 text-white hover:bg-white/30'
+    ? 'bg-ink-900/70 border border-white/30 text-white hover:bg-ink-900/85'
     : 'bg-white/95 text-ink-700 hover:text-coral-500'
 
   const savedState = saved ? 'bg-gold-500 border-gold-500 text-ink-900' : ''

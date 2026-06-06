@@ -180,8 +180,74 @@ is two CSS tokens, no new JS or imagery, so surface-0 headroom holds.
 
 ---
 
+## Surface 3: Event detail page - DONE
+
+Goal: benchmark /events/[slug] against the captured competitors and apply
+evidence-based refinement. No churn; the page is already the strongest surface
+in the app on craft.
+
+### Evidence (captured competitors, 1440 + 390)
+- Ticketmaster/Moshtix: small poster thumbnail + a text detail list, a "DON'T
+  MIST OUT / Join the waitlist" strip, Afterpay banner. Flat, low-craft.
+  `design-captures/ticketmaster/event-detail-*`.
+- Eventbrite: poster-art hero, category/owner badge, H1, organiser row with
+  follower count + Follow ("TOP ORGANIZER"), right-side sticky ticket panel
+  (orange "Get tickets"), location + date, About, FAQ accordion.
+  `design-captures/eventbrite/event-detail-*`.
+
+### Reality audit
+Far ahead of both competitors on craft (the competitor-page-specs note says so
+outright): full-bleed cinematic hero (HeroMedia + navy gradient), category
+badge, H1, date/venue, social-proof badge, Get-tickets CTA + all-in price, trust
+signals; then About, When/Where cards, venue map, organiser card, tags,
+WhatsApp-first share; a sticky ticket panel with inline tiers (or seat selector,
+sold-out, or not-on-sale states); related-events grid; cancelled/postponed/past
+state banners; private/draft guards. All states handled.
+
+### Evidence-based refinement (the change)
+Glassmorphism purge, continuing the surface 1/2 thread and the CLAUDE.md law.
+Both competitors use solid elements. Fixes:
+1. Hero category badge: was `GlassCard variant="dark"` (backdrop-blur-2xl) ->
+   solid navy pill (`bg-ink-900/85` + gold border, no blur). Dropped the now
+   unused GlassCard import from the route.
+2. StickyActionBar: desktop `bg-white/85 backdrop-blur-md` and mobile
+   `bg-white/95 backdrop-blur-md` -> solid `bg-white`. Docstring de-glassed.
+3. SaveEventButton "dark" variant: `bg-white/20 backdrop-blur-md` -> solid
+   `bg-ink-900/70` (reads on dark imagery; shared with the homepage bento tile,
+   so that surface gains the same compliance).
+Translucency without backdrop-filter (e.g. card badges at /95) is not
+glassmorphism and was left as-is. No layout or content change.
+
+### Deferred (need data or migrations - out of scope for a no-migration sweep)
+- Organiser social proof (follower count + Follow) - EB has it, we defer it;
+  needs a follows table.
+- Know-before-you-go / FAQ accordion - EB has it; needs event FAQ data.
+- "Tickets not yet on sale" conversion dead-end (seen on the captured event) -
+  filter these from discovery or convert to notify-me; a discovery/data change,
+  not a detail-page UI fix. Logged in [[project_system_pass_sweep]].
+
+### Captures
+- Before: `surface-3/before/detail-{1440,768,390}.png`
+- After: `surface-3/after/detail-{1440,768,390}.png` +
+  `detail-scrolled-stickybar-1440.png`
+
+### Benchmark verdict vs Ticketmaster + Eventbrite (1440 + 390)
+| Dimension | Verdict | Note |
+|---|---|---|
+| Density | Surpass | Full detail set (hero, about, when/where, map, organiser, share, tiers, related) vs TM's thumbnail list. |
+| Typography | Surpass | Display H1 clamp(2-4rem), sectioned eyebrows; competitors run flat system type. |
+| Imagery | Surpass | Cinematic full-bleed hero vs EB poster card and TM thumbnail. |
+| UX | Surpass | Inline multi-tier panel, all-in pricing promise, sticky summary, venue map, WhatsApp share, every sale/lifecycle state handled. |
+| Mobile (390) | Surpass | Hero + stacked content + solid bottom action bar; 44px targets. |
+
+### Gates
+lint 0 errors, build pass, vitest 275 pass, axe-core 0 violations (event detail
+desktop + mobile). Lighthouse on the Vercel preview (CI gate); change is CSS-only
+(removed backdrop-filter), no new JS or imagery.
+
+---
+
 ## Remaining (run in fresh sessions, one surface each)
-3. Event detail page
 4. Search results = the /events?q= experience
 5. City page
 6. Organiser landing (/organisers)

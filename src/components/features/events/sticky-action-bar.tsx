@@ -7,7 +7,8 @@ import { Heart, Share2 } from 'lucide-react'
 /**
  * StickyActionBar - appears after scrolling past the event hero.
  *
- * Glassmorphism bar pinned to viewport top. Shows compact event title,
+ * Solid bar pinned to viewport top (no glassmorphism, per CLAUDE.md).
+ * Shows compact event title,
  * date, venue, price range and a primary "Get tickets" action that scrolls
  * to the ticket selector by anchor.
  */
@@ -78,7 +79,7 @@ export function StickyActionBar({
         // aria-hidden because the bar contains focusable CTAs.
         inert={!visible || undefined}
       >
-        <div className="border-b border-ink-900/10 bg-white/85 backdrop-blur-md shadow-sm">
+        <div className="border-b border-ink-200 bg-white shadow-sm">
           <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 sm:px-6 lg:px-8">
             <div className="min-w-0 flex-1">
               <p className="font-display text-sm font-bold leading-tight text-ink-900 line-clamp-1">
@@ -141,7 +142,7 @@ export function StickyActionBar({
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         inert={!visible || undefined}
       >
-        <div className="bg-white/95 backdrop-blur-md border-t border-ink-100 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+        <div className="bg-white border-t border-ink-100 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
           <div className="flex items-center gap-3 px-4 py-3">
             <div className="min-w-0 flex-1">
               <p className="font-display text-sm font-bold leading-tight text-ink-900 truncate">

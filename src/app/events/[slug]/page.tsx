@@ -17,7 +17,6 @@ import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { HeroMedia } from '@/components/media'
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
-import { GlassCard } from '@/components/ui/glass-card'
 import { getFeaturedHeroBackground } from '@/lib/images/event-media'
 import { StickyActionBar } from '@/components/features/events/sticky-action-bar'
 import { RelatedEventsGrid } from '@/components/features/events/related-events-grid'
@@ -509,12 +508,9 @@ export default async function EventDetailPage({ params }: Props) {
           <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-14 sm:px-6 lg:px-8 lg:pb-20">
             <div className="max-w-3xl animate-fade-rise">
               {event.category && (
-                <GlassCard
-                  variant="dark"
-                  className="inline-flex rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-gold-400"
-                >
+                <span className="inline-flex rounded-full border border-gold-500/40 bg-ink-900/85 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-gold-400 shadow-sm">
                   {event.category.name}
-                </GlassCard>
+                </span>
               )}
 
               <h1
