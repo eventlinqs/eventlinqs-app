@@ -1176,3 +1176,55 @@ hero asset + founder design sign-off (a marketing-hero redesign). Fabricating
 generic imagery to "pass" would violate the no-generic law, so it is deferred by
 design, not by oversight. All other aspects PARITY/SURPASS. No code change (the
 exception is asset- and sign-off-gated).
+
+### Surface 7: Checkout (renderable states) - RE-AUDITED, AT/ABOVE BAR (live form staging-gated)
+Captures: `surface-7/audit-2026-06-06/ours-checkout-renderable-*`. The live
+checkout FORM needs an active held reservation on a Stripe-connected organiser
+(prod Sydney events are sale-blocked), so - exactly as the original surface-7
+note states - the form is benchmarked by CODE REVIEW + the cached EB checkout;
+its live visual proof stays in the launch live-purchase pass.
+
+Renderable state verified live (1440 + 390): an invalid/expired
+`/checkout/[reservation_id]` does NOT dead-end - it gracefully REDIRECTS to
+/events (browse) so the buyer can recover. HTTP 200, lands on the full browse
+grid.
+
+Code-review benchmark vs the cached EB checkout (centred modal, single bundled
+fee revealed late, "Going fast" pill):
+| Aspect | Verdict | Evidence |
+|---|---|---|
+| Fee transparency | SURPASS | CheckoutSummary shows the ITEMISED all-in total up front (Subtotal, Discount, Service fee, Payment-processing fee, GST, bold Total). EB bundles a single fee onto the ticket card and reveals it late. |
+| CTA thread | SURPASS | One canonical gold Button runs Get-tickets -> Checkout -> Continue -> Pay (the bespoke navy/emerald buttons were unified in the buyer-journey pass). |
+| Dark / glass compliance | PASS | 0 backdrop-blur, 0 dark page backgrounds on checkout (verified; the only bg-ink-900 uses are small navy pills/badges). Light canvas. |
+| Loading | SURPASS | `checkout/[reservation_id]/loading.tsx` designed skeleton ships; competitors flash. |
+| Recovery | SURPASS | Invalid/expired reservation redirects to browse; the load-error state is a premium card with retry, not an error-boundary crash. |
+| Form fields / targets | PARITY | Shared FIELD_CLS (44px+, 16px text, no iOS zoom); 44px quantity steppers. |
+
+NAMED EXCEPTION: the live checkout FORM + on-sale ticket steppers + a Stripe
+round-trip require a sellable event with a held reservation - deferred to the
+launch live-purchase / staging-certification pass (cannot be produced locally or
+on preview). All renderable states are at/above bar.
+
+### Surface 8: Order confirmation + ticket (renderable states) - RE-AUDITED, AT/ABOVE BAR (live success staging-gated)
+Captures: renderable states probed live. Both the confirmation success header and
+the digital ticket render only for a real completed order / valid ticket code, so
+- per the original surface-8 note - the success states are benchmarked by CODE
+REVIEW; their live visual proof stays in the launch live-purchase pass.
+
+Renderable states verified live: an unknown `/orders/[id]/confirmation` and an
+invalid `/t/[code]` both return a clean HTTP 404 (proper not-found, not a soft
+200 or a crash).
+
+Code-review benchmark:
+| Aspect | Verdict | Evidence |
+|---|---|---|
+| Confirmation density | SURPASS | Success header + order number + event card + Tickets-Purchased with total paid + each ticket's inline server-SVG QR ("Show this QR at entry") + View-ticket link + add-to-calendar + guest "create an account" CTA + a genuine pending state while the Stripe webhook runs. |
+| Inline scannable QR | SURPASS | QR rendered inline on the confirmation (no extra hop); ticket view is mobile-first (max-w-md) with a door-scannable QR. |
+| Dark / glass / brand compliance | PASS | 0 backdrop-blur, 0 surface-dark, 0 off-brand #1A1A2E on confirmation + ticket (verified); light canvas, brand navy tokens, server-SVG QR (media-rules compliant). |
+| Pending-state honesty | SURPASS | Confirmation shows an honest pending state during webhook settle rather than a premature "done". |
+| Mobile (390) | SURPASS | Ticket view is mobile-first with the QR sized for door scanning. |
+
+NAMED EXCEPTION: the live confirmation success + issued-ticket QR + the ticket
+view require a completed paid order and a valid ticket code - deferred to the
+launch live-purchase / staging-certification pass. All renderable states (clean
+404s) are at/above bar.
