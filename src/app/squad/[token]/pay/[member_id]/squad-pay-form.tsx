@@ -9,6 +9,7 @@ import {
   useElements,
 } from '@stripe/react-stripe-js'
 import { createSquadMemberPaymentIntent } from '@/app/actions/squad-checkout'
+import { Button } from '@/components/ui/Button'
 
 interface SquadPayFormProps {
   memberId: string
@@ -79,15 +80,7 @@ function InnerPayForm({
         </div>
       )}
 
-      <button
-        type="submit"
-        disabled={!stripe || isPending}
-        className="
-          mt-5 w-full h-12 rounded-xl bg-ink-900 text-white font-semibold text-base
-          disabled:opacity-50 hover:bg-ink-800 transition-colors
-          flex items-center justify-center gap-2
-        "
-      >
+      <Button type="submit" size="lg" disabled={!stripe || isPending} className="mt-5 w-full">
         {isPending ? (
           <>
             <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
@@ -99,7 +92,7 @@ function InnerPayForm({
         ) : (
           `Pay ${formatPrice(pricePerSpotCents, currency)}`
         )}
-      </button>
+      </Button>
 
       <p className="mt-3 text-center text-xs text-ink-400">
         Secured by Stripe. Your payment info is never stored on our servers.
@@ -148,7 +141,7 @@ export function SquadPayForm({
   if (isLoading) {
     return (
       <div className="py-8 text-center">
-        <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-ink-200 border-t-[#4A90D9]" />
+        <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-ink-200 border-t-gold-500" />
         <p className="mt-3 text-sm text-ink-400">Loading payment form…</p>
       </div>
     )
@@ -172,7 +165,7 @@ export function SquadPayForm({
         appearance: {
           theme: 'stripe',
           variables: {
-            colorPrimary: '#4A90D9',
+            colorPrimary: '#0A1628',
             colorBackground: '#ffffff',
             borderRadius: '8px',
           },

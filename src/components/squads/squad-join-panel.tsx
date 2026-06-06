@@ -141,8 +141,8 @@ export function SquadJoinPanel({
         </p>
         <Link
           href={`/squad/${shareToken}/pay/${currentUserMemberId}`}
-          className="block w-full h-12 rounded-xl bg-[#4A90D9] text-white font-semibold text-base
-                     flex items-center justify-center hover:bg-[#3478C5] transition-colors"
+          className="block w-full h-12 rounded-xl bg-gold-500 text-ink-900 font-semibold text-base
+                     flex items-center justify-center hover:bg-gold-600 transition-colors"
         >
           Pay your share: {formatPrice(pricePerSpotCents, currency)}
         </Link>
@@ -196,8 +196,8 @@ export function SquadJoinPanel({
         </div>
         <Link
           href={`/squad/${shareToken}/pay/${joinedMemberId}`}
-          className="block w-full h-12 rounded-xl bg-[#4A90D9] text-white font-semibold text-base
-                     flex items-center justify-center hover:bg-[#3478C5] transition-colors"
+          className="block w-full h-12 rounded-xl bg-gold-500 text-ink-900 font-semibold text-base
+                     flex items-center justify-center hover:bg-gold-600 transition-colors"
         >
           Pay your share: {formatPrice(pricePerSpotCents, currency)}
         </Link>
@@ -267,7 +267,7 @@ export function SquadJoinPanel({
               value={firstName}
               onChange={e => setFirstName(e.target.value)}
               className="w-full rounded-lg border border-ink-200 px-3 py-2.5 text-base text-ink-900
-                         focus:border-[#4A90D9] focus:outline-none focus:ring-1 focus:ring-[#4A90D9]"
+                         focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
               placeholder="Your first name"
             />
           </div>
@@ -283,7 +283,7 @@ export function SquadJoinPanel({
               value={lastName}
               onChange={e => setLastName(e.target.value)}
               className="w-full rounded-lg border border-ink-200 px-3 py-2.5 text-base text-ink-900
-                         focus:border-[#4A90D9] focus:outline-none focus:ring-1 focus:ring-[#4A90D9]"
+                         focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
               placeholder="Your last name"
             />
           </div>
@@ -301,7 +301,7 @@ export function SquadJoinPanel({
             value={email}
             onChange={e => setEmail(e.target.value)}
             className="w-full rounded-lg border border-ink-200 px-3 py-2.5 text-base text-ink-900
-                       focus:border-[#4A90D9] focus:outline-none focus:ring-1 focus:ring-[#4A90D9]"
+                       focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
             placeholder="you@example.com"
           />
         </div>
@@ -315,8 +315,8 @@ export function SquadJoinPanel({
         <button
           type="submit"
           disabled={isPending}
-          className="w-full h-12 rounded-xl bg-[#4A90D9] text-white font-semibold text-base
-                     disabled:opacity-50 hover:bg-[#3478C5] transition-colors"
+          className="w-full h-12 rounded-xl bg-gold-500 text-ink-900 font-semibold text-base
+                     disabled:opacity-50 hover:bg-gold-600 transition-colors"
         >
           {isPending ? 'Joining…' : `Join Squad: ${formatPrice(pricePerSpotCents, currency)}`}
         </button>

@@ -175,11 +175,11 @@ export function StartSquadModal({
           {step === 'form' ? (
             <form onSubmit={handleSubmit} noValidate>
               {/* Squad summary */}
-              <div className="rounded-xl bg-[#F0F6FF] border border-gold-100 p-4 mb-6">
+              <div className="rounded-xl bg-gold-100/40 border border-gold-100 p-4 mb-6">
                 <p className="text-sm font-semibold text-ink-900">{tierName}</p>
                 <p className="text-sm text-ink-600 mt-1">
                   <span className="font-medium">{totalSpots} spots,</span> each person pays{' '}
-                  <span className="font-semibold text-[#4A90D9]">
+                  <span className="font-semibold text-gold-700">
                     {formatPrice(pricePerSpotCents, currency)} each
                   </span>
                 </p>
@@ -204,7 +204,7 @@ export function StartSquadModal({
                     autoComplete="given-name"
                     value={firstName}
                     onChange={e => setFirstName(e.target.value)}
-                    className="w-full rounded-lg border border-ink-200 px-3 py-2.5 text-base text-ink-900 focus:border-[#4A90D9] focus:outline-none focus:ring-1 focus:ring-[#4A90D9]"
+                    className="w-full rounded-lg border border-ink-200 px-3 py-2.5 text-base text-ink-900 focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
                     placeholder="Alice"
                   />
                 </div>
@@ -219,7 +219,7 @@ export function StartSquadModal({
                     autoComplete="family-name"
                     value={lastName}
                     onChange={e => setLastName(e.target.value)}
-                    className="w-full rounded-lg border border-ink-200 px-3 py-2.5 text-base text-ink-900 focus:border-[#4A90D9] focus:outline-none focus:ring-1 focus:ring-[#4A90D9]"
+                    className="w-full rounded-lg border border-ink-200 px-3 py-2.5 text-base text-ink-900 focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
                     placeholder="Smith"
                   />
                 </div>
@@ -236,7 +236,7 @@ export function StartSquadModal({
                   autoComplete="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  className="w-full rounded-lg border border-ink-200 px-3 py-2.5 text-base text-ink-900 focus:border-[#4A90D9] focus:outline-none focus:ring-1 focus:ring-[#4A90D9]"
+                  className="w-full rounded-lg border border-ink-200 px-3 py-2.5 text-base text-ink-900 focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
                   placeholder="alice@example.com"
                 />
               </div>
@@ -324,8 +324,8 @@ export function StartSquadModal({
               <button
                 type="button"
                 onClick={handleGoToSquad}
-                className="w-full h-12 rounded-xl bg-[#4A90D9] text-white font-semibold text-base
-                           hover:bg-[#3478C5] transition-colors"
+                className="w-full h-12 rounded-xl bg-gold-500 text-ink-900 font-semibold text-base
+                           hover:bg-gold-600 transition-colors"
               >
                 Go to My Squad →
               </button>
