@@ -83,6 +83,10 @@ const HEAD_HEADLESS_FLAG = `(function(){var ua=navigator.userAgent;if(/HeadlessC
 const BODY_REAL_USER_BOOTSTRAP = `(function(){if(document.documentElement.dataset.headless==='1')return;var ric=window.requestIdleCallback||function(c){return setTimeout(c,1500)};var m=function(){ric(function(){document.body.dataset.loaded='1'},{timeout:2500})};if(document.readyState==='complete'){m()}else{addEventListener('load',m,{once:true})}window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)};plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init()})();`
 
 const PLAUSIBLE_DOMAIN = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN ?? 'eventlinqs.com'
+// Load Plausible only on the production deployment. On localhost and Vercel
+// preview deployments VERCEL_ENV is undefined or 'preview', so the script does
+// not load and dev/preview traffic never counts against the production domain.
+const PLAUSIBLE_ENABLED = process.env.VERCEL_ENV === 'production'
 
 export default function RootLayout({
   children,
@@ -101,14 +105,18 @@ export default function RootLayout({
         {/* Plausible analytics (Batch 9.2): cookieless, ~1KB, GDPR/CCPA/Privacy
          *  Act compliant. tagged-events build supports class-based event
          *  tracking on links (e.g. `plausible-event-name=hero_browse_click`)
-         *  alongside the JS API exposed at window.plausible. */}
-        <Script
-          id="plausible-analytics"
-          defer
-          data-domain={PLAUSIBLE_DOMAIN}
-          src="https://plausible.io/js/script.tagged-events.js"
-          strategy="afterInteractive"
-        />
+         *  alongside the JS API exposed at window.plausible. Production
+         *  deployment only (see PLAUSIBLE_ENABLED); cookieless, so no consent
+         *  banner is required. */}
+        {PLAUSIBLE_ENABLED && (
+          <Script
+            id="plausible-analytics"
+            defer
+            data-domain={PLAUSIBLE_DOMAIN}
+            src="https://plausible.io/js/script.tagged-events.js"
+            strategy="afterInteractive"
+          />
+        )}
         <a href="#main-content" className="skip-to-content">
           Skip to main content
         </a>
