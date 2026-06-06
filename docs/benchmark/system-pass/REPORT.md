@@ -1148,3 +1148,31 @@ benchmark to surpass it, and to add the Scenes V2 discovery rail neither has.
 
 No aspect BELOW -> no code change. Scenes V2 rail + culture landing + dark
 compliance verified on the preview at 1440 + 390.
+
+### Surface 6: Organisers landing (/organisers) - RE-AUDITED, 1 NAMED EXCEPTION (imagery)
+Captures: `surface-6/audit-2026-06-06/{ours-organisers,eb-organiser}-*`. Live URLs:
+ours = preview /organisers; EB = eventbrite.com.au/organizer/overview.
+
+Stronger pattern (stated): EB's organiser overview is a polished, IMAGE-RICH
+marketing site - a split hero with a lifestyle photo, "Creator Spotlight" with
+real photography, photographic solution tiles, a trends/blog row, and resources.
+Ours is a clean, conversion-focused, TEXT-FORWARD page. This pass corrects the
+prior report's "EB is single-hero-led" note: EB is in fact dense and
+imagery-led here.
+
+| Aspect | Verdict | Evidence (1440 + 390) |
+|---|---|---|
+| Imagery | **BELOW (named exception)** | EB carries lifestyle/event photography throughout; ours has ZERO photos in the body (verified: 0 pexels/supabase/_next-image hits). Closing this needs a CURATED lifestyle hero asset + a founder design sign-off (a marketing-hero redesign) - it is NOT autonomously fixable without fabricating generic stock, which violates Law 1 (no generic). The project's own prior pass deliberately deferred it for the same reason. Listed as an exact exception, not silently passed. |
+| Density | PARITY | Ours: hero + 3 value pillars + 4-step how-it-works + open-to-every-community + Organiser FAQ + closing CTA. EB adds blog/creator-spotlight/resources breadth; ours covers the full conversion path. |
+| UX | SURPASS | One unmissable gold "Start selling tickets" CTA repeated in the closing band, a self-serve path (/organisers/signup), and an FAQ accordion that pre-empts friction. |
+| Typography | PARITY | Display H1/headings at the locked scale. |
+| Hierarchy | PARITY | Clear sectioned marketing flow. |
+| Dark compliance | PASS | 0 flat-dark sections (verified); the closing "Ready to sell tickets?" band was rebuilt to light in the dark-sweep. |
+| Loading | PARITY | SSR full-page. |
+| Mobile (390) | PARITY | Stacked sections, 44px CTAs, accordion FAQ. |
+
+One aspect BELOW - imagery - and it is a NAMED EXCEPTION: a curated lifestyle
+hero asset + founder design sign-off (a marketing-hero redesign). Fabricating
+generic imagery to "pass" would violate the no-generic law, so it is deferred by
+design, not by oversight. All other aspects PARITY/SURPASS. No code change (the
+exception is asset- and sign-off-gated).
