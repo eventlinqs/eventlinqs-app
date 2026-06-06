@@ -71,11 +71,11 @@ const TONES: Record<Tone, {
     surface: 'bg-white text-ink-900',
     border: 'border-black/10',
     heading: 'text-ink-900',
-    muted: 'text-[#6B7280]',
+    muted: 'text-ink-400',
     row: 'border-black/10 hover:bg-black/[0.03]',
     input: 'border-black/15 bg-white text-ink-900 focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[var(--brand-accent)]',
     primary: 'bg-[var(--brand-accent)] text-white',
-    secondary: 'border-black/15 text-[#6B7280] hover:bg-black/[0.04] hover:text-ink-900',
+    secondary: 'border-black/15 text-ink-400 hover:bg-black/[0.04] hover:text-ink-900',
   },
 }
 
