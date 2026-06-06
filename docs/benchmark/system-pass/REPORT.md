@@ -1297,3 +1297,45 @@ detail (needs a follows table + FAQ data).
 
 With those exact exceptions, the system is at or above the bar on every surface.
 The independent inspector + founder test drive can proceed.
+
+---
+
+## Follow-up: soft-404 on non-existent event slugs - ROOT-CAUSED + FIXED (2026-06-06)
+
+The close-out logged a soft-404 (HTTP 200 + not-found UI instead of a hard 404)
+on non-existent /events/[slug] and /events/browse/[city] slugs. Investigated and
+fixed.
+
+### Root cause (confirmed empirically)
+A `loading.tsx` Suspense boundary in the route's chain. When the page suspends on
+its data fetch, Next streams the loading fallback - committing the HTTP 200 -
+BEFORE the page's async `notFound()` resolves, so notFound() can only render the
+not-found UI inline (soft-404), never set the status. Proof: temporarily removing
+both `app/events/loading.tsx` and `app/events/[slug]/loading.tsx` and rebuilding
+flipped every fake slug to a clean 404 (real slugs stayed 200). The clean-404
+routes (/organisers/[handle], /city/[slug], /culture/[culture]) have NO loading
+boundary in their chain. The over-broad `app/events/loading.tsx` (added in
+Surface 1) compounded it: as a SEGMENT-level file it wrapped /events/[slug] AND
+/events/browse/[city], breaking both children's 404s and serving browse/[city] a
+wrong-shaped browse-grid skeleton.
+
+### Fix
+- Added `app/events/[slug]/layout.tsx`: a cookie-free existence guard (same anon
+  client + slug as the page's fetchEvent) that calls `notFound()` for unknown
+  slugs. The LAYOUT renders OUTSIDE the page's loading Suspense, so its
+  notFound() sets a real 404 BEFORE any fallback streams - while the page keeps
+  its designed `loading.tsx` skeleton for the confirmed-to-exist event's render.
+  Best of both: hard 404 + designed loading on event detail.
+- Removed the segment-level `app/events/loading.tsx` (the over-broad boundary).
+  This makes /events/browse/[city] return a hard 404 (no boundary) and stops it
+  rendering the wrong skeleton. Trade-off: the /events browse page loses its
+  route-level loading skeleton (it is edge-cached + fast SSR; a co-located
+  in-page <Suspense> around the grid could re-add it later without re-wrapping
+  the slug children - deliberately not done now to avoid refactoring the
+  LCP-critical browse data flow right before inspection).
+
+### Verified (local production server)
+Real events + browse-city -> 200 (event detail keeps its loading skeleton);
+zzz-fake-event + zzz-fake-city -> 404; /events + / -> 200. Gates: tsc 0, eslint 0
+errors, vitest pass, next build exit 0. The soft-404 follow-up logged in the
+close-out is now CLOSED.
