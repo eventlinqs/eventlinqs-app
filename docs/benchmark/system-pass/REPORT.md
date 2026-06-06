@@ -952,6 +952,51 @@ dashboard M6 Phase 4 (#91), payout notification emails (#92)).
 - Gates GREEN on the merged tree: tsc 0, eslint 0 errors (30 pre-existing
   capture-script warnings), vitest 322 passed (36 files; +47 from main's payouts
   tests), `next build` exit 0.
-- Vercel preview: pushed for the CI Lighthouse + preview build to run. NOTE:
-  the Vercel preview/build result is confirmed in the Vercel dashboard/CI, not
-  from this local environment (no Vercel CLI here).
+- Vercel preview: GREEN, verified two ways. (1) GitHub commit status for
+  `ab2e35f` reports `Vercel: success` (`gh api .../commits/ab2e35f/status`); CI
+  `lint·typecheck·build` and `test (vitest)` checks also success. (2) The preview
+  alias serves HTTP 200 with the merged security headers live (CSP-Report-Only,
+  HSTS, X-Frame-Options, X-Content-Type-Options) and the full 55-event density
+  (55 distinct `/events/<slug>` server-rendered). Pre-existing `types-drift
+  guard` check fails on a missing `SUPABASE_ACCESS_TOKEN` repo secret - identical
+  failure on `origin/main`, not introduced here. (Lighthouse-mobile gate was
+  still in_progress at audit time; it is the standing CI gate per CLAUDE.md.)
+
+### #9 PER-SURFACE NEW-BAR RE-AUDIT - methodology
+FRESH live captures this pass (not the cached `design-captures/`), driven by
+`design-captures/audit/capture.mjs` (Playwright/Chromium, gitignored), at 1440 +
+390 with en-AU/Sydney locale. OURS is captured from the GREEN preview alias (the
+merged build at the locked 1400 width and full 55-event fixture density); TM +
+EB are captured live. PNGs are gitignored per convention (`*.png`); the proof
+tables below are the committed evidence. Motion + loading are assessed from the
+live SSR DOM (reveal/hero-enter/scroll-snap classes present; `data-motion` is
+correctly absent in headless SSR so content is flash-free and gate-safe) plus
+the route `loading.tsx` skeletons, since static frames cannot show animation.
+Live TM + EB both load HTTP 200 headless - the fresh-capture requirement is met.
+
+### Surface 0: Homepage - RE-AUDITED, AT/ABOVE BAR (no code change)
+Captures: `surface-0/audit-2026-06-06/{ours,tm,eb}-home-{1440-fold,1440-full,390-full}.png`.
+Live URLs: ours = preview alias `/`; TM = ticketmaster.com.au; EB = eventbrite.com.au.
+
+Stronger pattern (stated): EB is the stronger competitor pattern to benchmark -
+a light, airy, curated-discovery homepage (hand-picked card row + category nav +
+a location grid), closest to our light navy-on-canvas system. TM is ad/sponsor-
+driven (Toyota AFL hero, Wallabies ad tile, Gift-Cards/Groups banner ads, right
+promo sidebar) and lower-craft; its one genuine strength is the persistent
+location/date/search rig in the header. We benchmark to surpass EB's curation
+while keeping a cinematic hero neither competitor has.
+
+| Aspect | Verdict | Evidence (1440 + 390) |
+|---|---|---|
+| Layout / structure | SURPASS | Solid navy header + cinematic full-bleed hero + a dozen+ consistent curated rails (category, This Week, genres, By City, Scenes V2, Featured Venues). EB: one curated row + icon nav + a single location grid. TM: ad hero + promo sidebar. |
+| Density | SURPASS | A dozen+ distinct rails of real breadth at full 55-event density vs EB's single "Events in <city>" grid and TM's promo rows. |
+| Hierarchy | SURPASS | Sectioned 24px rail headings (`type-rail-heading`) + faint top dividers, uniform card sizing; clean scan. Competitors run flatter. |
+| Imagery | SURPASS | Real-photo, image-first landscape cards site-wide; no ad banners (TM) or mixed-craft poster flyers (EB). Observation: at full *fixture* density many card photos are similar dark concert shots - a seed-data artifact, not a design defect; the treatment renders varied catalogue imagery correctly. |
+| Typography | PARITY | Rail headings 24/22px, card titles 18px at the locked scale - matches both competitors exactly; ours adds a display hero clamp neither has. |
+| Interaction / motion | SURPASS | Eased rail glide (scroll-snap + distance-eased arrows), `hero-enter` content stagger, `.reveal` scroll-in on every below-fold rail (18 in SSR), card hover lift/zoom. EB/TM near-static. (DOM-evidenced; `data-motion` correctly off in headless.) |
+| Loading | SURPASS | Designed brand-shimmer section skeletons (no spinners-on-white, RailHeaderSkeleton CLS-matched to 24px), plus route `loading.tsx` on the buyer steps. Competitors flash plain/spinner loads. |
+| Mobile (390) | PARITY | Stacked rails with horizontal peek, solid navy header, 44px targets, identical dividers. Matches EB's clean mobile stack; cleaner than TM's ad-stacked mobile. |
+
+No aspect BELOW -> no code change. The homepage already carries the locked 1400
+width, full-density rails, the motion engine, and designed loading. The single
+seed-imagery-variety observation is logged (data, not design) and does not gate.
