@@ -663,3 +663,105 @@ EMAIL off-brand navy (separate surface family, literal hex required, NOT in the
 ~31 app-surface count): auth templates (confirm-signup, password-reset,
 magic-link, reauthentication, email-change), the Stripe webhook ticket email,
 and waitlist promote.ts still use `#1A1A2E`. Map to `#0A1628` in an email pass.
+
+---
+
+## Session: Phase-B motion engine + choreography + Scenes V2 (2026-06-06)
+
+The founder's named "reads generic" fix. Motion engine decision (founder
+ruling): CSS-first, zero new dependency; framer-motion only with approval.
+Per-unit commits on feat/home-rebuild; gates green at every step (tsc 0,
+eslint 0, vitest 275, next build exit 0).
+
+### Shipped (committed)
+1. Motion law + skill rewritten (e19998b, 04142c4): CSS-first engine, the
+   choreography bar (alive and breathing, felt not watched), the locked Glide
+   standard, and the Density-proof rule (all captures + verdicts at full fixture
+   density, no thin-rail evidence).
+2. Motion engine foundation (fa85dc4): `Reveal` client component
+   (`src/components/ui/reveal.tsx`, IntersectionObserver, once, unobserves) +
+   the globals.css choreography layer (`.reveal`/`.reveal-stagger` 12-16px rise
+   300ms ease-out + left-to-right child stagger; `.hero-enter` on-load content
+   stagger; `.card-hover-lift`/`-media`; sticky-header elevation + smooth bg
+   transition). Pre-paint head bootstrap sets `html[data-motion=1]` only for
+   real users (not headless, not reduced-motion): no-JS / reduced-motion /
+   Lighthouse render fully visible from first paint, so motion is flash-free,
+   never blocks reading, and never costs the LCP/mobile gate.
+3. Rail arrow glide raised (0f471f6): distance-eased rAF cubic ease-out,
+   ~400-550ms scaled by distance, lands on card snap boundaries; pages by the
+   live visible-card count; arrow press states + symmetric edge fades; keyboard
+   arrows; touch/trackpad untouched (any input cancels an in-flight glide);
+   reduced-motion jumps instantly.
+4. Choreography applied to the homepage (25f6161): hero content staggers in
+   (LCP image never animates); every below-fold rail (13 category rails via
+   EventRailSection, This Week, By City, Scenes, Featured Venues) fade-rises on
+   scroll-in; card hover tuned to spec (EventCard -3px lift + 1.025 zoom; home
+   card family + scene tiles dropped the old 1.05/700ms drift for 1.03/200ms);
+   hero nav arrows de-glassed (backdrop-blur -> solid navy, clearing the last
+   surface-2 glass follow-up). Verified at 1440 + 390 with scroll-through
+   captures (`phase-b/motion/`): hero settles, every rail reveals and is fully
+   populated, header elevates on scroll, nothing stuck hidden; reduced-motion +
+   headless show everything from first paint. Lighthouse mobile 95+ is the
+   preview/CI gate per CLAUDE.md (never a single localhost run); the design is
+   gate-safe by construction (headless agent sees a static page).
+5. Dark triage + dead code (44c5a42): deleted the dead live-vibe trio
+   (home/live-vibe-section, events/live-vibe-marquee, LiveVibeSkeleton bg-ink-950)
+   and the dead `CulturalCalendarWidget` (had a surface-dark CTA); extracted its
+   live footer flags to `first-nations-flags.tsx` (official sovereign flag
+   colours kept exact). Fixed a loading CLS bug: RailHeaderSkeleton was type-h2
+   (40px) vs the real 24px rail heading, now matches (zero-shift settle).
+6. Colour tokenize (01dc530): `#6B7280` is the defined value of brand
+   `--color-ink-400`, not off-brand; tokenized the two hardcoded literals in
+   refund-dialog (zero visual diff).
+7. Scenes Architecture V2 (241514f): SceneRail rebuilt to the research-backed
+   V2 set, two families in ONE rail (12 music + 7 culture), family markers,
+   inheriting the glide + reveal + hover. CLAUDE.md Scene layer + seed-events
+   skill updated to V2 verbatim; the old 7-scene set renders nowhere. Verified
+   at 1440 + 390 (`phase-b/scenes-v2/`).
+
+### FLAG - missing scene landing pages (post-photos taxonomy mission)
+V2 interim routing avoids all 404s. Only **First Nations** has a live landing
+(`/culture/aboriginal-torres-strait-islander`). The other 18 link to the
+interim filtered events view (`/events?q=...`) and need dedicated landing pages:
+- Music & sound (12): Electronic & Dance, Country, Indie & Rock, Hip-Hop & RnB,
+  Pop, Folk & Acoustic, Blues & Roots, Afrobeats & Amapiano, Latin, Caribbean &
+  Dancehall, Jazz & Soul, Metal & Hardcore.
+- Community & culture (6): South Asian, Asian, Pasifika & Maori, Mediterranean,
+  Pride, Faith & Worship.
+Also reconcile `src/lib/hero-categories.ts` (still gospel/owambe/networking/
+heritage-and-independence) against the V2 scene taxonomy in that mission.
+
+### REMAINING (continue next session, in priority order)
+- MOTION per-surface application: the homepage (surface 0) is fully wired and
+  interior surfaces inherit the raised glide + card hover automatically (shared
+  SnapRail + EventCard + home cards). Still owed: page-level `<Reveal>` section
+  wraps and `hero-enter` on the interior buyer surfaces (/events, /city,
+  /categories, /culture, event detail, search, /organisers).
+- CONTAINER WIDTH (#11): NOT started. Measure live TM + EB content-container
+  widths at 1440 + 1920, derive a wider shared CONTAINER token, re-verify
+  cards-per-row, confirm 768/390 untouched, capture before/after vs TM. Lock the
+  number into the skill. (Capture-gated: needs live TM.)
+- OFF-BRAND #4A90D9 / #F0F6FF: live only in squad + queue surfaces. Deferred to
+  (a) the queue-room LIGHT rebuild and (b) the buyer-journey button unification.
+  Recommended mapping: solid actions -> navy `#0A1628`; accent text -> gold
+  `--brand-accent-strong`; focus -> `--color-gold-400`; Stripe colorPrimary ->
+  `#0A1628`. KEEP: `seat-maps/actions.ts` `#4A90D9` (categorical seat-colour
+  data) and the flag colours (sovereign). Squad surfaces are capture-gated (auth).
+- DESIGNED LOADING (#6): remaining `animate-spin` spinners -> designed states:
+  surprise-me-modal, connect-onboarding-card (standalone); squad-pay-form (with
+  the squad work), queue-room (with its light rebuild). Verify whether
+  city/[slug], search, organiser-profile navigations flash and add loading.tsx
+  if so. (event-detail + checkout loading.tsx already shipped a prior session;
+  RailHeaderSkeleton CLS fixed this session.)
+- DARK rebuilds (#7): queue-room LIGHT (photo+overlay allowed when the event has
+  an image); marketing about/blog/careers/press dark `ContentSection`s -> light.
+  (Dev preview routes /dev/* are dev-only, exempt. Email templates are NOT ours.)
+- BUYER JOURNEY FLOW (#8): NOT started. Capture TM + EB purchase flows step by
+  step, benchmark ours as ONE flow, elevate calendar/date picker, quantity
+  selectors, price summary, form fields, button states, step transitions,
+  expired-reservation state; unify bespoke navy pay/CTA buttons onto the
+  canonical gold `Button`. Live PAID capture stays deferred to staging.
+- PER-SURFACE NEW-BAR RE-AUDIT (#9): surfaces 0-9 still owe FRESH live TM + EB
+  captures at 1440 + 390 per surface folder, stronger-pattern choice stated, and
+  the SURPASS/PARITY/BELOW proof table incl loading; iterate any BELOW.
+  (Capture-gated.)
