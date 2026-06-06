@@ -53,10 +53,15 @@ export async function RecommendedRail({
             See all
           </Link>
         </div>
+        {/* No static snap-x/snap-mandatory: scroll-snap is armed on first user
+            engagement (DragRail snap prop) so the load-time re-snap never stops
+            LCP. This rail's first card is the /events LCP candidate; cards keep
+            their snap-start. */}
         <DragRail
-          className="mt-4 -mx-4 flex snap-x snap-mandatory items-stretch gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:gap-4 sm:px-0 scrollbar-none"
+          className="mt-4 -mx-4 flex items-stretch gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:gap-4 sm:px-0 scrollbar-none"
           ariaLabel={title}
           testId="m5-rec-rail"
+          snap
         >
           {cards.map((c, i) => (
             <li

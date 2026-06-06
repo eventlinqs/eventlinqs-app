@@ -1575,3 +1575,15 @@ losing LCP/CrUX on these pages and eating a tiny on-load rail jank.
   carries the same latent pattern but is below the fold on event-detail, loading
   after LCP settles, so it is benign today. Logged as a follow-up: give it the same
   deferred-arm treatment when that rail is next touched.
+
+### Follow-up done (2026-06-07): m5-recommended-rail deferred-arm
+Closed the logged follow-up. `DragRail` (the `/events` + `/events/browse/[city]`
+rail scroller, used only by `m5-recommended-rail`) gained an opt-in `snap` prop that
+arms `scroll-snap-type: x mandatory` on first user engagement instead of statically;
+the caller dropped its static `snap-x snap-mandatory` (cards keep `snap-start`).
+Verified on `/events` and `/events/browse/melbourne`: 0 on-load rail scrolls, LCP
+registers (IMG), snap-type `none` before gesture -> `x mandatory` after pointerdown,
+and a real wheel lands on a card boundary - so the rail's first card (the `/events`
+LCP candidate) is now a robust LCP target, not a race winner. Gates: tsc 0, eslint 0
+errors, vitest 329/329, build exit 0; `/events` perf unregressed (median 0.67, a11y/
+bp/seo 1.0). CI green on the pushed tip.
