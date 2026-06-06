@@ -765,3 +765,32 @@ heritage-and-independence) against the V2 scene taxonomy in that mission.
   captures at 1440 + 390 per surface folder, stronger-pattern choice stated, and
   the SURPASS/PARITY/BELOW proof table incl loading; iterate any BELOW.
   (Capture-gated.)
+
+### Continued same session: push + preview density + interior reveals
+
+- Branch PUSHED to origin/feat/home-rebuild (no merge) at each step, so the
+  Vercel preview + CI Lighthouse gate spin for the founder's wholesale review.
+  Latest pushed commit: 1905ff3.
+- PREVIEW DENSITY (queued item, executed): preview deployments now render the
+  full 55-event catalogue (24aa61d). A `prebuild` step
+  (`scripts/prebuild-fixture.mjs`) regenerates the fixture at build time when
+  `HOMEPAGE_SEED_FIXTURE=1`; `next.config` `outputFileTracingIncludes` ships the
+  JSON in the homepage serverless bundle. HARD GUARD: the prebuild aborts the
+  build if the flag is set with `VERCEL_ENV=production`, and `loadHomeUpcoming`
+  ignores the flag in production. Documented as a Preview-only env var in
+  `.env.example`. Verified both paths (flagged build wrote 55 events, exit 0;
+  unflagged build skipped, exit 0, tracing-include of the absent file a no-op).
+- INTERIOR-SURFACE REVEALS (started, #3 cont.): event-detail Related-events grid
+  fade-rises on scroll; `ContentSection` gained an opt-in `reveal` prop (wraps
+  content in the shared Reveal) so every interior surface on it can fade-rise
+  consistently - enabled on the city Browse-by-culture rail as first adopter
+  (1905ff3). Also fixed an off-brand colour the hex grep missed:
+  `ContentSection` topBorder accent was blue `rgba(74,144,217)` (#4A90D9) ->
+  brand gold (recolours the accent line on every interior section using it).
+- STILL OWED on interior reveals: wire `reveal` (or `<Reveal>`/`hero-enter`)
+  through the remaining interior surfaces - /events browse grid + popular rail,
+  /city other ContentSections, /culture, search, /organisers, and the
+  event-detail About/When-Where column (left as one block to avoid the sticky
+  2-col layout risk; revisit). Then CONTAINER WIDTH (#11) once live Ticketmaster
+  measuring is possible. Remaining items (#5 squad/queue blue, #6 spinners, #7
+  queue-room/marketing light, #8 buyer flow, #9 re-audit) unchanged above.
