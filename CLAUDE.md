@@ -134,6 +134,25 @@ The choreography (deliver all of it with the CSS engine):
 - Forbidden: GSAP, scroll-hijacking (Lenis), parallax overload, glassmorphism,
   glow kits (Aceternity, MagicUI), bento grids, auto-rolling carousels.
 
+## Law 4: marketing surfaces are image-rich
+
+Every marketing and landing surface (organiser, pricing, about, city and scene
+landings, any "sell the platform" page) carries image-rich, full-craft
+treatment to the competitor bar. A text-only marketing surface is a design
+defect by definition: no bare icon-and-text pillar sections, no wall-of-text
+bands. Match the competitor frame for frame (full-bleed photographic hero,
+alternating image-and-text feature bands, a stats or social-proof band, visual
+how-it-works, image tiles, premium FAQ, a strong closing CTA), then surpass it
+with the EventLinqs identity.
+
+- Imagery comes from the licensed platform photo library, wired through the
+  media components as swappable slots (a per-page config in `src/lib/images/`),
+  so photo-day upgrades are a one-line change and never touch the template.
+- Social proof uses real platform truths only (all-in pricing, payout terms,
+  every-community breadth). Never fabricate numbers or fake logos.
+- Reference build: `/organisers` (`OrganisersLandingPage` +
+  `src/lib/images/organiser-photos.ts` + `MarketingMedia`).
+
 ## Tooling
 
 - UI primitives: shadcn and Radix, for accessibility. Icons: Lucide. Rails:

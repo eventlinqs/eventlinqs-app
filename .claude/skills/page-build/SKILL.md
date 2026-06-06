@@ -159,6 +159,29 @@ Reuse the shared primitives, never hand-roll per surface:
   scroll-through at 1440 and 390 reads premium, and confirm Lighthouse mobile
   still clears 95+ on the preview (motion never costs the gate).
 
+## Marketing surface standard (locked, Law 4)
+
+Every marketing / landing surface (organiser, pricing, about, city and scene
+landings, any "sell the platform" page) MUST carry image-rich, full-craft
+treatment to the competitor bar. A text-only marketing surface is a design
+defect by definition.
+
+- No bare icon-and-text pillar sections. No wall-of-text bands. Every section
+  earns imagery or a strong visual treatment.
+- Match the competitor frame for frame, then surpass: full-bleed photographic
+  hero with overlay + gold CTA; alternating image-and-text feature bands; a
+  stats / social-proof band (real platform truths only - never fabricated
+  numbers or fake logos); visual how-it-works; image tiles; premium FAQ; a
+  strong closing CTA band.
+- Imagery comes from the licensed platform photo library via the media
+  components, wired as swappable slots in a per-page `src/lib/images/` config,
+  so photo-day upgrades are a one-line change and never touch the template.
+- Below-fold marketing photos use `MarketingMedia` (band / tile); the hero uses
+  `HeroMedia` (the single priority image). Never construct `<Image>` in feature
+  code.
+- Reference build: `/organisers` (`OrganisersLandingPage` +
+  `organiser-photos.ts` + `MarketingMedia`).
+
 ## QA agent brief
 
 Spin up a separate best-in-class reviewer. It does not mark the page complete
@@ -184,6 +207,8 @@ vibes, to pass.
 - Inventing colours, spacing, or fonts. Inherit from the homepage only.
 - Painting event titles or prices onto card photography. Details sit below.
 - Claiming done on a dev build or a single Lighthouse run.
+- Shipping a text-only marketing surface (icon-and-text pillars, a wall of
+  text). Image-rich, full-craft treatment is mandatory (Law 4).
 - Merging without approval, or using `--admin` to bypass a red gate.
 
 ## Red flags, stop and fix
