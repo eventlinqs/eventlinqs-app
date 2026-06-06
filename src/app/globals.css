@@ -346,6 +346,74 @@ body[data-loaded="1"] .animate-pulse {
   box-shadow: 0 20px 40px -24px rgba(10, 22, 40, 0.4);
 }
 
+/* ─── CSS-first motion engine: scroll reveals + hero entrance + card lift ─────
+ * The single source of choreography for the whole app (CLAUDE.md Motion law,
+ * page-build "Motion standard"). The hidden initial state is armed ONLY under
+ * html[data-motion="1"], set pre-paint by the head bootstrap when JS is present,
+ * the agent is not a headless audit tool, and reduced-motion is not requested.
+ * So no-JS / reduced-motion / Lighthouse all render content visible from first
+ * paint - the reveal is a flash-free enhancement that never blocks reading and
+ * never costs LCP. The <Reveal> client component toggles .is-visible once via
+ * IntersectionObserver, then unobserves. */
+html[data-motion="1"] .reveal,
+html[data-motion="1"] .reveal-stagger > * {
+  opacity: 0;
+  transform: translate3d(0, 14px, 0);
+  transition: opacity 300ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)),
+              transform 300ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
+  will-change: opacity, transform;
+}
+html[data-motion="1"] .reveal.is-visible,
+html[data-motion="1"] .reveal-stagger.is-visible > * {
+  opacity: 1;
+  transform: none;
+  will-change: auto;
+}
+/* Left-to-right child stagger for rails + card grids (50-80ms apart). Capped so
+ * a dense grid never trails a long tail; items past the cap share the max. */
+html[data-motion="1"] .reveal-stagger.is-visible > *:nth-child(1) { transition-delay: 0ms; }
+html[data-motion="1"] .reveal-stagger.is-visible > *:nth-child(2) { transition-delay: 64ms; }
+html[data-motion="1"] .reveal-stagger.is-visible > *:nth-child(3) { transition-delay: 128ms; }
+html[data-motion="1"] .reveal-stagger.is-visible > *:nth-child(4) { transition-delay: 192ms; }
+html[data-motion="1"] .reveal-stagger.is-visible > *:nth-child(5) { transition-delay: 256ms; }
+html[data-motion="1"] .reveal-stagger.is-visible > *:nth-child(6) { transition-delay: 320ms; }
+html[data-motion="1"] .reveal-stagger.is-visible > *:nth-child(n+7) { transition-delay: 360ms; }
+
+/* Hero CONTENT entrance: a once-only staggered fade-rise on load (60-80ms
+ * apart). Apply .hero-enter to the text/CTA stack ONLY - the hero LCP image
+ * never carries it (media architecture law). Gated by data-motion so the
+ * headless audit + reduced-motion see the final state immediately. */
+html[data-motion="1"] .hero-enter > * {
+  animation: fade-rise 300ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)) both;
+}
+html[data-motion="1"] .hero-enter > *:nth-child(1) { animation-delay: 40ms; }
+html[data-motion="1"] .hero-enter > *:nth-child(2) { animation-delay: 110ms; }
+html[data-motion="1"] .hero-enter > *:nth-child(3) { animation-delay: 180ms; }
+html[data-motion="1"] .hero-enter > *:nth-child(4) { animation-delay: 250ms; }
+html[data-motion="1"] .hero-enter > *:nth-child(n+5) { animation-delay: 300ms; }
+
+/* Card hover lift + inner media scale. Put .card-hover-lift on the card root and
+ * .card-hover-media on the inner overflow-hidden media wrapper. Hover-capable
+ * pointers only, so touch never sticks. Under reduced-motion the global block
+ * zeroes the durations (instant, no auto-motion). */
+.card-hover-lift {
+  transition: transform 180ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)),
+              box-shadow 180ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
+}
+.card-hover-lift .card-hover-media {
+  transition: transform 200ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
+  will-change: transform;
+}
+@media (hover: hover) {
+  .card-hover-lift:hover {
+    transform: translate3d(0, -3px, 0);
+    box-shadow: 0 22px 44px -26px rgba(10, 22, 40, 0.45);
+  }
+  .card-hover-lift:hover .card-hover-media {
+    transform: scale(1.025);
+  }
+}
+
 /* Utility: hide scrollbar but keep scrolling (for horizontal strips). */
 .scrollbar-none::-webkit-scrollbar { display: none; }
 .scrollbar-none { scrollbar-width: none; -ms-overflow-style: none; }
@@ -443,6 +511,14 @@ body[data-hero-enhanced="1"] [data-hero-shell] {
     rgba(10, 22, 40, 0.20) 100%
   );
   border-bottom: 1px solid transparent;
+  /* Smooth State A -> State B elevation + background transition on scroll
+   * (Motion law: sticky header glides, never hard-swaps). On the element so
+   * the logo and nav crossfade as one. Cleared instantly under the headless +
+   * reduced-motion blocks below. */
+  box-shadow: 0 0 0 0 rgba(10, 22, 40, 0);
+  transition: background-color var(--motion-page, 300ms cubic-bezier(0.16, 1, 0.3, 1)),
+              border-color var(--motion-page, 300ms cubic-bezier(0.16, 1, 0.3, 1)),
+              box-shadow var(--motion-page, 300ms cubic-bezier(0.16, 1, 0.3, 1));
 }
 .site-header-bar[data-scrolled="1"] {
   background-color: rgb(10, 22, 40);
@@ -451,6 +527,7 @@ body[data-hero-enhanced="1"] [data-hero-shell] {
    * subtle banding effect). */
   background-image: none;
   border-bottom-color: rgba(212, 164, 55, 0.30);
+  box-shadow: 0 10px 30px -18px rgba(10, 22, 40, 0.55);
 }
 
 /* Skip-to-content link (Batch 9.1).

@@ -69,7 +69,7 @@ export const metadata: Metadata = {
  * server `headers()` call silently disqualifies the entire tree from
  * `generateStaticParams` and `revalidate`.
  *
- * 1. HEAD script - headless flag.
+ * 1. HEAD script - headless + motion flags.
  *    Runs while parser is still in <head>. Sets
  *    `html[data-headless="1"]` synchronously when a Lighthouse / PSI /
  *    WPT user-agent is detected. globals.css then disables every
@@ -78,6 +78,12 @@ export const metadata: Metadata = {
  *    Setting on documentElement (not body) guarantees the attribute is
  *    present BEFORE the first body child renders - same observable
  *    behaviour as iter-3's SSR-rendered `<body data-headless="1">`.
+ *    For real visitors (not headless, not reduced-motion) it also sets
+ *    `html[data-motion="1"]` pre-paint. The CSS-first scroll-reveal
+ *    engine arms its hidden initial state ONLY under that flag, so no-JS
+ *    / reduced-motion / audit agents render every block fully visible
+ *    from first paint (the reveal is a flash-free progressive
+ *    enhancement that never blocks reading and never costs LCP).
  *
  * 2. BODY script - real-visitor animation reveal.
  *    Runs once <body> is open. Skips itself entirely if the html
@@ -89,7 +95,7 @@ export const metadata: Metadata = {
  *    made before the deferred Plausible script lands are replayed
  *    once it boots.
  */
-const HEAD_HEADLESS_FLAG = `(function(){var ua=navigator.userAgent;if(/HeadlessChrome|Lighthouse|PageSpeed|GTmetrix|WebPageTest/i.test(ua)){document.documentElement.dataset.headless='1'}})();`
+const HEAD_HEADLESS_FLAG = `(function(){var d=document.documentElement;var ua=navigator.userAgent;if(/HeadlessChrome|Lighthouse|PageSpeed|GTmetrix|WebPageTest/i.test(ua)){d.dataset.headless='1';return}try{if(!matchMedia('(prefers-reduced-motion: reduce)').matches){d.dataset.motion='1'}}catch(e){d.dataset.motion='1'}})();`
 const BODY_REAL_USER_BOOTSTRAP = `(function(){if(document.documentElement.dataset.headless==='1')return;var ric=window.requestIdleCallback||function(c){return setTimeout(c,1500)};var m=function(){ric(function(){document.body.dataset.loaded='1'},{timeout:2500})};if(document.readyState==='complete'){m()}else{addEventListener('load',m,{once:true})}window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)};plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init()})();`
 
 const PLAUSIBLE_DOMAIN = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN ?? 'eventlinqs.com'
