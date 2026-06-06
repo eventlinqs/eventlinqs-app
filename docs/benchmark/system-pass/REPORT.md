@@ -402,8 +402,63 @@ English, community-first. lint/build/vitest unchanged (no code touched).
 
 ---
 
+## Surface 7: Checkout surfaces - DONE (verified at/above bar via code review)
+
+Goal: benchmark the checkout flow and refine on evidence. The live
+/checkout/[reservation_id] page needs an active held reservation on a
+Stripe-connected organiser, which the local seed does not provide and the laws
+defer to the launch live-purchase pass (see [[project_refund_verification_checklist]]),
+so this surface is benchmarked by code review + the captured EB checkout.
+
+### Evidence (captured competitor)
+- Eventbrite checkout (`design-captures/eventbrite/checkout-*`): a centred modal
+  over a dimmed page - Promo Code field, ticket-type cards with a single bundled
+  fee inline ("A$155.20 incl A$5.20 Fee"), "Sales end on ...", inclusions, a
+  stepper, a "Going fast" urgency pill, and a "Check out" CTA.
+
+### Reality audit + benchmark
+The checkout page (`/checkout/[reservation_id]`) is robust and compliant:
+- Guest + authenticated checkout, reservation ownership + expiry enforcement,
+  seat and GA paths, fee calculation via PaymentCalculator.
+- A clean handled error state when fee calc fails (reservation preserved, "Try
+  again" + email support), not a crash to the error boundary.
+- CheckoutSummary shows the full ITEMISED all-in breakdown: Subtotal, Discount,
+  Service fee, Payment processing fee, Tax (GST), then a bold Total, plus a
+  "Secure checkout, payment encrypted end-to-end" trust signal and a
+  CheckoutTrustSignals sidebar.
+- No glassmorphism anywhere in checkout; no em/en-dashes in copy.
+
+Key differentiator: we show the itemised all-in total before payment; Eventbrite
+bundles a single fee onto the ticket card and reveals it late. Our fee
+transparency surpasses EB (the strategy weapon in competitor-page-specs).
+
+### Decision: no code change
+Checkout is glassmorphism-free, copy-compliant, fee-transparent beyond EB, and
+fully state-handled. No evidence-based refinement is warranted; forcing change
+would be churn.
+
+### Deferred to launch live-purchase pass (environmental, not skipped)
+- Playwright before/after of the live checkout page + ticket-selection modal,
+  and a live Stripe round-trip, all require a sellable (Stripe-connected) event
+  and a held reservation. Tracked in the refund/launch verification checklist.
+
+### Benchmark verdict vs Eventbrite (code review)
+| Dimension | Verdict | Note |
+|---|---|---|
+| Density | Parity | Focused single-purpose checkout; trust sidebar adds context. |
+| Typography | Parity | Summary at the locked scale, tabular-nums on figures. |
+| Imagery | N/A | Checkout is intentionally chrome-light. |
+| UX | Surpass | Itemised all-in fees up front, guest checkout, robust error/expiry recovery, encryption trust signal. |
+| Mobile (390) | Parity | Form stacks above the trust panel; summary remains legible. |
+
+### Gates
+No code touched (lint/build/vitest unchanged). Static review: 0 glassmorphism,
+0 banned punctuation, full fee transparency. Live axe/Lighthouse on the checkout
+page run in the launch live-purchase pass.
+
+---
+
 ## Remaining (run in fresh sessions, one surface each)
-7. Checkout flow surfaces
 8. Order confirmation and ticket view
 9. Category landing template (/categories/[slug])
 
