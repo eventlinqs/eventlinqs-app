@@ -1,4 +1,5 @@
 import { SnapRail } from '@/components/ui/snap-rail'
+import { Reveal } from '@/components/ui/reveal'
 import { CityTile } from '@/components/features/home/cards'
 import { CONTAINER, SECTION_TIGHT } from '@/lib/ui/spacing'
 import { getCategoryPhoto } from '@/lib/images/category-photo'
@@ -59,7 +60,7 @@ export async function FeaturedVenuesSection({ upcoming }: Props) {
 
   return (
     <section aria-label="Featured venues" className={`border-t border-ink-200 bg-canvas ${SECTION_TIGHT}`}>
-      <div className={CONTAINER}>
+      <Reveal className={CONTAINER}>
         <SnapRail
           eyebrow="Featured venues"
           title="Where the city goes"
@@ -83,7 +84,7 @@ export async function FeaturedVenuesSection({ upcoming }: Props) {
             </div>
           ))}
         </SnapRail>
-      </div>
+      </Reveal>
     </section>
   )
 }

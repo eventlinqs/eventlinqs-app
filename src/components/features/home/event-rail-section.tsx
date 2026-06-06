@@ -1,4 +1,5 @@
 import { SnapRail } from '@/components/ui/snap-rail'
+import { Reveal } from '@/components/ui/reveal'
 import { ThisWeekCard } from '@/components/features/events/this-week-card'
 import { CONTAINER, SECTION_TIGHT } from '@/lib/ui/spacing'
 import type { BentoEvent } from '@/components/features/events/event-bento-tile'
@@ -35,7 +36,9 @@ export async function EventRailSection({
 
   return (
     <section aria-label={ariaLabel} className={`border-t border-ink-200 bg-canvas ${SECTION_TIGHT}`}>
-      <div className={CONTAINER}>
+      {/* The whole rail (heading + cards) fade-rises as one block when it
+       *  scrolls into view. The divider stays put; content rises into it. */}
+      <Reveal className={CONTAINER}>
         <SnapRail
           eyebrow={eyebrow}
           title={title}
@@ -58,7 +61,7 @@ export async function EventRailSection({
             </div>
           )}
         </SnapRail>
-      </div>
+      </Reveal>
     </section>
   )
 }

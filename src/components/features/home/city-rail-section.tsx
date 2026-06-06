@@ -1,5 +1,6 @@
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { SnapRail } from '@/components/ui/snap-rail'
+import { Reveal } from '@/components/ui/reveal'
 import { CityTile } from '@/components/features/home/cards'
 import { getCityPhoto } from '@/lib/images/city-photo'
 import { CONTAINER, SECTION_DEFAULT } from '@/lib/ui/spacing'
@@ -47,7 +48,7 @@ export async function CityRailSection({ nowIso }: Props) {
       aria-labelledby="cities-heading"
       className={`border-t border-ink-200 bg-canvas ${SECTION_DEFAULT}`}
     >
-      <div className={CONTAINER}>
+      <Reveal className={CONTAINER}>
         <SnapRail
           eyebrow="By city"
           title="Browse by city"
@@ -70,7 +71,7 @@ export async function CityRailSection({ nowIso }: Props) {
             </div>
           ))}
         </SnapRail>
-      </div>
+      </Reveal>
     </section>
   )
 }

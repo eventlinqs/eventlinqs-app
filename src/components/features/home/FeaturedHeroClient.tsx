@@ -117,7 +117,10 @@ export function FeaturedHeroClient({ slides }: Props) {
               }}
             />
             <div className="relative z-10 mx-auto flex h-full max-w-7xl items-end px-6 pb-8 sm:px-8 sm:pb-10 lg:px-12 lg:pb-12">
-              <div className="max-w-2xl">
+              {/* hero-enter staggers the content stack (kicker, title, detail,
+               *  CTA) in on load, 60-80ms apart. The HeroMedia LCP raster is a
+               *  sibling above and is never animated (media architecture law). */}
+              <div className="max-w-2xl hero-enter">
                 <p
                   className="type-micro font-display uppercase tracking-[0.18em] text-[var(--brand-accent)]"
                   style={{ fontWeight: 600 }}
@@ -152,7 +155,7 @@ export function FeaturedHeroClient({ slides }: Props) {
             type="button"
             onClick={prev}
             aria-label="Previous event"
-            className="absolute left-4 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-[rgba(10,22,40,0.55)] text-white backdrop-blur-md transition-colors duration-200 hover:bg-[rgba(10,22,40,0.78)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] md:flex"
+            className="absolute left-4 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-[rgba(10,22,40,0.78)] text-white transition-colors duration-200 hover:bg-[rgba(10,22,40,0.92)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] md:flex"
             style={{ border: '1px solid rgba(212, 164, 55, 0.45)' }}
           >
             <ChevronLeft className="h-5 w-5" aria-hidden />
@@ -161,7 +164,7 @@ export function FeaturedHeroClient({ slides }: Props) {
             type="button"
             onClick={next}
             aria-label="Next event"
-            className="absolute right-4 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-[rgba(10,22,40,0.55)] text-white backdrop-blur-md transition-colors duration-200 hover:bg-[rgba(10,22,40,0.78)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] md:flex"
+            className="absolute right-4 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-[rgba(10,22,40,0.78)] text-white transition-colors duration-200 hover:bg-[rgba(10,22,40,0.92)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] md:flex"
             style={{ border: '1px solid rgba(212, 164, 55, 0.45)' }}
           >
             <ChevronRight className="h-5 w-5" aria-hidden />

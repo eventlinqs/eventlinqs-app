@@ -58,8 +58,11 @@ const SURFACE =
   'hover:-translate-y-1 hover:shadow-[0_14px_34px_rgba(10,22,40,0.13)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 ' +
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2'
 const IMG_WRAP = 'relative overflow-hidden bg-[var(--surface-1)]'
+// Inner-media zoom tuned to the raised Motion bar: 1.03 scale at ~200ms ease-out
+// (was 1.05 / 700ms), so the lift + shadow + zoom read as one quick, premium
+// gesture rather than a slow drift. Reduced-motion holds the image still.
 const IMG_MOTION =
-  'transition-transform duration-700 ease-out group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100'
+  'transition-transform duration-200 ease-out group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100'
 const LABEL =
   'font-display text-[11px] font-semibold uppercase tracking-widest text-[var(--brand-accent-strong)]'
 const TITLE =

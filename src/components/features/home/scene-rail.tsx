@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { SnapRail } from '@/components/ui/snap-rail'
+import { Reveal } from '@/components/ui/reveal'
 import { EventCardMedia } from '@/components/media'
 import { getCategoryPhoto } from '@/lib/images/category-photo'
 import { CONTAINER, SECTION_TIGHT } from '@/lib/ui/spacing'
@@ -58,7 +59,7 @@ export async function SceneRail() {
 
   return (
     <section aria-label="Browse by scene" className={`border-t border-ink-200 bg-canvas ${SECTION_TIGHT}`}>
-      <div className={CONTAINER}>
+      <Reveal className={CONTAINER}>
         <SnapRail
           eyebrow="Find your scene"
           title="Scenes and sounds"
@@ -74,7 +75,7 @@ export async function SceneRail() {
                     src={tile.image}
                     alt={tile.alt}
                     variant="card"
-                    className="transition-transform duration-700 ease-out group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+                    className="transition-transform duration-200 ease-out group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
                   />
                 </div>
                 <div className="flex flex-1 flex-col p-4">
@@ -87,7 +88,7 @@ export async function SceneRail() {
             </div>
           ))}
         </SnapRail>
-      </div>
+      </Reveal>
     </section>
   )
 }

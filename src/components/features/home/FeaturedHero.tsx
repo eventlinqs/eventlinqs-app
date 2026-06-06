@@ -88,7 +88,7 @@ export async function FeaturedHero({ events }: { events: BentoEvent[] }) {
           Live events across Australia: music, scenes, festivals and community
         </h1>
         <div className="mx-auto flex h-[42vh] min-h-[320px] max-w-7xl items-end px-6 pb-10 sm:px-8 lg:px-12 lg:h-[44vh]">
-          <div className="max-w-2xl">
+          <div className="max-w-2xl hero-enter">
             <p
               className="type-micro font-display uppercase tracking-[0.18em] text-[var(--brand-accent)]"
               style={{ fontWeight: 600 }}
