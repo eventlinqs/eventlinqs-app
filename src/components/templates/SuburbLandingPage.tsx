@@ -184,13 +184,13 @@ export function SuburbLandingPage({
         </ContentSection>
       ) : null}
 
-      <ContentSection surface="dark" width="wide" topBorder>
+      <ContentSection surface="alt" width="wide" topBorder>
         <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent)]">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
               City directory
             </p>
-            <h2 className="mt-2 font-display text-xl font-bold text-white sm:text-2xl">
+            <h2 className="mt-2 font-display text-xl font-bold text-[var(--text-primary)] sm:text-2xl">
               See what else is on across {city.name}.
             </h2>
           </div>

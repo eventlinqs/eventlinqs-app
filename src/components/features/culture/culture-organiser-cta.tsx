@@ -8,19 +8,20 @@ interface Props {
   organiserPersonas: string[]
   /**
    * Optional photographic backdrop (typically the culture's first city's
-   * landscape Pexels hero, parallel-fetched on the page). Falls back to
-   * the dark navy panel when null. Image sits behind a strong dark
-   * overlay (~0.80) so the text stays AA-readable regardless of subject.
+   * landscape Pexels hero, parallel-fetched on the page). When present the
+   * band renders the homepage photo + navy-overlay treatment (an allowed
+   * dark surface). When null it renders the light navy-on-canvas band - no
+   * flat dark panel - per the design system.
    */
   backdropImage?: string | null
 }
 
 /**
- * CultureOrganiserCtaPanel - dark band closer for /culture/[slug].
+ * CultureOrganiserCtaPanel - closer band for /culture/[slug].
  *
- * Batch 5.5: ~30% shorter (py-10/12/16 vs py-16/20/24) with optional
- * photographic backdrop + strong dark overlay. Persona pill cluster on
- * the left, talk-to-us CTA on the right.
+ * Adaptive surface: a photographic backdrop drives the dark photo+overlay
+ * treatment (homepage hero pattern); without one it renders light on canvas.
+ * Persona pill cluster on the left, talk-to-us CTA on the right.
  */
 export function CultureOrganiserCtaPanel({
   cultureSlug,
@@ -28,8 +29,20 @@ export function CultureOrganiserCtaPanel({
   organiserPersonas,
   backdropImage = null,
 }: Props) {
+  const isDark = Boolean(backdropImage)
+  const c = {
+    section: isDark
+      ? 'bg-[var(--surface-dark)]'
+      : 'border-t border-ink-100 bg-[var(--surface-1)]',
+    eyebrow: isDark ? 'text-[var(--brand-accent)]' : 'text-[var(--brand-accent-strong)]',
+    heading: isDark ? 'text-white' : 'text-[var(--text-primary)]',
+    body: isDark ? 'text-white/75' : 'text-[var(--text-secondary)]',
+    persona: isDark ? 'text-white/85' : 'text-ink-700',
+    icon: isDark ? 'text-[var(--brand-accent)]' : 'text-[var(--brand-accent-strong)]',
+  }
+
   return (
-    <section className="relative overflow-hidden bg-[var(--surface-dark)] py-10 md:py-12 lg:py-16">
+    <section className={`relative overflow-hidden py-10 md:py-12 lg:py-16 ${c.section}`}>
       {backdropImage && (
         <>
           <HeroMedia image={backdropImage} alt="" priority={false} />
@@ -41,16 +54,18 @@ export function CultureOrganiserCtaPanel({
             }}
             aria-hidden
           />
+          {/* Gold hairline reads only on the dark photographic treatment */}
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0 h-0.5"
+            style={{
+              background: 'linear-gradient(90deg, transparent 0%, var(--brand-accent) 50%, transparent 100%)',
+              opacity: 0.6,
+            }}
+            aria-hidden
+          />
         </>
       )}
-      <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-0.5"
-        style={{
-          background: 'linear-gradient(90deg, transparent 0%, var(--brand-accent) 50%, transparent 100%)',
-          opacity: 0.6,
-        }}
-        aria-hidden
-      />
+      {/* Subtle warm gold tint - premium on either surface (Phase B touch) */}
       <div
         className="pointer-events-none absolute"
         style={{
@@ -59,27 +74,27 @@ export function CultureOrganiserCtaPanel({
           width: '65%',
           height: '140%',
           background: 'radial-gradient(ellipse 70% 60% at 100% 50%, var(--brand-accent), transparent 60%)',
-          opacity: 0.10,
+          opacity: isDark ? 0.10 : 0.05,
         }}
         aria-hidden
       />
       <div className="relative z-10 mx-auto max-w-6xl px-4 md:px-6 lg:px-8">
         <div className="grid gap-8 lg:grid-cols-2 lg:gap-14">
           <div>
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-accent)]">
+            <p className={`mb-3 text-xs font-semibold uppercase tracking-[0.2em] ${c.eyebrow}`}>
               For organisers
             </p>
-            <h2 className="font-display text-2xl font-bold leading-tight text-white sm:text-3xl">
+            <h2 className={`font-display text-2xl font-bold leading-tight sm:text-3xl ${c.heading}`}>
               Built for the people who run {cultureName} events.
             </h2>
-            <p className="mt-3 text-sm leading-relaxed text-white/75 sm:text-base">
+            <p className={`mt-3 text-sm leading-relaxed sm:text-base ${c.body}`}>
               Transparent fees, real human support, and a platform that respects the {cultureName} community instead of treating it like an afterthought.
             </p>
             <div className="mt-6">
               <Button
                 variant="primary"
                 size="lg"
-                onSurface="dark"
+                onSurface={isDark ? 'dark' : 'light'}
                 href={`/contact?topic=organiser&interest=${cultureSlug}`}
               >
                 Talk to us about your event
@@ -87,16 +102,16 @@ export function CultureOrganiserCtaPanel({
             </div>
           </div>
           <div>
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-accent)]">
+            <p className={`mb-3 text-xs font-semibold uppercase tracking-[0.2em] ${c.eyebrow}`}>
               Built for
             </p>
             <ul role="list" className="flex flex-col gap-2">
               {organiserPersonas.map(persona => (
                 <li
                   key={persona}
-                  className="flex items-start gap-2.5 text-sm leading-relaxed text-white/85 sm:text-base"
+                  className={`flex items-start gap-2.5 text-sm leading-relaxed sm:text-base ${c.persona}`}
                 >
-                  <Users className="mt-0.5 h-4 w-4 shrink-0 text-[var(--brand-accent)]" aria-hidden />
+                  <Users className={`mt-0.5 h-4 w-4 shrink-0 ${c.icon}`} aria-hidden />
                   {persona}
                 </li>
               ))}
