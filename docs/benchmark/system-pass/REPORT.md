@@ -247,8 +247,53 @@ desktop + mobile). Lighthouse on the Vercel preview (CI gate); change is CSS-onl
 
 ---
 
+## Surface 4: Search results (/events?q=) - DONE
+
+Goal: the search-results experience. Same route as /events browse (surface 2),
+so the surface-specific question is query framing: does the page acknowledge
+what the user searched for?
+
+### Evidence
+Search results on both competitors are their browse/discovery layout with a
+query applied and an explicit "search results for X" framing
+(`design-captures/*/browse-discovery-*`). Ours reused the browse shell verbatim:
+the hero kept the generic "Find your next event" heading and a bare "N events
+available" count regardless of `q` - the only query signal was the pre-filled
+search box.
+
+### Evidence-based refinement (the change)
+1. Query-aware hero: when `?q=` is present the H1 becomes `Results for "<q>"`
+   (trimmed, capped at 80 chars, React-escaped) instead of the generic browse
+   heading. Empty/whitespace `q` falls back to "Find your next event".
+2. Query-aware empty state: a no-result search now reads `No results for "<q>"`
+   (was the generic "No events match these filters"), keeping the
+   widen/clear/browse guidance and dual CTAs. The query threads through the
+   grid (which already had `params`) into EventsEmptyState.
+No change to the grid, cards, filter bar, or density - those are the surface-2
+browse system, already above bar and now query-framed on top.
+
+### Captures
+- Before: `surface-4/before/search-{1440,768,390}.png` (q=afrobeats, generic heading)
+- After: `surface-4/after/search-{1440,768,390}.png` (q=afrobeats -> "Results for
+  ...") and `search-empty-{1440,768,390}.png` (q=quokkazzz -> "No results for ...")
+
+### Benchmark verdict vs Ticketmaster + Eventbrite (1440 + 390)
+| Dimension | Verdict | Note |
+|---|---|---|
+| Density | Surpass | Inherits the 4-up browse grid; results render at the same density as browse. |
+| Typography | Parity | "Results for ..." H1 at the display scale; competitors frame search similarly. |
+| Imagery | Surpass | Real-photo result cards vs competitor list rows. |
+| UX | Surpass | Query echoed in H1 + box + empty state; full filter set still applies to a search; clear/browse recovery from zero results. |
+| Mobile (390) | Parity | Same query framing; single-column results; sticky solid filter bar. |
+
+### Gates
+lint 0 errors, build pass, vitest 275 pass, axe-core 0 violations (search
+populated + empty, desktop + mobile). Lighthouse on the Vercel preview (CI gate);
+change is a conditional heading string + one prop, no new JS or imagery.
+
+---
+
 ## Remaining (run in fresh sessions, one surface each)
-4. Search results = the /events?q= experience
 5. City page
 6. Organiser landing (/organisers)
 7. Checkout flow surfaces

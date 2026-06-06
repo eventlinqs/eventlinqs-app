@@ -1,14 +1,15 @@
 import Link from 'next/link'
 import { SearchX } from 'lucide-react'
 
-export function EventsEmptyState() {
+export function EventsEmptyState({ query }: { query?: string }) {
+  const heading = query ? `No results for "${query}"` : 'No events match these filters'
   return (
     <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-ink-200 bg-white px-6 py-16 text-center">
       <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-ink-100 text-ink-400">
         <SearchX aria-hidden="true" className="h-7 w-7" />
       </div>
       <h2 className="font-display text-base font-semibold text-ink-900">
-        No events match these filters
+        {heading}
       </h2>
       <p className="mt-1 max-w-sm text-sm text-ink-400">
         Try widening your search, picking a different date, or clearing a filter.

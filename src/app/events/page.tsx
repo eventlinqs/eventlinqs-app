@@ -58,6 +58,13 @@ export default async function EventsPage({ searchParams }: Props) {
   const effectiveFilters = filters
   const filterActive = hasActiveFilters(filters)
 
+  // Search framing: when the user arrives with a text query, the hero
+  // acknowledges it ("Results for ...") instead of the generic browse
+  // heading. This is the /events?q= search-results experience; both
+  // Ticketmaster and Eventbrite frame a query explicitly. Trimmed and
+  // capped so a pasted essay cannot blow out the H1; React escapes it.
+  const searchQuery = typeof raw.q === 'string' ? raw.q.trim().slice(0, 80) : ''
+
   // Grid stays inline so mobile browsers can begin preloading card
   // imagery as soon as the HTML is parsed. Suspense here regressed SI
   // because images started loading after the streamed chunk arrived
@@ -94,7 +101,11 @@ export default async function EventsPage({ searchParams }: Props) {
     <div className="flex min-h-screen flex-col bg-canvas">
       <SiteHeader />
       <main className="flex-1">
-        <EventsHeroStrip params={raw} total={result.total} />
+        <EventsHeroStrip
+          params={raw}
+          total={result.total}
+          heading={searchQuery ? `Results for "${searchQuery}"` : undefined}
+        />
 
         <EventsFilterBar
           params={raw}
