@@ -794,3 +794,43 @@ heritage-and-independence) against the V2 scene taxonomy in that mission.
   2-col layout risk; revisit). Then CONTAINER WIDTH (#11) once live Ticketmaster
   measuring is possible. Remaining items (#5 squad/queue blue, #6 spinners, #7
   queue-room/marketing light, #8 buyer flow, #9 re-audit) unchanged above.
+
+---
+
+## Session: desktop width + buyer journey + polish (2026-06-06)
+
+Per-unit commits on feat/home-rebuild, pushed (no merge); gates green at each
+unit (tsc 0, eslint 0 errors, vitest 275, next build exit 0).
+
+### Unit 1 - CONTAINER WIDTH (#11) - DONE (commit b8ca8a9, pushed)
+Measured live TM + EB content containers at 1440 + 1920
+(`scripts/container-width-measure.mjs`, evidence under
+`phase-b/container-width/`, PNGs gitignored):
+- Ticketmaster: fluid, ~40px gutters, container ~1360 at 1440 and ~1840 at 1920
+  (no hard cap below ~1840).
+- Eventbrite browse ~1392 at 1440; Eventbrite home capped ~1272.
+- Ours was 1280 (`max-w-7xl`) - narrower than all three.
+
+Derived the wider fixed cap: **1400px**. Applied as a single-token override
+`--container-7xl: 87.5rem` in the globals.css `:root` block (NOT `@theme
+inline` - `max-w-7xl` resolves via `var(--container-7xl)` against the base
+theme's root var, so the inline form does not rewrite it; the `:root` override
+after `@import "tailwindcss"` wins the cascade). Because `max-w-7xl` is the
+canonical cap on every surface (header, footer, heroes, rails, content,
+checkout, event detail), the whole site widened in one change, aligned.
+
+Verified before/after (`scripts/container-ours-capture.mjs`,
+`phase-b/container-width/ours-{before,after}/`):
+- 1440: container 1280 -> 1400 (surpasses TM 1360, EB-browse 1392, EB-home 1272)
+- 1920: caps cleanly at 1400 (~260px gutters; disciplined vs TM's 1840)
+- 768: 720 unchanged; 390: byte-identical before/after (cap never binds,
+  px-4 sm:px-6 gutters untouched)
+- cards-per-row + rail peek re-checked: rails show one more card / a wider peek,
+  the events grid stays balanced, the full-bleed hero is unaffected.
+Locked 1400 + the derivation into the page-build skill (Container width
+standard). Side-by-side vs Ticketmaster lives in the same evidence folder
+(tm-*-1440/1920 beside ours-after).
+
+### REMAINING this session (in order): #8 buyer journey flow, #3 interior
+reveals completion, #4 designed loading + dark rebuilds, #9 per-surface
+re-audit. All capture-gated items can now proceed at the locked 1400 width.
