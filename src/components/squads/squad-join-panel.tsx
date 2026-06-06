@@ -68,7 +68,7 @@ export function SquadJoinPanel({
         </p>
         <Link
           href={`/events/${eventSlug}`}
-          className="mt-4 inline-block rounded-xl bg-[#1A1A2E] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#2d2d4a] transition-colors"
+          className="mt-4 inline-block rounded-xl bg-ink-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-ink-800 transition-colors"
         >
           Browse tickets for this event
         </Link>
@@ -83,7 +83,7 @@ export function SquadJoinPanel({
         <p className="mt-1 text-sm text-ink-400">The squad leader cancelled this group booking.</p>
         <Link
           href={`/events/${eventSlug}`}
-          className="mt-4 inline-block rounded-xl bg-[#1A1A2E] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#2d2d4a] transition-colors"
+          className="mt-4 inline-block rounded-xl bg-ink-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-ink-800 transition-colors"
         >
           Get your own tickets
         </Link>
@@ -99,7 +99,7 @@ export function SquadJoinPanel({
         <p className="mt-1 text-sm text-ink-400">All spots have been claimed for this squad.</p>
         <Link
           href={`/events/${eventSlug}`}
-          className="mt-4 inline-block rounded-xl bg-[#1A1A2E] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#2d2d4a] transition-colors"
+          className="mt-4 inline-block rounded-xl bg-ink-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-ink-800 transition-colors"
         >
           Get your own tickets
         </Link>
@@ -164,8 +164,8 @@ export function SquadJoinPanel({
         <div className="space-y-2">
           <Link
             href={`/login?next=/squad/${shareToken}`}
-            className="block w-full h-12 rounded-xl bg-[#1A1A2E] text-white font-semibold text-sm
-                       flex items-center justify-center hover:bg-[#2d2d4a] transition-colors"
+            className="block w-full h-12 rounded-xl bg-ink-900 text-white font-semibold text-sm
+                       flex items-center justify-center hover:bg-ink-800 transition-colors"
           >
             Sign in to join
           </Link>

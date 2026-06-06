@@ -176,7 +176,7 @@ export function StartSquadModal({
             <form onSubmit={handleSubmit} noValidate>
               {/* Squad summary */}
               <div className="rounded-xl bg-[#F0F6FF] border border-gold-100 p-4 mb-6">
-                <p className="text-sm font-semibold text-[#1A1A2E]">{tierName}</p>
+                <p className="text-sm font-semibold text-ink-900">{tierName}</p>
                 <p className="text-sm text-ink-600 mt-1">
                   <span className="font-medium">{totalSpots} spots,</span> each person pays{' '}
                   <span className="font-semibold text-[#4A90D9]">
@@ -253,8 +253,8 @@ export function StartSquadModal({
               <button
                 type="submit"
                 disabled={isPending}
-                className="w-full h-12 rounded-xl bg-[#1A1A2E] text-white font-semibold text-base
-                           disabled:opacity-50 hover:bg-[#2d2d4a] transition-colors"
+                className="w-full h-12 rounded-xl bg-ink-900 text-white font-semibold text-base
+                           disabled:opacity-50 hover:bg-ink-800 transition-colors"
               >
                 {isPending ? 'Creating your squad…' : `Create Squad: ${totalSpots} Spots`}
               </button>

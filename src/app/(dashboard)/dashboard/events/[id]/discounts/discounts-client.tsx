@@ -106,7 +106,7 @@ export function DiscountCodesClient({ eventId, currency, initialCodes, tiers }: 
       <div className="mb-4 flex justify-end">
         <button
           onClick={() => setShowForm(!showForm)}
-          className="rounded-lg bg-[#1A1A2E] px-4 py-2 text-sm font-medium text-white hover:bg-[#2d2d4a] transition-colors"
+          className="rounded-lg bg-ink-900 px-4 py-2 text-sm font-medium text-white hover:bg-ink-800 transition-colors"
         >
           {showForm ? 'Cancel' : '+ Create Code'}
         </button>
@@ -248,7 +248,7 @@ export function DiscountCodesClient({ eventId, currency, initialCodes, tiers }: 
             <button
               type="submit"
               disabled={isPending}
-              className="rounded-lg bg-[#1A1A2E] px-5 py-2 text-sm font-medium text-white disabled:opacity-50 hover:bg-[#2d2d4a]"
+              className="rounded-lg bg-ink-900 px-5 py-2 text-sm font-medium text-white disabled:opacity-50 hover:bg-ink-800"
             >
               {isPending ? 'Creating…' : 'Create Code'}
             </button>

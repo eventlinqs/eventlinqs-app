@@ -246,7 +246,7 @@ export function QueueRoom({
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-[#1A1A2E] text-white flex flex-col">
+    <div className="min-h-screen bg-ink-900 text-white flex flex-col">
       {/* Header */}
       <header className="border-b border-white/10 px-4 py-3 flex items-center gap-3">
         <span className="text-lg font-bold tracking-tight text-[#4A90D9]">EVENTLINQS</span>
@@ -265,7 +265,7 @@ export function QueueRoom({
             className="object-cover opacity-30"
             priority
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#1A1A2E]" />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-ink-900" />
         </div>
       )}
 

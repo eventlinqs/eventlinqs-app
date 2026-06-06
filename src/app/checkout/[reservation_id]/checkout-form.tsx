@@ -89,7 +89,7 @@ function PaymentForm({
       <button
         type="submit"
         disabled={paying || !stripe}
-        className="mt-6 w-full rounded-lg bg-[#1A1A2E] px-4 py-3.5 text-sm font-bold text-white disabled:opacity-50 hover:bg-[#2d2d4a] transition-colors"
+        className="mt-6 w-full rounded-lg bg-ink-900 px-4 py-3.5 text-sm font-bold text-white disabled:opacity-50 hover:bg-ink-800 transition-colors"
       >
         {paying
           ? 'Processing…'
@@ -242,7 +242,7 @@ export function CheckoutForm({
           <p className="mt-2 text-ink-400 text-sm">The 10-minute hold on your tickets has ended. The tickets may have been taken by another buyer.</p>
           <a
             href={`/events`}
-            className="mt-6 inline-block rounded-lg bg-[#1A1A2E] px-6 py-3 text-sm font-semibold text-white hover:bg-[#2d2d4a]"
+            className="mt-6 inline-block rounded-lg bg-ink-900 px-6 py-3 text-sm font-semibold text-white hover:bg-ink-800"
           >
             Try Again
           </a>
@@ -257,7 +257,7 @@ export function CheckoutForm({
       <div className="min-h-screen bg-canvas">
         <nav className="border-b border-ink-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-3xl flex items-center justify-between">
-            <span className="text-xl font-bold text-[#1A1A2E]">EVENTLINQS</span>
+            <span className="text-xl font-bold text-ink-900">EVENTLINQS</span>
             <CartTimer expiresAt={expiresAt} onExpired={handleExpired} />
           </div>
         </nav>
@@ -270,7 +270,7 @@ export function CheckoutForm({
                 clientSecret,
                 appearance: {
                   theme: 'stripe',
-                  variables: { colorPrimary: '#1A1A2E', borderRadius: '8px' },
+                  variables: { colorPrimary: '#0A1628', borderRadius: '8px' },
                 },
               }}
             >
@@ -298,7 +298,7 @@ export function CheckoutForm({
     <div className="min-h-screen bg-canvas">
       <nav className="border-b border-ink-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-3xl flex items-center justify-between">
-          <span className="text-xl font-bold text-[#1A1A2E]">EVENTLINQS</span>
+          <span className="text-xl font-bold text-ink-900">EVENTLINQS</span>
           <CartTimer expiresAt={expiresAt} onExpired={handleExpired} />
         </div>
       </nav>
@@ -403,7 +403,7 @@ export function CheckoutForm({
                 <button
                   type="submit"
                   disabled={isPending}
-                  className="w-full rounded-lg bg-[#1A1A2E] px-4 py-3.5 text-sm font-bold text-white disabled:opacity-50 hover:bg-[#2d2d4a] transition-colors"
+                  className="w-full rounded-lg bg-ink-900 px-4 py-3.5 text-sm font-bold text-white disabled:opacity-50 hover:bg-ink-800 transition-colors"
                 >
                   {isPending
                     ? 'Processing…'

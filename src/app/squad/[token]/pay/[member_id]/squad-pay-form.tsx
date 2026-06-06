@@ -83,8 +83,8 @@ function InnerPayForm({
         type="submit"
         disabled={!stripe || isPending}
         className="
-          mt-5 w-full h-12 rounded-xl bg-[#1A1A2E] text-white font-semibold text-base
-          disabled:opacity-50 hover:bg-[#2d2d4a] transition-colors
+          mt-5 w-full h-12 rounded-xl bg-ink-900 text-white font-semibold text-base
+          disabled:opacity-50 hover:bg-ink-800 transition-colors
           flex items-center justify-center gap-2
         "
       >
