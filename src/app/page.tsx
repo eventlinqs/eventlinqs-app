@@ -251,7 +251,6 @@ export default async function HomePage() {
             railLabel="Music events"
             events={musicEvents}
             viewAllHref="/events?category=music"
-            leadFeature
           />
         )}
 

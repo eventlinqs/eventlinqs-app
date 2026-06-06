@@ -46,7 +46,7 @@ export async function CategoryNavRail({ counts }: { counts: Record<string, numbe
   )
 
   return (
-    <section aria-label="Browse by category" className={`bg-canvas ${SECTION_TIGHT}`}>
+    <section aria-label="Browse by category" className={`border-t border-ink-200 bg-canvas ${SECTION_TIGHT}`}>
       <div className={CONTAINER}>
         <SnapRail
           eyebrow="Categories"

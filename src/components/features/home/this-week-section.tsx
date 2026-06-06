@@ -15,7 +15,7 @@ export async function ThisWeekSection({ events }: Props) {
   )
 
   return (
-    <section aria-label="This week" className={`bg-canvas ${SECTION_TIGHT}`}>
+    <section aria-label="This week" className={`border-t border-ink-200 bg-canvas ${SECTION_TIGHT}`}>
       <div className={CONTAINER}>
         <SnapRail
           eyebrow="This week"

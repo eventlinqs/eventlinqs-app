@@ -70,6 +70,22 @@ equivalent passes with an explicit verdict on each of: density, typography,
 imagery, UX, and mobile. Parity is the floor; the goal is to surpass. Anything
 not clearly at the bar gets reworked before delivery.
 
+## Rail standard (locked, Surface 0)
+
+Every horizontal rail on every surface follows this, derived from measured
+Ticketmaster and Eventbrite homepages at 1440 and 390:
+
+- One faint top divider per rail: `border-t border-ink-200`. Identical on every
+  rail, including This Week and Browse by Category.
+- CAPS heading at the measured scale: `.type-rail-heading` (24px at 1440, 22px
+  at 390, weight 700). Never `.type-h2` (40px) for a rail heading - that is
+  about 1.7x the competitor bar (both sit at 24px). Eyebrow stays 12px uppercase.
+- Uniform card dimensions within a rail. No feature-card size mixing in a
+  category rail (no `leadFeature` on a category rail).
+- World-class glide: eased arrow scroll, CSS scroll-snap, a partial next-card
+  peek at every viewport, drag on touch and pointer, `prefers-reduced-motion`
+  respected. No auto-rolling anywhere, including the hero. Manual only.
+
 ## QA agent brief
 
 Spin up a separate best-in-class reviewer. It does not mark the page complete

@@ -150,6 +150,10 @@
   --type-h2-mobile:            28px;
   --type-h3:                   28px;
   --type-h3-mobile:            22px;
+  /* Rail/section heading - measured against Ticketmaster (24px) and
+     Eventbrite (24px) section headings at 1440, 22px at 390. */
+  --type-rail:                 24px;
+  --type-rail-mobile:          22px;
   --type-h4:                   22px;
   --type-h4-mobile:            18px;
   --type-body:                 17px;
@@ -206,6 +210,7 @@
 .type-hero-display { font-size: var(--type-hero-display); line-height: 0.95; font-weight: 800; }
 .type-h1           { font-size: var(--type-h1);           line-height: 1.05; font-weight: 700; }
 .type-h2           { font-size: var(--type-h2);           line-height: 1.15; font-weight: 700; }
+.type-rail-heading { font-size: var(--type-rail);         line-height: 1.20; font-weight: 700; }
 .type-h3           { font-size: var(--type-h3);           line-height: 1.25; font-weight: 600; }
 .type-h4           { font-size: var(--type-h4);           line-height: 1.30; font-weight: 600; }
 .type-body         { font-size: var(--type-body);         line-height: 1.55; font-weight: 500; }
@@ -216,6 +221,7 @@
   .type-hero-display { font-size: var(--type-hero-display-mobile); line-height: 1.00; }
   .type-h1           { font-size: var(--type-h1-mobile);           line-height: 1.10; }
   .type-h2           { font-size: var(--type-h2-mobile);           line-height: 1.20; }
+  .type-rail-heading { font-size: var(--type-rail-mobile);         line-height: 1.20; }
   .type-h3           { font-size: var(--type-h3-mobile);           line-height: 1.30; }
   .type-h4           { font-size: var(--type-h4-mobile);           line-height: 1.35; }
   .type-body         { font-size: var(--type-body-mobile);         line-height: 1.55; }
