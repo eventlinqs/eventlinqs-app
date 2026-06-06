@@ -1121,3 +1121,30 @@ map. We benchmark to surpass TM's category-rail city page.
 | Mobile (390) | SURPASS | Stacked rails, horizontal-scroll chips, full-width 44px CTAs, photographic tiles. |
 
 No aspect BELOW -> no code change. Verified at 1440 + 390 on the preview.
+
+### Surface 5: Categories + Scenes V2 rail - RE-AUDITED, AT/ABOVE BAR (no code change)
+Captures: `surface-5/audit-2026-06-06/{ours-culture,eb-music-cat}-*` + the Scenes
+V2 rail verified on the preview homepage DOM. Live URLs: ours = preview
+/culture/african (the live category surface - /categories/* 308-redirect to
+/culture/*); EB = eventbrite Sydney Music category. (TM genre = the surface-1
+MUSIC browse: 2-up + imageless list + ads.)
+
+Stronger pattern (stated): EB's category page is the stronger competitor - a
+flat-blue hero + sub-category icon chips + several rails (most-popular, weekend,
+organisers-to-follow, parties, trending tags) of poster-flyer cards. We
+benchmark to surpass it, and to add the Scenes V2 discovery rail neither has.
+
+| Aspect | Verdict | Evidence (1440 + 390) |
+|---|---|---|
+| Scenes V2 rail | SURPASS | Homepage rail renders the research-backed V2 taxonomy - two families (12 music + 7 culture) in ONE rail with family markers (Electronic, Hip-Hop, Amapiano, Afrobeats, Caribbean, Latin, Pasifika, South Asian...), inheriting the eased glide + reveal + hover. Neither competitor has a cross-family scene-discovery rail. |
+| Imagery | SURPASS | /culture/african leads with a cinematic photo hero + real-photo sub-scene tiles + real-photo event grid; EB leads with a flat-blue hero + busy flyer cards + circular icon chips. |
+| Typography | SURPASS | Editorial display headings + sectioned eyebrows vs EB's flat rail labels. |
+| Density | PARITY | EB's category page is genuinely dense (many rails); ours matches with hero + intro + sub-scenes + by-city + events grid + related + organiser CTA, more editorially cohesive. |
+| Hierarchy | SURPASS | Clear editorial sectioning end to end. |
+| Motion | SURPASS | Scene rail glide + below-hero reveals + card hover; EB near-static. |
+| Dark compliance | PASS | The /culture organiser-CTA band is the ADAPTIVE photo+overlay treatment (verified in code + DOM: `bg-surface-dark` is only the base behind a `HeroMedia` photo + navy gradient when the culture has a backdrop; light `surface-1` band otherwise). No flat-dark panel - directive-compliant. |
+| Loading | PARITY | SSR full-page, on par with competitors. |
+| Mobile (390) | PARITY | Stacked rails, horizontal-scroll scene tiles, 44px targets. |
+
+No aspect BELOW -> no code change. Scenes V2 rail + culture landing + dark
+compliance verified on the preview at 1440 + 390.
