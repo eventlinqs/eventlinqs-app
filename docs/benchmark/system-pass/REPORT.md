@@ -659,10 +659,13 @@ not yet swept): `#4A90D9` (blue - queue-room, squads), `#6B7280` (grey -
 refund-dialog, global-error), `#F0F6FF` (squad summary tint). Map to brand
 neutrals/accents in a follow-up.
 
-EMAIL off-brand navy (separate surface family, literal hex required, NOT in the
-~31 app-surface count): auth templates (confirm-signup, password-reset,
-magic-link, reauthentication, email-change), the Stripe webhook ticket email,
-and waitlist promote.ts still use `#1A1A2E`. Map to `#0A1628` in an email pass.
+EMAIL off-brand navy - DONE ON MAIN (PR #89, merged 2026-06-06). The email
+brand pass landed on main and is now in this branch: auth templates (confirm-
+signup, password-reset, magic-link, reauthentication, email-change), the Stripe
+webhook ticket email, and waitlist promote.ts all mapped `#1A1A2E`/`#4A90D9` ->
+`#0A1628`. Verified post-merge: zero `#1A1A2E` remains in any email source
+file (`git grep` clean across `src/lib/email/**`, the Stripe webhook route, and
+promote.ts). Recorded in `docs/launch-hardening/email-brand-pass.md`.
 
 ---
 
@@ -921,5 +924,34 @@ is GREEN with full density. The one open mission item:
   since the 1400 width changed it most, then the buyer surfaces.
 Smaller deferred (staging, gate-verified here): live PAID checkout-form + on-sale
 stepper captures (prod events sale-blocked); queue-room + squad visual proof
-(auth/queue-gated); #8 form->payment step-transition polish; the email-template
-#1A1A2E/#4A90D9 pass (separate surface family).
+(auth/queue-gated); #8 form->payment step-transition polish. (The email-template
+#1A1A2E/#4A90D9 pass is no longer deferred - it landed on main via PR #89 and is
+now merged in; see the EMAIL note above.)
+
+---
+
+## Session: sync with main + #9 re-audit (2026-06-06)
+
+### Step 0 - SYNC WITH MAIN - DONE
+Merged `origin/main` into `feat/home-rebuild` (merge commit, 8 commits brought
+in: PRs #85-#92 - launch hardening, email brand pass + security headers (#89),
+flagged-branch triage + /events edge cache + CSP prep (#90), organiser payouts
+dashboard M6 Phase 4 (#91), payout notification emails (#92)).
+- Conflicts: only `.gitignore` (resolved as the union - kept this branch's
+  `design-captures/`, capture scripts, `qa/`, and the dev fixture ignore; the
+  duplicate `qa/` from main folded in). `next.config.ts` auto-merged cleanly and
+  was VERIFIED to keep BOTH main's security-header + CSP-report-only block and
+  the `/events` + `/events/:slug` edge-cache headers AND this branch's
+  build-stability `experimental` settings (cpus 8, staticGenerationMaxConcurrency
+  4, staticGenerationRetryCount 3) and `outputFileTracingIncludes` fixture trace.
+- Deps reconciled: `next` 16.2.2 -> 16.2.7 (`npm install` against the merged
+  lockfile); `db:types`/`db:types:check` scripts dropped per main; `prebuild`
+  fixture step preserved.
+- Stale email-colour remainder STRUCK (done on main, PR #89; verified zero
+  `#1A1A2E` in any email source post-merge).
+- Gates GREEN on the merged tree: tsc 0, eslint 0 errors (30 pre-existing
+  capture-script warnings), vitest 322 passed (36 files; +47 from main's payouts
+  tests), `next build` exit 0.
+- Vercel preview: pushed for the CI Lighthouse + preview build to run. NOTE:
+  the Vercel preview/build result is confirmed in the Vercel dashboard/CI, not
+  from this local environment (no Vercel CLI here).
