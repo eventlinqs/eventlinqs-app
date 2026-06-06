@@ -37,41 +37,45 @@ export default function CookiesPage() {
 
       <h2 id="how-we-use-them">How We Use Cookies</h2>
       <p>
-        EventLinqs (operated by Lawal Adams, ABN 30 837 447 587,
-        Geelong, Victoria, Australia) uses cookies for four things:
-        keeping your session secure, remembering your preferences,
-        understanding aggregate usage, and preventing abuse. We do not
-        use cookies for third-party advertising and we never sell cookie
-        data.
+        EventLinqs (operated by Lawal Adams trading as EventLinqs,
+        ABN 30 837 447 587, PO Box 141, Newcomb VIC 3219, Australia) sets
+        cookies only where they are essential: keeping your session
+        secure, completing checkout, remembering a few interface
+        preferences, and preventing abuse. Our analytics are cookieless
+        (see below), so no cookie is set to measure usage. We do not use
+        cookies for advertising, we do not track you across other
+        websites, and we never sell cookie data. Because we set no
+        tracking or advertising cookies, no cookie consent banner is
+        required.
       </p>
 
       <h2 id="categories">Cookie Categories</h2>
-      <p>We group cookies into four categories.</p>
+      <p>
+        EventLinqs sets only the following first-party cookies. There is
+        no advertising, cross-site tracking, or analytics cookie category.
+      </p>
       <ul>
         <li>
           <strong>Strictly necessary.</strong> Authentication, checkout
-          session, CSRF protection, rate limiting. These cannot be
-          disabled because the platform will not function without them.
-          Examples: <code>sb-access-token</code>, <code>sb-refresh-token</code>,
-          <code>el_city</code> (remembers your chosen browsing city).
+          session, CSRF protection, and abuse prevention such as rate
+          limiting. These cannot be disabled because login, ticket
+          purchase, and basic security will not work without them.
+          Examples: <code>sb-access-token</code>, <code>sb-refresh-token</code>.
         </li>
         <li>
-          <strong>Preferences.</strong> Remember UI choices like the last
-          viewed browsing city, currency, or list-vs-map view mode.
-          Clearing them only resets those choices.
-        </li>
-        <li>
-          <strong>Analytics.</strong> Cookieless or first-party analytics
-          so we can see which pages are used and where the platform is
-          slow. We aggregate this data and do not link it to your name
-          or email.
-        </li>
-        <li>
-          <strong>Fraud prevention.</strong> Used only when our abuse
-          systems flag suspicious activity. These cookies help us tell
-          real fans from bots and scalpers.
+          <strong>Preferences.</strong> A small number of first-party
+          cookies that remember interface choices, such as your chosen
+          browsing city (<code>el_city</code>), currency, or list-vs-map
+          view. Clearing them only resets those choices; everything still
+          works.
         </li>
       </ul>
+      <p>
+        Analytics is handled cookielessly by Plausible (see below), so no
+        analytics cookie is set on your device. Payment fraud screening on
+        the checkout page is performed by Stripe under its own cookies,
+        described under Third-Party Cookies.
+      </p>
 
       <h2 id="third-parties">Third-Party Cookies</h2>
       <p>
