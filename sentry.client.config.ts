@@ -20,19 +20,22 @@
 
 import * as Sentry from '@sentry/nextjs'
 import { scrubValue } from '@/lib/observability/pii-scrub'
+import { shouldInitSentry, sentryEnvironment } from '@/lib/observability/sentry-env'
 
 const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN
 
-// Only init when a DSN is configured. Missing DSN = SDK is a complete
-// no-op (no network, no events). Lets local dev run without Sentry
-// noise.
-if (dsn) {
+// Init only when a DSN is configured AND this is a production build.
+// shouldInitSentry() is the development kill-switch: a local `next dev`
+// server (NODE_ENV=development) never initialises the SDK, so it can never
+// send events, even when NEXT_PUBLIC_SENTRY_DSN is set in .env.local. A
+// missing DSN keeps the SDK a complete no-op (no network, no events).
+if (dsn && shouldInitSentry()) {
   Sentry.init({
     dsn,
     tracesSampleRate: 0.1,
     replaysSessionSampleRate: 0,
     replaysOnErrorSampleRate: 1.0,
-    environment: process.env.NEXT_PUBLIC_VERCEL_ENV || 'development',
+    environment: sentryEnvironment(true),
     release: process.env.VERCEL_GIT_COMMIT_SHA || 'local',
     integrations: [
       Sentry.replayIntegration({

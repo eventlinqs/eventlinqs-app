@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import * as Sentry from '@sentry/nextjs'
 import { captureException, isSentryEnabled } from '@/lib/observability/sentry'
 import { scrubValue } from '@/lib/observability/pii-scrub'
+import { shouldInitSentry, sentryEnvironment } from '@/lib/observability/sentry-env'
 import { applyRateLimit } from '@/lib/rate-limit/middleware'
 
 export const dynamic = 'force-dynamic'
@@ -50,12 +51,25 @@ function ensureSentryInitializedInHandler(): void {
 
   if (!dsn) return
 
+  // Development kill-switch. Mirrors every other init site: a local dev
+  // server must not initialise Sentry or dispatch the synthetic event,
+  // even when hit with a valid token, so dev never reports.
+  if (!shouldInitSentry()) {
+    diag.handlerInitOk = false
+    diag.handlerInitError = 'skipped: development build'
+    console.log('[health/sentry-error] skipping init: development build', {
+      nodeEnv: process.env.NODE_ENV,
+      timestamp: diag.handlerInitInvokedAt,
+    })
+    return
+  }
+
   try {
     Sentry.init({
       dsn,
       tracesSampleRate: 0.1,
       profilesSampleRate: 0.1,
-      environment: process.env.NEXT_PUBLIC_VERCEL_ENV || process.env.VERCEL_ENV || 'development',
+      environment: sentryEnvironment(false),
       release: process.env.VERCEL_GIT_COMMIT_SHA || 'local',
       beforeSend(event) {
         try {
@@ -133,6 +147,12 @@ export async function GET(request: Request) {
   // which is the canonical SDK-side check that init succeeded.
   const enabled = isSentryEnabled()
 
+  // Surface the pinned environment the SDK actually initialised with, so a
+  // production check can confirm the pin (production deploys report
+  // "production", previews "preview") without enabling SDK debug logging.
+  // null when the SDK did not initialise (development build, or no DSN).
+  const activeEnvironment = Sentry.getClient()?.getOptions().environment ?? null
+
   // [DIAG 2026-05-26..27] Surface per-step init diagnostics written by
   // instrumentation.ts, sentry.server.config.ts, the shim's module-load
   // IIFE, and this route's handler-internal init. When sentryEnabled is
@@ -157,6 +177,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     ok: true,
     sentryEnabled: enabled,
+    sentryEnvironment: activeEnvironment,
     note: enabled
       ? 'Synthetic error dispatched to Sentry. Within ~30s an event tagged synthetic=true should appear in the project.'
       : 'Sentry.isInitialized() returned false at request time. The synthetic error was routed through the dev console fallback in src/lib/observability/sentry.ts and did NOT reach Sentry. Inspect the `diag` field below for the per-step init state - the missing or failing step is the root cause.',
