@@ -338,8 +338,71 @@ backdrop-filters, no new JS or imagery.
 
 ---
 
+## Surface 6: Organiser landing (/organisers) - DONE (verified at bar, no code change)
+
+Goal: benchmark the organiser-marketing landing and refine on evidence.
+
+### Evidence (captured competitors, 1440 + 390)
+- Eventbrite (`/organizer/overview`): "WHERE EVENT ORGANIZERS GROW" split hero
+  (headline left, lifestyle photo right), Get-started/Contact-sales CTAs.
+  `design-captures/eventbrite/for-organisers-*`.
+- Ticketmaster Business AU: B2B marketing site.
+  `design-captures/ticketmaster/for-organisers-*`.
+- competitor-page-specs.md section 5 deltas for `/organisers`: (a) lead with
+  transparent all-in fees as a headline differentiator; (b) add concrete proof
+  (payout timing, dashboard screenshots, real organiser outcomes); (c) one
+  unmissable "Start selling" CTA with a fast self-serve path.
+
+### Reality audit + benchmark
+OrganisersLandingPage already surpasses both on completeness: hero ("Sell
+tickets. Keep more." + a transparent-fees/real-time-tools/checkout subtitle +
+primary "Start selling tickets" CTA), three value pillars (lead pillar is
+"All-in pricing"), a 4-step "how it works", an "open to every community"
+breadth section, an Organiser FAQ accordion (real help-centre content), and a
+dark "Ready to sell tickets?" CTA. No glassmorphism on this surface.
+
+Delta (a) is already substantially met (fees lead the H1 intent, the subtitle,
+and the first pillar). Delta (c) is met (single gold primary CTA, repeated in
+the closing band, self-serve at /organisers/signup).
+
+### Decision: no code change (avoid churn + fabrication)
+The only unmet delta is (b) concrete proof - dashboard screenshots, real payout
+timing figures, named organiser outcomes. That needs real assets and a locked
+platform-fee number (the fee % is still open per the fee-model decision), and
+fabricating proof would violate Law 1 (no generic) and Law 3 (verified data).
+EB's hero photo is the one stylistic lead, but a hero-image redesign needs a
+curated asset + founder design sign-off and was not in the specs' /organisers
+deltas, so it is not forced in an autonomous sweep. The page is strong,
+compliant, and above the bar as-is.
+
+### Deferred (need assets / data / founder sign-off)
+- Concrete proof block: payout-timing figure, a real dashboard shot, named
+  organiser outcomes (delta b).
+- Optional lifestyle hero photograph to match EB's visual richness.
+- Headline all-in fee % once the platform-fee decision locks (see
+  [[project_fee_model]]).
+
+### Captures
+- `surface-6/before/organisers-{1440,768,390}.png` (current state == delivered
+  state; no after diff because no code changed).
+
+### Benchmark verdict vs Ticketmaster + Eventbrite (1440 + 390)
+| Dimension | Verdict | Note |
+|---|---|---|
+| Density | Surpass | Pillars + steps + community + FAQ + CTA vs EB's single hero-led page. |
+| Typography | Parity | Display H1/headings at the locked scale. |
+| Imagery | Parity-minus | Text-forward hero; EB leads with a lifestyle photo (deferred asset). |
+| UX | Surpass | Clear self-serve path, FAQ reduces friction, one unmissable CTA. |
+| Mobile (390) | Parity | Stacked sections, 44px CTAs, accordion FAQ. |
+
+### Gates
+axe-core 0 violations (desktop + mobile). Copy clean: no em/en-dashes, no
+exclamations (the only `!` is a Tailwind important modifier), Australian
+English, community-first. lint/build/vitest unchanged (no code touched).
+
+---
+
 ## Remaining (run in fresh sessions, one surface each)
-6. Organiser landing (/organisers)
 7. Checkout flow surfaces
 8. Order confirmation and ticket view
 9. Category landing template (/categories/[slug])
