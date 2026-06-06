@@ -97,7 +97,7 @@
      - `src/components/features/events/save-event-button.tsx:39` (`'use client'`) - login redirect + `session.user.id` for an RLS-protected `saved_events` write; the server authority is RLS (`user_id = auth.uid()`). Switching to `getUser()` would add an auth-server round-trip per click with no security gain.
    - Regression guard: `tests/unit/security/no-server-side-getsession.test.ts` fails the build if any non-`'use client'` file calls `auth.getSession(`.
 8. Missing /public/cities/*.svg assets 404ing on homepage (audit which still missing post-Batch-11)
-9. Stripe revenue card rounding display bug
+9. ~~Stripe revenue card rounding display bug~~ FIXED (2026-06-06): admin GMV/revenue tiles used `maximumFractionDigits: 0` (rounded to whole dollars, broke reconciliation). Now render exact cents via `formatMoneyDisplay`. Before/after in `docs/launch-hardening/stripe-rounding-before-after.md`; test `tests/unit/money/format.test.ts`.
 10. Authed + organiser E2E smoke test
 11. M4.5 Close-out Steps E and A2
 12. ~~Run `supabase migration list --linked` and reconcile all local migrations against remote applied list before launch~~ DONE (2026-06-06): no drift, 34 local = 34 remote, all matched. See `docs/launch-hardening/migration-drift-2026-06-06.md`. Re-run if migrations are added before launch.
