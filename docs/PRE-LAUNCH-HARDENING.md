@@ -99,11 +99,11 @@
 8. Missing /public/cities/*.svg assets 404ing on homepage (audit which still missing post-Batch-11)
 9. ~~Stripe revenue card rounding display bug~~ FIXED (2026-06-06): admin GMV/revenue tiles used `maximumFractionDigits: 0` (rounded to whole dollars, broke reconciliation). Now render exact cents via `formatMoneyDisplay`. Before/after in `docs/launch-hardening/stripe-rounding-before-after.md`; test `tests/unit/money/format.test.ts`.
 10. Authed + organiser E2E smoke test
-11. M4.5 Close-out Steps E and A2
+11. M4.5 Close-out Steps E and A2 - AUDITED (2026-06-06): **A2** (unicode escape sweep) DONE, zero `\u20` escapes and zero em-dashes or en-dashes in `src/`. **Step E** is not defined in the M4.5 manifest (Streams A-D only), so it cannot be actioned; the documented close-out is merged to main. Founder to confirm what "E" referred to. See `docs/launch-hardening/m4.5-closeout-EA2-audit.md`.
 12. ~~Run `supabase migration list --linked` and reconcile all local migrations against remote applied list before launch~~ DONE (2026-06-06): no drift, 34 local = 34 remote, all matched. See `docs/launch-hardening/migration-drift-2026-06-06.md`. Re-run if migrations are added before launch.
-13. Migrate src/types/database.ts (423 lines, handwritten) to `supabase gen types typescript --linked` before launch
-14. ABN 30 837 447 587 inserted into /legal/terms and /legal/privacy (replace "pending registration" text)
-15. Street address or PO Box in legal pages
+13. ~~Migrate src/types/database.ts to `supabase gen types typescript --linked`~~ DONE (2026-06-06): `database.ts` was already generated-derived (not 423-line handwritten). Regenerated the section above the `// BEGIN LEGACY ALIASES` marker from the live schema to pick up the genre layer (`artists`, `event_artists`, `genre_slug`/`subgenre_slug`/`is_featured`); the handwritten aliases appendix is preserved. Verified against `scripts/check-types-drift.sh`; tsc 0.
+14. ~~ABN 30 837 447 587 inserted into /legal/terms and /legal/privacy (replace "pending registration" text)~~ DONE (2026-06-06): ABN present in both pages; no "pending registration" text anywhere under /legal.
+15. ~~Street address or PO Box in legal pages~~ DONE (2026-06-06): PO Box at Newcomb VIC 3219 added to the terms entity line and the privacy Contact section. Box number to be inserted by the founder when available.
 16. /legal/cookies and /legal/organiser-terms still ComingSoon placeholders
 17. Logo delivery (Fiverr Pro brief in progress)
 18. Plausible analytics installation (cookieless, matches Privacy Policy)
