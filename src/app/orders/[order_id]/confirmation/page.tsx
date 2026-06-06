@@ -139,7 +139,7 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
   )
 
   return (
-    <div className="min-h-screen bg-ink-100">
+    <div className="min-h-screen bg-canvas">
       <nav className="border-b border-ink-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl">
           <Link href={logoHref} className="text-xl font-bold text-ink-900">EVENTLINQS</Link>
@@ -215,7 +215,7 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
             </h3>
             <div className="space-y-6">
               {issuedTickets.map(t => (
-                <div key={t.ticket_code} className="rounded-xl border border-ink-200 bg-ink-100 p-5">
+                <div key={t.ticket_code} className="rounded-xl border border-ink-200 bg-white p-5 shadow-sm">
                   <div
                     className="flex items-center justify-center rounded-lg bg-white p-4 [&>svg]:h-auto [&>svg]:w-full [&>svg]:max-w-[220px]"
                     // Server-generated SVG QR (no raw img, satisfies the media rules).

@@ -239,32 +239,42 @@ export function PricingPage() {
         </div>
       </ContentSection>
 
-      {/* -- 4. Final CTA band --------------------------------------- */}
-      <section className="relative overflow-hidden bg-[var(--surface-dark)] py-20 md:py-28">
+      {/* -- 4. Final CTA band (light canvas, navy-on-canvas) -------- */}
+      <section className="relative overflow-hidden border-t border-ink-100 bg-[var(--surface-1)] py-20 md:py-28">
         <div
           className="pointer-events-none absolute inset-x-0 top-0 h-0.5"
           style={{
             background: 'linear-gradient(90deg, transparent 0%, var(--brand-accent) 50%, transparent 100%)',
-            opacity: 0.6,
+            opacity: 0.7,
+          }}
+          aria-hidden="true"
+        />
+        {/* Subtle warm gold tint - premium and light (Phase B touch) */}
+        <div
+          className="pointer-events-none absolute"
+          style={{
+            top: '-30%', right: '-10%', width: '60%', height: '160%',
+            background: 'radial-gradient(ellipse 70% 60% at 100% 50%, var(--brand-accent), transparent 62%)',
+            opacity: 0.06,
           }}
           aria-hidden="true"
         />
         <div className="relative z-10 mx-auto max-w-6xl px-4 md:px-6 lg:px-8">
           <div className="flex flex-col items-center gap-8 text-center">
             <div className="max-w-2xl">
-              <h2 className="font-display text-3xl font-bold leading-tight text-white sm:text-4xl">
+              <h2 className="font-display text-3xl font-bold leading-tight text-[var(--text-primary)] sm:text-4xl">
                 Ready to see it in action?
               </h2>
-              <p className="mt-4 text-base leading-relaxed text-white/65">
+              <p className="mt-4 text-base leading-relaxed text-[var(--text-secondary)]">
                 Sign up and build your first event in minutes. No credit card required until you
                 sell a ticket.
               </p>
             </div>
             <div className="flex flex-col gap-4 sm:flex-row">
-              <Button variant="primary" size="lg" onSurface="dark" href="/organisers/signup">
+              <Button variant="primary" size="lg" href="/organisers/signup">
                 Start selling tickets
               </Button>
-              <Button variant="secondary" size="lg" onSurface="dark" href="/contact?topic=organiser">
+              <Button variant="secondary" size="lg" href="/contact?topic=organiser">
                 Talk to us
               </Button>
             </div>

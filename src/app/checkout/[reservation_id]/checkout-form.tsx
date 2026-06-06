@@ -231,7 +231,7 @@ export function CheckoutForm({
 
   if (expired) {
     return (
-      <div className="min-h-screen bg-ink-100 flex items-center justify-center px-4">
+      <div className="min-h-screen bg-canvas flex items-center justify-center px-4">
         <div className="text-center max-w-sm">
           <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
             <svg className="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -254,7 +254,7 @@ export function CheckoutForm({
   // Once we have a client secret, show Stripe Elements
   if (clientSecret && orderId) {
     return (
-      <div className="min-h-screen bg-ink-100">
+      <div className="min-h-screen bg-canvas">
         <nav className="border-b border-ink-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-3xl flex items-center justify-between">
             <span className="text-xl font-bold text-[#1A1A2E]">EVENTLINQS</span>
@@ -295,7 +295,7 @@ export function CheckoutForm({
   }
 
   return (
-    <div className="min-h-screen bg-ink-100">
+    <div className="min-h-screen bg-canvas">
       <nav className="border-b border-ink-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-3xl flex items-center justify-between">
           <span className="text-xl font-bold text-[#1A1A2E]">EVENTLINQS</span>

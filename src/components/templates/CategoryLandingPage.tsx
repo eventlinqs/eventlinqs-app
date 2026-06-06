@@ -199,40 +199,27 @@ export function CategoryLandingPage({ category, liveEvents = [] }: CategoryLandi
         </div>
       </ContentSection>
 
-      {/* ── 6. Final CTA - dark band, single centred button ──────── */}
-      <section className="relative overflow-hidden bg-[var(--surface-dark)] py-20 md:py-28 lg:py-32">
+      {/* ── 6. Final CTA - light canvas, single centred button ────── */}
+      <section className="relative overflow-hidden border-t border-ink-100 bg-[var(--surface-1)] py-20 md:py-28 lg:py-32">
         {/* Top accent border */}
         <div
           className="pointer-events-none absolute inset-x-0 top-0 h-0.5"
           style={{
             background: 'linear-gradient(90deg, transparent 0%, var(--brand-accent) 50%, transparent 100%)',
-            opacity: 0.6,
+            opacity: 0.7,
           }}
           aria-hidden="true"
         />
-        {/* Radial glow - brand accent, centre-right */}
+        {/* Subtle warm gold tint - premium and light (Phase B touch) */}
         <div
           className="pointer-events-none absolute"
           style={{
-            top: '-20%',
+            top: '-30%',
             right: '-10%',
-            width: '65%',
-            height: '140%',
-            background: 'radial-gradient(ellipse 70% 60% at 100% 50%, var(--brand-accent), transparent 60%)',
-            opacity: 0.10,
-          }}
-          aria-hidden="true"
-        />
-        {/* Radial glow - white, bottom-left */}
-        <div
-          className="pointer-events-none absolute"
-          style={{
-            bottom: '-10%',
-            left: '-5%',
-            width: '55%',
-            height: '80%',
-            background: 'radial-gradient(ellipse 60% 50% at 0% 100%, rgb(255 255 255), transparent 50%)',
-            opacity: 0.04,
+            width: '60%',
+            height: '160%',
+            background: 'radial-gradient(ellipse 70% 60% at 100% 50%, var(--brand-accent), transparent 62%)',
+            opacity: 0.06,
           }}
           aria-hidden="true"
         />
@@ -241,13 +228,13 @@ export function CategoryLandingPage({ category, liveEvents = [] }: CategoryLandi
           <div className="flex flex-col items-center gap-8 text-center">
             <div className="max-w-2xl">
               {/* Section marker */}
-              <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-accent)]">
+              <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-accent-strong)]">
                 For Organisers
               </p>
-              <h2 className="font-display text-3xl font-bold leading-tight text-white sm:text-4xl lg:text-5xl">
+              <h2 className="font-display text-3xl font-bold leading-tight text-[var(--text-primary)] sm:text-4xl lg:text-5xl">
                 Ready to put your {displayName} event on the map?
               </h2>
-              <p className="mt-4 text-base leading-relaxed text-white/65 sm:text-lg">
+              <p className="mt-4 text-base leading-relaxed text-[var(--text-secondary)] sm:text-lg">
                 Join the organisers who&apos;ve made EventLinqs their home. Transparent fees,
                 real human support, and a platform that actually understands the community.
               </p>
@@ -256,7 +243,6 @@ export function CategoryLandingPage({ category, liveEvents = [] }: CategoryLandi
             <Button
               variant="primary"
               size="lg"
-              onSurface="dark"
               href={`/contact?topic=organiser&interest=${slug}`}
             >
               Talk to us about your event
