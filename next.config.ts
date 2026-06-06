@@ -67,6 +67,30 @@ const nextConfig: NextConfig = {
           ...SECURITY_HEADERS,
         ],
       },
+      // Edge-cache the discovery surfaces so a crawler burst (e.g. Facebook
+      // scraping Open Graph tags) is served from Vercel's CDN instead of
+      // re-rendering against the database on every hit. CDN-Cache-Control only
+      // affects Vercel's edge cache, NOT the browser Cache-Control, so it does
+      // not fight Next's per-page no-store. Both routes are anonymous (no
+      // cookies in the render path), so a shared cached response is safe.
+      {
+        // /events is dynamic (reads searchParams), so without this it is
+        // never edge-cached. s-maxage 60s with 5-minute stale-while-revalidate
+        // matches the page's `revalidate = 60`.
+        source: '/events',
+        headers: [
+          { key: 'CDN-Cache-Control', value: 'public, s-maxage=60, stale-while-revalidate=300' },
+        ],
+      },
+      {
+        // Event detail is ISR (revalidate 300) and already edge-cached on
+        // Vercel; this makes the edge policy explicit and serves stale for up
+        // to a day while revalidating.
+        source: '/events/:slug',
+        headers: [
+          { key: 'CDN-Cache-Control', value: 'public, s-maxage=300, stale-while-revalidate=86400' },
+        ],
+      },
     ]
   },
   async rewrites() {
