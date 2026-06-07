@@ -104,7 +104,7 @@ export function EventShareBar({ eventTitle, eventDate, eventUrl, variant = 'ligh
           target="_blank"
           rel="noreferrer"
           aria-label={`Share via ${l.label}`}
-          className={`inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold transition-all hover:-translate-y-0.5 ${l.bg} ${l.textClass}`}
+          className={`inline-flex h-11 items-center gap-2 rounded-full px-4 text-sm font-semibold transition-all hover:-translate-y-0.5 ${l.bg} ${l.textClass}`}
         >
           {l.icon}
           <span className="hidden sm:inline">{l.label}</span>
@@ -119,7 +119,7 @@ export function EventShareBar({ eventTitle, eventDate, eventUrl, variant = 'ligh
       <button
         type="button"
         onClick={onCopy}
-        className={`inline-flex h-10 items-center gap-2 rounded-full border border-[var(--surface-2)] bg-[var(--surface-0)] px-4 text-sm font-semibold transition-all hover:-translate-y-0.5 hover:border-[var(--brand-accent-strong)] ${labelClass}`}
+        className={`inline-flex h-11 items-center gap-2 rounded-full border border-[var(--surface-2)] bg-[var(--surface-0)] px-4 text-sm font-semibold transition-all hover:-translate-y-0.5 hover:border-[var(--brand-accent-strong)] ${labelClass}`}
       >
         {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
         <span>{copied ? 'Copied' : 'Copy link'}</span>

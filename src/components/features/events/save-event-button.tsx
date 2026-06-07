@@ -67,7 +67,7 @@ export function SaveEventButton({
       aria-label={saved ? 'Remove from saved' : 'Save event'}
       aria-pressed={saved}
       disabled={isPending}
-      className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition-all duration-200 hover:scale-110 ${base} ${savedState} ${className}`}
+      className={`inline-flex h-11 w-11 items-center justify-center rounded-full transition-all duration-200 hover:scale-110 ${base} ${savedState} ${className}`}
     >
       <Heart className={`h-4 w-4 ${saved ? 'fill-current' : ''}`} />
     </button>

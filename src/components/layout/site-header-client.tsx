@@ -276,7 +276,7 @@ export function SiteHeaderClient({ location, cities, user, userEmail }: SiteHead
                 >
                   Sign in
                 </Link>
-                <Button href="/signup" prefetch={false} variant="primary" size="sm" className="hidden md:inline-flex">
+                <Button href="/signup" prefetch={false} variant="primary" size="sm" className="inline-flex min-h-11 items-center">
                   Get Started
                 </Button>
               </>
@@ -333,7 +333,13 @@ export function SiteHeaderClient({ location, cities, user, userEmail }: SiteHead
         />
       )}
 
-      {/* Mobile sheet */}
+      {/* Mobile sheet, inside a viewport-sized clip wrapper so the closed
+          (translated off-screen-right) panel never expands the document width.
+          `overflow-x: clip` on html/body does NOT clip a position:fixed panel
+          (its containing block is the viewport), so the panel is `absolute`
+          inside this fixed inset-0 clip container instead. pointer-events-none on
+          the wrapper lets backdrop clicks through; the panel re-enables them. */}
+      <div className="pointer-events-none fixed inset-0 z-50 overflow-x-clip md:hidden">
       <div
         id="mobile-nav-sheet"
         ref={sheetRef}
@@ -342,7 +348,7 @@ export function SiteHeaderClient({ location, cities, user, userEmail }: SiteHead
         aria-label="Navigation menu"
         onKeyDown={handleSheetKeyDown}
         className={[
-          'fixed inset-y-0 right-0 z-50 w-full max-w-sm bg-white shadow-2xl md:hidden',
+          'pointer-events-auto absolute inset-y-0 right-0 w-full max-w-sm bg-white shadow-2xl',
           'flex flex-col transition-transform duration-300 ease-out',
           isOpen ? 'translate-x-0' : 'translate-x-full',
         ].join(' ')}
@@ -418,6 +424,7 @@ export function SiteHeaderClient({ location, cities, user, userEmail }: SiteHead
             </>
           )}
         </div>
+      </div>
       </div>
     </>
   )

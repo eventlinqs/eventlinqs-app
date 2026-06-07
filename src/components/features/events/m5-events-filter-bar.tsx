@@ -143,7 +143,7 @@ export function EventsFilterBar({ params, categories, view, hasGeoSignal, basePa
                   onClick={() => handlePresetClick(p.key)}
                   aria-pressed={isActive}
                   className={
-                    'rounded-full px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 ' +
+                    'inline-flex min-h-11 items-center justify-center rounded-full px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 ' +
                     (isActive
                       ? 'bg-ink-900 text-white'
                       : 'border border-ink-200 bg-white text-ink-700 hover:border-ink-400')
@@ -193,7 +193,7 @@ export function EventsFilterBar({ params, categories, view, hasGeoSignal, basePa
               aria-haspopup="dialog"
               aria-expanded={sheetOpen}
               className={
-                'inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 ' +
+                'inline-flex min-h-11 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 ' +
                 (moreFiltersActiveCount > 0
                   ? 'border-gold-500 bg-gold-100 text-gold-600'
                   : 'border-ink-200 bg-white text-ink-700 hover:border-ink-400')
@@ -222,7 +222,7 @@ export function EventsFilterBar({ params, categories, view, hasGeoSignal, basePa
               onClick={() => handleCategoryClick(null)}
               aria-pressed={!activeCategory}
               className={
-                'shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 ' +
+                'inline-flex min-h-11 shrink-0 items-center justify-center rounded-full px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 ' +
                 (!activeCategory
                   ? 'bg-gold-500 text-ink-900'
                   : 'border border-ink-200 bg-white text-ink-700 hover:border-ink-400')
@@ -239,7 +239,7 @@ export function EventsFilterBar({ params, categories, view, hasGeoSignal, basePa
                   onClick={() => handleCategoryClick(c.slug)}
                   aria-pressed={isActive}
                   className={
-                    'shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 ' +
+                    'inline-flex min-h-11 shrink-0 items-center justify-center rounded-full px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 ' +
                     (isActive
                       ? 'bg-gold-500 text-ink-900'
                       : 'border border-ink-200 bg-white text-ink-700 hover:border-ink-400')

@@ -102,7 +102,7 @@ export function StickyActionBar({
                 type="button"
                 onClick={handleShare}
                 aria-label="Share event"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-ink-200 bg-white text-ink-600 transition-colors hover:border-gold-400 hover:text-gold-600"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-ink-200 bg-white text-ink-600 transition-colors hover:border-gold-400 hover:text-gold-600"
               >
                 <Share2 className="h-4 w-4" />
               </button>
@@ -110,7 +110,7 @@ export function StickyActionBar({
                 type="button"
                 onClick={() => setSaved(s => !s)}
                 aria-label={saved ? 'Remove from saved' : 'Save event'}
-                className={`inline-flex h-9 w-9 items-center justify-center rounded-full border transition-colors ${
+                className={`inline-flex h-11 w-11 items-center justify-center rounded-full border transition-colors ${
                   saved
                     ? 'border-gold-500 bg-gold-500/15 text-gold-600'
                     : 'border-ink-200 bg-white text-ink-600 hover:border-gold-400 hover:text-gold-600'
