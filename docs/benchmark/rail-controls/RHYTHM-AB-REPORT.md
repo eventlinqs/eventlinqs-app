@@ -1,5 +1,14 @@
 # Rail Control System + Homepage Rhythm A/B/C - Report
 
+> **DECISION (founder, 2026-06-08): VARIANT B WINS.** The role rhythm (wider card
+> gaps, square scene tiles + gold-accent divider, the larger feature-card
+> Trending row, distinct city destination tiles), on top of the rail control
+> system, is the chosen homepage rhythm. Variant B was cherry-picked into
+> `feat/home-rebuild` (commit 2f8d27a); branches `test/home-rhythm-b` and
+> `test/home-rhythm-c` were deleted (local + origin). Four follow-on refinements
+> were then applied to feat/home-rebuild - see
+> `docs/benchmark/rail-controls/VARIANT-B-REFINEMENTS.md`.
+
 Mission 3. Date: 2026-06-08 (overnight). NO MERGE anywhere. Branches pushed,
 three Vercel previews live.
 
