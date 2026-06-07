@@ -8,6 +8,7 @@ import { HeroMedia, MarketingMedia } from '@/components/media'
 import { OrganiserCommunityStrip } from '@/components/features/organisers/community-strip'
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 import { helpTopics } from '@/lib/help-content'
+import { PUBLIC_FEE_LABEL } from '@/lib/pricing/public-fee'
 import {
   ORGANISER_HERO,
   ORGANISER_BANDS,
@@ -61,18 +62,9 @@ interface FeatureBand {
   reverse?: boolean
 }
 
+// Band 1 (transparent fees) was promoted to a dedicated pricing-clarity band
+// (PricingClarityBand) that shows the ACTUAL numbers, not just a promise.
 const BANDS: FeatureBand[] = [
-  {
-    eyebrow: 'Transparent fees',
-    title: 'All-in pricing, so you keep more.',
-    body: 'No surprise fees bolted on at the final step, the trick that loses buyers everywhere else. The price your audience sees is the price they pay, and fee caps protect their trust on every event you run.',
-    points: [
-      'One clear fee, shown from the first click',
-      'Fee caps that protect buyer trust at scale',
-      'No setup fees, no monthly fees, no lock-in',
-    ],
-    image: ORGANISER_BANDS.pricing,
-  },
   {
     eyebrow: 'Event-day tools',
     title: 'Run the night without a spreadsheet in sight.',
@@ -147,6 +139,75 @@ function FeatureBandRow({ band }: { band: FeatureBand }) {
   )
 }
 
+// ── Pricing-clarity band: the ACTUAL numbers, pulled from the pricing source
+//    (PUBLIC_FEE_LABEL), never invented. Two cards: free events free, paid
+//    tickets one clear fee. Conversion-critical "what it costs" in one glance.
+function PricingClarityBand() {
+  const FREE_POINTS = ['Unlimited free events and free tickets', 'All platform features included', 'No card required to start']
+  const PAID_POINTS = ['Pass it on at checkout or absorb it, your choice', 'No setup fees, no monthly fees, no lock-in', 'Multi-currency checkout, payouts via Stripe']
+  return (
+    <ContentSection surface="base" width="wide" topBorder reveal>
+      <div className="max-w-2xl">
+        <p className="mb-3 font-display text-xs font-bold uppercase tracking-[0.2em] text-[var(--brand-accent-strong)]">
+          Pricing
+        </p>
+        <h2 className="font-display text-3xl font-extrabold tracking-tight text-[var(--text-primary)] sm:text-4xl">
+          Simple pricing. No surprises.
+        </h2>
+        <p className="mt-4 text-base leading-relaxed text-[var(--text-secondary)] sm:text-lg">
+          Free events are free, forever. For paid tickets, one clear fee shown from the first
+          click. What your fans see at checkout is what they pay.
+        </p>
+      </div>
+
+      <div className="mt-8 grid gap-5 sm:grid-cols-2">
+        {/* Free */}
+        <div className="flex flex-col rounded-2xl border border-[var(--surface-2)] bg-[var(--surface-0)] p-7">
+          <p className="font-display text-sm font-bold uppercase tracking-[0.14em] text-[var(--text-primary)]">Free events</p>
+          <p className="mt-3">
+            <span className="font-display text-3xl font-extrabold tracking-tight text-[var(--text-primary)] sm:text-4xl">Free forever</span>
+          </p>
+          <p className="mt-2 text-sm text-[var(--text-secondary)]">Zero platform fees on every free event.</p>
+          <ul className="mt-5 flex-1 space-y-2.5">
+            {FREE_POINTS.map(p => (
+              <li key={p} className="flex items-start gap-2.5 text-sm text-[var(--text-secondary)]">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[var(--brand-accent-strong)]" aria-hidden="true" />
+                {p}
+              </li>
+            ))}
+          </ul>
+        </div>
+        {/* Paid (highlighted) */}
+        <div className="flex flex-col rounded-2xl border border-[var(--brand-accent)]/50 bg-[var(--brand-accent)]/5 p-7 ring-1 ring-[var(--brand-accent)]/20">
+          <p className="font-display text-sm font-bold uppercase tracking-[0.14em] text-[var(--text-primary)]">Paid events</p>
+          <p className="mt-3">
+            <span className="font-display text-3xl font-extrabold tracking-tight text-[var(--text-primary)] sm:text-4xl">{PUBLIC_FEE_LABEL}</span>
+            <span className="ml-2 text-sm text-[var(--text-secondary)]">per paid ticket sold. That is the whole fee.</span>
+          </p>
+          <p className="mt-2 text-sm text-[var(--text-secondary)]">Everything in Free, plus paid-ticket selling.</p>
+          <ul className="mt-5 flex-1 space-y-2.5">
+            {PAID_POINTS.map(p => (
+              <li key={p} className="flex items-start gap-2.5 text-sm text-[var(--text-secondary)]">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[var(--brand-accent-strong)]" aria-hidden="true" />
+                {p}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      <div className="mt-6">
+        <Link
+          href="/pricing"
+          className="text-sm font-medium text-[var(--brand-accent-strong)] underline underline-offset-2 transition-colors hover:text-[var(--text-primary)]"
+        >
+          See full pricing and FAQ &rsaquo;
+        </Link>
+      </div>
+    </ContentSection>
+  )
+}
+
 export function OrganisersLandingPage() {
   return (
     <PageShell>
@@ -187,6 +248,12 @@ export function OrganisersLandingPage() {
                 All-in pricing your fans trust, real-time event-day tools, and a checkout they
                 actually complete. Open to every organiser and every community in Australia.
               </p>
+              {/* Cost in one glance, above the fold (exact fee from the pricing
+                  source, never invented). */}
+              <p className="mt-3 text-sm font-semibold text-white">
+                Free events are free.
+                <span className="font-normal text-white/85"> Paid tickets {PUBLIC_FEE_LABEL} each.</span>
+              </p>
               <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
                 <Button variant="primary" size="lg" href="/organisers/signup">
                   Start selling tickets
@@ -219,7 +286,10 @@ export function OrganisersLandingPage() {
         </Reveal>
       </ContentSection>
 
-      {/* ── 3-5. Alternating image+text feature bands ────────────────────── */}
+      {/* ── 3. Pricing clarity (real numbers, conversion-critical) ───────── */}
+      <PricingClarityBand />
+
+      {/* ── 4-5. Alternating image+text feature bands ────────────────────── */}
       {BANDS.map(band => (
         <FeatureBandRow key={band.title} band={band} />
       ))}
