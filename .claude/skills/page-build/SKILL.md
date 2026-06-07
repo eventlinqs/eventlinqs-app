@@ -17,6 +17,17 @@ Core principle: build what the evidence SHOWS to that standard (Phase A), then
 layer the EventLinqs touch on top (Phase B). Never invent a layout the evidence
 does not support.
 
+## Governing laws (read before you build - Law 0)
+
+`CLAUDE.md` is the constitution; this skill executes its laws on one page and
+holds the detailed locked specs that elaborate them. Before the first edit, read
+the `CLAUDE.md` sections that govern your surface and state which laws govern the
+task. A page build is always governed by Law 0, Law 1 (no generic), Law 2
+(evidence-driven), the Design system, Motion, Law 5 (zero dead links), and
+Verification and gates; a marketing surface adds Law 4. The standards below are
+the build-time detail for the Design system and Motion laws, not a second source
+of truth - on any conflict, `CLAUDE.md` and the code win.
+
 ## Workflow
 
 Work the steps in order. Do not jump ahead.
@@ -42,11 +53,15 @@ Work the steps in order. Do not jump ahead.
    scene discovery, and the native artist and genre layer. Community is a
    differentiator on top, not the identity.
 
-6. **Inherit the design system exactly.** No new colours, sizes, or type. Navy
-   #0A1628 and gold #D4A437, light and airy. Archivo display, Hanken Grotesk
-   body, Manrope UI. Image-alone cards with details below; text on an image only
-   in the restrained hero. CAPS rail headings, one faint divider per rail, tight
-   spacing. Tokens and patterns come from `src/app/page.tsx`.
+6. **Inherit the design system exactly** (CLAUDE.md: Design system). No new
+   colours, sizes, or type. Navy #0A1628 and gold, light and airy: solid opaque
+   surfaces (no glassmorphism), no flat-dark backgrounds (darkness only from a
+   photo + navy overlay). Archivo display, Hanken Grotesk body, Manrope UI.
+   Image-alone cards with details below; text on an image only in the restrained
+   hero. CAPS rail headings, one faint divider per rail, tight spacing. The hero
+   is a priority AVIF raster that owns LCP and never animates; rails defer
+   scroll-snap to first interaction (Hero and LCP integrity). Tokens and patterns
+   come from `src/app/globals.css` and `src/app/page.tsx`.
 
 7. **Media architecture.** All imagery flows through the media components
    (`EventCardMedia`, `HeroMedia`, `CityTileImage`, `OrganiserAvatar`). No raw
@@ -54,8 +69,13 @@ Work the steps in order. Do not jump ahead.
    Above-fold hero is a priority AVIF raster. Follow `docs/MEDIA-ARCHITECTURE.md`.
 
 8. **Production-readiness.** Handle every state. Touch targets 44px or larger.
-   Run a production build, then verify Lighthouse 95+ on desktop AND mobile,
-   axe-core 0 violations, and Playwright before and after at 1440, 768, and 390.
+   Run a production build, then verify Lighthouse 95+ on desktop AND mobile
+   (median on the preview or warmed prod, never a single localhost run), axe-core
+   0 violations, and Playwright before and after at 1440, 768, and 390. On any
+   discovery or navigation surface, prove Law 5 (zero dead links) by running
+   `scripts/link-integrity-crawl.mjs` against the preview or a local production
+   server: every rendered card, tile, nav, footer, and CTA link must resolve 200.
+   Verify by clicking, never by a hand-picked slug.
 
 9. **QA agent.** Dispatch a fresh reviewer (see below). It refuses to pass a
    page that sits below the bar on any dimension. If it fails, iterate.
@@ -190,10 +210,13 @@ until ALL of these hold:
 - Every state handled: loading, empty, error, populated.
 - Touch targets 44px or larger, keyboard reachable, focus visible.
 - axe-core 0 violations.
+- Zero dead links (Law 5): the link-integrity crawler returns 0 non-200 on every
+  link the surface renders. No card or tile 404s on click.
 - Lighthouse 95+ on desktop AND mobile on a production build (never localhost
   dev, never a single run when a median is available).
 - Playwright before and after at 1440, 768, and 390.
-- Benchmark gate passes against the competitor equivalent.
+- Benchmark gate passes against the competitor equivalent, SURPASS/PARITY/BELOW
+  per aspect at full fixture density; any BELOW iterates.
 - Copy clean: no em-dashes or en-dashes, Australian English, community-first,
   no banned words (diaspora, friends-launch), no generic filler.
 
@@ -207,8 +230,15 @@ vibes, to pass.
 - Inventing colours, spacing, or fonts. Inherit from the homepage only.
 - Painting event titles or prices onto card photography. Details sit below.
 - Claiming done on a dev build or a single Lighthouse run.
+- Certifying a surface by a hand-picked slug instead of clicking its cards. If
+  density and detail draw from two sources (fixture vs DB), every card can 404
+  while the page looks finished (Law 5). One source of truth; verify by clicking.
 - Shipping a text-only marketing surface (icon-and-text pillars, a wall of
   text). Image-rich, full-craft treatment is mandatory (Law 4).
+- Reintroducing glassmorphism (`backdrop-blur`) or a flat-dark band. Solid
+  opaque, light navy-on-canvas; darkness only from a photo + navy overlay.
+- Putting static `scroll-snap` back on a rail (kills hero LCP). Snap arms on
+  first interaction.
 - Merging without approval, or using `--admin` to bypass a red gate.
 
 ## Red flags, stop and fix

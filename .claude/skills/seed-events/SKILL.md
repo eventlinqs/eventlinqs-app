@@ -15,6 +15,21 @@ optimised imagery from a local stock library. Read `CLAUDE.md` first.
 Core principle: a seed is a shipped surface. The same laws apply. No generic
 copy, no placeholder imagery, no em-dashes, Australian English throughout.
 
+## Governing laws (read before you seed - Law 0)
+
+`CLAUDE.md` is the constitution; read it first and state which laws govern the
+task. A seed is governed by Law 0, Law 1 (no generic), Law 3 (Australia-smart
+taxonomy), Law 5 (zero dead links), the Scene layer, and Media architecture. On
+any conflict, `CLAUDE.md` and the code win.
+
+**One source of truth (Law 5).** The events a discovery surface renders and the
+events its detail routes resolve must be the SAME set. If the homepage is served
+from a fixture (`HOMEPAGE_SEED_FIXTURE=1`), every fixture slug must resolve to a
+real detail page, or the cards 404 on click. Never seed density into one source
+(a fixture) while detail reads another (the DB) - that is the Potemkin facade
+the zero-dead-links law forbids. After seeding, prove it by clicking, or by
+running `scripts/link-integrity-crawl.mjs`, not by a hand-picked slug.
+
 ## Inputs
 
 - A local stock-image folder that Lawal provides. Treat it as the only image
@@ -69,7 +84,9 @@ copy, no placeholder imagery, no em-dashes, Australian English throughout.
 
 7. **Verify.** Confirm the rows exist (direct database query, not the cached
    client), then load the discovery surfaces and check every rail fills with
-   real imagery, real copy, and no broken images.
+   real imagery, real copy, and no broken images. Then click through: every
+   seeded card must resolve to a working detail page (Law 5). Run
+   `scripts/link-integrity-crawl.mjs` for the automated proof of zero dead links.
 
 ## Category and scene coverage
 
@@ -98,3 +115,5 @@ copy, no placeholder imagery, no em-dashes, Australian English throughout.
   told otherwise.
 - Setting `cover_image_url` to a placeholder or skipping AVIF optimisation.
 - Generic titles, copy, or prices. Every event reads like a real one.
+- Seeding density into a fixture whose slugs the detail route cannot resolve, so
+  every card 404s on click (Law 5). Density and detail share one source of truth.
