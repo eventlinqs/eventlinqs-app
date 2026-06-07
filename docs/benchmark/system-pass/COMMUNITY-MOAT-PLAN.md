@@ -224,3 +224,85 @@ Shipped to `feat/home-rebuild` (commits `bb7380a` community moat + laws,
 Community presence ~12-18% of the page, high and early, never dominant; the
 general catalogue still leads and stands alone if the community layer is
 stripped. Hero, Variant-B rhythm, and the rail control system untouched.
+
+---
+
+## ADDENDUM (Mission 2): seam equalisation + Business rail removal
+
+The community moat (a-d) shipped in Mission 1. This addendum covers the two new
+founder items.
+
+### (e) FOUNDER RULING (pre-approved): remove Business & Networking rail
+Remove the "Business and networking" `EventRailSection` from the homepage. It
+stays a Browse-by-Category tile and keeps its `/events?category=business-networking`
+category page. Reasoning: business/networking is the weakest consumer-discovery
+rail on a fan-first homepage (lowest browse intent of all category rails); it
+belongs in the category grid, not as a full homepage rail. Other weak elements
+reviewed: "Fresh on the platform / Just added" and "Featured venues" are KEPT
+(real recency + venue-discovery value); "Editor's picks" was already removed in
+Mission 1.
+
+### (f) Vertical-rhythm seam fix - diagnosed cause + fix
+**Measured** every `main > section` seam on the deployed 1440 homepage
+(pb + next pt):
+
+- Every rail-to-rail seam = **64px** (SECTION_RAIL py-8 = 32 top + 32 bottom).
+- The ONLY oversized seams: **128px** on BOTH sides of the community value band
+  (idx 13->14 and 14->15).
+
+**Diagnosed cause:** `CommunityValueBand` uses `ContentSection`, which hardcodes
+`py-16 md:py-20 lg:py-24` (96px desktop top/bottom). So the band injects 96px of
+padding vs the rails' 32px, doubling the seam to 128px above and below it - the
+exact "excess space below the scenes/sounds rail before the sports rail" the
+founder flagged.
+
+**Fix:** add an optional `pad` prop to `ContentSection` (default unchanged so
+every other interior page keeps `py-16/20/24`); the value band passes
+`pad="rail"` -> the SECTION_RAIL beat (`py-6 sm:py-8`). Every seam down the whole
+page then equals the single 64px rail beat. **Designer judgment on the final seam
+value:** 64px (the SECTION_RAIL beat) is correct - it matches TM's compact,
+even rail density in the competitor evidence (TM stacks rails ~tightly with one
+consistent beat, no oversized interstitials), and the tinted surface + gold
+divider already give the value band enough presence without extra padding.
+
+### Untouchables (reaffirmed)
+Hero, Variant-B horizontal card gaps, the rail control system, the
+two-rails-per-screen rhythm, and the no-culture-wall rule are all untouched.
+
+---
+
+## ADDENDUM (Mission 2) - audit report
+
+Shipped to `feat/home-rebuild` (commits `4d77bc7` seam fix, `6f6b0f7` business
+rail removal). NO merge to main.
+
+### Seam equalisation - proven
+Re-measured every `main > section` seam on the deployed home after the fix:
+**every non-hero seam = 64px** (the single SECTION_RAIL beat). Before: all rails
+64px but the value band injected 128px seams on both sides. The value band is
+still present (tinted, gold divider, tagline + tiles + CTA) but now rides the
+rail beat via `ContentSection pad="rail"`. Section count 20 (was 21; business
+rail removed). Page height 10059px (was 10662). Visual: the Sounds rail flows
+straight into the value band on an even seam - the flagged excess space is gone.
+
+### Business rail - removed
+"Business and networking" rail removed from the homepage (and its unused slice);
+it remains a Browse-by-Category tile and keeps its category page. Verified absent
+from the deployed home.
+
+### Audit (deployed preview) - 100%, all green
+- **Link integrity:** 0 dead / 286 internal links.
+- **Intersections:** 24/24 resolve 200 across 10 communities x 3 cities, 0 dead.
+- **axe:** 0 violations on home, `/cultures` hub, and 3 intersection pages
+  (aboriginal-torres-strait-islander/sydney, african/sydney, indian/sydney) at
+  desktop + mobile.
+- **Gates:** tsc clean, eslint clean (0 errors), vitest 329/329, build clean.
+- **Before/after captures** (`after-v2/`, gitignored): (a) community visible in
+  the first two screens (Communities doorway in Browse by Category screen 1; the
+  Find your community rail, First Nations first, screen 2); (b) seam rhythm now
+  even (all 64px) down the whole page, the value band on the rail beat; (c) two
+  rails per screen still holds.
+
+### Untouchables - all intact
+Hero, Variant-B horizontal gaps, rail control system, two-rails-per-screen
+rhythm, no culture-wall.
