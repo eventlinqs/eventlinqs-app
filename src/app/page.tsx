@@ -121,7 +121,6 @@ export default async function HomePage() {
   const comedyEvents = byCategory('comedy')
   const sportsEvents = byCategory('sports')
   const familyEvents = byCategory('family')
-  const businessEvents = byCategory('business-networking')
 
   const thisWeek = upcoming
     .filter(e => new Date(e.start_date) <= new Date(nowMs + 7 * 24 * 60 * 60 * 1000))
@@ -375,16 +374,9 @@ export default async function HomePage() {
           />
         )}
 
-        {businessEvents.length >= 1 && (
-          <EventRailSection
-            eyebrow="Make the connection"
-            title="Business and networking"
-            ariaLabel="Business and networking events"
-            railLabel="Business and networking events"
-            events={businessEvents}
-            viewAllHref="/events?category=business-networking"
-          />
-        )}
+        {/* Business and networking rail removed from the homepage (founder
+         *  ruling): lowest consumer-discovery intent of the category rails. It
+         *  stays a Browse-by-Category tile and keeps its category page. */}
 
         {/* Browse by City */}
         <Suspense fallback={<CityRailSkeleton />}>
