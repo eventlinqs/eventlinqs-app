@@ -46,7 +46,7 @@ export function CityTileImage({
           loading={priority ? 'eager' : 'lazy'}
           decoding="async"
           fetchPriority={priority ? 'high' : 'auto'}
-          className={`absolute inset-0 h-full w-full object-cover ${className}`}
+          className={`card-media-img absolute inset-0 h-full w-full object-cover ${className}`}
         />
         <HoverWash />
       </>
@@ -70,7 +70,7 @@ export function CityTileImage({
         fetchPriority={priority ? 'high' : 'auto'}
         loading={priority ? 'eager' : 'lazy'}
         decoding="async"
-        className={`object-cover ${className}`}
+        className={`card-media-img object-cover ${className}`}
       />
       <HoverWash />
     </>

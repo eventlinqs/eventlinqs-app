@@ -82,7 +82,7 @@ export function EventCardMedia({
         fetchPriority={priority ? 'high' : 'auto'}
         loading={priority ? 'eager' : 'lazy'}
         decoding="async"
-        className={`${objectFit === 'cover' ? 'object-cover' : 'object-contain'} ${className}`}
+        className={`card-media-img ${objectFit === 'cover' ? 'object-cover' : 'object-contain'} ${className}`}
       />
       <HoverWash />
     </>

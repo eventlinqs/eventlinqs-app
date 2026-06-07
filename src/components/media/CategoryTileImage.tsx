@@ -46,7 +46,7 @@ export function CategoryTileImage({
         fetchPriority={priority ? 'high' : 'auto'}
         loading={priority ? 'eager' : 'lazy'}
         decoding="async"
-        className={`object-cover ${className}`}
+        className={`card-media-img object-cover ${className}`}
       />
       <HoverWash />
     </>

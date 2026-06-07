@@ -344,18 +344,23 @@ never hand-roll per surface):
   16px rise), never blocking reading.
 - Hover: cards lift 2 to 4px with the shadow deepening and a 1.02 to 1.03 image
   scale at 150 to 200ms; buttons get press states; tasteful link interactions.
-- Hover breathing law (every event card, category tile, city tile, scene/sub-culture
-  tile, platform-wide): on top of the lift and image scale, a soft brand-navy
-  colour wash fades in over the imagery - a translucent navy gradient overlay,
-  near-zero at the top so the image stays bright and roughly 20 to 30% at the base
-  (peak ~26%), 150 to 200ms ease-out. It must feel warm and alive, never darken
-  into mud; content stays fully legible (the wash sits BELOW every scrim and label
-  by DOM paint order, no z-index). One shared implementation only: the `<HoverWash />`
-  component (`src/components/media/hover-wash.tsx`), rendered by the card/tile media
-  surfaces (`EventCardMedia`, `CityTileImage`, `CategoryTileImage`,
-  `SubCultureTileImage`), with the visual defined once as `.card-hover-wash` in
-  `globals.css`. Never a per-page copy. Armed only under `html[data-motion="1"]`,
-  so prefers-reduced-motion and headless audits never see it or pay for it.
+- Hover illumination law v2 (every event card, category tile, city tile,
+  scene/sub-culture tile, platform-wide) - founder law: hover BRIGHTENS, never
+  darkens ("the light shines more"). Two paired effects on top of the wrapper
+  lift + image scale: (1) the IMAGE itself brightens - a subtle
+  `brightness(1.07) saturate(1.08)` rise riding the scale, via `.card-media-img`
+  applied on the image by every media surface; (2) the navy wash drops to a
+  WHISPER at the base only (~12% navy at the bottom edge, fading to 0 by ~60% up)
+  to keep brand identity and bottom-edge text legibility without dimming the
+  image. Net effect is illumination, not shade - a hovered card MUST read clearly
+  brighter than idle. The wash sits BELOW every scrim and label by DOM paint
+  order (no z-index). One shared implementation only: `<HoverWash />`
+  (`src/components/media/hover-wash.tsx`) + the `.card-media-img` class, rendered
+  by the card/tile media surfaces (`EventCardMedia`, `CityTileImage`,
+  `CategoryTileImage`, `SubCultureTileImage`), with both visuals defined once in
+  `globals.css` (`.card-hover-wash` whisper + `.card-media-img` brighten). Never a
+  per-page copy. Armed only under `html[data-motion="1"]`, so prefers-reduced-motion
+  and headless audits never see it or pay for it (image filter and wash both gated).
 - Rails: the eased arrow glide stays, the next-card peek invites the scroll. The
   detailed glide contract is the Glide standard in the `page-build` skill.
 - Sticky header: a smooth elevation and background transition on scroll.

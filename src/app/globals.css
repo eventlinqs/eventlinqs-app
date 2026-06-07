@@ -218,37 +218,48 @@
   transform-origin: center;
 }
 
-/* ─── Hover breathing wash (platform-wide card/tile hover law) ────────────── */
+/* ─── Hover illumination (platform-wide card/tile hover law, v2) ──────────── */
 /*
- * Rendered once by every card/tile media surface via the <HoverWash />
- * component (src/components/media/hover-wash.tsx) - never copied per page.
- * It layers a soft brand-navy gradient over the imagery on hover, ABOVE the
- * image but BELOW any scrim/label (pure DOM paint order, no z-index), pairing
- * with the wrapper lift + image scale for the Ticketmaster-class hover.
+ * Founder law v2: hover BRIGHTENS, never darkens - "the light shines more".
+ * Two paired effects, both armed ONLY under html[data-motion="1"] (the
+ * pre-paint flag), so headless / Lighthouse audits and prefers-reduced-motion
+ * visitors never see them and never pay for them:
  *
- * Near-zero at the top so imagery stays bright; ~26% navy at the base where
- * scrims/labels already sit. Directional, so it reads as a warm navy
- * deepening, never a flat dim into mud. Content stays fully legible.
+ *   1. The IMAGE itself lifts on hover - a subtle brightness + saturation rise
+ *      riding the existing scale - via `.card-media-img` (rendered on the image
+ *      by every media surface). Net effect: the photo reads brighter and more
+ *      alive than idle.
+ *   2. The navy wash drops to a WHISPER at the base only (`.card-hover-wash`,
+ *      rendered once by <HoverWash />), keeping brand identity and bottom-edge
+ *      text legibility without dimming the image. It sits ABOVE the image but
+ *      BELOW any scrim/label (pure DOM paint order, no z-index).
  *
- * Armed ONLY under html[data-motion="1"] (the pre-paint flag): headless /
- * Lighthouse audits and prefers-reduced-motion visitors never see it and
- * never pay for it. See CLAUDE.md "Motion" -> "Hover breathing law".
+ * See CLAUDE.md "Motion" -> "Hover illumination law".
  */
+.card-media-img {
+  transition: transform var(--motion-quick), filter var(--motion-quick);
+}
+html[data-motion="1"] .group:hover .card-media-img {
+  filter: brightness(1.07) saturate(1.08);
+}
 .card-hover-wash {
   position: absolute;
   inset: 0;
   pointer-events: none;
   opacity: 0;
   background: linear-gradient(
-    165deg,
-    rgba(10, 22, 40, 0) 0%,
-    rgba(10, 22, 40, 0.08) 42%,
-    rgba(26, 26, 46, 0.26) 100%
+    to top,
+    rgba(10, 22, 40, 0.12) 0%,
+    rgba(10, 22, 40, 0.04) 34%,
+    rgba(10, 22, 40, 0) 62%
   );
   transition: opacity 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 html[data-motion="1"] .group:hover .card-hover-wash {
   opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-media-img { transition: none; }
 }
 
 /* ─── M5 typography utility classes ──────────────────────────────────────── */

@@ -35,7 +35,7 @@ export function SubCultureTileImage({ src, alt, className = '' }: Props) {
         quality={MEDIA_QUALITY.card}
         loading="lazy"
         decoding="async"
-        className={`object-cover ${className}`}
+        className={`card-media-img object-cover ${className}`}
       />
       <HoverWash />
     </>
