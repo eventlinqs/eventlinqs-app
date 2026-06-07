@@ -85,6 +85,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description,
       url: `/culture/${culture.slug}/${cityParam}`,
       type: 'website',
+      images: ['/opengraph-image'],
     },
   }
 }

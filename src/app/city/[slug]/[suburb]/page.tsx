@@ -42,7 +42,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title,
     description,
     alternates: { canonical: `/city/${city.slug}/${suburb}` },
-    openGraph: { title, description, url: `/city/${city.slug}/${suburb}`, type: 'website' },
+    openGraph: { title, description, url: `/city/${city.slug}/${suburb}`, type: 'website', images: ['/opengraph-image'] },
   }
 }
 
