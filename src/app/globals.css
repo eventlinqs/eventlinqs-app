@@ -280,6 +280,27 @@ body {
   padding-top: env(safe-area-inset-top);
 }
 
+/* ─── Hero scale tokens (Design system: Hero scale law) ──────────────────────
+ * ONE hero-scale system, two named tiers, both capped. No page's hero may
+ * exceed its tier.
+ *   .hero-marketing  primary + marketing tier (homepage scale, the lower cap):
+ *                    /, /organisers, and every "sell the platform" surface.
+ *   .hero-content    content tier (the cinematic upper cap, event-detail scale):
+ *                    /events/[slug], /city/[slug], /culture/[culture].
+ * Both mirror the homepage scrim, gold eyebrow, and CTA placement. Heights are
+ * authored here so a hero change is one edit, never a per-page literal. */
+.hero-marketing {
+  height: 42vh;
+  min-height: 320px;
+}
+@media (width >= 40rem) { .hero-marketing { height: 44vh; } }
+@media (width >= 64rem) { .hero-marketing { height: 48vh; max-height: 480px; } }
+
+.hero-content {
+  min-height: 55vh;
+}
+@media (width >= 48rem) { .hero-content { min-height: 70vh; } }
+
 /* ─── Smart media motion ─────────────────────────────────────────────────── */
 /*
  * Infinite animations below are paused until `<body data-loaded="1">`.

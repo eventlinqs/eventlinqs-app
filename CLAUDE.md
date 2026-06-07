@@ -261,6 +261,25 @@ silently re-painted.
   (`cancelGlide`) and the `DragRail` `snap` prop. Do not move snap back into the
   static className; a guard comment marks this in the file.
 
+**Hero scale (one system, two capped tiers)**
+
+- One hero-scale system for the whole platform, defined as named tokens in
+  `globals.css`; no page's hero may exceed its tier. The homepage hero is the
+  marketing maximum - a "sell the platform" hero may never tower over it.
+  - `.hero-marketing` (primary + marketing tier, homepage scale ~42-48vh, max
+    480px): `/`, `/organisers`, pricing, about, careers, press, and every
+    marketing surface.
+  - `.hero-content` (content tier, the cinematic cap ~55-70vh):
+    `/events/[slug]`, `/city/[slug]`, `/culture/[culture]`.
+- Every hero shares one treatment: the bottom-up navy scrim, a GOLD eyebrow
+  (`--brand-accent` on the dark hero, never a white eyebrow), the homepage
+  display scale (`text-3xl sm:text-4xl lg:text-5xl`, never `text-6xl`/`text-7xl`),
+  and a bottom-anchored CTA stack. A full-viewport hero (`*vh` at/above the
+  tier cap), a white eyebrow, or oversized display type is a defect, fixed in
+  the same pass.
+- The header over any hero is the shared dual-state navy bar (Chrome
+  consistency above), never a per-page header variant.
+
 ## Motion
 
 The law: the motion engine is CSS-first - IntersectionObserver-driven reveals

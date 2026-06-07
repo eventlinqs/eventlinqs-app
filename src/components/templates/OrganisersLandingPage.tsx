@@ -153,35 +153,40 @@ export function OrganisersLandingPage() {
       {/* ── 1. Full-bleed photographic hero ──────────────────────────────── */}
       <section aria-labelledby="organisers-hero-heading" className="relative overflow-hidden">
         <HeroPresenceMarker />
-        <div className="relative h-[82vh] min-h-[560px] max-h-[760px] w-full">
+        {/* Hero scale: marketing tier (homepage scale). A marketing hero may not
+            exceed the homepage hero (Design system: Hero scale law) - this was
+            an 82vh full-viewport hero that read as a generic template next to
+            the platform's ~48vh chrome. */}
+        <div className="hero-marketing relative w-full">
           <HeroMedia image={ORGANISER_HERO.src} alt={ORGANISER_HERO.alt} objectPosition={ORGANISER_HERO.objectPosition} priority />
-          {/* Top scrim for white sticky header + bottom-up navy ramp for AA text. */}
+          {/* Same restrained bottom-up navy scrim as the homepage hero. */}
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0"
             style={{
               background:
-                'linear-gradient(180deg, rgba(10,22,40,0.55) 0%, rgba(10,22,40,0.20) 14%, rgba(10,22,40,0.40) 48%, rgba(10,22,40,0.86) 100%)',
+                'linear-gradient(to top, rgba(10,22,40,0.80) 0%, rgba(10,22,40,0.40) 42%, rgba(10,22,40,0.06) 78%, rgba(10,22,40,0.00) 100%)',
             }}
           />
-          <div className="relative z-10 mx-auto flex h-full max-w-7xl items-center px-5 pb-10 pt-24 sm:px-6 lg:px-8">
+          <div className="relative z-10 mx-auto flex h-full max-w-7xl items-end px-6 pb-8 pt-20 sm:px-8 sm:pb-10 lg:px-12 lg:pb-12">
             <div className="hero-enter max-w-2xl">
-              <p className="font-display text-[11px] font-bold uppercase tracking-[0.24em] text-white/85 sm:text-xs">
+              <p
+                className="type-micro font-display uppercase tracking-[0.18em] text-[var(--brand-accent)]"
+                style={{ fontWeight: 600 }}
+              >
                 For event organisers
               </p>
               <h1
                 id="organisers-hero-heading"
-                className="mt-3 font-display text-[2.75rem] font-extrabold leading-[1.02] tracking-tight text-white sm:text-6xl lg:text-7xl"
+                className="mt-2 font-headline text-3xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-4xl lg:text-5xl"
               >
-                Sell tickets.
-                <br />
-                Keep more.
+                Sell tickets. Keep more.
               </h1>
-              <p className="mt-5 max-w-xl text-base font-medium leading-relaxed text-white/90 sm:text-lg">
-                All-in pricing your fans can trust, real-time tools for event day, and a checkout
-                they will actually complete. Open to every organiser and every community in Australia.
+              <p className="mt-2 max-w-xl text-sm text-white/85 sm:text-base">
+                All-in pricing your fans trust, real-time event-day tools, and a checkout they
+                actually complete. Open to every organiser and every community in Australia.
               </p>
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
                 <Button variant="primary" size="lg" href="/organisers/signup">
                   Start selling tickets
                 </Button>
@@ -189,9 +194,6 @@ export function OrganisersLandingPage() {
                   View pricing
                 </Button>
               </div>
-              <p className="mt-6 text-[13px] font-medium text-white/80">
-                All-in pricing · Payouts in 5 business days · No approval gate
-              </p>
             </div>
           </div>
         </div>

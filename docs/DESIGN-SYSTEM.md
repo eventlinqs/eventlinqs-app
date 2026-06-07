@@ -25,6 +25,12 @@
 > - **Glassmorphism / dark surfaces.** Any frosted-glass or flat-dark pattern
 >   described here is overridden by the light-and-airy, no-glassmorphism,
 >   no-flat-dark boundary in `CLAUDE.md` (Design system).
+> - **Hero scale + chrome.** The binding hero-scale law (one system, two capped
+>   tiers: `.hero-marketing` = homepage scale, `.hero-content` = cinematic cap;
+>   gold eyebrow not white; homepage display scale; one shared dual-state navy
+>   header, no per-page variants) lives in `CLAUDE.md` (Design system: Hero
+>   scale, Chrome consistency) with tokens in `globals.css`. Any hero or header
+>   heights described below are superseded by it.
 
 **Status:** SUPERSEDED v2.1 - retained for historical/component reference only
 **Last updated:** 4 May 2026

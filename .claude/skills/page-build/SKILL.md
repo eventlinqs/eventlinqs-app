@@ -133,6 +133,28 @@ rails thin. Mobile and tablet are untouched: at 390/768 content is far below
 this number ever changes, re-derive it from fresh live TM + EB captures, never
 from taste, and re-verify cards-per-row and rail peek at the new width.
 
+## Hero scale standard (locked)
+
+One hero-scale system, two named tiers defined as tokens in
+`src/app/globals.css`; no page's hero may exceed its tier (Design system: Hero
+scale).
+
+- `.hero-marketing` - primary + marketing tier, the homepage scale
+  (`~42-48vh`, max 480px). The homepage `FeaturedHero` IS this tier and is the
+  marketing maximum. Use it on `/organisers` and every "sell the platform"
+  surface. A marketing hero may never tower over the homepage hero (the
+  `/organisers` rebuild's 82vh full-viewport hero read as a generic template
+  beside the platform chrome - fixed to `.hero-marketing`).
+- `.hero-content` - content tier, the cinematic cap (`~55-70vh`). Use it on
+  `/events/[slug]`, `/city/[slug]`, `/culture/[culture]`.
+- Every hero shares ONE treatment: the bottom-up navy scrim, a GOLD eyebrow
+  (`text-[var(--brand-accent)]` on the dark hero, never a white eyebrow), the
+  homepage display scale (`text-3xl sm:text-4xl lg:text-5xl`, never
+  `text-6xl/7xl`), and a bottom-anchored CTA stack. The header over a hero is
+  the shared dual-state navy bar, never a per-page variant (Chrome consistency).
+- Prove it: capture the homepage hero beside the page's hero at 1440 and 390;
+  one visual system or it is not done.
+
 ## Glide standard (locked)
 
 The rail arrow glide lives in `src/components/ui/snap-rail.tsx` (`useScrollState`)
