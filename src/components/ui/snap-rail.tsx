@@ -311,39 +311,25 @@ function ScrollTrack({
   scrollRef,
   railLabel,
   onKeyDown,
-  fadeFromClass,
-  canPrev,
-  canNext,
   gapClass,
   children,
 }: {
   scrollRef: React.RefObject<HTMLDivElement | null>
   railLabel: string
   onKeyDown: (e: React.KeyboardEvent) => void
-  fadeFromClass: string
-  canPrev: boolean
-  canNext: boolean
   gapClass: string
   children: ReactNode
 }) {
+  // CONTAINED look (founder law): NO edge-fade masks and NO negative-margin
+  // bleed. The rail lives fully inside the standard container, so it ends
+  // cleanly with even margins on both sides (the Ticketmaster/Eventbrite
+  // contained look). A partial next card still peeks at the contained right
+  // edge to invite the scroll - the peek comes from card pitch, never a fade.
+  // No static snap-x/snap-mandatory: scroll-snap is armed on first user
+  // engagement (useScrollState/cancelGlide) so the load-time re-snap never stops
+  // LCP. Cards keep their snap-start; it activates with snap.
   return (
-    <div className="relative -mx-4 sm:-mx-6 lg:-mx-8">
-      {canPrev && (
-        <div
-          aria-hidden
-          className={`pointer-events-none absolute left-0 top-0 z-10 h-full w-16 bg-gradient-to-r ${fadeFromClass} to-transparent sm:w-24`}
-        />
-      )}
-      {canNext && (
-        <div
-          aria-hidden
-          className={`pointer-events-none absolute right-0 top-0 z-10 h-full w-16 bg-gradient-to-l ${fadeFromClass} to-transparent sm:w-24`}
-        />
-      )}
-      {/* No static snap-x/snap-mandatory on the scroller: scroll-snap is armed
-          on first user engagement (useScrollState/cancelGlide) so the load-time
-          re-snap never stops LCP. Cards keep their snap-start; it activates with
-          snap. */}
+    <div className="relative">
       <div
         ref={scrollRef}
         role="group"
@@ -357,7 +343,7 @@ function ScrollTrack({
             e.stopPropagation()
           }
         }}
-        className={`flex ${gapClass} overflow-x-auto scroll-smooth px-4 pb-4 pt-1 scrollbar-none focus-visible:outline-none sm:px-6 lg:px-8`}
+        className={`flex ${gapClass} overflow-x-auto scroll-smooth pb-3 pt-1 scrollbar-none focus-visible:outline-none`}
       >
         {children}
       </div>
@@ -374,7 +360,7 @@ export function SnapRailScroller({
 }: SnapRailScrollerProps) {
   const { scrollRef, canPrev, canNext, scrollByCards, onKeyDown } = useScrollState()
   useDragScroll(scrollRef)
-  const fadeFromClass = containerBg === 'canvas' ? 'from-canvas' : 'from-ink-100'
+  void containerBg
 
   const controls = (
     <RailArrows
@@ -389,7 +375,7 @@ export function SnapRailScroller({
   return (
     <div>
       {header ? (
-        <div className="mb-5 flex items-end justify-between gap-4 sm:mb-6">
+        <div className="mb-3 flex items-end justify-between gap-4 sm:mb-4">
           <div className="min-w-0">
             {header.eyebrow ? (
               <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
@@ -423,9 +409,6 @@ export function SnapRailScroller({
         scrollRef={scrollRef}
         railLabel={railLabel}
         onKeyDown={onKeyDown}
-        fadeFromClass={fadeFromClass}
-        canPrev={canPrev}
-        canNext={canNext}
         gapClass={cardGap}
       >
         {children}
@@ -446,7 +429,7 @@ export function SnapRail({
 }: SnapRailProps) {
   const { scrollRef, canPrev, canNext, scrollByCards, onKeyDown } = useScrollState()
   useDragScroll(scrollRef)
-  const fadeFromClass = containerBg === 'canvas' ? 'from-canvas' : 'from-ink-100'
+  void containerBg
 
   return (
     <div>
@@ -485,14 +468,11 @@ export function SnapRail({
         </div>
       </div>
 
-      <div className="mt-5">
+      <div className="mt-3">
         <ScrollTrack
           scrollRef={scrollRef}
           railLabel={railLabel}
           onKeyDown={onKeyDown}
-          fadeFromClass={fadeFromClass}
-          canPrev={canPrev}
-          canNext={canNext}
           gapClass={cardGap}
         >
           {children}

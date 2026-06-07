@@ -212,7 +212,12 @@ button markup.
   cards), they stay visible and tappable at 44px on mobile at zero layout cost, on
   top of native swipe. (Airbnb/TM hide arrows on mobile; we keep them, evidence-
   consistent with Humanitix keeping hero arrows on mobile, and better for reach.)
-- A symmetric left/right edge gradient on the track invites scroll both ways.
+- **CONTAINED, no edge-fade masks** (founder law): the rail lives fully inside
+  the standard container and ends cleanly with even margins on both sides (the
+  Ticketmaster/Eventbrite contained look). NO left/right gradient fade masks and
+  NO negative-margin bleed. A partial next card peeks at the contained right edge
+  to invite the scroll - the peek comes from card pitch, never a fade. If cards
+  cut off badly, fix it with container padding and card pitch, never a fade.
 - The control look is the SAME on every rail and every page. To change it, edit
   `RailArrows` once; re-derive any new value from fresh competitor captures.
 

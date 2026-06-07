@@ -3,7 +3,7 @@ import { SnapRail } from '@/components/ui/snap-rail'
 import { Reveal } from '@/components/ui/reveal'
 import { EventCardMedia } from '@/components/media'
 import { getCategoryPhoto } from '@/lib/images/category-photo'
-import { CONTAINER, SECTION_TIGHT } from '@/lib/ui/spacing'
+import { CONTAINER, SECTION_RAIL } from '@/lib/ui/spacing'
 import { RHYTHM_GAP, SCENE_TILE_CELL } from '@/lib/ui/rhythm'
 
 /**
@@ -128,7 +128,7 @@ export async function SceneRail() {
   // Per-rail accent (Variant B): a gold-tinted top divider instead of the plain
   // ink rule marks the community/scenes thread as its own moment.
   return (
-    <section aria-label="Browse by scene" className={`border-t-2 border-[var(--brand-accent-strong)]/30 bg-canvas ${SECTION_TIGHT}`}>
+    <section aria-label="Browse by scene" className={`border-t-2 border-[var(--brand-accent-strong)]/30 bg-canvas ${SECTION_RAIL}`}>
       <Reveal className={CONTAINER}>
         <SnapRail
           eyebrow="Find your scene"

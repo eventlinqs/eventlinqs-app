@@ -27,6 +27,13 @@ export const SECTION_HERO    = 'py-0' as const
 export const SECTION_DEFAULT = 'py-16 sm:py-24' as const
 export const SECTION_TIGHT   = 'py-12 sm:py-16' as const
 
+// SECTION_RAIL - compressed vertical rhythm for stacked homepage rails, so two
+// rails read together on a standard laptop after the hero (the Ticketmaster
+// marketplace density; founder verdict). Tighter than SECTION_TIGHT but never
+// cramped. Horizontal card rhythm (Variant B gaps) is untouched. Use ONLY on
+// the stacked home rail sections, not on prose/marketing bands.
+export const SECTION_RAIL    = 'py-6 sm:py-8' as const
+
 export const CONTAINER         = 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8' as const
 export const HEADER_TO_CONTENT = 'mt-8' as const
 export const ITEM_GAP          = 'gap-4' as const

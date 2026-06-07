@@ -1,7 +1,7 @@
 import { SnapRail } from '@/components/ui/snap-rail'
 import { Reveal } from '@/components/ui/reveal'
 import { ThisWeekCard } from '@/components/features/events/this-week-card'
-import { CONTAINER, SECTION_TIGHT } from '@/lib/ui/spacing'
+import { CONTAINER, SECTION_RAIL } from '@/lib/ui/spacing'
 import { RHYTHM_GAP } from '@/lib/ui/rhythm'
 import type { BentoEvent } from '@/components/features/events/event-bento-tile'
 
@@ -17,7 +17,7 @@ export async function ThisWeekSection({ events }: Props) {
   )
 
   return (
-    <section aria-label="This week" className={`border-t border-ink-200 bg-canvas ${SECTION_TIGHT}`}>
+    <section aria-label="This week" className={`border-t border-ink-200 bg-canvas ${SECTION_RAIL}`}>
       <Reveal className={CONTAINER}>
         <SnapRail
           eyebrow="This week"

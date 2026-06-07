@@ -1,7 +1,7 @@
 import { SnapRail } from '@/components/ui/snap-rail'
 import { Reveal } from '@/components/ui/reveal'
 import { CityTile } from '@/components/features/home/cards'
-import { CONTAINER, SECTION_TIGHT } from '@/lib/ui/spacing'
+import { CONTAINER, SECTION_RAIL } from '@/lib/ui/spacing'
 import { RHYTHM_GAP } from '@/lib/ui/rhythm'
 import { getCategoryPhoto } from '@/lib/images/category-photo'
 import type { RawRow } from '@/lib/events/home-queries'
@@ -60,7 +60,7 @@ export async function FeaturedVenuesSection({ upcoming }: Props) {
   if (top.length === 0) return null
 
   return (
-    <section aria-label="Featured venues" className={`border-t border-ink-200 bg-canvas ${SECTION_TIGHT}`}>
+    <section aria-label="Featured venues" className={`border-t border-ink-200 bg-canvas ${SECTION_RAIL}`}>
       <Reveal className={CONTAINER}>
         <SnapRail
           eyebrow="Featured venues"

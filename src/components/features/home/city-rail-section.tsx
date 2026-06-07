@@ -3,7 +3,7 @@ import { SnapRail } from '@/components/ui/snap-rail'
 import { Reveal } from '@/components/ui/reveal'
 import { CityTile } from '@/components/features/home/cards'
 import { getCityPhoto } from '@/lib/images/city-photo'
-import { CONTAINER, SECTION_DEFAULT } from '@/lib/ui/spacing'
+import { CONTAINER, SECTION_RAIL } from '@/lib/ui/spacing'
 import { RHYTHM_GAP, CITY_TILE_CELL } from '@/lib/ui/rhythm'
 import { CITY_TILES, LOCAL_CITY_SVG } from '@/lib/events/home-queries'
 
@@ -47,7 +47,7 @@ export async function CityRailSection({ nowIso }: Props) {
   return (
     <section
       aria-labelledby="cities-heading"
-      className={`border-t border-ink-200 bg-canvas ${SECTION_DEFAULT}`}
+      className={`border-t border-ink-200 bg-canvas ${SECTION_RAIL}`}
     >
       <Reveal className={CONTAINER}>
         <SnapRail
