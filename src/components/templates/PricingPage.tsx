@@ -116,7 +116,10 @@ export function PricingPage() {
       />
 
       {/* -- 2. Pricing tiers ---------------------------------------- */}
-      <ContentSection surface="base" width="wide">
+      {/* Tinted band so the white tier cards have contrast and elevation,
+          mirroring Eventbrite's tinted pricing bands (2026 competitor mirror)
+          instead of white cards floating on a white surface. */}
+      <ContentSection surface="alt" width="wide" topBorder>
         <h2 className="sr-only">Pricing tiers</h2>
         <div className="group/cards grid grid-cols-1 gap-6 md:grid-cols-3">
           {TIERS.map(tier => (
