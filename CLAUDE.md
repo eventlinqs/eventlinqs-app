@@ -395,6 +395,18 @@ never hand-roll per surface):
 
 - Page entrance: hero content staggers in once (headline, meta, CTA, 60 to 80ms
   apart). The hero LCP image itself never animates (Hero and LCP integrity).
+- Hero carousel auto-rotation (the homepage FeaturedHero, `FeaturedHeroClient`):
+  a multi-slide hero AUTO-ADVANCES every ~6.5s with an eased opacity crossfade,
+  mobile and desktop (evidence: Humanitix hero, rail-controls CATALOGUE). It
+  PAUSES on hover, on touch/swipe, and while any element inside has keyboard
+  focus, and resumes after; a manual move resets the timer. A visible, accessible
+  pause/play control is mandatory (WCAG 2.2.2 - auto-moving content must be
+  stoppable), in our system (solid navy/gold, never glass). Indicator: minimal
+  dots only (no travelling-dot device). ARMED ONLY under `html[data-motion="1"]`,
+  so prefers-reduced-motion and headless audits get NO auto-rotation (manual nav
+  only). LCP law: slide 0 is the server-rendered priority raster and the only
+  slide in layout until rotation arms post-paint; non-first slides mount and
+  lazy-load only after arming (outside the LCP window).
 - Scroll reveals: every below-the-fold section fade-rises as it enters the
   viewport, cards staggered 50 to 80ms left to right, once only, subtle (12 to
   16px rise), never blocking reading.
