@@ -137,6 +137,44 @@ export function EventCardFeature({ event, blurb }: { event: HomeCardEvent; blurb
   )
 }
 
+export interface CommunityTileData {
+  href: string
+  /** Culture hero photo URL, or null - null routes to the branded placeholder. */
+  imageSrc: string | null
+  alt: string
+  name: string
+  /** e.g. "32 events" or "Be the first". */
+  metaLabel: string
+  priority?: boolean
+}
+
+/**
+ * Community tile - the homepage "Find your community" rail + value band tile.
+ * A heritage community in the locked separated-card system: a portrait
+ * photograph that stands alone (hover illumination + branded fallback via
+ * EventCardMedia), the community name and event count BELOW it, never on the
+ * image. Links to the real /culture/[slug] landing.
+ */
+export function CommunityTile({ community }: { community: CommunityTileData }) {
+  return (
+    <Link href={community.href} prefetch={false} className={`flex w-full flex-col ${SURFACE}`}>
+      <div className={`${IMG_WRAP} aspect-[4/5]`}>
+        <EventCardMedia
+          src={community.imageSrc ?? ''}
+          alt={community.alt}
+          variant="card"
+          priority={community.priority}
+          className={IMG_MOTION}
+        />
+      </div>
+      <div className="flex items-center justify-between gap-2 p-4">
+        <span className={`text-base ${TITLE}`}>{community.name}</span>
+        <span className="shrink-0 text-xs text-[var(--text-secondary)]">{community.metaLabel}</span>
+      </div>
+    </Link>
+  )
+}
+
 /** 4. City tile - image with the city name BELOW it, never on it. */
 export function CityTile({ city }: { city: CityTileData }) {
   return (

@@ -7,7 +7,9 @@ import { SiteFooter } from '@/components/layout/site-footer'
 import { FeaturedHero } from '@/components/features/home/FeaturedHero'
 import { HomeSchemaJsonLd } from '@/components/features/home/home-schema-jsonld'
 import { CategoryNavRail } from '@/components/features/home/category-nav-rail'
-import { SceneRail } from '@/components/features/home/scene-rail'
+import { SoundsRail } from '@/components/features/home/sounds-rail'
+import { CommunityRail } from '@/components/features/home/community-rail'
+import { CommunityValueBand } from '@/components/features/home/community-value-band'
 import type { BentoEvent } from '@/components/features/events/event-bento-tile'
 import {
   loadHomeUpcoming,
@@ -159,19 +161,6 @@ export default async function HomePage() {
     .slice(0, 10)
     .map(toBentoEvent)
 
-  const editorsPicks = (() => {
-    const seen = new Set<string>()
-    const picks: BentoEvent[] = []
-    for (const e of upcoming) {
-      const key = e.category?.slug ?? '_'
-      if (seen.has(key)) continue
-      seen.add(key)
-      picks.push(e)
-      if (picks.length >= 10) break
-    }
-    return picks
-  })()
-
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
 
   return (
@@ -241,6 +230,13 @@ export default async function HomePage() {
         <Suspense fallback={<ThisWeekSkeleton />}>
           <ThisWeekSection events={thisWeek} />
         </Suspense>
+
+        {/* ── Community moat (HIGH placement, within the first two screens) ──
+         *  The differentiating layer no competitor has, surfaced early but never
+         *  dominant. Real /culture/[slug] landings, First Nations first. Self-
+         *  fetches the heritage index; renders nothing if empty. Stripped out,
+         *  the page still stands as a full general ticketing rival. */}
+        <CommunityRail />
 
         {/* General category breadth leads. */}
         {musicEvents.length >= 1 && (
@@ -347,13 +343,14 @@ export default async function HomePage() {
           />
         )}
 
-        {/* ── Community thread (one rail, mid-page) ──────────────────────
-         *  The single community/scene moment: Afrobeats, Amapiano, Gospel,
-         *  Caribbean, Owambe, Heritage & Independence, Business & Networking.
-         *  This is the differentiating layer, roughly 10-20% of the page,
-         *  not its identity. It sits here, after the general breadth, never
-         *  at the lead. */}
-        <SceneRail />
+        {/* Sounds (genres) - the genre half of the old combined scene rail.
+         *  The community half is the higher-placed CommunityRail above. */}
+        <SoundsRail />
+
+        {/* The ONE community value band: tinted surface, locked tagline, real
+         *  community tiles into /culture/[slug], CTA into the /cultures hub. The
+         *  lower bookend of the community moat. */}
+        <CommunityValueBand />
 
         {/* General breadth continues below the community thread. */}
         {sportsEvents.length >= 1 && (
@@ -406,16 +403,9 @@ export default async function HomePage() {
           />
         )}
 
-        {editorsPicks.length >= 1 && (
-          <EventRailSection
-            eyebrow="Editor's picks"
-            title="Hand-picked for the week"
-            ariaLabel="Editor's picks"
-            railLabel="Editor's picks"
-            events={editorsPicks}
-            viewAllHref="/events"
-          />
-        )}
+        {/* "Editor's picks" rail removed in the community-moat pass: it was a
+         *  dedup-one-per-category set (lowest editorial signal). Cutting it
+         *  offsets the added community rail so the page does not grow longer. */}
 
         <FeaturedVenuesSection upcoming={upcomingRawTyped} />
       </main>

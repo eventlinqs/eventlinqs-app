@@ -199,6 +199,43 @@ events view as an interim. Missing scene landing pages are tracked for the
 post-photos taxonomy mission. Business & Networking is a general category,
 never a scene.
 
+### Homepage community moat (split, locked)
+
+On the homepage the two V2 families are SPLIT into two rails, not one:
+
+- **Sounds rail** (`sounds-rail.tsx`): the 12 genres only, mid-page, normal ink
+  divider. Genres link to the interim `/events?q=` view (resolves 200).
+- **Find your community rail** (`community-rail.tsx`): the heritage COMMUNITIES,
+  placed HIGH (within the first two screens), gold-accent top divider. It sources
+  the 21 canonical heritages from `getCultureIndexEntries()` (heritageOrder, so
+  Aboriginal & Torres Strait Islander leads - First Nations first, per law) and
+  each tile links to its REAL `/culture/[slug]` landing (never an interim search).
+- Plus a Communities doorway tile in Browse by Category -> `/cultures`, and ONE
+  tinted community value band (`community-value-band.tsx`) carrying the locked
+  tagline and community tiles into `/culture/[slug]`, with a CTA to `/cultures`.
+
+Community presence is ~10-20% of the homepage and visible within the first two
+screens, but the general catalogue still leads and still stands alone if the
+community layer is stripped. Never a culture-wall. Community-first language only.
+
+### Intersection pages (culture-by-city) - imagery + editorial law (locked)
+
+The `/culture/[culture]/[city]` pages (21 communities x cities = 271+) are
+TEMPLATE pages that INHERIT spine imagery - they do NOT get per-page photography:
+
+- Imagery resolves through the media library with branded fallbacks, in this
+  order: city photo (city set) -> community photo (scene/culture set) -> bundled
+  raster -> navy/gold gradient. There is NEVER a broken image, even before the
+  full photo spine lands. (Verified: `getCityHeroPhoto` -> `getCultureHeroPhoto`
+  with `allowBundledFallback` in `src/app/culture/[culture]/[city]/page.tsx`.)
+- Zero-event intersections render the shared designed empty state
+  (`CategoryHeroEmpty`: "the first ... could be yours" + organiser CTA), never a
+  bare "no results". The same shared empty state backs every community, city, and
+  category zero-event page. Build empty states once, shared - never per page.
+- Hand-crafted editorial imagery is reserved for TOP intersections AFTER launch.
+  Until then every intersection is template-resolved spine imagery. Do not block
+  launch on per-intersection photography.
+
 ## Design system
 
 Inherit exactly. No new colours, sizes, or type. The source of truth for every

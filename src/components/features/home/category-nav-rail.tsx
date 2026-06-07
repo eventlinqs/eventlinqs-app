@@ -1,6 +1,7 @@
 import { SnapRail } from '@/components/ui/snap-rail'
 import { CategoryTile } from '@/components/features/home/cards'
 import { getCategoryPhoto } from '@/lib/images/category-photo'
+import { getCultureHeroPhoto } from '@/lib/images/culture-photo'
 import { CONTAINER, SECTION_RAIL } from '@/lib/ui/spacing'
 import { RHYTHM_GAP } from '@/lib/ui/rhythm'
 
@@ -32,19 +33,24 @@ const CATEGORIES: { slug: string; name: string }[] = [
 ]
 
 export async function CategoryNavRail({ counts }: { counts: Record<string, number> }) {
-  const tiles = await Promise.all(
-    CATEGORIES.map(async (c, i) => {
-      const photo = await getCategoryPhoto(c.slug)
-      const count = counts[c.slug] ?? 0
-      return {
-        ...c,
-        imageSrc: photo.src,
-        alt: photo.alt ?? `${c.name} events`,
-        metaLabel: count > 0 ? `${count} ${count === 1 ? 'event' : 'events'}` : 'Explore',
-        priority: i < 4, // first row above the fold paints eagerly
-      }
-    }),
-  )
+  const [tiles, communityDoorImage] = await Promise.all([
+    Promise.all(
+      CATEGORIES.map(async (c, i) => {
+        const photo = await getCategoryPhoto(c.slug)
+        const count = counts[c.slug] ?? 0
+        return {
+          ...c,
+          imageSrc: photo.src,
+          alt: photo.alt ?? `${c.name} events`,
+          metaLabel: count > 0 ? `${count} ${count === 1 ? 'event' : 'events'}` : 'Explore',
+          priority: i < 4, // first row above the fold paints eagerly
+        }
+      }),
+    ),
+    // Doorway tile image - a representative community photo (branded fallback in
+    // CategoryTileImage if null), so the doorway is never a broken image.
+    getCultureHeroPhoto('african'),
+  ])
 
   return (
     <section aria-label="Browse by category" className={`border-t border-ink-200 bg-canvas ${SECTION_RAIL}`}>
@@ -57,6 +63,20 @@ export async function CategoryNavRail({ counts }: { counts: Record<string, numbe
           containerBg="canvas"
           cardGap={RHYTHM_GAP}
         >
+          {/* Communities doorway - leads the rail, links to the resolving
+              /cultures hub (the moat entry from the very first rail). */}
+          <div className="w-[220px] shrink-0 snap-start sm:w-[260px]">
+            <CategoryTile
+              category={{
+                href: '/cultures',
+                imageSrc: communityDoorImage ?? '',
+                alt: 'Browse events by community',
+                name: 'Communities',
+                metaLabel: '21 heritages',
+                priority: true,
+              }}
+            />
+          </div>
           {tiles.map(t => (
             <div key={t.slug} className="w-[220px] shrink-0 snap-start sm:w-[260px]">
               <CategoryTile
