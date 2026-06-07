@@ -144,7 +144,7 @@ with the EventLinqs identity.
 - Reference build: `/organisers` (`OrganisersLandingPage` +
   `src/lib/images/organiser-photos.ts` + `MarketingMedia`).
 
-## Law 5: zero dead links
+## Law 5: zero dead links AND no dead-end tiles
 
 Verify by clicking what the user clicks. A surface is not done until every link
 it renders resolves to a working page. Zero dead links platform-wide: every
@@ -161,6 +161,25 @@ resolves to HTTP 200, never a 404 or a 500.
   surface, harvests every internal href, requests each, fails on any non-200).
   Run it against the preview or a local production server before claiming a
   discovery or navigation surface done (see Verification and gates).
+
+### Interactive-affordance law (no dead-end tiles)
+
+Any image tile, card, or grid/rail item that visually presents as tappable MUST
+be a working link. "No dead links" explicitly includes "no dead-end tiles" - a
+tile-shaped image a finger lands on that does nothing is the same defect as a
+404, and worse on mobile where the whole tile reads as a button.
+
+- Decorative-only imagery is allowed SOLELY as full-bleed backgrounds (hero
+  scrims) or inline editorial photos within prose. It is NEVER permitted as a
+  tile/card-shaped element inside a grid or a rail. If it sits in a grid or rail
+  and looks like a card, it must link.
+- Every tile/card in a grid or rail is wrapped by a single `<a href>` (or is a
+  `<button>`) whose target resolves 200. The whole tile is the touch target
+  (>= 44px), with hover illumination.
+- The automated proof is `scripts/affordance-scan.mjs` (Playwright: on every
+  public page, finds tile/card-shaped `<img>` inside grids/rails and fails on any
+  with no ancestor anchor/button). It runs beside the link-integrity crawler in
+  the audit suite on every pass.
 
 ## Scene layer (locked, national) - V2, research-backed
 

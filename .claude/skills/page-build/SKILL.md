@@ -80,7 +80,11 @@ Work the steps in order. Do not jump ahead.
    discovery or navigation surface, prove Law 5 (zero dead links) by running
    `scripts/link-integrity-crawl.mjs` against the preview or a local production
    server: every rendered card, tile, nav, footer, and CTA link must resolve 200.
-   Verify by clicking, never by a hand-picked slug.
+   Verify by clicking, never by a hand-picked slug. ALSO run
+   `scripts/affordance-scan.mjs` (interactive-affordance law): every tile/card-
+   shaped image in a grid or rail MUST be wrapped by a working `<a href>` - no
+   dead-end tiles. Decorative imagery is allowed only as a full-bleed background
+   or an inline editorial photo, never as a tile in a grid/rail.
 
 9. **QA agent.** Dispatch a fresh reviewer (see below). It refuses to pass a
    page that sits below the bar on any dimension. If it fails, iterate.
