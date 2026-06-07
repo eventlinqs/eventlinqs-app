@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 export const metadata: Metadata = {
   title: 'Pricing | EventLinqs',
   description:
-    'Simple, transparent pricing for event organisers. Free events always have zero platform fees. Paid tickets: 2% + AUD 0.50 per ticket, the whole fee. No upfront costs.',
+    'Simple, transparent pricing for event organisers. Free events always have zero platform fees. Paid tickets: one clear fee per ticket shown in full on the page, the whole fee. No upfront costs.',
   alternates: { canonical: '/pricing' },
 }
 
