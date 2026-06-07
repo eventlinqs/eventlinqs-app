@@ -87,6 +87,32 @@ Eventbrite page with Playwright at 1440 and 390.
 
 Never skip Phase A. Never invent a layout the evidence does not support.
 
+### Competitor Benchmark (the encoded DNA - single source of truth)
+
+What the competitors look like is ENCODED, not re-discovered each session. No
+design session re-asks the founder what Ticketmaster or Eventbrite look like:
+
+- Read the **`competitor-benchmark` skill** for the hard reference facts -
+  measured hero heights per page type (TM home ~200px, TM category ~250-290px
+  dark band, EB home ~480px promo, EB browse no hero, EB event-detail contained
+  media card, EB pricing tinted bands, EB/TM desktop auth brand panel + mobile
+  card-only, TM help dark search band + trending rail), rail variation patterns,
+  hover language, and the EventLinqs laws that beat them.
+- The evidence is `docs/benchmark/competitor-2026/INDEX.md` (verified capture
+  index) + `measurements.json`. Captures are clamped to <= 1800px and audited
+  VERIFIED/INVALID.
+- Re-capture ONLY when the evidence is stale (>90 days) or you are designing a
+  page type not covered. Use the skill's re-capture procedure; for auth pages
+  navigate from the homepage account button, never a guessed URL.
+
+**Premium bar (every public page, not just the homepage):** EventLinqs presents
+as a premium production worth more than US$200K - rich imagery on every public
+page, treated surfaces (never bare white bands), breathing hovers,
+competitor-evidence design decisions, zero dead links, zero broken states. A
+page that is bare, generic, image-poor, or has a dead link or broken state has
+failed the bar regardless of how the homepage looks. Detail in the
+`competitor-benchmark` skill.
+
 ## Law 3: Australia-smart
 
 Every taxonomy, scene, category, content, and copy decision is verified against
@@ -458,6 +484,11 @@ SURPASS/PARITY/BELOW verdicts.
 
 ## Skills
 
+- `competitor-benchmark`: the encoded competitor DNA. Hard reference facts for
+  Ticketmaster and Eventbrite (hero heights per page type, rail patterns, hover
+  language, auth/help/pricing layouts) plus the EventLinqs laws that beat them
+  and the premium bar. Read it before designing any page; it points to the
+  verified capture index. NEVER re-ask the founder what competitors look like.
 - `page-build`: the standard page build. Reality audit, capture the competitor
   equivalent, Phase A mirror, Phase B EventLinqs touch, QA, benchmark, deliver.
   Holds the detailed locked specs (Rail, Container width, Glide, Motion,

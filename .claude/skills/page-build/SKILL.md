@@ -39,10 +39,15 @@ Work the steps in order. Do not jump ahead.
 2. **Plan.** Enter plan mode. State the page goal, the sections, and the data
    each needs. State how the result will be verified before writing code.
 
-3. **Capture the competitor evidence.** Use Playwright to capture the equivalent
-   Ticketmaster AND Eventbrite page at 1440 and 390. Save the shots. Read
-   `docs/design/competitor-page-specs.md` for the locked per-page bar. Judge
-   density, hierarchy, typography, imagery, filter and browse UX, and mobile.
+3. **Competitor evidence.** FIRST read the `competitor-benchmark` skill - the
+   encoded DNA (measured hero heights per page type, rail patterns, hover
+   language, auth/help/pricing layouts, and the EventLinqs laws that beat them).
+   Do NOT re-ask the founder what competitors look like and do NOT re-capture by
+   default. Re-capture with Playwright (1440 + 390, the skill's procedure) ONLY
+   when the evidence is stale (>90 days, see the INDEX date) or this page type is
+   not covered by the skill. Also read `docs/design/competitor-page-specs.md` for
+   the locked per-page bar. Judge density, hierarchy, typography, imagery, filter
+   and browse UX, and mobile against the encoded facts.
 
 4. **Phase A, mirror the evidence.** Build the page to match or beat what you
    captured: same information density and hierarchy, better polish. This is the

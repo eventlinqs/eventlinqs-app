@@ -223,12 +223,24 @@
   },
   "ticketmaster/signin": {
     "390": {
-      "url": "https://auth.ticketmaster.com.au/as/authorization.oauth2?client_id=35a8b81e-7edb-4e8b-9a4a-3a1e1d7d2c9e",
-      "error": "page.goto: net::ERR_NAME_NOT_RESOLVED at https://auth.ticketmaster.com.au/as/aut"
+      "ready": true,
+      "url": "https://auth.ticketmaster.com/as/authorization.oauth2?client_id=c632b9c867d5.web.ticketmaster.au&response_type=code&scope=openid%20profile%20phone%20email%20tm&redirect_uri=https://identity.ticketmaster.com.au/exchange&visualPresets=tm&lang=en-au&placementId=mytmlogin&hideLeftPanel=false&integratorId=prd1741.iccp&intSiteToken=tm-au&TMUO=east_6sm4uj1sACW4ugWsh6RbzrcV46PoEvK9D9uLllw4llY%3D&deviceId=f9dSqzajeTU3PjY%2BOjc6Ojc3NzgnDZSbctAleQ&doNotTrack=false&disableAutoOptIn=false",
+      "dims": "780x1688"
     },
     "1440": {
-      "url": "https://auth.ticketmaster.com.au/as/authorization.oauth2?client_id=35a8b81e-7edb-4e8b-9a4a-3a1e1d7d2c9e",
-      "error": "page.goto: net::ERR_NAME_NOT_RESOLVED at https://auth.ticketmaster.com.au/as/aut"
+      "clicked": true,
+      "url": "https://auth.ticketmaster.com/as/authorization.oauth2?client_id=c632b9c867d5.web.ticketmaster.au&response_type=code&scope=openid%20profile%20phone%20email%20tm&redirect_uri=https://identity.ticketmaster.com.au/exchange&visualPresets=tm&lang=en-au&placementId=mytmlogin&hideLeftPanel=false&integratorId=prd1741.iccp&intSiteToken=tm-au&TMUO=east_6sm4uj1sACW4ugWsh6RbzrcV46PoEvK9D9uLllw4llY%3D&deviceId=kL7tOWMNO0lHQkpCRkdMTEdBSEkn%2F3f8D7FbjA&doNotTrack=false&disableAutoOptIn=false",
+      "dims": "1800x1125"
+    }
+  },
+  "eventbrite/organizer": {
+    "390": {
+      "reachedUrl": "https://www.eventbrite.com.au/organizer/overview/",
+      "dims": "780x1688"
+    },
+    "1440": {
+      "reachedUrl": "https://www.eventbrite.com.au/organizer/overview/",
+      "dims": "1800x1125"
     }
   }
 }
