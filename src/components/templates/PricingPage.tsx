@@ -186,8 +186,9 @@ export function PricingPage() {
           ))}
         </div>
 
-        {/* Fee promise */}
-        <p className="mt-6 text-center text-xs text-[var(--text-muted)]">
+        {/* Fee promise. text-secondary (not muted) so it clears AA contrast on
+            the tinted band - muted only passes on the white surface. */}
+        <p className="mt-6 text-center text-xs text-[var(--text-secondary)]">
           Free events always have zero platform fees. The paid-ticket fee is the same for
           every event type. No setup fees, no monthly fees, no card required until you sell
           a paid ticket.
