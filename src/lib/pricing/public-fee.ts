@@ -14,10 +14,14 @@
  * the GLOBAL + AU `platform_fee_percentage` and `platform_fee_fixed`
  * rows whenever those baseline rows change.
  *
- * Live values verified against pricing_rules (GLOBAL + AU, AUD, every
- * event type, no organiser override):
- *   platform_fee_percentage = 2.5
+ * Public platform fee (founder-set 2026-06-08): 2% + AUD 0.50 per paid ticket.
+ *   platform_fee_percentage = 2.0
  *   platform_fee_fixed      = 50 (cents) = AUD 0.50
+ *
+ * Lowered from 2.5 to 2.0 on the public surface per founder direction. The
+ * payments lane MUST update the live `pricing_rules` GLOBAL + AU baseline rows
+ * (platform_fee_percentage -> 2.0) and re-verify payment-calculator BEFORE this
+ * branch merges, so the displayed fee equals what is actually charged.
  *
  * Follow-up (next session): wire /pricing to read these via
  * getPlatformFeePercentage('AU','AUD') / getPlatformFeeFixedCents with a
@@ -25,12 +29,12 @@
  * DB-driven without a hard runtime dependency.
  */
 export const PUBLIC_PLATFORM_FEE = {
-  percent: 2.5,
+  percent: 2,
   fixedCents: 50,
   currency: 'AUD',
 } as const
 
-/** e.g. "2.5%" */
+/** e.g. "2%" */
 export const PUBLIC_FEE_PERCENT_LABEL = `${PUBLIC_PLATFORM_FEE.percent}%`
 
 /** e.g. "AUD 0.50" */
@@ -38,5 +42,5 @@ export const PUBLIC_FEE_FIXED_LABEL = `${PUBLIC_PLATFORM_FEE.currency} ${(
   PUBLIC_PLATFORM_FEE.fixedCents / 100
 ).toFixed(2)}`
 
-/** e.g. "2.5% + AUD 0.50" - the single definite public fee statement */
+/** e.g. "2% + AUD 0.50" - the single definite public fee statement */
 export const PUBLIC_FEE_LABEL = `${PUBLIC_FEE_PERCENT_LABEL} + ${PUBLIC_FEE_FIXED_LABEL}`

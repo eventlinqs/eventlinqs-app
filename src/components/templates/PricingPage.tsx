@@ -10,10 +10,10 @@ import { PUBLIC_FEE_LABEL } from '@/lib/pricing/public-fee'
  * PricingPage - /pricing
  *
  * The paid-ticket fee is stated as ONE definite number sourced from
- * `@/lib/pricing/public-fee`, which mirrors the live AU / GLOBAL
- * `pricing_rules` baseline (2.5% + AUD 0.50) that payment-calculator.ts
- * actually charges. No "from", no "indicative", no "may vary" hedging:
- * the table has a single fee for every event type.
+ * `@/lib/pricing/public-fee` (2% + AUD 0.50), which mirrors the live AU / GLOBAL
+ * `pricing_rules` baseline that payment-calculator.ts actually charges (the
+ * payments lane must set the pricing_rules rows to 2.0 to match). No "from", no
+ * "indicative", no "may vary" hedging: one fee for every event type.
  */
 
 // ---- Pricing tier data ----
