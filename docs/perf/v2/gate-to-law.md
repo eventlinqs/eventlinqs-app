@@ -60,19 +60,96 @@ actually passes once measured (the run prints median scores per URL via
 
 ## Measured medians (warmed Vercel preview, median-of-3, el-audit=1)
 
-Filled from the real CI run on this PR. `_` = pending first green run.
+First real CI run: PR #95, run 27078399497, preview
+`eventlinqs-9ya6nsuth-...vercel.app` (off `main`). `--` = NO_LCP (perf score
+null - the priority hero image did not register an LCP event inside the gather
+window; this is the Issue #42 cold-start manifestation, intermittent).
 
 ### Mobile
 
-| URL | perf | a11y | bp | seo | LCP (ms) |
+| URL | perf | a11y | bp | seo | LCP ms |
 |---|---|---|---|---|---|
-| _ | _ | _ | _ | _ | _ |
+| / | -- | 100 | 96 | 100 | -- (SI 5053) |
+| /events | 80 | 100 | 96 | 100 | 3954 |
+| /events/africultures-festival-sydney-2027 | 78 | 100 | 96 | 100 | 3957 |
+| /events/browse/melbourne | 80 | 100 | 96 | 100 | 4108 |
+| /culture/african | -- | 100 | 96 | 100 | -- |
+| /organisers | 91 | 100 | 96 | 100 | 3184 |
+| /pricing | 86 | 100 | 96 | 100 | 3508 |
+| /help | 81 | 100 | 96 | 100 | 3595 |
+| /about | 86 | 97 | 96 | 100 | 3519 |
+| /blog | 97 | 96 | 96 | 100 | 1988 |
+| /careers | 90 | 96 | 96 | 100 | 2611 |
+| /press | 91 | 90 | 96 | 100 | 1981 |
+| /legal/terms | 83 | 100 | 96 | 100 | 3810 |
+| /legal/privacy | 83 | 100 | 96 | 100 | 3812 |
+| /login | 95 | 100 | 96 | off | 2274 |
+| /signup | 93 | 100 | 96 | off | 2715 |
 
 ### Desktop
 
-| URL | perf | a11y | bp | seo | LCP (ms) |
+| URL | perf | a11y | bp | seo | LCP ms |
 |---|---|---|---|---|---|
-| _ | _ | _ | _ | _ | _ |
+| / | 92 | 100 | 96 | 100 | 982 |
+| /events | 99 | 100 | 96 | 100 | 913 |
+| /events/africultures-festival-sydney-2027 | 99 | 100 | 96 | 100 | 889 |
+| /events/browse/melbourne | 99 | 100 | 96 | 100 | 908 |
+| /culture/african | -- | 100 | 96 | 100 | -- |
+| /organisers | 99 | 100 | 96 | 100 | 867 |
+| /pricing | 100 | 100 | 96 | 100 | 784 |
+| /help | 99 | 100 | 96 | 100 | 825 |
+| /about | 100 | 96 | 96 | 100 | 817 |
+| /blog | 99 | 96 | 96 | 100 | 828 |
+| /careers | 100 | 96 | 96 | 100 | 797 |
+| /press | 100 | 89 | 96 | 100 | 813 |
+| /legal/terms | 100 | 96 | 96 | 100 | 814 |
+| /legal/privacy | 99 | 96 | 96 | 100 | 860 |
+| /login | 100 | 100 | 96 | off | 769 |
+| /signup | 100 | 100 | 96 | off | 646 |
+
+## What the truthful target reveals (the gate is correctly red)
+
+Pointed at the warmed preview instead of localhost, the gate fails - because
+the app does not yet meet the law on the truthful target. Every failure is
+real and routed; none is a gate defect, and nothing was weakened to hide them.
+
+1. **best-practices = 0.96 on every URL, both form factors.** Cause: the
+   Lighthouse `inspector-issues` audit (weight 1) fires on a Content-Security
+   -Policy issue from `https://vercel.live/_next-live/feedback/feedback.js` -
+   the Vercel **preview toolbar**. It is a preview-only platform injection
+   (production serves no toolbar, so production reads 1.0), and blocking the
+   request via `blockedUrlPatterns` does not suppress the report-only-CSP
+   *issue* (the violation is evaluated when the HTML is parsed, before the
+   request is aborted). Resolution is to disable the Vercel Toolbar on preview
+   deployments (Vercel project Settings > Toolbar), after which the existing
+   1.0 floor holds on the preview too. This is also tied to MINOR-2 (flip the
+   app CSP from Report-Only to enforcing). No threshold lowered.
+2. **a11y < 1.0 on /about, /blog, /careers, /press (and /legal/terms +
+   /legal/privacy on desktop).** Real color-contrast on `main` - the exact
+   class the inspection flagged as MAJOR-4, now caught by the gate. Owned by
+   the feat/home-rebuild session (marketing/legal page files; off-limits to
+   engine hardening). The gate addition is this PR's job; the fixes are theirs.
+3. **perf below floor on mobile buyer pages + NO_LCP on hero pages.** Mobile
+   event-detail is 78 (below the never-lowered 0.80 floor), `/` and
+   `/culture/african` return NO_LCP, and a couple of CWV overages
+   (melbourne LCP 4108 > 4000, home Speed-Index 5053 > 4500). Desktop is clean
+   (92-100) except `/culture/african` NO_LCP. This is the Issue #42 image
+   -optimiser cold-start plus a genuine mobile perf gap on the buyer journey -
+   the inspection's "0.91 -> 0.84 -> 0.75 degradation on the correct target."
+   Tracked in Issue #42; the gap from the floor to 0.95 is the work there.
+
+The previous gate read green only because it measured localhost at a 0.80
+floor with the hero pages waived. Removing those crutches surfaces the truth.
+
+## Final floors (this PR)
+
+| Form factor | Performance floor | Rationale |
+|---|---|---|
+| Mobile  | 0.80 | The never-lowered existing floor. Note: on the truthful target the buyer journey already brushes/busts it (event-detail 78); kept at 0.80, gap tracked in Issue #42 (not lowered to match reality). |
+| Desktop | 0.90 | Ratcheted up from mobile's 0.80. Desktop measurable pages run 92-100, so 0.90 passes comfortably with cold-start margin; the gap to 0.95 is tracked in Issue #42. |
+
+a11y / best-practices / seo stay at 1.0 error; all Core Web Vitals at
+error-level. Nothing in this gate is weaker than the gate it replaces.
 
 ## Branch-protection note for the project manager
 
