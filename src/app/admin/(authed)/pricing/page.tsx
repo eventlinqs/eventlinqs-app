@@ -3,6 +3,7 @@ import { requireAdminSession } from '@/lib/admin/auth'
 import { hasCapability } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { readAdminPricingMatrix } from '@/lib/admin/pricing'
+import { ConfirmSubmitButton } from '@/components/admin/confirm-submit-button'
 import { updateScopePricingAction } from './actions'
 
 export const dynamic = 'force-dynamic'
@@ -134,13 +135,16 @@ export default async function AdminPricingPage({ searchParams }: { searchParams:
                   </td>
                   <td className="px-4 py-3 text-white/50">v{ver || 1}</td>
                   <td className="px-4 py-3">
-                    <button
+                    {/* Confirmation step (WCAG-safe native confirm): changing
+                        fees affects what every new transaction is charged, so a
+                        save is gated behind an explicit confirm. */}
+                    <ConfirmSubmitButton
                       form={`form-${id}`}
-                      type="submit"
+                      confirmMessage={`Update live ${row.scope.label} (${row.scope.countryCode} ${row.scope.currency}) fees? New transactions will use the new fees immediately. Past orders are unchanged.`}
                       className="rounded-md bg-white/90 px-3 py-1.5 text-sm font-semibold text-[#0A0F1A] transition hover:bg-white"
                     >
                       Save
-                    </button>
+                    </ConfirmSubmitButton>
                   </td>
                 </tr>
               )
