@@ -3,6 +3,7 @@ import { MEDIA_QUALITY } from './quality'
 import { MEDIA_SIZES } from './sizes'
 import { resolveImageSrc } from './safe-image-src'
 import { BrandedPlaceholder } from './decorative/branded-placeholder'
+import { HoverWash } from './hover-wash'
 
 /**
  * EventCardMedia - the only allowed surface for event imagery in card,
@@ -70,17 +71,20 @@ export function EventCardMedia({
     return <BrandedPlaceholder className={className} />
   }
   return (
-    <Image
-      src={safeSrc}
-      alt={alt}
-      fill
-      sizes={SIZES_BY_VARIANT[variant]}
-      quality={QUALITY_BY_VARIANT[variant]}
-      priority={priority}
-      fetchPriority={priority ? 'high' : 'auto'}
-      loading={priority ? 'eager' : 'lazy'}
-      decoding="async"
-      className={`${objectFit === 'cover' ? 'object-cover' : 'object-contain'} ${className}`}
-    />
+    <>
+      <Image
+        src={safeSrc}
+        alt={alt}
+        fill
+        sizes={SIZES_BY_VARIANT[variant]}
+        quality={QUALITY_BY_VARIANT[variant]}
+        priority={priority}
+        fetchPriority={priority ? 'high' : 'auto'}
+        loading={priority ? 'eager' : 'lazy'}
+        decoding="async"
+        className={`${objectFit === 'cover' ? 'object-cover' : 'object-contain'} ${className}`}
+      />
+      <HoverWash />
+    </>
   )
 }

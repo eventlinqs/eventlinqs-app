@@ -3,6 +3,7 @@ import { MEDIA_QUALITY } from './quality'
 import { MEDIA_SIZES } from './sizes'
 import { resolveImageSrc } from './safe-image-src'
 import { BrandedPlaceholder } from './decorative/branded-placeholder'
+import { HoverWash } from './hover-wash'
 
 /**
  * SubCultureTileImage - the only allowed surface for sub-culture tile
@@ -25,15 +26,18 @@ export function SubCultureTileImage({ src, alt, className = '' }: Props) {
     return <BrandedPlaceholder className={className} />
   }
   return (
-    <Image
-      src={safeSrc}
-      alt={alt}
-      fill
-      sizes={MEDIA_SIZES.card}
-      quality={MEDIA_QUALITY.card}
-      loading="lazy"
-      decoding="async"
-      className={`object-cover ${className}`}
-    />
+    <>
+      <Image
+        src={safeSrc}
+        alt={alt}
+        fill
+        sizes={MEDIA_SIZES.card}
+        quality={MEDIA_QUALITY.card}
+        loading="lazy"
+        decoding="async"
+        className={`object-cover ${className}`}
+      />
+      <HoverWash />
+    </>
   )
 }

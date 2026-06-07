@@ -218,6 +218,39 @@
   transform-origin: center;
 }
 
+/* ─── Hover breathing wash (platform-wide card/tile hover law) ────────────── */
+/*
+ * Rendered once by every card/tile media surface via the <HoverWash />
+ * component (src/components/media/hover-wash.tsx) - never copied per page.
+ * It layers a soft brand-navy gradient over the imagery on hover, ABOVE the
+ * image but BELOW any scrim/label (pure DOM paint order, no z-index), pairing
+ * with the wrapper lift + image scale for the Ticketmaster-class hover.
+ *
+ * Near-zero at the top so imagery stays bright; ~26% navy at the base where
+ * scrims/labels already sit. Directional, so it reads as a warm navy
+ * deepening, never a flat dim into mud. Content stays fully legible.
+ *
+ * Armed ONLY under html[data-motion="1"] (the pre-paint flag): headless /
+ * Lighthouse audits and prefers-reduced-motion visitors never see it and
+ * never pay for it. See CLAUDE.md "Motion" -> "Hover breathing law".
+ */
+.card-hover-wash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(
+    165deg,
+    rgba(10, 22, 40, 0) 0%,
+    rgba(10, 22, 40, 0.08) 42%,
+    rgba(26, 26, 46, 0.26) 100%
+  );
+  transition: opacity 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+html[data-motion="1"] .group:hover .card-hover-wash {
+  opacity: 1;
+}
+
 /* ─── M5 typography utility classes ──────────────────────────────────────── */
 /*
  * Pair font-size + line-height + weight per spec in one class.
