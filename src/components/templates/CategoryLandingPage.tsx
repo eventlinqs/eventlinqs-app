@@ -122,7 +122,7 @@ export function CategoryLandingPage({ category, liveEvents = [] }: CategoryLandi
               </h2>
               <Link
                 href={`/events?category=${slug}`}
-                className="shrink-0 text-sm font-medium text-[var(--brand-accent)] hover:text-[var(--brand-accent-hover)] transition-colors"
+                className="shrink-0 text-sm font-medium text-[var(--brand-accent-strong)] hover:text-[var(--text-primary)] transition-colors"
               >
                 View all &rsaquo;
               </Link>

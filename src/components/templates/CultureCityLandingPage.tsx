@@ -282,7 +282,7 @@ export function CultureCityLandingPage({
           </div>
           <Link
             href={`/events?culture=${culture.slug}&city=${citySlug}`}
-            className="text-sm font-medium text-[var(--brand-accent)] hover:text-[var(--brand-accent-hover)]"
+            className="text-sm font-medium text-[var(--brand-accent-strong)] hover:text-[var(--text-primary)]"
           >
             Open in browse view &rsaquo;
           </Link>
