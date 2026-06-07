@@ -261,16 +261,20 @@ silently re-painted.
   (`cancelGlide`) and the `DragRail` `snap` prop. Do not move snap back into the
   static className; a guard comment marks this in the file.
 
-**Hero scale (one system, two capped tiers)**
+**Hero scale (ONE platform standard - founder ruling 2026-06-07)**
 
-- One hero-scale system for the whole platform, defined as named tokens in
-  `globals.css`; no page's hero may exceed its tier. The homepage hero is the
-  marketing maximum - a "sell the platform" hero may never tower over it.
-  - `.hero-marketing` (primary + marketing tier, homepage scale ~42-48vh, max
-    480px): `/`, `/organisers`, pricing, about, careers, press, and every
-    marketing surface.
-  - `.hero-content` (content tier, the cinematic cap ~55-70vh):
-    `/events/[slug]`, `/city/[slug]`, `/culture/[culture]`.
+- ONE hero scale for the whole platform: the homepage hero scale, defined as the
+  single `.hero-marketing` token in `globals.css` (~42-48vh, max 480px, min
+  320px). EVERY page hero uses it - marketing, discovery, AND content
+  (`/events/[slug]`, `/city/[slug]`, `/city/[slug]/[suburb]`,
+  `/categories/[slug]`, `/culture/[culture]`). There is no separate, taller
+  "content" tier; `.hero-content` was retired.
+- Deviation above this scale is permitted ONLY where FRESH competitor evidence
+  proves the equivalent page type runs taller and reads better - evidence, never
+  taste. The 2026 mirror (`docs/benchmark/competitor-2026/`) found neither
+  Ticketmaster nor Eventbrite runs a taller hero on any page type (event detail,
+  browse, category and city all sit at or below this scale), so no page
+  currently qualifies. Any new taller hero must ship its competitor capture.
 - Every hero shares one treatment: the bottom-up navy scrim, a GOLD eyebrow
   (`--brand-accent` on the dark hero, never a white eyebrow), the homepage
   display scale (`text-3xl sm:text-4xl lg:text-5xl`, never `text-6xl`/`text-7xl`),

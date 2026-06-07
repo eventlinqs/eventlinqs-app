@@ -522,10 +522,12 @@ export default async function EventDetailPage({ params }: Props) {
       />
 
       <main>
-        {/* Cinematic hero */}
+        {/* Hero at the single platform scale (.hero-marketing). Flattened from
+            the retired 55-70vh content tier per the 2026 competitor mirror:
+            neither TM nor Eventbrite runs a taller event-detail hero. */}
         <section
           aria-label="Event hero"
-          className="relative flex min-h-[55vh] items-end overflow-hidden bg-navy-950 md:min-h-[70vh]"
+          className="hero-marketing relative flex items-end overflow-hidden bg-navy-950"
         >
           <HeroPresenceMarker />
           <div className="absolute inset-0">

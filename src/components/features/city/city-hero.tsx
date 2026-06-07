@@ -49,10 +49,10 @@ export function CityHero({
       className="relative overflow-hidden"
     >
       <HeroPresenceMarker />
-      {/* Hero is taller on mobile (matches Ticketmaster's destination
-       *  guide pattern at 375px) so the headline carries weight before
-       *  the user scrolls. Desktop reverts to a tighter 52vh band. */}
-      <div className="relative h-[64vh] min-h-[440px] max-h-[560px] w-full sm:h-[52vh] sm:min-h-[360px] sm:max-h-[520px]">
+      {/* Single platform hero scale (.hero-marketing). Flattened from the old
+       *  taller band: the 2026 competitor mirror shows TM/Eventbrite city and
+       *  browse heroes sit at or below the homepage scale, not above it. */}
+      <div className="hero-marketing relative w-full">
         {imageSrc ? (
           <HeroMedia image={imageSrc} alt={`${title} on EventLinqs`} priority />
         ) : (

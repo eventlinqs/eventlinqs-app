@@ -25,7 +25,7 @@ export function PhotographicCultureHero({ eyebrow, title, subtitle, imageSrc }: 
       className="relative overflow-hidden"
     >
       <HeroPresenceMarker />
-      <div className="relative h-[48vh] min-h-[320px] max-h-[460px] w-full">
+      <div className="hero-marketing relative w-full">
         {imageSrc ? (
           <HeroMedia image={imageSrc} alt={`${title} on EventLinqs`} priority />
         ) : (

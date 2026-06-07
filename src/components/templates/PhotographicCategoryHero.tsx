@@ -49,7 +49,7 @@ export function PhotographicCategoryHero({ slug, eyebrow, title, subtitle }: Pro
       className="relative overflow-hidden"
     >
       <HeroPresenceMarker />
-      <div className="relative h-[64vh] min-h-[420px] max-h-[640px] w-full">
+      <div className="hero-marketing relative w-full">
         <HeroMedia image={src} alt={alt} priority />
         {/* Darkened gradient: bottom-up navy so headline stays readable */}
         <div
