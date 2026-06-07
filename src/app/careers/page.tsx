@@ -16,6 +16,7 @@ export const metadata: Metadata = {
       'Help build the ticketing platform for every community. Engineering, design, organiser support, and community roles will open as we scale.',
     url: '/careers',
     type: 'website',
+    images: ['/opengraph-image'],
   },
 }
 
@@ -106,7 +107,7 @@ export default function CareersPage() {
       <ContentSection surface="base" width="default">
         <div className="grid gap-12 md:grid-cols-2 md:gap-16">
           <div>
-            <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-accent)]">
+            <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-accent-strong)]">
               The pitch
             </p>
             <h2 className="mt-3 font-display text-3xl font-bold leading-tight text-[var(--text-primary)] md:text-4xl">
@@ -154,7 +155,7 @@ export default function CareersPage() {
 
       <ContentSection surface="alt" width="wide">
         <div className="max-w-3xl">
-          <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-accent)]">
+          <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-accent-strong)]">
             How we work
           </p>
           <h2 className="mt-3 font-display text-3xl font-bold leading-tight text-[var(--text-primary)] md:text-4xl">
@@ -178,7 +179,7 @@ export default function CareersPage() {
       <ContentSection surface="base" width="default" id="roles">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-accent)]">
+            <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-accent-strong)]">
               Open roles
             </p>
             <h2 className="mt-3 font-display text-3xl font-bold leading-tight text-[var(--text-primary)] md:text-4xl">
