@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { createPublicClient } from '@/lib/supabase/public-client'
+import { fixtureEventExists } from '@/lib/dev/fixture-events'
 
 /**
  * Existence guard for /events/[slug].
@@ -26,6 +27,13 @@ export default async function EventSlugLayout({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
+
+  // Density fixture (Preview + local only, double-guarded inside
+  // fixtureEventExists): a homepage fixture card must resolve to a real
+  // detail page, so honour the same one-source-of-truth fixture the homepage
+  // rails render. Never consulted on production deployments.
+  if (await fixtureEventExists(slug)) return children
+
   const supabase = createPublicClient()
   const { data } = await supabase
     .from('events')

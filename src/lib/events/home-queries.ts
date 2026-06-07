@@ -3,6 +3,7 @@ import type { BentoEvent } from '@/components/features/events/event-bento-tile'
 import type {
   FeaturedHeroEvent,
 } from '@/components/features/events/featured-event-hero'
+import { fixtureEnabled, loadFixtureRows } from '@/lib/dev/fixture-events'
 
 export const EVENT_SELECT =
   'id, slug, title, summary, cover_image_url, thumbnail_url, gallery_urls, start_date, venue_name, venue_city, venue_state, venue_country, is_free, created_at, category:event_categories(name, slug), organisation:organisations(name), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
@@ -82,21 +83,14 @@ export async function loadHomeUpcoming(
   nowIso: string,
   limit = 24,
 ): Promise<RawRow[]> {
-  if (process.env.HOMEPAGE_SEED_FIXTURE === '1' && process.env.VERCEL_ENV !== 'production') {
-    const { readFile } = await import('node:fs/promises')
-    const { resolve } = await import('node:path')
-    try {
-      const raw = await readFile(
-        resolve(process.cwd(), 'src/lib/dev/home-seed-fixture.json'),
-        'utf8',
-      )
-      const rows = JSON.parse(raw) as RawRow[]
+  if (fixtureEnabled()) {
+    const rows = await loadFixtureRows()
+    if (rows.length > 0) {
       return rows
         .filter(r => r.start_date >= nowIso)
         .sort((a, b) => a.start_date.localeCompare(b.start_date))
-    } catch {
-      // Fixture missing - fall through to the live query rather than break.
     }
+    // Fixture missing - fall through to the live query rather than break.
   }
   const { data } = await supabase
     .from('events')

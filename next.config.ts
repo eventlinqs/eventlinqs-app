@@ -65,6 +65,11 @@ const nextConfig: NextConfig = {
   // loadHomeUpcoming + the prebuild abort).
   outputFileTracingIncludes: {
     '/': ['./src/lib/dev/home-seed-fixture.json'],
+    // The event-detail data path is fixture-aware under HOMEPAGE_SEED_FIXTURE=1
+    // (one source of truth with the homepage), so its lambda needs the fixture
+    // file too or a fixture card would 404 on the Preview. No-op when the file
+    // is absent (normal/production builds).
+    '/events/[slug]': ['./src/lib/dev/home-seed-fixture.json'],
   },
   async redirects() {
     // Batch 5 - /categories/[slug] → /culture/[slug] migration.

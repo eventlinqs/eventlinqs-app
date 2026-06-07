@@ -256,30 +256,61 @@ function buildRows() {
   })
 }
 
-// ── fixture mode: write RawRow[] for the homepage dev path ──────────────────
+// ── fixture mode: write the density fixture for the dev/preview paths ────────
+//
+// The rows are a SUPERSET of the homepage RawRow shape: the homepage rails
+// (loadHomeUpcoming) read the RawRow subset, while the event-detail data path
+// (events/[slug] layout guard + fetchEvent, both fixture-aware under
+// HOMEPAGE_SEED_FIXTURE=1) reads the extra detail fields below so a fixture
+// card always resolves to a fully rendered detail page. One file, one source
+// of truth - density and detail can never disagree.
 function writeFixture(rows) {
-  const ORG = { name: 'EventLinqs Presents' }
+  // A single synthetic organiser, marked sellable (connected + charges
+  // enabled) so paid fixture events render the live ticket panel on the
+  // preview rather than the "not on sale" state. Reservation/checkout remains
+  // the staging-gated paid path; the preview only needs the page to render.
+  const ORG = {
+    id: 'c0a70000-0000-4000-8002-000000000001',
+    name: 'EventLinqs Presents',
+    slug: 'eventlinqs-presents',
+    description:
+      'The in-house EventLinqs production team, programming a national catalogue across music, food, arts, sport, comedy and community.',
+    stripe_account_id: 'acct_fixture_preview',
+    stripe_charges_enabled: true,
+  }
   const rawRows = rows.map((r, i) => ({
     id: r.id,
     slug: r.slug,
     title: r.title,
     summary: r.summary,
+    description: r.description,
     cover_image_url: null,
     thumbnail_url: null,
     gallery_urls: null,
     start_date: r.start_date,
+    end_date: r.end_date,
+    timezone: 'Australia/Sydney',
+    event_type: 'in_person',
+    status: 'published',
+    visibility: 'public',
     venue_name: r.venue.name,
+    venue_address: r.venue.address,
     venue_city: r.city,
     venue_state: r.venue.state,
     venue_country: 'Australia',
     is_free: r.is_free,
+    tags: ['catalogue', r.category.slug],
     // Spread created_at so the "Just added" sort has signal: newest first.
     created_at: new Date(Date.parse('2026-06-06T00:00:00Z') - i * 3600 * 1000).toISOString(),
     category: { name: r.category.name, slug: r.category.slug },
     organisation: ORG,
-    ticket_tiers: r.tiers.map(t => ({
-      id: t.id, price: t.price, currency: t.currency,
+    ticket_tiers: r.tiers.map((t, ti) => ({
+      id: t.id, name: t.name, price: t.price, currency: t.currency,
       sold_count: t.sold_count, reserved_count: t.reserved_count, total_capacity: t.total_capacity,
+      min_per_order: 1, max_per_order: 10, sort_order: ti,
+      is_visible: true, is_active: true, requires_access_code: false,
+      tier_type: 'general_admission', dynamic_pricing_enabled: false,
+      sale_start: null, sale_end: null, description: `${t.name} ticket`,
     })),
   }))
   const outDir = resolve(ROOT, 'src/lib/dev')

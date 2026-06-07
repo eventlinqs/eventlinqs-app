@@ -28,6 +28,7 @@ import { buildEventMetaDescription } from '@/lib/events/event-meta'
 import type { PublicEventRow } from '@/lib/events/types'
 import nextDynamic from 'next/dynamic'
 import { EventTrustSignals } from '@/components/features/event/EventTrustSignals'
+import { fetchFixtureEvent } from '@/lib/dev/fixture-events'
 
 // VenueMap pulls in @googlemaps/js-api-loader (~290KB). Loading it statically
 // makes it part of the event-detail route chunk, which Next.js eagerly
@@ -85,6 +86,14 @@ type EnrichedTier = TicketTier & {
 }
 
 async function fetchEvent(slug: string): Promise<FullEvent | null> {
+  // Density fixture (Preview + local only, double-guarded in fetchFixtureEvent):
+  // the homepage rails and this detail path read ONE fixture, so a fixture
+  // card resolves to a fully rendered detail page instead of a 404. Returns
+  // null for unknown slugs and is a no-op on production, so the real-DB query
+  // below stays the single path for every live event.
+  const fixture = await fetchFixtureEvent(slug)
+  if (fixture) return fixture as unknown as FullEvent
+
   const supabase = createPublicClient()
   const { data, error } = await supabase
     .from('events')
