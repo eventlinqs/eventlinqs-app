@@ -57,7 +57,7 @@ export async function ThisWeekCard({
     imageAlt = media.alt ?? imageAlt
   }
   if (!imageSrc) {
-    const photo = await getCategoryPhoto(event.category?.slug ?? null)
+    const photo = await getCategoryPhoto(event.category?.slug ?? null, event.slug ?? event.title)
     imageSrc = photo.src
     imageAlt = photo.alt ?? imageAlt
   }

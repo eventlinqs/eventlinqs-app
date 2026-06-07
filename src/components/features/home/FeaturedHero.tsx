@@ -55,7 +55,7 @@ async function toSlide(event: BentoEvent): Promise<FeaturedHeroSlide> {
     alt = media.alt ?? alt
   }
   if (!image) {
-    const photo = await getCategoryPhoto(event.category?.slug ?? null)
+    const photo = await getCategoryPhoto(event.category?.slug ?? null, event.title)
     image = photo.src
     alt = photo.alt ?? alt
   }

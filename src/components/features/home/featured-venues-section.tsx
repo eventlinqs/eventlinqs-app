@@ -50,7 +50,7 @@ export async function FeaturedVenuesSection({ upcoming }: Props) {
 
   await Promise.all(
     top.map(async v => {
-      const photo = await getCategoryPhoto(v.categorySlug)
+      const photo = await getCategoryPhoto(v.categorySlug, v.name)
       v.imageSrc = photo.src
       v.imageAlt = photo.alt
     }),
