@@ -1,30 +1,16 @@
 {
+  "_config_note": "MOBILE Lighthouse gate. Runs against the deployed Vercel PREVIEW for the PR commit (URLs are injected by .github/workflows/lighthouse.yml via the action's `urls` input - there is deliberately no `collect.url` or `startServerCommand` here, because the gate no longer measures localhost). The desktop counterpart is lighthouserc.desktop.json; both share this assertion matrix, differing only in form factor and the evidence-calibrated performance floor. Floors are documented in docs/perf/v2/gate-to-law.md and the remaining gap to the 0.95 law is tracked in Issue #42 (Vercel image-optimiser cold-start). Never lower a threshold in this file.",
   "ci": {
     "collect": {
-      "startServerCommand": "npm run start",
-      "startServerReadyPattern": "Ready in",
-      "startServerReadyTimeout": 60000,
-      "url": [
-        "http://localhost:3000/",
-        "http://localhost:3000/events",
-        "http://localhost:3000/events/browse/melbourne",
-        "http://localhost:3000/culture/african",
-        "http://localhost:3000/events/afrobeats-melbourne-summer-sessions",
-        "http://localhost:3000/organisers",
-        "http://localhost:3000/pricing",
-        "http://localhost:3000/help",
-        "http://localhost:3000/legal/terms",
-        "http://localhost:3000/login",
-        "http://localhost:3000/signup"
-      ],
-      "_authNote": "All listed URLs verified to render without auth (HTTP 200, no redirect). Auth-gated surfaces - /dashboard/*, /admin/*, /orders/[order_id]/confirmation, /squad/[token], /verify-email-sent - are excluded from this gate because Lighthouse cannot pass session cookies/JWTs reliably in CI. Module M7 (admin) and Pre-Task 5 (checkout/orders perf) will each add their own auth-context Lighthouse gate using a recorded session.",
-      "_numberOfRuns_note": "CLAUDE.md hard rule: 'NO single-run Lighthouse measurements (median-of-5 only)'. Single-run measurements are statistically invalid for gating and produce intermittent NO_LCP / NO_FCP errors (observed on PR #40 first green-pass run: / and /culture/african both came back perf:null with errorMessage:NO_LCP, while /events scored 0.80 in the same run). 3 runs (median) is the floor that dampens cold-start flake without blowing the 20-minute workflow timeout; the full 5 the standard calls for can land once a longer timeout window is justified.",
+      "_numberOfRuns_note": "CLAUDE.md hard rule: 'NO single-run Lighthouse measurements (median-of-5 only)'. The workflow runs an unrecorded warm-up curl pass over every URL before this step (so ISR and the next/image optimiser are warm), then this collects 3 scored runs and gates on the median. 3 dampens residual cold-start variance without blowing the workflow timeout; raise toward 5 when a longer window is justified.",
       "numberOfRuns": 3,
       "settings": {
         "formFactor": "mobile",
         "chromeFlags": "--headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage",
         "extraHeaders": "{\"Cookie\":\"el-audit=1\"}",
-        "_lcp_timing_note": "Gather-window tuning. PR #40 runs showed Lighthouse's LCP observer returning NO_LCP / notApplicable on the priority-image hero surfaces (/ and /culture/african) despite FCP, Speed Index, and final-screenshot all succeeding. The workflow header documents this as the known Vercel image optimiser cold-start issue. These settings push out gather closure so a slow-paint priority image has more time to register an LCP event before Lighthouse stops listening. Each is a Lighthouse-default multiplier, not a check downgrade: the assertion floors (perf 0.80, a11y 1.0, etc.) are unchanged.",
+        "blockedUrlPatterns": ["*vercel.live*", "*vercel.com/_next-live*"],
+        "_blockedUrlPatterns_note": "The Vercel preview injects the vercel.live collaboration toolbar. It is a preview-only injection (absent in production) and its report-only-CSP console entry drops best-practices from 1.0 to ~0.96 and adds non-app JS to the perf trace. Blocking it makes the gate measure the application as production will serve it, without weakening any threshold.",
+        "_lcp_timing_note": "Gather-window tuning carried over from the localhost gate. Pushes out gather closure so a slow-paint priority hero raster (Issue #42) has time to register an LCP event before Lighthouse stops listening. Lighthouse-default multipliers, not check downgrades.",
         "maxWaitForLoad": 60000,
         "pauseAfterLoadMs": 5000,
         "networkQuietThresholdMs": 5000,
@@ -34,63 +20,33 @@
     "assert": {
       "assertMatrix": [
         {
-          "_pattern_note": "Negative lookahead excludes /login and /signup (SEO category - they are deliberately noindex), /culture/* (perf score - Issue #42 cold-start image-optimiser race; see the third assertMatrix entry below), AND the homepage / (same Issue #42 class per CLAUDE.md docs/perf/v2/closure-report.md flagging 'Mobile homepage and /events have known cold-cache measurement issue ... do not block on it'; see the fourth assertMatrix entry below). Each excluded path has its own dedicated assertMatrix entry that re-applies whichever assertions still need to fire at error-level for that path. assertMatrix entries are independent and additive (a URL matched by multiple entries has all matching assertions evaluated), so excluding here is the only way to suppress the default error-level threshold from also firing.",
-          "matchingUrlPattern": "^(?!.*/(login|signup)$)(?!.*/culture/.+$)(?!http://localhost:3000/$).*",
+          "_pattern_note": "Default entry for every gated URL except /login and /signup (excluded via negative lookahead because their SEO category is intentionally off - see the second entry). Patterns are host-agnostic (the host is the per-PR preview domain, not localhost). assertMatrix entries are additive, so login/signup must be excluded here or the error-level SEO assertion would still fire on them.",
+          "matchingUrlPattern": "^(?!.*/(login|signup)/?$).*",
           "assertions": {
             "categories:performance": ["error", { "minScore": 0.80 }],
             "categories:accessibility": ["error", { "minScore": 1.0 }],
             "categories:best-practices": ["error", { "minScore": 1.0 }],
             "categories:seo": ["error", { "minScore": 1.0 }],
-            "largest-contentful-paint": ["warn", { "maxNumericValue": 4000 }],
-            "total-blocking-time": ["warn", { "maxNumericValue": 600 }],
+            "largest-contentful-paint": ["error", { "maxNumericValue": 4000 }],
+            "total-blocking-time": ["error", { "maxNumericValue": 600 }],
             "cumulative-layout-shift": ["error", { "maxNumericValue": 0.1 }],
-            "first-contentful-paint": ["warn", { "maxNumericValue": 2000 }],
-            "speed-index": ["warn", { "maxNumericValue": 4500 }]
+            "first-contentful-paint": ["error", { "maxNumericValue": 2000 }],
+            "speed-index": ["error", { "maxNumericValue": 4500 }]
           }
         },
         {
-          "_note": "Login and signup are intentionally noindex/nofollow per fan-protection: auth pages should not be indexed (signed-in users get redirected away, indexing dilutes brand SEO). is-crawlable and canonical audits would fail on these pages by design, so the SEO category assertion is downgraded to warn here while perf/a11y/bp stay error-level.",
-          "matchingUrlPattern": "/(login|signup)$",
+          "_note": "Login and signup are intentionally noindex/nofollow per fan-protection: auth pages should not be indexed (signed-in users are redirected away; indexing dilutes brand SEO). is-crawlable and canonical audits fail on these pages by design, so the SEO category is off here while perf/a11y/bp and all Core Web Vitals stay at error-level.",
+          "matchingUrlPattern": "/(login|signup)/?$",
           "assertions": {
             "categories:performance": ["error", { "minScore": 0.80 }],
             "categories:accessibility": ["error", { "minScore": 1.0 }],
             "categories:best-practices": ["error", { "minScore": 1.0 }],
             "categories:seo": "off",
-            "largest-contentful-paint": ["warn", { "maxNumericValue": 4000 }],
-            "total-blocking-time": ["warn", { "maxNumericValue": 600 }],
+            "largest-contentful-paint": ["error", { "maxNumericValue": 4000 }],
+            "total-blocking-time": ["error", { "maxNumericValue": 600 }],
             "cumulative-layout-shift": ["error", { "maxNumericValue": 0.1 }],
-            "first-contentful-paint": ["warn", { "maxNumericValue": 2000 }],
-            "speed-index": ["warn", { "maxNumericValue": 4500 }]
-          }
-        },
-        {
-          "_note": "Culture landing pages (/culture/<slug>) hit a cold-start Vercel image optimiser race that drops mobile performance score below the global 0.80 floor on heavy hero rasters. Surfaced after PR #40 fixed the /events 500 that previously masked Lighthouse from reaching this URL's assertion phase at all. Issue #42 tracks the proper fix (image-optimiser pre-warm or static raster hero on culture pages). Until then, performance is gated at warn-level on this route only - the score is still measured and visible in CI, just non-blocking - while accessibility, best-practices, and SEO stay at the full error-level 1.0 floor. Restore performance to error-level when Issue #42 closes.",
-          "matchingUrlPattern": "/culture/.+$",
-          "assertions": {
-            "categories:performance": ["warn", { "minScore": 0.80 }],
-            "categories:accessibility": ["error", { "minScore": 1.0 }],
-            "categories:best-practices": ["error", { "minScore": 1.0 }],
-            "categories:seo": ["error", { "minScore": 1.0 }],
-            "largest-contentful-paint": ["warn", { "maxNumericValue": 4000 }],
-            "total-blocking-time": ["warn", { "maxNumericValue": 600 }],
-            "cumulative-layout-shift": ["error", { "maxNumericValue": 0.1 }],
-            "first-contentful-paint": ["warn", { "maxNumericValue": 2000 }],
-            "speed-index": ["warn", { "maxNumericValue": 4500 }]
-          }
-        },
-        {
-          "_note": "Homepage / mobile cold-cache image-optimiser race - same class as /culture/* per Issue #42 and CLAUDE.md docs/perf/v2/closure-report.md ('Mobile homepage and /events have known cold-cache measurement issue to be revisited with production warm-cache data, do not block on it'). The homepage hero is a heavy priority-painted raster on mobile and trips the same Vercel image optimiser cold-start race already documented for /culture/*. Observed in this PR's run (median-of-3): perf 0.76 on /, while /culture/african produced null/NaN for perf/LCP/TBT in the same run - both routes are stuck below the 0.80 floor for the same documented reason. Performance is gated at warn-level so the score stays visible in CI without blocking deploys; accessibility, best-practices, SEO, and CLS remain at the full error-level. Restore performance to error-level when the underlying cold-cache fix lands (same fix horizon as Issue #42). /events is also flagged in CLAUDE.md as having the same issue but is left at error-level for now because the current run still measured it above 0.80 - relax it only when it actually fails.",
-          "matchingUrlPattern": "^http://localhost:3000/$",
-          "assertions": {
-            "categories:performance": ["warn", { "minScore": 0.80 }],
-            "categories:accessibility": ["error", { "minScore": 1.0 }],
-            "categories:best-practices": ["error", { "minScore": 1.0 }],
-            "categories:seo": ["error", { "minScore": 1.0 }],
-            "largest-contentful-paint": ["warn", { "maxNumericValue": 4000 }],
-            "total-blocking-time": ["warn", { "maxNumericValue": 600 }],
-            "cumulative-layout-shift": ["error", { "maxNumericValue": 0.1 }],
-            "first-contentful-paint": ["warn", { "maxNumericValue": 2000 }],
-            "speed-index": ["warn", { "maxNumericValue": 4500 }]
+            "first-contentful-paint": ["error", { "maxNumericValue": 2000 }],
+            "speed-index": ["error", { "maxNumericValue": 4500 }]
           }
         }
       ]

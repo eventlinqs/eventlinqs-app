@@ -216,3 +216,52 @@ Owner:    Hardening session
       Sydney health verification, Resend send smoke test).
     - Partner Claude confirms no conflict with [SHARED] 4afe68d.
   Until then: idle.
+
+================================================================
+2026-06-07 | chore/gates-to-law | PR #95 | Quality gate up to the law
+================================================================
+Responds to WORKSHOP-INSPECTION.md MAJOR-1 + MAJOR-4 gate gap. One PR,
+do not merge. New worktree off fresh origin/main.
+
+DELIVERED (gate is correct + strict; nothing weakened):
+  - Lighthouse gate now targets the warmed Vercel preview for the PR
+    commit (preview URL resolved from the GitHub deployments API Vercel
+    posts; no third-party action), not localhost. Unrecorded curl warm-up
+    pass before measurement.
+  - Desktop run added alongside mobile (form-factor matrix;
+    lighthouserc.desktop.json).
+  - perf warn-waivers on / and /culture/* removed; Core Web Vitals
+    (LCP/TBT/FCP/Speed-Index) raised warn -> error. Floors: mobile 0.80
+    (never-lowered), desktop 0.90 (ratcheted up). Gap to 0.95 tracked in #42.
+  - /about, /blog, /careers, /press, /legal/privacy added to the gate URL
+    list. Event-detail URL discovered from the live sitemap (real slug).
+  - Link-integrity crawl job wired; dormant no-op pass until the crawler
+    lands on main from feat/home-rebuild (npm 'link-integrity' or
+    scripts/link-integrity-crawl.mjs), then auto-activates; receives the
+    preview base via PREVIEW_URL/CRAWL_BASE_URL.
+  - First real CI run executed (run 27078399497): preview-resolve PASS,
+    link-integrity PASS (dormant), Lighthouse desktop+mobile RAN and
+    measured all URLs. Real medians + analysis in docs/perf/v2/gate-to-law.md.
+
+[COORDINATION] The gate is now correctly RED on the truthful target. It
+cannot go green by any means this session is permitted (no threshold may
+be lowered; marketing/legal page files are off-limits). The three red
+causes, routed:
+  1. best-practices 0.96 on EVERY url (both form factors) = the Vercel
+     PREVIEW TOOLBAR (vercel.live/_next-live/feedback/feedback.js) tripping
+     the report-only CSP inspector-issue. Preview-only platform injection;
+     production = 1.0. blockedUrlPatterns does not suppress the CSP issue.
+     -> INFRA/FOUNDER: disable the Vercel Toolbar on preview deployments
+        (Settings > Toolbar). Ties to MINOR-2 (flip app CSP to enforcing).
+        Until then BP 1.0 cannot pass on the preview (non-app artifact).
+  2. a11y < 1.0 on /about, /blog, /careers, /press (+ /legal/* on desktop)
+     = real color-contrast on main (MAJOR-4). -> feat/home-rebuild session
+        (owns those page files). Gate now catches it; fixes are theirs.
+  3. perf: mobile event-detail 78 (< 0.80), / and /culture/african NO_LCP,
+     melbourne LCP 4108, home SI 5053 = Issue #42 cold-start + genuine
+     mobile buyer-journey gap. -> Issue #42 (commented with the medians).
+
+PR #95 stays UNMERGED until 1-3 land. Branch protection on main must be
+updated to the new check names (Lighthouse mobile gate, Lighthouse desktop
+gate, Resolve Vercel preview, Link integrity crawl) once it first goes
+green - see docs/perf/v2/gate-to-law.md.

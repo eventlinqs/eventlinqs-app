@@ -1,37 +1,32 @@
-# Lighthouse CI gate - enforces docs/MEDIA-ARCHITECTURE.md §12.2.
+# Preview quality gates - Lighthouse (mobile + desktop) + link integrity.
 #
-# Hard gate covering every public page type. Performance 95+ on every
-# URL or PR fails to merge.
+# This gate enforces the platform performance/accessibility/SEO law against
+# the DEPLOYED VERCEL PREVIEW for the PR commit - not localhost. The previous
+# gate booted a local Supabase stack, built the app, and ran Lighthouse
+# against `npm run start` on localhost:3000. The workshop inspection
+# (docs/benchmark/WORKSHOP-INSPECTION.md, MAJOR-1) proved that gate did not
+# enforce the law it claimed: localhost target, perf floored at 0.80, perf
+# waived to warn on / and /culture/*, mobile only, several marketing/legal
+# pages omitted from the URL list.
 #
-# Runs on every PR. Boots a local Supabase stack so the dynamic routes
-# in lighthouserc.json (/events/browse/[city], /events/[slug],
-# /categories/[slug]) resolve to real seeded content, builds the
-# Next.js app, then audits the full URL set against the locked
-# thresholds in lighthouserc.json.
+# What changed (chore/gates-to-law):
+#   1. Target is the warmed Vercel preview for the PR commit (resolved from
+#      the GitHub deployments API that Vercel posts), not localhost.
+#   2. Desktop is measured alongside mobile (matrix form factor).
+#   3. Performance is error-level on every URL including / and /culture/* (the
+#      warn waivers are removed); Core Web Vitals (LCP/TBT/FCP/Speed-Index)
+#      are error-level. Floors are calibrated to the highest the warmed
+#      preview actually passes - see docs/perf/v2/gate-to-law.md - and the
+#      remaining gap up to the 0.95 law is tracked in Issue #42 (Vercel
+#      image-optimiser cold-start), not silently waived.
+#   4. /about, /blog, /careers, /press, /legal/privacy are added to the gate
+#      URL list (they were never axe/Lighthouse gated before).
+#   5. A link-integrity crawl step is wired; it stays a no-op pass until the
+#      crawler script lands on main (from feat/home-rebuild), then activates
+#      automatically.
 #
-# Gate calibrated to evidence-based thresholds after Pre-Task 5
-# (iter-14). Vercel image optimizer cold-start prevents 0.95+ on
-# simulator without infrastructure migration. Real-world user
-# performance tracked via RUM post-launch. These thresholds prevent
-# regression below current platform floor.
-#
-# Gate state (calibrated 2026-04-28 after Pre-Task 5 final round):
-#   - Hard gate (continue-on-error: false). PRs failing this gate
-#     cannot merge.
-#   - Calibrated thresholds, evidence-based:
-#     Performance >= 0.80 (current floor: 0.80 on event-detail across
-#     3-pass median), A11y/BP/SEO = 1.00 (preserved), CLS <= 0.1
-#     (preserved). LCP/TBT/FCP/Speed-Index demoted to warn-level
-#     until Vercel image optimizer pre-warming or static-raster hero
-#     work is undertaken post-launch.
-#   - Coverage spans every public page type (homepage, listing, city
-#     listing, category, event detail, organiser landing, pricing,
-#     help, legal, auth-entry login/signup). Auth-gated dashboards
-#     and order surfaces are excluded - they need a recorded-session
-#     Lighthouse gate added by Module M7 / Pre-Task 5.
-#   - Original 0.95 / LCP <= 2.5s standard documented at
-#     docs/sprint1/pre-task-5-final-report.md. Performance work
-#     resumes post-launch with real RUM data.
+# Auth-gated surfaces (/dashboard/*, /admin/*, order/confirmation, squad) are
+# still excluded; they need a recorded-session gate (Module M7 / Pre-Task 5).
 
 name: Lighthouse CI
 
@@ -45,15 +40,138 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lighthouse:
-    name: Lighthouse mobile gate
+  # ---------------------------------------------------------------------------
+  # Resolve the Vercel preview URL for this commit. Vercel's GitHub
+  # integration posts a GitHub Deployment (environment "Preview") with a
+  # success status whose environment_url is the *.vercel.app preview. We poll
+  # that API directly - no third-party action - and expose the URL to the
+  # downstream jobs.
+  # ---------------------------------------------------------------------------
+  preview:
+    name: Resolve Vercel preview
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
+    outputs:
+      url: ${{ steps.resolve.outputs.url }}
+    steps:
+      - name: Wait for Vercel preview deployment
+        id: resolve
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          echo "Resolving Vercel preview for commit $SHA"
+          deadline=$(( $(date +%s) + 600 ))
+          url=""
+          while [ "$(date +%s)" -lt "$deadline" ]; do
+            ids=$(gh api "repos/$REPO/deployments?sha=$SHA&per_page=100" --jq '.[].id' 2>/dev/null || true)
+            for id in $ids; do
+              found=$(gh api "repos/$REPO/deployments/$id/statuses?per_page=100" \
+                --jq 'map(select(.state=="success")) | .[0] | (.environment_url // .target_url) // empty' \
+                2>/dev/null || true)
+              if [ -n "$found" ] && printf '%s' "$found" | grep -q "vercel.app"; then
+                url="$found"
+                break
+              fi
+            done
+            if [ -n "$url" ]; then break; fi
+            echo "  ...preview not ready yet; sleeping 15s"
+            sleep 15
+          done
+          if [ -z "$url" ]; then
+            echo "::error::No successful Vercel preview deployment found for $SHA within 10 minutes."
+            echo "::error::The Lighthouse gate measures the deployed preview; it cannot run until Vercel finishes the preview build."
+            exit 1
+          fi
+          url="${url%/}"
+          echo "Resolved preview URL: $url"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
 
+  # ---------------------------------------------------------------------------
+  # Lighthouse mobile + desktop against the warmed preview.
+  # ---------------------------------------------------------------------------
+  lighthouse:
+    name: Lighthouse ${{ matrix.formFactor }} gate
+    needs: preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - formFactor: mobile
+            config: lighthouserc.json
+          - formFactor: desktop
+            config: lighthouserc.desktop.json
     env:
-      NEXT_TELEMETRY_DISABLED: 1
-      NEXT_PUBLIC_SITE_URL: https://eventlinqs.com
+      PREVIEW_URL: ${{ needs.preview.outputs.url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Resolve gate URLs
+        run: |
+          set -euo pipefail
+          node scripts/ci/resolve-gate-urls.mjs > gate-urls.txt
+          echo "Gating ${{ matrix.formFactor }} on:"
+          cat gate-urls.txt
+
+      - name: Warm preview (unrecorded curl pass)
+        # Warm ISR + the next/image optimiser before measuring, so the gate
+        # reflects warm-cache reality (the cold-start race is Issue #42).
+        run: |
+          set -euo pipefail
+          while IFS= read -r u; do
+            [ -z "$u" ] && continue
+            for i in 1 2; do
+              code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 45 \
+                -H 'Cookie: el-audit=1' "$u" || echo "000")
+              echo "  warm[$i] $code $u"
+            done
+          done < gate-urls.txt
+
+      - name: Run Lighthouse CI
+        run: |
+          set -euo pipefail
+          args=""
+          while IFS= read -r u; do
+            [ -z "$u" ] && continue
+            args="$args --url=$u"
+          done < gate-urls.txt
+          npx --yes @lhci/cli@0.14.x collect --config="${{ matrix.config }}" $args
+          npx --yes @lhci/cli@0.14.x assert --config="${{ matrix.config }}"
+
+      - name: Print median scores
+        if: always()
+        run: node scripts/ci/lh-print-summary.mjs
+
+      - name: Upload Lighthouse reports
+        if: always()
+        run: npx --yes @lhci/cli@0.14.x upload --config="${{ matrix.config }}" || true
+
+  # ---------------------------------------------------------------------------
+  # Link-integrity crawl against the preview. WIRED BUT DORMANT until the
+  # crawler lands on main from feat/home-rebuild. Activates automatically when
+  # EITHER an npm script named `link-integrity` OR scripts/link-integrity-crawl.mjs
+  # exists on main. The crawler receives the preview base via PREVIEW_URL /
+  # CRAWL_BASE_URL and is expected to exit non-zero if any internal link 404s
+  # or 500s (the BLOCKER-1 class: rendered cards pointing at dead routes).
+  # ---------------------------------------------------------------------------
+  link-integrity:
+    name: Link integrity crawl
+    needs: preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PREVIEW_URL: ${{ needs.preview.outputs.url }}
+      CRAWL_BASE_URL: ${{ needs.preview.outputs.url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -67,47 +185,19 @@ jobs:
       - name: Install
         run: npm ci
 
-      # Boot a local Supabase stack so dynamic Lighthouse URLs
-      # (/events/melbourne, /events/bollywood-nights-...) resolve to
-      # real content. `supabase start` applies every file in
-      # supabase/migrations/ including the cultural breadth seed.
-      - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
-        with:
-          version: latest
-
-      - name: Start Supabase
-        run: supabase start
-
-      - name: Export Supabase env
-        # NEXT_PUBLIC_* must be present BEFORE `next build` so the values
-        # are inlined into the client bundle. Pull them from the running
-        # local stack and write to $GITHUB_ENV for subsequent steps.
-        #
-        # SUPABASE_SERVICE_ROLE_KEY is also exported here so the cached
-        # public-read fetchers that use createAdminClient (notably
-        # fetchPublicEventsCached and fetchActiveCategoriesCached called
-        # from src/app/events/page.tsx) can construct their client at SSR
-        # time. Without this, `/events` server-renders a 500 and Lighthouse
-        # aborts the run on ERRORED_DOCUMENT_REQUEST. The key is freshly
-        # minted by `supabase start` for the local stack and is not a
-        # production secret; no GitHub Actions secret is required.
+      - name: Run link-integrity crawler (if present)
         run: |
-          status=$(supabase status -o env)
-          api_url=$(echo "$status" | grep '^API_URL=' | cut -d= -f2- | tr -d '"')
-          anon_key=$(echo "$status" | grep '^ANON_KEY=' | cut -d= -f2- | tr -d '"')
-          service_role_key=$(echo "$status" | grep '^SERVICE_ROLE_KEY=' | cut -d= -f2- | tr -d '"')
-          echo "NEXT_PUBLIC_SUPABASE_URL=$api_url" >> $GITHUB_ENV
-          echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$anon_key" >> $GITHUB_ENV
-          echo "::add-mask::$service_role_key"
-          echo "SUPABASE_SERVICE_ROLE_KEY=$service_role_key" >> $GITHUB_ENV
-
-      - name: Build
-        run: npm run build
-
-      - name: Run Lighthouse CI
-        uses: treosh/lighthouse-ci-action@v12
-        with:
-          configPath: ./lighthouserc.json
-          uploadArtifacts: true
-          temporaryPublicStorage: true
+          set -euo pipefail
+          has_npm_script=$(node -e "try{process.stdout.write(require('./package.json').scripts&&require('./package.json').scripts['link-integrity']?'1':'')}catch(e){}")
+          if [ -n "$has_npm_script" ]; then
+            echo "Found npm script 'link-integrity'; crawling $PREVIEW_URL"
+            npm run link-integrity
+          elif [ -f scripts/link-integrity-crawl.mjs ]; then
+            echo "Found scripts/link-integrity-crawl.mjs; crawling $PREVIEW_URL"
+            node scripts/link-integrity-crawl.mjs
+          else
+            echo "::notice::link-integrity crawler not present yet. This step is wired and"
+            echo "::notice::activates automatically once feat/home-rebuild lands either an npm"
+            echo "::notice::'link-integrity' script or scripts/link-integrity-crawl.mjs on main."
+            echo "::notice::The crawler receives the deployed preview base via PREVIEW_URL / CRAWL_BASE_URL."
+          fi

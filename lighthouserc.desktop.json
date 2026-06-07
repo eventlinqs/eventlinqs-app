@@ -1,0 +1,71 @@
+{
+  "_config_note": "DESKTOP Lighthouse gate. Companion to lighthouserc.json (mobile). Runs against the deployed Vercel PREVIEW for the PR commit (URLs injected by .github/workflows/lighthouse.yml). Desktop is a faster form factor than mobile, so its performance floor is calibrated higher - see docs/perf/v2/gate-to-law.md for the evidence and the floors. The remaining gap to the 0.95 law is tracked in Issue #42. Never lower a threshold in this file.",
+  "ci": {
+    "collect": {
+      "numberOfRuns": 3,
+      "settings": {
+        "formFactor": "desktop",
+        "screenEmulation": {
+          "mobile": false,
+          "width": 1350,
+          "height": 940,
+          "deviceScaleFactor": 1,
+          "disabled": false
+        },
+        "throttling": {
+          "rttMs": 40,
+          "throughputKbps": 10240,
+          "cpuSlowdownMultiplier": 1,
+          "requestLatencyMs": 0,
+          "downloadThroughputKbps": 0,
+          "uploadThroughputKbps": 0
+        },
+        "chromeFlags": "--headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage",
+        "extraHeaders": "{\"Cookie\":\"el-audit=1\"}",
+        "blockedUrlPatterns": ["*vercel.live*", "*vercel.com/_next-live*"],
+        "_blockedUrlPatterns_note": "Block the preview-only vercel.live toolbar so the gate measures the app as production serves it (see mobile config for rationale).",
+        "maxWaitForLoad": 60000,
+        "pauseAfterLoadMs": 5000,
+        "networkQuietThresholdMs": 5000,
+        "cpuQuietThresholdMs": 3000
+      }
+    },
+    "assert": {
+      "assertMatrix": [
+        {
+          "_pattern_note": "Default entry; host-agnostic; excludes /login and /signup (SEO off - see second entry). Desktop performance floor is higher than mobile per evidence in docs/perf/v2/gate-to-law.md.",
+          "matchingUrlPattern": "^(?!.*/(login|signup)/?$).*",
+          "assertions": {
+            "categories:performance": ["error", { "minScore": 0.90 }],
+            "categories:accessibility": ["error", { "minScore": 1.0 }],
+            "categories:best-practices": ["error", { "minScore": 1.0 }],
+            "categories:seo": ["error", { "minScore": 1.0 }],
+            "largest-contentful-paint": ["error", { "maxNumericValue": 4000 }],
+            "total-blocking-time": ["error", { "maxNumericValue": 600 }],
+            "cumulative-layout-shift": ["error", { "maxNumericValue": 0.1 }],
+            "first-contentful-paint": ["error", { "maxNumericValue": 2000 }],
+            "speed-index": ["error", { "maxNumericValue": 4500 }]
+          }
+        },
+        {
+          "_note": "Auth-entry pages: SEO category off by design (noindex/nofollow); perf/a11y/bp and all Core Web Vitals stay at error-level.",
+          "matchingUrlPattern": "/(login|signup)/?$",
+          "assertions": {
+            "categories:performance": ["error", { "minScore": 0.90 }],
+            "categories:accessibility": ["error", { "minScore": 1.0 }],
+            "categories:best-practices": ["error", { "minScore": 1.0 }],
+            "categories:seo": "off",
+            "largest-contentful-paint": ["error", { "maxNumericValue": 4000 }],
+            "total-blocking-time": ["error", { "maxNumericValue": 600 }],
+            "cumulative-layout-shift": ["error", { "maxNumericValue": 0.1 }],
+            "first-contentful-paint": ["error", { "maxNumericValue": 2000 }],
+            "speed-index": ["error", { "maxNumericValue": 4500 }]
+          }
+        }
+      ]
+    },
+    "upload": {
+      "target": "temporary-public-storage"
+    }
+  }
+}
