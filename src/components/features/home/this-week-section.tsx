@@ -2,6 +2,7 @@ import { SnapRail } from '@/components/ui/snap-rail'
 import { Reveal } from '@/components/ui/reveal'
 import { ThisWeekCard } from '@/components/features/events/this-week-card'
 import { CONTAINER, SECTION_TIGHT } from '@/lib/ui/spacing'
+import { RHYTHM_GAP } from '@/lib/ui/rhythm'
 import type { BentoEvent } from '@/components/features/events/event-bento-tile'
 
 interface Props {
@@ -24,6 +25,7 @@ export async function ThisWeekSection({ events }: Props) {
           headerLink={{ href: '/events?date=week', label: 'View all' }}
           railLabel="Events this week"
           containerBg="canvas"
+          cardGap={RHYTHM_GAP}
         >
           {cards}
         </SnapRail>

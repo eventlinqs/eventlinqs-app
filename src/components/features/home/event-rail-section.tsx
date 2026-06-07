@@ -2,6 +2,7 @@ import { SnapRail } from '@/components/ui/snap-rail'
 import { Reveal } from '@/components/ui/reveal'
 import { ThisWeekCard } from '@/components/features/events/this-week-card'
 import { CONTAINER, SECTION_TIGHT } from '@/lib/ui/spacing'
+import { RHYTHM_GAP } from '@/lib/ui/rhythm'
 import type { BentoEvent } from '@/components/features/events/event-bento-tile'
 
 interface Props {
@@ -11,10 +12,12 @@ interface Props {
   railLabel: string
   events: BentoEvent[]
   viewAllHref: string
-  /** Card template for this rail. Default 'landscape'. Genre/trending use 'square'. */
-  cardVariant?: 'landscape' | 'square'
+  /** Card template for this rail. Default 'landscape'. Genre/trending use 'square', feature rows use 'feature'. */
+  cardVariant?: 'landscape' | 'square' | 'feature'
   /** Render the first card as a wide feature lead (a single hero rail). */
   leadFeature?: boolean
+  /** Tailwind gap utility for the scroll track. Defaults to the rhythm gap. */
+  cardGap?: string
   /** Optional empty-state copy. When set and events is empty, renders the empty card; otherwise hides the section. */
   emptyTitle?: string
   emptyBody?: string
@@ -29,6 +32,7 @@ export async function EventRailSection({
   viewAllHref,
   cardVariant = 'landscape',
   leadFeature = false,
+  cardGap = RHYTHM_GAP,
   emptyTitle,
   emptyBody,
 }: Props) {
@@ -45,6 +49,7 @@ export async function EventRailSection({
           headerLink={{ href: viewAllHref, label: 'View all' }}
           railLabel={railLabel}
           containerBg="canvas"
+          cardGap={cardGap}
         >
           {events.length > 0 ? (
             events.map((e, i) => (

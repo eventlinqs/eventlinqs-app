@@ -4,6 +4,7 @@ import { Reveal } from '@/components/ui/reveal'
 import { EventCardMedia } from '@/components/media'
 import { getCategoryPhoto } from '@/lib/images/category-photo'
 import { CONTAINER, SECTION_TIGHT } from '@/lib/ui/spacing'
+import { RHYTHM_GAP, SCENE_TILE_CELL } from '@/lib/ui/rhythm'
 
 /**
  * SceneRail - Scenes Architecture V2 (research-backed, founder-locked).
@@ -84,14 +85,16 @@ async function toTile(scene: Scene) {
 }
 
 function SceneTile({ tile }: { tile: Scene & { image: string; alt: string } }) {
+  // Variant B: proper SQUARE tiles at a smaller scale than the landscape event
+  // cards, so the scenes rail reads as a distinct role at a glance.
   return (
-    <div className="w-[200px] shrink-0 snap-start sm:w-[220px]">
+    <div className={SCENE_TILE_CELL}>
       <Link href={tile.href} prefetch={false} className={SURFACE}>
-        <div className="relative aspect-[3/2] overflow-hidden bg-[var(--surface-1)]">
-          <EventCardMedia src={tile.image} alt={tile.alt} variant="card" className={IMG_MOTION} />
+        <div className="relative aspect-square overflow-hidden bg-[var(--surface-1)]">
+          <EventCardMedia src={tile.image} alt={tile.alt} variant="rail" className={IMG_MOTION} />
         </div>
-        <div className="p-4">
-          <h3 className="font-headline text-base font-bold leading-snug tracking-tight text-[var(--text-primary)] transition-colors duration-200 group-hover:text-[var(--brand-accent-strong)]">
+        <div className="p-3">
+          <h3 className="font-headline text-sm font-bold leading-snug tracking-tight text-[var(--text-primary)] transition-colors duration-200 group-hover:text-[var(--brand-accent-strong)]">
             {tile.label}
           </h3>
         </div>
@@ -122,8 +125,10 @@ export async function SceneRail() {
     Promise.all(CULTURE_SCENES.map(toTile)),
   ])
 
+  // Per-rail accent (Variant B): a gold-tinted top divider instead of the plain
+  // ink rule marks the community/scenes thread as its own moment.
   return (
-    <section aria-label="Browse by scene" className={`border-t border-ink-200 bg-canvas ${SECTION_TIGHT}`}>
+    <section aria-label="Browse by scene" className={`border-t-2 border-[var(--brand-accent-strong)]/30 bg-canvas ${SECTION_TIGHT}`}>
       <Reveal className={CONTAINER}>
         <SnapRail
           eyebrow="Find your scene"
@@ -131,6 +136,7 @@ export async function SceneRail() {
           headerLink={{ href: '/events', label: 'Browse all' }}
           railLabel="Music and culture scenes"
           containerBg="canvas"
+          cardGap={RHYTHM_GAP}
         >
           <FamilyMarker label="Music & sound" />
           {musicTiles.map(tile => (

@@ -2,6 +2,7 @@ import { SnapRail } from '@/components/ui/snap-rail'
 import { CategoryTile } from '@/components/features/home/cards'
 import { getCategoryPhoto } from '@/lib/images/category-photo'
 import { CONTAINER, SECTION_TIGHT } from '@/lib/ui/spacing'
+import { RHYTHM_GAP } from '@/lib/ui/rhythm'
 
 /**
  * CategoryNavRail - the homepage category entry, directly under the hero.
@@ -54,6 +55,7 @@ export async function CategoryNavRail({ counts }: { counts: Record<string, numbe
           headerLink={{ href: '/events', label: 'View all' }}
           railLabel="Browse by category"
           containerBg="canvas"
+          cardGap={RHYTHM_GAP}
         >
           {tiles.map(t => (
             <div key={t.slug} className="w-[220px] shrink-0 snap-start sm:w-[260px]">

@@ -265,7 +265,8 @@ export default async function HomePage() {
           />
         )}
 
-        {/* Trending (general, demand-based) */}
+        {/* Trending (general, demand-based) - Variant B: the one larger
+            feature-card row. Uniform feature-sized cards within the rail. */}
         {trending.length >= 1 && (
           <EventRailSection
             eyebrow="Selling fast"
@@ -274,6 +275,7 @@ export default async function HomePage() {
             railLabel="Trending events"
             events={trending}
             viewAllHref="/events?sort=popularity"
+            cardVariant="feature"
           />
         )}
 

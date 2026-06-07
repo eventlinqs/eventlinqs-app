@@ -72,6 +72,10 @@ export async function ThisWeekCard({
     city: event.venue_city ?? '',
     dateLabel: formatDate(event.start_date),
     priceLabel: formatPrice(event.ticket_tiers ?? null),
+    // Feature cards default to priority=true (built for above-fold hero use).
+    // Every homepage feature RAIL is below the fold, so force priority off
+    // here - the hero owns LCP and these must not preload as critical.
+    priority: variant === 'feature' ? false : undefined,
   }
 
   const cell =

@@ -4,6 +4,7 @@ import { Reveal } from '@/components/ui/reveal'
 import { CityTile } from '@/components/features/home/cards'
 import { getCityPhoto } from '@/lib/images/city-photo'
 import { CONTAINER, SECTION_DEFAULT } from '@/lib/ui/spacing'
+import { RHYTHM_GAP, CITY_TILE_CELL } from '@/lib/ui/rhythm'
 import { CITY_TILES, LOCAL_CITY_SVG } from '@/lib/events/home-queries'
 
 interface Props {
@@ -56,9 +57,12 @@ export async function CityRailSection({ nowIso }: Props) {
           headerLink={{ href: '/cities', label: 'See all cities' }}
           railLabel="Events by city"
           containerBg="canvas"
+          cardGap={RHYTHM_GAP}
         >
+          {/* Variant B: cities get a distinct, larger destination treatment -
+              wider than event cards so they read as places, not listings. */}
           {liveCities.map(c => (
-            <div key={c.slug} className="w-[240px] shrink-0 snap-start sm:w-[280px]">
+            <div key={c.slug} className={CITY_TILE_CELL}>
               <CityTile
                 city={{
                   href: `/city/${c.slug}`,

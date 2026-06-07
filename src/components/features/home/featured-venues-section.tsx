@@ -2,6 +2,7 @@ import { SnapRail } from '@/components/ui/snap-rail'
 import { Reveal } from '@/components/ui/reveal'
 import { CityTile } from '@/components/features/home/cards'
 import { CONTAINER, SECTION_TIGHT } from '@/lib/ui/spacing'
+import { RHYTHM_GAP } from '@/lib/ui/rhythm'
 import { getCategoryPhoto } from '@/lib/images/category-photo'
 import type { RawRow } from '@/lib/events/home-queries'
 
@@ -67,6 +68,7 @@ export async function FeaturedVenuesSection({ upcoming }: Props) {
           headerLink={{ href: '/events', label: 'View all' }}
           railLabel="Featured venues"
           containerBg="canvas"
+          cardGap={RHYTHM_GAP}
         >
           {top.map(v => (
             <div key={v.name} className="w-[240px] shrink-0 snap-start sm:w-[280px]">
