@@ -1587,3 +1587,116 @@ and a real wheel lands on a card boundary - so the rail's first card (the `/even
 LCP candidate) is now a robust LCP target, not a race winner. Gates: tsc 0, eslint 0
 errors, vitest 329/329, build exit 0; `/events` perf unregressed (median 0.67, a11y/
 bp/seo 1.0). CI green on the pushed tip.
+
+---
+
+## Workshop inspection close-out (2026-06-07) - routed items CLOSED
+
+Closes the items routed to the feat/home-rebuild session by the independent
+workshop inspection (`docs/benchmark/WORKSHOP-INSPECTION.md`, PR #94). Every
+fix is verified ON THE DEPLOYED PREVIEW by clicking, not by assertion.
+
+- Preview: `eventlinqs-app-git-feat-home-rebuild-lawals-projects-c20c0be8.vercel.app`
+- Gates on the pushed tip: build exit 0, vitest 329/329, eslint 0 errors on
+  changed files, type-check clean.
+
+### BLOCKER-1 - every preview homepage card 404'd -> CLOSED
+- Root cause: density was the `HOMEPAGE_SEED_FIXTURE` fixture (`cat-*` slugs)
+  while `events/[slug]` guarded the real `events` table. Two sources disagreed.
+- Fix: one source of truth. `src/lib/dev/fixture-events.ts` reads the same
+  fixture the homepage renders and synthesises a full detail event; the layout
+  guard + `fetchEvent` consult it first under the same double guard
+  (`HOMEPAGE_SEED_FIXTURE=1` AND `VERCEL_ENV != production`); fixture traced
+  into the `/events/[slug]` lambda. Codified as Law 5.
+- Evidence (preview): the link crawler harvests every rendered href and gets
+  297/297 = 200, ZERO dead links (all 55 fixture cards resolve). Live click:
+  homepage card -> `/events/cat-inner-west-arts-and-music-festival-sydney`,
+  detail rendered (h1 "Inner West Arts and Music Festival"). Commit 975ac18.
+
+### BLOCKER-2 - preview 500 on suburb + culture-city -> CLOSED
+- Root cause: `/city/[slug]/[suburb]` + `/culture/[culture]/[city]` declared an
+  EMPTY `generateStaticParams` (pins STATIC); the shared SiteHeader (PageShell,
+  non-staticSafe) does a render-time auth cookie read, so the first on-demand
+  request threw "static to dynamic at runtime, reason: cookies".
+- Fix: drop the empty gSP, mark dynamic-on-demand with `await headers()` AFTER
+  the synchronous notFound guards (real 404s preserved).
+- Evidence (preview): `/city/sydney/inner-west` 200 (was 500),
+  `/culture/african/sydney` 200 (was 500), `/city/sydney/cbd` still hard-404s.
+  Reproduced + fixed in a local production build first. Commit 0107e7d.
+
+### Law 5 + link-integrity crawler -> SHIPPED + ENFORCING
+- "Verify by clicking what the user clicks. Zero dead links platform-wide."
+  In CLAUDE.md (Law 5) + the page-build skill.
+  `scripts/link-integrity-crawl.mjs`: loads each key surface, harvests every
+  internal href, requests each, fails on any non-200. Preview: 0 failures.
+  Commit ce958b3.
+
+### MAJOR-4 - marketing/legal axe + /blog -> CLOSED
+- Contrast: eyebrows + the legal TOC active link moved from `--brand-accent`
+  (gold-400) to `--brand-accent-strong` (gold-800). `/press` `<dl>` rebuilt so
+  it directly contains only `<div>` groups of `<dt>/<dd>`. `/blog` "Coming soon"
+  placeholder route removed (was unlinked; Law 1).
+- Evidence (preview, `scripts/axe-marketing-scan.mjs`, mobile + desktop):
+  `/about`, `/careers`, `/press`, `/legal/terms`, `/legal/privacy`, `/pricing`
+  = 0 serious/critical, all viewports. Commit 19fe400. (Adding these URLs to the
+  lighthouserc gate list is routed to engine-hardening, not done here.)
+
+### Homepage imagery BELOW -> REBALANCED
+- Root cause: `getCategoryPhoto` picked `pool[hash(query)]` (query-only) so
+  every event in a category resolved to the IDENTICAL photo; category-grouped
+  rails were walls of one repeated dark tile.
+- Fix: cache the per-query pool, pick PER EVENT via a seed (title/slug), widen
+  to top-10, brighten the general-category queries toward light/daytime.
+- Evidence (preview homepage): 59 distinct photos now render (was near-uniform).
+  Commit ab585ef. Permanent fix is photo day (`docs/PHOTO-DAY.md`).
+
+### MINOR-1 - og:image missing -> CLOSED
+- `/city/*`, `/culture/*`, `/cultures`, `/cities`, `/about`, `/careers`,
+  `/press` overrode `openGraph` and suppressed the root file-convention image.
+  Each now sets `openGraph.images: ['/opengraph-image']` (branded ImageResponse).
+- Evidence (preview): all 9 pages emit `og:image`; `/opengraph-image` returns
+  200 image/png (56 KB). Commits 19fe400 + d9887f9.
+
+### MINOR-3 - venue map -> VERIFIED (env-config item, not a code defect)
+- The venue map does NOT paint on the preview OR production: probed both,
+  `maps.googleapis.com` is not loaded in either. Root cause:
+  `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` is unset in the Vercel env;
+  `getGoogleMapsLoader()` returns null and the map degrades gracefully (no
+  crash). FOUNDER ACTION: set `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` on the Vercel
+  project (preview + production) for the interactive map to paint.
+
+### Founder escalation - hero + chrome consistency -> CLOSED
+- Law: ONE hero-scale system, two named tokens in `globals.css`
+  (`.hero-marketing` = homepage scale / marketing max; `.hero-content` =
+  cinematic cap), gold eyebrow not white, homepage display scale, one shared
+  dual-state navy header (no per-page variants). In CLAUDE.md (Design system:
+  Hero scale) + the page-build skill; DESIGN-SYSTEM.md (superseded) points to
+  it. Founder ruling: two tiers (content heroes keep their scale).
+- Applied: `/organisers` hero rebuilt from 82vh full-viewport to
+  `.hero-marketing` with the homepage scrim, a gold eyebrow (was white), and the
+  homepage type scale (was `text-7xl`). Approved body sections untouched.
+
+#### Hero audit (every hero vs the law)
+| Page | Hero | Height | Tier | Eyebrow | Verdict |
+|---|---|---|---|---|---|
+| `/` homepage | FeaturedHeroClient | 42-48vh (max 480) | marketing (cap) | gold | LAWFUL (baseline) |
+| `/organisers` | OrganisersLandingPage | 82vh -> hero-marketing | marketing | white -> gold | FIXED |
+| `/events/[slug]` | event detail | 55-70vh | content | gold | LAWFUL |
+| `/city/[slug]` + suburb | CityHero | 52-64vh | content | gold | LAWFUL |
+| `/culture/[culture]` | PhotographicCultureHero | 48vh | content | gold | LAWFUL |
+| `/events` | search strip | ~60px light | n/a | n/a | LAWFUL |
+| pricing/about/careers/press | PageHero | light band | marketing | gold (strong) | LAWFUL |
+| login/signup | AuthShell | none | n/a | n/a | LAWFUL |
+
+- Evidence (preview, `scripts/hero-consistency-verify.mjs`, measured
+  boundingBox): homepage hero == organisers hero = 432px @1440, 354px @390;
+  organisers <= homepage at every viewport (ALL LAWFUL). Captures at 1440 + 390
+  under `design-captures/audit/hero-consistency/`. Header is the single shared
+  dual-state navy bar on every page; no per-page variant. Commits 7972f66 +
+  49de826.
+
+### STOP CONDITION MET
+Zero dead links on the preview (297/297 = 200) AND zero hero/chrome
+inconsistencies (organisers hero == homepage, one shared navy header) - both
+proven live. Blockers 1 and 2 proven fixed by clicking on the deployed preview.
+No merge to main.
