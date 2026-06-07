@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import { headers } from 'next/headers'
 import type { Metadata } from 'next'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import {
@@ -16,15 +17,16 @@ interface Props {
   params: Promise<{ slug: string; suburb: string }>
 }
 
-// Long tail: cities x suburbs multiplies to hundreds of DB-backed pages. Defer
-// them to on-demand ISR (dynamicParams=true, revalidate=300 above) so they
-// never load the build-time Supabase pool; each renders on first request and
-// is then cached. The page still notFound()s unknown suburbs. The sitemap
-// still lists every suburb.
-export const dynamicParams = true
-export function generateStaticParams(): { slug: string; suburb: string }[] {
-  return []
-}
+// Long tail: cities x suburbs multiplies to hundreds of DB-backed pages, kept
+// off the build-time Supabase pool by rendering on-demand. NO generateStaticParams:
+// an EMPTY gSP pins the route to a STATIC classification, so the first
+// on-demand request 500'd ("Page changed from static to dynamic at runtime,
+// reason: cookies") when the shared SiteHeader (PageShell, non-staticSafe)
+// performed its render-time auth cookie read - the exact failure /events/[slug]
+// hit and fixed the same way. Dropping gSP + the `await headers()` marker in the
+// component makes the route dynamic-on-demand: nothing prerenders at build
+// (pool-safe), notFound() returns a real 404, and revalidate=300 + the CDN
+// header keep it edge-cached. The sitemap still lists every suburb.
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug, suburb } = await params
@@ -61,6 +63,11 @@ export default async function SuburbPage({ params }: Props) {
   const fullSuburbSlug = `${city.slug}-${suburb}`
   const suburbContent = getSuburb(fullSuburbSlug)
   if (!suburbContent) notFound()
+
+  // Mark the route dynamic-on-demand AFTER the synchronous notFound guards
+  // (so unknown suburbs still hard-404). Without this the empty-gSP static
+  // pin + the SiteHeader render-time cookie read 500 the first request.
+  await headers()
 
   const supabase = createPublicClient()
   const baseSelect =

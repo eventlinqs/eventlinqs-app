@@ -1,4 +1,5 @@
 import { notFound, permanentRedirect } from 'next/navigation'
+import { headers } from 'next/headers'
 import type { Metadata } from 'next'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import {
@@ -29,16 +30,16 @@ interface Props {
 
 /**
  * Long tail: culture x city intersections multiply to hundreds of DB-backed
- * pages, which loaded the build-time Supabase pool heavily. Defer them to
- * on-demand ISR (dynamicParams=true, revalidate=300 above): each renders on
- * first request and is then cached. Curation is preserved at runtime - the
- * page still notFound()s unknown culture-city combinations rather than render
- * an empty shell. The sitemap still lists the curated intersections.
+ * pages, kept off the build-time Supabase pool by rendering on-demand. NO
+ * generateStaticParams: an EMPTY gSP pins the route STATIC, so the first
+ * on-demand request 500'd ("Page changed from static to dynamic at runtime,
+ * reason: cookies") when the shared SiteHeader (PageShell, non-staticSafe) did
+ * its render-time auth cookie read - the same failure /events/[slug] fixed.
+ * Dropping gSP + the `await headers()` marker makes the route dynamic-on-demand:
+ * nothing prerenders at build (pool-safe), notFound() returns a real 404, and
+ * revalidate=300 keeps it edge-cached. The sitemap still lists curated
+ * intersections.
  */
-export const dynamicParams = true
-export function generateStaticParams(): { culture: string; city: string }[] {
-  return []
-}
 
 function findCityName(cultureSlug: string, citySlug: string): string | null {
   const culture = getCulture(cultureSlug)
@@ -107,6 +108,12 @@ export default async function CultureByCityPage({ params }: Props) {
   const culture = getCulture(cultureParam)!
   const cityName = findCityName(cultureParam, cityParam)
   if (!cityName) notFound()
+
+  // Mark the route dynamic-on-demand AFTER the synchronous notFound/redirect
+  // guards (so unknown culture-city pairs still hard-404). Without this the
+  // empty-gSP static pin + the SiteHeader render-time cookie read 500 the
+  // first request.
+  await headers()
 
   // City record lookup (for lat/lng + state). Many international or
   // smaller cities listed in CultureContent.cities won't have a record
