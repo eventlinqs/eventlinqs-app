@@ -228,6 +228,14 @@ silently re-painted.
   identical on every rail), tight spacing. The detailed locked rail and glide
   contract lives in the `page-build` skill (Rail standard, Glide standard);
   `src/components/ui/snap-rail.tsx` is the single source for the behaviour.
+- Rail scroll controls follow the Rail Control System (locked, derived from live
+  competitor evidence in `docs/benchmark/rail-controls/CATALOGUE.md`; full law in
+  the `page-build` skill): solid opaque circular arrows >= 44px, navy idle with
+  gold-on-hover, anchored top-right of the rail header (structurally stable at
+  every viewport and on resize), a muted disabled state at either end, reachable
+  on mobile on top of native swipe, and NO progress dot/bar (removed - the gold
+  standard shows arrows alone). The one control is `RailArrows` in
+  `snap-rail.tsx`; never re-roll rail buttons per surface.
 
 **Light and airy: no glassmorphism, no flat-dark (founder-locked boundary)**
 

@@ -1,8 +1,7 @@
-import Link from 'next/link'
 import { projectToCardData } from '@/lib/events/event-card-projection'
 import type { PublicEventRow } from '@/lib/events/types'
 import { EventCard } from './event-card'
-import { DragRail } from '@/components/ui/drag-rail'
+import { SnapRailScroller } from '@/components/ui/snap-rail'
 
 type Props = {
   events: PublicEventRow[]
@@ -37,34 +36,18 @@ export async function RecommendedRail({
   const cards = await projectToCardData(top)
 
   return (
-    <section aria-labelledby="m5-rec-heading" className="border-b border-ink-100 bg-canvas">
+    <section aria-labelledby="m5-rec-heading" data-testid="m5-rec-rail" className="border-b border-ink-100 bg-canvas">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-        <div className="flex items-end justify-between gap-4">
-          <h2
-            id="m5-rec-heading"
-            className="font-display text-lg font-bold text-ink-900 sm:text-xl"
-          >
-            {title}
-          </h2>
-          <Link
-            href={seeAllHref}
-            className="shrink-0 text-xs font-semibold text-accent hover:underline sm:text-sm"
-          >
-            See all
-          </Link>
-        </div>
-        {/* No static snap-x/snap-mandatory: scroll-snap is armed on first user
-            engagement (DragRail snap prop) so the load-time re-snap never stops
-            LCP. This rail's first card is the /events LCP candidate; cards keep
-            their snap-start. */}
-        <DragRail
-          className="mt-4 -mx-4 flex items-stretch gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:gap-4 sm:px-0 scrollbar-none"
-          ariaLabel={title}
-          testId="m5-rec-rail"
-          snap
+        {/* Shared rail: SnapRailScroller supplies the canonical Rail Control
+            System (header-anchored 44px arrows, drag-to-scroll, snap armed on
+            first engagement so the load-time re-snap never stops LCP, keyboard).
+            data-testid kept for the existing e2e selector. */}
+        <SnapRailScroller
+          railLabel={title}
+          header={{ title, headingId: 'm5-rec-heading', headerLink: { href: seeAllHref, label: 'See all' } }}
         >
           {cards.map((c, i) => (
-            <li
+            <div
               key={c.id}
               className="w-64 shrink-0 snap-start sm:w-72"
             >
@@ -72,19 +55,16 @@ export async function RecommendedRail({
                 The first rail card consistently wins the LCP race on
                 /events and /events/browse/[city] because the recommended
                 rail renders above the main grid in DOM order and the
-                EventsHeroStrip is text-only. Iter-13 traces showed
-                Lighthouse picking `li.w-64 > a > div > img.object-cover`
-                with fetchpriority="auto" / loading="lazy". Marking the
-                first rail card priority gives it `fetchpriority="high"`,
-                `loading="eager"`, and an auto-injected
-                `<link rel="preload">` so the LCP candidate is fetched
-                during HTML parse instead of after IntersectionObserver
+                EventsHeroStrip is text-only. Marking the first rail card
+                priority gives it fetchpriority="high", loading="eager", and
+                an auto-injected <link rel="preload"> so the LCP candidate is
+                fetched during HTML parse instead of after IntersectionObserver
                 catches up.
               */}
               <EventCard event={c} variant="rail" priority={i === 0} />
-            </li>
+            </div>
           ))}
-        </DragRail>
+        </SnapRailScroller>
       </div>
     </section>
   )

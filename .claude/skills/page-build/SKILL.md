@@ -166,14 +166,50 @@ smooth or a fixed-step jump:
   per-frame `scrollLeft` writes do not fight the snap engine, then restored.
 - Arrows page by the live visible-card count (measured pitch = child offset
   delta), never a hardcoded step.
-- Arrow press state (`active:scale-90`), end-of-rail disabled fades, and a
-  symmetric left/right edge gradient so the peek invites scroll both ways.
 - Keyboard ArrowLeft/Right on the focused rail drive the same glide.
 - Natural touch/trackpad scrolling is untouched; any pointer/touch/wheel input
   cancels an in-flight glide and hands the rail straight back to the user.
 - `prefers-reduced-motion` jumps to the destination instantly.
 - The rail must feel like it has weight and lands softly: never linear, never
   abrupt.
+
+## Rail Control System (locked, Mission 3)
+
+The look and placement of rail scroll controls, derived strictly from live
+competitor evidence (`docs/benchmark/rail-controls/CATALOGUE.md`: Airbnb +
+Ticketmaster + Eventbrite + Humanitix at 1440 / 1180 / 390). NO control decision
+is made from taste. The controls live ONLY in `src/components/ui/snap-rail.tsx`
+(`RailArrows`, exported); every rail renders that one component - never its own
+button markup.
+
+- **Placement: top-right of the rail header, on the headline's horizontal line.**
+  Airbnb and Ticketmaster both anchor rail controls in the header. Header-anchored
+  is structurally stable: the controls live in normal flow, so they never float,
+  jump, vanish on scroll, or shift on window resize. Do not move controls to an
+  over-card edge overlay (that pattern is for full-bleed HERO carousels only, e.g.
+  Humanitix - and the hero is out of scope).
+- **Shape: circular, solid, opaque. Never glassmorphism.** Idle = solid navy
+  (`--color-ink-900`) circle, white chevron. Hover = deepens to `--color-navy-950`,
+  chevron turns gold (`--color-gold-400`), 0.5px lift, stronger shadow. Press =
+  `active:scale-95`. The fill is always opaque (Airbnb #F2F2F2 and Humanitix
+  #F9F9FA are both opaque); EventLinqs uses brand navy/gold.
+- **Size: >= 44px (`h-11 w-11`).** Ticketmaster runs 44px; this also meets the
+  44px touch-target law. Chevron `h-5 w-5`, strokeWidth 2.5.
+- **Disabled at either end = muted fill + muted icon** (`--surface-2` /
+  `--text-muted`), read off Airbnb (it dims the Previous button to opacity 0.5 +
+  grey border at a rail's start). Not a hover/lift; a clearly inert state.
+- **NO progress device.** The gold standard (Airbnb) shows arrows alone. The old
+  travelling dot / progress bar is REMOVED and replaced with nothing. Do not
+  reintroduce a progress indicator beside rail arrows.
+- **A rail that does not overflow shows no controls** (`RailArrows` returns null
+  when `!canPrev && !canNext`) - arrows appear only when there is somewhere to go.
+- **Reachable on mobile.** Because the controls are header-anchored (not over the
+  cards), they stay visible and tappable at 44px on mobile at zero layout cost, on
+  top of native swipe. (Airbnb/TM hide arrows on mobile; we keep them, evidence-
+  consistent with Humanitix keeping hero arrows on mobile, and better for reach.)
+- A symmetric left/right edge gradient on the track invites scroll both ways.
+- The control look is the SAME on every rail and every page. To change it, edit
+  `RailArrows` once; re-derive any new value from fresh competitor captures.
 
 ## Motion standard (locked)
 
