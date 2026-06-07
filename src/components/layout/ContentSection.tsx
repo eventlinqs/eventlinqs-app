@@ -3,11 +3,22 @@ import { Reveal } from '@/components/ui/reveal'
 
 type SurfaceName = 'base' | 'alt' | 'dark'
 type WidthName = 'prose' | 'default' | 'wide'
+type PadName = 'default' | 'rail'
+
+// Vertical rhythm presets. 'default' is the interior-page band rhythm (unchanged).
+// 'rail' matches the homepage SECTION_RAIL beat (py-6 sm:py-8) so a band stacked
+// among rails produces the same 64px seam as every rail - no oversized gap.
+const pads: Record<PadName, string> = {
+  default: 'py-16 md:py-20 lg:py-24',
+  rail: 'py-6 sm:py-8',
+}
 
 interface ContentSectionProps {
   surface?: SurfaceName
   /** Controls the max-width of the inner container. Default 'default'. */
   width?: WidthName
+  /** Vertical padding rhythm. Default 'default'; 'rail' matches SECTION_RAIL. */
+  pad?: PadName
   children: ReactNode
   /** Optional section id for anchor links / in-page nav */
   id?: string
@@ -57,6 +68,7 @@ const widths: Record<WidthName, string> = {
 export function ContentSection({
   surface = 'base',
   width = 'default',
+  pad = 'default',
   children,
   id,
   'aria-labelledby': ariaLabelledby,
@@ -68,7 +80,7 @@ export function ContentSection({
     <section
       id={id}
       aria-labelledby={ariaLabelledby}
-      className={`relative ${surfaces[surface]} py-16 md:py-20 lg:py-24 ${className}`}
+      className={`relative ${surfaces[surface]} ${pads[pad]} ${className}`}
     >
       {topBorder && (
         <div

@@ -31,7 +31,10 @@ export async function CommunityValueBand() {
   )
 
   return (
-    <ContentSection surface="alt" width="wide" topBorder>
+    // pad="rail" matches the SECTION_RAIL beat so the band's seams equal every
+    // rail's 64px seam - no oversized gap after the Sounds rail (the tinted
+    // surface + gold divider give it presence without extra padding).
+    <ContentSection surface="alt" width="wide" pad="rail" topBorder>
       <div className="mx-auto max-w-2xl text-center">
         <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
           The community moat
