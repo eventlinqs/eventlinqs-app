@@ -5,6 +5,7 @@ import { ContentSection } from '@/components/layout/ContentSection'
 import { Button } from '@/components/ui/Button'
 import { Reveal } from '@/components/ui/reveal'
 import { HeroMedia, MarketingMedia } from '@/components/media'
+import { OrganiserCommunityStrip } from '@/components/features/organisers/community-strip'
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 import { helpTopics } from '@/lib/help-content'
 import {
@@ -275,23 +276,9 @@ export function OrganisersLandingPage() {
           </p>
         </Reveal>
 
-        <Reveal
-          stagger
-          as="ul"
-          className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 lg:gap-5"
-        >
-          {ORGANISER_COMMUNITY_TILES.map(tile => (
-            <li key={tile.label}>
-              {/* Card law: image alone, label below, never text on the image. */}
-              <div className="relative aspect-[4/5] overflow-hidden rounded-xl ring-1 ring-black/5">
-                <MarketingMedia src={tile.src} alt={tile.alt} variant="tile" />
-              </div>
-              <p className="mt-2.5 font-display text-sm font-semibold text-[var(--text-primary)]">
-                {tile.label}
-              </p>
-            </li>
-          ))}
-        </Reveal>
+        {/* Interactive-affordance law: every tile is a real working link into an
+            existing scene/culture/category page (no dead-end tiles). */}
+        <OrganiserCommunityStrip />
 
         <Reveal>
           <p className="mt-8 max-w-3xl text-[15px] leading-relaxed text-[var(--text-secondary)]">
