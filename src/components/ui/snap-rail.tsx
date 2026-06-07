@@ -49,6 +49,12 @@ interface HeaderLink {
   label: string
 }
 
+// Inter-card gap on the scroll track. Default 'gap-3' (12px) keeps every
+// existing rail identical; the homepage rhythm variants pass a wider class
+// per rail (Tailwind gap utility) to open the side-to-side spacing without
+// touching vertical rhythm. Threaded through to ScrollTrack.
+type CardGap = string
+
 interface SnapRailProps {
   eyebrow: string
   title: string
@@ -56,12 +62,16 @@ interface SnapRailProps {
   headerLink?: HeaderLink
   railLabel: string
   containerBg?: 'canvas' | 'ink-100'
+  /** Tailwind gap utility for the scroll track. Default 'gap-3'. */
+  cardGap?: CardGap
   children: ReactNode
 }
 
 interface SnapRailScrollerProps {
   railLabel: string
   containerBg?: 'canvas' | 'ink-100'
+  /** Tailwind gap utility for the scroll track. Default 'gap-3'. */
+  cardGap?: CardGap
   /**
    * Optional structured header. When provided, the scroller renders
    * a full top row with the headline on the left and arrows + progress
@@ -304,6 +314,7 @@ function ScrollTrack({
   fadeFromClass,
   canPrev,
   canNext,
+  gapClass,
   children,
 }: {
   scrollRef: React.RefObject<HTMLDivElement | null>
@@ -312,6 +323,7 @@ function ScrollTrack({
   fadeFromClass: string
   canPrev: boolean
   canNext: boolean
+  gapClass: string
   children: ReactNode
 }) {
   return (
@@ -345,7 +357,7 @@ function ScrollTrack({
             e.stopPropagation()
           }
         }}
-        className="flex gap-3 overflow-x-auto scroll-smooth px-4 pb-4 pt-1 scrollbar-none focus-visible:outline-none sm:px-6 lg:px-8"
+        className={`flex ${gapClass} overflow-x-auto scroll-smooth px-4 pb-4 pt-1 scrollbar-none focus-visible:outline-none sm:px-6 lg:px-8`}
       >
         {children}
       </div>
@@ -356,6 +368,7 @@ function ScrollTrack({
 export function SnapRailScroller({
   railLabel,
   containerBg = 'canvas',
+  cardGap = 'gap-3',
   header,
   children,
 }: SnapRailScrollerProps) {
@@ -413,6 +426,7 @@ export function SnapRailScroller({
         fadeFromClass={fadeFromClass}
         canPrev={canPrev}
         canNext={canNext}
+        gapClass={cardGap}
       >
         {children}
       </ScrollTrack>
@@ -427,6 +441,7 @@ export function SnapRail({
   headerLink,
   railLabel,
   containerBg = 'canvas',
+  cardGap = 'gap-3',
   children,
 }: SnapRailProps) {
   const { scrollRef, canPrev, canNext, scrollByCards, onKeyDown } = useScrollState()
@@ -478,6 +493,7 @@ export function SnapRail({
           fadeFromClass={fadeFromClass}
           canPrev={canPrev}
           canNext={canNext}
+          gapClass={cardGap}
         >
           {children}
         </ScrollTrack>
