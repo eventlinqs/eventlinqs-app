@@ -51,7 +51,17 @@ async function clamp(p) {
 const IN_PAGE = () => {
   const vw = window.innerWidth
   const de = document.documentElement
-  const overflow = Math.max(de.scrollWidth, document.body.scrollWidth) - vw
+  // "Document width" = the documentElement scroll width (the actual scroll
+  // container). NOT body.scrollWidth, which counts clipped off-canvas panels
+  // (html/body overflow-x:clip) that the user can never scroll to - a phantom.
+  // Confirm with a real scroll test below.
+  const overflow = de.scrollWidth - vw
+  // Actual horizontal scrollability: try to scroll right; if scrollX stays 0,
+  // there is no user-facing sideways scroll regardless of any phantom width.
+  const sx0 = window.scrollX
+  window.scrollTo(vw + 80, 0)
+  const canScrollX = window.scrollX > 0
+  window.scrollTo(sx0, 0)
   // primary touch targets: buttons, role=button, and link-buttons / nav links
   const small = []
   const sel = 'button, [role="button"], a[class*="inline-flex"], header a, nav a, footer button'
@@ -75,7 +85,7 @@ const IN_PAGE = () => {
       if (r.right > vw + 1 && r.width <= vw + 40) { widest = { tag: el.tagName.toLowerCase(), cls: (el.className?.toString?.() || '').slice(0, 60), right: Math.round(r.right) }; break }
     }
   }
-  return { vw, overflow: Math.round(overflow), small: small.slice(0, 10), smallCount: small.length, broken, widest }
+  return { vw, overflow: Math.round(overflow), canScrollX, small: small.slice(0, 10), smallCount: small.length, broken, widest }
 }
 
 const b = await chromium.launch({ args: ['--no-sandbox'] })
@@ -104,11 +114,11 @@ for (const [name, path] of PAGES) {
     const f = `${OUT}/m-${name}.png`
     await page.screenshot({ path: f, clip: { x: 0, y: 0, width: 390, height: 844 } })
     await clamp(f)
-    const rec = { name, path, status: res?.status() ?? 0, overflowPx: m.overflow, consoleErrors, broken: m.broken, smallTargets: m.smallCount, smallSample: m.small, widest: m.widest, axe: axeV, axeIds }
+    const rec = { name, path, status: res?.status() ?? 0, overflowPx: m.overflow, canScrollX: m.canScrollX, consoleErrors, broken: m.broken, smallTargets: m.smallCount, smallSample: m.small, widest: m.widest, axe: axeV, axeIds }
     results.push(rec)
-    const fail = (m.overflow > 1) || consoleErrors.length > 0 || m.broken.length > 0 || axeV > 0
+    const fail = (m.overflow > 1) || m.canScrollX || consoleErrors.length > 0 || m.broken.length > 0 || axeV > 0
     if (fail) hardFail++
-    console.log(`${fail ? 'FAIL' : 'OK  '} ${name.padEnd(14)} [${rec.status}] ovf=${m.overflow}px err=${consoleErrors.length} broken=${m.broken.length} axe=${axeV} small=${m.smallCount}`)
+    console.log(`${fail ? 'FAIL' : 'OK  '} ${name.padEnd(14)} [${rec.status}] ovf=${m.overflow}px scrollX=${m.canScrollX} err=${consoleErrors.length} broken=${m.broken.length} axe=${axeV} small=${m.smallCount}`)
     if (consoleErrors.length) consoleErrors.slice(0, 3).forEach(e => console.log('       err: ' + e))
     if (m.widest) console.log('       overflow culprit: ' + JSON.stringify(m.widest))
     if (axeV > 0) console.log('       axe: ' + axeIds.join(', '))
