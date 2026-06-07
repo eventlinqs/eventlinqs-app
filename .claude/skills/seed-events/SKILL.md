@@ -62,17 +62,21 @@ running `scripts/link-integrity-crawl.mjs`, not by a hand-picked slug.
    (including some free events). Write distinctive titles and descriptions in
    Australian English. No filler, no "Sample Event 1".
 
-4. **Imagery pipeline.** Run `scripts/ingest-imagery.mjs` against the provided
-   stock-library folder (`hero/`, `categories/*`, `cities/`, `scenes/*`,
-   `venues/`). It converts each image to responsive AVIF, uploads to the
-   `event-images` storage bucket, and writes `supabase/seed/imagery-map.json`.
-   Pick a fitting image per event from that map by `role` (and `group` for
-   categories and scenes), and set `cover_image_url` / `thumbnail_url` to the
-   mapped URLs. A published event must carry a real cover: the
-   `events_published_real_cover` constraint rejects placeholders. Feature
-   surfaces render these through `EventCardMedia` and `HeroMedia`, so never wire
-   raw `<img>` or `next/image`. The bucket must allow `image/avif` first (see
-   `docs/launch-hardening/imagery-pipeline.md`).
+4. **Imagery pipeline (photo day).** The founder runs `scripts/ingest-imagery.mjs`
+   per `docs/PHOTO-DAY.md`: drop licensed photos into `design-assets/incoming/`
+   named `role__key__city__descriptor.jpg` (role in hero/category/scene/city/
+   venue; an existing `hero/ categories/<cat>/ cities/ scenes/<scene>/ venues/`
+   tree is also read), run one command. It validates each source against a
+   dimension + quality floor, converts to responsive AVIF at the locked sizes,
+   uploads to the `event-images` storage bucket, and writes the manifest
+   `supabase/seed/imagery-map.json`. The script is storage-only and structurally
+   cannot touch a database row. Pick a fitting image per event from the manifest
+   by its slot (`role`, `key`, `city`, `descriptor`) and set `cover_image_url` /
+   `thumbnail_url` to the mapped `url` (or the entry `default`). A published event
+   must carry a real cover: the `events_published_real_cover` constraint rejects
+   placeholders. Feature surfaces render these through `EventCardMedia` and
+   `HeroMedia`, so never wire raw `<img>` or `next/image`. The bucket must allow
+   `image/avif` first (see `docs/PHOTO-DAY.md`, prerequisites).
 
 5. **Write the seed.** Put the inserts in a migration file (or a seed script),
    never run ad-hoc writes against a live database. Keep it idempotent and
