@@ -1,5 +1,6 @@
 import { EventlinqsLogo } from '@/components/ui/eventlinqs-logo'
 import { FirstNationsFlags } from '@/components/features/home/first-nations-flags'
+import { FooterAccordion } from '@/components/layout/footer-accordion'
 
 /**
  * SiteFooter v4 (Batch 5.5) - 4-column desktop, 2-column mobile, ~50%
@@ -106,17 +107,6 @@ function FacebookIcon() {
   )
 }
 
-function ChevronIcon() {
-  return (
-    <svg
-      className="h-4 w-4 text-white/70 transition-transform group-open:rotate-180"
-      fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true"
-    >
-      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-    </svg>
-  )
-}
-
 interface FooterColumnProps {
   title: string
   links: { label: string; href: string }[]
@@ -136,26 +126,6 @@ function DesktopColumn({ title, links }: FooterColumnProps) {
         ))}
       </ul>
     </div>
-  )
-}
-
-function MobileAccordion({ title, links }: FooterColumnProps) {
-  return (
-    <details className="group">
-      <summary className="flex cursor-pointer list-none items-center justify-between py-3 text-sm font-semibold text-white [&::-webkit-details-marker]:hidden">
-        {title}
-        <ChevronIcon />
-      </summary>
-      <ul className="space-y-2 pb-3">
-        {links.map(link => (
-          <li key={link.href}>
-            <a href={link.href} className="block py-1 text-sm text-white/70 transition-colors hover:text-white">
-              {link.label}
-            </a>
-          </li>
-        ))}
-      </ul>
-    </details>
   )
 }
 
@@ -240,11 +210,15 @@ export function SiteFooter() {
             <SocialRow />
           </div>
 
-          <div className="grid grid-cols-2 gap-x-6 pt-2">
-            <MobileAccordion title="Discover"       links={DISCOVER} />
-            <MobileAccordion title="Communities"    links={CULTURES} />
-            <MobileAccordion title="For organisers" links={FOR_ORGANISERS} />
-            <MobileAccordion title="Company"        links={COMPANY} />
+          {/* Full-width STACKED accordions, one per row, each independent.
+              No 2-col grid: a grid row stretches to its tallest cell and drags
+              the neighbour column down when one expands (the coupling bug).
+              Stacked blocks move only the content below an expanded section. */}
+          <div className="pt-2">
+            <FooterAccordion title="Discover"       links={DISCOVER} />
+            <FooterAccordion title="Communities"    links={CULTURES} />
+            <FooterAccordion title="For organisers" links={FOR_ORGANISERS} />
+            <FooterAccordion title="Company"        links={COMPANY} />
           </div>
 
           <div className="mt-4 border-t border-white/10 pt-4">

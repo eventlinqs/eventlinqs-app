@@ -251,6 +251,24 @@ Reuse the shared primitives, never hand-roll per surface:
   scroll-through at 1440 and 390 reads premium, and confirm Lighthouse mobile
   still clears 95+ on the preview (motion never costs the gate).
 
+## Footer standard (locked)
+
+The shared `SiteFooter` is the one footer; fix it once, platform-wide.
+
+- **Mobile (<768px): full-width STACKED accordions, one section per row, each
+  fully INDEPENDENT.** Expanding one moves nothing except the content below it in
+  normal document flow. NEVER a multi-column grid of accordions - a grid row
+  stretches to its tallest cell and drags the neighbouring column down when one
+  expands (the coupling bug). Each accordion is `FooterAccordion`
+  (`src/components/layout/footer-accordion.tsx`): a real `<button aria-expanded
+  aria-controls>` with a rotating chevron, a 44px+ touch target, and a smooth
+  height transition (grid-template-rows 0fr->1fr, disabled under reduced motion);
+  the collapsed panel is `inert` so its links leave the tab and a11y trees.
+- **Desktop (768px+): NO accordions - four static, always-open columns**, stable
+  at every width and on resize. Nothing wavers, nothing shifts.
+- Social row (Instagram, TikTok, X, LinkedIn, Facebook), logo, legal links, and
+  the First Nations acknowledgement are always present and resolving.
+
 ## Marketing surface standard (locked, Law 4)
 
 Every marketing / landing surface (organiser, pricing, about, city and scene
