@@ -8,7 +8,7 @@ import { HeroMedia, MarketingMedia } from '@/components/media'
 import { OrganiserCommunityStrip } from '@/components/features/organisers/community-strip'
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 import { helpTopics } from '@/lib/help-content'
-import { PUBLIC_FEE_LABEL } from '@/lib/pricing/public-fee'
+import { getLivePublicFee } from '@/lib/pricing/live-fee'
 import {
   ORGANISER_HERO,
   ORGANISER_BANDS,
@@ -142,7 +142,7 @@ function FeatureBandRow({ band }: { band: FeatureBand }) {
 // ── Pricing-clarity band: the ACTUAL numbers, pulled from the pricing source
 //    (PUBLIC_FEE_LABEL), never invented. Two cards: free events free, paid
 //    tickets one clear fee. Conversion-critical "what it costs" in one glance.
-function PricingClarityBand() {
+function PricingClarityBand({ feeLabel }: { feeLabel: string }) {
   const FREE_POINTS = ['Unlimited free events and free tickets', 'All platform features included', 'No card required to start']
   const PAID_POINTS = ['Pass it on at checkout or absorb it, your choice', 'No setup fees, no monthly fees, no lock-in', 'Multi-currency checkout, payouts via Stripe']
   return (
@@ -181,7 +181,7 @@ function PricingClarityBand() {
         <div className="flex flex-col rounded-2xl border border-[var(--brand-accent)]/50 bg-[var(--brand-accent)]/5 p-7 ring-1 ring-[var(--brand-accent)]/20">
           <p className="font-display text-sm font-bold uppercase tracking-[0.14em] text-[var(--text-primary)]">Paid events</p>
           <p className="mt-3">
-            <span className="font-display text-3xl font-extrabold tracking-tight text-[var(--text-primary)] sm:text-4xl">{PUBLIC_FEE_LABEL}</span>
+            <span className="font-display text-3xl font-extrabold tracking-tight text-[var(--text-primary)] sm:text-4xl">{feeLabel}</span>
             <span className="ml-2 text-sm text-[var(--text-secondary)]">per paid ticket sold. That is the whole fee.</span>
           </p>
           <p className="mt-2 text-sm text-[var(--text-secondary)]">Everything in Free, plus paid-ticket selling.</p>
@@ -208,7 +208,10 @@ function PricingClarityBand() {
   )
 }
 
-export function OrganisersLandingPage() {
+export async function OrganisersLandingPage() {
+  // Live fee from pricing_rules (same source the calculator charges), static
+  // fallback inside getLivePublicFee. Displayed == charged.
+  const fee = await getLivePublicFee()
   return (
     <PageShell>
 
@@ -252,7 +255,7 @@ export function OrganisersLandingPage() {
                   source, never invented). */}
               <p className="mt-3 text-sm font-semibold text-white">
                 Free events are free.
-                <span className="font-normal text-white/85"> Paid tickets {PUBLIC_FEE_LABEL} each.</span>
+                <span className="font-normal text-white/85"> Paid tickets {fee.label} each.</span>
               </p>
               <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
                 <Button variant="primary" size="lg" href="/organisers/signup">
@@ -287,7 +290,7 @@ export function OrganisersLandingPage() {
       </ContentSection>
 
       {/* ── 3. Pricing clarity (real numbers, conversion-critical) ───────── */}
-      <PricingClarityBand />
+      <PricingClarityBand feeLabel={fee.label} />
 
       {/* ── 4-5. Alternating image+text feature bands ────────────────────── */}
       {BANDS.map(band => (

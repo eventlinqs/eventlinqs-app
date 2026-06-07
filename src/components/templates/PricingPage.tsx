@@ -5,6 +5,7 @@ import { PageHero } from '@/components/layout/PageHero'
 import { ContentSection } from '@/components/layout/ContentSection'
 import { Button } from '@/components/ui/Button'
 import { PUBLIC_FEE_LABEL } from '@/lib/pricing/public-fee'
+import { getLivePublicFee } from '@/lib/pricing/live-fee'
 
 /**
  * PricingPage - /pricing
@@ -102,7 +103,11 @@ const FAQ = [
   },
 ]
 
-export function PricingPage() {
+export async function PricingPage() {
+  // The displayed fee is read LIVE from pricing_rules (the same source the
+  // payment calculator charges from), so displayed == charged. Static constant
+  // is the safe fallback inside getLivePublicFee.
+  const fee = await getLivePublicFee()
   return (
     <PageShell>
 
@@ -145,7 +150,7 @@ export function PricingPage() {
 
               <div className="mt-3">
                 <span className="font-display text-3xl font-extrabold text-[var(--text-primary)]">
-                  {tier.price}
+                  {tier.id === 'paid' ? fee.label : tier.price}
                 </span>
                 {tier.priceDetail && (
                   <span className="ml-2 text-sm text-[var(--text-secondary)]">
