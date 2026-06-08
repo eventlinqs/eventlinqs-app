@@ -65,7 +65,7 @@ All run against the deployed Vercel preview, full fixture density where relevant
 | axe-core (key pages, both viewports) | **PASS** 0 serious/critical across 19 pages x mobile+desktop (38 audits) | `scripts/axe-overnight.mjs` |
 | CI: lint / typecheck / build / test | **GREEN** all jobs success | GitHub Actions `CI` |
 | CI: types-drift guard (now blocking) | **GREEN** no real drift | GitHub Actions `CI` |
-| Lighthouse CI | **KNOWN-RED baseline** (documented; see gate gap 1) | GitHub Actions `Lighthouse CI` |
+| Lighthouse CI | **GREEN as configured** (success on the tip; floors perf at 0.80, so the 95+ law is NOT yet enforced, gate gap 1) | GitHub Actions `Lighthouse CI` |
 | Post-deploy smoke | N/A on a PR branch (runs on `main` after deploy) | GitHub Actions |
 
 Minor watch item: the mobile audit flags a small number of sub-44px elements per
