@@ -10,8 +10,11 @@
 export default function EventDetailLoading() {
   return (
     <div className="min-h-screen bg-canvas" aria-busy="true" aria-label="Loading event">
-      {/* Hero - dark to match the loaded photo+overlay hero (no tone jump) */}
-      <section className="relative flex min-h-[55vh] items-end overflow-hidden bg-navy-950 md:min-h-[70vh]">
+      {/* Hero - dark to match the loaded photo+overlay hero (no tone jump).
+          Scale matches the real hero's single platform token (.hero-marketing)
+          so the swap is zero-shift; the old 55-70vh skeleton predated the hero
+          flatten and would jump. */}
+      <section className="hero-marketing relative flex items-end overflow-hidden bg-navy-950">
         {/* Subtle warm gold sheen - the EventLinqs touch */}
         <div
           className="pointer-events-none absolute"

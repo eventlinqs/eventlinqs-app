@@ -78,7 +78,7 @@ export function CityHero({
         />
         <div className="relative z-10 mx-auto flex h-full max-w-7xl items-end px-5 pb-10 sm:px-6 sm:pb-12 lg:px-8 lg:pb-14">
           <div className="max-w-3xl">
-            <p className="font-display text-[11px] font-bold uppercase tracking-[0.22em] text-white/85 sm:text-xs">
+            <p className="font-display text-[11px] font-bold uppercase tracking-[0.22em] text-[var(--brand-accent)] sm:text-xs">
               {eyebrow}
             </p>
             <h1

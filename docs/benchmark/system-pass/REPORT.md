@@ -1666,24 +1666,32 @@ fix is verified ON THE DEPLOYED PREVIEW by clicking, not by assertion.
   project (preview + production) for the interactive map to paint.
 
 ### Founder escalation - hero + chrome consistency -> CLOSED
-- Law: ONE hero-scale system, two named tokens in `globals.css`
-  (`.hero-marketing` = homepage scale / marketing max; `.hero-content` =
-  cinematic cap), gold eyebrow not white, homepage display scale, one shared
+> SUPERSEDED 2026-06-07: the original ruling below was "two tiers (content heroes
+> keep their scale)". The founder later ruled ONE platform hero scale - every
+> hero (event detail, city, suburb, category, culture) flattened to
+> `.hero-marketing`; `.hero-content` retired from `globals.css` (commit
+> `f613d15`, see COMPETITOR-MIRROR.md). The law statement and audit table below
+> are updated to the final single-standard ruling.
+- Law: ONE platform hero scale, the single `.hero-marketing` token in
+  `globals.css` (homepage scale, `~42-48vh`, max 480px, min 320px), used by
+  EVERY hero; gold eyebrow not white, homepage display scale, one shared
   dual-state navy header (no per-page variants). In CLAUDE.md (Design system:
-  Hero scale) + the page-build skill; DESIGN-SYSTEM.md (superseded) points to
-  it. Founder ruling: two tiers (content heroes keep their scale).
+  Hero scale) + the page-build skill; DESIGN-SYSTEM.md (superseded) points to it.
 - Applied: `/organisers` hero rebuilt from 82vh full-viewport to
   `.hero-marketing` with the homepage scrim, a gold eyebrow (was white), and the
-  homepage type scale (was `text-7xl`). Approved body sections untouched.
+  homepage type scale (was `text-7xl`). Then event detail, city/suburb, category,
+  and culture heroes all flattened from the old content tier to `.hero-marketing`
+  (single standard). Approved body sections untouched.
 
 #### Hero audit (every hero vs the law)
 | Page | Hero | Height | Tier | Eyebrow | Verdict |
 |---|---|---|---|---|---|
-| `/` homepage | FeaturedHeroClient | 42-48vh (max 480) | marketing (cap) | gold | LAWFUL (baseline) |
-| `/organisers` | OrganisersLandingPage | 82vh -> hero-marketing | marketing | white -> gold | FIXED |
-| `/events/[slug]` | event detail | 55-70vh | content | gold | LAWFUL |
-| `/city/[slug]` + suburb | CityHero | 52-64vh | content | gold | LAWFUL |
-| `/culture/[culture]` | PhotographicCultureHero | 48vh | content | gold | LAWFUL |
+| `/` homepage | FeaturedHeroClient | 42-48vh (max 480) | hero-marketing | gold | LAWFUL (baseline) |
+| `/organisers` | OrganisersLandingPage | 82vh -> hero-marketing | hero-marketing | white -> gold | FIXED |
+| `/events/[slug]` | event detail | 55-70vh -> hero-marketing | hero-marketing | gold | FLATTENED |
+| `/city/[slug]` + suburb | CityHero | 52-64vh -> hero-marketing | hero-marketing | gold | FLATTENED |
+| `/categories/[slug]` | PhotographicCategoryHero | hero-marketing | hero-marketing | gold | LAWFUL |
+| `/culture/[culture]` | PhotographicCultureHero | 48vh -> hero-marketing | hero-marketing | gold | FLATTENED |
 | `/events` | search strip | ~60px light | n/a | n/a | LAWFUL |
 | pricing/about/careers/press | PageHero | light band | marketing | gold (strong) | LAWFUL |
 | login/signup | AuthShell | none | n/a | n/a | LAWFUL |

@@ -144,18 +144,24 @@ from taste, and re-verify cards-per-row and rail peek at the new width.
 
 ## Hero scale standard (locked)
 
-One hero-scale system, two named tiers defined as tokens in
-`src/app/globals.css`; no page's hero may exceed its tier (Design system: Hero
-scale).
+ONE hero scale for the whole platform, defined as the single `.hero-marketing`
+token in `src/app/globals.css`; no page's hero may exceed it (Design system:
+Hero scale - founder ruling 2026-06-07). There is no separate "content" tier;
+`.hero-content` was retired.
 
-- `.hero-marketing` - primary + marketing tier, the homepage scale
-  (`~42-48vh`, max 480px). The homepage `FeaturedHero` IS this tier and is the
-  marketing maximum. Use it on `/organisers` and every "sell the platform"
-  surface. A marketing hero may never tower over the homepage hero (the
-  `/organisers` rebuild's 82vh full-viewport hero read as a generic template
-  beside the platform chrome - fixed to `.hero-marketing`).
-- `.hero-content` - content tier, the cinematic cap (`~55-70vh`). Use it on
-  `/events/[slug]`, `/city/[slug]`, `/culture/[culture]`.
+- `.hero-marketing` - the single platform hero scale, the homepage scale
+  (`~42-48vh`, max 480px, min 320px). The homepage `FeaturedHero` IS this token
+  and is the maximum for EVERY hero. Use it on every surface - marketing
+  (`/organisers` and every "sell the platform" page), discovery, AND content
+  (`/events/[slug]`, `/city/[slug]`, `/city/[slug]/[suburb]`,
+  `/categories/[slug]`, `/culture/[culture]`). A hero may never tower over the
+  homepage hero (the `/organisers` rebuild's 82vh full-viewport hero read as a
+  generic template beside the platform chrome - fixed to `.hero-marketing`).
+- Deviation above this scale is permitted ONLY where FRESH competitor evidence
+  proves the equivalent page type runs taller and reads better - evidence, never
+  taste. The 2026 mirror found neither Ticketmaster nor Eventbrite runs a taller
+  hero on any page type, so no page currently qualifies; any new taller hero
+  must ship its competitor capture.
 - Every hero shares ONE treatment: the bottom-up navy scrim, a GOLD eyebrow
   (`text-[var(--brand-accent)]` on the dark hero, never a white eyebrow), the
   homepage display scale (`text-3xl sm:text-4xl lg:text-5xl`, never

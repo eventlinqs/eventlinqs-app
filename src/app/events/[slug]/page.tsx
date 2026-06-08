@@ -557,7 +557,9 @@ export default async function EventDetailPage({ params }: Props) {
 
               <h1
                 className="mt-4 font-display font-extrabold leading-[1.02] tracking-tight text-white"
-                style={{ fontSize: 'clamp(2rem, 5vw, 4rem)' }}
+                /* Homepage display scale (text-3xl -> text-5xl). Capped at 3rem
+                   per the hero law: never text-6xl/7xl. */
+                style={{ fontSize: 'clamp(1.875rem, 5vw, 3rem)' }}
               >
                 {event.title}
               </h1>
