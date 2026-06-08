@@ -217,7 +217,8 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
     currency,
     fee_pass_type,
     discount_cents,
-    event.organisation_id
+    event.organisation_id,
+    event.id
   )
 
   const isFreeOrder = fees.total_cents === 0
@@ -373,6 +374,7 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
     const charge = await createDestinationCharge({
       gateway,
       organisationId: event.organisation_id,
+      eventId: event.id,
       fees,
       customerEmail: buyer_email,
       idempotencyKey: idempotency_key,
@@ -539,7 +541,8 @@ async function processSeatCheckout({
     currency,
     fee_pass_type,
     0,
-    event.organisation_id
+    event.organisation_id,
+    event.id
   )
   const isFreeOrder = fees.total_cents === 0
 
@@ -656,6 +659,7 @@ async function processSeatCheckout({
     const charge = await createDestinationCharge({
       gateway,
       organisationId: event.organisation_id,
+      eventId: event.id,
       fees,
       customerEmail: buyer_email,
       idempotencyKey: idempotency_key,

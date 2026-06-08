@@ -1516,6 +1516,7 @@ export type Database = {
           currency: string
           effective_from: string
           effective_until: string | null
+          event_id: string | null
           event_type: string
           id: string
           organisation_id: string | null
@@ -1534,6 +1535,7 @@ export type Database = {
           currency?: string
           effective_from?: string
           effective_until?: string | null
+          event_id?: string | null
           event_type?: string
           id?: string
           organisation_id?: string | null
@@ -1552,6 +1554,7 @@ export type Database = {
           currency?: string
           effective_from?: string
           effective_until?: string | null
+          event_id?: string | null
           event_type?: string
           id?: string
           organisation_id?: string | null
@@ -1564,6 +1567,13 @@ export type Database = {
           version?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "pricing_rules_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "pricing_rules_organisation_id_fkey"
             columns: ["organisation_id"]
