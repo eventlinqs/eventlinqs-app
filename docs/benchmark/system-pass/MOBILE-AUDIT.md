@@ -105,3 +105,8 @@ still holds, and the home 390 capture shows the stacked footer.
 - `011f7b4` hero auto-rotation (LCP-safe, WCAG pausable) + law
 - `ecbe156` mobile touch-target fixes + header sheet containment + audit script
 - `16f752b` audit metric correction (documentElement scrollWidth + scroll test)
+- `9d74ff1` hero pause control -> keyboard-focus-only (sr-only + focus-visible), zero visible playback chrome; rotation/dots/LCP unchanged; Hero Carousel law updated in CLAUDE.md + page-build skill.
+
+## Hero pause control: zero visible playback chrome (2026-06-08, `9d74ff1`)
+- Change: homepage hero pause/play is now sr-only and revealed ONLY on keyboard focus-visible (no visible playback chrome on any viewport); auto-rotation, dots and slide-0 LCP protection unchanged.
+- Preview-verified 390 + 1440 (real-motion mode): NO pause button in idle/hover/touch (sr-only 2x2), control appears bottom-right on keyboard-tab focus only (44x44), axe 0 serious/critical on home both viewports (`design-captures/audit/hero-pause/*`).
