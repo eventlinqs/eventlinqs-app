@@ -27,7 +27,10 @@ in `FeaturedHeroClient`:
   Verified live: sequential homepage captures show different slides.
 - Pauses on hover (desktop), touch/swipe (mobile), and focus-within; resumes
   after; a manual move resets the timer.
-- Visible accessible pause/play control (WCAG 2.2.2), solid navy/gold, 44px.
+- Accessible pause/play control (WCAG 2.2.2), keyboard-focus-only: sr-only and
+  revealed solely on focus-visible (solid navy/gold, 44px) - zero visible
+  playback chrome on any viewport. Superseded the earlier visible control on
+  2026-06-08 (`9d74ff1`); see the dedicated section below.
 - Armed ONLY under `html[data-motion="1"]` - prefers-reduced-motion and headless
   audits get NO auto-rotation (manual nav only).
 - LCP preserved: slide 0 is the only in-layout priority raster until rotation
