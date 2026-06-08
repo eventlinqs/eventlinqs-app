@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { requireAdminSession } from '@/lib/admin/auth'
-import { assertCapability } from '@/lib/admin/rbac'
+import { assertCan } from '@/lib/admin/rbac'
 import {
   writePricingField,
   ADMIN_EDITABLE_FIELDS,
@@ -26,7 +26,7 @@ const ScopeSchema = z.object({
  */
 export async function updateScopePricingAction(formData: FormData): Promise<void> {
   const session = await requireAdminSession()
-  assertCapability(session.admin.role, 'admin.pricing.manage')
+  assertCan(session, 'admin.pricing.manage')
 
   const parsed = ScopeSchema.safeParse({
     countryCode: formData.get('countryCode'),
@@ -69,7 +69,7 @@ const OverrideSchema = z.object({
  */
 export async function updateOverridePricingAction(formData: FormData): Promise<void> {
   const session = await requireAdminSession()
-  assertCapability(session.admin.role, 'admin.pricing.manage')
+  assertCan(session, 'admin.pricing.manage')
 
   const parsed = OverrideSchema.safeParse({
     scopeKind: formData.get('scopeKind'),

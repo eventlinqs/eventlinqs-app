@@ -1,9 +1,10 @@
 import { redirect } from 'next/navigation'
 import { requireAdminSession } from '@/lib/admin/auth'
-import { hasCapability } from '@/lib/admin/rbac'
+import { can } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { readAdminPricingMatrix, readActiveOverrides, ADMIN_PRICING_SCOPES } from '@/lib/admin/pricing'
 import { ConfirmSubmitButton } from '@/components/admin/confirm-submit-button'
+import { OverrideTargetPicker } from '@/components/admin/override-target-picker'
 import { updateScopePricingAction, updateOverridePricingAction } from './actions'
 
 export const dynamic = 'force-dynamic'
@@ -25,7 +26,7 @@ type SearchParams = Promise<{ status?: string; scope?: string; changed?: string 
  */
 export default async function AdminPricingPage({ searchParams }: { searchParams: SearchParams }) {
   const session = await requireAdminSession()
-  if (!hasCapability(session.admin.role, 'admin.pricing.manage')) {
+  if (!can(session, 'admin.pricing.manage')) {
     redirect('/admin')
   }
   await recordAuditEvent({ action: 'admin.pricing.view', session })
@@ -216,30 +217,8 @@ export default async function AdminPricingPage({ searchParams }: { searchParams:
           <p className="mb-6 text-sm text-white/40">No overrides set. Every organiser and event uses the regional default above.</p>
         )}
 
-        <form action={updateOverridePricingAction} className="grid max-w-3xl grid-cols-1 gap-4 rounded-lg border border-white/[0.08] p-5 sm:grid-cols-2 lg:grid-cols-5">
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="ov-scope" className="text-[11px] uppercase tracking-wider text-white/50">Scope</label>
-            <select
-              id="ov-scope"
-              name="scopeKind"
-              defaultValue="organisation"
-              className="rounded-md border border-white/15 bg-white/[0.04] px-2 py-1.5 text-white focus:border-white/40 focus:outline-none"
-            >
-              <option value="organisation">Organisation</option>
-              <option value="event">Event</option>
-            </select>
-          </div>
-          <div className="flex flex-col gap-1.5 lg:col-span-2">
-            <label htmlFor="ov-target" className="text-[11px] uppercase tracking-wider text-white/50">Target ID (UUID)</label>
-            <input
-              id="ov-target"
-              name="targetId"
-              type="text"
-              required
-              placeholder="organisation or event UUID"
-              className="rounded-md border border-white/15 bg-white/[0.04] px-2 py-1.5 font-mono text-[12px] text-white focus:border-white/40 focus:outline-none"
-            />
-          </div>
+        <form action={updateOverridePricingAction} className="grid max-w-3xl grid-cols-1 gap-4 rounded-lg border border-white/[0.08] p-5 sm:grid-cols-2 lg:grid-cols-6">
+          <OverrideTargetPicker />
           <div className="flex flex-col gap-1.5">
             <label htmlFor="ov-currency" className="text-[11px] uppercase tracking-wider text-white/50">Currency</label>
             <select
@@ -279,7 +258,7 @@ export default async function AdminPricingPage({ searchParams }: { searchParams:
               className="w-full rounded-md border border-white/15 bg-white/[0.04] px-2 py-1.5 text-white focus:border-white/40 focus:outline-none"
             />
           </div>
-          <div className="sm:col-span-2 lg:col-span-5">
+          <div className="sm:col-span-2 lg:col-span-6">
             <ConfirmSubmitButton
               confirmMessage="Save this override? New transactions for the target organiser or event will use it immediately. Past orders are unchanged."
               className="rounded-md bg-white/90 px-3 py-1.5 text-sm font-semibold text-[#0A0F1A] transition hover:bg-white"
