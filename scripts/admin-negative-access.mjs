@@ -15,9 +15,10 @@ const BASE = (process.argv[2] ||
 const AUTHED = [
   '/admin', '/admin/pricing', '/admin/users', '/admin/orders', '/admin/organisers',
   '/admin/payouts', '/admin/events', '/admin/audit', '/admin/analytics', '/admin/enrol-2fa',
+  '/admin/staff',
 ]
 // An admin-only content marker that must NEVER appear in an anon response.
-const ADMIN_MARKERS = [/Pricing and fees/i, /Audit log/i, /admin-sidebar/i, /Disburse/i, /super_admin/i]
+const ADMIN_MARKERS = [/Pricing and fees/i, /Audit log/i, /admin-sidebar/i, /Disburse/i, /super_admin/i, /Role capability matrix/i, /Add an admin/i]
 
 let fail = 0
 const results = []
@@ -67,6 +68,22 @@ try {
   if (mutated) fail++
 } catch (e) { console.log('OK   POST /admin/pricing    blocked (' + String(e).slice(0, 50) + ')') }
 
-console.log(`\n${results.length + 2} checks; failures: ${fail}`)
+// Anonymous POST to the admin-staff add action: must NOT grant admin access.
+let staffChecks = 0
+try {
+  staffChecks = 1
+  const r = await fetch(BASE + '/admin/staff', {
+    method: 'POST',
+    redirect: 'manual',
+    headers: { 'content-type': 'application/x-www-form-urlencoded', 'user-agent': 'neg-access' },
+    body: 'email=attacker@example.com&role=super_admin',
+  })
+  const loc = r.headers.get('location') || ''
+  const mutated = /status=added/.test(loc)
+  console.log(`${mutated ? 'FAIL' : 'OK  '} POST /admin/staff      anon add-admin ${mutated ? 'SUCCEEDED (LEAK)' : 'blocked'} (status ${r.status}${loc ? ', ->' + loc : ''})`)
+  if (mutated) fail++
+} catch (e) { console.log('OK   POST /admin/staff      blocked (' + String(e).slice(0, 50) + ')') }
+
+console.log(`\n${results.length + 2 + staffChecks} checks; failures: ${fail}`)
 console.log(fail === 0 ? 'NEGATIVE-ACCESS: PASS (all admin surfaces deny anon)' : 'NEGATIVE-ACCESS: FAIL')
 process.exit(fail === 0 ? 0 : 1)
