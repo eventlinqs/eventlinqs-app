@@ -36,7 +36,11 @@ const ROTATE_MS = 6500
  *   - Pauses on hover (desktop), touch/swipe (mobile), and while any element
  *     inside has keyboard focus; resumes after. A manual move resets the timer
  *     (the timer effect keys on `active`).
- *   - A visible, accessible pause/play control (WCAG 2.2.2), solid navy/gold.
+ *   - A pause/play control (WCAG 2.2.2) that is NEVER visible to mouse or touch
+ *     on any viewport: visually hidden (sr-only) and revealed ONLY on keyboard
+ *     focus (focus-visible). Hover/touch users get automatic pause-on-interaction,
+ *     reduced-motion users get no rotation at all, so the hero carries zero
+ *     visible playback chrome on any viewport (the industry-standard pattern).
  *   - ARMED ONLY under html[data-motion="1"] (set pre-paint for real visitors,
  *     never for prefers-reduced-motion or headless audits). So reduced-motion and
  *     audits get NO auto-rotation and manual nav only.
@@ -216,20 +220,27 @@ export function FeaturedHeroClient({ slides }: Props) {
             <ChevronRight className="h-5 w-5" aria-hidden />
           </button>
 
-          {/* Bottom control bar: pause/play (WCAG 2.2.2) + minimal slide dots. */}
-          <div className="absolute inset-x-0 bottom-4 z-20 flex items-center justify-center gap-3">
-            {armed && (
-              <button
-                type="button"
-                onClick={() => setPlaying(p => !p)}
-                aria-label={playing ? 'Pause automatic slideshow' : 'Play automatic slideshow'}
-                className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--color-ink-900)] text-[var(--brand-accent)] shadow-[0_2px_8px_rgba(10,22,40,0.45)] transition-colors duration-200 hover:bg-[var(--color-navy-950)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)]"
-                style={{ border: '1px solid rgba(212, 164, 55, 0.45)' }}
-              >
-                {playing ? <Pause className="h-4 w-4" aria-hidden /> : <Play className="h-4 w-4" aria-hidden />}
-              </button>
-            )}
+          {/* Pause/play control (WCAG 2.2.2): NEVER visible to mouse or touch on
+           *  any viewport. Visually hidden (sr-only) and revealed ONLY on keyboard
+           *  focus (focus-visible) as a solid navy/gold pill at the hero's
+           *  bottom-right. Hover/touch users get automatic pause-on-interaction;
+           *  reduced-motion users get no rotation; so the hero shows zero visible
+           *  playback chrome (Hero Carousel law). Gated on `armed`: it exists only
+           *  while auto-rotation is actually running. */}
+          {armed && (
+            <button
+              type="button"
+              onClick={() => setPlaying(p => !p)}
+              aria-label={playing ? 'Pause automatic slideshow' : 'Play automatic slideshow'}
+              className="sr-only focus-visible:not-sr-only focus-visible:absolute focus-visible:bottom-4 focus-visible:right-4 focus-visible:z-30 focus-visible:flex focus-visible:h-11 focus-visible:w-11 focus-visible:items-center focus-visible:justify-center focus-visible:rounded-full focus-visible:bg-[var(--color-ink-900)] focus-visible:text-[var(--brand-accent)] focus-visible:shadow-[0_2px_8px_rgba(10,22,40,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)]"
+              style={{ border: '1px solid rgba(212, 164, 55, 0.45)' }}
+            >
+              {playing ? <Pause className="h-4 w-4" aria-hidden /> : <Play className="h-4 w-4" aria-hidden />}
+            </button>
+          )}
 
+          {/* Bottom control bar: minimal slide dots only - no visible pause chrome. */}
+          <div className="absolute inset-x-0 bottom-4 z-20 flex items-center justify-center gap-3">
             <div role="tablist" aria-label="Choose featured event" className="flex items-center gap-1.5">
               {slides.map((slide, idx) => {
                 const isActive = idx === active

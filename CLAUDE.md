@@ -399,10 +399,14 @@ never hand-roll per surface):
   a multi-slide hero AUTO-ADVANCES every ~6.5s with an eased opacity crossfade,
   mobile and desktop (evidence: Humanitix hero, rail-controls CATALOGUE). It
   PAUSES on hover, on touch/swipe, and while any element inside has keyboard
-  focus, and resumes after; a manual move resets the timer. A visible, accessible
-  pause/play control is mandatory (WCAG 2.2.2 - auto-moving content must be
-  stoppable), in our system (solid navy/gold, never glass). Indicator: minimal
-  dots only (no travelling-dot device). ARMED ONLY under `html[data-motion="1"]`,
+  focus, and resumes after; a manual move resets the timer. The pause/play
+  control is NEVER visible except on keyboard focus: it is visually hidden
+  (sr-only) and revealed only on focus-visible, so there is no visible playback
+  chrome on the hero, ever, on any viewport (mobile or desktop). WCAG 2.2.2 stays
+  satisfied: keyboard and assistive users retain the stop mechanism, hover/touch
+  users get automatic pause-on-interaction, reduced-motion users get no rotation
+  at all. When revealed on focus it is solid navy/gold, never glass. Indicator:
+  minimal dots only (no travelling-dot device). ARMED ONLY under `html[data-motion="1"]`,
   so prefers-reduced-motion and headless audits get NO auto-rotation (manual nav
   only). LCP law: slide 0 is the server-rendered priority raster and the only
   slide in layout until rotation arms post-paint; non-first slides mount and

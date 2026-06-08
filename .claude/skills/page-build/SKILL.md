@@ -242,10 +242,14 @@ Reuse the shared primitives, never hand-roll per surface:
   on load. The LCP image never animates (media architecture law).
 - Hero carousel auto-rotation (`FeaturedHeroClient`): a multi-slide hero
   auto-advances every ~6.5s with an eased crossfade (mobile + desktop); pauses on
-  hover / touch / focus-within and resumes; a visible solid navy/gold pause-play
-  control is mandatory (WCAG 2.2.2). Armed only under `html[data-motion="1"]` (no
-  auto-rotation for reduced-motion / audits). LCP: slide 0 is the only in-layout
-  priority raster until rotation arms post-paint; others lazy-load after arming.
+  hover / touch / focus-within and resumes. The pause/play control is NEVER
+  visible except on keyboard focus: visually hidden (sr-only) and revealed only on
+  focus-visible, so there is no visible playback chrome on the hero, ever, on any
+  viewport. WCAG 2.2.2 stays satisfied (keyboard/assistive users keep the stop
+  mechanism; hover/touch get auto pause-on-interaction; reduced-motion gets no
+  rotation). Armed only under `html[data-motion="1"]` (no auto-rotation for
+  reduced-motion / audits). LCP: slide 0 is the only in-layout priority raster
+  until rotation arms post-paint; others lazy-load after arming.
 - Hover: cards use `.card-hover-lift` (2 to 4px lift, shadow deepen, 1.02 to
   1.03 inner image scale, 150 to 200ms). Buttons use the canonical `Button`
   press/hover states. No bespoke hover.
