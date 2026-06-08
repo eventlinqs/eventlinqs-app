@@ -48,6 +48,7 @@ silently follow the stale doc.
 | Seed or demo data | `seed-events` skill, Law 3, Media architecture |
 | Links, routes, navigation | Law 5 (zero dead links) |
 | A migration or the database | Verification and gates (Migrations) |
+| A fee, pricing, checkout charge, or payout | Fee system (one source), `docs/FEE-SYSTEM.md` |
 | CI, gates, delivery | Verification and gates |
 
 **Index of laws:** Law 0 (read first) - Law 1 (no generic) - Law 2
@@ -454,6 +455,31 @@ never hand-roll per surface):
   not user-facing copy).
 - No placeholder copy ("Coming soon", "Sample Event 1", "Lorem ipsum") on any
   shipped surface (Law 1).
+
+## Fee system (one source, founder-controlled)
+
+The platform fee is a single authoritative value the founder controls from the
+admin panel, propagating identically to checkout, payout, and every display.
+Full law and the end-to-end proof live in `docs/FEE-SYSTEM.md`. The binding
+rules:
+
+- **One source.** `public.pricing_rules` is the ONLY place a fee value lives.
+  Charge (`PaymentCalculator`), payout (`application-fee` /
+  `createDestinationCharge`), and display (`getLivePublicFee`) all read it
+  through the ONE resolver `getPricingRule` (`src/lib/payments/pricing-rules.ts`),
+  so the displayed fee always equals the charged fee. Never hardcode a fee number
+  anywhere (copy included); use the live value or neutral phrasing. The
+  `public-fee.ts` constant is a LAST-RESORT fallback used only when the DB is
+  unreachable, never a second fee.
+- **Three scopes, clear precedence:** per-event (highest) > per-organiser >
+  region/global default. The resolver applies the most specific matching rule and
+  guards every lower level with `event_id IS NULL` so scopes never collide. Both
+  percentage and fixed are independently scoped.
+- **Versioned + audit-logged.** Every change is an append-only new-version row
+  (past orders keep their historical fee) recorded in the admin audit log with
+  who and when. Set fees in `/admin/pricing`; no code deploy needed.
+- **Launch default:** AU = 2% + AUD 0.50, written to `pricing_rules` by a lawful
+  migration so the documented launch fee and the live value match.
 
 ## Verification and gates
 
