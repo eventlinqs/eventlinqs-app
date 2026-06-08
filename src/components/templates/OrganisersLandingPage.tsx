@@ -139,9 +139,9 @@ function FeatureBandRow({ band }: { band: FeatureBand }) {
   )
 }
 
-// ── Pricing-clarity band: the ACTUAL numbers, pulled from the pricing source
-//    (PUBLIC_FEE_LABEL), never invented. Two cards: free events free, paid
-//    tickets one clear fee. Conversion-critical "what it costs" in one glance.
+// ── Pricing-clarity band: the ACTUAL fee, read live from pricing_rules via
+//    getLivePublicFee (displayed == charged), never invented. Two cards: free
+//    events free, paid tickets one clear fee. The "what it costs" in one glance.
 function PricingClarityBand({ feeLabel }: { feeLabel: string }) {
   const FREE_POINTS = ['Unlimited free events and free tickets', 'All platform features included', 'No card required to start']
   const PAID_POINTS = ['Pass it on at checkout or absorb it, your choice', 'No setup fees, no monthly fees, no lock-in', 'Multi-currency checkout, payouts via Stripe']

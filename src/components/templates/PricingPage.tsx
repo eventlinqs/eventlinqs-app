@@ -4,17 +4,15 @@ import { PageShell } from '@/components/layout/PageShell'
 import { PageHero } from '@/components/layout/PageHero'
 import { ContentSection } from '@/components/layout/ContentSection'
 import { Button } from '@/components/ui/Button'
-import { PUBLIC_FEE_LABEL } from '@/lib/pricing/public-fee'
 import { getLivePublicFee } from '@/lib/pricing/live-fee'
 
 /**
  * PricingPage - /pricing
  *
- * The paid-ticket fee is stated as ONE definite number sourced from
- * `@/lib/pricing/public-fee` (2% + AUD 0.50), which mirrors the live AU / GLOBAL
- * `pricing_rules` baseline that payment-calculator.ts actually charges (the
- * payments lane must set the pricing_rules rows to 2.0 to match). No "from", no
- * "indicative", no "may vary" hedging: one fee for every event type.
+ * The paid-ticket fee is read LIVE from `pricing_rules` via `getLivePublicFee()`
+ * - the SAME source the payment calculator charges from - so the displayed fee
+ * always equals the charged fee. Stated as ONE definite number: no "from", no
+ * "indicative", no "may vary" hedging.
  */
 
 // ---- Pricing tier data ----
@@ -40,7 +38,9 @@ const TIERS = [
   {
     id: 'paid',
     name: 'Paid Events',
-    price: PUBLIC_FEE_LABEL,
+    // Always overridden at render by the live fee (getLivePublicFee); the paid
+    // tier never reads this static value. Kept blank so there is no second fee.
+    price: '',
     priceDetail: 'per paid ticket sold. That is the whole fee.',
     description:
       'Transparent, industry-leading rates. Pass the fee to buyers or absorb it into your ticket price. Your choice.',
