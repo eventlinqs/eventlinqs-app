@@ -131,12 +131,13 @@ the 31 May audit. That is proof of wiring, not of robustness at scale.
 
 Ordered roughly by launch-blocking weight.
 
-1. **Platform fee decision + live value (commercial).** The 2026-06-08 founder
-   intent is **2% + AUD 0.50**; the live `pricing_rules` AU/AUD baseline is still
-   **2.5% + AUD 0.50**. Display and charge both follow the one DB source, so
-   displayed == charged at whatever the live value is. To realise 2%, set AU
-   `platform_fee_percentage` to `2` in `/admin/pricing` (single field, no
-   migration, no deploy). Decide and set, or confirm 2.5% stays.
+1. **Platform fee live value (commercial).** The launch fee is **2% + AUD 0.50**
+   (AU). The fee system is now single-source with event/org/region overrides and
+   a full end-to-end proof (`docs/FEE-SYSTEM.md`); displayed == charged == payout.
+   Migration `20260608000003_platform_fee_au_launch_default` writes the AU/AUD
+   baseline to 2% + AUD 0.50 so the documented and live values match - apply it
+   (see action 3). After launch the founder changes any fee, including per-event
+   and per-organiser overrides, from `/admin/pricing` with no deploy.
 2. **Stripe live (commercial, launch-blocking).** Switch live keys; set connected
    accounts to the intended payout schedule (memory flags the default daily-vs-
    manual question); run the live purchase + refund round-trip end to end. The
@@ -145,8 +146,12 @@ Ordered roughly by launch-blocking weight.
 3. **Apply pending migrations** with `supabase db push --linked` in PowerShell
    (never the Dashboard SQL editor, never the MCP). Verify by direct DB query, not
    the cached client. Pending in `supabase/migrations/` include the refund
-   reconcile (`20260531000001/2`), payout disbursement (`20260531000003`), and
-   the founder super-admin grant (`20260608000001`). Confirm each is applied.
+   reconcile (`20260531000001/2`), payout disbursement (`20260531000003`), the
+   founder super-admin grant (`20260608000001`), the fee event-scope column
+   (`20260608000002`), and the AU launch fee (`20260608000003`). The fee
+   event-scope migration is required for the types-drift CI guard to go green
+   (database.ts already carries `pricing_rules.event_id`); until it is applied the
+   guard is red by design, not a code bug. Confirm each is applied.
 4. **Environment variables on Vercel (preview + production):**
    - `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` (the interactive venue/city map needs it;
      `REPORT.md` flags it).
