@@ -63,6 +63,8 @@ export type Database = {
       }
       admin_users: {
         Row: {
+          capabilities_granted: string[]
+          capabilities_revoked: string[]
           created_at: string
           created_by: string | null
           disabled_at: string | null
@@ -77,6 +79,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          capabilities_granted?: string[]
+          capabilities_revoked?: string[]
           created_at?: string
           created_by?: string | null
           disabled_at?: string | null
@@ -91,6 +95,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          capabilities_granted?: string[]
+          capabilities_revoked?: string[]
           created_at?: string
           created_by?: string | null
           disabled_at?: string | null

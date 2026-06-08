@@ -1,6 +1,5 @@
 import Link from 'next/link'
-import type { AdminRole } from '@/lib/admin/types'
-import { hasCapability, type AdminCapability } from '@/lib/admin/rbac'
+import type { AdminCapability } from '@/lib/admin/rbac'
 
 interface NavItem {
   label: string
@@ -17,6 +16,7 @@ const NAV: NavItem[] = [
   { label: 'Events',           href: '/admin/events',     capability: 'admin.events.manage' },
   { label: 'Orders',           href: '/admin/orders',     capability: 'admin.refunds.process' },
   { label: 'Payouts',          href: '/admin/payouts',    capability: 'admin.payouts.disburse' },
+  { label: 'Admin staff',      href: '/admin/staff',      capability: 'admin.invites.manage' },
   { label: 'Analytics (GMV)',  href: '/admin/analytics',  capability: 'admin.pricing.manage' },
   { label: 'Audit',            href: '/admin/audit',      capability: 'admin.audit.read' },
   // Deferred (visible, disabled) per M7 scope: build later.
@@ -29,8 +29,8 @@ const NAV: NavItem[] = [
  * carries the matching capability. "Coming soon" items render disabled
  * so the founder can see what is queued without dead links.
  */
-export function AdminSidebar({ role }: { role: AdminRole }) {
-  const items = NAV.filter(i => hasCapability(role, i.capability))
+export function AdminSidebar({ capabilities }: { capabilities: readonly string[] }) {
+  const items = NAV.filter(i => capabilities.includes(i.capability))
 
   return (
     <aside className="hidden w-60 shrink-0 border-r border-white/[0.08] bg-[#0A0F1A] lg:block">

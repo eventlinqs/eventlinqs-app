@@ -13,6 +13,7 @@ import {
   verifyRecoveryCode,
   verifyTotp,
 } from '@/lib/admin/totp'
+import { resolveCapabilities } from '@/lib/admin/rbac'
 import type { AdminUserRow } from '@/lib/admin/types'
 
 /**
@@ -114,7 +115,7 @@ export async function loginAdminAction(formData: FormData): Promise<LoginResult>
 
   await recordAuditEvent({
     action: 'admin.session.login.success',
-    session: { userId: signed.user.id, email, admin },
+    session: { userId: signed.user.id, email, admin, capabilities: resolveCapabilities(admin) },
   })
 
   if (!admin.totp_secret_encrypted) {
@@ -157,7 +158,7 @@ async function verifySecondFactor(args: {
       .eq('id', admin.id)
     await recordAuditEvent({
       action: 'admin.totp.recovery_used',
-      session: { userId: admin.id, email: '', admin },
+      session: { userId: admin.id, email: '', admin, capabilities: resolveCapabilities(admin) },
       metadata: { remaining: next.length },
     })
     return { ok: true }

@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { requireAdminSession } from '@/lib/admin/auth'
-import { assertCapability } from '@/lib/admin/rbac'
+import { assertCan } from '@/lib/admin/rbac'
 import { changeUserRole, setUserSuspension, ASSIGNABLE_ROLES } from '@/lib/admin/users'
 
 export type UserActionResult = { ok: true } | { ok: false; error: string }
@@ -22,7 +22,7 @@ export async function setUserSuspensionAction(input: {
   reason?: string | null
 }): Promise<UserActionResult> {
   const session = await requireAdminSession()
-  assertCapability(session.admin.role, 'admin.users.manage')
+  assertCan(session, 'admin.users.manage')
 
   const parsed = SuspendSchema.safeParse(input)
   if (!parsed.success) return { ok: false, error: 'Invalid request.' }
@@ -51,7 +51,7 @@ export async function changeUserRoleAction(input: {
   reason?: string | null
 }): Promise<UserActionResult> {
   const session = await requireAdminSession()
-  assertCapability(session.admin.role, 'admin.users.manage')
+  assertCan(session, 'admin.users.manage')
 
   const parsed = ChangeRoleActionSchema.safeParse(input)
   if (!parsed.success) return { ok: false, error: 'Invalid request.' }
@@ -80,7 +80,7 @@ const ChangeRoleSchema = z.object({
  */
 export async function changeUserRoleForm(formData: FormData): Promise<void> {
   const session = await requireAdminSession()
-  assertCapability(session.admin.role, 'admin.users.manage')
+  assertCan(session, 'admin.users.manage')
 
   const parsed = ChangeRoleSchema.safeParse({
     userId: formData.get('userId'),

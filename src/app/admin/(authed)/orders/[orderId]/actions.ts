@@ -3,7 +3,7 @@
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { requireAdminSession } from '@/lib/admin/auth'
-import { assertCapability } from '@/lib/admin/rbac'
+import { assertCan } from '@/lib/admin/rbac'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requestTicketRefund, RefundNotAuthorisedError } from '@/lib/payments/refund-service'
 import { recordAuditEvent } from '@/lib/admin/audit'
@@ -31,7 +31,7 @@ export async function submitAdminRefund(input: {
   buyerMessage?: string | null
 }): Promise<SubmitAdminRefundResult> {
   const session = await requireAdminSession()
-  assertCapability(session.admin.role, 'admin.refunds.process')
+  assertCan(session, 'admin.refunds.process')
 
   const parsed = SubmitRefundSchema.safeParse(input)
   if (!parsed.success) return { ok: false, error: 'Invalid refund request.' }
