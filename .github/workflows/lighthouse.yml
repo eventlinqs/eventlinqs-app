@@ -3,11 +3,18 @@
 # Hard gate covering every public page type. Performance 95+ on every
 # URL or PR fails to merge.
 #
-# Runs on every PR. Boots a local Supabase stack so the dynamic routes
-# in lighthouserc.json (/events/browse/[city], /events/[slug],
-# /categories/[slug]) resolve to real seeded content, builds the
-# Next.js app, then audits the full URL set against the locked
-# thresholds in lighthouserc.json.
+# Runs on every PR but only AUDITS when the PR changes performance-
+# affecting files (app code, pages, styles, served assets). Docs-only,
+# config-only, and CI-plumbing PRs match no audit path, so every heavy
+# step is skipped and this required check reports a no-op pass in seconds:
+# it never boots Supabase, never builds, never runs the audit, so it
+# cannot flake or send a false "Lighthouse failed" email, and a docs or
+# config PR is never blocked waiting on a result it does not need. When it
+# does audit, it boots a local Supabase stack so the dynamic routes in
+# lighthouserc.json (/events/browse/[city], /events/[slug],
+# /categories/[slug]) resolve to real seeded content, builds the Next.js
+# app, then audits the full URL set against the locked thresholds in
+# lighthouserc.json.
 #
 # Gate calibrated to evidence-based thresholds after Pre-Task 5
 # (iter-14). Vercel image optimizer cold-start prevents 0.95+ on
@@ -50,6 +57,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
+    # paths-filter reads the PR's changed-file list to decide whether to audit.
+    permissions:
+      contents: read
+      pull-requests: read
+
     env:
       NEXT_TELEMETRY_DISABLED: 1
       NEXT_PUBLIC_SITE_URL: https://eventlinqs.com
@@ -58,13 +70,41 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Audit only when the PR changes files that can affect page
+      # performance. This is an allow-list (default-deny): anything not
+      # listed here - **/*.md, docs/**, audit-v2/**, README*, .gitignore,
+      # LICENSE, lint/test/tsconfig and other non-perf config, and CI
+      # plumbing - skips the audit. Lighthouse stays a required check on
+      # every PR; on a non-matching PR the steps below are skipped and the
+      # job still succeeds, so the gate is never a false blocker.
+      - name: Detect performance-affecting changes
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            ui:
+              - 'src/**'
+              - 'public/**'
+              - 'next.config.*'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'tailwind.config.*'
+              - 'postcss.config.*'
+              - 'lighthouserc.json'
+
+      - name: No performance-affecting changes - skip audit
+        if: steps.filter.outputs.ui != 'true'
+        run: echo "This PR changes no app code, pages, styles, or assets. Lighthouse audit skipped; gate passes."
+
       - name: Setup Node
+        if: steps.filter.outputs.ui == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
 
       - name: Install
+        if: steps.filter.outputs.ui == 'true'
         run: npm ci
 
       # Boot a local Supabase stack so dynamic Lighthouse URLs
@@ -72,14 +112,17 @@ jobs:
       # real content. `supabase start` applies every file in
       # supabase/migrations/ including the cultural breadth seed.
       - name: Setup Supabase CLI
+        if: steps.filter.outputs.ui == 'true'
         uses: supabase/setup-cli@v1
         with:
           version: latest
 
       - name: Start Supabase
+        if: steps.filter.outputs.ui == 'true'
         run: supabase start
 
       - name: Export Supabase env
+        if: steps.filter.outputs.ui == 'true'
         # NEXT_PUBLIC_* must be present BEFORE `next build` so the values
         # are inlined into the client bundle. Pull them from the running
         # local stack and write to $GITHUB_ENV for subsequent steps.
@@ -103,9 +146,11 @@ jobs:
           echo "SUPABASE_SERVICE_ROLE_KEY=$service_role_key" >> $GITHUB_ENV
 
       - name: Build
+        if: steps.filter.outputs.ui == 'true'
         run: npm run build
 
       - name: Run Lighthouse CI
+        if: steps.filter.outputs.ui == 'true'
         uses: treosh/lighthouse-ci-action@v12
         with:
           configPath: ./lighthouserc.json
