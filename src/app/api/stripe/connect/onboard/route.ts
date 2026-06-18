@@ -10,6 +10,7 @@ import {
   isAllowedConnectCountry,
 } from '@/lib/stripe/connect'
 import { getPayoutScheduleDays } from '@/lib/payments/pricing-rules'
+import { getAppUrl } from '@/lib/site-url'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,8 +22,10 @@ const RouteInput = z.object({
     .transform((c) => c.toUpperCase()),
 })
 
+// HARD-07: resolve the app origin through the shared deploy-safe helper so no
+// deployed environment can ever emit a localhost redirect into Stripe.
 function appUrl(): string {
-  return process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+  return getAppUrl()
 }
 
 /**

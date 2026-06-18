@@ -2,6 +2,10 @@ interface RevenueSummaryProps {
   grossCents: number
   platformFeeCents: number
   processingFeeCents: number
+  // PAY-02: completed refunds to net out of the revenue. Optional (default 0)
+  // so callers that already exclude refunded orders pass nothing and are
+  // unaffected.
+  refundedCents?: number
   currency: string
 }
 
@@ -9,8 +13,8 @@ function formatCents(cents: number, currency: string) {
   return `${currency.toUpperCase()} ${(cents / 100).toFixed(2)}`
 }
 
-export function RevenueSummary({ grossCents, platformFeeCents, processingFeeCents, currency }: RevenueSummaryProps) {
-  const netCents = grossCents - platformFeeCents - processingFeeCents
+export function RevenueSummary({ grossCents, platformFeeCents, processingFeeCents, refundedCents = 0, currency }: RevenueSummaryProps) {
+  const netCents = grossCents - platformFeeCents - processingFeeCents - refundedCents
 
   return (
     <div className="rounded-xl border border-ink-200 bg-white p-5">
@@ -28,6 +32,12 @@ export function RevenueSummary({ grossCents, platformFeeCents, processingFeeCent
           <span className="text-sm text-ink-400">Processing fees</span>
           <span className="text-sm text-ink-400">−{formatCents(processingFeeCents, currency)}</span>
         </div>
+        {refundedCents > 0 && (
+          <div className="flex justify-between">
+            <span className="text-sm text-ink-400">Refunds</span>
+            <span className="text-sm text-ink-400">−{formatCents(refundedCents, currency)}</span>
+          </div>
+        )}
         <div className="border-t border-ink-100 pt-3 flex justify-between">
           <span className="text-sm font-semibold text-ink-900">Net Revenue</span>
           <span className="text-sm font-bold text-green-700">{formatCents(netCents, currency)}</span>

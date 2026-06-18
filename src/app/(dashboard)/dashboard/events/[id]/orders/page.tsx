@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { OrderTable } from '@/components/orders/order-table'
 import { RevenueSummary } from '@/components/orders/revenue-summary'
+import { aggregateGmv } from '@/lib/admin/analytics'
 import type { Order } from '@/types/database'
 
 type Props = {
@@ -72,11 +73,37 @@ export default async function EventOrdersPage({ params }: Props) {
     }
   })
 
-  // Stats - include refunded orders in revenue totals so numbers match payouts
+  // Stats. Paid orders are the ones where a sale occurred (confirmed,
+  // partially_refunded, refunded); pending/cancelled/expired never count.
   const confirmedOrders = ordersData.filter(o =>
     ['confirmed', 'partially_refunded', 'refunded'].includes(o.status)
   )
-  const totalRevenue = confirmedOrders.reduce((s, o) => s + o.total_cents, 0)
+
+  // PAY-02: value revenue NET of completed refunds, via the same audited
+  // aggregator as /admin/analytics. Summing total_cents over the paid statuses
+  // counted a fully refunded order at full value; we now subtract completed
+  // refunds so a full refund nets to zero and a partial nets to the retained
+  // amount.
+  const paidOrderIds = confirmedOrders.map(o => o.id)
+  let eventRefunds: { amount_cents: number; status: string }[] = []
+  if (paidOrderIds.length > 0) {
+    const { data: refundRows } = await adminClient
+      .from('refunds')
+      .select('amount_cents, status')
+      .in('order_id', paidOrderIds)
+    eventRefunds = (refundRows ?? []) as { amount_cents: number; status: string }[]
+  }
+  const gmv = aggregateGmv(
+    confirmedOrders.map(o => ({
+      total_cents: o.total_cents,
+      platform_fee_cents: o.platform_fee_cents,
+      status: o.status,
+    })),
+    eventRefunds,
+  )
+  const grossRevenue = gmv.grossGmvCents
+  const refundedRevenue = gmv.refundedCents
+  const totalRevenue = gmv.netGmvCents // net of refunds - shown on the Revenue card
   const totalPlatformFees = confirmedOrders.reduce((s, o) => s + o.platform_fee_cents, 0)
   const totalProcessingFees = confirmedOrders.reduce((s, o) => s + o.processing_fee_cents, 0)
   const ticketsSold = confirmedOrders.reduce((s, o) => {
@@ -187,9 +214,10 @@ export default async function EventOrdersPage({ params }: Props) {
         </div>
         <div>
           <RevenueSummary
-            grossCents={totalRevenue}
+            grossCents={grossRevenue}
             platformFeeCents={totalPlatformFees}
             processingFeeCents={totalProcessingFees}
+            refundedCents={refundedRevenue}
             currency={currency}
           />
 

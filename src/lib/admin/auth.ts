@@ -1,6 +1,7 @@
 import { createClient as createServerSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveCapabilities } from './rbac'
+import { hasValidTwoFactorProof } from './two-factor'
 import type { AdminSession, AdminUserRow } from './types'
 
 /**
@@ -31,6 +32,12 @@ export async function getAdminSession(): Promise<AdminSession | null> {
 
   if (admin.error || !admin.data) return null
   if (admin.data.disabled_at) return null
+
+  // AUTH-02: the live session must carry proof that admin 2FA was completed in
+  // the admin login flow. A Supabase session minted elsewhere (e.g. the public
+  // buyer /login page) has no proof cookie and is rejected here even though the
+  // user has a valid, enabled admin_users row.
+  if (!(await hasValidTwoFactorProof(userData.user.id))) return null
 
   // Normalise override columns (absent until the migration is applied) so the
   // resolver is safe pre-migration, then compute the effective capability set.
