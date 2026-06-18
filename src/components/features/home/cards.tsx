@@ -48,6 +48,8 @@ export interface CityTileData {
   /** e.g. "32 events". */
   metaLabel: string
   priority?: boolean
+  /** Focal point for the cover crop (spine slot imagery). */
+  objectPosition?: string
 }
 
 // Shared finish. Quiet confidence: hairline border + soft shadow, a small
@@ -146,6 +148,8 @@ export interface CommunityTileData {
   /** e.g. "32 events" or "Be the first". */
   metaLabel: string
   priority?: boolean
+  /** Focal point for the cover crop (spine slot imagery). */
+  objectPosition?: string
 }
 
 /**
@@ -164,6 +168,7 @@ export function CommunityTile({ community }: { community: CommunityTileData }) {
           alt={community.alt}
           variant="card"
           priority={community.priority}
+          objectPosition={community.objectPosition}
           className={IMG_MOTION}
         />
       </div>
@@ -180,7 +185,7 @@ export function CityTile({ city }: { city: CityTileData }) {
   return (
     <Link href={city.href} prefetch={false} className={`flex w-full flex-col ${SURFACE}`}>
       <div className={`${IMG_WRAP} aspect-[3/2]`}>
-        <CityTileImage src={city.imageSrc} alt={city.alt} priority={city.priority} className={IMG_MOTION} />
+        <CityTileImage src={city.imageSrc} alt={city.alt} priority={city.priority} objectPosition={city.objectPosition} className={IMG_MOTION} />
       </div>
       <div className="flex items-center justify-between gap-2 p-4">
         <span className={`text-lg ${TITLE}`}>{city.name}</span>
@@ -198,6 +203,8 @@ export interface CategoryTileData {
   /** e.g. "24 events" or "Explore". */
   metaLabel: string
   priority?: boolean
+  /** Focal point for the cover crop (spine slot imagery). */
+  objectPosition?: string
 }
 
 /**
@@ -211,7 +218,7 @@ export function CategoryTile({ category }: { category: CategoryTileData }) {
   return (
     <Link href={category.href} prefetch={false} className={`flex w-full flex-col ${SURFACE}`}>
       <div className={`${IMG_WRAP} aspect-[3/2]`}>
-        <CategoryTileImage src={category.imageSrc} alt={category.alt} priority={category.priority} className={IMG_MOTION} />
+        <CategoryTileImage src={category.imageSrc} alt={category.alt} priority={category.priority} objectPosition={category.objectPosition} className={IMG_MOTION} />
       </div>
       <div className="flex items-center justify-between gap-2 p-4">
         <span className={`text-lg ${TITLE}`}>{category.name}</span>

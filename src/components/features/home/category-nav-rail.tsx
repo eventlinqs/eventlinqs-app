@@ -2,6 +2,7 @@ import { SnapRail } from '@/components/ui/snap-rail'
 import { CategoryTile } from '@/components/features/home/cards'
 import { getCategoryPhoto } from '@/lib/images/category-photo'
 import { getCultureHeroPhoto } from '@/lib/images/culture-photo'
+import { getSpineCategoryTile } from '@/lib/images/spine'
 import { CONTAINER, SECTION_RAIL } from '@/lib/ui/spacing'
 import { RHYTHM_GAP } from '@/lib/ui/rhythm'
 
@@ -36,12 +37,26 @@ export async function CategoryNavRail({ counts }: { counts: Record<string, numbe
   const [tiles, communityDoorImage] = await Promise.all([
     Promise.all(
       CATEGORIES.map(async (c, i) => {
-        const photo = await getCategoryPhoto(c.slug)
+        // Spine-first: licensed category tile photo; Pexels stays the fallback
+        // for categories with no spine slot (e.g. comedy).
+        const spine = getSpineCategoryTile(c.slug)
         const count = counts[c.slug] ?? 0
+        if (spine) {
+          return {
+            ...c,
+            imageSrc: spine.src,
+            alt: `${c.name} events`,
+            objectPosition: spine.objectPosition as string | undefined,
+            metaLabel: count > 0 ? `${count} ${count === 1 ? 'event' : 'events'}` : 'Explore',
+            priority: i < 4,
+          }
+        }
+        const photo = await getCategoryPhoto(c.slug)
         return {
           ...c,
           imageSrc: photo.src,
           alt: photo.alt ?? `${c.name} events`,
+          objectPosition: undefined as string | undefined,
           metaLabel: count > 0 ? `${count} ${count === 1 ? 'event' : 'events'}` : 'Explore',
           priority: i < 4, // first row above the fold paints eagerly
         }
@@ -87,6 +102,7 @@ export async function CategoryNavRail({ counts }: { counts: Record<string, numbe
                   name: t.name,
                   metaLabel: t.metaLabel,
                   priority: t.priority,
+                  objectPosition: t.objectPosition,
                 }}
               />
             </div>

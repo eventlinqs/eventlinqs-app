@@ -3,6 +3,7 @@ import { SnapRail } from '@/components/ui/snap-rail'
 import { Reveal } from '@/components/ui/reveal'
 import { CityTile } from '@/components/features/home/cards'
 import { getCityPhoto } from '@/lib/images/city-photo'
+import { getSpineCity } from '@/lib/images/spine'
 import { CONTAINER, SECTION_RAIL } from '@/lib/ui/spacing'
 import { RHYTHM_GAP, CITY_TILE_CELL } from '@/lib/ui/rhythm'
 import { CITY_TILES, LOCAL_CITY_SVG } from '@/lib/events/home-queries'
@@ -16,11 +17,14 @@ export async function CityRailSection({ nowIso }: Props) {
 
   const cityCounts = await Promise.all(
     CITY_TILES.map(async t => {
+      // Spine-first: the licensed city photo is the slot image. Pexels then the
+      // local SVG remain the fallback chain for any city without a spine slot.
+      const spine = getSpineCity(t.slug)
       const [countResult, photo] = await Promise.all([
         supabase.from('events').select('id', { count: 'exact', head: true })
           .eq('status', 'published').eq('visibility', 'public')
           .gte('start_date', nowIso).ilike('venue_city', `%${t.slug}%`),
-        getCityPhoto(t.slug),
+        spine ? Promise.resolve(null) : getCityPhoto(t.slug),
       ])
       const localSvg = LOCAL_CITY_SVG.has(t.slug)
         ? `/cities/${t.slug}.svg`
@@ -28,7 +32,8 @@ export async function CityRailSection({ nowIso }: Props) {
       return {
         ...t,
         count: countResult.count ?? 0,
-        imageSrc: photo ?? localSvg,
+        imageSrc: spine ? spine.src : (photo ?? localSvg),
+        objectPosition: spine?.objectPosition,
       }
     }),
   )
@@ -70,6 +75,7 @@ export async function CityRailSection({ nowIso }: Props) {
                   alt: c.city,
                   name: c.city,
                   metaLabel: `${c.count} ${c.count === 1 ? 'event' : 'events'}`,
+                  objectPosition: c.objectPosition,
                 }}
               />
             </div>

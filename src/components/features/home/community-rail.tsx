@@ -5,6 +5,7 @@ import { CONTAINER, SECTION_RAIL } from '@/lib/ui/spacing'
 import { RHYTHM_GAP } from '@/lib/ui/rhythm'
 import { getCultureIndexEntries } from '@/lib/cultures/index-page-data'
 import { getCultureHeroPhoto } from '@/lib/images/culture-photo'
+import { getSpineSceneForCulture } from '@/lib/images/spine'
 
 /**
  * CommunityRail - the homepage community moat (Find your community).
@@ -30,14 +31,20 @@ export async function CommunityRail() {
   if (entries.length === 0) return null
 
   const tiles = await Promise.all(
-    entries.map(async (e, i) => ({
-      slug: e.slug,
-      name: e.displayName,
-      tagline: e.tagline,
-      metaLabel: e.eventCount > 0 ? `${e.eventCount} ${e.eventCount === 1 ? 'event' : 'events'}` : 'Be the first',
-      imageSrc: await getCultureHeroPhoto(e.slug),
-      priority: i < 4,
-    })),
+    entries.map(async (e, i) => {
+      // Spine-first for the wired community scenes; the rest keep the Pexels
+      // culture hero (held scenes await Culture->Community Phase 2).
+      const spine = getSpineSceneForCulture(e.slug)
+      return {
+        slug: e.slug,
+        name: e.displayName,
+        tagline: e.tagline,
+        metaLabel: e.eventCount > 0 ? `${e.eventCount} ${e.eventCount === 1 ? 'event' : 'events'}` : 'Be the first',
+        imageSrc: spine ? spine.src : await getCultureHeroPhoto(e.slug),
+        objectPosition: spine?.objectPosition,
+        priority: i < 4,
+      }
+    }),
   )
 
   return (
@@ -62,6 +69,7 @@ export async function CommunityRail() {
                   name: t.name,
                   metaLabel: t.metaLabel,
                   priority: t.priority,
+                  objectPosition: t.objectPosition,
                 }}
               />
             </div>

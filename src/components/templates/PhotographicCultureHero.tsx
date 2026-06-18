@@ -16,9 +16,11 @@ interface Props {
   title: string
   subtitle: string
   imageSrc: string | null
+  /** Focal point for the cover crop (spine slot imagery). Defaults centre. */
+  objectPosition?: string
 }
 
-export function PhotographicCultureHero({ eyebrow, title, subtitle, imageSrc }: Props) {
+export function PhotographicCultureHero({ eyebrow, title, subtitle, imageSrc, objectPosition = '50% 50%' }: Props) {
   return (
     <section
       aria-labelledby="culture-hero-heading"
@@ -27,7 +29,7 @@ export function PhotographicCultureHero({ eyebrow, title, subtitle, imageSrc }: 
       <HeroPresenceMarker />
       <div className="hero-marketing relative w-full">
         {imageSrc ? (
-          <HeroMedia image={imageSrc} alt={`${title} on EventLinqs`} priority />
+          <HeroMedia image={imageSrc} alt={`${title} on EventLinqs`} objectPosition={objectPosition} priority />
         ) : (
           <div
             aria-hidden

@@ -1,5 +1,6 @@
 import { HeroMedia } from '@/components/media'
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
+import { getSpineCategoryHero } from '@/lib/images/spine'
 
 /**
  * PhotographicCategoryHero - Batch 4 replacement for the navy-950 + radial
@@ -40,7 +41,11 @@ interface Props {
 }
 
 export function PhotographicCategoryHero({ slug, eyebrow, title, subtitle }: Props) {
-  const src = HERO_RASTER_BY_SLUG[slug] ?? HERO_RASTER_DEFAULT
+  // Spine-first: the licensed category hero. Falls back to the bundled culture
+  // raster (old slugs) then the default for anything without a spine slot.
+  const spine = getSpineCategoryHero(slug)
+  const src = spine?.src ?? HERO_RASTER_BY_SLUG[slug] ?? HERO_RASTER_DEFAULT
+  const objectPosition = spine?.objectPosition ?? '50% 50%'
   const alt = `${title} on EventLinqs`
 
   return (
@@ -50,7 +55,7 @@ export function PhotographicCategoryHero({ slug, eyebrow, title, subtitle }: Pro
     >
       <HeroPresenceMarker />
       <div className="hero-marketing relative w-full">
-        <HeroMedia image={src} alt={alt} priority />
+        <HeroMedia image={src} alt={alt} objectPosition={objectPosition} priority />
         {/* Darkened gradient: bottom-up navy so headline stays readable */}
         <div
           aria-hidden

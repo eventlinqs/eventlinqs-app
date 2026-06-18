@@ -12,6 +12,8 @@
  * English and community-first language.
  */
 
+import { getSpineHero } from './spine'
+
 export interface PhotoSlot {
   src: string
   alt: string
@@ -21,12 +23,30 @@ export interface PhotoSlot {
 
 const HERO = '/images/hero'
 
-/** Above-fold full-bleed hero (HeroMedia, the one priority image on the page). */
-export const ORGANISER_HERO: PhotoSlot = {
-  src: `${HERO}/afrobeats.jpg`,
-  alt: 'Organisers and a crowd sharing a vibrant outdoor festival night',
-  objectPosition: '50% 45%',
+// Spine-first slot builder: the licensed organiser/supporting hero is the slot
+// image; the bundled culture raster stays as the fallback if the spine URL
+// cannot be built (e.g. NEXT_PUBLIC_SUPABASE_URL unset at build).
+function spineSlot(
+  name: Parameters<typeof getSpineHero>[0],
+  alt: string,
+  fallbackSrc: string,
+  fallbackFocal: string,
+): PhotoSlot {
+  const spine = getSpineHero(name)
+  return {
+    src: spine?.src ?? fallbackSrc,
+    alt,
+    objectPosition: spine?.objectPosition ?? fallbackFocal,
+  }
 }
+
+/** Above-fold full-bleed hero (HeroMedia, the one priority image on the page). */
+export const ORGANISER_HERO: PhotoSlot = spineSlot(
+  'organisersStage',
+  'An organiser running a full stage production before a live crowd',
+  `${HERO}/afrobeats.jpg`,
+  '50% 45%',
+)
 
 /** Alternating image+text feature bands. */
 export const ORGANISER_BANDS: {
@@ -34,21 +54,24 @@ export const ORGANISER_BANDS: {
   tools: PhotoSlot
   selfServe: PhotoSlot
 } = {
-  pricing: {
-    src: `${HERO}/owambe.jpg`,
-    alt: 'Guests raising a toast together at a celebration',
-    objectPosition: '50% 50%',
-  },
-  tools: {
-    src: `${HERO}/bollywood.jpg`,
-    alt: 'A packed dance floor under stage lighting at a live event',
-    objectPosition: '50% 45%',
-  },
-  selfServe: {
-    src: `${HERO}/amapiano.jpg`,
-    alt: 'An outdoor dance performance in full flow before a crowd',
-    objectPosition: '50% 40%',
-  },
+  pricing: spineSlot(
+    'supportingOrganiser',
+    'An organiser celebrating a successful, well-attended event',
+    `${HERO}/owambe.jpg`,
+    '50% 50%',
+  ),
+  tools: spineSlot(
+    'supportingDiscovery',
+    'A guest browsing and discovering events to attend',
+    `${HERO}/bollywood.jpg`,
+    '50% 45%',
+  ),
+  selfServe: spineSlot(
+    'supportingTickets',
+    'A moment of buying tickets to a live event',
+    `${HERO}/amapiano.jpg`,
+    '50% 40%',
+  ),
 }
 
 /**

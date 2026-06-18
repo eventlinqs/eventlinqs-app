@@ -23,9 +23,11 @@ interface Props {
   country: string
   total: number
   imageSrc: string | null
+  /** Focal point for the cover crop (spine slot imagery). Defaults centre. */
+  objectPosition?: string
 }
 
-export function PhotographicCityHero({ city, country, total, imageSrc }: Props) {
+export function PhotographicCityHero({ city, country, total, imageSrc, objectPosition = '50% 50%' }: Props) {
   const alt = `${city} on EventLinqs`
   const totalLabel = `${total} event${total === 1 ? '' : 's'} available`
 
@@ -40,7 +42,7 @@ export function PhotographicCityHero({ city, country, total, imageSrc }: Props) 
        *  homepage exactly - one hero scale, one source. */}
       <div className="hero-marketing relative w-full">
         {imageSrc ? (
-          <HeroMedia image={imageSrc} alt={alt} priority />
+          <HeroMedia image={imageSrc} alt={alt} objectPosition={objectPosition} priority />
         ) : (
           <div
             aria-hidden

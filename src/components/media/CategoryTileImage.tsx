@@ -21,6 +21,8 @@ interface Props {
   alt: string
   /** Above-fold (e.g. category landing hero); defaults false. */
   priority?: boolean
+  /** CSS object-position for the cover crop (focal point). Defaults to centre. */
+  objectPosition?: string
   className?: string
 }
 
@@ -28,6 +30,7 @@ export function CategoryTileImage({
   src,
   alt,
   priority = false,
+  objectPosition,
   className = '',
 }: Props) {
   const safeSrc = resolveImageSrc(src)
@@ -47,6 +50,7 @@ export function CategoryTileImage({
         loading={priority ? 'eager' : 'lazy'}
         decoding="async"
         className={`card-media-img object-cover ${className}`}
+        style={objectPosition ? { objectPosition } : undefined}
       />
       <HoverWash />
     </>

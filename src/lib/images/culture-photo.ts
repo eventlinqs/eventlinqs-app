@@ -1,4 +1,5 @@
 import { unstable_cache } from 'next/cache'
+import { getSpineSceneForCulture } from './spine'
 
 /**
  * Culture-aware photo pipeline backed by Pexels.
@@ -138,6 +139,9 @@ export async function getCultureHeroPhoto(
   slug: string,
   opts: GetCultureHeroPhotoOptions = {},
 ): Promise<string | null> {
+  // Spine-first for the WIRED community scenes (held scenes await Phase 2).
+  const spine = getSpineSceneForCulture(slug)
+  if (spine) return spine.src
   const key = slug.toLowerCase()
   const query = CULTURE_QUERIES[key]
   if (!query) return null

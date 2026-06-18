@@ -24,6 +24,8 @@ interface Props {
   alt: string
   /** Optional priority for above-fold city heroes. Defaults false. */
   priority?: boolean
+  /** CSS object-position for the cover crop (focal point). Defaults to centre. */
+  objectPosition?: string
   className?: string
 }
 
@@ -35,6 +37,7 @@ export function CityTileImage({
   src,
   alt,
   priority = false,
+  objectPosition,
   className = '',
 }: Props) {
   if (isLocalSvg(src)) {
@@ -47,6 +50,7 @@ export function CityTileImage({
           decoding="async"
           fetchPriority={priority ? 'high' : 'auto'}
           className={`card-media-img absolute inset-0 h-full w-full object-cover ${className}`}
+          style={objectPosition ? { objectPosition } : undefined}
         />
         <HoverWash />
       </>
@@ -71,6 +75,7 @@ export function CityTileImage({
         loading={priority ? 'eager' : 'lazy'}
         decoding="async"
         className={`card-media-img object-cover ${className}`}
+        style={objectPosition ? { objectPosition } : undefined}
       />
       <HoverWash />
     </>

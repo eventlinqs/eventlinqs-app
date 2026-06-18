@@ -3,6 +3,7 @@ import { SnapRail } from '@/components/ui/snap-rail'
 import { Reveal } from '@/components/ui/reveal'
 import { EventCardMedia } from '@/components/media'
 import { getCategoryPhoto } from '@/lib/images/category-photo'
+import { getSpineSceneForSound } from '@/lib/images/spine'
 import { CONTAINER, SECTION_RAIL } from '@/lib/ui/spacing'
 import { RHYTHM_GAP, SCENE_TILE_CELL } from '@/lib/ui/rhythm'
 
@@ -51,16 +52,22 @@ const IMG_MOTION =
   'transition-transform duration-200 ease-out group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100'
 
 async function toTile(sound: Sound) {
+  // Spine-first: the licensed scene photo is the slot image. Pexels stays the
+  // fallback only when a sound has no spine slot yet.
+  const spine = getSpineSceneForSound(sound.slug)
+  if (spine) {
+    return { ...sound, image: spine.src, alt: `${sound.label} events`, objectPosition: spine.objectPosition }
+  }
   const photo = await getCategoryPhoto(sound.slug)
-  return { ...sound, image: photo.src, alt: photo.alt ?? `${sound.label} events` }
+  return { ...sound, image: photo.src, alt: photo.alt ?? `${sound.label} events`, objectPosition: undefined as string | undefined }
 }
 
-function SoundTile({ tile }: { tile: Sound & { image: string; alt: string } }) {
+function SoundTile({ tile }: { tile: Sound & { image: string; alt: string; objectPosition?: string } }) {
   return (
     <div className={SCENE_TILE_CELL}>
       <Link href={tile.href} prefetch={false} className={SURFACE}>
         <div className="relative aspect-square overflow-hidden bg-[var(--surface-1)]">
-          <EventCardMedia src={tile.image} alt={tile.alt} variant="rail" className={IMG_MOTION} />
+          <EventCardMedia src={tile.image} alt={tile.alt} variant="rail" objectPosition={tile.objectPosition} className={IMG_MOTION} />
         </div>
         <div className="p-3">
           <h3 className="font-headline text-sm font-bold leading-snug tracking-tight text-[var(--text-primary)] transition-colors duration-200 group-hover:text-[var(--brand-accent-strong)]">
