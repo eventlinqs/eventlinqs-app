@@ -36,6 +36,17 @@ const CULTURE_QUERIES: Record<string, string> = {
   'comedy':          'comedy club stage microphone audience laughing',
   'wellness':        'yoga wellness meditation outdoor calm sunrise',
   'pride':           'pride parade rainbow celebration joy crowd',
+  // Heritage route slugs (the canonical /culture/[slug] + community rail slugs)
+  // that previously had no query and fell to the branded placeholder. The
+  // spine-wired heritages (indian, chinese, italian, pacific-pasifika,
+  // aboriginal-torres-strait-islander) render their licensed photo first; these
+  // are the Pexels fallback for the heritages without a spine slot.
+  'latin-american':     'latin american festival celebration colourful dance crowd',
+  'greek':              'greek festival traditional dance celebration food',
+  'japanese':           'japanese matsuri festival lanterns traditional celebration',
+  'korean':             'korean festival hanbok traditional celebration culture',
+  'lebanese-levantine': 'lebanese dabke dance celebration feast colourful',
+  'vietnamese':         'vietnamese lunar festival lanterns traditional celebration',
 }
 
 function simpleHash(s: string): number {
