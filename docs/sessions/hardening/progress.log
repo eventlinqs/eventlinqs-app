@@ -216,3 +216,64 @@ Owner:    Hardening session
       Sydney health verification, Resend send smoke test).
     - Partner Claude confirms no conflict with [SHARED] 4afe68d.
   Until then: idle.
+
+=============================================================================
+NEW BATCH - Auth defect fixes (off-rotation hardening)
+=============================================================================
+
+[2026-05-03T08:05:00Z] Branch feat/auth-defects-fix off main
+  Two production auth defects assigned:
+    1. Signup confirmation email not delivering reliably.
+    2. /auth/reset-password hang on "Updating password".
+  Session 3 (admin/marketing) flagged auth files as out-of-scope per
+  CLAUDE.md domain split; this session owns the fix.
+
+[2026-05-03T08:10:00Z] Defect 2 fix landed (commit da27eb9)
+  Root cause: success path called signOut() then router.push() with no
+  finally to reset loading. signOut() can deadlock on NavigatorLock and
+  the global unhandledrejection handler swallows the surfaced error.
+  Fix: try/finally always resets loading; updateUser raced against 15s
+  timeout; signOut demoted to 3s best-effort cleanup; hard navigation
+  via window.location.assign so SPA router does not intercept.
+
+[2026-05-03T08:30:00Z] Defect 1 fix landed (commit d861c19)
+  Root cause: client supabase.auth.signUp drove confirmation email via
+  Supabase Auth's default outbound SMTP (4 emails/hr project-wide cap).
+  Once signup volume crossed that floor, mail was silently dropped
+  with no error surface anywhere.
+  Fix: server-side endpoint /api/auth/signup that creates the user via
+  admin.auth.admin.generateLink({type:'signup'}) and dispatches the
+  branded confirmation directly via the Resend SDK. Bypasses Supabase
+  SMTP entirely. Adds auth-signup rate-limit policy (5 per IP per 10
+  min). Rolls back the user record on send failure to avoid stranded
+  half-created accounts. EMAIL_FROM env var documented in .env.example.
+
+[2026-05-03T08:35:00Z] Verification
+  Gates:    lint zero warnings, tsc clean, build clean, vitest 109/109
+            (4 new on HTML attribute escape).
+  Smoke:    /api/auth/signup exercised end-to-end against production
+            Supabase + Resend on local npm start (port 3030):
+              - empty body         -> 400 friendly
+              - short password     -> 400 friendly (Zod)
+              - valid input + fake -> 200 ok (Resend queued)
+            The 200 path created two synthetic users in production
+            Supabase under invalid-domain-eventlinqs-smoke.com; both
+            deleted via admin API immediately after, prod table clean.
+  Manual verification still required on Vercel preview:
+    - Real signup email arrival + confirm-button click-through.
+    - Full forgot-password -> click link -> set new password -> verify
+      no hang -> sign in -> dashboard.
+  Founder action items for production cutover (closure report has full
+  detail):
+    A1. Set EMAIL_FROM in Vercel prod env to a verified Resend domain.
+    A2. Verify the sender domain in Resend dashboard.
+    A3. Optional: complete the deferred Supabase SMTP-handover from
+        Phase 1 (no longer on critical path for signup; still relevant
+        for resend-verification and password reset).
+
+[2026-05-03T08:40:00Z] [GATE] OPEN - PR pending review
+  Branch pushed: feat/auth-defects-fix.
+  PR creation: gh CLI not installed locally; PR URL surfaced for
+  founder/project-manager click-through (see chat).
+  Closure report: docs/hardening/auth-defects/closure-report.md
+  Standing down pending PR review and the manual preview-URL e2e check.

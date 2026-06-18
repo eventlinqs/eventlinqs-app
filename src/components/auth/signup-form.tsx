@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import { GoogleButton } from './google-button'
 import { AuthDivider } from './auth-divider'
 
@@ -17,7 +16,6 @@ export function SignupForm({ role = 'attendee' }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
-  const supabase = createClient()
 
   const isOrganiser = role === 'organiser'
 
@@ -32,27 +30,34 @@ export function SignupForm({ role = 'attendee' }: Props) {
       return
     }
 
-    const emailRedirectTo = isOrganiser
-      ? `${window.location.origin}/auth/callback?role=organiser`
-      : `${window.location.origin}/auth/callback`
+    try {
+      // Server-side signup at /api/auth/signup creates the user via the
+      // admin API and dispatches the confirmation email through Resend.
+      // We no longer call supabase.auth.signUp directly because that path
+      // depends on Supabase's outbound SMTP, which had a 4-per-hour project
+      // cap that silently dropped confirmation emails in production.
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ fullName, email, password, role }),
+      })
+      const payload = (await res.json().catch(() => ({}))) as {
+        ok?: boolean
+        error?: string
+      }
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName, intended_role: role },
-        emailRedirectTo,
-      },
-    })
+      if (!res.ok || !payload.ok) {
+        setError(payload.error ?? 'Could not create account. Please try again.')
+        setLoading(false)
+        return
+      }
 
-    if (error) {
-      setError(error.message)
+      const nextParam = isOrganiser ? '&next=/dashboard' : ''
+      router.push(`/verify-email-sent?email=${encodeURIComponent(email)}${nextParam}`)
+    } catch {
+      setError('Could not reach the server. Check your connection and try again.')
       setLoading(false)
-      return
     }
-
-    const nextParam = isOrganiser ? '&next=/dashboard' : ''
-    router.push(`/verify-email-sent?email=${encodeURIComponent(email)}${nextParam}`)
   }
 
   return (

@@ -15,6 +15,7 @@ export type PolicyName =
   | 'cron-job'
   | 'payouts-read'
   | 'payouts-stripe-link'
+  | 'auth-signup'
 
 export type Policy = {
   /** Stable prefix used to namespace the redis key. Keep short. */
@@ -69,5 +70,12 @@ export const POLICIES: Record<PolicyName, Policy> = {
     windowSec: 60,
     rationale:
       'Stripe Express dashboard login-link mint. Short-lived single-use links, low legitimate cadence (one click per minute is generous), tight cap to avoid burning Stripe quota or leaking link tokens at scale.',
+  },
+  'auth-signup': {
+    keyPrefix: 'auth-signup',
+    limit: 5,
+    windowSec: 600,
+    rationale:
+      'Server-side signup endpoint that drives Resend SMTP. 5 attempts per IP per 10 min covers a legitimate user retrying twice with typos while bouncing scripted account-creation abuse and email-bombing relays. Far tighter than Supabase default SMTP cap (4/hr) was, but applied at the network edge so legitimate single-user signups never hit the floor.',
   },
 }
