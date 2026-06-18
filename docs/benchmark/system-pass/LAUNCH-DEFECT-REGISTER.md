@@ -202,18 +202,31 @@ refunds table. The wrong column meant the tile silently failed; the logic, had
 it worked, counted every confirmed order at full value and ignored refunds
 entirely (`partially_refunded`/`refunded` mis-valued).
 
-**Fix:** wire the tile to the audited `aggregateGmv` aggregator on the real
-column, net of completed refunds.
-- `src/app/admin/(authed)/page.tsx:6` - import `aggregateGmv`.
-- `:113` - select `total_cents, platform_fee_cents, status` for paid statuses
-  (`confirmed`, `partially_refunded`, `refunded`); `:133` subtract completed
-  refunds -> `netGmvCents`. A fully refunded order nets to zero; a partial refund
-  nets to the retained amount.
+Two revenue surfaces were affected; both now route through the audited
+`aggregateGmv` aggregator, net of completed refunds.
 
-**Proof:** `tests/unit/admin/dashboard-gmv-refund.test.ts` - confirmed 10000 +
-fully-refunded 3000 (refund 3000) + partially-refunded 5000 (refund 2000) ->
-gross 18000, refunded 5000, **net 13000** (the old gross-only behaviour
-overstated by 5000). Plus existing `tests/unit/admin/analytics.test.ts`.
+**Surface 1 - admin dashboard GMV tiles** (`src/app/admin/(authed)/page.tsx`):
+- `:6` import `aggregateGmv`; `:113` select `total_cents, platform_fee_cents,
+  status` for paid statuses (`confirmed`, `partially_refunded`, `refunded`);
+  `:133` subtract completed refunds -> `netGmvCents`. The old query read a
+  non-existent `total_amount_cents` column (tile silently failed).
+
+**Surface 2 - organiser event "Revenue" card + Revenue Summary**
+(`src/app/(dashboard)/dashboard/events/[id]/orders/page.tsx`): the QA-flagged
+`orders/page.tsx` summed `total_cents` over the paid statuses with NO refund
+netting, so a fully refunded order showed at full value. Now the Revenue stat
+card shows `aggregateGmv(...).netGmvCents` and `RevenueSummary` gains an explicit
+Refunds line (`src/components/orders/revenue-summary.tsx`, new optional
+`refundedCents` prop). The sibling edit-page card
+(`events/[id]/edit/page.tsx`) filters `status='confirmed'` only - a confirmed
+order has no completed refund by definition - so it already excludes refunded
+orders and is left unchanged (no regression: it passes no `refundedCents`).
+
+**Proof:** `tests/unit/admin/dashboard-gmv-refund.test.ts` (the exact net math
+both surfaces now use) - confirmed 10000 + fully-refunded 3000 (refund 3000) +
+partially-refunded 5000 (refund 2000) -> gross 18000, refunded 5000, **net
+13000** (the old gross-only behaviour overstated by 5000). Plus existing
+`tests/unit/admin/analytics.test.ts`. tsc + eslint clean on both surfaces.
 
 ```
 vitest run tests/unit/admin/dashboard-gmv-refund.test.ts -> 3 passed
