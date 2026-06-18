@@ -2,31 +2,20 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { z } from 'zod'
 import { refreshInventoryCache } from '@/lib/redis/inventory-cache'
 import { getOrCreateGuestSessionId } from '@/lib/auth/guest-session'
 import {
   TICKETS_NOT_ON_SALE_RESERVATION_ERROR,
   ticketsOnSale,
 } from '@/lib/payments/sale-status'
+import {
+  CreateReservationSchema,
+  type CreateReservationInput,
+  checkMaxPerOrder,
+  summariseIssues,
+} from '@/lib/reservations/validation'
 
-const ReservationItemSchema = z.object({
-  ticket_tier_id: z.string().uuid(),
-  quantity: z.number().int().min(1).max(20),
-})
-
-const AddonItemSchema = z.object({
-  addon_id: z.string().uuid(),
-  quantity: z.number().int().min(1).max(20),
-})
-
-const CreateReservationSchema = z.object({
-  event_id: z.string().uuid(),
-  ticket_items: z.array(ReservationItemSchema).min(1),
-  addon_items: z.array(AddonItemSchema).default([]),
-})
-
-export type CreateReservationInput = z.infer<typeof CreateReservationSchema>
+export type { CreateReservationInput }
 
 export interface CreateReservationResult {
   reservation_id?: string
@@ -39,6 +28,12 @@ export async function createReservation(
 ): Promise<CreateReservationResult> {
   const parsed = CreateReservationSchema.safeParse(input)
   if (!parsed.success) {
+    // RES-02: name the offending field(s) in the server log so a future
+    // invalid-reservation failure is diagnosable, not an opaque string.
+    console.error(
+      '[reservations] invalid reservation input:',
+      summariseIssues(parsed.error.issues),
+    )
     return { error: 'Invalid reservation data' }
   }
 
@@ -59,8 +54,19 @@ export async function createReservation(
     const tierIds = ticket_items.map(i => i.ticket_tier_id)
     const { data: guardTiers } = await admin
       .from('ticket_tiers')
-      .select('price')
+      .select('id, name, price, max_per_order')
       .in('id', tierIds)
+
+    // RES-01: enforce the organiser's per-tier max_per_order server-side, so a
+    // legitimate selection (always <= max_per_order on the client) never hits
+    // the generic "Invalid reservation data" and a crafted over-limit request
+    // is rejected with a clear, tier-named message (defence in depth - the
+    // client stepper is the only other place this was enforced).
+    const limit = checkMaxPerOrder(ticket_items, guardTiers ?? [])
+    if (!limit.ok) {
+      return { error: limit.error }
+    }
+
     const isPaid = (guardTiers ?? []).some(t => (t.price ?? 0) > 0)
 
     if (isPaid) {
