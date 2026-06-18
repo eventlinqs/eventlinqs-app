@@ -306,8 +306,14 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
 
   const { error: itemsError } = await adminClient.from('order_items').insert(orderItems)
   if (itemsError) {
-    console.error('Order items error:', itemsError)
-    // Order is created, don't fail - items issue should be investigated
+    // FUN-04: fail closed. issue_tickets_for_order expands tickets FROM
+    // order_items, so an order with no items confirms and issues zero tickets:
+    // the buyer pays and gets nothing scannable. Roll back the just-created
+    // order and abort BEFORE any PaymentIntent is created, rather than
+    // swallowing the error and charging.
+    console.error('Order items error, rolling back order:', itemsError)
+    await adminClient.from('orders').delete().eq('id', order_id)
+    return { error: 'We could not set up your order. Please try again.' }
   }
 
   // 8. For free orders - confirm immediately
@@ -608,7 +614,12 @@ async function processSeatCheckout({
 
   const { error: itemsError } = await adminClient.from('order_items').insert(orderItems)
   if (itemsError) {
-    console.error('[checkout-seats] order_items insert failed:', itemsError)
+    // FUN-04: fail closed (seat path). Same rationale as the GA path: a paid
+    // order with no order_items issues zero tickets. Roll back and abort before
+    // any PaymentIntent / seat-sold mutation.
+    console.error('[checkout-seats] order_items insert failed, rolling back order:', itemsError)
+    await adminClient.from('orders').delete().eq('id', order_id)
+    return { error: 'We could not set up your order. Please try again.' }
   }
 
   if (isFreeOrder) {

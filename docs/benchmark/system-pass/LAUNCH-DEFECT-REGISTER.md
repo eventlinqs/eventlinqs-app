@@ -79,6 +79,33 @@ diagnosis.
   the abuse ceiling; clamping `max_per_order` in the event form to
   `MAX_QTY_HARD_CAP` is a recommended follow-up (out of scope this item).
 
+### FUN-04 (FIXED) - order_items insert now fails closed with rollback (no paid order without tickets)
+
+- Root cause: `processCheckout` (GA) and `processSeatCheckout` (seat) only
+  `console.error`d an `order_items` insert failure and continued
+  ("Order is created, don't fail"), then created the PaymentIntent.
+  `issue_tickets_for_order` expands tickets FROM `order_items`, so a no-items
+  order confirms and issues zero tickets: the buyer pays and gets nothing
+  scannable.
+- Fix: `src/app/actions/checkout.ts` - GA path (`:308-316`) and seat path
+  (`:611-619`) now, on `itemsError`, delete the just-created order
+  (`adminClient.from('orders').delete().eq('id', order_id)`) and return an
+  error BEFORE any payment record or PaymentIntent is created. Fail closed with
+  rollback (the brief's accepted alternative to full atomicity).
+- Proof:
+  - Test: `tests/unit/payments/checkout-items-rollback.test.ts` - 2/2 passing.
+    It mocks the full `processCheckout` GA paid path and forces the
+    `order_items` insert to error, asserting: an error is returned, no
+    `client_secret`/`order_id`, `createDestinationCharge` is never called, the
+    payment record is never inserted, and the order is deleted (rolled back).
+    A happy-path control proves a clean items insert still proceeds to charge.
+    `npx vitest run tests/unit/payments/checkout-items-rollback.test.ts` ->
+    "Test Files 1 passed (1) / Tests 2 passed (2)".
+  - No regression: `npx vitest run tests/unit/payments` -> 14 files / 119 tests
+    passing. `npx tsc --noEmit` -> exit 0.
+- Note: FUN-05 (free-order path not transactional) is a related P2 still open;
+  this item covers the paid + free charge-gated `order_items` swallow only.
+
 ---
 
 ## What PASSED (verified clean, so it is not re-litigated)
