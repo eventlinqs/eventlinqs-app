@@ -1,0 +1,527 @@
+[
+  {
+    "name": "home",
+    "path": "/",
+    "status": 200,
+    "overflowPx": 0,
+    "canScrollX": false,
+    "consoleErrors": [],
+    "broken": [],
+    "smallTargets": 2,
+    "smallSample": [
+      {
+        "tag": "a",
+        "label": "EventLinqs home",
+        "w": 137,
+        "h": 24
+      },
+      {
+        "tag": "a",
+        "label": "EventLinqs home",
+        "w": 125,
+        "h": 20
+      }
+    ],
+    "widest": null,
+    "axe": 0,
+    "axeIds": []
+  },
+  {
+    "name": "events-browse",
+    "path": "/events",
+    "status": 200,
+    "overflowPx": 0,
+    "canScrollX": false,
+    "consoleErrors": [],
+    "broken": [],
+    "smallTargets": 3,
+    "smallSample": [
+      {
+        "tag": "a",
+        "label": "EventLinqs home",
+        "w": 137,
+        "h": 24
+      },
+      {
+        "tag": "a",
+        "label": "EventLinqs home",
+        "w": 125,
+        "h": 20
+      },
+      {
+        "tag": "button",
+        "label": "Search",
+        "w": 82,
+        "h": 42
+      }
+    ],
+    "widest": null,
+    "axe": 0,
+    "axeIds": []
+  },
+  {
+    "name": "event-detail",
+    "path": "/events/aso-ebi-affair-owambe-garden-party",
+    "status": 200,
+    "overflowPx": 0,
+    "canScrollX": false,
+    "consoleErrors": [],
+    "broken": [],
+    "smallTargets": 2,
+    "smallSample": [
+      {
+        "tag": "a",
+        "label": "EventLinqs home",
+        "w": 137,
+        "h": 24
+      },
+      {
+        "tag": "a",
+        "label": "EventLinqs home",
+        "w": 125,
+        "h": 20
+      }
+    ],
+    "widest": null,
+    "axe": 0,
+    "axeIds": []
+  },
+  {
+    "name": "city",
+    "path": "/city/sydney",
+    "status": 200,
+    "overflowPx": 0,
+    "canScrollX": false,
+    "consoleErrors": [],
+    "broken": [],
+    "smallTargets": 2,
+    "smallSample": [
+      {
+        "tag": "a",
+        "label": "EventLinqs home",
+        "w": 137,
+        "h": 24
+      },
+      {
+        "tag": "a",
+        "label": "EventLinqs home",
+        "w": 125,
+        "h": 20
+      }
+    ],
+    "widest": null,
+    "axe": 0,
+    "axeIds": []
+  },
+  {
+    "name": "suburb",
+    "path": "/city/sydney/inner-west",
+    "status": 200,
+    "overflowPx": 0,
+    "canScrollX": false,
+    "consoleErrors": [],
+    "broken": [],
+    "smallTargets": 2,
+    "smallSample": [
+      {
+        "tag": "a",
+        "label": "EventLinqs home",
+        "w": 137,
+        "h": 24
+      },
+      {
+        "tag": "a",
+        "label": "EventLinqs home",
+        "w": 125,
+        "h": 20
+      }
+    ],
+    "widest": null,
+    "axe": 0,
+    "axeIds": []
+  },
+  {
+    "name": "culture",
+    "path": "/culture/african",
+    "status": 200,
+    "overflowPx": 0,
+    "canScrollX": false,
+    "consoleErrors": [],
+    "broken": [],
+    "smallTargets": 2,
+    "smallSample": [
+      {
+        "tag": "a",
+        "label": "EventLinqs home",
+        "w": 137,
+        "h": 24
+      },
+      {
+        "tag": "a",
+        "label": "EventLinqs home",
+        "w": 125,
+        "h": 20
+      }
+    ],
+    "widest": null,
+    "axe": 0,
+    "axeIds": []
+  },
+  {
+    "name": "cultures-hub",
+    "path": "/cultures",
+    "status": 200,
+    "overflowPx": 0,
+    "canScrollX": false,
+    "consoleErrors": [],
+    "broken": [],
+    "smallTargets": 2,
+    "smallSample": [
+      {
+        "tag": "a",
+        "label": "EventLinqs home",
+        "w": 137,
+        "h": 24
+      },
+      {
+        "tag": "a",
+        "label": "EventLinqs home",
+        "w": 125,
+        "h": 20
+      }
+    ],
+    "widest": null,
+    "axe": 0,
+    "axeIds": []
+  },
+  {
+    "name": "category",
+    "path": "/events?category=music",
+    "status": 200,
+    "overflowPx": 0,
+    "canScrollX": false,
+    "consoleErrors": [],
+    "broken": [],
+    "smallTargets": 3,
+    "smallSample": [
+      {
+        "tag": "a",
+        "label": "EventLinqs home",
+        "w": 137,
+        "h": 24
+      },
+      {
+        "tag": "a",
+        "label": "EventLinqs home",
+        "w": 125,
+        "h": 20
+      },
+      {
+        "tag": "button",
+        "label": "Search",
+        "w": 82,
+        "h": 42
+      }
+    ],
+    "widest": null,
+    "axe": 0,
+    "axeIds": []
+  },
+  {
+    "name": "organisers",
+    "path": "/organisers",
+    "status": 200,
+    "overflowPx": 0,
+    "canScrollX": false,
+    "consoleErrors": [],
+    "broken": [],
+    "smallTargets": 2,
+    "smallSample": [
+      {
+        "tag": "a",
+        "label": "EventLinqs home",
+        "w": 137,
+        "h": 24
+      },
+      {
+        "tag": "a",
+        "label": "EventLinqs home",
+        "w": 125,
+        "h": 20
+      }
+    ],
+    "widest": null,
+    "axe": 0,
+    "axeIds": []
+  },
+  {
+    "name": "pricing",
+    "path": "/pricing",
+    "status": 200,
+    "overflowPx": 0,
+    "canScrollX": false,
+    "consoleErrors": [],
+    "broken": [],
+    "smallTargets": 2,
+    "smallSample": [
+      {
+        "tag": "a",
+        "label": "EventLinqs home",
+        "w": 137,
+        "h": 24
+      },
+      {
+        "tag": "a",
+        "label": "EventLinqs home",
+        "w": 125,
+        "h": 20
+      }
+    ],
+    "widest": null,
+    "axe": 0,
+    "axeIds": []
+  },
+  {
+    "name": "about",
+    "path": "/about",
+    "status": 200,
+    "overflowPx": 0,
+    "canScrollX": false,
+    "consoleErrors": [],
+    "broken": [],
+    "smallTargets": 2,
+    "smallSample": [
+      {
+        "tag": "a",
+        "label": "EventLinqs home",
+        "w": 137,
+        "h": 24
+      },
+      {
+        "tag": "a",
+        "label": "EventLinqs home",
+        "w": 125,
+        "h": 20
+      }
+    ],
+    "widest": null,
+    "axe": 0,
+    "axeIds": []
+  },
+  {
+    "name": "careers",
+    "path": "/careers",
+    "status": 200,
+    "overflowPx": 0,
+    "canScrollX": false,
+    "consoleErrors": [],
+    "broken": [],
+    "smallTargets": 2,
+    "smallSample": [
+      {
+        "tag": "a",
+        "label": "EventLinqs home",
+        "w": 137,
+        "h": 24
+      },
+      {
+        "tag": "a",
+        "label": "EventLinqs home",
+        "w": 125,
+        "h": 20
+      }
+    ],
+    "widest": null,
+    "axe": 0,
+    "axeIds": []
+  },
+  {
+    "name": "press",
+    "path": "/press",
+    "status": 200,
+    "overflowPx": 0,
+    "canScrollX": false,
+    "consoleErrors": [],
+    "broken": [],
+    "smallTargets": 5,
+    "smallSample": [
+      {
+        "tag": "a",
+        "label": "EventLinqs home",
+        "w": 137,
+        "h": 24
+      },
+      {
+        "tag": "a",
+        "label": "EventLinqs home",
+        "w": 125,
+        "h": 20
+      },
+      {
+        "tag": "a",
+        "label": "Request assets",
+        "w": 117,
+        "h": 36
+      },
+      {
+        "tag": "a",
+        "label": "Request photography",
+        "w": 162,
+        "h": 36
+      },
+      {
+        "tag": "a",
+        "label": "Request imagery",
+        "w": 131,
+        "h": 36
+      }
+    ],
+    "widest": null,
+    "axe": 0,
+    "axeIds": []
+  },
+  {
+    "name": "help",
+    "path": "/help",
+    "status": 200,
+    "overflowPx": 0,
+    "canScrollX": false,
+    "consoleErrors": [],
+    "broken": [],
+    "smallTargets": 7,
+    "smallSample": [
+      {
+        "tag": "a",
+        "label": "EventLinqs home",
+        "w": 137,
+        "h": 24
+      },
+      {
+        "tag": "a",
+        "label": "EventLinqs home",
+        "w": 125,
+        "h": 20
+      },
+      {
+        "tag": "a",
+        "label": "See more in this topic ›",
+        "w": 146,
+        "h": 20
+      },
+      {
+        "tag": "a",
+        "label": "See more in this topic ›",
+        "w": 146,
+        "h": 20
+      },
+      {
+        "tag": "a",
+        "label": "See more in this topic ›",
+        "w": 146,
+        "h": 20
+      },
+      {
+        "tag": "a",
+        "label": "See more in this topic ›",
+        "w": 146,
+        "h": 20
+      },
+      {
+        "tag": "a",
+        "label": "See more in this topic ›",
+        "w": 146,
+        "h": 20
+      }
+    ],
+    "widest": null,
+    "axe": 0,
+    "axeIds": []
+  },
+  {
+    "name": "legal",
+    "path": "/legal/terms",
+    "status": 200,
+    "overflowPx": 0,
+    "canScrollX": false,
+    "consoleErrors": [],
+    "broken": [],
+    "smallTargets": 2,
+    "smallSample": [
+      {
+        "tag": "a",
+        "label": "EventLinqs home",
+        "w": 137,
+        "h": 24
+      },
+      {
+        "tag": "a",
+        "label": "EventLinqs home",
+        "w": 125,
+        "h": 20
+      }
+    ],
+    "widest": null,
+    "axe": 0,
+    "axeIds": []
+  },
+  {
+    "name": "login",
+    "path": "/login",
+    "status": 200,
+    "overflowPx": 0,
+    "canScrollX": false,
+    "consoleErrors": [],
+    "broken": [],
+    "smallTargets": 3,
+    "smallSample": [
+      {
+        "tag": "a",
+        "label": "EventLinqs home",
+        "w": 125,
+        "h": 20
+      },
+      {
+        "tag": "a",
+        "label": "Browse events",
+        "w": 91,
+        "h": 20
+      },
+      {
+        "tag": "button",
+        "label": "Send me a magic link instead",
+        "w": 308,
+        "h": 20
+      }
+    ],
+    "widest": null,
+    "axe": 0,
+    "axeIds": []
+  },
+  {
+    "name": "signup",
+    "path": "/signup",
+    "status": 200,
+    "overflowPx": 0,
+    "canScrollX": false,
+    "consoleErrors": [],
+    "broken": [],
+    "smallTargets": 2,
+    "smallSample": [
+      {
+        "tag": "a",
+        "label": "EventLinqs home",
+        "w": 125,
+        "h": 20
+      },
+      {
+        "tag": "a",
+        "label": "Browse events",
+        "w": 91,
+        "h": 20
+      }
+    ],
+    "widest": null,
+    "axe": 0,
+    "axeIds": []
+  }
+]

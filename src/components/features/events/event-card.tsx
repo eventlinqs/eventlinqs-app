@@ -133,7 +133,7 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
       //   .card-hover-transition utility. Aspect ratio (1:1 per spec) is
       //   deferred to a follow-up because event-card.tsx ships site-wide;
       //   see SUMMARY.md.
-      className="group card-hover-transition flex flex-col rounded-lg overflow-hidden bg-[var(--surface-0)] border border-[var(--surface-2)] hover:shadow-[0_4px_12px_rgba(10,22,40,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2 motion-reduce:transition-none"
+      className="group card-hover-transition flex flex-col rounded-lg overflow-hidden bg-[var(--surface-0)] border border-[var(--surface-2)] hover:-translate-y-[3px] hover:border-[var(--surface-2)] hover:shadow-[0_18px_36px_-20px_rgba(10,22,40,0.40)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
     >
       <div className="relative aspect-video md:aspect-[4/3] overflow-hidden bg-[var(--surface-1)]">
         {cover_image_url ? (
@@ -145,7 +145,7 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
             // Image scale-up per spec card hover: subtle 1.02 (2%).
             // Previous 1.05 / 700ms ease-out replaced with .card-hover-img
             // utility (transform: scale 1.02 under --motion-quick).
-            className="card-hover-img group-hover:scale-[1.02] motion-reduce:group-hover:scale-100"
+            className="card-hover-img group-hover:scale-[1.025] motion-reduce:group-hover:scale-100"
           />
         ) : (
           <div className="flex h-full items-center justify-center text-[var(--text-muted)]">

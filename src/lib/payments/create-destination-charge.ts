@@ -21,6 +21,9 @@ type OrgChargeFields = Pick<
 export interface CreateDestinationChargeInput {
   gateway: PaymentGateway
   organisationId: string
+  /** Event being charged. Lets the application-fee composition mode honour a
+   *  per-event override through the same resolver as the charge. */
+  eventId?: string | null
   fees: FeeBreakdown
   metadata: CreatePaymentIntentParams['metadata']
   customerEmail: string
@@ -61,7 +64,8 @@ export async function createDestinationCharge(
     input.fees,
     (org.stripe_account_country ?? 'GLOBAL').toUpperCase(),
     expectedCurrency,
-    input.organisationId
+    input.organisationId,
+    input.eventId ?? null
   )
   const connectedAccountId = org.stripe_account_id!
 

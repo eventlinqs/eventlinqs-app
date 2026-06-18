@@ -16,6 +16,7 @@ export const metadata: Metadata = {
       'Press resources, founder bio, brand assets, and media contact for EventLinqs.',
     url: '/press',
     type: 'website',
+    images: ['/opengraph-image'],
   },
 }
 
@@ -91,7 +92,7 @@ export default function PressPage() {
       <ContentSection surface="base" width="default">
         <div className="grid gap-12 lg:grid-cols-[1.4fr_1fr] lg:gap-16">
           <div>
-            <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-accent)]">
+            <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-accent-strong)]">
               Company at a glance
             </p>
             <h2 className="mt-3 font-display text-3xl font-bold leading-tight text-[var(--text-primary)] md:text-4xl">
@@ -116,11 +117,14 @@ export default function PressPage() {
             </div>
           </div>
 
-          <dl className="rounded-2xl bg-[var(--surface-1)] p-6 md:p-8">
-            <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-accent)]">
+          <div className="rounded-2xl bg-[var(--surface-1)] p-6 md:p-8">
+            <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-accent-strong)]">
               Fact sheet
             </p>
-            <div className="mt-6 space-y-5">
+            {/* dl directly contains only <div> groups of <dt>/<dd> so the
+                definition-list + dlitem semantics validate (axe-core). The
+                "Fact sheet" label sits outside the <dl>. */}
+            <dl className="mt-6 space-y-5">
               {FACTS.map(fact => (
                 <div key={fact.label}>
                   <dt className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--text-secondary)]">
@@ -131,14 +135,14 @@ export default function PressPage() {
                   </dd>
                 </div>
               ))}
-            </div>
-          </dl>
+            </dl>
+          </div>
         </div>
       </ContentSection>
 
       <ContentSection surface="alt" width="wide" topBorder>
         <div className="max-w-3xl">
-          <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-accent)]">
+          <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-accent-strong)]">
             Founder bio
           </p>
           <h2 className="mt-3 font-display text-3xl font-bold leading-tight text-[var(--text-primary)] md:text-4xl">
@@ -169,7 +173,7 @@ export default function PressPage() {
 
       <ContentSection surface="base" width="wide">
         <div className="max-w-3xl">
-          <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-accent)]">
+          <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-accent-strong)]">
             Story angles
           </p>
           <h2 className="mt-3 font-display text-3xl font-bold leading-tight text-[var(--text-primary)] md:text-4xl">
@@ -195,7 +199,7 @@ export default function PressPage() {
 
       <ContentSection surface="alt" width="wide">
         <div className="max-w-3xl">
-          <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-accent)]">
+          <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-accent-strong)]">
             Assets
           </p>
           <h2 className="mt-3 font-display text-3xl font-bold leading-tight text-[var(--text-primary)] md:text-4xl">
@@ -229,16 +233,16 @@ export default function PressPage() {
         </ul>
       </ContentSection>
 
-      <ContentSection surface="dark" width="default">
+      <ContentSection surface="alt" width="default">
         <div className="grid gap-10 md:grid-cols-[1.4fr_1fr] md:items-end">
           <div>
-            <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-gold-400)]">
+            <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-accent-strong)]">
               Press contact
             </p>
-            <h2 className="mt-3 font-display text-3xl font-bold leading-tight text-white md:text-5xl">
+            <h2 className="mt-3 font-display text-3xl font-bold leading-tight text-ink-900 md:text-5xl">
               Talk to us directly.
             </h2>
-            <p className="mt-5 max-w-xl text-base leading-relaxed text-white/70 md:text-lg">
+            <p className="mt-5 max-w-xl text-base leading-relaxed text-ink-600 md:text-lg">
               For interviews, deeper background, off-the-record context,
               embargoed launch information, or asset requests, email the
               founder directly. Replies usually within one business day,
@@ -257,7 +261,7 @@ export default function PressPage() {
             </Button>
             <Link
               href="/about"
-              className="inline-flex h-12 items-center justify-center rounded-lg px-6 text-base font-medium text-white/90 underline-offset-4 hover:underline"
+              className="inline-flex h-12 items-center justify-center rounded-lg px-6 text-base font-medium text-ink-700 underline-offset-4 hover:text-gold-700 hover:underline"
             >
               About EventLinqs
             </Link>

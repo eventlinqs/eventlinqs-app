@@ -21,6 +21,7 @@ export const metadata: Metadata = {
     description: 'Every community. Every event. One platform.',
     url: '/cultures',
     type: 'website',
+    images: ['/opengraph-image'],
   },
   twitter: {
     card: 'summary_large_image',

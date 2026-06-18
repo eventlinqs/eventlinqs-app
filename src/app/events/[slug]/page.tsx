@@ -1,4 +1,5 @@
 import { createPublicClient } from '@/lib/supabase/public-client'
+import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
@@ -17,21 +18,23 @@ import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { HeroMedia } from '@/components/media'
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
-import { GlassCard } from '@/components/ui/glass-card'
 import { getFeaturedHeroBackground } from '@/lib/images/event-media'
 import { StickyActionBar } from '@/components/features/events/sticky-action-bar'
 import { RelatedEventsGrid } from '@/components/features/events/related-events-grid'
+import { Reveal } from '@/components/ui/reveal'
 import type { EventCardData } from '@/components/features/events/event-card'
 import { projectToCardData } from '@/lib/events/event-card-projection'
+import { buildEventMetaDescription } from '@/lib/events/event-meta'
 import type { PublicEventRow } from '@/lib/events/types'
-import dynamic from 'next/dynamic'
+import nextDynamic from 'next/dynamic'
 import { EventTrustSignals } from '@/components/features/event/EventTrustSignals'
+import { fetchFixtureEvent } from '@/lib/dev/fixture-events'
 
 // VenueMap pulls in @googlemaps/js-api-loader (~290KB). Loading it statically
 // makes it part of the event-detail route chunk, which Next.js eagerly
 // prefetches from any page linking to /events/*. next/dynamic splits it into
 // its own chunk so the map code stays out of the initial bundle on every cell.
-const VenueMap = dynamic(
+const VenueMap = nextDynamic(
   () => import('@/components/features/events/venue-map').then(m => m.VenueMap)
 )
 import { SectionHeader } from '@/components/ui/SectionHeader'
@@ -53,23 +56,18 @@ import { SaveEventButton } from '@/components/features/events/save-event-button'
 // respectively. Per-tier inventory + dynamic pricing still come from
 // Redis/Postgres at render time, but they go through `createPublicClient`
 // which doesn't read cookies.
+// No generateStaticParams: this route is rendered DYNAMICALLY on demand (see
+// the headers() note in the component). The build-pool fix (985e46d) needed
+// individual events kept off the build-time Supabase pool; it did that with
+// `generateStaticParams -> []`, but an EMPTY gSP pins Turbopack to a STATIC
+// classification (zero params to prerender, no chance to observe the chrome +
+// Sentry render-time cookie read), so the first on-demand request 500'd
+// ("static to dynamic at runtime, reason: cookies") on every event. Dropping
+// gSP entirely (with the headers() marker in the component) makes the route
+// dynamic - nothing prerenders at build (still pool-safe), and notFound()
+// returns a real 404 (force-dynamic would have soft-404'd it 200). The sitemap
+// still lists every event, so discovery and indexing are unaffected.
 export const revalidate = 300
-export const dynamicParams = true
-
-export async function generateStaticParams() {
-  const supabase = createPublicClient()
-  const { data, error } = await supabase
-    .from('events')
-    .select('slug')
-    .eq('status', 'published')
-    .eq('visibility', 'public')
-
-  if (error || !data) {
-    console.error('[event-detail] generateStaticParams failed:', error)
-    return []
-  }
-  return data.map(row => ({ slug: row.slug as string }))
-}
 
 type Props = {
   params: Promise<{ slug: string }>
@@ -88,6 +86,14 @@ type EnrichedTier = TicketTier & {
 }
 
 async function fetchEvent(slug: string): Promise<FullEvent | null> {
+  // Density fixture (Preview + local only, double-guarded in fetchFixtureEvent):
+  // the homepage rails and this detail path read ONE fixture, so a fixture
+  // card resolves to a fully rendered detail page instead of a 404. Returns
+  // null for unknown slugs and is a no-op on production, so the real-DB query
+  // below stays the single path for every live event.
+  const fixture = await fetchFixtureEvent(slug)
+  if (fixture) return fixture as unknown as FullEvent
+
   const supabase = createPublicClient()
   const { data, error } = await supabase
     .from('events')
@@ -180,10 +186,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const titleParts = [event.title, dateLabel, venueLabel || null].filter(Boolean) as string[]
   const title = `${titleParts.join(' - ')} - EventLinqs`
 
-  const summarySource = event.summary
-    ?? (event.description ? event.description.replace(/<[^>]*>/g, '') : '')
-  const cityLine = event.venue_city ? `In ${event.venue_city}. ` : ''
-  const description = (cityLine + summarySource).slice(0, 155)
+  // Always non-empty (root fix for the SEO meta-description failure on events
+  // with no summary/description/venue_city - see buildEventMetaDescription).
+  const description = buildEventMetaDescription({
+    title: event.title,
+    summary: event.summary,
+    description: event.description,
+    venueCity: event.venue_city,
+    venueName: event.venue_name,
+    dateLabel,
+    categoryName: event.category?.name,
+  })
 
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
 
@@ -253,10 +266,36 @@ function cheapestPrice(tiers: { price: number; currency: string }[]): string | n
 }
 
 export default async function EventDetailPage({ params }: Props) {
+  // Render this route DYNAMICALLY. The build-pool fix (985e46d) set
+  // generateStaticParams -> [] to keep individual events off the build-time
+  // Supabase pool. But with no params to prerender Next classified the route
+  // STATIC, so the first on-demand request hit the render-time cookie/header
+  // read performed by the shared chrome + Sentry tracing instrumentation and
+  // threw a hard 500 ("Page changed from static to dynamic at runtime, reason:
+  // cookies") on EVERY event - the flagship surface was down. `connection()`
+  // declares the dependency on the request up front so Next marks the route
+  // dynamic the SAME natural way the sibling /city + /culture routes already
+  // are (NOT `dynamic = 'force-dynamic'`, which renders notFound() as a soft
+  // 200 instead of a real 404). It never prerenders at build (pool-safe) and is
+  // still edge-cached via the CDN-Cache-Control header in next.config - the
+  // shell is anonymous (SiteHeader is rendered `staticSafe`, no per-user avatar
+  // in the shared cache entry; only Sentry's per-request trace id varies, which
+  // is not user data).
   const { slug } = await params
   const event = await fetchEvent(slug)
 
+  // notFound() BEFORE any request-data access, so a missing event returns a
+  // real 404 (the cookie-free createPublicClient fetch above keeps this guard
+  // static-classifiable; accessing headers() first would commit a streaming
+  // 200 and soft-404 the not-found - the bug city/[slug] avoids the same way).
   if (!event) notFound()
+
+  // Mark the route dynamic for real events: a no-op `headers()` read. Per this
+  // repo's ISR notes (app/layout.tsx + the /events page) a server `headers()`
+  // call disqualifies a route from static generation, which (together with no
+  // generateStaticParams) keeps this route off the static classification that
+  // 500'd on the chrome + Sentry render-time cookie read.
+  await headers()
 
   // Queue gate moved to `src/middleware.ts`. The middleware redirects
   // unauthenticated visitors to `/queue/[slug]` before this page renders,
@@ -278,7 +317,7 @@ export default async function EventDetailPage({ params }: Props) {
   if (event.visibility === 'private') {
     return (
       <div className="min-h-screen bg-canvas">
-        <SiteHeader />
+        <SiteHeader staticSafe />
         <main className="mx-auto flex max-w-3xl flex-col items-center px-4 py-24 text-center sm:px-6 lg:px-8">
           <h1 className="font-display text-2xl font-bold text-ink-900">This is a private event</h1>
           <p className="mt-2 text-ink-600">You need an invitation to view this event.</p>
@@ -291,7 +330,7 @@ export default async function EventDetailPage({ params }: Props) {
   if (event.status === 'draft' || event.status === 'scheduled') {
     return (
       <div className="min-h-screen bg-canvas">
-        <SiteHeader />
+        <SiteHeader staticSafe />
         <main className="mx-auto flex max-w-3xl flex-col items-center px-4 py-24 text-center sm:px-6 lg:px-8">
           <h1 className="font-display text-2xl font-bold text-ink-900">This event is not yet published</h1>
           <p className="mt-2 text-ink-600">Check back soon.</p>
@@ -465,7 +504,7 @@ export default async function EventDetailPage({ params }: Props) {
         venueCity={event.venue_city ?? 'Unknown'}
         priceRange={priceLabel ?? 'Free'}
       />
-      <SiteHeader />
+      <SiteHeader staticSafe />
 
       {eventBannerState ? (
         <EventStateBanner
@@ -483,10 +522,12 @@ export default async function EventDetailPage({ params }: Props) {
       />
 
       <main>
-        {/* Cinematic hero */}
+        {/* Hero at the single platform scale (.hero-marketing). Flattened from
+            the retired 55-70vh content tier per the 2026 competitor mirror:
+            neither TM nor Eventbrite runs a taller event-detail hero. */}
         <section
           aria-label="Event hero"
-          className="relative flex min-h-[55vh] items-end overflow-hidden bg-navy-950 md:min-h-[70vh]"
+          className="hero-marketing relative flex items-end overflow-hidden bg-navy-950"
         >
           <HeroPresenceMarker />
           <div className="absolute inset-0">
@@ -509,17 +550,16 @@ export default async function EventDetailPage({ params }: Props) {
           <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-14 sm:px-6 lg:px-8 lg:pb-20">
             <div className="max-w-3xl animate-fade-rise">
               {event.category && (
-                <GlassCard
-                  variant="dark"
-                  className="inline-flex rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-gold-400"
-                >
+                <span className="inline-flex rounded-full border border-gold-500/40 bg-ink-900/85 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-gold-400 shadow-sm">
                   {event.category.name}
-                </GlassCard>
+                </span>
               )}
 
               <h1
                 className="mt-4 font-display font-extrabold leading-[1.02] tracking-tight text-white"
-                style={{ fontSize: 'clamp(2rem, 5vw, 4rem)' }}
+                /* Homepage display scale (text-3xl -> text-5xl). Capped at 3rem
+                   per the hero law: never text-6xl/7xl. */
+                style={{ fontSize: 'clamp(1.875rem, 5vw, 3rem)' }}
               >
                 {event.title}
               </h1>
@@ -611,8 +651,9 @@ export default async function EventDetailPage({ params }: Props) {
                   </div>
                 )}
 
-                {/* When + Where */}
-                <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2">
+                {/* When + Where. Reveal each discrete block (transform+opacity,
+                    no reflow) so the sticky ticket panel is untouched. */}
+                <Reveal as="div" className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2">
                   <div className="rounded-2xl border border-ink-200 bg-white p-5">
                     <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-gold-700">
                       When
@@ -646,11 +687,11 @@ export default async function EventDetailPage({ params }: Props) {
                       </p>
                     )}
                   </div>
-                </div>
+                </Reveal>
 
                 {/* Venue map */}
                 {event.event_type !== 'virtual' && (fullAddress || event.venue_name) && (
-                  <div className="mt-10">
+                  <Reveal as="div" className="mt-10">
                     <SectionHeader eyebrow="Location" title="Venue" size="sm" />
                     <div className="mt-5">
                       <VenueMap
@@ -663,11 +704,11 @@ export default async function EventDetailPage({ params }: Props) {
                         longitude={event.venue_longitude}
                       />
                     </div>
-                  </div>
+                  </Reveal>
                 )}
 
                 {/* Organiser card */}
-                <div className="mt-10">
+                <Reveal as="div" className="mt-10">
                   <SectionHeader eyebrow="Organised by" title={event.organisation.name} size="sm" />
                   <div className="mt-5 rounded-2xl border border-ink-200 bg-white p-6">
                     <div className="flex items-start gap-4">
@@ -681,7 +722,7 @@ export default async function EventDetailPage({ params }: Props) {
                       </div>
                     </div>
                   </div>
-                </div>
+                </Reveal>
 
                 {/* Tags - events.tags is jsonb in the live schema; narrow
                     Json -> string[] before iterating. */}
@@ -775,9 +816,11 @@ export default async function EventDetailPage({ params }: Props) {
           </div>
         </section>
 
-        {/* Related events */}
+        {/* Related events - fade-rise on scroll-in (below-fold). */}
         {related.length > 0 && (
-          <RelatedEventsGrid events={relatedCards} dynamicPrices={relatedPrices} />
+          <Reveal>
+            <RelatedEventsGrid events={relatedCards} dynamicPrices={relatedPrices} />
+          </Reveal>
         )}
       </main>
 

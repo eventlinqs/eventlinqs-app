@@ -284,7 +284,7 @@ describe('pricing-rules service: caching', () => {
       organisationId: null,
     })
 
-    expect(redisDel).toHaveBeenCalledWith('pr:v1:platform_fee_percentage:AU:AUD:null')
+    expect(redisDel).toHaveBeenCalledWith('pr:v2:platform_fee_percentage:AU:AUD:null')
   })
 
   test('falls back to direct DB read when Redis is unavailable', async () => {

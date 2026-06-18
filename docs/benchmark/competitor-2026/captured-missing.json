@@ -1,0 +1,24 @@
+{
+  "ticketmaster/signin": {
+    "390": {
+      "reachedUrl": "https://www.ticketmaster.com.au/",
+      "clicked": false,
+      "dims": "780x1688"
+    },
+    "1440": {
+      "reachedUrl": "https://www.ticketmaster.com.au/",
+      "clicked": false,
+      "dims": "1800x1125"
+    }
+  },
+  "eventbrite/organizer": {
+    "390": {
+      "reachedUrl": "https://www.eventbrite.com.au/organizer/overview/",
+      "dims": "780x1688"
+    },
+    "1440": {
+      "reachedUrl": "https://www.eventbrite.com.au/organizer/overview/",
+      "dims": "1800x1125"
+    }
+  }
+}

@@ -28,7 +28,7 @@ export function AllEventsGridByCulture({
   events,
 }: Props) {
   return (
-    <ContentSection surface="base" width="wide" topBorder>
+    <ContentSection surface="base" width="wide" topBorder reveal>
       {events.length > 0 ? (
         <>
           <div className="mb-8 flex items-end justify-between gap-4">

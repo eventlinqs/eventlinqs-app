@@ -1,9 +1,42 @@
 # EventLinqs Design System - v2.1
 
-**Status:** Locked v2.1 - living document, evolves with A/B test data
+> **SUPERSEDED - historical reference only.** This v2.1 document (4 May 2026)
+> predates the community-first repositioning and is no longer the constitution.
+> The live laws are in `CLAUDE.md`, and the binding token/pattern source of truth
+> is the code (`src/app/globals.css`, `src/app/page.tsx`). Use this file only for
+> legacy component detail, and only where it does not conflict with `CLAUDE.md` or
+> the code. On every conflict, `CLAUDE.md` and the code win.
+>
+> **This document is overridden on the following (do not follow it here):**
+> - **Mission and audience.** It frames EventLinqs as an "African diaspora"
+>   platform. The platform is a complete, general Australian ticketing platform;
+>   community is a 10-20% layer, never the identity (`CLAUDE.md`: What EventLinqs
+>   is, Law 1). "Diaspora" is a banned word.
+> - **Tagline.** "WHERE THE CULTURE GATHERS" is retired - it is culture-first,
+>   which `CLAUDE.md` (Copy and banned content) forbids.
+> - **Font stack.** The live stack is Archivo display / Hanken Grotesk body /
+>   Manrope UI (`globals.css`), not the "Manrope + Inter" named here. Inter is not
+>   used.
+> - **Competitor bar.** The bar is the fusion of Ticketmaster and Eventbrite,
+>   surpassed. DICE is a typography influence only, never the bar and never a
+>   resemblance target (`CLAUDE.md`: What EventLinqs is, Design system).
+> - **Colour hexes.** Where a hex here differs from the `globals.css` token, the
+>   token wins (`CLAUDE.md`: Design system).
+> - **Glassmorphism / dark surfaces.** Any frosted-glass or flat-dark pattern
+>   described here is overridden by the light-and-airy, no-glassmorphism,
+>   no-flat-dark boundary in `CLAUDE.md` (Design system).
+> - **Hero scale + chrome.** The binding hero-scale law (ONE platform hero scale,
+>   the single `.hero-marketing` token = the homepage scale on every page;
+>   `.hero-content` was retired, there is no separate "content" tier; gold eyebrow
+>   not white; homepage display scale; one shared dual-state navy header, no
+>   per-page variants) lives in `CLAUDE.md` (Design system: Hero scale, Chrome
+>   consistency) with the token in `globals.css`. Any hero or header heights
+>   described below are superseded by it.
+
+**Status:** SUPERSEDED v2.1 - retained for historical/component reference only
 **Last updated:** 4 May 2026
 **Owner:** Lawal Adams + Claude
-**Enforcement:** This document supersedes Claude Code's instincts. Every UI decision must reference it. Deviations require explicit approval and test data.
+**Enforcement:** `CLAUDE.md` is the constitution and supersedes this document. Every UI decision references `CLAUDE.md` and the code first; this file is consulted only for legacy component detail that does not conflict.
 **Changelog from v2.0 (Redesign Batch 3, 2026-05-04):** Section 6.2.1 added - canonical separated-card tile pattern + the one allowed image-band overlay (place-name on darkened gradient on city/venue tiles). Anti-Patterns updated to forbid event-meta text on photography and gold-400 on light surfaces. Sub-tagline polished elsewhere; the "WHERE THE CULTURE GATHERS" tagline stays locked.
 **Changelog from v1.0:** Mobile-first patterns rewritten after live TM/DICE mobile analysis. Brand voice section added. Page-by-page templates added. Social proof patterns added. Illustration strategy added. Anti-patterns expanded.
 

@@ -109,7 +109,8 @@ export async function createSquadMemberPaymentIntent(
     currency,
     fee_pass_type,
     0,
-    event.organisation_id
+    event.organisation_id,
+    event.id
   )
 
   // Create order
@@ -209,6 +210,7 @@ export async function createSquadMemberPaymentIntent(
     const charge = await createDestinationCharge({
       gateway,
       organisationId: event.organisation_id,
+      eventId: event.id,
       fees,
       customerEmail: buyerEmail,
       idempotencyKey: idempotency_key,

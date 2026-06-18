@@ -159,7 +159,7 @@ export default async function SquadPage({ params }: Props) {
             {/* Progress bar */}
             <div className="w-full bg-ink-100 rounded-full h-2.5" role="progressbar" aria-valuenow={filledSpots} aria-valuemin={0} aria-valuemax={squad.total_spots}>
               <div
-                className="bg-[#4A90D9] h-2.5 rounded-full transition-all"
+                className="bg-gold-500 h-2.5 rounded-full transition-all"
                 style={{ width: `${Math.min(100, (filledSpots / squad.total_spots) * 100)}%` }}
               />
             </div>

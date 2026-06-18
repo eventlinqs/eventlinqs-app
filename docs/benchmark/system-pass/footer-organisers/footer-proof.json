@@ -1,0 +1,40 @@
+{
+  "base": "https://eventlinqs-app-git-feat-home-rebuild-lawals-projects-c20c0be8.vercel.app",
+  "mobile": {
+    "pass": true,
+    "checks": [
+      {
+        "expanded": "Discover",
+        "aboveMoved": [],
+        "panelHeight": 224
+      },
+      {
+        "expanded": "Communities",
+        "aboveMoved": [],
+        "panelHeight": 260
+      },
+      {
+        "expanded": "For organisers",
+        "aboveMoved": [],
+        "panelHeight": 152
+      },
+      {
+        "expanded": "Company",
+        "aboveMoved": [],
+        "panelHeight": 152
+      }
+    ],
+    "stackedSingleColumn": true
+  },
+  "desktop": {
+    "1024": {
+      "visibleAccordionButtons": 0
+    },
+    "1280": {
+      "visibleAccordionButtons": 0
+    },
+    "1440": {
+      "visibleAccordionButtons": 0
+    }
+  }
+}

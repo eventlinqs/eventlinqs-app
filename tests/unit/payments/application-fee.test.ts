@@ -148,7 +148,7 @@ describe('computeApplicationFeeCents (async, reads pricing_rules)', () => {
     mockedGetMode.mockResolvedValueOnce(1)
     const fees = makeFees({ platform_fee_cents: 500, payment_processing_fee_cents: 300 })
     await expect(computeApplicationFeeCents(fees, 'AU', 'AUD', 'org_1')).resolves.toBe(800)
-    expect(mockedGetMode).toHaveBeenCalledWith('AU', 'AUD', 'org_1')
+    expect(mockedGetMode).toHaveBeenCalledWith('AU', 'AUD', 'org_1', null)
   })
 
   test('mode 2: app_fee = platform only (organiser keeps processing fee)', async () => {
@@ -160,7 +160,7 @@ describe('computeApplicationFeeCents (async, reads pricing_rules)', () => {
   test('forwards null organisationId to pricing-rules service', async () => {
     mockedGetMode.mockResolvedValueOnce(1)
     await computeApplicationFeeCents(makeFees(), 'GB', 'GBP', null)
-    expect(mockedGetMode).toHaveBeenCalledWith('GB', 'GBP', null)
+    expect(mockedGetMode).toHaveBeenCalledWith('GB', 'GBP', null, null)
   })
 })
 
@@ -204,7 +204,7 @@ describe('computeReserveCents (reads reserve_percentage from pricing_rules)', ()
   test('honours per-org override (e.g. enterprise account at 10%)', async () => {
     mockedGetReserve.mockResolvedValueOnce(10)
     await expect(computeReserveCents(10_000, 'AU', 'AUD', 'org_enterprise')).resolves.toBe(1_000)
-    expect(mockedGetReserve).toHaveBeenCalledWith('AU', 'AUD', 'org_enterprise')
+    expect(mockedGetReserve).toHaveBeenCalledWith('AU', 'AUD', 'org_enterprise', null)
   })
 
   test('zero for non-positive share (no Stripe call needed)', async () => {

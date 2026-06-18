@@ -146,7 +146,7 @@ export default async function MySquadsPage() {
                     aria-valuemax={squad.total_spots}
                   >
                     <div
-                      className={`h-2 rounded-full transition-all ${squad.status === 'completed' ? 'bg-emerald-500' : 'bg-[#4A90D9]'}`}
+                      className={`h-2 rounded-full transition-all ${squad.status === 'completed' ? 'bg-emerald-500' : 'bg-gold-500'}`}
                       style={{ width: `${Math.min(100, (filledSpots / squad.total_spots) * 100)}%` }}
                     />
                   </div>
@@ -157,7 +157,7 @@ export default async function MySquadsPage() {
                   {squad.status === 'forming' && (
                     <Link
                       href={`/squad/${squad.share_token}`}
-                      className="rounded-lg bg-[#4A90D9] px-4 py-2 text-sm font-medium text-white hover:bg-[#3478C5] transition-colors"
+                      className="rounded-lg bg-gold-500 px-4 py-2 text-sm font-medium text-ink-900 hover:bg-gold-600 transition-colors"
                     >
                       View Squad
                     </Link>

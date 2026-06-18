@@ -68,14 +68,14 @@ const TONES: Record<Tone, {
     secondary: 'border-white/10 text-white/70 hover:bg-white/[0.06] hover:text-white',
   },
   light: {
-    surface: 'bg-white text-[#1A1A2E]',
+    surface: 'bg-white text-ink-900',
     border: 'border-black/10',
-    heading: 'text-[#1A1A2E]',
-    muted: 'text-[#6B7280]',
+    heading: 'text-ink-900',
+    muted: 'text-ink-400',
     row: 'border-black/10 hover:bg-black/[0.03]',
-    input: 'border-black/15 bg-white text-[#1A1A2E] focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[var(--brand-accent)]',
+    input: 'border-black/15 bg-white text-ink-900 focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[var(--brand-accent)]',
     primary: 'bg-[var(--brand-accent)] text-white',
-    secondary: 'border-black/15 text-[#6B7280] hover:bg-black/[0.04] hover:text-[#1A1A2E]',
+    secondary: 'border-black/15 text-ink-400 hover:bg-black/[0.04] hover:text-ink-900',
   },
 }
 

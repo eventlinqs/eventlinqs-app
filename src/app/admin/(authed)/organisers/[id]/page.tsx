@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { redirect, notFound } from 'next/navigation'
 import { requireAdminSession } from '@/lib/admin/auth'
-import { hasCapability } from '@/lib/admin/rbac'
+import { can } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { getOrganiserDetail } from '@/lib/admin/organisers'
 import { AdminStatTile } from '@/components/admin/admin-stat-tile'
@@ -40,7 +40,7 @@ function YesNo({ ok, label }: { ok: boolean; label: string }) {
 
 export default async function AdminOrganiserDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await requireAdminSession()
-  if (!hasCapability(session.admin.role, 'admin.users.manage')) redirect('/admin')
+  if (!can(session, 'admin.users.manage')) redirect('/admin')
 
   const { id } = await params
   const org = await getOrganiserDetail(id)

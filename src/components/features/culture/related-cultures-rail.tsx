@@ -28,7 +28,7 @@ export function RelatedCulturesRail({ related, images }: Props) {
     .filter((x): x is NonNullable<typeof x> => x !== null)
   if (items.length === 0) return null
   return (
-    <ContentSection surface="alt" width="default" topBorder>
+    <ContentSection surface="alt" width="default" topBorder reveal>
       <div className="mb-8">
         <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
           Adjacent scenes

@@ -64,7 +64,7 @@ export function DateFilterChips({ anchorId = 'all-events', initial }: Props) {
     <div
       role="tablist"
       aria-label="Filter events by date"
-      className="sticky top-[var(--site-nav-height,64px)] z-30 border-y border-[var(--surface-2)] bg-[var(--surface-0)]/95 backdrop-blur"
+      className="sticky top-[var(--site-nav-height,64px)] z-30 border-y border-[var(--surface-2)] bg-[var(--surface-0)]"
     >
       <div className="mx-auto flex max-w-7xl gap-2 overflow-x-auto px-4 py-3 sm:px-6 lg:px-8">
         {CHIPS.map(c => {
@@ -77,7 +77,7 @@ export function DateFilterChips({ anchorId = 'all-events', initial }: Props) {
               aria-selected={active}
               onClick={() => onClick(c.id, c.preset)}
               className={[
-                'inline-flex h-10 min-w-[44px] shrink-0 items-center justify-center rounded-full border px-4 text-sm font-semibold transition',
+                'inline-flex h-11 min-w-[44px] shrink-0 items-center justify-center rounded-full border px-4 text-sm font-semibold transition',
                 active
                   ? 'border-[var(--color-navy-950)] bg-[var(--color-navy-950)] text-white shadow-sm'
                   : 'border-[var(--surface-2)] bg-[var(--surface-0)] text-[var(--text-primary)] hover:border-[var(--color-navy-950)]/50',

@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -6,6 +5,7 @@ import { PaymentCalculator } from '@/lib/payments/payment-calculator'
 import { CheckoutForm } from './checkout-form'
 import { getGuestSessionId } from '@/lib/auth/guest-session'
 import { CheckoutTrustSignals } from '@/components/features/checkout/CheckoutTrustSignals'
+import { Button } from '@/components/ui/Button'
 import type { FeePassType, TicketTier, EventAddon } from '@/types/database'
 
 type Props = {
@@ -249,24 +249,14 @@ export default async function CheckoutPage({ params }: Props) {
           </p>
           <p className="mt-2 text-xs text-ink-500">Reservation: {reservation_id}</p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
-            <Link
-              href={`/checkout/${reservation_id}`}
-              className="rounded-md bg-ink-900 px-5 py-2 text-sm font-semibold text-white hover:bg-ink-800"
-            >
-              Try again
-            </Link>
-            <Link
-              href="/events"
-              className="rounded-md border border-ink-300 px-5 py-2 text-sm font-semibold text-ink-900 hover:bg-ink-50"
-            >
-              Back to events
-            </Link>
-            <a
+            <Button href={`/checkout/${reservation_id}`}>Try again</Button>
+            <Button href="/events" variant="secondary">Back to events</Button>
+            <Button
               href={`mailto:hello@eventlinqs.com?subject=Checkout%20error%20${encodeURIComponent(reservation_id)}`}
-              className="rounded-md border border-ink-300 px-5 py-2 text-sm font-semibold text-ink-900 hover:bg-ink-50"
+              variant="secondary"
             >
               Email support
-            </a>
+            </Button>
           </div>
         </div>
       </div>

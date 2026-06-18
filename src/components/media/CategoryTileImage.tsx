@@ -3,6 +3,7 @@ import { MEDIA_QUALITY } from './quality'
 import { MEDIA_SIZES } from './sizes'
 import { resolveImageSrc } from './safe-image-src'
 import { BrandedPlaceholder } from './decorative/branded-placeholder'
+import { HoverWash } from './hover-wash'
 
 /**
  * CategoryTileImage - the only allowed surface for category-tile imagery
@@ -34,17 +35,20 @@ export function CategoryTileImage({
     return <BrandedPlaceholder className={className} />
   }
   return (
-    <Image
-      src={safeSrc}
-      alt={alt}
-      fill
-      sizes={MEDIA_SIZES.category}
-      quality={MEDIA_QUALITY.card}
-      priority={priority}
-      fetchPriority={priority ? 'high' : 'auto'}
-      loading={priority ? 'eager' : 'lazy'}
-      decoding="async"
-      className={`object-cover ${className}`}
-    />
+    <>
+      <Image
+        src={safeSrc}
+        alt={alt}
+        fill
+        sizes={MEDIA_SIZES.category}
+        quality={MEDIA_QUALITY.card}
+        priority={priority}
+        fetchPriority={priority ? 'high' : 'auto'}
+        loading={priority ? 'eager' : 'lazy'}
+        decoding="async"
+        className={`card-media-img object-cover ${className}`}
+      />
+      <HoverWash />
+    </>
   )
 }

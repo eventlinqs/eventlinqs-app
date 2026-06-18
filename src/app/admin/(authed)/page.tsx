@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { AdminStatTile } from '@/components/admin/admin-stat-tile'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { requireAdminSession } from '@/lib/admin/auth'
+import { aggregateGmv, ANALYTICS_CURRENCY, type GmvOrderRow } from '@/lib/admin/analytics'
 import { formatMoneyDisplay } from '@/lib/money/format'
 
 export const dynamic = 'force-dynamic'
@@ -99,19 +100,40 @@ async function GmvTile({ label, sinceMsAgo }: { label: string; sinceMsAgo: numbe
   const since = new Date(Date.now() - sinceMsAgo).toISOString()
   try {
     const client = createAdminClient()
-    const { data, error } = await client
+    // PAY-02: value GMV net of refunds, using the same audited aggregator as
+    // /admin/analytics. The previous query read a non-existent `total_amount_cents`
+    // column (so the tile silently failed) and, had it worked, would have counted
+    // every confirmed order at FULL value while ignoring refunds entirely. We now
+    // pull the paid statuses (confirmed, partially_refunded, refunded) on the
+    // real `total_cents` column and subtract completed refunds for those orders,
+    // so a fully refunded order nets to zero and a partial refund nets to the
+    // retained amount.
+    const { data: orderRows, error } = await client
       .from('orders')
-      .select('total_amount_cents, currency')
-      .eq('status', 'confirmed')
+      .select('id, total_cents, platform_fee_cents, status, currency')
+      .in('status', ['confirmed', 'partially_refunded', 'refunded'])
+      .eq('currency', ANALYTICS_CURRENCY)
       .gte('created_at', since)
-      .returns<{ total_amount_cents: number; currency: string }[]>()
+      .returns<(GmvOrderRow & { id: string; currency: string })[]>()
     if (error) throw error
-    const audCents = (data ?? [])
-      .filter(r => (r.currency ?? 'AUD').toUpperCase() === 'AUD')
-      .reduce((sum, r) => sum + (r.total_amount_cents ?? 0), 0)
+    const orders = orderRows ?? []
+
+    let refunds: { amount_cents: number; status: string }[] = []
+    if (orders.length > 0) {
+      const { data: refundRows, error: refundErr } = await client
+        .from('refunds')
+        .select('amount_cents, status')
+        .eq('status', 'completed')
+        .in('order_id', orders.map(o => o.id))
+        .returns<{ amount_cents: number; status: string }[]>()
+      if (refundErr) throw refundErr
+      refunds = refundRows ?? []
+    }
+
+    const { netGmvCents } = aggregateGmv(orders, refunds)
     // Exact-cents display (item 9 fix): never round revenue to whole dollars.
-    const formatted = formatMoneyDisplay(audCents, 'AUD')
-    return <AdminStatTile label={label} value={formatted} hint="AUD only; multi-currency view in A4" />
+    const formatted = formatMoneyDisplay(netGmvCents, 'AUD')
+    return <AdminStatTile label={label} value={formatted} hint="AUD, net of refunds; multi-currency view in A4" />
   } catch {
     return <AdminStatTile label={label} value="-" hint="orders table query failed" status="warn" />
   }

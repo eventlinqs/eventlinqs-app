@@ -14,15 +14,19 @@ export function ConfirmSubmitButton({
   children,
   confirmMessage,
   className,
+  form,
 }: {
   children: React.ReactNode
   confirmMessage: string
   className?: string
+  /** Associate with a form by id when the button sits outside it. */
+  form?: string
 }) {
   const blocked = useRef(false)
   return (
     <button
       type="submit"
+      form={form}
       className={className}
       onClick={(e) => {
         if (!window.confirm(confirmMessage)) {

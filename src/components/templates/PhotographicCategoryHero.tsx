@@ -49,7 +49,7 @@ export function PhotographicCategoryHero({ slug, eyebrow, title, subtitle }: Pro
       className="relative overflow-hidden"
     >
       <HeroPresenceMarker />
-      <div className="relative h-[64vh] min-h-[420px] max-h-[640px] w-full">
+      <div className="hero-marketing relative w-full">
         <HeroMedia image={src} alt={alt} priority />
         {/* Darkened gradient: bottom-up navy so headline stays readable */}
         <div
@@ -63,12 +63,12 @@ export function PhotographicCategoryHero({ slug, eyebrow, title, subtitle }: Pro
         {/* Left-anchored content column - no body copy on the brightest band */}
         <div className="relative z-10 mx-auto flex h-full max-w-7xl items-end px-4 pb-10 sm:px-6 sm:pb-14 lg:px-8 lg:pb-20">
           <div className="max-w-2xl">
-            <p className="font-display text-xs font-bold uppercase tracking-[0.22em] text-white/85">
+            <p className="font-display text-xs font-bold uppercase tracking-[0.22em] text-[var(--brand-accent)]">
               {eyebrow}
             </p>
             <h1
               id="category-hero-heading"
-              className="mt-3 font-display text-4xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-6xl"
+              className="mt-3 font-display text-3xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-4xl lg:text-5xl"
             >
               {title}
             </h1>

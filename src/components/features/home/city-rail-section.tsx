@@ -1,8 +1,10 @@
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { SnapRail } from '@/components/ui/snap-rail'
-import { CityRailTile } from '@/components/features/events/city-rail-tile'
+import { Reveal } from '@/components/ui/reveal'
+import { CityTile } from '@/components/features/home/cards'
 import { getCityPhoto } from '@/lib/images/city-photo'
-import { CONTAINER, SECTION_DEFAULT } from '@/lib/ui/spacing'
+import { CONTAINER, SECTION_RAIL } from '@/lib/ui/spacing'
+import { RHYTHM_GAP, CITY_TILE_CELL } from '@/lib/ui/rhythm'
 import { CITY_TILES, LOCAL_CITY_SVG } from '@/lib/events/home-queries'
 
 interface Props {
@@ -45,27 +47,35 @@ export async function CityRailSection({ nowIso }: Props) {
   return (
     <section
       aria-labelledby="cities-heading"
-      className={`bg-canvas ${SECTION_DEFAULT} [content-visibility:auto] [contain-intrinsic-size:auto_600px]`}
+      className={`border-t border-ink-200 bg-canvas ${SECTION_RAIL}`}
     >
-      <div className={CONTAINER}>
+      <Reveal className={CONTAINER}>
         <SnapRail
           eyebrow="By city"
           title="Browse by city"
           headingId="cities-heading"
+          headerLink={{ href: '/cities', label: 'See all cities' }}
           railLabel="Events by city"
           containerBg="canvas"
+          cardGap={RHYTHM_GAP}
         >
+          {/* Variant B: cities get a distinct, larger destination treatment -
+              wider than event cards so they read as places, not listings. */}
           {liveCities.map(c => (
-            <CityRailTile
-              key={c.slug}
-              city={c.city}
-              slug={c.slug}
-              eventCount={c.count}
-              imageSrc={c.imageSrc}
-            />
+            <div key={c.slug} className={CITY_TILE_CELL}>
+              <CityTile
+                city={{
+                  href: `/city/${c.slug}`,
+                  imageSrc: c.imageSrc,
+                  alt: c.city,
+                  name: c.city,
+                  metaLabel: `${c.count} ${c.count === 1 ? 'event' : 'events'}`,
+                }}
+              />
+            </div>
           ))}
         </SnapRail>
-      </div>
+      </Reveal>
     </section>
   )
 }

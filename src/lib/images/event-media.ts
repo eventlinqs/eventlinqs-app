@@ -70,7 +70,7 @@ export async function getEventMedia(event: EventMediaInput): Promise<EventMedia>
     }
   }
 
-  const photo = await getCategoryPhoto(event.category?.slug)
+  const photo = await getCategoryPhoto(event.category?.slug, event.title)
   if (photo.src !== FALLBACK_POSTER) {
     return {
       kind: 'still-kenburns',
@@ -111,7 +111,7 @@ export async function getFeaturedEventMedia(event: EventMediaInput): Promise<Eve
     }
   }
 
-  const photo = await getCategoryPhoto(event.category?.slug)
+  const photo = await getCategoryPhoto(event.category?.slug, event.title)
   if (photo.src !== FALLBACK_POSTER) {
     return {
       kind: 'still-kenburns',

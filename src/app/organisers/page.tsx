@@ -1,6 +1,11 @@
 import type { Metadata } from 'next'
 import { OrganisersLandingPage } from '@/components/templates/OrganisersLandingPage'
 
+// ISR: re-read the live platform fee from pricing_rules at most once a minute so
+// the organisers fee display tracks the admin-set value (static-constant
+// fallback inside getLivePublicFee keeps it from ever 500ing).
+export const revalidate = 60
+
 export const metadata: Metadata = {
   title: 'For Organisers | EventLinqs',
   description:

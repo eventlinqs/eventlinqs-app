@@ -23,6 +23,7 @@ export const metadata: Metadata = {
     description: 'Find community-relevant events in 20 cities across Australia.',
     url: '/cities',
     type: 'website',
+    images: ['/opengraph-image'],
   },
   twitter: {
     card: 'summary_large_image',

@@ -1,346 +1,193 @@
-# EventLinqs: Launch-Readiness Assessment
+# EventLinqs Launch Readiness Ledger
 
-Date: 31 May 2026
-Auditor role: read-only engineering auditor. Zero application-code changes, zero schema changes, zero destructive data operations.
-Branch assessed: `audit/launch-readiness`, cut from `origin/main` at `3037a8f` (the deployed production line).
-Production: https://www.eventlinqs.com (Vercel Pro, Sentry instrumented)
-Database: Supabase `gndnldyfudbytbboxesk` (Sydney), read-only SELECT and live `count` only.
-Stripe: TEST mode.
+Single pre-launch source of truth. Honest DONE vs OUTSTANDING, split into
+**code-complete** (engineering can finish on the branch) and **founder actions**
+(only Lawal can do: env vars, DB applies, pricing, demo data, photo day, staging,
+live Stripe). Read this before claiming launch readiness; update it as items
+close.
 
-This assessment supersedes `docs/audit/AUDIT-FULL-2026-05-29.md` where they differ. That audit was accurate on 29 May, but the build moved materially in 48 hours: ticket issuance, destination charges, the organiser-balance ledger, payout reserves, and the genre/artist data tables have all landed since. Each such change is flagged below with `[changed since 29 May]`.
-
-## Evidence tags
-
-- `[pw]` live production HTTP result against www.eventlinqs.com, status quoted.
-- `[db]` read-only query against the live Supabase database, result quoted.
-- `[code]` found in source on the assessed tree, file/line cited, not executed.
-- `[infer]` reasoned conclusion, no direct execution.
-
-## Status definitions (applied strictly)
-
-- **Built and verified in prod** - code complete AND proven end to end by a live `[pw]`/`[db]` execution.
-- **Built, unverified** - code complete and deployed, but no live execution proves the full path.
-- **Partial** - some of the module is real; named pieces are missing or stubbed.
-- **Not started** - no meaningful implementation found.
-
-The competitor set referenced throughout is the locked four: Ticketmaster.com.au, DICE.fm, Eventbrite.com.au, Humanitix.com.
+- Branch: `feat/home-rebuild` (NO MERGE without approval).
+- Tip at last verification: `7b9f434`.
+- Last full verification: 2026-06-08.
+- Companion sources: `docs/benchmark/system-pass/REPORT.md` (surface-by-surface
+  state), `CLAUDE.md` (the constitution + gate-coverage map), and
+  `docs/LAUNCH-READINESS-AUDIT-2026-05-31.md` (the prior module-by-module
+  read-only audit against `main` with live prod/db evidence, retained for the
+  module-level detail and the money-path proof).
 
 ---
 
-## Ground-truth data snapshot (all `[db]`, live 31 May 2026)
+## 1. Reconciliation findings (consolidation pass, 2026-06-08)
 
-| Metric | Value | vs 29 May |
+Parallel-tab contradictions found and resolved to the founder's latest ruling.
+
+| # | Contradiction | Resolution |
 |---|---|---|
-| organisations | 18 | +1 |
-| organisations with `stripe_account_id` | **1** | **+1 (was 0)** |
-| events total / published / draft | 47 / 32 / 14 | +1 |
-| ticket_tiers (paid / free) | 86 (71 / 14) | +1 |
-| orders total | 2 (1 `confirmed`, 1 `pending`) | +1 |
-| payments total | 2 (1 `completed`, 1 `initiated`) | +1 completed |
-| **tickets issued** | **1** (`EL-7EGD-2N7N`, status `valid`) | **+1 (was 0)** |
-| ticket_scans | 0 | - |
-| reservations total / converted | 11 / **1** | first conversion |
-| organiser_balance_ledger | **1** (`order_confirmed`, +7150c) | **new** |
-| payout_holds | **1** (`reserve`, 1430c, releases 10 Jun) | **new** |
-| payouts / refunds / disputes | 0 / 0 / 0 | - |
-| processed_webhook_events | 1 | new |
-| genres / artists / event_artists | **13 / 0 / 0 (tables exist)** | **genres seeded** |
-| follows / linqs / reviews tables | DO NOT EXIST | - |
-| profiles (registered users) | 4 | - |
-| admin_users | 1 | - |
-| squads / waitlist / venues / seats | 0 / 0 / 0 / 0 | - |
-| pricing_rules / tax_rules | 59 / 6 | - |
+| 1 | **Hero scale: two-tier vs single standard.** Docs (`page-build` skill, `DESIGN-SYSTEM.md`, `REPORT.md`) still described `.hero-content` as a separate taller "content" tier; the founder ruled ONE platform scale (2026-06-07). | Code was already flattened to `.hero-marketing` (the `.hero-content` token is gone from `globals.css`). Purged the stale two-tier text from all three docs to match the single-standard ruling. |
+| 2 | **Live hero regressions from the flatten.** `events/[slug]/loading.tsx` skeleton was still `55-70vh` (would jump into the now `.hero-marketing` hero); `PhotographicCityHero` (`/events/browse/[city]`) hardcoded `44vh`. | Both flattened to `.hero-marketing`. Zero-shift skeleton restored (Motion law). |
+| 3 | **Gold eyebrow law vs white eyebrows.** Four content/discovery heroes (culture, category, city, city-browse) used `text-white/85` eyebrows against the gold homepage baseline; the law says "never a white eyebrow". | Brought all four to `text-[var(--brand-accent)]`, matching the homepage and event-detail baseline. |
+| 4 | **Oversized hero display type.** `PhotographicCategoryHero` headline ran to `lg:text-6xl`; event-detail H1 clamp ran to `4rem` (~text-6xl). Law caps at the homepage scale (`lg:text-5xl`, never text-6xl). | Category headline capped to `text-3xl..lg:text-5xl`; event-detail H1 clamp capped to `3rem`. |
+| 5 | **Hero pause control: visible vs keyboard-focus-only.** `MOBILE-AUDIT.md` still described a "visible accessible pause/play control", contradicting its own later entry and CLAUDE.md. | Updated to the keyboard-focus-only / zero-visible-playback-chrome ruling (`9d74ff1`, 2026-06-08). |
+| 6 | **Platform fee: 2% vs 2.5% and what drives the display.** `public-fee.ts` header claimed the static 2% constant drives `/pricing` and the live DB MUST be set to 2.0 before merge; `ADMIN-HANDOVER.md` says `/pricing` reads the LIVE `pricing_rules` value so displayed == charged already holds at 2.5%. | Corrected `public-fee.ts` so the constant reads as a fallback, not the source. The fee NUMBER is a founder pricing decision (see Founder actions): single-source live read means displayed always equals charged; lowering to the 2% intent (2026-06-08) is one admin field, no migration. |
 
-Three headline facts that frame everything below:
+**Confirmed already consistent (no contradiction):** hover wash (navy-only,
+brightens, shared `HoverWash`), footer (4-col desktop / 2x2 mobile stacked
+independent accordions), rail control system (RailArrows, no progress dot) all
+agree across CLAUDE.md, the skills, and the benchmark docs.
 
-1. **The money path now works at least once, end to end.** Order `EL-6HBNEYY9` is `confirmed`; its payment `completed` (7582c); its reservation `converted`; a ticket was issued (`EL-7EGD-2N7N`); the organiser was credited in `organiser_balance_ledger` (+7150c); and a 20% reserve (1430c) was placed in `payout_holds` with a release date `[db]`. The public ticket view `/t/EL-7EGD-2N7N?k=...` returns 200 live `[pw]`. This is the single most important change since 29 May.
-2. **It has worked exactly once, in TEST mode, with one connected organiser.** One transaction is proof of wiring, not proof of robustness. No payout has ever been disbursed (`payouts` is empty), no refund has ever processed, and Stripe is still in TEST mode `[db]`.
-3. **The platform sells a single product line well (general-admission and tiered tickets) and almost nothing else.** Social, recommendations, resale, gamification, multi-gateway, reserved seating, the public API, and most admin operations are absent or stubbed.
+**Dead-code landmines (not live, flagged for cleanup, not removed this pass to
+avoid scope creep):** the 90vh hero chain `featured-event-hero.tsx` ->
+`hero-carousel-client.tsx` / `featured-hero-static-shell.tsx` (only a type is
+imported from it; never rendered), `split-state-hero.tsx`, and `home-hero.tsx`
+are unused. The live homepage hero is `FeaturedHero` -> `FeaturedHeroClient`
+(lawful 42-48vh). `venue-profile-hero.tsx` (64vh, max 600px) and
+`organiser-profile-hero.tsx` (40vh, max 420px) are profile-banner heroes not in
+the founder's enumerated single-scale list; they currently differ from the token
+and need a founder call on whether profile banners are in or out of the one-scale
+law.
 
 ---
 
-## Module 1: Foundation (auth, database, RBAC, environment)
+## 2. Gate battery (this pass, deployed preview `7b9f434`)
 
-**Status: Built and verified in prod.**
+All run against the deployed Vercel preview, full fixture density where relevant.
 
-Scope refs: 2 (architecture), 3.9 (auth/roles), 4.1 (app security).
+| Gate | Result | Evidence |
+|---|---|---|
+| TypeScript (`tsc --noEmit`) | **PASS** 0 errors | local |
+| ESLint | **PASS** 0 errors (36 pre-existing warnings, all in `scripts/`+`research/` capture files) | local |
+| Vitest | **PASS** 329/329 | local |
+| `next build` | **PASS** | local |
+| Link-integrity crawler (Law 5) | **PASS** 292/292 internal links resolve 200, ZERO dead | `scripts/link-integrity-crawl.mjs` |
+| Affordance scan (no dead-end tiles) | **PASS** 0 dead-end tiles across 16 pages | `scripts/affordance-scan.mjs` |
+| Hero measurement (single scale) | **PASS** home, event-detail, city, suburb, culture, organisers all = 432px @1440 / 354px @390 (== homepage) | `scripts/measure-el-heroes.mjs` |
+| Mobile overflow audit (390) | **PASS** 17 pages, 0 overflow, 0 scrollX, 0 console errors, 0 broken images, axe 0 | `scripts/mobile-audit.mjs` |
+| axe-core (key pages, both viewports) | **PASS** 0 serious/critical across 19 pages x mobile+desktop (38 audits) | `scripts/axe-overnight.mjs` |
+| CI: lint / typecheck / build / test | **GREEN** all jobs success | GitHub Actions `CI` |
+| CI: types-drift guard (now blocking) | **GREEN** no real drift | GitHub Actions `CI` |
+| Lighthouse CI | **GREEN as configured** (success on the tip; floors perf at 0.80, so the 95+ law is NOT yet enforced, gate gap 1) | GitHub Actions `Lighthouse CI` |
+| Post-deploy smoke | N/A on a PR branch (runs on `main` after deploy) | GitHub Actions |
 
-Evidence:
-- Auth live: `/login` offers Google OAuth, email/password, and magic link `[pw]`. Supabase Auth backs it. 4 registered profiles `[db]`.
-- Route protection: `src/lib/supabase/middleware.ts` gates `/dashboard`; unauthenticated `/dashboard/*` redirects to `/login` `[code]` `[pw]`.
-- Schema is substantial and live: 80+ public tables including `events`, `ticket_tiers`, `orders`, `order_items`, `reservations`, `tickets`, `payments`, `pricing_rules` (59 rows), `tax_rules` (6 rows), `organisations`, `organisation_members` `[db]`.
-- `src/types/database.ts` was regenerated from the live schema (per STATUS doc, PR #52) and a non-blocking types-drift CI guard exists.
-- Health and observability endpoints respond: `/api/health/redis` returns 200 live `[pw]`.
-
-Gaps:
-- Phone OTP auth is not built; auth is email-centric (Scope 3.9.2 calls phone OTP "critical for African markets") `[code]`. Not a launch blocker for an AU-first soft launch.
-- `organisation_members` has 1 row `[db]`; the owner-membership write on real organiser signup is essentially unexercised. The 18 orgs were seeded.
-
-Competitor note: foundational auth/roles are at parity with the field. None of the four competitors expose anything here that EventLinqs lacks for an AU launch.
-
----
-
-## Module 2: Event Management (builder, lifecycle, tiers, add-ons, seating)
-
-**Status: Built, unverified end to end by a real organiser** (the surfaces and seeded data are real; no event has been created through the live form by a net-new external organiser).
-
-Scope refs: 3.1 (event builder, lifecycle, ticketing engine, reserved seating).
-
-Evidence:
-- Create event (free and paid tiered): `src/app/(dashboard)/dashboard/events/actions.ts` captures title, summary, description, category, tags, dates, timezone, venue, visibility, age restriction, capacity, squad toggle, tiers (price stored as cents) `[code]`. 32 published + 14 draft events, 86 tiers exist `[db]`.
-- Edit event: `events/[id]/edit` updates event and replaces tiers `[code]`.
-- Lifecycle states exist in data (`published`/`draft`); pause/postpone/cancel transitions are not exposed operationally to organisers in UI `[code]`.
-
-Gaps:
-- **Reserved seating: not started.** `venues`, `seat_maps`, `seats` all 0 rows; no seat-map builder `[db]`. Per `docs/STATUS-2026-05-29.md` strategy lock this is a deliberate deferral until a real organiser needs it. Acceptable for soft launch; documented as deferred.
-- **Add-ons: not started.** No `add_ons` table `[db]`.
-- Event create has never been driven by a real external organiser end to end `[db]` `[infer]`.
-
-Competitor note: the builder is competitive with Humanitix and Eventbrite for general-admission. Reserved seating is a Ticketmaster strength EventLinqs intentionally does not match at launch.
+Minor watch item: the mobile audit flags a small number of sub-44px elements per
+page (`small=2-7`), non-hard-failing (likely inline prose links, not tap
+targets). Worth a dedicated 44px touch-target pass before launch but not a
+blocker.
 
 ---
 
-## Module 3: Checkout and Payments (one-page checkout, pricing, tax, discounts)
+## 3. Code-complete (DONE on the branch)
 
-**Status: Built and verified in prod** (one confirmed paid order), with the single-transaction caveat.
+- **Buyer journey:** discovery (home, events, city, suburb, culture, category),
+  event detail, checkout, order confirmation, tickets. Zero dead links, zero
+  dead-end tiles, single hero scale, light-and-airy chrome, hover-wash motion,
+  rail control system. Verified this pass.
+- **Community moat:** Sounds/Communities split rails, real `/culture/[slug]`
+  landings (First Nations first), Communities doorway, value band, intersection
+  pages inheriting spine imagery with branded fallbacks, shared
+  `CategoryHeroEmpty` zero-event state.
+- **Marketing surfaces:** `/organisers`, `/pricing`, `/about`, `/careers`,
+  `/press`, legal pages, image-rich to the competitor bar, axe-clean.
+- **Pricing display:** single-source live fee (`getLivePublicFee`), displayed ==
+  charged, reads live `pricing_rules` via the anon client (works on preview).
+- **Admin:** secure panel (getUser + admin_users + 2FA + RBAC, negative-access
+  proven), pricing editor with confirmation step. Founder is super_admin.
+- **Organiser tooling:** reporting (attendee list/exports), ownership gate
+  (`getOrganiserEvent`).
+- **Refund path** (M6) and **payout app layer** (M6): app code shipped.
+- **Check-in scanner:** door scanner, atomic admit-once.
+- **Hero motion:** LCP-safe auto-rotation, WCAG-pausable (keyboard-focus-only
+  control), motion-flag gated.
 
-Scope refs: 3.3 (dynamic pricing), 3.7 (checkout), 4.3 (tax).
-
-Evidence:
-- One-page checkout creates a reservation, a `payment` row, then a Stripe PaymentIntent; `src/app/actions/checkout.ts` `[code]`. One order reached `confirmed` and one payment `completed` `[db]`.
-- **Pricing Service is a real single source of truth** `[changed quality since 29 May]`: `src/lib/payments/payment-calculator.ts` plus `src/lib/payments/pricing-rules.ts` perform a cascading lookup over `pricing_rules` (country > currency > rule type > org) with a 60s Redis cache `[code]`. The confirmed order shows the split working: subtotal 6500c, platform fee 213c, processing fee 219c, tax 650c, total 7582c `[db]`.
-- **Tax engine live**: `tax_rules` (6 rows) read by country; GST applied `[code]` `[db]`.
-- Discount codes: validated and applied at checkout; organiser CRUD UI at `dashboard/events/[id]/discounts` `[code]`. `discount_codes` empty `[db]`.
-- Guest checkout and logged-in checkout both coded `[code]`.
-- Dynamic (stepwise) pricing: `dynamic_pricing_rules` + `get_current_tier_price` RPC + organiser UI `[code]`; unused in data `[db]`.
-
-Gaps:
-- Verified by exactly one transaction in TEST mode. Conversion robustness, 3DS/`requires_action`, failure and retry paths are coded but unexercised `[db]`.
-- Express checkout (Apple Pay / Google Pay one-tap) relies on Stripe automatic payment methods; not separately verified `[infer]`.
-
-Competitor note: transparent all-in pricing shown before purchase is the explicit anti-Ticketmaster/Eventbrite position and the pricing service supports it. This is a genuine differentiator if the displayed-total-equals-charged-total invariant is verified under load.
-
----
-
-## Module 4: Ticketing Engine and Inventory (reservations, QR e-tickets, scanner)
-
-**Status: Partial** - issuance and inventory locking are built and proven; the door scanner, ticket transfer, and a running expiry sweeper are missing.
-
-Scope refs: 3.1.4 (ticketing), 3.12 (QR system), 3.13 (check-in), 2.3.2 (concurrency).
-
-Built and verified:
-- **Ticket issuance** `[changed since 29 May]`: `confirm_order` RPC fires a DB trigger (`issue_tickets_for_order`, migration `20260517000001_ticketing_system_v1.sql`) that writes `tickets` with a unique `ticket_code` (`EL-XXXX-XXXX`), a `secret` UUID, holder name/email, and `status` `[code]`. One ticket exists `[db]`.
-- **Public ticket view + QR** `[changed since 29 May]`: `src/app/t/[code]/page.tsx` renders the ticket with a server-generated QR; `/api/tickets/[code]/qr` serves a PNG `[code]`. Live: `/t/EL-7EGD-2N7N?k=...` returns 200 `[pw]`.
-- **Inventory concurrency**: `create_reservation` takes `FOR UPDATE` on the tier row; `confirm_order` locks the order/reservation and is idempotent `[code]`. 11 reservations created, 1 converted `[db]`.
-- **Waitlist** and **squad/group booking**: full code paths plus `waitlist-expire` and `squad-expire` crons every 5 minutes in `vercel.json` `[code]`. Both tables empty `[db]`.
-
-Gaps (launch-relevant):
-- **QR is static, not the scoped dynamic HMAC-rotating token.** The QR encodes a plain `/t/{code}?k={secret}` URL with no HMAC signature and no 30-second TOTP rotation (Scope 3.12 and 4.1 both require HMAC-SHA256 + 30s refresh + single-scan) `[code]`. Bearer secret gates the view, but screenshot-sharing is not defended as specified.
-- **Door scanner / check-in: not started.** No camera-scan route, no check-in mutation, `ticket_scans` empty `[code]` `[db]`. An organiser cannot admit attendees through the app today; only CSV export exists (help copy).
-- **Ticket transfer: not started.** `tickets.transferred_to_email` column exists but no transfer flow; help copy says transfer "is not currently supported" `[code]`.
-- **Reservation-expiry sweeper is not running.** `expire_stale_reservations()` exists but its `pg_cron` schedule is skipped (pg_cron not installed) and there is no Vercel cron calling it; `vercel.json` crons are only `waitlist-expire`, `squad-expire`, `warm` `[code]` `[db]`. Stale holds are released only lazily on the next reservation for the same scope. Oversell/lockout risk under real concurrency.
-
-Competitor note: DICE's defining feature is its dynamic, screenshot-proof QR and tight door scanner. EventLinqs is behind DICE here. A live web scanner is table stakes versus Humanitix and Eventbrite, both of which ship one.
+The money path has been proven end to end at least once in TEST mode (one
+connected organiser, one issued ticket, one ledger credit, one payout hold) per
+the 31 May audit. That is proof of wiring, not of robustness at scale.
 
 ---
 
-## Module 5: Public Pages and Discovery (homepage, browse, event detail, cities)
+## 4. Outstanding (code work, engineering can finish on the branch)
 
-**Status: Built and verified in prod**, with two named placeholder blocks.
-
-Scope refs: 3.10 (discovery/search), 6.1 (public screens).
-
-Evidence:
-- Homepage, `/events`, `/events/[slug]`, `/events/browse/[city]`, `/city/[slug]`, `/culture/[culture]`, `/categories/[slug]`, `/pricing`, `/organisers`, `/about`, `/contact`, `/help`, `/legal` all render real SSR data `[code]` `[pw]`. Homepage and `/events` return 200 live `[pw]`.
-- Event detail is rich: tiers, organiser card, lazy-loaded venue map, share bar (WhatsApp-first), inventory scarcity badge, related events, JSON-LD `[code]`.
-- Homepage rails (trending by percent-sold, by-city, free, culture picks, this week/weekend, just-added, featured venues) read real data `[code]`.
-
-Gaps:
-- Two placeholder blocks ship visibly: the homepage "Verified organisers" section (`featured-organisers-section.tsx`, hardcoded with a "registry not yet seeded" caption) and the NAIDOC/cultural-calendar widget (placeholder pending community-sourced content) `[code]` `[pw]`. Credibility risk on a public launch; both are self-labelled.
-
-Competitor note: the discovery surface (culture/city/category routing, scarcity badges, WhatsApp-first sharing) already reads richer than Humanitix and is competitive with Eventbrite's browse. This is a relative strength.
-
----
-
-## Module 6: Payment Operations - Connect, payouts, refunds, disputes
-
-**Status: Partial** - destination charges, the organiser ledger, reserves, and webhook idempotency are built and exercised once; payout disbursement, refund operator UI, and dispute handling are stubs.
-
-Scope refs: 2.4 (gateway architecture), 3.7.2-3.7.4 (payouts/refunds/disputes), 3.9.3 (KYC).
-
-Built and verified (once):
-- **Destination charges** `[changed since 29 May]`: `src/lib/payments/create-destination-charge.ts` sets `transfer_data.destination`, `application_fee_amount`, and `on_behalf_of` `[code]`. A pre-charge guard `assertCanCreateDestinationCharge()` blocks checkout unless the org has `stripe_account_id`, `charges_enabled`, and `payout_status = active` `[code]`. This directly fixes the 29 May "plain platform charge" finding.
-- **Organiser balance ledger + reserves** `[changed since 29 May]`: `src/lib/payments/connect-ledger.ts` writes an `order_confirmed` credit and a `payout_holds` reserve row computed from `pricing_rules` `[code]`. Proven once: +7150c credit and 1430c reserve (release 10 Jun) `[db]`.
-- **Webhook idempotency**: `processed_webhook_events` claim-on-conflict ledger guards the money path; 1 row `[code]` `[db]`.
-- **Stripe Connect onboarding**: onboard + return routes and an `account.updated` handler that syncs Stripe fields and auto-promotes to `tier_1` `[code]`. One org has connected `[db]`.
-
-Gaps (launch-relevant):
-- **Payout disbursement: stub.** `handleConnectPayoutEvent` records payout state from webhooks but initiates no payout, runs no hold-release schedule, and has no instant-payout logic; "Phase 1 stub" in code `[code]`. `payouts` empty `[db]`. The reserve placed on 29 May has no automated release mechanism running.
-- **Refund processing: no operator path.** The Stripe-side `refundOrder` (with `reverse_transfer` and `refund_application_fee`) and a `charge.refunded` handler that voids tickets and emails the buyer both exist `[code]`, but there is no organiser or admin UI to initiate a refund. Consumer-law exposure at launch.
-- **Disputes/chargebacks: log-only stub.** `handleConnectDisputeEvent` logs; no freeze, no evidence pack `[code]`.
-- **KYC: identity verification not built.** Connect collects Stripe's own KYC; the scoped government-ID + selfie (Stripe Identity/Sumsub) and tiered ticket limits are absent `[code]`.
-
-Competitor note: Humanitix and Eventbrite both run mature, automated payout and refund flows. EventLinqs cannot yet pay an organiser out or let anyone process a refund in-product; this is the largest operational gap versus the field.
+- **Dead-hero cleanup:** remove the unused 90vh hero chain, `split-state-hero`,
+  `home-hero` (move the one shared type out of `featured-event-hero.tsx` first).
+  Low risk, defer or do in a dedicated cleanup commit.
+- **Profile-banner hero decision:** once the founder rules on whether
+  `/venues/[handle]` and `/organisers/[handle]` banners are inside the one-scale
+  law, flatten or formally exempt them.
+- **44px touch-target pass:** resolve the `small=N` elements flagged by the
+  mobile audit.
+- **Lighthouse gate vs the law:** bring the gate up to the 95+ law or amend the
+  law (gate gap 1 below) once the founder rules.
+- **Wire axe + link crawler as blocking CI jobs** (gate gap 2): both pass when
+  run by hand; making them CI makes the laws unskippable.
+- **Add marketing/legal pages to the Lighthouse + axe URL set** (gate gap 3).
+- **Copy-law grep CI gate** (gate gap 4): no em/en-dashes, no exclamation marks,
+  no banned words, no placeholder strings.
+- **Deferred data-gap features:** organiser follow feed + event FAQ data
+  (PARITY-minus on event-detail and organiser surfaces, a data gap not a craft
+  gap).
 
 ---
 
-## Module 7: Admin Panel
+## 5. Outstanding (FOUNDER ACTIONS, only Lawal can do)
 
-**Status: Partial - observability and identity only (~15% of required operator capability) on the deployed line.**
+Ordered roughly by launch-blocking weight.
 
-Scope refs: 3.18 (admin panel + non-negotiable fee config), 6.3 (admin screens).
-
-Built:
-- Admin identity is solid: `/admin/login` live with email/password + 6-digit TOTP + recovery codes `[pw]`; `src/lib/admin/{auth,rbac,totp,audit}.ts` provide session, role capabilities (super_admin/admin/support/moderator), and an append-only audit ledger `[code]`. 1 admin_user `[db]`.
-- Admin dashboard tiles (GMV today/week/month, KYC queue depth, new organisers) and an audit-log viewer exist `[code]`.
-
-Gaps (launch-relevant):
-- **No operational control on `origin/main`**: cannot search/approve/suspend organisers, cannot pause/cancel events, cannot view all orders/refunds, no moderation queue, no support tooling, no reconciliation `[code]`. (A `feat/m7-admin-controls` branch contains organiser/event/pricing controls but is **not merged**, so it is not in production.)
-- **No `pricing_rules` admin editor.** Scope 3.18 calls admin fee configuration "non-negotiable"; today fees are editable only via direct DB writes `[code]`. This is a scope-flagged hard requirement that is unmet in product.
-- `/admin` is guarded at the layout level, not at middleware (defence-in-depth gap, not a functional blocker) `[code]`.
-
-Competitor note: not customer-facing, so no direct competitor comparison. The bar is internal operability: an operator cannot currently run the marketplace (moderate, adjust fees, move money) from the panel.
-
----
-
-## Module 8: Social and SmartLinq (who's going, follows, reviews, recommendations, gamification)
-
-**Status: Not started** (one inventory-scarcity badge aside).
-
-Scope refs: 3.4 (social), 3.5 (SmartLinq AI), 3.6 (gamification).
-
-Evidence:
-- "Who's Going" attendee social proof: not built; only an inventory scarcity badge exists on event detail `[code]`.
-- Follows: `follows` table does not exist; no follow/unfollow code `[db]` `[code]`.
-- Reviews/ratings and activity feed/comments: no tables, no UI `[db]` `[code]`.
-- SmartLinq recommendation engine: no `linqs` table, no algorithm, no "people who attended also" `[db]` `[code]`.
-- Gamification (loyalty points, badges, Backstage Credits): no tables, no code `[db]` `[code]`.
-
-Competitor note: the genuine social layer is EventLinqs' stated competitive moat (Scope 3.4) and it does not exist yet. Per the locked strategy (`docs/STATUS-2026-05-29.md`), moats are earned post-launch and this is a deliberate deferral, not an oversight. Worth stating plainly: at launch EventLinqs is not socially ahead of DICE or Partiful; that gap is intended to be closed after launch.
-
----
-
-## Module 9: Search, Genre Discovery, and SEO
-
-**Status: Partial** - SEO is strong; search is basic; the genre/artist discovery layer (the strategic moat foundation) is largely not started.
-
-Scope refs: 3.10 (search), 3.14 (SEO), 11 (structured data); `docs/GENRE-DISCOVERY-FOUNDATION-SPEC.md`.
-
-Built and verified:
-- **SEO**: `sitemap.ts` generates events, culture x city, city/suburb, organiser, and venue URLs; `robots.ts` disallows private paths; per-event JSON-LD (`EventSchemaJsonLd`, with MusicEvent/ComedyEvent/TheaterEvent sub-types) on event detail `[code]`. This is genuinely strong.
-
-Partial / not started:
-- **Search is substring `ilike` on title only** - no `tsvector` FTS, no Meilisearch, and the header type-ahead uses curated fallback suggestions rather than live DB autocomplete `[code]`. Functional, not the scoped instant/faceted search.
-- **Genre discovery data layer is mostly absent.** `genres` is now seeded (13 rows) and `artists`/`event_artists` tables exist (empty) `[changed since 29 May]` `[db]`, but there are no `/music/[slug]` or `/artists/[slug]` routes (`/music/techno` and `/artists/burna-boy` return 404 live `[pw]`), no artist/genre tagging on the event form, and no follow feed `[code]`. The visual browse UI is intentionally waiting on the designer (Rizwan), but the data layer and routes are the engineering precondition and are not built.
-
-Competitor note: Eventbrite limits sub-genre browse to the US; the locked strategy is for EventLinqs to ship full AU sub-genre browse as a "better on home turf" claim. That claim is not yet deliverable because the routes and tagging do not exist. SEO already meets or beats Humanitix.
+1. **Platform fee live value (commercial).** The launch fee is **2% + AUD 0.50**
+   (AU). The fee system is now single-source with event/org/region overrides and
+   a full end-to-end proof (`docs/FEE-SYSTEM.md`); displayed == charged == payout.
+   Migration `20260608000003_platform_fee_au_launch_default` writes the AU/AUD
+   baseline to 2% + AUD 0.50 so the documented and live values match - apply it
+   (see action 3). After launch the founder changes any fee, including per-event
+   and per-organiser overrides, from `/admin/pricing` with no deploy.
+2. **Stripe live (commercial, launch-blocking).** Switch live keys; set connected
+   accounts to the intended payout schedule (memory flags the default daily-vs-
+   manual question); run the live purchase + refund round-trip end to end. The
+   refund-verification checklist (authed admin Lighthouse/Playwright/axe in
+   staging + live Stripe round-trip) is deferred to this pass, not dropped.
+3. **Apply pending migrations** with `supabase db push --linked` in PowerShell
+   (never the Dashboard SQL editor, never the MCP). Verify by direct DB query, not
+   the cached client. Pending in `supabase/migrations/` include the refund
+   reconcile (`20260531000001/2`), payout disbursement (`20260531000003`), the
+   founder super-admin grant (`20260608000001`), the fee event-scope column
+   (`20260608000002`), and the AU launch fee (`20260608000003`). The fee
+   event-scope migration is required for the types-drift CI guard to go green
+   (database.ts already carries `pricing_rules.event_id`); until it is applied the
+   guard is red by design, not a code bug. Confirm each is applied.
+4. **Environment variables on Vercel (preview + production):**
+   - `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` (the interactive venue/city map needs it;
+     `REPORT.md` flags it).
+   - Stripe live secret + publishable + webhook signing secrets.
+   - Confirm `SUPABASE_ACCESS_TOKEN` repo secret stays set (keeps the types-drift
+     guard blocking and green).
+5. **Demo-data decision (production DB).** Production holds a small seeded
+   catalogue (~23 to 47 events across recent snapshots). Decide whether it stays
+   as launch-day catalogue or gets purged. Never seed the live Sydney DB to fluff
+   discovery; the full-density benchmark is a gitignored local fixture only.
+6. **Photo day (brand).** The image spine is live with branded fallbacks; the
+   ingest pipeline (`scripts/ingest-imagery.mjs`) is ready (drop
+   `role__key__city__descriptor.jpg` into `design-assets/incoming/`, one command).
+   Real licensed photography is a one-line swap per slot, never a template change.
+   Hand-crafted editorial imagery for top intersections is post-launch.
+7. **Staging certification.** No staging rig is provisioned (no local DB/Docker).
+   Stand up staging for the authed-admin Lighthouse/axe pass, check-in scanner
+   e2e + concurrency, and the live Stripe round-trip before launch.
+8. **Approve the merge.** CI is the merge authority; no `--admin`, no lowering a
+   threshold. Approve `feat/home-rebuild` -> `main` only when this ledger is clear.
 
 ---
 
-## Module 10: PWA, Notifications, Marketing, Sharing
+## 6. Known gate gaps (from CLAUDE.md, routed to engine hardening)
 
-**Status: Partial** - manifest, transactional email, and social share buttons are built; service worker/offline, push, dynamic OG, SMS, and organiser email campaigns are missing.
+1. **Lighthouse vs the law.** The gate floors perf below the 95+ law and the URL
+   set / viewport coverage is below the law. Founder ruling needed: amend the law
+   to the operating reality or bring the gate up. Tied to Issue #42 (next/image
+   optimiser cold-start) driving LCP/perf variance.
+2. **axe + link crawler are not CI jobs.** Both pass by hand (this pass); wire as
+   blocking CI to make the accessibility + zero-dead-links laws unskippable.
+3. **Marketing/legal pages outside the gate URL list.** Add `/about`, `/blog`,
+   `/careers`, `/press`, `/legal/privacy` to Lighthouse + axe.
+4. **Copy laws are grep-checkable.** A CI grep gate would make the no-dash,
+   no-exclamation, no-banned-word, no-placeholder laws unskippable.
 
-Scope refs: 3.14 (marketing/push/PWA), 3.16 (multi-language).
-
-Built:
-- PWA manifest `src/app/manifest.ts` (standalone, icons, brand colours) `[code]`.
-- Transactional email via Resend: purchase confirmation (with QR) and refund-confirmation templates, sent from the Stripe webhook `[code]`. Confirmation delivery is tied to a real `payment_intent.succeeded`, which has now occurred once `[db]`.
-- Social share bar: WhatsApp-first, Facebook, X, email, copy-link `[code]`.
-- Organiser discount/promo codes: built (Module 3) `[code]`.
-
-Gaps:
-- **No service worker / offline support** (manifest alone does not make a PWA); the scoped offline ticket access and `<3s on 3G` story is unmet `[code]`.
-- **No web/mobile push** (Scope calls push "the primary driver of repeat purchases"); no VAPID, no push registration `[code]`.
-- **Dynamic per-event OG images: not built** - only a static brand OG image exists `[code]`.
-- **SMS campaigns and organiser email campaigns: not built** `[code]`.
-
-Competitor note: DICE attributes roughly half its sales to personalised push. EventLinqs has no push at launch, conceding DICE's core retention channel. Share-to-WhatsApp is a real edge for the target communities versus all four competitors.
-
----
-
-## Module 11: Resale, Multi-gateway, Multi-currency, Africa
-
-**Status: Not started / scaffold only.**
-
-Scope refs: 3.8 (resale), 2.4 (multi-gateway), 2.4.5 (FX), 10.3 (Africa).
-
-Evidence:
-- **Resale market: not started.** A `resale_fee` rule type exists in pricing config, but no `resale_listings` table, routes, or UI `[code]` `[db]`.
-- **Multi-gateway: scaffold only.** `src/lib/payments/gateway-factory.ts` abstracts a gateway, but only the Stripe adapter is built; Paystack/Flutterwave/PayPal are commented placeholders `[code]`.
-- **Multi-currency: storage yes, display no.** Events store a currency and the calculator maps currency to country, but there is no live currency switcher and no FX conversion (no Frankfurter integration); locale is hardcoded `en_AU` `[code]`.
-- **Phone OTP: not built** `[code]`.
-
-Competitor note: per the locked v1 plan (AU/UK/US/EU only; African organisers deferred to a later milestone with Paystack/Flutterwave), all of Module 11 is an intended deferral. Resale (a Ticketmaster/StubHub strength) and African payment methods are explicitly out of scope for the AU soft launch. This should be stated as deferred-by-decision, not as a defect.
-
----
-
-## Module 12: Hardening, Observability, Tax, Compliance, Public API, Queue
-
-**Status: Partial** - observability, rate limiting, the pricing/tax services, and a test suite are real; load testing, the public API/outbound webhooks, and an active virtual queue are missing.
-
-Scope refs: 2.3 (queue/scale), 2.6 (observability/SLOs), 4 (security/compliance), 11 (API/webhooks).
-
-Built and verified:
-- **Observability**: Sentry server/client/edge configs with PII scrubbing; `error.tsx` + `global-error.tsx` boundaries; `/api/health/redis` returns 200 live `[code]` `[pw]`. Per STATUS doc, Sentry is confirmed capturing in production.
-- **Rate limiting**: Upstash-backed middleware + named policies, applied to health endpoints `[code]`.
-- **Pricing + tax services**: single-source `payment-calculator.ts`/`pricing-rules.ts` over `pricing_rules`, and a live `tax_rules` engine (Module 3) `[code]`.
-- **Tests**: ~19 unit specs (payments, TOTP, PII scrub, rate-limit) + ~7 Playwright e2e specs; vitest configured `[code]`.
-
-Gaps (launch-relevant):
-- **Load testing: not done.** No `tests/load`, no k6/Artillery profile; the scoped 10,000-concurrent / 5,000-checkout proof (Scope 2.3, 9) does not exist `[code]`. The system has handled exactly one real transaction.
-- **Virtual queue: built but dormant.** HMAC queue tokens, an `admit_queue_batch` RPC, a `queue-admit` route, and a `/queue/[slug]` room exist, but `queue-admit` is **not** in `vercel.json` crons, so no admission runs; the user-facing position/wait display is minimal `[code]`. The scoped surge-protection is not active.
-- **Public API + outbound webhooks: not built.** No organiser API keys, no `/api/v1`, no outbound `order.created`/`payout.completed` dispatch (Scope 11) `[code]`.
-- **Reservation-expiry sweeper not scheduled** (see Module 4) - a scale/correctness gap under concurrency `[code]`.
-- Rate limiting is applied to health endpoints but not demonstrably to auth/checkout/upload paths on this tree `[code]` `[infer]`.
-
-Competitor note: surviving an on-sale spike is the one thing Ticketmaster is infamous for failing. EventLinqs has the queue primitives but has neither activated nor load-tested them, so the "handles massive concurrent load" claim (Scope 2.3, the document's self-described most important infrastructure requirement) is currently unproven.
-
----
-
-## Gap-to-launch punch-list (prioritised)
-
-Priority key: **P0** blocks an honest paid public launch; **P1** needed shortly after / for credibility and legal safety; **P2** scoped but deferrable.
-State key: `[done]` complete and verified; `[in progress]` partially built; `[to-do]` not started on `origin/main`.
-
-### P0 - blocks taking real money from the public
-
-1. `[done]` Ticket issuance + QR + public `/t/[code]` view. Verified live (Module 4).
-2. `[done]` Destination charges so organisers actually get paid. Verified once (Module 6).
-3. `[in progress]` End-to-end paid purchase proven live. Proven once in TEST mode with one org; needs (a) repeat runs, (b) failure/3DS paths, (c) the Stripe TEST -> LIVE flip with a real-card smoke test. (Module 3/6.)
-4. `[in progress]` Stripe Connect onboarding by real organisers. One org connected; the path is proven but only one seller can currently be paid. Onboard the real launch organisers. (Module 6.)
-5. `[to-do]` Refund processing operator path. Stripe-side works; there is no organiser/admin UI to issue a refund. Australian Consumer Law makes this a launch-day requirement. (Module 6.)
-6. `[to-do]` Reservation-expiry sweeper actually running (Vercel cron calling `expire_stale_reservations`). Without it, inventory can lock up or oversell under concurrency. (Module 4/12.)
-7. `[to-do]` Door scanner / check-in. The platform cannot admit attendees to an event today. Required before the first real event date, not necessarily before first sale. (Module 4.)
-8. `[to-do]` Payout disbursement + hold release. Reserves are placed but never released or paid out; an organiser who sells cannot yet receive funds beyond the ledger entry. (Module 6.)
-
-### P1 - credibility, safety, and operability soon after launch
-
-9. `[to-do]` Admin operational controls: approve/suspend organisers, pause/cancel events, all-orders/refunds view, content moderation. (`feat/m7-admin-controls` exists unmerged - merge and verify.) (Module 7.)
-10. `[to-do]` Admin `pricing_rules` editor - the scope's "non-negotiable" admin fee configuration. (Module 7.)
-11. `[to-do]` Dispute/chargeback handling beyond logging (freeze + evidence pack). (Module 6.)
-12. `[to-do]` Replace the two visible homepage placeholders (verified-organisers block, cultural-calendar widget) with real or removed content. (Module 5.)
-13. `[to-do]` Dynamic, screenshot-resistant QR (HMAC + rotation) per Scope 3.12/4.1, to match DICE and reduce fraud. (Module 4.)
-14. `[to-do]` Load test the on-sale path (target the scoped concurrency) and activate the virtual queue (`queue-admit` cron). (Module 12.)
-15. `[to-do]` Web/mobile push notifications - DICE's core retention channel. (Module 10.)
-16. `[to-do]` KYC identity verification (Stripe Identity/Sumsub) + tiered unverified limits. (Module 6.)
-
-### P2 - scoped but deferrable (several deferred by explicit founder decision)
-
-17. `[to-do]` Genre/artist discovery routes + event-form tagging (`/music`, `/artists`) - data layer first, visual UI waits on the designer. Strategic moat foundation. (Module 9.)
-18. `[to-do]` Real full-text/faceted search (Postgres FTS or Meilisearch) to replace `ilike`. (Module 9.)
-19. `[to-do]` Social layer: follows, who's-going, reviews, activity feed (the stated moat; deferred to post-launch by strategy). (Module 8.)
-20. `[to-do]` Service worker / offline PWA and dynamic per-event OG images. (Module 10.)
-21. `[to-do]` Reserved seating, add-ons (deferred until a real organiser needs them). (Module 2.)
-22. `[to-do]` Resale market, multi-gateway (Paystack/Flutterwave/PayPal), multi-currency FX, phone OTP - all deferred with v1 geography AU/UK/US/EU. (Module 11.)
-23. `[to-do]` Gamification / loyalty / Backstage Credits. (Module 8.)
-24. `[to-do]` Public API + outbound webhooks for organiser integrations. (Module 12.)
-25. `[to-do]` SmartLinq recommendation engine. (Module 8.)
-
----
-
-## Bottom line
-
-EventLinqs has, in the last 48 hours, crossed the line from "cannot deliver what it sells" to "has sold and delivered one ticket end to end, with the organiser correctly credited and reserved." That is the decisive change. The honest launch gate is no longer the existence of ticketing or money-routing - both now work - but their **robustness and operability**: a refund path, a payout-out path, a running expiry sweeper, a door scanner, and a load-tested on-sale. Items P0-5 through P0-8 are the true remaining hard blockers for a public AU soft launch; everything in P2 is either an explicit founder deferral or a post-launch moat, and should not delay launch.
-
-Methodology note: every `[pw]` here is a real HTTP status from live production; every `[db]` is a real read-only query result; no records were created, modified, or deleted, and no application or schema files were changed by this assessment. The only file written is this report.
+Laws that stay human/benchmark-enforced: Law 1 (no generic), Law 2 (evidence
+Phase A/B), Law 3 (Australia-smart taxonomy), Law 4 (image-richness), the
+light-and-airy palette, and the SURPASS/PARITY/BELOW benchmark verdicts.
