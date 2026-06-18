@@ -25,7 +25,11 @@
  * remains an optional explicit override, not a dependency.
  */
 
-const PRODUCTION_FALLBACK = 'https://eventlinqs.com'
+// HARD-01: the canonical production host is www. The Supabase Auth Site URL is
+// https://www.eventlinqs.com, so auth cookies + sessions live on www; emitting
+// links/emails on the apex would split the session across two hosts. Middleware
+// 308-redirects the apex onto www to enforce this at runtime as well.
+const PRODUCTION_FALLBACK = 'https://www.eventlinqs.com'
 
 function withScheme(value: string): string {
   return /^https?:\/\//i.test(value) ? value : `https://${value}`
@@ -33,6 +37,36 @@ function withScheme(value: string): string {
 
 export function getSiteUrl(): string {
   const candidate =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.VERCEL_PROJECT_PRODUCTION_URL ||
+    process.env.VERCEL_URL ||
+    PRODUCTION_FALLBACK
+
+  try {
+    return new URL(withScheme(candidate)).origin
+  } catch {
+    return PRODUCTION_FALLBACK
+  }
+}
+
+/**
+ * Absolute application origin for server-side redirect + link construction
+ * (Stripe Connect onboarding return/refresh, payout emails, share links).
+ *
+ * HARD-07: this exists to KILL the `?? 'http://localhost:3000'` fallback that
+ * was scattered across route handlers. A deployed environment must never emit a
+ * localhost URL into a Stripe redirect or an email. NEXT_PUBLIC_APP_URL stays
+ * the primary source (so an explicitly-set prod value still wins); when it is
+ * absent we fall through the same deploy-safe chain as getSiteUrl() and finally
+ * to the production origin - never localhost.
+ *
+ * Local development sets NEXT_PUBLIC_APP_URL=http://localhost:3000 in
+ * .env.local, so dev still resolves to localhost via the env value itself, not
+ * via a hardcoded fallback.
+ */
+export function getAppUrl(): string {
+  const candidate =
+    process.env.NEXT_PUBLIC_APP_URL ||
     process.env.NEXT_PUBLIC_SITE_URL ||
     process.env.VERCEL_PROJECT_PRODUCTION_URL ||
     process.env.VERCEL_URL ||

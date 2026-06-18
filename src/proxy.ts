@@ -81,8 +81,28 @@ async function gateHighDemandEvent(request: NextRequest): Promise<NextResponse |
   return NextResponse.redirect(redirectUrl)
 }
 
+// HARD-01: canonicalise the bare apex onto the www host so auth cookies and
+// sessions only ever live on one host (the Supabase Auth Site URL is
+// https://www.eventlinqs.com). Exact-hostname match leaves localhost and
+// *.vercel.app preview hosts untouched. The Stripe webhook is left alone - it
+// is configured to POST the www URL directly and must never see a 3xx.
+const APEX_HOST = 'eventlinqs.com'
+const CANONICAL_HOST = 'www.eventlinqs.com'
+
+function canonicaliseHost(request: NextRequest): NextResponse | null {
+  if (request.nextUrl.hostname !== APEX_HOST) return null
+  if (request.nextUrl.pathname === '/api/webhooks/stripe') return null
+  const url = request.nextUrl.clone()
+  url.hostname = CANONICAL_HOST
+  return NextResponse.redirect(url, 308)
+}
+
 export async function proxy(request: NextRequest) {
-  // /dev/* gate runs first - synchronous, no network or DB call - so
+  // Host canonicalisation runs first - synchronous, before any cookie is read.
+  const hostRedirect = canonicaliseHost(request)
+  if (hostRedirect) return hostRedirect
+
+  // /dev/* gate runs next - synchronous, no network or DB call - so
   // blocked requests short-circuit immediately.
   const devGate = gateDevRoutes(request)
   if (devGate) return devGate
