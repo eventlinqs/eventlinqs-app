@@ -266,6 +266,20 @@ Paste the psql output here to close.
 
 ---
 
+## CI status (PR #98)
+
+| Check | Result | Note |
+|---|---|---|
+| lint / typecheck / build | **PASS** | full `next build` with real env |
+| test (vitest) | **PASS** | 378 tests |
+| Vercel deploy | **PASS** | preview deployed |
+| types-drift guard | **FAIL (pre-existing = MIG-01)** | committed `database.ts` has `admin_users.capabilities_granted/revoked`; live remote lacks them because `20260608000004` is unapplied. NOT touched by this PR. Goes green when the founder applies MIG-01. |
+| Lighthouse mobile gate | **FAIL (pre-existing = Issue #42 / MAJOR-1)** | LHCI collect against localhost errors with `ERRORED_DOCUMENT_REQUEST` (404). The documented localhost-collect gate gap; independent of this PR's auth/redirect/revenue changes (none touch the public pages Lighthouse loads). |
+
+The three checks that validate this PR's code all pass. The two reds are
+pre-existing conditions, one of which (types-drift) is literally the MIG-01 item
+and clears the moment `supabase db push --linked` runs.
+
 ## Summary
 
 | Item | State | Proof artifact |
