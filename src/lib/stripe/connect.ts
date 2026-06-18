@@ -69,6 +69,18 @@ export type CreateExpressAccountInput = {
   organisationId: string
   country: string
   email: string
+  /**
+   * PAY-01 (interim): the connected-account payout delay in days. Without an
+   * explicit schedule Stripe defaults destination accounts to fast automatic
+   * payouts, so organiser funds (including the reserve portion the ledger
+   * thinks it is holding) leave to their bank before reserves/refunds settle.
+   * Single-sourced from `payout_schedule_days` (pricing_rules), the same value
+   * the reserve ledger uses. NOTE: `delay_days` is charge-relative, so this is
+   * a settlement BUFFER, not a true post-event reserve hold; the full reserve
+   * model needs `manual` + the M7 app-triggered disbursement (unbuilt), which
+   * is why manual is not used yet (it would strand funds).
+   */
+  payoutDelayDays: number
 }
 
 export type CreateAccountLinkInput = {
@@ -139,9 +151,36 @@ export async function createExpressAccount(
       card_payments: { requested: true },
       transfers: { requested: true },
     },
+    // PAY-01 (interim): set an explicit payout schedule so the account does not
+    // sit on Stripe's fast automatic default. See CreateExpressAccountInput.
+    settings: {
+      payouts: {
+        schedule: { interval: 'daily', delay_days: input.payoutDelayDays },
+      },
+    },
     metadata: {
       organisation_id: input.organisationId,
       eventlinqs_phase: 'm6_phase2',
+    },
+  })
+}
+
+/**
+ * PAY-01 (interim) backfill: set the platform payout schedule on an
+ * already-onboarded connected account. Run for accounts created before this
+ * schedule was enforced. Same charge-relative-buffer caveat as
+ * `createExpressAccount`.
+ */
+export async function setPlatformPayoutSchedule(
+  accountId: string,
+  payoutDelayDays: number,
+): Promise<Stripe.Account> {
+  const stripe = getStripe()
+  return stripe.accounts.update(accountId, {
+    settings: {
+      payouts: {
+        schedule: { interval: 'daily', delay_days: payoutDelayDays },
+      },
     },
   })
 }

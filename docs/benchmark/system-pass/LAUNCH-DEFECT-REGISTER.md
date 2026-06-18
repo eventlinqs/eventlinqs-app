@@ -140,6 +140,45 @@ diagnosis.
   still open; this item covers the dynamic-price + fee-scope + seat-rounding
   divergence.
 
+### PAY-01 (INTERIM APPLIED, residual founder/M7 dependency) - connected accounts no longer left on Stripe's fast automatic default
+
+- Decision (per the fix brief): the target is `manual` + the M7 app-triggered
+  disbursement. M7 is NOT safely wireable now - there is no `payouts.create` /
+  `transfers.create` disbursement path anywhere in `src` (grep clean; memory
+  `project_payout_disbursement` confirms the UI/trigger was handed to
+  M7/Session 2), and `release_holds()` only moves reserves in the LEDGER, it
+  never calls Stripe to pay out. Setting `manual` without a disbursement trigger
+  would strand organiser funds (worse than today). So the INTERIM Stripe delay
+  was applied instead.
+- Fix (interim): `src/lib/stripe/connect.ts` - `createExpressAccount` now sends
+  `settings.payouts.schedule = { interval: 'daily', delay_days }` (previously no
+  schedule, so Stripe defaulted to fast automatic payout). New
+  `setPlatformPayoutSchedule(accountId, delayDays)` backfills already-onboarded
+  accounts via `accounts.update`. `delay_days` is single-sourced from
+  `payout_schedule_days` in `pricing_rules` (AU launch default 3, the same value
+  the reserve ledger uses), passed in from
+  `src/app/api/stripe/connect/onboard/route.ts` (keeps connect.ts DB-free).
+- Proof:
+  - Unit (CI-safe, offline): `tests/unit/payments/connect-payout-schedule.test.ts`
+    - 2/2 passing. Mocks Stripe and asserts `accounts.create` and the backfill
+    `accounts.update` are both called with
+    `settings.payouts.schedule {interval:'daily', delay_days:3}`.
+  - Stripe test-mode round-trip (the required payments verification):
+    `scripts/verify-pay01-payout-schedule.mjs` (refuses non-test keys) created a
+    real AU Express test account, retrieved
+    `schedule {"delay_days":3,"interval":"daily"}`, asserted PASS, then DELETED
+    the throwaway account (`deleted=true`). Captured run:
+    `CREATED acct_1TjnKN... / RETRIEVED {"delay_days":3,"interval":"daily"} /
+    PASS / CLEANUP deleted ... deleted=true` (exit 0).
+  - No regression: full suite 43 files / 374 tests; `tsc --noEmit` exit 0.
+- RESIDUAL (still a founder action, P0 not fully closed): `delay_days` is
+  CHARGE-relative, so this is a settlement BUFFER, not a true post-event reserve
+  hold. The reserve model's intent (hold the reserve % until event-end +
+  payout_schedule_days, then disburse) still requires `manual` + the M7
+  app-triggered disbursement, and a backfill run of `setPlatformPayoutSchedule`
+  over already-onboarded live accounts. Tracked for M7; the interim removes the
+  "auto-paid on Stripe's fast default" exposure in the meantime.
+
 ---
 
 ## What PASSED (verified clean, so it is not re-litigated)
