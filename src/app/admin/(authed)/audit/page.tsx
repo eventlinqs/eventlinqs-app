@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { requireAdminSession } from '@/lib/admin/auth'
-import { assertCapability } from '@/lib/admin/rbac'
+import { assertCan } from '@/lib/admin/rbac'
 import { recordAuditEvent, queryAuditLog } from '@/lib/admin/audit'
 import { AuditDetailButton } from './audit-detail'
 
@@ -67,7 +67,7 @@ const KNOWN_TARGET_TYPES = [
 
 export default async function AdminAuditPage({ searchParams }: PageProps) {
   const session = await requireAdminSession()
-  assertCapability(session.admin.role, 'admin.audit.read')
+  assertCan(session, 'admin.audit.read')
   const params = await searchParams
 
   const filters = {

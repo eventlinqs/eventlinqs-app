@@ -1,12 +1,21 @@
-import Link from 'next/link'
-import { EventCardMedia, BrandedPlaceholder } from '@/components/media'
+import { EventCardLandscape, EventCardSquare, EventCardFeature, type HomeCardEvent } from '@/components/features/home/cards'
 import { getEventMedia } from '@/lib/images/event-media'
+import { getCategoryPhoto } from '@/lib/images/category-photo'
 import type { BentoEvent } from './event-bento-tile'
 
 /**
- * ThisWeekCard: 280px snap-start event card for horizontal rails.
- * Server component; renders EventCardMedia (rail variant) + event meta,
- * with BrandedPlaceholder fallback when no real photography exists.
+ * ThisWeekCard - the shared rail card used across the homepage rails.
+ *
+ * It resolves event media on the server, maps the event onto the
+ * presentational HomeCardEvent shape, and renders the new separated card
+ * family inside a fixed-width, snap-start rail cell.
+ *
+ *   variant 'landscape' (default) - standard rails.
+ *   variant 'square'              - genre and trending rails (compact tile).
+ *
+ * No branded placeholder: a missing cover falls back to a real category
+ * stock photo (getCategoryPhoto), so the image is always real photography.
+ * The card itself never paints text on the image - details sit below it.
  */
 
 function formatDate(iso: string): string {
@@ -24,71 +33,67 @@ function formatPrice(tiers: BentoEvent['ticket_tiers']): string {
   if (cheapest.price === 0) return 'Free'
   const dollars = cheapest.price / 100
   const formatted = Number.isInteger(dollars) ? `$${dollars}` : `$${dollars.toFixed(2)}`
-  return `${cheapest.currency ?? 'AUD'} ${formatted}`
+  return `From ${cheapest.currency ?? 'AUD'} ${formatted}`
 }
 
-interface ResolvedTileMedia {
-  imageSrc: string | null
-  imageAlt: string
-  placeholderCategory: string | null
-}
-
-function resolveTileMedia(
-  event: BentoEvent,
-  media: Awaited<ReturnType<typeof getEventMedia>>,
-): ResolvedTileMedia {
-  const fallbackAlt = event.title ?? 'Event'
-  if (media.kind === 'video') {
-    return { imageSrc: media.poster, imageAlt: fallbackAlt, placeholderCategory: null }
-  }
-  if (media.kind === 'carousel') {
-    return {
-      imageSrc: media.images[0] ?? null,
-      imageAlt: media.alts[0] ?? fallbackAlt,
-      placeholderCategory: null,
-    }
-  }
-  if (media.kind === 'still-kenburns') {
-    return { imageSrc: media.src, imageAlt: media.alt ?? fallbackAlt, placeholderCategory: null }
-  }
-  return { imageSrc: null, imageAlt: fallbackAlt, placeholderCategory: media.category }
-}
-
-export async function ThisWeekCard({ event }: { event: BentoEvent }) {
+export async function ThisWeekCard({
+  event,
+  variant = 'landscape',
+}: {
+  event: BentoEvent
+  variant?: 'landscape' | 'square' | 'feature'
+}) {
   const media = await getEventMedia(event)
-  const { imageSrc, imageAlt, placeholderCategory } = resolveTileMedia(event, media)
-  const venue = [event.venue_name, event.venue_city].filter(Boolean).join(' \u00B7 ')
+
+  let imageSrc: string | null = null
+  let imageAlt = event.title ?? 'Event'
+  if (media.kind === 'video') {
+    imageSrc = media.poster
+  } else if (media.kind === 'carousel') {
+    imageSrc = media.images[0] ?? null
+    imageAlt = media.alts[0] ?? imageAlt
+  } else if (media.kind === 'still-kenburns') {
+    imageSrc = media.src
+    imageAlt = media.alt ?? imageAlt
+  }
+  if (!imageSrc) {
+    const photo = await getCategoryPhoto(event.category?.slug ?? null, event.slug ?? event.title)
+    imageSrc = photo.src
+    imageAlt = photo.alt ?? imageAlt
+  }
+
+  const card: HomeCardEvent = {
+    href: `/events/${event.slug}`,
+    imageSrc,
+    alt: imageAlt,
+    label: event.category?.name ?? 'Event',
+    title: event.title ?? 'Event',
+    venue: event.venue_name ?? '',
+    city: event.venue_city ?? '',
+    dateLabel: formatDate(event.start_date),
+    priceLabel: formatPrice(event.ticket_tiers ?? null),
+    // Feature cards default to priority=true (built for above-fold hero use).
+    // Every homepage feature RAIL is below the fold, so force priority off
+    // here - the hero owns LCP and these must not preload as critical.
+    priority: variant === 'feature' ? false : undefined,
+  }
+
+  const cell =
+    variant === 'feature'
+      ? 'w-[300px] shrink-0 snap-start sm:w-[420px]'
+      : variant === 'square'
+        ? 'w-[180px] shrink-0 snap-start sm:w-[200px]'
+        : 'w-[240px] shrink-0 snap-start sm:w-[280px]'
+
   return (
-    <Link
-      href={`/events/${event.slug}`}
-      className="group flex w-[240px] shrink-0 snap-start flex-col overflow-hidden rounded-lg border border-[var(--surface-2)] bg-[var(--surface-0)] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2 sm:w-[280px]"
-    >
-      <div className="relative aspect-[3/2] overflow-hidden bg-[var(--surface-1)]">
-        <div className="absolute inset-0 overflow-hidden transition-transform duration-700 ease-out group-hover:scale-105">
-          {imageSrc ? (
-            <EventCardMedia src={imageSrc} alt={imageAlt} variant="rail" />
-          ) : (
-            <BrandedPlaceholder category={placeholderCategory} />
-          )}
-        </div>
-        {event.category?.name && (
-          <span className="absolute left-3 top-3 inline-flex items-center rounded-full bg-[var(--surface-0)]/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-[var(--text-primary)] shadow-sm">
-            {event.category.name}
-          </span>
-        )}
-      </div>
-      <div className="flex flex-1 flex-col p-4">
-        <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-[var(--brand-accent-strong)]">
-          {formatDate(event.start_date)}
-        </p>
-        <h3 className="mt-1 font-display text-base font-bold leading-snug text-[var(--text-primary)] line-clamp-2 transition-colors duration-200 group-hover:text-[var(--brand-accent-strong)]">
-          {event.title}
-        </h3>
-        {venue && <p className="mt-1 text-xs text-[var(--text-secondary)] line-clamp-1">{venue}</p>}
-        <p className="mt-auto pt-3 font-display text-sm font-bold text-[var(--text-primary)]">
-          {formatPrice(event.ticket_tiers ?? null)}
-        </p>
-      </div>
-    </Link>
+    <div className={cell}>
+      {variant === 'feature' ? (
+        <EventCardFeature event={card} />
+      ) : variant === 'square' ? (
+        <EventCardSquare event={card} />
+      ) : (
+        <EventCardLandscape event={card} />
+      )}
+    </div>
   )
 }

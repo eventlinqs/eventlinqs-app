@@ -132,4 +132,14 @@ docs/redesign/batch-*-evidence/lighthouse/*.json
 
 # Local Playwright tickets-spine fixture (seeded test data, never commit)
 tests/e2e/.ticket-fixture.json
+design-captures/
+scripts/design-capture.mjs
+scripts/axe-scene.mjs
 qa/
+
+# Dev-only homepage density fixture (regenerate via scripts/seed-events-catalogue.mjs --fixture)
+src/lib/dev/home-seed-fixture.json
+
+# Photo day: licensed source photos are never committed (see docs/PHOTO-DAY.md).
+# scripts/ingest-imagery.mjs reads these and emits supabase/seed/imagery-map.json.
+design-assets/

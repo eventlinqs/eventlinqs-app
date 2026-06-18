@@ -34,7 +34,7 @@ interface Props {
 export function CulturesByCityRail({ cultureSlug, cultureName, cities, images }: Props) {
   if (cities.length === 0) return null
   return (
-    <ContentSection surface="base" width="default" topBorder>
+    <ContentSection surface="base" width="default" topBorder reveal>
       <SnapRailScroller
         railLabel={`${cultureName} cities`}
         header={{

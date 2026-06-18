@@ -23,6 +23,13 @@ export async function createSeatReservation(
 ): Promise<SeatReservationResult> {
   const parsed = CreateSeatReservationSchema.safeParse(input)
   if (!parsed.success) {
+    // RES-02: name the offending field(s) in the server log.
+    console.error(
+      '[seat-reservations] invalid reservation input:',
+      parsed.error.issues
+        .map((i) => `${i.path.join('.') || '(root)'}: ${i.code} - ${i.message}`)
+        .join('; '),
+    )
     return { error: 'Invalid reservation data' }
   }
 

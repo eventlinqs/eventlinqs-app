@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { requireAdminSession } from '@/lib/admin/auth'
-import { assertCapability } from '@/lib/admin/rbac'
+import { assertCan } from '@/lib/admin/rbac'
 import { applyOrganiserAction } from '@/lib/admin/organisers'
 
 export type OrganiserActionResponse = { ok: true } | { ok: false; error: string }
@@ -22,7 +22,7 @@ export async function applyOrganiserActionTyped(input: {
   reason?: string | null
 }): Promise<OrganiserActionResponse> {
   const session = await requireAdminSession()
-  assertCapability(session.admin.role, 'admin.users.manage')
+  assertCan(session, 'admin.users.manage')
 
   const parsed = TypedActionSchema.safeParse(input)
   if (!parsed.success) return { ok: false, error: 'Invalid request.' }
@@ -53,7 +53,7 @@ const ActionSchema = z.object({
  */
 export async function organiserActionForm(formData: FormData): Promise<void> {
   const session = await requireAdminSession()
-  assertCapability(session.admin.role, 'admin.users.manage')
+  assertCan(session, 'admin.users.manage')
 
   const parsed = ActionSchema.safeParse({
     organisationId: formData.get('organisationId'),

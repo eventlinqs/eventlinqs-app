@@ -16,18 +16,20 @@ interface Props {
   title: string
   subtitle: string
   imageSrc: string | null
+  /** Focal point for the cover crop (spine slot imagery). Defaults centre. */
+  objectPosition?: string
 }
 
-export function PhotographicCultureHero({ eyebrow, title, subtitle, imageSrc }: Props) {
+export function PhotographicCultureHero({ eyebrow, title, subtitle, imageSrc, objectPosition = '50% 50%' }: Props) {
   return (
     <section
       aria-labelledby="culture-hero-heading"
       className="relative overflow-hidden"
     >
       <HeroPresenceMarker />
-      <div className="relative h-[48vh] min-h-[320px] max-h-[460px] w-full">
+      <div className="hero-marketing relative w-full">
         {imageSrc ? (
-          <HeroMedia image={imageSrc} alt={`${title} on EventLinqs`} priority />
+          <HeroMedia image={imageSrc} alt={`${title} on EventLinqs`} objectPosition={objectPosition} priority />
         ) : (
           <div
             aria-hidden
@@ -54,7 +56,7 @@ export function PhotographicCultureHero({ eyebrow, title, subtitle, imageSrc }: 
         />
         <div className="relative z-10 mx-auto flex h-full max-w-7xl items-end px-4 pb-10 sm:px-6 sm:pb-12 lg:px-8 lg:pb-14">
           <div className="max-w-3xl">
-            <p className="font-display text-xs font-bold uppercase tracking-[0.22em] text-white/85">
+            <p className="font-display text-xs font-bold uppercase tracking-[0.22em] text-[var(--brand-accent)]">
               {eyebrow}
             </p>
             <h1

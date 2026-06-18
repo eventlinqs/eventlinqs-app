@@ -2,10 +2,10 @@
 
 import { useEffect, useState, useTransition } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import type { AuthResponse } from '@supabase/supabase-js'
 import { joinWaitlist } from '@/app/actions/waitlist'
+import { EventCardMedia } from '@/components/media/EventCardMedia'
 
 /**
  * EventSoldOut - full sold-out UX for an event detail page.
@@ -211,12 +211,11 @@ function RelatedCard({ event }: { event: EventSoldOutRelated }) {
     >
       <div className="relative aspect-[16/10] bg-ink-100 overflow-hidden">
         {event.cover_image_url ? (
-          <Image
+          <EventCardMedia
             src={event.cover_image_url}
             alt={event.title}
-            fill
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-            className="object-cover transition-transform duration-500 group-hover:scale-105"
+            variant="card"
+            className="transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-xs text-ink-400">

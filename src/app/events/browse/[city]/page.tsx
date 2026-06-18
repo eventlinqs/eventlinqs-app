@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 import {
   fetchPublicEvents,
@@ -24,20 +25,13 @@ import { EventsPagination } from '@/components/features/events/m5-events-paginat
 import { EventsMapLazy } from '@/components/features/events/m5-events-map-lazy'
 import { RecommendedRail } from '@/components/features/events/m5-recommended-rail'
 
-// ISR: pre-render every picker city at build time. Bare /events/browse/[city]
-// (no searchParams) hits the cached static HTML; filtered URLs render
-// dynamic but reuse the same cookies-free data path.
+// Rendered dynamically on demand (see the headers() note in the component) -
+// same reason and approach as /events/[slug]. No generateStaticParams: an empty
+// gSP pinned Turbopack to a static classification and the shared chrome's
+// render-time cookie read 500'd the first on-demand request. Dropping gSP makes
+// the route dynamic (nothing prerenders at build - pool-safe) and preserves
+// notFound() -> 404. The sitemap still lists every browse city.
 export const revalidate = 120
-export const dynamicParams = true
-
-export async function generateStaticParams() {
-  const groups = await getPickerCities()
-  const all = [
-    ...groups.australia,
-    ...groups.internationalByCountry.flatMap(g => g.cities),
-  ]
-  return all.map(c => ({ city: c.slug }))
-}
 
 type Props = {
   params: Promise<{ city: string }>
@@ -77,9 +71,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function BrowseCityPage({ params, searchParams }: Props) {
+  // Mark the route dynamic the natural way (see /events/[slug] for the full
+  // rationale): generateStaticParams -> [] left Next classifying this static, so
+  // the first on-demand request hit the shared chrome's render-time cookie/
+  // header read and 500'd. A no-op `headers()` read marks the route dynamic
+  // (the documented ISR-disqualifier in this repo), but it must come AFTER the
+  // notFound() guard - accessing request data first would commit a streaming
+  // 200 and soft-404 an unknown city. cookies-free resolveCity keeps the guard
+  // clean.
   const [{ city: slug }, raw] = await Promise.all([params, searchParams])
   const city = await resolveCity(slug)
   if (!city) notFound()
+  await headers()
 
   const { filters, page, view } = parseEventsSearchParams(raw)
 
@@ -134,7 +137,7 @@ export default async function BrowseCityPage({ params, searchParams }: Props) {
 
   return (
     <div className="flex min-h-screen flex-col bg-canvas">
-      <SiteHeader />
+      <SiteHeader staticSafe />
       <main className="flex-1">
         <PhotographicCityHero
           city={city.city}

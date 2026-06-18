@@ -9,6 +9,7 @@ import {
   createExpressAccount,
   isAllowedConnectCountry,
 } from '@/lib/stripe/connect'
+import { getPayoutScheduleDays } from '@/lib/payments/pricing-rules'
 
 export const dynamic = 'force-dynamic'
 
@@ -108,10 +109,15 @@ export async function POST(req: NextRequest) {
 
   if (!accountId) {
     try {
+      // PAY-01: single-source the payout delay from pricing_rules (the same
+      // payout_schedule_days the reserve ledger uses), so a new connected
+      // account is never left on Stripe's fast automatic default.
+      const payoutDelayDays = await getPayoutScheduleDays(country, 'AUD', org.id)
       const account = await createExpressAccount({
         organisationId: org.id,
         country,
         email: org.email ?? user.email ?? '',
+        payoutDelayDays,
       })
       accountId = account.id
       const { error: updateError } = await admin

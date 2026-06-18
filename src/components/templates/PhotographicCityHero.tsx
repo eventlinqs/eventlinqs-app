@@ -23,9 +23,11 @@ interface Props {
   country: string
   total: number
   imageSrc: string | null
+  /** Focal point for the cover crop (spine slot imagery). Defaults centre. */
+  objectPosition?: string
 }
 
-export function PhotographicCityHero({ city, country, total, imageSrc }: Props) {
+export function PhotographicCityHero({ city, country, total, imageSrc, objectPosition = '50% 50%' }: Props) {
   const alt = `${city} on EventLinqs`
   const totalLabel = `${total} event${total === 1 ? '' : 's'} available`
 
@@ -35,9 +37,12 @@ export function PhotographicCityHero({ city, country, total, imageSrc }: Props) 
       className="relative overflow-hidden"
     >
       <HeroPresenceMarker />
-      <div className="relative h-[44vh] min-h-[280px] max-h-[420px] w-full">
+      {/* Single platform hero scale (.hero-marketing). Flattened from the old
+       *  h-[44vh] band so /events/browse/[city] matches /city/[slug] and the
+       *  homepage exactly - one hero scale, one source. */}
+      <div className="hero-marketing relative w-full">
         {imageSrc ? (
-          <HeroMedia image={imageSrc} alt={alt} priority />
+          <HeroMedia image={imageSrc} alt={alt} objectPosition={objectPosition} priority />
         ) : (
           <div
             aria-hidden
@@ -63,7 +68,7 @@ export function PhotographicCityHero({ city, country, total, imageSrc }: Props) 
         {/* Left-anchored content column */}
         <div className="relative z-10 mx-auto flex h-full max-w-7xl items-end px-4 pb-8 sm:px-6 sm:pb-10 lg:px-8 lg:pb-12">
           <div className="max-w-2xl">
-            <p className="font-display text-xs font-bold uppercase tracking-[0.22em] text-white/85">
+            <p className="font-display text-xs font-bold uppercase tracking-[0.22em] text-[var(--brand-accent)]">
               {country}
             </p>
             <h1

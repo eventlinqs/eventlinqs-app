@@ -116,6 +116,7 @@ async function main() {
       organisationId: FAKE_ORG_ID,
       country: 'AU',
       email: 'phase2-e2e@example.test',
+      payoutDelayDays: 3, // PAY-01: pricing_rules payout_schedule_days (AU launch default)
     })
     accountId = account.id
     pass('createExpressAccount', accountId)

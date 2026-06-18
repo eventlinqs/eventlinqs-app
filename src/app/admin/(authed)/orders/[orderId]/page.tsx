@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { redirect, notFound } from 'next/navigation'
 import { requireAdminSession } from '@/lib/admin/auth'
-import { hasCapability } from '@/lib/admin/rbac'
+import { can } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { getOrderForAdmin } from '@/lib/admin/orders'
 import { AdminRefundPanel } from './refund-panel'
@@ -31,7 +31,7 @@ export default async function AdminOrderDetailPage({
   params: Promise<{ orderId: string }>
 }) {
   const session = await requireAdminSession()
-  if (!hasCapability(session.admin.role, 'admin.refunds.process')) redirect('/admin')
+  if (!can(session, 'admin.refunds.process')) redirect('/admin')
 
   const { orderId } = await params
   const order = await getOrderForAdmin(orderId)

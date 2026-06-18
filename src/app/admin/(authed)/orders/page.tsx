@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { requireAdminSession } from '@/lib/admin/auth'
-import { hasCapability } from '@/lib/admin/rbac'
+import { can } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { listOrdersForAdmin } from '@/lib/admin/orders'
 
@@ -21,7 +21,7 @@ function money(cents: number, currency: string): string {
 
 export default async function AdminOrdersPage({ searchParams }: { searchParams: SearchParams }) {
   const session = await requireAdminSession()
-  if (!hasCapability(session.admin.role, 'admin.refunds.process')) redirect('/admin')
+  if (!can(session, 'admin.refunds.process')) redirect('/admin')
 
   const sp = await searchParams
   const search = sp.q?.trim() || undefined

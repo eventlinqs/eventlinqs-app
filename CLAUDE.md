@@ -1,9 +1,60 @@
 # CLAUDE.md - EventLinqs
 
-Read this first, every session. These are the laws. They override default
-instincts and need no re-prompting. If a law and a user instruction conflict,
-the user wins; otherwise these hold. Founder and approver: Lawal Adams.
-"Approval" below means his sign-off.
+This file is the constitution. It is complete, findable, and unskippable: every
+law of the platform lives here or is pointed to from here, once, with no
+contradiction. These are the laws. They override default instincts and need no
+re-prompting. If a law and a user instruction conflict, the user wins; otherwise
+these hold. Founder and approver: Lawal Adams. "Approval" below means his
+sign-off.
+
+## Law 0: read the constitution before you build
+
+This is the first instruction of every session and it is mandatory.
+
+1. **Read before you edit.** Before the first edit of any task, read the
+   constitution sections that govern the surfaces you are about to touch (use the
+   Constitution map below to find them). Reading "it looks like a one-liner" is
+   not an exemption: a one-line change to a card, a hero, a rail, a colour, a
+   route, or a piece of copy is governed by these laws.
+2. **State your governing laws.** Before editing, state in the session which laws
+   govern the task (by name or number, e.g. "this touches Law 1, the Design
+   system, Motion, and Law 5"). If you cannot name them, you have not read
+   enough yet.
+3. **Verify-first, always.** State how the result will be verified before you
+   write code, and confirm every claim against the real environment, never from
+   memory or assumption (see Verification and gates).
+4. **Plan mode for any new build.** Think and plan before touching code.
+5. **Nothing generic, nothing invented.** You may not introduce a colour, size,
+   font, layout, taxonomy, or number the evidence and the code do not already
+   support. Inherit from the code; surpass the competitor; invent nothing.
+
+If a law here is contradicted by any other document in the repo, this file wins
+and that document is wrong until reconciled. Report the contradiction; do not
+silently follow the stale doc.
+
+## Constitution map (find the law that governs your task)
+
+| If you are touching... | The governing laws are... |
+|---|---|
+| Any surface at all | Law 0, Law 1 (no generic), Verification and gates |
+| A new page or a redesign | Law 2 (evidence-driven), Design system, Motion, Law 4 if marketing, the `page-build` skill |
+| Copy, labels, microcopy | Copy and banned content, Law 3 (Australia-smart) |
+| Colours, type, spacing, cards, container | Design system |
+| A hero, an LCP image, a rail | Design system (Hero and LCP integrity, Rails, Container width), Motion |
+| The header or footer | Design system (Chrome consistency) |
+| Animation, reveal, hover, glide, loading | Motion |
+| A marketing or landing surface | Law 4 (image-rich), Design system, Media architecture |
+| Scenes, categories, taxonomy | Scene layer, Law 3, the `seed-events` skill |
+| Seed or demo data | `seed-events` skill, Law 3, Media architecture |
+| Links, routes, navigation | Law 5 (zero dead links) |
+| A migration or the database | Verification and gates (Migrations) |
+| A fee, pricing, checkout charge, or payout | Fee system (one source), `docs/FEE-SYSTEM.md` |
+| CI, gates, delivery | Verification and gates |
+
+**Index of laws:** Law 0 (read first) - Law 1 (no generic) - Law 2
+(evidence-driven) - Law 3 (Australia-smart) - Law 4 (marketing image-rich) -
+Law 5 (zero dead links) - Scene layer - Design system - Motion - Copy and
+banned content - Verification and gates - Tooling - Authority docs - Skills.
 
 ## What EventLinqs is
 
@@ -20,7 +71,9 @@ Stack: Next.js, Supabase, Tailwind v4, Stripe, Vercel.
 
 No generic text, layouts, placeholders, or template aesthetics anywhere, ever.
 Every surface is luxury-grade and world-class. If a screen could belong to any
-other product, it is wrong: rework it until it could only be EventLinqs.
+other product, it is wrong: rework it until it could only be EventLinqs. A
+"Coming soon" placeholder, a wall of text, or a bare icon-and-text band is a
+defect by definition, not a stub to fix later.
 
 ## Law 2: evidence-driven
 
@@ -35,6 +88,32 @@ Eventbrite page with Playwright at 1440 and 390.
 
 Never skip Phase A. Never invent a layout the evidence does not support.
 
+### Competitor Benchmark (the encoded DNA - single source of truth)
+
+What the competitors look like is ENCODED, not re-discovered each session. No
+design session re-asks the founder what Ticketmaster or Eventbrite look like:
+
+- Read the **`competitor-benchmark` skill** for the hard reference facts -
+  measured hero heights per page type (TM home ~200px, TM category ~250-290px
+  dark band, EB home ~480px promo, EB browse no hero, EB event-detail contained
+  media card, EB pricing tinted bands, EB/TM desktop auth brand panel + mobile
+  card-only, TM help dark search band + trending rail), rail variation patterns,
+  hover language, and the EventLinqs laws that beat them.
+- The evidence is `docs/benchmark/competitor-2026/INDEX.md` (verified capture
+  index) + `measurements.json`. Captures are clamped to <= 1800px and audited
+  VERIFIED/INVALID.
+- Re-capture ONLY when the evidence is stale (>90 days) or you are designing a
+  page type not covered. Use the skill's re-capture procedure; for auth pages
+  navigate from the homepage account button, never a guessed URL.
+
+**Premium bar (every public page, not just the homepage):** EventLinqs presents
+as a premium production worth more than US$200K - rich imagery on every public
+page, treated surfaces (never bare white bands), breathing hovers,
+competitor-evidence design decisions, zero dead links, zero broken states. A
+page that is bare, generic, image-poor, or has a dead link or broken state has
+failed the bar regardless of how the homepage looks. Detail in the
+`competitor-benchmark` skill.
+
 ## Law 3: Australia-smart
 
 Every taxonomy, scene, category, content, and copy decision is verified against
@@ -47,83 +126,450 @@ old draft without re-verifying it.
 - Ticketing (LPA): contemporary music is about 54 percent of ticketing revenue;
   comedy is the fastest-growing category.
 
-## Scene layer (locked, national)
+## Law 4: marketing surfaces are image-rich
+
+Every marketing and landing surface (organiser, pricing, about, city and scene
+landings, any "sell the platform" page) carries image-rich, full-craft
+treatment to the competitor bar. A text-only marketing surface is a design
+defect by definition: no bare icon-and-text pillar sections, no wall-of-text
+bands. Match the competitor frame for frame (full-bleed photographic hero,
+alternating image-and-text feature bands, a stats or social-proof band, visual
+how-it-works, image tiles, premium FAQ, a strong closing CTA), then surpass it
+with the EventLinqs identity.
+
+- Imagery comes from the licensed platform photo library, wired through the
+  media components as swappable slots (a per-page config in `src/lib/images/`),
+  so photo-day upgrades are a one-line change and never touch the template.
+- Social proof uses real platform truths only (all-in pricing, payout terms,
+  every-community breadth). Never fabricate numbers or fake logos.
+- Reference build: `/organisers` (`OrganisersLandingPage` +
+  `src/lib/images/organiser-photos.ts` + `MarketingMedia`).
+
+## Law 5: zero dead links AND no dead-end tiles
+
+Verify by clicking what the user clicks. A surface is not done until every link
+it renders resolves to a working page. Zero dead links platform-wide: every
+event card, city or culture or suburb tile, nav item, footer link, and CTA
+resolves to HTTP 200, never a 404 or a 500.
+
+- A polished page whose cards 404 on click is a Potemkin facade, not a finished
+  surface. The first thing a test-driver does is click; verify by clicking, not
+  by a hand-picked slug.
+- Density data and detail data must share one source of truth. When the homepage
+  is served from a fixture (`HOMEPAGE_SEED_FIXTURE=1`), the detail routes must
+  resolve the same events; the two paths may never diverge.
+- The automated proof is `scripts/link-integrity-crawl.mjs` (loads each key
+  surface, harvests every internal href, requests each, fails on any non-200).
+  Run it against the preview or a local production server before claiming a
+  discovery or navigation surface done (see Verification and gates).
+
+### Interactive-affordance law (no dead-end tiles)
+
+Any image tile, card, or grid/rail item that visually presents as tappable MUST
+be a working link. "No dead links" explicitly includes "no dead-end tiles" - a
+tile-shaped image a finger lands on that does nothing is the same defect as a
+404, and worse on mobile where the whole tile reads as a button.
+
+- Decorative-only imagery is allowed SOLELY as full-bleed backgrounds (hero
+  scrims) or inline editorial photos within prose. It is NEVER permitted as a
+  tile/card-shaped element inside a grid or a rail. If it sits in a grid or rail
+  and looks like a card, it must link.
+- Every tile/card in a grid or rail is wrapped by a single `<a href>` (or is a
+  `<button>`) whose target resolves 200. The whole tile is the touch target
+  (>= 44px), with hover illumination.
+- The automated proof is `scripts/affordance-scan.mjs` (Playwright: on every
+  public page, finds tile/card-shaped `<img>` inside grids/rails and fails on any
+  with no ancestor anchor/button). It runs beside the link-integrity crawler in
+  the audit suite on every pass.
+
+## Scene layer (locked, national) - V2, research-backed
 
 Scenes are the EventLinqs differentiator layered on top of the general
-catalogue, in this order:
+catalogue. Two families in ONE scrollable rail, music and sound first (the
+dominant festival + streaming demand; Australia is the world's top dance-music
+streaming nation), then community and culture.
 
-1. First Nations (position one)
-2. South Asian
-3. Asian
-4. Pasifika & Maori
-5. Afrobeats & Amapiano (Owambe within)
-6. Latin
-7. Pride
-8. Mediterranean
-9. Faith & Worship (Gospel within)
-10. Caribbean
+Music and sound scenes, in this order:
 
-Business & Networking is a general category, never a scene.
+1. Electronic & Dance
+2. Country
+3. Indie & Rock
+4. Hip-Hop & RnB
+5. Pop
+6. Folk & Acoustic
+7. Blues & Roots
+8. Afrobeats & Amapiano
+9. Latin
+10. Caribbean & Dancehall
+11. Jazz & Soul
+12. Metal & Hardcore
+
+Then community and culture scenes:
+
+13. First Nations
+14. South Asian
+15. Asian
+16. Pasifika & Maori
+17. Mediterranean
+18. Pride
+19. Faith & Worship
+
+Each tile links to its landing route where one exists, otherwise the filtered
+events view as an interim. Missing scene landing pages are tracked for the
+post-photos taxonomy mission. Business & Networking is a general category,
+never a scene.
+
+### Homepage community moat (split, locked)
+
+On the homepage the two V2 families are SPLIT into two rails, not one:
+
+- **Sounds rail** (`sounds-rail.tsx`): the 12 genres only, mid-page, normal ink
+  divider. Genres link to the interim `/events?q=` view (resolves 200).
+- **Find your community rail** (`community-rail.tsx`): the heritage COMMUNITIES,
+  placed HIGH (within the first two screens), gold-accent top divider. It sources
+  the 21 canonical heritages from `getCultureIndexEntries()` (heritageOrder, so
+  Aboriginal & Torres Strait Islander leads - First Nations first, per law) and
+  each tile links to its REAL `/culture/[slug]` landing (never an interim search).
+- Plus a Communities doorway tile in Browse by Category -> `/cultures`, and ONE
+  tinted community value band (`community-value-band.tsx`) carrying the locked
+  tagline and community tiles into `/culture/[slug]`, with a CTA to `/cultures`.
+
+Community presence is ~10-20% of the homepage and visible within the first two
+screens, but the general catalogue still leads and still stands alone if the
+community layer is stripped. Never a culture-wall. Community-first language only.
+
+### Intersection pages (culture-by-city) - imagery + editorial law (locked)
+
+The `/culture/[culture]/[city]` pages (21 communities x cities = 271+) are
+TEMPLATE pages that INHERIT spine imagery - they do NOT get per-page photography:
+
+- Imagery resolves through the media library with branded fallbacks, in this
+  order: city photo (city set) -> community photo (scene/culture set) -> bundled
+  raster -> navy/gold gradient. There is NEVER a broken image, even before the
+  full photo spine lands. (Verified: `getCityHeroPhoto` -> `getCultureHeroPhoto`
+  with `allowBundledFallback` in `src/app/culture/[culture]/[city]/page.tsx`.)
+- Zero-event intersections render the shared designed empty state
+  (`CategoryHeroEmpty`: "the first ... could be yours" + organiser CTA), never a
+  bare "no results". The same shared empty state backs every community, city, and
+  category zero-event page. Build empty states once, shared - never per page.
+- Hand-crafted editorial imagery is reserved for TOP intersections AFTER launch.
+  Until then every intersection is template-resolved spine imagery. Do not block
+  launch on per-intersection photography.
 
 ## Design system
 
-Inherit exactly. No new colours, sizes, or type.
+Inherit exactly. No new colours, sizes, or type. The source of truth for every
+token and pattern is the running code: `src/app/globals.css` (the tokens) and
+`src/app/page.tsx` (the homepage patterns). The hexes named below are the law's
+shorthand; the token in `globals.css` is the binding value. Where a value here
+and the token differ, the token wins and the discrepancy is reported, never
+silently re-painted.
 
-- Colour: navy #0A1628 and gold #D4A437. Light and airy. No heavy black bands.
-- Type: Archivo display, Hanken Grotesk body, Manrope UI. DICE typography
-  influence only, never resemble DICE.
-- Cards: image alone, all details below the image. Never text on a card image.
-  The hero is the only place text sits on an image, and only restrained.
-- Rails: CAPS headings, one faint divider per rail, tight spacing.
-- Source of truth for tokens and patterns: `src/app/page.tsx` (the homepage).
+**Colour**
 
-Copy:
+- Navy `#0A1628` and gold. Light and airy. No heavy black bands.
+- Gold has tiers for contrast (`globals.css`): `--brand-accent` (gold-400) on
+  dark surfaces and for focus rings only; `--brand-accent-strong` (gold-800) for
+  gold text on light surfaces (gold-400 fails 4.5:1 on white). Never paint
+  gold-400 as text or a fill on a light card body.
+- No new colours. The off-brand navies and blues swept out of the codebase
+  (`#1A1A2E`, `#2d2d4a`, `#4A90D9`, `#10B981`, `#F0F6FF`) are banned; map any
+  recurrence to the brand tokens.
+
+**Type**
+
+- Archivo display, Hanken Grotesk body, Manrope UI (the live stack in
+  `globals.css`: `--font-headline` Archivo, `--font-body` Hanken, `--font-display`
+  Manrope). DICE typography influence only, never resemble DICE.
+- Rail and section headings sit at the measured competitor scale:
+  `.type-rail-heading` 24px at 1440, 22px at 390, weight 700. Never `.type-h2`
+  (40px) for a rail heading - that is about 1.7x the bar. Card titles 18px.
+  Oversizing headings is a defect; match the measured scale.
+
+**Spacing and container**
+
+- Reference the 4px-based spacing tokens; never eyeball spacing.
+- The sitewide content container is **1400px** (`max-w-7xl`, overridden via
+  `--container-7xl: 87.5rem` in the `:root` block of `globals.css`). `max-w-7xl`
+  is the canonical cap on every surface (header, footer, heroes, rails, content,
+  checkout, event detail) so one token aligns them all. Never hand-pick a
+  section max-width. If 1400 ever changes, re-derive it from fresh live TM + EB
+  captures (the derivation lives in the `page-build` skill), never from taste.
+
+**Cards and tiles**
+
+- Image alone, all details below the image. Never text on a card image. The hero
+  is the only place text sits on an image, and only restrained. The single
+  allowed on-photo overlay is a place name on a darkened-gradient band on
+  city/venue tiles, one line of identity only.
+- Uniform card dimensions within a rail; no feature-card size mixing in a
+  category rail.
+
+**Rails**
+
+- CAPS headings, one faint divider per rail (`border-t border-ink-200`,
+  identical on every rail), tight spacing. The detailed locked rail and glide
+  contract lives in the `page-build` skill (Rail standard, Glide standard);
+  `src/components/ui/snap-rail.tsx` is the single source for the behaviour.
+- Rail scroll controls follow the Rail Control System (locked, derived from live
+  competitor evidence in `docs/benchmark/rail-controls/CATALOGUE.md`; full law in
+  the `page-build` skill): solid opaque circular arrows >= 44px, navy idle with
+  gold-on-hover, anchored top-right of the rail header (structurally stable at
+  every viewport and on resize), a muted disabled state at either end, reachable
+  on mobile on top of native swipe, and NO progress dot/bar (removed - the gold
+  standard shows arrows alone). The one control is `RailArrows` in
+  `snap-rail.tsx`; never re-roll rail buttons per surface.
+
+**Light and airy: no glassmorphism, no flat-dark (founder-locked boundary)**
+
+- Surfaces are solid and opaque. No glassmorphism anywhere: no `backdrop-filter`
+  / `backdrop-blur` chrome. Both competitors use solid headers, filter bars, and
+  badges; so do we. Translucency without a backdrop-filter (a `/95` badge) is not
+  glassmorphism and is allowed.
+- No flat painted dark backgrounds. Every surface is the light navy-on-canvas
+  homepage system. The boundary: darkness from a PHOTOGRAPH + navy overlay (the
+  hero pattern) stays; darkness from a FLAT painted surface gets rebuilt to
+  light. Checkout and order confirmation are light canvas.
+
+**Chrome consistency**
+
+- The header and footer are shared chrome with a single source each. The header
+  is a solid-navy dual-state bar (State A: transparent base + top-to-fade navy
+  gradient over a hero; State B: solid navy `#0A1628` + gold accent border), no
+  blur, no glassmorphism. The footer is the founder-spec 4-column desktop / 2x2
+  mobile layout carrying the community and organiser entry points. A chrome
+  change is made once, in the shared component, and verified on a hero-bearing
+  and a no-hero route.
+
+**Hero and LCP integrity**
+
+- The above-fold hero is a single priority AVIF raster that owns the LCP. It
+  never animates (only the hero CONTENT staggers in; the image does not).
+- Rails must not carry static `scroll-snap-type`. Static snap re-snaps on lazy
+  image load and fires browser scrolls that stop Chrome's LCP recording before
+  the hero paints (root cause of the homepage/culture NO_LCP). Snap is armed on
+  the user's first engagement with the rail, inside `snap-rail.tsx`
+  (`cancelGlide`) and the `DragRail` `snap` prop. Do not move snap back into the
+  static className; a guard comment marks this in the file.
+
+**Hero scale (ONE platform standard - founder ruling 2026-06-07)**
+
+- ONE hero scale for the whole platform: the homepage hero scale, defined as the
+  single `.hero-marketing` token in `globals.css` (~42-48vh, max 480px, min
+  320px). EVERY page hero uses it - marketing, discovery, AND content
+  (`/events/[slug]`, `/city/[slug]`, `/city/[slug]/[suburb]`,
+  `/categories/[slug]`, `/culture/[culture]`). There is no separate, taller
+  "content" tier; `.hero-content` was retired.
+- Deviation above this scale is permitted ONLY where FRESH competitor evidence
+  proves the equivalent page type runs taller and reads better - evidence, never
+  taste. The 2026 mirror (`docs/benchmark/competitor-2026/`) found neither
+  Ticketmaster nor Eventbrite runs a taller hero on any page type (event detail,
+  browse, category and city all sit at or below this scale), so no page
+  currently qualifies. Any new taller hero must ship its competitor capture.
+- Every hero shares one treatment: the bottom-up navy scrim, a GOLD eyebrow
+  (`--brand-accent` on the dark hero, never a white eyebrow), the homepage
+  display scale (`text-3xl sm:text-4xl lg:text-5xl`, never `text-6xl`/`text-7xl`),
+  and a bottom-anchored CTA stack. A full-viewport hero (`*vh` at/above the
+  tier cap), a white eyebrow, or oversized display type is a defect, fixed in
+  the same pass.
+- The header over any hero is the shared dual-state navy bar (Chrome
+  consistency above), never a per-page header variant.
+
+## Motion
+
+The law: the motion engine is CSS-first - IntersectionObserver-driven reveals
+plus CSS keyframes and transitions, 150 to 300ms, ease-out,
+`prefers-reduced-motion` always honoured. Framer Motion is not a default
+dependency; reach for it only with founder approval for a single component that
+genuinely needs orchestration the CSS engine cannot express. Speed is part of
+the design: Lighthouse 95+ on mobile remains law, so motion never costs the
+gate (it arms only under `html[data-motion="1"]`, set pre-paint, so no-JS,
+reduced-motion, and headless audit agents see the final state from first paint).
+
+Motion reads premium and almost invisible: Ticketmaster restraint, never showy.
+The bar is alive and breathing, best in the world. Motion is FELT, not watched:
+tune it alive, never busy.
+
+The choreography (deliver all of it with the CSS engine; the shared primitives
+are `src/components/ui/reveal.tsx` and the `snap-rail.tsx` glide - reuse them,
+never hand-roll per surface):
+
+- Page entrance: hero content staggers in once (headline, meta, CTA, 60 to 80ms
+  apart). The hero LCP image itself never animates (Hero and LCP integrity).
+- Hero carousel auto-rotation (the homepage FeaturedHero, `FeaturedHeroClient`):
+  a multi-slide hero AUTO-ADVANCES every ~6.5s with an eased opacity crossfade,
+  mobile and desktop (evidence: Humanitix hero, rail-controls CATALOGUE). It
+  PAUSES on hover, on touch/swipe, and while any element inside has keyboard
+  focus, and resumes after; a manual move resets the timer. The pause/play
+  control is NEVER visible except on keyboard focus: it is visually hidden
+  (sr-only) and revealed only on focus-visible, so there is no visible playback
+  chrome on the hero, ever, on any viewport (mobile or desktop). WCAG 2.2.2 stays
+  satisfied: keyboard and assistive users retain the stop mechanism, hover/touch
+  users get automatic pause-on-interaction, reduced-motion users get no rotation
+  at all. When revealed on focus it is solid navy/gold, never glass. Indicator:
+  minimal dots only (no travelling-dot device). ARMED ONLY under `html[data-motion="1"]`,
+  so prefers-reduced-motion and headless audits get NO auto-rotation (manual nav
+  only). LCP law: slide 0 is the server-rendered priority raster and the only
+  slide in layout until rotation arms post-paint; non-first slides mount and
+  lazy-load only after arming (outside the LCP window).
+- Scroll reveals: every below-the-fold section fade-rises as it enters the
+  viewport, cards staggered 50 to 80ms left to right, once only, subtle (12 to
+  16px rise), never blocking reading.
+- Hover: cards lift 2 to 4px with the shadow deepening and a 1.02 to 1.03 image
+  scale at 150 to 200ms; buttons get press states; tasteful link interactions.
+- Hover illumination law v2 (every event card, category tile, city tile,
+  scene/sub-culture tile, platform-wide) - founder law: hover BRIGHTENS, never
+  darkens ("the light shines more"). Two paired effects on top of the wrapper
+  lift + image scale: (1) the IMAGE itself brightens - a subtle
+  `brightness(1.07) saturate(1.08)` rise riding the scale, via `.card-media-img`
+  applied on the image by every media surface; (2) the navy wash drops to a
+  WHISPER at the base only (~12% navy at the bottom edge, fading to 0 by ~60% up)
+  to keep brand identity and bottom-edge text legibility without dimming the
+  image. Net effect is illumination, not shade - a hovered card MUST read clearly
+  brighter than idle. The wash sits BELOW every scrim and label by DOM paint
+  order (no z-index). One shared implementation only: `<HoverWash />`
+  (`src/components/media/hover-wash.tsx`) + the `.card-media-img` class, rendered
+  by the card/tile media surfaces (`EventCardMedia`, `CityTileImage`,
+  `CategoryTileImage`, `SubCultureTileImage`), with both visuals defined once in
+  `globals.css` (`.card-hover-wash` whisper + `.card-media-img` brighten). Never a
+  per-page copy. Armed only under `html[data-motion="1"]`, so prefers-reduced-motion
+  and headless audits never see it or pay for it (image filter and wash both gated).
+- Rails: the eased arrow glide stays, the next-card peek invites the scroll. The
+  detailed glide contract is the Glide standard in the `page-build` skill.
+- Sticky header: a smooth elevation and background transition on scroll.
+- Loading: designed skeletons settle into real content with zero layout shift.
+  No spinners on white. Skeleton dimensions match the real content (a rail-header
+  skeleton is 24px, not 40px) so the settle is zero-shift.
+- `prefers-reduced-motion` disables all of it cleanly.
+
+- Forbidden: GSAP, scroll-hijacking (Lenis), parallax overload, glassmorphism,
+  glow kits (Aceternity, MagicUI), bento grids, auto-rolling carousels.
+
+## Copy and banned content
 
 - No em-dashes and no en-dashes, ever. Use hyphens, colons, commas, pipes.
 - Australian English (-ise, -our, -re) and Australian content.
 - Community-first language, never culture-first. Banned words: diaspora,
   friends-launch.
-- No exclamation marks in user-facing copy.
+- No exclamation marks in user-facing copy (a Tailwind `!important` modifier is
+  not user-facing copy).
+- No placeholder copy ("Coming soon", "Sample Event 1", "Lorem ipsum") on any
+  shipped surface (Law 1).
 
-## Motion
+## Fee system (one source, founder-controlled)
 
-Framer Motion only, restrained and purposeful. Motion reads premium and almost
-invisible: Ticketmaster restraint, never showy.
+The platform fee is a single authoritative value the founder controls from the
+admin panel, propagating identically to checkout, payout, and every display.
+Full law and the end-to-end proof live in `docs/FEE-SYSTEM.md`. The binding
+rules:
 
-- Use: staggered fade-and-rise reveals on load, gentle scroll reveals, a subtle
-  card hover lift. Durations 150 to 300ms, ease-out. Always respect
-  `prefers-reduced-motion`.
-- Forbidden: GSAP, scroll-hijacking (Lenis), parallax overload, glassmorphism,
-  glow kits (Aceternity, MagicUI), bento grids, auto-rolling carousels.
+- **One source.** `public.pricing_rules` is the ONLY place a fee value lives.
+  Charge (`PaymentCalculator`), payout (`application-fee` /
+  `createDestinationCharge`), and display (`getLivePublicFee`) all read it
+  through the ONE resolver `getPricingRule` (`src/lib/payments/pricing-rules.ts`),
+  so the displayed fee always equals the charged fee. Never hardcode a fee number
+  anywhere (copy included); use the live value or neutral phrasing. The
+  `public-fee.ts` constant is a LAST-RESORT fallback used only when the DB is
+  unreachable, never a second fee.
+- **Three scopes, clear precedence:** per-event (highest) > per-organiser >
+  region/global default. The resolver applies the most specific matching rule and
+  guards every lower level with `event_id IS NULL` so scopes never collide. Both
+  percentage and fixed are independently scoped.
+- **Versioned + audit-logged.** Every change is an append-only new-version row
+  (past orders keep their historical fee) recorded in the admin audit log with
+  who and when. Set fees in `/admin/pricing`; no code deploy needed.
+- **Launch default:** AU = 2% + AUD 0.50, written to `pricing_rules` by a lawful
+  migration so the documented launch fee and the live value match.
+
+## Verification and gates
+
+Verify-first is law: before any task, state how the result will be verified, and
+confirm against the real environment, never assumption. The `docs/benchmark/
+system-pass/REPORT.md` is the running source of truth for the system-pass; read
+the relevant surface section before reworking it.
+
+**Per-page production-readiness**
+
+- Benchmark gate on every page: a Playwright side-by-side against the competitor
+  equivalent in `docs/design/competitor-page-specs.md`, with an explicit
+  SURPASS / PARITY / BELOW verdict per aspect (density, typography, imagery, UX,
+  motion, loading, mobile). Parity is the floor; the goal is to surpass. Any
+  BELOW means iterate before delivering.
+- Density-proof: every benchmark capture and verdict is taken at full fixture
+  density (`HOMEPAGE_SEED_FIXTURE=1`), every rail populated. A thin-rail
+  screenshot flatters the layout and is not evidence.
+- Visual changes: Playwright before and after at 1440, 768, and 390.
+- Lighthouse 95+ on desktop AND mobile, measured as a median of repeated runs on
+  the Vercel preview or warmed production, never a single localhost run.
+- axe-core 0 violations. Touch targets 44px or larger.
+- Zero dead links on any discovery or navigation surface (Law 5): run the
+  link-integrity crawler and confirm 0 non-200.
+
+**Migrations**
+
+- Write the migration file only. Lawal applies it with `supabase db push
+  --linked` in PowerShell. Never the Dashboard SQL editor, never the Supabase
+  MCP. Verify applied migrations by a direct database query, not the cached
+  client (its schema cache lags).
+
+**Delivery**
+
+- CI gates are the merge authority. No `--admin`, no skipping gates, never lower
+  a threshold or mark a check optional to go green.
+- Commit per unit with a clear message, push, hand back the Vercel preview URL
+  with the benchmark verdict. Never merge without approval.
+- Disk guard: check free space before any build or deploy step. Under 1.5 GB
+  free, stop and report.
+
+**The gates: what is machine-checked (and the known gaps)**
+
+This is the coverage map of every law that can be machine-checked. A law without
+a green gate is enforced by hand until its gate is wired; the gaps below are
+named and routed, never hidden.
+
+| Gate | File | Enforces | State |
+|---|---|---|---|
+| CI: lint / typecheck / build / test | `.github/workflows/ci.yml` | code correctness, type safety, build integrity, unit tests (vitest) | Blocking on PRs to main. (`types-drift guard` is non-blocking until `SUPABASE_ACCESS_TOKEN` is set.) |
+| Lighthouse CI | `.github/workflows/lighthouse.yml` + `lighthouserc.json` | performance, accessibility (category), best-practices, SEO, CLS on the public URL set | Blocking, but BELOW the law - see gaps. |
+| axe-core | `scripts/axe-*.mjs` (incl `axe-marketing-scan.mjs`) | accessibility 0 violations (WCAG 2 A/AA) | NOT a CI job yet - run by hand per surface. |
+| Link-integrity crawler | `scripts/link-integrity-crawl.mjs` | Law 5, zero dead links | NOT a CI job yet - run by hand vs preview/local. |
+| Post-deploy smoke | `.github/workflows/post-deploy-smoke.yml` | production homepage 200 + no error-boundary HTML after deploy | Blocking on main after CI. |
+
+Known gate gaps (routed to the engine-hardening branch; founder ruling needed on
+the first):
+
+1. **Lighthouse vs the law (workshop inspection MAJOR-1).** The gate runs against
+   `localhost:3000`, not the preview/warmed-prod the law requires; floors perf at
+   0.80 not 0.95; runs perf at warn-level on `/` and `/culture/*` (the hero
+   pages); is mobile-only (no desktop); leaves LCP/TBT/FCP/Speed-Index at warn.
+   Either the 95+ law is amended with founder sign-off to the operating reality,
+   or the gate is brought up to the law. Tied to Issue #42 (next/image optimiser
+   cold-start) driving the LCP/perf variance.
+2. **axe and the link crawler are not CI jobs.** Both exist and pass when run;
+   wiring them as blocking CI gates makes the accessibility and zero-dead-links
+   laws unskippable. Routed to engine hardening.
+3. **Marketing/legal pages are not in the gate URL list (MAJOR-4).** `/about`,
+   `/blog`, `/careers`, `/press`, `/legal/privacy` are outside the Lighthouse +
+   axe URL set, so contrast and markup regressions there slip the gate. Add them.
+4. **Copy laws are cheaply grep-checkable.** No em/en-dashes, no exclamation
+   marks, no banned words, no placeholder strings - a CI grep gate would make
+   these unskippable. Opportunity, routed to engine hardening.
+
+Laws that are not machine-checkable and stay human/benchmark-enforced: Law 1 (no
+generic), Law 2 (evidence-driven Phase A/B), Law 3 (Australia-smart taxonomy),
+Law 4 (image-richness judgement), the light-and-airy palette, and the benchmark
+SURPASS/PARITY/BELOW verdicts.
 
 ## Tooling
 
 - UI primitives: shadcn and Radix, for accessibility. Icons: Lucide. Rails:
-  native CSS scroll-snap.
+  native CSS scroll-snap (armed on first interaction, per Hero and LCP
+  integrity).
+- Media: all imagery flows through the media components (`EventCardMedia`,
+  `HeroMedia`, `CityTileImage`, `OrganiserAvatar`, `MarketingMedia`). No raw
+  `<img>`, no `background-image` for content, no `next/image` in feature code.
+  Follow `docs/MEDIA-ARCHITECTURE.md`.
 - No new UI libraries without founder approval.
-
-## Workflow
-
-- Plan mode for any new build. Think and plan before touching code.
-- Verify-first: before any task, state how the result will be verified. Never
-  assume; confirm against the real environment.
-- Visual changes: Playwright before and after at 1440, 768, and 390.
-- Benchmark gate on every page: side-by-side against the competitor equivalent
-  in `docs/design/competitor-page-specs.md`, with an explicit pass or fail on
-  density, typography, imagery, UX, and mobile. Not clearly at the bar means
-  iterate before delivering.
-- Production-readiness on every page: Lighthouse 95+ on desktop AND mobile,
-  measured as a median of repeated runs on the Vercel preview or warmed
-  production, never a single localhost run. axe-core 0 violations. Touch
-  targets 44px or larger.
-- Migrations: write the migration file only. Lawal applies it with
-  `supabase db push --linked` in PowerShell. Never the Dashboard SQL editor,
-  never the Supabase MCP.
-- CI gates are the merge authority. No `--admin`, no skipping gates.
-- Delivery: commit, push, hand back the Vercel preview URL. Never merge without
-  approval.
-- Disk guard: check free space before any build or deploy step. Under 1.5 GB
-  free, stop and report.
 
 ## Authority docs
 
@@ -131,11 +577,25 @@ invisible: Ticketmaster restraint, never showy.
 - `docs/design/competitor-page-specs.md`: the per-page bar for the benchmark
   gate.
 - `docs/MEDIA-ARCHITECTURE.md`: imagery and media component rules.
+- `docs/benchmark/system-pass/REPORT.md`: the running source of truth for the
+  system-pass surface-by-surface state.
+- `docs/DESIGN-SYSTEM.md`: SUPERSEDED v2.1 historical reference. It predates the
+  community-first repositioning and contradicts this constitution on the mission,
+  the tagline, the font stack, and the competitor bar. Use it only for legacy
+  component detail, and only where it does not conflict with this file or the
+  code. This constitution and `globals.css` win on every conflict.
 
 ## Skills
 
+- `competitor-benchmark`: the encoded competitor DNA. Hard reference facts for
+  Ticketmaster and Eventbrite (hero heights per page type, rail patterns, hover
+  language, auth/help/pricing layouts) plus the EventLinqs laws that beat them
+  and the premium bar. Read it before designing any page; it points to the
+  verified capture index. NEVER re-ask the founder what competitors look like.
 - `page-build`: the standard page build. Reality audit, capture the competitor
   equivalent, Phase A mirror, Phase B EventLinqs touch, QA, benchmark, deliver.
+  Holds the detailed locked specs (Rail, Container width, Glide, Motion,
+  Marketing surface) that elaborate the laws above for execution.
 - `seed-events`: seed realistic Australian events across all categories and
   scenes from a local image library, optimised and wired through the media
   components.

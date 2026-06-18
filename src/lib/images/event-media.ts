@@ -70,7 +70,7 @@ export async function getEventMedia(event: EventMediaInput): Promise<EventMedia>
     }
   }
 
-  const photo = await getCategoryPhoto(event.category?.slug)
+  const photo = await getCategoryPhoto(event.category?.slug, event.title)
   if (photo.src !== FALLBACK_POSTER) {
     return {
       kind: 'still-kenburns',
@@ -111,7 +111,7 @@ export async function getFeaturedEventMedia(event: EventMediaInput): Promise<Eve
     }
   }
 
-  const photo = await getCategoryPhoto(event.category?.slug)
+  const photo = await getCategoryPhoto(event.category?.slug, event.title)
   if (photo.src !== FALLBACK_POSTER) {
     return {
       kind: 'still-kenburns',
@@ -173,6 +173,11 @@ const HERO_RASTER_SLUGS = new Set([
   'filipino',
   'lunar',
 ])
+// LCP law (docs/MEDIA-ARCHITECTURE.md §5; comment below): the homepage hero
+// raster MUST be a LOCAL bundled AVIF for direct CDN delivery - routing it
+// through /_next/image (remote spine URL) adds ~1100ms cold-encode on the LCP
+// path. The spine fronts the city/culture/category landing heroes (which were
+// already remote) and every tile; the homepage hero default stays local.
 const HERO_RASTER_DEFAULT = `${HERO_RASTER_DIR}/afrobeats.jpg`
 
 function heroRasterFor(slug: string | null | undefined): string {

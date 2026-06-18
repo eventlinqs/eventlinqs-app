@@ -1,0 +1,1750 @@
+{
+  "bucket": "event-images",
+  "prefix": "stock",
+  "dryRun": false,
+  "generatedAt": "2026-06-18T20:24:39.777Z",
+  "counts": {
+    "sources": 56,
+    "renditions": 168,
+    "rejected": 0
+  },
+  "rejected": [],
+  "images": [
+    {
+      "role": "categories",
+      "key": "arts-culture",
+      "city": null,
+      "descriptor": "theatre-interior-evening",
+      "slot": "categories/arts-culture/theatre-interior-evening",
+      "source": "design-assets/incoming/category__arts-culture__none__theatre-interior-evening.jpg",
+      "sourceWidth": 4000,
+      "sourceHeight": 2478,
+      "sizes": [
+        {
+          "width": 480,
+          "path": "stock/categories/arts-culture/theatre-interior-evening-480.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/arts-culture/theatre-interior-evening-480.avif",
+          "bytes": 11083
+        },
+        {
+          "width": 960,
+          "path": "stock/categories/arts-culture/theatre-interior-evening-960.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/arts-culture/theatre-interior-evening-960.avif",
+          "bytes": 21351
+        },
+        {
+          "width": 1440,
+          "path": "stock/categories/arts-culture/theatre-interior-evening-1440.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/arts-culture/theatre-interior-evening-1440.avif",
+          "bytes": 30979
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/arts-culture/theatre-interior-evening-1440.avif"
+    },
+    {
+      "role": "categories",
+      "key": "arts",
+      "city": null,
+      "descriptor": "gallery-day",
+      "slot": "categories/arts/gallery-day",
+      "source": "design-assets/incoming/category__arts__none__gallery-day.jpg",
+      "sourceWidth": 6107,
+      "sourceHeight": 4071,
+      "sizes": [
+        {
+          "width": 480,
+          "path": "stock/categories/arts/gallery-day-480.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/arts/gallery-day-480.avif",
+          "bytes": 24099
+        },
+        {
+          "width": 960,
+          "path": "stock/categories/arts/gallery-day-960.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/arts/gallery-day-960.avif",
+          "bytes": 67044
+        },
+        {
+          "width": 1440,
+          "path": "stock/categories/arts/gallery-day-1440.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/arts/gallery-day-1440.avif",
+          "bytes": 127122
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/arts/gallery-day-1440.avif"
+    },
+    {
+      "role": "categories",
+      "key": "business-networking",
+      "city": null,
+      "descriptor": "conference-keynote-day",
+      "slot": "categories/business-networking/conference-keynote-day",
+      "source": "design-assets/incoming/category__business-networking__none__conference-keynote-day.jpg",
+      "sourceWidth": 6000,
+      "sourceHeight": 4000,
+      "sizes": [
+        {
+          "width": 480,
+          "path": "stock/categories/business-networking/conference-keynote-day-480.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/business-networking/conference-keynote-day-480.avif",
+          "bytes": 24319
+        },
+        {
+          "width": 960,
+          "path": "stock/categories/business-networking/conference-keynote-day-960.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/business-networking/conference-keynote-day-960.avif",
+          "bytes": 50823
+        },
+        {
+          "width": 1440,
+          "path": "stock/categories/business-networking/conference-keynote-day-1440.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/business-networking/conference-keynote-day-1440.avif",
+          "bytes": 77095
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/business-networking/conference-keynote-day-1440.avif"
+    },
+    {
+      "role": "categories",
+      "key": "family",
+      "city": null,
+      "descriptor": "outdoor-picnic-day",
+      "slot": "categories/family/outdoor-picnic-day",
+      "source": "design-assets/incoming/category__family__none__outdoor-picnic-day.jpg",
+      "sourceWidth": 3661,
+      "sourceHeight": 2212,
+      "sizes": [
+        {
+          "width": 480,
+          "path": "stock/categories/family/outdoor-picnic-day-480.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/family/outdoor-picnic-day-480.avif",
+          "bytes": 39515
+        },
+        {
+          "width": 960,
+          "path": "stock/categories/family/outdoor-picnic-day-960.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/family/outdoor-picnic-day-960.avif",
+          "bytes": 111563
+        },
+        {
+          "width": 1440,
+          "path": "stock/categories/family/outdoor-picnic-day-1440.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/family/outdoor-picnic-day-1440.avif",
+          "bytes": 200593
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/family/outdoor-picnic-day-1440.avif"
+    },
+    {
+      "role": "categories",
+      "key": "festival",
+      "city": null,
+      "descriptor": "field-stage-day",
+      "slot": "categories/festival/field-stage-day",
+      "source": "design-assets/incoming/category__festival__none__field-stage-day.jpeg",
+      "sourceWidth": 4928,
+      "sourceHeight": 3280,
+      "sizes": [
+        {
+          "width": 480,
+          "path": "stock/categories/festival/field-stage-day-480.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/festival/field-stage-day-480.avif",
+          "bytes": 38999
+        },
+        {
+          "width": 960,
+          "path": "stock/categories/festival/field-stage-day-960.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/festival/field-stage-day-960.avif",
+          "bytes": 104255
+        },
+        {
+          "width": 1440,
+          "path": "stock/categories/festival/field-stage-day-1440.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/festival/field-stage-day-1440.avif",
+          "bytes": 187513
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/festival/field-stage-day-1440.avif"
+    },
+    {
+      "role": "categories",
+      "key": "festival",
+      "city": null,
+      "descriptor": "twilight-stage-golden-hour",
+      "slot": "categories/festival/twilight-stage-golden-hour",
+      "source": "design-assets/incoming/category__festival__none__twilight-stage-golden-hour.jpg",
+      "sourceWidth": 3755,
+      "sourceHeight": 2816,
+      "sizes": [
+        {
+          "width": 480,
+          "path": "stock/categories/festival/twilight-stage-golden-hour-480.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/festival/twilight-stage-golden-hour-480.avif",
+          "bytes": 39420
+        },
+        {
+          "width": 960,
+          "path": "stock/categories/festival/twilight-stage-golden-hour-960.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/festival/twilight-stage-golden-hour-960.avif",
+          "bytes": 133743
+        },
+        {
+          "width": 1440,
+          "path": "stock/categories/festival/twilight-stage-golden-hour-1440.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/festival/twilight-stage-golden-hour-1440.avif",
+          "bytes": 276660
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/festival/twilight-stage-golden-hour-1440.avif"
+    },
+    {
+      "role": "categories",
+      "key": "food-drink",
+      "city": null,
+      "descriptor": "rooftop-tasting-golden-hour",
+      "slot": "categories/food-drink/rooftop-tasting-golden-hour",
+      "source": "design-assets/incoming/category__food-drink__none__rooftop-tasting-golden-hour.jpg",
+      "sourceWidth": 3152,
+      "sourceHeight": 1935,
+      "sizes": [
+        {
+          "width": 480,
+          "path": "stock/categories/food-drink/rooftop-tasting-golden-hour-480.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/food-drink/rooftop-tasting-golden-hour-480.avif",
+          "bytes": 10767
+        },
+        {
+          "width": 960,
+          "path": "stock/categories/food-drink/rooftop-tasting-golden-hour-960.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/food-drink/rooftop-tasting-golden-hour-960.avif",
+          "bytes": 23868
+        },
+        {
+          "width": 1440,
+          "path": "stock/categories/food-drink/rooftop-tasting-golden-hour-1440.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/food-drink/rooftop-tasting-golden-hour-1440.avif",
+          "bytes": 36727
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/food-drink/rooftop-tasting-golden-hour-1440.avif"
+    },
+    {
+      "role": "categories",
+      "key": "food-drink",
+      "city": null,
+      "descriptor": "street-food-night",
+      "slot": "categories/food-drink/street-food-night",
+      "source": "design-assets/incoming/category__food-drink__none__street-food-night.jpg",
+      "sourceWidth": 6705,
+      "sourceHeight": 4470,
+      "sizes": [
+        {
+          "width": 480,
+          "path": "stock/categories/food-drink/street-food-night-480.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/food-drink/street-food-night-480.avif",
+          "bytes": 31338
+        },
+        {
+          "width": 960,
+          "path": "stock/categories/food-drink/street-food-night-960.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/food-drink/street-food-night-960.avif",
+          "bytes": 75129
+        },
+        {
+          "width": 1440,
+          "path": "stock/categories/food-drink/street-food-night-1440.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/food-drink/street-food-night-1440.avif",
+          "bytes": 119627
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/food-drink/street-food-night-1440.avif"
+    },
+    {
+      "role": "categories",
+      "key": "music",
+      "city": null,
+      "descriptor": "intimate-gig-night",
+      "slot": "categories/music/intimate-gig-night",
+      "source": "design-assets/incoming/category__music__none__intimate-gig-night.jpg",
+      "sourceWidth": 6720,
+      "sourceHeight": 4480,
+      "sizes": [
+        {
+          "width": 480,
+          "path": "stock/categories/music/intimate-gig-night-480.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/music/intimate-gig-night-480.avif",
+          "bytes": 10916
+        },
+        {
+          "width": 960,
+          "path": "stock/categories/music/intimate-gig-night-960.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/music/intimate-gig-night-960.avif",
+          "bytes": 25954
+        },
+        {
+          "width": 1440,
+          "path": "stock/categories/music/intimate-gig-night-1440.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/music/intimate-gig-night-1440.avif",
+          "bytes": 52878
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/music/intimate-gig-night-1440.avif"
+    },
+    {
+      "role": "categories",
+      "key": "music",
+      "city": null,
+      "descriptor": "live-band-day",
+      "slot": "categories/music/live-band-day",
+      "source": "design-assets/incoming/category__music__none__live-band-day.jpeg",
+      "sourceWidth": 7680,
+      "sourceHeight": 4050,
+      "sizes": [
+        {
+          "width": 480,
+          "path": "stock/categories/music/live-band-day-480.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/music/live-band-day-480.avif",
+          "bytes": 15911
+        },
+        {
+          "width": 960,
+          "path": "stock/categories/music/live-band-day-960.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/music/live-band-day-960.avif",
+          "bytes": 38752
+        },
+        {
+          "width": 1440,
+          "path": "stock/categories/music/live-band-day-1440.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/music/live-band-day-1440.avif",
+          "bytes": 59232
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/music/live-band-day-1440.avif"
+    },
+    {
+      "role": "categories",
+      "key": "nightlife",
+      "city": null,
+      "descriptor": "club-dancefloor-night",
+      "slot": "categories/nightlife/club-dancefloor-night",
+      "source": "design-assets/incoming/category__nightlife__none__club-dancefloor-night.jpg",
+      "sourceWidth": 5384,
+      "sourceHeight": 2785,
+      "sizes": [
+        {
+          "width": 480,
+          "path": "stock/categories/nightlife/club-dancefloor-night-480.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/nightlife/club-dancefloor-night-480.avif",
+          "bytes": 18371
+        },
+        {
+          "width": 960,
+          "path": "stock/categories/nightlife/club-dancefloor-night-960.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/nightlife/club-dancefloor-night-960.avif",
+          "bytes": 40281
+        },
+        {
+          "width": 1440,
+          "path": "stock/categories/nightlife/club-dancefloor-night-1440.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/nightlife/club-dancefloor-night-1440.avif",
+          "bytes": 62131
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/nightlife/club-dancefloor-night-1440.avif"
+    },
+    {
+      "role": "categories",
+      "key": "nightlife",
+      "city": null,
+      "descriptor": "rooftop-party-night",
+      "slot": "categories/nightlife/rooftop-party-night",
+      "source": "design-assets/incoming/category__nightlife__none__rooftop-party-night.jpg",
+      "sourceWidth": 6240,
+      "sourceHeight": 4160,
+      "sizes": [
+        {
+          "width": 480,
+          "path": "stock/categories/nightlife/rooftop-party-night-480.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/nightlife/rooftop-party-night-480.avif",
+          "bytes": 32227
+        },
+        {
+          "width": 960,
+          "path": "stock/categories/nightlife/rooftop-party-night-960.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/nightlife/rooftop-party-night-960.avif",
+          "bytes": 89797
+        },
+        {
+          "width": 1440,
+          "path": "stock/categories/nightlife/rooftop-party-night-1440.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/nightlife/rooftop-party-night-1440.avif",
+          "bytes": 166401
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/nightlife/rooftop-party-night-1440.avif"
+    },
+    {
+      "role": "categories",
+      "key": "sports",
+      "city": null,
+      "descriptor": "fans-cheering-day",
+      "slot": "categories/sports/fans-cheering-day",
+      "source": "design-assets/incoming/category__sports__none__fans-cheering-day.jpg",
+      "sourceWidth": 5121,
+      "sourceHeight": 3414,
+      "sizes": [
+        {
+          "width": 480,
+          "path": "stock/categories/sports/fans-cheering-day-480.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/sports/fans-cheering-day-480.avif",
+          "bytes": 22219
+        },
+        {
+          "width": 960,
+          "path": "stock/categories/sports/fans-cheering-day-960.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/sports/fans-cheering-day-960.avif",
+          "bytes": 43361
+        },
+        {
+          "width": 1440,
+          "path": "stock/categories/sports/fans-cheering-day-1440.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/sports/fans-cheering-day-1440.avif",
+          "bytes": 65605
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/categories/sports/fans-cheering-day-1440.avif"
+    },
+    {
+      "role": "cities",
+      "key": null,
+      "city": "adelaide",
+      "descriptor": "festival-crowd-day",
+      "slot": "cities/adelaide/festival-crowd-day",
+      "source": "design-assets/incoming/city__none__adelaide__festival-crowd-day.jpeg",
+      "sourceWidth": 5000,
+      "sourceHeight": 3337,
+      "sizes": [
+        {
+          "width": 400,
+          "path": "stock/cities/adelaide/festival-crowd-day-400.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/adelaide/festival-crowd-day-400.avif",
+          "bytes": 17689
+        },
+        {
+          "width": 800,
+          "path": "stock/cities/adelaide/festival-crowd-day-800.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/adelaide/festival-crowd-day-800.avif",
+          "bytes": 64075
+        },
+        {
+          "width": 1200,
+          "path": "stock/cities/adelaide/festival-crowd-day-1200.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/adelaide/festival-crowd-day-1200.avif",
+          "bytes": 138498
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/adelaide/festival-crowd-day-1200.avif"
+    },
+    {
+      "role": "cities",
+      "key": null,
+      "city": "brisbane",
+      "descriptor": "southbank-golden-hour",
+      "slot": "cities/brisbane/southbank-golden-hour",
+      "source": "design-assets/incoming/city__none__brisbane__southbank-golden-hour.jpg",
+      "sourceWidth": 3000,
+      "sourceHeight": 2000,
+      "sizes": [
+        {
+          "width": 400,
+          "path": "stock/cities/brisbane/southbank-golden-hour-400.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/brisbane/southbank-golden-hour-400.avif",
+          "bytes": 18124
+        },
+        {
+          "width": 800,
+          "path": "stock/cities/brisbane/southbank-golden-hour-800.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/brisbane/southbank-golden-hour-800.avif",
+          "bytes": 63243
+        },
+        {
+          "width": 1200,
+          "path": "stock/cities/brisbane/southbank-golden-hour-1200.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/brisbane/southbank-golden-hour-1200.avif",
+          "bytes": 137587
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/brisbane/southbank-golden-hour-1200.avif"
+    },
+    {
+      "role": "cities",
+      "key": null,
+      "city": "cairns",
+      "descriptor": "esplanade-tropical-day",
+      "slot": "cities/cairns/esplanade-tropical-day",
+      "source": "design-assets/incoming/city__none__cairns__esplanade-tropical-day.jpeg",
+      "sourceWidth": 5400,
+      "sourceHeight": 3600,
+      "sizes": [
+        {
+          "width": 400,
+          "path": "stock/cities/cairns/esplanade-tropical-day-400.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/cairns/esplanade-tropical-day-400.avif",
+          "bytes": 17952
+        },
+        {
+          "width": 800,
+          "path": "stock/cities/cairns/esplanade-tropical-day-800.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/cairns/esplanade-tropical-day-800.avif",
+          "bytes": 66372
+        },
+        {
+          "width": 1200,
+          "path": "stock/cities/cairns/esplanade-tropical-day-1200.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/cairns/esplanade-tropical-day-1200.avif",
+          "bytes": 153908
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/cairns/esplanade-tropical-day-1200.avif"
+    },
+    {
+      "role": "cities",
+      "key": null,
+      "city": "canberra",
+      "descriptor": "parliament-dusk",
+      "slot": "cities/canberra/parliament-dusk",
+      "source": "design-assets/incoming/city__none__canberra__parliament-dusk.jpeg",
+      "sourceWidth": 4500,
+      "sourceHeight": 3000,
+      "sizes": [
+        {
+          "width": 400,
+          "path": "stock/cities/canberra/parliament-dusk-400.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/canberra/parliament-dusk-400.avif",
+          "bytes": 11234
+        },
+        {
+          "width": 800,
+          "path": "stock/cities/canberra/parliament-dusk-800.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/canberra/parliament-dusk-800.avif",
+          "bytes": 28393
+        },
+        {
+          "width": 1200,
+          "path": "stock/cities/canberra/parliament-dusk-1200.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/canberra/parliament-dusk-1200.avif",
+          "bytes": 51421
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/canberra/parliament-dusk-1200.avif"
+    },
+    {
+      "role": "cities",
+      "key": null,
+      "city": "darwin",
+      "descriptor": "mindil-sunset-evening",
+      "slot": "cities/darwin/mindil-sunset-evening",
+      "source": "design-assets/incoming/city__none__darwin__mindil-sunset-evening.jpeg",
+      "sourceWidth": 3878,
+      "sourceHeight": 2364,
+      "sizes": [
+        {
+          "width": 400,
+          "path": "stock/cities/darwin/mindil-sunset-evening-400.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/darwin/mindil-sunset-evening-400.avif",
+          "bytes": 7404
+        },
+        {
+          "width": 800,
+          "path": "stock/cities/darwin/mindil-sunset-evening-800.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/darwin/mindil-sunset-evening-800.avif",
+          "bytes": 25613
+        },
+        {
+          "width": 1200,
+          "path": "stock/cities/darwin/mindil-sunset-evening-1200.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/darwin/mindil-sunset-evening-1200.avif",
+          "bytes": 53418
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/darwin/mindil-sunset-evening-1200.avif"
+    },
+    {
+      "role": "cities",
+      "key": null,
+      "city": "geelong",
+      "descriptor": "waterfront-golden-hour",
+      "slot": "cities/geelong/waterfront-golden-hour",
+      "source": "design-assets/incoming/city__none__geelong__waterfront-golden-hour.jpeg",
+      "sourceWidth": 5616,
+      "sourceHeight": 3744,
+      "sizes": [
+        {
+          "width": 400,
+          "path": "stock/cities/geelong/waterfront-golden-hour-400.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/geelong/waterfront-golden-hour-400.avif",
+          "bytes": 14271
+        },
+        {
+          "width": 800,
+          "path": "stock/cities/geelong/waterfront-golden-hour-800.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/geelong/waterfront-golden-hour-800.avif",
+          "bytes": 35374
+        },
+        {
+          "width": 1200,
+          "path": "stock/cities/geelong/waterfront-golden-hour-1200.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/geelong/waterfront-golden-hour-1200.avif",
+          "bytes": 59943
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/geelong/waterfront-golden-hour-1200.avif"
+    },
+    {
+      "role": "cities",
+      "key": null,
+      "city": "gold-coast",
+      "descriptor": "beachfront-day",
+      "slot": "cities/gold-coast/beachfront-day",
+      "source": "design-assets/incoming/city__none__gold-coast__beachfront-day.jpg",
+      "sourceWidth": 5298,
+      "sourceHeight": 3532,
+      "sizes": [
+        {
+          "width": 400,
+          "path": "stock/cities/gold-coast/beachfront-day-400.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/gold-coast/beachfront-day-400.avif",
+          "bytes": 9331
+        },
+        {
+          "width": 800,
+          "path": "stock/cities/gold-coast/beachfront-day-800.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/gold-coast/beachfront-day-800.avif",
+          "bytes": 30950
+        },
+        {
+          "width": 1200,
+          "path": "stock/cities/gold-coast/beachfront-day-1200.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/gold-coast/beachfront-day-1200.avif",
+          "bytes": 58876
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/gold-coast/beachfront-day-1200.avif"
+    },
+    {
+      "role": "cities",
+      "key": null,
+      "city": "hobart",
+      "descriptor": "waterfront-day",
+      "slot": "cities/hobart/waterfront-day",
+      "source": "design-assets/incoming/city__none__hobart__waterfront-day.jpg",
+      "sourceWidth": 6706,
+      "sourceHeight": 4473,
+      "sizes": [
+        {
+          "width": 400,
+          "path": "stock/cities/hobart/waterfront-day-400.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/hobart/waterfront-day-400.avif",
+          "bytes": 15642
+        },
+        {
+          "width": 800,
+          "path": "stock/cities/hobart/waterfront-day-800.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/hobart/waterfront-day-800.avif",
+          "bytes": 56686
+        },
+        {
+          "width": 1200,
+          "path": "stock/cities/hobart/waterfront-day-1200.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/hobart/waterfront-day-1200.avif",
+          "bytes": 110418
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/hobart/waterfront-day-1200.avif"
+    },
+    {
+      "role": "cities",
+      "key": null,
+      "city": "melbourne",
+      "descriptor": "skyline-sunrise",
+      "slot": "cities/melbourne/skyline-sunrise",
+      "source": "design-assets/incoming/city__none__melbourne__skyline-sunrise.jpeg",
+      "sourceWidth": 8688,
+      "sourceHeight": 5792,
+      "sizes": [
+        {
+          "width": 400,
+          "path": "stock/cities/melbourne/skyline-sunrise-400.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/melbourne/skyline-sunrise-400.avif",
+          "bytes": 29845
+        },
+        {
+          "width": 800,
+          "path": "stock/cities/melbourne/skyline-sunrise-800.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/melbourne/skyline-sunrise-800.avif",
+          "bytes": 97721
+        },
+        {
+          "width": 1200,
+          "path": "stock/cities/melbourne/skyline-sunrise-1200.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/melbourne/skyline-sunrise-1200.avif",
+          "bytes": 200228
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/melbourne/skyline-sunrise-1200.avif"
+    },
+    {
+      "role": "cities",
+      "key": null,
+      "city": "newcastle",
+      "descriptor": "beach-foreshore-day",
+      "slot": "cities/newcastle/beach-foreshore-day",
+      "source": "design-assets/incoming/city__none__newcastle__beach-foreshore-day.jpg",
+      "sourceWidth": 6678,
+      "sourceHeight": 4452,
+      "sizes": [
+        {
+          "width": 400,
+          "path": "stock/cities/newcastle/beach-foreshore-day-400.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/newcastle/beach-foreshore-day-400.avif",
+          "bytes": 18968
+        },
+        {
+          "width": 800,
+          "path": "stock/cities/newcastle/beach-foreshore-day-800.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/newcastle/beach-foreshore-day-800.avif",
+          "bytes": 64427
+        },
+        {
+          "width": 1200,
+          "path": "stock/cities/newcastle/beach-foreshore-day-1200.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/newcastle/beach-foreshore-day-1200.avif",
+          "bytes": 124490
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/newcastle/beach-foreshore-day-1200.avif"
+    },
+    {
+      "role": "cities",
+      "key": null,
+      "city": "perth",
+      "descriptor": "foreshore-day",
+      "slot": "cities/perth/foreshore-day",
+      "source": "design-assets/incoming/city__none__perth__foreshore-day.jpeg",
+      "sourceWidth": 5472,
+      "sourceHeight": 3648,
+      "sizes": [
+        {
+          "width": 400,
+          "path": "stock/cities/perth/foreshore-day-400.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/perth/foreshore-day-400.avif",
+          "bytes": 24835
+        },
+        {
+          "width": 800,
+          "path": "stock/cities/perth/foreshore-day-800.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/perth/foreshore-day-800.avif",
+          "bytes": 80124
+        },
+        {
+          "width": 1200,
+          "path": "stock/cities/perth/foreshore-day-1200.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/perth/foreshore-day-1200.avif",
+          "bytes": 160351
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/perth/foreshore-day-1200.avif"
+    },
+    {
+      "role": "cities",
+      "key": null,
+      "city": "sydney",
+      "descriptor": "harbour-dusk",
+      "slot": "cities/sydney/harbour-dusk",
+      "source": "design-assets/incoming/city__none__sydney__harbour-dusk.jpg",
+      "sourceWidth": 7008,
+      "sourceHeight": 4672,
+      "sizes": [
+        {
+          "width": 400,
+          "path": "stock/cities/sydney/harbour-dusk-400.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/sydney/harbour-dusk-400.avif",
+          "bytes": 16238
+        },
+        {
+          "width": 800,
+          "path": "stock/cities/sydney/harbour-dusk-800.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/sydney/harbour-dusk-800.avif",
+          "bytes": 54804
+        },
+        {
+          "width": 1200,
+          "path": "stock/cities/sydney/harbour-dusk-1200.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/sydney/harbour-dusk-1200.avif",
+          "bytes": 108191
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/sydney/harbour-dusk-1200.avif"
+    },
+    {
+      "role": "cities",
+      "key": null,
+      "city": "wollongong",
+      "descriptor": "coast-day",
+      "slot": "cities/wollongong/coast-day",
+      "source": "design-assets/incoming/city__none__wollongong__coast-day.jpeg",
+      "sourceWidth": 4000,
+      "sourceHeight": 3000,
+      "sizes": [
+        {
+          "width": 400,
+          "path": "stock/cities/wollongong/coast-day-400.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/wollongong/coast-day-400.avif",
+          "bytes": 24834
+        },
+        {
+          "width": 800,
+          "path": "stock/cities/wollongong/coast-day-800.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/wollongong/coast-day-800.avif",
+          "bytes": 85162
+        },
+        {
+          "width": 1200,
+          "path": "stock/cities/wollongong/coast-day-1200.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/wollongong/coast-day-1200.avif",
+          "bytes": 179899
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/cities/wollongong/coast-day-1200.avif"
+    },
+    {
+      "role": "hero",
+      "key": null,
+      "city": null,
+      "descriptor": "homepage-day-festival",
+      "slot": "hero/homepage-day-festival",
+      "source": "design-assets/incoming/hero__none__none__homepage-day-festival.jpeg",
+      "sourceWidth": 7360,
+      "sourceHeight": 4912,
+      "sizes": [
+        {
+          "width": 1280,
+          "path": "stock/hero/homepage-day-festival-1280.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/homepage-day-festival-1280.avif",
+          "bytes": 134918
+        },
+        {
+          "width": 1920,
+          "path": "stock/hero/homepage-day-festival-1920.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/homepage-day-festival-1920.avif",
+          "bytes": 211224
+        },
+        {
+          "width": 2560,
+          "path": "stock/hero/homepage-day-festival-2560.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/homepage-day-festival-2560.avif",
+          "bytes": 284125
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/homepage-day-festival-2560.avif"
+    },
+    {
+      "role": "hero",
+      "key": null,
+      "city": null,
+      "descriptor": "homepage-festival-night",
+      "slot": "hero/homepage-festival-night",
+      "source": "design-assets/incoming/hero__none__none__homepage-festival-night.jpeg",
+      "sourceWidth": 3000,
+      "sourceHeight": 2356,
+      "sizes": [
+        {
+          "width": 1280,
+          "path": "stock/hero/homepage-festival-night-1280.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/homepage-festival-night-1280.avif",
+          "bytes": 113861
+        },
+        {
+          "width": 1920,
+          "path": "stock/hero/homepage-festival-night-1920.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/homepage-festival-night-1920.avif",
+          "bytes": 325808
+        },
+        {
+          "width": 2560,
+          "path": "stock/hero/homepage-festival-night-2560.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/homepage-festival-night-2560.avif",
+          "bytes": 660931
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/homepage-festival-night-2560.avif"
+    },
+    {
+      "role": "hero",
+      "key": null,
+      "city": null,
+      "descriptor": "homepage-rooftop-golden-hour",
+      "slot": "hero/homepage-rooftop-golden-hour",
+      "source": "design-assets/incoming/hero__none__none__homepage-rooftop-golden-hour.jpeg",
+      "sourceWidth": 6000,
+      "sourceHeight": 4000,
+      "sizes": [
+        {
+          "width": 1280,
+          "path": "stock/hero/homepage-rooftop-golden-hour-1280.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/homepage-rooftop-golden-hour-1280.avif",
+          "bytes": 52851
+        },
+        {
+          "width": 1920,
+          "path": "stock/hero/homepage-rooftop-golden-hour-1920.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/homepage-rooftop-golden-hour-1920.avif",
+          "bytes": 89567
+        },
+        {
+          "width": 2560,
+          "path": "stock/hero/homepage-rooftop-golden-hour-2560.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/homepage-rooftop-golden-hour-2560.avif",
+          "bytes": 136860
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/homepage-rooftop-golden-hour-2560.avif"
+    },
+    {
+      "role": "hero",
+      "key": null,
+      "city": null,
+      "descriptor": "organisers-soldout-house-night",
+      "slot": "hero/organisers-soldout-house-night",
+      "source": "design-assets/incoming/hero__none__none__organisers-soldout-house-night.jpg",
+      "sourceWidth": 6720,
+      "sourceHeight": 4480,
+      "sizes": [
+        {
+          "width": 1280,
+          "path": "stock/hero/organisers-soldout-house-night-1280.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/organisers-soldout-house-night-1280.avif",
+          "bytes": 84985
+        },
+        {
+          "width": 1920,
+          "path": "stock/hero/organisers-soldout-house-night-1920.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/organisers-soldout-house-night-1920.avif",
+          "bytes": 129875
+        },
+        {
+          "width": 2560,
+          "path": "stock/hero/organisers-soldout-house-night-2560.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/organisers-soldout-house-night-2560.avif",
+          "bytes": 177304
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/organisers-soldout-house-night-2560.avif"
+    },
+    {
+      "role": "hero",
+      "key": null,
+      "city": null,
+      "descriptor": "organisers-stage-production-day",
+      "slot": "hero/organisers-stage-production-day",
+      "source": "design-assets/incoming/hero__none__none__organisers-stage-production-day.jpg",
+      "sourceWidth": 6000,
+      "sourceHeight": 4000,
+      "sizes": [
+        {
+          "width": 1280,
+          "path": "stock/hero/organisers-stage-production-day-1280.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/organisers-stage-production-day-1280.avif",
+          "bytes": 70975
+        },
+        {
+          "width": 1920,
+          "path": "stock/hero/organisers-stage-production-day-1920.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/organisers-stage-production-day-1920.avif",
+          "bytes": 112634
+        },
+        {
+          "width": 2560,
+          "path": "stock/hero/organisers-stage-production-day-2560.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/organisers-stage-production-day-2560.avif",
+          "bytes": 164481
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/organisers-stage-production-day-2560.avif"
+    },
+    {
+      "role": "hero",
+      "key": null,
+      "city": null,
+      "descriptor": "supporting-crowd-singalong-golden-hour",
+      "slot": "hero/supporting-crowd-singalong-golden-hour",
+      "source": "design-assets/incoming/hero__none__none__supporting-crowd-singalong-golden-hour.jpg",
+      "sourceWidth": 5472,
+      "sourceHeight": 3648,
+      "sizes": [
+        {
+          "width": 1280,
+          "path": "stock/hero/supporting-crowd-singalong-golden-hour-1280.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/supporting-crowd-singalong-golden-hour-1280.avif",
+          "bytes": 21943
+        },
+        {
+          "width": 1920,
+          "path": "stock/hero/supporting-crowd-singalong-golden-hour-1920.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/supporting-crowd-singalong-golden-hour-1920.avif",
+          "bytes": 31482
+        },
+        {
+          "width": 2560,
+          "path": "stock/hero/supporting-crowd-singalong-golden-hour-2560.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/supporting-crowd-singalong-golden-hour-2560.avif",
+          "bytes": 41379
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/supporting-crowd-singalong-golden-hour-2560.avif"
+    },
+    {
+      "role": "hero",
+      "key": null,
+      "city": null,
+      "descriptor": "supporting-dance-celebration-night",
+      "slot": "hero/supporting-dance-celebration-night",
+      "source": "design-assets/incoming/hero__none__none__supporting-dance-celebration-night.jpg",
+      "sourceWidth": 6000,
+      "sourceHeight": 4000,
+      "sizes": [
+        {
+          "width": 1280,
+          "path": "stock/hero/supporting-dance-celebration-night-1280.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/supporting-dance-celebration-night-1280.avif",
+          "bytes": 59449
+        },
+        {
+          "width": 1920,
+          "path": "stock/hero/supporting-dance-celebration-night-1920.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/supporting-dance-celebration-night-1920.avif",
+          "bytes": 87657
+        },
+        {
+          "width": 2560,
+          "path": "stock/hero/supporting-dance-celebration-night-2560.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/supporting-dance-celebration-night-2560.avif",
+          "bytes": 121291
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/supporting-dance-celebration-night-2560.avif"
+    },
+    {
+      "role": "hero",
+      "key": null,
+      "city": null,
+      "descriptor": "supporting-discovery-browse-day",
+      "slot": "hero/supporting-discovery-browse-day",
+      "source": "design-assets/incoming/hero__none__none__supporting-discovery-browse-day.jpg",
+      "sourceWidth": 7952,
+      "sourceHeight": 5304,
+      "sizes": [
+        {
+          "width": 1280,
+          "path": "stock/hero/supporting-discovery-browse-day-1280.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/supporting-discovery-browse-day-1280.avif",
+          "bytes": 90699
+        },
+        {
+          "width": 1920,
+          "path": "stock/hero/supporting-discovery-browse-day-1920.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/supporting-discovery-browse-day-1920.avif",
+          "bytes": 163724
+        },
+        {
+          "width": 2560,
+          "path": "stock/hero/supporting-discovery-browse-day-2560.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/supporting-discovery-browse-day-2560.avif",
+          "bytes": 234154
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/supporting-discovery-browse-day-2560.avif"
+    },
+    {
+      "role": "hero",
+      "key": null,
+      "city": null,
+      "descriptor": "supporting-entry-scan-night",
+      "slot": "hero/supporting-entry-scan-night",
+      "source": "design-assets/incoming/hero__none__none__supporting-entry-scan-night.jpg",
+      "sourceWidth": 7008,
+      "sourceHeight": 4672,
+      "sizes": [
+        {
+          "width": 1280,
+          "path": "stock/hero/supporting-entry-scan-night-1280.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/supporting-entry-scan-night-1280.avif",
+          "bytes": 27458
+        },
+        {
+          "width": 1920,
+          "path": "stock/hero/supporting-entry-scan-night-1920.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/supporting-entry-scan-night-1920.avif",
+          "bytes": 41195
+        },
+        {
+          "width": 2560,
+          "path": "stock/hero/supporting-entry-scan-night-2560.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/supporting-entry-scan-night-2560.avif",
+          "bytes": 55677
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/supporting-entry-scan-night-2560.avif"
+    },
+    {
+      "role": "hero",
+      "key": null,
+      "city": null,
+      "descriptor": "supporting-organiser-success-day",
+      "slot": "hero/supporting-organiser-success-day",
+      "source": "design-assets/incoming/hero__none__none__supporting-organiser-success-day.jpg",
+      "sourceWidth": 4608,
+      "sourceHeight": 3072,
+      "sizes": [
+        {
+          "width": 1280,
+          "path": "stock/hero/supporting-organiser-success-day-1280.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/supporting-organiser-success-day-1280.avif",
+          "bytes": 64195
+        },
+        {
+          "width": 1920,
+          "path": "stock/hero/supporting-organiser-success-day-1920.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/supporting-organiser-success-day-1920.avif",
+          "bytes": 109204
+        },
+        {
+          "width": 2560,
+          "path": "stock/hero/supporting-organiser-success-day-2560.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/supporting-organiser-success-day-2560.avif",
+          "bytes": 164944
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/supporting-organiser-success-day-2560.avif"
+    },
+    {
+      "role": "hero",
+      "key": null,
+      "city": null,
+      "descriptor": "supporting-tickets-moment-day",
+      "slot": "hero/supporting-tickets-moment-day",
+      "source": "design-assets/incoming/hero__none__none__supporting-tickets-moment-day.jpg",
+      "sourceWidth": 6720,
+      "sourceHeight": 4480,
+      "sizes": [
+        {
+          "width": 1280,
+          "path": "stock/hero/supporting-tickets-moment-day-1280.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/supporting-tickets-moment-day-1280.avif",
+          "bytes": 54685
+        },
+        {
+          "width": 1920,
+          "path": "stock/hero/supporting-tickets-moment-day-1920.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/supporting-tickets-moment-day-1920.avif",
+          "bytes": 109575
+        },
+        {
+          "width": 2560,
+          "path": "stock/hero/supporting-tickets-moment-day-2560.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/supporting-tickets-moment-day-2560.avif",
+          "bytes": 195661
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/hero/supporting-tickets-moment-day-2560.avif"
+    },
+    {
+      "role": "scenes",
+      "key": "afrobeats-amapiano",
+      "city": null,
+      "descriptor": "crowd-hands-up-night",
+      "slot": "scenes/afrobeats-amapiano/crowd-hands-up-night",
+      "source": "design-assets/incoming/scene__afrobeats-amapiano__none__crowd-hands-up-night.jpg",
+      "sourceWidth": 8256,
+      "sourceHeight": 5504,
+      "sizes": [
+        {
+          "width": 480,
+          "path": "stock/scenes/afrobeats-amapiano/crowd-hands-up-night-480.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/afrobeats-amapiano/crowd-hands-up-night-480.avif",
+          "bytes": 25325
+        },
+        {
+          "width": 960,
+          "path": "stock/scenes/afrobeats-amapiano/crowd-hands-up-night-960.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/afrobeats-amapiano/crowd-hands-up-night-960.avif",
+          "bytes": 52337
+        },
+        {
+          "width": 1440,
+          "path": "stock/scenes/afrobeats-amapiano/crowd-hands-up-night-1440.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/afrobeats-amapiano/crowd-hands-up-night-1440.avif",
+          "bytes": 77721
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/afrobeats-amapiano/crowd-hands-up-night-1440.avif"
+    },
+    {
+      "role": "scenes",
+      "key": "asian",
+      "city": null,
+      "descriptor": "lantern-festival-night",
+      "slot": "scenes/asian/lantern-festival-night",
+      "source": "design-assets/incoming/scene__asian__none__lantern-festival-night.jpg",
+      "sourceWidth": 3643,
+      "sourceHeight": 1921,
+      "sizes": [
+        {
+          "width": 480,
+          "path": "stock/scenes/asian/lantern-festival-night-480.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/asian/lantern-festival-night-480.avif",
+          "bytes": 33078
+        },
+        {
+          "width": 960,
+          "path": "stock/scenes/asian/lantern-festival-night-960.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/asian/lantern-festival-night-960.avif",
+          "bytes": 105220
+        },
+        {
+          "width": 1440,
+          "path": "stock/scenes/asian/lantern-festival-night-1440.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/asian/lantern-festival-night-1440.avif",
+          "bytes": 200965
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/asian/lantern-festival-night-1440.avif"
+    },
+    {
+      "role": "scenes",
+      "key": "blues-roots",
+      "city": null,
+      "descriptor": "riverside-stage-day",
+      "slot": "scenes/blues-roots/riverside-stage-day",
+      "source": "design-assets/incoming/scene__blues-roots__none__riverside-stage-day.jpg",
+      "sourceWidth": 5376,
+      "sourceHeight": 3584,
+      "sizes": [
+        {
+          "width": 480,
+          "path": "stock/scenes/blues-roots/riverside-stage-day-480.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/blues-roots/riverside-stage-day-480.avif",
+          "bytes": 19579
+        },
+        {
+          "width": 960,
+          "path": "stock/scenes/blues-roots/riverside-stage-day-960.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/blues-roots/riverside-stage-day-960.avif",
+          "bytes": 40656
+        },
+        {
+          "width": 1440,
+          "path": "stock/scenes/blues-roots/riverside-stage-day-1440.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/blues-roots/riverside-stage-day-1440.avif",
+          "bytes": 63821
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/blues-roots/riverside-stage-day-1440.avif"
+    },
+    {
+      "role": "scenes",
+      "key": "caribbean-dancehall",
+      "city": null,
+      "descriptor": "carnival-colour-day",
+      "slot": "scenes/caribbean-dancehall/carnival-colour-day",
+      "source": "design-assets/incoming/scene__caribbean-dancehall__none__carnival-colour-day.jpg",
+      "sourceWidth": 7360,
+      "sourceHeight": 4912,
+      "sizes": [
+        {
+          "width": 480,
+          "path": "stock/scenes/caribbean-dancehall/carnival-colour-day-480.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/caribbean-dancehall/carnival-colour-day-480.avif",
+          "bytes": 49531
+        },
+        {
+          "width": 960,
+          "path": "stock/scenes/caribbean-dancehall/carnival-colour-day-960.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/caribbean-dancehall/carnival-colour-day-960.avif",
+          "bytes": 124026
+        },
+        {
+          "width": 1440,
+          "path": "stock/scenes/caribbean-dancehall/carnival-colour-day-1440.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/caribbean-dancehall/carnival-colour-day-1440.avif",
+          "bytes": 201183
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/caribbean-dancehall/carnival-colour-day-1440.avif"
+    },
+    {
+      "role": "scenes",
+      "key": "country",
+      "city": null,
+      "descriptor": "outdoor-festival-day",
+      "slot": "scenes/country/outdoor-festival-day",
+      "source": "design-assets/incoming/scene__country__none__outdoor-festival-day.jpeg",
+      "sourceWidth": 7952,
+      "sourceHeight": 5304,
+      "sizes": [
+        {
+          "width": 480,
+          "path": "stock/scenes/country/outdoor-festival-day-480.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/country/outdoor-festival-day-480.avif",
+          "bytes": 19329
+        },
+        {
+          "width": 960,
+          "path": "stock/scenes/country/outdoor-festival-day-960.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/country/outdoor-festival-day-960.avif",
+          "bytes": 40144
+        },
+        {
+          "width": 1440,
+          "path": "stock/scenes/country/outdoor-festival-day-1440.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/country/outdoor-festival-day-1440.avif",
+          "bytes": 62541
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/country/outdoor-festival-day-1440.avif"
+    },
+    {
+      "role": "scenes",
+      "key": "electronic-dance",
+      "city": null,
+      "descriptor": "mainstage-night",
+      "slot": "scenes/electronic-dance/mainstage-night",
+      "source": "design-assets/incoming/scene__electronic-dance__none__mainstage-night.jpeg",
+      "sourceWidth": 6048,
+      "sourceHeight": 4032,
+      "sizes": [
+        {
+          "width": 480,
+          "path": "stock/scenes/electronic-dance/mainstage-night-480.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/electronic-dance/mainstage-night-480.avif",
+          "bytes": 23215
+        },
+        {
+          "width": 960,
+          "path": "stock/scenes/electronic-dance/mainstage-night-960.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/electronic-dance/mainstage-night-960.avif",
+          "bytes": 64299
+        },
+        {
+          "width": 1440,
+          "path": "stock/scenes/electronic-dance/mainstage-night-1440.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/electronic-dance/mainstage-night-1440.avif",
+          "bytes": 124016
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/electronic-dance/mainstage-night-1440.avif"
+    },
+    {
+      "role": "scenes",
+      "key": "faith-worship",
+      "city": null,
+      "descriptor": "community-worship-day",
+      "slot": "scenes/faith-worship/community-worship-day",
+      "source": "design-assets/incoming/scene__faith-worship__none__community-worship-day.jpeg",
+      "sourceWidth": 4096,
+      "sourceHeight": 2160,
+      "sizes": [
+        {
+          "width": 480,
+          "path": "stock/scenes/faith-worship/community-worship-day-480.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/faith-worship/community-worship-day-480.avif",
+          "bytes": 8658
+        },
+        {
+          "width": 960,
+          "path": "stock/scenes/faith-worship/community-worship-day-960.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/faith-worship/community-worship-day-960.avif",
+          "bytes": 16687
+        },
+        {
+          "width": 1440,
+          "path": "stock/scenes/faith-worship/community-worship-day-1440.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/faith-worship/community-worship-day-1440.avif",
+          "bytes": 25020
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/faith-worship/community-worship-day-1440.avif"
+    },
+    {
+      "role": "scenes",
+      "key": "first-nations",
+      "city": null,
+      "descriptor": "cultural-ceremony-day",
+      "slot": "scenes/first-nations/cultural-ceremony-day",
+      "source": "design-assets/incoming/scene__first-nations__none__cultural-ceremony-day.jpeg",
+      "sourceWidth": 6048,
+      "sourceHeight": 4024,
+      "sizes": [
+        {
+          "width": 480,
+          "path": "stock/scenes/first-nations/cultural-ceremony-day-480.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/first-nations/cultural-ceremony-day-480.avif",
+          "bytes": 35229
+        },
+        {
+          "width": 960,
+          "path": "stock/scenes/first-nations/cultural-ceremony-day-960.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/first-nations/cultural-ceremony-day-960.avif",
+          "bytes": 78165
+        },
+        {
+          "width": 1440,
+          "path": "stock/scenes/first-nations/cultural-ceremony-day-1440.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/first-nations/cultural-ceremony-day-1440.avif",
+          "bytes": 119484
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/first-nations/cultural-ceremony-day-1440.avif"
+    },
+    {
+      "role": "scenes",
+      "key": "folk-acoustic",
+      "city": null,
+      "descriptor": "lawn-session-golden-hour",
+      "slot": "scenes/folk-acoustic/lawn-session-golden-hour",
+      "source": "design-assets/incoming/scene__folk-acoustic__none__lawn-session-golden-hour.jpg",
+      "sourceWidth": 6006,
+      "sourceHeight": 3996,
+      "sizes": [
+        {
+          "width": 480,
+          "path": "stock/scenes/folk-acoustic/lawn-session-golden-hour-480.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/folk-acoustic/lawn-session-golden-hour-480.avif",
+          "bytes": 20129
+        },
+        {
+          "width": 960,
+          "path": "stock/scenes/folk-acoustic/lawn-session-golden-hour-960.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/folk-acoustic/lawn-session-golden-hour-960.avif",
+          "bytes": 44917
+        },
+        {
+          "width": 1440,
+          "path": "stock/scenes/folk-acoustic/lawn-session-golden-hour-1440.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/folk-acoustic/lawn-session-golden-hour-1440.avif",
+          "bytes": 72838
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/folk-acoustic/lawn-session-golden-hour-1440.avif"
+    },
+    {
+      "role": "scenes",
+      "key": "hip-hop-rnb",
+      "city": null,
+      "descriptor": "mc-set-night",
+      "slot": "scenes/hip-hop-rnb/mc-set-night",
+      "source": "design-assets/incoming/scene__hip-hop-rnb__none__mc-set-night.jpg",
+      "sourceWidth": 5707,
+      "sourceHeight": 7357,
+      "sizes": [
+        {
+          "width": 480,
+          "path": "stock/scenes/hip-hop-rnb/mc-set-night-480.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/hip-hop-rnb/mc-set-night-480.avif",
+          "bytes": 24730
+        },
+        {
+          "width": 960,
+          "path": "stock/scenes/hip-hop-rnb/mc-set-night-960.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/hip-hop-rnb/mc-set-night-960.avif",
+          "bytes": 50013
+        },
+        {
+          "width": 1440,
+          "path": "stock/scenes/hip-hop-rnb/mc-set-night-1440.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/hip-hop-rnb/mc-set-night-1440.avif",
+          "bytes": 75682
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/hip-hop-rnb/mc-set-night-1440.avif"
+    },
+    {
+      "role": "scenes",
+      "key": "indie-rock",
+      "city": null,
+      "descriptor": "festival-golden-hour",
+      "slot": "scenes/indie-rock/festival-golden-hour",
+      "source": "design-assets/incoming/scene__indie-rock__none__festival-golden-hour.jpeg",
+      "sourceWidth": 4752,
+      "sourceHeight": 3688,
+      "sizes": [
+        {
+          "width": 480,
+          "path": "stock/scenes/indie-rock/festival-golden-hour-480.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/indie-rock/festival-golden-hour-480.avif",
+          "bytes": 15026
+        },
+        {
+          "width": 960,
+          "path": "stock/scenes/indie-rock/festival-golden-hour-960.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/indie-rock/festival-golden-hour-960.avif",
+          "bytes": 36376
+        },
+        {
+          "width": 1440,
+          "path": "stock/scenes/indie-rock/festival-golden-hour-1440.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/indie-rock/festival-golden-hour-1440.avif",
+          "bytes": 57331
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/indie-rock/festival-golden-hour-1440.avif"
+    },
+    {
+      "role": "scenes",
+      "key": "jazz-soul",
+      "city": null,
+      "descriptor": "club-session-night",
+      "slot": "scenes/jazz-soul/club-session-night",
+      "source": "design-assets/incoming/scene__jazz-soul__none__club-session-night.jpg",
+      "sourceWidth": 5600,
+      "sourceHeight": 3733,
+      "sizes": [
+        {
+          "width": 480,
+          "path": "stock/scenes/jazz-soul/club-session-night-480.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/jazz-soul/club-session-night-480.avif",
+          "bytes": 13007
+        },
+        {
+          "width": 960,
+          "path": "stock/scenes/jazz-soul/club-session-night-960.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/jazz-soul/club-session-night-960.avif",
+          "bytes": 27479
+        },
+        {
+          "width": 1440,
+          "path": "stock/scenes/jazz-soul/club-session-night-1440.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/jazz-soul/club-session-night-1440.avif",
+          "bytes": 41955
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/jazz-soul/club-session-night-1440.avif"
+    },
+    {
+      "role": "scenes",
+      "key": "latin",
+      "city": null,
+      "descriptor": "beachfront-social-dusk",
+      "slot": "scenes/latin/beachfront-social-dusk",
+      "source": "design-assets/incoming/scene__latin__none__beachfront-social-dusk.jpg",
+      "sourceWidth": 6048,
+      "sourceHeight": 4024,
+      "sizes": [
+        {
+          "width": 480,
+          "path": "stock/scenes/latin/beachfront-social-dusk-480.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/latin/beachfront-social-dusk-480.avif",
+          "bytes": 25857
+        },
+        {
+          "width": 960,
+          "path": "stock/scenes/latin/beachfront-social-dusk-960.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/latin/beachfront-social-dusk-960.avif",
+          "bytes": 53599
+        },
+        {
+          "width": 1440,
+          "path": "stock/scenes/latin/beachfront-social-dusk-1440.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/latin/beachfront-social-dusk-1440.avif",
+          "bytes": 80116
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/latin/beachfront-social-dusk-1440.avif"
+    },
+    {
+      "role": "scenes",
+      "key": "mediterranean",
+      "city": null,
+      "descriptor": "food-festa-golden-hour",
+      "slot": "scenes/mediterranean/food-festa-golden-hour",
+      "source": "design-assets/incoming/scene__mediterranean__none__food-festa-golden-hour.jpg",
+      "sourceWidth": 6000,
+      "sourceHeight": 4000,
+      "sizes": [
+        {
+          "width": 480,
+          "path": "stock/scenes/mediterranean/food-festa-golden-hour-480.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/mediterranean/food-festa-golden-hour-480.avif",
+          "bytes": 25054
+        },
+        {
+          "width": 960,
+          "path": "stock/scenes/mediterranean/food-festa-golden-hour-960.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/mediterranean/food-festa-golden-hour-960.avif",
+          "bytes": 55563
+        },
+        {
+          "width": 1440,
+          "path": "stock/scenes/mediterranean/food-festa-golden-hour-1440.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/mediterranean/food-festa-golden-hour-1440.avif",
+          "bytes": 86809
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/mediterranean/food-festa-golden-hour-1440.avif"
+    },
+    {
+      "role": "scenes",
+      "key": "metal-hardcore",
+      "city": null,
+      "descriptor": "moshpit-day",
+      "slot": "scenes/metal-hardcore/moshpit-day",
+      "source": "design-assets/incoming/scene__metal-hardcore__none__moshpit-day.jpg",
+      "sourceWidth": 6000,
+      "sourceHeight": 4000,
+      "sizes": [
+        {
+          "width": 480,
+          "path": "stock/scenes/metal-hardcore/moshpit-day-480.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/metal-hardcore/moshpit-day-480.avif",
+          "bytes": 9660
+        },
+        {
+          "width": 960,
+          "path": "stock/scenes/metal-hardcore/moshpit-day-960.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/metal-hardcore/moshpit-day-960.avif",
+          "bytes": 19333
+        },
+        {
+          "width": 1440,
+          "path": "stock/scenes/metal-hardcore/moshpit-day-1440.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/metal-hardcore/moshpit-day-1440.avif",
+          "bytes": 28387
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/metal-hardcore/moshpit-day-1440.avif"
+    },
+    {
+      "role": "scenes",
+      "key": "pasifika-maori",
+      "city": null,
+      "descriptor": "cultural-festival-day",
+      "slot": "scenes/pasifika-maori/cultural-festival-day",
+      "source": "design-assets/incoming/scene__pasifika-maori__none__cultural-festival-day.jpeg",
+      "sourceWidth": 3000,
+      "sourceHeight": 2000,
+      "sizes": [
+        {
+          "width": 480,
+          "path": "stock/scenes/pasifika-maori/cultural-festival-day-480.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/pasifika-maori/cultural-festival-day-480.avif",
+          "bytes": 53167
+        },
+        {
+          "width": 960,
+          "path": "stock/scenes/pasifika-maori/cultural-festival-day-960.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/pasifika-maori/cultural-festival-day-960.avif",
+          "bytes": 195026
+        },
+        {
+          "width": 1440,
+          "path": "stock/scenes/pasifika-maori/cultural-festival-day-1440.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/pasifika-maori/cultural-festival-day-1440.avif",
+          "bytes": 392603
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/pasifika-maori/cultural-festival-day-1440.avif"
+    },
+    {
+      "role": "scenes",
+      "key": "pop",
+      "city": null,
+      "descriptor": "arena-night",
+      "slot": "scenes/pop/arena-night",
+      "source": "design-assets/incoming/scene__pop__none__arena-night.jpeg",
+      "sourceWidth": 6026,
+      "sourceHeight": 4017,
+      "sizes": [
+        {
+          "width": 480,
+          "path": "stock/scenes/pop/arena-night-480.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/pop/arena-night-480.avif",
+          "bytes": 28424
+        },
+        {
+          "width": 960,
+          "path": "stock/scenes/pop/arena-night-960.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/pop/arena-night-960.avif",
+          "bytes": 59352
+        },
+        {
+          "width": 1440,
+          "path": "stock/scenes/pop/arena-night-1440.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/pop/arena-night-1440.avif",
+          "bytes": 89653
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/pop/arena-night-1440.avif"
+    },
+    {
+      "role": "scenes",
+      "key": "pride",
+      "city": null,
+      "descriptor": "parade-colour-day",
+      "slot": "scenes/pride/parade-colour-day",
+      "source": "design-assets/incoming/scene__pride__none__parade-colour-day.jpg",
+      "sourceWidth": 5085,
+      "sourceHeight": 3390,
+      "sizes": [
+        {
+          "width": 480,
+          "path": "stock/scenes/pride/parade-colour-day-480.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/pride/parade-colour-day-480.avif",
+          "bytes": 25169
+        },
+        {
+          "width": 960,
+          "path": "stock/scenes/pride/parade-colour-day-960.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/pride/parade-colour-day-960.avif",
+          "bytes": 55645
+        },
+        {
+          "width": 1440,
+          "path": "stock/scenes/pride/parade-colour-day-1440.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/pride/parade-colour-day-1440.avif",
+          "bytes": 89775
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/pride/parade-colour-day-1440.avif"
+    },
+    {
+      "role": "scenes",
+      "key": "south-asian",
+      "city": null,
+      "descriptor": "celebration-colour-day",
+      "slot": "scenes/south-asian/celebration-colour-day",
+      "source": "design-assets/incoming/scene__south-asian__none__celebration-colour-day.jpg",
+      "sourceWidth": 8256,
+      "sourceHeight": 5504,
+      "sizes": [
+        {
+          "width": 480,
+          "path": "stock/scenes/south-asian/celebration-colour-day-480.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/south-asian/celebration-colour-day-480.avif",
+          "bytes": 46719
+        },
+        {
+          "width": 960,
+          "path": "stock/scenes/south-asian/celebration-colour-day-960.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/south-asian/celebration-colour-day-960.avif",
+          "bytes": 122945
+        },
+        {
+          "width": 1440,
+          "path": "stock/scenes/south-asian/celebration-colour-day-1440.avif",
+          "url": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/south-asian/celebration-colour-day-1440.avif",
+          "bytes": 198869
+        }
+      ],
+      "default": "https://gndnldyfudbytbboxesk.supabase.co/storage/v1/object/public/event-images/stock/scenes/south-asian/celebration-colour-day-1440.avif"
+    }
+  ]
+}

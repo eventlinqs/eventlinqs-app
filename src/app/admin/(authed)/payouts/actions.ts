@@ -3,7 +3,7 @@
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { requireAdminSession } from '@/lib/admin/auth'
-import { assertCapability } from '@/lib/admin/rbac'
+import { assertCan } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createPayout, voidPayoutById, getStripeClient } from '@/lib/payments/payout'
@@ -39,7 +39,7 @@ export async function submitDisburse(input: {
   amountCents?: number | null
 }): Promise<DisburseActionResult> {
   const session = await requireAdminSession()
-  assertCapability(session.admin.role, 'admin.payouts.disburse')
+  assertCan(session, 'admin.payouts.disburse')
 
   const parsed = DisburseSchema.safeParse(input)
   if (!parsed.success) return { ok: false, error: 'Invalid disbursement request.' }
@@ -90,7 +90,7 @@ export async function submitVoidPayout(input: {
   reason?: string | null
 }): Promise<VoidActionResult> {
   const session = await requireAdminSession()
-  assertCapability(session.admin.role, 'admin.payouts.disburse')
+  assertCan(session, 'admin.payouts.disburse')
 
   const parsed = VoidSchema.safeParse(input)
   if (!parsed.success) return { ok: false, error: 'Invalid void request.' }

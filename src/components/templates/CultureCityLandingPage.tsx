@@ -132,7 +132,7 @@ export function CultureCityLandingPage({
 
       {/* S4 This weekend */}
       {thisWeekendEvents.length >= 4 ? (
-        <ContentSection surface="alt" width="wide" topBorder>
+        <ContentSection surface="alt" width="wide" topBorder reveal>
           <SnapRailScroller
             railLabel={`${culture.displayName} this weekend in ${cityName}`}
             containerBg="ink-100"
@@ -156,7 +156,7 @@ export function CultureCityLandingPage({
 
       {/* S4 This week */}
       {thisWeekEvents.length >= 4 ? (
-        <ContentSection surface="base" width="wide" topBorder>
+        <ContentSection surface="base" width="wide" topBorder reveal>
           <SnapRailScroller
             railLabel={`${culture.displayName} this week in ${cityName}`}
             header={{
@@ -179,7 +179,7 @@ export function CultureCityLandingPage({
 
       {/* S5 Sub-cultures in city rail (Tier 1 only) */}
       {showSubCulturesRail ? (
-        <ContentSection surface="alt" width="wide" topBorder>
+        <ContentSection surface="alt" width="wide" topBorder reveal>
           <SnapRailScroller
             railLabel={`${culture.displayName} sub-communities in ${cityName}`}
             containerBg="ink-100"
@@ -230,7 +230,7 @@ export function CultureCityLandingPage({
 
       {/* S6 Popular this month */}
       {popularEvents.length >= 4 ? (
-        <ContentSection surface="base" width="wide" topBorder>
+        <ContentSection surface="base" width="wide" topBorder reveal>
           <SnapRailScroller
             railLabel={`${culture.displayName} highlights in ${cityName}`}
             header={{
@@ -249,7 +249,7 @@ export function CultureCityLandingPage({
 
       {/* S7 Map - only when we have city coords AND mapbox token */}
       {mapboxToken && cityRecord ? (
-        <ContentSection surface="alt" width="wide" topBorder>
+        <ContentSection surface="alt" width="wide" topBorder reveal>
           <div className="mb-6">
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
               Map
@@ -270,7 +270,7 @@ export function CultureCityLandingPage({
 
       {/* S10 All events in city (paginated grid). S8/S9 organisers/venues
           render conditionally - hidden until populated. */}
-      <ContentSection id="all-events" surface="base" width="wide" topBorder>
+      <ContentSection id="all-events" surface="base" width="wide" topBorder reveal>
         <div className="mb-6 flex items-end justify-between gap-4">
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
@@ -282,7 +282,7 @@ export function CultureCityLandingPage({
           </div>
           <Link
             href={`/events?culture=${culture.slug}&city=${citySlug}`}
-            className="text-sm font-medium text-[var(--brand-accent)] hover:text-[var(--brand-accent-hover)]"
+            className="text-sm font-medium text-[var(--brand-accent-strong)] hover:text-[var(--text-primary)]"
           >
             Open in browse view &rsaquo;
           </Link>
@@ -317,7 +317,7 @@ export function CultureCityLandingPage({
 
       {/* S11a [Culture] in other cities */}
       {relatedCities.length > 0 ? (
-        <ContentSection surface="alt" width="wide" topBorder>
+        <ContentSection surface="alt" width="wide" topBorder reveal>
           <SnapRailScroller
             railLabel={`${culture.displayName} in other cities`}
             containerBg="ink-100"
@@ -370,7 +370,7 @@ export function CultureCityLandingPage({
 
       {/* S11b Other cultures in [city] */}
       {relatedCultures.length > 0 ? (
-        <ContentSection surface="base" width="wide" topBorder>
+        <ContentSection surface="base" width="wide" topBorder reveal>
           <SnapRailScroller
             railLabel={`Other communities in ${cityName}`}
             header={{

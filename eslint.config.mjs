@@ -111,6 +111,10 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     "scratch/**",
+    // Gitignored nested git worktrees (a full second checkout with its own
+    // generated files). Never project source; linting them makes `npm run lint`
+    // noisily red locally while CI - which has no nested worktree - is green.
+    ".claude/worktrees/**",
   ]),
 ]);
 

@@ -120,7 +120,7 @@ export function CityLandingPage({
       />
 
       {thisWeekendEvents.length >= 4 ? (
-        <ContentSection surface="alt" width="wide" topBorder>
+        <ContentSection surface="alt" width="wide" topBorder reveal>
           <SnapRailScroller
             railLabel={`Out this weekend in ${city.name}`}
             containerBg="ink-100"
@@ -140,7 +140,7 @@ export function CityLandingPage({
       ) : null}
 
       {thisWeekEvents.length >= 4 ? (
-        <ContentSection surface="base" width="wide" topBorder>
+        <ContentSection surface="base" width="wide" topBorder reveal>
           <SnapRailScroller
             railLabel={`On this week in ${city.name}`}
             header={{
@@ -174,7 +174,7 @@ export function CityLandingPage({
       />
 
       {mapboxToken ? (
-        <ContentSection surface="base" width="wide" topBorder>
+        <ContentSection surface="base" width="wide" topBorder reveal>
           <div className="mb-6">
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
               Map
@@ -195,7 +195,7 @@ export function CityLandingPage({
       ) : null}
 
       {popularEvents.length >= 4 ? (
-        <ContentSection surface="alt" width="wide" topBorder>
+        <ContentSection surface="alt" width="wide" topBorder reveal>
           <SnapRailScroller
             railLabel={`${city.name} highlights`}
             containerBg="ink-100"
@@ -215,7 +215,7 @@ export function CityLandingPage({
 
       {/* S9 By suburb rail - Tier 1 only. */}
       {city.tier === 1 && suburbs.length > 0 ? (
-        <ContentSection surface="base" width="wide" topBorder>
+        <ContentSection surface="base" width="wide" topBorder reveal>
           <SnapRailScroller
             railLabel={`Pick your part of ${city.name}`}
             header={{
@@ -262,7 +262,7 @@ export function CityLandingPage({
       ) : null}
 
       {/* S12 All city events grid. */}
-      <ContentSection id="all-events" surface="base" width="wide" topBorder>
+      <ContentSection id="all-events" surface="base" width="wide" topBorder reveal>
         <div className="mb-6 flex items-end justify-between gap-4">
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
@@ -308,7 +308,7 @@ export function CityLandingPage({
 
       {/* S13 Related cities rail. */}
       {relatedItems.length > 0 ? (
-        <ContentSection surface="alt" width="wide" topBorder>
+        <ContentSection surface="alt" width="wide" topBorder reveal>
           <SnapRailScroller
             railLabel="Other Australian cities on EventLinqs"
             containerBg="ink-100"

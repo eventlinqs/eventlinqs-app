@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { requireAdminSession } from '@/lib/admin/auth'
-import { hasCapability } from '@/lib/admin/rbac'
+import { can } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { AdminStatTile } from '@/components/admin/admin-stat-tile'
 import { listOrgsForPayouts, getPayoutSummary, PAYOUT_CURRENCY } from '@/lib/admin/payouts'
@@ -28,7 +28,7 @@ const PAYOUT_STATUS_BADGE: Record<string, string> = {
 
 export default async function AdminPayoutsPage({ searchParams }: { searchParams: SearchParams }) {
   const session = await requireAdminSession()
-  if (!hasCapability(session.admin.role, 'admin.payouts.disburse')) redirect('/admin')
+  if (!can(session, 'admin.payouts.disburse')) redirect('/admin')
 
   const sp = await searchParams
   const search = sp.q?.trim() || undefined

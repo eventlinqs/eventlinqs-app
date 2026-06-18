@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { createPublicClient } from '@/lib/supabase/public-client'
+import { withBuildRetry } from '@/lib/supabase/build-retry'
 import {
   getFaith,
   getAllFaiths,
@@ -57,15 +58,19 @@ export default async function FaithPage({ params }: Props) {
 
   let liveEvents: EventCardData[] = []
   if (tagOr !== null) {
-    const { data } = await supabase
-      .from('events')
-      .select(EVENT_SELECT)
-      .eq('status', 'published')
-      .eq('visibility', 'public')
-      .gte('start_date', new Date().toISOString())
-      .or(tagOr)
-      .order('start_date', { ascending: true })
-      .limit(12)
+    const { data } = await withBuildRetry(
+      () =>
+        supabase
+          .from('events')
+          .select(EVENT_SELECT)
+          .eq('status', 'published')
+          .eq('visibility', 'public')
+          .gte('start_date', new Date().toISOString())
+          .or(tagOr)
+          .order('start_date', { ascending: true })
+          .limit(12),
+      { label: `faith/${faith.slug}` },
+    )
     liveEvents = ((data ?? []) as unknown as EventCardData[]).slice(0, 12)
   }
 

@@ -251,7 +251,7 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
                         type="button"
                         onClick={() => setTierQty(tier.id, -1, tier)}
                         disabled={qty === 0}
-                        className={`h-9 w-9 rounded-full border text-base font-bold flex items-center justify-center transition-colors ${
+                        className={`h-11 w-11 rounded-full border text-base font-bold flex items-center justify-center transition-colors ${
                           qty === 0
                             ? 'border-ink-200 text-ink-400 cursor-not-allowed'
                             : 'border-gold-500 text-ink-900 hover:bg-gold-100'
@@ -265,7 +265,7 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
                         type="button"
                         onClick={() => setTierQty(tier.id, +1, tier)}
                         disabled={qtyCapped}
-                        className={`h-9 w-9 rounded-full border text-base font-bold flex items-center justify-center transition-colors ${
+                        className={`h-11 w-11 rounded-full border text-base font-bold flex items-center justify-center transition-colors ${
                           qtyCapped
                             ? 'border-ink-200 text-ink-400 cursor-not-allowed'
                             : isSelected
@@ -308,7 +308,7 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
                       type="button"
                       onClick={() => setAddonQty(addon.id, -1, addon)}
                       disabled={qty === 0}
-                      className={`h-8 w-8 rounded-full border text-sm font-bold flex items-center justify-center transition-colors ${
+                      className={`h-11 w-11 rounded-full border text-sm font-bold flex items-center justify-center transition-colors ${
                         qty === 0
                           ? 'border-ink-200 text-ink-400 cursor-not-allowed'
                           : 'border-gold-500 text-ink-900 hover:bg-gold-100'
@@ -319,7 +319,7 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
                     <button
                       type="button"
                       onClick={() => setAddonQty(addon.id, +1, addon)}
-                      className={`h-8 w-8 rounded-full border text-sm font-bold flex items-center justify-center transition-colors ${
+                      className={`h-11 w-11 rounded-full border text-sm font-bold flex items-center justify-center transition-colors ${
                         isSelected
                           ? 'border-gold-500 bg-gold-500 text-ink-900 hover:bg-gold-600'
                           : 'border-ink-200 text-ink-600 hover:border-gold-500 hover:text-ink-900'

@@ -1,0 +1,166 @@
+[
+  {
+    "target": "tm-home",
+    "url": "https://www.ticketmaster.com.au",
+    "width": 1440,
+    "vw": 1440,
+    "topGutters": [
+      {
+        "gutter": 40,
+        "count": 1,
+        "containerWidth": 1360
+      }
+    ],
+    "widestCentredBlock": {
+      "left": 40,
+      "right": 40,
+      "width": 1360
+    }
+  },
+  {
+    "target": "tm-home",
+    "url": "https://www.ticketmaster.com.au",
+    "width": 1920,
+    "vw": 1920,
+    "topGutters": [
+      {
+        "gutter": 40,
+        "count": 1,
+        "containerWidth": 1840
+      }
+    ],
+    "widestCentredBlock": {
+      "left": 40,
+      "right": 40,
+      "width": 1840
+    }
+  },
+  {
+    "target": "tm-browse",
+    "url": "https://www.ticketmaster.com.au/discover/concerts",
+    "width": 1440,
+    "vw": 1440,
+    "topGutters": [
+      {
+        "gutter": 40,
+        "count": 1,
+        "containerWidth": 1360
+      },
+      {
+        "gutter": 96,
+        "count": 1,
+        "containerWidth": 1248
+      }
+    ],
+    "widestCentredBlock": {
+      "left": 40,
+      "right": 40,
+      "width": 1360
+    }
+  },
+  {
+    "target": "tm-browse",
+    "url": "https://www.ticketmaster.com.au/discover/concerts",
+    "width": 1920,
+    "vw": 1920,
+    "topGutters": [
+      {
+        "gutter": 40,
+        "count": 1,
+        "containerWidth": 1840
+      },
+      {
+        "gutter": 96,
+        "count": 1,
+        "containerWidth": 1728
+      }
+    ],
+    "widestCentredBlock": {
+      "left": 40,
+      "right": 40,
+      "width": 1840
+    }
+  },
+  {
+    "target": "eb-home",
+    "url": "https://www.eventbrite.com.au",
+    "width": 1440,
+    "vw": 1440,
+    "topGutters": [
+      {
+        "gutter": 84,
+        "count": 14,
+        "containerWidth": 1272
+      },
+      {
+        "gutter": 160,
+        "count": 4,
+        "containerWidth": 1120
+      },
+      {
+        "gutter": 36,
+        "count": 2,
+        "containerWidth": 1368
+      }
+    ],
+    "widestCentredBlock": {
+      "left": 36,
+      "right": 36,
+      "width": 1368
+    }
+  },
+  {
+    "target": "eb-home",
+    "url": "https://www.eventbrite.com.au",
+    "width": 1920,
+    "vw": 1920,
+    "topGutters": [
+      {
+        "gutter": 324,
+        "count": 14,
+        "containerWidth": 1272
+      },
+      {
+        "gutter": 400,
+        "count": 4,
+        "containerWidth": 1120
+      },
+      {
+        "gutter": 252,
+        "count": 2,
+        "containerWidth": 1416
+      }
+    ],
+    "widestCentredBlock": {
+      "left": 252,
+      "right": 252,
+      "width": 1416
+    }
+  },
+  {
+    "target": "eb-browse",
+    "url": "https://www.eventbrite.com.au/d/australia--sydney/all-events/",
+    "width": 1440,
+    "vw": 1440,
+    "topGutters": [
+      {
+        "gutter": 24,
+        "count": 7,
+        "containerWidth": 1392
+      }
+    ],
+    "widestCentredBlock": {
+      "left": 24,
+      "right": 24,
+      "width": 1392
+    }
+  },
+  {
+    "target": "eb-browse",
+    "url": "https://www.eventbrite.com.au/d/australia--sydney/all-events/",
+    "width": 1920,
+    "vw": 1920,
+    "topGutters": [],
+    "widestCentredBlock": null
+  }
+]

@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { requireAdminSession } from '@/lib/admin/auth'
-import { hasCapability } from '@/lib/admin/rbac'
+import { can } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import {
   listEvents,
@@ -53,7 +53,7 @@ const STATUS_BADGE: Record<string, string> = {
  */
 export default async function AdminEventsPage({ searchParams }: { searchParams: SearchParams }) {
   const session = await requireAdminSession()
-  if (!hasCapability(session.admin.role, 'admin.events.manage')) redirect('/admin')
+  if (!can(session, 'admin.events.manage')) redirect('/admin')
 
   const sp = await searchParams
   const statusFilter = (EVENT_STATUS_FILTERS as readonly string[]).includes(sp.status ?? '')
@@ -156,7 +156,7 @@ function EventRow({ row, returnTo }: { row: AdminEventRow; returnTo: string }) {
   return (
     <tr className="border-t border-white/[0.06] align-top">
       <td className="px-4 py-3">
-        <div className="font-medium text-white">{row.title}</div>
+        <Link href={`/admin/events/${row.id}`} className="font-medium text-white hover:underline">{row.title}</Link>
         <div className="text-[11px] text-white/40">{row.slug}</div>
       </td>
       <td className="px-4 py-3 text-white/70">{row.organisationName ?? '-'}</td>
