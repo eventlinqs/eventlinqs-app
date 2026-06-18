@@ -1,0 +1,4 @@
+# Keep the committed proof (screenshots + this dir's summary in LAUNCH-GO-NOGO.md);
+# ignore the heavy, regenerable raw Lighthouse reports (~13 MB).
+*.report.html
+*.report.json
