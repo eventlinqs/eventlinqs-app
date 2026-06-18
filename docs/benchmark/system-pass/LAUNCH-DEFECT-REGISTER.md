@@ -106,6 +106,40 @@ diagnosis.
 - Note: FUN-05 (free-order path not transactional) is a related P2 still open;
   this item covers the paid + free charge-gated `order_items` swallow only.
 
+### FUN-01 + FUN-03 (FIXED) - checkout display total single-sourced to the charged total
+
+- Root cause: the displayed total and the charged total resolved prices from
+  TWO different sources. (a) GA: display used base `tier.price`
+  (`page.tsx:165`), charge used `getDynamicPriceMap` (`checkout.ts:150`).
+  (b) Seat: display used `seat.price_cents` (`page.tsx`), charge re-priced via
+  `get_current_tier_price` (`checkout.ts`). (c) Both display `PaymentCalculator
+  .calculate` calls omitted `event.id`, so an event-scoped fee override would
+  display the org/region fee but charge the event fee. (d) The seat charge built
+  its subtotal from the rounded-average aggregate while the display used the
+  exact seat sum, a cents-level mismatch.
+- Fix: one shared pricing rule, called by both paths.
+  - `src/lib/checkout/pricing.ts` (new) - `pickUnitPriceCents` (dynamic
+    overrides base) and `resolveSeatUnitPriceCents` (current dynamic-aware tier
+    price, shared fallback ordering).
+  - GA: charge `checkout.ts` and display `page.tsx` both resolve the SAME
+    `getDynamicPriceMap` through `pickUnitPriceCents`.
+  - Seat: charge `checkout.ts` and display `page.tsx` both price each seat
+    through `resolveSeatUnitPriceCents` (same `get_current_tier_price`).
+  - Both display fee calcs now pass `event.id` (event-scoped fee parity).
+  - The seat charge now overrides subtotal/total to the EXACT seat sum, the same
+    override the page applies, so they match to the cent.
+- Proof:
+  - Test: `tests/unit/checkout/pricing.test.ts` - 10/10 passing. Proves
+    dynamic-overrides-base, the GA displayed-total == charged-total across base
+    / one-dynamic / all-dynamic conditions (same helper, same inputs), and the
+    seat resolver's full fallback order. Both display and charge call sites are
+    wired to these exact helpers (listed in the test header).
+  - No regression: full suite `npx vitest run` -> 42 files / 372 tests passing.
+    `npx tsc --noEmit` -> exit 0.
+- Note: FUN-02 (discount not echoed back / silently ignored) is a related P2,
+  still open; this item covers the dynamic-price + fee-scope + seat-rounding
+  divergence.
+
 ---
 
 ## What PASSED (verified clean, so it is not re-litigated)
