@@ -91,9 +91,10 @@ export async function computeApplicationFeeCents(
   fees: FeeBreakdown,
   countryCode: string,
   currency: string,
-  organisationId?: string | null
+  organisationId?: string | null,
+  eventId?: string | null
 ): Promise<number> {
-  const mode = await getApplicationFeeCompositionMode(countryCode, currency, organisationId)
+  const mode = await getApplicationFeeCompositionMode(countryCode, currency, organisationId, eventId ?? null)
   return composeApplicationFee(fees, mode)
 }
 
@@ -119,9 +120,10 @@ export async function computeOrganiserShareCents(
   fees: FeeBreakdown,
   countryCode: string,
   currency: string,
-  organisationId?: string | null
+  organisationId?: string | null,
+  eventId?: string | null
 ): Promise<number> {
-  const appFee = await computeApplicationFeeCents(fees, countryCode, currency, organisationId)
+  const appFee = await computeApplicationFeeCents(fees, countryCode, currency, organisationId, eventId ?? null)
   return fees.total_cents - appFee
 }
 
@@ -134,10 +136,11 @@ export async function computeReserveCents(
   organiserShareCents: number,
   countryCode: string,
   currency: string,
-  organisationId?: string | null
+  organisationId?: string | null,
+  eventId?: string | null
 ): Promise<number> {
   if (organiserShareCents <= 0) return 0
-  const percent = await getReservePercentage(countryCode, currency, organisationId)
+  const percent = await getReservePercentage(countryCode, currency, organisationId, eventId ?? null)
   return Math.floor((organiserShareCents * percent) / 100)
 }
 

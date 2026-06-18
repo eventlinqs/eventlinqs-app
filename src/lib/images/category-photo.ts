@@ -52,11 +52,11 @@ const CATEGORY_QUERIES: Record<string, string> = {
   'business-networking':       'business networking conference handshake professionals',
 
   // ---- general categories (when no culture is set) ------------------
-  'music':                     'live music concert audience stage lights',
-  'sports':                    'stadium sports fans cheering match',
-  'arts-culture':              'art gallery exhibition culture audience',
-  'food-drink':                'food festival tasting friends outdoor',
-  'family':                    'family festival outdoor children play',
+  'music':                     'live band concert colorful stage lights vibrant crowd',
+  'sports':                    'stadium crowd daytime match fans colorful bright',
+  'arts-culture':              'art gallery bright modern exhibition people daytime',
+  'food-drink':                'food market colorful fresh outdoor daytime tasting',
+  'family':                    'family fun outdoor sunny park children daytime bright',
   'fashion':                   'fashion runway show models lights',
   'film':                      'cinema premiere red carpet audience',
   'health-wellness':           'yoga wellness meditation outdoor sunrise',
@@ -64,8 +64,8 @@ const CATEGORY_QUERIES: Record<string, string> = {
   'community':                 'community gathering friends families outdoor',
   'charity':                   'charity volunteers fundraiser smiling helping',
   'education':                 'lecture seminar audience speaker classroom',
-  'festival':                  'music festival outdoor crowd lights summer',
-  'nightlife':                 'nightclub friends celebration lights',
+  'festival':                  'outdoor festival summer daytime crowd colorful sunny',
+  'nightlife':                 'rooftop bar friends sunset drinks vibrant colorful',
   'technology':                'tech conference startup speakers stage',
   'other':                     'community celebration friends together event',
 }
@@ -98,50 +98,61 @@ interface PexelsApiPhoto {
   photographer: string
 }
 
-const TOP_N = 5
+// Sample from a wider pool so a category rail is NOT a wall of one repeated
+// photo. The per-query POOL is fetched + cached once; getCategoryPhoto then
+// picks PER EVENT from it (via the optional seed), so cards in the same
+// category show different, varied imagery instead of an identical dark tile.
+const TOP_N = 10
 
-async function fetchPexelsRaw(query: string): Promise<PexelsPhoto> {
-  if (!PEXELS_API_KEY) return FALLBACK
+async function fetchPexelsPoolRaw(query: string): Promise<PexelsPhoto[]> {
+  if (!PEXELS_API_KEY) return [FALLBACK]
 
   try {
     const res = await fetch(
-      `${PEXELS_API}/search?query=${encodeURIComponent(query)}&per_page=15&orientation=landscape&size=large`,
+      `${PEXELS_API}/search?query=${encodeURIComponent(query)}&per_page=24&orientation=landscape&size=large`,
       {
         headers: { Authorization: PEXELS_API_KEY },
         next: { revalidate: 60 * 60 * 24 * 7 },
       }
     )
-    if (!res.ok) return FALLBACK
+    if (!res.ok) return [FALLBACK]
 
     const data = (await res.json()) as { photos?: PexelsApiPhoto[] }
-    if (!data.photos?.length) return FALLBACK
+    if (!data.photos?.length) return [FALLBACK]
 
-    // Filter to min 1200x800 + sample from the top 5 to avoid stale repeats.
+    // Filter to min 1200x800 + keep the top results as a sampling pool.
     const usable = data.photos.filter(p => (p.width ?? 0) >= 1200 && (p.height ?? 0) >= 800)
     const pool = (usable.length > 0 ? usable : data.photos).slice(0, TOP_N)
-    const photo = pool[simpleHash(query) % pool.length]
-
-    return {
+    return pool.map(photo => ({
       src: photo.src.landscape ?? photo.src.large,
       thumb: photo.src.medium,
       alt: photo.alt ?? query,
       photographer: photo.photographer,
-    }
+    }))
   } catch {
-    return FALLBACK
+    return [FALLBACK]
   }
 }
 
-const fetchPexels = unstable_cache(
-  fetchPexelsRaw,
-  ['pexels-category-photo-v2'],
+const fetchPexelsPool = unstable_cache(
+  fetchPexelsPoolRaw,
+  ['pexels-category-pool-v1'],
   { revalidate: 60 * 60 * 24 * 7, tags: ['pexels'] }
 )
 
+/**
+ * Resolve a category photo. Pass a per-event `seed` (e.g. the event title or
+ * slug) so two events in the same category get DIFFERENT photos from the
+ * pool, breaking the monotonous one-photo-per-rail wall. Omit the seed for
+ * category/scene tiles where a single stable image per category is correct.
+ */
 export async function getCategoryPhoto(
   categorySlug: string | null | undefined,
+  seed?: string | null,
 ): Promise<PexelsPhoto> {
   const slug = (categorySlug || 'other').toLowerCase()
   const query = CATEGORY_QUERIES[slug] ?? CATEGORY_QUERIES.other
-  return await fetchPexels(query)
+  const pool = await fetchPexelsPool(query)
+  if (pool.length === 0) return FALLBACK
+  return pool[simpleHash(seed || query) % pool.length]
 }

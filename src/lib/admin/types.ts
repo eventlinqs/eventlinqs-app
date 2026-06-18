@@ -21,6 +21,9 @@ export interface AdminUserRow {
   last_login_at: string | null
   last_login_ip: string | null
   disabled_at: string | null
+  /** Per-admin capability overrides on top of the role set (see rbac.ts). */
+  capabilities_granted: string[]
+  capabilities_revoked: string[]
   created_at: string
   updated_at: string
   created_by: string | null
@@ -57,4 +60,7 @@ export interface AdminSession {
   userId: string
   email: string
   admin: AdminUserRow
+  /** Effective capabilities for this admin (role set + grants - revokes),
+   *  resolved once at session load. Enforcement uses this, not the raw role. */
+  capabilities: readonly string[]
 }

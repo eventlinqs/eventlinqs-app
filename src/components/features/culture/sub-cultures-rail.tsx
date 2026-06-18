@@ -26,7 +26,7 @@ interface Props {
 export function SubCulturesRail({ cultureSlug, cultureName, subCultures, images }: Props) {
   if (subCultures.length === 0) return null
   return (
-    <ContentSection surface="alt" width="default" topBorder>
+    <ContentSection surface="alt" width="default" topBorder reveal>
       <div className="mb-8 flex items-end justify-between gap-4">
         <div>
           <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">

@@ -11,6 +11,7 @@ import { buildPaymentIntentIdempotencyKey } from '@/lib/payments/idempotency'
 import { ChargePreconditionError } from '@/lib/payments/application-fee'
 import { validateDiscountCode } from './discount-codes'
 import { getDynamicPriceMap } from '@/lib/pricing/dynamic-pricing'
+import { pickUnitPriceCents, resolveSeatUnitPriceCents } from '@/lib/checkout/pricing'
 import { getGuestSessionId } from '@/lib/auth/guest-session'
 import type { FeePassType } from '@/types/database'
 
@@ -146,8 +147,9 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
     .filter(i => i.ticket_tier_id)
     .map(i => {
       const tier = tierMap.get(i.ticket_tier_id!)
-      // Use dynamic price if available, fall back to base tier price
-      const unit_price_cents = dynamicPriceMap.get(i.ticket_tier_id!) ?? tier?.price ?? 0
+      // FUN-01: single-sourced price rule (shared with the checkout page so
+      // displayed == charged). Dynamic price overrides base.
+      const unit_price_cents = pickUnitPriceCents(dynamicPriceMap.get(i.ticket_tier_id!), tier?.price)
       return {
         tier_id: i.ticket_tier_id!,
         tier_name: tier?.name ?? 'Ticket',
@@ -217,7 +219,8 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
     currency,
     fee_pass_type,
     discount_cents,
-    event.organisation_id
+    event.organisation_id,
+    event.id
   )
 
   const isFreeOrder = fees.total_cents === 0
@@ -305,8 +308,14 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
 
   const { error: itemsError } = await adminClient.from('order_items').insert(orderItems)
   if (itemsError) {
-    console.error('Order items error:', itemsError)
-    // Order is created, don't fail - items issue should be investigated
+    // FUN-04: fail closed. issue_tickets_for_order expands tickets FROM
+    // order_items, so an order with no items confirms and issues zero tickets:
+    // the buyer pays and gets nothing scannable. Roll back the just-created
+    // order and abort BEFORE any PaymentIntent is created, rather than
+    // swallowing the error and charging.
+    console.error('Order items error, rolling back order:', itemsError)
+    await adminClient.from('orders').delete().eq('id', order_id)
+    return { error: 'We could not set up your order. Please try again.' }
   }
 
   // 8. For free orders - confirm immediately
@@ -373,6 +382,7 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
     const charge = await createDestinationCharge({
       gateway,
       organisationId: event.organisation_id,
+      eventId: event.id,
       fees,
       customerEmail: buyer_email,
       idempotencyKey: idempotency_key,
@@ -507,16 +517,22 @@ async function processSeatCheckout({
   const fee_pass_type = (event.fee_pass_type ?? 'pass_to_buyer') as FeePassType
 
   // Price each seat via get_current_tier_price if tier_id set; else seat.price_cents or fallback
+  // FUN-03: single-sourced seat pricing (shared resolver with the checkout
+  // page so displayed == charged). Tier-bound seats price by the current
+  // dynamic-aware tier price; same fallback ordering on both paths.
+  const seatFallbackCents = fallbackTier?.price ?? 0
   const priceResults = await Promise.all(
-    seats.map(async seat => {
-      if (seat.ticket_tier_id) {
-        const { data: priceData } = await adminClient.rpc('get_current_tier_price', {
-          p_tier_id: seat.ticket_tier_id,
-        })
-        return { seat_id: seat.id, price_cents: (priceData as number | null) ?? seat.price_cents ?? fallbackTier?.price ?? 0 }
-      }
-      return { seat_id: seat.id, price_cents: seat.price_cents ?? fallbackTier?.price ?? 0 }
-    })
+    seats.map(async seat => ({
+      seat_id: seat.id,
+      price_cents: await resolveSeatUnitPriceCents(
+        seat,
+        async (tierId) => {
+          const { data } = await adminClient.rpc('get_current_tier_price', { p_tier_id: tierId })
+          return data as number | null
+        },
+        seatFallbackCents,
+      ),
+    }))
   )
 
   const priceBySeatId = new Map(priceResults.map(r => [r.seat_id, r.price_cents]))
@@ -533,14 +549,29 @@ async function processSeatCheckout({
   }]
 
   const calculator = new PaymentCalculator()
-  const fees = await calculator.calculate(
+  const computedSeatFees = await calculator.calculate(
     aggregatedForFee,
     [],
     currency,
     fee_pass_type,
     0,
-    event.organisation_id
+    event.organisation_id,
+    event.id
   )
+  // FUN-03: charge the EXACT seat sum, not the rounded-average subtotal the
+  // fee aggregate produces. The checkout page displays this exact-sum total, so
+  // overriding here keeps displayed == charged to the cent (same override the
+  // page applies).
+  const exactSeatSubtotalCents = Array.from(priceBySeatId.values()).reduce((s, p) => s + p, 0)
+  const fees = {
+    ...computedSeatFees,
+    subtotal_cents: exactSeatSubtotalCents,
+    total_cents:
+      exactSeatSubtotalCents +
+      computedSeatFees.platform_fee_cents +
+      computedSeatFees.payment_processing_fee_cents +
+      computedSeatFees.tax_cents,
+  }
   const isFreeOrder = fees.total_cents === 0
 
   // Create order
@@ -605,7 +636,12 @@ async function processSeatCheckout({
 
   const { error: itemsError } = await adminClient.from('order_items').insert(orderItems)
   if (itemsError) {
-    console.error('[checkout-seats] order_items insert failed:', itemsError)
+    // FUN-04: fail closed (seat path). Same rationale as the GA path: a paid
+    // order with no order_items issues zero tickets. Roll back and abort before
+    // any PaymentIntent / seat-sold mutation.
+    console.error('[checkout-seats] order_items insert failed, rolling back order:', itemsError)
+    await adminClient.from('orders').delete().eq('id', order_id)
+    return { error: 'We could not set up your order. Please try again.' }
   }
 
   if (isFreeOrder) {
@@ -656,6 +692,7 @@ async function processSeatCheckout({
     const charge = await createDestinationCharge({
       gateway,
       organisationId: event.organisation_id,
+      eventId: event.id,
       fees,
       customerEmail: buyer_email,
       idempotencyKey: idempotency_key,

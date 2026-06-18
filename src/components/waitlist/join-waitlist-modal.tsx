@@ -140,7 +140,7 @@ export function JoinWaitlistModal({
                 <div className="mt-6 flex flex-col gap-2">
                   <a
                     href="/dashboard/my-waitlists"
-                    className="block w-full rounded-xl bg-[#1A1A2E] py-3 text-center text-sm font-semibold text-white hover:bg-[#2d2d4a] transition-colors"
+                    className="block w-full rounded-xl bg-ink-900 py-3 text-center text-sm font-semibold text-white hover:bg-ink-800 transition-colors"
                   >
                     View My Waitlists
                   </a>
@@ -219,7 +219,7 @@ export function JoinWaitlistModal({
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full rounded-xl bg-[#1A1A2E] py-3 text-sm font-semibold text-white disabled:opacity-50 hover:bg-[#2d2d4a] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500"
+                  className="w-full rounded-xl bg-ink-900 py-3 text-sm font-semibold text-white disabled:opacity-50 hover:bg-ink-800 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500"
                 >
                   {isSubmitting ? 'Joining…' : `Join Waitlist: ${quantity} ticket${quantity > 1 ? 's' : ''}`}
                 </button>

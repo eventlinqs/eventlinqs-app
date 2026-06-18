@@ -3,6 +3,7 @@ import { MEDIA_QUALITY } from './quality'
 import { MEDIA_SIZES } from './sizes'
 import { resolveImageSrc } from './safe-image-src'
 import { BrandedPlaceholder } from './decorative/branded-placeholder'
+import { HoverWash } from './hover-wash'
 
 /**
  * CategoryTileImage - the only allowed surface for category-tile imagery
@@ -20,6 +21,8 @@ interface Props {
   alt: string
   /** Above-fold (e.g. category landing hero); defaults false. */
   priority?: boolean
+  /** CSS object-position for the cover crop (focal point). Defaults to centre. */
+  objectPosition?: string
   className?: string
 }
 
@@ -27,6 +30,7 @@ export function CategoryTileImage({
   src,
   alt,
   priority = false,
+  objectPosition,
   className = '',
 }: Props) {
   const safeSrc = resolveImageSrc(src)
@@ -34,17 +38,21 @@ export function CategoryTileImage({
     return <BrandedPlaceholder className={className} />
   }
   return (
-    <Image
-      src={safeSrc}
-      alt={alt}
-      fill
-      sizes={MEDIA_SIZES.category}
-      quality={MEDIA_QUALITY.card}
-      priority={priority}
-      fetchPriority={priority ? 'high' : 'auto'}
-      loading={priority ? 'eager' : 'lazy'}
-      decoding="async"
-      className={`object-cover ${className}`}
-    />
+    <>
+      <Image
+        src={safeSrc}
+        alt={alt}
+        fill
+        sizes={MEDIA_SIZES.category}
+        quality={MEDIA_QUALITY.card}
+        priority={priority}
+        fetchPriority={priority ? 'high' : 'auto'}
+        loading={priority ? 'eager' : 'lazy'}
+        decoding="async"
+        className={`card-media-img object-cover ${className}`}
+        style={objectPosition ? { objectPosition } : undefined}
+      />
+      <HoverWash />
+    </>
   )
 }

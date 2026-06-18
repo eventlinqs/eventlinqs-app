@@ -68,11 +68,12 @@ export function Prose({ children, className = '' }: ProseProps) {
         '[&_code]:rounded [&_code]:bg-[var(--surface-2)]',
         '[&_code]:px-1.5 [&_code]:py-0.5',
         '[&_code]:font-mono [&_code]:text-sm [&_code]:text-[var(--text-primary)]',
-        // Block code (pre > code)
+        // Block code (pre > code) - light surface matching inline code, with a
+        // crisp border for definition (no flat dark panels per the design system).
         '[&_pre]:mb-5 [&_pre]:overflow-x-auto [&_pre]:rounded-lg',
-        '[&_pre]:bg-[var(--surface-dark)] [&_pre]:p-4',
+        '[&_pre]:border [&_pre]:border-ink-200 [&_pre]:bg-[var(--surface-2)] [&_pre]:p-4',
         '[&_pre_code]:bg-transparent [&_pre_code]:px-0 [&_pre_code]:py-0',
-        '[&_pre_code]:text-[var(--text-on-dark)]',
+        '[&_pre_code]:text-[var(--text-primary)]',
 
         // ── Blockquote ────────────────────────────────────────────────────
         '[&_blockquote]:mb-5 [&_blockquote]:pl-4',

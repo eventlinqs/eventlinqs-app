@@ -1,0 +1,23 @@
+{
+  "base": "https://eventlinqs-app-git-feat-home-rebuild-lawals-projects-c20c0be8.vercel.app",
+  "captures": [
+    "tworails-1440x900",
+    "tworails-1280x800",
+    "tworails-390x844",
+    "hover-idle",
+    "hover-active"
+  ],
+  "axe": {
+    "desktop": {
+      "violations": 0,
+      "ids": []
+    },
+    "mobile": {
+      "violations": 0,
+      "ids": []
+    }
+  },
+  "motion": "1",
+  "hoverFilter": null,
+  "luminanceSample": null
+}

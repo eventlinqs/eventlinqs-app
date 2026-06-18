@@ -1,11 +1,13 @@
-import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { PaymentCalculator } from '@/lib/payments/payment-calculator'
+import { getDynamicPriceMap } from '@/lib/pricing/dynamic-pricing'
+import { pickUnitPriceCents, resolveSeatUnitPriceCents } from '@/lib/checkout/pricing'
 import { CheckoutForm } from './checkout-form'
 import { getGuestSessionId } from '@/lib/auth/guest-session'
 import { CheckoutTrustSignals } from '@/components/features/checkout/CheckoutTrustSignals'
+import { Button } from '@/components/ui/Button'
 import type { FeePassType, TicketTier, EventAddon } from '@/types/database'
 
 type Props = {
@@ -101,11 +103,24 @@ export default async function CheckoutPage({ params }: Props) {
       }
       currency = firstTier?.currency ?? 'AUD'
 
-      seatSlots = seats.map(s => ({
-        seat_id: s.id,
-        label: `Row ${s.row_label} · Seat ${s.seat_number}${s.seat_type !== 'standard' ? ` (${s.seat_type})` : ''}`,
-        price_cents: s.price_cents ?? firstTier?.price ?? 0,
-      }))
+      // FUN-03: price each seat through the SAME resolver the charge uses
+      // (current dynamic-aware tier price, identical fallback ordering) so the
+      // displayed seat total equals the charged seat total.
+      const seatFallbackCents = firstTier?.price ?? 0
+      seatSlots = await Promise.all(
+        seats.map(async s => ({
+          seat_id: s.id,
+          label: `Row ${s.row_label} · Seat ${s.seat_number}${s.seat_type !== 'standard' ? ` (${s.seat_type})` : ''}`,
+          price_cents: await resolveSeatUnitPriceCents(
+            s,
+            async (tierId) => {
+              const { data } = await admin.rpc('get_current_tier_price', { p_tier_id: tierId })
+              return data as number | null
+            },
+            seatFallbackCents,
+          ),
+        }))
+      )
 
       const totalSeatCents = seatSlots.reduce((s, x) => s + x.price_cents, 0)
       const avgPriceCents = Math.round(totalSeatCents / seatSlots.length)
@@ -118,7 +133,8 @@ export default async function CheckoutPage({ params }: Props) {
           currency,
           fee_pass_type,
           0,
-          event.organisation_id
+          event.organisation_id,
+          event.id, // FUN-03: event-scoped fee, same as the charge
         )
         // Override subtotal with exact seat sum
         initialFees = { ...computed, subtotal_cents: totalSeatCents, total_cents: totalSeatCents + computed.platform_fee_cents + computed.payment_processing_fee_cents + computed.tax_cents }
@@ -156,13 +172,20 @@ export default async function CheckoutPage({ params }: Props) {
     currency = tiers[0]?.currency ?? 'AUD'
     const fee_pass_type = (event.fee_pass_type ?? 'pass_to_buyer') as FeePassType
 
+    // FUN-01: resolve the SAME dynamic prices the charge uses, through the
+    // SAME shared rule, so the displayed total equals the charged total.
+    const dynamicPriceMap = await getDynamicPriceMap(tierIds)
+
     const cartTickets = reservationItems
       .filter(i => i.ticket_tier_id)
       .map(i => ({
         tier_id: i.ticket_tier_id!,
         tier_name: tierMap.get(i.ticket_tier_id!)?.name ?? 'Ticket',
         quantity: i.quantity,
-        unit_price_cents: tierMap.get(i.ticket_tier_id!)?.price ?? 0,
+        unit_price_cents: pickUnitPriceCents(
+          dynamicPriceMap.get(i.ticket_tier_id!),
+          tierMap.get(i.ticket_tier_id!)?.price,
+        ),
       }))
 
     const cartAddons = reservationItems
@@ -182,7 +205,8 @@ export default async function CheckoutPage({ params }: Props) {
         currency,
         fee_pass_type,
         0,
-        event.organisation_id
+        event.organisation_id,
+        event.id, // FUN-01: event-scoped fee, same as the charge, so fees match
       )
     } catch (err) {
       feesError = err
@@ -249,24 +273,14 @@ export default async function CheckoutPage({ params }: Props) {
           </p>
           <p className="mt-2 text-xs text-ink-500">Reservation: {reservation_id}</p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
-            <Link
-              href={`/checkout/${reservation_id}`}
-              className="rounded-md bg-ink-900 px-5 py-2 text-sm font-semibold text-white hover:bg-ink-800"
-            >
-              Try again
-            </Link>
-            <Link
-              href="/events"
-              className="rounded-md border border-ink-300 px-5 py-2 text-sm font-semibold text-ink-900 hover:bg-ink-50"
-            >
-              Back to events
-            </Link>
-            <a
+            <Button href={`/checkout/${reservation_id}`}>Try again</Button>
+            <Button href="/events" variant="secondary">Back to events</Button>
+            <Button
               href={`mailto:hello@eventlinqs.com?subject=Checkout%20error%20${encodeURIComponent(reservation_id)}`}
-              className="rounded-md border border-ink-300 px-5 py-2 text-sm font-semibold text-ink-900 hover:bg-ink-50"
+              variant="secondary"
             >
               Email support
-            </a>
+            </Button>
           </div>
         </div>
       </div>

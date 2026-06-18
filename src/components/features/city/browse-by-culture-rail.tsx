@@ -24,7 +24,7 @@ interface Props {
 export function BrowseByCultureRail({ citySlug, cityName, images }: Props) {
   const cultures = getAllCultures()
   return (
-    <ContentSection surface="base" width="wide" topBorder>
+    <ContentSection surface="base" width="wide" topBorder reveal>
       <SnapRailScroller
         railLabel={`${cityName} by community`}
         header={{

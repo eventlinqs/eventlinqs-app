@@ -4,6 +4,12 @@ import { useState, type FormEvent } from 'react'
 
 interface Props {
   cityName: string
+  /**
+   * Surface tone. `light` (the navy-on-canvas default for in-scope buyer
+   * surfaces) renders navy text on a light field; `dark` preserves the
+   * white-on-navy treatment for any host panel still on a dark surface.
+   */
+  tone?: 'light' | 'dark'
 }
 
 /**
@@ -18,9 +24,19 @@ interface Props {
  * an inline error when the network or API returns a 4xx/5xx. Never
  * throws to the boundary - the marketing surface must keep working.
  */
-export function CityNewsletterCapture({ cityName }: Props) {
+export function CityNewsletterCapture({ cityName, tone = 'dark' }: Props) {
   const [email, setEmail] = useState('')
   const [state, setState] = useState<'idle' | 'submitting' | 'ok' | 'error'>('idle')
+  const dark = tone === 'dark'
+  const c = {
+    heading: dark ? 'text-white' : 'text-ink-900',
+    sub: dark ? 'text-white/75' : 'text-ink-600',
+    ok: dark ? 'border-white/20 bg-white/5 text-white/90' : 'border-ink-200 bg-[var(--surface-1)] text-ink-700',
+    input: dark
+      ? 'border-white/30 bg-white/10 text-white placeholder:text-white/60'
+      : 'border-ink-300 bg-white text-ink-900 placeholder:text-ink-400',
+    err: dark ? 'text-white/70' : 'text-ink-500',
+  }
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -41,14 +57,14 @@ export function CityNewsletterCapture({ cityName }: Props) {
 
   return (
     <div>
-      <p className="font-display text-base font-semibold text-white">
+      <p className={`font-display text-base font-semibold ${c.heading}`}>
         Get {cityName}&apos;s best events weekly
       </p>
-      <p className="mt-1 text-sm text-white/75">
+      <p className={`mt-1 text-sm ${c.sub}`}>
         One email a week, the events worth your time.
       </p>
       {state === 'ok' ? (
-        <p className="mt-4 rounded-md border border-white/20 bg-white/5 px-4 py-3 text-sm text-white/90">
+        <p className={`mt-4 rounded-md border px-4 py-3 text-sm ${c.ok}`}>
           Subscribed. We&apos;ll be in your inbox by next Friday.
         </p>
       ) : (
@@ -63,7 +79,7 @@ export function CityNewsletterCapture({ cityName }: Props) {
             value={email}
             onChange={e => setEmail(e.target.value)}
             placeholder="you@example.com"
-            className="h-11 flex-1 rounded-full border border-white/30 bg-white/10 px-4 text-sm text-white placeholder:text-white/60 focus:border-[var(--brand-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-accent)]/40"
+            className={`h-11 flex-1 rounded-full border px-4 text-sm focus:border-[var(--brand-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-accent)]/40 ${c.input}`}
           />
           <button
             type="submit"
@@ -75,7 +91,7 @@ export function CityNewsletterCapture({ cityName }: Props) {
         </form>
       )}
       {state === 'error' ? (
-        <p className="mt-2 text-xs text-white/70">
+        <p className={`mt-2 text-xs ${c.err}`}>
           Something went wrong. Try again or email us at hello@eventlinqs.com.
         </p>
       ) : null}

@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { requireAdminSession } from '@/lib/admin/auth'
-import { hasCapability } from '@/lib/admin/rbac'
+import { can } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import {
   listProfiles,
@@ -43,7 +43,7 @@ const ROLE_BADGE: Record<string, string> = {
  */
 export default async function AdminUsersPage({ searchParams }: { searchParams: SearchParams }) {
   const session = await requireAdminSession()
-  if (!hasCapability(session.admin.role, 'admin.users.manage')) redirect('/admin')
+  if (!can(session, 'admin.users.manage')) redirect('/admin')
 
   const sp = await searchParams
   const roleFilter = (USER_ROLE_FILTERS as readonly string[]).includes(sp.role ?? '')

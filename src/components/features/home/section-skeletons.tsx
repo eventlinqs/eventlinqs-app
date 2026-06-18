@@ -36,7 +36,7 @@ function RailHeaderSkeleton({ eyebrow, title }: { eyebrow: string; title: string
           <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-700">
             {eyebrow}
           </p>
-          <h2 className="type-h2 font-display text-ink-900/70">
+          <h2 className="type-rail-heading font-headline uppercase tracking-tight text-ink-900/70">
             {title}
           </h2>
         </div>
@@ -79,22 +79,6 @@ export function CulturalPicksSkeleton() {
             <CardSkeleton key={i} />
           ))}
         </div>
-      </div>
-    </section>
-  )
-}
-
-export function LiveVibeSkeleton() {
-  return (
-    <section aria-label="Live vibe - loading" className="bg-ink-950 py-16">
-      <div className="flex gap-4 overflow-hidden px-4">
-        {[0, 1, 2, 3, 4, 5].map(i => (
-          <div
-            key={i}
-            className="h-36 w-60 shrink-0 rounded-xl bg-ink-800/60 animate-pulse"
-            aria-hidden
-          />
-        ))}
       </div>
     </section>
   )

@@ -1,5 +1,6 @@
 import { EventlinqsLogo } from '@/components/ui/eventlinqs-logo'
-import { FirstNationsFlags } from '@/components/features/home/cultural-calendar-widget'
+import { FirstNationsFlags } from '@/components/features/home/first-nations-flags'
+import { FooterAccordion } from '@/components/layout/footer-accordion'
 
 /**
  * SiteFooter v4 (Batch 5.5) - 4-column desktop, 2-column mobile, ~50%
@@ -106,17 +107,6 @@ function FacebookIcon() {
   )
 }
 
-function ChevronIcon() {
-  return (
-    <svg
-      className="h-4 w-4 text-white/70 transition-transform group-open:rotate-180"
-      fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true"
-    >
-      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-    </svg>
-  )
-}
-
 interface FooterColumnProps {
   title: string
   links: { label: string; href: string }[]
@@ -136,26 +126,6 @@ function DesktopColumn({ title, links }: FooterColumnProps) {
         ))}
       </ul>
     </div>
-  )
-}
-
-function MobileAccordion({ title, links }: FooterColumnProps) {
-  return (
-    <details className="group">
-      <summary className="flex cursor-pointer list-none items-center justify-between py-3 text-sm font-semibold text-white [&::-webkit-details-marker]:hidden">
-        {title}
-        <ChevronIcon />
-      </summary>
-      <ul className="space-y-2 pb-3">
-        {links.map(link => (
-          <li key={link.href}>
-            <a href={link.href} className="block py-1 text-sm text-white/70 transition-colors hover:text-white">
-              {link.label}
-            </a>
-          </li>
-        ))}
-      </ul>
-    </details>
   )
 }
 
@@ -207,7 +177,7 @@ export function SiteFooter() {
   const year = new Date().getFullYear()
 
   return (
-    <footer className="bg-ink-950 text-white" aria-label="Site footer">
+    <footer className="bg-[var(--color-ink-900)] text-white" aria-label="Site footer">
       <div className="mx-auto max-w-7xl px-4 pt-10 pb-6 sm:px-6 sm:pt-12 lg:px-8">
 
         {/* Desktop: brand strip + 4-col link grid */}
@@ -226,10 +196,10 @@ export function SiteFooter() {
           </div>
 
           <div className="grid grid-cols-4 gap-x-8 gap-y-6 pt-8">
-            <DesktopColumn title="Discover"        links={DISCOVER} />
-            <DesktopColumn title="Communities"        links={CULTURES} />
-            <DesktopColumn title="For organisers"  links={FOR_ORGANISERS} />
-            <DesktopColumn title="Company"         links={COMPANY} />
+            <DesktopColumn title="Discover"       links={DISCOVER} />
+            <DesktopColumn title="Communities"    links={CULTURES} />
+            <DesktopColumn title="For organisers" links={FOR_ORGANISERS} />
+            <DesktopColumn title="Company"        links={COMPANY} />
           </div>
         </div>
 
@@ -240,11 +210,15 @@ export function SiteFooter() {
             <SocialRow />
           </div>
 
-          <div className="grid grid-cols-2 gap-x-6 pt-2">
-            <MobileAccordion title="Discover"        links={DISCOVER} />
-            <MobileAccordion title="Communities"        links={CULTURES} />
-            <MobileAccordion title="For organisers"  links={FOR_ORGANISERS} />
-            <MobileAccordion title="Company"         links={COMPANY} />
+          {/* Full-width STACKED accordions, one per row, each independent.
+              No 2-col grid: a grid row stretches to its tallest cell and drags
+              the neighbour column down when one expands (the coupling bug).
+              Stacked blocks move only the content below an expanded section. */}
+          <div className="pt-2">
+            <FooterAccordion title="Discover"       links={DISCOVER} />
+            <FooterAccordion title="Communities"    links={CULTURES} />
+            <FooterAccordion title="For organisers" links={FOR_ORGANISERS} />
+            <FooterAccordion title="Company"        links={COMPANY} />
           </div>
 
           <div className="mt-4 border-t border-white/10 pt-4">
@@ -283,7 +257,7 @@ export function SiteFooter() {
       <div className="border-t border-white/10">
         <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
 
-          <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
             <ul className="flex flex-wrap items-center gap-x-5 gap-y-1">
               {LEGAL.map(link => (
                 <li key={link.href}>
@@ -293,9 +267,6 @@ export function SiteFooter() {
                 </li>
               ))}
             </ul>
-            <p className="text-xs font-medium text-white/80">
-              All-in pricing. No surprise fees.
-            </p>
           </div>
 
           <div className="mt-3 flex flex-col gap-1 text-xs text-white/50 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3">

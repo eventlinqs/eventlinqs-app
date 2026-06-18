@@ -1,0 +1,22 @@
+{
+  "base": "https://eventlinqs-app-git-test-home-rhythm-c-lawals-projects-c20c0be8.vercel.app",
+  "label": "c",
+  "axe": {
+    "desktop": {
+      "violations": 0,
+      "ids": []
+    },
+    "mobile": {
+      "violations": 0,
+      "ids": []
+    }
+  },
+  "captures": [
+    "home-1440",
+    "home-390",
+    "home-1440-rails",
+    "controls-1440",
+    "controls-1180",
+    "controls-980"
+  ]
+}

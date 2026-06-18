@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { redirect, notFound } from 'next/navigation'
 import { requireAdminSession } from '@/lib/admin/auth'
-import { hasCapability } from '@/lib/admin/rbac'
+import { can } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { getOrgPayoutDetail, PAYOUT_CURRENCY } from '@/lib/admin/payouts'
 import { DisbursePanel, VoidPayoutButton } from './payout-actions'
@@ -31,7 +31,7 @@ const PAYOUT_BADGE: Record<string, string> = {
 
 export default async function AdminOrgPayoutPage({ params }: { params: Promise<{ orgId: string }> }) {
   const session = await requireAdminSession()
-  if (!hasCapability(session.admin.role, 'admin.payouts.disburse')) redirect('/admin')
+  if (!can(session, 'admin.payouts.disburse')) redirect('/admin')
 
   const { orgId } = await params
   const detail = await getOrgPayoutDetail(orgId)

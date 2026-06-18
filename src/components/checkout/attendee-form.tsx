@@ -2,6 +2,10 @@
 
 import { useState } from 'react'
 
+// 44px+ touch target and 16px text so iOS never zoom-jumps on focus.
+const FIELD_CLS =
+  'w-full rounded-lg border border-ink-200 px-3.5 py-2.5 text-base text-ink-900 placeholder:text-ink-400 focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500'
+
 export interface AttendeeDetails {
   ticket_tier_id: string
   tier_name: string
@@ -125,7 +129,7 @@ export function AttendeeForm({
                     value={attendee.first_name}
                     onChange={e => updateAttendee(i, 'first_name', e.target.value)}
                     required
-                    className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
+                    className={FIELD_CLS}
                   />
                 </div>
                 <div>
@@ -135,7 +139,7 @@ export function AttendeeForm({
                     value={attendee.last_name}
                     onChange={e => updateAttendee(i, 'last_name', e.target.value)}
                     required
-                    className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
+                    className={FIELD_CLS}
                   />
                 </div>
                 <div className="col-span-2">
@@ -145,7 +149,7 @@ export function AttendeeForm({
                     value={attendee.email}
                     onChange={e => updateAttendee(i, 'email', e.target.value)}
                     required
-                    className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
+                    className={FIELD_CLS}
                   />
                 </div>
               </div>

@@ -16,21 +16,31 @@ export function CityOrganiserCtaPanel({ cityName, citySlug }: Props) {
   return (
     <section
       aria-labelledby="city-cta-heading"
-      className="relative overflow-hidden bg-[var(--color-navy-950)] py-12 sm:py-16 lg:py-20"
+      className="relative overflow-hidden border-t border-ink-100 bg-[var(--surface-1)] py-12 sm:py-16 lg:py-20"
     >
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      {/* Subtle warm gold tint - premium and light (Phase B touch) */}
+      <div
+        className="pointer-events-none absolute"
+        style={{
+          top: '-30%', right: '-8%', width: '55%', height: '160%',
+          background: 'radial-gradient(ellipse 70% 60% at 100% 50%, var(--brand-accent), transparent 64%)',
+          opacity: 0.05,
+        }}
+        aria-hidden="true"
+      />
+      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-2 lg:gap-16">
           <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent)]">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
               For organisers
             </p>
             <h2
               id="city-cta-heading"
-              className="font-display text-2xl font-bold text-white sm:text-3xl"
+              className="font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl"
             >
               Throwing an event in {cityName}? Reach every community across the city.
             </h2>
-            <ul className="mt-6 space-y-3 text-sm text-white/85 sm:text-base">
+            <ul className="mt-6 space-y-3 text-sm text-[var(--text-secondary)] sm:text-base">
               <li className="flex items-start gap-3">
                 <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--brand-accent)]" aria-hidden />
                 <span>Transparent pricing - no hidden booking fees, no last-minute surprises.</span>
@@ -57,14 +67,14 @@ export function CityOrganiserCtaPanel({ cityName, citySlug }: Props) {
               </Link>
               <Link
                 href="/contact"
-                className="inline-flex h-11 min-w-[44px] items-center justify-center rounded-full border border-white/40 bg-white/10 px-6 text-sm font-semibold text-white transition hover:bg-white/20"
+                className="inline-flex h-11 min-w-[44px] items-center justify-center rounded-full border border-ink-300 bg-transparent px-6 text-sm font-semibold text-ink-900 transition hover:bg-ink-100"
               >
                 Talk to us
               </Link>
             </div>
           </div>
           <div className="flex items-center">
-            <CityNewsletterCapture cityName={cityName} />
+            <CityNewsletterCapture cityName={cityName} tone="light" />
           </div>
         </div>
       </div>

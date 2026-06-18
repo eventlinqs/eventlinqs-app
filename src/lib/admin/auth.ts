@@ -1,5 +1,6 @@
 import { createClient as createServerSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { resolveCapabilities } from './rbac'
 import type { AdminSession, AdminUserRow } from './types'
 
 /**
@@ -31,10 +32,19 @@ export async function getAdminSession(): Promise<AdminSession | null> {
   if (admin.error || !admin.data) return null
   if (admin.data.disabled_at) return null
 
+  // Normalise override columns (absent until the migration is applied) so the
+  // resolver is safe pre-migration, then compute the effective capability set.
+  const adminRow: AdminUserRow = {
+    ...admin.data,
+    capabilities_granted: admin.data.capabilities_granted ?? [],
+    capabilities_revoked: admin.data.capabilities_revoked ?? [],
+  }
+
   return {
     userId: userData.user.id,
     email: userData.user.email ?? '',
-    admin: admin.data,
+    admin: adminRow,
+    capabilities: resolveCapabilities(adminRow),
   }
 }
 

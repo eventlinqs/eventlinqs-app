@@ -81,6 +81,9 @@ export class PaymentCalculator {
    * @param fee_pass_type If supplied, overrides the pricing_rules default.
    *   This is how `events.fee_pass_type` (per-event organiser setting)
    *   propagates into the buyer's fee total.
+   * @param organisationId Resolves a per-organiser fee override when set.
+   * @param eventId Resolves a per-event fee override (highest precedence) when
+   *   set, so an event with its own fee is charged exactly that fee.
    */
   async calculate(
     tickets: CartItem[],
@@ -88,7 +91,8 @@ export class PaymentCalculator {
     currency: string,
     fee_pass_type?: FeePassType,
     discount_cents: number = 0,
-    organisationId?: string | null
+    organisationId?: string | null,
+    eventId?: string | null
   ): Promise<FeeBreakdown> {
     const subtotal_cents = tickets.reduce((sum, t) => sum + t.unit_price_cents * t.quantity, 0)
     const addon_total_cents = addons.reduce((sum, a) => sum + a.unit_price_cents * a.quantity, 0)
@@ -133,6 +137,7 @@ export class PaymentCalculator {
 
     const country = countryFromCurrency(currency)
     const orgId = organisationId ?? null
+    const evId = eventId ?? null
 
     const [
       platformFeePercent,
@@ -141,11 +146,11 @@ export class PaymentCalculator {
       processingFeeFixedCents,
       passThroughDefault,
     ] = await Promise.all([
-      getPlatformFeePercentage(country, currency, orgId),
-      getPlatformFeeFixedCents(country, currency, orgId),
-      getProcessingFeePercentage(country, currency, orgId),
-      getProcessingFeeFixedCents(country, currency, orgId),
-      getProcessingFeePassThrough(country, currency, orgId),
+      getPlatformFeePercentage(country, currency, orgId, evId),
+      getPlatformFeeFixedCents(country, currency, orgId, evId),
+      getProcessingFeePercentage(country, currency, orgId, evId),
+      getProcessingFeeFixedCents(country, currency, orgId, evId),
+      getProcessingFeePassThrough(country, currency, orgId, evId),
     ])
 
     const ticketCount = tickets.reduce((sum, t) => sum + t.quantity, 0)

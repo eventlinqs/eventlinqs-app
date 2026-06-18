@@ -1,0 +1,162 @@
+{
+  "base": "https://eventlinqs-app-git-feat-home-rebuild-lawals-projects-c20c0be8.vercel.app",
+  "intersections": {
+    "total": 24,
+    "ok": 24,
+    "dead": [],
+    "sample": [
+      {
+        "path": "/culture/aboriginal-torres-strait-islander/sydney",
+        "status": 200
+      },
+      {
+        "path": "/culture/african/sydney",
+        "status": 200
+      },
+      {
+        "path": "/culture/indian/sydney",
+        "status": 200
+      },
+      {
+        "path": "/culture/chinese/sydney",
+        "status": 200
+      },
+      {
+        "path": "/culture/filipino/sydney",
+        "status": 200
+      },
+      {
+        "path": "/culture/latin-american/sydney",
+        "status": 200
+      },
+      {
+        "path": "/culture/greek/sydney",
+        "status": 200
+      },
+      {
+        "path": "/culture/vietnamese/sydney",
+        "status": 200
+      },
+      {
+        "path": "/culture/korean/sydney",
+        "status": 200
+      },
+      {
+        "path": "/culture/italian/sydney",
+        "status": 200
+      },
+      {
+        "path": "/culture/aboriginal-torres-strait-islander/melbourne",
+        "status": 200
+      },
+      {
+        "path": "/culture/african/melbourne",
+        "status": 200
+      },
+      {
+        "path": "/culture/indian/melbourne",
+        "status": 200
+      },
+      {
+        "path": "/culture/chinese/melbourne",
+        "status": 200
+      },
+      {
+        "path": "/culture/filipino/melbourne",
+        "status": 200
+      },
+      {
+        "path": "/culture/latin-american/melbourne",
+        "status": 200
+      },
+      {
+        "path": "/culture/greek/melbourne",
+        "status": 200
+      },
+      {
+        "path": "/culture/vietnamese/melbourne",
+        "status": 200
+      },
+      {
+        "path": "/culture/korean/melbourne",
+        "status": 200
+      },
+      {
+        "path": "/culture/italian/melbourne",
+        "status": 200
+      },
+      {
+        "path": "/culture/aboriginal-torres-strait-islander/brisbane",
+        "status": 200
+      },
+      {
+        "path": "/culture/african/brisbane",
+        "status": 200
+      },
+      {
+        "path": "/culture/indian/brisbane",
+        "status": 200
+      },
+      {
+        "path": "/culture/chinese/brisbane",
+        "status": 200
+      }
+    ],
+    "spread": {
+      "communities": 10,
+      "cities": 3
+    }
+  },
+  "axe": {
+    "home": {
+      "desktop": {
+        "violations": 0,
+        "ids": []
+      },
+      "mobile": {
+        "violations": 0,
+        "ids": []
+      }
+    },
+    "hub": {
+      "desktop": {
+        "violations": 0,
+        "ids": []
+      },
+      "mobile": {
+        "violations": 0,
+        "ids": []
+      }
+    },
+    "intersection1": {
+      "desktop": {
+        "violations": 0,
+        "ids": []
+      },
+      "mobile": {
+        "violations": 0,
+        "ids": []
+      }
+    },
+    "intersection2": {
+      "desktop": {
+        "violations": 0,
+        "ids": []
+      },
+      "mobile": {
+        "violations": 0,
+        "ids": []
+      }
+    },
+    "intersection3": {
+      "desktop": {
+        "violations": 0,
+        "ids": []
+      },
+      "mobile": {
+        "violations": 0,
+        "ids": []
+      }
+    }
+  }
+}

@@ -145,7 +145,7 @@ describe('createDestinationCharge', () => {
       organiserShareCents: 10_000,
     })
     expect(result.intent.gateway_payment_id).toBe('pi_mock_1')
-    expect(mockedGetMode).toHaveBeenCalledWith('AU', 'AUD', 'org_1')
+    expect(mockedGetMode).toHaveBeenCalledWith('AU', 'AUD', 'org_1', null)
   })
 
   test('mode 2 (exclusive): app_fee = platform only, processing bonuses to organiser', async () => {
