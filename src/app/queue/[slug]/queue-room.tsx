@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
 import { joinQueue, getQueuePosition, leaveQueue } from '@/app/actions/queue'
 import { Button } from '@/components/ui/Button'
+import { HeroMedia } from '@/components/media/HeroMedia'
 
 interface QueueRoomProps {
   eventId: string
@@ -288,7 +288,7 @@ export function QueueRoom({
           image). Sits behind everything; content stays legible on the overlay. */}
       {coverImageUrl && (
         <div className="absolute inset-0 -z-10 overflow-hidden">
-          <Image src={coverImageUrl} alt="" fill sizes="100vw" className="object-cover" priority />
+          <HeroMedia image={coverImageUrl} alt="" sizes="100vw" priority />
           <div className="absolute inset-0 bg-ink-900/85" />
           <div className="absolute inset-0 bg-gradient-to-b from-ink-900/70 via-ink-900/85 to-ink-900" />
         </div>

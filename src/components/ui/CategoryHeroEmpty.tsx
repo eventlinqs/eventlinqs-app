@@ -1,6 +1,6 @@
-import Image from 'next/image'
 import type { ComponentType } from 'react'
 import { Button } from './Button'
+import { HeroMedia } from '@/components/media/HeroMedia'
 
 interface TrustPillar {
   icon: ComponentType<{ className?: string }>
@@ -43,19 +43,16 @@ export function CategoryHeroEmpty({
   const onPhoto = !!coverImage
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl ${onPhoto ? 'bg-[var(--color-navy-950)]' : 'border border-ink-100 bg-[var(--surface-1)]'}`}
-      style={{ minHeight: 'clamp(420px, 60vh, 600px)' }}
+      className={`hero-marketing relative overflow-hidden rounded-2xl ${onPhoto ? 'bg-[var(--color-navy-950)]' : 'border border-ink-100 bg-[var(--surface-1)]'}`}
     >
       {/* ── Background: photograph OR light canvas pattern ───────── */}
       {onPhoto ? (
         <>
-          <Image
-            src={coverImage}
+          <HeroMedia
+            image={coverImage}
             alt=""
-            fill
             sizes="(max-width: 768px) 100vw, 1280px"
-            className="object-cover"
-            aria-hidden="true"
+            priority={false}
           />
           {/* Dark navy overlay for white-text legibility (homepage pattern). */}
           <div
@@ -103,7 +100,7 @@ export function CategoryHeroEmpty({
         )}
 
         {/* Headline */}
-        <h2 className={`mb-5 max-w-2xl text-3xl font-bold leading-[1.05] tracking-tight md:text-5xl lg:text-6xl ${onPhoto ? 'text-white' : 'text-[var(--text-primary)]'}`}>
+        <h2 className={`mb-5 max-w-2xl text-3xl font-bold leading-[1.05] tracking-tight sm:text-4xl lg:text-5xl ${onPhoto ? 'text-white' : 'text-[var(--text-primary)]'}`}>
           {headline}
         </h2>
 
