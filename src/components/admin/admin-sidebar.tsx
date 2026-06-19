@@ -5,29 +5,27 @@ interface NavItem {
   label: string
   href: string
   capability: AdminCapability
-  comingSoon?: boolean
 }
 
 const NAV: NavItem[] = [
   { label: 'Dashboard',        href: '/admin',            capability: 'admin.dashboard.view' },
   { label: 'Pricing and fees', href: '/admin/pricing',    capability: 'admin.pricing.manage' },
   { label: 'Organisers',       href: '/admin/organisers', capability: 'admin.users.manage' },
+  { label: 'KYC review',       href: '/admin/kyc',        capability: 'admin.users.manage' },
   { label: 'Users',            href: '/admin/users',      capability: 'admin.users.manage' },
   { label: 'Events',           href: '/admin/events',     capability: 'admin.events.manage' },
   { label: 'Orders',           href: '/admin/orders',     capability: 'admin.refunds.process' },
+  { label: 'Refunds',          href: '/admin/refunds',    capability: 'admin.refunds.process' },
+  { label: 'Disputes',         href: '/admin/disputes',   capability: 'admin.refunds.process' },
   { label: 'Payouts',          href: '/admin/payouts',    capability: 'admin.payouts.disburse' },
   { label: 'Admin staff',      href: '/admin/staff',      capability: 'admin.invites.manage' },
   { label: 'Analytics (GMV)',  href: '/admin/analytics',  capability: 'admin.pricing.manage' },
   { label: 'Audit',            href: '/admin/audit',      capability: 'admin.audit.read' },
-  // Deferred (visible, disabled) per M7 scope: build later.
-  { label: 'KYC review',       href: '/admin/kyc',        capability: 'admin.dashboard.view', comingSoon: true },
-  { label: 'Country toggles',  href: '/admin/countries',  capability: 'admin.dashboard.view', comingSoon: true },
 ]
 
 /**
  * Persistent admin sidebar. Sections shown only if the active role
- * carries the matching capability. "Coming soon" items render disabled
- * so the founder can see what is queued without dead links.
+ * carries the matching capability. Every item resolves to a live route.
  */
 export function AdminSidebar({ capabilities }: { capabilities: readonly string[] }) {
   const items = NAV.filter(i => capabilities.includes(i.capability))
@@ -48,24 +46,12 @@ export function AdminSidebar({ capabilities }: { capabilities: readonly string[]
         <ul className="flex flex-col gap-1">
           {items.map(i => (
             <li key={i.href}>
-              {i.comingSoon ? (
-                <span
-                  className="flex items-center justify-between rounded-md px-3 py-2 text-sm text-white/40"
-                  aria-disabled="true"
-                >
-                  {i.label}
-                  <span className="ml-2 rounded bg-white/5 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-white/40">
-                    Soon
-                  </span>
-                </span>
-              ) : (
-                <Link
-                  href={i.href}
-                  className="block rounded-md px-3 py-2 text-sm text-white/80 transition hover:bg-white/[0.06] hover:text-white"
-                >
-                  {i.label}
-                </Link>
-              )}
+              <Link
+                href={i.href}
+                className="block rounded-md px-3 py-2 text-sm text-white/80 transition hover:bg-white/[0.06] hover:text-white"
+              >
+                {i.label}
+              </Link>
             </li>
           ))}
         </ul>

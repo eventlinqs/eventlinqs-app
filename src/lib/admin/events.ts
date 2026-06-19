@@ -12,9 +12,8 @@ import type { Database } from '@/types/database'
  * with a conditional status filter so a concurrent change is not clobbered,
  * and audit-logged old -> new.
  *
- * This module owns only the events.status column for moderation. The
- * feature / unfeature toggle (is_featured) is deliberately NOT here - it
- * waits on its migration.
+ * This module owns the events.status column for moderation and the
+ * events.is_featured flag (setEventFeatured), both audit-logged.
  */
 
 type EventStatus = Database['public']['Enums']['event_status']
