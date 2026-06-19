@@ -3,6 +3,8 @@ name: page-build
 description: Use when building, rebuilding, or redesigning any user-facing EventLinqs page or major UI surface (homepage, events listing, event detail, checkout, category or scene landing, organiser profile, marketing page), or making a visible change to an existing surface.
 ---
 
+> **Definition of Done (binding):** This task inherits the CLAUDE.md "Definition of Done (SHIP 100%, A to Z)" section. Nothing ships partial; zero placeholders, stubs, or dead links; everything works on real data; a QA pass confirms zero placeholders and full function; pass the competitor benchmark gate (Ticketmaster lead, Eventbrite, DICE) at desktop 1440 and mobile 390; if you cannot reach 100 percent, report the exact remaining items as NOT DONE and never imply completeness.
+
 # page-build
 
 ## Overview

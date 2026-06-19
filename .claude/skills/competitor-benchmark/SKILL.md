@@ -3,6 +3,8 @@ name: competitor-benchmark
 description: Use whenever a design or page-build task needs to know what the competitors (Ticketmaster, Eventbrite) actually look like - hero heights, page treatments, rail patterns, auth/help/pricing layouts - so you NEVER re-ask the founder "what do competitors look like". Read this before designing any page type; only re-capture when evidence is stale (>90 days) or a new page type is being designed.
 ---
 
+> **Definition of Done (binding):** This task inherits the CLAUDE.md "Definition of Done (SHIP 100%, A to Z)" section. Nothing ships partial; zero placeholders, stubs, or dead links; everything works on real data; a QA pass confirms zero placeholders and full function; pass the competitor benchmark gate (Ticketmaster lead, Eventbrite, DICE) at desktop 1440 and mobile 390; if you cannot reach 100 percent, report the exact remaining items as NOT DONE and never imply completeness.
+
 # competitor-benchmark
 
 ## The rule (founder order)
