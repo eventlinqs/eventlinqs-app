@@ -36,7 +36,8 @@ silently follow the stale doc.
 
 | If you are touching... | The governing laws are... |
 |---|---|
-| Any surface at all | Law 0, Law 1 (no generic), Verification and gates |
+| Any surface at all | Law 0, Definition of Done, Law 1 (no generic), Verification and gates |
+| Reporting any feature or task done | Definition of Done (SHIP 100%, A to Z) |
 | A new page or a redesign | Law 2 (evidence-driven), Design system, Motion, Law 4 if marketing, the `page-build` skill |
 | Copy, labels, microcopy | Copy and banned content, Law 3 (Australia-smart) |
 | Colours, type, spacing, cards, container | Design system |
@@ -51,7 +52,8 @@ silently follow the stale doc.
 | A fee, pricing, checkout charge, or payout | Fee system (one source), `docs/FEE-SYSTEM.md` |
 | CI, gates, delivery | Verification and gates |
 
-**Index of laws:** Law 0 (read first) - Law 1 (no generic) - Law 2
+**Index of laws:** Law 0 (read first) - Definition of Done (SHIP 100%, A to Z)
+- Law 1 (no generic) - Law 2
 (evidence-driven) - Law 3 (Australia-smart) - Law 4 (marketing image-rich) -
 Law 5 (zero dead links) - Scene layer - Design system - Motion - Copy and
 banned content - Verification and gates - Tooling - Authority docs - Skills.
@@ -66,6 +68,40 @@ layer on top, roughly 10 to 20 percent of any surface, never the dominant
 identity.
 
 Stack: Next.js, Supabase, Tailwind v4, Stripe, Vercel.
+
+## Definition of Done (SHIP 100%, A to Z)
+
+This is the single, canonical bar for "done" on every surface, feature, and
+task. It is binding on every build without being restated in any prompt: if a
+prompt is silent on it, it still holds, and no prompt that is silent on it
+waives it. It consolidates and strengthens Law 1 (no generic), Law 5 (zero dead
+links), and the benchmark and gate rules in Verification and gates.
+
+1. **Nothing ships partial.** Every feature is built A to Z and is 100 percent
+   working in production before it is ever called done. "Mostly working", "the
+   happy path works", and "done except for X" are NOT done.
+2. **Zero placeholders.** No stubs, mocks, fake or hardcoded sample values,
+   "coming soon", "lorem ipsum", "Sample Event 1", TODO or FIXME markers, or
+   dead links on any shipped surface. A placeholder is a defect by definition,
+   never a stub to fix later.
+3. **Everything works on real data.** Every link, button, tile, card, and
+   action navigates and functions against real data and resolves to a working
+   state (HTTP 200, never a 404, a 500, an empty-result dead end, or a no-op
+   control).
+4. **A QA pass confirms it.** Before "done" is reported, a QA pass verifies zero
+   placeholders and full function end to end, by clicking what the user clicks
+   on real data, with evidence. Reuse the link-integrity crawler and the
+   affordance scan (Law 5) and the per-page production-readiness checks
+   (Verification and gates).
+5. **Competitor benchmark gate.** Every shipped surface passes the benchmark
+   gate against the leaders, Ticketmaster (the lead), Eventbrite, and DICE, at
+   desktop 1440 and mobile 390, with an explicit SURPASS, PARITY, or BELOW
+   verdict per aspect. Parity is the floor; the goal is to surpass. Any BELOW
+   means iterate before delivering.
+6. **Honest reporting when not 100 percent.** If a build cannot reach 100
+   percent in one pass, the agent reports the exact remaining items as NOT DONE,
+   lists them plainly, and never states or implies completeness. Reporting a
+   partial build as done is the most serious breach of this constitution.
 
 ## Law 1: no generic
 
