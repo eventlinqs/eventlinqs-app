@@ -156,6 +156,38 @@ export default async function AdminEventDetailPage({
             </form>
           </section>
 
+          {/* Takedown (post-moderation) */}
+          {event.status !== 'cancelled' && event.status !== 'completed' ? (
+            <section className="rounded-lg border border-red-500/20 bg-[#131A2A] p-5">
+              <h2 className="mb-1 font-display text-lg font-semibold text-red-200">Take down</h2>
+              <p className="mb-3 text-sm text-white/60">
+                Remove this event from sale for a policy breach. This cancels the event and cannot be undone. A reason is
+                required and recorded in the audit log.
+              </p>
+              <form action={eventActionForm} className="space-y-3">
+                <input type="hidden" name="eventId" value={event.id} />
+                <input type="hidden" name="action" value="takedown" />
+                <input type="hidden" name="returnTo" value={`/admin/events/${event.id}`} />
+                <label className="block">
+                  <span className="mb-1.5 block text-[11px] uppercase tracking-[0.18em] text-white/50">Reason (required)</span>
+                  <textarea
+                    name="reason"
+                    required
+                    rows={3}
+                    placeholder="Why is this event being taken down"
+                    className="w-full rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white outline-none focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[var(--brand-accent)]"
+                  />
+                </label>
+                <ConfirmSubmitButton
+                  confirmMessage={`Take down "${event.title}"? This removes it from sale and is recorded in the audit log.`}
+                  className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-sm font-semibold text-red-200 transition hover:bg-red-500/20"
+                >
+                  Take down event
+                </ConfirmSubmitButton>
+              </form>
+            </section>
+          ) : null}
+
           {/* Fee override */}
           <section className="rounded-lg border border-white/[0.08] bg-[#131A2A] p-5">
             <h2 className="mb-1 font-display text-lg font-semibold">Platform fee for this event</h2>

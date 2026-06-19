@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import type { AdminSession } from '@/lib/admin/types'
 import { ROLE_LABELS } from '@/lib/admin/rbac'
+import { filterNav } from './admin-nav'
+import { AdminMobileNav } from './admin-mobile-nav'
 
 /**
  * Top bar for the admin shell: a working global search (submits to
@@ -13,6 +15,7 @@ import { ROLE_LABELS } from '@/lib/admin/rbac'
 export function AdminTopbar({ session }: { session: AdminSession }) {
   return (
     <header className="flex items-center gap-4 border-b border-white/[0.08] bg-[#0A0F1A] px-6 py-4 lg:px-10">
+      <AdminMobileNav items={filterNav(session.capabilities)} />
       <form method="GET" action="/admin/search" className="hidden flex-1 sm:block">
         <label className="block">
           <span className="sr-only">Search organisers, events, users</span>

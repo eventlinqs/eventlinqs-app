@@ -36,7 +36,7 @@ function formatDueDate(iso: string): string {
 
 export default async function AdminDisputesPage() {
   const session = await requireAdminSession()
-  if (!can(session, 'admin.refunds.process')) redirect('/admin')
+  if (!can(session, 'admin.disputes.manage')) redirect('/admin')
 
   await recordAuditEvent({
     action: 'admin.disputes.view',

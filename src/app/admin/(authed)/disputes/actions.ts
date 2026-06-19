@@ -9,7 +9,7 @@ import { recordAuditEvent } from '@/lib/admin/audit'
 import { getStripeClient } from '@/lib/payments/payout'
 
 /**
- * Admin dispute (chargeback) server actions. Gated by admin.refunds.process
+ * Admin dispute (chargeback) server actions. Gated by admin.disputes.manage
  * (there is no dedicated dispute capability; the refund operator owns disputes
  * too). Responding to a Stripe dispute submits evidence on the PLATFORM client,
  * which does not touch our charge, fee, or payout math. Every action is audited
@@ -50,7 +50,7 @@ export async function submitDisputeEvidence(
   input: SubmitDisputeEvidenceInput,
 ): Promise<SubmitDisputeEvidenceResult> {
   const session = await requireAdminSession()
-  assertCan(session, 'admin.refunds.process')
+  assertCan(session, 'admin.disputes.manage')
 
   const parsed = SubmitEvidenceSchema.safeParse(input)
   if (!parsed.success) return { ok: false, error: 'Invalid dispute evidence.' }
@@ -107,7 +107,7 @@ export async function submitDisputeEvidence(
  */
 export async function closeDispute(id: string): Promise<CloseDisputeResult> {
   const session = await requireAdminSession()
-  assertCan(session, 'admin.refunds.process')
+  assertCan(session, 'admin.disputes.manage')
 
   const parsed = z.string().min(1).safeParse(id)
   if (!parsed.success) return { ok: false, error: 'Invalid dispute id.' }

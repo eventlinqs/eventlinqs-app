@@ -55,7 +55,7 @@ export default async function AdminDisputeDetailPage({
   params: Promise<{ id: string }>
 }) {
   const session = await requireAdminSession()
-  if (!can(session, 'admin.refunds.process')) redirect('/admin')
+  if (!can(session, 'admin.disputes.manage')) redirect('/admin')
 
   const { id } = await params
   const result = await getDispute(id)

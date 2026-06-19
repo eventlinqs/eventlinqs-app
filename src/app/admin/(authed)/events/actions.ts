@@ -8,7 +8,7 @@ import { applyEventAction, setEventFeatured } from '@/lib/admin/events'
 
 const ActionSchema = z.object({
   eventId: z.string().uuid(),
-  action: z.enum(['pause', 'resume', 'cancel']),
+  action: z.enum(['pause', 'resume', 'cancel', 'takedown']),
   reason: z.string().max(500).optional(),
   returnTo: z.string().optional(),
 })
