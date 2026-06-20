@@ -33,9 +33,15 @@ describe('role baselines (the matrix)', () => {
     expect(new Set(resolveCapabilities(makeSession('super_admin').admin))).toEqual(new Set(ALL_CAPABILITIES))
   })
 
-  test('support is limited to dashboard, audit, profile, refunds', () => {
+  test('support is limited to dashboard, audit, profile, refunds, disputes', () => {
     expect(resolveCapabilities(makeSession('support').admin).sort()).toEqual(
-      ['admin.audit.read', 'admin.dashboard.view', 'admin.profile.read', 'admin.refunds.process'].sort(),
+      [
+        'admin.audit.read',
+        'admin.dashboard.view',
+        'admin.disputes.manage',
+        'admin.profile.read',
+        'admin.refunds.process',
+      ].sort(),
     )
   })
 
@@ -57,6 +63,7 @@ describe('non-super-admin roles are correctly denied', () => {
     ['moderator', 'admin.payouts.disburse'],
     ['moderator', 'admin.invites.manage'],
     ['moderator', 'admin.refunds.process'],
+    ['moderator', 'admin.disputes.manage'],
   ]
   test.each(denials)('%s cannot %s', (role, cap) => {
     expect(can(makeSession(role), cap)).toBe(false)

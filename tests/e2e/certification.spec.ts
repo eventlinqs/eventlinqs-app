@@ -21,6 +21,7 @@
  * of routes and selectors is in docs/launch-hardening/certification.md.
  */
 import { test, expect, type Page, type FrameLocator } from '@playwright/test'
+import { assertNotProd, cleanupPurchaseRows } from './lib/purchase-cleanup'
 
 const CONFIG = {
   baseUrl: process.env.CERT_BASE_URL,
@@ -29,6 +30,9 @@ const CONFIG = {
   expiredReservationId: process.env.CERT_EXPIRED_RESERVATION_ID,
   buyerEmail: process.env.CERT_BUYER_EMAIL ?? `cert+${Date.now()}@eventlinqs.test`,
   buyerName: process.env.CERT_BUYER_NAME ?? 'Cert Buyer',
+  // Optional non-prod service role for row teardown after a run.
+  supabaseUrl: process.env.CERT_SUPABASE_URL,
+  serviceRoleKey: process.env.CERT_SUPABASE_SERVICE_ROLE_KEY,
 }
 
 // Stripe test cards (test mode only). https://docs.stripe.com/testing
@@ -115,6 +119,22 @@ async function waitForWebhookConfirmation(page: Page): Promise<void> {
 test.describe('EventLinqs buyer-journey certification', () => {
   test.skip(!CONFIG.baseUrl, 'Set CERT_BASE_URL to run the certification suite.')
   test.describe.configure({ mode: 'serial' })
+
+  // Hard safety: never let a purchase write to production, even by misconfig.
+  test.beforeAll(() => {
+    assertNotProd(CONFIG.baseUrl)
+    assertNotProd(CONFIG.supabaseUrl)
+  })
+
+  // Clean up the rows this run created (orders/tickets/order_items/payments),
+  // when a non-prod service role is provided. No-op otherwise.
+  test.afterAll(async () => {
+    const ran = await cleanupPurchaseRows(
+      { url: CONFIG.supabaseUrl, serviceRoleKey: CONFIG.serviceRoleKey },
+      CONFIG.buyerEmail,
+    )
+    if (ran) console.log(`[cert] cleaned up purchase rows for ${CONFIG.buyerEmail}`)
+  })
 
   test('browse: /events lists events that link to detail pages', async ({ page }) => {
     await page.goto('/events')

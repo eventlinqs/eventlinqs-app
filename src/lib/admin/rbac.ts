@@ -27,6 +27,8 @@ export type AdminCapability =
   | 'admin.events.manage'
   // M6 refund operator path
   | 'admin.refunds.process'
+  // Chargeback / dispute response
+  | 'admin.disputes.manage'
   // M6 payout management
   | 'admin.payouts.disburse'
 
@@ -40,6 +42,7 @@ export const ALL_CAPABILITIES: readonly AdminCapability[] = [
   'admin.events.manage',
   'admin.pricing.manage',
   'admin.refunds.process',
+  'admin.disputes.manage',
   'admin.payouts.disburse',
 ]
 
@@ -53,6 +56,7 @@ export const CAPABILITY_LABELS: Record<AdminCapability, string> = {
   'admin.events.manage': 'Manage and moderate events',
   'admin.pricing.manage': 'Manage pricing and fees',
   'admin.refunds.process': 'Process refunds',
+  'admin.disputes.manage': 'Manage disputes',
   'admin.payouts.disburse': 'Disburse payouts',
 }
 
@@ -67,6 +71,7 @@ const ROLE_CAPABILITIES: Record<AdminRole, ReadonlySet<AdminCapability>> = {
     'admin.users.manage',
     'admin.events.manage',
     'admin.refunds.process',
+    'admin.disputes.manage',
     'admin.payouts.disburse',
   ]),
   support: new Set<AdminCapability>([
@@ -74,6 +79,7 @@ const ROLE_CAPABILITIES: Record<AdminRole, ReadonlySet<AdminCapability>> = {
     'admin.audit.read',
     'admin.profile.read',
     'admin.refunds.process',
+    'admin.disputes.manage',
   ]),
   // Moderator can action events (moderation) but not pricing or users.
   moderator: new Set<AdminCapability>([

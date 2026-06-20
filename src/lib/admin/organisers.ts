@@ -18,9 +18,10 @@ import type { Database } from '@/types/database'
  * states (e.g. you cannot suspend a pending organisation - you reject it).
  * This keeps the lifecycle honest and the audit trail meaningful.
  *
- * Status cascade (unpublishing a suspended org's live events) is intentionally
- * out of scope here; that lands with the moderation queue work. This module
- * only owns the organisations.status column.
+ * Suspending an organiser cascades: their live events (published or scheduled)
+ * are taken off sale (-> paused) in the same action and audit-logged, so a
+ * suspended account cannot keep selling. Reinstating does not auto-republish;
+ * the organiser republishes what they choose.
  */
 
 type OrgStatus = Database['public']['Enums']['org_status']
@@ -201,6 +202,83 @@ export async function applyOrganiserAction(
     session,
   })
 
+  // F5 cascade: a suspended organiser must not keep selling. Take their live
+  // events off sale (published or scheduled -> paused) and audit the count.
+  // Best-effort: the suspension itself has already succeeded and is recorded.
+  if (input.action === 'suspend') {
+    const { data: paused, error: cascadeErr } = await admin
+      .from('events')
+      .update({ status: 'paused', updated_at: new Date().toISOString() })
+      .eq('organisation_id', input.organisationId)
+      .in('status', ['published', 'scheduled'])
+      .select('id')
+    if (!cascadeErr && paused && paused.length > 0) {
+      await recordAuditEvent({
+        action: 'admin.organiser.events_unpublished',
+        targetType: 'organisation',
+        targetId: input.organisationId,
+        metadata: { name: current.name, count: paused.length, reason: 'organiser suspended' },
+        session,
+      })
+    }
+  }
+
+  return { ok: true }
+}
+
+export interface PayoutHoldResult {
+  ok: boolean
+  error?: string
+}
+
+/**
+ * Places or lifts an ADMIN payout hold on an organiser by toggling
+ * organisations.payout_status between 'active' and 'on_hold'. This is a status
+ * gate only: it changes no charge, fee, or payout math. The disbursement
+ * control already refuses to pay out unless payout_status is 'active', so a
+ * hold immediately stops funds leaving while sales (and the reserve) are
+ * untouched.
+ *
+ * A Stripe-driven 'restricted' status is NOT an admin hold and cannot be
+ * cleared here; the organiser must resolve their Stripe requirements.
+ */
+export async function setOrganiserPayoutHold(
+  input: { organisationId: string; hold: boolean; reason?: string | null },
+  session: AdminSession,
+): Promise<PayoutHoldResult> {
+  const admin = createAdminClient()
+  const { data: current, error: readErr } = await admin
+    .from('organisations')
+    .select('id, name, payout_status')
+    .eq('id', input.organisationId)
+    .maybeSingle()
+  if (readErr) return { ok: false, error: readErr.message }
+  if (!current) return { ok: false, error: 'Organisation not found' }
+
+  if (current.payout_status === 'restricted') {
+    return {
+      ok: false,
+      error: 'Payouts are restricted by Stripe verification, not an admin hold. Resolve the Stripe requirements first.',
+    }
+  }
+
+  const target = input.hold ? 'on_hold' : 'active'
+  if (current.payout_status === target) return { ok: true }
+
+  const reason = input.reason?.trim() || null
+  const { error: updErr } = await admin
+    .from('organisations')
+    .update({ payout_status: target, updated_at: new Date().toISOString() })
+    .eq('id', input.organisationId)
+  if (updErr) return { ok: false, error: updErr.message }
+
+  await recordAuditEvent({
+    action: input.hold ? 'admin.organiser.payout_held' : 'admin.organiser.payout_released',
+    targetType: 'organisation',
+    targetId: input.organisationId,
+    metadata: { name: current.name, oldStatus: current.payout_status, newStatus: target, reason },
+    session,
+  })
   return { ok: true }
 }
 

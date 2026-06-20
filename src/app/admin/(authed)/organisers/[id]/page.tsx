@@ -6,6 +6,7 @@ import { recordAuditEvent } from '@/lib/admin/audit'
 import { getOrganiserDetail } from '@/lib/admin/organisers'
 import { AdminStatTile } from '@/components/admin/admin-stat-tile'
 import { OrganiserControls } from './organiser-controls'
+import { PayoutHoldControl } from './payout-hold-control'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -45,6 +46,8 @@ export default async function AdminOrganiserDetailPage({ params }: { params: Pro
   const { id } = await params
   const org = await getOrganiserDetail(id)
   if (!org) notFound()
+
+  const canHoldPayouts = can(session, 'admin.payouts.disburse')
 
   await recordAuditEvent({
     action: 'admin.organiser.view',
@@ -117,7 +120,10 @@ export default async function AdminOrganiserDetailPage({ params }: { params: Pro
           )}
         </section>
 
-        <OrganiserControls organisationId={org.id} availableActions={org.availableActions} />
+        <div className="flex flex-col gap-6">
+          <OrganiserControls organisationId={org.id} availableActions={org.availableActions} />
+          {canHoldPayouts ? <PayoutHoldControl organisationId={org.id} payoutStatus={org.payoutStatus} /> : null}
+        </div>
       </div>
     </div>
   )

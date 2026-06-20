@@ -132,6 +132,12 @@ docs/redesign/batch-*-evidence/lighthouse/*.json
 
 # Local Playwright tickets-spine fixture (seeded test data, never commit)
 tests/e2e/.ticket-fixture.json
+
+# Admin proof harness: screenshots, Lighthouse output, generated LH config.
+tests/admin-proof/output/
+.lighthouseci/
+lighthouserc.admin.json
+
 design-captures/
 scripts/design-capture.mjs
 scripts/axe-scene.mjs

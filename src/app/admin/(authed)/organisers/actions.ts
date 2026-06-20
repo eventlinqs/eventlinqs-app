@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { requireAdminSession } from '@/lib/admin/auth'
 import { assertCan } from '@/lib/admin/rbac'
-import { applyOrganiserAction } from '@/lib/admin/organisers'
+import { applyOrganiserAction, setOrganiserPayoutHold } from '@/lib/admin/organisers'
 
 export type OrganiserActionResponse = { ok: true } | { ok: false; error: string }
 
@@ -36,6 +36,39 @@ export async function applyOrganiserActionTyped(input: {
 
   revalidatePath('/admin/organisers')
   revalidatePath(`/admin/organisers/${parsed.data.organisationId}`)
+  return { ok: true }
+}
+
+const PayoutHoldSchema = z.object({
+  organisationId: z.string().uuid(),
+  hold: z.boolean(),
+  reason: z.string().max(500).nullable().optional(),
+})
+
+/**
+ * Places or lifts an admin payout hold from the organiser detail view. Status
+ * only: gated by admin.payouts.disburse, audit-logged in the data layer, no
+ * charge/fee/payout math.
+ */
+export async function setPayoutHoldAction(input: {
+  organisationId: string
+  hold: boolean
+  reason?: string | null
+}): Promise<OrganiserActionResponse> {
+  const session = await requireAdminSession()
+  assertCan(session, 'admin.payouts.disburse')
+
+  const parsed = PayoutHoldSchema.safeParse(input)
+  if (!parsed.success) return { ok: false, error: 'Invalid request.' }
+
+  const res = await setOrganiserPayoutHold(
+    { organisationId: parsed.data.organisationId, hold: parsed.data.hold, reason: parsed.data.reason ?? undefined },
+    session,
+  )
+  if (!res.ok) return { ok: false, error: res.error ?? 'Action failed.' }
+
+  revalidatePath(`/admin/organisers/${parsed.data.organisationId}`)
+  revalidatePath('/admin/payouts')
   return { ok: true }
 }
 

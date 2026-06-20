@@ -12,19 +12,19 @@ import type { Database } from '@/types/database'
  * with a conditional status filter so a concurrent change is not clobbered,
  * and audit-logged old -> new.
  *
- * This module owns only the events.status column for moderation. The
- * feature / unfeature toggle (is_featured) is deliberately NOT here - it
- * waits on its migration.
+ * This module owns the events.status column for moderation and the
+ * events.is_featured flag (setEventFeatured), both audit-logged.
  */
 
 type EventStatus = Database['public']['Enums']['event_status']
 
-export type EventAction = 'pause' | 'resume' | 'cancel'
+export type EventAction = 'pause' | 'resume' | 'cancel' | 'takedown'
 
 interface ActionSpec {
   from: readonly EventStatus[]
   to: EventStatus
   auditAction: string
+  requiresReason?: boolean
 }
 
 const ACTION_SPECS: Record<EventAction, ActionSpec> = {
@@ -35,17 +35,34 @@ const ACTION_SPECS: Record<EventAction, ActionSpec> = {
     to: 'cancelled',
     auditAction: 'admin.event.cancelled',
   },
+  // Admin takedown: a post-moderation removal of a live or upcoming event that
+  // breaches policy. Removes it from sale (-> cancelled) and REQUIRES a reason.
+  // There is no pre-publish approval gate; organisers self-serve and an admin
+  // takes content down after the fact.
+  takedown: {
+    from: ['draft', 'scheduled', 'published', 'paused', 'postponed'],
+    to: 'cancelled',
+    auditAction: 'admin.event.takedown',
+    requiresReason: true,
+  },
 }
 
 export const EVENT_ACTION_LABELS: Record<EventAction, string> = {
   pause: 'Pause',
   resume: 'Resume',
   cancel: 'Cancel',
+  takedown: 'Take down',
 }
 
-/** Actions available from a given current status (drives the row buttons). */
+/**
+ * Actions available from a given current status (drives the row buttons).
+ * Takedown is excluded here: it carries a mandatory reason and is surfaced via
+ * its own panel on the event detail page, not the compact list rows.
+ */
 export function actionsForEventStatus(status: EventStatus): EventAction[] {
-  return (Object.keys(ACTION_SPECS) as EventAction[]).filter((a) => ACTION_SPECS[a].from.includes(status))
+  return (Object.keys(ACTION_SPECS) as EventAction[]).filter(
+    (a) => a !== 'takedown' && ACTION_SPECS[a].from.includes(status),
+  )
 }
 
 export interface AdminEventRow {
@@ -269,6 +286,7 @@ export async function applyEventAction(
   if (!spec.from.includes(current.status)) return { ok: false, invalidTransition: true }
 
   const reason = input.reason?.trim() || null
+  if (spec.requiresReason && !reason) return { ok: false, error: 'reason_required' }
 
   const { data: updated, error: updErr } = await admin
     .from('events')

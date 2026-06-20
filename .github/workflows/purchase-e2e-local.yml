@@ -1,0 +1,98 @@
+# Self-contained critical-path purchase E2E.
+#
+# Stands up an EPHEMERAL local Supabase inside the runner (supabase start),
+# applies the repo migrations, seeds one free published event, builds the app
+# against that local stack, and runs the buyer journey (browse -> reserve ->
+# checkout -> register -> confirmation -> issued ticket) via the certification
+# harness's FREE path. No live keys, no live database. If checkout breaks, this
+# fails the PR.
+#
+# PARKED for post-launch verification: the job only runs when the repo variable
+# PURCHASE_E2E_LOCAL_ENABLED is 'true', so it never blocks or adds a pending
+# check to a launch PR until it has been validated by a first dispatch run.
+#
+# The free path needs no Stripe (processCheckout writes the order confirmed and
+# the DB trigger issues the ticket synchronously), so the gate is fully
+# self-contained. The paid 4242 path stays in certification.spec.ts but only
+# runs where Stripe test mode + a webhook are wired (the preview gate,
+# purchase-e2e.yml); it is intentionally not exercised here.
+
+name: Purchase E2E (self-contained)
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  purchase-e2e-local:
+    name: Buyer purchase journey (local supabase)
+    runs-on: ubuntu-latest
+    # Parked for post-launch verification. Only runs once the repo variable
+    # PURCHASE_E2E_LOCAL_ENABLED is set to 'true', so it adds no red or pending
+    # check to the launch PR (mirrors purchase-e2e.yml / PURCHASE_E2E_ENABLED).
+    if: ${{ vars.PURCHASE_E2E_LOCAL_ENABLED == 'true' }}
+    timeout-minutes: 25
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+      # Free checkout never calls Stripe; these placeholders only satisfy the
+      # checkout module's env reads. They are NOT live keys.
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_e2e_placeholder
+      STRIPE_SECRET_KEY: sk_test_e2e_placeholder
+      STRIPE_WEBHOOK_SECRET: whsec_e2e_placeholder
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # Boots Postgres + Auth + PostgREST locally and applies supabase/migrations.
+      - name: Start local Supabase
+        run: supabase start
+
+      - name: Export local Supabase env
+        run: |
+          set -euo pipefail
+          status=$(supabase status -o env)
+          api_url=$(echo "$status" | grep '^API_URL=' | cut -d= -f2- | tr -d '"')
+          anon_key=$(echo "$status" | grep '^ANON_KEY=' | cut -d= -f2- | tr -d '"')
+          service_key=$(echo "$status" | grep '^SERVICE_ROLE_KEY=' | cut -d= -f2- | tr -d '"')
+          echo "NEXT_PUBLIC_SUPABASE_URL=$api_url" >> "$GITHUB_ENV"
+          echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$anon_key" >> "$GITHUB_ENV"
+          echo "SUPABASE_URL=$api_url" >> "$GITHUB_ENV"
+          echo "::add-mask::$service_key"
+          echo "SUPABASE_SERVICE_ROLE_KEY=$service_key" >> "$GITHUB_ENV"
+
+      - name: Seed a free published event
+        run: node scripts/seed-purchase-fixture.mjs
+
+      - name: Build
+        run: npm run build
+
+      - name: Run buyer purchase journey (free, self-contained)
+        env:
+          CERT_BASE_URL: http://localhost:3000
+          CERT_FREE_EVENT_SLUG: e2e-free-event
+          CERT_SUPABASE_URL: ${{ env.NEXT_PUBLIC_SUPABASE_URL }}
+          CERT_SUPABASE_SERVICE_ROLE_KEY: ${{ env.SUPABASE_SERVICE_ROLE_KEY }}
+        run: npx playwright test --config playwright.purchase.config.ts
+
+      - name: Stop local Supabase
+        if: always()
+        run: supabase stop || true

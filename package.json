@@ -9,7 +9,10 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "admin:proof:setup": "playwright test --config playwright.admin.config.ts --project setup --headed",
+    "admin:proof": "playwright test --config playwright.admin.config.ts --project desktop && playwright test --config playwright.admin.config.ts --project mobile",
+    "admin:lighthouse": "node scripts/admin-lighthouse.mjs"
   },
   "dependencies": {
     "@googlemaps/js-api-loader": "^2.0.2",
@@ -51,6 +54,9 @@
     "@next/bundle-analyzer": "^16.2.4",
     "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^20.19.37",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
@@ -58,6 +64,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.2",
     "eslint-config-prettier": "^10.1.8",
+    "jsdom": "^29.1.1",
     "lighthouse": "^13.1.0",
     "playwright": "^1.59.1",
     "prettier": "^3.8.1",
