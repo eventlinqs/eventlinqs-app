@@ -7,6 +7,10 @@
 # harness's FREE path. No live keys, no live database. If checkout breaks, this
 # fails the PR.
 #
+# PARKED for post-launch verification: the job only runs when the repo variable
+# PURCHASE_E2E_LOCAL_ENABLED is 'true', so it never blocks or adds a pending
+# check to a launch PR until it has been validated by a first dispatch run.
+#
 # The free path needs no Stripe (processCheckout writes the order confirmed and
 # the DB trigger issues the ticket synchronously), so the gate is fully
 # self-contained. The paid 4242 path stays in certification.spec.ts but only
@@ -24,6 +28,10 @@ jobs:
   purchase-e2e-local:
     name: Buyer purchase journey (local supabase)
     runs-on: ubuntu-latest
+    # Parked for post-launch verification. Only runs once the repo variable
+    # PURCHASE_E2E_LOCAL_ENABLED is set to 'true', so it adds no red or pending
+    # check to the launch PR (mirrors purchase-e2e.yml / PURCHASE_E2E_ENABLED).
+    if: ${{ vars.PURCHASE_E2E_LOCAL_ENABLED == 'true' }}
     timeout-minutes: 25
     env:
       NEXT_TELEMETRY_DISABLED: '1'
