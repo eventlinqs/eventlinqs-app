@@ -10,7 +10,7 @@ vi.mock('@/lib/payments/pricing-rules', () => ({
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ChargePreconditionError } from '@/lib/payments/application-fee'
-import { createDestinationCharge } from '@/lib/payments/create-destination-charge'
+import { createPlatformCharge } from '@/lib/payments/create-platform-charge'
 import type { FeeBreakdown } from '@/lib/payments/payment-calculator'
 import type { CreatePaymentIntentParams, PaymentGateway } from '@/lib/payments/gateway'
 import { getApplicationFeeCompositionMode } from '@/lib/payments/pricing-rules'
@@ -47,7 +47,7 @@ function mockOrgRow(overrides: Record<string, unknown> = {}): void {
     data: {
       id: 'org_1',
       stripe_account_id: 'acct_test',
-      stripe_charges_enabled: true,
+      stripe_payouts_enabled: true,
       stripe_account_country: 'AU',
       payout_status: 'active',
       ...overrides,
@@ -69,10 +69,7 @@ function mockOrgRowMissing(): void {
 }
 
 function mockOrgRowError(message: string): void {
-  const maybeSingle = vi.fn().mockResolvedValue({
-    data: null,
-    error: { message },
-  })
+  const maybeSingle = vi.fn().mockResolvedValue({ data: null, error: { message } })
   const eq = vi.fn().mockReturnValue({ maybeSingle })
   const select = vi.fn().mockReturnValue({ eq })
   const from = vi.fn().mockReturnValue({ select })
@@ -110,12 +107,12 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
-describe('createDestinationCharge', () => {
-  test('mode 1 (inclusive default): app_fee = platform + processing, organiser share excludes both', async () => {
+describe('createPlatformCharge (separate charges and transfers)', () => {
+  test('platform charge: NO Connect fields, transfer_group set, organiser transfer = total - (platform + processing) under mode 1', async () => {
     mockOrgRow()
     const { gateway, calls } = makeGateway()
 
-    const result = await createDestinationCharge({
+    const result = await createPlatformCharge({
       gateway,
       organisationId: 'org_1',
       fees: makeFees(),
@@ -127,6 +124,7 @@ describe('createDestinationCharge', () => {
       },
       customerEmail: 'buyer@example.com',
       idempotencyKey: 'order_1',
+      transferGroup: 'order_1',
     })
 
     expect(calls).toHaveLength(1)
@@ -134,26 +132,28 @@ describe('createDestinationCharge', () => {
       amount_cents: 10_800,
       currency: 'AUD',
       idempotency_key: 'order_1',
-      connected_account_id: 'acct_test',
-      application_fee_cents: 800,
-      on_behalf_of: 'acct_test',
+      transfer_group: 'order_1',
     })
+    // The platform is merchant of record: NO destination-charge fields.
+    expect(calls[0].connected_account_id).toBeUndefined()
+    expect(calls[0].application_fee_cents).toBeUndefined()
+    expect(calls[0].on_behalf_of).toBeUndefined()
+
     expect(result).toMatchObject({
-      applicationFeeCents: 800,
+      organiserTransferCents: 10_000,
       connectedAccountId: 'acct_test',
       currency: 'AUD',
-      organiserShareCents: 10_000,
     })
     expect(result.intent.gateway_payment_id).toBe('pi_mock_1')
     expect(mockedGetMode).toHaveBeenCalledWith('AU', 'AUD', 'org_1', null)
   })
 
-  test('mode 2 (exclusive): app_fee = platform only, processing bonuses to organiser', async () => {
+  test('mode 2 (exclusive): processing bonuses to organiser, transfer = total - platform', async () => {
     mockOrgRow()
     mockedGetMode.mockResolvedValueOnce(2)
     const { gateway, calls } = makeGateway()
 
-    const result = await createDestinationCharge({
+    const result = await createPlatformCharge({
       gateway,
       organisationId: 'org_1',
       fees: makeFees(),
@@ -165,11 +165,11 @@ describe('createDestinationCharge', () => {
       },
       customerEmail: 'buyer@example.com',
       idempotencyKey: 'order_2',
+      transferGroup: 'order_2',
     })
 
-    expect(calls[0].application_fee_cents).toBe(500)
-    expect(result.applicationFeeCents).toBe(500)
-    expect(result.organiserShareCents).toBe(10_300)
+    expect(calls[0].application_fee_cents).toBeUndefined()
+    expect(result.organiserTransferCents).toBe(10_300)
   })
 
   test('rejects when org has no Stripe account', async () => {
@@ -177,22 +177,37 @@ describe('createDestinationCharge', () => {
     const { gateway, calls } = makeGateway()
 
     const err = await captureRejection(() =>
-      createDestinationCharge({
+      createPlatformCharge({
         gateway,
         organisationId: 'org_1',
         fees: makeFees(),
-        metadata: {
-          order_id: 'order_1',
-          event_id: 'event_1',
-          organisation_id: 'org_1',
-          buyer_email: 'buyer@example.com',
-        },
+        metadata: { order_id: 'order_1', event_id: 'event_1', organisation_id: 'org_1', buyer_email: 'buyer@example.com' },
         customerEmail: 'buyer@example.com',
         idempotencyKey: 'order_1',
+        transferGroup: 'order_1',
       })
     )
     expect(err).toBeInstanceOf(ChargePreconditionError)
     expect((err as ChargePreconditionError).reason).toBe('org_not_connected')
+    expect(calls).toHaveLength(0)
+  })
+
+  test('rejects when org payouts are not enabled (cannot receive funds)', async () => {
+    mockOrgRow({ stripe_payouts_enabled: false })
+    const { gateway, calls } = makeGateway()
+
+    const err = await captureRejection(() =>
+      createPlatformCharge({
+        gateway,
+        organisationId: 'org_1',
+        fees: makeFees(),
+        metadata: { order_id: 'order_1', event_id: 'event_1', organisation_id: 'org_1', buyer_email: 'buyer@example.com' },
+        customerEmail: 'buyer@example.com',
+        idempotencyKey: 'order_1',
+        transferGroup: 'order_1',
+      })
+    )
+    expect((err as ChargePreconditionError).reason).toBe('org_charges_disabled')
     expect(calls).toHaveLength(0)
   })
 
@@ -201,21 +216,16 @@ describe('createDestinationCharge', () => {
     const { gateway, calls } = makeGateway()
 
     const err = await captureRejection(() =>
-      createDestinationCharge({
+      createPlatformCharge({
         gateway,
         organisationId: 'org_1',
         fees: makeFees({ currency: 'USD' }),
-        metadata: {
-          order_id: 'order_1',
-          event_id: 'event_1',
-          organisation_id: 'org_1',
-          buyer_email: 'buyer@example.com',
-        },
+        metadata: { order_id: 'order_1', event_id: 'event_1', organisation_id: 'org_1', buyer_email: 'buyer@example.com' },
         customerEmail: 'buyer@example.com',
         idempotencyKey: 'order_1',
+        transferGroup: 'order_1',
       })
     )
-    expect(err).toBeInstanceOf(ChargePreconditionError)
     expect((err as ChargePreconditionError).reason).toBe('fee_breakdown_invalid')
     expect(calls).toHaveLength(0)
   })
@@ -225,21 +235,16 @@ describe('createDestinationCharge', () => {
     const { gateway } = makeGateway()
 
     const err = await captureRejection(() =>
-      createDestinationCharge({
+      createPlatformCharge({
         gateway,
         organisationId: 'org_missing',
         fees: makeFees(),
-        metadata: {
-          order_id: 'order_1',
-          event_id: 'event_1',
-          organisation_id: 'org_missing',
-          buyer_email: 'buyer@example.com',
-        },
+        metadata: { order_id: 'order_1', event_id: 'event_1', organisation_id: 'org_missing', buyer_email: 'buyer@example.com' },
         customerEmail: 'buyer@example.com',
         idempotencyKey: 'order_1',
+        transferGroup: 'order_1',
       })
     )
-    expect(err).toBeInstanceOf(Error)
     expect((err as Error).message).toMatch(/not found/)
   })
 
@@ -248,18 +253,14 @@ describe('createDestinationCharge', () => {
     const { gateway } = makeGateway()
 
     const err = await captureRejection(() =>
-      createDestinationCharge({
+      createPlatformCharge({
         gateway,
         organisationId: 'org_1',
         fees: makeFees(),
-        metadata: {
-          order_id: 'order_1',
-          event_id: 'event_1',
-          organisation_id: 'org_1',
-          buyer_email: 'buyer@example.com',
-        },
+        metadata: { order_id: 'order_1', event_id: 'event_1', organisation_id: 'org_1', buyer_email: 'buyer@example.com' },
         customerEmail: 'buyer@example.com',
         idempotencyKey: 'order_1',
+        transferGroup: 'order_1',
       })
     )
     expect((err as Error).message).toMatch(/connection refused/)
@@ -270,18 +271,14 @@ describe('createDestinationCharge', () => {
     const { gateway, calls } = makeGateway()
 
     const err = await captureRejection(() =>
-      createDestinationCharge({
+      createPlatformCharge({
         gateway,
         organisationId: 'org_1',
         fees: makeFees(),
-        metadata: {
-          order_id: 'order_1',
-          event_id: 'event_1',
-          organisation_id: 'org_1',
-          buyer_email: 'buyer@example.com',
-        },
+        metadata: { order_id: 'order_1', event_id: 'event_1', organisation_id: 'org_1', buyer_email: 'buyer@example.com' },
         customerEmail: 'buyer@example.com',
         idempotencyKey: 'order_1',
+        transferGroup: 'order_1',
       })
     )
     expect((err as ChargePreconditionError).reason).toBe('org_payouts_restricted')

@@ -51,8 +51,9 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
         <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Finance</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Payouts</h1>
         <p className="mt-2 max-w-2xl text-sm text-white/60">
-          Organiser balances, reserve holds, and payout history. Disburse available funds or void a
-          failed payout. Every disbursement is recorded in the audit log.
+          Organiser funds are held by the platform and disbursed automatically after each event.
+          Held balances, reserve holds, and transfer history below. Force a disbursement of matured
+          event funds or void a failed transfer. Every action is recorded in the audit log.
         </p>
       </header>
 

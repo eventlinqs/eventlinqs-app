@@ -9,9 +9,11 @@ function money(cents: number, currency = 'AUD'): string {
 }
 
 /**
- * Disbursement control for one organisation. Full balance by default, or an
- * explicit amount. Two-step confirm. Disabled (with reason) when payouts are
- * not active, no connected account, or nothing is available.
+ * Disbursement control for one organisation (funds-holding model). Triggers the
+ * post-event transfer of every matured event's held funds for this org (the same
+ * path the automatic cron runs), net of fee, reserve, and any open chargeback
+ * hold. Two-step confirm. Disabled (with reason) when payouts are not active, no
+ * connected account, or nothing is held.
  */
 export function DisbursePanel({
   organisationId,
@@ -27,7 +29,6 @@ export function DisbursePanel({
   stripeConnected: boolean
 }) {
   const router = useRouter()
-  const [amountInput, setAmountInput] = useState('')
   const [step, setStep] = useState<'idle' | 'confirm'>('idle')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -36,25 +37,25 @@ export function DisbursePanel({
   const blockedReason =
     !stripeConnected ? 'This organiser has no connected Stripe account.'
     : payoutStatus !== 'active' ? `Payouts are not active for this organiser (status: ${payoutStatus}).`
-    : availableCents <= 0 ? 'There is no available balance to disburse.'
+    : availableCents <= 0 ? 'There are no held funds to disburse.'
     : null
-
-  const parsedAmount = amountInput.trim() === '' ? null : Math.round(Number(amountInput) * 100)
-  const amountInvalid = parsedAmount !== null && (!Number.isInteger(parsedAmount) || parsedAmount <= 0 || parsedAmount > availableCents)
 
   async function confirm() {
     setSubmitting(true)
     setError(null)
-    const res = await submitDisburse({ organisationId, amountCents: parsedAmount })
+    const res = await submitDisburse({ organisationId })
     setSubmitting(false)
     if (!res.ok) {
       setError(humaniseError(res.error))
       setStep('idle')
       return
     }
-    setDone(`Disbursed ${money(res.amountCents, currency)}. Available now ${money(res.availableAfterCents, currency)}.`)
+    setDone(
+      res.transferred > 0
+        ? `Disbursed ${money(res.totalCents, currency)} across ${res.transferred} event${res.transferred === 1 ? '' : 's'}.`
+        : `No matured event funds to disburse yet (checked ${res.considered} event${res.considered === 1 ? '' : 's'}).`
+    )
     setStep('idle')
-    setAmountInput('')
     router.refresh()
   }
 
@@ -70,7 +71,11 @@ export function DisbursePanel({
   return (
     <div className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
       <h2 className="font-display text-lg font-semibold text-white">Disburse</h2>
-      <p className="mt-1 text-sm text-white/60">Available {money(availableCents, currency)}</p>
+      <p className="mt-1 text-sm text-white/60">Held balance {money(availableCents, currency)}</p>
+      <p className="mt-1 text-xs text-white/40">
+        Funds are held by the platform and disburse automatically after each event. This forces
+        a disbursement now for every matured event past its buffer.
+      </p>
 
       {done ? (
         <p role="status" className="mt-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">{done}</p>
@@ -80,25 +85,11 @@ export function DisbursePanel({
       ) : null}
 
       {step === 'idle' ? (
-        <div className="mt-4 space-y-3">
-          <label className="block">
-            <span className="mb-1.5 block text-[11px] uppercase tracking-[0.18em] text-white/50">Amount (optional)</span>
-            <input
-              inputMode="decimal"
-              value={amountInput}
-              onChange={e => { setAmountInput(e.target.value); setDone(null) }}
-              placeholder={`Full balance (${money(availableCents, currency)})`}
-              className="min-h-[44px] w-full rounded-md border border-white/10 bg-white/[0.04] px-3 text-sm text-white outline-none focus:border-[var(--brand-accent)] focus:ring-2 focus:ring-[var(--brand-accent)]"
-            />
-          </label>
-          {amountInvalid ? (
-            <p className="text-xs text-red-300">Enter an amount between {money(1, currency)} and {money(availableCents, currency)}.</p>
-          ) : null}
+        <div className="mt-4">
           <button
             type="button"
-            disabled={amountInvalid}
-            onClick={() => { setError(null); setStep('confirm') }}
-            className="min-h-[44px] rounded-md bg-[var(--brand-accent)] px-5 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-40"
+            onClick={() => { setError(null); setDone(null); setStep('confirm') }}
+            className="min-h-[44px] rounded-md bg-[var(--brand-accent)] px-5 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-primary)]"
           >
             Review disbursement
           </button>
@@ -106,7 +97,8 @@ export function DisbursePanel({
       ) : (
         <div className="mt-4 space-y-3">
           <p className="text-sm text-white/70">
-            Disburse <span className="font-semibold text-white">{money(parsedAmount ?? availableCents, currency)}</span> to this organiser&apos;s connected account. This moves money and cannot be undone once Stripe pays it out.
+            Transfer this organiser&apos;s matured event funds (net of fee and reserve) from the
+            platform balance to their connected account. This moves money and cannot be undone.
           </p>
           <div className="flex items-center gap-2">
             <button

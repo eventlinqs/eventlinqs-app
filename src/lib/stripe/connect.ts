@@ -70,15 +70,13 @@ export type CreateExpressAccountInput = {
   country: string
   email: string
   /**
-   * PAY-01 (interim): the connected-account payout delay in days. Without an
-   * explicit schedule Stripe defaults destination accounts to fast automatic
-   * payouts, so organiser funds (including the reserve portion the ledger
-   * thinks it is holding) leave to their bank before reserves/refunds settle.
-   * Single-sourced from `payout_schedule_days` (pricing_rules), the same value
-   * the reserve ledger uses. NOTE: `delay_days` is charge-relative, so this is
-   * a settlement BUFFER, not a true post-event reserve hold; the full reserve
-   * model needs `manual` + the M7 app-triggered disbursement (unbuilt), which
-   * is why manual is not used yet (it would strand funds).
+   * Connected-account payout delay in days (connected balance -> organiser
+   * bank). Under the funds-holding model (separate charges and transfers) the
+   * connected account is EMPTY until our post-event platform->connected transfer
+   * (createEventTransfer), so this daily schedule no longer front-runs the hold:
+   * it only moves already-disbursed funds onward to the organiser's bank. The
+   * hold is enforced platform-side by deferring the transfer to event_end +
+   * buffer. Single-sourced from `payout_schedule_days` (pricing_rules).
    */
   payoutDelayDays: number
 }
@@ -151,8 +149,9 @@ export async function createExpressAccount(
       card_payments: { requested: true },
       transfers: { requested: true },
     },
-    // PAY-01 (interim): set an explicit payout schedule so the account does not
-    // sit on Stripe's fast automatic default. See CreateExpressAccountInput.
+    // Funds-holding model: a daily connected-account payout schedule is safe
+    // because the connected balance is empty until our post-event transfer, so
+    // it never front-runs the hold. See CreateExpressAccountInput.payoutDelayDays.
     settings: {
       payouts: {
         schedule: { interval: 'daily', delay_days: input.payoutDelayDays },

@@ -36,7 +36,7 @@ afterEach(() => {
 })
 
 describe('refundOrder', () => {
-  test('issues a destination-charge refund with reverse_transfer + refund_application_fee', async () => {
+  test('refunds the buyer from the platform balance: NO reverse_transfer / refund_application_fee on a platform charge', async () => {
     const { stripe, calls } = makeStubStripe()
     __setStripeClientForTests(stripe)
 
@@ -53,14 +53,15 @@ describe('refundOrder', () => {
       payment_intent: 'pi_test_1',
       amount: 5_000,
       reason: 'requested_by_customer',
-      reverse_transfer: true,
-      refund_application_fee: true,
       metadata: {
         order_id: 'order_1',
         initiated_by: 'buyer',
         platform_reason: 'requested_by_buyer',
       },
     })
+    // Platform charge (separate charges and transfers): these are NOT set.
+    expect(calls[0].params.reverse_transfer).toBeUndefined()
+    expect(calls[0].params.refund_application_fee).toBeUndefined()
     expect(calls[0].options?.idempotencyKey).toBe('refund:order_1:5000:buyer')
     expect(result.stripeRefundId).toBe('re_test_1')
     expect(result.amountCents).toBe(5_000)

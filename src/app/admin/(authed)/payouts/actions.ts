@@ -6,13 +6,13 @@ import { requireAdminSession } from '@/lib/admin/auth'
 import { assertCan } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createPayout, voidPayoutById, getStripeClient } from '@/lib/payments/payout'
+import { voidPayoutById, getStripeClient } from '@/lib/payments/payout'
+import { runEventDisbursements } from '@/lib/payments/event-transfer'
+import { getDefaultTransferGateway } from '@/lib/payments/gateway-factory'
 import { PAYOUT_CURRENCY } from '@/lib/admin/payouts'
 
 const DisburseSchema = z.object({
   organisationId: z.string().uuid(),
-  // Optional explicit amount (cents). Omitted/null disburses the full balance.
-  amountCents: z.number().int().positive().nullable().optional(),
 })
 
 const VoidSchema = z.object({
@@ -22,7 +22,7 @@ const VoidSchema = z.object({
 })
 
 export type DisburseActionResult =
-  | { ok: true; payoutId: string; amountCents: number; availableAfterCents: number }
+  | { ok: true; transferred: number; considered: number; totalCents: number }
   | { ok: false; error: string }
 
 export type VoidActionResult =
@@ -30,13 +30,15 @@ export type VoidActionResult =
   | { ok: false; error: string }
 
 /**
- * Operator-initiated disbursement. Gated by admin.payouts.disburse; the money
- * movement and overpay protection live in createPayout / disburse_payout. Every
- * attempt that creates a payout is audit-logged with actor, org, and amount.
+ * Operator-initiated disbursement (funds-holding model). Triggers the same
+ * platform->connected event transfers as the post-event cron, scoped to this
+ * organisation: every ended event past the buffer with held funds is disbursed
+ * (net of fee, reserve, and any open chargeback hold) via createEventTransfer.
+ * Gated by admin.payouts.disburse and audit-logged. Money movement and overpay
+ * protection live in disburse_transfer / createEventTransfer.
  */
 export async function submitDisburse(input: {
   organisationId: string
-  amountCents?: number | null
 }): Promise<DisburseActionResult> {
   const session = await requireAdminSession()
   assertCan(session, 'admin.payouts.disburse')
@@ -45,39 +47,37 @@ export async function submitDisburse(input: {
   if (!parsed.success) return { ok: false, error: 'Invalid disbursement request.' }
 
   const admin = createAdminClient()
-  const result = await createPayout(admin, getStripeClient(), {
-    organisationId: parsed.data.organisationId,
-    currency: PAYOUT_CURRENCY,
-    amountCents: parsed.data.amountCents ?? null,
-    actor: session.userId,
-  })
-
-  if (!result.success) {
-    return { ok: false, error: result.error }
+  let summary
+  try {
+    summary = await runEventDisbursements(admin, getDefaultTransferGateway(), getStripeClient(), {
+      organisationId: parsed.data.organisationId,
+    })
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Disbursement failed.' }
   }
+
+  const totalCents = summary.results
+    .filter((r) => r.status === 'transferred')
+    .reduce((s, r) => s + (r.amountCents ?? 0), 0)
 
   await recordAuditEvent({
     action: 'admin.payout.disburse',
-    targetType: 'payout',
-    targetId: result.payoutId,
+    targetType: 'organisation',
+    targetId: parsed.data.organisationId,
     metadata: {
       organisation_id: parsed.data.organisationId,
-      amount_cents: result.amountCents,
+      transferred: summary.transferred,
+      considered: summary.considered,
+      failed: summary.failed,
+      total_cents: totalCents,
       currency: PAYOUT_CURRENCY,
-      available_after_cents: result.availableAfterCents,
-      stripe_payout_id: result.stripePayoutId,
     },
     session,
   })
 
   revalidatePath('/admin/payouts')
   revalidatePath(`/admin/payouts/${parsed.data.organisationId}`)
-  return {
-    ok: true,
-    payoutId: result.payoutId,
-    amountCents: result.amountCents,
-    availableAfterCents: result.availableAfterCents,
-  }
+  return { ok: true, transferred: summary.transferred, considered: summary.considered, totalCents }
 }
 
 /**

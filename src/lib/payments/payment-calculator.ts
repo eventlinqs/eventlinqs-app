@@ -161,15 +161,17 @@ export class PaymentCalculator {
     const payment_processing_fee_cents = Math.round(
       (discounted_subtotal * processingFeePercent) / 100 + processingFeeFixedCents
     )
-    // GST is inclusive in EventLinqs all-in pricing (platform philosophy:
-    // all-in pricing shown from the first click, no hidden fees). In
-    // Australia the ticket face value and the platform fee are GST-inclusive:
-    // the organiser is merchant of record under destination charges and
-    // remits GST on the ticket, and EventLinqs remits GST on its own fee
-    // (one eleventh of the fee). A separate GST amount is therefore never
-    // added on top of the buyer total. Adding 10 per cent of the ticket
-    // subtotal here was the source of the 16.6 per cent over-charge on
-    // order EL-6HBNEYY9 (AUD 65 face value billed as AUD 75.82).
+    // GST is inclusive in EventLinqs all-in pricing (all-in pricing shown from
+    // the first click, no hidden fees). Funds-holding model + founder GST ruling
+    // (Option 1, limited payment collection agent): EventLinqs is the PAYMENTS
+    // merchant of record (separate charges and transfers) but acts as the
+    // organiser's limited collection agent for tax, so the ORGANISER remains the
+    // seller of the ticket and remits GST on the ticket face value, while
+    // EventLinqs remits GST on its own fee (one eleventh of the fee). The ticket
+    // face value and the platform fee are GST-inclusive, so a separate GST amount
+    // is never added on top of the buyer total. Adding 10 per cent of the ticket
+    // subtotal here was the source of the 16.6 per cent over-charge on order
+    // EL-6HBNEYY9 (AUD 65 face value billed as AUD 75.82).
     //
     // A tax-exclusive jurisdiction (for example US sales tax added at the
     // till) would need an explicit inclusive vs exclusive tax mode. None is

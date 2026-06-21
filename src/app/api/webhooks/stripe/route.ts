@@ -12,7 +12,9 @@ import { promoteWaitlist } from '@/lib/waitlist/promote'
 import { trackTicketPurchaseCompleteServer } from '@/lib/analytics/plausible'
 import { handleConnectAccountUpdated } from '@/lib/stripe/connect-handlers'
 import { recordOrderConfirmedLedger } from '@/lib/payments/connect-ledger'
-import { voidPayoutById } from '@/lib/payments/payout'
+import { voidPayoutById, getStripeClient } from '@/lib/payments/payout'
+import { reverseOrganiserTransferForRefund } from '@/lib/payments/event-transfer'
+import { getDefaultTransferGateway } from '@/lib/payments/gateway-factory'
 import {
   claimWebhookEvent,
   markWebhookEventProcessed,
@@ -849,10 +851,37 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
   // reverse the ledger, release/reduce the reserve hold, set statuses). The
   // RPC is idempotent on stripe_refund_id, so webhook replays and multiple
   // refunds on one charge are both safe.
-  const stripeRefunds = charge.refunds?.data ?? []
+  // Newer Stripe API versions do NOT embed `charge.refunds.data` in the
+  // charge.refunded webhook payload, so fetch the charge's refunds when the
+  // embedded list is empty. Without this the reconcile loop is skipped and the
+  // orphan path runs, leaving the ledger unreconciled.
+  let stripeRefunds = charge.refunds?.data ?? []
+  if (stripeRefunds.length === 0) {
+    try {
+      const stripe = getStripeClient()
+      const listed = await stripe.refunds.list({ charge: charge.id, limit: 100 })
+      stripeRefunds = listed.data
+    } catch (err) {
+      captureException(err, { scope: 'stripe-webhook', handler: 'charge-refunded-list-refunds', charge_id: charge.id })
+      console.error('[webhook] charge.refunded: failed to list refunds for charge', charge.id, err)
+    }
+  }
   let matchedAnyRow = false
 
   for (const r of stripeRefunds) {
+    // Race-proof link: the app stamps the in-app refund row id in the Stripe
+    // refund metadata. Bind stripe_refund_id to that row here (if the app's own
+    // write has not landed yet) so reconcile matches instead of orphaning. A
+    // fast local webhook can otherwise outrun the app's update.
+    const appRefundId = (r.metadata as { refund_id?: string } | null | undefined)?.refund_id
+    if (appRefundId) {
+      await adminClient
+        .from('refunds')
+        .update({ stripe_refund_id: r.id })
+        .eq('id', appRefundId)
+        .is('stripe_refund_id', null)
+    }
+
     const { data: result, error } = await adminClient.rpc('reconcile_refund', {
       p_stripe_refund_id: r.id,
       p_charge_id: charge.id,
@@ -913,9 +942,47 @@ async function postReconcileSideEffects(
 
   const { data: order } = await adminClient
     .from('orders')
-    .select('event_id')
+    .select('event_id, organisation_id, platform_fee_cents, processing_fee_cents, total_cents, currency')
     .eq('id', refund.order_id)
     .maybeSingle()
+
+  // Funds-holding: if this event was already disbursed, claw back the organiser's
+  // proportional share by reversing the disbursement transfer. This runs only on
+  // a fresh `reconciled` result (handleChargeRefunded gates on it), so the
+  // event-available has already been reduced by reconcile_refund and the
+  // +adjustment nets it back to zero rather than leaving it positive/disbursable.
+  if (order?.organisation_id && order?.event_id && order?.total_cents) {
+    const total = Number(order.total_cents)
+    const refundAmount = stripeRefund.amount ?? 0
+    const appFee = total > 0
+      ? Math.round(((Number(order.platform_fee_cents ?? 0) + Number(order.processing_fee_cents ?? 0)) * refundAmount) / total)
+      : 0
+    const shareCents = refundAmount - appFee
+    try {
+      const reversal = await reverseOrganiserTransferForRefund(adminClient, getDefaultTransferGateway(), {
+        organisationId: order.organisation_id as string,
+        eventId: order.event_id as string,
+        shareCents,
+        currency: ((order.currency as string) ?? (charge.currency ?? 'AUD')).toUpperCase(),
+        refundId: refund.id as string,
+      })
+      if (reversal.reversed) {
+        console.log('[webhook] post-disbursement refund: reversed organiser transfer', {
+          refundId: refund.id,
+          amountCents: reversal.amountCents,
+          stripeReversalId: reversal.stripeReversalId,
+        })
+      }
+    } catch (err) {
+      captureException(err, {
+        scope: 'stripe-webhook',
+        handler: 'refund-transfer-reversal',
+        order_id: refund.order_id,
+        stripe_refund_id: stripeRefund.id,
+      })
+      console.error('[webhook] refund transfer reversal failed:', err)
+    }
+  }
 
   const { data: rtRows } = await adminClient
     .from('refund_tickets')
@@ -1867,10 +1934,28 @@ async function notifyOrganiserPayout(
 }
 
 async function handleConnectTransferCreated(transfer: Stripe.Transfer, eventId: string) {
-  // Phase 1 stub: log only. We use destination charges (not separate
-  // charges + transfers) so transfer.created is informational. Phase 5
-  // wires this if the architecture ever changes.
-  console.info('[m6] transfer.created received', {
+  // Funds-holding model: organiser disbursements are platform->connected
+  // Transfers we create (createEventTransfer), recorded in payouts (kind=transfer)
+  // and marked paid at creation. Match the tracked row by stripe_transfer_id and
+  // confirm; an untracked transfer (e.g. created in the dashboard) is informational.
+  const adminClient = createAdminClient()
+  const { data: existing } = await adminClient
+    .from('payouts')
+    .select('id, status, organisation_id, event_id')
+    .eq('stripe_transfer_id', transfer.id)
+    .maybeSingle()
+
+  if (existing) {
+    console.info('[transfers] transfer.created matched disbursement row', {
+      eventId,
+      transferId: transfer.id,
+      payoutId: existing.id,
+      status: existing.status,
+    })
+    return
+  }
+
+  console.info('[transfers] transfer.created (untracked, informational)', {
     eventId,
     transferId: transfer.id,
     amount: transfer.amount,
@@ -1879,20 +1964,103 @@ async function handleConnectTransferCreated(transfer: Stripe.Transfer, eventId: 
   })
 }
 
+// Cast for the funds-holding RPCs not yet in the generated database.ts types.
+type FundsHoldingRpc = (
+  fn: string,
+  args?: Record<string, unknown>
+) => Promise<{ data: unknown; error: { message: string } | null }>
+
 async function handleConnectDisputeEvent(
   eventType: 'charge.dispute.created' | 'charge.dispute.closed',
   dispute: Stripe.Dispute,
   eventId: string
 ) {
-  // Phase 1 stub: log only. Phase 5 implements the freeze + evidence pack
-  // + 50/50 fee allocation flow per §1.8 of the implementation plan.
-  console.info('[m6] dispute event received', {
-    eventId,
-    eventType,
-    disputeId: dispute.id,
-    chargeId: typeof dispute.charge === 'string' ? dispute.charge : dispute.charge?.id,
-    amount: dispute.amount,
-    status: dispute.status,
-    reason: dispute.reason,
+  // Funds-holding model: the PLATFORM is merchant of record and liable for
+  // disputes - Stripe automatically debits the platform balance for the disputed
+  // amount + fee. We freeze the organiser's share so it is never paid out, and
+  // resolve it when the dispute closes.
+  const adminClient = createAdminClient()
+  const rpc = adminClient.rpc as unknown as FundsHoldingRpc
+  const chargeId = typeof dispute.charge === 'string' ? dispute.charge : dispute.charge?.id ?? null
+  const paymentIntentId =
+    typeof dispute.payment_intent === 'string' ? dispute.payment_intent : dispute.payment_intent?.id ?? null
+
+  if (eventType === 'charge.dispute.created') {
+    // Resolve the disputed order from the charge's payment intent.
+    let orderId: string | null = null
+    if (paymentIntentId) {
+      const { data: payment } = await adminClient
+        .from('payments')
+        .select('order_id')
+        .eq('gateway_payment_id', paymentIntentId)
+        .maybeSingle()
+      orderId = payment?.order_id ?? null
+    }
+    if (!orderId) {
+      console.warn('[disputes] dispute.created: no order matched', { eventId, disputeId: dispute.id, chargeId })
+      return
+    }
+
+    const { data: freezeData, error: freezeError } = await rpc('freeze_chargeback', {
+      p_order_id: orderId,
+      p_dispute_id: dispute.id,
+      p_dispute_amount_cents: dispute.amount,
+    })
+    if (freezeError) {
+      captureException(freezeError, {
+        scope: 'stripe-webhook',
+        handler: 'freeze-chargeback',
+        order_id: orderId,
+        dispute_id: dispute.id,
+      })
+      // Retryable (idempotent on dispute_id): 500 -> Stripe redelivers.
+      throw new WebhookProcessingError(`freeze_chargeback failed for dispute ${dispute.id}`, {
+        cause: freezeError,
+        context: { eventId, disputeId: dispute.id, orderId },
+      })
+    }
+    const freeze = freezeData as {
+      hold_id?: string
+      share_cents?: number
+      already_frozen?: boolean
+      organisation_id?: string
+      event_id?: string
+    } | null
+    console.info('[disputes] dispute.created frozen', {
+      eventId,
+      disputeId: dispute.id,
+      orderId,
+      holdId: freeze?.hold_id,
+      shareCents: freeze?.share_cents,
+      alreadyFrozen: Boolean(freeze?.already_frozen),
+    })
+    return
+  }
+
+  // charge.dispute.closed
+  const outcome = dispute.status === 'won' ? 'won' : dispute.status === 'lost' ? 'lost' : null
+  if (!outcome) {
+    console.info('[disputes] dispute.closed with non-terminal status, no-op', {
+      eventId,
+      disputeId: dispute.id,
+      status: dispute.status,
+    })
+    return
+  }
+  const { error: resolveError } = await rpc('resolve_chargeback', {
+    p_dispute_id: dispute.id,
+    p_outcome: outcome,
   })
+  if (resolveError) {
+    captureException(resolveError, {
+      scope: 'stripe-webhook',
+      handler: 'resolve-chargeback',
+      dispute_id: dispute.id,
+    })
+    throw new WebhookProcessingError(`resolve_chargeback failed for dispute ${dispute.id}`, {
+      cause: resolveError,
+      context: { eventId, disputeId: dispute.id, outcome },
+    })
+  }
+  console.info('[disputes] dispute.closed resolved', { eventId, disputeId: dispute.id, outcome })
 }

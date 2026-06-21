@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { PaymentCalculator } from '@/lib/payments/payment-calculator'
 import { getDefaultGateway } from '@/lib/payments/gateway-factory'
-import { createDestinationCharge } from '@/lib/payments/create-destination-charge'
+import { createPlatformCharge } from '@/lib/payments/create-platform-charge'
 import { buildPaymentIntentIdempotencyKey } from '@/lib/payments/idempotency'
 import { ChargePreconditionError } from '@/lib/payments/application-fee'
 import { validateDiscountCode } from './discount-codes'
@@ -376,16 +376,18 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
     return { error: 'Failed to initialise payment' }
   }
 
-  // 10. Create Stripe destination charge (M6 Phase 3)
+  // 10. Create Stripe PLATFORM charge (funds-holding model: platform is merchant
+  //     of record, funds held in the platform balance until post-event transfer)
   try {
     const gateway = getDefaultGateway()
-    const charge = await createDestinationCharge({
+    const charge = await createPlatformCharge({
       gateway,
       organisationId: event.organisation_id,
       eventId: event.id,
       fees,
       customerEmail: buyer_email,
       idempotencyKey: idempotency_key,
+      transferGroup: order_id,
       metadata: {
         order_id,
         event_id: event.id,
@@ -689,13 +691,14 @@ async function processSeatCheckout({
 
   try {
     const gateway = getDefaultGateway()
-    const charge = await createDestinationCharge({
+    const charge = await createPlatformCharge({
       gateway,
       organisationId: event.organisation_id,
       eventId: event.id,
       fees,
       customerEmail: buyer_email,
       idempotencyKey: idempotency_key,
+      transferGroup: order_id,
       metadata: {
         order_id,
         event_id: event.id,

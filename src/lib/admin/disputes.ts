@@ -5,9 +5,9 @@ import { createAdminClient } from '@/lib/supabase/admin'
 /**
  * Admin dispute (chargeback) data access.
  *
- * ARCHITECTURE: EventLinqs sales are Stripe DESTINATION charges, so a
- * chargeback is raised against the PLATFORM account, not the connected
- * organiser account. Disputes therefore read and respond on the platform
+ * ARCHITECTURE: EventLinqs is the merchant of record (separate charges and
+ * transfers), so a chargeback is raised against the PLATFORM account, not the
+ * connected organiser account. Disputes therefore read and respond on the platform
  * client (getStripeClient()): stripe.disputes.list / .retrieve / .update /
  * .close all target the platform balance. This module never touches our
  * charge, fee, or payout math; responding to a dispute only submits evidence

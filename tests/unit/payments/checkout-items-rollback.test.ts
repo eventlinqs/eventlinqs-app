@@ -55,8 +55,8 @@ vi.mock('@/lib/payments/payment-calculator', () => ({
 
 vi.mock('@/lib/payments/gateway-factory', () => ({ getDefaultGateway: vi.fn(() => ({ name: 'mock' })) }))
 
-vi.mock('@/lib/payments/create-destination-charge', () => ({
-  createDestinationCharge: h.chargeSpy,
+vi.mock('@/lib/payments/create-platform-charge', () => ({
+  createPlatformCharge: h.chargeSpy,
 }))
 
 vi.mock('@/lib/auth/guest-session', () => ({ getGuestSessionId: vi.fn(async () => 'guest_1') }))

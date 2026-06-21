@@ -2,55 +2,68 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import type { Organisation } from '@/types/database'
 import {
   ChargePreconditionError,
-  assertCanCreateDestinationCharge,
-  computeApplicationFeeCents,
+  assertOrganiserCanReceiveFunds,
+  computeOrganiserTransferCents,
   getCurrencyForCountry,
 } from './application-fee'
 import type { FeeBreakdown } from './payment-calculator'
 import type { CreatePaymentIntentParams, PaymentGateway, PaymentIntentResult } from './gateway'
 
+/**
+ * Funds-holding model (docs/PAYMENTS-FUNDS-HOLDING.md): the buyer is charged on
+ * the PLATFORM account (separate charges and transfers). No `on_behalf_of`, no
+ * `transfer_data`, no `application_fee_amount` - the platform is the merchant of
+ * record and the funds settle to, and are HELD in, the platform balance. The
+ * organiser's net share is recorded as an event-scoped held liability in the
+ * ledger and released later by a platform->connected Transfer after the event
+ * (Stage 4). This replaces the old `createDestinationCharge`.
+ */
+
 type OrgChargeFields = Pick<
   Organisation,
   | 'id'
   | 'stripe_account_id'
-  | 'stripe_charges_enabled'
+  | 'stripe_payouts_enabled'
   | 'stripe_account_country'
   | 'payout_status'
 >
 
-export interface CreateDestinationChargeInput {
+export interface CreatePlatformChargeInput {
   gateway: PaymentGateway
   organisationId: string
-  /** Event being charged. Lets the application-fee composition mode honour a
-   *  per-event override through the same resolver as the charge. */
+  /** Event being charged. Lets the organiser-transfer composition honour a
+   *  per-event fee override through the same resolver as the charge. */
   eventId?: string | null
   fees: FeeBreakdown
   metadata: CreatePaymentIntentParams['metadata']
   customerEmail: string
   idempotencyKey: string
+  /** The order id. Sets `transfer_group` so the later organiser transfer and
+   *  this charge reconcile as one group on the Stripe side. */
+  transferGroup: string
 }
 
-export interface CreateDestinationChargeResult {
+export interface CreatePlatformChargeResult {
   intent: PaymentIntentResult
-  applicationFeeCents: number
+  /** The net amount owed to the organiser, to be transferred post-event. */
+  organiserTransferCents: number
   connectedAccountId: string
   currency: string
-  organiserShareCents: number
 }
 
 /**
- * Loads the organisation, runs Connect pre-conditions, and creates a Stripe
- * destination charge through the supplied PaymentGateway.
+ * Loads the organisation, runs the can-receive-funds pre-conditions, and
+ * creates a Stripe PLATFORM charge through the supplied PaymentGateway.
  *
  * Throws `ChargePreconditionError` (typed reason on the error) when the
- * organisation is not eligible. Throws plain Error when the org row cannot
+ * organisation cannot be paid out. Throws plain Error when the org row cannot
  * be loaded or when the currency map disagrees with `fees.currency`.
  */
-export async function createDestinationCharge(
-  input: CreateDestinationChargeInput
-): Promise<CreateDestinationChargeResult> {
+export async function createPlatformCharge(
+  input: CreatePlatformChargeInput
+): Promise<CreatePlatformChargeResult> {
   const org = await loadOrgChargeFields(input.organisationId)
-  assertCanCreateDestinationCharge(org, input.fees)
+  assertOrganiserCanReceiveFunds(org, input.fees)
 
   const expectedCurrency = getCurrencyForCountry(org.stripe_account_country)!
   if (input.fees.currency.toUpperCase() !== expectedCurrency) {
@@ -60,7 +73,7 @@ export async function createDestinationCharge(
     )
   }
 
-  const applicationFeeCents = await computeApplicationFeeCents(
+  const organiserTransferCents = await computeOrganiserTransferCents(
     input.fees,
     (org.stripe_account_country ?? 'GLOBAL').toUpperCase(),
     expectedCurrency,
@@ -75,17 +88,16 @@ export async function createDestinationCharge(
     customer_email: input.customerEmail,
     idempotency_key: input.idempotencyKey,
     metadata: input.metadata,
-    connected_account_id: connectedAccountId,
-    application_fee_cents: applicationFeeCents,
-    on_behalf_of: connectedAccountId,
+    // PLATFORM charge: funds held in the platform balance. transfer_group links
+    // this charge to the later organiser transfer. No Connect charge fields.
+    transfer_group: input.transferGroup,
   })
 
   return {
     intent,
-    applicationFeeCents,
+    organiserTransferCents,
     connectedAccountId,
     currency: input.fees.currency.toUpperCase(),
-    organiserShareCents: input.fees.total_cents - applicationFeeCents,
   }
 }
 
@@ -94,7 +106,7 @@ async function loadOrgChargeFields(organisationId: string): Promise<OrgChargeFie
   const { data, error } = await admin
     .from('organisations')
     .select(
-      'id, stripe_account_id, stripe_charges_enabled, stripe_account_country, payout_status'
+      'id, stripe_account_id, stripe_payouts_enabled, stripe_account_country, payout_status'
     )
     .eq('id', organisationId)
     .maybeSingle()

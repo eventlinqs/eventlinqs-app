@@ -11,26 +11,23 @@ vi.mock('@/lib/payments/pricing-rules', () => ({
 }))
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createDestinationCharge } from '@/lib/payments/create-destination-charge'
+import { createPlatformCharge } from '@/lib/payments/create-platform-charge'
 import { recordOrderConfirmedLedger } from '@/lib/payments/connect-ledger'
 import type { FeeBreakdown } from '@/lib/payments/payment-calculator'
 import type { CreatePaymentIntentParams, PaymentGateway } from '@/lib/payments/gateway'
 
 /**
- * Integration test for the M6 Phase 3 paid checkout flow:
+ * Funds-holding model end-to-end (no network):
  *
- *   processCheckout
- *     -> createDestinationCharge (Phase 3-B)
- *       -> gateway.createPaymentIntent (StripeAdapter, fully mocked here)
+ *   processCheckout -> createPlatformCharge (PLATFORM charge, no Connect fields)
+ *     -> gateway.createPaymentIntent (StripeAdapter, mocked)
+ *   payment_intent.succeeded webhook -> recordOrderConfirmedLedger
+ *     -> ledger records the organiser's net share as an EVENT-SCOPED held
+ *        liability + the reserve hold (both carry event_id).
  *
- *   payment_intent.succeeded webhook
- *     -> recordOrderConfirmedLedger (Phase 3-E)
- *
- * The two halves of Phase 3 are exercised end-to-end against a single
- * in-memory mock of the Supabase admin client. No network. Verifies the
- * data contract between checkout-time PI creation and webhook-time ledger
- * writes lines up: same order_id, same fee math, same currency, correct
- * idempotency key flow.
+ * Verifies the data contract between charge-time and webhook-time: same
+ * order_id, same fee math (organiser transfer = total - platform - processing),
+ * same currency, event attribution on every ledger row.
  */
 
 type AnyRecord = Record<string, unknown>
@@ -51,7 +48,7 @@ function buildState(): IntegrationState {
       data: {
         id: 'org_1',
         stripe_account_id: 'acct_test_1',
-        stripe_charges_enabled: true,
+        stripe_payouts_enabled: true,
         stripe_account_country: 'AU',
         payout_status: 'active',
       },
@@ -87,11 +84,7 @@ function buildAdminClient(state: IntegrationState) {
       return {
         select: vi.fn((cols: string) => {
           if (cols.includes('hold_amount_cents')) {
-            return {
-              eq: () => ({
-                maybeSingle: vi.fn().mockResolvedValue(state.orgCounters),
-              }),
-            }
+            return { eq: () => ({ maybeSingle: vi.fn().mockResolvedValue(state.orgCounters) }) }
           }
           if (cols.trim() === 'stripe_account_country') {
             return {
@@ -105,12 +98,7 @@ function buildAdminClient(state: IntegrationState) {
               }),
             }
           }
-          // Org load for createDestinationCharge (full row select)
-          return {
-            eq: () => ({
-              maybeSingle: vi.fn().mockResolvedValue(state.orgRow),
-            }),
-          }
+          return { eq: () => ({ maybeSingle: vi.fn().mockResolvedValue(state.orgRow) }) }
         }),
         update: vi.fn((row: AnyRecord) => {
           state.orgUpdates.push(row)
@@ -123,11 +111,7 @@ function buildAdminClient(state: IntegrationState) {
         select: () => ({
           eq: () => ({
             eq: () => ({
-              eq: () => ({
-                limit: () => ({
-                  maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-                }),
-              }),
+              eq: () => ({ limit: () => ({ maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }) }) }),
             }),
           }),
         }),
@@ -141,30 +125,14 @@ function buildAdminClient(state: IntegrationState) {
       return {
         select: vi.fn((cols: string, options?: { count?: string; head?: boolean }) => {
           if (options?.count === 'exact' && options?.head) {
-            return {
-              eq: () => ({
-                eq: () => ({
-                  neq: vi.fn().mockResolvedValue({ count: 0, error: null }),
-                }),
-              }),
-            }
+            return { eq: () => ({ eq: () => ({ neq: vi.fn().mockResolvedValue({ count: 0, error: null }) }) }) }
           }
-          return {
-            eq: () => ({
-              maybeSingle: vi.fn().mockResolvedValue(state.orderRow),
-            }),
-          }
+          return { eq: () => ({ maybeSingle: vi.fn().mockResolvedValue(state.orderRow) }) }
         }),
       }
     }
     if (table === 'events') {
-      return {
-        select: () => ({
-          eq: () => ({
-            maybeSingle: vi.fn().mockResolvedValue(state.eventRow),
-          }),
-        }),
-      }
+      return { select: () => ({ eq: () => ({ maybeSingle: vi.fn().mockResolvedValue(state.eventRow) }) }) }
     }
     if (table === 'payout_holds') {
       return {
@@ -172,10 +140,7 @@ function buildAdminClient(state: IntegrationState) {
           state.holdRows.push(row)
           return {
             select: () => ({
-              single: vi.fn().mockResolvedValue({
-                data: { id: `hold_${state.holdRows.length}` },
-                error: null,
-              }),
+              single: vi.fn().mockResolvedValue({ data: { id: `hold_${state.holdRows.length}` }, error: null }),
             }),
           }
         }),
@@ -217,11 +182,7 @@ function makeGateway(): { gateway: PaymentGateway; calls: CreatePaymentIntentPar
     name: 'mock',
     async createPaymentIntent(params) {
       calls.push(params)
-      return {
-        gateway_payment_id: 'pi_test_1',
-        client_secret: 'pi_test_1_secret_xyz',
-        status: 'requires_payment_method',
-      }
+      return { gateway_payment_id: 'pi_test_1', client_secret: 'pi_test_1_secret_xyz', status: 'requires_payment_method' }
     },
     async confirmPaymentIntent() {
       return { status: 'succeeded' }
@@ -241,19 +202,21 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
-describe('Phase 3 destination charge end-to-end flow', () => {
-  test('checkout-time PI creation and webhook-time ledger writes agree on the fee math', async () => {
+describe('Funds-holding platform charge end-to-end flow', () => {
+  test('charge-time PI (no Connect fields) and webhook-time ledger agree; ledger rows are event-scoped', async () => {
     const state = buildState()
     vi.mocked(createAdminClient).mockReturnValue(buildAdminClient(state))
     const { gateway, calls: gatewayCalls } = makeGateway()
     const fees = makeFees()
 
-    const charge = await createDestinationCharge({
+    const charge = await createPlatformCharge({
       gateway,
       organisationId: 'org_1',
+      eventId: 'event_1',
       fees,
       customerEmail: 'buyer@example.com',
       idempotencyKey: 'order_1',
+      transferGroup: 'order_1',
       metadata: {
         order_id: 'order_1',
         event_id: 'event_1',
@@ -267,12 +230,13 @@ describe('Phase 3 destination charge end-to-end flow', () => {
       amount_cents: 10_800,
       currency: 'AUD',
       idempotency_key: 'order_1',
-      connected_account_id: 'acct_test_1',
-      application_fee_cents: 800,
-      on_behalf_of: 'acct_test_1',
+      transfer_group: 'order_1',
     })
-    expect(charge.applicationFeeCents).toBe(800)
-    expect(charge.organiserShareCents).toBe(10_000)
+    // Platform is merchant of record: no destination-charge fields.
+    expect(gatewayCalls[0].on_behalf_of).toBeUndefined()
+    expect(gatewayCalls[0].application_fee_cents).toBeUndefined()
+    expect(gatewayCalls[0].connected_account_id).toBeUndefined()
+    expect(charge.organiserTransferCents).toBe(10_000)
 
     const ledgerResult = await recordOrderConfirmedLedger(buildAdminClient(state), {
       orderId: 'order_1',
@@ -281,11 +245,11 @@ describe('Phase 3 destination charge end-to-end flow', () => {
     })
 
     expect(ledgerResult.status).toBe('written')
-    expect(ledgerResult.applicationFeeCents).toBe(charge.applicationFeeCents)
-    expect(ledgerResult.organiserShareCents).toBe(charge.organiserShareCents)
+    expect(ledgerResult.organiserShareCents).toBe(charge.organiserTransferCents)
 
     expect(state.ledgerRows).toHaveLength(2)
     expect(state.ledgerRows[0]).toMatchObject({
+      event_id: 'event_1',
       delta_cents: 10_000,
       reason: 'order_confirmed',
       reference_type: 'order',
@@ -293,39 +257,33 @@ describe('Phase 3 destination charge end-to-end flow', () => {
       currency: 'AUD',
     })
     expect(state.ledgerRows[1]).toMatchObject({
+      event_id: 'event_1',
       delta_cents: -2_000,
       reason: 'reserve_hold',
       reference_type: 'hold',
     })
 
     expect(state.holdRows).toHaveLength(1)
-    expect(state.holdRows[0]).toMatchObject({
-      hold_type: 'reserve',
-      amount_cents: 2_000,
-      event_id: 'event_1',
-    })
+    expect(state.holdRows[0]).toMatchObject({ hold_type: 'reserve', amount_cents: 2_000, event_id: 'event_1' })
   })
 
-  test('absorb fee mode produces correct organiser share = subtotal - all fees', async () => {
+  test('absorb fee mode: organiser transfer = subtotal - all fees', async () => {
     const state = buildState()
-    state.orderRow.data = {
-      ...(state.orderRow.data as AnyRecord),
-      total_cents: 10_000,
-      platform_fee_cents: 500,
-      processing_fee_cents: 300,
-    }
+    state.orderRow.data = { ...(state.orderRow.data as AnyRecord), total_cents: 10_000, platform_fee_cents: 500, processing_fee_cents: 300 }
     vi.mocked(createAdminClient).mockReturnValue(buildAdminClient(state))
     const { gateway, calls } = makeGateway()
     const fees = makeFees()
     fees.fee_pass_type = 'absorb'
     fees.total_cents = 10_000
 
-    const charge = await createDestinationCharge({
+    const charge = await createPlatformCharge({
       gateway,
       organisationId: 'org_1',
+      eventId: 'event_1',
       fees,
       customerEmail: 'buyer@example.com',
       idempotencyKey: 'order_2',
+      transferGroup: 'order_2',
       metadata: {
         order_id: 'order_2',
         event_id: 'event_1',
@@ -334,10 +292,8 @@ describe('Phase 3 destination charge end-to-end flow', () => {
       },
     })
 
-    expect(calls[0]).toMatchObject({
-      amount_cents: 10_000,
-      application_fee_cents: 800,
-    })
-    expect(charge.organiserShareCents).toBe(9_200)
+    expect(calls[0]).toMatchObject({ amount_cents: 10_000, transfer_group: 'order_2' })
+    expect(calls[0].application_fee_cents).toBeUndefined()
+    expect(charge.organiserTransferCents).toBe(9_200)
   })
 })

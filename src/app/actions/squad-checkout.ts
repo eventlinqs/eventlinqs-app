@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getDefaultGateway } from '@/lib/payments/gateway-factory'
 import { PaymentCalculator } from '@/lib/payments/payment-calculator'
-import { createDestinationCharge } from '@/lib/payments/create-destination-charge'
+import { createPlatformCharge } from '@/lib/payments/create-platform-charge'
 import { ChargePreconditionError } from '@/lib/payments/application-fee'
 import type { FeePassType } from '@/types/database'
 
@@ -204,16 +204,17 @@ export async function createSquadMemberPaymentIntent(
     console.error('[squad-checkout] member order_id update error:', memberUpdateError)
   }
 
-  // Create Stripe destination charge with squad metadata (M6 Phase 3)
+  // Create Stripe PLATFORM charge with squad metadata (funds-holding model)
   try {
     const gateway = getDefaultGateway()
-    const charge = await createDestinationCharge({
+    const charge = await createPlatformCharge({
       gateway,
       organisationId: event.organisation_id,
       eventId: event.id,
       fees,
       customerEmail: buyerEmail,
       idempotencyKey: idempotency_key,
+      transferGroup: order_id,
       metadata: {
         order_id,
         event_id: event.id,
