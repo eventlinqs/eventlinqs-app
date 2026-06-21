@@ -36,22 +36,22 @@ const TRIGGER_DOM_ID = 'header-search-trigger'
  *   - Body scroll lock while open
  */
 
-type Tab = 'cultures' | 'cities' | 'events' | 'organisers'
+type Tab = 'communities' | 'cities' | 'events' | 'organisers'
 
 const TABS: { id: Tab; label: string; route: (q: string) => string }[] = [
-  { id: 'cultures',   label: 'Communities',   route: q => `/events?q=${encodeURIComponent(q)}&tab=cultures` },
+  { id: 'communities',   label: 'Communities',   route: q => `/events?q=${encodeURIComponent(q)}&tab=communities` },
   { id: 'cities',     label: 'Cities',     route: q => `/events?q=${encodeURIComponent(q)}&tab=cities` },
   { id: 'events',     label: 'Events',     route: q => `/events?q=${encodeURIComponent(q)}` },
   { id: 'organisers', label: 'Organisers', route: q => `/events?q=${encodeURIComponent(q)}&tab=organisers` },
 ]
 
 const FALLBACKS: Record<Tab, { label: string; href: string }[]> = {
-  cultures: [
-    { label: 'First Nations',  href: '/culture/aboriginal-torres-strait-islander' },
-    { label: 'African',        href: '/culture/african' },
-    { label: 'Indian',         href: '/culture/indian' },
-    { label: 'Caribbean',      href: '/culture/caribbean' },
-    { label: 'Latin American', href: '/culture/latin-american' },
+  communities: [
+    { label: 'First Nations',  href: '/community/aboriginal-torres-strait-islander' },
+    { label: 'African',        href: '/community/african' },
+    { label: 'Indian',         href: '/community/indian' },
+    { label: 'Caribbean',      href: '/community/caribbean' },
+    { label: 'Latin American', href: '/community/latin-american' },
   ],
   cities: [
     { label: 'Sydney',     href: '/city/sydney' },

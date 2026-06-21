@@ -15,7 +15,7 @@ interface Props {
  * EventTypesRail - 8 photographic event-type tiles for /city/[slug].
  *
  * Each tile represents one of the city-page event types (concerts, DJ
- * sets, comedy, theatre, workshops, cultural, food & drink, sports).
+ * sets, comedy, theatre, workshops, community, food & drink, sports).
  * Photographic top, white card body with type label below. Click routes
  * to /events?city={citySlug}&event_type={typeSlug}.
  */

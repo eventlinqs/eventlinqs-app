@@ -5,7 +5,7 @@ import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 /**
  * CityHero - Batch 6 hero band for /city/[slug] and /city/[slug]/[suburb].
  *
- * Mirrors PhotographicCultureHero: landscape Pexels photo behind a
+ * Mirrors PhotographicCommunityHero: landscape Pexels photo behind a
  * left-anchored eyebrow + headline + subtitle, darkened bottom-up
  * gradient so text stays AA-readable, two CTAs anchored bottom-left.
  * Light primary surface picks up immediately below.

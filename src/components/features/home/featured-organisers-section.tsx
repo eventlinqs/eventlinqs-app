@@ -14,7 +14,7 @@
  *     --motion-quick via the .card-hover-transition utility class
  *     introduced for event-card.
  *   - Placeholder data carries an explicit caption mirroring the
- *     Cultural Calendar widget pattern. The component accepts an
+ *     Community Calendar widget pattern. The component accepts an
  *     optional `organisers` prop so a future Supabase-backed query can
  *     drop in without API changes.
  */
@@ -88,14 +88,14 @@ const PLACEHOLDER_ORGANISERS: FeaturedOrganiser[] = [
   {
     id: 'p-org-4',
     name: 'Perth Community Hub',
-    handle: 'perth-cultural-hub',
+    handle: 'perth-community-hub',
     avatarSrc: null,
     eventCount: 6,
     nextEvent: {
       title: 'Lantern Festival Late',
       date: '28 June 2026',
       city: 'Perth',
-      href: '/organisers/perth-cultural-hub',
+      href: '/organisers/perth-community-hub',
     },
   },
 ]
@@ -237,7 +237,7 @@ export function FeaturedOrganisersSection({
           ))}
         </div>
 
-        {/* Placeholder caption - mirrors the Cultural Calendar widget
+        {/* Placeholder caption - mirrors the Community Calendar widget
          *  pattern so the placeholder status is visible at runtime. */}
         <p
           className="mt-6 text-[var(--text-secondary)]"

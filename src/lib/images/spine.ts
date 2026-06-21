@@ -102,12 +102,12 @@ const CITY_SLOTS: Record<string, SpineSlot> = {
 
 // ── SCENES (sounds + wired community) ───────────────────────────────────────
 // Keyed by the spine scene slug (the locked CLAUDE.md Scene-layer slug).
-// pride and faith-worship are uploaded but NOT mapped to a heritage culture
-// (the /cultures index is heritage-only - no pride/faith tile - and /culture/pride
+// pride and faith-worship are uploaded but NOT mapped to a heritage community
+// (the /communities index is heritage-only - no pride/faith tile - and /community/pride
 // 308-redirects away). They await a dedicated scene/faith landing. first-nations
 // IS wired: aboriginal-torres-strait-islander is its exact heritage slug.
 const SCENE_SLOTS: Record<string, SpineSlot> = {
-  'first-nations':      { role: 'scenes', key: 'first-nations',      city: null, descriptor: 'cultural-ceremony-day' },
+  'first-nations':      { role: 'scenes', key: 'first-nations',      city: null, descriptor: 'community-ceremony-day' },
   // sounds (12)
   'electronic-dance':   { role: 'scenes', key: 'electronic-dance',   city: null, descriptor: 'mainstage-night' },
   country:              { role: 'scenes', key: 'country',            city: null, descriptor: 'outdoor-festival-day' },
@@ -126,7 +126,7 @@ const SCENE_SLOTS: Record<string, SpineSlot> = {
   mediterranean:        { role: 'scenes', key: 'mediterranean',      city: null, descriptor: 'food-festa-golden-hour' },
   pride:                { role: 'scenes', key: 'pride',              city: null, descriptor: 'parade-colour-day' },
   asian:                { role: 'scenes', key: 'asian',              city: null, descriptor: 'lantern-festival-night' },
-  'pasifika-maori':     { role: 'scenes', key: 'pasifika-maori',     city: null, descriptor: 'cultural-festival-day' },
+  'pasifika-maori':     { role: 'scenes', key: 'pasifika-maori',     city: null, descriptor: 'community-festival-day' },
 }
 
 // Map the homepage SoundsRail slug -> spine scene slug (they differ).
@@ -145,11 +145,11 @@ const SOUND_TO_SCENE: Record<string, string> = {
   metal: 'metal-hardcore',
 }
 
-// Map the REAL /culture/[slug] route slug -> spine scene slug, for the WIRED
+// Map the REAL /community/[slug] route slug -> spine scene slug, for the WIRED
 // community scenes only (CLAUDE.md community moat). Keyed by the canonical
-// heritage slugs that resolve 200 (not the culture-photo query keys, which
+// heritage slugs that resolve 200 (not the community-photo query keys, which
 // differ). pride + faith-worship are absent on purpose (no heritage tile).
-const CULTURE_TO_SCENE: Record<string, string> = {
+const COMMUNITY_TO_SCENE: Record<string, string> = {
   'aboriginal-torres-strait-islander': 'first-nations', // exact community match
   indian: 'south-asian',           // Indian leads the South Asian community (ABS)
   chinese: 'asian',                // lantern-festival shot
@@ -163,7 +163,7 @@ const CULTURE_TO_SCENE: Record<string, string> = {
 const CATEGORY_TILE_SLOTS: Record<string, SpineSlot> = {
   music:                { role: 'categories', key: 'music',                city: null, descriptor: 'live-band-day' },
   sports:               { role: 'categories', key: 'sports',               city: null, descriptor: 'fans-cheering-day' },
-  'arts-culture':       { role: 'categories', key: 'arts-culture',         city: null, descriptor: 'theatre-interior-evening', focal: '50% 45%' },
+  'arts-community':       { role: 'categories', key: 'arts-community',         city: null, descriptor: 'theatre-interior-evening', focal: '50% 45%' },
   'food-drink':         { role: 'categories', key: 'food-drink',           city: null, descriptor: 'street-food-night' },
   family:               { role: 'categories', key: 'family',               city: null, descriptor: 'outdoor-picnic-day' },
   festival:             { role: 'categories', key: 'festival',             city: null, descriptor: 'field-stage-day' },
@@ -178,9 +178,9 @@ const CATEGORY_HERO_SLOTS: Record<string, SpineSlot> = {
   festival:             { role: 'categories', key: 'festival',             city: null, descriptor: 'twilight-stage-golden-hour' },
   nightlife:            { role: 'categories', key: 'nightlife',            city: null, descriptor: 'club-dancefloor-night' },
   'food-drink':         { role: 'categories', key: 'food-drink',           city: null, descriptor: 'rooftop-tasting-golden-hour' },
-  // 'arts' gallery-day shot used as the arts-culture landing hero (file lives
+  // 'arts' gallery-day shot used as the arts-community landing hero (file lives
   // under key 'arts'); tile uses the theatre interior above.
-  'arts-culture':       { role: 'categories', key: 'arts',                 city: null, descriptor: 'gallery-day' },
+  'arts-community':       { role: 'categories', key: 'arts',                 city: null, descriptor: 'gallery-day' },
   sports:               { role: 'categories', key: 'sports',               city: null, descriptor: 'fans-cheering-day' },
   family:               { role: 'categories', key: 'family',               city: null, descriptor: 'outdoor-picnic-day' },
   'business-networking':{ role: 'categories', key: 'business-networking',  city: null, descriptor: 'conference-keynote-day' },
@@ -215,8 +215,8 @@ export function getSpineSceneForSound(soundSlug: string): SpineImage | null {
   return scene ? getSpineScene(scene) : null
 }
 
-export function getSpineSceneForCulture(cultureSlug: string): SpineImage | null {
-  const scene = CULTURE_TO_SCENE[cultureSlug.toLowerCase()]
+export function getSpineSceneForCommunity(communitySlug: string): SpineImage | null {
+  const scene = COMMUNITY_TO_SCENE[communitySlug.toLowerCase()]
   return scene ? getSpineScene(scene) : null
 }
 

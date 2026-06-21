@@ -1,19 +1,19 @@
 import Link from 'next/link'
 import { Reveal } from '@/components/ui/reveal'
 import { EventCardMedia } from '@/components/media'
-import { getCultureHeroPhoto } from '@/lib/images/culture-photo'
+import { getCommunityHeroPhoto } from '@/lib/images/community-photo'
 import { getCategoryPhoto } from '@/lib/images/category-photo'
 
 /**
  * OrganiserCommunityStrip - the "Open to every community" tile set.
  *
  * Interactive-affordance law: every tile is a REAL working link into an existing
- * scene/culture/category page (zero dead links / no dead-end tiles). The set is
+ * scene/community/category page (zero dead links / no dead-end tiles). The set is
  * recomposed to read as "every community, every organiser" - the COMMUNITIES
  * family (First Nations first, per law) plus high-volume SOUNDS and Comedy - not
  * over-weighted to one cluster.
  *
- * Imagery resolves through the media pipeline (culture hero photos for heritage
+ * Imagery resolves through the media pipeline (community hero photos for heritage
  * communities, category photos for sounds), each with a branded fallback baked
  * into EventCardMedia - never a broken image, on preview or production. Tiles use
  * the separated-card design system with hover illumination; the whole tile is the
@@ -24,23 +24,23 @@ type StripTile = {
   label: string
   description: string
   href: string
-  img: { kind: 'culture' | 'category'; slug: string }
+  img: { kind: 'community' | 'category'; slug: string }
 }
 
 // First Nations first (law). COMMUNITIES lead, then high-volume SOUNDS, then
-// Comedy. Heritage communities link to their real /culture/[slug] landing;
+// Comedy. Heritage communities link to their real /community/[slug] landing;
 // rollup community labels and sounds link to the resolving filtered view; Comedy
 // to its category page. Every href resolves 200.
 const TILES: StripTile[] = [
-  { label: 'First Nations', description: 'NAIDOC, corroboree, art and dance.', href: '/culture/aboriginal-torres-strait-islander', img: { kind: 'culture', slug: 'aboriginal-torres-strait-islander' } },
-  { label: 'African', description: 'Afrobeats, Amapiano, Owambe and more.', href: '/culture/african', img: { kind: 'culture', slug: 'african' } },
-  { label: 'Caribbean', description: 'Soca, dancehall, reggae, carnival.', href: '/culture/caribbean', img: { kind: 'culture', slug: 'caribbean' } },
-  { label: 'South Asian', description: 'Bollywood, bhangra, Diwali, weddings.', href: '/events?q=South%20Asian', img: { kind: 'culture', slug: 'indian' } },
-  { label: 'East & SE Asian', description: 'Lunar New Year, K-pop, festivals.', href: '/events?q=Asian', img: { kind: 'culture', slug: 'chinese' } },
-  { label: 'Pasifika & Maori', description: 'Island music, dance, community days.', href: '/events?q=Pasifika%20Maori', img: { kind: 'culture', slug: 'pacific-pasifika' } },
-  { label: 'Mediterranean', description: 'Greek, Italian and Levantine festivals.', href: '/events?q=Mediterranean', img: { kind: 'culture', slug: 'greek' } },
-  { label: 'Latin American', description: 'Salsa, reggaeton, street fiestas.', href: '/culture/latin-american', img: { kind: 'culture', slug: 'latin-american' } },
-  { label: 'Filipino', description: 'Fiestas, OPM, community gatherings.', href: '/culture/filipino', img: { kind: 'culture', slug: 'filipino' } },
+  { label: 'First Nations', description: 'NAIDOC, corroboree, art and dance.', href: '/community/aboriginal-torres-strait-islander', img: { kind: 'community', slug: 'aboriginal-torres-strait-islander' } },
+  { label: 'African', description: 'Afrobeats, Amapiano, Owambe and more.', href: '/community/african', img: { kind: 'community', slug: 'african' } },
+  { label: 'Caribbean', description: 'Soca, dancehall, reggae, carnival.', href: '/community/caribbean', img: { kind: 'community', slug: 'caribbean' } },
+  { label: 'South Asian', description: 'Bollywood, bhangra, Diwali, weddings.', href: '/events?q=South%20Asian', img: { kind: 'community', slug: 'indian' } },
+  { label: 'East & SE Asian', description: 'Lunar New Year, K-pop, festivals.', href: '/events?q=Asian', img: { kind: 'community', slug: 'chinese' } },
+  { label: 'Pasifika & Maori', description: 'Island music, dance, community days.', href: '/events?q=Pasifika%20Maori', img: { kind: 'community', slug: 'pacific-pasifika' } },
+  { label: 'Mediterranean', description: 'Greek, Italian and Levantine festivals.', href: '/events?q=Mediterranean', img: { kind: 'community', slug: 'greek' } },
+  { label: 'Latin American', description: 'Salsa, reggaeton, street fiestas.', href: '/community/latin-american', img: { kind: 'community', slug: 'latin-american' } },
+  { label: 'Filipino', description: 'Fiestas, OPM, community gatherings.', href: '/community/filipino', img: { kind: 'community', slug: 'filipino' } },
   { label: 'Pride', description: 'Pride parties, drag and community nights.', href: '/events?q=Pride', img: { kind: 'category', slug: 'pride' } },
   { label: 'Faith & worship', description: 'Gospel, worship and faith gatherings.', href: '/events?q=faith%20worship', img: { kind: 'category', slug: 'gospel' } },
   { label: 'Electronic & dance', description: 'Festivals, club nights and raves.', href: '/events?q=electronic%20dance', img: { kind: 'category', slug: 'electronic' } },
@@ -59,8 +59,8 @@ const IMG_MOTION =
   'transition-transform duration-200 ease-out group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100'
 
 async function resolveSrc(t: StripTile): Promise<string> {
-  if (t.img.kind === 'culture') {
-    return (await getCultureHeroPhoto(t.img.slug, { allowBundledFallback: true })) ?? ''
+  if (t.img.kind === 'community') {
+    return (await getCommunityHeroPhoto(t.img.slug, { allowBundledFallback: true })) ?? ''
   }
   return (await getCategoryPhoto(t.img.slug)).src
 }

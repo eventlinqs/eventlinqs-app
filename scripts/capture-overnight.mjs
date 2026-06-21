@@ -29,7 +29,7 @@ const PAGES = [
   ['legal-terms', '/legal/terms'],
   ['city-sydney', '/city/sydney'],
   ['suburb-inner-west', '/city/sydney/inner-west'],
-  ['culture-african', '/culture/african'],
+  ['community-african', '/community/african'],
   ['login', '/login'],
 ]
 

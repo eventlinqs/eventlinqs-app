@@ -1,5 +1,5 @@
-// Batch 11 - Verify header initial-state fix on /culture/african,
-// /city/sydney, /culture/african/sydney at 3 viewports each.
+// Batch 11 - Verify header initial-state fix on /community/african,
+// /city/sydney, /community/african/sydney at 3 viewports each.
 //
 // Two captures per (page, viewport): the top of the page (where the
 // header sits on the hero) and a scrolled position where State B
@@ -13,9 +13,9 @@ const OUT = 'docs/redesign/batch-11-evidence/screenshots/after/header-fix'
 if (!existsSync(OUT)) mkdirSync(OUT, { recursive: true })
 
 const routes = [
-  ['culture-african',         '/culture/african'],
+  ['community-african',         '/community/african'],
   ['city-sydney',             '/city/sydney'],
-  ['culture-african-sydney',  '/culture/african/sydney'],
+  ['community-african-sydney',  '/community/african/sydney'],
 ]
 const viewports = [
   ['390',  { width: 390,  height: 844 }],

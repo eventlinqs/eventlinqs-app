@@ -23,7 +23,7 @@ export interface CityIndexEntry {
  * permissive because venue_city is free-text in the events table and
  * covers metro variants like "Sydney CBD" / "Sydney Harbour" as Sydney.
  *
- * Result cached for 5 minutes (same cadence as the cultures index).
+ * Result cached for 5 minutes (same cadence as the communities index).
  */
 async function getCityIndexEntriesRaw(): Promise<CityIndexEntry[]> {
   const cities: CityContent[] = getAllCities()

@@ -55,7 +55,7 @@ export default async function AccountPage() {
             {[
               { label: 'Browse events',        href: '/events',     hint: 'Find your next night out.' },
               { label: 'Become an organiser',  href: '/organisers', hint: 'Run your own events on EventLinqs.' },
-              { label: 'Communities',          href: '/cultures',   hint: 'Browse 14 communities.' },
+              { label: 'Communities',          href: '/communities',   hint: 'Browse 14 communities.' },
               { label: 'Cities',               href: '/cities',     hint: '20 cities, from Sydney to Hobart.' },
               { label: 'Help and support',     href: '/help',       hint: 'Common questions and account help.' },
             ].map(item => (

@@ -487,6 +487,14 @@ never hand-roll per surface):
 - Australian English (-ise, -our, -re) and Australian content.
 - Community-first language, never culture-first. Banned words: diaspora,
   friends-launch.
+- **The word "culture" is banned everywhere, in every form (culture, cultures,
+  cultural), permanently.** Not just copy: route names, file names, slugs,
+  identifiers, database tables/columns, and data must all use "community". The
+  community surfaces are `/communities` and `/community/[community]` (and
+  `/community/[community]/[city]`); the legacy `/cultures` and `/culture/[...]`
+  paths permanently redirect (301) to them so no existing link, share, or search
+  index breaks. Any recurrence of "culture" in the repo is a defect; the gate is
+  a zero-match grep for `culture` across `src` plus a zero-dead-link crawl.
 - No exclamation marks in user-facing copy (a Tailwind `!important` modifier is
   not user-facing copy).
 - No placeholder copy ("Coming soon", "Sample Event 1", "Lorem ipsum") on any

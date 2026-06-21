@@ -15,9 +15,9 @@ const p = await ctx.newPage()
 // Hero clips (top band) for the spine hero/landing surfaces.
 for (const [label, path] of [
   ['hero-city-sydney', '/city/sydney'],
-  ['hero-culture-indian', '/culture/indian'],
-  ['hero-culture-first-nations', '/culture/aboriginal-torres-strait-islander'],
-  ['hero-culture-chinese', '/culture/chinese'],
+  ['hero-community-indian', '/community/indian'],
+  ['hero-community-first-nations', '/community/aboriginal-torres-strait-islander'],
+  ['hero-community-chinese', '/community/chinese'],
   ['hero-organisers', '/organisers'],
 ]) {
   await p.goto(BASE + path, { waitUntil: 'networkidle', timeout: 90000 })

@@ -72,20 +72,24 @@ const nextConfig: NextConfig = {
     '/events/[slug]': ['./src/lib/dev/home-seed-fixture.json'],
   },
   async redirects() {
-    // Batch 5 - /categories/[slug] → /culture/[slug] migration.
-    // The legacy /categories/[slug] route still serves 7 hero categories
-    // (afrobeats, amapiano, gospel, owambe, caribbean, heritage-and-
-    // independence, networking) but the new taxonomy lives under
-    // /culture/[slug]. We 301 the matching legacy slugs to their new
-    // culture home so existing inbound links and Google index entries
-    // forward to the new pages.
+    // Legacy /categories/[slug] -> the community taxonomy (Batch 5). The legacy
+    // /categories/[slug] route still serves the hero categories but the taxonomy
+    // lives under /community/[slug], so we 301 the matching slugs forward.
+    //
+    // The word "culture" is banned (CLAUDE.md): the taxonomy routes were renamed
+    // /cultures -> /communities and /culture/[...] -> /community/[...], with the
+    // permanent 301s below so every existing link, share, and search-index entry
+    // forwards and no path breaks.
     return [
-      { source: '/categories/afrobeats',                   destination: '/culture/african',  permanent: true },
-      { source: '/categories/amapiano',                    destination: '/culture/african',  permanent: true },
-      { source: '/categories/owambe',                      destination: '/culture/african',  permanent: true },
-      { source: '/categories/heritage-and-independence',   destination: '/culture/african',  permanent: true },
-      { source: '/categories/caribbean',                   destination: '/culture/caribbean', permanent: true },
-      { source: '/categories/gospel',                      destination: '/culture/gospel',   permanent: true },
+      { source: '/categories/afrobeats',                   destination: '/community/african',   permanent: true },
+      { source: '/categories/amapiano',                    destination: '/community/african',   permanent: true },
+      { source: '/categories/owambe',                      destination: '/community/african',   permanent: true },
+      { source: '/categories/heritage-and-independence',   destination: '/community/african',   permanent: true },
+      { source: '/categories/caribbean',                   destination: '/community/caribbean', permanent: true },
+      { source: '/categories/gospel',                      destination: '/community/gospel',    permanent: true },
+      { source: '/cultures',                               destination: '/communities',           permanent: true },
+      { source: '/culture/:slug',                          destination: '/community/:slug',       permanent: true },
+      { source: '/culture/:slug/:city',                    destination: '/community/:slug/:city', permanent: true },
     ]
   },
   async headers() {

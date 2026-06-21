@@ -7,7 +7,7 @@ import { getSpineCategoryHero } from '@/lib/images/spine'
  * gold "premium" PageHero on /categories/[slug].
  *
  * Pattern (per DESIGN-SYSTEM.md 6.2.1 - allowed image-band overlay):
- *   - photographic culture hero raster behind the headline
+ *   - photographic community hero raster behind the headline
  *   - darkened linear gradient bottom-up (10,22,40 navy) so the heading
  *     stays AA-readable without painting the whole hero black
  *   - place-name eyebrow + bold display headline + supporting body in
@@ -41,7 +41,7 @@ interface Props {
 }
 
 export function PhotographicCategoryHero({ slug, eyebrow, title, subtitle }: Props) {
-  // Spine-first: the licensed category hero. Falls back to the bundled culture
+  // Spine-first: the licensed category hero. Falls back to the bundled community
   // raster (old slugs) then the default for anything without a spine slot.
   const spine = getSpineCategoryHero(slug)
   const src = spine?.src ?? HERO_RASTER_BY_SLUG[slug] ?? HERO_RASTER_DEFAULT

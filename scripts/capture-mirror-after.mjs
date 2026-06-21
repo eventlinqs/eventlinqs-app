@@ -14,7 +14,7 @@ const PAGES = [
   ['signup', '/signup'],
   ['event-detail', '/events/aso-ebi-affair-owambe-garden-party'],
   ['city-sydney', '/city/sydney'],
-  ['culture-african', '/culture/african'],
+  ['community-african', '/community/african'],
 ]
 const VPS = [['1440', { width: 1440, height: 900 }], ['390', { width: 390, height: 844 }]]
 await mkdir(OUT, { recursive: true })

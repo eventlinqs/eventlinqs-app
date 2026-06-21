@@ -15,17 +15,17 @@ const SURFACES = [
   { label: 'home', path: '/' },
   { label: 'organisers', path: '/organisers' },
   { label: 'cities-index', path: '/cities' },
-  { label: 'cultures-index', path: '/cultures' },
+  { label: 'communities-index', path: '/communities' },
   { label: 'city-sydney', path: '/city/sydney' },
   { label: 'city-melbourne', path: '/city/melbourne' },
   { label: 'browse-brisbane', path: '/events/browse/brisbane' },
   // General categories render as homepage TILES + browse via /events?category=;
-  // /categories/[slug] is the cultural hero-category route (still on bundled art).
-  { label: 'culture-first-nations', path: '/culture/aboriginal-torres-strait-islander' },
-  { label: 'culture-indian', path: '/culture/indian' },
-  { label: 'culture-chinese', path: '/culture/chinese' },
-  { label: 'culture-italian', path: '/culture/italian' },
-  { label: 'culture-pacific', path: '/culture/pacific-pasifika' },
+  // /categories/[slug] is the community hero-category route (still on bundled art).
+  { label: 'community-first-nations', path: '/community/aboriginal-torres-strait-islander' },
+  { label: 'community-indian', path: '/community/indian' },
+  { label: 'community-chinese', path: '/community/chinese' },
+  { label: 'community-italian', path: '/community/italian' },
+  { label: 'community-pacific', path: '/community/pacific-pasifika' },
 ]
 
 const VIEWPORTS = [

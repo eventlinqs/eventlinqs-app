@@ -141,7 +141,7 @@ export function EventCardFeature({ event, blurb }: { event: HomeCardEvent; blurb
 
 export interface CommunityTileData {
   href: string
-  /** Culture hero photo URL, or null - null routes to the branded placeholder. */
+  /** Community hero photo URL, or null - null routes to the branded placeholder. */
   imageSrc: string | null
   alt: string
   name: string
@@ -157,7 +157,7 @@ export interface CommunityTileData {
  * A heritage community in the locked separated-card system: a portrait
  * photograph that stands alone (hover illumination + branded fallback via
  * EventCardMedia), the community name and event count BELOW it, never on the
- * image. Links to the real /culture/[slug] landing.
+ * image. Links to the real /community/[slug] landing.
  */
 export function CommunityTile({ community }: { community: CommunityTileData }) {
   return (

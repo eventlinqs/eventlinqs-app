@@ -35,7 +35,7 @@ export function AuthShell({ title, subtitle, footer, children }: Props) {
           <EventlinqsLogo asLink size="md" />
           <div className="hero-enter max-w-md">
             <h2 className="font-display text-3xl font-bold leading-tight xl:text-4xl">
-              Every culture. Every event. One platform.
+              Every community. Every event. One platform.
             </h2>
             <p className="mt-4 text-base leading-relaxed text-white/80">
               The ticketing platform built for every community.

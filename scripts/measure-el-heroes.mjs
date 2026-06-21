@@ -17,7 +17,7 @@ const PAGES = [
   ['event-detail', '/events/aso-ebi-affair-owambe-garden-party', 'section[aria-label="Event hero"]'],
   ['city', '/city/sydney', '.hero-marketing'],
   ['suburb', '/city/sydney/inner-west', '.hero-marketing'],
-  ['culture', '/culture/african', '.hero-marketing'],
+  ['community', '/community/african', '.hero-marketing'],
   ['organisers', '/organisers', '.hero-marketing'],
 ]
 

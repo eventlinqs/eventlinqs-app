@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getPickerCities } from '@/lib/locations/picker-cities'
-import { getAllCultures } from '@/lib/cultures/data'
+import { getAllCommunities } from '@/lib/communities/data'
 import { getAllFaiths } from '@/lib/faiths/data'
 import { getAllCities, getSuburbsForCity } from '@/lib/cities/data'
 import { getSiteUrl } from '@/lib/site-url'
@@ -35,7 +35,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
     // Index pages added in Batch 9.1.1 + Batch 10.
     {
-      url: `${baseUrl}/cultures`,
+      url: `${baseUrl}/communities`,
       lastModified: now,
       changeFrequency: 'weekly',
       priority: 0.9,
@@ -111,17 +111,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })
   }
 
-  // Batch 5 - culture landing pages.
-  for (const culture of getAllCultures()) {
+  // Batch 5 - community landing pages.
+  for (const community of getAllCommunities()) {
     entries.push({
-      url: `${baseUrl}/culture/${culture.slug}`,
+      url: `${baseUrl}/community/${community.slug}`,
       lastModified: now,
       changeFrequency: 'daily',
-      priority: culture.tier === 1 ? 0.85 : 0.75,
+      priority: community.tier === 1 ? 0.85 : 0.75,
     })
   }
 
-  // Culture Taxonomy v2 - faith landing pages.
+  // Community Taxonomy v2 - faith landing pages.
   for (const faith of getAllFaiths()) {
     entries.push({
       url: `${baseUrl}/faith/${faith.slug}`,
@@ -150,19 +150,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   }
 
-  // Batch 8 - 271 culture × city intersection pages. Hand-crafted
-  // editorials shipped at /culture/[culture]/[city] for 14 cultures
+  // Batch 8 - 271 community × city intersection pages. Hand-crafted
+  // editorials shipped at /community/[community]/[city] for 14 communities
   // × selected cities (Tier 1 cities + a few Tier 2). The matrix is
-  // generated from getAllCultures() × the city list visible to the
-  // intersection editorial table; here we add every (culture, city)
+  // generated from getAllCommunities() × the city list visible to the
+  // intersection editorial table; here we add every (community, city)
   // combination so search engines have the full surface.
-  for (const culture of getAllCultures()) {
+  for (const community of getAllCommunities()) {
     for (const city of getAllCities()) {
       entries.push({
-        url: `${baseUrl}/culture/${culture.slug}/${city.slug}`,
+        url: `${baseUrl}/community/${community.slug}/${city.slug}`,
         lastModified: now,
         changeFrequency: 'weekly',
-        priority: culture.tier === 1 && city.tier === 1 ? 0.7 : 0.55,
+        priority: community.tier === 1 && city.tier === 1 ? 0.7 : 0.55,
       })
     }
   }

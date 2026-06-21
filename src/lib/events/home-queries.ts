@@ -103,7 +103,7 @@ export async function loadHomeUpcoming(
   return (data ?? []) as unknown as RawRow[]
 }
 
-export const CULTURE_TABS: { slug: string; label: string; tag: string; href: string }[] = [
+export const COMMUNITY_TABS: { slug: string; label: string; tag: string; href: string }[] = [
   { slug: 'afrobeats',   label: 'Afrobeats',  tag: 'afrobeats',   href: '/categories/afrobeats' },
   { slug: 'amapiano',    label: 'Amapiano',   tag: 'amapiano',    href: '/categories/amapiano' },
   { slug: 'owambe',      label: 'Owambe',     tag: 'owambe',      href: '/categories/owambe' },

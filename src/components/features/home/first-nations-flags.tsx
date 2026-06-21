@@ -4,9 +4,9 @@
  * docs/M5-DESIGN-SPEC.md). Inline accessible SVG, not raw <img>, so no
  * MEDIA-ARCHITECTURE violation.
  *
- * These are the live exports extracted from the former cultural-calendar-widget
- * (whose placeholder CulturalCalendarWidget was dead and was removed). The hex
- * values below are the OFFICIAL flag specifications and are sovereign cultural
+ * These are the live exports extracted from the former community-calendar-widget
+ * (whose placeholder CommunityCalendarWidget was dead and was removed). The hex
+ * values below are the OFFICIAL flag specifications and are sovereign community
  * symbols: they are not brand tokens and must never be mapped to the palette.
  */
 

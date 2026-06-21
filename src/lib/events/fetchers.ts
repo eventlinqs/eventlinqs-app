@@ -3,8 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { withBadge } from './badges'
-import { buildCultureTagOrFilter } from '@/lib/cultures/tag-bridge'
-import type { CultureSlug } from '@/lib/cultures/data'
+import { buildCommunityTagOrFilter } from '@/lib/communities/tag-bridge'
+import type { CommunitySlug } from '@/lib/communities/data'
 import type {
   FetchPublicEventsFilters,
   FetchPublicEventsInput,
@@ -13,23 +13,23 @@ import type {
 } from './types'
 
 /**
- * Resolve culture / sub_culture filters into a PostgREST OR-filter that
+ * Resolve community / sub_community filters into a PostgREST OR-filter that
  * matches events whose `tags` jsonb array contains any identifying tag
- * for the culture. Returns null when no culture constraint is set.
+ * for the community. Returns null when no community constraint is set.
  *
  * Replaces the legacy category-slug bridge: live events carry generic
  * categories ('music', 'nightlife', 'community', ...) so the old path
- * resolved every culture to zero rows and silently emptied the entire
- * culture surface. Tag containment is the reliable signal. See
- * src/lib/cultures/tag-bridge.ts.
+ * resolved every community to zero rows and silently emptied the entire
+ * community surface. Tag containment is the reliable signal. See
+ * src/lib/communities/tag-bridge.ts.
  */
-function resolveCultureTagOrFilter(
+function resolveCommunityTagOrFilter(
   filters: FetchPublicEventsFilters,
 ): string | null {
-  if (!filters.culture) return null
-  return buildCultureTagOrFilter(
-    filters.culture as CultureSlug,
-    filters.sub_culture,
+  if (!filters.community) return null
+  return buildCommunityTagOrFilter(
+    filters.community as CommunitySlug,
+    filters.sub_community,
   )
 }
 
@@ -239,11 +239,11 @@ export async function fetchPublicEvents(
     } else {
       query = query.eq('category_id', '00000000-0000-0000-0000-000000000000')
     }
-  } else if (filters.culture) {
-    const tagOr = resolveCultureTagOrFilter(filters)
+  } else if (filters.community) {
+    const tagOr = resolveCommunityTagOrFilter(filters)
     if (tagOr === null) {
-      // Unknown culture slug: force an empty result rather than leak
-      // the entire catalogue under a culture URL.
+      // Unknown community slug: force an empty result rather than leak
+      // the entire catalogue under a community URL.
       query = query.eq('id', '00000000-0000-0000-0000-000000000000')
     } else {
       query = query.or(tagOr)
@@ -348,8 +348,8 @@ export async function fetchPublicEventsCached(
     `country:${filters.country ?? ''}`,
     `city:${filters.city ?? ''}`,
     `category:${filters.category ?? ''}`,
-    `culture:${filters.culture ?? ''}`,
-    `subc:${filters.sub_culture ?? ''}`,
+    `community:${filters.community ?? ''}`,
+    `subc:${filters.sub_community ?? ''}`,
     `preset:${filters.preset ?? ''}`,
     `sort:${filters.sort ?? ''}`,
     `q:${filters.q ?? ''}`,
@@ -419,11 +419,11 @@ async function runFetchPublicEventsAdmin(
     } else {
       query = query.eq('category_id', '00000000-0000-0000-0000-000000000000')
     }
-  } else if (filters.culture) {
-    const tagOr = resolveCultureTagOrFilter(filters)
+  } else if (filters.community) {
+    const tagOr = resolveCommunityTagOrFilter(filters)
     if (tagOr === null) {
-      // Unknown culture slug: force an empty result rather than leak
-      // the entire catalogue under a culture URL.
+      // Unknown community slug: force an empty result rather than leak
+      // the entire catalogue under a community URL.
       query = query.eq('id', '00000000-0000-0000-0000-000000000000')
     } else {
       query = query.or(tagOr)

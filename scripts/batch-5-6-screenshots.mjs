@@ -1,7 +1,7 @@
 // Batch 5.6 closing screenshot run.
-// - 14 culture pages x 2 viewports = 28 captures into
+// - 14 community pages x 2 viewports = 28 captures into
 //   docs/redesign/batch-5-evidence/after/ (overwriting Batch 5.5 files).
-// - 3 rail-flow captures of the cities rail on /culture/african into
+// - 3 rail-flow captures of the cities rail on /community/african into
 //   docs/redesign/batch-5.6-evidence/rail-flow/.
 // Requires the dev server on http://localhost:3002.
 import { chromium } from 'playwright'
@@ -14,7 +14,7 @@ const RAIL_DIR = 'docs/redesign/batch-5.6-evidence/rail-flow'
 if (!existsSync(AFTER_DIR)) mkdirSync(AFTER_DIR, { recursive: true })
 if (!existsSync(RAIL_DIR)) mkdirSync(RAIL_DIR, { recursive: true })
 
-const cultures = [
+const communities = [
   'african', 'south-asian', 'caribbean', 'latin', 'east-asian',
   'filipino', 'mediterranean', 'middle-eastern', 'european', 'pacific',
   'gospel', 'comedy', 'wellness', 'pride',
@@ -52,20 +52,20 @@ async function main() {
     userAgent: 'Mozilla/5.0 (compatible; EventLinqsScreenshot/1.0)',
   })
 
-  // 1) Culture pages: 14 x 2 = 28
+  // 1) Community pages: 14 x 2 = 28
   for (const vp of viewports) {
     const page = await ctx.newPage()
     await page.setViewportSize({ width: vp.width, height: vp.height })
 
-    for (const slug of cultures) {
-      const url = `${BASE}/culture/${slug}`
+    for (const slug of communities) {
+      const url = `${BASE}/community/${slug}`
       console.log(`[${vp.name}] capture ${slug}`)
       try {
         await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60_000 })
         await page.waitForLoadState('networkidle', { timeout: 20_000 }).catch(() => {})
         await primeLazyImages(page)
         await page.screenshot({
-          path: `${AFTER_DIR}/culture-${slug}-${vp.name}.png`,
+          path: `${AFTER_DIR}/community-${slug}-${vp.name}.png`,
           fullPage: true,
         })
       } catch (e) {
@@ -75,7 +75,7 @@ async function main() {
     await page.close()
   }
 
-  // 2) Rail-flow: cities rail arrow-click sequence on /culture/african @ 1440.
+  // 2) Rail-flow: cities rail arrow-click sequence on /community/african @ 1440.
   // The SnapRailScroller renders a right-arrow control that scrolls the rail
   // by ~one card-pair per click. Capture initial state, then after 1 click,
   // then after 2 clicks. The rail is below the fold so we scroll to it first.
@@ -83,7 +83,7 @@ async function main() {
     const page = await ctx.newPage()
     await page.setViewportSize({ width: 1440, height: 900 })
     try {
-      await page.goto(`${BASE}/culture/african`, { waitUntil: 'domcontentloaded', timeout: 60_000 })
+      await page.goto(`${BASE}/community/african`, { waitUntil: 'domcontentloaded', timeout: 60_000 })
       await page.waitForLoadState('networkidle', { timeout: 20_000 }).catch(() => {})
       await primeLazyImages(page)
 

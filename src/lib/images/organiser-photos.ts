@@ -24,7 +24,7 @@ export interface PhotoSlot {
 const HERO = '/images/hero'
 
 // Spine-first slot builder: the licensed organiser/supporting hero is the slot
-// image; the bundled culture raster stays as the fallback if the spine URL
+// image; the bundled community raster stays as the fallback if the spine URL
 // cannot be built (e.g. NEXT_PUBLIC_SUPABASE_URL unset at build).
 function spineSlot(
   name: Parameters<typeof getSpineHero>[0],
@@ -85,7 +85,7 @@ export interface CommunityTile extends PhotoSlot {
 
 export const ORGANISER_COMMUNITY_TILES: CommunityTile[] = [
   { label: 'Afrobeats nights', src: `${HERO}/afrobeats.jpg`, alt: 'Crowd enjoying an outdoor Afrobeats festival' },
-  { label: 'Amapiano & dance', src: `${HERO}/amapiano.jpg`, alt: 'Outdoor dance performance in cultural attire' },
+  { label: 'Amapiano & dance', src: `${HERO}/amapiano.jpg`, alt: 'Outdoor dance performance in community attire' },
   { label: 'Owambe & celebrations', src: `${HERO}/owambe.jpg`, alt: 'Family toasting together in traditional-patterned dress' },
   { label: 'Caribbean & carnival', src: `${HERO}/caribbean-carnival.jpg`, alt: 'Colourful Afro-Caribbean street carnival' },
   { label: 'South Asian & Bollywood', src: `${HERO}/bollywood.jpg`, alt: 'Lively crowd dancing under vibrant lighting' },

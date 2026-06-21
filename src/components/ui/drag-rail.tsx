@@ -13,7 +13,7 @@ interface Props {
    * first engagement with the rail rather than being active from first paint.
    * A statically-snapping container re-snaps every time a lazy card image loads
    * and reflows it, firing browser-induced scroll events that stop Chrome's LCP
-   * recording before the rail's LCP card paints (the homepage/culture NO_LCP
+   * recording before the rail's LCP card paints (the homepage/community NO_LCP
    * class of defect; this rail's first card is the /events LCP candidate). Arming
    * on engage keeps that card a clean LCP candidate. Callers must NOT put
    * snap-x/snap-mandatory in className; cards keep their own snap-start.

@@ -60,7 +60,7 @@ export function ThisWeekSkeleton() {
   )
 }
 
-export function CulturalPicksSkeleton() {
+export function CommunityPicksSkeleton() {
   return (
     <section aria-label="Community picks - loading" className={`bg-canvas ${SECTION_TIGHT}`}>
       <div className={CONTAINER}>

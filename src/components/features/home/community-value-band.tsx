@@ -1,15 +1,15 @@
 import { ContentSection } from '@/components/layout/ContentSection'
 import { Button } from '@/components/ui/Button'
 import { CommunityTile } from '@/components/features/home/cards'
-import { getCultureIndexEntries } from '@/lib/cultures/index-page-data'
-import { getCultureHeroPhoto } from '@/lib/images/culture-photo'
+import { getCommunityIndexEntries } from '@/lib/communities/index-page-data'
+import { getCommunityHeroPhoto } from '@/lib/images/community-photo'
 
 /**
  * CommunityValueBand - the ONE community value moment on the homepage.
  *
  * A single tinted (surface=alt) band carrying the locked tagline, a short line,
- * a row of real community tiles linking into the /culture/[slug] landings, and a
- * CTA into the /cultures hub. Treated surface with a gold top divider - never a
+ * a row of real community tiles linking into the /community/[slug] landings, and a
+ * CTA into the /communities hub. Treated surface with a gold top divider - never a
  * bare band (Law 1 / premium bar). This is the lower bookend of the community
  * moat (the CommunityRail is the higher one); together with the Browse-by-
  * Category doorway they keep community at ~10-20% of the page, never dominant.
@@ -18,7 +18,7 @@ import { getCultureHeroPhoto } from '@/lib/images/culture-photo'
 const BAND_COUNT = 6
 
 export async function CommunityValueBand() {
-  const entries = (await getCultureIndexEntries()).slice(0, BAND_COUNT)
+  const entries = (await getCommunityIndexEntries()).slice(0, BAND_COUNT)
   if (entries.length === 0) return null
 
   const tiles = await Promise.all(
@@ -26,7 +26,7 @@ export async function CommunityValueBand() {
       slug: e.slug,
       name: e.displayName,
       metaLabel: e.eventCount > 0 ? `${e.eventCount} ${e.eventCount === 1 ? 'event' : 'events'}` : 'Be the first',
-      imageSrc: await getCultureHeroPhoto(e.slug),
+      imageSrc: await getCommunityHeroPhoto(e.slug),
     })),
   )
 
@@ -54,7 +54,7 @@ export async function CommunityValueBand() {
           <CommunityTile
             key={t.slug}
             community={{
-              href: `/culture/${t.slug}`,
+              href: `/community/${t.slug}`,
               imageSrc: t.imageSrc,
               alt: `${t.name} community events`,
               name: t.name,
@@ -65,7 +65,7 @@ export async function CommunityValueBand() {
       </div>
 
       <div className="mt-8 flex justify-center">
-        <Button href="/cultures" variant="primary" size="lg">
+        <Button href="/communities" variant="primary" size="lg">
           Browse all communities
         </Button>
       </div>

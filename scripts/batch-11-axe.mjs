@@ -16,7 +16,7 @@ if (!existsSync(OUT)) mkdirSync(OUT, { recursive: true })
 const routes = [
   ['home',             '/'],
   ['events',           '/events'],
-  ['culture-african',  '/culture/african'],
+  ['community-african',  '/community/african'],
   ['city-sydney',      '/city/sydney'],
   ['event-detail',     '/events/diwali-festival-melbourne-festival-of-lights'],
 ]

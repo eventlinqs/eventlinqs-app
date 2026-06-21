@@ -1,8 +1,8 @@
 // Community-moat audit on the deployed preview:
-//   1. Sample >=15 intersection pages (/culture/[culture]/[city]) across many
+//   1. Sample >=15 intersection pages (/community/[community]/[city]) across many
 //      communities x cities by harvesting REAL rendered city links from each
-//      culture landing (so every combo is valid), then verify each is HTTP 200.
-//   2. axe (audit profile) on home, the /cultures hub, and 3 intersection pages
+//      community landing (so every combo is valid), then verify each is HTTP 200.
+//   2. axe (audit profile) on home, the /communities hub, and 3 intersection pages
 //      at desktop + mobile.
 // Output -> docs/benchmark/system-pass/community-moat/audit.json. Exit 1 on any
 // dead intersection or any axe violation.
@@ -17,7 +17,7 @@ mkdirSync(OUT, { recursive: true })
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
 
 // Communities spanning the heritage order (First Nations first) + variety.
-const CULTURES = [
+const COMMUNITIES = [
   'aboriginal-torres-strait-islander', 'african', 'indian', 'chinese',
   'filipino', 'latin-american', 'greek', 'vietnamese', 'korean', 'italian',
 ]
@@ -25,33 +25,33 @@ const CULTURES = [
 const b = await chromium.launch({ args: ['--no-sandbox'] })
 const summary = { base: BASE, intersections: { total: 0, ok: 0, dead: [], sample: [] }, axe: {} }
 
-// ---- 1. Harvest valid intersection links from culture landings ----
+// ---- 1. Harvest valid intersection links from community landings ----
 const ctx = await b.newContext({ userAgent: UA })
 const seen = new Set()
-for (const culture of CULTURES) {
+for (const community of COMMUNITIES) {
   try {
     const page = await ctx.newPage()
-    const res = await page.goto(`${BASE}/culture/${culture}`, { waitUntil: 'domcontentloaded', timeout: 60000 })
+    const res = await page.goto(`${BASE}/community/${community}`, { waitUntil: 'domcontentloaded', timeout: 60000 })
     if (!res || res.status() >= 400) { await page.close(); continue }
     const hrefs = await page.evaluate(() =>
       Array.from(document.querySelectorAll('a[href]'))
         .map(a => a.getAttribute('href'))
-        .filter(h => h && /^\/culture\/[^/]+\/[^/]+$/.test(h)))
+        .filter(h => h && /^\/community\/[^/]+\/[^/]+$/.test(h)))
     for (const h of hrefs) seen.add(h)
     await page.close()
   } catch {}
 }
 // Sample: take up to 24, ensuring spread across communities and cities.
 const all = Array.from(seen)
-const byCulture = {}
-for (const h of all) { const c = h.split('/')[2]; (byCulture[c] ||= []).push(h) }
+const byCommunity = {}
+for (const h of all) { const c = h.split('/')[2]; (byCommunity[c] ||= []).push(h) }
 const sample = []
-// round-robin one per culture until we have >=18
+// round-robin one per community until we have >=18
 let added = true
 while (added && sample.length < 24) {
   added = false
-  for (const c of Object.keys(byCulture)) {
-    const next = byCulture[c].find(h => !sample.includes(h))
+  for (const c of Object.keys(byCommunity)) {
+    const next = byCommunity[c].find(h => !sample.includes(h))
     if (next) { sample.push(next); added = true }
     if (sample.length >= 24) break
   }
@@ -67,12 +67,12 @@ for (const path of sample) {
     else { summary.intersections.dead.push({ path, status: r.status }) }
   } catch (e) { summary.intersections.dead.push({ path, error: String(e).slice(0, 80) }) }
 }
-const cultures = new Set(sample.map(h => h.split('/')[2]))
+const communities = new Set(sample.map(h => h.split('/')[2]))
 const cities = new Set(sample.map(h => h.split('/')[3]))
-summary.intersections.spread = { communities: cultures.size, cities: cities.size }
+summary.intersections.spread = { communities: communities.size, cities: cities.size }
 
 // ---- 2. axe on home + hub + 3 intersections, desktop + mobile ----
-const axeTargets = [['home', '/'], ['hub', '/cultures'],
+const axeTargets = [['home', '/'], ['hub', '/communities'],
   ...sample.slice(0, 3).map((p, i) => [`intersection${i + 1}`, p])]
 for (const [name, path] of axeTargets) {
   summary.axe[name] = {}
@@ -92,7 +92,7 @@ for (const [name, path] of axeTargets) {
 await b.close()
 writeFileSync(`${OUT}/audit.json`, JSON.stringify(summary, null, 2))
 const axeTotal = Object.values(summary.axe).reduce((s, v) => s + v.desktop.violations + v.mobile.violations, 0)
-console.log(`\nintersections: ${summary.intersections.ok}/${summary.intersections.total} ok across ${cultures.size} communities x ${cities.size} cities; dead=${summary.intersections.dead.length}`)
+console.log(`\nintersections: ${summary.intersections.ok}/${summary.intersections.total} ok across ${communities.size} communities x ${cities.size} cities; dead=${summary.intersections.dead.length}`)
 console.log(`axe total violations: ${axeTotal}`)
 const fail = summary.intersections.dead.length > 0 || axeTotal > 0 || summary.intersections.ok < 15
 console.log(fail ? 'AUDIT: FAIL' : 'AUDIT: PASS')

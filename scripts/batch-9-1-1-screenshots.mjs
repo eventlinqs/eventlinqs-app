@@ -31,10 +31,10 @@ const VIEWPORTS = [
 const PAIRED = [
   { id: 'home',            path: '/' },
   { id: 'events',          path: '/events' },
-  { id: 'culture-african', path: '/culture/african' },
+  { id: 'community-african', path: '/community/african' },
   { id: 'city-sydney',     path: '/city/sydney' },
   { id: 'legal-terms',     path: '/legal/terms' },
-  { id: 'cultures',        path: '/cultures' },
+  { id: 'communities',        path: '/communities' },
   { id: 'cities',          path: '/cities' },
 ]
 

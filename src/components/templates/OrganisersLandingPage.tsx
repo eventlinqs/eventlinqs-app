@@ -350,7 +350,7 @@ export async function OrganisersLandingPage() {
         </Reveal>
 
         {/* Interactive-affordance law: every tile is a real working link into an
-            existing scene/culture/category page (no dead-end tiles). */}
+            existing scene/community/category page (no dead-end tiles). */}
         <OrganiserCommunityStrip />
 
         <Reveal>

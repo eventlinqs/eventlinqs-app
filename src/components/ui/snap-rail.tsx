@@ -112,7 +112,7 @@ function useScrollState() {
   // mandatory (and even proximity) forces Chrome to re-snap the container every
   // time a lazy card image loads and reflows it, firing browser-induced scroll
   // events that STOP Largest Contentful Paint recording before the hero raster
-  // paints - this was the homepage/culture NO_LCP defect (zero LCP entries while
+  // paints - this was the homepage/community NO_LCP defect (zero LCP entries while
   // event-detail measured fine). Snap is a scroll-interaction affordance, so we
   // arm it only once the user actually grabs the rail (see cancelGlide). Until
   // then snapBaseRef stays 'none' and the hero image anchors LCP normally.

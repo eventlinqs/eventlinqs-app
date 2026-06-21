@@ -9,7 +9,7 @@
  *   SECTION_DEFAULT - py-16 sm:py-24. Default. Also used when the colour changes
  *                     between the previous section and this one.
  *   SECTION_TIGHT   - py-12 sm:py-16. Use when two adjacent sections share the
- *                     same background colour (e.g. Bento → This Week → Cultural
+ *                     same background colour (e.g. Bento → This Week → Community
  *                     Picks, all cream) so they read as continuous content,
  *                     not three disconnected slabs.
  *

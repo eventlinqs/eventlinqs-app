@@ -32,7 +32,7 @@ import {
  *   2. Cinematic hero (above fold) - awaited inline
  *   3. Bento grid row 1 (above fold) - awaited inline
  *   4. This Week rail (below fold) - Suspense-streamed
- *   5. Cultural Picks (below fold) - Suspense-streamed (self-fetching)
+ *   5. Community Picks (below fold) - Suspense-streamed (self-fetching)
  *   6. Live Vibe marquee (below fold) - Suspense-streamed
  *   7. By City rail (below fold) - Suspense-streamed (self-fetching)
  *   8. For Organisers dark split (static, below fold)
@@ -116,7 +116,7 @@ export default async function HomePage() {
   const musicEvents = byCategory('music')
   const foodEvents = byCategory('food-drink')
   const festivalEvents = byCategory('festival')
-  const artsEvents = byCategory('arts-culture')
+  const artsEvents = byCategory('arts-community')
   const nightlifeEvents = byCategory('nightlife')
   const comedyEvents = byCategory('comedy')
   const sportsEvents = byCategory('sports')
@@ -181,7 +181,7 @@ export default async function HomePage() {
          *  (event detail page + checkout) rather than as a sitewide
          *  band. See docs/redesign/batch-11-evidence/trust-signals-2026.md. */}
 
-        {/* The placeholder Cultural Calendar widget and Featured Organisers
+        {/* The placeholder Community Calendar widget and Featured Organisers
          *  row were removed to keep the homepage reading like a premium
          *  ticketing platform (real event rails, not editorial placeholders). */}
 
@@ -232,7 +232,7 @@ export default async function HomePage() {
 
         {/* ── Community moat (HIGH placement, within the first two screens) ──
          *  The differentiating layer no competitor has, surfaced early but never
-         *  dominant. Real /culture/[slug] landings, First Nations first. Self-
+         *  dominant. Real /community/[slug] landings, First Nations first. Self-
          *  fetches the heritage index; renders nothing if empty. Stripped out,
          *  the page still stands as a full general ticketing rival. */}
         <CommunityRail />
@@ -292,7 +292,7 @@ export default async function HomePage() {
             ariaLabel="Arts and theatre events"
             railLabel="Arts and theatre events"
             events={artsEvents}
-            viewAllHref="/events?category=arts-culture"
+            viewAllHref="/events?category=arts-community"
           />
         )}
 
@@ -347,7 +347,7 @@ export default async function HomePage() {
         <SoundsRail />
 
         {/* The ONE community value band: tinted surface, locked tagline, real
-         *  community tiles into /culture/[slug], CTA into the /cultures hub. The
+         *  community tiles into /community/[slug], CTA into the /communities hub. The
          *  lower bookend of the community moat. */}
         <CommunityValueBand />
 

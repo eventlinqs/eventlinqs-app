@@ -91,7 +91,7 @@ const C = {
   music: { name: 'Music', slug: 'music' },
   food: { name: 'Food & Drink', slug: 'food-drink' },
   festival: { name: 'Festival', slug: 'festival' },
-  arts: { name: 'Arts & Culture', slug: 'arts-culture' },
+  arts: { name: 'Arts & Community', slug: 'arts-community' },
   nightlife: { name: 'Nightlife', slug: 'nightlife' },
   comedy: { name: 'Comedy', slug: 'comedy' },
   sports: { name: 'Sports', slug: 'sports' },
@@ -136,7 +136,7 @@ const CATALOGUE = [
   { cat: C.festival, city: 'Melbourne', v: 6, title: 'Lunar New Year Street Festival', summary: 'A community day of food, lion dance, and music', blurb: 'A street festival marking Lunar New Year with lion dance, market stalls, and a continuous program on the main stage.', tiers: ga(0, 6000) },
   { cat: C.festival, city: 'Brisbane', v: 4, title: 'Festival of Ideas Weekend', summary: 'Talks, performance, and installations', blurb: 'A weekend pass to talks, performance, and interactive installations across the QPAC precinct.', tiers: tiered(4500, 8000, 2500) },
 
-  // ── Arts and Culture, including theatre (leads) ──────────────────────
+  // ── Arts and Community, including theatre (leads) ──────────────────────
   { cat: C.arts, city: 'Melbourne', v: 4, title: 'A Midsummer Night Dream on Stage', summary: 'A bold new staging of the classic', blurb: 'A contemporary production of the Shakespeare classic in a single limited season at The Comedy Theatre.', tiers: tiered(5900, 11900) },
   { cat: C.arts, city: 'Sydney', v: 3, title: 'Contemporary Art After Hours', summary: 'Galleries open late with live programming', blurb: 'A late opening of contemporary galleries at Carriageworks with artist talks, performance, and a bar.', tiers: ga(2500) },
   { cat: C.arts, city: 'Brisbane', v: 4, title: 'The Glass Menagerie', summary: 'A touring production of the stage classic', blurb: 'A touring theatre company brings the Tennessee Williams classic to QPAC for a strictly limited run.', tiers: tiered(5500, 10500) },
@@ -341,7 +341,7 @@ async function seedDb(env) {
   // Resolve category ids by slug at runtime (portable across projects).
   const { data: cats } = await s.from('event_categories').select('id,slug')
   const catId = Object.fromEntries((cats ?? []).map(c => [c.slug, c.id]))
-  const fallbackArts = catId['arts-culture']
+  const fallbackArts = catId['arts-community']
 
   const rows = buildRows()
   let inserted = 0, skipped = 0

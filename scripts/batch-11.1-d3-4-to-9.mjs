@@ -6,7 +6,7 @@
 //
 // 3.4 Nav: every link in header + footer + mobile bottom nav clickable
 //          and HTTP 200.
-// 3.5 CTAs: homepage hero CTAs, event card hrefs, city/culture tile
+// 3.5 CTAs: homepage hero CTAs, event card hrefs, city/community tile
 //          hrefs all resolve.
 // 3.6 Auth (option b): /login, /signup, /forgot-password render with
 //          a form and a submit input.
@@ -126,8 +126,8 @@ const browser = await chromium.launch({ headless: true })
     const s = await status(h)
     record('3.5-event-card', h, s === 200, `HTTP ${s}`)
   }
-  // City tile + culture tile hrefs
-  const tileHrefs = await page.$$eval('a[href^="/city/"], a[href^="/culture/"]', els => Array.from(new Set(els.map(a => a.getAttribute('href')))).slice(0, 12))
+  // City tile + community tile hrefs
+  const tileHrefs = await page.$$eval('a[href^="/city/"], a[href^="/community/"]', els => Array.from(new Set(els.map(a => a.getAttribute('href')))).slice(0, 12))
   for (const h of tileHrefs) {
     if (!h) continue
     const s = await status(h)

@@ -61,7 +61,7 @@ export function CategoryLandingPage({ category, liveEvents = [] }: CategoryLandi
   return (
     <PageShell>
       {/* Batch 4: replace dark navy-950 + radial-gold PageHero with a
-          photographic culture hero. Light primary surface picks up
+          photographic community hero. Light primary surface picks up
           immediately below in the next ContentSection. */}
       <PhotographicCategoryHero
         slug={slug}

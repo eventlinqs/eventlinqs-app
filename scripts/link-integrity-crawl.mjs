@@ -5,7 +5,7 @@
 //  platform-wide." (CLAUDE.md)
 //
 // What it does: loads each KEY surface, extracts EVERY internal href the page
-// actually renders (event cards, city/culture/suburb tiles, nav, footer, CTAs),
+// actually renders (event cards, city/community/suburb tiles, nav, footer, CTAs),
 // requests each unique target following redirects, and FAILS (exit 1) on any
 // link whose final response is not HTTP 200. This is the automated proof that a
 // founder clicking any card/tile/link never lands on a 404 or 500.
@@ -23,7 +23,7 @@ const BASE = (process.argv[2] || process.env.BASE ||
 
 // The surfaces a test-driver actually lands on. Each is loaded, and every
 // internal link it renders is harvested and verified. This deliberately spans
-// the buyer journey (home -> browse -> detail) plus city/culture/suburb long
+// the buyer journey (home -> browse -> detail) plus city/community/suburb long
 // tail and the marketing/legal set.
 const SEED_PATHS = [
   '/',                              // homepage (full fixture density: 55 event cards)
@@ -34,12 +34,12 @@ const SEED_PATHS = [
   '/careers',
   '/press',
   '/cities',
-  '/cultures',
-  '/city/sydney',                   // city landing (renders suburb tiles + culture tiles)
+  '/communities',
+  '/city/sydney',                   // city landing (renders suburb tiles + community tiles)
   '/city/melbourne',
-  '/culture/african',               // culture landing (renders culture-city tiles)
+  '/community/african',               // community landing (renders community-city tiles)
   '/city/sydney/inner-west',        // suburb (BLOCKER-2)
-  '/culture/african/sydney',        // culture-city (BLOCKER-2)
+  '/community/african/sydney',        // community-city (BLOCKER-2)
   '/legal/terms',
   '/legal/privacy',
   '/login',

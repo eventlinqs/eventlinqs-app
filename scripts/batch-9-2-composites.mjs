@@ -1,8 +1,8 @@
 // Batch 9.2 - 3 side-by-side composites at 1440 viewport.
 //
 // 1. home-1440.png       : 9.1.1 BEFORE (top + scrolled) over 9.2 AFTER
-// 2. cultures-1440.png   : 9.1.1 BEFORE chip vs 9.2 AFTER chip (chip-area zoom)
-// 3. bright-hero-1440.png: 9.1.1 gradient BEFORE vs 9.2 gradient AFTER on /culture/african
+// 2. communities-1440.png   : 9.1.1 BEFORE chip vs 9.2 AFTER chip (chip-area zoom)
+// 3. bright-hero-1440.png: 9.1.1 gradient BEFORE vs 9.2 gradient AFTER on /community/african
 import sharp from 'sharp'
 import { existsSync, mkdirSync, statSync } from 'node:fs'
 
@@ -71,20 +71,20 @@ async function buildComposite(name, cells) {
   ])
 }
 
-// Composite 2: cultures chip contrast - 1440 scrolled (where the cards are visible)
+// Composite 2: communities chip contrast - 1440 scrolled (where the cards are visible)
 {
-  const before = await loadCell(`${BEFORE_911}/cultures-1440-scrolled.png`)
-  const after  = await loadCell(`${AFTER_92}/cultures-1440-scrolled.png`)
-  await buildComposite('cultures-1440-chips.png', [
+  const before = await loadCell(`${BEFORE_911}/communities-1440-scrolled.png`)
+  const after  = await loadCell(`${AFTER_92}/communities-1440-scrolled.png`)
+  await buildComposite('communities-1440-chips.png', [
     { label: '9.1.1 BEFORE - chip 3.8:1 worst case', cell: before },
     { label: '9.2 AFTER - chip 9.4:1 frosted-glass',  cell: after },
   ])
 }
 
-// Composite 3: bright-hero gradient strengthen on /culture/african
+// Composite 3: bright-hero gradient strengthen on /community/african
 {
-  const before = await loadCell(`${BEFORE_911}/culture-african-1440-top.png`)
-  const after  = await loadCell(`${AFTER_92}/culture-african-1440-top.png`)
+  const before = await loadCell(`${BEFORE_911}/community-african-1440-top.png`)
+  const after  = await loadCell(`${AFTER_92}/community-african-1440-top.png`)
   await buildComposite('bright-hero-1440.png', [
     { label: '9.1.1 BEFORE - gradient 0.45 mid-stop', cell: before },
     { label: '9.2 AFTER - gradient 0.65 mid-stop',     cell: after },

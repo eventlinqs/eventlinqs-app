@@ -11,8 +11,8 @@ import { FooterAccordion } from '@/components/layout/footer-accordion'
  * Desktop (768px+): horizontal brand strip on top, 4-col link grid,
  * compact sub-footer.
  *
- * Link sets simplified to founder spec: Discover (6), Cultures (top 6
- * marketed-rhythm + All cultures), For organisers (4), Company (4).
+ * Link sets simplified to founder spec: Discover (6), Communities (top 6
+ * marketed-rhythm + All communities), For organisers (4), Company (4).
  *
  * Background: ink-950. Sentence-case heads. Australian English. No
  * em-dashes, no exclamation marks.
@@ -24,10 +24,10 @@ import { FooterAccordion } from '@/components/layout/footer-accordion'
 // name (e.g. `?free=1`, `?when=this-week`) will fail that test.
 export const DISCOVER = [
   { label: 'Browse all events', href: '/events' },
-  // "By city" and "By culture" go to the dedicated index pages, not to
+  // "By city" and "By community" go to the dedicated index pages, not to
   // an /events view mode - the parser only recognises view=grid|map.
   { label: 'By city',           href: '/cities' },
-  { label: 'By community',        href: '/cultures' },
+  { label: 'By community',        href: '/communities' },
   // Preset values come from PRESETS in search-params.ts:
   //   7d = next 7 days, weekend = upcoming weekend, free = preset=free.
   { label: 'This week',         href: '/events?preset=7d' },
@@ -35,14 +35,14 @@ export const DISCOVER = [
   { label: 'Free events',       href: '/events?preset=free' },
 ]
 
-export const CULTURES = [
-  { label: 'First Nations',  href: '/culture/aboriginal-torres-strait-islander' },
-  { label: 'African',        href: '/culture/african' },
-  { label: 'Caribbean',      href: '/culture/caribbean' },
-  { label: 'Indian',         href: '/culture/indian' },
-  { label: 'Latin American', href: '/culture/latin-american' },
-  { label: 'Italian',        href: '/culture/italian' },
-  { label: 'All communities',   href: '/cultures' },
+export const COMMUNITIES = [
+  { label: 'First Nations',  href: '/community/aboriginal-torres-strait-islander' },
+  { label: 'African',        href: '/community/african' },
+  { label: 'Caribbean',      href: '/community/caribbean' },
+  { label: 'Indian',         href: '/community/indian' },
+  { label: 'Latin American', href: '/community/latin-american' },
+  { label: 'Italian',        href: '/community/italian' },
+  { label: 'All communities',   href: '/communities' },
 ]
 
 export const FOR_ORGANISERS = [
@@ -197,7 +197,7 @@ export function SiteFooter() {
 
           <div className="grid grid-cols-4 gap-x-8 gap-y-6 pt-8">
             <DesktopColumn title="Discover"       links={DISCOVER} />
-            <DesktopColumn title="Communities"    links={CULTURES} />
+            <DesktopColumn title="Communities"    links={COMMUNITIES} />
             <DesktopColumn title="For organisers" links={FOR_ORGANISERS} />
             <DesktopColumn title="Company"        links={COMPANY} />
           </div>
@@ -216,7 +216,7 @@ export function SiteFooter() {
               Stacked blocks move only the content below an expanded section. */}
           <div className="pt-2">
             <FooterAccordion title="Discover"       links={DISCOVER} />
-            <FooterAccordion title="Communities"    links={CULTURES} />
+            <FooterAccordion title="Communities"    links={COMMUNITIES} />
             <FooterAccordion title="For organisers" links={FOR_ORGANISERS} />
             <FooterAccordion title="Company"        links={COMPANY} />
           </div>
@@ -246,7 +246,7 @@ export function SiteFooter() {
             <p className="max-w-3xl text-xs leading-relaxed text-white/70 sm:text-sm">
               EventLinqs acknowledges the Traditional Custodians of Country
               throughout Australia and recognises their continuing connection
-              to land, waters, and culture. We pay our respects to Elders
+              to land, waters, and community. We pay our respects to Elders
               past and present.
             </p>
           </div>

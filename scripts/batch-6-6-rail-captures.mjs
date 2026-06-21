@@ -1,6 +1,6 @@
 // Batch 6.6 - rail-arrow-position verification + key page recaptures.
 // 1) Section close-up captures showing arrows at top-right per rail type.
-// 2) Recapture city/culture/home key pages so the new layout is baseline.
+// 2) Recapture city/community/home key pages so the new layout is baseline.
 import { chromium } from 'playwright'
 import { existsSync, mkdirSync } from 'node:fs'
 
@@ -65,18 +65,18 @@ console.log('## City rails - Sydney')
 await capture(`${BASE}/city/sydney`, [
   ['This weekend', 'this-weekend-rail'],
   ['This week', 'this-week-rail'],
-  ['By culture', 'by-culture-rail'],
+  ['By community', 'by-community-rail'],
   ['By format', 'event-types-rail'],
   ['Popular this month', 'popular-rail'],
   ['By suburb', 'by-suburb-rail'],
   ['Around the country', 'related-cities-rail'],
 ], 'city-sydney')
 
-// 2) Culture page rails close-ups (African 1440)
-console.log('## Culture rails - African')
-await capture(`${BASE}/culture/african`, [
+// 2) Community page rails close-ups (African 1440)
+console.log('## Community rails - African')
+await capture(`${BASE}/community/african`, [
   ['Where it lives', 'cities-rail'],
-], 'culture-african')
+], 'community-african')
 
 // 3) Suburb page rails (Sydney/Inner West 1440)
 console.log('## Suburb rails - Sydney/Inner West')
@@ -96,7 +96,7 @@ await capture(`${BASE}/`, [
 const fullPages = [
   ['/city/sydney',           'city-sydney'],
   ['/city/melbourne',        'city-melbourne'],
-  ['/culture/african',       'culture-african'],
+  ['/community/african',       'community-african'],
   ['/',                      'home'],
 ]
 console.log('## Full-page recaptures')

@@ -5,7 +5,7 @@ import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 interface Props {
   /** Organiser display name. */
   name: string
-  /** Optional cover image URL (Pexels-derived from primary culture if not set). */
+  /** Optional cover image URL (Pexels-derived from primary community if not set). */
   coverImage: string | null
   /** Organisation logo URL or null - falls back to brand initials. */
   logoUrl: string | null
@@ -21,7 +21,7 @@ interface Props {
  * OrganiserProfileHero - cover banner + avatar + name + subtitle + stats
  * for /organisers/[handle] (Batch 8.2).
  *
- * Pattern matches the Batch 6 city / culture hero - photographic banner
+ * Pattern matches the Batch 6 city / community hero - photographic banner
  * with dark gradient, anchored content. Logo sits centred at the top of
  * the content stack and slightly overlaps the banner so the page reads
  * as profile-first.

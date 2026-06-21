@@ -22,7 +22,7 @@ test.describe(`homepage (${phase})`, () => {
     await page.waitForTimeout(2500)
 
     // Removed placeholder rails are gone.
-    await expect(page.getByText('Cultural Calendar', { exact: false })).toHaveCount(0)
+    await expect(page.getByText('Community Calendar', { exact: false })).toHaveCount(0)
     await expect(page.getByText('Verified organisers', { exact: false })).toHaveCount(0)
     await expect(page.getByText('Placeholder content for founder', { exact: false })).toHaveCount(0)
 

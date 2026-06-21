@@ -18,7 +18,7 @@ import { OrganiserEventTypesBreakdown } from '@/components/features/organisers/o
 import { OrganiserContactPanel } from '@/components/features/organisers/organiser-contact-panel'
 import { OrganiserMobileStickyBar } from '@/components/features/organisers/organiser-mobile-sticky-bar'
 import { getCityPhoto } from '@/lib/images/city-photo'
-import { citySlugify } from '@/components/features/culture/cities-rail'
+import { citySlugify } from '@/components/features/community/cities-rail'
 import { venueSlugify } from '@/lib/venues/resolver'
 import type { Organisation } from '@/types/database'
 
@@ -135,12 +135,12 @@ export default async function OrganiserProfilePage({ params }: Props) {
     .sort((a, b) => b.count - a.count)
     .slice(0, 5)
 
-  // Subtitle composition: prefer "[primary culture] events in [primary city]"
+  // Subtitle composition: prefer "[primary community] events in [primary city]"
   // when the data supports it, fall back to plain "[Organiser] on EventLinqs".
-  const primaryCulture = breakdown[0]?.label ?? null
+  const primaryCommunity = breakdown[0]?.label ?? null
   const primaryCity = cities[0] ?? null
-  const subtitle = primaryCulture && primaryCity
-    ? `Throwing ${primaryCulture.toLowerCase()} events in ${primaryCity}.`
+  const subtitle = primaryCommunity && primaryCity
+    ? `Throwing ${primaryCommunity.toLowerCase()} events in ${primaryCity}.`
     : `${organisation.name} on EventLinqs.`
 
   // Cities they organise in - photographic tiles (Pexels-backed).

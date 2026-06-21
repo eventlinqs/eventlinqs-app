@@ -50,15 +50,15 @@ async function primeLazy(page) {
 for (const vp of VIEWPORTS) {
   const page = await ctx.newPage()
   await page.setViewportSize({ width: vp.width, height: vp.height })
-  for (const [culture, city] of TOP_10) {
-    const url = `${BASE}/culture/${culture}/${city}`
-    console.log(`[${vp.name}] ${culture}/${city}`)
+  for (const [community, city] of TOP_10) {
+    const url = `${BASE}/community/${community}/${city}`
+    console.log(`[${vp.name}] ${community}/${city}`)
     try {
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 90_000 })
       await page.waitForLoadState('networkidle', { timeout: 25_000 }).catch(() => {})
       await primeLazy(page)
       await page.screenshot({
-        path: `${OUT}/${culture}-${city}-${vp.name}.png`,
+        path: `${OUT}/${community}-${city}-${vp.name}.png`,
         fullPage: true,
       })
     } catch (e) {

@@ -6,9 +6,9 @@ import { unstable_cache } from 'next/cache'
  * If PEXELS_API_KEY is missing or the request fails, every caller
  * receives the EventLinqs-branded fallback SVG. No throws, no broken images.
  *
- * Query strategy (rebuilt batch 3 - cultural relevance):
- *   - Each culture maps to a multi-word DESCRIPTIVE query that biases
- *     Pexels toward concrete cultural visual cues (instruments, dress,
+ * Query strategy (rebuilt batch 3 - community relevance):
+ *   - Each community maps to a multi-word DESCRIPTIVE query that biases
+ *     Pexels toward concrete community visual cues (instruments, dress,
  *     ritual objects, settings) rather than abstract genre names. The
  *     bare slug "owambe" returns generic urban Africa shots; the phrase
  *     "nigerian wedding party celebration colorful attire" returns
@@ -21,10 +21,10 @@ import { unstable_cache } from 'next/cache'
 const PEXELS_API_KEY = process.env.PEXELS_API_KEY
 const PEXELS_API = 'https://api.pexels.com/v1'
 
-// 18 hero cultures + Tier-2 categories. Queries are descriptive not generic.
-// Order roughly mirrors the canonical cultures list in CLAUDE.md.
+// 18 hero communities + Tier-2 categories. Queries are descriptive not generic.
+// Order roughly mirrors the canonical communities list in CLAUDE.md.
 const CATEGORY_QUERIES: Record<string, string> = {
-  // ---- 18 hero cultures ----------------------------------------------
+  // ---- 18 hero communities ----------------------------------------------
   'afrobeats':                 'african music concert dancing crowd vibrant',
   'caribbean':                 'caribbean carnival dance steel drum tropical',
   'bollywood':                 'indian wedding dance saree colorful celebration',
@@ -47,14 +47,14 @@ const CATEGORY_QUERIES: Record<string, string> = {
 
   // ---- additional hero / Tier-2 slugs already in routes ------------
   'owambe':                    'nigerian wedding party celebration colorful attire',
-  'heritage-and-independence': 'cultural festival flags parade traditional dress',
+  'heritage-and-independence': 'community festival flags parade traditional dress',
   'networking':                'business networking conference handshake professionals',
   'business-networking':       'business networking conference handshake professionals',
 
-  // ---- general categories (when no culture is set) ------------------
+  // ---- general categories (when no community is set) ------------------
   'music':                     'live band concert colorful stage lights vibrant crowd',
   'sports':                    'stadium crowd daytime match fans colorful bright',
-  'arts-culture':              'art gallery bright modern exhibition people daytime',
+  'arts-community':              'art gallery bright modern exhibition people daytime',
   'food-drink':                'food market colorful fresh outdoor daytime tasting',
   'family':                    'family fun outdoor sunny park children daytime bright',
   'fashion':                   'fashion runway show models lights',

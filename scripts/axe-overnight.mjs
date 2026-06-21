@@ -39,8 +39,8 @@ try {
 const PAGES = [
   '/', '/events', '/organisers', '/pricing', '/help', '/about', '/careers',
   '/press', '/legal/terms', '/legal/privacy', '/legal/refunds',
-  '/city/sydney', '/city/sydney/inner-west', '/culture/african',
-  '/cultures', '/cities', '/login', '/signup',
+  '/city/sydney', '/city/sydney/inner-west', '/community/african',
+  '/communities', '/cities', '/login', '/signup',
 ]
 if (eventDetail) PAGES.push(eventDetail)
 

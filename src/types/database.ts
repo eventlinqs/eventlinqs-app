@@ -271,7 +271,7 @@ export type Database = {
         }
         Relationships: []
       }
-      cultures: {
+      communities: {
         Row: {
           created_at: string
           display_name: string
@@ -661,7 +661,7 @@ export type Database = {
           cover_image_url: string | null
           created_at: string
           created_by: string
-          culture_primary: string | null
+          community_primary: string | null
           description: string | null
           end_date: string
           event_type: Database["public"]["Enums"]["event_type"]
@@ -690,7 +690,7 @@ export type Database = {
           squad_timeout_hours: number
           start_date: string
           status: Database["public"]["Enums"]["event_status"]
-          sub_culture: string | null
+          sub_community: string | null
           subgenre_slug: string | null
           suburb_primary: string | null
           summary: string | null
@@ -720,7 +720,7 @@ export type Database = {
           cover_image_url?: string | null
           created_at?: string
           created_by: string
-          culture_primary?: string | null
+          community_primary?: string | null
           description?: string | null
           end_date: string
           event_type?: Database["public"]["Enums"]["event_type"]
@@ -749,7 +749,7 @@ export type Database = {
           squad_timeout_hours?: number
           start_date: string
           status?: Database["public"]["Enums"]["event_status"]
-          sub_culture?: string | null
+          sub_community?: string | null
           subgenre_slug?: string | null
           suburb_primary?: string | null
           summary?: string | null
@@ -779,7 +779,7 @@ export type Database = {
           cover_image_url?: string | null
           created_at?: string
           created_by?: string
-          culture_primary?: string | null
+          community_primary?: string | null
           description?: string | null
           end_date?: string
           event_type?: Database["public"]["Enums"]["event_type"]
@@ -808,7 +808,7 @@ export type Database = {
           squad_timeout_hours?: number
           start_date?: string
           status?: Database["public"]["Enums"]["event_status"]
-          sub_culture?: string | null
+          sub_community?: string | null
           subgenre_slug?: string | null
           suburb_primary?: string | null
           summary?: string | null
@@ -854,10 +854,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "events_culture_primary_fkey"
-            columns: ["culture_primary"]
+            foreignKeyName: "events_community_primary_fkey"
+            columns: ["community_primary"]
             isOneToOne: false
-            referencedRelation: "cultures"
+            referencedRelation: "communities"
             referencedColumns: ["slug"]
           },
           {
@@ -3068,7 +3068,7 @@ export type Database = {
           cover_image_url: string | null
           created_at: string
           created_by: string
-          culture_primary: string | null
+          community_primary: string | null
           description: string | null
           end_date: string
           event_type: Database["public"]["Enums"]["event_type"]
@@ -3097,7 +3097,7 @@ export type Database = {
           squad_timeout_hours: number
           start_date: string
           status: Database["public"]["Enums"]["event_status"]
-          sub_culture: string | null
+          sub_community: string | null
           subgenre_slug: string | null
           suburb_primary: string | null
           summary: string | null

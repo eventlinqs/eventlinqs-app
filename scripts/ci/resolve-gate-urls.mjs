@@ -30,7 +30,7 @@ const STATIC_PATHS = [
   '/',
   '/events',
   '/events/browse/melbourne',
-  '/culture/african',
+  '/community/african',
   '/organisers',
   '/pricing',
   '/help',
@@ -74,8 +74,8 @@ async function discoverEventDetailPath() {
 
 const detailPath = (await discoverEventDetailPath()) || FALLBACK_DETAIL_PATH
 
-// Insert the discovered detail page right after the listing/culture surfaces,
-// preserving the original gate ordering (detail came after /culture/african).
+// Insert the discovered detail page right after the listing/community surfaces,
+// preserving the original gate ordering (detail came after /community/african).
 const paths = [...STATIC_PATHS]
 paths.splice(4, 0, detailPath)
 

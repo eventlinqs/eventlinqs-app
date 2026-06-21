@@ -13,7 +13,7 @@ interface Props {
 /**
  * EventShareBar - share controls for /events/[slug] (Batch 8.1).
  *
- * WhatsApp-first ordering per the Batch 8.1 brief. Cultural events
+ * WhatsApp-first ordering per the Batch 8.1 brief. Community events
  * spread through WhatsApp share more than any other channel in the
  * EventLinqs target communities. The CTA labels stay short so the
  * row fits on a single line at 375 mobile.

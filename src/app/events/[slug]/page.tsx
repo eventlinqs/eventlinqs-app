@@ -180,7 +180,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   // SEO format per Batch 8.1 brief: "[Event Name] - [Date] - [Venue] - EventLinqs".
-  // Description: city + culture/category + date packed into 155 chars for click-through.
+  // Description: city + community/category + date packed into 155 chars for click-through.
   const dateLabel = formatShortDate(event.start_date, event.timezone)
   const venueLabel = [event.venue_name, event.venue_city].filter(Boolean).join(', ')
   const titleParts = [event.title, dateLabel, venueLabel || null].filter(Boolean) as string[]
@@ -274,7 +274,7 @@ export default async function EventDetailPage({ params }: Props) {
   // threw a hard 500 ("Page changed from static to dynamic at runtime, reason:
   // cookies") on EVERY event - the flagship surface was down. `connection()`
   // declares the dependency on the request up front so Next marks the route
-  // dynamic the SAME natural way the sibling /city + /culture routes already
+  // dynamic the SAME natural way the sibling /city + /community routes already
   // are (NOT `dynamic = 'force-dynamic'`, which renders notFound() as a soft
   // 200 instead of a real 404). It never prerenders at build (pool-safe) and is
   // still edge-cached via the CDN-Cache-Control header in next.config - the
@@ -743,7 +743,7 @@ export default async function EventDetailPage({ params }: Props) {
                   )
                 })()}
 
-                {/* Share - WhatsApp first per Batch 8.1 brief (cultural events
+                {/* Share - WhatsApp first per Batch 8.1 brief (community events
                  *  spread through WhatsApp more than any other channel in the
                  *  EventLinqs target communities). */}
                 <div className="mt-8">

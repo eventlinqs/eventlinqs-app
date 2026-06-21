@@ -9,11 +9,11 @@ import {
   isFaithSlug,
   buildFaithTagOrFilter,
 } from '@/lib/faiths/data'
-import { getCulture } from '@/lib/cultures/data'
-import { getCultureHeroPhoto } from '@/lib/images/culture-photo'
+import { getCommunity } from '@/lib/communities/data'
+import { getCommunityHeroPhoto } from '@/lib/images/community-photo'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
-import { PhotographicCultureHero } from '@/components/templates/PhotographicCultureHero'
+import { PhotographicCommunityHero } from '@/components/templates/PhotographicCommunityHero'
 import { EventCard, type EventCardData } from '@/components/features/events/event-card'
 
 // ISR: 5-minute revalidate matches the rest of the public surface.
@@ -75,15 +75,15 @@ export default async function FaithPage({ params }: Props) {
   }
 
   // Related heritages this faith commonly intersects (cross-link rail).
-  const relatedHeritages = faith.relatedCultures
-    .map(slug => getCulture(slug))
+  const relatedHeritages = faith.relatedCommunities
+    .map(slug => getCommunity(slug))
     .filter((c): c is NonNullable<typeof c> => c !== null)
     .map(c => ({ slug: c.slug, displayName: c.displayName }))
 
   // Hero image: best-effort via the strongest related heritage. The
   // hero renders a branded fallback when null (imagery polish: a
   // dedicated faith photo map is a follow-up).
-  const heroImage = await getCultureHeroPhoto(faith.relatedCultures[0] ?? 'african')
+  const heroImage = await getCommunityHeroPhoto(faith.relatedCommunities[0] ?? 'african')
 
   const collectionLd = {
     '@context': 'https://schema.org',
@@ -108,7 +108,7 @@ export default async function FaithPage({ params }: Props) {
     <div className="flex min-h-screen flex-col bg-canvas">
       <SiteHeader />
       <main className="flex-1">
-        <PhotographicCultureHero
+        <PhotographicCommunityHero
           eyebrow="Faith community"
           title={faith.heroHeadline}
           subtitle={faith.heroBody}
@@ -130,7 +130,7 @@ export default async function FaithPage({ params }: Props) {
           </div>
         </section>
 
-        {/* Cultural moments */}
+        {/* Community moments */}
         <section className="mx-auto max-w-7xl px-4 pb-4 sm:px-6 lg:px-8">
           <h2 className="mb-6 font-display text-2xl font-extrabold tracking-tight text-ink-900 sm:text-3xl">
             Major moments
@@ -201,7 +201,7 @@ export default async function FaithPage({ params }: Props) {
               {relatedHeritages.map(h => (
                 <Link
                   key={h.slug}
-                  href={`/culture/${h.slug}`}
+                  href={`/community/${h.slug}`}
                   className="rounded-full border border-ink-200 bg-surface-0 px-4 py-2 text-sm font-medium text-ink-800 hover:border-[var(--brand-accent)]"
                 >
                   {h.displayName}

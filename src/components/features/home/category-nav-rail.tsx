@@ -1,7 +1,7 @@
 import { SnapRail } from '@/components/ui/snap-rail'
 import { CategoryTile } from '@/components/features/home/cards'
 import { getCategoryPhoto } from '@/lib/images/category-photo'
-import { getCultureHeroPhoto } from '@/lib/images/culture-photo'
+import { getCommunityHeroPhoto } from '@/lib/images/community-photo'
 import { getSpineCategoryTile } from '@/lib/images/spine'
 import { CONTAINER, SECTION_RAIL } from '@/lib/ui/spacing'
 import { RHYTHM_GAP } from '@/lib/ui/rhythm'
@@ -26,7 +26,7 @@ const CATEGORIES: { slug: string; name: string }[] = [
   { slug: 'comedy', name: 'Comedy' },
   { slug: 'food-drink', name: 'Food and drink' },
   { slug: 'festival', name: 'Festivals' },
-  { slug: 'arts-culture', name: 'Arts and theatre' },
+  { slug: 'arts-community', name: 'Arts and theatre' },
   { slug: 'nightlife', name: 'Nightlife' },
   { slug: 'sports', name: 'Sport' },
   { slug: 'family', name: 'Family' },
@@ -64,7 +64,7 @@ export async function CategoryNavRail({ counts }: { counts: Record<string, numbe
     ),
     // Doorway tile image - a representative community photo (branded fallback in
     // CategoryTileImage if null), so the doorway is never a broken image.
-    getCultureHeroPhoto('african'),
+    getCommunityHeroPhoto('african'),
   ])
 
   return (
@@ -79,11 +79,11 @@ export async function CategoryNavRail({ counts }: { counts: Record<string, numbe
           cardGap={RHYTHM_GAP}
         >
           {/* Communities doorway - leads the rail, links to the resolving
-              /cultures hub (the moat entry from the very first rail). */}
+              /communities hub (the moat entry from the very first rail). */}
           <div className="w-[220px] shrink-0 snap-start sm:w-[260px]">
             <CategoryTile
               category={{
-                href: '/cultures',
+                href: '/communities',
                 imageSrc: communityDoorImage ?? '',
                 alt: 'Browse events by community',
                 name: 'Communities',

@@ -40,7 +40,7 @@ function formatFromPrice(tiers: FeaturedHeroEvent['ticket_tiers']): string | nul
   return `From ${cheapest.currency ?? 'AUD'} ${formatted}`
 }
 
-const CULTURE_PILLS = [
+const COMMUNITY_PILLS = [
   'Afrobeats',
   'Caribbean',
   'Bollywood',
@@ -148,12 +148,12 @@ export async function HomeHero({ featuredEvent }: Props) {
             </div>
 
             <ul className="mt-10 flex flex-wrap gap-2">
-              {CULTURE_PILLS.map(culture => (
+              {COMMUNITY_PILLS.map(community => (
                 <li
-                  key={culture}
+                  key={community}
                   className="inline-flex h-7 items-center rounded-full border border-[var(--surface-2)] bg-[var(--surface-1)] px-3 text-xs font-medium text-[var(--text-secondary)]"
                 >
-                  {culture}
+                  {community}
                 </li>
               ))}
               <li className="inline-flex h-7 items-center text-xs font-medium text-[var(--text-secondary)]">
