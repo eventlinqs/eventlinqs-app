@@ -322,7 +322,12 @@ export function EventForm({
   const [imageUploading, setImageUploading] = useState(false)
   const [imageDragOver, setImageDragOver] = useState(false)
   const [aspectWarning, setAspectWarning] = useState<string | null>(null)
+  // Instant local preview (object URL) so the picked image shows IMMEDIATELY,
+  // before/while the upload round-trip completes. Revoked on replace/remove/unmount.
+  const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null)
+  const localPreviewRef = useRef<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  useEffect(() => () => { if (localPreviewRef.current) URL.revokeObjectURL(localPreviewRef.current) }, [])
 
   const set = useCallback(<K extends keyof FormData>(key: K, value: FormData[K]) => {
     setFormData(d => ({ ...d, [key]: value }))
@@ -431,18 +436,25 @@ export function EventForm({
       return
     }
     setAspectWarning(null)
+    // Show the picked image instantly: a local object URL renders immediately and
+    // never depends on the upload round-trip or the remote optimiser. The same URL
+    // is reused for the dimension measurement below, so we create only one.
+    const objectUrl = URL.createObjectURL(file)
+    if (localPreviewRef.current) URL.revokeObjectURL(localPreviewRef.current)
+    localPreviewRef.current = objectUrl
+    setLocalPreviewUrl(objectUrl)
     try {
       const dims = await new Promise<{ w: number; h: number }>((resolve, reject) => {
         const img = new window.Image()
         img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight })
         img.onerror = () => reject(new Error('image-load'))
-        img.src = URL.createObjectURL(file)
+        img.src = objectUrl
       })
       const ratio = dims.w / dims.h
       const target = 16 / 9
       if (Math.abs(ratio - target) / target > 0.1) {
         setAspectWarning(
-          `Heads up: your image is ${dims.w}×${dims.h}. Cover images look best at 16:9 (e.g. 1600×900). Yours will be letterboxed to fit.`
+          `Your image is ${dims.w}×${dims.h}. The full image is shown in the preview; cover images look best at 16:9 (e.g. 1600×900).`
         )
       }
     } catch {
@@ -458,6 +470,9 @@ export function EventForm({
       set('cover_image_url', url)
     } else {
       setError('Image upload failed. Please try again.')
+      // Upload failed: drop the local preview so the dropzone returns.
+      if (localPreviewRef.current) { URL.revokeObjectURL(localPreviewRef.current); localPreviewRef.current = null }
+      setLocalPreviewUrl(null)
     }
   }
 
@@ -768,15 +783,25 @@ export function EventForm({
         <label className="block text-sm font-medium text-ink-600 mb-2">Cover Image</label>
         <p className="text-xs text-ink-400 mb-4">Max 10MB. Accepted formats: JPEG, PNG, WebP.</p>
 
-        {formData.cover_image_url ? (
+        {localPreviewUrl || formData.cover_image_url ? (
           <div className="relative">
             <div className="relative aspect-video w-full overflow-hidden rounded-lg border border-ink-200 bg-ink-100">
-              <Image
-                src={formData.cover_image_url}
-                alt="Cover image preview"
-                fill
-                className="object-contain"
-              />
+              {localPreviewUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- transient local blob preview; next/image cannot optimise a blob: URL
+                <img src={localPreviewUrl} alt="Cover image preview" className="absolute inset-0 h-full w-full object-contain" />
+              ) : (
+                <Image
+                  src={formData.cover_image_url}
+                  alt="Cover image preview"
+                  fill
+                  className="object-contain"
+                />
+              )}
+              {imageUploading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-ink-900/30">
+                  <span className="rounded-md bg-ink-900/80 px-3 py-1 text-xs font-medium text-white">Uploading…</span>
+                </div>
+              )}
             </div>
             {aspectWarning && (
               <div className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
@@ -788,6 +813,8 @@ export function EventForm({
               onClick={() => {
                 set('cover_image_url', '')
                 setAspectWarning(null)
+                if (localPreviewRef.current) { URL.revokeObjectURL(localPreviewRef.current); localPreviewRef.current = null }
+                setLocalPreviewUrl(null)
               }}
               className="mt-2 text-sm text-red-600 hover:text-red-800"
             >
