@@ -55,7 +55,7 @@ export const helpTopics: HelpTopic[] = [
       },
       {
         q: 'How do I list an event on EventLinqs?',
-        a: "Sign up as an organiser in minutes. Go to 'For Organisers' at the top of any page and click 'Start selling tickets.' Create your account, build your first event, and submit it for publishing. Every event is reviewed against our content and safety policy within 24 to 48 hours, and most are approved the same business day. No approval gate on organisers. Only on events.",
+        a: "Sign up as an organiser in minutes. Go to 'Event Organisers' at the top of any page and click 'Start selling tickets.' Create your account, build your first event, and submit it for publishing. Every event is reviewed against our content and safety policy within 24 to 48 hours, and most are approved the same business day. No approval gate on organisers. Only on events.",
       },
       {
         q: 'Is it free to create an account?',

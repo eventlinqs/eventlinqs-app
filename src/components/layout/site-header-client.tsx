@@ -25,11 +25,17 @@ import type { PickerCityGroups } from '@/lib/locations/picker-cities'
  */
 export const EL_CITY_UPDATED_EVENT = 'el_city_updated'
 
+// Launch-blocker nav (2026-06-21): About Us added first (immediately after the
+// EVENTLINQS logo); "For Organisers" renamed to "Event Organisers"; the
+// "Communities" tab removed - community discovery lives in the homepage rail and
+// the Communities doorway tile, and events now carry community tags set in event
+// creation. Labels stay Title Case to match the approved header design (no design
+// change). See CLAUDE.md "Launch sequence and parked workstreams".
 const NAV_LINKS = [
-  { label: 'Browse Events',  href: '/events' },
-  { label: 'Communities',       href: '/cultures' },
-  { label: 'Cities',         href: '/cities' },
-  { label: 'For Organisers', href: '/organisers' },
+  { label: 'About Us',         href: '/about' },
+  { label: 'Browse Events',    href: '/events' },
+  { label: 'Cities',           href: '/cities' },
+  { label: 'Event Organisers', href: '/organisers' },
 ]
 
 interface SiteHeaderClientProps {
