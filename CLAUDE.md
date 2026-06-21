@@ -607,8 +607,62 @@ SURPASS/PARITY/BELOW verdicts.
   Follow `docs/MEDIA-ARCHITECTURE.md`.
 - No new UI libraries without founder approval.
 
+## Launch sequence and parked workstreams (locked 2026-06-21)
+
+The authoritative plan is `docs/EventLinqs-Launch-Plan-Handoff.md` (Lawal approved,
+21 June 2026); this section is its binding summary. The repo is the source of
+truth, not memory.
+
+**The three branches and the integration.** `feat/home-rebuild` is the CONFIRMED
+final design (approved; do not change it, only make it work). `feat/funds-holding-
+payments` is the proven funds-holding re-platform (EventLinqs is the merchant of
+record, holds funds, and pays the organiser after the event, with reserve, refund
+and dispute proven across 16 of 16 Stripe TEST surfaces; five TEST-only migrations
+20260621000001 to 000005). The home-rebuild design is already contained in
+`release/launch-line` (verified: zero design-file changes on top of it), and the
+payments branch fast-forwards onto it with no conflicts. The unified launch line
+is `release/launch-line`. Never merge to `main` or production without sign-off.
+
+**Launch-blocker changes (must ship on the unified line, each verified A to Z).**
+- About Us in the HEADER, after the EVENTLINQS logo (the footer About Us stays).
+- Rename the header "For Organisers" to "EVENT ORGANISERS".
+- Fix the image-upload defect: the image must appear IMMEDIATELY on upload (not
+  only after publish) and must not falsely crop; verify the full organiser flow A
+  to Z (sign-up, create event, upload photos, set up, payment/payout, go live).
+- Community into event creation: REMOVE the header "Communities" tab; organisers
+  tag an event to one, several, or all communities using the locked Scenes V2
+  taxonomy (Sounds + Communities families); every community-discovery surface
+  reads from those tags. Do not change the community pages' look, only what feeds
+  them.
+- Integrated admin access from a single login (role-based): a logged-in user with
+  the founder/admin role sees an "Admin" entry in the in-platform account menu (no
+  separate URL to remember); users without the role never see it and cannot reach
+  it. The menu item is convenience ONLY: every admin route and privileged action
+  stays enforced server-side by role check PLUS 2FA, never weakened. Build the role
+  system so scoped staff roles can be granted later WITHOUT a rebuild (founder =
+  full). Inherit the approved header/account-menu design exactly.
+- Logo finalise and final polish. No design changes.
+
+**PARKED, substance first (footer only, future).** The global community-support
+statement is built ONLY after the real donation/partnership programme exists (an
+audited model like Humanitix's). A public claim that cannot be substantiated risks
+Australian consumer-law scrutiny. Understated, never bold, never in the design.
+
+**PARKED, the NEXT major workstream (post-launch, do not forget).** The agentic
+growth engine and AI operating system: lead-generation funnels for organisers and
+event-goers, super-agent sales/marketing automation, an organic/SEO plus web-push
+plus email lifecycle engine (ties to `docs/MOAT-DEMAND-ENGINE-PLAN.md`), and a
+Higgsfield-based EventLinqs creative-skill set (navy/gold, hook framing) for hero
+images, launch videos, and social/YouTube content. Built AFTER launch, on top of a
+live, earning platform with real traffic and data, never before: building
+automations to capture a market for a platform that is not yet live and earning is
+the wrong order. Strong yes to the vision, firm not-yet on timing.
+
 ## Authority docs
 
+- `docs/EventLinqs-Launch-Plan-Handoff.md`: the authoritative launch plan and
+  carry-forward (Lawal approved 2026-06-21). The Launch sequence section above is
+  its binding summary.
 - `docs/EventLinqs_Scope_v5.md`: scope. Build nothing that contradicts it.
 - `docs/design/competitor-page-specs.md`: the per-page bar for the benchmark
   gate.

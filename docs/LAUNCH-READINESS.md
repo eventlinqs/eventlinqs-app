@@ -6,9 +6,17 @@ Single pre-launch source of truth. Honest DONE vs OUTSTANDING, split into
 live Stripe). Read this before claiming launch readiness; update it as items
 close.
 
-- Branch: `feat/home-rebuild` (NO MERGE without approval).
-- Tip at last verification: `7b9f434`.
-- Last full verification: 2026-06-08.
+- Unified launch line: `release/launch-line`. The `feat/home-rebuild` design is
+  already integrated into it (verified 2026-06-21: zero design-file changes on
+  top), and `feat/funds-holding-payments` (the proven funds-holding payments
+  re-platform, 16/16 Stripe TEST surfaces, five TEST-only migrations) was
+  fast-forwarded onto it with no conflicts. `feat/home-rebuild` stays the design
+  source of truth: do not change the design, only make it work. Never merge to
+  `main` or production without sign-off. Authoritative plan:
+  `docs/EventLinqs-Launch-Plan-Handoff.md`; binding summary in CLAUDE.md
+  (Launch sequence and parked workstreams).
+- Tip at last verification: `7b9f434` (home-rebuild); payments verified at `bf32fa9`.
+- Last full verification: 2026-06-08 (design); 2026-06-21 (payments + integration).
 - Companion sources: `docs/benchmark/system-pass/REPORT.md` (surface-by-surface
   state), `CLAUDE.md` (the constitution + gate-coverage map), and
   `docs/LAUNCH-READINESS-AUDIT-2026-05-31.md` (the prior module-by-module

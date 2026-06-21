@@ -5,6 +5,14 @@ Eventbrite build the equivalent page, define what makes the best version
 world-class, and name the concrete gap versus our current page. This is the
 reference the homepage rebuild and every subsequent surface build aims to surpass.
 
+**The benchmark bar is the fusion of the leaders: Ticketmaster, Eventbrite, DICE,
+and Humanitix.** Ticketmaster and Eventbrite are the primary captured references
+(below); DICE sets the typographic/discovery polish bar and Humanitix the
+all-in-pricing and community-trust bar (and the audited donation model referenced
+in the parked community-support workstream). Every changed launch surface earns an
+explicit SURPASS or PARITY verdict per aspect against this set at 1440 and 390;
+parity is the floor, the goal is to surpass (per CLAUDE.md Definition of Done).
+
 - Captured with Playwright (Chromium 1.59.1) at desktop 1440 and mobile 390, en-AU / Australia-Sydney.
 - Screenshots live in `design-captures/<competitor>/<page>-<viewport>.png`. Machine-readable index: `design-captures/manifest.json`.
 - Capture scripts (committed for reproducibility): `design-captures/capture-script.mjs`, `recapture.mjs`, `recapture-tm-event.mjs`.
