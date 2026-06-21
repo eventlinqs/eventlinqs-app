@@ -115,6 +115,37 @@ export function getCommunityTags(community: CommunitySlug): string[] {
 }
 
 /**
+ * Canonical token per community: the first (heritage-distinctive, unique to the
+ * community) token in each list. The event-creation Communities multi-select
+ * writes these into `events.tags`, so a tagged event resolves to exactly that
+ * community through this same bridge - no new schema, the existing discovery
+ * (community pages, homepage rail, /events?community=, the feed) picks it up.
+ */
+export const COMMUNITY_CANONICAL_TOKEN: Record<CommunitySlug, string> = Object.fromEntries(
+  (Object.entries(COMMUNITY_TO_TAGS) as [CommunitySlug, string[]][]).map(([slug, tokens]) => [slug, tokens[0]]),
+) as Record<CommunitySlug, string>
+
+const ALL_CANONICAL_TOKENS = new Set<string>(Object.values(COMMUNITY_CANONICAL_TOKEN))
+
+/** Communities whose canonical token is present in the given tag list. */
+export function communitiesFromTags(tags: string[]): CommunitySlug[] {
+  const present = new Set(tags)
+  return (Object.keys(COMMUNITY_CANONICAL_TOKEN) as CommunitySlug[]).filter(
+    slug => present.has(COMMUNITY_CANONICAL_TOKEN[slug]),
+  )
+}
+
+/** Removes any community canonical tokens from a free-text tag list (the multi-select owns them). */
+export function stripCanonicalCommunityTokens(tags: string[]): string[] {
+  return tags.filter(t => !ALL_CANONICAL_TOKENS.has(t))
+}
+
+/** The canonical tokens for the given communities (to write into events.tags). */
+export function canonicalTokensForCommunities(communities: CommunitySlug[]): string[] {
+  return communities.map(slug => COMMUNITY_CANONICAL_TOKEN[slug])
+}
+
+/**
  * Build the PostgREST `.or(...)` filter string that matches an event
  * whose `tags` jsonb array contains ANY of the heritage's tag tokens.
  *

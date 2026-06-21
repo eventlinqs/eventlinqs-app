@@ -5,6 +5,12 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { createEvent, updateEvent } from '@/app/(dashboard)/dashboard/events/actions'
 import { uploadEventImage } from '@/lib/upload'
+import { getAllCommunities, type CommunitySlug } from '@/lib/communities/data'
+import {
+  communitiesFromTags,
+  stripCanonicalCommunityTokens,
+  canonicalTokensForCommunities,
+} from '@/lib/communities/tag-bridge'
 import type {
   EventCategory,
   EventType,
@@ -31,6 +37,10 @@ export type TicketTierInput = {
   sort_order: number
 }
 
+// Heritage communities for the create/edit multi-select, ordered so Aboriginal &
+// Torres Strait Islander leads (heritageOrder). Static data, computed once.
+const ALL_COMMUNITIES = getAllCommunities().slice().sort((a, b) => a.heritageOrder - b.heritageOrder)
+
 type FormData = {
   // Step 1
   title: string
@@ -38,6 +48,7 @@ type FormData = {
   description: string
   category_id: string
   tags: string
+  community_slugs: CommunitySlug[]
   // Step 2
   start_date: string
   end_date: string
@@ -157,6 +168,7 @@ function getDefaultFormData(): FormData {
     description: '',
     category_id: '',
     tags: '',
+    community_slugs: [],
     start_date: fmt(start),
     end_date: fmt(end),
     timezone: 'Australia/Melbourne',
@@ -229,7 +241,8 @@ function fromExistingEvent(
     summary: event.summary ?? '',
     description: event.description ?? '',
     category_id: event.category_id ?? '',
-    tags: event.tags.join(', '),
+    tags: stripCanonicalCommunityTokens(event.tags).join(', '),
+    community_slugs: communitiesFromTags(event.tags),
     start_date: fmt(event.start_date),
     end_date: fmt(event.end_date),
     timezone: event.timezone,
@@ -352,7 +365,10 @@ export function EventForm({
     summary: formData.summary,
     description: formData.description,
     category_id: formData.category_id || null,
-    tags: formData.tags.split(',').map(t => t.trim()).filter(Boolean),
+    tags: Array.from(new Set([
+      ...stripCanonicalCommunityTokens(formData.tags.split(',').map(t => t.trim()).filter(Boolean)),
+      ...canonicalTokensForCommunities(formData.community_slugs),
+    ])),
     start_date: new Date(formData.start_date).toISOString(),
     end_date: new Date(formData.end_date).toISOString(),
     timezone: formData.timezone,
@@ -588,6 +604,36 @@ export function EventForm({
           placeholder="music, outdoor, family-friendly"
           className="w-full rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
         />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-ink-600 mb-1">
+          Communities
+          <span className="ml-2 text-xs text-ink-400">Optional. Tick any that fit; your event then shows on their community pages.</span>
+        </label>
+        <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+          {ALL_COMMUNITIES.map(c => {
+            const checked = formData.community_slugs.includes(c.slug)
+            return (
+              <label key={c.slug} className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-ink-200 px-3 py-2 text-sm transition-colors hover:bg-ink-100">
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() =>
+                    set(
+                      'community_slugs',
+                      checked
+                        ? formData.community_slugs.filter(s => s !== c.slug)
+                        : [...formData.community_slugs, c.slug],
+                    )
+                  }
+                  className="h-4 w-4 rounded border-ink-300 text-gold-500 focus:ring-gold-500"
+                />
+                <span className="text-ink-700">{c.displayName}</span>
+              </label>
+            )
+          })}
+        </div>
       </div>
     </div>
   )
