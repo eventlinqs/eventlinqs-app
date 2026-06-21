@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Manrope, Archivo, Hanken_Grotesk } from 'next/font/google'
 import Script from 'next/script'
 import './globals.css'
@@ -37,6 +37,12 @@ const manrope = Manrope({
 // shared site-url helper so it can never fall back to localhost in a
 // deployed environment (see src/lib/site-url.ts).
 const SITE_URL = getSiteUrl()
+
+// Brand theme-color for the mobile browser chrome (address bar) and PWA splash.
+// Navy to match the header and the app icons.
+export const viewport: Viewport = {
+  themeColor: '#0A1628',
+}
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
