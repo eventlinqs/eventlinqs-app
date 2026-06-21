@@ -3,6 +3,7 @@ import { getPickerCities } from '@/lib/locations/picker-cities'
 import { createClient } from '@/lib/supabase/server'
 import { SiteHeaderClient } from './site-header-client'
 import { deriveAccountUser, type AccountUser } from './site-header-account-button'
+import { isAdminUserId } from '@/lib/admin/auth'
 
 /**
  * SiteHeader - public site top navigation.
@@ -42,6 +43,7 @@ export async function SiteHeader({ staticSafe = false }: { staticSafe?: boolean 
 
   let user: AccountUser | null = null
   let userEmail: string | null = null
+  let isAdmin = false
   if (!staticSafe) {
     try {
       const supabase = await createClient()
@@ -52,6 +54,8 @@ export async function SiteHeader({ staticSafe = false }: { staticSafe?: boolean 
           user_metadata: data.user.user_metadata,
         })
         userEmail = data.user.email ?? null
+        // Role-gated Admin menu entry. Membership only; the console enforces 2FA.
+        isAdmin = await isAdminUserId(data.user.id)
       }
     } catch {
       // Auth resolution failures (e.g. malformed cookie, network blip on the
@@ -68,6 +72,7 @@ export async function SiteHeader({ staticSafe = false }: { staticSafe?: boolean 
       cities={cities}
       user={user}
       userEmail={userEmail}
+      isAdmin={isAdmin}
     />
   )
 }

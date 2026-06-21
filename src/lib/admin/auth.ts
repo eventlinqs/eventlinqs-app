@@ -55,6 +55,23 @@ export async function getAdminSession(): Promise<AdminSession | null> {
   }
 }
 
+/**
+ * Lightweight membership check for the in-platform Admin menu entry: is this user
+ * an enabled admin_users row? Gates ONLY the convenience menu item's visibility.
+ * It deliberately does NOT verify the 2FA proof - reaching the admin console still
+ * requires getAdminSession() (role + 2FA), enforced server-side on every admin
+ * route and privileged action. A non-admin gets false and never sees the entry.
+ */
+export async function isAdminUserId(userId: string): Promise<boolean> {
+  const { data, error } = await createAdminClient()
+    .from('admin_users')
+    .select('id, disabled_at')
+    .eq('id', userId)
+    .maybeSingle<{ id: string; disabled_at: string | null }>()
+  if (error || !data) return false
+  return !data.disabled_at
+}
+
 export async function requireAdminSession(): Promise<AdminSession> {
   const session = await getAdminSession()
   if (!session) {

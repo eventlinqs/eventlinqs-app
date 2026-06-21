@@ -45,6 +45,8 @@ interface SiteHeaderClientProps {
   user: AccountUser | null
   /** Authenticated user's email; surfaces in the avatar dropdown header. */
   userEmail?: string | null
+  /** Founder/admin: surface the role-gated Admin entry in the account menu. */
+  isAdmin?: boolean
 }
 
 /**
@@ -120,7 +122,7 @@ export function readCityCookie(): DetectedLocation | null {
  *   - HeroMedia itself is NOT mutated; only a thin tracker wrapper
  *     registers with the HeroPresenceProvider.
  */
-export function SiteHeaderClient({ location, cities, user, userEmail }: SiteHeaderClientProps) {
+export function SiteHeaderClient({ location, cities, user, userEmail, isAdmin = false }: SiteHeaderClientProps) {
   const dropdownUser = user && userEmail ? { ...user, email: userEmail } : null
   const [isOpen, setIsOpen] = useState(false)
 
@@ -271,7 +273,7 @@ export function SiteHeaderClient({ location, cities, user, userEmail }: SiteHead
 
             {dropdownUser ? (
               <div className="hidden md:flex items-center">
-                <SiteHeaderAccountDropdown user={dropdownUser} size="header" />
+                <SiteHeaderAccountDropdown user={dropdownUser} size="header" isAdmin={isAdmin} />
               </div>
             ) : (
               <>
@@ -291,7 +293,7 @@ export function SiteHeaderClient({ location, cities, user, userEmail }: SiteHead
             {/* Mobile avatar (authenticated only) - sits left of the hamburger so the nav drawer remains the canonical mobile-nav surface. */}
             {dropdownUser ? (
               <div className="md:hidden">
-                <SiteHeaderAccountDropdown user={dropdownUser} size="header" />
+                <SiteHeaderAccountDropdown user={dropdownUser} size="header" isAdmin={isAdmin} />
               </div>
             ) : null}
 
