@@ -13,6 +13,7 @@ import type { ComponentType } from 'react'
 
 import { OrganiserSchemaJsonLd } from '@/components/features/organisers/organiser-schema-jsonld'
 import { OrganiserProfileHero } from '@/components/features/organisers/organiser-profile-hero'
+import { FollowButton } from '@/components/features/follow/follow-button'
 import { OrganiserBioSection } from '@/components/features/organisers/organiser-bio-section'
 import { OrganiserEventTypesBreakdown } from '@/components/features/organisers/organiser-event-types-breakdown'
 import { OrganiserContactPanel } from '@/components/features/organisers/organiser-contact-panel'
@@ -196,6 +197,13 @@ export default async function OrganiserProfilePage({ params }: Props) {
             { label: totalEvents === 1 ? 'event' : 'events', value: totalEvents, icon: 'cal' },
             { label: cities.length === 1 ? 'city' : 'cities', value: cities.length, icon: 'pin' },
           ]}
+          actionSlot={
+            <FollowButton
+              type="organiser"
+              id={organisation.id}
+              label="Follow"
+            />
+          }
         />
 
         {/* OP2 Bio */}

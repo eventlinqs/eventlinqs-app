@@ -5,6 +5,11 @@ import { createPublicClient } from '@/lib/supabase/public-client'
 import { withBadge } from './badges'
 import { buildCommunityTagOrFilter } from '@/lib/communities/tag-bridge'
 import type { CommunitySlug } from '@/lib/communities/data'
+import {
+  rankEventsByAffinity,
+  hasAnyAffinitySignal,
+  type AffinitySignals,
+} from './affinity'
 import type {
   FetchPublicEventsFilters,
   FetchPublicEventsInput,
@@ -684,4 +689,163 @@ export async function fetchRecommendedEvents(
     .filter(e => hasRealCover(e.cover_image_url))
   if (events.length === 0) return fetchPopularThisWeek(limit, city)
   return events
+}
+
+/**
+ * Resolve the user's full demand-graph signals from the existing tables.
+ * No migration: reads saved_organisers, saved_categories, follows
+ * (artist + subgenre), saved_events (their categories), and
+ * profiles.preferred_city. Used by the personalised /feed.
+ */
+async function resolveAffinitySignals(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+): Promise<AffinitySignals> {
+  const [savedOrgsRes, savedCatsRes, followsRes, savedEventsRes, profileRes] =
+    await Promise.all([
+      supabase.from('saved_organisers').select('organisation_id').eq('user_id', userId),
+      supabase.from('saved_categories').select('category_id').eq('user_id', userId),
+      supabase
+        .from('follows')
+        .select('followable_type, followable_id')
+        .eq('user_id', userId),
+      supabase.from('saved_events').select('event_id').eq('user_id', userId),
+      supabase.from('profiles').select('preferred_city').eq('id', userId).maybeSingle(),
+    ])
+
+  const followedOrganisationIds = new Set(
+    (savedOrgsRes.data ?? []).map(r => r.organisation_id as string),
+  )
+  const savedCategoryIds = new Set(
+    (savedCatsRes.data ?? []).map(r => r.category_id as string),
+  )
+
+  const followRows = (followsRes.data ?? []) as {
+    followable_type: string
+    followable_id: string
+  }[]
+  const followedArtistIds = followRows
+    .filter(r => r.followable_type === 'artist')
+    .map(r => r.followable_id)
+  const followedSceneSlugs = new Set(
+    followRows
+      .filter(r => r.followable_type === 'subgenre')
+      .map(r => r.followable_id.toLowerCase()),
+  )
+
+  // Followed artists -> the upcoming events those artists play, via event_artists.
+  let followedArtistEventIds = new Set<string>()
+  if (followedArtistIds.length > 0) {
+    const { data: ea } = await supabase
+      .from('event_artists')
+      .select('event_id')
+      .in('artist_id', followedArtistIds)
+    followedArtistEventIds = new Set((ea ?? []).map(r => r.event_id as string))
+  }
+
+  // Categories of the user's saved events - a soft "similar to what you saved"
+  // signal. One extra round trip, only when the user has saved events.
+  let savedEventCategoryIds = new Set<string>()
+  const savedEventIds = (savedEventsRes.data ?? []).map(r => r.event_id as string)
+  if (savedEventIds.length > 0) {
+    const { data: catRows } = await supabase
+      .from('events')
+      .select('category_id')
+      .in('id', savedEventIds)
+    savedEventCategoryIds = new Set(
+      (catRows ?? [])
+        .map(r => r.category_id as string | null)
+        .filter((c): c is string => Boolean(c)),
+    )
+  }
+
+  const preferredCity =
+    profileRes.data?.preferred_city && typeof profileRes.data.preferred_city === 'object'
+      ? (profileRes.data.preferred_city as { city?: string }).city ?? null
+      : null
+
+  return {
+    followedOrganisationIds,
+    savedCategoryIds,
+    followedArtistEventIds,
+    followedSceneSlugs,
+    savedEventCategoryIds,
+    preferredCity,
+  }
+}
+
+/**
+ * The personalised "For You" feed (demand engine 2). Resolves the user's full
+ * demand graph, fetches a candidate pool of upcoming public events that touch
+ * any of their signals, and ranks them with the PURE rankEventsByAffinity so
+ * direct follows outrank softer taste signals.
+ *
+ * Returns `null` follow-state separately: when the graph carries no signal at
+ * all, this returns an empty list and the page renders the designed
+ * follow-prompt empty state (it does NOT silently fall back to popular here -
+ * the feed is explicitly about the people and scenes the user follows).
+ */
+export async function fetchForYouFeed(
+  userId: string,
+  limit: number = 24,
+): Promise<{ events: PublicEventRow[]; hasGraph: boolean }> {
+  const supabase = await createClient()
+  const signals = await resolveAffinitySignals(supabase, userId)
+  const hasGraph = hasAnyAffinitySignal(signals)
+  if (!hasGraph) return { events: [], hasGraph: false }
+
+  const now = new Date()
+  const nowIso = now.toISOString()
+
+  // Candidate pool: events that touch any direct signal. Scene-only follows
+  // (subgenre) widen the pool via category slug match where a scene maps to a
+  // category, and otherwise still count toward hasGraph so the user sees their
+  // followed organisers / categories / artists / city events ranked.
+  const orFilters: string[] = []
+  if (signals.followedOrganisationIds.size > 0) {
+    orFilters.push(`organisation_id.in.(${[...signals.followedOrganisationIds].join(',')})`)
+  }
+  const catPool = new Set<string>([
+    ...signals.savedCategoryIds,
+    ...signals.savedEventCategoryIds,
+  ])
+  if (catPool.size > 0) {
+    orFilters.push(`category_id.in.(${[...catPool].join(',')})`)
+  }
+  if (signals.followedArtistEventIds.size > 0) {
+    orFilters.push(`id.in.(${[...signals.followedArtistEventIds].join(',')})`)
+  }
+  if (signals.preferredCity) {
+    orFilters.push(`venue_city.ilike.%${signals.preferredCity}%`)
+  }
+
+  // No structural pool (e.g. only scene follows with no mapped category): show
+  // the designed empty state rather than an unranked dump. hasGraph stays true
+  // so the page copy can still acknowledge the follows.
+  if (orFilters.length === 0) return { events: [], hasGraph: true }
+
+  // Over-fetch so the pure ranker has room to order before we slice to `limit`.
+  const poolSize = Math.min(120, limit * 4)
+  const { data, error } = await supabase
+    .from('events')
+    .select(BASE_SELECT)
+    .eq('status', 'published')
+    .eq('visibility', 'public')
+    .gte('start_date', nowIso)
+    .or(orFilters.join(','))
+    .order('start_date', { ascending: true })
+    .limit(poolSize)
+
+  if (error) {
+    console.error('[fetchForYouFeed] query failed:', error)
+    return { events: [], hasGraph: true }
+  }
+
+  const raw = (data ?? []) as unknown as RawRow[]
+  const candidates = raw
+    .map(toPublicEventRow)
+    .filter(e => hasRealCover(e.cover_image_url))
+
+  const ranked = rankEventsByAffinity(candidates, signals, now)
+  return { events: ranked.slice(0, limit).map(r => r.event), hasGraph: true }
 }

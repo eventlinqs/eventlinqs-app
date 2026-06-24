@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { CalendarDays, MapPin } from 'lucide-react'
 import { OrganiserAvatar } from '@/components/media/OrganiserAvatar'
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
@@ -15,6 +16,12 @@ interface Props {
   stats: { label: string; value: string | number; icon?: 'cal' | 'pin' }[]
   /** Optional verified badge surface. */
   verified?: boolean
+  /**
+   * Optional action slot rendered below the stats (e.g. the Follow button).
+   * Kept as a slot so the hero stays a server component and the interactive
+   * control hydrates independently without forcing the page dynamic.
+   */
+  actionSlot?: ReactNode
 }
 
 /**
@@ -26,7 +33,7 @@ interface Props {
  * the content stack and slightly overlaps the banner so the page reads
  * as profile-first.
  */
-export function OrganiserProfileHero({ name, coverImage, logoUrl, subtitle, stats, verified }: Props) {
+export function OrganiserProfileHero({ name, coverImage, logoUrl, subtitle, stats, verified, actionSlot }: Props) {
   return (
     <section aria-labelledby="organiser-hero-heading" className="relative overflow-hidden">
       <HeroPresenceMarker />
@@ -99,6 +106,8 @@ export function OrganiserProfileHero({ name, coverImage, logoUrl, subtitle, stat
               ))}
             </ul>
           ) : null}
+
+          {actionSlot ? <div className="mt-6">{actionSlot}</div> : null}
         </div>
       </div>
     </section>
