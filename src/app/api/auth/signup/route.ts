@@ -3,6 +3,12 @@ import { z } from 'zod'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { applyRateLimit } from '@/lib/rate-limit/middleware'
 import { sendSignupConfirmation } from '@/lib/email/auth-emails'
+import {
+  decodeRefCode,
+  isReferralSource,
+  toAttributionRecord,
+  type CapturedAttribution,
+} from '@/lib/growth/referrals'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,7 +25,25 @@ const BodySchema = z.object({
   email: z.string().email().max(254),
   password: z.string().min(8).max(128),
   role: z.enum(['attendee', 'organiser']).default('attendee'),
+  // First-touch attribution forwarded from the share / invite-organiser link.
+  // All optional: a purely organic signup sends none of these.
+  ref: z.string().max(24).optional(),
+  refSource: z.string().max(40).optional(),
+  refEvent: z.string().max(160).optional(),
 })
+
+/** Build the attribution record to persist, or null for an organic signup. */
+function capturedFromBody(body: z.infer<typeof BodySchema>): CapturedAttribution | null {
+  const referredBy = decodeRefCode(body.ref ?? null)
+  const source = isReferralSource(body.refSource) ? body.refSource : 'organic'
+  if (!referredBy && source === 'organic') return null
+  return {
+    referredBy,
+    refCode: body.ref ?? null,
+    source,
+    event: body.refEvent ?? null,
+  }
+}
 
 function safeOrigin(request: NextRequest): string {
   // Prefer a configured public site URL so the confirmation link cannot be
@@ -121,6 +145,34 @@ export async function POST(request: NextRequest) {
       { ok: false, error: 'Could not send confirmation email. Please try again.', detail: message },
       { status: 502 },
     )
+  }
+
+  // Persist first-touch attribution onto the new profile (best-effort). The
+  // profile row already exists (the handle_new_user trigger fires on the admin
+  // generateLink create), so we merge the attribution into its metadata. A
+  // failure here must never fail an otherwise successful signup.
+  const captured = capturedFromBody(body)
+  const newUserId = data?.user?.id
+  if (captured && newUserId) {
+    try {
+      const { data: existing } = await admin
+        .from('profiles')
+        .select('metadata')
+        .eq('id', newUserId)
+        .single()
+      const prior = (existing?.metadata ?? {}) as Record<string, unknown>
+      await admin
+        .from('profiles')
+        .update({
+          metadata: {
+            ...prior,
+            attribution: toAttributionRecord(captured, new Date().toISOString()),
+          },
+        })
+        .eq('id', newUserId)
+    } catch {
+      // swallow - attribution is non-critical telemetry
+    }
   }
 
   return NextResponse.json({ ok: true }, { status: 200 })

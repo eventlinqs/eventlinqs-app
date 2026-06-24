@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Copy, Mail, Check } from 'lucide-react'
+import { buildAttributedUrl } from '@/lib/growth/referrals'
 
 interface Props {
   eventTitle: string
@@ -26,9 +27,31 @@ interface Props {
 export function EventShareBar({ eventTitle, eventDate, eventUrl, variant = 'light' }: Props) {
   const [copied, setCopied] = useState(false)
 
+  // Every shared link is attributed (source = share-a-ticket). When a logged-in
+  // user is sharing we also carry their personalised referral code so a signup
+  // through the link is credited to them. The code is resolved post-paint via a
+  // tiny endpoint so this surface stays static and never costs LCP.
+  const [shareUrl, setShareUrl] = useState(() =>
+    buildAttributedUrl(eventUrl, { source: 'share-a-ticket' }),
+  )
+  useEffect(() => {
+    let active = true
+    fetch('/api/me/ref')
+      .then((r) => (r.ok ? r.json() : { refCode: null }))
+      .then((d: { refCode: string | null }) => {
+        if (active && d?.refCode) {
+          setShareUrl(buildAttributedUrl(eventUrl, { refCode: d.refCode, source: 'share-a-ticket' }))
+        }
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [eventUrl])
+
   const shareText = `${eventTitle} - ${eventDate}`
   const encodedText = encodeURIComponent(shareText)
-  const encodedUrl = encodeURIComponent(eventUrl)
+  const encodedUrl = encodeURIComponent(shareUrl)
 
   // Background colours below are tuned for AA contrast against the
   // white text label that sits beside each icon. Vanilla WhatsApp /
@@ -85,7 +108,7 @@ export function EventShareBar({ eventTitle, eventDate, eventUrl, variant = 'ligh
 
   const onCopy = async () => {
     try {
-      await navigator.clipboard.writeText(eventUrl)
+      await navigator.clipboard.writeText(shareUrl)
       setCopied(true)
       window.setTimeout(() => setCopied(false), 1800)
     } catch {

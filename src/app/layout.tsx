@@ -6,6 +6,7 @@ import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav'
 import { HeaderScrollSentinel } from '@/components/layout/header-scroll-sentinel'
 import { HeroPresenceProvider } from '@/contexts/hero-presence-context'
 import { DuotoneFilterDefs } from '@/components/ui/DuotoneFilterDefs'
+import { ReferralCapture } from '@/components/growth/referral-capture'
 import { getSiteUrl } from '@/lib/site-url'
 
 // Body face: refined neutral grotesque (replaces Inter). Manrope stays for UI.
@@ -157,6 +158,9 @@ export default function RootLayout({
             {children}
           </div>
           <MobileBottomNav />
+          {/* First-touch attribution capture (acquisition loop). Renders null
+           *  and runs only in a post-paint effect, so it never costs LCP. */}
+          <ReferralCapture />
         </HeroPresenceProvider>
       </body>
     </html>

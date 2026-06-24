@@ -4,6 +4,13 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { GoogleButton } from './google-button'
 import { AuthDivider } from './auth-divider'
+import { REF_COOKIE, REF_SOURCE_COOKIE, REF_EVENT_COOKIE } from '@/lib/growth/referrals'
+
+function readCookie(name: string): string | undefined {
+  if (typeof document === 'undefined') return undefined
+  const hit = document.cookie.split('; ').find((c) => c.startsWith(`${name}=`))
+  return hit ? decodeURIComponent(hit.slice(name.length + 1)) : undefined
+}
 
 type Props = {
   role?: 'attendee' | 'organiser'
@@ -36,10 +43,20 @@ export function SignupForm({ role = 'attendee' }: Props) {
       // We no longer call supabase.auth.signUp directly because that path
       // depends on Supabase's outbound SMTP, which had a 4-per-hour project
       // cap that silently dropped confirmation emails in production.
+      // Forward the first-touch attribution captured from the share or
+      // invite-an-organiser link so the new profile records who drove it.
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ fullName, email, password, role }),
+        body: JSON.stringify({
+          fullName,
+          email,
+          password,
+          role,
+          ref: readCookie(REF_COOKIE),
+          refSource: readCookie(REF_SOURCE_COOKIE),
+          refEvent: readCookie(REF_EVENT_COOKIE),
+        }),
       })
       const payload = (await res.json().catch(() => ({}))) as {
         ok?: boolean

@@ -54,7 +54,7 @@ export default async function AccountPage() {
           <ul role="list" className="mt-10 divide-y divide-ink-100 border-y border-ink-100">
             {[
               { label: 'Browse events',        href: '/events',     hint: 'Find your next night out.' },
-              { label: 'Become an organiser',  href: '/organisers', hint: 'Run your own events on EventLinqs.' },
+              { label: 'Become an organiser',  href: '/organisers?via=organiser-invite', hint: 'Run your own events on EventLinqs. Free to start.' },
               { label: 'Communities',          href: '/communities',   hint: 'Browse 14 communities.' },
               { label: 'Cities',               href: '/cities',     hint: '20 cities, from Sydney to Hobart.' },
               { label: 'Help and support',     href: '/help',       hint: 'Common questions and account help.' },
