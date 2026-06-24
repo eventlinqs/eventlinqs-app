@@ -1037,6 +1037,57 @@ export type Database = {
         }
         Relationships: []
       }
+      organiser_marketing_consents: {
+        Row: {
+          consent_text: string
+          consent_version: string
+          created_at: string
+          email: string
+          event_id: string | null
+          id: string
+          order_id: string | null
+          organisation_id: string
+          source: string
+          status: string
+          unsubscribe_token: string
+          updated_at: string
+          user_id: string | null
+          withdrawn_at: string | null
+        }
+        Insert: {
+          consent_text: string
+          consent_version?: string
+          created_at?: string
+          email: string
+          event_id?: string | null
+          id?: string
+          order_id?: string | null
+          organisation_id: string
+          source?: string
+          status?: string
+          unsubscribe_token?: string
+          updated_at?: string
+          user_id?: string | null
+          withdrawn_at?: string | null
+        }
+        Update: {
+          consent_text?: string
+          consent_version?: string
+          created_at?: string
+          email?: string
+          event_id?: string | null
+          id?: string
+          order_id?: string | null
+          organisation_id?: string
+          source?: string
+          status?: string
+          unsubscribe_token?: string
+          updated_at?: string
+          user_id?: string | null
+          withdrawn_at?: string | null
+        }
+        Relationships: []
+      }
       genres: {
         Row: {
           created_at: string
