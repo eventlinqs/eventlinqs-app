@@ -15,6 +15,7 @@ import { CartTimer } from '@/components/checkout/cart-timer'
 import { CheckoutSummary } from '@/components/checkout/checkout-summary'
 import { DiscountCodeInput } from '@/components/checkout/discount-code-input'
 import { AttendeeForm } from '@/components/checkout/attendee-form'
+import { MarketingConsent } from '@/components/checkout/marketing-consent'
 import type { FeeBreakdown } from '@/lib/payments/payment-calculator'
 import type { AttendeeDetails } from '@/components/checkout/attendee-form'
 
@@ -42,6 +43,7 @@ interface CheckoutFormProps {
   userLastName: string
   userEmail: string
   currency: string
+  organiserName: string
 }
 
 function PaymentForm({
@@ -122,6 +124,7 @@ export function CheckoutForm({
   userLastName,
   userEmail,
   currency,
+  organiserName,
 }: CheckoutFormProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -137,6 +140,11 @@ export function CheckoutForm({
     [userFirstName, userLastName].filter(Boolean).join(' ')
   )
   const [attendees, setAttendees] = useState<AttendeeDetails[]>([])
+
+  // Marketing consent (Spam Act). Both default UNCHECKED. Optional, never gates
+  // the purchase.
+  const [organiserConsent, setOrganiserConsent] = useState(false)
+  const [platformConsent, setPlatformConsent] = useState(false)
 
   const [clientSecret, setClientSecret] = useState<string | null>(null)
   const [orderId, setOrderId] = useState<string | null>(null)
@@ -212,6 +220,8 @@ export function CheckoutForm({
           email: a.email,
         })),
         discount_code: discountCode ?? undefined,
+        organiser_marketing_consent: organiserConsent,
+        platform_updates_consent: platformConsent,
       })
 
       if (result.error) {
@@ -381,6 +391,16 @@ export function CheckoutForm({
                 discountCents={discountCents}
                 onApply={handleDiscountApply}
                 onRemove={handleDiscountRemove}
+              />
+
+              {/* Marketing consent (Spam Act): separate, unchecked, optional,
+                  never a condition of purchase. */}
+              <MarketingConsent
+                organiserName={organiserName}
+                organiserConsent={organiserConsent}
+                platformConsent={platformConsent}
+                onOrganiserChange={setOrganiserConsent}
+                onPlatformChange={setPlatformConsent}
               />
 
               {submitError && (

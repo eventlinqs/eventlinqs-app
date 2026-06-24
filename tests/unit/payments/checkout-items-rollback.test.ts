@@ -109,6 +109,10 @@ vi.mock('@/lib/supabase/admin', () => ({
       if (table === 'payments') {
         return { insert: async (row: unknown) => { h.paymentInserts.push(row); return { error: null } }, update: () => ({ eq: async () => ({ error: null }) }) }
       }
+      if (table === 'organisations') {
+        // Organiser-name lookup for the marketing-consent wording.
+        return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { name: 'Test Org' } }) }) }) }
+      }
       throw new Error(`unexpected admin table: ${table}`)
     },
   })),

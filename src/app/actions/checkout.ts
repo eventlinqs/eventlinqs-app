@@ -13,6 +13,10 @@ import { validateDiscountCode } from './discount-codes'
 import { getDynamicPriceMap } from '@/lib/pricing/dynamic-pricing'
 import { pickUnitPriceCents, resolveSeatUnitPriceCents } from '@/lib/checkout/pricing'
 import { getGuestSessionId } from '@/lib/auth/guest-session'
+import {
+  recordOrganiserMarketingConsent,
+  recordPlatformUpdateConsent,
+} from '@/lib/consent/record'
 import type { FeePassType } from '@/types/database'
 
 const AttendeeSchema = z.object({
@@ -30,6 +34,10 @@ const CheckoutSchema = z.object({
   attendees: z.array(AttendeeSchema).min(0),
   discount_code: z.string().optional(),
   addon_quantities: z.record(z.string().uuid(), z.number().int().min(0)).optional(),
+  // Marketing consent (Spam Act 2003). Both optional and default false: the
+  // purchase succeeds whether or not they are given. Never a purchase condition.
+  organiser_marketing_consent: z.boolean().optional(),
+  platform_updates_consent: z.boolean().optional(),
 })
 
 export type CheckoutFormData = z.infer<typeof CheckoutSchema>
@@ -50,6 +58,41 @@ function generateOrderNumber(): string {
   return result
 }
 
+/**
+ * Persist marketing consent for a completed checkout. Best-effort and fully
+ * isolated from the payment path: a consent write failure must never fail an
+ * order. Records nothing when no box was ticked, so a no-consent purchase
+ * leaves no consent (the lawful default).
+ */
+async function recordCheckoutConsents(params: {
+  adminClient: ReturnType<typeof createAdminClient>
+  organisationId: string
+  organiserName: string
+  email: string
+  userId: string | null
+  orderId: string
+  eventId: string
+  organiserConsent: boolean
+  platformConsent: boolean
+}): Promise<void> {
+  const at = new Date().toISOString()
+  if (params.organiserConsent) {
+    await recordOrganiserMarketingConsent(params.adminClient, {
+      organisationId: params.organisationId,
+      organiserName: params.organiserName,
+      email: params.email,
+      userId: params.userId,
+      orderId: params.orderId,
+      eventId: params.eventId,
+      source: 'checkout',
+      at,
+    })
+  }
+  if (params.platformConsent) {
+    await recordPlatformUpdateConsent(params.adminClient, { email: params.email, source: 'checkout' })
+  }
+}
+
 export async function processCheckout(data: CheckoutFormData): Promise<CheckoutResult> {
   const parsed = CheckoutSchema.safeParse(data)
   if (!parsed.success) {
@@ -57,7 +100,16 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
     return { error: issues[0]?.message ?? 'Invalid checkout data' }
   }
 
-  const { reservation_id, buyer_email, buyer_name, attendees, discount_code, addon_quantities: _addon_quantities } = parsed.data
+  const {
+    reservation_id,
+    buyer_email,
+    buyer_name,
+    attendees,
+    discount_code,
+    addon_quantities: _addon_quantities,
+    organiser_marketing_consent = false,
+    platform_updates_consent = false,
+  } = parsed.data
 
   const supabase = await createClient()
   const adminClient = createAdminClient()
@@ -97,6 +149,15 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
 
   if (!event) return { error: 'Event not found' }
 
+  // Organiser name for the marketing-consent wording (names the sender, per the
+  // Spam Act). Best-effort: consent recording never blocks the purchase.
+  const { data: organisation } = await adminClient
+    .from('organisations')
+    .select('name')
+    .eq('id', event.organisation_id)
+    .maybeSingle()
+  const organiserName = organisation?.name ?? ''
+
   // ── Seat reservation path ──────────────────────────────────────────────────
   // Seat reservations store items as { seat_ids: string[] } instead of the
   // GA format [ { ticket_tier_id, quantity } ].
@@ -118,6 +179,10 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
       attendees,
       adminClient,
       supabase,
+      organiserName,
+      userId: user?.id ?? null,
+      organiserConsent: organiser_marketing_consent,
+      platformConsent: platform_updates_consent,
     })
   }
   // ── End seat path ──────────────────────────────────────────────────────────
@@ -318,6 +383,20 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
     return { error: 'We could not set up your order. Please try again.' }
   }
 
+  // Record marketing consent at the point of collection (Spam Act). Tied to the
+  // event's organiser and the buyer email. Best-effort, never blocks the order.
+  await recordCheckoutConsents({
+    adminClient,
+    organisationId: event.organisation_id,
+    organiserName,
+    email: buyer_email,
+    userId: user?.id ?? null,
+    orderId: order_id,
+    eventId: event.id,
+    organiserConsent: organiser_marketing_consent,
+    platformConsent: platform_updates_consent,
+  })
+
   // 8. For free orders - confirm immediately
   if (isFreeOrder) {
     // Mark reservation as converted
@@ -459,6 +538,10 @@ interface SeatCheckoutArgs {
   attendees: { ticket_tier_id: string; first_name: string; last_name: string; email: string }[]
   adminClient: ReturnType<typeof createAdminClient>
   supabase: Awaited<ReturnType<typeof createClient>>
+  organiserName: string
+  userId: string | null
+  organiserConsent: boolean
+  platformConsent: boolean
 }
 
 async function processSeatCheckout({
@@ -470,6 +553,10 @@ async function processSeatCheckout({
   buyer_name,
   adminClient,
   supabase,
+  organiserName,
+  userId,
+  organiserConsent,
+  platformConsent,
 }: SeatCheckoutArgs): Promise<CheckoutResult> {
   // Load seats
   const { data: seats, error: seatsError } = await adminClient
@@ -645,6 +732,19 @@ async function processSeatCheckout({
     await adminClient.from('orders').delete().eq('id', order_id)
     return { error: 'We could not set up your order. Please try again.' }
   }
+
+  // Record marketing consent at the point of collection (Spam Act). Best-effort.
+  await recordCheckoutConsents({
+    adminClient,
+    organisationId: event.organisation_id,
+    organiserName,
+    email: buyer_email,
+    userId,
+    orderId: order_id,
+    eventId: event.id,
+    organiserConsent,
+    platformConsent,
+  })
 
   if (isFreeOrder) {
     // Mark reservation as converted

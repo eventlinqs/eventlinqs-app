@@ -8,14 +8,19 @@ import {
   useStripe,
   useElements,
 } from '@stripe/react-stripe-js'
-import { createSquadMemberPaymentIntent } from '@/app/actions/squad-checkout'
+import {
+  createSquadMemberPaymentIntent,
+  recordSquadMemberMarketingConsent,
+} from '@/app/actions/squad-checkout'
 import { Button } from '@/components/ui/Button'
+import { MarketingConsent } from '@/components/checkout/marketing-consent'
 
 interface SquadPayFormProps {
   memberId: string
   squadToken: string
   memberName: string
   memberEmail: string
+  organiserName: string
   pricePerSpotCents: number
   currency: string
   publishableKey: string
@@ -28,12 +33,14 @@ function formatPrice(cents: number, currency: string) {
 // ── Inner form rendered inside Stripe <Elements> ──────────────────────────────
 
 function InnerPayForm({
-  memberId: _memberId,
+  memberId,
+  organiserName,
   pricePerSpotCents,
   currency,
   squadToken,
 }: {
   memberId: string
+  organiserName: string
   pricePerSpotCents: number
   currency: string
   squadToken: string
@@ -42,6 +49,9 @@ function InnerPayForm({
   const elements = useElements()
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  // Marketing consent (Spam Act). Default UNCHECKED, optional, never gates pay.
+  const [organiserConsent, setOrganiserConsent] = useState(false)
+  const [platformConsent, setPlatformConsent] = useState(false)
 
   const appUrl = typeof window !== 'undefined' ? window.location.origin : ''
   const returnUrl = `${appUrl}/squad/${squadToken}?payment=complete`
@@ -56,6 +66,14 @@ function InnerPayForm({
       if (submitError) {
         setError(submitError.message ?? 'Payment failed')
         return
+      }
+
+      // Record consent before confirming payment. Best-effort: a failure here
+      // must never block the payment.
+      if (organiserConsent || platformConsent) {
+        await recordSquadMemberMarketingConsent(memberId, organiserConsent, platformConsent).catch(
+          () => {},
+        )
       }
 
       const { error: confirmError } = await stripe.confirmPayment({
@@ -73,6 +91,16 @@ function InnerPayForm({
   return (
     <form onSubmit={handleSubmit} noValidate>
       <PaymentElement options={{ layout: 'tabs' }} />
+
+      <div className="mt-5">
+        <MarketingConsent
+          organiserName={organiserName}
+          organiserConsent={organiserConsent}
+          platformConsent={platformConsent}
+          onOrganiserChange={setOrganiserConsent}
+          onPlatformChange={setPlatformConsent}
+        />
+      </div>
 
       {error && (
         <div role="alert" className="mt-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
@@ -107,6 +135,7 @@ export function SquadPayForm({
   memberId,
   squadToken,
   memberEmail: _memberEmail,
+  organiserName,
   pricePerSpotCents,
   currency,
   publishableKey,
@@ -174,6 +203,7 @@ export function SquadPayForm({
     >
       <InnerPayForm
         memberId={memberId}
+        organiserName={organiserName}
         pricePerSpotCents={pricePerSpotCents}
         currency={currency}
         squadToken={squadToken}

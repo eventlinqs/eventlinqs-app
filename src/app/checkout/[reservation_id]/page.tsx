@@ -61,6 +61,14 @@ export default async function CheckoutPage({ params }: Props) {
     notFound()
   }
 
+  // Organiser name for the marketing-consent opt-in wording (names the sender).
+  const { data: organisation } = await admin
+    .from('organisations')
+    .select('name')
+    .eq('id', event.organisation_id)
+    .maybeSingle()
+  const organiserName = organisation?.name ?? ''
+
   // Determine if this is a seat reservation or GA
   const rawItems = reservation.items as
     | { seat_ids: string[] }
@@ -307,6 +315,7 @@ export default async function CheckoutPage({ params }: Props) {
           userLastName={userLastName}
           userEmail={userEmail}
           currency={currency}
+          organiserName={organiserName}
         />
       </div>
       {/* Batch 11.0 - Trust signals sidebar at the payment-decision
