@@ -935,6 +935,108 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_prefs: {
+        Row: {
+          email_enabled: boolean
+          push_enabled: boolean
+          quiet_hours_end: number | null
+          quiet_hours_start: number | null
+          timezone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          email_enabled?: boolean
+          push_enabled?: boolean
+          quiet_hours_end?: number | null
+          quiet_hours_start?: number | null
+          timezone?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          email_enabled?: boolean
+          push_enabled?: boolean
+          quiet_hours_end?: number | null
+          quiet_hours_start?: number | null
+          timezone?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          channel: string
+          converted: boolean
+          created_at: string
+          event_id: string | null
+          id: string
+          opened_at: string | null
+          scheduled_for: string | null
+          sent_at: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          channel: string
+          converted?: boolean
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          opened_at?: string | null
+          scheduled_for?: string | null
+          sent_at?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          converted?: boolean
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          opened_at?: string | null
+          scheduled_for?: string | null
+          sent_at?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          last_used_at: string | null
+          p256dh: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          last_used_at?: string | null
+          p256dh: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          last_used_at?: string | null
+          p256dh?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       genres: {
         Row: {
           created_at: string
