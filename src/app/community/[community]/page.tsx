@@ -13,6 +13,7 @@ import { getCommunityHeroPhoto } from '@/lib/images/community-photo'
 import { getSubCommunityPhoto } from '@/lib/images/sub-community-photo'
 import { getCityPhoto, getCityHeroPhoto } from '@/lib/images/city-photo'
 import { CommunityLandingPage } from '@/components/templates/CommunityLandingPage'
+import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import { citySlugify } from '@/components/features/community/cities-rail'
 import type { EventCardData } from '@/components/features/events/event-card'
 
@@ -160,6 +161,13 @@ export default async function CommunityPage({ params }: Props) {
         type="application/ld+json"
         suppressHydrationWarning
         dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionLd) }}
+      />
+      <BreadcrumbJsonLd
+        items={[
+          { name: 'Home', url: baseUrl },
+          { name: 'Communities', url: `${baseUrl}/communities` },
+          { name: community.displayName, url: `${baseUrl}/community/${community.slug}` },
+        ]}
       />
       <CommunityLandingPage
         community={community}

@@ -43,6 +43,7 @@ import { TicketsNotOnSale } from '@/components/features/events/tickets-not-on-sa
 import { eventIsPaid, isOrganiserSellable } from '@/lib/payments/sale-status'
 import { EventViewTracker } from '@/components/features/events/event-view-tracker'
 import { EventSchemaJsonLd } from '@/components/features/events/event-schema-jsonld'
+import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import { EventShareBar } from '@/components/features/events/event-share-bar'
 import { EventStateBanner } from '@/components/features/events/event-state-banner'
 import { SaveEventButton } from '@/components/features/events/save-event-button'
@@ -496,6 +497,13 @@ export default async function EventDetailPage({ params }: Props) {
         ticketTiers={allTiers}
         state={eventStateForSchema}
         baseUrl={baseUrl}
+      />
+      <BreadcrumbJsonLd
+        items={[
+          { name: 'Home', url: baseUrl },
+          { name: 'Events', url: `${baseUrl}/events` },
+          { name: event.title, url: `${baseUrl}/events/${event.slug}` },
+        ]}
       />
       <EventViewTracker
         eventId={event.id}

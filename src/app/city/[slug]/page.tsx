@@ -15,6 +15,7 @@ import { getSuburbHeroPhoto } from '@/lib/images/suburb-photo'
 import { getCategoryPhoto } from '@/lib/images/category-photo'
 import { getCommunityHeroPhoto } from '@/lib/images/community-photo'
 import { CityLandingPage } from '@/components/templates/CityLandingPage'
+import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import type { EventCardData } from '@/components/features/events/event-card'
 import type { MapEventPin } from '@/components/features/city/city-map'
 
@@ -194,6 +195,13 @@ export default async function CityPage({ params }: Props) {
         type="application/ld+json"
         suppressHydrationWarning
         dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListLd) }}
+      />
+      <BreadcrumbJsonLd
+        items={[
+          { name: 'Home', url: baseUrl },
+          { name: 'Cities', url: `${baseUrl}/cities` },
+          { name: city.name, url: `${baseUrl}/city/${city.slug}` },
+        ]}
       />
       <CityLandingPage
         city={city}

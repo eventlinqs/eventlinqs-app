@@ -19,6 +19,7 @@ import {
   getIntersectionHeroSubtitle,
 } from '@/lib/communities/intersection-editorial'
 import { CommunityCityLandingPage } from '@/components/templates/CommunityCityLandingPage'
+import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import type { EventCardData } from '@/components/features/events/event-card'
 import type { MapEventPin } from '@/components/features/city/city-map'
 
@@ -263,6 +264,14 @@ export default async function CommunityByCityPage({ params }: Props) {
         type="application/ld+json"
         suppressHydrationWarning
         dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionLd) }}
+      />
+      <BreadcrumbJsonLd
+        items={[
+          { name: 'Home', url: baseUrl },
+          { name: 'Communities', url: `${baseUrl}/communities` },
+          { name: community.displayName, url: `${baseUrl}/community/${community.slug}` },
+          { name: cityName, url: `${baseUrl}/community/${community.slug}/${cityParam}` },
+        ]}
       />
       <CommunityCityLandingPage
         community={community}

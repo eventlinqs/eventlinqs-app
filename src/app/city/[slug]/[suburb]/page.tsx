@@ -9,6 +9,7 @@ import {
 } from '@/lib/cities/data'
 import { getSuburbHeroPhoto } from '@/lib/images/suburb-photo'
 import { SuburbLandingPage } from '@/components/templates/SuburbLandingPage'
+import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import type { EventCardData } from '@/components/features/events/event-card'
 
 export const revalidate = 300
@@ -119,6 +120,14 @@ export default async function SuburbPage({ params }: Props) {
         type="application/ld+json"
         suppressHydrationWarning
         dangerouslySetInnerHTML={{ __html: JSON.stringify(placeLd) }}
+      />
+      <BreadcrumbJsonLd
+        items={[
+          { name: 'Home', url: baseUrl },
+          { name: 'Cities', url: `${baseUrl}/cities` },
+          { name: city.name, url: `${baseUrl}/city/${city.slug}` },
+          { name: suburbContent.name, url: `${baseUrl}/city/${city.slug}/${suburb}` },
+        ]}
       />
       <SuburbLandingPage
         city={city}
