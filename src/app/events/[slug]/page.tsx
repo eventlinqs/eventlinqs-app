@@ -11,6 +11,7 @@ import {
   SeatSelector, type SeatData, type SectionData,
 } from '@/components/checkout/seat-selector'
 import { SocialProofBadge } from '@/components/inventory/social-proof-badge'
+import { GoingProof } from '@/components/inventory/going-proof'
 import { TicketPanelClient } from '@/components/features/events/ticket-panel-client'
 import { getEventInventoryStatic, getTierInventoryStatic } from '@/lib/redis/inventory-cache'
 import { getDynamicPriceMap } from '@/lib/pricing/dynamic-pricing'
@@ -591,8 +592,13 @@ export default async function EventDetailPage({ params }: Props) {
               </div>
 
               {eventInventory && (
-                <div className="mt-4">
+                <div className="mt-4 flex flex-wrap items-center gap-2">
                   <SocialProofBadge inventory={eventInventory} createdAt={event.created_at} />
+                  {/* Honest social proof: real confirmed sales (total_sold,
+                      paid only) drive a "N people going" pill, shown only at
+                      or above the floor so a thin event never reads weak.
+                      Engine 4 of the demand engine; no new query, ISR-safe. */}
+                  <GoingProof totalSold={eventInventory.total_sold} />
                 </div>
               )}
 
