@@ -88,6 +88,12 @@ export default async function AttendeesPage({ params }: Props) {
           organisers. Export your data any time as CSV, Excel, or a printable door list, and take it
           with you.
         </p>
+        <p className="mt-2 text-sm text-ink-700">
+          When you send marketing email, send only to attendees marked <strong>Opted in</strong>:
+          that is the express consent Australian law (the Spam Act) requires, and a purchase alone is
+          not consent. The export carries each opted-in attendee&apos;s unsubscribe link, which you
+          must include in your emails and honour.
+        </p>
       </div>
 
       <AttendeeTable attendees={attendees} ticketTypes={ticketTypes} />

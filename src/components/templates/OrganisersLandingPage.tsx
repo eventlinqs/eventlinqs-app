@@ -95,6 +95,7 @@ const BANDS: FeatureBand[] = [
     points: [
       'Full attendee list with names and emails',
       'Export as CSV, Excel, or a printable door list',
+      'Email the attendees who opt in, consent recorded for you',
       'Organiser-only access, gated to you',
       'Portable forever, no withholding',
     ],
