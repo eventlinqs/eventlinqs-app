@@ -88,6 +88,19 @@ const BANDS: FeatureBand[] = [
     ],
     image: ORGANISER_BANDS.selfServe,
   },
+  {
+    eyebrow: 'Data ownership',
+    title: 'Your audience is yours to keep.',
+    body: 'Every attendee relationship belongs to you, not to us. Export your full attendee list, names and emails included, any time as CSV, Excel, or a printable door list. Access is organiser-only. We never sell your list, never market another organiser to your buyers, and never withhold your data. Other platforms wall your audience off. Here you own it and you take it with you.',
+    points: [
+      'Full attendee list with names and emails',
+      'Export as CSV, Excel, or a printable door list',
+      'Organiser-only access, gated to you',
+      'Portable forever, no withholding',
+    ],
+    image: ORGANISER_BANDS.dataOwnership,
+    reverse: true,
+  },
 ]
 
 const HOW_IT_WORKS = [

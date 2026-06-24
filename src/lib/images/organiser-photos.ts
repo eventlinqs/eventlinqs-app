@@ -53,6 +53,7 @@ export const ORGANISER_BANDS: {
   pricing: PhotoSlot
   tools: PhotoSlot
   selfServe: PhotoSlot
+  dataOwnership: PhotoSlot
 } = {
   pricing: spineSlot(
     'supportingOrganiser',
@@ -71,6 +72,14 @@ export const ORGANISER_BANDS: {
     'A moment of buying tickets to a live event',
     `${HERO}/amapiano.jpg`,
     '50% 40%',
+  ),
+  // Data-ownership band: the door scan / entry moment reads as the organiser
+  // working directly with their own attendees (their list, their relationship).
+  dataOwnership: spineSlot(
+    'supportingEntryScan',
+    'An organiser scanning guests in at the door from their own attendee list',
+    `${HERO}/owambe.jpg`,
+    '50% 45%',
   ),
 }
 
