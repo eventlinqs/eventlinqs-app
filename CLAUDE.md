@@ -38,6 +38,10 @@ silently follow the stale doc.
 |---|---|
 | Any surface at all | Law 0, Definition of Done, Law 1 (no generic), Verification and gates |
 | Reporting any feature or task done | Definition of Done (SHIP 100%, A to Z) |
+| Growth, sharing, invites, referral, attribution, the wedge, the levers | Growth plan, `event-demand-engine` skill |
+| Discovery, feed, follows, alerts, push, who's-going, recommendations | Growth plan (the demand engine), `docs/MOAT-DEMAND-ENGINE-PLAN.md`, `event-demand-engine` skill |
+| Organiser attendee data, export, the data-ownership pitch | Growth plan (data-ownership promise), Law 4 |
+| Sitemap, structured data, indexability, organic SEO | Growth plan (SEO compounding engine) |
 | A new page or a redesign | Law 2 (evidence-driven), Design system, Motion, Law 4 if marketing, the `page-build` skill |
 | Copy, labels, microcopy | Copy and banned content, Law 3 (Australia-smart) |
 | Colours, type, spacing, cards, container | Design system |
@@ -53,9 +57,9 @@ silently follow the stale doc.
 | CI, gates, delivery | Verification and gates |
 
 **Index of laws:** Law 0 (read first) - Definition of Done (SHIP 100%, A to Z)
-- Law 1 (no generic) - Law 2
-(evidence-driven) - Law 3 (Australia-smart) - Law 4 (marketing image-rich) -
-Law 5 (zero dead links) - Scene layer - Design system - Motion - Copy and
+- Growth plan (the wedge, the two engines, the levers) - Law 1 (no generic) -
+Law 2 (evidence-driven) - Law 3 (Australia-smart) - Law 4 (marketing image-rich)
+- Law 5 (zero dead links) - Scene layer - Design system - Motion - Copy and
 banned content - Verification and gates - Tooling - Authority docs - Skills.
 
 ## What EventLinqs is
@@ -68,6 +72,114 @@ layer on top, roughly 10 to 20 percent of any surface, never the dominant
 identity.
 
 Stack: Next.js, Supabase, Tailwind v4, Stripe, Vercel.
+
+## Growth plan (the wedge, the two engines, the levers) - locked 2026
+
+This is the binding growth doctrine, sourced from `EventLinqs-Growth-Plan.md`
+and grounded in the proven playbooks of Eventbrite, Humanitix, DICE, and
+two-sided-marketplace cold-start research. It governs every feature that brings
+users in, keeps them coming back, or pitches the platform to an organiser. The
+repo is the source of truth, not memory.
+
+**The proven law (do not violate).** Neither Eventbrite nor Humanitix won on ads
+or influencers. They won on three things: a built-in viral loop, a sharp wedge
+that made switching obvious, and relentless supply-side (organiser) recruitment.
+Two-thirds of failed marketplaces die on the supply side because founders chase
+demand volume instead of liquidity. So: build the harder side (organisers)
+first, chase density not reach, do things that do not scale, and earn the right
+to advertise only after density. For a solo bootstrapped founder paid ads and
+influencer sponsorships are the WRONG primary lever and waste money before
+density exists.
+
+**The wedge (the one-sentence switching reason).** "EventLinqs puts your event in
+front of the right attendees through our discovery feed and push alerts, AND you
+own every attendee relationship: no walled gardens, no withheld emails." Two
+edges, both grounded in what organisers complain about in 2026:
+
+- DISCOVERY UPSIDE: DICE gets about 40% of sales from discovery plus push.
+  EventLinqs offers the same demand engine to every organiser who lists, which
+  Eventbrite's marketplace does not push the same way and a shrinking Eventbrite
+  is less able to deliver post-acquisition.
+- DATA OWNERSHIP: DICE does not share attendee emails and Eventbrite limits it,
+  which kills an organiser's ability to build their own audience. EventLinqs
+  gives the organiser full attendee data ownership: they own their customers, we
+  never wall them off. It is a concrete, provable switching reason that costs
+  nothing and the incumbents structurally cannot easily match.
+
+TIMING EDGE (use it now): Eventbrite was acquired by Bending Spoons (March 2026,
+about US$500M), taken private, cutting staff, with reports the free tier may be
+removed. Organisers are actively evaluating alternatives. Launch into that
+opening. Do NOT copy Humanitix's funding model (they are a charity with grants a
+sole trader cannot get); copy their wedge-story discipline and organiser
+pricing, not their funding.
+
+**The two engines (they are DIFFERENT, build both).** Do not conflate them.
+
+1. The ACQUISITION LOOP (growth: brings new users in, near-zero cost). This is
+   what Eventbrite actually grew on. Two sub-loops: (a) SHARE-A-TICKET, after
+   buying the attendee is prompted to share the event with a personalised invite
+   link that tracks who joined through it, as frictionless as the feed; (b)
+   INVITE-AN-ORGANISER, after purchase and in-account a prompt "Run your own
+   events? It is free to start" (Eventbrite's single biggest growth hack:
+   buyers discovering they can become organisers). Track invite attribution so
+   we can see which shares and which organisers drive signups.
+2. The DEMAND ENGINE (retention plus discovery: keeps users coming back).
+   Attendee taste/follow graph (native, no Spotify dependency), personalised
+   discovery feed, alert engine (PWA web push primary at about 5x email
+   conversion plus an email backbone), who's-going social proof, follow
+   organisers. The AI tuning layer sharpens as real data arrives, but the engine
+   is live day one because it IS the organiser pitch. The full architecture and
+   phased build live in `docs/MOAT-DEMAND-ENGINE-PLAN.md` and the
+   `event-demand-engine` skill. The acquisition loop is growth; the demand engine
+   is discovery plus retention. Eventbrite's virality came from the invite/share
+   mechanism, NOT the discovery marketplace. Both are required.
+
+**The data-ownership promise (the second blade, make it real and visible).**
+EventLinqs gives organisers full attendee data ownership with attendee consent:
+export, own the relationship, no withholding. This is an explicit, visible
+promise on the organiser-facing pages and pitch, stated plainly, because it is a
+structural advantage over DICE (withholds emails) and Eventbrite (limits it).
+Never fabricate it: the export surface must actually work.
+
+**SEO (the quiet compounding engine).** Eventbrite's event pages ranked in Google
+for years of free organic traffic. EventLinqs already has bespoke
+community-by-city intersection pages: the same play. Every event page and every
+community-city page ships Schema.org Event structured data, clean human-readable
+URLs, fast pages (Lighthouse 95+), and a sitemap submitted to Google Search
+Console day one. One paid month of Semrush or Ahrefs only later, when attacking
+programmatic SEO across scene-city pages, never before.
+
+**The launch shape: nationally available, locally dense.** Launch the platform
+nationally (anyone in Australia can use it), but concentrate RECRUITMENT and
+SEEDING effort on the one wedge where the founder has real reach: the Geelong and
+Melbourne music and community scenes (DJ ties, local relationships). Depth before
+breadth is the single most repeated lesson in the research. National availability
+is kept; effort is pointed where it can hit density and flip the network.
+
+**Ranked levers (do in this order).**
+1. Supply-side direct recruitment: recruit the first 25 to 50 organisers
+   personally and concierge-onboard each; each brings their own audience as free
+   demand. The "influencers" worth the time are local organisers, promoters,
+   community leaders and DJs who already own an audience, never Instagram
+   personalities. Offer early organisers a fee holiday or reduced take-rate, then
+   raise it once liquidity exists.
+2. The acquisition loop: share-a-ticket plus invite-an-organiser, frictionless.
+3. SEO via the community-city pages.
+4. Building in public / content (doubles as supply recruiting).
+5. Local PR plus the sharp wedge story (the Eventbrite-is-wobbling angle).
+6. Paid ads / influencers: LAST, only after density, reframed to local
+   organisers.
+
+**What gets built into the platform now (the three build items), plus the
+verification.** (1) the share-a-ticket acquisition loop with personalised,
+attributed invite links and per-link join tracking; (2) the invite-an-organiser
+conversion, attributed; (3) SEO surfacing confirmed on the deployed preview. Plus
+VERIFY the demand engine is genuinely built and tested (the wedge depends on it):
+follow graph, discovery feed, push plus email alerts, who's-going, follow
+organisers. Anything launch-critical that is NOT built gets built before launch;
+anything genuinely post-launch is parked honestly (see Launch sequence). The
+agentic growth engine / AI operating system is the NEXT major workstream, built
+AFTER launch on a live earning platform, never before.
 
 ## Definition of Done (SHIP 100%, A to Z)
 
