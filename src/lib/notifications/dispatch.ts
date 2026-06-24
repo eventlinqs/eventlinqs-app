@@ -2,6 +2,7 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { sendEmail } from '@/lib/email/send'
+import { getSiteUrl } from '@/lib/site-url'
 import {
   chooseChannel,
   buildAlertPayload,
@@ -96,11 +97,12 @@ export async function dispatchAlert(input: DispatchInput): Promise<DispatchResul
     const to = ctx.recipientEmail ?? (await resolveEmail(admin, userId))
     if (!to) return { status: 'skipped', reason: 'no_email' }
     try {
+      const manageUrl = `${getSiteUrl().replace(/\/$/, '')}/account/notifications`
       await sendEmail({
         to,
         subject: `${payload.title}: ${ctx.eventTitle}`,
-        html: alertEmailHtml(payload),
-        text: `${payload.body}\n\n${payload.url}`,
+        html: alertEmailHtml(payload, manageUrl),
+        text: `${payload.body}\n\n${payload.url}\n\nManage or turn off these alerts: ${manageUrl}\nEventLinqs, hello@eventlinqs.com`,
       })
       delivered = 'email'
     } catch {
@@ -126,9 +128,11 @@ async function resolveEmail(admin: Admin, userId: string): Promise<string | null
   return data?.email ?? null
 }
 
-function alertEmailHtml(payload: { title: string; body: string; url: string }): string {
+function alertEmailHtml(payload: { title: string; body: string; url: string }, manageUrl: string): string {
   // Light, on-brand, inline-styled. Mirrors the platform navy/gold without
-  // pulling a template dependency into a cron path.
+  // pulling a template dependency into a cron path. The footer identifies the
+  // sender (EventLinqs + contact) and carries a working manage/unsubscribe link,
+  // as a marketing-type message must under the Spam Act.
   return `<!doctype html><html><body style="margin:0;background:#f6f7f9;font-family:Arial,Helvetica,sans-serif">
   <div style="max-width:560px;margin:0 auto;padding:32px 24px">
     <div style="background:#ffffff;border:1px solid #e7e9ee;border-radius:14px;padding:28px">
@@ -136,7 +140,8 @@ function alertEmailHtml(payload: { title: string; body: string; url: string }): 
       <p style="margin:0 0 20px;font-size:16px;line-height:1.5;color:#0A1628">${escapeHtml(payload.body)}</p>
       <a href="${escapeAttr(payload.url)}" style="display:inline-block;background:#0A1628;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 22px;border-radius:10px">View the event</a>
     </div>
-    <p style="margin:18px 4px 0;font-size:11px;color:#8b919c">You are receiving this because you follow this organiser on EventLinqs. Manage alerts in your account.</p>
+    <p style="margin:18px 4px 0;font-size:11px;color:#8b919c">You are receiving this because you turned on event alerts on EventLinqs. <a href="${escapeAttr(manageUrl)}" style="color:#6b7280;text-decoration:underline">Manage or turn off these alerts</a>.</p>
+    <p style="margin:8px 4px 0;font-size:11px;color:#8b919c">EventLinqs, hello@eventlinqs.com</p>
   </div></body></html>`
 }
 
