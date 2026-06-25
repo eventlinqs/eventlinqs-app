@@ -657,10 +657,13 @@ export default async function EventDetailPage({ params }: Props) {
                       <p className="mt-5 text-base leading-relaxed text-ink-600">{event.summary}</p>
                     )}
                     {event.description && (
-                      <div
-                        className="prose prose-sm mt-5 max-w-none text-ink-600 prose-headings:text-ink-900 prose-headings:font-display prose-a:text-gold-600 hover:prose-a:text-gold-500"
-                        dangerouslySetInnerHTML={{ __html: event.description }}
-                      />
+                      // Organiser description is free-text from a plain textarea, not
+                      // sanitised HTML. Render it as escaped text (React-escaped) with
+                      // line breaks preserved, never via dangerouslySetInnerHTML, so an
+                      // organiser cannot inject stored XSS into the public event page.
+                      <div className="mt-5 max-w-none whitespace-pre-line text-base leading-relaxed text-ink-600">
+                        {event.description}
+                      </div>
                     )}
                   </div>
                 )}
