@@ -222,6 +222,30 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
 
   if (!event) return { error: 'Event not found' }
 
+  // Verify the caller owns (or co-manages) the event's organisation before any
+  // privileged write. Without this an authenticated organiser could pass another
+  // org's eventId and overwrite that event or wipe its ticket tiers, because the
+  // mutations below run under the service-role admin client (RLS bypassed). The
+  // existence SELECT above is not a gate: events RLS lets anyone read any
+  // published event. These ownership reads run under the session client, so they
+  // only succeed for an org the caller actually owns or manages.
+  const [{ data: ownedOrg }, { data: managingMembership }] = await Promise.all([
+    supabase
+      .from('organisations')
+      .select('id')
+      .eq('id', event.organisation_id)
+      .eq('owner_id', user.id)
+      .maybeSingle(),
+    supabase
+      .from('organisation_members')
+      .select('role')
+      .eq('organisation_id', event.organisation_id)
+      .eq('user_id', user.id)
+      .in('role', ['owner', 'admin', 'manager'])
+      .maybeSingle(),
+  ])
+  if (!ownedOrg && !managingMembership) return { error: 'Event not found' }
+
   if (input.status === 'published' || input.status === 'scheduled') {
     const gate = await checkPublishGate(supabase, {
       organisationId: event.organisation_id,
