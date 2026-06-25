@@ -3333,6 +3333,14 @@ export type Database = {
         Returns: string
       }
       release_holds: { Args: never; Returns: number }
+      scan_ticket: {
+        Args: { p_event_id: string; p_secret: string; p_ticket_code: string }
+        Returns: {
+          first_scanned_at: string | null
+          holder_name: string | null
+          result: string
+        }[]
+      }
       transition_payment_status: {
         Args: {
           p_gateway_data?: Json

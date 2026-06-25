@@ -333,6 +333,12 @@ export default async function EventViewPage({ params }: Props) {
                 Discount codes
               </Link>
               <Link
+                href={`/scan/${event.id}`}
+                className="inline-flex h-9 items-center justify-center rounded-lg border border-ink-200 bg-white text-sm font-medium text-ink-900 transition-colors hover:bg-ink-100"
+              >
+                Door check-in
+              </Link>
+              <Link
                 href={`/dashboard/events/${event.id}/edit`}
                 className="inline-flex h-9 items-center justify-center rounded-lg border border-ink-200 bg-white text-sm font-medium text-ink-900 transition-colors hover:bg-ink-100"
               >
