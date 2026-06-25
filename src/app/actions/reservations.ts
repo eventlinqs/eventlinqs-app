@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { actionRateLimit } from '@/lib/rate-limit/action'
 import { refreshInventoryCache } from '@/lib/redis/inventory-cache'
 import { getOrCreateGuestSessionId } from '@/lib/auth/guest-session'
 import {
@@ -26,6 +27,11 @@ export interface CreateReservationResult {
 export async function createReservation(
   input: CreateReservationInput
 ): Promise<CreateReservationResult> {
+  // Throttle the funnel entry by IP. This is the first step of every checkout,
+  // so capping it bounds inventory-hold abuse and downstream PaymentIntent spam.
+  const rl = await actionRateLimit('checkout-reserve')
+  if (!rl.ok) return { error: 'Too many attempts. Please wait a moment and try again.' }
+
   const parsed = CreateReservationSchema.safeParse(input)
   if (!parsed.success) {
     // RES-02: name the offending field(s) in the server log so a future

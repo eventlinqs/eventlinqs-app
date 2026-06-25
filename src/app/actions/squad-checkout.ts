@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { actionRateLimit } from '@/lib/rate-limit/action'
 import { getDefaultGateway } from '@/lib/payments/gateway-factory'
 import { PaymentCalculator } from '@/lib/payments/payment-calculator'
 import { createPlatformCharge } from '@/lib/payments/create-platform-charge'
@@ -35,6 +36,9 @@ export interface SquadMemberPaymentResult {
 export async function createSquadMemberPaymentIntent(
   memberId: string
 ): Promise<SquadMemberPaymentResult> {
+  const rl = await actionRateLimit('checkout-reserve')
+  if (!rl.ok) return { error: 'Too many attempts. Please wait a moment and try again.' }
+
   const supabase = await createClient()
   const adminClient = createAdminClient()
   const { data: { user } } = await supabase.auth.getUser()

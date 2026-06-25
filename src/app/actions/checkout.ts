@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { actionRateLimit } from '@/lib/rate-limit/action'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { PaymentCalculator } from '@/lib/payments/payment-calculator'
@@ -94,6 +95,11 @@ async function recordCheckoutConsents(params: {
 }
 
 export async function processCheckout(data: CheckoutFormData): Promise<CheckoutResult> {
+  // Throttle by IP. Defends the PaymentIntent-creation path against card-testing
+  // and repeated charge attempts even if a caller skips the reservation step.
+  const rl = await actionRateLimit('checkout-reserve')
+  if (!rl.ok) return { error: 'Too many attempts. Please wait a moment and try again.' }
+
   const parsed = CheckoutSchema.safeParse(data)
   if (!parsed.success) {
     const issues = parsed.error.issues

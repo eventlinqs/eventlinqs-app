@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { assertLoginRateLimit } from '@/app/actions/auth-rate-limit'
 import { GoogleButton } from './google-button'
 import { AuthDivider } from './auth-divider'
 
@@ -31,6 +32,13 @@ export function LoginForm() {
     e.preventDefault()
     setLoading(true)
     setError(null)
+
+    const gate = await assertLoginRateLimit()
+    if (!gate.ok) {
+      setError('Too many attempts. Please wait a few minutes and try again.')
+      setLoading(false)
+      return
+    }
 
     const { error } = await supabase.auth.signInWithPassword({ email, password })
 
@@ -62,6 +70,13 @@ export function LoginForm() {
     }
     setLoading(true)
     setError(null)
+
+    const gate = await assertLoginRateLimit()
+    if (!gate.ok) {
+      setError('Too many attempts. Please wait a few minutes and try again.')
+      setLoading(false)
+      return
+    }
 
     const { error } = await supabase.auth.signInWithOtp({
       email,

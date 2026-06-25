@@ -14,6 +14,14 @@ type RateLimitOpts = {
   limit: number
   /** Window size in seconds. */
   windowSec: number
+  /**
+   * When true, a MISSING Upstash configuration is treated as a block (in
+   * production only), instead of the default fail-open. Used for the abuse-
+   * sensitive auth and checkout paths so a deploy that forgot to set
+   * UPSTASH_REDIS_REST_URL/_TOKEN cannot silently run them unprotected. Transient
+   * Redis errors still fail open, so a Redis blip never takes down checkout.
+   */
+  failClosed?: boolean
 }
 
 /**
@@ -27,6 +35,12 @@ type RateLimitOpts = {
 export async function checkRateLimit(opts: RateLimitOpts): Promise<RateLimitResult> {
   const redis = getRedisClient()
   if (!redis) {
+    // Config missing. Fail closed only for the abuse-sensitive paths and only in
+    // production, so a misconfigured deploy cannot run auth/checkout unprotected,
+    // while local dev and tests (no Upstash) still pass.
+    if (opts.failClosed && process.env.NODE_ENV === 'production') {
+      return { ok: false, remaining: 0, limit: opts.limit, resetMs: opts.windowSec * 1000 }
+    }
     return { ok: true, remaining: opts.limit, limit: opts.limit, resetMs: 0 }
   }
 
