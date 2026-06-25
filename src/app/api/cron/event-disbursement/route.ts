@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireCronAuth } from '@/lib/cron/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getStripeClient } from '@/lib/payments/payout'
 import { getDefaultTransferGateway } from '@/lib/payments/gateway-factory'
@@ -22,11 +23,8 @@ export const dynamic = 'force-dynamic'
  * `Authorization: Bearer <CRON_SECRET>`), mirroring /api/cron/payout-holds-release.
  */
 export async function GET(request: NextRequest) {
-  const authHeader = request.headers.get('authorization')
-  const cronSecret = process.env.CRON_SECRET
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
-  }
+  const denied = requireCronAuth(request)
+  if (denied) return denied
 
   const adminClient = createAdminClient()
   const stripe = getStripeClient()

@@ -43,6 +43,7 @@ beforeEach(() => {
   h.releaseCount = 0
   h.rpcError = false
   vi.clearAllMocks()
+  process.env.CRON_SECRET = 'sekret'
 })
 
 describe('payout-holds-release cron: auth gate', () => {
@@ -64,18 +65,17 @@ describe('payout-holds-release cron: auth gate', () => {
     expect(res.status).toBe(200)
   })
 
-  test('accepts when CRON_SECRET is not configured (local/dev)', async () => {
+  test('refuses (401) when CRON_SECRET is not configured (fail closed)', async () => {
     delete process.env.CRON_SECRET
-    const res = await GET(makeReq())
-    expect(res.status).toBe(200)
+    const res = await GET(makeReq('Bearer sekret'))
+    expect(res.status).toBe(401)
   })
 })
 
 describe('payout-holds-release cron: contract', () => {
   test('returns released count and JSON shape', async () => {
-    delete process.env.CRON_SECRET
     h.releaseCount = 4
-    const res = await GET(makeReq())
+    const res = await GET(makeReq('Bearer sekret'))
     expect(res.status).toBe(200)
     const body = (await res.json()) as { ok: boolean; released: number; timestamp: string }
     expect(body.ok).toBe(true)
@@ -84,9 +84,8 @@ describe('payout-holds-release cron: contract', () => {
   })
 
   test('surfaces RPC failure as 500', async () => {
-    delete process.env.CRON_SECRET
     h.rpcError = true
-    const res = await GET(makeReq())
+    const res = await GET(makeReq('Bearer sekret'))
     expect(res.status).toBe(500)
   })
 })
