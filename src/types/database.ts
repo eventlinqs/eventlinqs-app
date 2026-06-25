@@ -3341,6 +3341,10 @@ export type Database = {
           result: string
         }[]
       }
+      transfer_ticket: {
+        Args: { p_ticket_id: string; p_to_email: string; p_to_name: string }
+        Returns: { ticket_code: string; new_secret: string; event_title: string }[]
+      }
       transition_payment_status: {
         Args: {
           p_gateway_data?: Json

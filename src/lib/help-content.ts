@@ -91,7 +91,7 @@ export const helpTopics: HelpTopic[] = [
       },
       {
         q: 'Can I transfer my ticket to someone else?',
-        a: "Ticket transfer between buyers is not currently supported. Contact the event organiser directly for any ticket changes.",
+        a: "Yes. Log in, go to 'My Tickets', open the ticket you want to send and choose 'Transfer or gift this ticket'. Enter the new holder's name and email. They receive a fresh ticket and QR code by email, and your old code stops working straight away. You can only transfer a ticket that has not been used or refunded.",
       },
       {
         q: 'Can I resell my ticket above face value?',
