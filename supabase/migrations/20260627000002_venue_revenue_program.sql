@@ -398,7 +398,42 @@ CREATE POLICY "Venue org members can view payouts"
   );
 
 -- ============================================================
--- 10. pricing_rules seed: venue_revenue_share_percentage = 20
+-- 10. Extend the pricing_rules rule_type CHECK with the venue rate
+-- ============================================================
+-- The seed below inserts rule_type='venue_revenue_share_percentage'. The
+-- pricing_rules rule_type CHECK (baseline 20260101000001, last replaced by
+-- 20260502000002) does NOT list it, so the insert is rejected with
+-- pricing_rules_rule_type_check. Replace the constraint with the FULL existing
+-- allowed set (baseline 6 + the 20260502000002 extension 6) PLUS the venue value,
+-- using the same drop-and-recreate pattern as 20260502000002. Idempotent: DROP
+-- CONSTRAINT IF EXISTS then ADD. The new constraint re-validates existing rows,
+-- which all already carry one of the listed types, so it is safe on a database
+-- where the fee rules are already seeded.
+ALTER TABLE public.pricing_rules
+  DROP CONSTRAINT IF EXISTS pricing_rules_rule_type_check;
+
+ALTER TABLE public.pricing_rules
+  ADD CONSTRAINT pricing_rules_rule_type_check CHECK (rule_type IN (
+    -- baseline 20260101000001
+    'platform_fee_percentage',
+    'platform_fee_fixed',
+    'instant_payout_fee',
+    'resale_fee',
+    'featured_listing',
+    'subscription_price',
+    -- 20260502000002 extension
+    'processing_fee_percentage',
+    'processing_fee_fixed_cents',
+    'processing_fee_pass_through',
+    'reserve_percentage',
+    'payout_schedule_days',
+    'application_fee_composition_mode',
+    -- this migration: Venue Revenue Sharing Program rate
+    'venue_revenue_share_percentage'
+  ));
+
+-- ============================================================
+-- 11. pricing_rules seed: venue_revenue_share_percentage = 20
 -- ============================================================
 -- Single source of truth for the venue share rate, resolved by getPricingRule
 -- and admin-editable in /admin/venues. Seed the AU/AUD region default and a
