@@ -52,6 +52,33 @@ function slugify(str) {
 }
 function pick(arr, i) { return arr[i % arr.length] }
 
+// Infer a venue's type from its name so events land at credible venues
+// (a street-food market does not belong in a heritage theatre).
+function venueType(name) {
+  if (/\b(Park|Beach|Gardens|Lawns|Market|Markets|Esplanade|Pier|Foreshore|Botanic|Amphitheatre|Showgrounds|Oval|Mall|Quarter|Strand)\b/i.test(name)) return 'outdoor'
+  if (/\b(Arena|Entertainment Centre|Stadium|Convention|Silverdome)\b/i.test(name)) return 'arena'
+  if (/\b(Gallery|Museum|MAGNT|QVMAG|PICA|Powerhouse|Arts Centre|MONA|Tanks|Library)\b/i.test(name)) return 'gallery'
+  if (/\b(Theatre|Hall|Majesty|Royal|QPAC|GPAC|IPAC|Empire|Princess|Odeon|Ulumbarra|Capital|Civic|Centre|Recital|Playhouse|Peacock)\b/i.test(name)) return 'theatre'
+  return 'club' // bars, music halls, social clubs, live rooms
+}
+// acceptable venue types per category (first match preferred; falls back to any)
+const CAT_VENUE_TYPES = {
+  music: ['club', 'theatre', 'arena', 'outdoor'],
+  nightlife: ['club', 'outdoor'],
+  comedy: ['club', 'theatre'],
+  'food-drink': ['outdoor', 'club'],
+  festival: ['outdoor', 'arena'],
+  family: ['outdoor', 'gallery'],
+  sports: ['arena', 'outdoor'],
+  'arts-culture': ['theatre', 'gallery'],
+  community: ['outdoor', 'club', 'theatre'],
+}
+function pickVenue(city, cat, idx) {
+  const ok = CAT_VENUE_TYPES[cat] || ['club', 'theatre', 'outdoor']
+  const matches = city.venues.filter(v => ok.includes(venueType(v)))
+  return matches.length ? pick(matches, idx) : pick(city.venues, idx)
+}
+
 // ── 20 cities: target count + REAL local venues (from src/lib/cities/data.ts editorials) ──
 const CITIES = [
   { name: 'Melbourne', state: 'VIC', tz: 'Australia/Melbourne', target: 26, venues: ['The Forum','170 Russell','Sidney Myer Music Bowl','Hamer Hall','The Comedy Theatre','Northcote Town Hall','The Croxton','Howler','The Espy','Prince Bandroom','Max Watts','Brunswick Ballroom'] },
@@ -256,7 +283,7 @@ async function main() {
   let genrePtr = 0, commPtr = 0
 
   function buildEvent(city, cat, idx) {
-    const venue = pick(city.venues, idx)
+    const venue = pickVenue(city, cat, idx)
     let title, desc, genre = null, community = null, tags = ['catalogue']
     const weekend = cat === 'music' || cat === 'nightlife'
     if (cat === 'music' || cat === 'nightlife') {
@@ -314,7 +341,7 @@ async function main() {
     while (commCount[c.slug] < 3) {
       const home = (HOME[c.slug] || ['Sydney']).find(n => CITIES.some(x => x.name === n)) || 'Sydney'
       // force this community by temporarily zeroing others is complex; build directly
-      const city = majorCity(home); const venue = pick(city.venues, commCount[c.slug] + 3)
+      const city = majorCity(home); const venue = pickVenue(city, 'community', commCount[c.slug] + 3)
       const evName = pick(c.events, commCount[c.slug]); const title = `${evName}, ${city.name}`
       const tiers = priceTiers('community', gi); const { start, end } = eventDate(gi, false)
       const slug = slugify(title) + '-' + slugify(city.name); const id = uuidFrom('evt:' + slug)
