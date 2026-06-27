@@ -13,14 +13,17 @@
  * normal operation. Keep it in sync with the AU/AUD launch baseline so a lookup
  * failure degrades to the right number.
  *
- * Launch baseline (founder, 2026-06-08): 2% + AUD 0.50 per paid ticket, written
- * to `pricing_rules` by migration 20260608000003_platform_fee_au_launch_default.
- *   platform_fee_percentage = 2.0
- *   platform_fee_fixed      = 50 (cents) = AUD 0.50
+ * Launch baseline (founder, LOCKED 2026, docs/EventLinqs-Fee-Structure-LOCKED.md):
+ * the PLATFORM / SERVICE fee 3.5% + AUD 0.99 per paid ticket, written to
+ * `pricing_rules` by migration 20260627000001_fee_structure_locked_au. This
+ * constant mirrors only the platform fee (the public marketing number); the
+ * separate 2.5% processing fee lives in pricing_rules and is resolved live.
+ *   platform_fee_percentage = 3.5
+ *   platform_fee_fixed      = 99 (cents) = AUD 0.99
  */
 export const PUBLIC_PLATFORM_FEE = {
-  percent: 2,
-  fixedCents: 50,
+  percent: 3.5,
+  fixedCents: 99,
   currency: 'AUD',
 } as const
 
