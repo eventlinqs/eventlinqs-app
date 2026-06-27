@@ -292,7 +292,9 @@ async function main() {
       const tmpl = (tset[genre.slug] || tset.default || MUSIC_TITLES[genre.slug])
       title = pick(tmpl, idx).replace('{v}', venue)
       desc = `${genre.label} live in ${city.name} at ${venue}. A full ${cat === 'nightlife' ? 'club night' : 'live set'} with a local opener and a room built for it. Doors from ${weekend ? '8pm' : '7pm'}.`
-      tags = tags.concat(genre.tokens)
+      // include the genre's Sounds-rail slug so the homepage /events?q=<slug>
+      // tiles resolve for the compound slugs (jazz-soul, folk-acoustic, blues-roots).
+      tags = tags.concat(genre.tokens, [genre.slug])
       if (genre.community) { tags.push(COMMUNITIES.find(c => c.slug === genre.community).token); commCount[genre.community]++ }
     } else if (cat === 'community') {
       // pick an under-covered community whose home includes this city, else any under-covered
