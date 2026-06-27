@@ -53,6 +53,7 @@ export type PricingRuleType =
   | 'reserve_percentage'
   | 'payout_schedule_days'
   | 'application_fee_composition_mode'
+  | 'venue_revenue_share_percentage'
 
 export type PricingRuleValueType = 'percentage' | 'fixed' | 'integer'
 
@@ -568,4 +569,27 @@ export async function getApplicationFeeCompositionMode(
   throw new Error(
     `application_fee_composition_mode value out of range: ${rule.value} (expected 1|2)`
   )
+}
+
+/**
+ * The Venue Revenue Sharing Program share rate (a percentage of the EventLinqs
+ * platform fee), resolved through the SAME single-source resolver as every other
+ * fee. Admin-editable in /admin/venues; launch default 20 (AU/AUD + GLOBAL/AUD,
+ * seeded by migration 20260627000002). Routes through getPricingRule so the rate
+ * is never forked or hardcoded.
+ */
+export async function getVenueRevenueSharePercentage(
+  countryCode: string,
+  currency: string,
+  organisationId?: string | null,
+  eventId?: string | null
+): Promise<number> {
+  const rule = await getPricingRule({
+    ruleType: 'venue_revenue_share_percentage',
+    countryCode,
+    currency,
+    organisationId,
+    eventId,
+  })
+  return rule.value
 }

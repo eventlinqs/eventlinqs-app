@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getStripeClient } from '@/lib/payments/payout'
 import { getDefaultTransferGateway } from '@/lib/payments/gateway-factory'
 import { runEventDisbursements } from '@/lib/payments/event-transfer'
+import { runVenueDisbursements } from '@/lib/payments/venue-transfer'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,7 +36,21 @@ export async function GET(request: NextRequest) {
     console.log(
       `[cron/event-disbursement] considered=${summary.considered} transferred=${summary.transferred} skipped=${summary.skipped} failed=${summary.failed}`
     )
-    return NextResponse.json({ ok: true, ...summary, timestamp: new Date().toISOString() })
+
+    // Venue Revenue Sharing Program: after organisers are paid, pay enrolled
+    // venues their accrued share for the same ended events. Independent of the
+    // organiser path; a venue failure never affects the organiser disbursement.
+    let venueSummary
+    try {
+      venueSummary = await runVenueDisbursements(adminClient, transferGateway, stripe)
+      console.log(
+        `[cron/event-disbursement] venue considered=${venueSummary.considered} transferred=${venueSummary.transferred} skipped=${venueSummary.skipped} failed=${venueSummary.failed}`
+      )
+    } catch (venueErr) {
+      console.error('[cron/event-disbursement] venue disbursement error (organiser run unaffected):', venueErr)
+    }
+
+    return NextResponse.json({ ok: true, ...summary, venue: venueSummary ?? null, timestamp: new Date().toISOString() })
   } catch (err) {
     console.error('[cron/event-disbursement] unexpected error:', err)
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
