@@ -106,8 +106,16 @@ const CITY_SLOTS: Record<string, SpineSlot> = {
 // (the /communities index is heritage-only - no pride/faith tile - and /community/pride
 // 308-redirects away). They await a dedicated scene/faith landing. first-nations
 // IS wired: aboriginal-torres-strait-islander is its exact heritage slug.
+// NOTE on the `descriptor`/`key` strings below: these are the PHYSICAL object
+// filenames in the licensed stock bucket (event-images/stock), NOT user-facing
+// taxonomy. The lookup slugs (the map keys + the public API) are community-first;
+// a few descriptors/keys retain their original asset filenames because that is
+// what physically exists in storage, and renaming the bucket objects is a
+// founder-gated production-storage migration (do not rename in code alone, or the
+// URL 404s). When the prod assets are re-uploaded community-first, update these
+// path strings to match in the same change.
 const SCENE_SLOTS: Record<string, SpineSlot> = {
-  'first-nations':      { role: 'scenes', key: 'first-nations',      city: null, descriptor: 'community-ceremony-day' },
+  'first-nations':      { role: 'scenes', key: 'first-nations',      city: null, descriptor: 'cultural-ceremony-day' },
   // sounds (12)
   'electronic-dance':   { role: 'scenes', key: 'electronic-dance',   city: null, descriptor: 'mainstage-night' },
   country:              { role: 'scenes', key: 'country',            city: null, descriptor: 'outdoor-festival-day' },
@@ -126,7 +134,7 @@ const SCENE_SLOTS: Record<string, SpineSlot> = {
   mediterranean:        { role: 'scenes', key: 'mediterranean',      city: null, descriptor: 'food-festa-golden-hour' },
   pride:                { role: 'scenes', key: 'pride',              city: null, descriptor: 'parade-colour-day' },
   asian:                { role: 'scenes', key: 'asian',              city: null, descriptor: 'lantern-festival-night' },
-  'pasifika-maori':     { role: 'scenes', key: 'pasifika-maori',     city: null, descriptor: 'community-festival-day' },
+  'pasifika-maori':     { role: 'scenes', key: 'pasifika-maori',     city: null, descriptor: 'cultural-festival-day' },
 }
 
 // Map the homepage SoundsRail slug -> spine scene slug (they differ).
@@ -163,7 +171,9 @@ const COMMUNITY_TO_SCENE: Record<string, string> = {
 const CATEGORY_TILE_SLOTS: Record<string, SpineSlot> = {
   music:                { role: 'categories', key: 'music',                city: null, descriptor: 'live-band-day' },
   sports:               { role: 'categories', key: 'sports',               city: null, descriptor: 'fans-cheering-day' },
-  'arts-community':       { role: 'categories', key: 'arts-community',         city: null, descriptor: 'theatre-interior-evening', focal: '50% 45%' },
+  // lookup slug is community-first ('arts-community'); the storage path component
+  // ('key') is the original asset folder name in the bucket. See SCENE_SLOTS note.
+  'arts-community':       { role: 'categories', key: 'arts-culture',           city: null, descriptor: 'theatre-interior-evening', focal: '50% 45%' },
   'food-drink':         { role: 'categories', key: 'food-drink',           city: null, descriptor: 'street-food-night' },
   family:               { role: 'categories', key: 'family',               city: null, descriptor: 'outdoor-picnic-day' },
   festival:             { role: 'categories', key: 'festival',             city: null, descriptor: 'field-stage-day' },
