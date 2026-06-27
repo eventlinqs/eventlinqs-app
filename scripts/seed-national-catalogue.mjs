@@ -265,7 +265,10 @@ async function main() {
     orgIds[name] = id
     const { data: ex } = await s.from('organisations').select('id').eq('id', id).maybeSingle()
     if (!ex) {
-      const { error } = await s.from('organisations').insert({ id, name, slug: slugify(name) + '-sample', owner_id: profile.id, description: `${name} (EventLinqs sample catalogue organiser).` })
+      // status MUST be 'active': the organisations anon-SELECT RLS only exposes
+      // active orgs, so a 'pending' (default) org makes the public event-detail
+      // join return null and the page crashes on event.organisation.name.
+      const { error } = await s.from('organisations').insert({ id, name, slug: slugify(name) + '-sample', owner_id: profile.id, status: 'active', description: `${name} (EventLinqs sample catalogue organiser).` })
       if (error && !String(error.message).includes('duplicate')) console.warn(`[seed] org ${name}: ${error.message}`)
     }
   }
