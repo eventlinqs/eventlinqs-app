@@ -196,26 +196,30 @@ const ARCH = {
   sports: [ ['{c} Basketball Showcase at {v}','A double-header of national league basketball with a half-time community shoot-out at {v}. Courtside and general admission.'], ['Fight Night: {c} at {v}','A full card of amateur and pro boxing and MMA bouts at {v}. Table seating and general admission, doors from early evening.'] ],
   festival: [ ['{c} Arts and Music Festival at {v}','Multiple stages, makers markets and street performers fill {v} and the surrounding precinct for one big {c} day.'], ['Twilight Sessions Festival at {v}','A rolling line-up of bands plays {v} from late afternoon into the night, food trucks and a bar on site.'] ],
 }
+// Titles embed the homepage Sounds-rail phrase as a contiguous substring so the
+// rail's ilike('title','%phrase%') search resolves (electronic dance / hip hop
+// rnb / indie rock / folk acoustic / blues roots / afrobeats amapiano /
+// caribbean dancehall / jazz soul / metal hardcore / country / pop / latin).
 const MUSIC_TITLES = {
-  'electronic-dance': ['Warehouse: Electronic Live at {v}','Sundown Electronic Sessions at {v}'],
-  'hip-hop-rnb': ['Hip-Hop and RnB Night at {v}','The Cypher: Live Hip-Hop at {v}'],
-  'indie-rock': ['Indie Sounds Live at {v}','New Rock Friday at {v}'],
+  'electronic-dance': ['Electronic Dance Live at {v}','Electronic Dance Warehouse at {v}'],
+  'hip-hop-rnb': ['Hip Hop RnB Night at {v}','Hip Hop RnB Live at {v}'],
+  'indie-rock': ['Indie Rock Live at {v}','Indie Rock Sounds at {v}'],
   pop: ['Pop Live at {v}','Big Pop Night at {v}'],
-  'afrobeats-amapiano': ['Afrobeats and Amapiano Live at {v}','Afropop Party at {v}'],
-  latin: ['Latin Live: Salsa and Reggaeton at {v}','Sabor Latino at {v}'],
-  'caribbean-dancehall': ['Caribbean and Dancehall Night at {v}','Reggae Roots Live at {v}'],
-  'jazz-soul': ['Late Night Jazz and Soul at {v}','The Quartet: Jazz at {v}'],
-  country: ['Country and Roots Night at {v}','Boots and Banjos at {v}'],
-  'folk-acoustic': ['Folk and Acoustic Evening at {v}','Songwriters in the Round at {v}'],
-  'blues-roots': ['Blues and Roots Live at {v}','Riverside Blues at {v}'],
-  'metal-hardcore': ['Metal and Hardcore Live at {v}','Loud: Heavy Night at {v}'],
+  'afrobeats-amapiano': ['Afrobeats Amapiano Live at {v}','Afrobeats Amapiano Party at {v}'],
+  latin: ['Latin Live at {v}','Latin Sabor Night at {v}'],
+  'caribbean-dancehall': ['Caribbean Dancehall Night at {v}','Caribbean Dancehall Live at {v}'],
+  'jazz-soul': ['Jazz Soul Sessions at {v}','Late Night Jazz Soul at {v}'],
+  country: ['Country Roots Night at {v}','Country Live at {v}'],
+  'folk-acoustic': ['Folk Acoustic Evening at {v}','Folk Acoustic Sessions at {v}'],
+  'blues-roots': ['Blues Roots Live at {v}','Blues Roots Session at {v}'],
+  'metal-hardcore': ['Metal Hardcore Live at {v}','Metal Hardcore Night at {v}'],
 }
 const NIGHT_TITLES = {
-  'electronic-dance': ['Warehouse Late: House and Techno at {v}','After Dark: Electronic at {v}'],
-  'hip-hop-rnb': ['RnB and Hip-Hop Club Night at {v}','Throwback RnB at {v}'],
-  'afrobeats-amapiano': ['Amapiano Day Party at {v}','Afro House Nights at {v}'],
-  latin: ['Latin Club Night at {v}','Reggaeton Fridays at {v}'],
-  'caribbean-dancehall': ['Dancehall and Soca Party at {v}','Island Vibes Night at {v}'],
+  'electronic-dance': ['Electronic Dance Warehouse Late at {v}','Electronic Dance After Dark at {v}'],
+  'hip-hop-rnb': ['Hip Hop RnB Club Night at {v}','Hip Hop RnB Throwback at {v}'],
+  'afrobeats-amapiano': ['Afrobeats Amapiano Day Party at {v}','Afrobeats Amapiano Nights at {v}'],
+  latin: ['Latin Club Night at {v}','Latin Reggaeton Fridays at {v}'],
+  'caribbean-dancehall': ['Caribbean Dancehall Party at {v}','Caribbean Dancehall Vibes at {v}'],
   default: ['Rooftop Sundowner Sessions at {v}','Disco and Funk All-Nighter at {v}','Vinyl Only Listening Night at {v}'],
 }
 
