@@ -31,6 +31,8 @@ export type AdminCapability =
   | 'admin.disputes.manage'
   // M6 payout management
   | 'admin.payouts.disburse'
+  // Venue Revenue Sharing Program: enrol/un-enrol, rate, venue payouts
+  | 'admin.venues.manage'
 
 /** Every capability, in display order. Source of truth for the role matrix. */
 export const ALL_CAPABILITIES: readonly AdminCapability[] = [
@@ -44,6 +46,7 @@ export const ALL_CAPABILITIES: readonly AdminCapability[] = [
   'admin.refunds.process',
   'admin.disputes.manage',
   'admin.payouts.disburse',
+  'admin.venues.manage',
 ]
 
 /** Human-readable capability descriptions for the admin UI matrix. */
@@ -58,6 +61,7 @@ export const CAPABILITY_LABELS: Record<AdminCapability, string> = {
   'admin.refunds.process': 'Process refunds',
   'admin.disputes.manage': 'Manage disputes',
   'admin.payouts.disburse': 'Disburse payouts',
+  'admin.venues.manage': 'Manage venue revenue sharing',
 }
 
 const ROLE_CAPABILITIES: Record<AdminRole, ReadonlySet<AdminCapability>> = {
@@ -73,6 +77,7 @@ const ROLE_CAPABILITIES: Record<AdminRole, ReadonlySet<AdminCapability>> = {
     'admin.refunds.process',
     'admin.disputes.manage',
     'admin.payouts.disburse',
+    'admin.venues.manage',
   ]),
   support: new Set<AdminCapability>([
     'admin.dashboard.view',
