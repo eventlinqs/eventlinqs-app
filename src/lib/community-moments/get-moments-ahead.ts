@@ -1,4 +1,4 @@
-import { CULTURAL_MOMENTS, type CommunityMoment } from './calendar'
+import { COMMUNITY_MOMENTS, type CommunityMoment } from './calendar'
 
 /**
  * Returns the next `count` community moments whose end-date is on or after
@@ -10,7 +10,7 @@ import { CULTURAL_MOMENTS, type CommunityMoment } from './calendar'
  */
 export function getMomentsAhead(count = 4, now: Date = new Date()): CommunityMoment[] {
   const today = now.toISOString().slice(0, 10)
-  return CULTURAL_MOMENTS
+  return COMMUNITY_MOMENTS
     .filter(m => m.end >= today)
     .sort((a, b) => a.start.localeCompare(b.start))
     .slice(0, count)

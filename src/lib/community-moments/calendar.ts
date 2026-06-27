@@ -40,7 +40,7 @@ export interface CommunityMoment {
  * for Islamic moments, Indian govt almanac for Hindu, Chinese govt almanac
  * for Lunar). Dates below are the 2026 occurrences.
  */
-export const CULTURAL_MOMENTS: CommunityMoment[] = [
+export const COMMUNITY_MOMENTS: CommunityMoment[] = [
   // First Nations - always surfaced first
   { slug: 'naidoc-week-2026',     name: 'NAIDOC Week',               start: '2026-07-05', end: '2026-07-12', community: 'aboriginal-torres-strait-islander', blurb: 'Celebrating the history, community and achievements of First Nations peoples.',    imageQuery: 'naidoc indigenous australian celebration smoking ceremony' },
   { slug: 'reconciliation-2026',  name: 'Reconciliation Week',       start: '2026-05-27', end: '2026-06-03', community: 'aboriginal-torres-strait-islander', blurb: 'A week of dialogue, learning, and shared history.',                              imageQuery: 'australian indigenous reconciliation celebration community' },

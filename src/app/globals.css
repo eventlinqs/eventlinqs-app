@@ -327,7 +327,7 @@ body {
 /* ─── Hero scale law (single platform standard) ──────────────────────────────
  * ONE hero scale, platform-wide: the homepage hero scale. Every page hero -
  * marketing, discovery, AND content (event detail, city, suburb, category,
- * culture) - uses .hero-marketing. There is no separate, taller "content" tier.
+ * community) - uses .hero-marketing. There is no separate, taller "content" tier.
  * The 2026 competitor mirror (docs/benchmark/competitor-2026/) showed neither
  * Ticketmaster nor Eventbrite runs a hero taller than this on ANY page type
  * (their event-detail, browse, category and city heroes all sit at or below
@@ -567,7 +567,7 @@ body[data-hero-enhanced="1"] [data-hero-shell] {
  *   transparent base with a top-to-fade navy gradient so the white
  *   wordmark and nav read on ANY underlying hero raster. The PageShell
  *   layout puts the sticky header in flex flow with the body bg directly
- *   beneath it (the hero starts BELOW the header on /culture, /city, and
+ *   beneath it (the hero starts BELOW the header on /community, /city, and
  *   intersection pages); without this gradient the white nav would
  *   disappear the moment the client hydrates out of the SSR State B
  *   default. Founder review Batch 11.0 surfaced this on bright-sky heroes.

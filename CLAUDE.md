@@ -217,6 +217,30 @@ links), and the benchmark and gate rules in Verification and gates.
    lists them plainly, and never states or implies completeness. Reporting a
    partial build as done is the most serious breach of this constitution.
 
+### The market-ready completeness bar (volume law)
+
+"Works" is not the bar; "complete, full, and world-class" is. The platform must
+look and feel complete and voluminous everywhere a real Australian user looks,
+standing next to Ticketmaster, Eventbrite and Humanitix from day one.
+
+- **Every rail full and balanced.** A rail with 1 to 2 items next to a rail with
+  7 is a defect. No empty sections, no near-empty discovery surfaces, no blank
+  image slots. A route that resolves 200 to a designed empty state is correct
+  engineering but is NOT market-ready content: an empty city, scene, community,
+  or category a user can browse to is a completeness gap, not a finished surface.
+- **All of Australia from day one.** Build for every Australian city and state,
+  not four cities. Every city the platform lists must be represented with real
+  events and real imagery (or a branded fallback, never a blank tile). The
+  by-city rail and the cities page must represent Australia properly.
+- **Melbourne-first (and Geelong) is RECRUITMENT and marketing only.** It governs
+  where the founder concentrates organiser seeding effort; it must NEVER shape
+  what the platform SHOWS. National availability and national density on every
+  surface are the display standard from day one.
+- **Volume is proven, not assumed.** Density is verified against the live target
+  (events per city, items per rail, events behind every scene and community),
+  exactly as the Definition of Done verifies function. A thin catalogue fails the
+  bar even when every route resolves 200.
+
 ## Law 1: no generic
 
 No generic text, layouts, placeholders, or template aesthetics anywhere, ever.
