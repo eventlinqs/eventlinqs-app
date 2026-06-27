@@ -6,6 +6,7 @@ import {
   getProcessingFeePassThrough,
   type ProcessingFeePassThrough,
 } from './pricing-rules'
+import { computeFeeLineCents, computeAllInTotalCents } from './fee-math'
 
 /**
  * M6 Phase 3 (rework). PaymentCalculator now reads from the long-format
@@ -155,11 +156,18 @@ export class PaymentCalculator {
 
     const ticketCount = tickets.reduce((sum, t) => sum + t.quantity, 0)
 
-    const platform_fee_cents = Math.round(
-      (discounted_subtotal * platformFeePercent) / 100 + ticketCount * platformFeeFixedCents
-    )
-    const payment_processing_fee_cents = Math.round(
-      (discounted_subtotal * processingFeePercent) / 100 + processingFeeFixedCents
+    // Single source of fee arithmetic (src/lib/payments/fee-math.ts): the SAME
+    // pure function powers the ACCC all-in display on the ticket selector, so
+    // the total the buyer is shown can never diverge from the total charged.
+    const { platform_fee_cents, payment_processing_fee_cents } = computeFeeLineCents(
+      discounted_subtotal,
+      ticketCount,
+      {
+        platformFeePercent,
+        platformFeeFixedCents,
+        processingFeePercent,
+        processingFeeFixedCents,
+      },
     )
     // GST is inclusive in EventLinqs all-in pricing (all-in pricing shown from
     // the first click, no hidden fees). Funds-holding model + founder GST ruling
@@ -180,19 +188,17 @@ export class PaymentCalculator {
 
     const resolvedPassType: FeePassType = fee_pass_type ?? passThroughToFeePassType(passThroughDefault)
 
-    let total_cents: number
-    let processingFeeShownToBuyer: number
-    let platformFeeShownToBuyer: number
-
-    if (resolvedPassType === 'absorb') {
-      total_cents = discounted_subtotal + tax_cents
-      processingFeeShownToBuyer = 0
-      platformFeeShownToBuyer = 0
-    } else {
-      total_cents = discounted_subtotal + platform_fee_cents + payment_processing_fee_cents + tax_cents
-      processingFeeShownToBuyer = payment_processing_fee_cents
-      platformFeeShownToBuyer = platform_fee_cents
-    }
+    // Same shared pure helper the client all-in display uses, so charged ==
+    // shown. In absorb mode the buyer pays the subtotal only (the fees come out
+    // of the organiser payout); in pass-on the fees are added on top.
+    const total_cents = computeAllInTotalCents(
+      discounted_subtotal,
+      { platform_fee_cents, payment_processing_fee_cents },
+      resolvedPassType,
+      tax_cents,
+    )
+    const processingFeeShownToBuyer = resolvedPassType === 'absorb' ? 0 : payment_processing_fee_cents
+    const platformFeeShownToBuyer = resolvedPassType === 'absorb' ? 0 : platform_fee_cents
 
     return {
       subtotal_cents,

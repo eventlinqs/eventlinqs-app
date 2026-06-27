@@ -12,6 +12,12 @@ import {
   TICKETS_NOT_ON_SALE_BODY,
   TICKETS_NOT_ON_SALE_HEADING,
 } from '@/lib/payments/sale-status'
+import {
+  computeFeeLineCents,
+  computeAllInTotalCents,
+  type FeeRates,
+  type FeePassType,
+} from '@/lib/payments/fee-math'
 
 type TierWithDisplayPrice = TicketTier & { display_price_cents?: number }
 
@@ -26,6 +32,15 @@ interface TicketSelectorProps {
   // Paid event whose organiser has not finished Stripe setup: render the
   // not-on-sale state and allow no selection so no inventory is consumed.
   saleBlocked?: boolean
+  // ACCC all-in display (drip-pricing compliance): the live fee VALUES for this
+  // event's scope and who carries them. When fees are passed to the buyer the
+  // selector shows the true all-in total BEFORE checkout, never only at the
+  // final step. Resolved server-side from pricing_rules (the one source) and
+  // computed here through the SAME pure math the charge uses, so the shown total
+  // equals the charged total. Optional so non-paid / not-yet-wired callers fall
+  // back to a plain subtotal.
+  feeRates?: FeeRates
+  feePassType?: FeePassType
 }
 
 function formatPrice(priceCents: number, currency: string) {
@@ -33,7 +48,7 @@ function formatPrice(priceCents: number, currency: string) {
   return `${currency.toUpperCase()} ${(priceCents / 100).toFixed(2)}`
 }
 
-export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, currency, waitlistEnabled = false, squadBookingEnabled = false, saleBlocked = false }: TicketSelectorProps) {
+export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, currency, waitlistEnabled = false, squadBookingEnabled = false, saleBlocked = false, feeRates, feePassType = 'pass_to_buyer' }: TicketSelectorProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -75,6 +90,25 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
     addons.reduce((s, a) => s + (addonQuantities[a.id] ?? 0) * a.price, 0)
 
   const allFree = tiers.every(t => (t.display_price_cents ?? t.price) === 0)
+
+  // ACCC all-in: surface the true total the buyer will pay (incl. unavoidable
+  // fees) BEFORE checkout, through the SAME pure fee math the charge uses. No
+  // discount is known at this stage (codes apply at checkout), so the subtotal
+  // is the post-discount base here; the platform flat fee multiplies per ticket.
+  const feeLines =
+    feeRates && subtotalCents > 0
+      ? computeFeeLineCents(subtotalCents, totalTickets, feeRates)
+      : { platform_fee_cents: 0, payment_processing_fee_cents: 0 }
+  const feesPassedToBuyer = feePassType !== 'absorb'
+  const buyerFeesCents = feesPassedToBuyer
+    ? feeLines.platform_fee_cents + feeLines.payment_processing_fee_cents
+    : 0
+  // The single all-in figure shown to the buyer (and on the checkout button).
+  const allInTotalCents =
+    feeRates && subtotalCents > 0
+      ? computeAllInTotalCents(subtotalCents, feeLines, feePassType)
+      : subtotalCents
+  const showAllIn = !allFree && subtotalCents > 0
 
   function handleCheckout() {
     setError(null)
@@ -334,10 +368,32 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
         </div>
       )}
 
-      {totalTickets > 0 && subtotalCents > 0 && (
-        <div className="flex justify-between text-sm font-semibold text-ink-900 pt-3 border-t border-ink-200">
-          <span>Subtotal</span>
-          <span>{formatPrice(subtotalCents, currency)}</span>
+      {totalTickets > 0 && showAllIn && (
+        <div className="space-y-1.5 pt-3 border-t border-ink-200">
+          <div className="flex justify-between text-sm text-ink-600">
+            <span>Subtotal</span>
+            <span className="tabular-nums">{formatPrice(subtotalCents, currency)}</span>
+          </div>
+          {feesPassedToBuyer ? (
+            <>
+              <div className="flex justify-between text-sm text-ink-600">
+                <span>Service + processing fees</span>
+                <span className="tabular-nums">{formatPrice(buyerFeesCents, currency)}</span>
+              </div>
+              <div className="flex justify-between text-base font-bold text-ink-900 pt-1.5 border-t border-ink-100">
+                <span>Total</span>
+                <span className="tabular-nums">{formatPrice(allInTotalCents, currency)}</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex justify-between text-base font-bold text-ink-900 pt-1.5 border-t border-ink-100">
+                <span>Total</span>
+                <span className="tabular-nums">{formatPrice(allInTotalCents, currency)}</span>
+              </div>
+              <p className="text-[11px] text-ink-400">All fees included in the ticket price</p>
+            </>
+          )}
         </div>
       )}
 
@@ -371,7 +427,7 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
             ? 'Select tickets to continue'
             : allFree
             ? `Register ${totalTickets} ticket${totalTickets > 1 ? 's' : ''}`
-            : `Checkout · ${formatPrice(subtotalCents, currency)}`}
+            : `Checkout · ${formatPrice(allInTotalCents, currency)}`}
         </button>
       )}
     </div>

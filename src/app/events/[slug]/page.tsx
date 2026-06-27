@@ -42,6 +42,8 @@ import { SectionHeader } from '@/components/ui/SectionHeader'
 import { EventSoldOut, type EventSoldOutRelated } from '@/components/features/events/event-sold-out'
 import { TicketsNotOnSale } from '@/components/features/events/tickets-not-on-sale'
 import { eventIsPaid, isOrganiserSellable } from '@/lib/payments/sale-status'
+import { getEventFeeRates } from '@/lib/pricing/event-fee-config'
+import type { FeePassType } from '@/lib/payments/fee-math'
 import { EventViewTracker } from '@/components/features/events/event-view-tracker'
 import { EventSchemaJsonLd } from '@/components/features/events/event-schema-jsonld'
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
@@ -374,6 +376,7 @@ export default async function EventDetailPage({ params }: Props) {
     media,
     related,
     seatsData,
+    feeRates,
   ] = await Promise.all([
     getDynamicPriceMap(allTiers.map(t => t.id)),
     getEventInventoryStatic(event.id),
@@ -392,7 +395,16 @@ export default async function EventDetailPage({ params }: Props) {
       event.venue_city,
     ),
     seatsPromise,
+    // ACCC all-in: resolve this event's live fee VALUES (event > org > region
+    // precedence, same rows the charge resolves) so the ticket selector can show
+    // the true total incl. fees before checkout.
+    getEventFeeRates({
+      organisationId: event.organisation_id,
+      eventId: event.id,
+      currency: allTiers[0]?.currency ?? 'AUD',
+    }),
   ])
+  const eventFeePassType = (event.fee_pass_type ?? 'pass_to_buyer') as FeePassType
 
   function resolvePrice(tier: TicketTier): number {
     const dynamic = dynamicPriceMap.get(tier.id)
@@ -825,6 +837,8 @@ export default async function EventDetailPage({ params }: Props) {
                       squadBookingEnabled={event.squad_booking_enabled ?? false}
                       tierInventory={tierInventory}
                       saleBlocked={saleBlocked}
+                      feeRates={feeRates}
+                      feePassType={eventFeePassType}
                     />
                   </div>
                 )}

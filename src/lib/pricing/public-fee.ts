@@ -27,6 +27,18 @@ export const PUBLIC_PLATFORM_FEE = {
   currency: 'AUD',
 } as const
 
+/**
+ * LAST-RESORT processing-fee fallback (NOT a second source). Mirrors the locked
+ * AU processing fee written to `pricing_rules` by migration
+ * 20260627000001_fee_structure_locked_au: 2.5% of the order, no flat component.
+ * Used only when a live processing-fee lookup fails, so the all-in display never
+ * 500s and degrades to the right number.
+ */
+export const PUBLIC_PROCESSING_FEE = {
+  percent: 2.5,
+  fixedCents: 0,
+} as const
+
 /** e.g. "2%" */
 export const PUBLIC_FEE_PERCENT_LABEL = `${PUBLIC_PLATFORM_FEE.percent}%`
 
