@@ -54,13 +54,15 @@ silently follow the stale doc.
 | Links, routes, navigation | Law 5 (zero dead links) |
 | A migration or the database | Verification and gates (Migrations) |
 | A fee, pricing, checkout charge, or payout | Fee system (one source), `docs/FEE-SYSTEM.md` |
+| Venues, venue enrolment, venue revenue share, venue payout | Venue Revenue Sharing Program, Fee system (one source), `docs/EventLinqs-Venue-Revenue-Program-SPEC.md` |
 | CI, gates, delivery | Verification and gates |
 
 **Index of laws:** Law 0 (read first) - Definition of Done (SHIP 100%, A to Z)
 - Growth plan (the wedge, the two engines, the levers) - Law 1 (no generic) -
 Law 2 (evidence-driven) - Law 3 (Australia-smart) - Law 4 (marketing image-rich)
 - Law 5 (zero dead links) - Scene layer - Design system - Motion - Copy and
-banned content - Verification and gates - Tooling - Authority docs - Skills.
+banned content - Fee system - Venue Revenue Sharing Program - Verification and
+gates - Tooling - Authority docs - Skills.
 
 ## What EventLinqs is
 
@@ -671,6 +673,58 @@ admin-editable. Do not reopen the numbers; tune only in admin if real data warra
 - **Launch baseline:** AU = `3.5% + AUD 0.99` platform, `2.5%` processing, written
   to `pricing_rules` by a lawful migration so the documented fee and the live value
   match (`public-fee.ts` is the last-resort fallback and is kept in sync).
+
+## Venue Revenue Sharing Program (the venue moat, locked 2026)
+
+The standout differentiator that turns venues into an unpaid sales force: a venue
+earns a share of EventLinqs revenue from every paid ticket sold through the
+platform for an event at that venue, so the venue champions EventLinqs to the
+organisers who run events there. Sourced from
+`docs/EventLinqs-Venue-Revenue-Program-SPEC.md`; this section is its binding law.
+The repo is the source of truth, not memory.
+
+- **Opt-in per venue, attractive-offer, NEVER hard exclusivity.** A venue is in
+  the program ONLY when explicitly enrolled, and the revenue share is the carrot:
+  venues CHOOSE EventLinqs because it pays them. There is NO contractual lock-out
+  of competitors. Hard venue exclusivity is the exact conduct that drew the US DOJ
+  antitrust suit against Ticketmaster and ACCC scrutiny in Australia, and is real
+  exposure for a solo founder. Same commercial outcome, far less legal risk. Do
+  not build, copy, or imply exclusivity enforcement anywhere.
+- **The share is 20% of the EventLinqs PLATFORM FEE.** Not the ticket price, not
+  the processing fee. It is carved from the platform fee EventLinqs actually keeps
+  (`round(order.platform_fee_cents * rate)`), so it can NEVER make EventLinqs
+  unprofitable and NEVER reduces the organiser payout or the buyer total: the
+  organiser still gets `total - (platform_fee + processing_fee)` unchanged, the
+  buyer pays the same all-in price, and EventLinqs's own margin absorbs the share.
+  Free events generate no platform fee, so no venue share. Only events at an
+  ENROLLED venue (linked by `events.venue_id`) generate a share.
+- **Single source of truth, no forked fee logic.** The 20% rate lives in
+  `pricing_rules` as `rule_type = 'venue_revenue_share_percentage'`, resolved by
+  the ONE `getPricingRule` resolver and admin-editable in `/admin/venues` without
+  a code change (the Fee system one-source law applies in full). Never hardcode the
+  rate.
+- **Tracked by an enrolment inventory and an append-only share ledger.** The
+  system knows exactly which venues are enrolled and from when (`venues` enrolment
+  state plus a `venue_enrolments` history), and exactly what each venue is owed:
+  every paid ticket at an enrolled venue writes one `accrual` row to
+  `venue_share_ledger` attributed to the venue, event, and order; refunds write a
+  proportional `refund_reversal`; payouts write a `payout` debit. Un-enrolling
+  stops FUTURE accruals and never alters past ledger rows.
+- **Paid through the proven funds-holding payout path, never a new one.** Enrolled
+  venues are paid their accumulated net share AFTER the event, matching the
+  organiser disbursement model, via the same `TransferGateway` (a venue Stripe
+  connected account), claimed atomically by `disburse_venue_share` before the
+  Stripe transfer with void-on-failure. The organiser ledger
+  (`organiser_balance_ledger`), `disburse_transfer`, and the charge/transfer
+  mechanics are NOT touched: the venue share is a SEPARATE ledger funded from
+  EventLinqs's retained margin, added additively and re-verified to reconcile
+  (organiser share + venue share + EventLinqs net keep = total, no leakage).
+- **Surfaces.** A role-gated, server-enforced admin surface (`/admin/venues`,
+  capability `admin.venues.manage`) to enrol/un-enrol, set the rate, and
+  trigger/verify payouts; and a venue-facing dashboard showing enrolled status,
+  the venue's events, and earned and paid share. Both inherit the approved design
+  tokens and components. The venue marketing/outreach landing (Law 4 image-rich)
+  is the go-to-market follow-on, prepared for launch outreach.
 
 ## Verification and gates
 
