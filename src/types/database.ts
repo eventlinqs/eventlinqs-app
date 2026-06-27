@@ -676,6 +676,7 @@ export type Database = {
           is_high_demand: boolean
           is_multi_day: boolean
           is_recurring: boolean
+          is_seed_data: boolean
           max_capacity: number | null
           metadata: Json | null
           organisation_id: string
@@ -735,6 +736,7 @@ export type Database = {
           is_high_demand?: boolean
           is_multi_day?: boolean
           is_recurring?: boolean
+          is_seed_data?: boolean
           max_capacity?: number | null
           metadata?: Json | null
           organisation_id: string
@@ -794,6 +796,7 @@ export type Database = {
           is_high_demand?: boolean
           is_multi_day?: boolean
           is_recurring?: boolean
+          is_seed_data?: boolean
           max_capacity?: number | null
           metadata?: Json | null
           organisation_id?: string
@@ -3236,6 +3239,7 @@ export type Database = {
           is_high_demand: boolean
           is_multi_day: boolean
           is_recurring: boolean
+          is_seed_data: boolean
           max_capacity: number | null
           metadata: Json | null
           organisation_id: string
