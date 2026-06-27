@@ -21,9 +21,13 @@ export async function CityRailSection({ nowIso }: Props) {
       // local SVG remain the fallback chain for any city without a spine slot.
       const spine = getSpineCity(t.slug)
       const [countResult, photo] = await Promise.all([
+        // Match on the city NAME (e.g. "Gold Coast"), consistent with the city
+        // landing pages (/city/[slug] uses %city.name%). Matching the slug
+        // ("gold-coast") would never match a "Gold Coast" venue_city, so
+        // multi-word cities would show 0 events on the rail even when seeded.
         supabase.from('events').select('id', { count: 'exact', head: true })
           .eq('status', 'published').eq('visibility', 'public')
-          .gte('start_date', nowIso).ilike('venue_city', `%${t.slug}%`),
+          .gte('start_date', nowIso).ilike('venue_city', `%${t.city}%`),
         spine ? Promise.resolve(null) : getCityPhoto(t.slug),
       ])
       const localSvg = LOCAL_CITY_SVG.has(t.slug)

@@ -112,6 +112,10 @@ export const COMMUNITY_TABS: { slug: string; label: string; tag: string; href: s
   { slug: 'networking',  label: 'Business',   tag: 'business',    href: '/categories/networking' },
 ]
 
+// Australia-only (Law 3, national-from-day-one). The homepage By-City rail
+// covers every launch city the image spine supports; foreign cities are not
+// listed on an Australia-only platform. Order is the founder's display order;
+// the rail filters to cities with at least one upcoming event (city-rail-section).
 export const CITY_TILES = [
   { city: 'Melbourne',    slug: 'melbourne' },
   { city: 'Sydney',       slug: 'sydney' },
@@ -119,21 +123,13 @@ export const CITY_TILES = [
   { city: 'Perth',        slug: 'perth' },
   { city: 'Adelaide',     slug: 'adelaide' },
   { city: 'Gold Coast',   slug: 'gold-coast' },
-  { city: 'Geelong',      slug: 'geelong' },
-  { city: 'Hobart',       slug: 'hobart' },
   { city: 'Canberra',     slug: 'canberra' },
-  { city: 'Darwin',       slug: 'darwin' },
   { city: 'Newcastle',    slug: 'newcastle' },
+  { city: 'Hobart',       slug: 'hobart' },
+  { city: 'Darwin',       slug: 'darwin' },
   { city: 'Wollongong',   slug: 'wollongong' },
-  { city: 'Auckland',     slug: 'auckland' },
-  { city: 'London',       slug: 'london' },
-  { city: 'Manchester',   slug: 'manchester' },
-  { city: 'Dublin',       slug: 'dublin' },
-  { city: 'Toronto',      slug: 'toronto' },
-  { city: 'New York',     slug: 'new-york' },
-  { city: 'Houston',      slug: 'houston' },
-  { city: 'Lagos',        slug: 'lagos' },
-  { city: 'Accra',        slug: 'accra' },
+  { city: 'Geelong',      slug: 'geelong' },
+  { city: 'Cairns',       slug: 'cairns' },
 ]
 
 // Cities that have a real local SVG silhouette in public/cities/. This MUST
