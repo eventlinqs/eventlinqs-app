@@ -313,9 +313,9 @@ export function CheckoutForm({
       </nav>
 
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+        {/* gold-800 (brand-accent-strong) not gold-600: gold text on a light
+            surface must meet 4.5:1 (Design system, gold tiers). */}
         {!userId && (
-          {/* gold-800 (brand-accent-strong) not gold-600: gold text on a light
-              surface must meet 4.5:1 (Design system, gold tiers). */}
           <div className="mb-6 rounded-lg bg-gold-100 border border-gold-200 px-4 py-3 text-sm text-gold-800">
             <a href="/login" className="font-semibold underline">Log in</a> for a faster checkout. Or continue as guest below.
           </div>
