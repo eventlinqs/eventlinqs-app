@@ -18,6 +18,7 @@ import type {
   EventStatus,
   TicketTierType,
   TicketTier,
+  FeePassType,
 } from '@/types/database'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -69,6 +70,9 @@ type FormData = {
   cover_image_url: string
   // Step 5
   ticket_tiers: TicketTierInput[]
+  // Who carries the fees: pass-on (buyer pays, organiser keeps face value -
+  // default) or absorb (deducted from the organiser payout).
+  fee_pass_type: FeePassType
   // Step 6
   visibility: EventVisibility
   is_age_restricted: boolean
@@ -196,6 +200,7 @@ function getDefaultFormData(): FormData {
     squad_timeout_hours: '24',
     is_high_demand: false,
     queue_admission_window_minutes: '10',
+    fee_pass_type: 'pass_to_buyer',
   }
 }
 
@@ -232,6 +237,7 @@ function fromExistingEvent(
     squad_timeout_hours?: number | null
     is_high_demand?: boolean | null
     queue_admission_window_minutes?: number | null
+    fee_pass_type?: FeePassType | null
   },
   tiers: TicketTier[]
 ): FormData {
@@ -283,6 +289,7 @@ function fromExistingEvent(
     squad_timeout_hours: (event.squad_timeout_hours ?? 24).toString(),
     is_high_demand: event.is_high_demand ?? false,
     queue_admission_window_minutes: (event.queue_admission_window_minutes ?? 10).toString(),
+    fee_pass_type: event.fee_pass_type ?? 'pass_to_buyer',
   }
 }
 
@@ -399,6 +406,7 @@ export function EventForm({
     squad_timeout_hours: Math.min(72, Math.max(1, parseInt(formData.squad_timeout_hours) || 24)),
     is_high_demand: formData.is_high_demand,
     queue_admission_window_minutes: Math.min(60, Math.max(5, parseInt(formData.queue_admission_window_minutes) || 10)),
+    fee_pass_type: formData.fee_pass_type,
     ticket_tiers: formData.ticket_tiers.map((t, i) => ({
       name: t.name,
       description: t.description,
@@ -1214,6 +1222,49 @@ export function EventForm({
             </div>
           </div>
         )}
+      </div>
+
+      {/* Booking fees: who pays (per-event). Pass-on is the default so the
+          organiser keeps the full face value; absorb deducts the fees from the
+          payout. The buyer always sees the true all-in total before checkout. */}
+      <div className="rounded-lg border border-ink-200 p-5">
+        <p className="text-sm font-semibold text-ink-900">Booking fees</p>
+        <p className="mt-1 text-xs text-ink-400">
+          Choose who pays the EventLinqs service and processing fees. Free tickets are
+          never charged a fee.
+        </p>
+        <div className="mt-4 space-y-3">
+          {([
+            {
+              value: 'pass_to_buyer',
+              label: 'Pass fees to the buyer (recommended)',
+              desc: 'The buyer pays the fees on top at checkout and you keep the full ticket face value. The all-in total is shown to the buyer up front.',
+            },
+            {
+              value: 'absorb',
+              label: 'Absorb the fees',
+              desc: 'The buyer pays only the ticket price and the fees are deducted from your payout.',
+            },
+          ] as { value: FeePassType; label: string; desc: string }[]).map(opt => (
+            <label
+              key={opt.value}
+              className="flex cursor-pointer items-start gap-3 rounded-lg border border-ink-200 p-4 hover:bg-ink-100"
+            >
+              <input
+                type="radio"
+                name="fee_pass_type"
+                value={opt.value}
+                checked={formData.fee_pass_type === opt.value}
+                onChange={() => set('fee_pass_type', opt.value)}
+                className="mt-0.5 h-4 w-4 border-ink-200 text-gold-500 focus:ring-gold-500"
+              />
+              <div>
+                <p className="text-sm font-medium text-ink-900">{opt.label}</p>
+                <p className="text-xs text-ink-400">{opt.desc}</p>
+              </div>
+            </label>
+          ))}
+        </div>
       </div>
     </div>
   )

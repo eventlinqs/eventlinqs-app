@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath, updateTag } from 'next/cache'
 import { canTransition } from '@/lib/event-lifecycle'
 import { checkPublishGate, hasPaidTier } from '@/lib/events/publish-gate'
-import type { EventStatus, EventVisibility, EventType, TicketTierType } from '@/types/database'
+import type { EventStatus, EventVisibility, EventType, TicketTierType, FeePassType } from '@/types/database'
 
 function generateSlug(title: string): string {
   const base = title
@@ -65,6 +65,8 @@ export type CreateEventInput = {
   max_capacity: number | null
   status: EventStatus
   scheduled_publish_at: string | null
+  // Who carries the booking fees: pass_to_buyer (default) or absorb.
+  fee_pass_type: FeePassType
   ticket_tiers: TicketTierInput[]
   // M4: Reserved seating
   has_reserved_seating: boolean
@@ -152,6 +154,7 @@ export async function createEvent(input: CreateEventInput): Promise<{ error?: st
       squad_timeout_hours: input.squad_timeout_hours,
       is_high_demand: input.is_high_demand,
       queue_admission_window_minutes: input.queue_admission_window_minutes,
+      fee_pass_type: input.fee_pass_type,
     })
 
   if (eventError) {
@@ -305,6 +308,7 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
       squad_timeout_hours: input.squad_timeout_hours,
       is_high_demand: input.is_high_demand,
       queue_admission_window_minutes: input.queue_admission_window_minutes,
+      fee_pass_type: input.fee_pass_type,
     })
     .eq('id', input.eventId)
 
