@@ -123,8 +123,9 @@ export function AttendeeForm({
               </p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-ink-400 mb-1">First name</label>
+                  <label htmlFor={`att-${i}-first`} className="block text-xs text-ink-400 mb-1">First name</label>
                   <input
+                    id={`att-${i}-first`}
                     type="text"
                     value={attendee.first_name}
                     onChange={e => updateAttendee(i, 'first_name', e.target.value)}
@@ -133,8 +134,9 @@ export function AttendeeForm({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-ink-400 mb-1">Last name</label>
+                  <label htmlFor={`att-${i}-last`} className="block text-xs text-ink-400 mb-1">Last name</label>
                   <input
+                    id={`att-${i}-last`}
                     type="text"
                     value={attendee.last_name}
                     onChange={e => updateAttendee(i, 'last_name', e.target.value)}
@@ -143,8 +145,9 @@ export function AttendeeForm({
                   />
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-xs text-ink-400 mb-1">Email</label>
+                  <label htmlFor={`att-${i}-email`} className="block text-xs text-ink-400 mb-1">Email</label>
                   <input
+                    id={`att-${i}-email`}
                     type="email"
                     value={attendee.email}
                     onChange={e => updateAttendee(i, 'email', e.target.value)}
