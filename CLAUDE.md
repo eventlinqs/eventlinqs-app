@@ -634,8 +634,43 @@ rules:
 - **Versioned + audit-logged.** Every change is an append-only new-version row
   (past orders keep their historical fee) recorded in the admin audit log with
   who and when. Set fees in `/admin/pricing`; no code deploy needed.
-- **Launch default:** AU = 2% + AUD 0.50, written to `pricing_rules` by a lawful
-  migration so the documented launch fee and the live value match.
+
+### Locked fee structure (2026, do not relitigate)
+
+The final, decided fee model, sourced from `docs/EventLinqs-Fee-Structure-LOCKED.md`
+(researched against Eventbrite, Humanitix, Ticketmaster, Ticketek). Built through
+the single-source fee system above; the values live in `pricing_rules` and are
+admin-editable. Do not reopen the numbers; tune only in admin if real data warrants.
+
+- **Two fees on every PAID ticket.** (1) PLATFORM / SERVICE fee (the profit
+  margin): `3.5% + AUD 0.99` per ticket. (2) PAYMENT PROCESSING fee (covers
+  Stripe, thin margin): `2.5%` of the order, no flat component. Set just under
+  Humanitix (4% + $0.99) and below Eventbrite so "cheaper than Humanitix, far
+  cheaper than Eventbrite" holds at every price point.
+- **Free events are free.** `$0`, no fees, same as every competitor. The
+  calculator short-circuits a zero-subtotal cart before any fee is applied.
+- **Admin-editable, no code change.** Both percentages AND the flat amount are
+  edited by the founder in `/admin/pricing` (region defaults plus per-organiser /
+  per-event overrides), persisted as the single source the checkout reads.
+- **ACCC all-in display (Australian Consumer Law, drip-pricing).** The true
+  all-in total is shown to the buyer CLEARLY and EARLY, as a single total figure,
+  on the ticket-selection surface, never sprung only at the final checkout step.
+  Unavoidable fees are surfaced up front via the shared pure fee math
+  (`src/lib/payments/fee-math.ts`, used by both the server `PaymentCalculator` and
+  the client display, so the shown total can never diverge from the charged total).
+- **Absorb or pass-on, pass-on default.** Per-event organiser toggle
+  (`events.fee_pass_type`): PASS-ON (buyer pays the fees, organiser keeps full
+  face value) is the default; ABSORB deducts the fees from the organiser payout.
+  Both modes route through the proven funds-holding payout math unchanged.
+- **GST posture (limited collection agent).** EventLinqs is the organiser's
+  limited payment collection agent: the ORGANISER is the seller and remits GST on
+  the ticket price. EventLinqs deals with GST only on its OWN fee, and only once
+  GST-registered (turnover over $75k). Do NOT add 10% GST to the EventLinqs fee
+  until registered; the ticket face value and the fee are treated GST-inclusive,
+  so no separate GST line is added to the buyer total.
+- **Launch baseline:** AU = `3.5% + AUD 0.99` platform, `2.5%` processing, written
+  to `pricing_rules` by a lawful migration so the documented fee and the live value
+  match (`public-fee.ts` is the last-resort fallback and is kept in sync).
 
 ## Verification and gates
 
@@ -778,11 +813,34 @@ live, earning platform with real traffic and data, never before: building
 automations to capture a market for a platform that is not yet live and earning is
 the wrong order. Strong yes to the vision, firm not-yet on timing.
 
+**PARKED, the NEXT MAJOR BUILD after launch-readiness and the fee structure (do
+not forget): the Venue Revenue Sharing Program.** Full spec in
+`docs/EventLinqs-Venue-Revenue-Program-SPEC.md`. Venues earn a percentage of
+revenue from every event ticketed through EventLinqs at their venue and, in
+exchange, champion EventLinqs to the organisers who run events there: a venue
+salesforce that recruits supply. Mechanics to design carefully (it adds a THIRD
+party to the proven funds-holding money flow): venue accounts and onboarding,
+venue-to-event linking by address, automatic venue-share calculation tied to the
+single-source fee engine (do NOT fork fee logic), venue payout via the funds-
+holding payout path (re-verified), a venue earnings dashboard, and partnership
+copy. TWO decisions first: (1) structure the venue offer as an ATTRACTIVE
+revenue-share carrot, NOT hard venue exclusivity (exclusivity is the exact conduct
+that drew the US DOJ suit against Ticketmaster and ACCC scrutiny; real exposure
+for a solo founder); (2) do the margin maths before setting the venue percentage
+(suggested 4-5%), funded from the platform-fee margin not stacked on the buyer,
+after Stripe and the venue cut still profitable. The venue PITCH/landing material
+can be prepared EARLY for launch outreach; the money plumbing is built carefully
+after launch-readiness, never rushed into the launch sequence.
+
 ## Authority docs
 
 - `docs/EventLinqs-Launch-Plan-Handoff.md`: the authoritative launch plan and
   carry-forward (Lawal approved 2026-06-21). The Launch sequence section above is
   its binding summary.
+- `docs/EventLinqs-Fee-Structure-LOCKED.md`: the locked two-fee model. The
+  "Locked fee structure" section above is its binding summary.
+- `docs/EventLinqs-Venue-Revenue-Program-SPEC.md`: the parked Venue Revenue
+  Sharing Program (next major build after launch-readiness + the fee structure).
 - `docs/EventLinqs_Scope_v5.md`: scope. Build nothing that contradicts it.
 - `docs/design/competitor-page-specs.md`: the per-page bar for the benchmark
   gate.
