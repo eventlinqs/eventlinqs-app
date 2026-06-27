@@ -27,6 +27,7 @@
 
 import type { CommunityContent } from './data'
 import type { CityContent } from '@/lib/cities/data'
+import { isCitySlug } from '@/lib/cities/data'
 
 interface IntersectionEntry {
   hero_subtitle: string
@@ -1459,9 +1460,15 @@ export function getIntersectionEditorial(
   cityName: string,
   cityRecord: CityContent | null,
 ): string {
+  // AU-only gate (Law 3, founder ruling 2026-06-27): hand-crafted editorial is
+  // only served for an Australian city in the catalog (cityRecord != null). Any
+  // non-Australian intersection key falls back to the brand-safe templated
+  // paragraph, so foreign editorial is never user-facing even if a future
+  // consumer routes a non-AU city. The /community/[community]/[city] route
+  // already 404s non-catalog cities; this is defence in depth at the data layer.
   const key = `${community.slug}/${citySlug}`
   const entry = INTERSECTIONS[key]
-  if (entry) return entry.editorial
+  if (entry && cityRecord) return entry.editorial
   return fallbackEditorial(community, cityName, cityRecord)
 }
 
@@ -1470,9 +1477,10 @@ export function getIntersectionHeroSubtitle(
   citySlug: string,
   cityName: string,
 ): string {
+  // AU-only gate (Law 3, founder ruling 2026-06-27): see getIntersectionEditorial.
   const key = `${community.slug}/${citySlug}`
   const entry = INTERSECTIONS[key]
-  if (entry) return entry.hero_subtitle
+  if (entry && isCitySlug(citySlug)) return entry.hero_subtitle
   return `${community.tagline} On stage in ${cityName}.`
 }
 
