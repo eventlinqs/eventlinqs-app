@@ -34,11 +34,16 @@ export const ADMIN_PRICING_SCOPES: readonly AdminPricingScope[] = [
   { countryCode: 'IE', currency: 'EUR', label: 'Europe' },
 ]
 
-// The three fields the owner edits. processing_fee_pass_through is the
-// processing-fee treatment: 0 = absorb, 1 = pass to buyer.
+// The fields the owner edits per region. Both fees (their percentages AND the
+// platform flat amount) and the processing-fee treatment are editable, no code
+// change (locked fee structure: founder controls pricing). processing_fee_fixed_cents
+// is the flat processing component (0 under the locked AU model).
+// processing_fee_pass_through is the treatment: 0 = absorb, 1 = pass to buyer.
 export const ADMIN_EDITABLE_FIELDS = [
   'platform_fee_percentage',
   'platform_fee_fixed',
+  'processing_fee_percentage',
+  'processing_fee_fixed_cents',
   'processing_fee_pass_through',
 ] as const
 export type AdminEditableField = (typeof ADMIN_EDITABLE_FIELDS)[number]
@@ -46,6 +51,8 @@ export type AdminEditableField = (typeof ADMIN_EDITABLE_FIELDS)[number]
 const FIELD_VALUE_TYPE: Record<AdminEditableField, PricingRuleValueType> = {
   platform_fee_percentage: 'percentage',
   platform_fee_fixed: 'fixed',
+  processing_fee_percentage: 'percentage',
+  processing_fee_fixed_cents: 'fixed',
   processing_fee_pass_through: 'integer',
 }
 
@@ -58,6 +65,8 @@ export interface AdminPricingRowView {
   scope: AdminPricingScope
   platformFeePercentage: AdminPricingCell
   platformFeeFixedCents: AdminPricingCell
+  processingFeePercentage: AdminPricingCell
+  processingFeeFixedCents: AdminPricingCell
   processingTreatment: AdminPricingCell // value 0 (absorb) | 1 (pass)
 }
 
@@ -103,15 +112,19 @@ export async function readAdminPricingMatrix(): Promise<AdminPricingRowView[]> {
   const admin = createAdminClient()
   const rows: AdminPricingRowView[] = []
   for (const scope of ADMIN_PRICING_SCOPES) {
-    const [pct, fixed, treat] = await Promise.all([
+    const [pct, fixed, procPct, procFixed, treat] = await Promise.all([
       readCurrent(admin, 'platform_fee_percentage', scope.countryCode, scope.currency),
       readCurrent(admin, 'platform_fee_fixed', scope.countryCode, scope.currency),
+      readCurrent(admin, 'processing_fee_percentage', scope.countryCode, scope.currency),
+      readCurrent(admin, 'processing_fee_fixed_cents', scope.countryCode, scope.currency),
       readCurrent(admin, 'processing_fee_pass_through', scope.countryCode, scope.currency),
     ])
     rows.push({
       scope,
       platformFeePercentage: pct,
       platformFeeFixedCents: fixed,
+      processingFeePercentage: procPct,
+      processingFeeFixedCents: procFixed,
       processingTreatment: treat,
     })
   }

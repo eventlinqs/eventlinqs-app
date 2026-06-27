@@ -41,8 +41,9 @@ export default async function AdminPricingPage({ searchParams }: { searchParams:
         <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Money</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Pricing and fees</h1>
         <p className="mt-2 max-w-2xl text-sm text-white/60">
-          Edit the platform fee, fixed fee per ticket, and processing-fee treatment per region,
-          or set a per-organiser or per-event override below. Precedence is event, then
+          Edit the platform fee (percent + fixed per ticket), the payment processing fee
+          (percent + fixed), and the processing-fee treatment per region, or set a
+          per-organiser or per-event override below. Precedence is event, then
           organiser, then region. The same value drives the displayed fee, the checkout charge,
           and the payout. Saving writes a new version that takes effect for new transactions
           immediately. Past orders keep their original fees.
@@ -87,7 +88,9 @@ export default async function AdminPricingPage({ searchParams }: { searchParams:
               <th scope="col" className="px-4 py-3 font-medium">Region</th>
               <th scope="col" className="px-4 py-3 font-medium">Platform fee percent</th>
               <th scope="col" className="px-4 py-3 font-medium">Fixed fee per ticket (cents)</th>
-              <th scope="col" className="px-4 py-3 font-medium">Processing fee</th>
+              <th scope="col" className="px-4 py-3 font-medium">Processing fee percent</th>
+              <th scope="col" className="px-4 py-3 font-medium">Processing fixed (cents)</th>
+              <th scope="col" className="px-4 py-3 font-medium">Processing treatment</th>
               <th scope="col" className="px-4 py-3 font-medium">Version</th>
               <th scope="col" className="px-4 py-3 font-medium"><span className="sr-only">Save</span></th>
             </tr>
@@ -98,6 +101,8 @@ export default async function AdminPricingPage({ searchParams }: { searchParams:
               const ver = Math.max(
                 row.platformFeePercentage.version ?? 0,
                 row.platformFeeFixedCents.version ?? 0,
+                row.processingFeePercentage.version ?? 0,
+                row.processingFeeFixedCents.version ?? 0,
                 row.processingTreatment.version ?? 0,
               )
               return (
@@ -136,6 +141,34 @@ export default async function AdminPricingPage({ searchParams }: { searchParams:
                       min="0"
                       max="100000"
                       defaultValue={row.platformFeeFixedCents.value ?? 0}
+                      className="w-24 rounded-md border border-white/15 bg-white/[0.04] px-2 py-1.5 text-white focus:border-white/40 focus:outline-none"
+                    />
+                  </td>
+                  <td className="px-4 py-3">
+                    <label className="sr-only" htmlFor={`procpct-${id}`}>Processing fee percent for {row.scope.label}</label>
+                    <input
+                      form={`form-${id}`}
+                      id={`procpct-${id}`}
+                      name="processing_fee_percentage"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      defaultValue={row.processingFeePercentage.value ?? 0}
+                      className="w-24 rounded-md border border-white/15 bg-white/[0.04] px-2 py-1.5 text-white focus:border-white/40 focus:outline-none"
+                    />
+                  </td>
+                  <td className="px-4 py-3">
+                    <label className="sr-only" htmlFor={`procfixed-${id}`}>Processing fixed fee in cents for {row.scope.label}</label>
+                    <input
+                      form={`form-${id}`}
+                      id={`procfixed-${id}`}
+                      name="processing_fee_fixed_cents"
+                      type="number"
+                      step="1"
+                      min="0"
+                      max="100000"
+                      defaultValue={row.processingFeeFixedCents.value ?? 0}
                       className="w-24 rounded-md border border-white/15 bg-white/[0.04] px-2 py-1.5 text-white focus:border-white/40 focus:outline-none"
                     />
                   </td>
