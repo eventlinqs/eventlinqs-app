@@ -13,6 +13,8 @@ export type { HeroMediaProps } from './HeroMedia'
 export { EventCardMedia } from './EventCardMedia'
 export type { EventCardMediaVariant } from './EventCardMedia'
 
+export { GalleryImage } from './GalleryImage'
+
 export { CityTileImage } from './CityTileImage'
 
 export { OrganiserAvatar } from './OrganiserAvatar'
