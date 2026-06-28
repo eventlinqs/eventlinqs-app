@@ -1,6 +1,7 @@
 import Image from 'next/image'
 import { MEDIA_QUALITY } from './quality'
 import { MEDIA_SIZES } from './sizes'
+import { heroImageLoader } from '@/lib/images/hero-image-loader'
 import { HeroAmbientLayer } from './hero-ambient-layer'
 import { resolveImageSrc } from './safe-image-src'
 import { BrandedPlaceholder } from './decorative/branded-placeholder'
@@ -118,6 +119,10 @@ export function HeroMedia({
         loading={priority ? 'eager' : 'lazy'}
         sizes={sizes}
         quality={MEDIA_QUALITY.hero}
+        // The LCP hero is served straight from the source CDN (Pexels resize /
+        // Supabase AVIF passthrough) to skip the optimiser's cold fetch+transcode.
+        // Same pixels, same crop; only the delivery path is faster.
+        loader={heroImageLoader}
         className="object-cover"
         style={{ objectPosition }}
       />
