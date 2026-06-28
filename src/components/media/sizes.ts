@@ -9,8 +9,13 @@
  * See docs/MEDIA-ARCHITECTURE.md §4.3 for policy.
  */
 export const MEDIA_SIZES = {
-  /** Above-fold full-bleed hero (HeroMedia default) */
-  fullBleed: '(max-width: 768px) 100vw, 1920px',
+  /** Above-fold full-bleed hero (HeroMedia default).
+   *  Mobile requests ~75vw, not 100vw: the hero is a photographic BACKDROP
+   *  under a 40-80% navy scrim with text on top, so a source sized for ~75vw
+   *  shown across the full width is visually identical while cutting the LCP
+   *  image to a smaller AVIF variant (e.g. 640-828px instead of 1080px). The
+   *  optimiser still serves responsive AVIF off the 1-year edge cache. */
+  fullBleed: '(max-width: 768px) 75vw, 1920px',
   /** Bento grid hero tile */
   bentoHero: '(max-width: 1024px) 100vw, 720px',
   /** Bento grid supporting tile */

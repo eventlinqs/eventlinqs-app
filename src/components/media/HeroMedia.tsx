@@ -1,6 +1,6 @@
+import Image from 'next/image'
 import { MEDIA_QUALITY } from './quality'
 import { MEDIA_SIZES } from './sizes'
-import { HeroImage } from './hero-image'
 import { HeroAmbientLayer } from './hero-ambient-layer'
 import { resolveImageSrc } from './safe-image-src'
 import { BrandedPlaceholder } from './decorative/branded-placeholder'
@@ -109,13 +109,17 @@ export function HeroMedia({
         when priority=true. Sibling slides pass priority=false so they
         download lazily and never out-compete the active LCP candidate.
       */}
-      <HeroImage
+      <Image
         src={safeSrc}
         alt={alt}
+        fill
         priority={priority}
+        fetchPriority={priority ? 'high' : 'auto'}
+        loading={priority ? 'eager' : 'lazy'}
         sizes={sizes}
         quality={MEDIA_QUALITY.hero}
-        objectPosition={objectPosition}
+        className="object-cover"
+        style={{ objectPosition }}
       />
 
       {/*
