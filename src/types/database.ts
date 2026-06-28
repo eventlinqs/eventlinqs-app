@@ -659,6 +659,10 @@ export type Database = {
           category_id: string | null
           city_primary: string | null
           cover_image_url: string | null
+          cover_image_alt: string | null
+          cover_image_blur: string | null
+          video_url: string | null
+          video_provider: string | null
           created_at: string
           created_by: string
           community_primary: string | null
@@ -719,6 +723,10 @@ export type Database = {
           category_id?: string | null
           city_primary?: string | null
           cover_image_url?: string | null
+          cover_image_alt?: string | null
+          cover_image_blur?: string | null
+          video_url?: string | null
+          video_provider?: string | null
           created_at?: string
           created_by: string
           community_primary?: string | null
@@ -779,6 +787,10 @@ export type Database = {
           category_id?: string | null
           city_primary?: string | null
           cover_image_url?: string | null
+          cover_image_alt?: string | null
+          cover_image_blur?: string | null
+          video_url?: string | null
+          video_provider?: string | null
           created_at?: string
           created_by?: string
           community_primary?: string | null
@@ -3222,6 +3234,10 @@ export type Database = {
           category_id: string | null
           city_primary: string | null
           cover_image_url: string | null
+          cover_image_alt: string | null
+          cover_image_blur: string | null
+          video_url: string | null
+          video_provider: string | null
           created_at: string
           created_by: string
           community_primary: string | null

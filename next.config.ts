@@ -22,7 +22,7 @@ const CSP_REPORT_ONLY = [
   "style-src 'self' 'unsafe-inline' https://api.mapbox.com",
   "font-src 'self' data:",
   "connect-src 'self' https://*.supabase.co https://api.stripe.com https://plausible.io https://*.upstash.io https://api.mapbox.com https://*.tiles.mapbox.com https://events.mapbox.com https://maps.googleapis.com",
-  "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com",
+  "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com https://www.youtube-nocookie.com https://www.youtube.com https://player.vimeo.com https://www.instagram.com https://www.tiktok.com",
   "worker-src 'self' blob:",
 ].join('; ')
 
@@ -193,6 +193,15 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'gndnldyfudbytbboxesk.supabase.co',
+        pathname: '/storage/v1/object/public/**',
+      },
+      // TEST/staging Supabase project. The preview deployment is pointed at the
+      // TEST project (vkapkibzokmfaxqogypq) via the *_PREVIEW env vars, so
+      // organiser media uploaded on the preview is served from this host and
+      // must be allowlisted or next/image rejects it (the cover would 404).
+      {
+        protocol: 'https',
+        hostname: 'vkapkibzokmfaxqogypq.supabase.co',
         pathname: '/storage/v1/object/public/**',
       },
       // Batch 10 branded storage domain. Listed here so next/image accepts
