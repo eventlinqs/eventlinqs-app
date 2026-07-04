@@ -71,6 +71,10 @@ export async function sendHandoffEmail(opts: {
       who,
       ok: false,
       errorType: err instanceof Error ? err.constructor.name : 'Unknown',
+      // The delivery-provider error message is operational (a Resend
+      // validation string), never user content, so it is safe to log and
+      // it makes a failed handoff diagnosable.
+      errorDetail: err instanceof Error ? err.message.slice(0, 200) : undefined,
     })
     return false
   }
