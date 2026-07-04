@@ -1339,10 +1339,11 @@ export function EventForm({
     const totalCapacity = formData.ticket_tiers.reduce(
       (sum, t) => sum + (parseInt(t.total_capacity) || 0), 0
     )
-    const minPrice = formData.ticket_tiers.length > 0
-      ? Math.min(...formData.ticket_tiers.map(t => parseFloat(t.price) || 0))
-      : 0
-    const isFree = minPrice === 0
+    // Free means EVERY tier is $0 (the fee-system definition), not just the
+    // cheapest tier: an event with a free tier plus paid tiers is a paid event.
+    const tierPrices = formData.ticket_tiers.map(t => parseFloat(t.price) || 0)
+    const isFree = tierPrices.length === 0 || tierPrices.every(p => p === 0)
+    const minPaidPrice = isFree ? 0 : Math.min(...tierPrices.filter(p => p > 0))
 
     return (
       <div className="space-y-6">
@@ -1386,7 +1387,7 @@ export function EventForm({
               {formData.ticket_tiers.length} tier{formData.ticket_tiers.length !== 1 ? 's' : ''} · {totalCapacity.toLocaleString()} total capacity
             </p>
             <p className="text-xs text-ink-400">
-              {isFree ? 'Free event' : `From ${formData.ticket_tiers[0]?.currency} ${minPrice.toFixed(2)}`}
+              {isFree ? 'Free event' : `From ${formData.ticket_tiers[0]?.currency} ${minPaidPrice.toFixed(2)}`}
             </p>
           </div>
 
