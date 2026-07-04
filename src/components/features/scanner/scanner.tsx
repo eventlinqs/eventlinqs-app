@@ -11,6 +11,8 @@ type ResultView = {
   label: string
   reason: string
   holderName: string | null
+  /** Reserved seating: the seat the door directs the guest to. */
+  seatLabel: string | null
 }
 
 const RESULT_HOLD_MS = 4000
@@ -65,7 +67,7 @@ export function Scanner({ eventId, eventTitle }: { eventId: string; eventTitle: 
           setResult(null)
         } else {
           const view = describeScanResult(outcome.result)
-          setResult({ ...view, holderName: outcome.holderName })
+          setResult({ ...view, holderName: outcome.holderName, seatLabel: outcome.seatLabel })
         }
       } finally {
         busyRef.current = false
@@ -152,6 +154,9 @@ export function Scanner({ eventId, eventTitle }: { eventId: string; eventTitle: 
         >
           <p className="text-3xl font-bold tracking-wide">{result.label}</p>
           {result.holderName && <p className="mt-1 text-lg">{result.holderName}</p>}
+          {result.seatLabel && (
+            <p className="mt-1 text-xl font-semibold">{result.seatLabel}</p>
+          )}
           {result.reason && <p className="mt-1 text-base opacity-90">{result.reason}</p>}
         </div>
       )}

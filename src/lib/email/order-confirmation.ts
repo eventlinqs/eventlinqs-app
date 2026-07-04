@@ -3,6 +3,7 @@ import { Resend } from 'resend'
 import QRCode from 'qrcode'
 import { getSiteUrl } from '@/lib/site-url'
 import { formatMoney } from '@/lib/money/format'
+import { formatSeatLabel } from '@/lib/seating/format'
 
 // ---------------------------------------------------------------------------
 // Order confirmation email (shared by the paid Stripe webhook and the free /
@@ -23,6 +24,21 @@ type EmailTicket = {
   secret: string
   holder_name: string | null
   status: string
+  /** Reserved seating: the ticket's seat, joined via tickets.seat_id. */
+  seat: {
+    row_label: string
+    seat_number: string
+    section: { name: string } | null
+  } | null
+}
+
+function seatLine(ticket: EmailTicket): string | null {
+  if (!ticket.seat) return null
+  return formatSeatLabel({
+    sectionName: ticket.seat.section?.name ?? null,
+    rowLabel: ticket.seat.row_label,
+    seatNumber: ticket.seat.seat_number,
+  })
 }
 
 type EmailOrder = {
@@ -144,11 +160,13 @@ export async function sendConfirmationEmail(
 
   const { data: ticketRows } = await db
     .from('tickets')
-    .select('ticket_code, secret, holder_name, status')
+    .select('ticket_code, secret, holder_name, status, seat:seats(row_label, seat_number, section:seat_map_sections(name))')
     .eq('order_id', order_id)
     .order('created_at', { ascending: true })
 
-  const tickets = (ticketRows ?? []) as EmailTicket[]
+  // PostgREST returns the many-to-one seat embed as an object at runtime;
+  // the generated types fall back to an array shape, hence the unknown hop.
+  const tickets = (ticketRows ?? []) as unknown as EmailTicket[]
 
   // Generate one CID-attached QR PNG per ticket that still admits entry. The
   // PNG is built in-process (no HTTP self-fetch) and references the bearer URL,
@@ -240,9 +258,15 @@ function buildConfirmationEmailHtml(
         `QR code for ${event.title} ticket ${ticket.ticket_code}, holder ${ticket.holder_name ?? 'ticket holder'}`
       )
 
+      const seat = seatLine(ticket)
+      const seatHtml = seat
+        ? `<p style="margin:0 0 12px;color:#0A1628;font-size:15px;font-weight:700;">${escapeHtml(seat)}</p>`
+        : ''
+
       return `
       <div style="background:#FFFFFF;border:1px solid #e5e7eb;border-radius:10px;padding:20px;margin:16px 0;text-align:center;">
-        <p style="margin:0 0 12px;color:#0A1628;font-size:16px;font-weight:600;">${holder}</p>
+        <p style="margin:0 0 ${seat ? '4px' : '12px'};color:#0A1628;font-size:16px;font-weight:600;">${holder}</p>
+        ${seatHtml}
         <div style="display:inline-block;background:#FFFFFF;border:1px solid #e5e7eb;border-radius:8px;padding:16px;">
           <img src="cid:${qrCid(ticket.ticket_code)}" width="220" height="220" alt="${alt}" style="display:block;width:220px;height:220px;border:0;background:#FFFFFF;" />
         </div>
@@ -353,6 +377,8 @@ function buildConfirmationEmailText(
       continue
     }
     const bearerUrl = `${siteUrl}/t/${encodeURIComponent(ticket.ticket_code)}?k=${encodeURIComponent(ticket.secret)}`
+    const seat = seatLine(ticket)
+    if (seat) lines.push(seat)
     lines.push(`Ticket code: ${ticket.ticket_code}`)
     lines.push(`Open your ticket: ${bearerUrl}`)
     lines.push(

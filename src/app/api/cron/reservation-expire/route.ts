@@ -40,9 +40,23 @@ export async function GET(request: NextRequest) {
     const released = (releasedCount as number) ?? 0
     console.log(`[cron/reservation-expire] released ${released} stale reservations`)
 
+    // Reserved seating: seats held by expired or cancelled reservations go
+    // back to 'available' (sold seats untouched). Runs after the tier sweeper
+    // so a reservation it just marked 'expired' frees its seats in the same
+    // tick; also catches seat reservations expired between runs.
+    const { data: seatsReleased, error: seatError } = await adminClient.rpc(
+      'release_expired_seat_reservations'
+    )
+    if (seatError) {
+      console.error('[cron/reservation-expire] release_expired_seat_reservations RPC error:', seatError)
+    } else if ((seatsReleased as number) > 0) {
+      console.log(`[cron/reservation-expire] released ${seatsReleased} expired seat holds`)
+    }
+
     return NextResponse.json({
       ok: true,
       released,
+      seatsReleased: (seatsReleased as number) ?? 0,
       timestamp: new Date().toISOString(),
     })
   } catch (err) {
