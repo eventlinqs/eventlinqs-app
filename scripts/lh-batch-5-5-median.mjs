@@ -1,16 +1,16 @@
-// Compute median across run1/run2/run3 for the 6 Batch 5.5 culture routes.
+// Compute median across run1/run2/run3 for the 6 Batch 5.5 community routes.
 import { readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 
 const baseDir = process.argv[2] ?? 'docs/redesign/batch-5-evidence/lighthouse'
 
 const routes = [
-  'culture-african',
-  'culture-south-asian',
-  'culture-mediterranean',
-  'culture-east-asian',
-  'culture-caribbean',
-  'culture-latin',
+  'community-african',
+  'community-south-asian',
+  'community-mediterranean',
+  'community-east-asian',
+  'community-caribbean',
+  'community-latin',
 ]
 const runs = ['run1', 'run2', 'run3']
 

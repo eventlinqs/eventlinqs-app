@@ -12,19 +12,19 @@ import type { Database } from '@/types/database'
  * with a conditional status filter so a concurrent change is not clobbered,
  * and audit-logged old -> new.
  *
- * This module owns only the events.status column for moderation. The
- * feature / unfeature toggle (is_featured) is deliberately NOT here - it
- * waits on its migration.
+ * This module owns the events.status column for moderation and the
+ * events.is_featured flag (setEventFeatured), both audit-logged.
  */
 
 type EventStatus = Database['public']['Enums']['event_status']
 
-export type EventAction = 'pause' | 'resume' | 'cancel'
+export type EventAction = 'pause' | 'resume' | 'cancel' | 'takedown'
 
 interface ActionSpec {
   from: readonly EventStatus[]
   to: EventStatus
   auditAction: string
+  requiresReason?: boolean
 }
 
 const ACTION_SPECS: Record<EventAction, ActionSpec> = {
@@ -35,17 +35,34 @@ const ACTION_SPECS: Record<EventAction, ActionSpec> = {
     to: 'cancelled',
     auditAction: 'admin.event.cancelled',
   },
+  // Admin takedown: a post-moderation removal of a live or upcoming event that
+  // breaches policy. Removes it from sale (-> cancelled) and REQUIRES a reason.
+  // There is no pre-publish approval gate; organisers self-serve and an admin
+  // takes content down after the fact.
+  takedown: {
+    from: ['draft', 'scheduled', 'published', 'paused', 'postponed'],
+    to: 'cancelled',
+    auditAction: 'admin.event.takedown',
+    requiresReason: true,
+  },
 }
 
 export const EVENT_ACTION_LABELS: Record<EventAction, string> = {
   pause: 'Pause',
   resume: 'Resume',
   cancel: 'Cancel',
+  takedown: 'Take down',
 }
 
-/** Actions available from a given current status (drives the row buttons). */
+/**
+ * Actions available from a given current status (drives the row buttons).
+ * Takedown is excluded here: it carries a mandatory reason and is surfaced via
+ * its own panel on the event detail page, not the compact list rows.
+ */
 export function actionsForEventStatus(status: EventStatus): EventAction[] {
-  return (Object.keys(ACTION_SPECS) as EventAction[]).filter((a) => ACTION_SPECS[a].from.includes(status))
+  return (Object.keys(ACTION_SPECS) as EventAction[]).filter(
+    (a) => a !== 'takedown' && ACTION_SPECS[a].from.includes(status),
+  )
 }
 
 export interface AdminEventRow {
@@ -138,6 +155,109 @@ function orgName(org: { name: string } | { name: string }[] | null): string | nu
   return org.name ?? null
 }
 
+export interface AdminEventTier {
+  id: string
+  name: string
+  priceCents: number
+  currency: string
+}
+
+export interface AdminEventDetail {
+  id: string
+  title: string
+  slug: string
+  status: EventStatus
+  visibility: string
+  isFeatured: boolean
+  feePassType: string
+  organisationId: string
+  organisationName: string | null
+  startDate: string
+  endDate: string
+  maxCapacity: number | null
+  isFree: boolean
+  venueName: string | null
+  city: string | null
+  createdAt: string
+  tiers: AdminEventTier[]
+}
+
+/** Full admin view of one event: core fields, organiser, and ticket tiers. */
+export async function getAdminEventDetail(eventId: string): Promise<AdminEventDetail | null> {
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from('events')
+    .select(
+      'id, title, slug, status, visibility, is_featured, is_free, fee_pass_type, organisation_id, start_date, end_date, max_capacity, venue_name, venue_city, city_primary, created_at, organisations(name)',
+    )
+    .eq('id', eventId)
+    .maybeSingle()
+  if (error) throw error
+  if (!data) return null
+
+  const { data: tierRows } = await admin
+    .from('ticket_tiers')
+    .select('id, name, price, currency')
+    .eq('event_id', eventId)
+    .order('price', { ascending: true })
+
+  const org = data.organisations as { name: string } | { name: string }[] | null
+  return {
+    id: data.id,
+    title: data.title,
+    slug: data.slug,
+    status: data.status,
+    visibility: String(data.visibility),
+    isFeatured: data.is_featured,
+    feePassType: String(data.fee_pass_type),
+    organisationId: data.organisation_id,
+    organisationName: orgName(org),
+    startDate: data.start_date,
+    endDate: data.end_date,
+    maxCapacity: data.max_capacity,
+    isFree: data.is_free ?? false,
+    venueName: data.venue_name ?? null,
+    city: data.venue_city ?? data.city_primary ?? null,
+    createdAt: data.created_at,
+    tiers: (tierRows ?? []).map((t) => ({
+      id: t.id,
+      name: t.name,
+      priceCents: t.price,
+      currency: t.currency,
+    })),
+  }
+}
+
+/** Toggles an event's featured flag, audit-logged. */
+export async function setEventFeatured(
+  input: { eventId: string; featured: boolean },
+  session: AdminSession,
+): Promise<{ ok: boolean; error?: string }> {
+  const admin = createAdminClient()
+  const { data: current } = await admin
+    .from('events')
+    .select('id, title, is_featured')
+    .eq('id', input.eventId)
+    .maybeSingle()
+  if (!current) return { ok: false, error: 'Event not found' }
+  if (current.is_featured === input.featured) return { ok: true }
+
+  const { error } = await admin
+    .from('events')
+    .update({ is_featured: input.featured, updated_at: new Date().toISOString() })
+    .eq('id', input.eventId)
+  if (error) return { ok: false, error: error.message }
+
+  await recordAuditEvent({
+    action: input.featured ? 'admin.event.featured' : 'admin.event.unfeatured',
+    targetType: 'event',
+    targetId: input.eventId,
+    metadata: { title: current.title },
+    session,
+  })
+  return { ok: true }
+}
+
 export interface EventActionResult {
   ok: boolean
   error?: string
@@ -166,6 +286,7 @@ export async function applyEventAction(
   if (!spec.from.includes(current.status)) return { ok: false, invalidTransition: true }
 
   const reason = input.reason?.trim() || null
+  if (spec.requiresReason && !reason) return { ok: false, error: 'reason_required' }
 
   const { data: updated, error: updErr } = await admin
     .from('events')

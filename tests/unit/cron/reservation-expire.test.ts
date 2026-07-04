@@ -81,6 +81,7 @@ function makeReq(authHeader?: string): NextRequest {
 beforeEach(() => {
   resetWorld()
   vi.clearAllMocks()
+  process.env.CRON_SECRET = 'sekret'
 })
 
 describe('reservation-expire cron: auth gate', () => {
@@ -102,16 +103,15 @@ describe('reservation-expire cron: auth gate', () => {
     expect(res.status).toBe(200)
   })
 
-  test('accepts when CRON_SECRET is not configured (local/dev)', async () => {
+  test('refuses (401) when CRON_SECRET is not configured (fail closed)', async () => {
     delete process.env.CRON_SECRET
-    const res = await GET(makeReq())
-    expect(res.status).toBe(200)
+    const res = await GET(makeReq('Bearer sekret'))
+    expect(res.status).toBe(401)
   })
 })
 
 describe('reservation-expire cron: contract', () => {
   test('returns released count and JSON shape', async () => {
-    delete process.env.CRON_SECRET
     h.world!.tiers.set('tier_a', { id: 'tier_a', reserved_count: 3 })
     h.world!.reservations.push({
       id: 'r_expired',
@@ -120,7 +120,7 @@ describe('reservation-expire cron: contract', () => {
       items: [{ ticket_tier_id: 'tier_a', quantity: 3 }],
     })
 
-    const res = await GET(makeReq())
+    const res = await GET(makeReq('Bearer sekret'))
     expect(res.status).toBe(200)
     const body = (await res.json()) as { ok: boolean; released: number; timestamp: string }
     expect(body.ok).toBe(true)
@@ -129,16 +129,14 @@ describe('reservation-expire cron: contract', () => {
   })
 
   test('surfaces RPC failure as 500', async () => {
-    delete process.env.CRON_SECRET
     h.world!.rpcError = true
-    const res = await GET(makeReq())
+    const res = await GET(makeReq('Bearer sekret'))
     expect(res.status).toBe(500)
   })
 })
 
 describe('reservation-expire cron: expiry boundary', () => {
   test('releases expired holds and never touches valid or terminal ones', async () => {
-    delete process.env.CRON_SECRET
     const w = h.world!
     // One tier holding inventory for several reservations.
     w.tiers.set('tier_a', { id: 'tier_a', reserved_count: 10 })
@@ -159,7 +157,7 @@ describe('reservation-expire cron: expiry boundary', () => {
       { id: 'r_cancelled', status: 'cancelled', expires_at: past, items: [{ ticket_tier_id: 'tier_a', quantity: 1 }] },
     )
 
-    const res = await GET(makeReq())
+    const res = await GET(makeReq('Bearer sekret'))
     const body = (await res.json()) as { released: number }
 
     // Exactly one reservation expired (only r_expired qualified).
@@ -178,7 +176,6 @@ describe('reservation-expire cron: expiry boundary', () => {
   })
 
   test('a hold exactly at the boundary (expires_at == now) is NOT expired', async () => {
-    delete process.env.CRON_SECRET
     const w = h.world!
     w.tiers.set('tier_b', { id: 'tier_b', reserved_count: 1 })
     // expires_at slightly in the future so the strict `< now` predicate excludes it.
@@ -188,7 +185,7 @@ describe('reservation-expire cron: expiry boundary', () => {
       expires_at: new Date(Date.now() + 5).toISOString(),
       items: [{ ticket_tier_id: 'tier_b', quantity: 1 }],
     })
-    const res = await GET(makeReq())
+    const res = await GET(makeReq('Bearer sekret'))
     const body = (await res.json()) as { released: number }
     expect(body.released).toBe(0)
     expect(w.reservations[0].status).toBe('active')
@@ -196,7 +193,6 @@ describe('reservation-expire cron: expiry boundary', () => {
   })
 
   test('reserved_count never goes negative (GREATEST clamp)', async () => {
-    delete process.env.CRON_SECRET
     const w = h.world!
     // Tier holds fewer than the reservation claims (data skew); release must clamp.
     w.tiers.set('tier_c', { id: 'tier_c', reserved_count: 1 })
@@ -206,7 +202,7 @@ describe('reservation-expire cron: expiry boundary', () => {
       expires_at: new Date(Date.now() - 1000).toISOString(),
       items: [{ ticket_tier_id: 'tier_c', quantity: 5 }],
     })
-    const res = await GET(makeReq())
+    const res = await GET(makeReq('Bearer sekret'))
     const body = (await res.json()) as { released: number }
     expect(body.released).toBe(1)
     expect(w.tiers.get('tier_c')!.reserved_count).toBe(0)

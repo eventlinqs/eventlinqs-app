@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { buildAttributedUrl } from '@/lib/growth/referrals'
 
 interface ConfirmationActionsProps {
   eventTitle: string
@@ -9,6 +10,9 @@ interface ConfirmationActionsProps {
   location: string
   orderNumber: string
   eventSlug: string
+  /** The buyer's referral code, when they have an account. Makes the
+   *  post-purchase share an attributed invite that credits this buyer. */
+  refCode?: string
 }
 
 function toCalendarDate(iso: string): string {
@@ -75,7 +79,10 @@ export function ConfirmationActions(props: ConfirmationActionsProps) {
   }, [calendarOpen])
 
   async function handleShare() {
-    const url = `${window.location.origin}/events/${props.eventSlug}`
+    const url = buildAttributedUrl(`${window.location.origin}/events/${props.eventSlug}`, {
+      refCode: props.refCode,
+      source: 'share-a-ticket',
+    })
     if (typeof navigator.share === 'function') {
       try {
         await navigator.share({

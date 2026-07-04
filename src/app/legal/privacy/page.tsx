@@ -12,6 +12,7 @@ const SECTIONS = [
   { id: 'introduction',          title: 'Introduction' },
   { id: 'information-we-collect', title: 'Information We Collect' },
   { id: 'how-we-use',            title: 'How We Use Your Information' },
+  { id: 'organisers-marketing',  title: 'Event Organisers and Marketing' },
   { id: 'cookies',               title: 'Cookies and Tracking' },
   { id: 'third-parties',         title: 'Third Parties' },
   { id: 'international-transfers', title: 'International Transfers' },
@@ -26,7 +27,7 @@ export default function PrivacyPolicyPage() {
   return (
     <LegalPageShell
       title="Privacy Policy"
-      lastUpdated="15 April 2026"
+      lastUpdated="24 June 2026"
       sections={SECTIONS}
     >
       <h2 id="introduction">Introduction</h2>
@@ -112,6 +113,40 @@ export default function PrivacyPolicyPage() {
         legal or financial consequences without obtaining your explicit consent first.
       </p>
 
+      <h2 id="organisers-marketing">Event Organisers and Marketing</h2>
+      <p>
+        EventLinqs is a marketplace. When you buy a ticket, the organiser of that event
+        receives your name and email address so they can deliver and manage the event you
+        are attending. This is a normal, transactional part of buying a ticket.
+      </p>
+      <p>
+        An organiser may send you <strong>marketing</strong> email about their other events
+        only if you gave express consent at checkout, through a separate, unticked opt-in that
+        names that organiser. Under the <em>Spam Act 2003 (Cth)</em>, buying a ticket is not by
+        itself consent to marketing. Your choice is recorded with the exact wording shown, the
+        date, and the source.
+      </p>
+      <ul>
+        <li>
+          Consent is <strong>per organiser</strong>. Agreeing to hear from one organiser is never
+          consent for any other, and is separate from EventLinqs platform updates.
+        </li>
+        <li>
+          You can <strong>withdraw consent at any time</strong> using the unsubscribe link in the
+          organiser&apos;s emails. We honour the withdrawal and reflect it to the organiser, who
+          must not email you further.
+        </li>
+        <li>
+          Every marketing email must identify its sender and carry a working unsubscribe link.
+          Transactional messages (your tickets, receipts, and event reminders) are not marketing
+          and are sent regardless, but never carry promotional content for other events.
+        </li>
+        <li>
+          EventLinqs <strong>never sells your data</strong> and never shares your details across
+          organisers.
+        </li>
+      </ul>
+
       <h2 id="cookies">Cookies and Tracking</h2>
       <p>
         We use three categories of cookies. You can manage your preferences via our
@@ -141,8 +176,10 @@ export default function PrivacyPolicyPage() {
 
       <h2 id="third-parties">Third Parties Who Receive Your Data</h2>
       <p>
-        We share your data only with service providers necessary to run the platform.
-        We do not sell your data to advertisers, data brokers, or any third party.
+        We share your data with the service providers necessary to run the platform, and
+        with the event organiser whose event you buy a ticket to (see Event Organisers and
+        Marketing above). We do not sell your data to advertisers, data brokers, or any
+        third party.
       </p>
       <ul>
         <li>

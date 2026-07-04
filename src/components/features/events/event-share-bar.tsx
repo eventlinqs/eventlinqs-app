@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Copy, Mail, Check } from 'lucide-react'
+import { buildAttributedUrl } from '@/lib/growth/referrals'
 
 interface Props {
   eventTitle: string
@@ -13,7 +14,7 @@ interface Props {
 /**
  * EventShareBar - share controls for /events/[slug] (Batch 8.1).
  *
- * WhatsApp-first ordering per the Batch 8.1 brief. Cultural events
+ * WhatsApp-first ordering per the Batch 8.1 brief. Community events
  * spread through WhatsApp share more than any other channel in the
  * EventLinqs target communities. The CTA labels stay short so the
  * row fits on a single line at 375 mobile.
@@ -26,9 +27,31 @@ interface Props {
 export function EventShareBar({ eventTitle, eventDate, eventUrl, variant = 'light' }: Props) {
   const [copied, setCopied] = useState(false)
 
+  // Every shared link is attributed (source = share-a-ticket). When a logged-in
+  // user is sharing we also carry their personalised referral code so a signup
+  // through the link is credited to them. The code is resolved post-paint via a
+  // tiny endpoint so this surface stays static and never costs LCP.
+  const [shareUrl, setShareUrl] = useState(() =>
+    buildAttributedUrl(eventUrl, { source: 'share-a-ticket' }),
+  )
+  useEffect(() => {
+    let active = true
+    fetch('/api/me/ref')
+      .then((r) => (r.ok ? r.json() : { refCode: null }))
+      .then((d: { refCode: string | null }) => {
+        if (active && d?.refCode) {
+          setShareUrl(buildAttributedUrl(eventUrl, { refCode: d.refCode, source: 'share-a-ticket' }))
+        }
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [eventUrl])
+
   const shareText = `${eventTitle} - ${eventDate}`
   const encodedText = encodeURIComponent(shareText)
-  const encodedUrl = encodeURIComponent(eventUrl)
+  const encodedUrl = encodeURIComponent(shareUrl)
 
   // Background colours below are tuned for AA contrast against the
   // white text label that sits beside each icon. Vanilla WhatsApp /
@@ -85,7 +108,7 @@ export function EventShareBar({ eventTitle, eventDate, eventUrl, variant = 'ligh
 
   const onCopy = async () => {
     try {
-      await navigator.clipboard.writeText(eventUrl)
+      await navigator.clipboard.writeText(shareUrl)
       setCopied(true)
       window.setTimeout(() => setCopied(false), 1800)
     } catch {
@@ -104,7 +127,7 @@ export function EventShareBar({ eventTitle, eventDate, eventUrl, variant = 'ligh
           target="_blank"
           rel="noreferrer"
           aria-label={`Share via ${l.label}`}
-          className={`inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold transition-all hover:-translate-y-0.5 ${l.bg} ${l.textClass}`}
+          className={`inline-flex h-11 items-center gap-2 rounded-full px-4 text-sm font-semibold transition-all hover:-translate-y-0.5 ${l.bg} ${l.textClass}`}
         >
           {l.icon}
           <span className="hidden sm:inline">{l.label}</span>
@@ -119,7 +142,7 @@ export function EventShareBar({ eventTitle, eventDate, eventUrl, variant = 'ligh
       <button
         type="button"
         onClick={onCopy}
-        className={`inline-flex h-10 items-center gap-2 rounded-full border border-[var(--surface-2)] bg-[var(--surface-0)] px-4 text-sm font-semibold transition-all hover:-translate-y-0.5 hover:border-[var(--brand-accent-strong)] ${labelClass}`}
+        className={`inline-flex h-11 items-center gap-2 rounded-full border border-[var(--surface-2)] bg-[var(--surface-0)] px-4 text-sm font-semibold transition-all hover:-translate-y-0.5 hover:border-[var(--brand-accent-strong)] ${labelClass}`}
       >
         {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
         <span>{copied ? 'Copied' : 'Copy link'}</span>

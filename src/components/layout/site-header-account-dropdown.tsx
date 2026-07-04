@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import Link from 'next/link'
-import { Bookmark, Building2, LogOut, Ticket, User } from 'lucide-react'
+import { Bookmark, Building2, LogOut, ShieldCheck, Ticket, User } from 'lucide-react'
 import { signOut } from '@/app/actions/auth'
 import type { AccountUser } from './site-header-account-button'
 
@@ -14,6 +14,10 @@ interface Props {
   user: DropdownUser
   /** Visual size: `header` (32px desktop avatar) or `drawer` (40px mobile drawer header). */
   size?: 'header' | 'drawer'
+  /** Founder/admin only: surface the in-platform Admin entry. Convenience only -
+   *  the admin console itself enforces role + 2FA server-side on every route and
+   *  privileged action; a non-admin never receives this flag and never sees it. */
+  isAdmin?: boolean
 }
 
 interface MenuItem {
@@ -53,7 +57,13 @@ const ITEMS: MenuItem[] = [
  *   - Click outside closes
  *   - Focus trap inside the dropdown while open (Tab cycles)
  */
-export function SiteHeaderAccountDropdown({ user, size = 'header' }: Props) {
+export function SiteHeaderAccountDropdown({ user, size = 'header', isAdmin = false }: Props) {
+  // The Admin entry is role-gated: shown only when the server resolved this user
+  // as an admin. A normal account never gets isAdmin and never sees it, and /admin
+  // is blocked server-side (role + 2FA) even if the path is typed directly.
+  const items: MenuItem[] = isAdmin
+    ? [{ label: 'Admin', href: '/admin', Icon: ShieldCheck }, ...ITEMS]
+    : ITEMS
   const [open, setOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -114,8 +124,8 @@ export function SiteHeaderAccountDropdown({ user, size = 'header' }: Props) {
     }
   }
 
-  // Total focusable rows: 4 menu items + 1 sign-out = 5.
-  const totalItems = ITEMS.length + 1
+  // Total focusable rows: the menu items + 1 sign-out.
+  const totalItems = items.length + 1
 
   function handlePanelKeyDown(e: KeyboardEvent<HTMLDivElement>) {
     switch (e.key) {
@@ -241,7 +251,7 @@ export function SiteHeaderAccountDropdown({ user, size = 'header' }: Props) {
             style={{ background: 'rgba(212, 164, 55, 0.20)' }}
           />
 
-          {ITEMS.map((item, idx) => {
+          {items.map((item, idx) => {
             const Icon = item.Icon
             return (
               <Link
@@ -276,7 +286,7 @@ export function SiteHeaderAccountDropdown({ user, size = 'header' }: Props) {
               type="submit"
               role="menuitem"
               tabIndex={-1}
-              ref={el => { itemRefs.current[ITEMS.length] = el }}
+              ref={el => { itemRefs.current[items.length] = el }}
               className={[
                 'flex h-10 w-full items-center gap-3 rounded-md px-3 text-left',
                 'text-sm font-medium text-white/90 transition',

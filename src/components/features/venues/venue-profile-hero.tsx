@@ -18,7 +18,7 @@ interface Props {
 
 /**
  * VenueProfileHero - full-bleed photographic banner for /venues/[handle]
- * (Batch 8.3 VP1). Mirrors the city + culture hero pattern (image +
+ * (Batch 8.3 VP1). Mirrors the city + community hero pattern (image +
  * dark gradient + bottom-left content stack) with venue-specific
  * pills (capacity + venue type) and two CTAs.
  */

@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
+import { TransferTicketForm } from '@/components/features/tickets/transfer-ticket-form'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,6 +12,7 @@ export const metadata: Metadata = {
 }
 
 interface MyTicketRow {
+  id: string
   ticket_code: string
   secret: string
   status: string
@@ -57,7 +59,7 @@ export default async function MyTicketsPage() {
   const { data } = await supabase
     .from('tickets')
     .select(
-      'ticket_code, secret, status, created_at, event:events(title, start_date, venue_name, venue_city), order_item:order_items(item_name)',
+      'id, ticket_code, secret, status, created_at, event:events(title, start_date, venue_name, venue_city), order_item:order_items(item_name)',
     )
     .order('created_at', { ascending: false })
 
@@ -119,6 +121,9 @@ export default async function MyTicketsPage() {
                     </span>
                   </div>
                 </Link>
+                {t.status === 'valid' && (
+                  <TransferTicketForm ticketId={t.id} eventTitle={t.event?.title ?? 'this event'} />
+                )}
               </li>
             )
           })}

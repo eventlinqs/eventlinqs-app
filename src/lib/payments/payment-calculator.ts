@@ -6,6 +6,7 @@ import {
   getProcessingFeePassThrough,
   type ProcessingFeePassThrough,
 } from './pricing-rules'
+import { computeFeeLineCents, computeAllInTotalCents } from './fee-math'
 
 /**
  * M6 Phase 3 (rework). PaymentCalculator now reads from the long-format
@@ -81,6 +82,9 @@ export class PaymentCalculator {
    * @param fee_pass_type If supplied, overrides the pricing_rules default.
    *   This is how `events.fee_pass_type` (per-event organiser setting)
    *   propagates into the buyer's fee total.
+   * @param organisationId Resolves a per-organiser fee override when set.
+   * @param eventId Resolves a per-event fee override (highest precedence) when
+   *   set, so an event with its own fee is charged exactly that fee.
    */
   async calculate(
     tickets: CartItem[],
@@ -88,7 +92,8 @@ export class PaymentCalculator {
     currency: string,
     fee_pass_type?: FeePassType,
     discount_cents: number = 0,
-    organisationId?: string | null
+    organisationId?: string | null,
+    eventId?: string | null
   ): Promise<FeeBreakdown> {
     const subtotal_cents = tickets.reduce((sum, t) => sum + t.unit_price_cents * t.quantity, 0)
     const addon_total_cents = addons.reduce((sum, a) => sum + a.unit_price_cents * a.quantity, 0)
@@ -133,6 +138,7 @@ export class PaymentCalculator {
 
     const country = countryFromCurrency(currency)
     const orgId = organisationId ?? null
+    const evId = eventId ?? null
 
     const [
       platformFeePercent,
@@ -141,30 +147,39 @@ export class PaymentCalculator {
       processingFeeFixedCents,
       passThroughDefault,
     ] = await Promise.all([
-      getPlatformFeePercentage(country, currency, orgId),
-      getPlatformFeeFixedCents(country, currency, orgId),
-      getProcessingFeePercentage(country, currency, orgId),
-      getProcessingFeeFixedCents(country, currency, orgId),
-      getProcessingFeePassThrough(country, currency, orgId),
+      getPlatformFeePercentage(country, currency, orgId, evId),
+      getPlatformFeeFixedCents(country, currency, orgId, evId),
+      getProcessingFeePercentage(country, currency, orgId, evId),
+      getProcessingFeeFixedCents(country, currency, orgId, evId),
+      getProcessingFeePassThrough(country, currency, orgId, evId),
     ])
 
     const ticketCount = tickets.reduce((sum, t) => sum + t.quantity, 0)
 
-    const platform_fee_cents = Math.round(
-      (discounted_subtotal * platformFeePercent) / 100 + ticketCount * platformFeeFixedCents
+    // Single source of fee arithmetic (src/lib/payments/fee-math.ts): the SAME
+    // pure function powers the ACCC all-in display on the ticket selector, so
+    // the total the buyer is shown can never diverge from the total charged.
+    const { platform_fee_cents, payment_processing_fee_cents } = computeFeeLineCents(
+      discounted_subtotal,
+      ticketCount,
+      {
+        platformFeePercent,
+        platformFeeFixedCents,
+        processingFeePercent,
+        processingFeeFixedCents,
+      },
     )
-    const payment_processing_fee_cents = Math.round(
-      (discounted_subtotal * processingFeePercent) / 100 + processingFeeFixedCents
-    )
-    // GST is inclusive in EventLinqs all-in pricing (platform philosophy:
-    // all-in pricing shown from the first click, no hidden fees). In
-    // Australia the ticket face value and the platform fee are GST-inclusive:
-    // the organiser is merchant of record under destination charges and
-    // remits GST on the ticket, and EventLinqs remits GST on its own fee
-    // (one eleventh of the fee). A separate GST amount is therefore never
-    // added on top of the buyer total. Adding 10 per cent of the ticket
-    // subtotal here was the source of the 16.6 per cent over-charge on
-    // order EL-6HBNEYY9 (AUD 65 face value billed as AUD 75.82).
+    // GST is inclusive in EventLinqs all-in pricing (all-in pricing shown from
+    // the first click, no hidden fees). Funds-holding model + founder GST ruling
+    // (Option 1, limited payment collection agent): EventLinqs is the PAYMENTS
+    // merchant of record (separate charges and transfers) but acts as the
+    // organiser's limited collection agent for tax, so the ORGANISER remains the
+    // seller of the ticket and remits GST on the ticket face value, while
+    // EventLinqs remits GST on its own fee (one eleventh of the fee). The ticket
+    // face value and the platform fee are GST-inclusive, so a separate GST amount
+    // is never added on top of the buyer total. Adding 10 per cent of the ticket
+    // subtotal here was the source of the 16.6 per cent over-charge on order
+    // EL-6HBNEYY9 (AUD 65 face value billed as AUD 75.82).
     //
     // A tax-exclusive jurisdiction (for example US sales tax added at the
     // till) would need an explicit inclusive vs exclusive tax mode. None is
@@ -173,19 +188,17 @@ export class PaymentCalculator {
 
     const resolvedPassType: FeePassType = fee_pass_type ?? passThroughToFeePassType(passThroughDefault)
 
-    let total_cents: number
-    let processingFeeShownToBuyer: number
-    let platformFeeShownToBuyer: number
-
-    if (resolvedPassType === 'absorb') {
-      total_cents = discounted_subtotal + tax_cents
-      processingFeeShownToBuyer = 0
-      platformFeeShownToBuyer = 0
-    } else {
-      total_cents = discounted_subtotal + platform_fee_cents + payment_processing_fee_cents + tax_cents
-      processingFeeShownToBuyer = payment_processing_fee_cents
-      platformFeeShownToBuyer = platform_fee_cents
-    }
+    // Same shared pure helper the client all-in display uses, so charged ==
+    // shown. In absorb mode the buyer pays the subtotal only (the fees come out
+    // of the organiser payout); in pass-on the fees are added on top.
+    const total_cents = computeAllInTotalCents(
+      discounted_subtotal,
+      { platform_fee_cents, payment_processing_fee_cents },
+      resolvedPassType,
+      tax_cents,
+    )
+    const processingFeeShownToBuyer = resolvedPassType === 'absorb' ? 0 : payment_processing_fee_cents
+    const platformFeeShownToBuyer = resolvedPassType === 'absorb' ? 0 : platform_fee_cents
 
     return {
       subtotal_cents,

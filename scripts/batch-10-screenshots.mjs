@@ -14,11 +14,11 @@ const VIEWPORTS = [
 
 const ROUTES = [
   { id: 'home',                  path: '/' },
-  { id: 'cultures',              path: '/cultures' },
+  { id: 'communities',              path: '/communities' },
   { id: 'cities',                path: '/cities' },
-  { id: 'culture-african',       path: '/culture/african' },
+  { id: 'community-african',       path: '/community/african' },
   { id: 'city-sydney',           path: '/city/sydney' },
-  { id: 'culture-african-sydney',path: '/culture/african/sydney' },
+  { id: 'community-african-sydney',path: '/community/african/sydney' },
   { id: 'events',                path: '/events' },
   { id: 'pricing',               path: '/pricing' },
   { id: 'organisers',            path: '/organisers' },

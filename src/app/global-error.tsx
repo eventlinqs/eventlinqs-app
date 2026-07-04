@@ -35,7 +35,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
           backgroundColor: '#FAFAFA',
           fontFamily:
             '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-          color: '#1A1A2E',
+          color: '#0A1628',
         }}
       >
         <main
@@ -72,7 +72,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
               margin: '0 0 24px',
               fontSize: 16,
               lineHeight: 1.55,
-              color: '#1A1A2E',
+              color: '#0A1628',
             }}
           >
             We logged the error and our team has been notified. You can try
@@ -85,7 +85,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
             style={{
               display: 'inline-block',
               padding: '14px 28px',
-              backgroundColor: '#1A1A2E',
+              backgroundColor: '#0A1628',
               color: '#FFFFFF',
               border: 'none',
               borderRadius: 8,

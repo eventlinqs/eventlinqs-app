@@ -2,7 +2,7 @@
 // route to so the public hero is link-clean before push.
 //
 // pasifika-festival-sydney + lebanese-mahrajan-sydney were seeded as
-// drafts (Pacific and Middle Eastern cultural slots respectively).
+// drafts (Pacific and Middle Eastern community slots respectively).
 // Marking them published makes them resolvable at /events/[slug] so
 // the homepage hero stops 404ing on those two slots.
 import { readFileSync } from 'node:fs'

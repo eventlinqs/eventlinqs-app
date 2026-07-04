@@ -4,7 +4,7 @@
 // Why: previous projection collided picsum URLs to a single Pexels category
 // photo per category, so 3-of-4 cards on /events/browse/sydney showed the
 // same image. The structural fix removes that collision; this script
-// replaces each seed event's picsum cover with a unique culturally-relevant
+// replaces each seed event's picsum cover with a unique community-relevant
 // Pexels image so the dev catalogue actually exercises the new path.
 //
 // Production hardening lives in 20260504000001_event_photo_required.sql
@@ -58,7 +58,7 @@ const CATEGORY_QUERIES = {
   'owambe':                    'nigerian wedding celebration colorful attire',
   'music':                     'live music concert audience stage',
   'sports':                    'stadium fans cheering',
-  'arts-culture':              'art gallery exhibition culture',
+  'arts-community':              'art gallery exhibition community',
   'food-drink':                'food festival tasting outdoor',
   'family':                    'family festival outdoor',
   'fashion':                   'fashion runway show models',

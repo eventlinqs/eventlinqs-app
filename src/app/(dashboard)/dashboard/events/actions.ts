@@ -6,7 +6,46 @@ import { redirect } from 'next/navigation'
 import { revalidatePath, updateTag } from 'next/cache'
 import { canTransition } from '@/lib/event-lifecycle'
 import { checkPublishGate, hasPaidTier } from '@/lib/events/publish-gate'
-import type { EventStatus, EventVisibility, EventType, TicketTierType } from '@/types/database'
+import { parseVideoEmbed } from '@/lib/media/video-embed'
+import { serializeGallery, type GalleryImage } from '@/lib/media/event-media-model'
+import { moderateEventMedia } from '@/lib/media/moderation'
+import { cleanupEventMedia } from '@/lib/upload'
+import type { EventStatus, EventVisibility, EventType, TicketTierType, FeePassType, Json } from '@/types/database'
+
+// Resolve the organiser media fields from a create/update input into the columns
+// the events table stores. Validates the video URL against the provider allowlist
+// (raw iframe / pasted HTML is rejected here, never stored) and caps the gallery.
+// Returns a friendly error if the video is present but not parseable.
+function resolveMediaColumns(input: {
+  cover_image_url: string | null
+  cover_image_alt?: string | null
+  cover_image_blur?: string | null
+  gallery?: GalleryImage[]
+  video_url?: string | null
+}):
+  | { ok: true; columns: { cover_image_url: string | null; cover_image_alt: string | null; cover_image_blur: string | null; gallery_urls: GalleryImage[]; video_url: string | null; video_provider: string | null } }
+  | { ok: false; error: string } {
+  let video_url: string | null = null
+  let video_provider: string | null = null
+  const raw = (input.video_url ?? '').trim()
+  if (raw) {
+    const parsed = parseVideoEmbed(raw)
+    if (!parsed.ok) return { ok: false, error: parsed.error }
+    video_url = parsed.video.embedUrl
+    video_provider = parsed.video.provider
+  }
+  return {
+    ok: true,
+    columns: {
+      cover_image_url: input.cover_image_url || null,
+      cover_image_alt: input.cover_image_alt?.trim() || null,
+      cover_image_blur: input.cover_image_blur || null,
+      gallery_urls: serializeGallery(input.gallery ?? []),
+      video_url,
+      video_provider,
+    },
+  }
+}
 
 function generateSlug(title: string): string {
   const base = title
@@ -59,12 +98,20 @@ export type CreateEventInput = {
   venue_longitude: number | null
   virtual_url: string | null
   cover_image_url: string | null
+  // Event Media Standard: cover alt/blur, the gallery (up to 9), and one optional
+  // video link (raw provider URL; parsed + allowlisted server-side on save).
+  cover_image_alt: string | null
+  cover_image_blur: string | null
+  gallery: GalleryImage[]
+  video_url: string | null
   visibility: EventVisibility
   is_age_restricted: boolean
   age_restriction_min: number | null
   max_capacity: number | null
   status: EventStatus
   scheduled_publish_at: string | null
+  // Who carries the booking fees: pass_to_buyer (default) or absorb.
+  fee_pass_type: FeePassType
   ticket_tiers: TicketTierInput[]
   // M4: Reserved seating
   has_reserved_seating: boolean
@@ -95,6 +142,10 @@ export async function createEvent(input: CreateEventInput): Promise<{ error?: st
 
   if (!org) return { error: 'Organisation not found or access denied' }
 
+  // Resolve + validate the media columns (video allowlist; gallery cap).
+  const media = resolveMediaColumns(input)
+  if (!media.ok) return { error: media.error }
+
   if (input.status === 'published' || input.status === 'scheduled') {
     const gate = await checkPublishGate(supabase, {
       organisationId: input.organisationId,
@@ -102,6 +153,15 @@ export async function createEvent(input: CreateEventInput): Promise<{ error?: st
       coverImageUrl: input.cover_image_url,
     })
     if (!gate.ok) return { error: gate.message }
+
+    // Pre-publish media safety gate: every image on-platform, video allowlisted.
+    const mod = moderateEventMedia({
+      coverImageUrl: media.columns.cover_image_url,
+      galleryUrls: media.columns.gallery_urls.map((g) => g.url),
+      videoUrl: media.columns.video_url,
+      videoProvider: media.columns.video_provider,
+    })
+    if (!mod.ok) return { error: mod.message }
   }
 
   const slug = generateSlug(input.title)
@@ -137,7 +197,12 @@ export async function createEvent(input: CreateEventInput): Promise<{ error?: st
       venue_latitude: input.venue_latitude || null,
       venue_longitude: input.venue_longitude || null,
       virtual_url: input.virtual_url || null,
-      cover_image_url: input.cover_image_url || null,
+      cover_image_url: media.columns.cover_image_url,
+      cover_image_alt: media.columns.cover_image_alt,
+      cover_image_blur: media.columns.cover_image_blur,
+      gallery_urls: media.columns.gallery_urls as unknown as Json,
+      video_url: media.columns.video_url,
+      video_provider: media.columns.video_provider,
       visibility: input.visibility,
       is_age_restricted: input.is_age_restricted,
       age_restriction_min: input.is_age_restricted ? (input.age_restriction_min ?? 18) : null,
@@ -152,6 +217,7 @@ export async function createEvent(input: CreateEventInput): Promise<{ error?: st
       squad_timeout_hours: input.squad_timeout_hours,
       is_high_demand: input.is_high_demand,
       queue_admission_window_minutes: input.queue_admission_window_minutes,
+      fee_pass_type: input.fee_pass_type,
     })
 
   if (eventError) {
@@ -222,6 +288,33 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
 
   if (!event) return { error: 'Event not found' }
 
+  // Verify the caller owns (or co-manages) the event's organisation before any
+  // privileged write. Without this an authenticated organiser could pass another
+  // org's eventId and overwrite that event or wipe its ticket tiers, because the
+  // mutations below run under the service-role admin client (RLS bypassed). The
+  // existence SELECT above is not a gate: events RLS lets anyone read any
+  // published event. These ownership reads run under the session client, so they
+  // only succeed for an org the caller actually owns or manages.
+  const [{ data: ownedOrg }, { data: managingMembership }] = await Promise.all([
+    supabase
+      .from('organisations')
+      .select('id')
+      .eq('id', event.organisation_id)
+      .eq('owner_id', user.id)
+      .maybeSingle(),
+    supabase
+      .from('organisation_members')
+      .select('role')
+      .eq('organisation_id', event.organisation_id)
+      .eq('user_id', user.id)
+      .in('role', ['owner', 'admin', 'manager'])
+      .maybeSingle(),
+  ])
+  if (!ownedOrg && !managingMembership) return { error: 'Event not found' }
+
+  const media = resolveMediaColumns(input)
+  if (!media.ok) return { error: media.error }
+
   if (input.status === 'published' || input.status === 'scheduled') {
     const gate = await checkPublishGate(supabase, {
       organisationId: event.organisation_id,
@@ -229,6 +322,14 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
       coverImageUrl: input.cover_image_url,
     })
     if (!gate.ok) return { error: gate.message }
+
+    const mod = moderateEventMedia({
+      coverImageUrl: media.columns.cover_image_url,
+      galleryUrls: media.columns.gallery_urls.map((g) => g.url),
+      videoUrl: media.columns.video_url,
+      videoProvider: media.columns.video_provider,
+    })
+    if (!mod.ok) return { error: mod.message }
   }
 
   const now = new Date().toISOString()
@@ -266,7 +367,12 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
       venue_latitude: input.venue_latitude || null,
       venue_longitude: input.venue_longitude || null,
       virtual_url: input.virtual_url || null,
-      cover_image_url: input.cover_image_url || null,
+      cover_image_url: media.columns.cover_image_url,
+      cover_image_alt: media.columns.cover_image_alt,
+      cover_image_blur: media.columns.cover_image_blur,
+      gallery_urls: media.columns.gallery_urls as unknown as Json,
+      video_url: media.columns.video_url,
+      video_provider: media.columns.video_provider,
       visibility: input.visibility,
       is_age_restricted: input.is_age_restricted,
       age_restriction_min: input.is_age_restricted ? (input.age_restriction_min ?? 18) : null,
@@ -281,6 +387,7 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
       squad_timeout_hours: input.squad_timeout_hours,
       is_high_demand: input.is_high_demand,
       queue_admission_window_minutes: input.queue_admission_window_minutes,
+      fee_pass_type: input.fee_pass_type,
     })
     .eq('id', input.eventId)
 
@@ -483,7 +590,7 @@ export async function deleteEvent(eventId: string): Promise<{ error?: string }> 
 
   const { data: event } = await supabase
     .from('events')
-    .select('status')
+    .select('status, created_by, cover_image_url, gallery_urls')
     .eq('id', eventId)
     .single()
 
@@ -491,5 +598,19 @@ export async function deleteEvent(eventId: string): Promise<{ error?: string }> 
   if (event.status !== 'draft') return { error: 'Only draft events can be deleted' }
 
   const { error } = await supabase.from('events').delete().eq('id', eventId)
-  return error ? { error: 'Failed to delete event' } : {}
+  if (error) return { error: 'Failed to delete event' }
+
+  // Orphan cleanup: remove the event's stored images so deleting an event never
+  // leaks storage. Best-effort (the row is already gone); failures are logged.
+  const galleryUrls = Array.isArray(event.gallery_urls)
+    ? event.gallery_urls
+        .map((g) => (typeof g === 'string' ? g : (g as { url?: string } | null)?.url))
+        .filter((u): u is string => typeof u === 'string')
+    : []
+  await cleanupEventMedia({
+    eventId,
+    createdBy: event.created_by,
+    urls: [event.cover_image_url, ...galleryUrls].filter((u): u is string => typeof u === 'string'),
+  })
+  return {}
 }

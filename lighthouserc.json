@@ -1,22 +1,7 @@
 {
   "ci": {
     "collect": {
-      "startServerCommand": "npm run start",
-      "startServerReadyPattern": "Ready in",
-      "startServerReadyTimeout": 60000,
-      "url": [
-        "http://localhost:3000/",
-        "http://localhost:3000/events",
-        "http://localhost:3000/events/browse/melbourne",
-        "http://localhost:3000/culture/african",
-        "http://localhost:3000/events/afrobeats-melbourne-summer-sessions",
-        "http://localhost:3000/organisers",
-        "http://localhost:3000/pricing",
-        "http://localhost:3000/help",
-        "http://localhost:3000/legal/terms",
-        "http://localhost:3000/login",
-        "http://localhost:3000/signup"
-      ],
+      "_urlNote": "URLs are injected at runtime by .github/workflows/lighthouse.yml via scripts/ci/resolve-gate-urls.mjs - the warmed Vercel preview base plus a /events/<slug> discovered from the preview sitemap - so no localhost/seed slug can 404 the collect. The audited URL set is unchanged from the prior gate (same public, no-auth surfaces).",
       "_authNote": "All listed URLs verified to render without auth (HTTP 200, no redirect). Auth-gated surfaces - /dashboard/*, /admin/*, /orders/[order_id]/confirmation, /squad/[token], /verify-email-sent - are excluded from this gate because Lighthouse cannot pass session cookies/JWTs reliably in CI. Module M7 (admin) and Pre-Task 5 (checkout/orders perf) will each add their own auth-context Lighthouse gate using a recorded session.",
       "_numberOfRuns_note": "CLAUDE.md hard rule: 'NO single-run Lighthouse measurements (median-of-5 only)'. Single-run measurements are statistically invalid for gating and produce intermittent NO_LCP / NO_FCP errors (observed on PR #40 first green-pass run: / and /culture/african both came back perf:null with errorMessage:NO_LCP, while /events scored 0.80 in the same run). 3 runs (median) is the floor that dampens cold-start flake without blowing the 20-minute workflow timeout; the full 5 the standard calls for can land once a longer timeout window is justified.",
       "numberOfRuns": 3,
@@ -35,7 +20,7 @@
       "assertMatrix": [
         {
           "_pattern_note": "Negative lookahead excludes /login and /signup (SEO category - they are deliberately noindex), /culture/* (perf score - Issue #42 cold-start image-optimiser race; see the third assertMatrix entry below), AND the homepage / (same Issue #42 class per CLAUDE.md docs/perf/v2/closure-report.md flagging 'Mobile homepage and /events have known cold-cache measurement issue ... do not block on it'; see the fourth assertMatrix entry below). Each excluded path has its own dedicated assertMatrix entry that re-applies whichever assertions still need to fire at error-level for that path. assertMatrix entries are independent and additive (a URL matched by multiple entries has all matching assertions evaluated), so excluding here is the only way to suppress the default error-level threshold from also firing.",
-          "matchingUrlPattern": "^(?!.*/(login|signup)$)(?!.*/culture/.+$)(?!http://localhost:3000/$).*",
+          "matchingUrlPattern": "^(?!.*/(login|signup)$)(?!.*/culture/.+$)(?!https?://[^/]+/?$).*",
           "assertions": {
             "categories:performance": ["error", { "minScore": 0.80 }],
             "categories:accessibility": ["error", { "minScore": 1.0 }],
@@ -80,7 +65,7 @@
         },
         {
           "_note": "Homepage / mobile cold-cache image-optimiser race - same class as /culture/* per Issue #42 and CLAUDE.md docs/perf/v2/closure-report.md ('Mobile homepage and /events have known cold-cache measurement issue to be revisited with production warm-cache data, do not block on it'). The homepage hero is a heavy priority-painted raster on mobile and trips the same Vercel image optimiser cold-start race already documented for /culture/*. Observed in this PR's run (median-of-3): perf 0.76 on /, while /culture/african produced null/NaN for perf/LCP/TBT in the same run - both routes are stuck below the 0.80 floor for the same documented reason. Performance is gated at warn-level so the score stays visible in CI without blocking deploys; accessibility, best-practices, SEO, and CLS remain at the full error-level. Restore performance to error-level when the underlying cold-cache fix lands (same fix horizon as Issue #42). /events is also flagged in CLAUDE.md as having the same issue but is left at error-level for now because the current run still measured it above 0.80 - relax it only when it actually fails.",
-          "matchingUrlPattern": "^http://localhost:3000/$",
+          "matchingUrlPattern": "^https?://[^/]+/?$",
           "assertions": {
             "categories:performance": ["warn", { "minScore": 0.80 }],
             "categories:accessibility": ["error", { "minScore": 1.0 }],

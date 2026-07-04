@@ -4,16 +4,15 @@ import { PageShell } from '@/components/layout/PageShell'
 import { PageHero } from '@/components/layout/PageHero'
 import { ContentSection } from '@/components/layout/ContentSection'
 import { Button } from '@/components/ui/Button'
-import { PUBLIC_FEE_LABEL } from '@/lib/pricing/public-fee'
+import { getLivePublicFee } from '@/lib/pricing/live-fee'
 
 /**
  * PricingPage - /pricing
  *
- * The paid-ticket fee is stated as ONE definite number sourced from
- * `@/lib/pricing/public-fee`, which mirrors the live AU / GLOBAL
- * `pricing_rules` baseline (2.5% + AUD 0.50) that payment-calculator.ts
- * actually charges. No "from", no "indicative", no "may vary" hedging:
- * the table has a single fee for every event type.
+ * The paid-ticket fee is read LIVE from `pricing_rules` via `getLivePublicFee()`
+ * - the SAME source the payment calculator charges from - so the displayed fee
+ * always equals the charged fee. Stated as ONE definite number: no "from", no
+ * "indicative", no "may vary" hedging.
  */
 
 // ---- Pricing tier data ----
@@ -39,7 +38,9 @@ const TIERS = [
   {
     id: 'paid',
     name: 'Paid Events',
-    price: PUBLIC_FEE_LABEL,
+    // Always overridden at render by the live fee (getLivePublicFee); the paid
+    // tier never reads this static value. Kept blank so there is no second fee.
+    price: '',
     priceDetail: 'per paid ticket sold. That is the whole fee.',
     description:
       'Transparent, industry-leading rates. Pass the fee to buyers or absorb it into your ticket price. Your choice.',
@@ -102,7 +103,11 @@ const FAQ = [
   },
 ]
 
-export function PricingPage() {
+export async function PricingPage() {
+  // The displayed fee is read LIVE from pricing_rules (the same source the
+  // payment calculator charges from), so displayed == charged. Static constant
+  // is the safe fallback inside getLivePublicFee.
+  const fee = await getLivePublicFee()
   return (
     <PageShell>
 
@@ -116,7 +121,10 @@ export function PricingPage() {
       />
 
       {/* -- 2. Pricing tiers ---------------------------------------- */}
-      <ContentSection surface="base" width="wide">
+      {/* Tinted band so the white tier cards have contrast and elevation,
+          mirroring Eventbrite's tinted pricing bands (2026 competitor mirror)
+          instead of white cards floating on a white surface. */}
+      <ContentSection surface="alt" width="wide" topBorder>
         <h2 className="sr-only">Pricing tiers</h2>
         <div className="group/cards grid grid-cols-1 gap-6 md:grid-cols-3">
           {TIERS.map(tier => (
@@ -142,7 +150,7 @@ export function PricingPage() {
 
               <div className="mt-3">
                 <span className="font-display text-3xl font-extrabold text-[var(--text-primary)]">
-                  {tier.price}
+                  {tier.id === 'paid' ? fee.label : tier.price}
                 </span>
                 {tier.priceDetail && (
                   <span className="ml-2 text-sm text-[var(--text-secondary)]">
@@ -183,8 +191,9 @@ export function PricingPage() {
           ))}
         </div>
 
-        {/* Fee promise */}
-        <p className="mt-6 text-center text-xs text-[var(--text-muted)]">
+        {/* Fee promise. text-secondary (not muted) so it clears AA contrast on
+            the tinted band - muted only passes on the white surface. */}
+        <p className="mt-6 text-center text-xs text-[var(--text-secondary)]">
           Free events always have zero platform fees. The paid-ticket fee is the same for
           every event type. No setup fees, no monthly fees, no card required until you sell
           a paid ticket.
@@ -239,32 +248,42 @@ export function PricingPage() {
         </div>
       </ContentSection>
 
-      {/* -- 4. Final CTA band --------------------------------------- */}
-      <section className="relative overflow-hidden bg-[var(--surface-dark)] py-20 md:py-28">
+      {/* -- 4. Final CTA band (light canvas, navy-on-canvas) -------- */}
+      <section className="relative overflow-hidden border-t border-ink-100 bg-[var(--surface-1)] py-20 md:py-28">
         <div
           className="pointer-events-none absolute inset-x-0 top-0 h-0.5"
           style={{
             background: 'linear-gradient(90deg, transparent 0%, var(--brand-accent) 50%, transparent 100%)',
-            opacity: 0.6,
+            opacity: 0.7,
+          }}
+          aria-hidden="true"
+        />
+        {/* Subtle warm gold tint - premium and light (Phase B touch) */}
+        <div
+          className="pointer-events-none absolute"
+          style={{
+            top: '-30%', right: '-10%', width: '60%', height: '160%',
+            background: 'radial-gradient(ellipse 70% 60% at 100% 50%, var(--brand-accent), transparent 62%)',
+            opacity: 0.06,
           }}
           aria-hidden="true"
         />
         <div className="relative z-10 mx-auto max-w-6xl px-4 md:px-6 lg:px-8">
           <div className="flex flex-col items-center gap-8 text-center">
             <div className="max-w-2xl">
-              <h2 className="font-display text-3xl font-bold leading-tight text-white sm:text-4xl">
+              <h2 className="font-display text-3xl font-bold leading-tight text-[var(--text-primary)] sm:text-4xl">
                 Ready to see it in action?
               </h2>
-              <p className="mt-4 text-base leading-relaxed text-white/65">
+              <p className="mt-4 text-base leading-relaxed text-[var(--text-secondary)]">
                 Sign up and build your first event in minutes. No credit card required until you
                 sell a ticket.
               </p>
             </div>
             <div className="flex flex-col gap-4 sm:flex-row">
-              <Button variant="primary" size="lg" onSurface="dark" href="/organisers/signup">
+              <Button variant="primary" size="lg" href="/organisers/signup">
                 Start selling tickets
               </Button>
-              <Button variant="secondary" size="lg" onSurface="dark" href="/contact?topic=organiser">
+              <Button variant="secondary" size="lg" href="/contact?topic=organiser">
                 Talk to us
               </Button>
             </div>

@@ -4,6 +4,7 @@ import { GlassCard } from '@/components/ui/glass-card'
 import { getEventMedia, getFeaturedEventMedia, type EventMediaInput } from '@/lib/images/event-media'
 import { SaveEventButton } from './save-event-button'
 import type { BentoSize } from './bento-grid'
+import { priceLabel } from '@/lib/events/price-label'
 
 /**
  * EventBentoTile: renders a single event tile with EventCardMedia background.
@@ -46,12 +47,7 @@ function formatDate(iso: string): string {
 }
 
 function formatCheapestPrice(tiers: BentoEvent['ticket_tiers']): string | null {
-  if (!tiers || tiers.length === 0) return 'Free'
-  const cheapest = tiers.reduce((m, t) => (t.price < m.price ? t : m), tiers[0])
-  if (cheapest.price === 0) return 'Free'
-  const dollars = cheapest.price / 100
-  const formatted = Number.isInteger(dollars) ? `$${dollars}` : `$${dollars.toFixed(2)}`
-  return `From ${cheapest.currency ?? 'AUD'} ${formatted}`
+  return priceLabel(tiers ?? [])
 }
 
 function liveSignal(event: BentoEvent): string | null {

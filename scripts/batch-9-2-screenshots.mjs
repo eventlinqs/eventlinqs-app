@@ -16,9 +16,9 @@ const VIEWPORTS = [
 
 const PAIRED = [
   { id: 'home',            path: '/' },
-  { id: 'cultures',        path: '/cultures' },
+  { id: 'communities',        path: '/communities' },
   { id: 'cities',          path: '/cities' },
-  { id: 'culture-african', path: '/culture/african' },
+  { id: 'community-african', path: '/community/african' },
 ]
 
 const browser = await chromium.launch({ headless: true })
@@ -69,7 +69,7 @@ const SECTIONS = [
   { id: 'hero',     scroll: 0,     description: 'split-state hero' },
   { id: 'chips',    scroll: 700,   description: 'category chip strip' },
   { id: 'trending', scroll: 900,   description: 'bento H8 Trending' },
-  { id: 'moments',  scroll: 2400,  description: 'bento H10 Cultural Moments' },
+  { id: 'moments',  scroll: 2400,  description: 'bento H10 Community Moments' },
   { id: 'email',    scroll: 5200,  description: 'email signup panel' },
 ]
 

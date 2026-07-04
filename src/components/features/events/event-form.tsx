@@ -2,9 +2,15 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
 import { createEvent, updateEvent } from '@/app/(dashboard)/dashboard/events/actions'
-import { uploadEventImage } from '@/lib/upload'
+import { EventMediaStep, type MediaImage } from './event-media-step'
+import { parseGallery } from '@/lib/media/event-media-model'
+import { getAllCommunities, type CommunitySlug } from '@/lib/communities/data'
+import {
+  communitiesFromTags,
+  stripCanonicalCommunityTokens,
+  canonicalTokensForCommunities,
+} from '@/lib/communities/tag-bridge'
 import type {
   EventCategory,
   EventType,
@@ -12,6 +18,7 @@ import type {
   EventStatus,
   TicketTierType,
   TicketTier,
+  FeePassType,
 } from '@/types/database'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -31,6 +38,10 @@ export type TicketTierInput = {
   sort_order: number
 }
 
+// Heritage communities for the create/edit multi-select, ordered so Aboriginal &
+// Torres Strait Islander leads (heritageOrder). Static data, computed once.
+const ALL_COMMUNITIES = getAllCommunities().slice().sort((a, b) => a.heritageOrder - b.heritageOrder)
+
 type FormData = {
   // Step 1
   title: string
@@ -38,6 +49,7 @@ type FormData = {
   description: string
   category_id: string
   tags: string
+  community_slugs: CommunitySlug[]
   // Step 2
   start_date: string
   end_date: string
@@ -54,10 +66,15 @@ type FormData = {
   venue_country: string
   venue_postal_code: string
   virtual_url: string
-  // Step 4
-  cover_image_url: string
+  // Step 4 - Event Media Standard: one ordered list (index 0 = cover, 1..9 =
+  // gallery) plus one optional video link (raw provider URL; parsed server-side).
+  media: MediaImage[]
+  video_url: string
   // Step 5
   ticket_tiers: TicketTierInput[]
+  // Who carries the fees: pass-on (buyer pays, organiser keeps face value -
+  // default) or absorb (deducted from the organiser payout).
+  fee_pass_type: FeePassType
   // Step 6
   visibility: EventVisibility
   is_age_restricted: boolean
@@ -122,7 +139,7 @@ const STEPS = [
   'Basic Details',
   'Date & Time',
   'Location',
-  'Cover Image',
+  'Event Media',
   'Tickets',
   'Settings',
   'Review & Publish',
@@ -157,6 +174,7 @@ function getDefaultFormData(): FormData {
     description: '',
     category_id: '',
     tags: '',
+    community_slugs: [],
     start_date: fmt(start),
     end_date: fmt(end),
     timezone: 'Australia/Melbourne',
@@ -171,7 +189,8 @@ function getDefaultFormData(): FormData {
     venue_country: 'Australia',
     venue_postal_code: '',
     virtual_url: '',
-    cover_image_url: '',
+    media: [],
+    video_url: '',
     ticket_tiers: [newTier(0)],
     visibility: 'public',
     is_age_restricted: false,
@@ -184,7 +203,35 @@ function getDefaultFormData(): FormData {
     squad_timeout_hours: '24',
     is_high_demand: false,
     queue_admission_window_minutes: '10',
+    fee_pass_type: 'pass_to_buyer',
   }
+}
+
+// Rebuild the ordered media list (cover first, then gallery) from a saved event.
+// Existing images were already valid covers/gallery, so width is set above the
+// cover floor to keep them freely reorderable.
+function existingMedia(event: {
+  cover_image_url: string | null
+  cover_image_alt?: string | null
+  cover_image_blur?: string | null
+  gallery_urls?: unknown
+}): MediaImage[] {
+  const out: MediaImage[] = []
+  if (event.cover_image_url) {
+    out.push({
+      id: crypto.randomUUID(),
+      url: event.cover_image_url,
+      alt: event.cover_image_alt ?? '',
+      blur: event.cover_image_blur ?? undefined,
+      width: 9999,
+      height: 0,
+      uploading: false,
+    })
+  }
+  for (const g of parseGallery(event.gallery_urls)) {
+    out.push({ id: crypto.randomUUID(), url: g.url, alt: g.alt, blur: g.blur, width: 9999, height: 0, uploading: false })
+  }
+  return out
 }
 
 function fromExistingEvent(
@@ -209,6 +256,10 @@ function fromExistingEvent(
     venue_postal_code: string | null
     virtual_url: string | null
     cover_image_url: string | null
+    cover_image_alt?: string | null
+    cover_image_blur?: string | null
+    gallery_urls?: unknown
+    video_url?: string | null
     visibility: EventVisibility
     is_age_restricted: boolean
     age_restriction_min: number | null
@@ -220,6 +271,7 @@ function fromExistingEvent(
     squad_timeout_hours?: number | null
     is_high_demand?: boolean | null
     queue_admission_window_minutes?: number | null
+    fee_pass_type?: FeePassType | null
   },
   tiers: TicketTier[]
 ): FormData {
@@ -229,7 +281,8 @@ function fromExistingEvent(
     summary: event.summary ?? '',
     description: event.description ?? '',
     category_id: event.category_id ?? '',
-    tags: event.tags.join(', '),
+    tags: stripCanonicalCommunityTokens(event.tags).join(', '),
+    community_slugs: communitiesFromTags(event.tags),
     start_date: fmt(event.start_date),
     end_date: fmt(event.end_date),
     timezone: event.timezone,
@@ -244,7 +297,8 @@ function fromExistingEvent(
     venue_country: event.venue_country ?? '',
     venue_postal_code: event.venue_postal_code ?? '',
     virtual_url: event.virtual_url ?? '',
-    cover_image_url: event.cover_image_url ?? '',
+    media: existingMedia(event),
+    video_url: event.video_url ?? '',
     ticket_tiers: tiers.map((t, i) => ({
       id: t.id,
       name: t.name,
@@ -270,6 +324,7 @@ function fromExistingEvent(
     squad_timeout_hours: (event.squad_timeout_hours ?? 24).toString(),
     is_high_demand: event.is_high_demand ?? false,
     queue_admission_window_minutes: (event.queue_admission_window_minutes ?? 10).toString(),
+    fee_pass_type: event.fee_pass_type ?? 'pass_to_buyer',
   }
 }
 
@@ -319,10 +374,6 @@ export function EventForm({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [stepError, setStepError] = useState<string | null>(null)
-  const [imageUploading, setImageUploading] = useState(false)
-  const [imageDragOver, setImageDragOver] = useState(false)
-  const [aspectWarning, setAspectWarning] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const set = useCallback(<K extends keyof FormData>(key: K, value: FormData[K]) => {
     setFormData(d => ({ ...d, [key]: value }))
@@ -347,7 +398,10 @@ export function EventForm({
     summary: formData.summary,
     description: formData.description,
     category_id: formData.category_id || null,
-    tags: formData.tags.split(',').map(t => t.trim()).filter(Boolean),
+    tags: Array.from(new Set([
+      ...stripCanonicalCommunityTokens(formData.tags.split(',').map(t => t.trim()).filter(Boolean)),
+      ...canonicalTokensForCommunities(formData.community_slugs),
+    ])),
     start_date: new Date(formData.start_date).toISOString(),
     end_date: new Date(formData.end_date).toISOString(),
     timezone: formData.timezone,
@@ -364,7 +418,16 @@ export function EventForm({
     venue_latitude: null,
     venue_longitude: null,
     virtual_url: formData.virtual_url || null,
-    cover_image_url: formData.cover_image_url || null,
+    // Index 0 of the media list is the cover; 1..9 are the gallery. Only fully
+    // uploaded images (a real url) are persisted.
+    cover_image_url: formData.media[0]?.url || null,
+    cover_image_alt: formData.media[0]?.alt?.trim() || null,
+    cover_image_blur: formData.media[0]?.blur || null,
+    gallery: formData.media
+      .slice(1)
+      .filter(m => !!m.url)
+      .map(m => ({ url: m.url, alt: m.alt.trim(), ...(m.blur ? { blur: m.blur } : {}) })),
+    video_url: formData.video_url.trim() || null,
     visibility: formData.visibility,
     is_age_restricted: formData.is_age_restricted,
     age_restriction_min: formData.is_age_restricted ? parseInt(formData.age_restriction_min) : null,
@@ -378,6 +441,7 @@ export function EventForm({
     squad_timeout_hours: Math.min(72, Math.max(1, parseInt(formData.squad_timeout_hours) || 24)),
     is_high_demand: formData.is_high_demand,
     queue_admission_window_minutes: Math.min(60, Math.max(5, parseInt(formData.queue_admission_window_minutes) || 10)),
+    fee_pass_type: formData.fee_pass_type,
     ticket_tiers: formData.ticket_tiers.map((t, i) => ({
       name: t.name,
       description: t.description,
@@ -421,43 +485,6 @@ export function EventForm({
       setError('Something went wrong. Please try again.')
     } finally {
       setIsSubmitting(false)
-    }
-  }
-
-  const handleImageFile = async (file: File) => {
-    if (!file.type.startsWith('image/')) return
-    if (file.size > 10 * 1024 * 1024) {
-      setError('Image must be under 10MB')
-      return
-    }
-    setAspectWarning(null)
-    try {
-      const dims = await new Promise<{ w: number; h: number }>((resolve, reject) => {
-        const img = new window.Image()
-        img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight })
-        img.onerror = () => reject(new Error('image-load'))
-        img.src = URL.createObjectURL(file)
-      })
-      const ratio = dims.w / dims.h
-      const target = 16 / 9
-      if (Math.abs(ratio - target) / target > 0.1) {
-        setAspectWarning(
-          `Heads up: your image is ${dims.w}×${dims.h}. Cover images look best at 16:9 (e.g. 1600×900). Yours will be letterboxed to fit.`
-        )
-      }
-    } catch {
-      // Ignore measurement errors - proceed with upload anyway.
-    }
-    setImageUploading(true)
-    const fd = new FormData()
-    fd.append('file', file)
-    fd.append('eventId', eventIdRef.current)
-    const url = await uploadEventImage(fd)
-    setImageUploading(false)
-    if (url) {
-      set('cover_image_url', url)
-    } else {
-      setError('Image upload failed. Please try again.')
     }
   }
 
@@ -573,6 +600,36 @@ export function EventForm({
           placeholder="music, outdoor, family-friendly"
           className="w-full rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
         />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-ink-600 mb-1">
+          Communities
+          <span className="ml-2 text-xs text-ink-400">Optional. Tick any that fit; your event then shows on their community pages.</span>
+        </label>
+        <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+          {ALL_COMMUNITIES.map(c => {
+            const checked = formData.community_slugs.includes(c.slug)
+            return (
+              <label key={c.slug} className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-ink-200 px-3 py-2 text-sm transition-colors hover:bg-ink-100">
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() =>
+                    set(
+                      'community_slugs',
+                      checked
+                        ? formData.community_slugs.filter(s => s !== c.slug)
+                        : [...formData.community_slugs, c.slug],
+                    )
+                  }
+                  className="h-4 w-4 rounded border-ink-300 text-gold-500 focus:ring-gold-500"
+                />
+                <span className="text-ink-700">{c.displayName}</span>
+              </label>
+            )
+          })}
+        </div>
       </div>
     </div>
   )
@@ -763,80 +820,13 @@ export function EventForm({
   )
 
   const renderStep4 = () => (
-    <div className="space-y-5">
-      <div>
-        <label className="block text-sm font-medium text-ink-600 mb-2">Cover Image</label>
-        <p className="text-xs text-ink-400 mb-4">Max 10MB. Accepted formats: JPEG, PNG, WebP.</p>
-
-        {formData.cover_image_url ? (
-          <div className="relative">
-            <div className="relative aspect-video w-full overflow-hidden rounded-lg border border-ink-200 bg-ink-100">
-              <Image
-                src={formData.cover_image_url}
-                alt="Cover image preview"
-                fill
-                className="object-contain"
-              />
-            </div>
-            {aspectWarning && (
-              <div className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                {aspectWarning}
-              </div>
-            )}
-            <button
-              type="button"
-              onClick={() => {
-                set('cover_image_url', '')
-                setAspectWarning(null)
-              }}
-              className="mt-2 text-sm text-red-600 hover:text-red-800"
-            >
-              Remove image
-            </button>
-          </div>
-        ) : (
-          <div
-            onDragOver={e => { e.preventDefault(); setImageDragOver(true) }}
-            onDragLeave={() => setImageDragOver(false)}
-            onDrop={e => {
-              e.preventDefault()
-              setImageDragOver(false)
-              const file = e.dataTransfer.files[0]
-              if (file) handleImageFile(file)
-            }}
-            onClick={() => fileInputRef.current?.click()}
-            className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-6 py-12 transition-colors ${
-              imageDragOver
-                ? 'border-gold-400 bg-gold-100'
-                : 'border-ink-200 hover:border-ink-400 hover:bg-ink-100'
-            }`}
-          >
-            {imageUploading ? (
-              <p className="text-sm text-ink-600">Uploading…</p>
-            ) : (
-              <>
-                <svg className="mb-3 h-10 w-10 text-ink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <p className="text-sm text-ink-600">
-                  <span className="font-medium text-gold-500">Click to upload</span> or drag and drop
-                </p>
-              </>
-            )}
-          </div>
-        )}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          className="hidden"
-          onChange={e => {
-            const file = e.target.files?.[0]
-            if (file) handleImageFile(file)
-          }}
-        />
-      </div>
-    </div>
+    <EventMediaStep
+      eventId={eventIdRef.current}
+      images={formData.media}
+      onImagesChange={imgs => set('media', imgs)}
+      video={formData.video_url}
+      onVideoChange={v => set('video_url', v)}
+    />
   )
 
   const renderStep5 = () => (
@@ -1142,6 +1132,49 @@ export function EventForm({
           </div>
         )}
       </div>
+
+      {/* Booking fees: who pays (per-event). Pass-on is the default so the
+          organiser keeps the full face value; absorb deducts the fees from the
+          payout. The buyer always sees the true all-in total before checkout. */}
+      <div className="rounded-lg border border-ink-200 p-5">
+        <p className="text-sm font-semibold text-ink-900">Booking fees</p>
+        <p className="mt-1 text-xs text-ink-400">
+          Choose who pays the EventLinqs service and processing fees. Free tickets are
+          never charged a fee.
+        </p>
+        <div className="mt-4 space-y-3">
+          {([
+            {
+              value: 'pass_to_buyer',
+              label: 'Pass fees to the buyer (recommended)',
+              desc: 'The buyer pays the fees on top at checkout and you keep the full ticket face value. The all-in total is shown to the buyer up front.',
+            },
+            {
+              value: 'absorb',
+              label: 'Absorb the fees',
+              desc: 'The buyer pays only the ticket price and the fees are deducted from your payout.',
+            },
+          ] as { value: FeePassType; label: string; desc: string }[]).map(opt => (
+            <label
+              key={opt.value}
+              className="flex cursor-pointer items-start gap-3 rounded-lg border border-ink-200 p-4 hover:bg-ink-100"
+            >
+              <input
+                type="radio"
+                name="fee_pass_type"
+                value={opt.value}
+                checked={formData.fee_pass_type === opt.value}
+                onChange={() => set('fee_pass_type', opt.value)}
+                className="mt-0.5 h-4 w-4 border-ink-200 text-gold-500 focus:ring-gold-500"
+              />
+              <div>
+                <p className="text-sm font-medium text-ink-900">{opt.label}</p>
+                <p className="text-xs text-ink-400">{opt.desc}</p>
+              </div>
+            </label>
+          ))}
+        </div>
+      </div>
     </div>
   )
 
@@ -1306,10 +1339,11 @@ export function EventForm({
     const totalCapacity = formData.ticket_tiers.reduce(
       (sum, t) => sum + (parseInt(t.total_capacity) || 0), 0
     )
-    const minPrice = formData.ticket_tiers.length > 0
-      ? Math.min(...formData.ticket_tiers.map(t => parseFloat(t.price) || 0))
-      : 0
-    const isFree = minPrice === 0
+    // Free means EVERY tier is $0 (the fee-system definition), not just the
+    // cheapest tier: an event with a free tier plus paid tiers is a paid event.
+    const tierPrices = formData.ticket_tiers.map(t => parseFloat(t.price) || 0)
+    const isFree = tierPrices.length === 0 || tierPrices.every(p => p === 0)
+    const minPaidPrice = isFree ? 0 : Math.min(...tierPrices.filter(p => p > 0))
 
     return (
       <div className="space-y-6">
@@ -1353,8 +1387,18 @@ export function EventForm({
               {formData.ticket_tiers.length} tier{formData.ticket_tiers.length !== 1 ? 's' : ''} · {totalCapacity.toLocaleString()} total capacity
             </p>
             <p className="text-xs text-ink-400">
-              {isFree ? 'Free event' : `From ${formData.ticket_tiers[0]?.currency} ${minPrice.toFixed(2)}`}
+              {isFree ? 'Free event' : `From ${formData.ticket_tiers[0]?.currency} ${minPaidPrice.toFixed(2)}`}
             </p>
+          </div>
+
+          <div className="px-5 py-4">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">Media</h3>
+            <p className="text-sm text-ink-600">
+              {formData.media[0]?.url
+                ? `Cover set${formData.media.length > 1 ? ` + ${formData.media.length - 1} gallery image${formData.media.length - 1 === 1 ? '' : 's'}` : ''}`
+                : 'No cover yet'}
+            </p>
+            {formData.video_url.trim() && <p className="text-xs text-ink-400">Video linked</p>}
           </div>
 
           <div className="px-5 py-4">
@@ -1365,6 +1409,12 @@ export function EventForm({
             )}
           </div>
         </div>
+
+        {!formData.media[0]?.url && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            Add a cover image in the Event Media step before publishing. You can still save as a draft.
+          </div>
+        )}
 
         {error && (
           <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -1384,7 +1434,7 @@ export function EventForm({
           <button
             type="button"
             onClick={() => handleSubmit('published')}
-            disabled={isSubmitting || !formData.title.trim()}
+            disabled={isSubmitting || !formData.title.trim() || !formData.media[0]?.url || formData.media.some(m => m.uploading)}
             className="flex-1 rounded-lg bg-gold-500 px-4 py-3 text-sm font-medium text-ink-900 hover:bg-gold-600 disabled:opacity-50 transition-colors"
           >
             {isSubmitting ? 'Publishing…' : editMode ? 'Save Changes' : 'Publish Now'}

@@ -3,6 +3,11 @@ import type {
   PaymentGateway,
   CreatePaymentIntentParams,
   PaymentIntentResult,
+  TransferGateway,
+  CreateTransferParams,
+  TransferResult,
+  ReverseTransferParams,
+  TransferReversalResult,
 } from './gateway'
 
 function getStripeClient(): Stripe {
@@ -11,7 +16,7 @@ function getStripeClient(): Stripe {
   return new Stripe(key, { apiVersion: '2026-03-25.dahlia' })
 }
 
-export class StripeAdapter implements PaymentGateway {
+export class StripeAdapter implements PaymentGateway, TransferGateway {
   name = 'stripe'
 
   async createPaymentIntent(params: CreatePaymentIntentParams): Promise<PaymentIntentResult> {
@@ -47,6 +52,9 @@ export class StripeAdapter implements PaymentGateway {
       automatic_payment_methods: { enabled: true },
       receipt_email: params.customer_email,
       metadata: params.metadata,
+      // Funds-holding model: the platform is the merchant of record on this
+      // charge. transfer_group links it to the later organiser transfer.
+      ...(params.transfer_group ? { transfer_group: params.transfer_group } : {}),
       ...(isDestinationCharge
         ? {
             application_fee_amount: params.application_fee_cents!,
@@ -100,5 +108,56 @@ export class StripeAdapter implements PaymentGateway {
     if (!webhookSecret) throw new Error('STRIPE_WEBHOOK_SECRET is not set')
     const stripe = getStripeClient()
     return stripe.webhooks.constructEvent(payload, signature, webhookSecret)
+  }
+
+  // ── TransferGateway: platform -> connected organiser (funds-holding model) ──
+
+  async createTransfer(params: CreateTransferParams): Promise<TransferResult> {
+    if (!Number.isInteger(params.amount_cents) || params.amount_cents <= 0) {
+      throw new Error(`createTransfer amount_cents must be a positive integer (got ${params.amount_cents})`)
+    }
+    if (!params.destination_account_id) {
+      throw new Error('createTransfer destination_account_id is required')
+    }
+    const stripe = getStripeClient()
+    const transfer = await stripe.transfers.create(
+      {
+        amount: params.amount_cents,
+        currency: params.currency.toLowerCase(),
+        destination: params.destination_account_id,
+        ...(params.transfer_group ? { transfer_group: params.transfer_group } : {}),
+        ...(params.source_transaction ? { source_transaction: params.source_transaction } : {}),
+        ...(params.metadata ? { metadata: params.metadata } : {}),
+      },
+      { idempotencyKey: params.idempotency_key }
+    )
+    return {
+      transfer_id: transfer.id,
+      amount_cents: transfer.amount,
+      currency: transfer.currency.toUpperCase(),
+      destination:
+        typeof transfer.destination === 'string'
+          ? transfer.destination
+          : transfer.destination?.id ?? params.destination_account_id,
+    }
+  }
+
+  async reverseTransfer(params: ReverseTransferParams): Promise<TransferReversalResult> {
+    if (!params.transfer_id) {
+      throw new Error('reverseTransfer transfer_id is required')
+    }
+    if (params.amount_cents !== undefined && (!Number.isInteger(params.amount_cents) || params.amount_cents <= 0)) {
+      throw new Error(`reverseTransfer amount_cents must be a positive integer when set (got ${params.amount_cents})`)
+    }
+    const stripe = getStripeClient()
+    const reversal = await stripe.transfers.createReversal(
+      params.transfer_id,
+      {
+        ...(params.amount_cents !== undefined ? { amount: params.amount_cents } : {}),
+        ...(params.metadata ? { metadata: params.metadata } : {}),
+      },
+      { idempotencyKey: params.idempotency_key }
+    )
+    return { reversal_id: reversal.id, amount_cents: reversal.amount }
   }
 }

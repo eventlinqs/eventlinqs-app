@@ -119,10 +119,9 @@ function deriveVenueType(events: EventRowForVenue[]): string | null {
     'Sport': 'Sports venue',
     'Sports': 'Sports venue',
     'Workshop': 'Event venue',
-    'Cultural': 'Cultural venue',
-    'Nightlife': 'Live music venue',
     'Community': 'Community venue',
-    'Arts & Culture': 'Cultural venue',
+    'Nightlife': 'Live music venue',
+    'Arts & Community': 'Community venue',
   }
   return TYPE_MAP[top] ?? `${top} venue`
 }

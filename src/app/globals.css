@@ -41,6 +41,24 @@
 
   /* Layout */
   --header-height: 4rem;
+
+  /* ── Page container width (#11, evidence-derived) ──
+     The sitewide content cap is `max-w-7xl`, used as the canonical container
+     across every surface (header, footer, heroes, rails, content, checkout,
+     event detail). `max-w-7xl` resolves to `var(--container-7xl)`; we override
+     that here (Tailwind's default is 80rem / 1280px) so the WHOLE site widens
+     in one change and every surface stays aligned. This :root override (after
+     `@import "tailwindcss"`) wins the cascade against the base theme default.
+     Derivation (live captures at 1440 + 1920, docs/benchmark/system-pass/
+     phase-b/container-width/): Ticketmaster's general content container is
+     ~1360px at 1440 (fluid, 40px gutters); Eventbrite browse ~1392px. Our old
+     1280 sat narrower than both. 1400px (with the existing lg:px-8 gutter)
+     yields ~1376px content at 1440 - level with Eventbrite-browse and past
+     Ticketmaster's 1360 - and caps cleanly at 1400 on ultra-wide (vs TM's
+     unbounded 1840 and EB's narrow 1272). Mobile/tablet are untouched: at
+     390/768 the content is far below 1400 so the cap never binds, and the
+     px-4 sm:px-6 gutters are unchanged. */
+  --container-7xl: 87.5rem; /* 1400px */
 }
 
 /* ─── Tailwind v4 theme block - all design system tokens ─────────────────── */
@@ -90,9 +108,10 @@
   --color-info:    #0EA5E9;
 
   /* ── Typography - font families ── */
-  --font-display: var(--font-manrope), system-ui, -apple-system, sans-serif;
-  --font-body:    var(--font-inter),   system-ui, -apple-system, sans-serif;
-  --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+  --font-display:  var(--font-manrope), system-ui, -apple-system, sans-serif;
+  --font-headline: var(--font-archivo), var(--font-manrope), system-ui, -apple-system, sans-serif;
+  --font-body:     var(--font-hanken),  system-ui, -apple-system, sans-serif;
+  --font-mono:     'JetBrains Mono', ui-monospace, monospace;
 
   /* ── Fluid type scale - clamp(mobile, fluid, desktop) ── */
   --text-display-3xl: clamp(4rem,   8vw,   6.5rem);
@@ -149,6 +168,10 @@
   --type-h2-mobile:            28px;
   --type-h3:                   28px;
   --type-h3-mobile:            22px;
+  /* Rail/section heading - measured against Ticketmaster (24px) and
+     Eventbrite (24px) section headings at 1440, 22px at 390. */
+  --type-rail:                 24px;
+  --type-rail-mobile:          22px;
   --type-h4:                   22px;
   --type-h4-mobile:            18px;
   --type-body:                 17px;
@@ -195,6 +218,50 @@
   transform-origin: center;
 }
 
+/* ─── Hover illumination (platform-wide card/tile hover law, v2) ──────────── */
+/*
+ * Founder law v2: hover BRIGHTENS, never darkens - "the light shines more".
+ * Two paired effects, both armed ONLY under html[data-motion="1"] (the
+ * pre-paint flag), so headless / Lighthouse audits and prefers-reduced-motion
+ * visitors never see them and never pay for them:
+ *
+ *   1. The IMAGE itself lifts on hover - a subtle brightness + saturation rise
+ *      riding the existing scale - via `.card-media-img` (rendered on the image
+ *      by every media surface). Net effect: the photo reads brighter and more
+ *      alive than idle.
+ *   2. The navy wash drops to a WHISPER at the base only (`.card-hover-wash`,
+ *      rendered once by <HoverWash />), keeping brand identity and bottom-edge
+ *      text legibility without dimming the image. It sits ABOVE the image but
+ *      BELOW any scrim/label (pure DOM paint order, no z-index).
+ *
+ * See CLAUDE.md "Motion" -> "Hover illumination law".
+ */
+.card-media-img {
+  transition: transform var(--motion-quick), filter var(--motion-quick);
+}
+html[data-motion="1"] .group:hover .card-media-img {
+  filter: brightness(1.07) saturate(1.08);
+}
+.card-hover-wash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(
+    to top,
+    rgba(10, 22, 40, 0.12) 0%,
+    rgba(10, 22, 40, 0.04) 34%,
+    rgba(10, 22, 40, 0) 62%
+  );
+  transition: opacity 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+html[data-motion="1"] .group:hover .card-hover-wash {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-media-img { transition: none; }
+}
+
 /* ─── M5 typography utility classes ──────────────────────────────────────── */
 /*
  * Pair font-size + line-height + weight per spec in one class.
@@ -205,6 +272,7 @@
 .type-hero-display { font-size: var(--type-hero-display); line-height: 0.95; font-weight: 800; }
 .type-h1           { font-size: var(--type-h1);           line-height: 1.05; font-weight: 700; }
 .type-h2           { font-size: var(--type-h2);           line-height: 1.15; font-weight: 700; }
+.type-rail-heading { font-size: var(--type-rail);         line-height: 1.20; font-weight: 700; }
 .type-h3           { font-size: var(--type-h3);           line-height: 1.25; font-weight: 600; }
 .type-h4           { font-size: var(--type-h4);           line-height: 1.30; font-weight: 600; }
 .type-body         { font-size: var(--type-body);         line-height: 1.55; font-weight: 500; }
@@ -215,6 +283,7 @@
   .type-hero-display { font-size: var(--type-hero-display-mobile); line-height: 1.00; }
   .type-h1           { font-size: var(--type-h1-mobile);           line-height: 1.10; }
   .type-h2           { font-size: var(--type-h2-mobile);           line-height: 1.20; }
+  .type-rail-heading { font-size: var(--type-rail-mobile);         line-height: 1.20; }
   .type-h3           { font-size: var(--type-h3-mobile);           line-height: 1.30; }
   .type-h4           { font-size: var(--type-h4-mobile);           line-height: 1.35; }
   .type-body         { font-size: var(--type-body-mobile);         line-height: 1.55; }
@@ -254,6 +323,24 @@ body {
 @utility pt-safe {
   padding-top: env(safe-area-inset-top);
 }
+
+/* ─── Hero scale law (single platform standard) ──────────────────────────────
+ * ONE hero scale, platform-wide: the homepage hero scale. Every page hero -
+ * marketing, discovery, AND content (event detail, city, suburb, category,
+ * community) - uses .hero-marketing. There is no separate, taller "content" tier.
+ * The 2026 competitor mirror (docs/benchmark/competitor-2026/) showed neither
+ * Ticketmaster nor Eventbrite runs a hero taller than this on ANY page type
+ * (their event-detail, browse, category and city heroes all sit at or below
+ * this scale), so no page earns a deviation. A taller hero is permitted ONLY
+ * with fresh competitor evidence for that specific page type; absent it,
+ * flatten to this token. Authored here so a hero change is one edit, never a
+ * per-page literal. */
+.hero-marketing {
+  height: 42vh;
+  min-height: 320px;
+}
+@media (width >= 40rem) { .hero-marketing { height: 44vh; } }
+@media (width >= 64rem) { .hero-marketing { height: 48vh; max-height: 480px; } }
 
 /* ─── Smart media motion ─────────────────────────────────────────────────── */
 /*
@@ -339,6 +426,74 @@ body[data-loaded="1"] .animate-pulse {
   box-shadow: 0 20px 40px -24px rgba(10, 22, 40, 0.4);
 }
 
+/* ─── CSS-first motion engine: scroll reveals + hero entrance + card lift ─────
+ * The single source of choreography for the whole app (CLAUDE.md Motion law,
+ * page-build "Motion standard"). The hidden initial state is armed ONLY under
+ * html[data-motion="1"], set pre-paint by the head bootstrap when JS is present,
+ * the agent is not a headless audit tool, and reduced-motion is not requested.
+ * So no-JS / reduced-motion / Lighthouse all render content visible from first
+ * paint - the reveal is a flash-free enhancement that never blocks reading and
+ * never costs LCP. The <Reveal> client component toggles .is-visible once via
+ * IntersectionObserver, then unobserves. */
+html[data-motion="1"] .reveal,
+html[data-motion="1"] .reveal-stagger > * {
+  opacity: 0;
+  transform: translate3d(0, 14px, 0);
+  transition: opacity 300ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)),
+              transform 300ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
+  will-change: opacity, transform;
+}
+html[data-motion="1"] .reveal.is-visible,
+html[data-motion="1"] .reveal-stagger.is-visible > * {
+  opacity: 1;
+  transform: none;
+  will-change: auto;
+}
+/* Left-to-right child stagger for rails + card grids (50-80ms apart). Capped so
+ * a dense grid never trails a long tail; items past the cap share the max. */
+html[data-motion="1"] .reveal-stagger.is-visible > *:nth-child(1) { transition-delay: 0ms; }
+html[data-motion="1"] .reveal-stagger.is-visible > *:nth-child(2) { transition-delay: 64ms; }
+html[data-motion="1"] .reveal-stagger.is-visible > *:nth-child(3) { transition-delay: 128ms; }
+html[data-motion="1"] .reveal-stagger.is-visible > *:nth-child(4) { transition-delay: 192ms; }
+html[data-motion="1"] .reveal-stagger.is-visible > *:nth-child(5) { transition-delay: 256ms; }
+html[data-motion="1"] .reveal-stagger.is-visible > *:nth-child(6) { transition-delay: 320ms; }
+html[data-motion="1"] .reveal-stagger.is-visible > *:nth-child(n+7) { transition-delay: 360ms; }
+
+/* Hero CONTENT entrance: a once-only staggered fade-rise on load (60-80ms
+ * apart). Apply .hero-enter to the text/CTA stack ONLY - the hero LCP image
+ * never carries it (media architecture law). Gated by data-motion so the
+ * headless audit + reduced-motion see the final state immediately. */
+html[data-motion="1"] .hero-enter > * {
+  animation: fade-rise 300ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)) both;
+}
+html[data-motion="1"] .hero-enter > *:nth-child(1) { animation-delay: 40ms; }
+html[data-motion="1"] .hero-enter > *:nth-child(2) { animation-delay: 110ms; }
+html[data-motion="1"] .hero-enter > *:nth-child(3) { animation-delay: 180ms; }
+html[data-motion="1"] .hero-enter > *:nth-child(4) { animation-delay: 250ms; }
+html[data-motion="1"] .hero-enter > *:nth-child(n+5) { animation-delay: 300ms; }
+
+/* Card hover lift + inner media scale. Put .card-hover-lift on the card root and
+ * .card-hover-media on the inner overflow-hidden media wrapper. Hover-capable
+ * pointers only, so touch never sticks. Under reduced-motion the global block
+ * zeroes the durations (instant, no auto-motion). */
+.card-hover-lift {
+  transition: transform 180ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)),
+              box-shadow 180ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
+}
+.card-hover-lift .card-hover-media {
+  transition: transform 200ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
+  will-change: transform;
+}
+@media (hover: hover) {
+  .card-hover-lift:hover {
+    transform: translate3d(0, -3px, 0);
+    box-shadow: 0 22px 44px -26px rgba(10, 22, 40, 0.45);
+  }
+  .card-hover-lift:hover .card-hover-media {
+    transform: scale(1.025);
+  }
+}
+
 /* Utility: hide scrollbar but keep scrolling (for horizontal strips). */
 .scrollbar-none::-webkit-scrollbar { display: none; }
 .scrollbar-none { scrollbar-width: none; -ms-overflow-style: none; }
@@ -399,30 +554,35 @@ body[data-hero-enhanced="1"] [data-hero-shell] {
   display: none;
 }
 
-/* ─── Site Header: dual-state glassmorphism (Batch 9.1) ───────────────────── */
+/* ─── Site Header: dual-state solid-navy bar ──────────────────────────────── */
 /*
+ * Opaque navy in both states, no backdrop blur, no glassmorphism. This
+ * matches the captured Ticketmaster (solid blue) and Eventbrite (solid
+ * white) header evidence and honours the CLAUDE.md law forbidding
+ * glassmorphism. (This block and its `.site-header-bar` class were
+ * formerly named `.site-header-glass`; the frosted State B was removed
+ * in the Batch 11.0 legibility fix and the name now reflects reality.)
+ *
  * State A (default - top of page on hero-bearing routes):
- *   transparent background, no border, no backdrop filter. The white
- *   wordmark sits over the hero raster painted by HeroMedia.
+ *   transparent base with a top-to-fade navy gradient so the white
+ *   wordmark and nav read on ANY underlying hero raster. The PageShell
+ *   layout puts the sticky header in flex flow with the body bg directly
+ *   beneath it (the hero starts BELOW the header on /community, /city, and
+ *   intersection pages); without this gradient the white nav would
+ *   disappear the moment the client hydrates out of the SSR State B
+ *   default. Founder review Batch 11.0 surfaced this on bright-sky heroes.
  *
  * State B (data-scrolled="1" - scrolled past sentinel, OR no-hero):
- *   navy frosted glass with gold edge. backdrop-filter degrades to a
- *   solid navy 0.95 background on browsers without backdrop-filter
- *   support (older Edge, some embedded webviews).
+ *   fully solid navy #0A1628 with a gold accent border-bottom. State B
+ *   was once rgba(10,22,40,0.72) + backdrop-blur; that frosted treatment
+ *   let high-contrast page content bleed through mid-scroll on long
+ *   pages, so the Batch 11.0 fix made it solid for legibility.
  *
- * The transition is intentionally on the header element, not on
- * children, so child elements (logo, nav links) inherit a clean
- * crossfade rather than each transitioning independently.
+ * The transition is intentionally on the header element, not on its
+ * children, so the logo and nav links inherit a clean crossfade rather
+ * than each transitioning independently.
  */
-/* State A (over hero): a top-to-fade navy gradient sits behind the
- * white wordmark and nav so the text reads on ANY underlying surface.
- * The PageShell layout puts the sticky header in flex flow with body
- * bg directly beneath it (the hero starts BELOW the header in
- * /culture, /city, and intersection pages); without this backdrop
- * the white nav becomes invisible the moment the client hydrates and
- * drops the header out of the SSR State B default. Founder review
- * Batch 11.0 follow-up surfaced this on bright-sky heroes. */
-.site-header-glass {
+.site-header-bar {
   background-color: transparent;
   background-image: linear-gradient(
     180deg,
@@ -431,25 +591,23 @@ body[data-hero-enhanced="1"] [data-hero-shell] {
     rgba(10, 22, 40, 0.20) 100%
   );
   border-bottom: 1px solid transparent;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+  /* Smooth State A -> State B elevation + background transition on scroll
+   * (Motion law: sticky header glides, never hard-swaps). On the element so
+   * the logo and nav crossfade as one. Cleared instantly under the headless +
+   * reduced-motion blocks below. */
+  box-shadow: 0 0 0 0 rgba(10, 22, 40, 0);
+  transition: background-color var(--motion-page, 300ms cubic-bezier(0.16, 1, 0.3, 1)),
+              border-color var(--motion-page, 300ms cubic-bezier(0.16, 1, 0.3, 1)),
+              box-shadow var(--motion-page, 300ms cubic-bezier(0.16, 1, 0.3, 1));
 }
-/* Batch 11.0 header scroll bug fix: State B was rgba(10,22,40,0.72) +
- * backdrop-blur, which let high-contrast page content bleed through
- * during mid-scroll on long pages (the brief surfaced this as a
- * readability regression). State B now uses solid navy with the gold
- * accent border-bottom. The frosted-glass aesthetic stayed valuable
- * over the hero (state A is still transparent), but State B prioritises
- * legibility once the user has scrolled past it. */
-.site-header-glass[data-scrolled="1"] {
+.site-header-bar[data-scrolled="1"] {
   background-color: rgb(10, 22, 40);
   /* Clear the State A gradient so State B paints fully solid navy
    * (the gradient's rgba alpha would otherwise overlay and produce a
    * subtle banding effect). */
   background-image: none;
   border-bottom-color: rgba(212, 164, 55, 0.30);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+  box-shadow: 0 10px 30px -18px rgba(10, 22, 40, 0.55);
 }
 
 /* Skip-to-content link (Batch 9.1).

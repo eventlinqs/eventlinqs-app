@@ -4,34 +4,23 @@ import type { Metadata } from 'next'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
-import { HeroCarousel } from '@/components/features/home/HeroCarousel'
+import { FeaturedHero } from '@/components/features/home/FeaturedHero'
 import { HomeSchemaJsonLd } from '@/components/features/home/home-schema-jsonld'
-import { SurpriseMeButton } from '@/components/features/home/surprise-me-button'
-import { CategoryChipStrip } from '@/components/features/home/category-chip-strip'
-import { TrendingEventsBento } from '@/components/features/home/trending-events-bento'
-import { CulturalMomentsBento } from '@/components/features/home/cultural-moments-bento'
-import { EmailSignupPanel } from '@/components/features/home/email-signup-panel'
+import { CategoryNavRail } from '@/components/features/home/category-nav-rail'
+import { SoundsRail } from '@/components/features/home/sounds-rail'
+import { CommunityRail } from '@/components/features/home/community-rail'
+import { CommunityValueBand } from '@/components/features/home/community-value-band'
 import type { BentoEvent } from '@/components/features/events/event-bento-tile'
-import { MELBOURNE_FALLBACK } from '@/lib/geo/detect'
 import {
-  SECTION_DEFAULT,
-  CONTAINER,
-} from '@/lib/ui/spacing'
-import {
-  EVENT_SELECT,
+  loadHomeUpcoming,
   toBentoEvent,
-  type RawRow,
 } from '@/lib/events/home-queries'
 import { ThisWeekSection } from '@/components/features/home/this-week-section'
-import { CulturalPicksSection } from '@/components/features/home/cultural-picks-section'
-import { LiveVibeSection } from '@/components/features/home/live-vibe-section'
 import { CityRailSection } from '@/components/features/home/city-rail-section'
 import { EventRailSection } from '@/components/features/home/event-rail-section'
 import { FeaturedVenuesSection } from '@/components/features/home/featured-venues-section'
 import {
   ThisWeekSkeleton,
-  CulturalPicksSkeleton,
-  LiveVibeSkeleton,
   CityRailSkeleton,
 } from '@/components/features/home/section-skeletons'
 
@@ -43,7 +32,7 @@ import {
  *   2. Cinematic hero (above fold) - awaited inline
  *   3. Bento grid row 1 (above fold) - awaited inline
  *   4. This Week rail (below fold) - Suspense-streamed
- *   5. Cultural Picks (below fold) - Suspense-streamed (self-fetching)
+ *   5. Community Picks (below fold) - Suspense-streamed (self-fetching)
  *   6. Live Vibe marquee (below fold) - Suspense-streamed
  *   7. By City rail (below fold) - Suspense-streamed (self-fetching)
  *   8. For Organisers dark split (static, below fold)
@@ -74,7 +63,7 @@ export const revalidate = 120
 export const metadata: Metadata = {
   title: 'EventLinqs - Every community. Every event. One platform.',
   description:
-    'Discover live events from communities across Australia and beyond. Afrobeats, Bollywood, Caribbean, Latin, Comedy, Pride and more. No hidden fees, verified organisers, fair refund policy.',
+    'Discover live events across Australia: music, food and drink, festivals, comedy, theatre, arts, nightlife, sports and family, plus the community scenes you follow. No hidden fees, verified organisers, fair refund policy.',
   alternates: { canonical: '/' },
   openGraph: {
     type: 'website',
@@ -97,60 +86,41 @@ export default async function HomePage() {
   const nowIso = new Date().toISOString()
   const nowMs = Date.parse(nowIso)
 
-  const detectedLocation = MELBOURNE_FALLBACK
-
   // ── Above-fold data ──────────────────────────────────────────────────
-  // These queries feed the hero + bento grid that render at first paint.
-  // Everything else streams via Suspense boundaries below.
+  // One query feeds the hero plus every below-fold rail (each derived by
+  // slicing this list). The homepage is a static, anonymous shell, no city
+  // filter, no session, no per-user query; SiteHeader and the saved-events
+  // button hydrate user state post-mount.
   //
-  // Static-rendered: no city filter (geo detection is now client-side),
-  // no session lookup, no per-user saved-events query. The anonymous
-  // shell is identical for every visitor; the SiteHeader and the
-  // saved-events button hydrate user state post-mount.
-  const [
-    allUpcomingResult,
-    liveEventCountResult,
-    cityRowsResult,
-  ] = await Promise.all([
-    supabase
-      .from('events')
-      .select(EVENT_SELECT)
-      .eq('status', 'published')
-      .eq('visibility', 'public')
-      .gte('start_date', nowIso)
-      .order('start_date', { ascending: true })
-      .limit(24),
-    supabase
-      .from('events')
-      .select('id', { count: 'exact', head: true })
-      .eq('status', 'published')
-      .eq('visibility', 'public')
-      .gte('start_date', nowIso),
-    supabase
-      .from('events')
-      .select('venue_city')
-      .eq('status', 'published')
-      .eq('visibility', 'public')
-      .gte('start_date', nowIso)
-      .not('venue_city', 'is', null)
-      .limit(200),
-  ])
-
-  const allUpcomingRaw = allUpcomingResult.data
-  const upcomingRaw = allUpcomingRaw
-
-  const upcomingRawTyped = (upcomingRaw ?? []) as unknown as RawRow[]
+  // Source: loadHomeUpcoming queries Supabase normally, and only under the
+  // dev flag HOMEPAGE_SEED_FIXTURE=1 returns the local general-breadth
+  // catalogue so the page can be built and benchmarked at full density while
+  // staging is not yet provisioned.
+  const upcomingRawTyped = await loadHomeUpcoming(supabase, nowIso, 60)
   const upcoming = upcomingRawTyped.map(toBentoEvent)
 
-  const liveEventCount = liveEventCountResult.count
-  const cityRows = cityRowsResult.data
-  const uniqueCitiesCount = new Set(
-    (cityRows ?? []).map(r => r.venue_city?.trim().toLowerCase()).filter(Boolean),
-  ).size
-
   void nowMs
-  void liveEventCount
-  void uniqueCitiesCount
+
+  // General category breadth: the page leads with these, the way a general
+  // ticketing platform does. Each rail self-hides when it has no events.
+  const byCategory = (slug: string, max = 12) =>
+    upcoming.filter(e => e.category?.slug === slug).slice(0, max)
+
+  // Live counts per category for the category nav tiles under the hero.
+  const categoryCounts = upcoming.reduce<Record<string, number>>((acc, e) => {
+    const slug = e.category?.slug
+    if (slug) acc[slug] = (acc[slug] ?? 0) + 1
+    return acc
+  }, {})
+
+  const musicEvents = byCategory('music')
+  const foodEvents = byCategory('food-drink')
+  const festivalEvents = byCategory('festival')
+  const artsEvents = byCategory('arts-community')
+  const nightlifeEvents = byCategory('nightlife')
+  const comedyEvents = byCategory('comedy')
+  const sportsEvents = byCategory('sports')
+  const familyEvents = byCategory('family')
 
   const thisWeek = upcoming
     .filter(e => new Date(e.start_date) <= new Date(nowMs + 7 * 24 * 60 * 60 * 1000))
@@ -190,37 +160,7 @@ export default async function HomePage() {
     .slice(0, 10)
     .map(toBentoEvent)
 
-  const editorsPicks = (() => {
-    const seen = new Set<string>()
-    const picks: BentoEvent[] = []
-    for (const e of upcoming) {
-      const key = e.category?.slug ?? '_'
-      if (seen.has(key)) continue
-      seen.add(key)
-      picks.push(e)
-      if (picks.length >= 10) break
-    }
-    return picks
-  })()
-
-  const communityEvents = upcoming
-    .filter(e => e.category?.slug === 'community' || e.category?.slug === 'charity')
-    .slice(0, 10)
-
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
-
-  // Pre-fetch 3 surprise-me suggestions server-side so the modal opens
-  // with content immediately on first tap. The client refresh path
-  // hits /api/home/surprise to re-roll.
-  const initialSurprise = upcoming.slice(0, 3).map(e => ({
-    id: e.id,
-    slug: e.slug,
-    title: e.title ?? '',
-    city: e.venue_city ?? null,
-    startDate: e.start_date,
-    coverImage: e.cover_image_url ?? null,
-    reason: e.venue_city ? `On in ${e.venue_city} this week` : 'On this week',
-  }))
 
   return (
     <div className="min-h-screen bg-canvas">
@@ -228,59 +168,36 @@ export default async function HomePage() {
       <SiteHeader />
 
       <main>
-        {/* H1 - HeroCarousel (Batch 11.0): full-bleed rotating editorial
-         *  hero with 5 AU friends-launch slots (Africultures, Pasifika,
-         *  Diwali Mela, Lebanese Eid, Caribbean Carnival). Server
-         *  component resolves photography then hands the slide manifest
-         *  to a thin client controller for rotation, keyboard nav,
-         *  reduced-motion handling, and ARIA announcements. */}
-        <HeroCarousel />
+        {/* H1 - FeaturedHero: one strong, real featured event at a time,
+         *  roughly half the old hero height. SSR priority AVIF raster as
+         *  the LCP layer, restrained scrim, single CTA. When two or three
+         *  featured events exist the visitor steps between them with arrows
+         *  and dots - user-controlled only, never auto-rolling. This is the
+         *  only homepage surface where text sits on a photo. */}
+        <FeaturedHero events={upcoming} />
 
         {/* Trust band removed Batch 11.0. The 2026 contextual-trust
          *  pattern places trust signals at the purchase-decision moment
          *  (event detail page + checkout) rather than as a sitewide
          *  band. See docs/redesign/batch-11-evidence/trust-signals-2026.md. */}
 
-        {/* The placeholder Cultural Calendar widget and Featured Organisers
+        {/* The placeholder Community Calendar widget and Featured Organisers
          *  row were removed to keep the homepage reading like a premium
          *  ticketing platform (real event rails, not editorial placeholders). */}
 
-        {/* H2 Category chip strip (Batch 9.2): quick-filter chips +
-         *  cultures expandable. Scroll-snap on mobile, fits viewport on
-         *  desktop. Each chip fires a tagged Plausible event. */}
-        <CategoryChipStrip />
+        {/* H2 Browse by category: image-tile category entry under the hero,
+         *  in the locked system (separated tile, label below the image, no
+         *  pills). Replaces the early-concept CategoryChipStrip. */}
+        <CategoryNavRail counts={categoryCounts} />
 
-        {/* H1 Surprise Me affordance - sits inline above the bento grid
-         *  so the discovery path is one tap from above-fold. Server
-         *  pre-rendered suggestions open the modal instantly on tap. */}
-        <section aria-label="Discovery" className="bg-canvas">
-          <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-            <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
-                  Not sure where to start?
-                </p>
-                <h2 className="mt-1 font-display text-xl font-bold text-[var(--text-primary)] sm:text-2xl">
-                  We&apos;ll pick three events for you
-                </h2>
-              </div>
-              <SurpriseMeButton initial={initialSurprise} />
-            </div>
-          </div>
-        </section>
-
-        {/* H8 - Trending events bento (Batch 9.2): asymmetric 1+3+1 grid
-         *  on desktop (2x2 featured, 4 medium), 1 large + 4 medium on
-         *  mobile. Replaces the prior "What everyone is buying into"
-         *  inline bento. */}
-        {upcoming.length >= 5 ? (
-          <TrendingEventsBento events={upcoming.slice(0, 6)} />
-        ) : (
-          <section aria-label="Featured events" className="bg-canvas">
-            <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
-              <div className="flex items-center justify-center rounded-2xl border border-dashed border-ink-200 bg-white py-20 text-center">
+        {/* Empty-state only: with zero upcoming events every rail below
+         *  self-hides, so this stands in for the catalogue. */}
+        {upcoming.length === 0 && (
+          <section aria-label="Featured events" className="border-t border-ink-200 bg-canvas">
+            <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+              <div className="flex items-center justify-center rounded-2xl border border-ink-200 bg-white py-16 text-center">
                 <div>
-                  <p className="font-display text-xl font-bold text-ink-900">
+                  <p className="font-headline tracking-tight text-xl font-bold text-ink-900">
                     Events loading soon
                   </p>
                   <p className="mt-2 text-sm text-ink-400">
@@ -299,51 +216,52 @@ export default async function HomePage() {
           </section>
         )}
 
-        {/* Rail 1: This Week */}
+        {/*
+         * STRUCTURE (strategic correction, 6 June 2026):
+         * EventLinqs is a complete general ticketing platform first. General
+         * category breadth LEADS the page, the way Ticketmaster and Eventbrite
+         * do it. Community is one curated thread (SceneRail) placed mid-page,
+         * never the lead. Strip the SceneRail out and the page still stands as
+         * a full general ticketing rival. Each rail self-hides when empty.
+         */}
+
+        {/* Lead rail: This Week (general, time-based) */}
         <Suspense fallback={<ThisWeekSkeleton />}>
           <ThisWeekSection events={thisWeek} />
         </Suspense>
 
-        {/*
-         * Rail threshold rule (corrective, 23 May 2026):
-         * Rails render whenever they have at least one event. The rail
-         * component's own internal guard (`events.length === 0 -> return null`)
-         * handles the truly-empty case. Previous iterations used `>= 3`
-         * and `>= 5` thresholds which hid rails with 1-2 events; the
-         * competitor research (research/competitors/REPORT.md and the
-         * Humanitix / Ticketmaster / Eventbrite homepage screenshots)
-         * shows no competitor does this. Rails show whatever exists.
-         */}
-        {/* Rail 2: This Weekend */}
-        {thisWeekend.length >= 1 && (
+        {/* ── Community moat (HIGH placement, within the first two screens) ──
+         *  The differentiating layer no competitor has, surfaced early but never
+         *  dominant. Real /community/[slug] landings, First Nations first. Self-
+         *  fetches the heritage index; renders nothing if empty. Stripped out,
+         *  the page still stands as a full general ticketing rival. */}
+        <CommunityRail />
+
+        {/* General category breadth leads. */}
+        {musicEvents.length >= 1 && (
           <EventRailSection
-            eyebrow="This weekend"
-            title="Free up the calendar"
-            ariaLabel="Events this weekend"
-            railLabel="Events this weekend"
-            events={thisWeekend}
-            viewAllHref="/events?preset=weekend"
+            eyebrow="On the lineup"
+            title="Music"
+            ariaLabel="Music events"
+            railLabel="Music events"
+            events={musicEvents}
+            viewAllHref="/events?category=music"
           />
         )}
 
-        {/* Rail 3: Free */}
-        {freeEvents.length >= 1 && (
+        {foodEvents.length >= 1 && (
           <EventRailSection
-            eyebrow="No ticket needed"
-            title="Free events near you"
-            ariaLabel="Free events"
-            railLabel="Free events"
-            events={freeEvents}
-            viewAllHref="/events?preset=free"
+            eyebrow="Taste the city"
+            title="Food and drink"
+            ariaLabel="Food and drink events"
+            railLabel="Food and drink events"
+            events={foodEvents}
+            viewAllHref="/events?category=food-drink"
           />
         )}
 
-        {/* Rail 4: Cultures (cultural picks) */}
-        <Suspense fallback={<CulturalPicksSkeleton />}>
-          <CulturalPicksSection cityFilter={detectedLocation.city} nowIso={nowIso} />
-        </Suspense>
-
-        {/* Rail 5: Trending */}
+        {/* Trending (general, demand-based) - Variant B: the one larger
+            feature-card row. Uniform feature-sized cards within the rail. */}
         {trending.length >= 1 && (
           <EventRailSection
             eyebrow="Selling fast"
@@ -352,20 +270,120 @@ export default async function HomePage() {
             railLabel="Trending events"
             events={trending}
             viewAllHref="/events?sort=popularity"
+            cardVariant="feature"
           />
         )}
 
-        {/* H10 - Cultural Moments bento (Batch 9.2): unique-to-EventLinqs
-         *  upcoming cultural moments rendered from the curated
-         *  calendar at @/lib/cultural-moments/calendar.ts. */}
-        <CulturalMomentsBento />
+        {festivalEvents.length >= 1 && (
+          <EventRailSection
+            eyebrow="All day, all weekend"
+            title="Festivals"
+            ariaLabel="Festival events"
+            railLabel="Festival events"
+            events={festivalEvents}
+            viewAllHref="/events?category=festival"
+          />
+        )}
 
-        {/* Rail 6: Live Vibe marquee */}
-        <Suspense fallback={<LiveVibeSkeleton />}>
-          <LiveVibeSection upcomingRaw={upcomingRawTyped} />
+        {artsEvents.length >= 1 && (
+          <EventRailSection
+            eyebrow="On stage and in the gallery"
+            title="Arts and theatre"
+            ariaLabel="Arts and theatre events"
+            railLabel="Arts and theatre events"
+            events={artsEvents}
+            viewAllHref="/events?category=arts-community"
+          />
+        )}
+
+        {/* This Weekend (general, time-based) */}
+        {thisWeekend.length >= 1 && (
+          <EventRailSection
+            eyebrow="This weekend"
+            title="On this weekend"
+            ariaLabel="Events this weekend"
+            railLabel="Events this weekend"
+            events={thisWeekend}
+            viewAllHref="/events?preset=weekend"
+          />
+        )}
+
+        {nightlifeEvents.length >= 1 && (
+          <EventRailSection
+            eyebrow="After dark"
+            title="Nightlife"
+            ariaLabel="Nightlife events"
+            railLabel="Nightlife events"
+            events={nightlifeEvents}
+            viewAllHref="/events?category=nightlife"
+          />
+        )}
+
+        {comedyEvents.length >= 1 && (
+          <EventRailSection
+            eyebrow="Have a laugh"
+            title="Comedy"
+            ariaLabel="Comedy events"
+            railLabel="Comedy events"
+            events={comedyEvents}
+            viewAllHref="/events?category=comedy"
+          />
+        )}
+
+        {/* Free (general, price-based) */}
+        {freeEvents.length >= 1 && (
+          <EventRailSection
+            eyebrow="No ticket needed"
+            title="Free events"
+            ariaLabel="Free events"
+            railLabel="Free events"
+            events={freeEvents}
+            viewAllHref="/events?preset=free"
+          />
+        )}
+
+        {/* Sounds (genres) - the genre half of the old combined scene rail.
+         *  The community half is the higher-placed CommunityRail above. */}
+        <SoundsRail />
+
+        {/* The ONE community value band: tinted surface, locked tagline, real
+         *  community tiles into /community/[slug], CTA into the /communities hub. The
+         *  lower bookend of the community moat. */}
+        <CommunityValueBand />
+
+        {/* General breadth continues below the community thread. */}
+        {sportsEvents.length >= 1 && (
+          <EventRailSection
+            eyebrow="Game on"
+            title="Sport"
+            ariaLabel="Sport events"
+            railLabel="Sport events"
+            events={sportsEvents}
+            viewAllHref="/events?category=sports"
+          />
+        )}
+
+        {familyEvents.length >= 1 && (
+          <EventRailSection
+            eyebrow="Bring everyone"
+            title="Family"
+            ariaLabel="Family events"
+            railLabel="Family events"
+            events={familyEvents}
+            viewAllHref="/events?category=family"
+          />
+        )}
+
+        {/* Business and networking rail removed from the homepage (founder
+         *  ruling): lowest consumer-discovery intent of the category rails. It
+         *  stays a Browse-by-Category tile and keeps its category page. */}
+
+        {/* Browse by City */}
+        <Suspense fallback={<CityRailSkeleton />}>
+          <CityRailSection nowIso={nowIso} />
         </Suspense>
 
-        {/* Rail 7: Just Added */}
+        {/* Editorial tail */}
         {justAdded.length >= 1 && (
           <EventRailSection
             eyebrow="Just added"
@@ -377,120 +395,11 @@ export default async function HomePage() {
           />
         )}
 
-        {/* Rail 8: Editor's Picks */}
-        {editorsPicks.length >= 1 && (
-          <EventRailSection
-            eyebrow="Editor's picks"
-            title="Hand-picked for the week"
-            ariaLabel="Editor's picks"
-            railLabel="Editor's picks"
-            events={editorsPicks}
-            viewAllHref="/events"
-          />
-        )}
+        {/* "Editor's picks" rail removed in the community-moat pass: it was a
+         *  dedup-one-per-category set (lowest editorial signal). Cutting it
+         *  offsets the added community rail so the page does not grow longer. */}
 
-        {/* Rail 9: Cities */}
-        <Suspense fallback={<CityRailSkeleton />}>
-          <CityRailSection nowIso={nowIso} />
-        </Suspense>
-
-        {/* Rail 10: Community */}
-        {communityEvents.length >= 1 && (
-          <EventRailSection
-            eyebrow="Bring everyone"
-            title="Community events"
-            ariaLabel="Community events"
-            railLabel="Community events"
-            events={communityEvents}
-            viewAllHref="/events?category=community"
-          />
-        )}
-
-        {/* Rail 11: Featured Venues */}
         <FeaturedVenuesSection upcoming={upcomingRawTyped} />
-
-
-        {/* 7. For Organisers - static, below fold */}
-        <section aria-labelledby="organisers-heading" className={`bg-ink-950 ${SECTION_DEFAULT}`}>
-          <div className={CONTAINER}>
-            <div className="flex flex-col gap-12 lg:flex-row lg:items-center lg:gap-16">
-              <div className="lg:max-w-lg">
-                <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-400">
-                  For event organisers
-                </p>
-                {/* For Organisers heading - retrofitted to .type-h2
-                 *  per docs/M5-DESIGN-SPEC.md / Typography. Previous
-                 *  inline clamp() removed (spec forbids fluid values). */}
-                <h2
-                  id="organisers-heading"
-                  className="type-h2 mt-3 font-display text-white"
-                >
-                  Sell tickets.
-                  <br />
-                  Keep more.
-                </h2>
-                <p className="mt-5 text-base text-white/70">
-                  Transparent fees, real-time analytics, squad booking, and a checkout your fans will actually complete. Built for organisers who take their events seriously.
-                </p>
-
-                <ul className="mt-8 space-y-3">
-                  {[
-                    'Open to every community and every kind of event',
-                    'All-in pricing: no surprise fees at checkout',
-                    'Real-time sales dashboard and scan app',
-                    'Squad booking: your fans buy together',
-                    'Mobile-first checkout: WhatsApp sharing built in',
-                  ].map(feature => (
-                    <li key={feature} className="flex items-start gap-3 text-sm text-white/80">
-                      <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-gold-500/20">
-                        <svg className="h-2.5 w-2.5 text-gold-400" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      </span>
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-
-                <div className="mt-10 flex flex-wrap gap-3">
-                  <Link
-                    href="/organisers/signup"
-                    className="inline-flex items-center rounded-lg bg-gold-500 px-6 py-3 text-sm font-semibold text-ink-900 transition-colors hover:bg-gold-600"
-                  >
-                    Start selling tickets
-                  </Link>
-                  <Link
-                    href="/pricing"
-                    className="inline-flex items-center rounded-lg border border-white/20 px-6 py-3 text-sm font-semibold text-white/80 transition-colors hover:border-white/40 hover:text-white"
-                  >
-                    View pricing
-                  </Link>
-                </div>
-              </div>
-
-              <div className="group/cards grid grid-cols-2 gap-4 lg:flex-1">
-                {[
-                  { value: '0%',     label: 'Platform fees on free events' },
-                  { value: '2-tap',  label: 'Checkout: fastest in market' },
-                  { value: '5+',     label: 'Payment gateways supported' },
-                  { value: '24/7',   label: 'Real-time ticket scanning' },
-                ].map(stat => (
-                  <div
-                    key={stat.label}
-                    className="rounded-xl border border-white/10 bg-white/5 p-5 transition-all duration-200 group-hover/cards:opacity-60 hover:!opacity-100 hover:-translate-y-0.5 hover:border-gold-500/60"
-                  >
-                    <p className="font-display text-3xl font-extrabold text-gold-400">{stat.value}</p>
-                    <p className="mt-1 text-xs leading-relaxed text-white/60">{stat.label}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* H13 - Email signup panel (Batch 9.2): editorial brand-voice
-         *  copy + inline form + dual-path organiser link. */}
-        <EmailSignupPanel />
       </main>
 
       <SiteFooter />

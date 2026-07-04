@@ -1,0 +1,97 @@
+# Critical-path purchase E2E gate.
+#
+# Drives the full buyer journey (browse -> reserve -> checkout -> Stripe TEST
+# card 4242 -> webhook-confirmed order + issued ticket) against the deployed
+# Vercel PREVIEW for the PR commit, using the existing certification harness
+# (tests/e2e/certification.spec.ts, playwright.certification.config.ts). If the
+# purchase path breaks, this fails the PR.
+#
+# SAFETY: the spec hard-refuses to run against the production Supabase ref
+# (assertNotProd), and never uses live keys - the preview must be wired with
+# Stripe TEST mode and a NON-PRODUCTION database. Rows the run creates are torn
+# down via a non-prod service role (CERT_SUPABASE_*).
+#
+# ACTIVATION (founder, one-time): this job only runs - and only then blocks -
+# once the repository variable PURCHASE_E2E_ENABLED is set to 'true' AND these
+# secrets exist:
+#   - CERT_PAID_EVENT_SLUG              a published paid event on the preview's
+#                                       DB whose organiser has a connected,
+#                                       charges-enabled Stripe TEST account
+#   - CERT_FREE_EVENT_SLUG              a published free event
+#   - CERT_SUPABASE_URL                 the preview's NON-PROD Supabase URL
+#   - CERT_SUPABASE_SERVICE_ROLE_KEY    its service role (for row teardown)
+# The preview itself must run Stripe in TEST mode with the webhook wired (it
+# already does on staging-style previews). Until the variable is set, this job
+# does not run, so it cannot block PRs before the target exists.
+
+name: Purchase E2E
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  purchase-e2e:
+    name: Buyer purchase journey
+    runs-on: ubuntu-latest
+    if: ${{ vars.PURCHASE_E2E_ENABLED == 'true' }}
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Resolve Vercel preview URL
+        id: preview
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          echo "Resolving Vercel preview for commit $SHA"
+          deadline=$(( $(date +%s) + 600 ))
+          url=""
+          while [ "$(date +%s)" -lt "$deadline" ]; do
+            ids=$(gh api "repos/$REPO/deployments?sha=$SHA&per_page=100" --jq '.[].id' 2>/dev/null || true)
+            for id in $ids; do
+              found=$(gh api "repos/$REPO/deployments/$id/statuses?per_page=100" \
+                --jq 'map(select(.state=="success")) | .[0] | (.environment_url // .target_url) // empty' \
+                2>/dev/null || true)
+              if [ -n "$found" ] && printf '%s' "$found" | grep -q "vercel.app"; then
+                url="$found"
+                break
+              fi
+            done
+            if [ -n "$url" ]; then break; fi
+            echo "  ...preview not ready yet; sleeping 15s"
+            sleep 15
+          done
+          if [ -z "$url" ]; then
+            echo "::error::No successful Vercel preview deployment found for $SHA within 10 minutes."
+            exit 1
+          fi
+          url="${url%/}"
+          echo "Resolved preview URL: $url"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Run buyer purchase journey against the preview
+        env:
+          CERT_BASE_URL: ${{ steps.preview.outputs.url }}
+          CERT_PAID_EVENT_SLUG: ${{ secrets.CERT_PAID_EVENT_SLUG }}
+          CERT_FREE_EVENT_SLUG: ${{ secrets.CERT_FREE_EVENT_SLUG }}
+          CERT_SUPABASE_URL: ${{ secrets.CERT_SUPABASE_URL }}
+          CERT_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.CERT_SUPABASE_SERVICE_ROLE_KEY }}
+        run: npx playwright test --config playwright.certification.config.ts

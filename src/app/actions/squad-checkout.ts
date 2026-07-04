@@ -2,10 +2,15 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { actionRateLimit } from '@/lib/rate-limit/action'
 import { getDefaultGateway } from '@/lib/payments/gateway-factory'
 import { PaymentCalculator } from '@/lib/payments/payment-calculator'
-import { createDestinationCharge } from '@/lib/payments/create-destination-charge'
+import { createPlatformCharge } from '@/lib/payments/create-platform-charge'
 import { ChargePreconditionError } from '@/lib/payments/application-fee'
+import {
+  recordOrganiserMarketingConsent,
+  recordPlatformUpdateConsent,
+} from '@/lib/consent/record'
 import type { FeePassType } from '@/types/database'
 
 function generateOrderNumber(): string {
@@ -31,6 +36,9 @@ export interface SquadMemberPaymentResult {
 export async function createSquadMemberPaymentIntent(
   memberId: string
 ): Promise<SquadMemberPaymentResult> {
+  const rl = await actionRateLimit('checkout-reserve')
+  if (!rl.ok) return { error: 'Too many attempts. Please wait a moment and try again.' }
+
   const supabase = await createClient()
   const adminClient = createAdminClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -109,7 +117,8 @@ export async function createSquadMemberPaymentIntent(
     currency,
     fee_pass_type,
     0,
-    event.organisation_id
+    event.organisation_id,
+    event.id
   )
 
   // Create order
@@ -203,15 +212,17 @@ export async function createSquadMemberPaymentIntent(
     console.error('[squad-checkout] member order_id update error:', memberUpdateError)
   }
 
-  // Create Stripe destination charge with squad metadata (M6 Phase 3)
+  // Create Stripe PLATFORM charge with squad metadata (funds-holding model)
   try {
     const gateway = getDefaultGateway()
-    const charge = await createDestinationCharge({
+    const charge = await createPlatformCharge({
       gateway,
       organisationId: event.organisation_id,
+      eventId: event.id,
       fees,
       customerEmail: buyerEmail,
       idempotencyKey: idempotency_key,
+      transferGroup: order_id,
       metadata: {
         order_id,
         event_id: event.id,
@@ -255,5 +266,75 @@ function chargePreconditionMessage(reason: ChargePreconditionError['reason']): s
       return 'Payments for this region are not yet supported.'
     case 'fee_breakdown_invalid':
       return 'There was a pricing issue with this checkout. Please refresh and try again.'
+  }
+}
+
+/**
+ * Record a squad member's marketing consent (Spam Act). The squad order is
+ * created up front when the payment intent mounts, so consent is captured
+ * separately at submit time from the squad pay form. Per-organiser, best-effort,
+ * never blocks payment. Records nothing when neither box is ticked.
+ */
+export async function recordSquadMemberMarketingConsent(
+  memberId: string,
+  organiserConsent: boolean,
+  platformConsent: boolean,
+): Promise<{ ok: boolean }> {
+  if (!organiserConsent && !platformConsent) return { ok: true }
+
+  try {
+    const adminClient = createAdminClient()
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    const { data: member } = await adminClient
+      .from('squad_members')
+      .select(
+        'id, user_id, order_id, attendee_email, guest_email, squad:squads!squad_id ( event:events!event_id ( id, organisation_id ) )',
+      )
+      .eq('id', memberId)
+      .single()
+    if (!member) return { ok: false }
+
+    // Ownership: a logged-in member must own this membership.
+    if (member.user_id && member.user_id !== user?.id) return { ok: false }
+
+    const squad = member.squad as unknown as {
+      event: { id: string; organisation_id: string } | null
+    } | null
+    const event = squad?.event
+    if (!event) return { ok: false }
+
+    const email = member.attendee_email ?? member.guest_email ?? ''
+    if (!email) return { ok: false }
+
+    const { data: organisation } = await adminClient
+      .from('organisations')
+      .select('name')
+      .eq('id', event.organisation_id)
+      .maybeSingle()
+    const organiserName = organisation?.name ?? ''
+
+    const at = new Date().toISOString()
+    if (organiserConsent) {
+      await recordOrganiserMarketingConsent(adminClient, {
+        organisationId: event.organisation_id,
+        organiserName,
+        email,
+        userId: member.user_id ?? user?.id ?? null,
+        orderId: member.order_id ?? null,
+        eventId: event.id,
+        source: 'squad-checkout',
+        at,
+      })
+    }
+    if (platformConsent) {
+      await recordPlatformUpdateConsent(adminClient, { email, source: 'squad-checkout' })
+    }
+    return { ok: true }
+  } catch {
+    return { ok: false }
   }
 }

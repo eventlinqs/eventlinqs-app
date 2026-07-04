@@ -55,7 +55,7 @@ export const helpTopics: HelpTopic[] = [
       },
       {
         q: 'How do I list an event on EventLinqs?',
-        a: "Sign up as an organiser in minutes. Go to 'For Organisers' at the top of any page and click 'Start selling tickets.' Create your account, build your first event, and submit it for publishing. Every event is reviewed against our content and safety policy within 24 to 48 hours, and most are approved the same business day. No approval gate on organisers. Only on events.",
+        a: "Sign up as an organiser in minutes. Go to 'Event Organisers' at the top of any page and click 'Start selling tickets.' Create your account, build your first event, and submit it for publishing. Every event is reviewed against our content and safety policy within 24 to 48 hours, and most are approved the same business day. No approval gate on organisers. Only on events.",
       },
       {
         q: 'Is it free to create an account?',
@@ -91,7 +91,7 @@ export const helpTopics: HelpTopic[] = [
       },
       {
         q: 'Can I transfer my ticket to someone else?',
-        a: "Ticket transfer between buyers is not currently supported. Contact the event organiser directly for any ticket changes.",
+        a: "Yes. Log in, go to 'My Tickets', open the ticket you want to send and choose 'Transfer or gift this ticket'. Enter the new holder's name and email. They receive a fresh ticket and QR code by email, and your old code stops working straight away. You can only transfer a ticket that has not been used or refunded.",
       },
       {
         q: 'Can I resell my ticket above face value?',

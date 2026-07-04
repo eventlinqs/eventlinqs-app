@@ -69,6 +69,16 @@ export type CreateExpressAccountInput = {
   organisationId: string
   country: string
   email: string
+  /**
+   * Connected-account payout delay in days (connected balance -> organiser
+   * bank). Under the funds-holding model (separate charges and transfers) the
+   * connected account is EMPTY until our post-event platform->connected transfer
+   * (createEventTransfer), so this daily schedule no longer front-runs the hold:
+   * it only moves already-disbursed funds onward to the organiser's bank. The
+   * hold is enforced platform-side by deferring the transfer to event_end +
+   * buffer. Single-sourced from `payout_schedule_days` (pricing_rules).
+   */
+  payoutDelayDays: number
 }
 
 export type CreateAccountLinkInput = {
@@ -139,9 +149,37 @@ export async function createExpressAccount(
       card_payments: { requested: true },
       transfers: { requested: true },
     },
+    // Funds-holding model: a daily connected-account payout schedule is safe
+    // because the connected balance is empty until our post-event transfer, so
+    // it never front-runs the hold. See CreateExpressAccountInput.payoutDelayDays.
+    settings: {
+      payouts: {
+        schedule: { interval: 'daily', delay_days: input.payoutDelayDays },
+      },
+    },
     metadata: {
       organisation_id: input.organisationId,
       eventlinqs_phase: 'm6_phase2',
+    },
+  })
+}
+
+/**
+ * PAY-01 (interim) backfill: set the platform payout schedule on an
+ * already-onboarded connected account. Run for accounts created before this
+ * schedule was enforced. Same charge-relative-buffer caveat as
+ * `createExpressAccount`.
+ */
+export async function setPlatformPayoutSchedule(
+  accountId: string,
+  payoutDelayDays: number,
+): Promise<Stripe.Account> {
+  const stripe = getStripe()
+  return stripe.accounts.update(accountId, {
+    settings: {
+      payouts: {
+        schedule: { interval: 'daily', delay_days: payoutDelayDays },
+      },
     },
   })
 }

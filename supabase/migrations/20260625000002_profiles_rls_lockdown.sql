@@ -1,0 +1,24 @@
+-- ============================================================
+-- Close the profiles PII leak (security P0)
+-- Run by founder: supabase db push --linked
+-- ============================================================
+-- public.profiles holds email (NOT NULL), full_name and phone. It shipped with
+-- the policy "Public profiles are viewable by everyone" FOR SELECT USING (true)
+-- (baseline 20260101000001). RLS combines policies with OR, so that one policy
+-- made the ENTIRE table world-readable through the public anon key, e.g.
+--   GET /rest/v1/profiles?select=email,phone
+-- would dump every user's email and phone. That is a mass-PII exposure.
+--
+-- Every cross-user profile read in the application already uses the service-role
+-- admin client (organiser order views, payout emails, attendee reporting,
+-- notifications), which bypasses RLS. The only session-client reads are own-row
+-- (.eq('id', auth.uid())), which the retained "Users can view their own profile"
+-- policy covers. So dropping the public-read policy closes the leak with no
+-- functional change.
+--
+-- Verify after applying (TEST): with the anon key,
+--   GET /rest/v1/profiles?select=email  must return 0 rows (or only the caller's
+--   own row when authenticated), never the whole table.
+-- ============================================================
+
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.profiles;

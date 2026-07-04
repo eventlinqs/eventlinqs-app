@@ -8,13 +8,19 @@ import {
   useStripe,
   useElements,
 } from '@stripe/react-stripe-js'
-import { createSquadMemberPaymentIntent } from '@/app/actions/squad-checkout'
+import {
+  createSquadMemberPaymentIntent,
+  recordSquadMemberMarketingConsent,
+} from '@/app/actions/squad-checkout'
+import { Button } from '@/components/ui/Button'
+import { MarketingConsent } from '@/components/checkout/marketing-consent'
 
 interface SquadPayFormProps {
   memberId: string
   squadToken: string
   memberName: string
   memberEmail: string
+  organiserName: string
   pricePerSpotCents: number
   currency: string
   publishableKey: string
@@ -27,12 +33,14 @@ function formatPrice(cents: number, currency: string) {
 // ── Inner form rendered inside Stripe <Elements> ──────────────────────────────
 
 function InnerPayForm({
-  memberId: _memberId,
+  memberId,
+  organiserName,
   pricePerSpotCents,
   currency,
   squadToken,
 }: {
   memberId: string
+  organiserName: string
   pricePerSpotCents: number
   currency: string
   squadToken: string
@@ -41,6 +49,9 @@ function InnerPayForm({
   const elements = useElements()
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  // Marketing consent (Spam Act). Default UNCHECKED, optional, never gates pay.
+  const [organiserConsent, setOrganiserConsent] = useState(false)
+  const [platformConsent, setPlatformConsent] = useState(false)
 
   const appUrl = typeof window !== 'undefined' ? window.location.origin : ''
   const returnUrl = `${appUrl}/squad/${squadToken}?payment=complete`
@@ -55,6 +66,14 @@ function InnerPayForm({
       if (submitError) {
         setError(submitError.message ?? 'Payment failed')
         return
+      }
+
+      // Record consent before confirming payment. Best-effort: a failure here
+      // must never block the payment.
+      if (organiserConsent || platformConsent) {
+        await recordSquadMemberMarketingConsent(memberId, organiserConsent, platformConsent).catch(
+          () => {},
+        )
       }
 
       const { error: confirmError } = await stripe.confirmPayment({
@@ -73,21 +92,23 @@ function InnerPayForm({
     <form onSubmit={handleSubmit} noValidate>
       <PaymentElement options={{ layout: 'tabs' }} />
 
+      <div className="mt-5">
+        <MarketingConsent
+          organiserName={organiserName}
+          organiserConsent={organiserConsent}
+          platformConsent={platformConsent}
+          onOrganiserChange={setOrganiserConsent}
+          onPlatformChange={setPlatformConsent}
+        />
+      </div>
+
       {error && (
         <div role="alert" className="mt-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
           {error}
         </div>
       )}
 
-      <button
-        type="submit"
-        disabled={!stripe || isPending}
-        className="
-          mt-5 w-full h-12 rounded-xl bg-[#1A1A2E] text-white font-semibold text-base
-          disabled:opacity-50 hover:bg-[#2d2d4a] transition-colors
-          flex items-center justify-center gap-2
-        "
-      >
+      <Button type="submit" size="lg" disabled={!stripe || isPending} className="mt-5 w-full">
         {isPending ? (
           <>
             <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
@@ -99,7 +120,7 @@ function InnerPayForm({
         ) : (
           `Pay ${formatPrice(pricePerSpotCents, currency)}`
         )}
-      </button>
+      </Button>
 
       <p className="mt-3 text-center text-xs text-ink-400">
         Secured by Stripe. Your payment info is never stored on our servers.
@@ -114,6 +135,7 @@ export function SquadPayForm({
   memberId,
   squadToken,
   memberEmail: _memberEmail,
+  organiserName,
   pricePerSpotCents,
   currency,
   publishableKey,
@@ -148,7 +170,7 @@ export function SquadPayForm({
   if (isLoading) {
     return (
       <div className="py-8 text-center">
-        <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-ink-200 border-t-[#4A90D9]" />
+        <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-ink-200 border-t-gold-500" />
         <p className="mt-3 text-sm text-ink-400">Loading payment form…</p>
       </div>
     )
@@ -172,7 +194,7 @@ export function SquadPayForm({
         appearance: {
           theme: 'stripe',
           variables: {
-            colorPrimary: '#4A90D9',
+            colorPrimary: '#0A1628',
             colorBackground: '#ffffff',
             borderRadius: '8px',
           },
@@ -181,6 +203,7 @@ export function SquadPayForm({
     >
       <InnerPayForm
         memberId={memberId}
+        organiserName={organiserName}
         pricePerSpotCents={pricePerSpotCents}
         currency={currency}
         squadToken={squadToken}

@@ -16,7 +16,7 @@ import { z } from 'zod'
 
 const Body = z.object({
   email: z.string().email().max(254),
-  source: z.enum(['city', 'suburb', 'culture', 'home']).optional(),
+  source: z.enum(['city', 'suburb', 'community', 'home']).optional(),
   city: z.string().max(120).optional(),
 })
 

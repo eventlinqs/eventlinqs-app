@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { requireAdminSession } from '@/lib/admin/auth'
-import { hasCapability } from '@/lib/admin/rbac'
+import { can } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { AdminStatTile } from '@/components/admin/admin-stat-tile'
 import { listOrgsForPayouts, getPayoutSummary, PAYOUT_CURRENCY } from '@/lib/admin/payouts'
@@ -28,7 +28,7 @@ const PAYOUT_STATUS_BADGE: Record<string, string> = {
 
 export default async function AdminPayoutsPage({ searchParams }: { searchParams: SearchParams }) {
   const session = await requireAdminSession()
-  if (!hasCapability(session.admin.role, 'admin.payouts.disburse')) redirect('/admin')
+  if (!can(session, 'admin.payouts.disburse')) redirect('/admin')
 
   const sp = await searchParams
   const search = sp.q?.trim() || undefined
@@ -51,8 +51,9 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
         <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Finance</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Payouts</h1>
         <p className="mt-2 max-w-2xl text-sm text-white/60">
-          Organiser balances, reserve holds, and payout history. Disburse available funds or void a
-          failed payout. Every disbursement is recorded in the audit log.
+          Organiser funds are held by the platform and disbursed automatically after each event.
+          Held balances, reserve holds, and transfer history below. Force a disbursement of matured
+          event funds or void a failed transfer. Every action is recorded in the audit log.
         </p>
       </header>
 

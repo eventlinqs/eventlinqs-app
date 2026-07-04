@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { redirect, notFound } from 'next/navigation'
 import { requireAdminSession } from '@/lib/admin/auth'
-import { hasCapability } from '@/lib/admin/rbac'
+import { can } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { getUserDetail } from '@/lib/admin/users'
 import { AdminStatTile } from '@/components/admin/admin-stat-tile'
@@ -28,7 +28,7 @@ const ROLE_BADGE: Record<string, string> = {
 
 export default async function AdminUserDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await requireAdminSession()
-  if (!hasCapability(session.admin.role, 'admin.users.manage')) redirect('/admin')
+  if (!can(session, 'admin.users.manage')) redirect('/admin')
 
   const { id } = await params
   const user = await getUserDetail(id)
@@ -64,7 +64,12 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
       </header>
 
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <AdminStatTile label="Orders placed" value={user.ordersCount} />
+        <Link
+          href={`/admin/orders?q=${encodeURIComponent(user.email ?? '')}`}
+          className="block rounded-xl outline-none transition hover:brightness-110 focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]"
+        >
+          <AdminStatTile label="Orders placed" value={user.ordersCount} hint="view this buyer's orders" />
+        </Link>
         <AdminStatTile label="Events created" value={user.eventsCreatedCount} />
         <AdminStatTile label="Email verified" value={user.emailConfirmedAt ? 'Yes' : 'No'} status={user.emailConfirmedAt ? 'ok' : 'warn'} />
         <AdminStatTile label="Last sign in" value={date(user.lastSignInAt)} />

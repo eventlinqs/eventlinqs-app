@@ -3,7 +3,7 @@ import { ContentSection } from '@/components/layout/ContentSection'
 interface Props {
   /** Eyebrow above the body copy (e.g. "About Sydney"). */
   eyebrow: string
-  /** Main heading (e.g. "Where every culture has a stage"). */
+  /** Main heading (e.g. "Where every community has a stage"). */
   heading: string
   /** Editorial body copy. Pre-broken into paragraphs by the caller. */
   paragraphs: string[]
@@ -14,7 +14,7 @@ interface Props {
  *
  * Light surface, max-width prose, 200-300 word body for cities and
  * 100-150 for suburbs. The caller is responsible for ensuring the copy
- * mentions 3+ specific cultural communities and 2+ specific suburbs;
+ * mentions 3+ specific community communities and 2+ specific suburbs;
  * this component just renders cleanly.
  */
 export function CityEditorialSection({ eyebrow, heading, paragraphs }: Props) {

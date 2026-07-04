@@ -1,7 +1,9 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
 import type { BentoEvent } from '@/components/features/events/event-bento-tile'
 import type {
   FeaturedHeroEvent,
 } from '@/components/features/events/featured-event-hero'
+import { fixtureEnabled, loadFixtureRows } from '@/lib/dev/fixture-events'
 
 export const EVENT_SELECT =
   'id, slug, title, summary, cover_image_url, thumbnail_url, gallery_urls, start_date, venue_name, venue_city, venue_state, venue_country, is_free, created_at, category:event_categories(name, slug), organisation:organisations(name), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
@@ -56,7 +58,52 @@ export function toFeaturedHeroEvent(r: RawRow): FeaturedHeroEvent {
   }
 }
 
-export const CULTURE_TABS: { slug: string; label: string; tag: string; href: string }[] = [
+/**
+ * Loads the upcoming-events list the homepage leads with.
+ *
+ * Normal path (prod, preview, every deployed environment): queries Supabase
+ * for published, public, future events ordered by start date.
+ *
+ * Density path (HOMEPAGE_SEED_FIXTURE=1, Preview + local only): returns the
+ * local general-breadth catalogue fixture (the 55-event catalogue) produced by
+ * `scripts/seed-events-catalogue.mjs --fixture`. On Vercel the prebuild step
+ * regenerates that fixture at build time when the flag is set and the file is
+ * traced into the serverless bundle (next.config outputFileTracingIncludes), so
+ * PREVIEW deployments render the full catalogue at Ticketmaster-rival density
+ * while staging is not yet up. The fixture is read at runtime via fs (never
+ * statically imported), so its absence is a no-op.
+ *
+ * HARD GUARD: the flag is honoured only when VERCEL_ENV is not 'production'.
+ * Even if HOMEPAGE_SEED_FIXTURE were ever set on a Production deployment, the
+ * homepage would still serve real data, never the fixture. The flag is a
+ * Preview-only Vercel env var (see .env.example).
+ */
+export async function loadHomeUpcoming(
+  supabase: SupabaseClient,
+  nowIso: string,
+  limit = 24,
+): Promise<RawRow[]> {
+  if (fixtureEnabled()) {
+    const rows = await loadFixtureRows()
+    if (rows.length > 0) {
+      return rows
+        .filter(r => r.start_date >= nowIso)
+        .sort((a, b) => a.start_date.localeCompare(b.start_date))
+    }
+    // Fixture missing - fall through to the live query rather than break.
+  }
+  const { data } = await supabase
+    .from('events')
+    .select(EVENT_SELECT)
+    .eq('status', 'published')
+    .eq('visibility', 'public')
+    .gte('start_date', nowIso)
+    .order('start_date', { ascending: true })
+    .limit(limit)
+  return (data ?? []) as unknown as RawRow[]
+}
+
+export const COMMUNITY_TABS: { slug: string; label: string; tag: string; href: string }[] = [
   { slug: 'afrobeats',   label: 'Afrobeats',  tag: 'afrobeats',   href: '/categories/afrobeats' },
   { slug: 'amapiano',    label: 'Amapiano',   tag: 'amapiano',    href: '/categories/amapiano' },
   { slug: 'owambe',      label: 'Owambe',     tag: 'owambe',      href: '/categories/owambe' },
@@ -65,6 +112,10 @@ export const CULTURE_TABS: { slug: string; label: string; tag: string; href: str
   { slug: 'networking',  label: 'Business',   tag: 'business',    href: '/categories/networking' },
 ]
 
+// Australia-only (Law 3, national-from-day-one). The homepage By-City rail
+// covers every launch city the image spine supports; foreign cities are not
+// listed on an Australia-only platform. Order is the founder's display order;
+// the rail filters to cities with at least one upcoming event (city-rail-section).
 export const CITY_TILES = [
   { city: 'Melbourne',    slug: 'melbourne' },
   { city: 'Sydney',       slug: 'sydney' },
@@ -72,21 +123,13 @@ export const CITY_TILES = [
   { city: 'Perth',        slug: 'perth' },
   { city: 'Adelaide',     slug: 'adelaide' },
   { city: 'Gold Coast',   slug: 'gold-coast' },
-  { city: 'Geelong',      slug: 'geelong' },
-  { city: 'Hobart',       slug: 'hobart' },
   { city: 'Canberra',     slug: 'canberra' },
-  { city: 'Darwin',       slug: 'darwin' },
   { city: 'Newcastle',    slug: 'newcastle' },
+  { city: 'Hobart',       slug: 'hobart' },
+  { city: 'Darwin',       slug: 'darwin' },
   { city: 'Wollongong',   slug: 'wollongong' },
-  { city: 'Auckland',     slug: 'auckland' },
-  { city: 'London',       slug: 'london' },
-  { city: 'Manchester',   slug: 'manchester' },
-  { city: 'Dublin',       slug: 'dublin' },
-  { city: 'Toronto',      slug: 'toronto' },
-  { city: 'New York',     slug: 'new-york' },
-  { city: 'Houston',      slug: 'houston' },
-  { city: 'Lagos',        slug: 'lagos' },
-  { city: 'Accra',        slug: 'accra' },
+  { city: 'Geelong',      slug: 'geelong' },
+  { city: 'Cairns',       slug: 'cairns' },
 ]
 
 // Cities that have a real local SVG silhouette in public/cities/. This MUST

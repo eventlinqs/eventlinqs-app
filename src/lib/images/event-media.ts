@@ -70,7 +70,7 @@ export async function getEventMedia(event: EventMediaInput): Promise<EventMedia>
     }
   }
 
-  const photo = await getCategoryPhoto(event.category?.slug)
+  const photo = await getCategoryPhoto(event.category?.slug, event.title)
   if (photo.src !== FALLBACK_POSTER) {
     return {
       kind: 'still-kenburns',
@@ -111,7 +111,7 @@ export async function getFeaturedEventMedia(event: EventMediaInput): Promise<Eve
     }
   }
 
-  const photo = await getCategoryPhoto(event.category?.slug)
+  const photo = await getCategoryPhoto(event.category?.slug, event.title)
   if (photo.src !== FALLBACK_POSTER) {
     return {
       kind: 'still-kenburns',
@@ -159,7 +159,7 @@ const HERO_RASTER_DIR = '/images/hero'
 
 // Slugs we have on disk (see scripts/fetch-hero-rasters.mjs). Anything not in
 // this set falls back to the canonical "afrobeats" raster - chosen because
-// the multicultural-festival shot reads as "the platform" rather than as any
+// the multicommunity-festival shot reads as "the platform" rather than as any
 // one category.
 const HERO_RASTER_SLUGS = new Set([
   'afrobeats',
@@ -173,6 +173,11 @@ const HERO_RASTER_SLUGS = new Set([
   'filipino',
   'lunar',
 ])
+// LCP law (docs/MEDIA-ARCHITECTURE.md §5; comment below): the homepage hero
+// raster MUST be a LOCAL bundled AVIF for direct CDN delivery - routing it
+// through /_next/image (remote spine URL) adds ~1100ms cold-encode on the LCP
+// path. The spine fronts the city/community/category landing heroes (which were
+// already remote) and every tile; the homepage hero default stays local.
 const HERO_RASTER_DEFAULT = `${HERO_RASTER_DIR}/afrobeats.jpg`
 
 function heroRasterFor(slug: string | null | undefined): string {
@@ -214,7 +219,7 @@ export async function getFeaturedHeroBackground(
   // Always serve the local AVIF hero raster as the LCP image. Routing the
   // hero through the Next.js image optimiser (Pexels remote -> /_next/image)
   // adds ~1100ms of cold-encoding on the LCP path on first request, even on
-  // a warm Vercel runtime. The local AVIFs are pre-curated per cultural
+  // a warm Vercel runtime. The local AVIFs are pre-curated per community
   // slug and live under /public/images/hero/ for direct CDN delivery.
   return { image: heroImage, alt, kenBurns: true }
 }

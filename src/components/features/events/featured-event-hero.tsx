@@ -15,7 +15,7 @@ import { FeaturedHeroStaticShell } from './featured-hero-static-shell'
  * Pre-resolves each slide's background media in parallel on the server,
  * then hands pre-rendered JSX to the client carousel component.
  *
- * The H1 is always the locked brand promise ("Every culture. Every event.
+ * The H1 is always the locked brand promise ("Every community. Every event.
  * One platform."). Event identity lives in the ribbon card on the right.
  * The eyebrow rotates based on the active slide's signal: happening soon,
  * trending, or the brand default.

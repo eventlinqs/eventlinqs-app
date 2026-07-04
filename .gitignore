@@ -80,6 +80,11 @@ next-env.d.ts
 !docs/redesign/**/*.jpeg
 !docs/redesign/**/*.webp
 
+# Allowlist permanent visual baselines (before-and-after record of the
+# deployed platform, captured per baseline date). Tracked forever.
+!docs/baseline/**/*.png
+!docs/baseline/**/*.jpg
+
 # playwright test runner artifacts — local only
 /test-results/
 /playwright-report/
@@ -132,4 +137,20 @@ docs/redesign/batch-*-evidence/lighthouse/*.json
 
 # Local Playwright tickets-spine fixture (seeded test data, never commit)
 tests/e2e/.ticket-fixture.json
+
+# Admin proof harness: screenshots, Lighthouse output, generated LH config.
+tests/admin-proof/output/
+.lighthouseci/
+lighthouserc.admin.json
+
+design-captures/
+scripts/design-capture.mjs
+scripts/axe-scene.mjs
 qa/
+
+# Dev-only homepage density fixture (regenerate via scripts/seed-events-catalogue.mjs --fixture)
+src/lib/dev/home-seed-fixture.json
+
+# Photo day: licensed source photos are never committed (see docs/PHOTO-DAY.md).
+# scripts/ingest-imagery.mjs reads these and emits supabase/seed/imagery-map.json.
+design-assets/

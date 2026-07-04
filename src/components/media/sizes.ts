@@ -9,8 +9,13 @@
  * See docs/MEDIA-ARCHITECTURE.md §4.3 for policy.
  */
 export const MEDIA_SIZES = {
-  /** Above-fold full-bleed hero (HeroMedia default) */
-  fullBleed: '(max-width: 768px) 100vw, 1920px',
+  /** Above-fold full-bleed hero (HeroMedia default).
+   *  Mobile requests ~75vw, not 100vw: the hero is a photographic BACKDROP
+   *  under a 40-80% navy scrim with text on top, so a source sized for ~75vw
+   *  shown across the full width is visually identical while cutting the LCP
+   *  image to a smaller AVIF variant (e.g. 640-828px instead of 1080px). The
+   *  optimiser still serves responsive AVIF off the 1-year edge cache. */
+  fullBleed: '(max-width: 768px) 75vw, 1920px',
   /** Bento grid hero tile */
   bentoHero: '(max-width: 1024px) 100vw, 720px',
   /** Bento grid supporting tile */
@@ -27,6 +32,12 @@ export const MEDIA_SIZES = {
   marquee: '280px',
   /** Category landing tile */
   category: '(max-width: 768px) 50vw, 320px',
+  /** Marketing/landing feature band image (~half the content width desktop,
+   *  full-bleed within its column on mobile). Used by MarketingMedia. */
+  featureBand: '(max-width: 1024px) 100vw, 640px',
+  /** Marketing/landing tile (community / solutions grid, 2-up mobile,
+   *  3-4-up desktop). Used by MarketingMedia. */
+  featureTile: '(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 300px',
   /** Avatar - topbar (32px on every breakpoint) */
   avatarTopbar: '32px',
   /** Avatar - small (32px) */

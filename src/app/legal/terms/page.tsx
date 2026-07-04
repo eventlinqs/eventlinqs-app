@@ -188,11 +188,18 @@ export default function TermsOfUsePage() {
         .
       </p>
       <p>
+        EventLinqs is the merchant of record for ticket payments and collects all
+        ticket funds, acting as the organiser&apos;s limited payment collection
+        agent. The organiser remains the seller of the ticket. Ticket funds are
+        held by EventLinqs and paid out to the organiser only after the event.
+      </p>
+      <p>
         <strong>For organisers:</strong> Payouts of ticket revenue (less
-        EventLinqs service fees) are processed within 7 business days following
-        the event date. Payouts are subject to Stripe&apos;s identity verification
-        requirements. If a chargeback is successfully raised against a sale, the
-        disputed amount is deducted from the organiser&apos;s payout balance.
+        EventLinqs service fees) are released after the event date, net of a
+        reserve held to cover refunds and chargebacks. Payouts are subject to
+        Stripe&apos;s identity verification requirements. If a chargeback is
+        successfully raised against a sale, the disputed amount is deducted from
+        the organiser&apos;s balance.
       </p>
       <p>
         EventLinqs reserves the right to withhold payouts where there is a

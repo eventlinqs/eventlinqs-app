@@ -1,36 +1,45 @@
 /**
- * Canonical public-facing platform fee - for marketing copy only.
+ * LAST-RESORT platform-fee fallback. NOT a second source of truth.
  *
- * The source of truth for what organisers are actually CHARGED is the
- * `pricing_rules` table, read at runtime by
- * `src/lib/payments/pricing-rules.ts` and `payment-calculator.ts`. This
- * module mirrors the live AU / GLOBAL `pricing_rules` baseline so that
- * every public surface (the /pricing page and its metadata) states ONE
- * definite number that matches the billing system, with no hedging.
+ * The ONE source of truth for every fee - charged, paid out, AND displayed - is
+ * the `pricing_rules` table, resolved through `getPricingRule`
+ * (`src/lib/payments/pricing-rules.ts`). The public display reads it live via
+ * `getLivePublicFee()` (`src/lib/pricing/live-fee.ts`), so the displayed fee
+ * always equals the charged fee.
  *
- * It is intentionally a reviewed constant rather than a runtime DB read:
- * a public marketing page must never 500 on a pricing-rules lookup, and
- * the public default never varies by event type. Keep this in sync with
- * the GLOBAL + AU `platform_fee_percentage` and `platform_fee_fixed`
- * rows whenever those baseline rows change.
+ * This constant exists ONLY so a public marketing page never 500s if the
+ * pricing-rules lookup itself fails (DB unreachable). It is used solely inside
+ * `getLivePublicFee`'s catch path; no surface should read it as the fee in
+ * normal operation. Keep it in sync with the AU/AUD launch baseline so a lookup
+ * failure degrades to the right number.
  *
- * Live values verified against pricing_rules (GLOBAL + AU, AUD, every
- * event type, no organiser override):
- *   platform_fee_percentage = 2.5
- *   platform_fee_fixed      = 50 (cents) = AUD 0.50
- *
- * Follow-up (next session): wire /pricing to read these via
- * getPlatformFeePercentage('AU','AUD') / getPlatformFeeFixedCents with a
- * safe static fallback to these constants, so the page is fully
- * DB-driven without a hard runtime dependency.
+ * Launch baseline (founder, LOCKED 2026, docs/EventLinqs-Fee-Structure-LOCKED.md):
+ * the PLATFORM / SERVICE fee 3.5% + AUD 0.99 per paid ticket, written to
+ * `pricing_rules` by migration 20260627000001_fee_structure_locked_au. This
+ * constant mirrors only the platform fee (the public marketing number); the
+ * separate 2.5% processing fee lives in pricing_rules and is resolved live.
+ *   platform_fee_percentage = 3.5
+ *   platform_fee_fixed      = 99 (cents) = AUD 0.99
  */
 export const PUBLIC_PLATFORM_FEE = {
-  percent: 2.5,
-  fixedCents: 50,
+  percent: 3.5,
+  fixedCents: 99,
   currency: 'AUD',
 } as const
 
-/** e.g. "2.5%" */
+/**
+ * LAST-RESORT processing-fee fallback (NOT a second source). Mirrors the locked
+ * AU processing fee written to `pricing_rules` by migration
+ * 20260627000001_fee_structure_locked_au: 2.5% of the order, no flat component.
+ * Used only when a live processing-fee lookup fails, so the all-in display never
+ * 500s and degrades to the right number.
+ */
+export const PUBLIC_PROCESSING_FEE = {
+  percent: 2.5,
+  fixedCents: 0,
+} as const
+
+/** e.g. "2%" */
 export const PUBLIC_FEE_PERCENT_LABEL = `${PUBLIC_PLATFORM_FEE.percent}%`
 
 /** e.g. "AUD 0.50" */
@@ -38,5 +47,5 @@ export const PUBLIC_FEE_FIXED_LABEL = `${PUBLIC_PLATFORM_FEE.currency} ${(
   PUBLIC_PLATFORM_FEE.fixedCents / 100
 ).toFixed(2)}`
 
-/** e.g. "2.5% + AUD 0.50" - the single definite public fee statement */
+/** e.g. "2% + AUD 0.50" - the single definite public fee statement */
 export const PUBLIC_FEE_LABEL = `${PUBLIC_FEE_PERCENT_LABEL} + ${PUBLIC_FEE_FIXED_LABEL}`

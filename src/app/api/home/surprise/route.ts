@@ -11,7 +11,7 @@ import { createPublicClient } from '@/lib/supabase/public-client'
  *   2. Read time of day + day of week from Date now.
  *   3. Pick categories that fit the slot:
  *      - Friday/Saturday evening -> nightlife, club nights, comedy
- *      - Saturday/Sunday daytime  -> family, festival, cultural
+ *      - Saturday/Sunday daytime  -> family, festival, community
  *      - Weekday evening          -> comedy, wellness, workshop
  *      - Anytime fallback         -> popular this week
  *   4. Shuffle a small candidate pool, return 3.

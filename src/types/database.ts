@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       admin_invites: {
@@ -63,6 +88,8 @@ export type Database = {
       }
       admin_users: {
         Row: {
+          capabilities_granted: string[]
+          capabilities_revoked: string[]
           created_at: string
           created_by: string | null
           disabled_at: string | null
@@ -77,6 +104,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          capabilities_granted?: string[]
+          capabilities_revoked?: string[]
           created_at?: string
           created_by?: string | null
           disabled_at?: string | null
@@ -91,6 +120,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          capabilities_granted?: string[]
+          capabilities_revoked?: string[]
           created_at?: string
           created_by?: string | null
           disabled_at?: string | null
@@ -240,7 +271,7 @@ export type Database = {
         }
         Relationships: []
       }
-      cultures: {
+      communities: {
         Row: {
           created_at: string
           display_name: string
@@ -628,9 +659,13 @@ export type Database = {
           category_id: string | null
           city_primary: string | null
           cover_image_url: string | null
+          cover_image_alt: string | null
+          cover_image_blur: string | null
+          video_url: string | null
+          video_provider: string | null
           created_at: string
           created_by: string
-          culture_primary: string | null
+          community_primary: string | null
           description: string | null
           end_date: string
           event_type: Database["public"]["Enums"]["event_type"]
@@ -645,6 +680,7 @@ export type Database = {
           is_high_demand: boolean
           is_multi_day: boolean
           is_recurring: boolean
+          is_seed_data: boolean
           max_capacity: number | null
           metadata: Json | null
           organisation_id: string
@@ -659,7 +695,7 @@ export type Database = {
           squad_timeout_hours: number
           start_date: string
           status: Database["public"]["Enums"]["event_status"]
-          sub_culture: string | null
+          sub_community: string | null
           subgenre_slug: string | null
           suburb_primary: string | null
           summary: string | null
@@ -687,9 +723,13 @@ export type Database = {
           category_id?: string | null
           city_primary?: string | null
           cover_image_url?: string | null
+          cover_image_alt?: string | null
+          cover_image_blur?: string | null
+          video_url?: string | null
+          video_provider?: string | null
           created_at?: string
           created_by: string
-          culture_primary?: string | null
+          community_primary?: string | null
           description?: string | null
           end_date: string
           event_type?: Database["public"]["Enums"]["event_type"]
@@ -704,6 +744,7 @@ export type Database = {
           is_high_demand?: boolean
           is_multi_day?: boolean
           is_recurring?: boolean
+          is_seed_data?: boolean
           max_capacity?: number | null
           metadata?: Json | null
           organisation_id: string
@@ -718,7 +759,7 @@ export type Database = {
           squad_timeout_hours?: number
           start_date: string
           status?: Database["public"]["Enums"]["event_status"]
-          sub_culture?: string | null
+          sub_community?: string | null
           subgenre_slug?: string | null
           suburb_primary?: string | null
           summary?: string | null
@@ -746,9 +787,13 @@ export type Database = {
           category_id?: string | null
           city_primary?: string | null
           cover_image_url?: string | null
+          cover_image_alt?: string | null
+          cover_image_blur?: string | null
+          video_url?: string | null
+          video_provider?: string | null
           created_at?: string
           created_by?: string
-          culture_primary?: string | null
+          community_primary?: string | null
           description?: string | null
           end_date?: string
           event_type?: Database["public"]["Enums"]["event_type"]
@@ -763,6 +808,7 @@ export type Database = {
           is_high_demand?: boolean
           is_multi_day?: boolean
           is_recurring?: boolean
+          is_seed_data?: boolean
           max_capacity?: number | null
           metadata?: Json | null
           organisation_id?: string
@@ -777,7 +823,7 @@ export type Database = {
           squad_timeout_hours?: number
           start_date?: string
           status?: Database["public"]["Enums"]["event_status"]
-          sub_culture?: string | null
+          sub_community?: string | null
           subgenre_slug?: string | null
           suburb_primary?: string | null
           summary?: string | null
@@ -823,10 +869,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "events_culture_primary_fkey"
-            columns: ["culture_primary"]
+            foreignKeyName: "events_community_primary_fkey"
+            columns: ["community_primary"]
             isOneToOne: false
-            referencedRelation: "cultures"
+            referencedRelation: "communities"
             referencedColumns: ["slug"]
           },
           {
@@ -901,6 +947,159 @@ export type Database = {
           followable_type?: string
           id?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      notification_prefs: {
+        Row: {
+          email_enabled: boolean
+          push_enabled: boolean
+          quiet_hours_end: number | null
+          quiet_hours_start: number | null
+          timezone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          email_enabled?: boolean
+          push_enabled?: boolean
+          quiet_hours_end?: number | null
+          quiet_hours_start?: number | null
+          timezone?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          email_enabled?: boolean
+          push_enabled?: boolean
+          quiet_hours_end?: number | null
+          quiet_hours_start?: number | null
+          timezone?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          channel: string
+          converted: boolean
+          created_at: string
+          event_id: string | null
+          id: string
+          opened_at: string | null
+          scheduled_for: string | null
+          sent_at: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          channel: string
+          converted?: boolean
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          opened_at?: string | null
+          scheduled_for?: string | null
+          sent_at?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          converted?: boolean
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          opened_at?: string | null
+          scheduled_for?: string | null
+          sent_at?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          last_used_at: string | null
+          p256dh: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          last_used_at?: string | null
+          p256dh: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          last_used_at?: string | null
+          p256dh?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      organiser_marketing_consents: {
+        Row: {
+          consent_text: string
+          consent_version: string
+          created_at: string
+          email: string
+          event_id: string | null
+          id: string
+          order_id: string | null
+          organisation_id: string
+          source: string
+          status: string
+          unsubscribe_token: string
+          updated_at: string
+          user_id: string | null
+          withdrawn_at: string | null
+        }
+        Insert: {
+          consent_text: string
+          consent_version?: string
+          created_at?: string
+          email: string
+          event_id?: string | null
+          id?: string
+          order_id?: string | null
+          organisation_id: string
+          source?: string
+          status?: string
+          unsubscribe_token?: string
+          updated_at?: string
+          user_id?: string | null
+          withdrawn_at?: string | null
+        }
+        Update: {
+          consent_text?: string
+          consent_version?: string
+          created_at?: string
+          email?: string
+          event_id?: string | null
+          id?: string
+          order_id?: string | null
+          organisation_id?: string
+          source?: string
+          status?: string
+          unsubscribe_token?: string
+          updated_at?: string
+          user_id?: string | null
+          withdrawn_at?: string | null
         }
         Relationships: []
       }
@@ -1516,6 +1715,7 @@ export type Database = {
           currency: string
           effective_from: string
           effective_until: string | null
+          event_id: string | null
           event_type: string
           id: string
           organisation_id: string | null
@@ -1534,6 +1734,7 @@ export type Database = {
           currency?: string
           effective_from?: string
           effective_until?: string | null
+          event_id?: string | null
           event_type?: string
           id?: string
           organisation_id?: string | null
@@ -1552,6 +1753,7 @@ export type Database = {
           currency?: string
           effective_from?: string
           effective_until?: string | null
+          event_id?: string | null
           event_type?: string
           id?: string
           organisation_id?: string | null
@@ -1564,6 +1766,13 @@ export type Database = {
           version?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "pricing_rules_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "pricing_rules_organisation_id_fkey"
             columns: ["organisation_id"]
@@ -3025,9 +3234,13 @@ export type Database = {
           category_id: string | null
           city_primary: string | null
           cover_image_url: string | null
+          cover_image_alt: string | null
+          cover_image_blur: string | null
+          video_url: string | null
+          video_provider: string | null
           created_at: string
           created_by: string
-          culture_primary: string | null
+          community_primary: string | null
           description: string | null
           end_date: string
           event_type: Database["public"]["Enums"]["event_type"]
@@ -3042,6 +3255,7 @@ export type Database = {
           is_high_demand: boolean
           is_multi_day: boolean
           is_recurring: boolean
+          is_seed_data: boolean
           max_capacity: number | null
           metadata: Json | null
           organisation_id: string
@@ -3056,7 +3270,7 @@ export type Database = {
           squad_timeout_hours: number
           start_date: string
           status: Database["public"]["Enums"]["event_status"]
-          sub_culture: string | null
+          sub_community: string | null
           subgenre_slug: string | null
           suburb_primary: string | null
           summary: string | null
@@ -3139,6 +3353,18 @@ export type Database = {
         Returns: string
       }
       release_holds: { Args: never; Returns: number }
+      scan_ticket: {
+        Args: { p_event_id: string; p_secret: string; p_ticket_code: string }
+        Returns: {
+          first_scanned_at: string | null
+          holder_name: string | null
+          result: string
+        }[]
+      }
+      transfer_ticket: {
+        Args: { p_ticket_id: string; p_to_email: string; p_to_name: string }
+        Returns: { ticket_code: string; new_secret: string; event_title: string }[]
+      }
       transition_payment_status: {
         Args: {
           p_gateway_data?: Json
@@ -3361,6 +3587,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       admin_role: ["super_admin", "admin", "support", "moderator"],

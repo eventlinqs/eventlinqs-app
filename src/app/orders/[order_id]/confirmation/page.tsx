@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSiteUrl } from '@/lib/site-url'
 import { ConfirmationActions } from '@/components/orders/confirmation-actions'
+import { encodeRefCode } from '@/lib/growth/referrals'
 import type { Order, OrderItem } from '@/types/database'
 
 export const runtime = 'nodejs'
@@ -139,10 +140,10 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
   )
 
   return (
-    <div className="min-h-screen bg-ink-100">
+    <div className="min-h-screen bg-canvas">
       <nav className="border-b border-ink-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl">
-          <Link href={logoHref} className="text-xl font-bold text-[#1A1A2E]">EVENTLINQS</Link>
+          <Link href={logoHref} className="text-xl font-bold text-ink-900">EVENTLINQS</Link>
         </div>
       </nav>
 
@@ -215,7 +216,7 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
             </h3>
             <div className="space-y-6">
               {issuedTickets.map(t => (
-                <div key={t.ticket_code} className="rounded-xl border border-ink-200 bg-ink-100 p-5">
+                <div key={t.ticket_code} className="rounded-xl border border-ink-200 bg-white p-5 shadow-sm">
                   <div
                     className="flex items-center justify-center rounded-lg bg-white p-4 [&>svg]:h-auto [&>svg]:w-full [&>svg]:max-w-[220px]"
                     // Server-generated SVG QR (no raw img, satisfies the media rules).
@@ -266,7 +267,25 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
           location={location}
           orderNumber={fullOrder.order_number}
           eventSlug={event.slug}
+          refCode={user ? encodeRefCode(user.id) ?? undefined : undefined}
         />
+
+        {/* Invite-an-organiser conversion (the acquisition loop). The moment a
+         *  buyer has momentum is the moment to surface that they can run their
+         *  own events. The link is attributed (via=organiser-invite) so we can
+         *  measure how many organisers this hook converts. */}
+        <div className="rounded-xl border border-gold-100 bg-gold-100/60 p-5 text-center mb-6">
+          <p className="text-sm font-semibold text-ink-900">Run your own events on EventLinqs</p>
+          <p className="mt-1 text-xs text-ink-600">
+            It is free to start. List your event, reach your community, and keep every attendee relationship.
+          </p>
+          <Link
+            href="/organisers?via=organiser-invite"
+            className="mt-3 inline-block rounded-lg bg-gold-400 px-5 py-2.5 text-sm font-semibold text-ink-900 transition-colors hover:bg-gold-500"
+          >
+            Become an organiser
+          </Link>
+        </div>
 
         {/* Guest CTA */}
         {isGuest && (
@@ -275,7 +294,7 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
             <p className="mt-1 text-xs text-ink-400">Access order history, digital tickets, and more</p>
             <Link
               href="/signup"
-              className="mt-3 inline-block rounded-lg bg-[#1A1A2E] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#2d2d4a]"
+              className="mt-3 inline-block rounded-lg bg-ink-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-ink-800"
             >
               Create Account
             </Link>

@@ -1,5 +1,6 @@
 import { EventlinqsLogo } from '@/components/ui/eventlinqs-logo'
-import { FirstNationsFlags } from '@/components/features/home/cultural-calendar-widget'
+import { FirstNationsFlags } from '@/components/features/home/first-nations-flags'
+import { FooterAccordion } from '@/components/layout/footer-accordion'
 
 /**
  * SiteFooter v4 (Batch 5.5) - 4-column desktop, 2-column mobile, ~50%
@@ -10,8 +11,8 @@ import { FirstNationsFlags } from '@/components/features/home/cultural-calendar-
  * Desktop (768px+): horizontal brand strip on top, 4-col link grid,
  * compact sub-footer.
  *
- * Link sets simplified to founder spec: Discover (6), Cultures (top 6
- * marketed-rhythm + All cultures), For organisers (4), Company (4).
+ * Link sets simplified to founder spec: Discover (6), Communities (top 6
+ * marketed-rhythm + All communities), For organisers (4), Company (4).
  *
  * Background: ink-950. Sentence-case heads. Australian English. No
  * em-dashes, no exclamation marks.
@@ -23,10 +24,10 @@ import { FirstNationsFlags } from '@/components/features/home/cultural-calendar-
 // name (e.g. `?free=1`, `?when=this-week`) will fail that test.
 export const DISCOVER = [
   { label: 'Browse all events', href: '/events' },
-  // "By city" and "By culture" go to the dedicated index pages, not to
+  // "By city" and "By community" go to the dedicated index pages, not to
   // an /events view mode - the parser only recognises view=grid|map.
   { label: 'By city',           href: '/cities' },
-  { label: 'By community',        href: '/cultures' },
+  { label: 'By community',        href: '/communities' },
   // Preset values come from PRESETS in search-params.ts:
   //   7d = next 7 days, weekend = upcoming weekend, free = preset=free.
   { label: 'This week',         href: '/events?preset=7d' },
@@ -34,14 +35,14 @@ export const DISCOVER = [
   { label: 'Free events',       href: '/events?preset=free' },
 ]
 
-export const CULTURES = [
-  { label: 'First Nations',  href: '/culture/aboriginal-torres-strait-islander' },
-  { label: 'African',        href: '/culture/african' },
-  { label: 'Caribbean',      href: '/culture/caribbean' },
-  { label: 'Indian',         href: '/culture/indian' },
-  { label: 'Latin American', href: '/culture/latin-american' },
-  { label: 'Italian',        href: '/culture/italian' },
-  { label: 'All communities',   href: '/cultures' },
+export const COMMUNITIES = [
+  { label: 'First Nations',  href: '/community/aboriginal-torres-strait-islander' },
+  { label: 'African',        href: '/community/african' },
+  { label: 'Caribbean',      href: '/community/caribbean' },
+  { label: 'Indian',         href: '/community/indian' },
+  { label: 'Latin American', href: '/community/latin-american' },
+  { label: 'Italian',        href: '/community/italian' },
+  { label: 'All communities',   href: '/communities' },
 ]
 
 export const FOR_ORGANISERS = [
@@ -106,17 +107,6 @@ function FacebookIcon() {
   )
 }
 
-function ChevronIcon() {
-  return (
-    <svg
-      className="h-4 w-4 text-white/70 transition-transform group-open:rotate-180"
-      fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true"
-    >
-      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-    </svg>
-  )
-}
-
 interface FooterColumnProps {
   title: string
   links: { label: string; href: string }[]
@@ -136,26 +126,6 @@ function DesktopColumn({ title, links }: FooterColumnProps) {
         ))}
       </ul>
     </div>
-  )
-}
-
-function MobileAccordion({ title, links }: FooterColumnProps) {
-  return (
-    <details className="group">
-      <summary className="flex cursor-pointer list-none items-center justify-between py-3 text-sm font-semibold text-white [&::-webkit-details-marker]:hidden">
-        {title}
-        <ChevronIcon />
-      </summary>
-      <ul className="space-y-2 pb-3">
-        {links.map(link => (
-          <li key={link.href}>
-            <a href={link.href} className="block py-1 text-sm text-white/70 transition-colors hover:text-white">
-              {link.label}
-            </a>
-          </li>
-        ))}
-      </ul>
-    </details>
   )
 }
 
@@ -207,7 +177,7 @@ export function SiteFooter() {
   const year = new Date().getFullYear()
 
   return (
-    <footer className="bg-ink-950 text-white" aria-label="Site footer">
+    <footer className="bg-[var(--color-ink-900)] text-white" aria-label="Site footer">
       <div className="mx-auto max-w-7xl px-4 pt-10 pb-6 sm:px-6 sm:pt-12 lg:px-8">
 
         {/* Desktop: brand strip + 4-col link grid */}
@@ -226,10 +196,10 @@ export function SiteFooter() {
           </div>
 
           <div className="grid grid-cols-4 gap-x-8 gap-y-6 pt-8">
-            <DesktopColumn title="Discover"        links={DISCOVER} />
-            <DesktopColumn title="Communities"        links={CULTURES} />
-            <DesktopColumn title="For organisers"  links={FOR_ORGANISERS} />
-            <DesktopColumn title="Company"         links={COMPANY} />
+            <DesktopColumn title="Discover"       links={DISCOVER} />
+            <DesktopColumn title="Communities"    links={COMMUNITIES} />
+            <DesktopColumn title="For organisers" links={FOR_ORGANISERS} />
+            <DesktopColumn title="Company"        links={COMPANY} />
           </div>
         </div>
 
@@ -240,11 +210,15 @@ export function SiteFooter() {
             <SocialRow />
           </div>
 
-          <div className="grid grid-cols-2 gap-x-6 pt-2">
-            <MobileAccordion title="Discover"        links={DISCOVER} />
-            <MobileAccordion title="Communities"        links={CULTURES} />
-            <MobileAccordion title="For organisers"  links={FOR_ORGANISERS} />
-            <MobileAccordion title="Company"         links={COMPANY} />
+          {/* Full-width STACKED accordions, one per row, each independent.
+              No 2-col grid: a grid row stretches to its tallest cell and drags
+              the neighbour column down when one expands (the coupling bug).
+              Stacked blocks move only the content below an expanded section. */}
+          <div className="pt-2">
+            <FooterAccordion title="Discover"       links={DISCOVER} />
+            <FooterAccordion title="Communities"    links={COMMUNITIES} />
+            <FooterAccordion title="For organisers" links={FOR_ORGANISERS} />
+            <FooterAccordion title="Company"        links={COMPANY} />
           </div>
 
           <div className="mt-4 border-t border-white/10 pt-4">
@@ -272,7 +246,7 @@ export function SiteFooter() {
             <p className="max-w-3xl text-xs leading-relaxed text-white/70 sm:text-sm">
               EventLinqs acknowledges the Traditional Custodians of Country
               throughout Australia and recognises their continuing connection
-              to land, waters, and culture. We pay our respects to Elders
+              to land, waters, and community. We pay our respects to Elders
               past and present.
             </p>
           </div>
@@ -283,7 +257,7 @@ export function SiteFooter() {
       <div className="border-t border-white/10">
         <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
 
-          <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
             <ul className="flex flex-wrap items-center gap-x-5 gap-y-1">
               {LEGAL.map(link => (
                 <li key={link.href}>
@@ -293,9 +267,6 @@ export function SiteFooter() {
                 </li>
               ))}
             </ul>
-            <p className="text-xs font-medium text-white/80">
-              All-in pricing. No surprise fees.
-            </p>
           </div>
 
           <div className="mt-3 flex flex-col gap-1 text-xs text-white/50 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3">

@@ -21,7 +21,7 @@ const AU_CITIES = [
   'sunshine-coast', 'toowoomba', 'townsville',
   'ballarat', 'bendigo', 'launceston', 'albury',
 ]
-const CULTURES = [
+const COMMUNITIES = [
   'african', 'south-asian', 'caribbean', 'latin', 'east-asian',
   'filipino', 'mediterranean', 'middle-eastern', 'european',
   'pacific', 'gospel', 'comedy', 'wellness', 'pride',
@@ -30,7 +30,7 @@ const CULTURES = [
 const pagesToCrawl = [
   '/',
   '/events',
-  '/cultures',
+  '/communities',
   '/cities',
   '/organisers',
   '/organisers/signup',
@@ -53,7 +53,7 @@ const pagesToCrawl = [
   '/verify-email-sent',
   ...AU_CITIES.map(c => `/events/browse/${c}`),
   ...AU_CITIES.map(c => `/city/${c}`),
-  ...CULTURES.map(c => `/culture/${c}`),
+  ...COMMUNITIES.map(c => `/community/${c}`),
 ]
 
 console.log(`Crawling ${pagesToCrawl.length} pages...`)

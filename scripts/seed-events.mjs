@@ -1,5 +1,5 @@
 /**
- * One-shot seed script: 8 culturally-relevant sample events + ticket tiers
+ * One-shot seed script: 8 community-relevant sample events + ticket tiers
  * Run: node scripts/seed-events.mjs
  * Uses service role key - bypasses RLS. Delete this file after seeding.
  */
@@ -74,10 +74,10 @@ const ORGS = {
     slug: 'diaspora-business-forum',
     description: 'Conferences, summits, and roundtables connecting African and diaspora founders with capital and partners.',
   },
-  gospelCulturalNetwork: {
+  gospelCommunityNetwork: {
     id: '22222222-2222-4222-8222-222222222206',
-    name: 'Gospel Cultural Network',
-    slug: 'gospel-cultural-network',
+    name: 'Gospel Community Network',
+    slug: 'gospel-community-network',
     description: 'Gospel concerts, choir nights, and worship gatherings for the global African Christian diaspora.',
   },
   perthAfricanMarket: {
@@ -86,11 +86,11 @@ const ORGS = {
     slug: 'perth-african-market',
     description: 'Perth collective running African food markets, family days, and regional community events.',
   },
-  aucklandCulturalAlliance: {
+  aucklandCommunityAlliance: {
     id: '22222222-2222-4222-8222-222222222208',
-    name: 'Auckland Cultural Alliance',
-    slug: 'auckland-cultural-alliance',
-    description: 'Multicultural collective producing cultural festivals, art exhibitions, and community events across Aotearoa.',
+    name: 'Auckland Community Alliance',
+    slug: 'auckland-community-alliance',
+    description: 'Multicommunity collective producing community festivals, art exhibitions, and community events across Aotearoa.',
   },
 }
 
@@ -99,12 +99,12 @@ function pickOrgId(ev) {
   const city = (ev.venue_city ?? '').toLowerCase()
 
   if (tags.has('owambe') || tags.has('yoruba')) return ORGS.lagosNightsAustralia.id
-  if (tags.has('gospel') || tags.has('christian') || tags.has('worship') || tags.has('choir')) return ORGS.gospelCulturalNetwork.id
+  if (tags.has('gospel') || tags.has('christian') || tags.has('worship') || tags.has('choir')) return ORGS.gospelCommunityNetwork.id
   if (tags.has('business') || tags.has('networking') || tags.has('entrepreneurship') || tags.has('summit')) return ORGS.diasporaBusinessForum.id
   if (tags.has('amapiano') && city === 'sydney') return ORGS.sydneyAmapiano.id
   if (tags.has('amapiano')) return ORGS.sydneyAmapiano.id
   if (tags.has('afrobeats') && city === 'melbourne') return ORGS.melbourneAfrobeats.id
-  if (city === 'auckland') return ORGS.aucklandCulturalAlliance.id
+  if (city === 'auckland') return ORGS.aucklandCommunityAlliance.id
   if (city === 'perth') return ORGS.perthAfricanMarket.id
   if (tags.has('food') || tags.has('supper') || tags.has('market')) return ORGS.jollofSupperClub.id
   return ORGS.melbourneAfrobeats.id
@@ -133,7 +133,7 @@ const CAT = {
   nightlife:           '2443fb27-a02c-412c-b05c-06d1a8e070a6',
   religion:            '310ec098-563e-46cb-97d2-fea1eb048bb7',
   arts:                '0fcd5166-fcba-4df3-95f8-26fa0e8ff1bc',
-  arts_culture:        '0fcd5166-fcba-4df3-95f8-26fa0e8ff1bc',
+  arts_community:        '0fcd5166-fcba-4df3-95f8-26fa0e8ff1bc',
   business:            '8234412f-2a88-42d2-a9d2-406425f67ad9',
   business_networking: '8234412f-2a88-42d2-a9d2-406425f67ad9',
   community:           'db15a8f5-6aa2-40b7-b018-3d1087e3eb73',
@@ -165,7 +165,7 @@ const events = [
     cover_image_url: 'https://picsum.photos/seed/afrobeats1/1200/900',
     thumbnail_url:   'https://picsum.photos/seed/afrobeats1/600/450',
     max_capacity: 1500,
-    tags: ['afrobeats','music','culture','african'],
+    tags: ['afrobeats','music','community','african'],
     price_cents: 6500, tier_name: 'General Admission', tier_capacity: 1200,
   },
   {
@@ -240,8 +240,8 @@ const events = [
     id: '11111111-1111-4111-8111-111111111106',
     title: 'African Comedy Night - The Showcase',
     slug: 'african-comedy-night-the-showcase-2026',
-    description: "Six of Australia's funniest African comedians take the stage for a night of stories, cultural observations, and laughs that hit different. Doors open 7pm.",
-    summary: '6 African comedians, cultural humour, Melbourne - an unmissable night',
+    description: "Six of Australia's funniest African comedians take the stage for a night of stories, community observations, and laughs that hit different. Doors open 7pm.",
+    summary: '6 African comedians, community humour, Melbourne - an unmissable night',
     category_id: CAT.arts,
     start_date: '2026-05-09T09:00:00Z', // 19:00 AEST
     end_date:   '2026-05-09T13:00:00Z', // 23:00 AEST
@@ -250,7 +250,7 @@ const events = [
     cover_image_url: 'https://picsum.photos/seed/comedy1/1200/900',
     thumbnail_url:   'https://picsum.photos/seed/comedy1/600/450',
     max_capacity: 350,
-    tags: ['comedy','african','stand-up','culture'],
+    tags: ['comedy','african','stand-up','community'],
     price_cents: 4500, tier_name: 'General Admission', tier_capacity: 300,
   },
   {
@@ -274,8 +274,8 @@ const events = [
     id: '11111111-1111-4111-8111-111111111108',
     title: 'Owambe - The Gathering',
     slug: 'owambe-the-gathering-2026',
-    description: 'Owambe is the Yoruba word for "it is there" - and this party will be there in every sense. Traditional wear, live band, jollof rice cook-off, and West African culture.',
-    summary: 'West African cultural celebration - live band, jollof cook-off, traditional attire',
+    description: 'Owambe is the Yoruba word for "it is there" - and this party will be there in every sense. Traditional wear, live band, jollof rice cook-off, and West African community.',
+    summary: 'West African community celebration - live band, jollof cook-off, traditional attire',
     category_id: CAT.community,
     start_date: '2026-06-07T04:00:00Z', // 14:00 AEST
     end_date:   '2026-06-07T13:00:00Z', // 23:00 AEST
@@ -284,7 +284,7 @@ const events = [
     cover_image_url: 'https://picsum.photos/seed/owambe/1200/900',
     thumbnail_url:   'https://picsum.photos/seed/owambe/600/450',
     max_capacity: 1200,
-    tags: ['owambe','yoruba','nigerian','cultural','celebration','west-african'],
+    tags: ['owambe','yoruba','nigerian','community','celebration','west-african'],
     price_cents: 5500, tier_name: 'General Admission', tier_capacity: 1000,
   },
 ]
@@ -604,21 +604,21 @@ const DEMO_EVENTS = [
     slug: 'afro-contemporary-art-auckland-m5',
     description: 'A six-week exhibition featuring 18 contemporary African artists. Opening night includes live jazz and catering.',
     summary: '18 African artists, opening night jazz',
-    category_id: CAT.arts_culture,
+    category_id: CAT.arts_community,
     start_date: iso(15 * DAY),
     end_date: iso(15 * DAY + 6 * HOUR),
     timezone: 'Pacific/Auckland',
     venue_name: 'Auckland Art Gallery', venue_city: 'Auckland', venue_state: 'Auckland', venue_country: 'New Zealand',
-    max_capacity: 500, tags: ['arts','culture','exhibition','opening-night'],
+    max_capacity: 500, tags: ['arts','community','exhibition','opening-night'],
     tiers: [{ name: 'Opening Night', price: 2500, capacity: 500, sold: 60, reserved: 0 }],
   },
   {
     id: '11111111-1111-4111-8111-11111111210f',
     title: 'Nigerian Literature Festival - Lagos',
     slug: 'nigerian-literature-festival-lagos-m5',
-    description: 'A one-day festival of Nigerian writers, poets, and spoken-word artists. Affordable cultural programming for all.',
+    description: 'A one-day festival of Nigerian writers, poets, and spoken-word artists. Affordable community programming for all.',
     summary: 'Nigerian writers, poets, spoken-word - Lagos',
-    category_id: CAT.arts_culture,
+    category_id: CAT.arts_community,
     start_date: iso(20 * DAY),
     end_date: iso(20 * DAY + 9 * HOUR),
     timezone: 'Africa/Lagos',
@@ -644,7 +644,7 @@ const DEMO_EVENTS = [
     id: '11111111-1111-4111-8111-111111112111',
     title: 'Kids African Drumming Workshop - Auckland',
     slug: 'kids-african-drumming-workshop-auckland-m5',
-    description: 'A hands-on drumming circle for kids 5-12. Instruments provided, cultural storytelling, parent tea-break lounge.',
+    description: 'A hands-on drumming circle for kids 5-12. Instruments provided, community storytelling, parent tea-break lounge.',
     summary: 'Kids drumming workshop, instruments provided',
     category_id: CAT.family,
     start_date: iso(13 * DAY),
@@ -658,14 +658,14 @@ const DEMO_EVENTS = [
     id: '11111111-1111-4111-8111-111111112112',
     title: 'Accra Independence Festival',
     slug: 'accra-independence-festival-m5',
-    description: 'Three stages, parade, food, fashion, cultural showcases. Accra\u2019s biggest outdoor festival of the season.',
+    description: 'Three stages, parade, food, fashion, community showcases. Accra\u2019s biggest outdoor festival of the season.',
     summary: 'Three stages, parade, food, fashion',
     category_id: CAT.festival,
     start_date: iso(26 * DAY),
     end_date: iso(27 * DAY),
     timezone: 'Africa/Accra',
     venue_name: 'Black Star Square', venue_city: 'Accra', venue_state: 'Greater Accra', venue_country: 'Ghana',
-    max_capacity: 8000, tags: ['festival','independence','ghana','cultural'],
+    max_capacity: 8000, tags: ['festival','independence','ghana','community'],
     tiers: [{ name: 'Day Pass', price: 5000, capacity: 5000, sold: 520, reserved: 0 }],
   },
   {

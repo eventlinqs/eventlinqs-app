@@ -55,10 +55,17 @@ describe('CSV export', () => {
     const csv = buildAttendeesCsv(sample)
     expect(csv.charCodeAt(0)).toBe(0xfeff) // UTF-8 BOM
     const lines = csv.replace(/^﻿/, '').split('\r\n')
-    expect(lines[0]).toBe('Name,Email,Ticket type,Order ref,Purchase date,Ticket code,Check-in status')
+    expect(lines[0]).toBe('Name,Email,Ticket type,Order ref,Purchase date,Ticket code,Check-in status,Marketing consent,Unsubscribe link')
     expect(lines).toHaveLength(1 + sample.length)
     expect(lines[1]).toContain('Checked in')
     expect(lines[2]).toContain('Not checked in')
+  })
+
+  test('attendee CSV reflects marketing consent state', () => {
+    const consented = attendee({ marketingConsent: true, unsubscribeUrl: 'https://eventlinqs.com/unsubscribe/tok' })
+    const notConsented = attendee({ marketingConsent: false })
+    expect(buildAttendeesCsv([consented])).toContain('Yes,https://eventlinqs.com/unsubscribe/tok')
+    expect(buildAttendeesCsv([notConsented])).toContain(',No,')
   })
 
   test('CSV quotes and escapes commas and quotes in values', () => {

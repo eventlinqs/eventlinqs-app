@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getSiteUrl } from '@/lib/site-url'
+import { buildConsentIndex, isEmailConsented, type ConsentRow } from '@/lib/consent/status'
 import type { AttendeeRow, OrderReportRow } from './types'
 
 export type { AttendeeRow, OrderReportRow, AttendeeFilters } from './types'
@@ -100,19 +102,44 @@ export async function fetchEventAttendees(eventId: string): Promise<AttendeeRow[
     .eq('event_id', eventId)
     .order('created_at', { ascending: true })
 
+  // Marketing-consent lookup for this event's organiser (Spam Act). The export
+  // must show who may lawfully be emailed; a withdrawn consent reads as not
+  // consented. Resolve the event's organisation, then its consent rows.
+  const { data: eventRow } = await admin
+    .from('events')
+    .select('organisation_id')
+    .eq('id', eventId)
+    .maybeSingle()
+  const consentIndex = new Map<string, { consented: boolean; unsubscribeToken: string }>()
+  if (eventRow?.organisation_id) {
+    const { data: consentRows } = await admin
+      .from('organiser_marketing_consents')
+      .select('email, status, unsubscribe_token')
+      .eq('organisation_id', eventRow.organisation_id)
+    const built = buildConsentIndex((consentRows ?? []) as ConsentRow[])
+    for (const [k, v] of built) consentIndex.set(k, v)
+  }
+  const baseUrl = getSiteUrl().replace(/\/$/, '')
+
   const rows = (data ?? []) as unknown as RawTicket[]
   return rows
     .filter(t => ATTENDEE_STATUSES.has(t.status))
-    .map(t => ({
-      name: (t.holder_name ?? '').replace(/\s+/g, ' ').trim() || t.holder_email,
-      email: t.holder_email,
-      ticketType: (t.ticket_tier?.name ?? '').trim() || 'Admission',
-      ticketCode: t.ticket_code,
-      orderRef: t.order?.order_number ?? '',
-      purchaseDate: t.order?.created_at ?? '',
-      checkedIn: t.status === 'scanned' || t.first_scanned_at !== null,
-      status: t.status,
-    }))
+    .map(t => {
+      const consented = isEmailConsented(consentIndex, t.holder_email)
+      const token = consentIndex.get(t.holder_email.trim().toLowerCase())?.unsubscribeToken
+      return {
+        name: (t.holder_name ?? '').replace(/\s+/g, ' ').trim() || t.holder_email,
+        email: t.holder_email,
+        ticketType: (t.ticket_tier?.name ?? '').trim() || 'Admission',
+        ticketCode: t.ticket_code,
+        orderRef: t.order?.order_number ?? '',
+        purchaseDate: t.order?.created_at ?? '',
+        checkedIn: t.status === 'scanned' || t.first_scanned_at !== null,
+        status: t.status,
+        marketingConsent: consented,
+        unsubscribeUrl: consented && token ? `${baseUrl}/unsubscribe/${token}` : null,
+      }
+    })
 }
 
 interface RawOrder {

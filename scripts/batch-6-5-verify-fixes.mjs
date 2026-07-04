@@ -73,7 +73,7 @@ for (const city of ['sydney', 'melbourne', 'brisbane', 'perth', 'gold-coast', 'c
   await page.close()
 }
 
-// F2.b Browse-by-Culture rail: confirm 14 culture tiles render with photos.
+// F2.b Browse-by-Community rail: confirm 14 community tiles render with photos.
 for (const city of ['sydney', 'melbourne', 'brisbane', 'perth']) {
   const page = await ctx.newPage()
   await page.setViewportSize({ width: 1440, height: 900 })
@@ -81,16 +81,16 @@ for (const city of ['sydney', 'melbourne', 'brisbane', 'perth']) {
     await page.goto(`${BASE}/city/${city}`, { waitUntil: 'domcontentloaded', timeout: 90_000 })
     await page.waitForLoadState('networkidle', { timeout: 25_000 }).catch(() => {})
     await primeLazy(page)
-    const rail = page.locator('section', { hasText: ' by culture' }).first()
+    const rail = page.locator('section', { hasText: ' by community' }).first()
     const found = await rail.count()
     if (found > 0) {
       await rail.scrollIntoViewIfNeeded()
       await page.waitForTimeout(800)
-      await rail.screenshot({ path: `${OUT}/${city}-culture-rail-fixed-1440.png` })
-      console.log(`F2b culture rail ${city} ok`)
+      await rail.screenshot({ path: `${OUT}/${city}-community-rail-fixed-1440.png` })
+      console.log(`F2b community rail ${city} ok`)
     }
   } catch (e) {
-    console.log(`F2b culture rail ${city} (non-fatal: ${e.message?.slice(0, 160)})`)
+    console.log(`F2b community rail ${city} (non-fatal: ${e.message?.slice(0, 160)})`)
   }
   await page.close()
 }

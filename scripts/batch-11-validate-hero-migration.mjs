@@ -24,7 +24,7 @@ const events = [
     created_by: '00000000-0000-4000-8000-000000000001',
     title: 'Africultures Festival',
     slug: 'africultures-festival-sydney-2027',
-    description: "A whole-day celebration of African culture at Wyatt Park Auburn. Three stages of Afrobeats, Amapiano, Highlife, Soukous, Coupé-Décalé, and West African live drumming. Aso-ebi parade, Yoruba and Igbo language workshops, a kids village with adire fabric painting and folktale storytelling, a continental food court representing Nigeria, Ghana, Senegal, DRC, Kenya, and Ethiopia, plus a sundown afro-fusion DJ set to close. Family-friendly, halal options, accessible.",
+    description: "A whole-day celebration of African community at Wyatt Park Auburn. Three stages of Afrobeats, Amapiano, Highlife, Soukous, Coupé-Décalé, and West African live drumming. Aso-ebi parade, Yoruba and Igbo language workshops, a kids village with adire fabric painting and folktale storytelling, a continental food court representing Nigeria, Ghana, Senegal, DRC, Kenya, and Ethiopia, plus a sundown afro-fusion DJ set to close. Family-friendly, halal options, accessible.",
     summary: 'Wyatt Park, Auburn | three stages, food court, kids village | Sydney',
     start_date: '2027-03-12 10:00:00+11',
     end_date:   '2027-03-12 22:00:00+11',

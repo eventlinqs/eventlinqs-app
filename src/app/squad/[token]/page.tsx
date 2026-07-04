@@ -1,10 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
-import Image from 'next/image'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { getSquadByToken } from '@/app/actions/squads'
 import { SquadJoinPanel } from '@/components/squads/squad-join-panel'
+import { HeroMedia } from '@/components/media/HeroMedia'
 
 type Props = {
   params: Promise<{ token: string }>
@@ -90,11 +90,9 @@ export default async function SquadPage({ params }: Props) {
         {/* Event hero */}
         {squad.event.cover_image_url && (
           <div className="relative w-full aspect-video rounded-2xl overflow-hidden mb-6 bg-ink-200">
-            <Image
-              src={squad.event.cover_image_url}
+            <HeroMedia
+              image={squad.event.cover_image_url}
               alt={squad.event.title}
-              fill
-              className="object-cover"
               priority
             />
           </div>
@@ -159,7 +157,7 @@ export default async function SquadPage({ params }: Props) {
             {/* Progress bar */}
             <div className="w-full bg-ink-100 rounded-full h-2.5" role="progressbar" aria-valuenow={filledSpots} aria-valuemin={0} aria-valuemax={squad.total_spots}>
               <div
-                className="bg-[#4A90D9] h-2.5 rounded-full transition-all"
+                className="bg-gold-500 h-2.5 rounded-full transition-all"
                 style={{ width: `${Math.min(100, (filledSpots / squad.total_spots) * 100)}%` }}
               />
             </div>

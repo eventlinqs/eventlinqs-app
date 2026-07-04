@@ -53,6 +53,10 @@ const attendeeColumns: Column<AttendeeRow>[] = [
   { header: 'Purchase date', value: r => r.purchaseDate },
   { header: 'Ticket code', value: r => r.ticketCode },
   { header: 'Check-in status', value: r => (r.checkedIn ? 'Checked in' : 'Not checked in') },
+  // Marketing consent (Spam Act): only email attendees marked Yes, and include
+  // their unsubscribe link in any marketing you send.
+  { header: 'Marketing consent', value: r => (r.marketingConsent ? 'Yes' : 'No') },
+  { header: 'Unsubscribe link', value: r => r.unsubscribeUrl ?? '' },
 ]
 
 const orderColumns: Column<OrderReportRow>[] = [
@@ -112,6 +116,8 @@ export function buildAttendeesXlsx(rows: AttendeeRow[]): Promise<Buffer> {
       { header: 'Purchase date', value: r => r.purchaseDate, width: 24 },
       { header: 'Ticket code', value: r => r.ticketCode, width: 18 },
       { header: 'Check-in status', value: r => (r.checkedIn ? 'Checked in' : 'Not checked in'), width: 16 },
+      { header: 'Marketing consent', value: r => (r.marketingConsent ? 'Yes' : 'No'), width: 18 },
+      { header: 'Unsubscribe link', value: r => r.unsubscribeUrl ?? '', width: 44 },
     ],
     rows
   )

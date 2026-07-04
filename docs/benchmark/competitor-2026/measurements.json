@@ -1,0 +1,246 @@
+{
+  "eventbrite/home": {
+    "390": {
+      "url": "https://www.eventbrite.com.au/",
+      "vh": 844,
+      "bannerH": 293,
+      "bannerBottom": 364,
+      "bannerKind": "img",
+      "h1top": 630,
+      "h1bottom": 654
+    },
+    "1440": {
+      "url": "https://www.eventbrite.com.au/",
+      "vh": 900,
+      "bannerH": 393,
+      "bannerBottom": 470,
+      "bannerKind": "img",
+      "h1top": 733,
+      "h1bottom": 757
+    }
+  },
+  "eventbrite/browse": {
+    "390": {
+      "url": "https://www.eventbrite.com.au/d/australia--sydney/all-events/",
+      "vh": 844,
+      "bannerH": 171,
+      "bannerBottom": 612,
+      "bannerKind": "img",
+      "h1top": 200,
+      "h1bottom": 274
+    },
+    "1440": {
+      "url": "https://www.eventbrite.com.au/d/australia--sydney/all-events/",
+      "vh": 900,
+      "bannerH": 0,
+      "bannerBottom": 0,
+      "bannerKind": "none",
+      "h1top": 138,
+      "h1bottom": 175
+    },
+    "_discovered": "https://www.eventbrite.com.au/e/australian-tattoo-expo-sydney-1000-tattoo-designs-huge-give-aways-tickets-1982400187325?aff=ebdssbdestsearch"
+  },
+  "eventbrite/category-music": {
+    "390": {
+      "url": "https://www.eventbrite.com.au/d/australia--sydney/music--events/",
+      "vh": 844,
+      "bannerH": 195,
+      "bannerBottom": 374,
+      "bannerKind": "img",
+      "h1top": 390,
+      "h1bottom": 474
+    },
+    "1440": {
+      "url": "https://www.eventbrite.com.au/d/australia--sydney/music--events/",
+      "vh": 900,
+      "bannerH": 0,
+      "bannerBottom": 0,
+      "bannerKind": "none",
+      "h1top": 183,
+      "h1bottom": 283
+    }
+  },
+  "eventbrite/event-detail": {
+    "390": {
+      "url": "https://www.eventbrite.com.au/e/australian-tattoo-expo-sydney-1000-tattoo-designs-huge-give-aways-tickets-1982400187325?aff=ebdssbdestsearch",
+      "vh": 844,
+      "bannerH": 195,
+      "bannerBottom": 252,
+      "bannerKind": "img",
+      "h1top": 320,
+      "h1bottom": 399
+    },
+    "1440": {
+      "url": "https://www.eventbrite.com.au/e/australian-tattoo-expo-sydney-1000-tattoo-designs-huge-give-aways-tickets-1982400187325?aff=ebdssbdestsearch",
+      "vh": 900,
+      "bannerH": 470,
+      "bannerBottom": 563,
+      "bannerKind": "bg",
+      "h1top": 631,
+      "h1bottom": 701
+    }
+  },
+  "eventbrite/pricing": {
+    "390": {
+      "url": "https://www.eventbrite.com/organizer/pricing/",
+      "vh": 844,
+      "bannerH": 342,
+      "bannerBottom": 1144,
+      "bannerKind": "img",
+      "h1top": 134,
+      "h1bottom": 328
+    },
+    "1440": {
+      "url": "https://www.eventbrite.com/organizer/pricing/",
+      "vh": 900,
+      "bannerH": 0,
+      "bannerBottom": 0,
+      "bannerKind": "none",
+      "h1top": 176,
+      "h1bottom": 303
+    }
+  },
+  "eventbrite/help": {
+    "390": {
+      "url": "https://www.eventbrite.com.au/help/",
+      "vh": 844,
+      "bannerH": 0,
+      "bannerBottom": 0,
+      "bannerKind": "none",
+      "h1top": 126,
+      "h1bottom": 169
+    },
+    "1440": {
+      "url": "https://www.eventbrite.com.au/help/",
+      "vh": 900,
+      "bannerH": 0,
+      "bannerBottom": 0,
+      "bannerKind": "none",
+      "h1top": 126,
+      "h1bottom": 210
+    }
+  },
+  "eventbrite/signup": {
+    "390": {
+      "url": "https://www.eventbrite.com.au/signup/",
+      "vh": 844,
+      "bannerH": 0,
+      "bannerBottom": 0,
+      "bannerKind": "none",
+      "h1top": 155,
+      "h1bottom": 208
+    },
+    "1440": {
+      "url": "https://www.eventbrite.com.au/signup/",
+      "vh": 900,
+      "bannerH": 940,
+      "bannerBottom": 940,
+      "bannerKind": "bg",
+      "h1top": 227,
+      "h1bottom": 275
+    }
+  },
+  "ticketmaster/home": {
+    "390": {
+      "url": "https://www.ticketmaster.com.au/",
+      "vh": 844,
+      "bannerH": 201,
+      "bannerBottom": 1242,
+      "bannerKind": "img",
+      "h1top": 221,
+      "h1bottom": 222
+    },
+    "1440": {
+      "url": "https://www.ticketmaster.com.au/",
+      "vh": 900,
+      "bannerH": 0,
+      "bannerBottom": 0,
+      "bannerKind": "none",
+      "h1top": 249,
+      "h1bottom": 250
+    }
+  },
+  "ticketmaster/discover": {
+    "390": {
+      "url": "https://www.ticketmaster.com.au/discover/concerts",
+      "vh": 844,
+      "bannerH": 235,
+      "bannerBottom": 414,
+      "bannerKind": "bg",
+      "h1top": 326,
+      "h1bottom": 376
+    },
+    "1440": {
+      "url": "https://www.ticketmaster.com.au/discover/concerts",
+      "vh": 900,
+      "bannerH": 292,
+      "bannerBottom": 428,
+      "bannerKind": "bg",
+      "h1top": 290,
+      "h1bottom": 377
+    },
+    "_discovered": "https://www.moshtix.com.au/v2/event/winter-wine-festival-2026/191984"
+  },
+  "ticketmaster/event-detail": {
+    "390": {
+      "url": "https://www.moshtix.com.au/v2/event/winter-wine-festival-2026/191984",
+      "vh": 844,
+      "bannerH": 48,
+      "bannerBottom": 525,
+      "bannerKind": "img",
+      "h1top": 341,
+      "h1bottom": 367
+    },
+    "1440": {
+      "url": "https://www.moshtix.com.au/v2/event/winter-wine-festival-2026/191984",
+      "vh": 900,
+      "bannerH": 48,
+      "bannerBottom": 525,
+      "bannerKind": "img",
+      "h1top": 341,
+      "h1bottom": 367
+    }
+  },
+  "ticketmaster/help": {
+    "390": {
+      "url": "https://help.ticketmaster.com.au/hc/en-au",
+      "vh": 844,
+      "bannerH": 246,
+      "bannerBottom": 306,
+      "bannerKind": "bg",
+      "h1top": 59,
+      "h1bottom": 60
+    },
+    "1440": {
+      "url": "https://help.ticketmaster.com.au/hc/en-au",
+      "vh": 900,
+      "bannerH": 524,
+      "bannerBottom": 1106,
+      "bannerKind": "bg",
+      "h1top": 115,
+      "h1bottom": 116
+    }
+  },
+  "ticketmaster/signin": {
+    "390": {
+      "ready": true,
+      "url": "https://auth.ticketmaster.com/as/authorization.oauth2?client_id=c632b9c867d5.web.ticketmaster.au&response_type=code&scope=openid%20profile%20phone%20email%20tm&redirect_uri=https://identity.ticketmaster.com.au/exchange&visualPresets=tm&lang=en-au&placementId=mytmlogin&hideLeftPanel=false&integratorId=prd1741.iccp&intSiteToken=tm-au&TMUO=east_6sm4uj1sACW4ugWsh6RbzrcV46PoEvK9D9uLllw4llY%3D&deviceId=f9dSqzajeTU3PjY%2BOjc6Ojc3NzgnDZSbctAleQ&doNotTrack=false&disableAutoOptIn=false",
+      "dims": "780x1688"
+    },
+    "1440": {
+      "clicked": true,
+      "url": "https://auth.ticketmaster.com/as/authorization.oauth2?client_id=c632b9c867d5.web.ticketmaster.au&response_type=code&scope=openid%20profile%20phone%20email%20tm&redirect_uri=https://identity.ticketmaster.com.au/exchange&visualPresets=tm&lang=en-au&placementId=mytmlogin&hideLeftPanel=false&integratorId=prd1741.iccp&intSiteToken=tm-au&TMUO=east_6sm4uj1sACW4ugWsh6RbzrcV46PoEvK9D9uLllw4llY%3D&deviceId=kL7tOWMNO0lHQkpCRkdMTEdBSEkn%2F3f8D7FbjA&doNotTrack=false&disableAutoOptIn=false",
+      "dims": "1800x1125"
+    }
+  },
+  "eventbrite/organizer": {
+    "390": {
+      "reachedUrl": "https://www.eventbrite.com.au/organizer/overview/",
+      "dims": "780x1688"
+    },
+    "1440": {
+      "reachedUrl": "https://www.eventbrite.com.au/organizer/overview/",
+      "dims": "1800x1125"
+    }
+  }
+}

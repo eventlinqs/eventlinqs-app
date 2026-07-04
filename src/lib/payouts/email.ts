@@ -172,7 +172,7 @@ function shell(heading: string, body: string, dashboardUrl: string): string {
         </a>
       </p>
       <p style="margin-top:32px;color:#9CA3AF;font-size:12px;">
-        The EventLinqs team. The ticketing platform built for every culture.
+        The EventLinqs team. The ticketing platform built for every community.
       </p>
     </div>
   `

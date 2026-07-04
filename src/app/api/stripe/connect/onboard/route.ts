@@ -9,6 +9,8 @@ import {
   createExpressAccount,
   isAllowedConnectCountry,
 } from '@/lib/stripe/connect'
+import { getPayoutScheduleDays } from '@/lib/payments/pricing-rules'
+import { getAppUrl } from '@/lib/site-url'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,8 +22,10 @@ const RouteInput = z.object({
     .transform((c) => c.toUpperCase()),
 })
 
+// HARD-07: resolve the app origin through the shared deploy-safe helper so no
+// deployed environment can ever emit a localhost redirect into Stripe.
 function appUrl(): string {
-  return process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+  return getAppUrl()
 }
 
 /**
@@ -108,10 +112,15 @@ export async function POST(req: NextRequest) {
 
   if (!accountId) {
     try {
+      // PAY-01: single-source the payout delay from pricing_rules (the same
+      // payout_schedule_days the reserve ledger uses), so a new connected
+      // account is never left on Stripe's fast automatic default.
+      const payoutDelayDays = await getPayoutScheduleDays(country, 'AUD', org.id)
       const account = await createExpressAccount({
         organisationId: org.id,
         country,
         email: org.email ?? user.email ?? '',
+        payoutDelayDays,
       })
       accountId = account.id
       const { error: updateError } = await admin

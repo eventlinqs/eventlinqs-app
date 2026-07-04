@@ -13,6 +13,11 @@ export interface AttendeeRow {
   purchaseDate: string // order created_at, ISO
   checkedIn: boolean
   status: string // raw ticket status
+  // Marketing consent (Spam Act). True only when the attendee gave express,
+  // non-withdrawn consent for this organiser. The organiser may lawfully email
+  // only these attendees, and must include the unsubscribe link below.
+  marketingConsent?: boolean
+  unsubscribeUrl?: string | null
 }
 
 export interface OrderReportRow {

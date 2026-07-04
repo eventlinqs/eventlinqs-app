@@ -58,6 +58,7 @@ export async function applyRateLimit(
     key: `${policy.keyPrefix}:${ident}`,
     limit: policy.limit,
     windowSec: policy.windowSec,
+    failClosed: policy.failClosed,
   })
   if (!result.ok) {
     return build429(result.limit, result.remaining, result.resetMs)
@@ -78,6 +79,7 @@ export async function rateLimitWithHeaders(
     key: `${policy.keyPrefix}:${ident}`,
     limit: policy.limit,
     windowSec: policy.windowSec,
+    failClosed: policy.failClosed,
   })
   const headers = buildHeaders(result.limit, result.remaining, result.resetMs)
   if (!result.ok) {

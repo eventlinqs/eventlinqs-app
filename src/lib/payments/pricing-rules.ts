@@ -2,30 +2,40 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getRedisClient } from '@/lib/redis/client'
 
 /**
- * M6 Phase 3 (rework) - pricing rules service.
+ * Pricing rules service - the ONE resolver for every fee the platform charges,
+ * pays out, OR displays. Reads the long-format public.pricing_rules table, the
+ * single source of truth for fee values. charge (PaymentCalculator), payout
+ * (application-fee), and display (lib/pricing/live-fee) all call this resolver,
+ * so a fee can never drift between what is shown and what is charged.
  *
- * Single read path for every fee, reserve, and payout-policy value the
- * platform charges. Reads from the long-format public.pricing_rules table.
- * Production has 18 baseline rows; this service walks the precedence ladder
- * and returns the first match.
- *
- * Lookup precedence (most specific first):
- *   1. (country_code, currency, rule_type, organisation_id = X)         per-org override
- *   2. (country_code, currency, rule_type, organisation_id IS NULL)     region default
- *   3. ('GLOBAL',     currency, rule_type, organisation_id IS NULL)     global currency default
- *   4. ('GLOBAL', any currency, rule_type, organisation_id IS NULL)     global wildcard
+ * Scope precedence (most specific first - founder fee law, three scopes):
+ *   0. (rule_type, event_id = E)                                 per-EVENT override   [highest]
+ *   1. (country_code, currency, rule_type, organisation_id = X)  per-ORGANISER override
+ *   2. (country_code, currency, rule_type, org IS NULL)          region default
+ *   3. ('GLOBAL',     currency, rule_type, org IS NULL)          global currency default
+ *   4. ('GLOBAL', any currency, rule_type, org IS NULL)          global wildcard
  *   5. PricingRuleNotFoundError
+ *
+ * The per-event override is absolute for that event: it is matched on
+ * (rule_type, event_id) alone and ignores country/currency, because an event_id
+ * is globally unique and an event has exactly one organiser/currency. The org,
+ * region, and global levels are all guarded with `event_id IS NULL` so an
+ * event-scoped row can never leak into a broader lookup (no collisions).
  *
  * Effectiveness window:
  *   effective_from <= NOW() AND (effective_until IS NULL OR effective_until > NOW())
+ * Tie-breaking (multiple rows match a level): highest version wins (append-only
+ * versioning, so past orders keep their historical fee).
  *
- * Tie-breaking (multiple rows match): highest version wins.
+ * Pluggable client: getPricingRule accepts an optional Supabase client. The
+ * charge/payout paths use the default service-role admin client; the public
+ * display path (live-fee) passes the anon client so a marketing page resolves
+ * the SAME rows (pricing_rules has a public SELECT policy) without a service
+ * key. Same resolver, same precedence, one source.
  *
- * Caching:
- *   60-second TTL via Upstash Redis when configured. Falls back to direct DB
- *   reads when Redis is unavailable so tests and local dev work without
- *   Redis credentials. Admin panel writes MUST call invalidatePricingRule()
- *   for the change to land within 60 seconds.
+ * Caching: 60-second TTL via Upstash Redis when configured; falls back to direct
+ * DB reads when Redis is unavailable. Admin panel writes MUST call
+ * invalidatePricingRule() for the change to land within 60 seconds.
  */
 
 export const PRICING_RULES_CACHE_TTL_SECONDS = 60
@@ -43,6 +53,7 @@ export type PricingRuleType =
   | 'reserve_percentage'
   | 'payout_schedule_days'
   | 'application_fee_composition_mode'
+  | 'venue_revenue_share_percentage'
 
 export type PricingRuleValueType = 'percentage' | 'fixed' | 'integer'
 
@@ -72,6 +83,7 @@ export interface PricingRuleRow {
   event_type: string
   organiser_tier: string
   organisation_id: string | null
+  event_id: string | null
   value_percentage: string | null
   value_cents: string | null
   value_integer: number | null
@@ -80,6 +92,14 @@ export interface PricingRuleRow {
   effective_from: string
   effective_until: string | null
 }
+
+// Minimal structural type for the Supabase client this module reads through.
+// Both createAdminClient() (service role) and createPublicClient() (anon)
+// satisfy it, so the SAME resolver serves charge, payout, and public display.
+export type PricingReadClient = Pick<ReturnType<typeof createAdminClient>, 'from'>
+
+const RULE_SELECT_COLUMNS =
+  'id, rule_type, country_code, currency, event_type, organiser_tier, organisation_id, event_id, value_percentage, value_cents, value_integer, value_type, version, effective_from, effective_until'
 
 // Single resolver from the typed-union storage to the legacy `number`
 // the rest of the payment pipeline consumes. Throws a precise error if
@@ -126,12 +146,14 @@ export interface PricingRuleQuery {
   countryCode: string
   currency: string
   organisationId?: string | null
+  /** Per-event override scope (highest precedence). */
+  eventId?: string | null
 }
 
 export class PricingRuleNotFoundError extends Error {
   constructor(query: PricingRuleQuery) {
     super(
-      `No effective pricing rule found for rule_type=${query.ruleType} country=${query.countryCode} currency=${query.currency} organisation_id=${query.organisationId ?? 'null'}`
+      `No effective pricing rule found for rule_type=${query.ruleType} country=${query.countryCode} currency=${query.currency} organisation_id=${query.organisationId ?? 'null'} event_id=${query.eventId ?? 'null'}`
     )
     this.name = 'PricingRuleNotFoundError'
   }
@@ -141,12 +163,19 @@ interface CachedEntry {
   value: number
   valueType: PricingRuleValueType
   ruleId: string
-  source: 'org_override' | 'region_default' | 'global_currency' | 'global_wildcard'
+  source: 'event_override' | 'org_override' | 'region_default' | 'global_currency' | 'global_wildcard'
 }
 
 function cacheKey(query: PricingRuleQuery): string {
+  // Event resolution is matched on (rule_type, event_id) alone and ignores
+  // country/currency, so the event key omits them. The key holds the resolved
+  // value for that event (override OR region fall-through); a per-event admin
+  // edit invalidates exactly this key with no need to know the event currency.
+  if (query.eventId) {
+    return `pr:v2:${query.ruleType}:event:${query.eventId}`
+  }
   const orgPart = query.organisationId ?? 'null'
-  return `pr:v1:${query.ruleType}:${query.countryCode}:${query.currency}:${orgPart}`
+  return `pr:v2:${query.ruleType}:${query.countryCode}:${query.currency}:${orgPart}`
 }
 
 async function readCache(key: string): Promise<CachedEntry | null> {
@@ -177,8 +206,15 @@ async function writeCache(key: string, entry: CachedEntry): Promise<void> {
 /**
  * Resolves a single pricing rule by walking the precedence ladder.
  * Throws PricingRuleNotFoundError if no row matches at any level.
+ *
+ * @param opts.client Optional Supabase client. Defaults to the service-role
+ *   admin client (charge/payout paths). The public display path passes the
+ *   anon client so it resolves the identical rows without a service key.
  */
-export async function getPricingRule(query: PricingRuleQuery): Promise<{
+export async function getPricingRule(
+  query: PricingRuleQuery,
+  opts?: { client?: PricingReadClient }
+): Promise<{
   value: number
   valueType: PricingRuleValueType
   ruleId: string
@@ -188,12 +224,31 @@ export async function getPricingRule(query: PricingRuleQuery): Promise<{
   const cached = await readCache(key)
   if (cached) return cached
 
-  const admin = createAdminClient()
+  const client: PricingReadClient = opts?.client ?? createAdminClient()
   const orgId = query.organisationId ?? null
+  const eventId = query.eventId ?? null
 
-  // Level 1: per-org override
+  // Level 0: per-event override (absolute for that event, ignores region).
+  if (eventId) {
+    const eventMatch = await selectActiveEventRule(client, {
+      rule_type: query.ruleType,
+      event_id: eventId,
+    })
+    if (eventMatch) {
+      const entry: CachedEntry = {
+        value: resolveRuleValue(eventMatch),
+        valueType: eventMatch.value_type,
+        ruleId: eventMatch.id,
+        source: 'event_override',
+      }
+      await writeCache(key, entry)
+      return entry
+    }
+  }
+
+  // Level 1: per-org override (event_id IS NULL).
   if (orgId) {
-    const orgMatch = await selectActiveRule(admin, {
+    const orgMatch = await selectActiveRule(client, {
       rule_type: query.ruleType,
       country_code: query.countryCode,
       currency: query.currency,
@@ -211,8 +266,8 @@ export async function getPricingRule(query: PricingRuleQuery): Promise<{
     }
   }
 
-  // Level 2: region default
-  const regionMatch = await selectActiveRule(admin, {
+  // Level 2: region default (org IS NULL, event_id IS NULL).
+  const regionMatch = await selectActiveRule(client, {
     rule_type: query.ruleType,
     country_code: query.countryCode,
     currency: query.currency,
@@ -229,8 +284,8 @@ export async function getPricingRule(query: PricingRuleQuery): Promise<{
     return entry
   }
 
-  // Level 3: GLOBAL with same currency
-  const globalCurrencyMatch = await selectActiveRule(admin, {
+  // Level 3: GLOBAL with same currency.
+  const globalCurrencyMatch = await selectActiveRule(client, {
     rule_type: query.ruleType,
     country_code: 'GLOBAL',
     currency: query.currency,
@@ -250,7 +305,7 @@ export async function getPricingRule(query: PricingRuleQuery): Promise<{
   // Level 4: GLOBAL wildcard (any currency on the GLOBAL row).
   // This is the seed pattern for application_fee_composition_mode where
   // there is one GLOBAL/AUD row that conceptually applies to every currency.
-  const globalWildcardMatch = await selectActiveRuleAnyCurrency(admin, {
+  const globalWildcardMatch = await selectActiveRuleAnyCurrency(client, {
     rule_type: query.ruleType,
     country_code: 'GLOBAL',
     organisation_id: null,
@@ -284,8 +339,6 @@ export async function invalidatePricingRule(query: PricingRuleQuery): Promise<vo
   }
 }
 
-type AdminClient = ReturnType<typeof createAdminClient>
-
 interface ActiveRuleQuery {
   rule_type: PricingRuleType
   country_code: string
@@ -293,19 +346,20 @@ interface ActiveRuleQuery {
   organisation_id: string | null
 }
 
+// Region / org / global lookups. Always constrained to event_id IS NULL so an
+// event-scoped override row can never satisfy a broader-scope query.
 async function selectActiveRule(
-  admin: AdminClient,
+  client: PricingReadClient,
   q: ActiveRuleQuery
 ): Promise<PricingRuleRow | null> {
   const nowIso = new Date().toISOString()
-  let builder = admin
+  let builder = client
     .from('pricing_rules')
-    .select(
-      'id, rule_type, country_code, currency, event_type, organiser_tier, organisation_id, value_percentage, value_cents, value_integer, value_type, version, effective_from, effective_until'
-    )
+    .select(RULE_SELECT_COLUMNS)
     .eq('rule_type', q.rule_type)
     .eq('country_code', q.country_code)
     .eq('currency', q.currency)
+    .is('event_id', null)
     .lte('effective_from', nowIso)
     .or(`effective_until.is.null,effective_until.gt.${nowIso}`)
     .order('version', { ascending: false })
@@ -323,17 +377,16 @@ async function selectActiveRule(
 }
 
 async function selectActiveRuleAnyCurrency(
-  admin: AdminClient,
+  client: PricingReadClient,
   q: { rule_type: PricingRuleType; country_code: string; organisation_id: string | null }
 ): Promise<PricingRuleRow | null> {
   const nowIso = new Date().toISOString()
-  let builder = admin
+  let builder = client
     .from('pricing_rules')
-    .select(
-      'id, rule_type, country_code, currency, event_type, organiser_tier, organisation_id, value_percentage, value_cents, value_integer, value_type, version, effective_from, effective_until'
-    )
+    .select(RULE_SELECT_COLUMNS)
     .eq('rule_type', q.rule_type)
     .eq('country_code', q.country_code)
+    .is('event_id', null)
     .lte('effective_from', nowIso)
     .or(`effective_until.is.null,effective_until.gt.${nowIso}`)
     .order('version', { ascending: false })
@@ -350,22 +403,48 @@ async function selectActiveRuleAnyCurrency(
   return (data ?? null) as PricingRuleRow | null
 }
 
+// Per-event override lookup. Matched on (rule_type, event_id) alone: an event
+// is globally unique and has one currency, so an event override is absolute.
+async function selectActiveEventRule(
+  client: PricingReadClient,
+  q: { rule_type: PricingRuleType; event_id: string }
+): Promise<PricingRuleRow | null> {
+  const nowIso = new Date().toISOString()
+  const { data, error } = await client
+    .from('pricing_rules')
+    .select(RULE_SELECT_COLUMNS)
+    .eq('rule_type', q.rule_type)
+    .eq('event_id', q.event_id)
+    .lte('effective_from', nowIso)
+    .or(`effective_until.is.null,effective_until.gt.${nowIso}`)
+    .order('version', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error) {
+    throw new Error(`pricing_rules lookup failed: ${error.message}`)
+  }
+  return (data ?? null) as PricingRuleRow | null
+}
+
 /**
  * Convenience helpers that wrap getPricingRule with type-narrowed return
  * values. These are the call sites that the rest of the payment module use,
- * so the integer/percentage interpretation stays consistent.
+ * so the integer/percentage interpretation stays consistent. Each accepts an
+ * optional eventId so a per-event override propagates through charge + payout.
  */
 
 export async function getPlatformFeePercentage(
   countryCode: string,
   currency: string,
-  organisationId?: string | null
+  organisationId?: string | null,
+  eventId?: string | null
 ): Promise<number> {
   const rule = await getPricingRule({
     ruleType: 'platform_fee_percentage',
     countryCode,
     currency,
     organisationId,
+    eventId,
   })
   return rule.value
 }
@@ -373,13 +452,15 @@ export async function getPlatformFeePercentage(
 export async function getPlatformFeeFixedCents(
   countryCode: string,
   currency: string,
-  organisationId?: string | null
+  organisationId?: string | null,
+  eventId?: string | null
 ): Promise<number> {
   const rule = await getPricingRule({
     ruleType: 'platform_fee_fixed',
     countryCode,
     currency,
     organisationId,
+    eventId,
   })
   return rule.value
 }
@@ -387,13 +468,15 @@ export async function getPlatformFeeFixedCents(
 export async function getProcessingFeePercentage(
   countryCode: string,
   currency: string,
-  organisationId?: string | null
+  organisationId?: string | null,
+  eventId?: string | null
 ): Promise<number> {
   const rule = await getPricingRule({
     ruleType: 'processing_fee_percentage',
     countryCode,
     currency,
     organisationId,
+    eventId,
   })
   return rule.value
 }
@@ -401,13 +484,15 @@ export async function getProcessingFeePercentage(
 export async function getProcessingFeeFixedCents(
   countryCode: string,
   currency: string,
-  organisationId?: string | null
+  organisationId?: string | null,
+  eventId?: string | null
 ): Promise<number> {
   const rule = await getPricingRule({
     ruleType: 'processing_fee_fixed_cents',
     countryCode,
     currency,
     organisationId,
+    eventId,
   })
   return rule.value
 }
@@ -417,13 +502,15 @@ export type ProcessingFeePassThrough = 0 | 1 | 2
 export async function getProcessingFeePassThrough(
   countryCode: string,
   currency: string,
-  organisationId?: string | null
+  organisationId?: string | null,
+  eventId?: string | null
 ): Promise<ProcessingFeePassThrough> {
   const rule = await getPricingRule({
     ruleType: 'processing_fee_pass_through',
     countryCode,
     currency,
     organisationId,
+    eventId,
   })
   const v = Math.trunc(rule.value)
   if (v === 0 || v === 1 || v === 2) return v as ProcessingFeePassThrough
@@ -433,13 +520,15 @@ export async function getProcessingFeePassThrough(
 export async function getReservePercentage(
   countryCode: string,
   currency: string,
-  organisationId?: string | null
+  organisationId?: string | null,
+  eventId?: string | null
 ): Promise<number> {
   const rule = await getPricingRule({
     ruleType: 'reserve_percentage',
     countryCode,
     currency,
     organisationId,
+    eventId,
   })
   return rule.value
 }
@@ -447,13 +536,15 @@ export async function getReservePercentage(
 export async function getPayoutScheduleDays(
   countryCode: string,
   currency: string,
-  organisationId?: string | null
+  organisationId?: string | null,
+  eventId?: string | null
 ): Promise<number> {
   const rule = await getPricingRule({
     ruleType: 'payout_schedule_days',
     countryCode,
     currency,
     organisationId,
+    eventId,
   })
   return Math.trunc(rule.value)
 }
@@ -463,17 +554,42 @@ export type ApplicationFeeCompositionMode = 1 | 2
 export async function getApplicationFeeCompositionMode(
   countryCode: string,
   currency: string,
-  organisationId?: string | null
+  organisationId?: string | null,
+  eventId?: string | null
 ): Promise<ApplicationFeeCompositionMode> {
   const rule = await getPricingRule({
     ruleType: 'application_fee_composition_mode',
     countryCode,
     currency,
     organisationId,
+    eventId,
   })
   const v = Math.trunc(rule.value)
   if (v === 1 || v === 2) return v as ApplicationFeeCompositionMode
   throw new Error(
     `application_fee_composition_mode value out of range: ${rule.value} (expected 1|2)`
   )
+}
+
+/**
+ * The Venue Revenue Sharing Program share rate (a percentage of the EventLinqs
+ * platform fee), resolved through the SAME single-source resolver as every other
+ * fee. Admin-editable in /admin/venues; launch default 20 (AU/AUD + GLOBAL/AUD,
+ * seeded by migration 20260627000002). Routes through getPricingRule so the rate
+ * is never forked or hardcoded.
+ */
+export async function getVenueRevenueSharePercentage(
+  countryCode: string,
+  currency: string,
+  organisationId?: string | null,
+  eventId?: string | null
+): Promise<number> {
+  const rule = await getPricingRule({
+    ruleType: 'venue_revenue_share_percentage',
+    countryCode,
+    currency,
+    organisationId,
+    eventId,
+  })
+  return rule.value
 }

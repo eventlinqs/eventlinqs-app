@@ -91,9 +91,10 @@ export async function computeApplicationFeeCents(
   fees: FeeBreakdown,
   countryCode: string,
   currency: string,
-  organisationId?: string | null
+  organisationId?: string | null,
+  eventId?: string | null
 ): Promise<number> {
-  const mode = await getApplicationFeeCompositionMode(countryCode, currency, organisationId)
+  const mode = await getApplicationFeeCompositionMode(countryCode, currency, organisationId, eventId ?? null)
   return composeApplicationFee(fees, mode)
 }
 
@@ -119,9 +120,10 @@ export async function computeOrganiserShareCents(
   fees: FeeBreakdown,
   countryCode: string,
   currency: string,
-  organisationId?: string | null
+  organisationId?: string | null,
+  eventId?: string | null
 ): Promise<number> {
-  const appFee = await computeApplicationFeeCents(fees, countryCode, currency, organisationId)
+  const appFee = await computeApplicationFeeCents(fees, countryCode, currency, organisationId, eventId ?? null)
   return fees.total_cents - appFee
 }
 
@@ -134,10 +136,11 @@ export async function computeReserveCents(
   organiserShareCents: number,
   countryCode: string,
   currency: string,
-  organisationId?: string | null
+  organisationId?: string | null,
+  eventId?: string | null
 ): Promise<number> {
   if (organiserShareCents <= 0) return 0
-  const percent = await getReservePercentage(countryCode, currency, organisationId)
+  const percent = await getReservePercentage(countryCode, currency, organisationId, eventId ?? null)
   return Math.floor((organiserShareCents * percent) / 100)
 }
 
@@ -207,6 +210,92 @@ export function assertCanCreateDestinationCharge(
     throw new ChargePreconditionError(
       'fee_breakdown_invalid',
       `Computed application fee (${inclusiveAppFee}) is not less than total (${fees.total_cents}); destination would receive zero or negative.`
+    )
+  }
+}
+
+// ── Funds-holding model (docs/PAYMENTS-FUNDS-HOLDING.md) ────────────────────
+
+/**
+ * The amount transferred to the organiser's connected account at disbursement.
+ * Under separate charges and transfers the platform realises its fee by
+ * transferring LESS than the gross, instead of a Stripe `application_fee_amount`
+ * (Stage 5). The math is identical to `computeOrganiserShareCents`
+ * (total - the platform's keep), composed per the same pricing_rules mode, so
+ * the single-source fee law is unchanged: organiser gets the ticket price, the
+ * platform keeps its percentage + flat fee.
+ */
+export async function computeOrganiserTransferCents(
+  fees: FeeBreakdown,
+  countryCode: string,
+  currency: string,
+  organisationId?: string | null,
+  eventId?: string | null
+): Promise<number> {
+  return computeOrganiserShareCents(fees, countryCode, currency, organisationId, eventId ?? null)
+}
+
+/**
+ * Pre-condition for SELLING a ticket under the funds-holding model. The buyer
+ * charge is a PLATFORM charge (the platform is merchant of record), so the
+ * organiser's `charges_enabled` is irrelevant here; what matters is that the
+ * organiser can RECEIVE the later platform->connected transfer/payout. We still
+ * refuse to sell for an organiser who is not connected, cannot be paid out, is
+ * on hold, or sits in an unsupported country. Throws `ChargePreconditionError`.
+ */
+export function assertOrganiserCanReceiveFunds(
+  org: Pick<
+    Organisation,
+    | 'stripe_account_id'
+    | 'stripe_payouts_enabled'
+    | 'stripe_account_country'
+    | 'payout_status'
+  >,
+  fees: FeeBreakdown
+): void {
+  if (!org.stripe_account_id) {
+    throw new ChargePreconditionError(
+      'org_not_connected',
+      'Organisation has no connected Stripe account.'
+    )
+  }
+  if (!org.stripe_payouts_enabled) {
+    throw new ChargePreconditionError(
+      'org_charges_disabled',
+      'Organisation Stripe account cannot receive funds yet (payouts not enabled).'
+    )
+  }
+  if (org.payout_status !== 'active') {
+    throw new ChargePreconditionError(
+      'org_payouts_restricted',
+      `Organisation payout status is ${org.payout_status}; sales are paused.`
+    )
+  }
+  if (!getCurrencyForCountry(org.stripe_account_country)) {
+    throw new ChargePreconditionError(
+      'org_country_unsupported',
+      `Organisation country "${org.stripe_account_country ?? 'null'}" is not in the v1 Connect currency map.`
+    )
+  }
+  if (fees.total_cents <= 0) {
+    throw new ChargePreconditionError(
+      'fee_breakdown_invalid',
+      'FeeBreakdown.total_cents must be positive for a paid-event charge.'
+    )
+  }
+  // The platform's keep (inclusive composition) must be positive and strictly
+  // less than the total, else the organiser transfer would be zero or negative.
+  const inclusiveKeep = composeApplicationFee(fees, 1)
+  if (inclusiveKeep <= 0) {
+    throw new ChargePreconditionError(
+      'fee_breakdown_invalid',
+      'Computed platform fee is zero or negative; pricing_rules likely returned no platform fee.'
+    )
+  }
+  if (inclusiveKeep >= fees.total_cents) {
+    throw new ChargePreconditionError(
+      'fee_breakdown_invalid',
+      `Computed platform fee (${inclusiveKeep}) is not less than total (${fees.total_cents}); organiser would receive zero or negative.`
     )
   }
 }

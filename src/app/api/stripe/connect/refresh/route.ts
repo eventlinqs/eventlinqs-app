@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { checkRateLimit, clientIp } from '@/lib/redis/rate-limit'
 import { createAccountLink } from '@/lib/stripe/connect'
+import { getAppUrl } from '@/lib/site-url'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,8 +11,10 @@ const QuerySchema = z.object({
   org: z.string().uuid(),
 })
 
+// HARD-07: resolve the app origin through the shared deploy-safe helper so no
+// deployed environment can ever emit a localhost redirect into Stripe.
 function appUrl(): string {
-  return process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+  return getAppUrl()
 }
 
 /**

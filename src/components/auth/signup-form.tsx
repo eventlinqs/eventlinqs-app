@@ -2,9 +2,15 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import { GoogleButton } from './google-button'
 import { AuthDivider } from './auth-divider'
+import { REF_COOKIE, REF_SOURCE_COOKIE, REF_EVENT_COOKIE } from '@/lib/growth/referrals'
+
+function readCookie(name: string): string | undefined {
+  if (typeof document === 'undefined') return undefined
+  const hit = document.cookie.split('; ').find((c) => c.startsWith(`${name}=`))
+  return hit ? decodeURIComponent(hit.slice(name.length + 1)) : undefined
+}
 
 type Props = {
   role?: 'attendee' | 'organiser'
@@ -17,7 +23,6 @@ export function SignupForm({ role = 'attendee' }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
-  const supabase = createClient()
 
   const isOrganiser = role === 'organiser'
 
@@ -32,27 +37,44 @@ export function SignupForm({ role = 'attendee' }: Props) {
       return
     }
 
-    const emailRedirectTo = isOrganiser
-      ? `${window.location.origin}/auth/callback?role=organiser`
-      : `${window.location.origin}/auth/callback`
+    try {
+      // Server-side signup at /api/auth/signup creates the user via the
+      // admin API and dispatches the confirmation email through Resend.
+      // We no longer call supabase.auth.signUp directly because that path
+      // depends on Supabase's outbound SMTP, which had a 4-per-hour project
+      // cap that silently dropped confirmation emails in production.
+      // Forward the first-touch attribution captured from the share or
+      // invite-an-organiser link so the new profile records who drove it.
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          fullName,
+          email,
+          password,
+          role,
+          ref: readCookie(REF_COOKIE),
+          refSource: readCookie(REF_SOURCE_COOKIE),
+          refEvent: readCookie(REF_EVENT_COOKIE),
+        }),
+      })
+      const payload = (await res.json().catch(() => ({}))) as {
+        ok?: boolean
+        error?: string
+      }
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName, intended_role: role },
-        emailRedirectTo,
-      },
-    })
+      if (!res.ok || !payload.ok) {
+        setError(payload.error ?? 'Could not create account. Please try again.')
+        setLoading(false)
+        return
+      }
 
-    if (error) {
-      setError(error.message)
+      const nextParam = isOrganiser ? '&next=/dashboard' : ''
+      router.push(`/verify-email-sent?email=${encodeURIComponent(email)}${nextParam}`)
+    } catch {
+      setError('Could not reach the server. Check your connection and try again.')
       setLoading(false)
-      return
     }
-
-    const nextParam = isOrganiser ? '&next=/dashboard' : ''
-    router.push(`/verify-email-sent?email=${encodeURIComponent(email)}${nextParam}`)
   }
 
   return (
