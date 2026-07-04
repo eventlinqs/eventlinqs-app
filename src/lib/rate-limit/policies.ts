@@ -18,6 +18,8 @@ export type PolicyName =
   | 'auth-signup'
   | 'auth-login'
   | 'checkout-reserve'
+  | 'ai-chat'
+  | 'ai-chat-daily'
 
 export type Policy = {
   /** Stable prefix used to namespace the redis key. Keep short. */
@@ -102,5 +104,21 @@ export const POLICIES: Record<PolicyName, Policy> = {
     failClosed: true,
     rationale:
       'Reservation + checkout + squad payment-intent creation per IP per minute. 20 covers a buyer reserving several tiers and retrying a card while bouncing inventory-hold abuse and card-testing (each attempt can mint a Stripe PaymentIntent). Fail-closed: a missing Upstash config must not leave the money path unthrottled in production.',
+  },
+  'ai-chat': {
+    keyPrefix: 'ai-c',
+    limit: 10,
+    windowSec: 60,
+    failClosed: true,
+    rationale:
+      'AI assistant turns per user (or IP for guests) per minute. A human conversation runs 1 to 4 turns a minute; 10 leaves headroom for quick back-and-forth while bouncing scripted abuse. Fail-closed: every allowed turn spends real Anthropic tokens, so a missing Upstash config must not leave the AI spend path unthrottled in production.',
+  },
+  'ai-chat-daily': {
+    keyPrefix: 'ai-d',
+    limit: 120,
+    windowSec: 86400,
+    failClosed: true,
+    rationale:
+      'Daily AI assistant cap per user (or IP for guests). 120 turns a day is far beyond any legitimate support or onboarding session and caps the worst-case daily spend a single abuser can inflict, alongside the platform-wide monthly cost guard.',
   },
 }

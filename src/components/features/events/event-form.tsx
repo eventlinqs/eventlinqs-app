@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { createEvent, updateEvent } from '@/app/(dashboard)/dashboard/events/actions'
+import { AssistantPanel, type PanelSuggestion } from '@/components/ai/assistant-panel'
 import { uploadEventImage } from '@/lib/upload'
 import { getAllCommunities, type CommunitySlug } from '@/lib/communities/data'
 import {
@@ -541,8 +542,42 @@ export function EventForm({
 
   // ─── Step Renderers ────────────────────────────────────────────────────────
 
+  const applyHelperSuggestion = (s: PanelSuggestion) => {
+    if (s.kind === 'title') {
+      set('title', s.value.slice(0, 200))
+    } else if (s.kind === 'description') {
+      set('description', s.value.slice(0, 5000))
+    } else if (s.kind === 'category') {
+      const match = categories.find(c => c.name.trim().toLowerCase() === s.value.trim().toLowerCase())
+      if (match) set('category_id', match.id)
+    }
+  }
+
   const renderStep1 = () => (
     <div className="space-y-5">
+      <details className="group rounded-xl border border-gold-400/40 bg-gold-100/40">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium text-ink-900 [&::-webkit-details-marker]:hidden">
+          <span className="text-gold-800">Need a hand with the title, description, or category?</span>
+          <span className="ml-auto text-xs text-ink-600 group-open:hidden">Open the helper</span>
+          <span className="ml-auto hidden text-xs text-ink-600 group-open:inline">Close</span>
+        </summary>
+        <div className="border-t border-gold-400/30 p-3">
+          <AssistantPanel
+            assistant="event-helper"
+            title="Event writing helper"
+            intro="Ask for title ideas, a full description, or the right category. Tap Use this to drop a suggestion straight into the form."
+            placeholder="e.g. Write a description for my Afrobeats night in Geelong"
+            getDraft={() => ({ title: formData.title, description: formData.description })}
+            onApplySuggestion={applyHelperSuggestion}
+            starters={[
+              'Suggest three titles for my event',
+              'Write my event description',
+              'Which category fits my event?',
+            ]}
+          />
+        </div>
+      </details>
+
       <div>
         <label className="block text-sm font-medium text-ink-600 mb-1">
           Event Title <span className="text-red-500">*</span>

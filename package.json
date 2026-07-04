@@ -15,6 +15,7 @@
     "admin:lighthouse": "node scripts/admin-lighthouse.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.110.0",
     "@googlemaps/js-api-loader": "^2.0.2",
     "@googlemaps/markerclusterer": "^2.6.2",
     "@react-email/components": "^1.0.11",
