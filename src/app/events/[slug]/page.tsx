@@ -49,6 +49,7 @@ import { EventViewTracker } from '@/components/features/events/event-view-tracke
 import { EventSchemaJsonLd } from '@/components/features/events/event-schema-jsonld'
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import { EventShareBar } from '@/components/features/events/event-share-bar'
+import { FollowButton } from '@/components/features/follow/follow-button'
 import { EventStateBanner } from '@/components/features/events/event-state-banner'
 import { SaveEventButton } from '@/components/features/events/save-event-button'
 import { EventGallery } from '@/components/features/events/event-gallery'
@@ -783,7 +784,7 @@ export default async function EventDetailPage({ params }: Props) {
                 <Reveal as="div" className="mt-10">
                   <SectionHeader eyebrow="Organised by" title={event.organisation.name} size="sm" />
                   <div className="mt-5 rounded-2xl border border-ink-200 bg-white p-6">
-                    <div className="flex items-start gap-4">
+                    <div className="flex flex-wrap items-start gap-4">
                       <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-ink-900 text-sm font-bold text-gold-400">
                         {event.organisation.name.slice(0, 2).toUpperCase()}
                       </div>
@@ -792,6 +793,9 @@ export default async function EventDetailPage({ params }: Props) {
                           <p className="text-sm text-ink-600 line-clamp-3">{event.organisation.description}</p>
                         )}
                       </div>
+                      {/* Demand-graph follow: their next event lands in the
+                          follower's feed and alerts the moment it goes live. */}
+                      <FollowButton type="organiser" id={event.organisation.id} className="shrink-0" />
                     </div>
                   </div>
                 </Reveal>
@@ -867,23 +871,46 @@ export default async function EventDetailPage({ params }: Props) {
                     />
                   </div>
                 ) : (
-                  <div className="sticky top-20 rounded-2xl border border-ink-200 bg-white p-6 shadow-sm">
-                    <SectionHeader eyebrow="Get in" title="Tickets" size="sm" className="mb-5" />
+                  <div className="sticky top-20 space-y-5">
+                    <div className="rounded-2xl border border-ink-200 bg-white p-6 shadow-sm">
+                      <SectionHeader eyebrow="Get in" title="Tickets" size="sm" className="mb-5" />
 
-                    <TicketPanelClient
-                      eventId={event.id}
-                      eventCreatedAt={event.created_at}
-                      allTiers={enrichedAllTiers}
-                      addons={event.event_addons ?? []}
-                      isTicketingSuspended={isTicketingSuspended}
-                      defaultCurrency="AUD"
-                      waitlistEnabled={event.waitlist_enabled ?? false}
-                      squadBookingEnabled={event.squad_booking_enabled ?? false}
-                      tierInventory={tierInventory}
-                      saleBlocked={saleBlocked}
-                      feeRates={feeRates}
-                      feePassType={eventFeePassType}
-                    />
+                      <TicketPanelClient
+                        eventId={event.id}
+                        eventCreatedAt={event.created_at}
+                        allTiers={enrichedAllTiers}
+                        addons={event.event_addons ?? []}
+                        isTicketingSuspended={isTicketingSuspended}
+                        defaultCurrency="AUD"
+                        waitlistEnabled={event.waitlist_enabled ?? false}
+                        squadBookingEnabled={event.squad_booking_enabled ?? false}
+                        tierInventory={tierInventory}
+                        saleBlocked={saleBlocked}
+                        feeRates={feeRates}
+                        feePassType={eventFeePassType}
+                      />
+                    </div>
+
+                    {/* The acquisition loop at the decision point: the share
+                        card rides with the sticky panel so the ticket column
+                        never runs empty on a long page (desktop), and every
+                        share link is attributed (share-a-ticket). */}
+                    <div className="hidden rounded-2xl border border-gold-500/30 bg-white p-6 shadow-sm lg:block">
+                      <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-gold-700">
+                        Bring your people
+                      </p>
+                      <p className="mt-2 text-sm text-ink-600">
+                        Nights out are better booked together. Send this to the group chat.
+                      </p>
+                      <div className="mt-4">
+                        <EventShareBar
+                          eventTitle={event.title}
+                          eventDate={shortDate}
+                          eventUrl={`${baseUrl}/events/${event.slug}`}
+                          variant="light"
+                        />
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
