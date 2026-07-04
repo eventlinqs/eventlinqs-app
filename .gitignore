@@ -145,6 +145,7 @@ lighthouserc.admin.json
 
 design-captures/
 scripts/design-capture.mjs
+scripts/after-capture-all.mjs
 scripts/axe-scene.mjs
 qa/
 
