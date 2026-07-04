@@ -118,10 +118,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, error: message }, { status: 400 })
   }
 
-  const actionLink = data?.properties?.action_link
-  if (!actionLink) {
-    // The user was created but we got no action link - delete-and-fail is the
-    // safe move; otherwise the account is stranded with no way to verify.
+  // Email a link to OUR /auth/confirm route built from the hashed token, never
+  // the raw GoTrue action_link. The action_link runs the implicit flow and
+  // redirects with the session in the URL FRAGMENT (#access_token=...), which a
+  // server route can never read: /auth/callback saw no ?code= and every
+  // email-confirm click dead-ended on /login?error=auth_callback_failed with
+  // the organiser role never applied. /auth/confirm verifies the token_hash
+  // server-side (verifyOtp), sets the session cookies, applies the organiser
+  // role, and lands the user signed in on /dashboard.
+  const hashedToken = data?.properties?.hashed_token
+  if (!hashedToken) {
+    // The user was created but we got no verification token - delete-and-fail
+    // is the safe move; otherwise the account is stranded with no way to verify.
     if (data?.user?.id) {
       await admin.auth.admin.deleteUser(data.user.id).catch(() => {})
     }
@@ -131,8 +139,13 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  const confirmationUrl =
+    `${origin}/auth/confirm?token_hash=${encodeURIComponent(hashedToken)}&type=signup` +
+    (body.role === 'organiser' ? '&role=organiser' : '') +
+    `&next=${encodeURIComponent('/dashboard')}`
+
   try {
-    await sendSignupConfirmation({ to: body.email, confirmationUrl: actionLink })
+    await sendSignupConfirmation({ to: body.email, confirmationUrl })
   } catch (sendErr) {
     // Email send failed. We must not leave a half-created account that can
     // never receive a re-send via the same path. Roll back the user so the
