@@ -206,7 +206,7 @@ export async function sendConfirmationEmail(
   }
 }
 
-function buildConfirmationEmailHtml(
+export function buildConfirmationEmailHtml(
   order: EmailOrder,
   event: EmailEvent,
   tickets: EmailTicket[],
@@ -338,7 +338,7 @@ function buildConfirmationEmailHtml(
 </html>`
 }
 
-function buildConfirmationEmailText(
+export function buildConfirmationEmailText(
   order: EmailOrder,
   event: EmailEvent,
   tickets: EmailTicket[],
