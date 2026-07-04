@@ -5,6 +5,8 @@ description: The EventLinqs moat doctrine for radically filling every organiser'
 
 # Event Demand Engine: the moat that fills every event
 
+**Read alongside:** `docs/MOAT-DOCTRINE.md`, the defensibility bar. This skill holds the mechanics that fill events; the doctrine names the moat stack each feature must deepen and gives the one defensibility test every build must pass.
+
 ## The one idea
 
 Every cheap, low-fee ticketing platform is a **passive listing tool**. It puts the event online and leaves the organiser to drive their own traffic. EventLinqs is an **active demand engine**. We own a growing graph of attendees and their tastes, and we proactively put each organiser's event in front of the exact people most likely to buy, at the right moment, on the channel that actually converts, then turn each buyer into someone who brings more buyers, and if the room is filling too slowly the system intervenes automatically to sell it out.
