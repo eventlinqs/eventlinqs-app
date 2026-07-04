@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { z } from 'zod'
 import { getOrCreateGuestSessionId } from '@/lib/auth/guest-session'
+import { sendConfirmationEmail } from '@/lib/email/order-confirmation'
 
 const RegisterFreeSchema = z.object({
   event_id: z.string().uuid(),
@@ -198,6 +199,14 @@ export async function registerFreeTickets(
   if (confirmError) {
     console.error('[registerFreeTickets] confirm_order error:', confirmError)
     return { error: 'Order created but could not be confirmed. Please contact support.' }
+  }
+
+  // Send the confirmation email with the ticket QR, the same as the paid path.
+  // Best-effort: a mail fault must never fail an already-confirmed free order.
+  try {
+    await sendConfirmationEmail(adminClient, order_id, null)
+  } catch (emailErr) {
+    console.error('[registerFreeTickets] confirmation email failed (non-fatal):', emailErr)
   }
 
   return { order_id }
