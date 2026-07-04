@@ -98,6 +98,10 @@ export interface GeneratedSeat {
   blocked?: boolean
   x: number
   y: number
+  /** Builder round-trip: the block-scoped seat reference ("A-3", "Table 1-2"). */
+  ref?: string
+  /** Builder round-trip: the block that generated this seat. */
+  blockId?: string
 }
 
 export interface GeneratedRow {
@@ -221,6 +225,8 @@ function generateRowsBlock(block: RowsBlock): GeneratedRow[] {
         ...(block.blockedSeats?.includes(ref) ? { blocked: true } : {}),
         x: round2(x),
         y: round2(y),
+        ref,
+        blockId: block.id,
       })
     }
     if (seats.length > 0) rows.push({ label, seats })
@@ -265,6 +271,8 @@ function generateTableBlock(block: TableBlock): GeneratedRow {
       ...(block.blockedSeats?.includes(ref) ? { blocked: true } : {}),
       x: round2(x),
       y: round2(y),
+      ref,
+      blockId: block.id,
     })
   }
   return { label: block.label, seats }

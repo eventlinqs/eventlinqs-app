@@ -9,8 +9,9 @@ import type {
 import { jsonAsStringArray } from '@/lib/json-narrow'
 import { priceLabel, lowestPaidCents } from '@/lib/events/price-label'
 import {
-  SeatSelector, type SeatData, type SectionData,
+  SeatSelector, type SeatData, type SectionData, type SeatAreaData,
 } from '@/components/checkout/seat-selector'
+import { isFlagEnabled } from '@/lib/flags'
 import { SocialProofBadge } from '@/components/inventory/social-proof-badge'
 import { GoingProof } from '@/components/inventory/going-proof'
 import { TicketPanelClient } from '@/components/features/events/ticket-panel-client'
@@ -350,7 +351,7 @@ export default async function EventDetailPage({ params }: Props) {
   const seatsPromise = event.has_reserved_seating
     ? (async () => {
         const seatSupabase = createPublicClient()
-        const [seatsResult, sectionsResult] = await Promise.all([
+        const [seatsResult, sectionsResult, mapResult] = await Promise.all([
           seatSupabase
             .from('seats')
             .select('id, row_label, seat_number, seat_type, status, x, y, price_cents, seat_map_section_id, ticket_tier_id')
@@ -364,8 +365,17 @@ export default async function EventDetailPage({ params }: Props) {
                 .eq('seat_map_id', event.seat_map_id)
                 .order('sort_order')
             : Promise.resolve({ data: [] as { id: string; name: string; color: string }[], error: null }),
+          // Standing/GA zones drawn on the chart (display-only; they sell
+          // through their bound GA tier's normal capacity).
+          event.seat_map_id
+            ? seatSupabase
+                .from('seat_maps')
+                .select('layout')
+                .eq('id', event.seat_map_id)
+                .maybeSingle()
+            : Promise.resolve({ data: null, error: null }),
         ])
-        return { seatsResult, sectionsResult }
+        return { seatsResult, sectionsResult, mapResult }
       })()
     : Promise.resolve(null)
 
@@ -376,6 +386,7 @@ export default async function EventDetailPage({ params }: Props) {
     related,
     seatsData,
     feeRates,
+    seatedFlagEnabled,
   ] = await Promise.all([
     getDynamicPriceMap(allTiers.map(t => t.id)),
     getEventInventoryStatic(event.id),
@@ -402,6 +413,7 @@ export default async function EventDetailPage({ params }: Props) {
       eventId: event.id,
       currency: allTiers[0]?.currency ?? 'AUD',
     }),
+    isFlagEnabled('seated_events'),
   ])
   const eventFeePassType = (event.fee_pass_type ?? 'pass_to_buyer') as FeePassType
 
@@ -429,8 +441,9 @@ export default async function EventDetailPage({ params }: Props) {
 
   let eventSeats: SeatData[] = []
   let eventSections: SectionData[] = []
+  let eventAreas: SeatAreaData[] = []
   if (seatsData) {
-    const { seatsResult, sectionsResult } = seatsData
+    const { seatsResult, sectionsResult, mapResult } = seatsData
     if (seatsResult.error) {
       console.error('[event-detail] failed to load seats:', seatsResult.error)
     }
@@ -441,7 +454,23 @@ export default async function EventDetailPage({ params }: Props) {
       ticket_tier_id: s.ticket_tier_id ?? null,
     }))
     eventSections = (sectionsResult.data ?? []) as SectionData[]
+    const rawAreas = (mapResult?.data?.layout as { areas?: SeatAreaData[] } | null)?.areas
+    if (Array.isArray(rawAreas)) eventAreas = rawAreas
   }
+
+  // The seated experience runs only when the flag is on AND the event has a
+  // materialised chart; otherwise the event sells as general admission.
+  const seatedActive = event.has_reserved_seating && seatedFlagEnabled && eventSeats.length > 0
+
+  // Mixed events: tiers not bound to any seat sell as general admission
+  // alongside the chart (a standing-zone tier, a GA balcony). Seat-bound
+  // tiers stay out of the GA panel so a buyer cannot bypass seat selection.
+  const seatBoundTierIds = new Set(
+    eventSeats.map(s => s.ticket_tier_id).filter(Boolean) as string[]
+  )
+  const gaTiersAlongsideSeats = seatedActive
+    ? enrichedAllTiers.filter(t => !seatBoundTierIds.has(t.id) && !t.seat_map_section_id)
+    : []
 
   const tierPriceCentsMap: Record<string, number> = {}
   for (const t of allTiers) tierPriceCentsMap[t.id] = resolvePrice(t)
@@ -471,7 +500,7 @@ export default async function EventDetailPage({ params }: Props) {
   const tierInventory = Object.fromEntries(tierInventoryEntries)
 
   const isSoldOut =
-    !event.has_reserved_seating &&
+    !seatedActive &&
     !!eventInventory &&
     eventInventory.total_capacity > 0 &&
     eventInventory.available === 0
@@ -691,8 +720,8 @@ export default async function EventDetailPage({ params }: Props) {
         {/* Content column + Ticket panel */}
         <section className="bg-canvas pt-12 sm:pt-16">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className={event.has_reserved_seating ? 'space-y-10' : 'flex flex-col gap-10 lg:flex-row'}>
-              <div className={event.has_reserved_seating ? '' : 'flex-1 min-w-0'}>
+            <div className={seatedActive ? 'space-y-10' : 'flex flex-col gap-10 lg:flex-row'}>
+              <div className={seatedActive ? '' : 'flex-1 min-w-0'}>
                 {event.is_age_restricted && (
                   <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-warning/15 px-3 py-1.5 text-xs font-semibold text-warning">
                     <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
@@ -839,27 +868,53 @@ export default async function EventDetailPage({ params }: Props) {
               {/* Ticket panel */}
               <div
                 id="tickets"
-                className={`w-full shrink-0 ${event.has_reserved_seating ? '' : 'lg:w-[360px]'}`}
+                className={`w-full shrink-0 ${seatedActive ? '' : 'lg:w-[360px]'}`}
               >
-                {event.has_reserved_seating ? (
-                  <div className="rounded-2xl border border-ink-200 bg-white p-6 shadow-sm">
-                    <SectionHeader eyebrow="Seating" title="Choose your seats" size="sm" className="mb-5" />
-                    {isTicketingSuspended ? (
-                      <p className="rounded-lg bg-warning/10 px-4 py-3 text-sm text-warning">
-                        Ticketing is temporarily paused for this event.
-                      </p>
-                    ) : saleBlocked ? (
-                      <TicketsNotOnSale embedded />
-                    ) : (
-                      <SeatSelector
-                        eventId={event.id}
-                        seats={eventSeats}
-                        sections={eventSections}
-                        defaultPriceCents={defaultPriceCents}
-                        currency={allTiers[0]?.currency ?? 'AUD'}
-                        maxPerOrder={allTiers[0]?.max_per_order ?? 10}
-                        tierPriceCentsMap={tierPriceCentsMap}
-                      />
+                {seatedActive ? (
+                  <div className="space-y-6">
+                    <div className="rounded-2xl border border-ink-200 bg-white p-6 shadow-sm">
+                      <SectionHeader eyebrow="Seating" title="Choose your seats" size="sm" className="mb-5" />
+                      {isTicketingSuspended ? (
+                        <p className="rounded-lg bg-warning/10 px-4 py-3 text-sm text-warning">
+                          Ticketing is temporarily paused for this event.
+                        </p>
+                      ) : saleBlocked ? (
+                        <TicketsNotOnSale embedded />
+                      ) : (
+                        <SeatSelector
+                          eventId={event.id}
+                          seats={eventSeats}
+                          sections={eventSections}
+                          areas={eventAreas}
+                          defaultPriceCents={defaultPriceCents}
+                          currency={allTiers[0]?.currency ?? 'AUD'}
+                          maxPerOrder={allTiers[0]?.max_per_order ?? 10}
+                          tierPriceCentsMap={tierPriceCentsMap}
+                        />
+                      )}
+                    </div>
+
+                    {/* Mixed events: tiers with no seats (standing zones, GA
+                        balconies) sell through the standard panel beside the
+                        chart. Seat-bound tiers never appear here. */}
+                    {gaTiersAlongsideSeats.length > 0 && !saleBlocked && !isTicketingSuspended && (
+                      <div className="rounded-2xl border border-ink-200 bg-white p-6 shadow-sm lg:max-w-md">
+                        <SectionHeader eyebrow="No seat needed" title="General admission" size="sm" className="mb-5" />
+                        <TicketPanelClient
+                          eventId={event.id}
+                          eventCreatedAt={event.created_at}
+                          allTiers={gaTiersAlongsideSeats}
+                          addons={event.event_addons ?? []}
+                          isTicketingSuspended={isTicketingSuspended}
+                          defaultCurrency="AUD"
+                          waitlistEnabled={event.waitlist_enabled ?? false}
+                          squadBookingEnabled={event.squad_booking_enabled ?? false}
+                          tierInventory={tierInventory}
+                          saleBlocked={saleBlocked}
+                          feeRates={feeRates}
+                          feePassType={eventFeePassType}
+                        />
+                      </div>
                     )}
                   </div>
                 ) : isSoldOut && !saleBlocked ? (

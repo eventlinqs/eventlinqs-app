@@ -23,10 +23,25 @@ export interface SectionData {
   color: string
 }
 
+/** Standing/GA zone drawn on the chart. Display-only here: these sell
+ *  through their bound tier's normal capacity, never as seats. */
+export interface SeatAreaData {
+  label: string
+  section: string
+  tier_name?: string
+  color: string
+  x: number
+  y: number
+  width: number
+  height: number
+  capacity?: number
+}
+
 interface Props {
   eventId: string
   seats: SeatData[]
   sections: SectionData[]
+  areas?: SeatAreaData[]
   defaultPriceCents: number
   currency: string
   maxPerOrder: number
@@ -59,6 +74,7 @@ export function SeatSelector({
   eventId,
   seats,
   sections,
+  areas = [],
   defaultPriceCents,
   currency,
   maxPerOrder,
@@ -75,6 +91,7 @@ export function SeatSelector({
   // Primitive keys: only recompute memos when content changes, not on every array reference change
   const seatsKey = seats.map(s => `${s.id}:${s.status}`).join('|')
   const sectionsKey = sections.map(s => `${s.id}:${s.color}:${s.name}`).join('|')
+  const areasKey = areas.map(a => `${a.label}:${a.x}:${a.y}:${a.width}:${a.height}`).join('|')
   const selectedIdsKey = [...selectedIds].sort().join(',')
 
   const sectionColorMap = useMemo(
@@ -112,8 +129,13 @@ export function SeatSelector({
         rowLabels: [] as Array<{ key: string; label: string; y: number }>,
       }
     }
+    // Bounds span seats AND standing zones so a drawn zone is never clipped.
     const xs = seats.map(s => s.x)
     const ys = seats.map(s => s.y)
+    for (const a of areas) {
+      xs.push(a.x, a.x + a.width)
+      ys.push(a.y, a.y + a.height)
+    }
     const minX = Math.min(...xs)
     const maxX = Math.max(...xs)
     const minY = Math.min(...ys)
@@ -148,7 +170,7 @@ export function SeatSelector({
       rowLabels,
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seatsKey])
+  }, [seatsKey, areasKey])
 
   // Per-section price summary (min / max) for legend
   const sectionPriceSummary = useMemo(() => {
@@ -390,6 +412,15 @@ export function SeatSelector({
           <span className="h-3 w-3 rounded-sm bg-ink-400" />
           <span className="text-ink-600">Unavailable</span>
         </div>
+        {seats.some(s => s.seat_type === 'accessible' || s.seat_type === 'companion') && (
+          <div className="flex items-center gap-1.5">
+            <span
+              className="h-3 w-3 rounded-sm"
+              style={{ backgroundColor: GOLD, outline: '2px solid #FFFFFF', outlineOffset: '-2px' }}
+            />
+            <span className="text-ink-600">Accessible and companion</span>
+          </div>
+        )}
 
         {sections.length > 0 && (
           <span className="h-4 w-px bg-ink-200" aria-hidden="true" />
@@ -479,6 +510,28 @@ export function SeatSelector({
                 {r.label}
               </text>
             ))}
+
+            {/* Standing/GA zones: display-only context beneath the seats
+                (their tickets sell through the general-admission panel). */}
+            {areas.map(area => {
+              const ax = area.x - minX + PADDING + ROW_LABEL_GUTTER
+              const ay = area.y - minY + PADDING + STAGE_BAND
+              return (
+                <g key={`${area.label}-${area.x}-${area.y}`} aria-hidden="true">
+                  <rect
+                    x={ax} y={ay} width={area.width} height={area.height} rx={10}
+                    fill={area.color} fillOpacity={0.14}
+                    stroke={area.color} strokeWidth={1.5} strokeDasharray="6 4"
+                  />
+                  <text x={ax + area.width / 2} y={ay + area.height / 2 - 2} textAnchor="middle" fontSize={11} fontWeight={700} fill={INK_900}>
+                    {area.label}
+                  </text>
+                  <text x={ax + area.width / 2} y={ay + area.height / 2 + 12} textAnchor="middle" fontSize={9} fill="#6B7280">
+                    General admission
+                  </text>
+                </g>
+              )
+            })}
 
             {/* Seats first, then hover overlay - overlay MUST render last so it layers on top */}
             {seatElements}

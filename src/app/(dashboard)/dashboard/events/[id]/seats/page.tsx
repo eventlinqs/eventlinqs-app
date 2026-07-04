@@ -49,7 +49,7 @@ export default async function SeatsManagementPage({ params }: Props) {
   const [seatsResult, sectionsResult] = await Promise.all([
     supabase
       .from('seats')
-      .select('id, row_label, seat_number, seat_type, status, held_reason, seat_map_section_id')
+      .select('id, row_label, seat_number, seat_type, status, held_reason, seat_map_section_id, x, y')
       .eq('event_id', eventId)
       .order('row_label')
       .order('seat_number'),

@@ -11,6 +11,16 @@ interface Seat {
   status: string
   held_reason: string | null
   seat_map_section_id: string | null
+  x?: number | string | null
+  y?: number | string | null
+}
+
+const MAP_STATUS_FILL: Record<string, string> = {
+  available: '#4CAF50',
+  held: '#F59E0B',
+  reserved: '#D4A017',
+  sold: '#4A4A4A',
+  blocked: '#374151',
 }
 
 interface Section {
@@ -119,6 +129,48 @@ export function SeatsManagementClient({ eventId, seats, sections }: Props) {
           </div>
         ))}
       </div>
+
+      {/* Room view: what is sold and what remains, at a glance. Same
+          coordinates the attendee map renders; colour is the live status. */}
+      {seatList.some(s => Number.isFinite(Number(s.x)) && Number.isFinite(Number(s.y))) && (
+        <div className="rounded-xl border border-ink-200 bg-white p-4">
+          <div className="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-600">
+            <span className="font-semibold uppercase tracking-widest text-ink-400">Room view</span>
+            {Object.entries(MAP_STATUS_FILL).map(([status, fill]) => (
+              <span key={status} className="inline-flex items-center gap-1.5">
+                <span className="h-3 w-3 rounded-sm" style={{ background: fill }} />
+                {STATUS_LABEL[status]?.label ?? status}
+              </span>
+            ))}
+          </div>
+          {(() => {
+            const pts = seatList
+              .map(s => ({ ...s, nx: Number(s.x), ny: Number(s.y) }))
+              .filter(s => Number.isFinite(s.nx) && Number.isFinite(s.ny))
+            const minX = Math.min(...pts.map(s => s.nx)) - 24
+            const minY = Math.min(...pts.map(s => s.ny)) - 24
+            const w = Math.max(...pts.map(s => s.nx)) - minX + 24
+            const h = Math.max(...pts.map(s => s.ny)) - minY + 24
+            return (
+              <div className="overflow-auto">
+                <svg viewBox={`${minX} ${minY} ${w} ${h}`} className="h-auto w-full" style={{ maxHeight: 360 }} role="img" aria-label="Seat status map">
+                  {pts.map(s => (
+                    <circle
+                      key={s.id}
+                      cx={s.nx}
+                      cy={s.ny}
+                      r={8}
+                      fill={MAP_STATUS_FILL[s.status] ?? '#9CA3AF'}
+                    >
+                      <title>{`${s.row_label} ${s.seat_number}: ${STATUS_LABEL[s.status]?.label ?? s.status}`}</title>
+                    </circle>
+                  ))}
+                </svg>
+              </div>
+            )
+          })()}
+        </div>
+      )}
 
       {error && (
         <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
