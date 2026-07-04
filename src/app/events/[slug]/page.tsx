@@ -7,6 +7,7 @@ import type {
   Event, TicketTier, Organisation, EventCategory, EventAddon,
 } from '@/types/database'
 import { jsonAsStringArray } from '@/lib/json-narrow'
+import { priceLabel, lowestPaidCents } from '@/lib/events/price-label'
 import {
   SeatSelector, type SeatData, type SectionData,
 } from '@/components/checkout/seat-selector'
@@ -261,16 +262,9 @@ function formatShortDate(iso: string, timezone: string) {
 
 function cheapestPrice(tiers: { price: number; currency: string }[]): string | null {
   if (!tiers.length) return null
-  // Genuinely free only when EVERY tier is $0. When a $0 tier (e.g. a
-  // free RSVP) coexists with paid tiers, the event is a paid event and
-  // must advertise its lowest PAID price, never "Free entry" (deriving
-  // free-ness from min(price) mislabelled paid events as free).
-  const paid = tiers.filter(t => t.price > 0)
-  if (paid.length === 0) return 'Free entry'
-  const m = paid.reduce((x, t) => (t.price < x.price ? t : x), paid[0])
-  const dollars = m.price / 100
-  const formatted = Number.isInteger(dollars) ? `$${dollars}` : `$${dollars.toFixed(2)}`
-  return `From ${m.currency ?? 'AUD'} ${formatted}`
+  // The shared price-label rule: free only when EVERY tier is $0, otherwise
+  // the lowest PAID price (see src/lib/events/price-label.ts).
+  return priceLabel(tiers, 'Free entry')
 }
 
 export default async function EventDetailPage({ params }: Props) {
@@ -490,7 +484,10 @@ export default async function EventDetailPage({ params }: Props) {
     eventIsPaid(allTiers) && !isOrganiserSellable(event.organisation)
 
   const soldOutRelated: EventSoldOutRelated[] = related.slice(0, 3).map(e => {
-    const firstTier = e.ticket_tiers?.[0]
+    const tiers = e.ticket_tiers ?? []
+    // Lowest PAID price (the shared price-label rule); 0 only when the event
+    // is genuinely free (every tier $0). The first tier is not the price.
+    const paid = lowestPaidCents(tiers)
     return {
       id: e.id,
       slug: e.slug,
@@ -500,8 +497,8 @@ export default async function EventDetailPage({ params }: Props) {
       venue_country: e.venue_country,
       cover_image_url: e.cover_image_url,
       category_name: e.category?.name ?? null,
-      from_price_cents: firstTier?.price ?? null,
-      currency: firstTier?.currency ?? null,
+      from_price_cents: tiers.length === 0 ? null : paid ?? 0,
+      currency: tiers[0]?.currency ?? null,
     }
   })
 

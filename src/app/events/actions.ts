@@ -1,6 +1,7 @@
 'use server'
 
 import { fetchPublicEvents } from '@/lib/events'
+import { lowestPaidCents } from '@/lib/events/price-label'
 import { projectToCardData } from '@/lib/events/event-card-projection'
 import {
   parseEventsSearchParams,
@@ -78,9 +79,9 @@ export async function loadEventsInBbox(
   const points: MapEventPoint[] = []
   for (const e of result.events) {
     if (e.venue_latitude === null || e.venue_longitude === null) continue
-    const cheapest = e.ticket_tiers.length > 0
-      ? Math.min(...e.ticket_tiers.map(t => t.price))
-      : null
+    // Shared price-label rule: free only when EVERY tier is $0; a paid event
+    // advertises its lowest PAID price (src/lib/events/price-label.ts).
+    const lowestPaid = lowestPaidCents(e.ticket_tiers)
     const currency = e.ticket_tiers[0]?.currency ?? 'AUD'
     points.push({
       id: e.id,
@@ -88,8 +89,8 @@ export async function loadEventsInBbox(
       title: e.title,
       venue_city: e.venue_city,
       start_date: e.start_date,
-      starting_from_cents: cheapest,
-      is_free: e.is_free === true || (cheapest !== null && cheapest === 0),
+      starting_from_cents: lowestPaid,
+      is_free: e.is_free === true || (e.ticket_tiers.length > 0 && lowestPaid === null),
       currency,
       lat: e.venue_latitude,
       lng: e.venue_longitude,
