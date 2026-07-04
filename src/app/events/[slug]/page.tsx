@@ -351,13 +351,35 @@ export default async function EventDetailPage({ params }: Props) {
   const seatsPromise = event.has_reserved_seating
     ? (async () => {
         const seatSupabase = createPublicClient()
+        // PostgREST caps a single response at 1,000 rows, which silently
+        // truncated charts beyond 1,000 seats (found by the 1,200-seat
+        // performance proof). Page in 1,000-seat chunks; hard stop at 10,000.
+        // Bound outside the closures: TS null-narrowing on `event` does not
+        // flow into deferred functions.
+        const seatsEventId = event.id
+        const fetchAllSeats = async () => {
+          const PAGE = 1000
+          const all: NonNullable<Awaited<ReturnType<typeof firstPage>>['data']> = []
+          function firstPage(from: number) {
+            return seatSupabase
+              .from('seats')
+              .select('id, row_label, seat_number, seat_type, status, x, y, price_cents, seat_map_section_id, ticket_tier_id')
+              .eq('event_id', seatsEventId)
+              .order('row_label')
+              .order('seat_number')
+              .order('id')
+              .range(from, from + PAGE - 1)
+          }
+          for (let from = 0; from < 10000; from += PAGE) {
+            const { data, error } = await firstPage(from)
+            if (error) return { data: all, error }
+            all.push(...(data ?? []))
+            if (!data || data.length < PAGE) break
+          }
+          return { data: all, error: null }
+        }
         const [seatsResult, sectionsResult, mapResult] = await Promise.all([
-          seatSupabase
-            .from('seats')
-            .select('id, row_label, seat_number, seat_type, status, x, y, price_cents, seat_map_section_id, ticket_tier_id')
-            .eq('event_id', event.id)
-            .order('row_label')
-            .order('seat_number'),
+          fetchAllSeats(),
           event.seat_map_id
             ? seatSupabase
                 .from('seat_map_sections')

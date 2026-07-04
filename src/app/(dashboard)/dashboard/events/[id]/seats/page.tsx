@@ -46,13 +46,31 @@ export default async function SeatsManagementPage({ params }: Props) {
     )
   }
 
+  // Chunked past PostgREST's 1,000-row response cap so large charts show
+  // every seat (same fix as the attendee map).
+  const fetchAllSeats = async () => {
+    const PAGE = 1000
+    function pageQuery(from: number) {
+      return supabase
+        .from('seats')
+        .select('id, row_label, seat_number, seat_type, status, held_reason, seat_map_section_id, x, y')
+        .eq('event_id', eventId)
+        .order('row_label')
+        .order('seat_number')
+        .order('id')
+        .range(from, from + PAGE - 1)
+    }
+    const all: NonNullable<Awaited<ReturnType<typeof pageQuery>>['data']> = []
+    for (let from = 0; from < 10000; from += PAGE) {
+      const { data, error } = await pageQuery(from)
+      if (error) return { data: all, error }
+      all.push(...(data ?? []))
+      if (!data || data.length < PAGE) break
+    }
+    return { data: all, error: null }
+  }
   const [seatsResult, sectionsResult] = await Promise.all([
-    supabase
-      .from('seats')
-      .select('id, row_label, seat_number, seat_type, status, held_reason, seat_map_section_id, x, y')
-      .eq('event_id', eventId)
-      .order('row_label')
-      .order('seat_number'),
+    fetchAllSeats(),
     event.seat_map_id
       ? supabase
           .from('seat_map_sections')

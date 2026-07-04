@@ -31,6 +31,12 @@ if (!BASE) throw new Error('usage: node --experimental-strip-types scripts/seati
 const OUT = 'docs/seating/evidence'
 fs.mkdirSync(OUT, { recursive: true })
 
+// Re-runnable: STEPS=perf,free,paid,scan,room re-drives only those stages
+// (deterministic ids make the setup stages idempotent to skip).
+const STEPS = new Set(
+  (process.env.STEPS ?? 'builder,freeevent,maps,perf,free,paid,scan,room').split(','),
+)
+
 const PROD_REF = 'gndnldyfudbytbboxesk'
 const env = {}
 for (const line of fs.readFileSync('.env.test', 'utf8').split(/\r?\n/)) {
@@ -111,7 +117,7 @@ const storageState = await authed.storageState()
 console.log('[drive] login ok')
 
 // ── 2. Build the comedy chart THROUGH THE BUILDER UI ────────────────────────
-{
+if (STEPS.has('builder')) {
   const page = await authed.newPage()
   await page.goto(`${BASE}/dashboard/venues/${builderVenueId}/seat-maps`, { waitUntil: 'load', timeout: 90000 })
   await page.getByRole('button', { name: /New seating chart|Build your first chart/ }).first().click()
@@ -144,13 +150,17 @@ console.log('[drive] login ok')
   await page.close()
 }
 
-// The chart the UI just saved:
+// The chart the UI saved (this run or a prior one):
 const builtMap = (await q(`seat_maps?venue_id=eq.${builderVenueId}&select=id,name,total_seats,layout&order=created_at.desc&limit=1`))[0]
-proofs.steps.builder.map = { id: builtMap.id, name: builtMap.name, total_seats: builtMap.total_seats }
+proofs.steps.builder = {
+  ...(proofs.steps.builder ?? {}),
+  map: { id: builtMap.id, name: builtMap.name, total_seats: builtMap.total_seats },
+}
 console.log('[drive] builder chart saved:', builtMap.total_seats, 'seats')
 
 // ── 3. Free seated event ON the UI-built chart ──────────────────────────────
 const freeEventId = uuidFrom('drive:free-event')
+if (STEPS.has('freeevent')) {
 const cover = (await q(`events?status=eq.published&select=cover_image_url&cover_image_url=not.is.null&limit=1`))[0].cover_image_url
 const cat = (await q(`event_categories?slug=eq.comedy&select=id`))[0]
 await upsert('events', {
@@ -183,9 +193,10 @@ for (const [ti, tier] of [
 const freeSeatCount = await rpc('materialize_seats', { p_event_id: freeEventId, p_seat_map_id: builtMap.id })
 proofs.steps.freeEvent = { freeEventId, seats: Number(freeSeatCount) }
 console.log('[drive] free event materialised from the UI-built chart:', freeSeatCount, 'seats')
+}
 
 // ── 4. Attendee map captures + large-chart performance ──────────────────────
-for (const [label, opts] of [['desktop', DESKTOP], ['mobile', MOBILE]]) {
+if (STEPS.has('maps')) for (const [label, opts] of [['desktop', DESKTOP], ['mobile', MOBILE]]) {
   const ctx = await browser.newContext(opts)
   const page = await ctx.newPage()
   await page.goto(`${BASE}/events/${PAID_SLUG}`, { waitUntil: 'load', timeout: 90000 })
@@ -194,7 +205,7 @@ for (const [label, opts] of [['desktop', DESKTOP], ['mobile', MOBILE]]) {
   await shot(page, `attendee-map-${label}`)
   await ctx.close()
 }
-{
+if (STEPS.has('perf')) {
   const ctx = await browser.newContext(MOBILE)
   const page = await ctx.newPage()
   const t0 = Date.now()
@@ -215,7 +226,7 @@ for (const [label, opts] of [['desktop', DESKTOP], ['mobile', MOBILE]]) {
 }
 
 // ── 5. FREE purchase, anonymous, on the builder chart ────────────────────────
-{
+if (STEPS.has('free')) {
   const ctx = await browser.newContext(DESKTOP)
   const page = await ctx.newPage()
   await page.goto(`${BASE}/events/cellar-free-night-on-the-builder-chart`, { waitUntil: 'load', timeout: 90000 })
@@ -228,11 +239,9 @@ for (const [label, opts] of [['desktop', DESKTOP], ['mobile', MOBILE]]) {
   await page.waitForTimeout(2000)
   await shot(page, 'free-checkout-desktop')
 
-  const nameInput = page.locator('input#buyer_name, input[name="buyer_name"], input[placeholder*="name" i]').first()
-  if (await nameInput.count()) await nameInput.fill('Seat Proof Guest')
-  const emailInput = page.locator('input[type="email"]').first()
-  if (await emailInput.count()) await emailInput.fill('seat-proof-guest@eventlinqs.com')
-  await page.getByRole('button', { name: /complete|register|confirm|free/i }).first().click()
+  await page.getByPlaceholder('Jane Smith').fill('Seat Proof Guest')
+  await page.getByPlaceholder('you@example.com').first().fill('seat-proof-guest@eventlinqs.com')
+  await page.getByRole('button', { name: 'Register for free' }).click()
   await page.waitForURL(/confirmation/, { timeout: 60000 })
   await page.waitForTimeout(2500)
   await shot(page, 'free-confirmation-desktop')
@@ -252,7 +261,7 @@ for (const [label, opts] of [['desktop', DESKTOP], ['mobile', MOBILE]]) {
 }
 
 // ── 6. PAID purchase, card 4242 (webhook via stripe listen) ─────────────────
-{
+if (STEPS.has('paid')) {
   const ctx = await browser.newContext({ ...DESKTOP, storageState })
   const page = await ctx.newPage()
   await page.goto(`${BASE}/events/${PAID_SLUG}`, { waitUntil: 'load', timeout: 90000 })
@@ -292,7 +301,11 @@ for (const [label, opts] of [['desktop', DESKTOP], ['mobile', MOBILE]]) {
 }
 
 // ── 7. Door scan of the free seated ticket ───────────────────────────────────
-{
+if (STEPS.has('scan')) {
+  if (!proofs.steps.freePurchase) {
+    const prior = JSON.parse(fs.readFileSync(`${OUT}/ui-proofs.json`, 'utf8'))
+    proofs.steps.freePurchase = prior.steps.freePurchase
+  }
   const t = proofs.steps.freePurchase.tickets[0]
   const ctx = await browser.newContext({ ...DESKTOP, storageState })
   const page = await ctx.newPage()
@@ -312,7 +325,7 @@ for (const [label, opts] of [['desktop', DESKTOP], ['mobile', MOBILE]]) {
 }
 
 // ── 8. Organiser room view after the sale ────────────────────────────────────
-{
+if (STEPS.has('room')) {
   const ctx = await browser.newContext({ ...DESKTOP, storageState })
   const page = await ctx.newPage()
   await page.goto(`${BASE}/dashboard/events/${freeEventId}/seats`, { waitUntil: 'load', timeout: 90000 })
@@ -323,5 +336,10 @@ for (const [label, opts] of [['desktop', DESKTOP], ['mobile', MOBILE]]) {
 
 await browser.close()
 proofs.finishedAt = new Date().toISOString()
-fs.writeFileSync(`${OUT}/ui-proofs.json`, JSON.stringify(proofs, null, 2))
+let merged = proofs
+try {
+  const prior = JSON.parse(fs.readFileSync(`${OUT}/ui-proofs.json`, 'utf8'))
+  merged = { ...prior, ...proofs, steps: { ...prior.steps, ...proofs.steps } }
+} catch {}
+fs.writeFileSync(`${OUT}/ui-proofs.json`, JSON.stringify(merged, null, 2))
 console.log('[drive] COMPLETE')
