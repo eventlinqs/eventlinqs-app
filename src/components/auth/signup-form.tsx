@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { GoogleButton } from './google-button'
 import { AuthDivider } from './auth-divider'
 import { REF_COOKIE, REF_SOURCE_COOKIE, REF_EVENT_COOKIE } from '@/lib/growth/referrals'
+import { DIGEST_CONSENT_WORDING } from '@/lib/consent/wording'
 
 function readCookie(name: string): string | undefined {
   if (typeof document === 'undefined') return undefined
@@ -20,6 +21,9 @@ export function SignupForm({ role = 'attendee' }: Props) {
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  // Unticked by default (Spam Act 2003): express opt-in only, never a
+  // signup condition.
+  const [digestOptIn, setDigestOptIn] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
@@ -56,6 +60,7 @@ export function SignupForm({ role = 'attendee' }: Props) {
           ref: readCookie(REF_COOKIE),
           refSource: readCookie(REF_SOURCE_COOKIE),
           refEvent: readCookie(REF_EVENT_COOKIE),
+          digestOptIn,
         }),
       })
       const payload = (await res.json().catch(() => ({}))) as {
@@ -150,6 +155,16 @@ export function SignupForm({ role = 'attendee' }: Props) {
             Use 8 or more characters with a mix of letters and numbers.
           </p>
         </div>
+
+        <label className="flex min-h-[44px] cursor-pointer items-start gap-3 py-1">
+          <input
+            type="checkbox"
+            checked={digestOptIn}
+            onChange={(e) => setDigestOptIn(e.target.checked)}
+            className="mt-0.5 h-5 w-5 shrink-0 rounded border-ink-200 text-gold-500 focus:ring-2 focus:ring-gold-400"
+          />
+          <span className="text-xs text-ink-600">{DIGEST_CONSENT_WORDING}</span>
+        </label>
 
         <button
           type="submit"

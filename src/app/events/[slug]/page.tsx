@@ -48,6 +48,7 @@ import type { FeePassType } from '@/lib/payments/fee-math'
 import { EventViewTracker } from '@/components/features/events/event-view-tracker'
 import { ShareViewBeacon } from '@/components/broadcast/share-view-beacon'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
+import { FollowButton } from '@/components/features/follow/follow-button'
 import { EventSchemaJsonLd } from '@/components/features/events/event-schema-jsonld'
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import { EventShareBar } from '@/components/features/events/event-share-bar'
@@ -309,6 +310,11 @@ export default async function EventDetailPage({ params }: Props) {
   // generateStaticParams) keeps this route off the static classification that
   // 500'd on the chrome + Sentry render-time cookie read.
   await headers()
+
+  // Broadcast Layer Stage 2 (SPEC 3.3): the organiser follow prompt on the
+  // event page, gated on broadcast_follow. ISR means a flag flip lands
+  // within the revalidate window.
+  const followOn = await isFeatureEnabled('broadcast_follow')
 
   // Queue gate moved to `src/middleware.ts`. The middleware redirects
   // unauthenticated visitors to `/queue/[slug]` before this page renders,
@@ -802,6 +808,11 @@ export default async function EventDetailPage({ params }: Props) {
                       <div className="min-w-0 flex-1">
                         {event.organisation.description && (
                           <p className="text-sm text-ink-600 line-clamp-3">{event.organisation.description}</p>
+                        )}
+                        {followOn && (
+                          <div className="mt-3">
+                            <FollowButton type="organiser" id={event.organisation.id} variant="outline" />
+                          </div>
                         )}
                       </div>
                     </div>

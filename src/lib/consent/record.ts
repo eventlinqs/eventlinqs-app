@@ -3,6 +3,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import {
   CONSENT_WORDING_VERSION,
+  DIGEST_CONSENT_WORDING,
+  DIGEST_CONSENT_WORDING_VERSION,
   organiserMarketingConsentWording,
   normaliseConsentEmail,
 } from './wording'
@@ -75,6 +77,103 @@ export async function recordPlatformUpdateConsent(
       },
       { onConflict: 'email' },
     )
+    return !error
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Record (or refresh) the express weekly-local-digest consent (Broadcast
+ * Layer SPEC 3.1) in marketing_consents: city scoped, wording recorded
+ * verbatim, token preserved on update so old unsubscribe links keep working.
+ * Best-effort: never throws into checkout or signup.
+ */
+export async function recordPlatformDigestConsent(
+  admin: Admin,
+  params: {
+    email: string
+    userId?: string | null
+    citySlug?: string | null
+    source?: string
+    at: string
+  },
+): Promise<boolean> {
+  try {
+    const email = normaliseConsentEmail(params.email)
+    if (!email) return false
+    const { error } = await admin.from('marketing_consents').upsert(
+      {
+        email,
+        user_id: params.userId ?? null,
+        city_slug: params.citySlug ?? null,
+        status: 'granted',
+        consent_text: DIGEST_CONSENT_WORDING,
+        consent_version: DIGEST_CONSENT_WORDING_VERSION,
+        source: params.source ?? 'checkout',
+        updated_at: params.at,
+        revoked_at: null,
+      },
+      { onConflict: 'email' },
+    )
+    return !error
+  } catch {
+    return false
+  }
+}
+
+export type DigestWithdrawResult = {
+  alreadyWithdrawn: boolean
+}
+
+/**
+ * Withdraw digest consent via the per-row unsubscribe token (no login, per
+ * ACMA). Idempotent. The digest send path reads status='granted' only, so a
+ * withdrawn address is excluded from the next send by construction.
+ */
+export async function withdrawDigestConsentByToken(
+  admin: Admin,
+  token: string,
+  at: string,
+): Promise<DigestWithdrawResult | null> {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) {
+    return null
+  }
+  const { data: row } = await admin
+    .from('marketing_consents')
+    .select('id, status')
+    .eq('unsubscribe_token', token)
+    .maybeSingle()
+  if (!row) return null
+
+  if (row.status === 'withdrawn') {
+    return { alreadyWithdrawn: true }
+  }
+
+  await admin
+    .from('marketing_consents')
+    .update({ status: 'withdrawn', revoked_at: at, updated_at: at })
+    .eq('unsubscribe_token', token)
+
+  return { alreadyWithdrawn: false }
+}
+
+/**
+ * Withdraw digest consent for an email directly (the signed-in preference
+ * centre path, where the user proves ownership by session rather than token).
+ */
+export async function withdrawDigestConsentByEmail(
+  admin: Admin,
+  email: string,
+  at: string,
+): Promise<boolean> {
+  try {
+    const normalised = normaliseConsentEmail(email)
+    if (!normalised) return false
+    const { error } = await admin
+      .from('marketing_consents')
+      .update({ status: 'withdrawn', revoked_at: at, updated_at: at })
+      .eq('email', normalised)
     return !error
   } catch {
     return false
