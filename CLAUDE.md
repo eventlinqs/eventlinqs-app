@@ -41,6 +41,8 @@ silently follow the stale doc.
 | Growth, sharing, invites, referral, attribution, the wedge, the levers | Growth plan, `event-demand-engine` skill |
 | Discovery, feed, follows, alerts, push, who's-going, recommendations | Growth plan (the demand engine), `docs/MOAT-DEMAND-ENGINE-PLAN.md`, `event-demand-engine` skill |
 | Organiser attendee data, export, the data-ownership pitch | Growth plan (data-ownership promise), Law 4 |
+| Defensibility, the moat, network effect, the moat stack | `docs/MOAT-DOCTRINE.md`, `event-demand-engine` skill |
+| Launch density, focus geography, the launch-zone UI, zero-state funnels, seed-data gating | `docs/EventLinqs-Launch-Density-Layer-SPEC.md` |
 | Sitemap, structured data, indexability, organic SEO | Growth plan (SEO compounding engine) |
 | A new page or a redesign | Law 2 (evidence-driven), Design system, Motion, Law 4 if marketing, the `page-build` skill |
 | Copy, labels, microcopy | Copy and banned content, Law 3 (Australia-smart) |
@@ -919,6 +921,16 @@ after launch-readiness, never rushed into the launch sequence.
   "Locked fee structure" section above is its binding summary.
 - `docs/EventLinqs-Venue-Revenue-Program-SPEC.md`: the parked Venue Revenue
   Sharing Program (next major build after launch-readiness + the fee structure).
+- `docs/MOAT-DOCTRINE.md`: the defensibility bar. Every feature is judged against
+  it for defensibility, the way every surface is judged against the Definition of
+  Done for quality. It names the moat as a six-layer stack, fixes the build order,
+  and gives the one test each build must pass. It consolidates, but does NOT
+  override, the locked Growth plan, which stays the source of truth for mechanics.
+  Read it alongside the `event-demand-engine` skill.
+- `docs/EventLinqs-Launch-Density-Layer-SPEC.md`: the prepared launch density
+  layer (focus geography, the launch-zone UI, zero-state recruitment funnels,
+  seed-data gating). Pillar 2 of the moat doctrine. Build it after Gate 1 and
+  Gate 2, never before, TEST only, payment engine untouched.
 - `docs/EventLinqs_Scope_v5.md`: scope. Build nothing that contradicts it.
 - `docs/design/competitor-page-specs.md`: the per-page bar for the benchmark
   gate.

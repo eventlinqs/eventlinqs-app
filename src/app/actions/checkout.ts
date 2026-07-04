@@ -18,6 +18,7 @@ import {
   recordOrganiserMarketingConsent,
   recordPlatformUpdateConsent,
 } from '@/lib/consent/record'
+import { sendConfirmationEmail } from '@/lib/email/order-confirmation'
 import type { FeePassType } from '@/types/database'
 
 const AttendeeSchema = z.object({
@@ -319,7 +320,11 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
       guest_email: user ? null : buyer_email,
       guest_name: user ? null : buyer_name,
       reservation_id,
-      status: isFreeOrder ? 'confirmed' : 'pending',
+      // Free orders insert as 'pending' too, then confirm_order UPDATEs them to
+      // 'confirmed'. Ticket issuance fires on the pending->confirmed UPDATE
+      // (trigger trg_issue_tickets_on_confirm), so an inline 'confirmed' INSERT
+      // would confirm the order but never issue a ticket.
+      status: 'pending',
       subtotal_cents: fees.subtotal_cents,
       addon_total_cents: fees.addon_total_cents,
       platform_fee_cents: fees.platform_fee_cents,
@@ -330,7 +335,7 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
       currency,
       fee_pass_type,
       discount_code_id: discount_code_id ?? null,
-      confirmed_at: isFreeOrder ? new Date().toISOString() : null,
+      confirmed_at: null,
     })
 
   if (orderError) {
@@ -403,20 +408,19 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
     platformConsent: platform_updates_consent,
   })
 
-  // 8. For free orders - confirm immediately
+  // 8. For free orders - confirm immediately, no payment and no webhook.
   if (isFreeOrder) {
-    // Mark reservation as converted
-    await supabase
-      .from('reservations')
-      .update({ status: 'converted', converted_at: new Date().toISOString() })
-      .eq('id', reservation_id)
-
-    // Increment sold_count for each tier
-    for (const ticket of cartTickets) {
-      await supabase.rpc('increment_sold_count', {
-        p_tier_id: ticket.tier_id,
-        p_quantity: ticket.quantity,
-      })
+    // confirm_order atomically UPDATEs the order pending->confirmed (which fires
+    // the issuance trigger to mint the tickets and QR), converts the reservation,
+    // and increments sold_count: exactly the paid path's confirmation gate, minus
+    // the payment. This replaces the old inline reservation-convert and
+    // increment_sold_count, which left a free order confirmed but ticketless.
+    const { error: confirmError } = await adminClient.rpc('confirm_order', {
+      p_order_id: order_id,
+    })
+    if (confirmError) {
+      console.error('[checkout] free confirm_order error:', confirmError)
+      return { error: 'Order created but could not be confirmed. Please try again.' }
     }
 
     // Record discount usage
@@ -428,6 +432,14 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
         discount_amount_cents: fees.discount_cents,
       })
       await supabase.rpc('increment_discount_uses', { p_code_id: discount_code_id })
+    }
+
+    // Send the confirmation email with the ticket QR, exactly as the paid path
+    // does after payment. Best-effort: a mail fault must never fail the order.
+    try {
+      await sendConfirmationEmail(adminClient, order_id, null)
+    } catch (emailErr) {
+      console.error('[checkout] free confirmation email failed (non-fatal):', emailErr)
     }
 
     return { order_id, is_free: true }
@@ -690,7 +702,11 @@ async function processSeatCheckout({
       guest_email: buyer_email,
       guest_name: buyer_name,
       reservation_id,
-      status: isFreeOrder ? 'confirmed' : 'pending',
+      // Free orders insert as 'pending' too, then confirm_order UPDATEs them to
+      // 'confirmed'. Ticket issuance fires on the pending->confirmed UPDATE
+      // (trigger trg_issue_tickets_on_confirm), so an inline 'confirmed' INSERT
+      // would confirm the order but never issue a ticket.
+      status: 'pending',
       subtotal_cents: fees.subtotal_cents,
       addon_total_cents: 0,
       platform_fee_cents: fees.platform_fee_cents,
@@ -701,7 +717,7 @@ async function processSeatCheckout({
       currency,
       fee_pass_type,
       discount_code_id: null,
-      confirmed_at: isFreeOrder ? new Date().toISOString() : null,
+      confirmed_at: null,
     })
 
   if (orderError) {
@@ -753,18 +769,32 @@ async function processSeatCheckout({
   })
 
   if (isFreeOrder) {
-    // Mark reservation as converted
-    await adminClient
-      .from('reservations')
-      .update({ status: 'converted', converted_at: new Date().toISOString() })
-      .eq('id', reservation_id)
+    // confirm_order UPDATEs the order pending->confirmed (firing the issuance
+    // trigger to mint the seat tickets and QR) and converts the reservation:
+    // the same gate the paid path uses, minus payment. Without it a free
+    // reserved-seating order confirmed but issued no ticket.
+    const { error: confirmError } = await adminClient.rpc('confirm_order', {
+      p_order_id: order_id,
+    })
+    if (confirmError) {
+      console.error('[checkout-seats] free confirm_order error:', confirmError)
+      return { error: 'Order created but could not be confirmed. Please try again.' }
+    }
 
-    // Mark seats as sold
+    // Mark seats as sold (seat-mode specific; confirm_order handles the order
+    // confirmation, ticket issuance, and reservation conversion).
     await adminClient
       .from('seats')
       .update({ status: 'sold', updated_at: new Date().toISOString() })
       .in('id', seatIds)
       .eq('event_id', event.id)
+
+    // Send the confirmation email with the ticket QR. Best-effort.
+    try {
+      await sendConfirmationEmail(adminClient, order_id, null)
+    } catch (emailErr) {
+      console.error('[checkout-seats] free confirmation email failed (non-fatal):', emailErr)
+    }
 
     return { order_id, is_free: true }
   }
