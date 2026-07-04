@@ -3,6 +3,7 @@ import { requireCronAuth } from '@/lib/cron/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSiteUrl } from '@/lib/site-url'
 import { dispatchAlert } from '@/lib/notifications/dispatch'
+import { isFeatureEnabled } from '@/lib/flags/broadcast'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -70,12 +71,50 @@ export async function GET(request: NextRequest) {
       followersByOrg.set(f.organisation_id, list)
     }
 
+    // Broadcast Stage 3 (SPEC 4.5): when the stage is on, an artist's
+    // followers hear about every show they are confirmed on. Same dedupe
+    // key (user, event, just_announced), so an organiser-follower who also
+    // follows the artist is never alerted twice for one event.
+    const artistFollowersByEvent = new Map<string, string[]>()
+    if (await isFeatureEnabled('broadcast_artists')) {
+      const eventIds = events.map((e) => e.id)
+      const { data: lineups } = await admin
+        .from('event_artists')
+        .select('event_id, artist_id')
+        .eq('status', 'confirmed')
+        .in('event_id', eventIds)
+      const lineupRows = (lineups ?? []) as { event_id: string; artist_id: string }[]
+      const artistIds = [...new Set(lineupRows.map((l) => l.artist_id))]
+      if (artistIds.length > 0) {
+        const { data: artistFollows } = await admin
+          .from('follows')
+          .select('followable_id, user_id')
+          .eq('followable_type', 'artist')
+          .in('followable_id', artistIds)
+        const followersByArtist = new Map<string, string[]>()
+        for (const f of (artistFollows ?? []) as { followable_id: string; user_id: string }[]) {
+          const list = followersByArtist.get(f.followable_id) ?? []
+          list.push(f.user_id)
+          followersByArtist.set(f.followable_id, list)
+        }
+        for (const row of lineupRows) {
+          const followers = followersByArtist.get(row.artist_id) ?? []
+          if (followers.length === 0) continue
+          const list = artistFollowersByEvent.get(row.event_id) ?? []
+          list.push(...followers)
+          artistFollowersByEvent.set(row.event_id, list)
+        }
+      }
+    }
+
     let sent = 0
     let dispatches = 0
     outer: for (const event of events) {
       if (!event.organisation_id) continue
       const followers = followersByOrg.get(event.organisation_id) ?? []
-      for (const userId of followers) {
+      const artistFollowers = artistFollowersByEvent.get(event.id) ?? []
+      const recipients = [...new Set([...followers, ...artistFollowers])]
+      for (const userId of recipients) {
         if (dispatches >= MAX_DISPATCHES) break outer
         dispatches += 1
         const result = await dispatchAlert({

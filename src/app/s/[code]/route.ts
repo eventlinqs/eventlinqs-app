@@ -49,7 +49,20 @@ export async function GET(
     .maybeSingle()
   if (!event?.slug) return fallback
 
-  const destination = NextResponse.redirect(new URL(`/events/${event.slug}`, origin), 302)
+  // Artist-tagged links land on the artist share landing (SPEC 4.3), whose
+  // metadata carries the artist share-card variant, so a link preview shows
+  // "[Artist] live at [Event]". Missing artist degrades to the event page.
+  let path = `/events/${event.slug}`
+  if (link.artist_id) {
+    const { data: artist } = await admin
+      .from('artists')
+      .select('slug')
+      .eq('id', link.artist_id)
+      .maybeSingle()
+    if (artist?.slug) path = `/events/${event.slug}/with/${artist.slug}`
+  }
+
+  const destination = NextResponse.redirect(new URL(path, origin), 302)
 
   if (!(await isFeatureEnabled('broadcast_share'))) return destination
 

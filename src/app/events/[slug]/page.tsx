@@ -316,6 +316,25 @@ export default async function EventDetailPage({ params }: Props) {
   // within the revalidate window.
   const followOn = await isFeatureEnabled('broadcast_follow')
 
+  // Broadcast Layer Stage 3 (SPEC 4.2): confirmed lineup tags appear on the
+  // event page, gated on broadcast_artists. Public-read RLS on both tables.
+  const artistsOn = await isFeatureEnabled('broadcast_artists')
+  let lineup: { id: string; slug: string; name: string }[] = []
+  if (artistsOn) {
+    const publicDb = createPublicClient()
+    const { data: lineupRows } = await publicDb
+      .from('event_artists')
+      .select('billing_order, status, artist:artists(id, slug, name)')
+      .eq('event_id', event.id)
+      .eq('status', 'confirmed')
+      .order('billing_order', { ascending: true })
+    lineup = ((lineupRows ?? []) as unknown as {
+      artist: { id: string; slug: string; name: string } | { id: string; slug: string; name: string }[] | null
+    }[])
+      .map((r) => (Array.isArray(r.artist) ? r.artist[0] ?? null : r.artist))
+      .filter((a): a is { id: string; slug: string; name: string } => !!a)
+  }
+
   // Queue gate moved to `src/middleware.ts`. The middleware redirects
   // unauthenticated visitors to `/queue/[slug]` before this page renders,
   // so by the time we get here, the visitor either holds a valid admission
@@ -797,6 +816,25 @@ export default async function EventDetailPage({ params }: Props) {
                 {/* Organiser card. Guarded: when the organiser record did not
                     load (e.g. a sellable organiser excluded from the public
                     query), the whole card is skipped rather than crashing. */}
+                {/* Broadcast Stage 3 (SPEC 4.2): the confirmed lineup. Each
+                    name is a working link to the artist profile (Law 5). */}
+                {lineup.length > 0 && (
+                <Reveal as="div" className="mt-10">
+                  <SectionHeader eyebrow="On the lineup" title="Performing" size="sm" />
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    {lineup.map((artist) => (
+                      <Link
+                        key={artist.id}
+                        href={`/artists/${artist.slug}`}
+                        className="inline-flex h-11 items-center rounded-full border border-ink-200 bg-white px-4 text-sm font-semibold text-ink-900 transition-all hover:-translate-y-0.5 hover:border-[var(--brand-accent-strong)]"
+                      >
+                        {artist.name}
+                      </Link>
+                    ))}
+                  </div>
+                </Reveal>
+                )}
+
                 {event.organisation && (
                 <Reveal as="div" className="mt-10">
                   <SectionHeader eyebrow="Organised by" title={event.organisation.name} size="sm" />
