@@ -94,7 +94,9 @@ function PaymentForm({
         </div>
       )}
 
-      <Button type="submit" size="lg" disabled={paying || !stripe} className="mt-6 w-full">
+      {/* Disable until Elements is mounted too: handlePay bails on !elements,
+          so an enabled button before that is a silent no-op click. */}
+      <Button type="submit" size="lg" disabled={paying || !stripe || !elements} className="mt-6 w-full">
         {paying
           ? 'Processing…'
           : `Pay ${currency.toUpperCase()} ${(totalCents / 100).toFixed(2)}`}
