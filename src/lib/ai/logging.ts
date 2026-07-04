@@ -24,6 +24,8 @@ export type AiLogRecord = {
   reason?: string
   /** Error class name only, never the message (messages can echo user content). */
   errorType?: string
+  /** Resend message id for handoff emails - an opaque id, never content. */
+  resendId?: string
 }
 
 export function hashIdentity(identity: string): string {

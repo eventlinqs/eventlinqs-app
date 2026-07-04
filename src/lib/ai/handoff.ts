@@ -55,13 +55,14 @@ export async function sendHandoffEmail(opts: {
     .join('\n\n')
 
   try {
-    await sendEmail({
+    const { id } = await sendEmail({
       to: getSupportInbox(),
       subject: `Support handoff from the ${assistant} assistant`,
       html,
       text: `Assistant: ${assistant}\nUser email: ${userEmail ?? 'not provided'}\nReference: ${who}\n\n${text}`,
     })
-    logAi({ evt: 'ai.handoff', assistant, who, ok: true })
+    // The Resend id lets delivery be verified against the Resend API.
+    logAi({ evt: 'ai.handoff', assistant, who, ok: true, resendId: id })
     return true
   } catch (err) {
     logAi({
