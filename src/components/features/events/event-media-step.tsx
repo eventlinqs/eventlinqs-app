@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { uploadEventImage } from '@/lib/upload'
+import { prepareImageForUpload } from '@/lib/media/client-compress'
 import { parseVideoEmbed } from '@/lib/media/video-embed'
 import {
   MAX_TOTAL_IMAGES,
@@ -74,24 +75,34 @@ export function EventMediaStep({ eventId, images, onImagesChange, video, onVideo
 
   const uploadOne = useCallback(
     async (file: File, id: string, role: 'cover' | 'gallery') => {
-      const fd = new FormData()
-      fd.append('file', file)
-      fd.append('eventId', eventId)
-      fd.append('role', role)
-      const result = await uploadEventImage(fd)
-      if (result.ok) {
-        patch(id, {
-          url: result.image.url,
-          blur: result.image.blur,
-          width: result.image.width,
-          height: result.image.height,
-          uploading: false,
-          error: undefined,
-        })
-      } else {
-        // Drop the failed tile and surface the friendly server message.
+      try {
+        // SPEC 1.5: compress/downscale client-side first, so an original above
+        // the ~4.5MB transport cap still uploads instead of dying at the edge.
+        const prepared = await prepareImageForUpload(file)
+        const fd = new FormData()
+        fd.append('file', prepared)
+        fd.append('eventId', eventId)
+        fd.append('role', role)
+        const result = await uploadEventImage(fd)
+        if (result.ok) {
+          patch(id, {
+            url: result.image.url,
+            blur: result.image.blur,
+            width: result.image.width,
+            height: result.image.height,
+            uploading: false,
+            error: undefined,
+          })
+        } else {
+          // Drop the failed tile and surface the friendly server message.
+          setItems((prev) => prev.filter((it) => it.id !== id))
+          setNotice(result.error)
+        }
+      } catch {
+        // A thrown action (network fault, transport reject) must never strand
+        // the tile on "Uploading...": drop it and tell the organiser plainly.
         setItems((prev) => prev.filter((it) => it.id !== id))
-        setNotice(result.error)
+        setNotice('That image could not be uploaded. Please try again, or use a smaller file.')
       }
     },
     [eventId, patch],
