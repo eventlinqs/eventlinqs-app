@@ -228,6 +228,7 @@ export default async function EventViewPage({ params }: Props) {
           <TabLink href={`/dashboard/events/${event.id}`} active>Overview</TabLink>
           <TabLink href={`/dashboard/events/${event.id}/orders`}>Orders</TabLink>
           <TabLink href={`/dashboard/events/${event.id}/attendees`}>Attendees</TabLink>
+          <TabLink href={`/dashboard/events/${event.id}/reach`}>Reach</TabLink>
           <TabLink href={`/dashboard/events/${event.id}/edit`}>Settings</TabLink>
         </ul>
       </nav>

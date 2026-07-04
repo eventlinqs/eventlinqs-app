@@ -46,6 +46,8 @@ import { eventIsPaid, isOrganiserSellable } from '@/lib/payments/sale-status'
 import { getEventFeeRates } from '@/lib/pricing/event-fee-config'
 import type { FeePassType } from '@/lib/payments/fee-math'
 import { EventViewTracker } from '@/components/features/events/event-view-tracker'
+import { ShareViewBeacon } from '@/components/broadcast/share-view-beacon'
+import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { EventSchemaJsonLd } from '@/components/features/events/event-schema-jsonld'
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import { EventShareBar } from '@/components/features/events/event-share-bar'
@@ -209,6 +211,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
 
+  // Broadcast Layer share card (SPEC 2.1): with broadcast_share on, previews
+  // render the generated OG card (image + scrim + title + date + locality +
+  // mark, branded fallback when the event has no image) so no shared link
+  // ever looks broken. Flag off falls back to the raw cover image behaviour.
+  const shareCardOn = await isFeatureEnabled('broadcast_share')
+  const ogImages = shareCardOn
+    ? [{ url: `${baseUrl}/api/og/event/${slug}`, width: 1200, height: 630, alt: event.title }]
+    : event.cover_image_url
+      ? [{ url: event.cover_image_url, width: 1200, height: 630, alt: event.title }]
+      : []
+
   return {
     title,
     description,
@@ -225,15 +238,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description,
       url: `${baseUrl}/events/${slug}`,
       type: 'website',
-      images: event.cover_image_url
-        ? [{ url: event.cover_image_url, width: 1200, height: 630, alt: event.title }]
-        : [],
+      images: ogImages,
     },
     twitter: {
       card: 'summary_large_image',
       title: event.title,
       description,
-      images: event.cover_image_url ? [event.cover_image_url] : [],
+      images: ogImages.map((i) => i.url),
     },
   }
 }
@@ -538,6 +549,7 @@ export default async function EventDetailPage({ params }: Props) {
         venueCity={event.venue_city ?? 'Unknown'}
         priceRange={priceLabel ?? 'Free'}
       />
+      <ShareViewBeacon />
       <SiteHeader staticSafe />
 
       {eventBannerState ? (
@@ -826,6 +838,7 @@ export default async function EventDetailPage({ params }: Props) {
                   <EventShareBar
                     eventTitle={event.title}
                     eventDate={shortDate}
+                    eventSlug={event.slug}
                     eventUrl={`${baseUrl}/events/${event.slug}`}
                     variant="light"
                   />

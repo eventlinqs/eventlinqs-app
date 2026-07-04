@@ -19,6 +19,8 @@ export type PolicyName =
   | 'auth-login'
   | 'checkout-reserve'
   | 'media-upload'
+  | 'share-link-mint'
+  | 'share-track'
 
 export type Policy = {
   /** Stable prefix used to namespace the redis key. Keep short. */
@@ -110,5 +112,19 @@ export const POLICIES: Record<PolicyName, Policy> = {
     windowSec: 60,
     rationale:
       'Organiser event-image uploads, keyed per user. 60/min covers filling the full 10-image gallery plus retries and re-crops in one sitting, while bouncing a scripted storage-flooding run. Fail-open (no money path); a Redis blip never blocks a legitimate organiser mid-upload.',
+  },
+  'share-link-mint': {
+    keyPrefix: 'share-mint',
+    limit: 30,
+    windowSec: 60,
+    rationale:
+      'Broadcast share-link minting per IP. One call returns every channel link for a page, so 30/min covers heavy browsing while bouncing a scripted row-flooding run. Fail-open (no money path); a Redis blip degrades to the untracked long URL, never a broken share.',
+  },
+  'share-track': {
+    keyPrefix: 'share-trk',
+    limit: 60,
+    windowSec: 60,
+    rationale:
+      'Broadcast view beacon per IP. Views are deduped per link per visitor per day server-side, so this cap only bounds junk traffic. Fail-open; losing a view beacon never breaks a page.',
   },
 }
