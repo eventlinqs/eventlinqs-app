@@ -106,6 +106,12 @@ export default async function HomePage() {
   const byCategory = (slug: string, max = 12) =>
     upcoming.filter(e => e.category?.slug === slug).slice(0, max)
 
+  // Market-ready volume law: a rail with one or two cards next to full rails
+  // reads as emptiness, not curation. A category rail renders only from three
+  // events; thinner categories stay reachable through Browse by Category and
+  // the events browse, where a short list reads as a list, not a defect.
+  const RAIL_MIN = 3
+
   // Live counts per category for the category nav tiles under the hero.
   const categoryCounts = upcoming.reduce<Record<string, number>>((acc, e) => {
     const slug = e.category?.slug
@@ -238,7 +244,7 @@ export default async function HomePage() {
         <CommunityRail />
 
         {/* General category breadth leads. */}
-        {musicEvents.length >= 1 && (
+        {musicEvents.length >= RAIL_MIN && (
           <EventRailSection
             eyebrow="On the lineup"
             title="Music"
@@ -249,7 +255,7 @@ export default async function HomePage() {
           />
         )}
 
-        {foodEvents.length >= 1 && (
+        {foodEvents.length >= RAIL_MIN && (
           <EventRailSection
             eyebrow="Taste the city"
             title="Food and drink"
@@ -262,7 +268,7 @@ export default async function HomePage() {
 
         {/* Trending (general, demand-based) - Variant B: the one larger
             feature-card row. Uniform feature-sized cards within the rail. */}
-        {trending.length >= 1 && (
+        {trending.length >= RAIL_MIN && (
           <EventRailSection
             eyebrow="Selling fast"
             title="Trending now"
@@ -274,7 +280,7 @@ export default async function HomePage() {
           />
         )}
 
-        {festivalEvents.length >= 1 && (
+        {festivalEvents.length >= RAIL_MIN && (
           <EventRailSection
             eyebrow="All day, all weekend"
             title="Festivals"
@@ -285,7 +291,7 @@ export default async function HomePage() {
           />
         )}
 
-        {artsEvents.length >= 1 && (
+        {artsEvents.length >= RAIL_MIN && (
           <EventRailSection
             eyebrow="On stage and in the gallery"
             title="Arts and theatre"
@@ -297,7 +303,7 @@ export default async function HomePage() {
         )}
 
         {/* This Weekend (general, time-based) */}
-        {thisWeekend.length >= 1 && (
+        {thisWeekend.length >= RAIL_MIN && (
           <EventRailSection
             eyebrow="This weekend"
             title="On this weekend"
@@ -308,7 +314,7 @@ export default async function HomePage() {
           />
         )}
 
-        {nightlifeEvents.length >= 1 && (
+        {nightlifeEvents.length >= RAIL_MIN && (
           <EventRailSection
             eyebrow="After dark"
             title="Nightlife"
@@ -319,7 +325,7 @@ export default async function HomePage() {
           />
         )}
 
-        {comedyEvents.length >= 1 && (
+        {comedyEvents.length >= RAIL_MIN && (
           <EventRailSection
             eyebrow="Have a laugh"
             title="Comedy"
@@ -331,7 +337,7 @@ export default async function HomePage() {
         )}
 
         {/* Free (general, price-based) */}
-        {freeEvents.length >= 1 && (
+        {freeEvents.length >= RAIL_MIN && (
           <EventRailSection
             eyebrow="No ticket needed"
             title="Free events"
@@ -352,7 +358,7 @@ export default async function HomePage() {
         <CommunityValueBand />
 
         {/* General breadth continues below the community thread. */}
-        {sportsEvents.length >= 1 && (
+        {sportsEvents.length >= RAIL_MIN && (
           <EventRailSection
             eyebrow="Game on"
             title="Sport"
@@ -363,7 +369,7 @@ export default async function HomePage() {
           />
         )}
 
-        {familyEvents.length >= 1 && (
+        {familyEvents.length >= RAIL_MIN && (
           <EventRailSection
             eyebrow="Bring everyone"
             title="Family"
@@ -384,7 +390,7 @@ export default async function HomePage() {
         </Suspense>
 
         {/* Editorial tail */}
-        {justAdded.length >= 1 && (
+        {justAdded.length >= RAIL_MIN && (
           <EventRailSection
             eyebrow="Just added"
             title="Fresh on the platform"
