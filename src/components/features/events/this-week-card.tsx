@@ -2,6 +2,7 @@ import { EventCardLandscape, EventCardSquare, EventCardFeature, type HomeCardEve
 import { getEventMedia } from '@/lib/images/event-media'
 import { getCategoryPhoto } from '@/lib/images/category-photo'
 import type { BentoEvent } from './event-bento-tile'
+import { priceLabel } from '@/lib/events/price-label'
 
 /**
  * ThisWeekCard - the shared rail card used across the homepage rails.
@@ -28,12 +29,7 @@ function formatDate(iso: string): string {
 }
 
 function formatPrice(tiers: BentoEvent['ticket_tiers']): string {
-  if (!tiers || tiers.length === 0) return 'Free'
-  const cheapest = tiers.reduce((m, t) => (t.price < m.price ? t : m), tiers[0])
-  if (cheapest.price === 0) return 'Free'
-  const dollars = cheapest.price / 100
-  const formatted = Number.isInteger(dollars) ? `$${dollars}` : `$${dollars.toFixed(2)}`
-  return `From ${cheapest.currency ?? 'AUD'} ${formatted}`
+  return priceLabel(tiers ?? [])
 }
 
 export async function ThisWeekCard({

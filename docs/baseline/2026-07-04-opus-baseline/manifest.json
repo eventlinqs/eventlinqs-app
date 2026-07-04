@@ -1,0 +1,412 @@
+{
+  "capturedFrom": "https://eventlinqs-staging.vercel.app",
+  "deployedCommit": "1166a93593d0fa139214d48e77b0662d49017cf1",
+  "captures": [
+    {
+      "file": "about-desktop.png",
+      "url": "https://eventlinqs-staging.vercel.app/about",
+      "viewport": "1440x900",
+      "timestamp": "2026-07-04T04:07:51.671Z",
+      "note": ""
+    },
+    {
+      "file": "about-mobile.png",
+      "url": "https://eventlinqs-staging.vercel.app/about",
+      "viewport": "390x844",
+      "timestamp": "2026-07-04T04:11:23.094Z",
+      "note": ""
+    },
+    {
+      "file": "account-desktop.png",
+      "url": "https://eventlinqs-staging.vercel.app/account",
+      "viewport": "1440x900",
+      "timestamp": "2026-07-04T04:08:55.349Z",
+      "note": ""
+    },
+    {
+      "file": "account-mobile.png",
+      "url": "https://eventlinqs-staging.vercel.app/account",
+      "viewport": "390x844",
+      "timestamp": "2026-07-04T04:18:13.435Z",
+      "note": ""
+    },
+    {
+      "file": "account-tickets-desktop.png",
+      "url": "https://eventlinqs-staging.vercel.app/account/tickets",
+      "viewport": "1440x900",
+      "timestamp": "2026-07-04T04:08:58.992Z",
+      "note": ""
+    },
+    {
+      "file": "account-tickets-mobile.png",
+      "url": "https://eventlinqs-staging.vercel.app/account/tickets",
+      "viewport": "390x844",
+      "timestamp": "2026-07-04T04:18:16.855Z",
+      "note": ""
+    },
+    {
+      "file": "category-landing-desktop.png",
+      "url": "https://eventlinqs-staging.vercel.app/categories/music",
+      "viewport": "1440x900",
+      "timestamp": "2026-07-04T04:07:09.493Z",
+      "note": ""
+    },
+    {
+      "file": "category-landing-mobile.png",
+      "url": "https://eventlinqs-staging.vercel.app/categories/music",
+      "viewport": "390x844",
+      "timestamp": "2026-07-04T04:10:32.351Z",
+      "note": ""
+    },
+    {
+      "file": "checkout-attempt-error-desktop.png",
+      "url": "https://eventlinqs-staging.vercel.app/events/naming-ceremony-showcase-yoruba-traditions-night",
+      "viewport": "1440x900",
+      "timestamp": "2026-07-04T04:15:58.153Z",
+      "note": "checkout unreachable on staging: createReservation server action returns HTTP 500 (digest 240934949), buyer sees the on-page checkout error. Fix lives on fix/reservation-action-export."
+    },
+    {
+      "file": "checkout-attempt-error-mobile.png",
+      "url": "https://eventlinqs-staging.vercel.app/events/naming-ceremony-showcase-yoruba-traditions-night",
+      "viewport": "390x844",
+      "timestamp": "2026-07-04T04:16:42.737Z",
+      "note": "checkout unreachable on staging: createReservation server action returns HTTP 500 (digest 240934949), buyer sees the on-page checkout error. Fix lives on fix/reservation-action-export."
+    },
+    {
+      "file": "cities-index-desktop.png",
+      "url": "https://eventlinqs-staging.vercel.app/cities",
+      "viewport": "1440x900",
+      "timestamp": "2026-07-04T04:07:36.527Z",
+      "note": ""
+    },
+    {
+      "file": "cities-index-mobile.png",
+      "url": "https://eventlinqs-staging.vercel.app/cities",
+      "viewport": "390x844",
+      "timestamp": "2026-07-04T04:11:06.683Z",
+      "note": ""
+    },
+    {
+      "file": "city-landing-desktop.png",
+      "url": "https://eventlinqs-staging.vercel.app/city/melbourne",
+      "viewport": "1440x900",
+      "timestamp": "2026-07-04T04:07:19.297Z",
+      "note": ""
+    },
+    {
+      "file": "city-landing-mobile.jpg",
+      "url": "https://eventlinqs-staging.vercel.app/city/melbourne",
+      "viewport": "390x844",
+      "timestamp": "2026-07-04T04:10:48.244Z",
+      "note": "converted from PNG to JPEG q90 for committable size"
+    },
+    {
+      "file": "communities-index-desktop.png",
+      "url": "https://eventlinqs-staging.vercel.app/communities",
+      "viewport": "1440x900",
+      "timestamp": "2026-07-04T04:07:30.104Z",
+      "note": ""
+    },
+    {
+      "file": "communities-index-mobile.png",
+      "url": "https://eventlinqs-staging.vercel.app/communities",
+      "viewport": "390x844",
+      "timestamp": "2026-07-04T04:11:00.073Z",
+      "note": ""
+    },
+    {
+      "file": "community-landing-desktop.png",
+      "url": "https://eventlinqs-staging.vercel.app/community/first-nations",
+      "viewport": "1440x900",
+      "timestamp": "2026-07-04T04:07:23.631Z",
+      "note": ""
+    },
+    {
+      "file": "community-landing-mobile.png",
+      "url": "https://eventlinqs-staging.vercel.app/community/first-nations",
+      "viewport": "390x844",
+      "timestamp": "2026-07-04T04:10:51.779Z",
+      "note": ""
+    },
+    {
+      "file": "event-create-step-1-desktop.png",
+      "url": "https://eventlinqs-staging.vercel.app/dashboard/events/create",
+      "viewport": "1440x900",
+      "timestamp": "2026-07-04T04:08:34.746Z",
+      "note": "organisation setup form (shown before the wizard for a fresh organiser account)"
+    },
+    {
+      "file": "event-create-step-1-mobile.png",
+      "url": "https://eventlinqs-staging.vercel.app/dashboard/events/create",
+      "viewport": "390x844",
+      "timestamp": "2026-07-04T04:18:09.591Z",
+      "note": "create-event entry state (wizard step 1; organisation already created by the desktop pass)"
+    },
+    {
+      "file": "event-create-step-2-desktop.png",
+      "url": "https://eventlinqs-staging.vercel.app/dashboard/events/create",
+      "viewport": "1440x900",
+      "timestamp": "2026-07-04T04:08:40.576Z",
+      "note": "first walk: wizard step 1 of 7, Basic Details"
+    },
+    {
+      "file": "event-create-step-3-desktop.png",
+      "url": "https://eventlinqs-staging.vercel.app/dashboard/events/create",
+      "viewport": "1440x900",
+      "timestamp": "2026-07-04T04:08:46.680Z",
+      "note": "first walk: wizard step 2 of 7, Date and Time"
+    },
+    {
+      "file": "event-create-wizard-step-1-desktop.png",
+      "url": "https://eventlinqs-staging.vercel.app/dashboard/events/create",
+      "viewport": "1440x900",
+      "timestamp": "2026-07-04T04:21:38.241Z",
+      "note": "wizard step 1 of 7"
+    },
+    {
+      "file": "event-create-wizard-step-1-mobile.png",
+      "url": "https://eventlinqs-staging.vercel.app/dashboard/events/create",
+      "viewport": "390x844",
+      "timestamp": "2026-07-04T04:22:17.569Z",
+      "note": "wizard step 1 of 7"
+    },
+    {
+      "file": "event-create-wizard-step-2-desktop.png",
+      "url": "https://eventlinqs-staging.vercel.app/dashboard/events/create",
+      "viewport": "1440x900",
+      "timestamp": "2026-07-04T04:21:42.098Z",
+      "note": "wizard step 2 of 7"
+    },
+    {
+      "file": "event-create-wizard-step-2-mobile.png",
+      "url": "https://eventlinqs-staging.vercel.app/dashboard/events/create",
+      "viewport": "390x844",
+      "timestamp": "2026-07-04T04:22:21.557Z",
+      "note": "wizard step 2 of 7"
+    },
+    {
+      "file": "event-create-wizard-step-3-desktop.png",
+      "url": "https://eventlinqs-staging.vercel.app/dashboard/events/create",
+      "viewport": "1440x900",
+      "timestamp": "2026-07-04T04:21:45.784Z",
+      "note": "wizard step 3 of 7"
+    },
+    {
+      "file": "event-create-wizard-step-3-mobile.png",
+      "url": "https://eventlinqs-staging.vercel.app/dashboard/events/create",
+      "viewport": "390x844",
+      "timestamp": "2026-07-04T04:22:25.292Z",
+      "note": "wizard step 3 of 7"
+    },
+    {
+      "file": "event-create-wizard-step-4-desktop.png",
+      "url": "https://eventlinqs-staging.vercel.app/dashboard/events/create",
+      "viewport": "1440x900",
+      "timestamp": "2026-07-04T04:21:49.565Z",
+      "note": "wizard step 4 of 7"
+    },
+    {
+      "file": "event-create-wizard-step-4-mobile.png",
+      "url": "https://eventlinqs-staging.vercel.app/dashboard/events/create",
+      "viewport": "390x844",
+      "timestamp": "2026-07-04T04:22:29.148Z",
+      "note": "wizard step 4 of 7"
+    },
+    {
+      "file": "event-create-wizard-step-5-desktop.png",
+      "url": "https://eventlinqs-staging.vercel.app/dashboard/events/create",
+      "viewport": "1440x900",
+      "timestamp": "2026-07-04T04:21:53.327Z",
+      "note": "wizard step 5 of 7"
+    },
+    {
+      "file": "event-create-wizard-step-5-mobile.png",
+      "url": "https://eventlinqs-staging.vercel.app/dashboard/events/create",
+      "viewport": "390x844",
+      "timestamp": "2026-07-04T04:22:33.043Z",
+      "note": "wizard step 5 of 7"
+    },
+    {
+      "file": "event-create-wizard-step-6-desktop.png",
+      "url": "https://eventlinqs-staging.vercel.app/dashboard/events/create",
+      "viewport": "1440x900",
+      "timestamp": "2026-07-04T04:21:57.148Z",
+      "note": "wizard step 6 of 7"
+    },
+    {
+      "file": "event-create-wizard-step-6-mobile.png",
+      "url": "https://eventlinqs-staging.vercel.app/dashboard/events/create",
+      "viewport": "390x844",
+      "timestamp": "2026-07-04T04:22:36.902Z",
+      "note": "wizard step 6 of 7"
+    },
+    {
+      "file": "event-create-wizard-step-7-desktop.png",
+      "url": "https://eventlinqs-staging.vercel.app/dashboard/events/create",
+      "viewport": "1440x900",
+      "timestamp": "2026-07-04T04:22:00.909Z",
+      "note": "wizard step 7 of 7 (Publish NOT clicked; draft only)"
+    },
+    {
+      "file": "event-create-wizard-step-7-mobile.png",
+      "url": "https://eventlinqs-staging.vercel.app/dashboard/events/create",
+      "viewport": "390x844",
+      "timestamp": "2026-07-04T04:22:40.714Z",
+      "note": "wizard step 7 of 7 (Publish NOT clicked; draft only)"
+    },
+    {
+      "file": "event-detail-desktop.png",
+      "url": "https://eventlinqs-staging.vercel.app/events/naming-ceremony-showcase-yoruba-traditions-night",
+      "viewport": "1440x900",
+      "timestamp": "2026-07-04T04:07:05.872Z",
+      "note": ""
+    },
+    {
+      "file": "event-detail-mobile.png",
+      "url": "https://eventlinqs-staging.vercel.app/events/naming-ceremony-showcase-yoruba-traditions-night",
+      "viewport": "390x844",
+      "timestamp": "2026-07-04T04:10:29.254Z",
+      "note": ""
+    },
+    {
+      "file": "events-browse-desktop.jpg",
+      "url": "https://eventlinqs-staging.vercel.app/events",
+      "viewport": "1440x900",
+      "timestamp": "2026-07-04T04:06:53.588Z",
+      "note": "converted from PNG to JPEG q90 for committable size"
+    },
+    {
+      "file": "events-browse-mobile.jpg",
+      "url": "https://eventlinqs-staging.vercel.app/events",
+      "viewport": "390x844",
+      "timestamp": "2026-07-04T04:10:20.604Z",
+      "note": "converted from PNG to JPEG q90 for committable size scaled x0.23 to fit the JPEG 65535px cap"
+    },
+    {
+      "file": "feed-desktop.png",
+      "url": "https://eventlinqs-staging.vercel.app/feed",
+      "viewport": "1440x900",
+      "timestamp": "2026-07-04T04:08:05.359Z",
+      "note": "redirected to https://eventlinqs-staging.vercel.app/login?redirect=/feed"
+    },
+    {
+      "file": "feed-mobile.png",
+      "url": "https://eventlinqs-staging.vercel.app/feed",
+      "viewport": "390x844",
+      "timestamp": "2026-07-04T04:11:36.114Z",
+      "note": "redirected to https://eventlinqs-staging.vercel.app/login?redirect=/feed"
+    },
+    {
+      "file": "help-desktop.png",
+      "url": "https://eventlinqs-staging.vercel.app/help",
+      "viewport": "1440x900",
+      "timestamp": "2026-07-04T04:07:55.156Z",
+      "note": ""
+    },
+    {
+      "file": "help-mobile.png",
+      "url": "https://eventlinqs-staging.vercel.app/help",
+      "viewport": "390x844",
+      "timestamp": "2026-07-04T04:11:26.694Z",
+      "note": ""
+    },
+    {
+      "file": "home-desktop.png",
+      "url": "https://eventlinqs-staging.vercel.app/",
+      "viewport": "1440x900",
+      "timestamp": "2026-07-04T04:06:33.367Z",
+      "note": ""
+    },
+    {
+      "file": "home-mobile.jpg",
+      "url": "https://eventlinqs-staging.vercel.app/",
+      "viewport": "390x844",
+      "timestamp": "2026-07-04T04:09:14.676Z",
+      "note": "converted from PNG to JPEG q90 for committable size"
+    },
+    {
+      "file": "organiser-dashboard-desktop.png",
+      "url": "https://eventlinqs-staging.vercel.app/dashboard",
+      "viewport": "1440x900",
+      "timestamp": "2026-07-04T04:08:25.174Z",
+      "note": ""
+    },
+    {
+      "file": "organiser-dashboard-mobile.png",
+      "url": "https://eventlinqs-staging.vercel.app/dashboard",
+      "viewport": "390x844",
+      "timestamp": "2026-07-04T04:18:02.511Z",
+      "note": ""
+    },
+    {
+      "file": "organiser-events-desktop.png",
+      "url": "https://eventlinqs-staging.vercel.app/dashboard/events",
+      "viewport": "1440x900",
+      "timestamp": "2026-07-04T04:08:28.833Z",
+      "note": ""
+    },
+    {
+      "file": "organiser-events-mobile.png",
+      "url": "https://eventlinqs-staging.vercel.app/dashboard/events",
+      "viewport": "390x844",
+      "timestamp": "2026-07-04T04:18:06.364Z",
+      "note": ""
+    },
+    {
+      "file": "organisers-landing-desktop.png",
+      "url": "https://eventlinqs-staging.vercel.app/organisers",
+      "viewport": "1440x900",
+      "timestamp": "2026-07-04T04:07:48.112Z",
+      "note": ""
+    },
+    {
+      "file": "organisers-landing-mobile.jpg",
+      "url": "https://eventlinqs-staging.vercel.app/organisers",
+      "viewport": "390x844",
+      "timestamp": "2026-07-04T04:11:18.945Z",
+      "note": "converted from PNG to JPEG q90 for committable size"
+    },
+    {
+      "file": "pricing-desktop.png",
+      "url": "https://eventlinqs-staging.vercel.app/pricing",
+      "viewport": "1440x900",
+      "timestamp": "2026-07-04T04:07:40.589Z",
+      "note": ""
+    },
+    {
+      "file": "pricing-mobile.png",
+      "url": "https://eventlinqs-staging.vercel.app/pricing",
+      "viewport": "390x844",
+      "timestamp": "2026-07-04T04:11:10.501Z",
+      "note": ""
+    },
+    {
+      "file": "signin-desktop.png",
+      "url": "https://eventlinqs-staging.vercel.app/login",
+      "viewport": "1440x900",
+      "timestamp": "2026-07-04T04:08:01.905Z",
+      "note": ""
+    },
+    {
+      "file": "signin-mobile.png",
+      "url": "https://eventlinqs-staging.vercel.app/login",
+      "viewport": "390x844",
+      "timestamp": "2026-07-04T04:11:33.300Z",
+      "note": ""
+    },
+    {
+      "file": "signup-desktop.png",
+      "url": "https://eventlinqs-staging.vercel.app/signup",
+      "viewport": "1440x900",
+      "timestamp": "2026-07-04T04:07:58.747Z",
+      "note": ""
+    },
+    {
+      "file": "signup-mobile.png",
+      "url": "https://eventlinqs-staging.vercel.app/signup",
+      "viewport": "390x844",
+      "timestamp": "2026-07-04T04:11:30.690Z",
+      "note": ""
+    }
+  ]
+}

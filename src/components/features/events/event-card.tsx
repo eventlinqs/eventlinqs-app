@@ -6,6 +6,7 @@ import { SaveEventButton } from './save-event-button'
 import type { EventInventory } from '@/lib/redis/inventory-cache'
 import type { SocialProofBadge as M5Badge } from '@/lib/events/types'
 import { BADGE_LABELS, BADGE_STYLES } from '@/lib/events/badges'
+import { priceLabel } from '@/lib/events/price-label'
 
 /**
  * EventCard - spec §6.2
@@ -81,15 +82,9 @@ function formatPrice(
 ): string {
   if (isFree === true) return 'Free'
   if (!tiers || tiers.length === 0) return 'Free'
-  const effectivePrices = tiers.map(t => dynamicPrices.get(t.id) ?? t.price)
-  const min = Math.min(...effectivePrices)
-  if (min === 0) return 'Free'
-  const currency = tiers[0].currency ?? 'AUD'
-  const dollars = min / 100
-  const formatted = Number.isInteger(dollars)
-    ? `$${dollars}`
-    : `$${dollars.toFixed(2)}`
-  return `From ${currency} ${formatted}`
+  return priceLabel(
+    tiers.map(t => ({ price: dynamicPrices.get(t.id) ?? t.price, currency: t.currency })),
+  )
 }
 
 function buildInventory(tiers: EventCardTier[]): EventInventory {
