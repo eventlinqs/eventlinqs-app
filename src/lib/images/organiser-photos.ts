@@ -51,10 +51,27 @@ export const ORGANISER_HERO: PhotoSlot = spineSlot(
 /** Alternating image+text feature bands. */
 export const ORGANISER_BANDS: {
   pricing: PhotoSlot
+  discovery: PhotoSlot
+  founding: PhotoSlot
   tools: PhotoSlot
   selfServe: PhotoSlot
   dataOwnership: PhotoSlot
 } = {
+  // Founding Organiser band background (photo + navy scrim, never flat dark).
+  founding: spineSlot(
+    'supportingDance',
+    'A celebration in full swing at a community event',
+    `${HERO}/lunar.jpg`,
+    '50% 45%',
+  ),
+  // Demand-engine band: a full crowd mid-singalong is the audience the
+  // discovery feed and push alerts deliver.
+  discovery: spineSlot(
+    'supportingCrowd',
+    'A full crowd singing along at a live event',
+    `${HERO}/caribbean-carnival.jpg`,
+    '50% 40%',
+  ),
   pricing: spineSlot(
     'supportingOrganiser',
     'An organiser celebrating a successful, well-attended event',
