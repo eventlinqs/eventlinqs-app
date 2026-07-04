@@ -24,7 +24,6 @@
 import fs from 'node:fs'
 import { createHash } from 'node:crypto'
 import { chromium, devices } from 'playwright'
-import { generateLayout } from '../src/lib/seating/generate.ts'
 
 const BASE = process.argv[2]
 if (!BASE) throw new Error('usage: node --experimental-strip-types scripts/seating-ui-drive.mjs <baseUrl>')
