@@ -194,7 +194,13 @@ is the Anthropic Console; the guard is a circuit breaker, not a meter.
   compliance, knowledge-base compliance, service behaviour (handoff
   gating, refusal, upstream errors, malformed suggestions), and spend
   recording.
-- Staging proof (real conversations, screenshots, rate-limit and handoff
-  logs, one adversarial test per assistant) is run on the Vercel preview
-  once the ANTHROPIC_API_KEY is added; evidence lands in
-  `docs/ai/staging-proof/`.
+- Staging proof: `docs/ai/staging-proof/`. The pre-key pass
+  (`2026-07-04-prekey/`) proves validation, auth gating, the stub state,
+  rate limiting, and structured logging. The live pass
+  (`2026-07-05-live/`), run after the key was provisioned, proves real
+  conversations on all four assistants, one adversarial probe each handled
+  safely, the human handoff email delivered to the support inbox (verified
+  via the Resend API, `last_event: delivered`), and the monthly cost
+  counter accruing real spend (53,745 to 484,600 microUSD across the run).
+  All authed journeys ran against the TEST database
+  (`vkapkibzokmfaxqogypq`); production was never touched.
