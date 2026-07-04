@@ -34,7 +34,9 @@ export default async function DashboardLayout({
       <div className="flex">
         <DashboardSidebar profile={profile} initialCollapsed={collapsed} />
         <main className="flex-1 px-4 py-8 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-6xl">{children}</div>
+          {/* Canonical container (1400px). The old max-w-6xl silently capped
+              the whole dashboard below the sitewide standard. */}
+          <div className="mx-auto max-w-7xl">{children}</div>
         </main>
       </div>
     </div>
