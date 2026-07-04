@@ -16,7 +16,10 @@ import {
   summariseIssues,
 } from '@/lib/reservations/validation'
 
-export type { CreateReservationInput }
+// CreateReservationInput is intentionally NOT re-exported here. A 'use server'
+// module may export only async server actions: a re-exported type compiles to a
+// runtime value reference under the production build and throws ReferenceError
+// at module load. Importers take the type from '@/lib/reservations/validation'.
 
 export interface CreateReservationResult {
   reservation_id?: string
