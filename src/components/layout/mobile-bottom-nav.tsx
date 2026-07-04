@@ -10,10 +10,10 @@ import { Home, LayoutGrid, Search, Heart, User } from 'lucide-react'
  * (Batch 9 V2).
  *
  * Five-item bar: Home / Browse / Search / Saved / Account. Active
- * state shows a gold underline + filled icon. Glassmorphism background
- * (frosted navy via backdrop-blur). Hides on scroll-down, reveals on
- * scroll-up. Safe-area-inset-bottom padding handles the iPhone X+
- * notch.
+ * state shows a gold underline + filled icon. Solid opaque navy
+ * background (no glassmorphism, per the design system). Hides on
+ * scroll-down, reveals on scroll-up. Safe-area-inset-bottom padding
+ * handles the iPhone X+ notch.
  *
  * Hidden on a small set of in-flow pages where it would interfere with
  * UX:
@@ -88,7 +88,7 @@ export function MobileBottomNav() {
       aria-label="Primary"
       className={[
         'fixed inset-x-0 bottom-0 z-40 md:hidden',
-        'border-t border-white/10 bg-[var(--color-navy-950)]/85 backdrop-blur-xl',
+        'border-t border-white/10 bg-[var(--color-navy-950)] shadow-[0_-4px_16px_rgba(10,22,40,0.24)]',
         'transition-transform duration-300 ease-out',
         hidden ? 'translate-y-full' : 'translate-y-0',
       ].join(' ')}

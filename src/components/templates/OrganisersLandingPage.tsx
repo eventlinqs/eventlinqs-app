@@ -328,7 +328,7 @@ export async function OrganisersLandingPage() {
           <div
             aria-hidden
             className="pointer-events-none absolute left-0 right-0 top-6 hidden h-px lg:block"
-            style={{ background: 'linear-gradient(90deg, transparent, rgba(212,164,55,0.45) 12%, rgba(212,164,55,0.45) 88%, transparent)' }}
+            style={{ background: 'linear-gradient(90deg, transparent, rgba(212,160,23,0.45) 12%, rgba(212,160,23,0.45) 88%, transparent)' }}
           />
           <Reveal stagger as="ol" className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
             {HOW_IT_WORKS.map(({ step, title, detail }) => (

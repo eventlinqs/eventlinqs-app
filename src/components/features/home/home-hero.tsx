@@ -93,7 +93,7 @@ export async function HomeHero({ featuredEvent }: Props) {
         className="pointer-events-none absolute -top-40 -right-40 h-[28rem] w-[28rem] rounded-full"
         style={{
           background:
-            'radial-gradient(circle, rgba(212,164,55,0.10) 0%, rgba(212,164,55,0) 70%)',
+            'radial-gradient(circle, rgba(212,160,23,0.10) 0%, rgba(212,160,23,0) 70%)',
         }}
       />
       <div

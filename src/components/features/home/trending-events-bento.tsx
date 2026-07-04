@@ -87,7 +87,7 @@ function CardContent({ event, sizeRole }: { event: BentoEvent; sizeRole: 'featur
 
       {/* Date badge - top-left */}
       <span
-        className="absolute left-3 top-3 inline-flex items-center rounded-full bg-white/95 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-900 backdrop-blur"
+        className="absolute left-3 top-3 inline-flex items-center rounded-full bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-900"
       >
         {formatDateBadge(event.start_date)}
       </span>
@@ -104,14 +104,12 @@ function CardContent({ event, sizeRole }: { event: BentoEvent; sizeRole: 'featur
         ) : null}
       </div>
 
-      {/* Price chip - bottom-right (frosted) */}
+      {/* Price chip - bottom-right (solid navy, gold edge) */}
       <span
         className="absolute right-3 bottom-3 inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--brand-accent)]"
         style={{
-          background: 'rgba(10, 22, 40, 0.55)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
-          border: '1px solid rgba(212, 164, 55, 0.35)',
+          background: 'rgb(10, 22, 40)',
+          border: '1px solid rgba(212, 160, 23, 0.35)',
         }}
       >
         {priceLabel(event)}

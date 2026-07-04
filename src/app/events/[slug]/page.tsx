@@ -220,20 +220,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       'events',
     ].filter(Boolean) as string[],
     alternates: { canonical: `/events/${slug}` },
+    // og:image and twitter:image come from the designed per-event share card
+    // (opengraph-image.tsx in this route folder): the branded invitation with
+    // the cover photo, scrim, title, date and venue. Setting raw cover images
+    // here would override the file-convention card with an unbranded photo.
     openGraph: {
       title: event.title,
       description,
       url: `${baseUrl}/events/${slug}`,
       type: 'website',
-      images: event.cover_image_url
-        ? [{ url: event.cover_image_url, width: 1200, height: 630, alt: event.title }]
-        : [],
     },
     twitter: {
       card: 'summary_large_image',
       title: event.title,
       description,
-      images: event.cover_image_url ? [event.cover_image_url] : [],
     },
   }
 }

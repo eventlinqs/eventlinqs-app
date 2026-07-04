@@ -44,7 +44,7 @@ const STATUS_FILL: Record<
   available:  { fill: 'var(--section-color)', stroke: 'transparent', clickable: true },
   selected:   { fill: INK_900,                 stroke: GOLD,          clickable: true },
   reserved:   { fill: '#9CA3AF',               stroke: 'transparent', clickable: false },
-  sold:       { fill: '#6B7280',               stroke: 'transparent', clickable: false },
+  sold:       { fill: '#6B7280',               stroke: 'transparent', clickable: false }, // --color-ink-400
   held:       { fill: '#9CA3AF',               stroke: 'transparent', clickable: false },
   blocked:    { fill: '#374151',               stroke: 'transparent', clickable: false },
   accessible: { fill: 'var(--section-color)', stroke: '#FFFFFF',     clickable: true },
@@ -473,7 +473,7 @@ export function SeatSelector({
                 textAnchor="middle"
                 fontSize="10"
                 fontWeight="600"
-                fill="#6B7280"
+                fill="#6B7280" /* --color-ink-400 */
                 style={{ userSelect: 'none' }}
               >
                 {r.label}

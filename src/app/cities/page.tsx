@@ -204,15 +204,14 @@ async function CityTile({
           <p className="mt-1 text-xs font-medium text-white/85 sm:text-sm">
             {entry.state}
           </p>
-          {/* Frosted-glass pill background raises gold chip contrast
-           *  from 3.8:1 to 9.4:1 worst case. */}
+          {/* Solid navy pill background keeps the gold chip legible over
+           *  any photo (gold on solid navy #0A1628 clears AA with room to
+           *  spare; no glassmorphism, per the design system). */}
           <p
             className="mt-2 inline-flex items-center self-start rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent)]"
             style={{
-              background: 'rgba(10, 22, 40, 0.55)',
-              backdropFilter: 'blur(12px)',
-              WebkitBackdropFilter: 'blur(12px)',
-              border: '1px solid rgba(212, 164, 55, 0.35)',
+              background: 'rgb(10, 22, 40)',
+              border: '1px solid rgba(212, 160, 23, 0.35)',
             }}
           >
             {countLabel}

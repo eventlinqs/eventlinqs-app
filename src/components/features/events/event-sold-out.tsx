@@ -223,7 +223,7 @@ function RelatedCard({ event }: { event: EventSoldOutRelated }) {
           </div>
         )}
         {event.category_name && (
-          <span className="absolute left-2 top-2 rounded-md bg-ink-900/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white backdrop-blur">
+          <span className="absolute left-2 top-2 rounded-md bg-ink-900/95 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white">
             {event.category_name}
           </span>
         )}

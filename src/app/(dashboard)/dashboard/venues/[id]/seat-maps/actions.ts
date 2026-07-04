@@ -36,8 +36,10 @@ interface SeatMapLayout {
 const ALLOWED_SEAT_TYPES = ['standard', 'premium', 'accessible', 'companion', 'restricted_view', 'obstructed']
 const REQUIRED_HEADERS = ['section', 'row', 'seat_number', 'seat_type', 'x', 'y']
 
+// Section fills cycle per section for visual distinction on the seat map.
+// The lead blue is the brand info token #0EA5E9 (was off-brand #4A90D9).
 const SECTION_COLORS = [
-  '#4A90D9', '#E91E63', '#4CAF50', '#FF9800', '#9C27B0',
+  '#0EA5E9', '#E91E63', '#4CAF50', '#FF9800', '#9C27B0',
   '#00BCD4', '#F44336', '#3F51B5', '#8BC34A', '#FF5722',
 ]
 

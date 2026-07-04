@@ -15,7 +15,7 @@ interface Props {
   longitude: number | null
 }
 
-const BRAND_GOLD = '#D4AF37'
+const BRAND_GOLD = '#D4A017' // --color-gold-500 (JS map config cannot read CSS vars)
 
 export function VenueMap({
   venueName,

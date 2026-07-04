@@ -8,10 +8,14 @@ type Props = {
   className?: string
 }
 
+// Rail/section headings are law-bound to the measured competitor scale:
+// 24px at desktop, 22px at mobile (.type-rail-heading, globals.css). The old
+// md/lg presets (text-2xl / sm:text-3xl) ran up to 30px - above the law.
+// 'sm' remains a compact 20px tier for sidebar/aside headings only.
 const titleSizes = {
-  sm: 'text-xl',
-  md: 'text-2xl',
-  lg: 'text-2xl sm:text-3xl',
+  sm: 'text-xl font-bold',
+  md: 'type-rail-heading',
+  lg: 'type-rail-heading',
 } as const
 
 export function SectionHeader({
@@ -28,7 +32,7 @@ export function SectionHeader({
         <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-700">
           {eyebrow}
         </p>
-        <h2 id={id} className={`font-display ${titleSizes[size]} font-bold text-ink-900`}>
+        <h2 id={id} className={`font-display ${titleSizes[size]} text-ink-900`}>
           {title}
         </h2>
       </div>
