@@ -87,7 +87,9 @@ export async function FeaturedHero({ events }: { events: BentoEvent[] }) {
         <h1 id="home-hero-heading" className="sr-only">
           Live events across Australia: music, scenes, festivals and community
         </h1>
-        <div className="mx-auto flex h-[42vh] min-h-[320px] max-w-7xl items-end px-6 pb-10 sm:px-8 lg:px-12 lg:h-[44vh]">
+        {/* Empty-state banner matches the taller homepage hero scale
+            (founder directive 2026-07-05: +~17%, homepage only). */}
+        <div className="mx-auto flex h-[49vh] min-h-[375px] max-w-7xl items-end px-6 pb-10 sm:px-8 lg:px-12 lg:h-[51vh]">
           <div className="max-w-2xl hero-enter">
             <p
               className="type-micro font-display uppercase tracking-[0.18em] text-[var(--brand-accent)]"

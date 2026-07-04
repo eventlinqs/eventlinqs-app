@@ -123,6 +123,9 @@ export function FeaturedHeroClient({ slides }: Props) {
     else next()
   }
 
+  // Founder directive 2026-07-05: the HOMEPAGE hero runs ~17% taller than the
+  // platform .hero-marketing scale (42/44/48vh cap 480 -> 49/51/56vh cap 560).
+  // Homepage only; every other hero stays on the platform token.
   return (
     <div
       role={multi ? 'region' : undefined}
@@ -136,7 +139,7 @@ export function FeaturedHeroClient({ slides }: Props) {
       onMouseLeave={() => setHovered(false)}
       onFocusCapture={() => setFocused(true)}
       onBlurCapture={e => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocused(false) }}
-      className="group relative h-[42vh] min-h-[320px] w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-inset sm:h-[44vh] lg:h-[48vh] lg:max-h-[480px]"
+      className="group relative h-[49vh] min-h-[375px] w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-inset sm:h-[51vh] lg:h-[56vh] lg:max-h-[560px]"
     >
       {slides.map((slide, idx) => {
         const isActive = idx === active
