@@ -197,6 +197,48 @@ BEATEN:
 5. All-in pricing law holds on the map: displayed seat prices resolve from
    the same live pricing source checkout charges.
 
+## Competitive edge pass (2026-07-05, second directive)
+
+Ranked analysis: `docs/seating/seating-edge-analysis.md`. Three edges
+built, proven in `docs/seating/evidence/` (edge-proofs.json +
+edge-*.png), regression smoke re-run green:
+
+1. ONE-TAP WHOLE-TABLE BOOKING. Any table or booth row sells in one tap:
+   the panel above the map lists every table with live availability
+   ("Table 1 · book all 10" / "· yours" / "· full"), a tap holds every
+   free seat at the table atomically through the existing reservation
+   path, a second tap releases it. Proven on the gala chart: Table 1
+   booked to a held 10-seat checkout in one tap
+   (edge-gala-table-panel.png, edge-gala-table-selected.png,
+   edge-gala-checkout-10-seats.png). Why an organiser prefers ours:
+   Humanitix routes gala organisers to a packaged-ticket workaround and
+   Eventbrite sells chair by chair; we sell tables the way galas actually
+   book.
+2. A PREMIUM MAP, NOT A UTILITY GRID. Navy proscenium stage with a gold
+   footlight keyline, soft-keyline section-coloured seats with legible
+   numerals, a gold-seat navy-numeral selected state, quiet ink for
+   everything unavailable, live "N of M seats open" count, per-section
+   prices in the legend, 150ms state transitions, and every seat carrying
+   a screen-reader label ("A seat 2, available, AUD 25.00"): compare
+   attendee-map-desktop.png (before) with edge-map-after-desktop.png and
+   edge-map-after-mobile.png. Why an organiser prefers ours: the map IS
+   the event page for a seated show, and ours looks like the platform's
+   brand instead of a spreadsheet.
+3. SHARE YOUR SEAT. A seated confirmation now invites the buyer to send
+   "I am in Main room, Row C, Seat 1 for {event}. Pick a seat near me:"
+   through the attributed share-a-ticket bar
+   (edge-share-your-seat-confirmation.png). Why an organiser prefers
+   ours: no competitor connects seating to any growth loop; every seated
+   buyer becomes a recruiter for the seats around them, and the link is
+   attributed so the organiser sees it working.
+
+Regression: a fresh anonymous free seated purchase ran end to end on the
+new selector (order f7a8feff..., ticket valid, seat "Main room, Row C,
+Seat 1" sold) and the paid, scan, expiry and concurrency proofs from the
+first pass stand. Honest gap kept on record: Eventbrite still greys seats
+in real time while browsing; our TTL hold makes the race harmless and the
+live-channel upgrade is parked behind launch traffic (analysis item 5).
+
 ## Founder decisions needed
 
 1. The organiser ownership checks on the seat-map builder and seats pages

@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getSiteUrl } from '@/lib/site-url'
 import { formatSeatLabel } from '@/lib/seating/format'
 import { ConfirmationActions } from '@/components/orders/confirmation-actions'
+import { EventShareBar } from '@/components/features/events/event-share-bar'
 import { encodeRefCode } from '@/lib/growth/referrals'
 import type { Order, OrderItem } from '@/types/database'
 
@@ -278,6 +279,31 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
             <p className="mt-1 text-gold-500">Your digital tickets and QR codes will appear here and arrive in your email within a few minutes.</p>
           </div>
         ) : null}
+
+        {/* Share your seat (seated orders): the growth loop no competitor
+         *  ties to seating. The buyer's exact seat goes into the invite so
+         *  their people can pick the seats next to them; the link is the
+         *  attributed share-a-ticket URL. */}
+        {issuedTickets.some(t => t.seatLabel) && event.slug && (
+          <section className="mb-6 rounded-xl border border-gold-500/30 bg-white p-6">
+            <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-gold-700">
+              Share your seat
+            </p>
+            <p className="mt-2 text-sm text-ink-600">
+              The seats around you are still open. Tell your people exactly
+              where you are sitting and they can pick the seats next to you.
+            </p>
+            <div className="mt-4">
+              <EventShareBar
+                eventTitle={event.title}
+                eventDate={eventDate}
+                eventUrl={`${siteUrl}/events/${event.slug}`}
+                messageOverride={`I am in ${issuedTickets.find(t => t.seatLabel)?.seatLabel} for ${event.title}. Pick a seat near me:`}
+                variant="light"
+              />
+            </div>
+          </section>
+        )}
 
         {/* Actions */}
         <ConfirmationActions

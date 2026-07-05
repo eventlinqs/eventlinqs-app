@@ -51,18 +51,24 @@ interface Props {
 // Brand tokens (referenced inline from the SVG where className is not available)
 const GOLD = '#D4A017'         // --color-gold-500
 const INK_900 = '#0A1628'      // --color-ink-900
+const INK_200 = '#D9D9D6'      // --color-ink-200 (unavailable seats: quiet, not alarming)
+const INK_400 = '#6B7280'      // --color-ink-400
 
+// Premium treatment: available seats carry their section colour with a soft
+// white keyline; the SELECTED state is the brand moment (gold seat, navy
+// numeral); everything unavailable recedes to the same quiet ink so the open
+// room reads instantly. Text colour is part of the state.
 const STATUS_FILL: Record<
   string,
-  { fill: string; stroke: string; clickable: boolean }
+  { fill: string; stroke: string; text: string; clickable: boolean }
 > = {
-  available:  { fill: 'var(--section-color)', stroke: 'transparent', clickable: true },
-  selected:   { fill: INK_900,                 stroke: GOLD,          clickable: true },
-  reserved:   { fill: '#9CA3AF',               stroke: 'transparent', clickable: false },
-  sold:       { fill: '#6B7280',               stroke: 'transparent', clickable: false }, // --color-ink-400
-  held:       { fill: '#9CA3AF',               stroke: 'transparent', clickable: false },
-  blocked:    { fill: '#374151',               stroke: 'transparent', clickable: false },
-  accessible: { fill: 'var(--section-color)', stroke: '#FFFFFF',     clickable: true },
+  available:  { fill: 'var(--section-color)', stroke: 'rgba(255,255,255,0.55)', text: '#FFFFFF', clickable: true },
+  selected:   { fill: GOLD,                    stroke: INK_900,                   text: INK_900,  clickable: true },
+  reserved:   { fill: INK_200,                 stroke: 'transparent',             text: INK_400,  clickable: false },
+  sold:       { fill: INK_200,                 stroke: 'transparent',             text: INK_400,  clickable: false },
+  held:       { fill: INK_200,                 stroke: 'transparent',             text: INK_400,  clickable: false },
+  blocked:    { fill: INK_200,                 stroke: 'transparent',             text: INK_400,  clickable: false },
+  accessible: { fill: 'var(--section-color)', stroke: '#FFFFFF',                 text: '#FFFFFF', clickable: true },
 }
 
 const SEAT_SIZE = 20
@@ -266,6 +272,46 @@ export function SeatSelector({
     })
   }
 
+  // ── Whole-table booking (the gala edge) ────────────────────────────────
+  // Any row whose label reads as a table or booth sells in ONE action: a tap
+  // holds every free seat at that table. Humanitix routes organisers to a
+  // packaged-ticket workaround; Eventbrite sells chair by chair.
+  const tableGroups = useMemo(() => {
+    const groups = new Map<string, { key: string; label: string; sectionId: string | null; seats: SeatData[] }>()
+    for (const seat of seats) {
+      if (!/(table|booth)/i.test(seat.row_label)) continue
+      const key = `${seat.seat_map_section_id ?? 'none'}::${seat.row_label}`
+      if (!groups.has(key)) {
+        groups.set(key, { key, label: seat.row_label, sectionId: seat.seat_map_section_id, seats: [] })
+      }
+      groups.get(key)!.seats.push(seat)
+    }
+    return [...groups.values()]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seatsKey])
+
+  function toggleTable(group: { seats: SeatData[] }) {
+    const availableIds = group.seats.filter(s => s.status === 'available').map(s => s.id)
+    if (availableIds.length === 0) return
+    setError(null)
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      const allIn = availableIds.every(id => next.has(id))
+      if (allIn) {
+        for (const id of availableIds) next.delete(id)
+        return next
+      }
+      for (const id of availableIds) {
+        if (next.size >= maxPerOrder) {
+          setError(`Order limit is ${maxPerOrder} seats; the rest of the table stays open for your group.`)
+          break
+        }
+        next.add(id)
+      }
+      return next
+    })
+  }
+
   const selectedSeats = seats.filter(s => selectedIds.has(s.id))
   const totalCents = selectedSeats.reduce((sum, s) => sum + getSeatPrice(s), 0)
 
@@ -306,9 +352,18 @@ export function SeatSelector({
         const sectionColor = sectionColorMap.get(seat.seat_map_section_id ?? '') ?? GOLD
         const fill = styleInfo.fill.replace('var(--section-color)', sectionColor)
 
+        const statusWord = isSelected
+          ? 'selected'
+          : styleInfo.clickable
+            ? 'available'
+            : 'unavailable'
         return (
           <g
             key={seat.id}
+            role="img"
+            aria-label={`${seat.row_label} seat ${seat.seat_number}, ${statusWord}${
+              styleInfo.clickable ? `, ${formatPrice(getSeatPrice(seat))}` : ''
+            }`}
             style={{ cursor: styleInfo.clickable ? 'pointer' : 'not-allowed' }}
             onClick={() => toggleSeat(seat)}
             onMouseEnter={() => handleMouseEnter(seat.id)}
@@ -319,18 +374,19 @@ export function SeatSelector({
               y={cy - SEAT_SIZE / 2}
               width={SEAT_SIZE}
               height={SEAT_SIZE}
-              rx="3"
+              rx="6"
               fill={fill}
               stroke={styleInfo.stroke}
               strokeWidth={isSelected ? 2 : 1}
-              opacity={styleInfo.clickable ? 1 : 0.5}
+              style={{ transition: 'fill 150ms ease-out, stroke 150ms ease-out' }}
             />
             <text
               x={cx}
-              y={cy + 4}
+              y={cy + 3.5}
               textAnchor="middle"
-              fontSize="7"
-              fill="white"
+              fontSize="7.5"
+              fontWeight={isSelected ? 700 : 500}
+              fill={styleInfo.text}
               style={{ pointerEvents: 'none', userSelect: 'none' }}
             >
               {seat.seat_number}
@@ -339,7 +395,7 @@ export function SeatSelector({
         )
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [seatsKey, selectedIdsKey, minX, minY, sectionsKey, toggleSeat, handleMouseEnter, handleMouseLeave]
+    [seatsKey, selectedIdsKey, minX, minY, sectionsKey, toggleSeat, handleMouseEnter, handleMouseLeave, getSeatPrice, formatPrice]
   )
 
   // Hover highlight rendered as a separate SVG layer, ABOVE seatElements, with pointer-events:none
@@ -421,6 +477,9 @@ export function SeatSelector({
             <span className="text-ink-600">Accessible and companion</span>
           </div>
         )}
+        <span aria-live="polite" className="ml-auto font-semibold text-ink-900">
+          {seats.filter(s => s.status === 'available').length} of {seats.length} seats open
+        </span>
 
         {sections.length > 0 && (
           <span className="h-4 w-px bg-ink-200" aria-hidden="true" />
@@ -449,6 +508,54 @@ export function SeatSelector({
         })}
       </div>
 
+      {/* Whole-table booking: the gala flow, one tap per table. */}
+      {tableGroups.length > 0 && (
+        <div className="rounded-xl border border-gold-500/30 bg-white p-4">
+          <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-gold-700">
+            Book a whole table
+          </p>
+          <p className="mt-1 text-xs text-ink-600">
+            One tap holds every free seat at the table. Tap again to let it go.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {tableGroups.map(group => {
+              const available = group.seats.filter(s => s.status === 'available')
+              const selectedHere = available.filter(s => selectedIds.has(s.id)).length
+              const fullTableSelected = available.length > 0 && selectedHere === available.length
+              const soldOut = available.length === 0
+              const label = soldOut
+                ? `${group.label} · full`
+                : fullTableSelected
+                  ? `${group.label} · yours`
+                  : available.length === group.seats.length
+                    ? `${group.label} · book all ${available.length}`
+                    : `${group.label} · book remaining ${available.length}`
+              return (
+                <button
+                  key={group.key}
+                  type="button"
+                  disabled={soldOut}
+                  aria-pressed={fullTableSelected}
+                  onClick={() => toggleTable(group)}
+                  className={`inline-flex h-10 items-center gap-1.5 rounded-full border px-4 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
+                    fullTableSelected
+                      ? 'border-ink-900 bg-gold-500 text-ink-900'
+                      : 'border-ink-200 bg-white text-ink-900 hover:border-gold-500'
+                  }`}
+                >
+                  {fullTableSelected && (
+                    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} aria-hidden>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                  {label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Seat map container */}
       <div className="relative">
         <div
@@ -466,31 +573,32 @@ export function SeatSelector({
             role="img"
             aria-label="Seat map"
           >
-            {/* STAGE label with horizontal accent line */}
-            <line
-              x1={PADDING + ROW_LABEL_GUTTER}
-              y1={STAGE_BAND / 2 + 2}
-              x2={viewWidth - PADDING}
-              y2={STAGE_BAND / 2 + 2}
-              stroke={GOLD}
-              strokeWidth="1.5"
+            {/* STAGE: a solid navy proscenium band with a gold footlight
+                keyline, the same visual language as the platform chrome. */}
+            <rect
+              x={PADDING + ROW_LABEL_GUTTER}
+              y={4}
+              width={viewWidth - PADDING * 2 - ROW_LABEL_GUTTER}
+              height={STAGE_BAND - 16}
+              rx="6"
+              fill={INK_900}
             />
             <rect
-              x={viewWidth / 2 - 44}
-              y={STAGE_BAND / 2 - 8}
-              width={88}
-              height={20}
-              rx="4"
-              fill="var(--color-canvas, #FAFAF7)"
+              x={PADDING + ROW_LABEL_GUTTER}
+              y={STAGE_BAND - 12}
+              width={viewWidth - PADDING * 2 - ROW_LABEL_GUTTER}
+              height={2}
+              rx="1"
+              fill={GOLD}
             />
             <text
               x={viewWidth / 2}
-              y={STAGE_BAND / 2 + 6}
+              y={STAGE_BAND / 2 + 1}
               textAnchor="middle"
               fontSize="10"
               fontWeight="700"
-              letterSpacing="2"
-              fill={INK_900}
+              letterSpacing="4"
+              fill="#FFFFFF"
             >
               STAGE
             </text>
