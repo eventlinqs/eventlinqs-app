@@ -122,8 +122,12 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  // suppressHydrationWarning is scoped to the <html> element's own attributes:
+  // the pre-paint bootstrap above intentionally stamps data-motion /
+  // data-headless on <html> before React hydrates, which is a legitimate
+  // mismatch (React 19 logs it as a console error in dev otherwise).
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${hanken.variable} ${archivo.variable} ${manrope.variable}`}>
         <Script id="el-headless-flag" strategy="beforeInteractive">
           {HEAD_HEADLESS_FLAG}

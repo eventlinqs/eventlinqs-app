@@ -168,9 +168,12 @@ export function FeaturedHeroClient({ slides }: Props) {
             />
             <div className="relative z-10 mx-auto flex h-full max-w-7xl items-end px-6 pb-8 sm:px-8 sm:pb-10 lg:px-12 lg:pb-12">
               {/* hero-enter staggers the content stack (kicker, title, detail,
-               *  CTA) in on load, 60-80ms apart. The HeroMedia LCP raster is a
-               *  sibling above and is never animated (media architecture law). */}
-              <div className="max-w-2xl hero-enter">
+               *  CTA) in on load, 60-80ms apart. hero-slide-content re-runs a
+               *  single gentle rise when this slide becomes active during
+               *  rotation, so each featured event arrives behind the crossfade.
+               *  The HeroMedia LCP raster is a sibling above and is never
+               *  animated (media architecture law). */}
+              <div className={`max-w-2xl hero-enter hero-slide-content${isActive ? ' is-active' : ''}`}>
                 <p
                   className="type-micro font-display uppercase tracking-[0.18em] text-[var(--brand-accent)]"
                   style={{ fontWeight: 600 }}
@@ -185,8 +188,8 @@ export function FeaturedHeroClient({ slides }: Props) {
                   <Link
                     href={slide.href}
                     prefetch={false}
-                    className="plausible-event-name=hero_get_tickets_click inline-flex h-12 items-center justify-center rounded-full bg-[var(--brand-accent)] px-7 text-[var(--color-navy-950)] shadow-lg shadow-black/30 hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)] motion-reduce:hover:scale-100"
-                    style={{ fontSize: 'var(--type-body)', fontWeight: 600, transition: 'transform var(--motion-quick)' }}
+                    className="plausible-event-name=hero_get_tickets_click inline-flex h-12 items-center justify-center rounded-full bg-[var(--brand-accent)] px-7 text-[var(--color-navy-950)] shadow-lg shadow-black/30 hover:scale-[1.02] hover:shadow-[0_10px_30px_rgba(212,164,55,0.32)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)] motion-reduce:hover:scale-100 motion-reduce:active:scale-100"
+                    style={{ fontSize: 'var(--type-body)', fontWeight: 600, transition: 'transform var(--motion-quick), box-shadow var(--motion-quick)' }}
                   >
                     Get tickets
                   </Link>

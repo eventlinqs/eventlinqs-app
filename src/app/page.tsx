@@ -170,10 +170,11 @@ export default async function HomePage() {
       <main>
         {/* H1 - FeaturedHero: one strong, real featured event at a time,
          *  roughly half the old hero height. SSR priority AVIF raster as
-         *  the LCP layer, restrained scrim, single CTA. When two or three
-         *  featured events exist the visitor steps between them with arrows
-         *  and dots - user-controlled only, never auto-rolling. This is the
-         *  only homepage surface where text sits on a photo. */}
+         *  the LCP layer, restrained scrim, single CTA. With two or three
+         *  featured events the hero auto-rotates every ~6.5s with an eased
+         *  crossfade (Hero Carousel law: pauses on hover/touch/focus, gated
+         *  on the motion flag, manual arrows and dots always available).
+         *  This is the only homepage surface where text sits on a photo. */}
         <FeaturedHero events={upcoming} />
 
         {/* Trust band removed Batch 11.0. The 2026 contextual-trust

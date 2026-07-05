@@ -343,7 +343,7 @@ function ScrollTrack({
             e.stopPropagation()
           }
         }}
-        className={`flex ${gapClass} overflow-x-auto scroll-smooth pb-3 pt-1 scrollbar-none focus-visible:outline-none`}
+        className={`rail-stagger flex ${gapClass} overflow-x-auto scroll-smooth pb-3 pt-1 scrollbar-none focus-visible:outline-none`}
       >
         {children}
       </div>

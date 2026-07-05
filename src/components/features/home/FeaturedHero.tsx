@@ -8,9 +8,11 @@ import { FeaturedHeroClient, type FeaturedHeroSlide } from './FeaturedHeroClient
 /**
  * FeaturedHero - the homepage hero. ONE strong, real featured event at a
  * time (Ticketmaster / Humanitix style), roughly half the height of the old
- * full-bleed carousel. When two or three featured events exist the visitor
- * can step between them with arrows and dots - user-controlled only, never
- * auto-rolling.
+ * full-bleed carousel. When two or three featured events exist the hero
+ * auto-rotates every ~6.5s with an eased crossfade (Hero Carousel law,
+ * CLAUDE.md Motion - pauses on hover/touch/focus, motion-flag gated, no
+ * rotation under reduced motion), and the visitor can step between slides
+ * with arrows and dots at any time.
  *
  * Data is real: it takes the page's already-fetched upcoming events and
  * features the soonest few that carry a usable cover. Media resolves on the
@@ -105,8 +107,8 @@ export async function FeaturedHero({ events }: { events: BentoEvent[] }) {
               <Link
                 href="/events"
                 prefetch={false}
-                className="inline-flex h-12 items-center justify-center rounded-full bg-[var(--brand-accent)] px-7 text-[var(--color-navy-950)] shadow-lg shadow-black/30 hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)] motion-reduce:hover:scale-100"
-                style={{ fontSize: 'var(--type-body)', fontWeight: 600, transition: 'transform var(--motion-quick)' }}
+                className="inline-flex h-12 items-center justify-center rounded-full bg-[var(--brand-accent)] px-7 text-[var(--color-navy-950)] shadow-lg shadow-black/30 hover:scale-[1.02] hover:shadow-[0_10px_30px_rgba(212,164,55,0.32)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)] motion-reduce:hover:scale-100 motion-reduce:active:scale-100"
+                style={{ fontSize: 'var(--type-body)', fontWeight: 600, transition: 'transform var(--motion-quick), box-shadow var(--motion-quick)' }}
               >
                 Browse all events
               </Link>

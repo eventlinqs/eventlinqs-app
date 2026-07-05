@@ -195,6 +195,11 @@ const nextConfig: NextConfig = {
         hostname: 'gndnldyfudbytbboxesk.supabase.co',
         pathname: '/storage/v1/object/public/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'vkapkibzokmfaxqogypq.supabase.co',
+        pathname: '/storage/v1/object/public/**',
+      },
       // Batch 10 branded storage domain. Listed here so next/image accepts
       // the branded host the moment the NEXT_PUBLIC_STORAGE_DOMAIN env var
       // flips to `images.eventlinqs.com` and DNS + Supabase custom-domain

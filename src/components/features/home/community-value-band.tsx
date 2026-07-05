@@ -1,5 +1,6 @@
 import { ContentSection } from '@/components/layout/ContentSection'
 import { Button } from '@/components/ui/Button'
+import { Reveal } from '@/components/ui/reveal'
 import { CommunityTile } from '@/components/features/home/cards'
 import { getCommunityIndexEntries } from '@/lib/communities/index-page-data'
 import { getCommunityHeroPhoto } from '@/lib/images/community-photo'
@@ -35,7 +36,10 @@ export async function CommunityValueBand() {
     // rail's 64px seam - no oversized gap after the Sounds rail (the tinted
     // surface + gold divider give it presence without extra padding).
     <ContentSection surface="alt" width="wide" pad="rail" topBorder>
-      <div className="mx-auto max-w-2xl text-center">
+      {/* Motion law: the heading block fade-rises, then the tiles cascade
+       *  left to right via the shared Reveal stagger (50-80ms apart). Inert
+       *  without JS / under reduced motion / for headless audits. */}
+      <Reveal className="mx-auto max-w-2xl text-center">
         <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
           The community moat
         </p>
@@ -47,9 +51,9 @@ export async function CommunityValueBand() {
           Torres Strait Islander peoples, with a home for every heritage across
           Australia.
         </p>
-      </div>
+      </Reveal>
 
-      <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
+      <Reveal stagger className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
         {tiles.map(t => (
           <CommunityTile
             key={t.slug}
@@ -62,13 +66,13 @@ export async function CommunityValueBand() {
             }}
           />
         ))}
-      </div>
+      </Reveal>
 
-      <div className="mt-8 flex justify-center">
+      <Reveal className="mt-8 flex justify-center">
         <Button href="/communities" variant="primary" size="lg">
           Browse all communities
         </Button>
-      </div>
+      </Reveal>
     </ContentSection>
   )
 }

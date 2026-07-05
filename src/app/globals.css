@@ -459,6 +459,47 @@ html[data-motion="1"] .reveal-stagger.is-visible > *:nth-child(5) { transition-d
 html[data-motion="1"] .reveal-stagger.is-visible > *:nth-child(6) { transition-delay: 320ms; }
 html[data-motion="1"] .reveal-stagger.is-visible > *:nth-child(n+7) { transition-delay: 360ms; }
 
+/* Rail card cascade: when a rail's <Reveal> block enters the viewport, the
+ * cards on its scroll track rise in left to right (the Motion law's 50-80ms
+ * card stagger) riding the block reveal, so a rail arrives as a wave rather
+ * than one flat slab. Scoped to a .reveal ancestor ONLY: a .rail-stagger
+ * track outside a Reveal never hides its cards (rails above the fold are
+ * untouched), and without html[data-motion="1"] (no JS, reduced motion,
+ * headless audits) the whole block is inert and cards paint visible. */
+html[data-motion="1"] .reveal:not(.is-visible) .rail-stagger > * {
+  opacity: 0;
+  transform: translate3d(0, 10px, 0);
+}
+html[data-motion="1"] .reveal .rail-stagger > * {
+  transition: opacity 420ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)),
+              transform 420ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
+}
+html[data-motion="1"] .reveal.is-visible .rail-stagger > *:nth-child(1) { transition-delay: 40ms; }
+html[data-motion="1"] .reveal.is-visible .rail-stagger > *:nth-child(2) { transition-delay: 104ms; }
+html[data-motion="1"] .reveal.is-visible .rail-stagger > *:nth-child(3) { transition-delay: 168ms; }
+html[data-motion="1"] .reveal.is-visible .rail-stagger > *:nth-child(4) { transition-delay: 232ms; }
+html[data-motion="1"] .reveal.is-visible .rail-stagger > *:nth-child(5) { transition-delay: 296ms; }
+html[data-motion="1"] .reveal.is-visible .rail-stagger > *:nth-child(6) { transition-delay: 360ms; }
+html[data-motion="1"] .reveal.is-visible .rail-stagger > *:nth-child(n+7) { transition-delay: 400ms; }
+
+/* Hero slide swap: when the featured hero rotates (or is stepped manually),
+ * the incoming slide's CONTENT stack (kicker, title, detail, CTA) rises in
+ * gently behind the image crossfade, so each featured event ARRIVES rather
+ * than being swapped. The wrapper is server-rendered with .is-active on the
+ * first slide, so on load it mounts already settled and only the once-only
+ * .hero-enter child stagger plays; the image layer itself never animates
+ * (Hero and LCP integrity). Armed only under html[data-motion="1"]. */
+html[data-motion="1"] .hero-slide-content {
+  opacity: 0;
+  transform: translate3d(0, 14px, 0);
+  transition: opacity 550ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)) 180ms,
+              transform 550ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)) 180ms;
+}
+html[data-motion="1"] .hero-slide-content.is-active {
+  opacity: 1;
+  transform: none;
+}
+
 /* Hero CONTENT entrance: a once-only staggered fade-rise on load (60-80ms
  * apart). Apply .hero-enter to the text/CTA stack ONLY - the hero LCP image
  * never carries it (media architecture law). Gated by data-motion so the
