@@ -5,6 +5,9 @@ import { PageHero } from '@/components/layout/PageHero'
 import { ContentSection } from '@/components/layout/ContentSection'
 import { Button } from '@/components/ui/Button'
 import { getLivePublicFee } from '@/lib/pricing/live-fee'
+import { getEventFeeRates } from '@/lib/pricing/event-fee-config'
+import { isFlagEnabled } from '@/lib/flags'
+import { PayoutCalculator } from '@/components/features/organisers/payout-calculator'
 
 /**
  * PricingPage - /pricing
@@ -107,7 +110,11 @@ export async function PricingPage() {
   // The displayed fee is read LIVE from pricing_rules (the same source the
   // payment calculator charges from), so displayed == charged. Static constant
   // is the safe fallback inside getLivePublicFee.
-  const fee = await getLivePublicFee()
+  const [fee, rates, surpassEdges] = await Promise.all([
+    getLivePublicFee(),
+    getEventFeeRates({}),
+    isFlagEnabled('surpass_edges'),
+  ])
   return (
     <PageShell>
 
@@ -199,6 +206,75 @@ export async function PricingPage() {
           a paid ticket.
         </p>
       </ContentSection>
+
+      {/* -- 2b. See your exact numbers + what we publish (surpass_edges) -- */}
+      {surpassEdges && (
+        <ContentSection surface="base" width="wide" topBorder reveal>
+          <div className="max-w-2xl">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
+              No mystery maths
+            </p>
+            <h2 className="font-display text-3xl font-extrabold tracking-tight text-[var(--text-primary)] sm:text-4xl">
+              See your exact numbers before you sign up.
+            </h2>
+            <p className="mt-4 text-base leading-relaxed text-[var(--text-secondary)]">
+              This calculator runs the same maths and the same live rates our
+              checkout charges, so what it shows is what happens on the night.
+            </p>
+          </div>
+          <div className="mt-8">
+            <PayoutCalculator rates={rates} />
+          </div>
+
+          <div className="mt-12 max-w-2xl">
+            <h3 className="font-display text-xl font-bold text-[var(--text-primary)]">
+              What we publish, up front
+            </h3>
+            <p className="mt-2 text-sm text-[var(--text-secondary)]">
+              Checked against each platform&rsquo;s public pages, 5 July 2026.
+              Their numbers live behind their own pages; ours live here.
+            </p>
+          </div>
+          <div className="mt-5 overflow-x-auto rounded-card border border-[var(--surface-2)] bg-white">
+            <table className="w-full min-w-[560px] text-sm">
+              <thead>
+                <tr className="border-b border-ink-100 text-left">
+                  <th scope="col" className="px-5 py-3.5 font-display text-xs font-bold uppercase tracking-widest text-ink-600">Published, before you sign up</th>
+                  <th scope="col" className="px-4 py-3.5 text-center font-display text-xs font-bold uppercase tracking-widest text-ink-900">EventLinqs</th>
+                  <th scope="col" className="px-4 py-3.5 text-center font-display text-xs font-bold uppercase tracking-widest text-ink-600">Humanitix</th>
+                  <th scope="col" className="px-4 py-3.5 text-center font-display text-xs font-bold uppercase tracking-widest text-ink-600">Eventbrite</th>
+                  <th scope="col" className="px-4 py-3.5 text-center font-display text-xs font-bold uppercase tracking-widest text-ink-600">DICE / Ticketek</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  ['Every fee published', true, true, 'A click deep', false],
+                  ['All-in price at the first click', true, false, false, 'DICE at the button'],
+                  ['Live payout calculator', true, false, false, false],
+                  ['Payout timing published', true, true, true, false],
+                  ['Full attendee data yours to export', true, false, false, false],
+                ].map(([label, us, hx, eb, dt]) => (
+                  <tr key={label as string} className="border-b border-ink-100 last:border-0">
+                    <th scope="row" className="px-5 py-3.5 text-left font-medium text-ink-900">{label}</th>
+                    {[us, hx, eb, dt].map((cell, i) => (
+                      <td key={i} className={`px-4 py-3.5 text-center ${i === 0 ? 'font-semibold text-[var(--brand-accent-strong)]' : 'text-ink-600'}`}>
+                        {cell === true ? (i === 0 ? 'Yes' : 'Yes') : cell === false ? 'No' : cell}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-3 max-w-3xl text-xs leading-relaxed text-[var(--text-muted)]">
+            Sources: each platform&rsquo;s public pricing and help pages as at 5 July
+            2026. Humanitix publishes 4% + $0.99 including payment processing;
+            Eventbrite publishes 3.7% + $1.79 plus 2.9% processing behind its
+            organiser pages; DICE and Ticketek publish no organiser pricing.
+            Compare totals for your own ticket price with the calculator above.
+          </p>
+        </ContentSection>
+      )}
 
       {/* -- 3. FAQ -------------------------------------------------- */}
       <ContentSection surface="alt" width="prose">

@@ -10,6 +10,7 @@ import { createPublicClient } from '@/lib/supabase/public-client'
  */
 const FLAG_DEFAULTS: Record<string, boolean> = {
   seated_events: true,
+  surpass_edges: true,
 }
 
 export async function isFlagEnabled(key: keyof typeof FLAG_DEFAULTS & string): Promise<boolean> {

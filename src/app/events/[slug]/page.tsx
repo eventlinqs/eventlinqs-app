@@ -51,6 +51,7 @@ import { EventSchemaJsonLd } from '@/components/features/events/event-schema-jso
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import { EventShareBar } from '@/components/features/events/event-share-bar'
 import { FollowButton } from '@/components/features/follow/follow-button'
+import { KnowBeforeYouGo } from '@/components/features/events/know-before-you-go'
 import { EventStateBanner } from '@/components/features/events/event-state-banner'
 import { SaveEventButton } from '@/components/features/events/save-event-button'
 import { EventGallery } from '@/components/features/events/event-gallery'
@@ -409,6 +410,7 @@ export default async function EventDetailPage({ params }: Props) {
     seatsData,
     feeRates,
     seatedFlagEnabled,
+    surpassEdgesEnabled,
   ] = await Promise.all([
     getDynamicPriceMap(allTiers.map(t => t.id)),
     getEventInventoryStatic(event.id),
@@ -436,6 +438,7 @@ export default async function EventDetailPage({ params }: Props) {
       currency: allTiers[0]?.currency ?? 'AUD',
     }),
     isFlagEnabled('seated_events'),
+    isFlagEnabled('surpass_edges'),
   ])
   const eventFeePassType = (event.fee_pass_type ?? 'pass_to_buyer') as FeePassType
 
@@ -809,6 +812,25 @@ export default async function EventDetailPage({ params }: Props) {
                     )}
                   </div>
                 </Reveal>
+
+                {/* Know before you go: the practical answers in one card
+                    (surpass edge B1; rows render only from known data). */}
+                {surpassEdgesEnabled && (
+                  <Reveal>
+                    <KnowBeforeYouGo
+                      startLabel={formatDateTime(event.start_date, event.timezone)}
+                      timezone={event.timezone}
+                      venueName={event.venue_name}
+                      fullAddress={fullAddress || null}
+                      isVirtual={event.event_type === 'virtual'}
+                      ageMin={event.is_age_restricted ? (event.age_restriction_min ?? 18) : null}
+                      hasAccessibleSeats={eventSeats.some(
+                        s => s.seat_type === 'accessible' || s.seat_type === 'companion'
+                      )}
+                      isFree={event.is_free ?? false}
+                    />
+                  </Reveal>
+                )}
 
                 {/* Venue map */}
                 {event.event_type !== 'virtual' && (fullAddress || event.venue_name) && (

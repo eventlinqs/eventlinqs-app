@@ -14,6 +14,8 @@ import {
   Wallet,
 } from 'lucide-react'
 import type { Event, EventStatus, TicketTier } from '@/types/database'
+import { isFlagEnabled } from '@/lib/flags'
+import { FillTheRoom } from '@/components/features/dashboard/fill-the-room'
 
 type Props = {
   params: Promise<{ id: string }>
@@ -95,6 +97,30 @@ export default async function EventViewPage({ params }: Props) {
   const status = STATUS_COPY[event.status] ?? STATUS_COPY.draft
   const coverUrl = event.cover_image_url
   const isPublished = event.status === 'published' || event.status === 'scheduled'
+
+  // Fill the room (surpass edge A1/D1): the organiser's live reach numbers.
+  // Aggregate counts only (no buyer PII), via the admin client after the
+  // ownership gate above, exactly like the revenue stats.
+  const [surpassEdgesEnabled, followerCountRes, shareSignupsRes] = await Promise.all([
+    isFlagEnabled('surpass_edges'),
+    admin
+      .from('saved_organisers')
+      .select('id', { count: 'exact', head: true })
+      .eq('organisation_id', org.id),
+    admin
+      .from('profiles')
+      .select('id', { count: 'exact', head: true })
+      .filter('metadata->attribution->>event', 'eq', event.slug ?? ''),
+  ])
+  const followerCount = followerCountRes.count ?? 0
+  const shareSignups = shareSignupsRes.count ?? 0
+  const eventDateLabel = new Date(event.start_date).toLocaleDateString('en-AU', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    timeZone: event.timezone ?? 'Australia/Sydney',
+  })
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
 
   return (
     <div>
@@ -191,6 +217,20 @@ export default async function EventViewPage({ params }: Props) {
           </div>
         </div>
       </section>
+
+      {/* ─── Fill the room (surpass edge A1/D1) ─────────────────────────── */}
+      {surpassEdgesEnabled && (
+        <FillTheRoom
+          eventSlug={event.slug ?? ''}
+          eventTitle={event.title}
+          eventDateLabel={eventDateLabel}
+          siteUrl={siteUrl}
+          goingCount={ticketsSold}
+          followerCount={followerCount}
+          shareSignups={shareSignups}
+          isPublished={isPublished}
+        />
+      )}
 
       {/* ─── KPI row ────────────────────────────────────────────────────── */}
       <section className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
