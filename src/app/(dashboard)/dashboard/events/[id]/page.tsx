@@ -246,19 +246,22 @@ export default async function EventViewPage({ params }: Props) {
           value={formatMoney(grossCents, currency)}
           hint={`${confirmed.length} confirmed order${confirmed.length === 1 ? '' : 's'}`}
         />
+        {/* Page views and Conversion tiles REMOVED (founder decision
+            2026-07-05): no page-view tracking exists on the platform, so
+            there is no honest data source to wire; a live surface never
+            carries a placeholder (Definition of Done). Reinstate only
+            with real analytics behind them. */}
         <KpiCard
           icon={<Eye className="h-4 w-4" aria-hidden="true" />}
-          label="Page views"
-          value=":"
-          hint="Wiring up in M5"
-          dim
+          label="Capacity"
+          value={totalCapacity > 0 ? totalCapacity.toLocaleString() : 'Open'}
+          hint={totalCapacity > 0 ? `${Math.max(totalCapacity - ticketsSold, 0).toLocaleString()} still available` : 'No capacity cap set'}
         />
         <KpiCard
           icon={<TrendingUp className="h-4 w-4" aria-hidden="true" />}
-          label="Conversion"
-          value=":"
-          hint="Wiring up in M5"
-          dim
+          label="Sell-through"
+          value={totalCapacity > 0 ? `${sellThrough}%` : 'n/a'}
+          hint="Confirmed tickets against capacity"
         />
       </section>
 

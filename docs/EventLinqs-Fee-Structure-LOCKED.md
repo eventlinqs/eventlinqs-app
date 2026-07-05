@@ -17,22 +17,28 @@ Free events: $0, no fees (same as all competitors).
 ## Why these numbers (the reasoning, so it is not reopened)
 
 - Stripe costs EventLinqs about 1.75% + $0.30 per domestic AU card. The 2.5%
-  processing fee covers that and leaves a small margin. Set at 2.5% (not Eventbrite's
-  2.9%) deliberately, so that stacking two percentages does not push the all-in above
-  Humanitix on higher-priced tickets. This keeps "cheaper than Humanitix" true at
-  EVERY price point, not just cheap tickets, which protects the core marketing claim.
-- The 3.5% + $0.99 platform fee is the real profit, and it is set just under
-  Humanitix (4% + $0.99) so EventLinqs can honestly say "cheaper than Humanitix,
-  far cheaper than Eventbrite."
+  processing fee covers that and leaves a small margin (set below Eventbrite's
+  2.9% deliberately).
+- CORRECTED POSITIONING (founder decision 2026-07-05, Path B, superseding
+  the original claim in this section): Humanitix's published 4% + $0.99
+  INCLUDES payment processing, so on an all-in basis they are 7 to 29 cents
+  cheaper than us across $15 to $35 (full tables:
+  docs/surpass/pricing-decision.md). "Cheaper than Humanitix" is FALSE
+  all-in and must never be claimed. The true money story: a lower HEADLINE
+  platform fee than Humanitix (3.5% + $0.99 versus their 4% + $0.99), far
+  cheaper than Eventbrite all-in at every price point, and radical fee
+  transparency no competitor offers.
 - Worked example, $30 ticket: platform fee 1.05 + 0.99 = 2.04; processing 2.5% ≈
   0.75; total fees ≈ 2.79. Stripe takes ~0.83. Profit ≈ 2.04 platform + a thin
   processing margin. Profitable on the platform line; processing roughly at cost-plus.
-- Comparison on $30: EventLinqs ≈ 2.79 all-in vs Eventbrite ≈ 3.77 vs Humanitix
-  ≈ 2.40 to 2.79. Cheaper than Eventbrite, level with Humanitix, profitable.
-- Higher-priced check, $80 ticket: 3.5% + 2.5% = 6% + $0.99 ≈ 5.79 all-in, still
-  under Eventbrite and close to Humanitix's flat 4% (~$3.99), so the claim holds
-  without being wildly above on big tickets. (The 2.9% option would have pushed
-  this higher; 2.5% keeps it defensible.)
+- Comparison on $30 (honest): EventLinqs 2.79 in fees all-in versus
+  Eventbrite about 3.77 and Humanitix about 2.41 to 2.64 depending on their
+  GST treatment. Far cheaper than Eventbrite; slightly ABOVE Humanitix.
+- Higher-priced check, $80 ticket: our 6% + $0.99 is about 5.79 all-in,
+  still well under Eventbrite and above Humanitix's inclusive 4% + $0.99
+  (about 4.61 with GST on their fee). The gap to Humanitix widens with
+  price, which is why the marketing claim is scoped to the headline
+  platform fee and the transparency edge, never to all-in price.
 - Ticketmaster/Ticketek use flat per-order fees (~$5.50 to $7) suited to expensive
   arena tickets. That model is WRONG for community/music events at lower prices,
   so EventLinqs does NOT copy it. But they confirm the universal rule: everyone

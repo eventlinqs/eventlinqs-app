@@ -1,0 +1,291 @@
+{
+  "pageStatuses": [
+    {
+      "vp": "desktop",
+      "path": "/",
+      "status": 200
+    },
+    {
+      "vp": "desktop",
+      "path": "/events",
+      "status": 200
+    },
+    {
+      "vp": "desktop",
+      "path": "/organisers",
+      "status": 200
+    },
+    {
+      "vp": "desktop",
+      "path": "/pricing",
+      "status": 200
+    },
+    {
+      "vp": "desktop",
+      "path": "/about",
+      "status": 200
+    },
+    {
+      "vp": "desktop",
+      "path": "/careers",
+      "status": 200
+    },
+    {
+      "vp": "desktop",
+      "path": "/press",
+      "status": 200
+    },
+    {
+      "vp": "desktop",
+      "path": "/blog",
+      "status": 404
+    },
+    {
+      "vp": "desktop",
+      "path": "/cities",
+      "status": 200
+    },
+    {
+      "vp": "desktop",
+      "path": "/communities",
+      "status": 200
+    },
+    {
+      "vp": "desktop",
+      "path": "/city/sydney",
+      "status": 200
+    },
+    {
+      "vp": "desktop",
+      "path": "/city/melbourne",
+      "status": 200
+    },
+    {
+      "vp": "desktop",
+      "path": "/community/first-nations",
+      "status": 404
+    },
+    {
+      "vp": "desktop",
+      "path": "/community/african/sydney",
+      "status": 200
+    },
+    {
+      "vp": "desktop",
+      "path": "/city/sydney/inner-west",
+      "status": 200
+    },
+    {
+      "vp": "desktop",
+      "path": "/legal/terms",
+      "status": 200
+    },
+    {
+      "vp": "desktop",
+      "path": "/legal/privacy",
+      "status": 200
+    },
+    {
+      "vp": "desktop",
+      "path": "/login",
+      "status": 200
+    },
+    {
+      "vp": "desktop",
+      "path": "/signup",
+      "status": 200
+    },
+    {
+      "vp": "desktop",
+      "path": "/feed",
+      "status": 200
+    },
+    {
+      "vp": "desktop",
+      "path": "/music",
+      "status": 404
+    },
+    {
+      "vp": "desktop",
+      "path": "/artists",
+      "status": 404
+    },
+    {
+      "vp": "desktop",
+      "path": "(search music)",
+      "status": 200,
+      "url": "https://eventlinqs-staging.vercel.app/events?q=music"
+    },
+    {
+      "vp": "desktop",
+      "path": "/events/blak-music-and-dance-night-toowoomba-toowoomba",
+      "status": 200,
+      "note": "first browse card"
+    },
+    {
+      "vp": "mobile",
+      "path": "/",
+      "status": 200
+    },
+    {
+      "vp": "mobile",
+      "path": "/events",
+      "status": 200
+    },
+    {
+      "vp": "mobile",
+      "path": "/organisers",
+      "status": 200
+    },
+    {
+      "vp": "mobile",
+      "path": "/pricing",
+      "status": 200
+    },
+    {
+      "vp": "mobile",
+      "path": "/about",
+      "status": 200
+    },
+    {
+      "vp": "mobile",
+      "path": "/careers",
+      "status": 200
+    },
+    {
+      "vp": "mobile",
+      "path": "/press",
+      "status": 200
+    },
+    {
+      "vp": "mobile",
+      "path": "/blog",
+      "status": 404
+    },
+    {
+      "vp": "mobile",
+      "path": "/cities",
+      "status": 200
+    },
+    {
+      "vp": "mobile",
+      "path": "/communities",
+      "status": 200
+    },
+    {
+      "vp": "mobile",
+      "path": "/city/sydney",
+      "status": 200
+    },
+    {
+      "vp": "mobile",
+      "path": "/city/melbourne",
+      "status": 200
+    },
+    {
+      "vp": "mobile",
+      "path": "/community/first-nations",
+      "status": 404
+    },
+    {
+      "vp": "mobile",
+      "path": "/community/african/sydney",
+      "status": 200
+    },
+    {
+      "vp": "mobile",
+      "path": "/city/sydney/inner-west",
+      "status": 200
+    },
+    {
+      "vp": "mobile",
+      "path": "/legal/terms",
+      "status": 200
+    },
+    {
+      "vp": "mobile",
+      "path": "/legal/privacy",
+      "status": 200
+    },
+    {
+      "vp": "mobile",
+      "path": "/login",
+      "status": 200
+    },
+    {
+      "vp": "mobile",
+      "path": "/signup",
+      "status": 200
+    },
+    {
+      "vp": "mobile",
+      "path": "/feed",
+      "status": 200
+    },
+    {
+      "vp": "mobile",
+      "path": "/music",
+      "status": 404
+    },
+    {
+      "vp": "mobile",
+      "path": "/artists",
+      "status": 404
+    },
+    {
+      "vp": "mobile",
+      "path": "(search music)",
+      "status": 200,
+      "url": "https://eventlinqs-staging.vercel.app/events?q=music"
+    },
+    {
+      "vp": "mobile",
+      "path": "/events/blak-music-and-dance-night-toowoomba-toowoomba",
+      "status": 200,
+      "note": "first browse card"
+    }
+  ],
+  "consoleErrors": [
+    {
+      "label": "desktop",
+      "url": "https://eventlinqs-staging.vercel.app/blog",
+      "text": "Failed to load resource: the server responded with a status of 404 ()"
+    },
+    {
+      "label": "desktop",
+      "url": "https://eventlinqs-staging.vercel.app/community/first-nations",
+      "text": "Failed to load resource: the server responded with a status of 404 ()"
+    },
+    {
+      "label": "desktop",
+      "url": "https://eventlinqs-staging.vercel.app/music",
+      "text": "Failed to load resource: the server responded with a status of 404 ()"
+    },
+    {
+      "label": "desktop",
+      "url": "https://eventlinqs-staging.vercel.app/artists",
+      "text": "Failed to load resource: the server responded with a status of 404 ()"
+    },
+    {
+      "label": "mobile",
+      "url": "https://eventlinqs-staging.vercel.app/blog",
+      "text": "Failed to load resource: the server responded with a status of 404 ()"
+    },
+    {
+      "label": "mobile",
+      "url": "https://eventlinqs-staging.vercel.app/community/first-nations",
+      "text": "Failed to load resource: the server responded with a status of 404 ()"
+    },
+    {
+      "label": "mobile",
+      "url": "https://eventlinqs-staging.vercel.app/music",
+      "text": "Failed to load resource: the server responded with a status of 404 ()"
+    },
+    {
+      "label": "mobile",
+      "url": "https://eventlinqs-staging.vercel.app/artists",
+      "text": "Failed to load resource: the server responded with a status of 404 ()"
+    }
+  ],
+  "imageFailures": []
+}

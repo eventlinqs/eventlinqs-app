@@ -12,7 +12,6 @@ import { handleConnectAccountUpdated } from '@/lib/stripe/connect-handlers'
 import { recordOrderConfirmedLedger } from '@/lib/payments/connect-ledger'
 import { voidPayoutById, getStripeClient } from '@/lib/payments/payout'
 import { reverseOrganiserTransferForRefund } from '@/lib/payments/event-transfer'
-import { recordVenueShareAccrual, reverseVenueShareForRefund } from '@/lib/payments/venue-share'
 import { getDefaultTransferGateway } from '@/lib/payments/gateway-factory'
 import {
   claimWebhookEvent,
@@ -320,20 +319,9 @@ async function handlePaymentSucceeded(
     console.error('[webhook] connect ledger write threw (non-fatal, continuing):', ledgerErr)
   }
 
-  // Venue Revenue Sharing Program: accrue the enrolled venue's 20% of the platform
-  // fee for this order. Additive and non-fatal (the buyer charge already
-  // succeeded); writes to the separate venue ledger, organiser path untouched.
-  try {
-    await recordVenueShareAccrual(adminClient, { orderId: order_id })
-  } catch (venueErr) {
-    captureException(venueErr, {
-      scope: 'stripe-webhook',
-      handler: 'venue-share-accrual',
-      order_id,
-      payment_intent_id: intent.id,
-    })
-    console.error('[webhook] venue share accrual threw (non-fatal, continuing):', venueErr)
-  }
+  // Venue Revenue Sharing Program REMOVED (founder decision 2026-07-05):
+  // standard ticketing economics, no partner share accrues. The rate row in
+  // pricing_rules is zeroed by 20260705000005; the accrual call is gone.
 
   // ── Mark reserved seats as sold ──────────────────────────────────────────────
   // Primary: read seat_ids from PaymentIntent metadata (set by processSeatCheckout).
@@ -747,18 +735,8 @@ async function handleSquadMemberPaymentSucceeded(
       console.error('[webhook] squad connect ledger write threw (non-fatal, continuing):', ledgerErr)
     }
 
-    // Venue Revenue Sharing Program accrual for the squad member's order.
-    try {
-      await recordVenueShareAccrual(adminClient, { orderId })
-    } catch (venueErr) {
-      captureException(venueErr, {
-        scope: 'stripe-webhook',
-        handler: 'squad-venue-share-accrual',
-        order_id: orderId,
-        payment_intent_id: intent.id,
-      })
-      console.error('[webhook] squad venue share accrual threw (non-fatal, continuing):', venueErr)
-    }
+    // Venue Revenue Sharing Program REMOVED (founder decision 2026-07-05):
+    // no squad-order venue accrual either.
   }
 
   // Mark payment as completed
@@ -1011,26 +989,9 @@ async function postReconcileSideEffects(
     }
   }
 
-  // Venue Revenue Sharing Program: claw back the venue's share in proportion to
-  // the refund so an enrolled venue is never paid on refunded money. Additive and
-  // non-fatal; routes through the separate venue ledger, organiser path untouched.
-  if (refund.order_id) {
-    try {
-      await reverseVenueShareForRefund(adminClient, {
-        orderId: refund.order_id as string,
-        refundId: refund.id as string,
-        refundedAmountCents: stripeRefund.amount ?? 0,
-      })
-    } catch (err) {
-      captureException(err, {
-        scope: 'stripe-webhook',
-        handler: 'venue-share-refund-reversal',
-        order_id: refund.order_id,
-        stripe_refund_id: stripeRefund.id,
-      })
-      console.error('[webhook] venue share refund reversal failed (non-fatal):', err)
-    }
-  }
+  // Venue Revenue Sharing Program REMOVED (founder decision 2026-07-05): no
+  // accruals exist to reverse (rate zeroed by 20260705000005; historical
+  // ledger rows, of which TEST has none, stay untouched as history).
 
   const { data: rtRows } = await adminClient
     .from('refund_tickets')
