@@ -526,14 +526,17 @@ silently re-painted.
   (`cancelGlide`) and the `DragRail` `snap` prop. Do not move snap back into the
   static className; a guard comment marks this in the file.
 
-**Hero scale (ONE platform standard - founder ruling 2026-06-07)**
+**Hero scale (ONE platform standard - founder ruling 2026-06-07, raised 2026-07-07)**
 
 - ONE hero scale for the whole platform: the homepage hero scale, defined as the
-  single `.hero-marketing` token in `globals.css` (~42-48vh, max 480px, min
-  320px). EVERY page hero uses it - marketing, discovery, AND content
+  single `.hero-marketing` token in `globals.css`. Founder ruling 2026-07-07
+  raised it ~25% so heroes read taller and stop cropping subjects: 52vh base /
+  55vh sm / 60vh lg, max 600px, min 400px (was ~42-48vh, max 480px, min 320px).
+  EVERY page hero uses it - marketing, discovery, AND content
   (`/events/[slug]`, `/city/[slug]`, `/city/[slug]/[suburb]`,
-  `/categories/[slug]`, `/culture/[culture]`). There is no separate, taller
-  "content" tier; `.hero-content` was retired.
+  `/categories/[slug]`, `/community/[community]`). The two profile heroes
+  (venue, organiser) keep their own inline scale but were raised the same ~25%.
+  There is no separate, taller "content" tier; `.hero-content` was retired.
 - Deviation above this scale is permitted ONLY where FRESH competitor evidence
   proves the equivalent page type runs taller and reads better - evidence, never
   taste. The 2026 mirror (`docs/benchmark/competitor-2026/`) found neither

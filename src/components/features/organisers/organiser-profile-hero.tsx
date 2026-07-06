@@ -37,7 +37,7 @@ export function OrganiserProfileHero({ name, coverImage, logoUrl, subtitle, stat
   return (
     <section aria-labelledby="organiser-hero-heading" className="relative overflow-hidden">
       <HeroPresenceMarker />
-      <div className="relative h-[40vh] min-h-[280px] max-h-[420px] w-full">
+      <div className="relative h-[50vh] min-h-[350px] max-h-[525px] w-full">
         {coverImage ? (
           <div
             className="absolute inset-0 bg-cover bg-center"

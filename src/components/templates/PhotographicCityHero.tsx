@@ -27,7 +27,7 @@ interface Props {
   objectPosition?: string
 }
 
-export function PhotographicCityHero({ city, country, total, imageSrc, objectPosition = '50% 50%' }: Props) {
+export function PhotographicCityHero({ city, country, total, imageSrc, objectPosition = '50% 30%' }: Props) {
   const alt = `${city} on EventLinqs`
   const totalLabel = `${total} event${total === 1 ? '' : 's'} available`
 

@@ -43,7 +43,7 @@ export function VenueProfileHero({
   return (
     <section aria-labelledby="venue-hero-heading" className="relative overflow-hidden">
       <HeroPresenceMarker />
-      <div className="relative h-[64vh] min-h-[440px] max-h-[560px] w-full sm:h-[55vh] sm:min-h-[400px] sm:max-h-[600px]">
+      <div className="relative h-[80vh] min-h-[550px] max-h-[700px] w-full sm:h-[69vh] sm:min-h-[500px] sm:max-h-[750px]">
         {imageSrc ? (
           <HeroMedia image={imageSrc} alt={`${venueName}${city ? ` in ${city}` : ''}`} priority />
         ) : (

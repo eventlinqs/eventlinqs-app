@@ -328,19 +328,17 @@ body {
  * ONE hero scale, platform-wide: the homepage hero scale. Every page hero -
  * marketing, discovery, AND content (event detail, city, suburb, category,
  * community) - uses .hero-marketing. There is no separate, taller "content" tier.
- * The 2026 competitor mirror (docs/benchmark/competitor-2026/) showed neither
- * Ticketmaster nor Eventbrite runs a hero taller than this on ANY page type
- * (their event-detail, browse, category and city heroes all sit at or below
- * this scale), so no page earns a deviation. A taller hero is permitted ONLY
- * with fresh competitor evidence for that specific page type; absent it,
- * flatten to this token. Authored here so a hero change is one edit, never a
- * per-page literal. */
+ * Founder ruling 2026-07-07: the platform hero scale is raised ~25% over the
+ * prior 42-48vh/480px so heroes read taller and stop cropping subjects; every
+ * page inherits the new scale from this one token (52vh base / 55vh sm /
+ * 60vh lg, max 600px, min 400px). Still ONE scale, still one edit - never a
+ * per-page literal. Any further deviation ABOVE this stays evidence-gated. */
 .hero-marketing {
-  height: 42vh;
-  min-height: 320px;
+  height: 52vh;
+  min-height: 400px;
 }
-@media (width >= 40rem) { .hero-marketing { height: 44vh; } }
-@media (width >= 64rem) { .hero-marketing { height: 48vh; max-height: 480px; } }
+@media (width >= 40rem) { .hero-marketing { height: 55vh; } }
+@media (width >= 64rem) { .hero-marketing { height: 60vh; max-height: 600px; } }
 
 /* ─── Smart media motion ─────────────────────────────────────────────────── */
 /*

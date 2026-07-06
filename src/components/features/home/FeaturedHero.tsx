@@ -1,15 +1,14 @@
 import Link from 'next/link'
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
-import { getEventMedia } from '@/lib/images/event-media'
-import { getCategoryPhoto } from '@/lib/images/category-photo'
+import { getFeaturedHeroBackground } from '@/lib/images/event-media'
 import type { BentoEvent } from '@/components/features/events/event-bento-tile'
 import { FeaturedHeroClient, type FeaturedHeroSlide } from './FeaturedHeroClient'
 
 /**
  * FeaturedHero - the homepage hero. ONE strong, real featured event at a
  * time (Ticketmaster / Humanitix style), roughly half the height of the old
- * full-bleed carousel. When two or three featured events exist the hero
- * auto-rotates every ~6.5s with an eased crossfade (Hero Carousel law,
+ * full-bleed carousel. When several featured events exist (up to five) the
+ * hero auto-rotates every ~6.5s with an eased crossfade (Hero Carousel law,
  * CLAUDE.md Motion - pauses on hover/touch/focus, motion-flag gated, no
  * rotation under reduced motion), and the visitor can step between slides
  * with arrows and dots at any time.
@@ -24,7 +23,7 @@ import { FeaturedHeroClient, type FeaturedHeroSlide } from './FeaturedHeroClient
  * titles below it are h2s rendered by the client controller.
  */
 
-const MAX_SLIDES = 3
+const MAX_SLIDES = 5
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-AU', {
@@ -44,23 +43,12 @@ function detailLine(event: BentoEvent): string {
 }
 
 async function toSlide(event: BentoEvent): Promise<FeaturedHeroSlide> {
-  const media = await getEventMedia(event)
-  let image: string | null = null
-  let alt = event.title ?? 'Featured event'
-  if (media.kind === 'video') {
-    image = media.poster
-  } else if (media.kind === 'carousel') {
-    image = media.images[0] ?? null
-    alt = media.alts[0] ?? alt
-  } else if (media.kind === 'still-kenburns') {
-    image = media.src
-    alt = media.alt ?? alt
-  }
-  if (!image) {
-    const photo = await getCategoryPhoto(event.category?.slug ?? null, event.title)
-    image = photo.src
-    alt = photo.alt ?? alt
-  }
+  // getFeaturedHeroBackground guarantees a raster image (real event cover when
+  // present, else a bundled category hero raster) - never an SVG. This is the
+  // same raster-safe resolver the event-detail hero uses, so every featured
+  // slide always paints a valid LCP-eligible photo, even for events that have
+  // no uploaded cover yet.
+  const media = await getFeaturedHeroBackground(event)
 
   return {
     id: event.id,
@@ -68,8 +56,8 @@ async function toSlide(event: BentoEvent): Promise<FeaturedHeroSlide> {
     title: event.title ?? 'Featured event',
     detailLine: detailLine(event),
     href: `/events/${event.slug}`,
-    image,
-    alt,
+    image: media.image,
+    alt: media.alt,
   }
 }
 
@@ -89,7 +77,7 @@ export async function FeaturedHero({ events }: { events: BentoEvent[] }) {
         <h1 id="home-hero-heading" className="sr-only">
           Live events across Australia: music, scenes, festivals and community
         </h1>
-        <div className="mx-auto flex h-[42vh] min-h-[320px] max-w-7xl items-end px-6 pb-10 sm:px-8 lg:px-12 lg:h-[44vh]">
+        <div className="hero-marketing mx-auto flex max-w-7xl items-end px-6 pb-10 sm:px-8 lg:px-12">
           <div className="max-w-2xl hero-enter">
             <p
               className="type-micro font-display uppercase tracking-[0.18em] text-[var(--brand-accent)]"

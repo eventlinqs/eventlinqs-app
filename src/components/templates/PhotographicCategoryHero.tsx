@@ -45,7 +45,7 @@ export function PhotographicCategoryHero({ slug, eyebrow, title, subtitle }: Pro
   // raster (old slugs) then the default for anything without a spine slot.
   const spine = getSpineCategoryHero(slug)
   const src = spine?.src ?? HERO_RASTER_BY_SLUG[slug] ?? HERO_RASTER_DEFAULT
-  const objectPosition = spine?.objectPosition ?? '50% 50%'
+  const objectPosition = spine?.objectPosition ?? '50% 30%'
   const alt = `${title} on EventLinqs`
 
   return (

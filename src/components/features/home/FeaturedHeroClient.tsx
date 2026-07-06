@@ -136,7 +136,7 @@ export function FeaturedHeroClient({ slides }: Props) {
       onMouseLeave={() => setHovered(false)}
       onFocusCapture={() => setFocused(true)}
       onBlurCapture={e => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocused(false) }}
-      className="group relative h-[42vh] min-h-[320px] w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-inset sm:h-[44vh] lg:h-[48vh] lg:max-h-[480px]"
+      className="group relative hero-marketing w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-inset"
     >
       {slides.map((slide, idx) => {
         const isActive = idx === active

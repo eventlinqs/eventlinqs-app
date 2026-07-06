@@ -20,7 +20,7 @@ interface Props {
   objectPosition?: string
 }
 
-export function PhotographicCommunityHero({ eyebrow, title, subtitle, imageSrc, objectPosition = '50% 50%' }: Props) {
+export function PhotographicCommunityHero({ eyebrow, title, subtitle, imageSrc, objectPosition = '50% 30%' }: Props) {
   return (
     <section
       aria-labelledby="community-hero-heading"
