@@ -7,9 +7,11 @@ import type {
   Event, TicketTier, Organisation, EventCategory, EventAddon,
 } from '@/types/database'
 import { jsonAsStringArray } from '@/lib/json-narrow'
+import { priceLabel, lowestPaidCents } from '@/lib/events/price-label'
 import {
-  SeatSelector, type SeatData, type SectionData,
+  SeatSelector, type SeatData, type SectionData, type SeatAreaData,
 } from '@/components/checkout/seat-selector'
+import { isFlagEnabled } from '@/lib/flags'
 import { SocialProofBadge } from '@/components/inventory/social-proof-badge'
 import { GoingProof } from '@/components/inventory/going-proof'
 import { TicketPanelClient } from '@/components/features/events/ticket-panel-client'
@@ -48,8 +50,14 @@ import { EventViewTracker } from '@/components/features/events/event-view-tracke
 import { EventSchemaJsonLd } from '@/components/features/events/event-schema-jsonld'
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import { EventShareBar } from '@/components/features/events/event-share-bar'
+import { FollowButton } from '@/components/features/follow/follow-button'
+import { KnowBeforeYouGo } from '@/components/features/events/know-before-you-go'
 import { EventStateBanner } from '@/components/features/events/event-state-banner'
 import { SaveEventButton } from '@/components/features/events/save-event-button'
+import { EventGallery } from '@/components/features/events/event-gallery'
+import { EventVideo } from '@/components/features/events/event-video'
+import { parseGallery } from '@/lib/media/event-media-model'
+import { isVideoProvider } from '@/lib/media/video-embed'
 
 // Why ISR: every published event detail page is the same for all anonymous
 // visitors, so the shell ships as static HTML (revalidated every 5 minutes
@@ -215,20 +223,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       'events',
     ].filter(Boolean) as string[],
     alternates: { canonical: `/events/${slug}` },
+    // og:image and twitter:image come from the designed per-event share card
+    // (opengraph-image.tsx in this route folder): the branded invitation with
+    // the cover photo, scrim, title, date and venue. Setting raw cover images
+    // here would override the file-convention card with an unbranded photo.
     openGraph: {
       title: event.title,
       description,
       url: `${baseUrl}/events/${slug}`,
       type: 'website',
-      images: event.cover_image_url
-        ? [{ url: event.cover_image_url, width: 1200, height: 630, alt: event.title }]
-        : [],
     },
     twitter: {
       card: 'summary_large_image',
       title: event.title,
       description,
-      images: event.cover_image_url ? [event.cover_image_url] : [],
     },
   }
 }
@@ -257,16 +265,9 @@ function formatShortDate(iso: string, timezone: string) {
 
 function cheapestPrice(tiers: { price: number; currency: string }[]): string | null {
   if (!tiers.length) return null
-  // Genuinely free only when EVERY tier is $0. When a $0 tier (e.g. a
-  // free RSVP) coexists with paid tiers, the event is a paid event and
-  // must advertise its lowest PAID price, never "Free entry" (deriving
-  // free-ness from min(price) mislabelled paid events as free).
-  const paid = tiers.filter(t => t.price > 0)
-  if (paid.length === 0) return 'Free entry'
-  const m = paid.reduce((x, t) => (t.price < x.price ? t : x), paid[0])
-  const dollars = m.price / 100
-  const formatted = Number.isInteger(dollars) ? `$${dollars}` : `$${dollars.toFixed(2)}`
-  return `From ${m.currency ?? 'AUD'} ${formatted}`
+  // The shared price-label rule: free only when EVERY tier is $0, otherwise
+  // the lowest PAID price (see src/lib/events/price-label.ts).
+  return priceLabel(tiers, 'Free entry')
 }
 
 export default async function EventDetailPage({ params }: Props) {
@@ -351,13 +352,35 @@ export default async function EventDetailPage({ params }: Props) {
   const seatsPromise = event.has_reserved_seating
     ? (async () => {
         const seatSupabase = createPublicClient()
-        const [seatsResult, sectionsResult] = await Promise.all([
-          seatSupabase
-            .from('seats')
-            .select('id, row_label, seat_number, seat_type, status, x, y, price_cents, seat_map_section_id, ticket_tier_id')
-            .eq('event_id', event.id)
-            .order('row_label')
-            .order('seat_number'),
+        // PostgREST caps a single response at 1,000 rows, which silently
+        // truncated charts beyond 1,000 seats (found by the 1,200-seat
+        // performance proof). Page in 1,000-seat chunks; hard stop at 10,000.
+        // Bound outside the closures: TS null-narrowing on `event` does not
+        // flow into deferred functions.
+        const seatsEventId = event.id
+        const fetchAllSeats = async () => {
+          const PAGE = 1000
+          const all: NonNullable<Awaited<ReturnType<typeof firstPage>>['data']> = []
+          function firstPage(from: number) {
+            return seatSupabase
+              .from('seats')
+              .select('id, row_label, seat_number, seat_type, status, x, y, price_cents, seat_map_section_id, ticket_tier_id')
+              .eq('event_id', seatsEventId)
+              .order('row_label')
+              .order('seat_number')
+              .order('id')
+              .range(from, from + PAGE - 1)
+          }
+          for (let from = 0; from < 10000; from += PAGE) {
+            const { data, error } = await firstPage(from)
+            if (error) return { data: all, error }
+            all.push(...(data ?? []))
+            if (!data || data.length < PAGE) break
+          }
+          return { data: all, error: null }
+        }
+        const [seatsResult, sectionsResult, mapResult] = await Promise.all([
+          fetchAllSeats(),
           event.seat_map_id
             ? seatSupabase
                 .from('seat_map_sections')
@@ -365,8 +388,17 @@ export default async function EventDetailPage({ params }: Props) {
                 .eq('seat_map_id', event.seat_map_id)
                 .order('sort_order')
             : Promise.resolve({ data: [] as { id: string; name: string; color: string }[], error: null }),
+          // Standing/GA zones drawn on the chart (display-only; they sell
+          // through their bound GA tier's normal capacity).
+          event.seat_map_id
+            ? seatSupabase
+                .from('seat_maps')
+                .select('layout')
+                .eq('id', event.seat_map_id)
+                .maybeSingle()
+            : Promise.resolve({ data: null, error: null }),
         ])
-        return { seatsResult, sectionsResult }
+        return { seatsResult, sectionsResult, mapResult }
       })()
     : Promise.resolve(null)
 
@@ -377,6 +409,8 @@ export default async function EventDetailPage({ params }: Props) {
     related,
     seatsData,
     feeRates,
+    seatedFlagEnabled,
+    surpassEdgesEnabled,
   ] = await Promise.all([
     getDynamicPriceMap(allTiers.map(t => t.id)),
     getEventInventoryStatic(event.id),
@@ -403,8 +437,17 @@ export default async function EventDetailPage({ params }: Props) {
       eventId: event.id,
       currency: allTiers[0]?.currency ?? 'AUD',
     }),
+    isFlagEnabled('seated_events'),
+    isFlagEnabled('surpass_edges'),
   ])
   const eventFeePassType = (event.fee_pass_type ?? 'pass_to_buyer') as FeePassType
+
+  // Event Media Standard: the gallery (below the hero, lazy) and the one optional
+  // allowlisted video embed. The cover raster (media.image) is the video poster so
+  // the video never competes for the LCP.
+  const gallery = parseGallery(event.gallery_urls)
+  const videoProvider = isVideoProvider(event.video_provider) ? event.video_provider : null
+  const hasVideo = !!(event.video_url && videoProvider)
 
   function resolvePrice(tier: TicketTier): number {
     const dynamic = dynamicPriceMap.get(tier.id)
@@ -423,8 +466,9 @@ export default async function EventDetailPage({ params }: Props) {
 
   let eventSeats: SeatData[] = []
   let eventSections: SectionData[] = []
+  let eventAreas: SeatAreaData[] = []
   if (seatsData) {
-    const { seatsResult, sectionsResult } = seatsData
+    const { seatsResult, sectionsResult, mapResult } = seatsData
     if (seatsResult.error) {
       console.error('[event-detail] failed to load seats:', seatsResult.error)
     }
@@ -435,7 +479,23 @@ export default async function EventDetailPage({ params }: Props) {
       ticket_tier_id: s.ticket_tier_id ?? null,
     }))
     eventSections = (sectionsResult.data ?? []) as SectionData[]
+    const rawAreas = (mapResult?.data?.layout as { areas?: SeatAreaData[] } | null)?.areas
+    if (Array.isArray(rawAreas)) eventAreas = rawAreas
   }
+
+  // The seated experience runs only when the flag is on AND the event has a
+  // materialised chart; otherwise the event sells as general admission.
+  const seatedActive = event.has_reserved_seating && seatedFlagEnabled && eventSeats.length > 0
+
+  // Mixed events: tiers not bound to any seat sell as general admission
+  // alongside the chart (a standing-zone tier, a GA balcony). Seat-bound
+  // tiers stay out of the GA panel so a buyer cannot bypass seat selection.
+  const seatBoundTierIds = new Set(
+    eventSeats.map(s => s.ticket_tier_id).filter(Boolean) as string[]
+  )
+  const gaTiersAlongsideSeats = seatedActive
+    ? enrichedAllTiers.filter(t => !seatBoundTierIds.has(t.id) && !t.seat_map_section_id)
+    : []
 
   const tierPriceCentsMap: Record<string, number> = {}
   for (const t of allTiers) tierPriceCentsMap[t.id] = resolvePrice(t)
@@ -465,7 +525,7 @@ export default async function EventDetailPage({ params }: Props) {
   const tierInventory = Object.fromEntries(tierInventoryEntries)
 
   const isSoldOut =
-    !event.has_reserved_seating &&
+    !seatedActive &&
     !!eventInventory &&
     eventInventory.total_capacity > 0 &&
     eventInventory.available === 0
@@ -479,7 +539,10 @@ export default async function EventDetailPage({ params }: Props) {
     eventIsPaid(allTiers) && !isOrganiserSellable(event.organisation)
 
   const soldOutRelated: EventSoldOutRelated[] = related.slice(0, 3).map(e => {
-    const firstTier = e.ticket_tiers?.[0]
+    const tiers = e.ticket_tiers ?? []
+    // Lowest PAID price (the shared price-label rule); 0 only when the event
+    // is genuinely free (every tier $0). The first tier is not the price.
+    const paid = lowestPaidCents(tiers)
     return {
       id: e.id,
       slug: e.slug,
@@ -489,8 +552,8 @@ export default async function EventDetailPage({ params }: Props) {
       venue_country: e.venue_country,
       cover_image_url: e.cover_image_url,
       category_name: e.category?.name ?? null,
-      from_price_cents: firstTier?.price ?? null,
-      currency: firstTier?.currency ?? null,
+      from_price_cents: tiers.length === 0 ? null : paid ?? 0,
+      currency: tiers[0]?.currency ?? null,
     }
   })
 
@@ -504,13 +567,18 @@ export default async function EventDetailPage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-canvas">
-      <EventSchemaJsonLd
-        event={event}
-        organisation={event.organisation}
-        ticketTiers={allTiers}
-        state={eventStateForSchema}
-        baseUrl={baseUrl}
-      />
+      {/* Organiser-dependent structured data only renders when the organiser
+          record loaded. A sellable organiser excluded from the public query
+          (e.g. not yet active) must never crash the page. */}
+      {event.organisation && (
+        <EventSchemaJsonLd
+          event={event}
+          organisation={event.organisation}
+          ticketTiers={allTiers}
+          state={eventStateForSchema}
+          baseUrl={baseUrl}
+        />
+      )}
       <BreadcrumbJsonLd
         items={[
           { name: 'Home', url: baseUrl },
@@ -530,7 +598,7 @@ export default async function EventDetailPage({ params }: Props) {
       {eventBannerState ? (
         <EventStateBanner
           state={eventBannerState}
-          organiserHandle={event.organisation.slug ?? null}
+          organiserHandle={event.organisation?.slug ?? null}
         />
       ) : null}
 
@@ -554,7 +622,7 @@ export default async function EventDetailPage({ params }: Props) {
           <div className="absolute inset-0">
             <HeroMedia
               image={media.image}
-              alt={media.alt}
+              alt={event.cover_image_alt || media.alt}
               videoSrc={media.videoSrc}
               kenBurns={media.kenBurns}
             />
@@ -647,11 +715,38 @@ export default async function EventDetailPage({ params }: Props) {
           </div>
         </section>
 
+        {/* Event Media: the video (allowlisted embed, click-to-play facade so the
+            cover raster stays the LCP) and the gallery (lazy, below the fold).
+            Rendered directly below the hero per the Event Media Standard. */}
+        {(hasVideo || gallery.length > 0) && (
+          <Reveal as="section" className="bg-canvas pt-10 sm:pt-12">
+            <div className="mx-auto max-w-7xl space-y-8 px-4 sm:px-6 lg:px-8">
+              {hasVideo && videoProvider && event.video_url && (
+                <EventVideo
+                  embedUrl={event.video_url}
+                  provider={videoProvider}
+                  poster={media.image}
+                  posterBlur={event.cover_image_blur ?? undefined}
+                  title={event.title}
+                />
+              )}
+              {gallery.length > 0 && (
+                <div>
+                  <SectionHeader eyebrow="Gallery" title="Event photos" size="sm" />
+                  <div className="mt-5">
+                    <EventGallery images={gallery} eventTitle={event.title} />
+                  </div>
+                </div>
+              )}
+            </div>
+          </Reveal>
+        )}
+
         {/* Content column + Ticket panel */}
         <section className="bg-canvas pt-12 sm:pt-16">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className={event.has_reserved_seating ? 'space-y-10' : 'flex flex-col gap-10 lg:flex-row'}>
-              <div className={event.has_reserved_seating ? '' : 'flex-1 min-w-0'}>
+            <div className={seatedActive ? 'space-y-10' : 'flex flex-col gap-10 lg:flex-row'}>
+              <div className={seatedActive ? '' : 'flex-1 min-w-0'}>
                 {event.is_age_restricted && (
                   <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-warning/15 px-3 py-1.5 text-xs font-semibold text-warning">
                     <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
@@ -718,6 +813,25 @@ export default async function EventDetailPage({ params }: Props) {
                   </div>
                 </Reveal>
 
+                {/* Know before you go: the practical answers in one card
+                    (surpass edge B1; rows render only from known data). */}
+                {surpassEdgesEnabled && (
+                  <Reveal>
+                    <KnowBeforeYouGo
+                      startLabel={formatDateTime(event.start_date, event.timezone)}
+                      timezone={event.timezone}
+                      venueName={event.venue_name}
+                      fullAddress={fullAddress || null}
+                      isVirtual={event.event_type === 'virtual'}
+                      ageMin={event.is_age_restricted ? (event.age_restriction_min ?? 18) : null}
+                      hasAccessibleSeats={eventSeats.some(
+                        s => s.seat_type === 'accessible' || s.seat_type === 'companion'
+                      )}
+                      isFree={event.is_free ?? false}
+                    />
+                  </Reveal>
+                )}
+
                 {/* Venue map */}
                 {event.event_type !== 'virtual' && (fullAddress || event.venue_name) && (
                   <Reveal as="div" className="mt-10">
@@ -736,11 +850,14 @@ export default async function EventDetailPage({ params }: Props) {
                   </Reveal>
                 )}
 
-                {/* Organiser card */}
+                {/* Organiser card. Guarded: when the organiser record did not
+                    load (e.g. a sellable organiser excluded from the public
+                    query), the whole card is skipped rather than crashing. */}
+                {event.organisation && (
                 <Reveal as="div" className="mt-10">
                   <SectionHeader eyebrow="Organised by" title={event.organisation.name} size="sm" />
                   <div className="mt-5 rounded-2xl border border-ink-200 bg-white p-6">
-                    <div className="flex items-start gap-4">
+                    <div className="flex flex-wrap items-start gap-4">
                       <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-ink-900 text-sm font-bold text-gold-400">
                         {event.organisation.name.slice(0, 2).toUpperCase()}
                       </div>
@@ -749,9 +866,13 @@ export default async function EventDetailPage({ params }: Props) {
                           <p className="text-sm text-ink-600 line-clamp-3">{event.organisation.description}</p>
                         )}
                       </div>
+                      {/* Demand-graph follow: their next event lands in the
+                          follower's feed and alerts the moment it goes live. */}
+                      <FollowButton type="organiser" id={event.organisation.id} className="shrink-0" />
                     </div>
                   </div>
                 </Reveal>
+                )}
 
                 {/* Tags - events.tags is jsonb in the live schema; narrow
                     Json -> string[] before iterating. */}
@@ -791,27 +912,53 @@ export default async function EventDetailPage({ params }: Props) {
               {/* Ticket panel */}
               <div
                 id="tickets"
-                className={`w-full shrink-0 ${event.has_reserved_seating ? '' : 'lg:w-[360px]'}`}
+                className={`w-full shrink-0 ${seatedActive ? '' : 'lg:w-[360px]'}`}
               >
-                {event.has_reserved_seating ? (
-                  <div className="rounded-2xl border border-ink-200 bg-white p-6 shadow-sm">
-                    <SectionHeader eyebrow="Seating" title="Choose your seats" size="sm" className="mb-5" />
-                    {isTicketingSuspended ? (
-                      <p className="rounded-lg bg-warning/10 px-4 py-3 text-sm text-warning">
-                        Ticketing is temporarily paused for this event.
-                      </p>
-                    ) : saleBlocked ? (
-                      <TicketsNotOnSale embedded />
-                    ) : (
-                      <SeatSelector
-                        eventId={event.id}
-                        seats={eventSeats}
-                        sections={eventSections}
-                        defaultPriceCents={defaultPriceCents}
-                        currency={allTiers[0]?.currency ?? 'AUD'}
-                        maxPerOrder={allTiers[0]?.max_per_order ?? 10}
-                        tierPriceCentsMap={tierPriceCentsMap}
-                      />
+                {seatedActive ? (
+                  <div className="space-y-6">
+                    <div className="rounded-2xl border border-ink-200 bg-white p-6 shadow-sm">
+                      <SectionHeader eyebrow="Seating" title="Choose your seats" size="sm" className="mb-5" />
+                      {isTicketingSuspended ? (
+                        <p className="rounded-lg bg-warning/10 px-4 py-3 text-sm text-warning">
+                          Ticketing is temporarily paused for this event.
+                        </p>
+                      ) : saleBlocked ? (
+                        <TicketsNotOnSale embedded />
+                      ) : (
+                        <SeatSelector
+                          eventId={event.id}
+                          seats={eventSeats}
+                          sections={eventSections}
+                          areas={eventAreas}
+                          defaultPriceCents={defaultPriceCents}
+                          currency={allTiers[0]?.currency ?? 'AUD'}
+                          maxPerOrder={allTiers[0]?.max_per_order ?? 10}
+                          tierPriceCentsMap={tierPriceCentsMap}
+                        />
+                      )}
+                    </div>
+
+                    {/* Mixed events: tiers with no seats (standing zones, GA
+                        balconies) sell through the standard panel beside the
+                        chart. Seat-bound tiers never appear here. */}
+                    {gaTiersAlongsideSeats.length > 0 && !saleBlocked && !isTicketingSuspended && (
+                      <div className="rounded-2xl border border-ink-200 bg-white p-6 shadow-sm lg:max-w-md">
+                        <SectionHeader eyebrow="No seat needed" title="General admission" size="sm" className="mb-5" />
+                        <TicketPanelClient
+                          eventId={event.id}
+                          eventCreatedAt={event.created_at}
+                          allTiers={gaTiersAlongsideSeats}
+                          addons={event.event_addons ?? []}
+                          isTicketingSuspended={isTicketingSuspended}
+                          defaultCurrency="AUD"
+                          waitlistEnabled={event.waitlist_enabled ?? false}
+                          squadBookingEnabled={event.squad_booking_enabled ?? false}
+                          tierInventory={tierInventory}
+                          saleBlocked={saleBlocked}
+                          feeRates={feeRates}
+                          feePassType={eventFeePassType}
+                        />
+                      </div>
                     )}
                   </div>
                 ) : isSoldOut && !saleBlocked ? (
@@ -823,23 +970,46 @@ export default async function EventDetailPage({ params }: Props) {
                     />
                   </div>
                 ) : (
-                  <div className="sticky top-20 rounded-2xl border border-ink-200 bg-white p-6 shadow-sm">
-                    <SectionHeader eyebrow="Get in" title="Tickets" size="sm" className="mb-5" />
+                  <div className="sticky top-20 space-y-5">
+                    <div className="rounded-2xl border border-ink-200 bg-white p-6 shadow-sm">
+                      <SectionHeader eyebrow="Get in" title="Tickets" size="sm" className="mb-5" />
 
-                    <TicketPanelClient
-                      eventId={event.id}
-                      eventCreatedAt={event.created_at}
-                      allTiers={enrichedAllTiers}
-                      addons={event.event_addons ?? []}
-                      isTicketingSuspended={isTicketingSuspended}
-                      defaultCurrency="AUD"
-                      waitlistEnabled={event.waitlist_enabled ?? false}
-                      squadBookingEnabled={event.squad_booking_enabled ?? false}
-                      tierInventory={tierInventory}
-                      saleBlocked={saleBlocked}
-                      feeRates={feeRates}
-                      feePassType={eventFeePassType}
-                    />
+                      <TicketPanelClient
+                        eventId={event.id}
+                        eventCreatedAt={event.created_at}
+                        allTiers={enrichedAllTiers}
+                        addons={event.event_addons ?? []}
+                        isTicketingSuspended={isTicketingSuspended}
+                        defaultCurrency="AUD"
+                        waitlistEnabled={event.waitlist_enabled ?? false}
+                        squadBookingEnabled={event.squad_booking_enabled ?? false}
+                        tierInventory={tierInventory}
+                        saleBlocked={saleBlocked}
+                        feeRates={feeRates}
+                        feePassType={eventFeePassType}
+                      />
+                    </div>
+
+                    {/* The acquisition loop at the decision point: the share
+                        card rides with the sticky panel so the ticket column
+                        never runs empty on a long page (desktop), and every
+                        share link is attributed (share-a-ticket). */}
+                    <div className="hidden rounded-2xl border border-gold-500/30 bg-white p-6 shadow-sm lg:block">
+                      <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-gold-700">
+                        Bring your people
+                      </p>
+                      <p className="mt-2 text-sm text-ink-600">
+                        Nights out are better booked together. Send this to the group chat.
+                      </p>
+                      <div className="mt-4">
+                        <EventShareBar
+                          eventTitle={event.title}
+                          eventDate={shortDate}
+                          eventUrl={`${baseUrl}/events/${event.slug}`}
+                          variant="light"
+                        />
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

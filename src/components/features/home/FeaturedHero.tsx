@@ -77,6 +77,9 @@ export async function FeaturedHero({ events }: { events: BentoEvent[] }) {
         <h1 id="home-hero-heading" className="sr-only">
           Live events across Australia: music, scenes, festivals and community
         </h1>
+        {/* Empty-state banner sits on the single platform hero token
+            (founder ruling 2026-07-07 raised .hero-marketing platform-wide,
+            superseding the 2026-07-05 homepage-only +17% inline scale). */}
         <div className="hero-marketing mx-auto flex max-w-7xl items-end px-6 pb-10 sm:px-8 lg:px-12">
           <div className="max-w-2xl hero-enter">
             <p

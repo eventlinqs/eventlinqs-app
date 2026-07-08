@@ -89,7 +89,7 @@ export function ContentSection({
           style={{
             height: '1px',
             // Brand gold accent (was off-brand blue rgba(74,144,217); #4A90D9).
-            background: 'linear-gradient(90deg, transparent, rgba(212, 164, 55, 0.30) 50%, transparent)',
+            background: 'linear-gradient(90deg, transparent, rgba(212, 160, 23, 0.30) 50%, transparent)',
           }}
         />
       )}

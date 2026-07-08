@@ -47,8 +47,8 @@ const BRAND_COLORS = {
   buildings: '#E8E0D0',
   city_label: '#0A1628',
   suburb_label: '#2A3548',
-  navy: '#0A1628',
-  gold: '#D4A437',
+  navy: '#0A1628', // --color-ink-900
+  gold: '#D4A017', // --color-gold-500 (JS map config cannot read CSS vars)
 } as const
 
 /**

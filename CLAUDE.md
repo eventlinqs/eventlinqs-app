@@ -54,7 +54,7 @@ silently follow the stale doc.
 | Links, routes, navigation | Law 5 (zero dead links) |
 | A migration or the database | Verification and gates (Migrations) |
 | A fee, pricing, checkout charge, or payout | Fee system (one source), `docs/FEE-SYSTEM.md` |
-| Venues, venue enrolment, venue revenue share, venue payout | Venue Revenue Sharing Program, Fee system (one source), `docs/EventLinqs-Venue-Revenue-Program-SPEC.md` |
+| Venues, venue enrolment, venue revenue share, venue payout | Venue Revenue Sharing Program (REMOVED 2026-07-05; the section below records the decision), Fee system (one source) |
 | CI, gates, delivery | Verification and gates |
 
 **Index of laws:** Law 0 (read first) - Definition of Done (SHIP 100%, A to Z)
@@ -673,9 +673,15 @@ admin-editable. Do not reopen the numbers; tune only in admin if real data warra
 
 - **Two fees on every PAID ticket.** (1) PLATFORM / SERVICE fee (the profit
   margin): `3.5% + AUD 0.99` per ticket. (2) PAYMENT PROCESSING fee (covers
-  Stripe, thin margin): `2.5%` of the order, no flat component. Set just under
-  Humanitix (4% + $0.99) and below Eventbrite so "cheaper than Humanitix, far
-  cheaper than Eventbrite" holds at every price point.
+  Stripe, thin margin): `2.5%` of the order, no flat component. POSITIONING
+  (founder decision 2026-07-05, Path B): our HEADLINE platform fee undercuts
+  Humanitix's headline (3.5% + $0.99 versus their 4% + $0.99) and we are far
+  cheaper than Eventbrite all-in, but Humanitix's rate INCLUDES payment
+  processing, so on an all-in basis they are 7 to 29 cents cheaper across
+  $15 to $35. NEVER claim to be cheaper than Humanitix all-in (false, a
+  consumer-law risk); the money story is the lower headline platform fee,
+  far-cheaper-than-Eventbrite, and radical fee transparency (published
+  rates, all-in at first click, the live payout calculator).
 - **Free events are free.** `$0`, no fees, same as every competitor. The
   calculator short-circuits a zero-subtotal cart before any fee is applied.
 - **Admin-editable, no code change.** Both percentages AND the flat amount are
@@ -701,57 +707,26 @@ admin-editable. Do not reopen the numbers; tune only in admin if real data warra
   to `pricing_rules` by a lawful migration so the documented fee and the live value
   match (`public-fee.ts` is the last-resort fallback and is kept in sync).
 
-## Venue Revenue Sharing Program (the venue moat, locked 2026)
+## Venue Revenue Sharing Program: REMOVED (founder decision 2026-07-05)
 
-The standout differentiator that turns venues into an unpaid sales force: a venue
-earns a share of EventLinqs revenue from every paid ticket sold through the
-platform for an event at that venue, so the venue champions EventLinqs to the
-organisers who run events there. Sourced from
-`docs/EventLinqs-Venue-Revenue-Program-SPEC.md`; this section is its binding law.
-The repo is the source of truth, not memory.
-
-- **Opt-in per venue, attractive-offer, NEVER hard exclusivity.** A venue is in
-  the program ONLY when explicitly enrolled, and the revenue share is the carrot:
-  venues CHOOSE EventLinqs because it pays them. There is NO contractual lock-out
-  of competitors. Hard venue exclusivity is the exact conduct that drew the US DOJ
-  antitrust suit against Ticketmaster and ACCC scrutiny in Australia, and is real
-  exposure for a solo founder. Same commercial outcome, far less legal risk. Do
-  not build, copy, or imply exclusivity enforcement anywhere.
-- **The share is 20% of the EventLinqs PLATFORM FEE.** Not the ticket price, not
-  the processing fee. It is carved from the platform fee EventLinqs actually keeps
-  (`round(order.platform_fee_cents * rate)`), so it can NEVER make EventLinqs
-  unprofitable and NEVER reduces the organiser payout or the buyer total: the
-  organiser still gets `total - (platform_fee + processing_fee)` unchanged, the
-  buyer pays the same all-in price, and EventLinqs's own margin absorbs the share.
-  Free events generate no platform fee, so no venue share. Only events at an
-  ENROLLED venue (linked by `events.venue_id`) generate a share.
-- **Single source of truth, no forked fee logic.** The 20% rate lives in
-  `pricing_rules` as `rule_type = 'venue_revenue_share_percentage'`, resolved by
-  the ONE `getPricingRule` resolver and admin-editable in `/admin/venues` without
-  a code change (the Fee system one-source law applies in full). Never hardcode the
-  rate.
-- **Tracked by an enrolment inventory and an append-only share ledger.** The
-  system knows exactly which venues are enrolled and from when (`venues` enrolment
-  state plus a `venue_enrolments` history), and exactly what each venue is owed:
-  every paid ticket at an enrolled venue writes one `accrual` row to
-  `venue_share_ledger` attributed to the venue, event, and order; refunds write a
-  proportional `refund_reversal`; payouts write a `payout` debit. Un-enrolling
-  stops FUTURE accruals and never alters past ledger rows.
-- **Paid through the proven funds-holding payout path, never a new one.** Enrolled
-  venues are paid their accumulated net share AFTER the event, matching the
-  organiser disbursement model, via the same `TransferGateway` (a venue Stripe
-  connected account), claimed atomically by `disburse_venue_share` before the
-  Stripe transfer with void-on-failure. The organiser ledger
-  (`organiser_balance_ledger`), `disburse_transfer`, and the charge/transfer
-  mechanics are NOT touched: the venue share is a SEPARATE ledger funded from
-  EventLinqs's retained margin, added additively and re-verified to reconcile
-  (organiser share + venue share + EventLinqs net keep = total, no leakage).
-- **Surfaces.** A role-gated, server-enforced admin surface (`/admin/venues`,
-  capability `admin.venues.manage`) to enrol/un-enrol, set the rate, and
-  trigger/verify payouts; and a venue-facing dashboard showing enrolled status,
-  the venue's events, and earned and paid share. Both inherit the approved design
-  tokens and components. The venue marketing/outreach landing (Law 4 image-rich)
-  is the go-to-market follow-on, prepared for launch outreach.
+The programme (venues earning about 20% of the EventLinqs platform fee on
+tickets sold at their venue) was removed entirely by founder decision on
+5 July 2026. Standard ticketing economics apply platform-wide: the
+organiser receives face value, EventLinqs keeps its full fee, and no
+partner share is deducted from the margin or promised anywhere. What was
+done: the single-source rate rows in pricing_rules were ended
+(effective_until, migration 20260705000005, history preserved), the
+accrual and refund-reversal call sites were removed from the Stripe
+webhook, the venue disbursement leg was removed from the event
+disbursement cron, the organiser venue-revenue dashboard page and sidebar
+entry were removed, and the admin venues surface now records the decision.
+The historical ledger tables and the dormant libraries
+(`src/lib/payments/venue-share.ts`, `venue-transfer.ts`,
+`src/lib/venues/`) remain untouched as history. Venue RECORDS are
+unaffected: venues still power seating charts and event locations.
+`docs/EventLinqs-Venue-Revenue-Program-SPEC.md` is historical and no
+longer binding. Do not rebuild any revenue share without a new founder
+decision.
 
 ## Verification and gates
 
@@ -894,24 +869,10 @@ live, earning platform with real traffic and data, never before: building
 automations to capture a market for a platform that is not yet live and earning is
 the wrong order. Strong yes to the vision, firm not-yet on timing.
 
-**PARKED, the NEXT MAJOR BUILD after launch-readiness and the fee structure (do
-not forget): the Venue Revenue Sharing Program.** Full spec in
-`docs/EventLinqs-Venue-Revenue-Program-SPEC.md`. Venues earn a percentage of
-revenue from every event ticketed through EventLinqs at their venue and, in
-exchange, champion EventLinqs to the organisers who run events there: a venue
-salesforce that recruits supply. Mechanics to design carefully (it adds a THIRD
-party to the proven funds-holding money flow): venue accounts and onboarding,
-venue-to-event linking by address, automatic venue-share calculation tied to the
-single-source fee engine (do NOT fork fee logic), venue payout via the funds-
-holding payout path (re-verified), a venue earnings dashboard, and partnership
-copy. TWO decisions first: (1) structure the venue offer as an ATTRACTIVE
-revenue-share carrot, NOT hard venue exclusivity (exclusivity is the exact conduct
-that drew the US DOJ suit against Ticketmaster and ACCC scrutiny; real exposure
-for a solo founder); (2) do the margin maths before setting the venue percentage
-(suggested 4-5%), funded from the platform-fee margin not stacked on the buyer,
-after Stripe and the venue cut still profitable. The venue PITCH/landing material
-can be prepared EARLY for launch outreach; the money plumbing is built carefully
-after launch-readiness, never rushed into the launch sequence.
+**REMOVED (founder decision 2026-07-05): the Venue Revenue Sharing
+Program.** Built, then removed entirely; the record lives in the Venue
+Revenue Sharing Program section above. Standard ticketing economics apply.
+`docs/EventLinqs-Venue-Revenue-Program-SPEC.md` is historical, not binding.
 
 ## Authority docs
 

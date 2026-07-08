@@ -1,0 +1,14 @@
+{
+  "findings": [
+    {
+      "check": "oversize 43MB rejection",
+      "message": "JPEG, PNG, WebP, AVIF, or HEIC. Up to 10MB each. The first image is your cover."
+    },
+    {
+      "check": "overdimension 4500px rejection",
+      "message": "Image is too large in pixels: 4500 x 2000. The maximum is 4000 x 4000."
+    }
+  ],
+  "consoleErrors": [],
+  "finalUrl": "https://eventlinqs-staging.vercel.app/dashboard/events"
+}

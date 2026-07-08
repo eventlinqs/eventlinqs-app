@@ -3,6 +3,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { TransferTicketForm } from '@/components/features/tickets/transfer-ticket-form'
+import { formatSeatLabel } from '@/lib/seating/format'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,6 +24,12 @@ interface MyTicketRow {
     venue_city: string | null
   } | null
   order_item: { item_name: string } | null
+  /** Reserved seating: the ticket's seat, joined via tickets.seat_id. */
+  seat: {
+    row_label: string
+    seat_number: string
+    section: { name: string } | null
+  } | null
 }
 
 function formatAuDate(iso: string): string {
@@ -59,7 +66,7 @@ export default async function MyTicketsPage() {
   const { data } = await supabase
     .from('tickets')
     .select(
-      'id, ticket_code, secret, status, created_at, event:events(title, start_date, venue_name, venue_city), order_item:order_items(item_name)',
+      'id, ticket_code, secret, status, created_at, event:events(title, start_date, venue_name, venue_city), order_item:order_items(item_name), seat:seats(row_label, seat_number, section:seat_map_sections(name))',
     )
     .order('created_at', { ascending: false })
 
@@ -110,6 +117,15 @@ export default async function MyTicketsPage() {
                       {(t.event?.venue_name || t.event?.venue_city) && (
                         <p className="text-sm text-ink-600">
                           {[t.event?.venue_name, t.event?.venue_city].filter(Boolean).join(', ')}
+                        </p>
+                      )}
+                      {t.seat && (
+                        <p className="mt-1 text-sm font-semibold text-ink-900">
+                          {formatSeatLabel({
+                            sectionName: t.seat.section?.name ?? null,
+                            rowLabel: t.seat.row_label,
+                            seatNumber: t.seat.seat_number,
+                          })}
                         </p>
                       )}
                       <p className="mt-1 text-xs text-ink-500">

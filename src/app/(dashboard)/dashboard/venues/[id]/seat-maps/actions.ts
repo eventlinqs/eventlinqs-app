@@ -3,6 +3,11 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
+import {
+  generateLayout,
+  validateLayout,
+  type SeatBlock,
+} from '@/lib/seating/generate'
 
 // CSV row shape after parsing
 interface ParsedSeat {
@@ -36,8 +41,10 @@ interface SeatMapLayout {
 const ALLOWED_SEAT_TYPES = ['standard', 'premium', 'accessible', 'companion', 'restricted_view', 'obstructed']
 const REQUIRED_HEADERS = ['section', 'row', 'seat_number', 'seat_type', 'x', 'y']
 
+// Section fills cycle per section for visual distinction on the seat map.
+// The lead blue is the brand info token #0EA5E9 (was off-brand #4A90D9).
 const SECTION_COLORS = [
-  '#4A90D9', '#E91E63', '#4CAF50', '#FF9800', '#9C27B0',
+  '#0EA5E9', '#E91E63', '#4CAF50', '#FF9800', '#9C27B0',
   '#00BCD4', '#F44336', '#3F51B5', '#8BC34A', '#FF5722',
 ]
 
@@ -149,6 +156,121 @@ function buildLayout(seats: ParsedSeat[]): SeatMapLayout {
   }
 
   return { sections }
+}
+
+export interface SaveSeatMapResult {
+  success: boolean
+  seat_map_id?: string
+  total_seats?: number
+  error?: string
+}
+
+/**
+ * Save (create or update) a venue seat map from the visual builder's block
+ * definitions. The blocks are the editable source of truth; the layout the
+ * attendee map and materialize_seats consume is REGENERATED server-side by
+ * the same pure module the builder previews with, so a tampered client
+ * cannot save a layout its blocks do not describe. Editing a template never
+ * touches an existing event's seats: events materialise a copy at attach
+ * time, and materialize_seats refuses events with live inventory.
+ */
+export async function saveSeatMap(
+  venueId: string,
+  seatMapId: string | null,
+  mapName: string,
+  blocks: SeatBlock[]
+): Promise<SaveSeatMapResult> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Not authenticated' }
+
+  // Same ownership gate as the import path: the venue must belong to the
+  // signed-in owner's organisation.
+  const { data: org } = await supabase
+    .from('organisations')
+    .select('id')
+    .eq('owner_id', user.id)
+    .single()
+  if (!org) return { success: false, error: 'Organisation not found' }
+
+  const { data: venue } = await supabase
+    .from('venues')
+    .select('id')
+    .eq('id', venueId)
+    .eq('organisation_id', org.id)
+    .eq('is_active', true)
+    .single()
+  if (!venue) return { success: false, error: 'Venue not found or access denied' }
+
+  if (!Array.isArray(blocks) || blocks.length === 0) {
+    return { success: false, error: 'Add at least one seating block before saving.' }
+  }
+  if (blocks.length > 500) {
+    return { success: false, error: 'Too many blocks in one chart (500 maximum).' }
+  }
+
+  const layout = generateLayout(blocks)
+  const issues = validateLayout(layout)
+  if (issues.length > 0) {
+    return {
+      success: false,
+      error: `Fix these before saving:\n${issues.slice(0, 8).map(i => i.message).join('\n')}`,
+    }
+  }
+  if (layout.totalSeats === 0 && layout.areas.length === 0) {
+    return { success: false, error: 'This chart has no seats and no standing areas.' }
+  }
+
+  const admin = createAdminClient()
+  const name = mapName.trim() || 'Seating chart'
+
+  let mapId = seatMapId
+  if (mapId) {
+    const { error: updateError } = await admin
+      .from('seat_maps')
+      .update({ name, layout, total_seats: layout.totalSeats })
+      .eq('id', mapId)
+      .eq('venue_id', venueId)
+    if (updateError) {
+      console.error('[seat-maps] update failed:', updateError)
+      return { success: false, error: 'Failed to save the seating chart.' }
+    }
+  } else {
+    const { data: created, error: insertError } = await admin
+      .from('seat_maps')
+      .insert({ venue_id: venueId, name, layout, total_seats: layout.totalSeats, is_active: true })
+      .select('id')
+      .single()
+    if (insertError || !created) {
+      console.error('[seat-maps] insert failed:', insertError)
+      return { success: false, error: 'Failed to create the seating chart.' }
+    }
+    mapId = created.id
+  }
+
+  // Upsert the section rows (name + colour) so tier mapping and the attendee
+  // map read consistent section identities. Uses the (seat_map_id, name)
+  // unique index from 20260705000001.
+  for (const section of layout.sections) {
+    const { error: sectionError } = await admin
+      .from('seat_map_sections')
+      .upsert(
+        {
+          seat_map_id: mapId,
+          name: section.name,
+          color: section.color,
+          sort_order: section.sort_order,
+        },
+        { onConflict: 'seat_map_id,name' }
+      )
+    if (sectionError) {
+      console.error('[seat-maps] section upsert failed:', sectionError)
+      return { success: false, error: `Failed to save section "${section.name}".` }
+    }
+  }
+
+  revalidatePath(`/dashboard/venues/${venueId}/seat-maps`)
+  return { success: true, seat_map_id: mapId ?? undefined, total_seats: layout.totalSeats }
 }
 
 export async function importSeatMapCsv(

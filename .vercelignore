@@ -1,0 +1,7 @@
+# Deploy-only ignore (uncommitted, this worktree only).
+# Heavy non-build assets that the Next.js build/runtime never reads.
+docs
+design-captures
+research
+audit-v2
+.git

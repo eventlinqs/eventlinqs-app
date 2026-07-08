@@ -26,15 +26,22 @@ interface Props {
  * Past events get a softer notice + a deep link to the organiser's
  * upcoming events as the primary recovery CTA.
  */
+// Banner palettes derive from the semantic tokens in globals.css:
+// - Cancelled: --color-error #DC2626. Background #FCE9E9 is a 10% tint of
+//   error on white, border #F4BEBE a 30% tint; text #991B1B is the error-800
+//   equivalent shade (AA on the tint); the icon is the error token itself.
+// - Postponed: --color-warning #F59E0B. Background #FEF5E7 is a 10% tint of
+//   warning on white, border #FCE2B6 a 30% tint; icon #B45309 is the
+//   warning-700 equivalent, text #78350F the warning-900 equivalent (AA).
 export function EventStateBanner({ state, newDate, originalDate, organiserHandle }: Props) {
   if (state === 'cancelled') {
     return (
-      <div role="alert" className="bg-[#fdecec] border-b border-[#f5c5c5]">
+      <div role="alert" className="bg-[#FCE9E9] border-b border-[#F4BEBE]">
         <div className="mx-auto flex max-w-7xl items-start gap-3 px-4 py-3 sm:px-6 lg:px-8">
-          <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-[#c8302a]" aria-hidden />
+          <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-[#DC2626]" aria-hidden />
           <div className="flex-1 text-sm">
-            <p className="font-semibold text-[#7a1e1a]">This event has been cancelled.</p>
-            <p className="mt-0.5 text-[#7a1e1a]/85">
+            <p className="font-semibold text-[#991B1B]">This event has been cancelled.</p>
+            <p className="mt-0.5 text-[#991B1B]/85">
               Refunds are processed automatically to the original payment method within 5 business days.
               For questions, contact{' '}
               <a href="mailto:support@eventlinqs.com" className="underline hover:no-underline">
@@ -49,12 +56,12 @@ export function EventStateBanner({ state, newDate, originalDate, organiserHandle
 
   if (state === 'postponed') {
     return (
-      <div role="alert" className="bg-[#fdf6e3] border-b border-[#f5e3a5]">
+      <div role="alert" className="bg-[#FEF5E7] border-b border-[#FCE2B6]">
         <div className="mx-auto flex max-w-7xl items-start gap-3 px-4 py-3 sm:px-6 lg:px-8">
-          <CalendarClock className="mt-0.5 h-5 w-5 shrink-0 text-[#a87a00]" aria-hidden />
+          <CalendarClock className="mt-0.5 h-5 w-5 shrink-0 text-[#B45309]" aria-hidden />
           <div className="flex-1 text-sm">
-            <p className="font-semibold text-[#5c4400]">This event has been postponed.</p>
-            <p className="mt-0.5 text-[#5c4400]/85">
+            <p className="font-semibold text-[#78350F]">This event has been postponed.</p>
+            <p className="mt-0.5 text-[#78350F]/85">
               {newDate ? (
                 <>New date: <strong>{newDate}</strong>. Existing tickets remain valid.</>
               ) : (
@@ -106,10 +113,12 @@ export function EventStateBanner({ state, newDate, originalDate, organiserHandle
   )
 }
 
-/** Lower-effort sold-out marker that sits inside the hero CTA row. */
+/** Lower-effort sold-out marker that sits inside the hero CTA row.
+ * #B91C1C is the error-700 equivalent shade of --color-error #DC2626,
+ * chosen so white 12px bold text keeps AA (the raw token sits below 4.5:1). */
 export function EventSoldOutBadge() {
   return (
-    <span className="inline-flex items-center gap-2 rounded-full bg-[#c8302a] px-4 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-white">
+    <span className="inline-flex items-center gap-2 rounded-full bg-[#B91C1C] px-4 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-white">
       <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
       Sold out
     </span>

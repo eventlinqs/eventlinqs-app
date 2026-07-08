@@ -9,6 +9,11 @@ import { OrganiserCommunityStrip } from '@/components/features/organisers/commun
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 import { helpTopics } from '@/lib/help-content'
 import { getLivePublicFee } from '@/lib/pricing/live-fee'
+import { getEventFeeRates } from '@/lib/pricing/event-fee-config'
+import { getPlatformStats } from '@/lib/stats/platform-stats'
+import { PayoutCalculator } from '@/components/features/organisers/payout-calculator'
+import { FOUNDING_OFFER } from '@/lib/organisers/founding-offer'
+import { ORGANISER_TESTIMONIALS } from '@/lib/organisers/testimonials'
 import {
   ORGANISER_HERO,
   ORGANISER_BANDS,
@@ -60,6 +65,22 @@ interface FeatureBand {
   points: string[]
   image: { src: string; alt: string; objectPosition?: string }
   reverse?: boolean
+}
+
+// The demand-engine band: the first blade of the wedge, rendered directly
+// after the stats band so the discovery pitch leads the page argument. Every
+// point names a mechanism that exists on the platform today.
+const DISCOVERY_BAND: FeatureBand = {
+  eyebrow: 'The demand engine',
+  title: 'We bring the audience, not just the checkout.',
+  body: 'Every event you list goes into the discovery feed and out through push alerts to attendees who chose to hear about events like yours. Buyers see who else is going, and everyone who follows you gets your next event the moment it goes live.',
+  points: [
+    'A personalised discovery feed puts your event in front of the right people',
+    'Push alerts land on lock screens, not in spam folders',
+    'Who’s-going proof turns interest into tickets',
+    'Followers get every event you publish, automatically',
+  ],
+  image: ORGANISER_BANDS.discovery,
 }
 
 // Band 1 (transparent fees) was promoted to a dedicated pricing-clarity band
@@ -156,7 +177,13 @@ function FeatureBandRow({ band }: { band: FeatureBand }) {
 // ── Pricing-clarity band: the ACTUAL fee, read live from pricing_rules via
 //    getLivePublicFee (displayed == charged), never invented. Two cards: free
 //    events free, paid tickets one clear fee. The "what it costs" in one glance.
-function PricingClarityBand({ feeLabel }: { feeLabel: string }) {
+function PricingClarityBand({
+  feeLabel,
+  rates,
+}: {
+  feeLabel: string
+  rates: Awaited<ReturnType<typeof getEventFeeRates>>
+}) {
   const FREE_POINTS = ['Unlimited free events and free tickets', 'All platform features included', 'No card required to start']
   const PAID_POINTS = ['Pass it on at checkout or absorb it, your choice', 'No setup fees, no monthly fees, no lock-in', 'Multi-currency checkout, payouts via Stripe']
   return (
@@ -210,6 +237,22 @@ function PricingClarityBand({ feeLabel }: { feeLabel: string }) {
         </div>
       </div>
 
+      {/* The signature element: a live payout calculator running the SAME pure
+          fee math the checkout charges, on the SAME live rates. No competitor
+          shows an organiser their exact numbers before signup; we do. */}
+      <div className="mt-10">
+        <h3 className="font-display text-lg font-bold text-[var(--text-primary)]">
+          See your exact numbers
+        </h3>
+        <p className="mt-1 max-w-2xl text-sm text-[var(--text-secondary)]">
+          Type your ticket price. This is the same maths and the same live rates
+          the checkout uses, so what you see here is what happens on the night.
+        </p>
+        <div className="mt-5">
+          <PayoutCalculator rates={rates} />
+        </div>
+      </div>
+
       <div className="mt-6">
         <Link
           href="/pricing"
@@ -222,10 +265,152 @@ function PricingClarityBand({ feeLabel }: { feeLabel: string }) {
   )
 }
 
+// ── Live-proof strip: honest counts straight from the catalogue ─────────────
+// Renders ONLY when the read is live and the numbers stand on their own
+// (a thin count argues against the platform, so below the floor the strip
+// simply does not exist). Composition is adaptive: each clause joins only
+// when its own number clears its floor.
+function LiveProofStrip({
+  eventsListed,
+  organisers,
+  cities,
+}: {
+  eventsListed: number
+  organisers: number | null
+  cities: number | null
+}) {
+  const clauses: string[] = [`${eventsListed} events live right now`]
+  if (cities !== null && cities >= 5) clauses.push(`across ${cities} Australian cities`)
+  if (organisers !== null && organisers >= 10) clauses.push(`from ${organisers} organisers`)
+  return (
+    <div className="border-b border-ink-100 bg-[var(--surface-0)]">
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3.5 sm:px-6 lg:px-8">
+        <p className="flex items-center gap-2.5 text-sm font-medium text-[var(--text-primary)]">
+          <span aria-hidden className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-gold-400 opacity-60" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-gold-500" />
+          </span>
+          {clauses.join(', ')}
+        </p>
+        <Link
+          href="/events"
+          className="text-sm font-semibold text-[var(--brand-accent-strong)] transition-colors hover:text-[var(--text-primary)]"
+        >
+          See what&rsquo;s on &rsaquo;
+        </Link>
+      </div>
+    </div>
+  )
+}
+
+// ── Founding Organiser offer (config-driven slot) ────────────────────────────
+// Content and visibility live in src/lib/organisers/founding-offer.ts so the
+// founder can retire or reword the offer without touching this template.
+function FoundingOfferBand() {
+  if (!FOUNDING_OFFER.enabled) return null
+  return (
+    <ContentSection surface="base" width="wide" reveal>
+      {/* Dark from a PHOTOGRAPH + navy scrim (the hero pattern), never a flat
+          painted dark surface (founder-locked light-and-airy boundary). */}
+      <div className="relative overflow-hidden rounded-card border border-[var(--brand-accent)]/40 shadow-[var(--shadow-modal)]">
+        <div className="absolute inset-0">
+          <MarketingMedia
+            src={ORGANISER_BANDS.founding.src}
+            alt=""
+            variant="band"
+            objectPosition={ORGANISER_BANDS.founding.objectPosition}
+          />
+          <div
+            aria-hidden
+            className="absolute inset-0"
+            style={{
+              background:
+                'linear-gradient(100deg, rgba(10,22,40,0.94) 0%, rgba(10,22,40,0.88) 55%, rgba(10,22,40,0.72) 100%)',
+            }}
+          />
+        </div>
+        <div className="relative grid gap-8 p-8 sm:p-10 lg:grid-cols-[1fr_auto] lg:items-center lg:gap-12 lg:p-12">
+          <div>
+            <p className="font-display text-xs font-bold uppercase tracking-[0.2em] text-[var(--brand-accent)]">
+              {FOUNDING_OFFER.eyebrow}
+            </p>
+            <h2 className="mt-3 font-display text-3xl font-extrabold leading-[1.08] tracking-tight text-white sm:text-4xl">
+              {FOUNDING_OFFER.title}
+            </h2>
+            <p className="mt-4 max-w-2xl text-base leading-relaxed text-white/85">
+              {FOUNDING_OFFER.body}
+            </p>
+            <ul className="mt-6 space-y-3">
+              {FOUNDING_OFFER.points.map(point => (
+                <li key={point} className="flex items-start gap-3 text-[15px] text-white/90">
+                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[var(--brand-accent)]" aria-hidden="true" />
+                  {point}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="flex flex-col items-start gap-3 lg:items-end">
+            <Button variant="primary" size="lg" href={FOUNDING_OFFER.ctaHref}>
+              {FOUNDING_OFFER.ctaLabel}
+            </Button>
+            <p className="max-w-xs text-xs leading-relaxed text-white/60 lg:text-right">
+              {FOUNDING_OFFER.note}
+            </p>
+          </div>
+        </div>
+      </div>
+    </ContentSection>
+  )
+}
+
+// ── Testimonials (config-driven slot, hidden while empty) ────────────────────
+// Renders nothing until real organisers say real things: the honest state for
+// a launching platform. Content lives in src/lib/organisers/testimonials.ts.
+function TestimonialsBand() {
+  if (ORGANISER_TESTIMONIALS.length === 0) return null
+  return (
+    <ContentSection surface="alt" width="wide" topBorder reveal>
+      <div className="max-w-2xl">
+        <p className="mb-3 font-display text-xs font-bold uppercase tracking-[0.2em] text-[var(--brand-accent-strong)]">
+          From organisers
+        </p>
+        <h2 className="font-display text-3xl font-extrabold tracking-tight text-[var(--text-primary)] sm:text-4xl">
+          Organisers on EventLinqs.
+        </h2>
+      </div>
+      <div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+        {ORGANISER_TESTIMONIALS.map(t => (
+          <figure
+            key={`${t.name}-${t.organisation}`}
+            className="flex flex-col rounded-card border border-[var(--surface-2)] bg-[var(--surface-0)] p-7 shadow-[var(--shadow-card)]"
+          >
+            <blockquote className="flex-1 text-base leading-relaxed text-[var(--text-primary)]">
+              &ldquo;{t.quote}&rdquo;
+            </blockquote>
+            <figcaption className="mt-5 border-t border-ink-100 pt-4">
+              <p className="font-display text-sm font-bold text-[var(--text-primary)]">{t.name}</p>
+              <p className="text-sm text-[var(--text-secondary)]">
+                {t.role}, {t.organisation}
+              </p>
+            </figcaption>
+          </figure>
+        ))}
+      </div>
+    </ContentSection>
+  )
+}
+
 export async function OrganisersLandingPage() {
   // Live fee from pricing_rules (same source the calculator charges), static
-  // fallback inside getLivePublicFee. Displayed == charged.
-  const fee = await getLivePublicFee()
+  // fallback inside getLivePublicFee. Displayed == charged. The full rate set
+  // feeds the payout calculator; the live counts feed the proof strip.
+  const [fee, rates, stats] = await Promise.all([
+    getLivePublicFee(),
+    getEventFeeRates({}),
+    getPlatformStats(),
+  ])
+  const showLiveProof =
+    stats.source === 'live' && stats.eventsListed !== null && stats.eventsListed >= 50
   return (
     <PageShell>
 
@@ -259,11 +444,15 @@ export async function OrganisersLandingPage() {
                 id="organisers-hero-heading"
                 className="mt-2 font-headline text-3xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-4xl lg:text-5xl"
               >
-                Sell tickets. Keep more.
+                Sell out. Keep everything.
               </h1>
-              <p className="mt-2 max-w-xl text-sm text-white/85 sm:text-base">
-                All-in pricing your fans trust, real-time event-day tools, and a checkout they
-                actually complete. Open to every organiser and every community in Australia.
+              {/* Hidden on the smallest screens: the fixed hero height fits
+                  headline + fee line + CTAs at 390; the wedge copy re-enters
+                  immediately in the demand-engine band below. */}
+              <p className="mt-2 hidden max-w-xl text-sm text-white/85 sm:block sm:text-base">
+                The discovery feed and push alerts put your event in front of the
+                right attendees, and your attendee list stays yours: no walled
+                gardens, no withheld emails.
               </p>
               {/* Cost in one glance, above the fold (exact fee from the pricing
                   source, never invented). */}
@@ -284,9 +473,18 @@ export async function OrganisersLandingPage() {
         </div>
       </section>
 
-      {/* ── 2. Stats / social-proof band (real platform truths) ──────────── */}
+      {/* ── 2. Live proof strip (honest counts, hidden below the floor) ──── */}
+      {showLiveProof && (
+        <LiveProofStrip
+          eventsListed={stats.eventsListed as number}
+          organisers={stats.organisers}
+          cities={stats.cities}
+        />
+      )}
+
+      {/* ── 3. Stats / social-proof band (real platform truths) ──────────── */}
       <ContentSection surface="alt" width="wide" topBorder>
-        <Reveal stagger as="div" className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl bg-[var(--surface-2)] lg:grid-cols-4">
+        <Reveal stagger as="div" className="grid grid-cols-2 gap-px overflow-hidden rounded-card bg-[var(--surface-2)] lg:grid-cols-4">
           {STATS.map(({ stat, label, body }) => (
             <div key={stat} className="bg-[var(--surface-0)] p-6 sm:p-8">
               <p className="font-display text-3xl font-extrabold leading-none tracking-tight text-[var(--brand-accent-strong)] sm:text-4xl">
@@ -303,13 +501,22 @@ export async function OrganisersLandingPage() {
         </Reveal>
       </ContentSection>
 
-      {/* ── 3. Pricing clarity (real numbers, conversion-critical) ───────── */}
-      <PricingClarityBand feeLabel={fee.label} />
+      {/* ── 4. The demand engine (blade one of the wedge) ────────────────── */}
+      <FeatureBandRow band={DISCOVERY_BAND} />
 
-      {/* ── 4-5. Alternating image+text feature bands ────────────────────── */}
+      {/* ── 5. Pricing clarity + live payout calculator ──────────────────── */}
+      <PricingClarityBand feeLabel={fee.label} rates={rates} />
+
+      {/* ── 6. Founding Organiser offer (config-driven) ──────────────────── */}
+      <FoundingOfferBand />
+
+      {/* ── 7-9. Alternating image+text feature bands ─────────────────────── */}
       {BANDS.map(band => (
         <FeatureBandRow key={band.title} band={band} />
       ))}
+
+      {/* ── 10. Testimonials (hidden until real quotes exist) ────────────── */}
+      <TestimonialsBand />
 
       {/* ── 6. Visual how-it-works ───────────────────────────────────────── */}
       <ContentSection surface="alt" width="wide" topBorder reveal>
@@ -328,7 +535,7 @@ export async function OrganisersLandingPage() {
           <div
             aria-hidden
             className="pointer-events-none absolute left-0 right-0 top-6 hidden h-px lg:block"
-            style={{ background: 'linear-gradient(90deg, transparent, rgba(212,164,55,0.45) 12%, rgba(212,164,55,0.45) 88%, transparent)' }}
+            style={{ background: 'linear-gradient(90deg, transparent, rgba(212,160,23,0.45) 12%, rgba(212,160,23,0.45) 88%, transparent)' }}
           />
           <Reveal stagger as="ol" className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
             {HOW_IT_WORKS.map(({ step, title, detail }) => (

@@ -9,6 +9,9 @@ interface Props {
   eventDate: string
   eventUrl: string
   variant?: 'dark' | 'light'
+  /** Optional full share sentence, replacing the default "title - date"
+   *  (used by share-your-seat: "I am in Row A Seat 2 ... join me"). */
+  messageOverride?: string
 }
 
 /**
@@ -24,7 +27,7 @@ interface Props {
  * preview comes pre-populated with title + date + URL. Copy link
  * copies just the URL with a brief check-mark confirmation.
  */
-export function EventShareBar({ eventTitle, eventDate, eventUrl, variant = 'light' }: Props) {
+export function EventShareBar({ eventTitle, eventDate, eventUrl, variant = 'light', messageOverride }: Props) {
   const [copied, setCopied] = useState(false)
 
   // Every shared link is attributed (source = share-a-ticket). When a logged-in
@@ -49,7 +52,7 @@ export function EventShareBar({ eventTitle, eventDate, eventUrl, variant = 'ligh
     }
   }, [eventUrl])
 
-  const shareText = `${eventTitle} - ${eventDate}`
+  const shareText = messageOverride ?? `${eventTitle} - ${eventDate}`
   const encodedText = encodeURIComponent(shareText)
   const encodedUrl = encodeURIComponent(shareUrl)
 

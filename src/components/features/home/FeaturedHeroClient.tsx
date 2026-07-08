@@ -123,6 +123,9 @@ export function FeaturedHeroClient({ slides }: Props) {
     else next()
   }
 
+  // Founder directive 2026-07-05: the HOMEPAGE hero runs ~17% taller than the
+  // platform .hero-marketing scale (42/44/48vh cap 480 -> 49/51/56vh cap 560).
+  // Homepage only; every other hero stays on the platform token.
   return (
     <div
       role={multi ? 'region' : undefined}
@@ -209,7 +212,7 @@ export function FeaturedHeroClient({ slides }: Props) {
             onClick={prev}
             aria-label="Previous event"
             className="absolute left-4 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-[rgba(10,22,40,0.78)] text-white transition-colors duration-200 hover:bg-[rgba(10,22,40,0.92)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] md:flex"
-            style={{ border: '1px solid rgba(212, 164, 55, 0.45)' }}
+            style={{ border: '1px solid rgba(212, 160, 23, 0.45)' }}
           >
             <ChevronLeft className="h-5 w-5" aria-hidden />
           </button>
@@ -218,7 +221,7 @@ export function FeaturedHeroClient({ slides }: Props) {
             onClick={next}
             aria-label="Next event"
             className="absolute right-4 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-[rgba(10,22,40,0.78)] text-white transition-colors duration-200 hover:bg-[rgba(10,22,40,0.92)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] md:flex"
-            style={{ border: '1px solid rgba(212, 164, 55, 0.45)' }}
+            style={{ border: '1px solid rgba(212, 160, 23, 0.45)' }}
           >
             <ChevronRight className="h-5 w-5" aria-hidden />
           </button>
@@ -236,7 +239,7 @@ export function FeaturedHeroClient({ slides }: Props) {
               onClick={() => setPlaying(p => !p)}
               aria-label={playing ? 'Pause automatic slideshow' : 'Play automatic slideshow'}
               className="sr-only focus-visible:not-sr-only focus-visible:absolute focus-visible:bottom-4 focus-visible:right-4 focus-visible:z-30 focus-visible:flex focus-visible:h-11 focus-visible:w-11 focus-visible:items-center focus-visible:justify-center focus-visible:rounded-full focus-visible:bg-[var(--color-ink-900)] focus-visible:text-[var(--brand-accent)] focus-visible:shadow-[0_2px_8px_rgba(10,22,40,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-navy-950)]"
-              style={{ border: '1px solid rgba(212, 164, 55, 0.45)' }}
+              style={{ border: '1px solid rgba(212, 160, 23, 0.45)' }}
             >
               {playing ? <Pause className="h-4 w-4" aria-hidden /> : <Play className="h-4 w-4" aria-hidden />}
             </button>

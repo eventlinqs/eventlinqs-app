@@ -1,0 +1,14 @@
+{
+  "org": [
+    {
+      "id": "5886d5cb-09d8-4f91-9b13-ba6d5c0ecbe2",
+      "name": "Harbour Lights Collective",
+      "stripe_account_id": "acct_1TpLTfKCCFkgPI4E",
+      "stripe_onboarding_complete": false,
+      "stripe_charges_enabled": false,
+      "stripe_payouts_enabled": false
+    }
+  ],
+  "consoleErrors": [],
+  "url": "https://eventlinqs-staging.vercel.app/dashboard/payouts"
+}

@@ -34,7 +34,7 @@ export default async function SeatMapsPage({ params }: Props) {
 
   const { data: seatMaps, error: mapsError } = await supabase
     .from('seat_maps')
-    .select('id, name, total_seats, created_at')
+    .select('id, name, total_seats, created_at, layout')
     .eq('venue_id', venueId)
     .eq('is_active', true)
     .order('created_at', { ascending: false })
@@ -53,7 +53,7 @@ export default async function SeatMapsPage({ params }: Props) {
       <SeatMapsClient
         venueId={venueId}
         venueName={venue.name}
-        seatMaps={seatMaps ?? []}
+        seatMaps={(seatMaps ?? []) as unknown as Parameters<typeof SeatMapsClient>[0]['seatMaps']}
       />
     </div>
   )

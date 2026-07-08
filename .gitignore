@@ -80,6 +80,11 @@ next-env.d.ts
 !docs/redesign/**/*.jpeg
 !docs/redesign/**/*.webp
 
+# Allowlist permanent visual baselines (before-and-after record of the
+# deployed platform, captured per baseline date). Tracked forever.
+!docs/baseline/**/*.png
+!docs/baseline/**/*.jpg
+
 # playwright test runner artifacts — local only
 /test-results/
 /playwright-report/
@@ -140,6 +145,7 @@ lighthouserc.admin.json
 
 design-captures/
 scripts/design-capture.mjs
+scripts/after-capture-all.mjs
 scripts/axe-scene.mjs
 qa/
 

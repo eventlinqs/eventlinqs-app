@@ -34,13 +34,13 @@ const ITEMS: MenuItem[] = [
 ]
 
 /**
- * SiteHeaderAccountDropdown (Batch 9.2.1) - glassmorphism popover that
+ * SiteHeaderAccountDropdown (Batch 9.2.1) - solid navy popover that
  * surfaces the account menu and sign-out action.
  *
- * Visual: navy `rgba(10,22,40,0.85)` + `backdrop-filter: blur(20px) saturate(180%)`
- * + gold edge `rgba(212,164,55,0.30)`, 280px wide, 12px padding, slide-down
- * 8px + fade 200ms `cubic-bezier(0.22, 1, 0.36, 1)` open animation. Matches
- * the SiteHeader State B header chrome.
+ * Visual: solid opaque navy `rgb(10,22,40)` (no glassmorphism, per the
+ * design system) + gold edge `rgba(212,160,23,0.30)`, 280px wide, 12px
+ * padding, slide-down 8px + fade 200ms `cubic-bezier(0.22, 1, 0.36, 1)`
+ * open animation. Matches the SiteHeader State B header chrome.
  *
  * Trigger: 32px circular avatar (or 40px in the drawer variant) with the
  * user's initials in white over a navy fill with 1px gold border. Hover
@@ -231,10 +231,8 @@ export function SiteHeaderAccountDropdown({ user, size = 'header', isAdmin = fal
             'el-fade-slide',
           ].join(' ')}
           style={{
-            background: 'rgba(10, 22, 40, 0.85)',
-            backdropFilter: 'blur(20px) saturate(180%)',
-            WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-            border: '1px solid rgba(212, 164, 55, 0.30)',
+            background: 'rgb(10, 22, 40)',
+            border: '1px solid rgba(212, 160, 23, 0.30)',
             boxShadow: '0 12px 32px rgba(0, 0, 0, 0.32)',
           }}
         >
@@ -248,7 +246,7 @@ export function SiteHeaderAccountDropdown({ user, size = 'header', isAdmin = fal
           <div
             aria-hidden
             className="my-1 h-px"
-            style={{ background: 'rgba(212, 164, 55, 0.20)' }}
+            style={{ background: 'rgba(212, 160, 23, 0.20)' }}
           />
 
           {items.map((item, idx) => {
@@ -265,7 +263,7 @@ export function SiteHeaderAccountDropdown({ user, size = 'header', isAdmin = fal
                 className={[
                   'flex h-10 items-center gap-3 rounded-md px-3',
                   'text-sm font-medium text-white/90 transition',
-                  'hover:bg-[rgba(212,164,55,0.10)] hover:text-white',
+                  'hover:bg-[rgba(212,160,23,0.10)] hover:text-white',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-inset',
                 ].join(' ')}
               >
@@ -278,7 +276,7 @@ export function SiteHeaderAccountDropdown({ user, size = 'header', isAdmin = fal
           <div
             aria-hidden
             className="my-1 h-px"
-            style={{ background: 'rgba(212, 164, 55, 0.20)' }}
+            style={{ background: 'rgba(212, 160, 23, 0.20)' }}
           />
 
           <form action={signOut}>
@@ -290,7 +288,7 @@ export function SiteHeaderAccountDropdown({ user, size = 'header', isAdmin = fal
               className={[
                 'flex h-10 w-full items-center gap-3 rounded-md px-3 text-left',
                 'text-sm font-medium text-white/90 transition',
-                'hover:bg-[rgba(212,164,55,0.10)] hover:text-white',
+                'hover:bg-[rgba(212,160,23,0.10)] hover:text-white',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-inset',
               ].join(' ')}
             >

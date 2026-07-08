@@ -1,0 +1,68 @@
+frames:
+http://localhost:3220/checkout/a5bf6778-95a1-4297-bdf5-2aad67bbfdd1
+https://js.stripe.com/v3/controller-with-preconnect-f98a7ab40df07d2ee58c8199ca5cc558.html#__shared_params__[version]=dahlia&__shared_params__[light_experiment_assignments]=%7B%22token%22%3A%22b1391259-8013-4205-9655-9377888ddffb%22%2C%22assignments%22%3A%7B%7D%7D&apiKey=pk_test_51T8WBzGqHIQtgS8tU2nQxWuHulXgXE5of9p7o0kDfrW68xyr9DWmKtkc0RtigBUC6TtWiDOT9huXx5lpoqMeVDZg00FgdUkXOt&apiVersion=2026-03-25.dahlia&stripeJsId=b1391259-8013-4205-9655-9377888ddffb&stripeObjId=sobj-71e8162d-715d-4566-b0de-b88559c7c549&firstStripeInstanceCreatedLatency=62&controllerCount=1&isCheckout=false&stripeJsLoadTime=1783220986755&manualBrowserDeprecationRollout=false&mids[guid]=NA&mids[muid]=NA&mids[sid]=NA&referrer=http%3A%2F%2Flocalhost%3A3220%2Fcheckout%2Fa5bf6778-95a1-4297-bdf5-2aad67bbfdd1&controllerId=__privateStripeController4361
+https://js.stripe.com/v3/m-outer-3437aaddcdf6922d623e172c2d6f9278.html#url=http%3A%2F%2Flocalhost%3A3220%2Fcheckout%2Fa5bf6778-95a1-4297-bdf5-2aad67bbfdd1&title=EventLinqs%20%7C%20The%20ticketing%20platform%20built%20for%20every%20community&referrer=&muid=NA&sid=NA&version=6&preview=false&__shared_params__[version]=dahlia
+https://m.stripe.network/inner.html#url=http%3A%2F%2Flocalhost%3A3220%2Fcheckout%2Fa5bf6778-95a1-4297-bdf5-2aad67bbfdd1&title=EventLinqs%20%7C%20The%20ticketing%20platform%20built%20for%20every%20community&referrer=&muid=NA&sid=NA&version=6&preview=false&__shared_params__[version]=dahlia
+
+body:
+Skip to main content
+EVENTLINQS
+Tickets reserved for 09:20
+Your Details
+Full name
+Email
+
+Confirmation sent to this address
+
+Attendee Details
+Use my details for all tickets
+
+General Admission
+
+First name
+Last name
+Email
+Discount Code
+Apply
+Stay in the loop
+
+Optional. Your tickets and receipt arrive either way.
+
+Keep me updated by Harbour Lights Collective about their upcoming events, news, and offers by email. You can unsubscribe at any time.
+Send me EventLinqs updates: recommended events, new features, and offers by email. You can unsubscribe at any time.
+Continue to payment - AUD 27.50
+Order summary
+
+Harbour Lights Live: Geelong Waterfront Sessions
+
+Geelong Waterfront Pavilion, Geelong, Australia · Sat, 15 Aug 2026, 7:00 pm AEST
+
+General Admission × 1
+AUD 25.00
+Subtotal
+AUD 25.00
+Service fee
+AUD 1.87
+Payment processing fee
+AUD 0.63
+TOTAL
+AUD 27.50
+Secure checkout · payment encrypted end-to-end
+
+SECURE PAYMENT
+
+Encrypted by Stripe. Card details never touch our servers.
+Money-back guarantee per organiser refund policy.
+PCI-DSS compliant payment processing.
+
+WE ACCEPT
+
+VISA
+·
+MASTERCARD
+·
+AMEX
+·
+APPLE PAY
+·
+GOOGLE PAY

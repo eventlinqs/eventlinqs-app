@@ -18,6 +18,7 @@ export type PolicyName =
   | 'auth-signup'
   | 'auth-login'
   | 'checkout-reserve'
+  | 'media-upload'
 
 export type Policy = {
   /** Stable prefix used to namespace the redis key. Keep short. */
@@ -102,5 +103,12 @@ export const POLICIES: Record<PolicyName, Policy> = {
     failClosed: true,
     rationale:
       'Reservation + checkout + squad payment-intent creation per IP per minute. 20 covers a buyer reserving several tiers and retrying a card while bouncing inventory-hold abuse and card-testing (each attempt can mint a Stripe PaymentIntent). Fail-closed: a missing Upstash config must not leave the money path unthrottled in production.',
+  },
+  'media-upload': {
+    keyPrefix: 'media-up',
+    limit: 60,
+    windowSec: 60,
+    rationale:
+      'Organiser event-image uploads, keyed per user. 60/min covers filling the full 10-image gallery plus retries and re-crops in one sitting, while bouncing a scripted storage-flooding run. Fail-open (no money path); a Redis blip never blocks a legitimate organiser mid-upload.',
   },
 }
