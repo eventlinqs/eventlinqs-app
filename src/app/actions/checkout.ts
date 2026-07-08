@@ -14,9 +14,10 @@ import { validateDiscountCode } from './discount-codes'
 import { getDynamicPriceMap } from '@/lib/pricing/dynamic-pricing'
 import { pickUnitPriceCents, resolveSeatUnitPriceCents } from '@/lib/checkout/pricing'
 import { getGuestSessionId } from '@/lib/auth/guest-session'
+import { cookies } from 'next/headers'
 import {
   recordOrganiserMarketingConsent,
-  recordPlatformUpdateConsent,
+  recordPlatformDigestConsent,
 } from '@/lib/consent/record'
 import { sendConfirmationEmail } from '@/lib/email/order-confirmation'
 import type { FeePassType } from '@/types/database'
@@ -91,7 +92,45 @@ async function recordCheckoutConsents(params: {
     })
   }
   if (params.platformConsent) {
-    await recordPlatformUpdateConsent(params.adminClient, { email: params.email, source: 'checkout' })
+    // The digest consent is city scoped (SPEC 3.1): the buyer's chosen city
+    // cookie wins, falling back to the event's city. Both are validated
+    // against the cities taxonomy so the FK can never fail the write.
+    const citySlug = await resolveDigestCity(params.adminClient, params.eventId)
+    await recordPlatformDigestConsent(params.adminClient, {
+      email: params.email,
+      userId: params.userId,
+      citySlug,
+      source: 'checkout',
+      at,
+    })
+  }
+}
+
+/** Resolve the digest locality: el_city cookie if it is a real city, else the
+ * event's primary city, else null (national digest scope decided later). */
+async function resolveDigestCity(
+  adminClient: ReturnType<typeof createAdminClient>,
+  eventId: string,
+): Promise<string | null> {
+  try {
+    const jar = await cookies()
+    const cookieCity = jar.get('el_city')?.value ?? null
+    if (cookieCity) {
+      const { data } = await adminClient
+        .from('cities')
+        .select('slug')
+        .eq('slug', cookieCity)
+        .maybeSingle()
+      if (data?.slug) return data.slug
+    }
+    const { data: event } = await adminClient
+      .from('events')
+      .select('city_primary')
+      .eq('id', eventId)
+      .maybeSingle()
+    return event?.city_primary ?? null
+  } catch {
+    return null
   }
 }
 

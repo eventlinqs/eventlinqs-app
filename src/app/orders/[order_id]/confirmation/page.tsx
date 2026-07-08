@@ -8,6 +8,7 @@ import { formatSeatLabel } from '@/lib/seating/format'
 import { ConfirmationActions } from '@/components/orders/confirmation-actions'
 import { EventShareBar } from '@/components/features/events/event-share-bar'
 import { encodeRefCode } from '@/lib/growth/referrals'
+import { recordShareConversionForOrder } from '@/lib/broadcast/conversion'
 import type { Order, OrderItem } from '@/types/database'
 
 export const runtime = 'nodejs'
@@ -70,6 +71,13 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
   // If Stripe just redirected back with succeeded status, the webhook may still be processing
   // Show confirmation page anyway - the webhook will confirm the order
   const isConfirmed = fullOrder.status === 'confirmed' || redirect_status === 'succeeded'
+
+  // Broadcast Layer share attribution (SPEC 2.3): a confirmed order arriving
+  // with a tracked share cookie credits that link's channel. Read-only
+  // reference to the order id; idempotent; never affects this render.
+  if (isConfirmed) {
+    await recordShareConversionForOrder({ id: fullOrder.id, event_id: fullOrder.event_id })
+  }
 
   const { data: event } = await adminClient
     .from('events')

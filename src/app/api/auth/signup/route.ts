@@ -9,6 +9,7 @@ import {
   toAttributionRecord,
   type CapturedAttribution,
 } from '@/lib/growth/referrals'
+import { recordPlatformDigestConsent } from '@/lib/consent/record'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,6 +31,9 @@ const BodySchema = z.object({
   ref: z.string().max(24).optional(),
   refSource: z.string().max(40).optional(),
   refEvent: z.string().max(160).optional(),
+  // Optional, unticked-by-default digest opt-in (Broadcast Layer SPEC 3.1).
+  // Never a signup condition: the account is created whether or not it is set.
+  digestOptIn: z.boolean().optional(),
 })
 
 /** Build the attribution record to persist, or null for an organic signup. */
@@ -185,6 +189,32 @@ export async function POST(request: NextRequest) {
         .eq('id', newUserId)
     } catch {
       // swallow - attribution is non-critical telemetry
+    }
+  }
+
+  // Record the express digest opt-in (best-effort, never fails the signup).
+  // City scope comes from the el_city cookie when it names a real city.
+  if (body.digestOptIn && newUserId) {
+    try {
+      const cookieCity = request.cookies.get('el_city')?.value ?? null
+      let citySlug: string | null = null
+      if (cookieCity) {
+        const { data: city } = await admin
+          .from('cities')
+          .select('slug')
+          .eq('slug', cookieCity)
+          .maybeSingle()
+        citySlug = city?.slug ?? null
+      }
+      await recordPlatformDigestConsent(admin, {
+        email: body.email,
+        userId: newUserId,
+        citySlug,
+        source: 'registration',
+        at: new Date().toISOString(),
+      })
+    } catch {
+      // swallow - consent capture must never fail the signup
     }
   }
 

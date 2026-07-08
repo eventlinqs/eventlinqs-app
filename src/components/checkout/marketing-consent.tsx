@@ -2,7 +2,7 @@
 
 import {
   organiserMarketingConsentWording,
-  PLATFORM_UPDATES_CONSENT_WORDING,
+  DIGEST_CONSENT_WORDING,
 } from '@/lib/consent/wording'
 
 interface MarketingConsentProps {
@@ -58,7 +58,7 @@ export function MarketingConsent({
               onChange={(e) => onPlatformChange(e.target.checked)}
               className="mt-0.5 h-5 w-5 shrink-0 rounded border-ink-300 text-gold-500 focus:ring-2 focus:ring-gold-500"
             />
-            <span className="text-sm text-ink-700">{PLATFORM_UPDATES_CONSENT_WORDING}</span>
+            <span className="text-sm text-ink-700">{DIGEST_CONSENT_WORDING}</span>
           </label>
         )}
       </div>

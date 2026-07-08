@@ -47,6 +47,9 @@ import { eventIsPaid, isOrganiserSellable } from '@/lib/payments/sale-status'
 import { getEventFeeRates } from '@/lib/pricing/event-fee-config'
 import type { FeePassType } from '@/lib/payments/fee-math'
 import { EventViewTracker } from '@/components/features/events/event-view-tracker'
+import { ShareViewBeacon } from '@/components/broadcast/share-view-beacon'
+import { isFeatureEnabled } from '@/lib/flags/broadcast'
+import { FollowButton } from '@/components/features/follow/follow-button'
 import { EventSchemaJsonLd } from '@/components/features/events/event-schema-jsonld'
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import { EventShareBar } from '@/components/features/events/event-share-bar'
@@ -301,6 +304,30 @@ export default async function EventDetailPage({ params }: Props) {
   // generateStaticParams) keeps this route off the static classification that
   // 500'd on the chrome + Sentry render-time cookie read.
   await headers()
+
+  // Broadcast Layer Stage 2 (SPEC 3.3): the organiser follow prompt on the
+  // event page, gated on broadcast_follow. ISR means a flag flip lands
+  // within the revalidate window.
+  const followOn = await isFeatureEnabled('broadcast_follow')
+
+  // Broadcast Layer Stage 3 (SPEC 4.2): confirmed lineup tags appear on the
+  // event page, gated on broadcast_artists. Public-read RLS on both tables.
+  const artistsOn = await isFeatureEnabled('broadcast_artists')
+  let lineup: { id: string; slug: string; name: string }[] = []
+  if (artistsOn) {
+    const publicDb = createPublicClient()
+    const { data: lineupRows } = await publicDb
+      .from('event_artists')
+      .select('billing_order, status, artist:artists(id, slug, name)')
+      .eq('event_id', event.id)
+      .eq('status', 'confirmed')
+      .order('billing_order', { ascending: true })
+    lineup = ((lineupRows ?? []) as unknown as {
+      artist: { id: string; slug: string; name: string } | { id: string; slug: string; name: string }[] | null
+    }[])
+      .map((r) => (Array.isArray(r.artist) ? r.artist[0] ?? null : r.artist))
+      .filter((a): a is { id: string; slug: string; name: string } => !!a)
+  }
 
   // Queue gate moved to `src/middleware.ts`. The middleware redirects
   // unauthenticated visitors to `/queue/[slug]` before this page renders,
@@ -593,6 +620,7 @@ export default async function EventDetailPage({ params }: Props) {
         venueCity={event.venue_city ?? 'Unknown'}
         priceRange={priceLabel ?? 'Free'}
       />
+      <ShareViewBeacon />
       <SiteHeader staticSafe />
 
       {eventBannerState ? (
@@ -853,6 +881,25 @@ export default async function EventDetailPage({ params }: Props) {
                 {/* Organiser card. Guarded: when the organiser record did not
                     load (e.g. a sellable organiser excluded from the public
                     query), the whole card is skipped rather than crashing. */}
+                {/* Broadcast Stage 3 (SPEC 4.2): the confirmed lineup. Each
+                    name is a working link to the artist profile (Law 5). */}
+                {lineup.length > 0 && (
+                <Reveal as="div" className="mt-10">
+                  <SectionHeader eyebrow="On the lineup" title="Performing" size="sm" />
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    {lineup.map((artist) => (
+                      <Link
+                        key={artist.id}
+                        href={`/artists/${artist.slug}`}
+                        className="inline-flex h-11 items-center rounded-full border border-ink-200 bg-white px-4 text-sm font-semibold text-ink-900 transition-all hover:-translate-y-0.5 hover:border-[var(--brand-accent-strong)]"
+                      >
+                        {artist.name}
+                      </Link>
+                    ))}
+                  </div>
+                </Reveal>
+                )}
+
                 {event.organisation && (
                 <Reveal as="div" className="mt-10">
                   <SectionHeader eyebrow="Organised by" title={event.organisation.name} size="sm" />
@@ -864,6 +911,11 @@ export default async function EventDetailPage({ params }: Props) {
                       <div className="min-w-0 flex-1">
                         {event.organisation.description && (
                           <p className="text-sm text-ink-600 line-clamp-3">{event.organisation.description}</p>
+                        )}
+                        {followOn && (
+                          <div className="mt-3">
+                            <FollowButton type="organiser" id={event.organisation.id} variant="outline" />
+                          </div>
                         )}
                       </div>
                       {/* Demand-graph follow: their next event lands in the
@@ -903,6 +955,7 @@ export default async function EventDetailPage({ params }: Props) {
                   <EventShareBar
                     eventTitle={event.title}
                     eventDate={shortDate}
+                    eventSlug={event.slug}
                     eventUrl={`${baseUrl}/events/${event.slug}`}
                     variant="light"
                   />

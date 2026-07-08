@@ -27,6 +27,15 @@ export function organiserMarketingConsentWording(organiserName: string): string 
 export const PLATFORM_UPDATES_CONSENT_WORDING =
   'Send me EventLinqs updates: recommended events, new features, and offers by email. You can unsubscribe at any time.'
 
+/**
+ * The weekly local digest opt-in (Broadcast Layer SPEC 3.1): city-scoped
+ * platform marketing, recorded verbatim in marketing_consents. Versioned
+ * separately from the organiser wording so each audit trail stands alone.
+ */
+export const DIGEST_CONSENT_WORDING =
+  'Keep me posted on events in my area: a weekly local digest and occasional EventLinqs updates by email. You can unsubscribe at any time.'
+export const DIGEST_CONSENT_WORDING_VERSION = 'v1'
+
 /** Normalise an email for consent matching (case-insensitive, trimmed). */
 export function normaliseConsentEmail(email: string): string {
   return email.trim().toLowerCase()

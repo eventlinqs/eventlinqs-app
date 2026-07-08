@@ -33,6 +33,8 @@ export type AdminCapability =
   | 'admin.payouts.disburse'
   // Venue Revenue Sharing Program: enrol/un-enrol, rate, venue payouts
   | 'admin.venues.manage'
+  // Broadcast Layer stage switches (feature_flags table)
+  | 'admin.flags.manage'
 
 /** Every capability, in display order. Source of truth for the role matrix. */
 export const ALL_CAPABILITIES: readonly AdminCapability[] = [
@@ -47,6 +49,7 @@ export const ALL_CAPABILITIES: readonly AdminCapability[] = [
   'admin.disputes.manage',
   'admin.payouts.disburse',
   'admin.venues.manage',
+  'admin.flags.manage',
 ]
 
 /** Human-readable capability descriptions for the admin UI matrix. */
@@ -62,6 +65,7 @@ export const CAPABILITY_LABELS: Record<AdminCapability, string> = {
   'admin.disputes.manage': 'Manage disputes',
   'admin.payouts.disburse': 'Disburse payouts',
   'admin.venues.manage': 'Manage venue revenue sharing',
+  'admin.flags.manage': 'Switch platform feature stages',
 }
 
 const ROLE_CAPABILITIES: Record<AdminRole, ReadonlySet<AdminCapability>> = {
@@ -78,6 +82,7 @@ const ROLE_CAPABILITIES: Record<AdminRole, ReadonlySet<AdminCapability>> = {
     'admin.disputes.manage',
     'admin.payouts.disburse',
     'admin.venues.manage',
+    'admin.flags.manage',
   ]),
   support: new Set<AdminCapability>([
     'admin.dashboard.view',

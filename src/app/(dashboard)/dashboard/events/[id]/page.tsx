@@ -16,6 +16,7 @@ import {
 import type { Event, EventStatus, TicketTier } from '@/types/database'
 import { isFlagEnabled } from '@/lib/flags'
 import { FillTheRoom } from '@/components/features/dashboard/fill-the-room'
+import { isFeatureEnabled } from '@/lib/flags/broadcast'
 
 type Props = {
   params: Promise<{ id: string }>
@@ -58,6 +59,9 @@ export default async function EventViewPage({ params }: Props) {
   const admin = createAdminClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
+
+  // Broadcast Stage 3: the Lineup tab appears only when the stage is on.
+  const artistsOn = await isFeatureEnabled('broadcast_artists')
 
   const { data: event } = await supabase
     .from('events')
@@ -271,6 +275,10 @@ export default async function EventViewPage({ params }: Props) {
           <TabLink href={`/dashboard/events/${event.id}`} active>Overview</TabLink>
           <TabLink href={`/dashboard/events/${event.id}/orders`}>Orders</TabLink>
           <TabLink href={`/dashboard/events/${event.id}/attendees`}>Attendees</TabLink>
+          <TabLink href={`/dashboard/events/${event.id}/reach`}>Reach</TabLink>
+          {artistsOn && (
+            <TabLink href={`/dashboard/events/${event.id}/lineup`}>Lineup</TabLink>
+          )}
           <TabLink href={`/dashboard/events/${event.id}/edit`}>Settings</TabLink>
         </ul>
       </nav>

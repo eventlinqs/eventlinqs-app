@@ -1,13 +1,16 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Copy, Mail, Check } from 'lucide-react'
+import { Copy, Mail, Check, Share2 } from 'lucide-react'
 import { buildAttributedUrl } from '@/lib/growth/referrals'
+import type { ShareChannel } from '@/lib/broadcast/share-codes'
 
 interface Props {
   eventTitle: string
   eventDate: string
   eventUrl: string
+  /** Event slug for tracked short-link minting (Broadcast Layer 2.3). */
+  eventSlug?: string
   variant?: 'dark' | 'light'
   /** Optional full share sentence, replacing the default "title - date"
    *  (used by share-your-seat: "I am in Row A Seat 2 ... join me"). */
@@ -15,35 +18,43 @@ interface Props {
 }
 
 /**
- * EventShareBar - share controls for /events/[slug] (Batch 8.1).
+ * EventShareBar - share controls for /events/[slug] (Batch 8.1, upgraded by
+ * the Broadcast Layer SPEC 2.2/2.3).
  *
  * WhatsApp-first ordering per the Batch 8.1 brief. Community events
  * spread through WhatsApp share more than any other channel in the
  * EventLinqs target communities. The CTA labels stay short so the
  * row fits on a single line at 375 mobile.
  *
- * Order: WhatsApp > Facebook > X > Email > Copy link.
- * Each link uses the platform's standard share-intent URL so the
- * preview comes pre-populated with title + date + URL. Copy link
- * copies just the URL with a brief check-mark confirmation.
+ * Order: Share (native, when available) > WhatsApp > Facebook > X > Email >
+ * Copy link.
+ *
+ * Every channel shares a TRACKED short link (/s/[code], one per channel)
+ * minted post-paint through /api/broadcast/share-link, so the organiser's
+ * reach panel can show clicks and sales by channel. When minting fails or
+ * the broadcast_share flag is off, each channel falls back to the
+ * attributed long URL: sharing never breaks. The signed-in sharer's
+ * personalised referral code rides the fallback URL exactly as before.
  */
-export function EventShareBar({ eventTitle, eventDate, eventUrl, variant = 'light', messageOverride }: Props) {
+export function EventShareBar({ eventTitle, eventDate, eventUrl, eventSlug, variant = 'light', messageOverride }: Props) {
   const [copied, setCopied] = useState(false)
+  const [sharedNative, setSharedNative] = useState(false)
 
-  // Every shared link is attributed (source = share-a-ticket). When a logged-in
-  // user is sharing we also carry their personalised referral code so a signup
-  // through the link is credited to them. The code is resolved post-paint via a
-  // tiny endpoint so this surface stays static and never costs LCP.
-  const [shareUrl, setShareUrl] = useState(() =>
+  // Fallback: the attributed long URL (source = share-a-ticket), upgraded
+  // with the signed-in user's referral code post-paint.
+  const [fallbackUrl, setFallbackUrl] = useState(() =>
     buildAttributedUrl(eventUrl, { source: 'share-a-ticket' }),
   )
+  // Tracked short links per channel, minted post-paint.
+  const [trackedLinks, setTrackedLinks] = useState<Partial<Record<ShareChannel, string>>>({})
+
   useEffect(() => {
     let active = true
     fetch('/api/me/ref')
       .then((r) => (r.ok ? r.json() : { refCode: null }))
       .then((d: { refCode: string | null }) => {
         if (active && d?.refCode) {
-          setShareUrl(buildAttributedUrl(eventUrl, { refCode: d.refCode, source: 'share-a-ticket' }))
+          setFallbackUrl(buildAttributedUrl(eventUrl, { refCode: d.refCode, source: 'share-a-ticket' }))
         }
       })
       .catch(() => {})
@@ -52,9 +63,28 @@ export function EventShareBar({ eventTitle, eventDate, eventUrl, variant = 'ligh
     }
   }, [eventUrl])
 
+  useEffect(() => {
+    if (!eventSlug) return
+    let active = true
+    fetch('/api/broadcast/share-link', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ slug: eventSlug }),
+    })
+      .then((r) => (r.ok ? r.json() : { links: null }))
+      .then((d: { links: Partial<Record<ShareChannel, string>> | null }) => {
+        if (active && d?.links) setTrackedLinks(d.links)
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [eventSlug])
+
+  const urlFor = (channel: ShareChannel): string => trackedLinks[channel] ?? fallbackUrl
+
   const shareText = messageOverride ?? `${eventTitle} - ${eventDate}`
   const encodedText = encodeURIComponent(shareText)
-  const encodedUrl = encodeURIComponent(shareUrl)
 
   // Background colours below are tuned for AA contrast against the
   // white text label that sits beside each icon. Vanilla WhatsApp /
@@ -64,10 +94,11 @@ export function EventShareBar({ eventTitle, eventDate, eventUrl, variant = 'ligh
   // hover. The Email button switches to a dark text label on a light
   // surface for the same reason. axe-core 4.11 color-contrast clean.
   const emailTextClass = variant === 'dark' ? 'text-white' : 'text-[var(--text-primary)]'
-  const links = [
+  const links: { label: string; channel: ShareChannel; href: string; bg: string; textClass: string; icon: React.ReactNode }[] = [
     {
       label: 'WhatsApp',
-      href: `https://wa.me/?text=${encodedText}%20${encodedUrl}`,
+      channel: 'whatsapp',
+      href: `https://wa.me/?text=${encodedText}%20${encodeURIComponent(urlFor('whatsapp'))}`,
       bg: 'bg-[#075E54] hover:bg-[#128C7E]',
       textClass: 'text-white',
       icon: (
@@ -78,7 +109,8 @@ export function EventShareBar({ eventTitle, eventDate, eventUrl, variant = 'ligh
     },
     {
       label: 'Facebook',
-      href: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
+      channel: 'facebook',
+      href: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(urlFor('facebook'))}`,
       bg: 'bg-[#0C5DCF] hover:bg-[#0A4FAB]',
       textClass: 'text-white',
       icon: (
@@ -89,7 +121,8 @@ export function EventShareBar({ eventTitle, eventDate, eventUrl, variant = 'ligh
     },
     {
       label: 'X',
-      href: `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`,
+      channel: 'x',
+      href: `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodeURIComponent(urlFor('x'))}`,
       bg: 'bg-black hover:bg-neutral-800',
       textClass: 'text-white',
       icon: (
@@ -100,7 +133,8 @@ export function EventShareBar({ eventTitle, eventDate, eventUrl, variant = 'ligh
     },
     {
       label: 'Email',
-      href: `mailto:?subject=${encodedText}&body=${encodedText}%20${encodedUrl}`,
+      channel: 'email',
+      href: `mailto:?subject=${encodedText}&body=${encodedText}%20${encodeURIComponent(urlFor('email'))}`,
       bg: variant === 'dark'
         ? 'bg-white/10 hover:bg-white/20 border border-white/30'
         : 'bg-[var(--surface-1)] hover:bg-[var(--surface-2)] border border-[var(--surface-2)]',
@@ -109,9 +143,32 @@ export function EventShareBar({ eventTitle, eventDate, eventUrl, variant = 'ligh
     },
   ]
 
+  // Native share sheet when the platform has one (the mobile PWA case per
+  // SPEC 2.2), clipboard fallback otherwise. Detection happens at click time,
+  // the house pattern (see ConfirmationActions), so no effect state is
+  // needed and hydration stays deterministic.
+  const onNativeShare = async () => {
+    const url = urlFor('native')
+    if (typeof navigator.share === 'function') {
+      try {
+        await navigator.share({ title: eventTitle, text: shareText, url })
+      } catch {
+        // Dismissed the sheet - nothing to do.
+      }
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(url)
+      setSharedNative(true)
+      window.setTimeout(() => setSharedNative(false), 1800)
+    } catch {
+      // ignore - the user can long-press the address bar
+    }
+  }
+
   const onCopy = async () => {
     try {
-      await navigator.clipboard.writeText(shareUrl)
+      await navigator.clipboard.writeText(urlFor('copy'))
       setCopied(true)
       window.setTimeout(() => setCopied(false), 1800)
     } catch {
@@ -123,6 +180,14 @@ export function EventShareBar({ eventTitle, eventDate, eventUrl, variant = 'ligh
 
   return (
     <div className="flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        onClick={onNativeShare}
+        className="inline-flex h-11 items-center gap-2 rounded-full border border-transparent bg-[var(--color-ink-900)] px-4 text-sm font-semibold text-white transition-all hover:-translate-y-0.5 hover:border-[var(--brand-accent)]"
+      >
+        {sharedNative ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
+        <span>{sharedNative ? 'Copied' : 'Share'}</span>
+      </button>
       {links.map(l => (
         <a
           key={l.label}

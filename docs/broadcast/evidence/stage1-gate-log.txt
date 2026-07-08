@@ -1,0 +1,14 @@
+1. MINT via POST /api/broadcast/share-link: HTTP 200, channels: ['copy', 'email', 'facebook', 'native', 'whatsapp', 'x']
+2. LINK PREVIEW tags on /events/harbour-lights-live-geelong-waterfront-sessions-4muhm2 (HTTP 200): {"og:title": "Harbour Lights Live: Geelong Waterfront Sessions", "og:description": "In Geelong. An evening of live music on the Geelong waterfront with local artists.", "og:url": "https://eventlinqs.com/events/harbour-lights-live-geelong-waterfront-sessions-4muhm2", "og:image": "https://eventlinqs.com/api/og/event/harbour-lights-live-geelong-waterfront-sessions-4muhm2", "twitter:card": "summary_large_image", "twitter:image": "https://eventlinqs.com/api/og/event/harbour-lights-live-geelong-waterfront-sessions-4muhm2"}
+   OG card endpoint: HTTP 200, content-type image/png, PNG magic True, 204556 bytes, cache-control: public
+3. CLICK GET /s/QccAI65pi3: HTTP 302 -> https://eventlinqs-app-git-feat-broadca-62d6b2-lawals-projects-c20c0be8.vercel.app/events/harbour-lights-live-geelong-waterfront-sessions-4muhm2; sets el_share_code: True
+   TEST click rows for this link: 1 (ids: ['3b69ee89'])
+4. VIEW beacon: HTTP 200, view rows: 1
+   dedupe: second beacon same visitor/day -> view rows still 1
+5. CONVERSION: GET /orders/EL-Z488D879/confirmation with share cookie: HTTP 200; conversion rows: 1, order_id: accfafb2
+   idempotent: re-render -> conversion rows still 1
+6. FORGED /s/AAAAAAAAAA: HTTP 302 -> https://eventlinqs-app-git-feat-broadca-62d6b2-lawals-projects-c20c0be8.vercel.app/events
+6. FORGED /s/AccAI65pi3: HTTP 302 -> https://eventlinqs-app-git-feat-broadca-62d6b2-lawals-projects-c20c0be8.vercel.app/events
+6. FORGED /s/xxxxxxxxxxxxxxxxxxxx: HTTP 302 -> https://eventlinqs-app-git-feat-broadca-62d6b2-lawals-projects-c20c0be8.vercel.app/events
+6. FORGED /s/%27or1=1--: HTTP 302 -> https://eventlinqs-app-git-feat-broadca-62d6b2-lawals-projects-c20c0be8.vercel.app/events
+   share_link_events rows before 3 after 3: attribution uncorrupted = True
