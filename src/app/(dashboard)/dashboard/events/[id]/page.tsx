@@ -105,8 +105,9 @@ export default async function EventViewPage({ params }: Props) {
   // Fill the room (surpass edge A1/D1): the organiser's live reach numbers.
   // Aggregate counts only (no buyer PII), via the admin client after the
   // ownership gate above, exactly like the revenue stats.
-  const [surpassEdgesEnabled, followerCountRes, shareSignupsRes] = await Promise.all([
+  const [surpassEdgesEnabled, launchKitEnabled, followerCountRes, shareSignupsRes] = await Promise.all([
     isFlagEnabled('surpass_edges'),
+    isFlagEnabled('launch_kit'),
     admin
       .from('saved_organisers')
       .select('id', { count: 'exact', head: true })
@@ -200,6 +201,14 @@ export default async function EventViewPage({ params }: Props) {
           </div>
 
           <div className="flex flex-wrap gap-2">
+            {event.status === 'published' && launchKitEnabled && (
+              <Link
+                href={`/dashboard/events/${event.id}/launch-kit`}
+                className="inline-flex h-10 items-center gap-2 rounded-lg border border-gold-500/50 bg-gold-500/10 px-4 text-sm font-semibold text-ink-900 transition-all hover:-translate-y-0.5 hover:bg-gold-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
+              >
+                Launch Kit
+              </Link>
+            )}
             {isPublished && (
               <a
                 href={`/events/${event.slug}`}

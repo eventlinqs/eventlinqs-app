@@ -347,6 +347,8 @@ type Props = {
   existingEvent?: Parameters<typeof fromExistingEvent>[0]
   existingTiers?: TicketTier[]
   existingStatus?: EventStatus
+  /** Launch Kit flag (read server-side): publish delivers the kit screen. */
+  launchKitEnabled?: boolean
 }
 
 // ─── Main Component ──────────────────────────────────────────────────────────
@@ -361,6 +363,7 @@ export function EventForm({
   existingEvent,
   existingTiers = [],
   existingStatus = 'draft',
+  launchKitEnabled = false,
 }: Props) {
   const router = useRouter()
   const eventIdRef = useRef(existingEventId ?? crypto.randomUUID())
@@ -475,6 +478,11 @@ export function EventForm({
       }
       if (result.error) {
         setError(result.error)
+      } else if (!editMode && status === 'published' && launchKitEnabled) {
+        // The signature moment: publish delivers the launch kit. The organiser
+        // lands on their kit screen, never silently back on the events table.
+        router.push(`/dashboard/events/${eventIdRef.current}/launch-kit?published=1`)
+        router.refresh()
       } else {
         router.push('/dashboard/events')
         router.refresh()
@@ -1422,6 +1430,14 @@ export function EventForm({
           </div>
         )}
 
+        {launchKitEnabled && !editMode && (
+          <div className="rounded-lg border border-gold-500/40 bg-gold-500/10 px-4 py-3 text-sm text-ink-900">
+            <span className="font-semibold">Publishing delivers your launch kit:</span>{' '}
+            your live page link, a print-ready QR poster, your invitation card, one-tap
+            tracked sharing, and live reach numbers, all on one screen.
+          </div>
+        )}
+
         <div className="flex flex-col gap-3 sm:flex-row">
           <button
             type="button"
@@ -1437,7 +1453,13 @@ export function EventForm({
             disabled={isSubmitting || !formData.title.trim() || !formData.media[0]?.url || formData.media.some(m => m.uploading)}
             className="flex-1 rounded-lg bg-gold-500 px-4 py-3 text-sm font-medium text-ink-900 hover:bg-gold-600 disabled:opacity-50 transition-colors"
           >
-            {isSubmitting ? 'Publishing…' : editMode ? 'Save Changes' : 'Publish Now'}
+            {isSubmitting
+              ? 'Publishing…'
+              : editMode
+              ? 'Save Changes'
+              : launchKitEnabled
+              ? 'Publish and get your launch kit'
+              : 'Publish Now'}
           </button>
         </div>
       </div>

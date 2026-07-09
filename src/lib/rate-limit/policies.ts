@@ -21,6 +21,7 @@ export type PolicyName =
   | 'media-upload'
   | 'share-link-mint'
   | 'share-track'
+  | 'waitlist-join'
 
 export type Policy = {
   /** Stable prefix used to namespace the redis key. Keep short. */
@@ -126,5 +127,12 @@ export const POLICIES: Record<PolicyName, Policy> = {
     windowSec: 60,
     rationale:
       'Broadcast view beacon per IP. Views are deduped per link per visitor per day server-side, so this cap only bounds junk traffic. Fail-open; losing a view beacon never breaks a page.',
+  },
+  'waitlist-join': {
+    keyPrefix: 'wl-join',
+    limit: 5,
+    windowSec: 600,
+    rationale:
+      'City waitlist join per IP per 10 min. A household joining two or three city lists fits comfortably; scripted signup floods (fake demand signal, email harvesting probes) are bounced. Fail-open: no email is sent on join, so abuse cost is bounded to junk rows.',
   },
 }

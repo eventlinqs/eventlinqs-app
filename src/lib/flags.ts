@@ -11,6 +11,9 @@ import { createPublicClient } from '@/lib/supabase/public-client'
 const FLAG_DEFAULTS: Record<string, boolean> = {
   seated_events: true,
   surpass_edges: true,
+  // Event Launch Kit (post-publish kit screen, city waitlist, tool-first
+  // organiser positioning). Default ON for testing per the founder directive.
+  launch_kit: true,
 }
 
 export async function isFlagEnabled(key: keyof typeof FLAG_DEFAULTS & string): Promise<boolean> {

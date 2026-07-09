@@ -252,6 +252,57 @@ export type Database = {
         }
         Relationships: []
       }
+      city_waitlist_signups: {
+        Row: {
+          city_slug: string
+          consent_text: string
+          consent_version: string
+          created_at: string
+          email: string
+          founding_candidate: boolean
+          full_name: string
+          id: string
+          marketing_opt_in: boolean
+          role: string
+          source: string
+          unsubscribe_token: string
+          unsubscribed_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          city_slug: string
+          consent_text: string
+          consent_version?: string
+          created_at?: string
+          email: string
+          founding_candidate?: boolean
+          full_name: string
+          id?: string
+          marketing_opt_in?: boolean
+          role: string
+          source?: string
+          unsubscribe_token?: string
+          unsubscribed_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          city_slug?: string
+          consent_text?: string
+          consent_version?: string
+          created_at?: string
+          email?: string
+          founding_candidate?: boolean
+          full_name?: string
+          id?: string
+          marketing_opt_in?: boolean
+          role?: string
+          source?: string
+          unsubscribe_token?: string
+          unsubscribed_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       communities: {
         Row: {
           created_at: string

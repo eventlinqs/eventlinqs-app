@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { EventForm } from '@/components/features/events/event-form'
 import { OrgCreateForm } from '../../organisation/create/org-create-form'
+import { isFlagEnabled } from '@/lib/flags'
 import type { EventCategory } from '@/types/database'
 
 export default async function CreateEventPage() {
@@ -73,6 +74,7 @@ export default async function CreateEventPage() {
         organisationId={org.id}
         categories={categories ?? []}
         venues={venues}
+        launchKitEnabled={await isFlagEnabled('launch_kit')}
       />
     </div>
   )

@@ -99,13 +99,14 @@ const BANDS: FeatureBand[] = [
     reverse: true,
   },
   {
-    eyebrow: 'Self-serve from day one',
-    title: 'Sign up, build, and go live the same day.',
-    body: 'No approval gate on organisers and no sales call to sit through. Create your account in about a minute, build your event, and most go live the same business day, ready to share wherever your audience already is.',
+    eyebrow: 'The launch kit',
+    title: 'Publish, and your launch kit is in your hands.',
+    body: 'Build your event and map your room in minutes, no approval gate and no sales call. The moment you publish, your complete launch kit is delivered: your live event page, a print-ready QR poster, your designed invitation card, one-tap tracked share links for every channel, and live reach numbers showing exactly where your buyers come from.',
     points: [
-      'Create an account in about a minute',
-      'Build an event in 5 to 15 minutes',
-      'Share to WhatsApp, Instagram, anywhere',
+      'Build your event in 5 to 15 minutes, seat map included',
+      'A4 QR poster and invitation card, generated for you',
+      'Tracked share links for WhatsApp, Instagram, anywhere',
+      'Live reach: every click and sale, attributed by channel',
     ],
     image: ORGANISER_BANDS.selfServe,
   },
@@ -444,15 +445,18 @@ export async function OrganisersLandingPage() {
                 id="organisers-hero-heading"
                 className="mt-2 font-headline text-3xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-4xl lg:text-5xl"
               >
-                Sell out. Keep everything.
+                Build your event, map your room, get your complete promo kit.
               </h1>
+              <p className="mt-2 text-sm font-semibold text-white sm:text-base">
+                In minutes. Free.
+              </p>
               {/* Hidden on the smallest screens: the fixed hero height fits
-                  headline + fee line + CTAs at 390; the wedge copy re-enters
-                  immediately in the demand-engine band below. */}
+                  headline + fee line + CTAs at 390; the supporting copy
+                  re-enters immediately in the bands below. */}
               <p className="mt-2 hidden max-w-xl text-sm text-white/85 sm:block sm:text-base">
-                The discovery feed and push alerts put your event in front of the
-                right attendees, and your attendee list stays yours: no walled
-                gardens, no withheld emails.
+                Then tools to expand your reach: tracked share links, a discovery
+                feed, and push alerts reach a local audience that is actually
+                looking, and your attendee list stays yours.
               </p>
               {/* Cost in one glance, above the fold (exact fee from the pricing
                   source, never invented). */}
@@ -462,7 +466,7 @@ export async function OrganisersLandingPage() {
               </p>
               <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
                 <Button variant="primary" size="lg" href="/organisers/signup">
-                  Start selling tickets
+                  Build your event free
                 </Button>
                 <Button variant="secondary" size="lg" onSurface="dark" href="/pricing">
                   View pricing
