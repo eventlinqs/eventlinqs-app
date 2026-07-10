@@ -115,6 +115,7 @@ export type CreateEventInput = {
   ticket_tiers: TicketTierInput[]
   // M4: Reserved seating
   has_reserved_seating: boolean
+  allow_seat_self_service: boolean
   venue_id: string | null
   seat_map_id: string | null
   // Phase 3B: Squad booking
@@ -211,6 +212,7 @@ export async function createEvent(input: CreateEventInput): Promise<{ error?: st
       published_at: input.status === 'published' ? now : null,
       scheduled_publish_at: input.status === 'scheduled' ? input.scheduled_publish_at : null,
       has_reserved_seating: input.has_reserved_seating,
+      allow_seat_self_service: input.has_reserved_seating ? input.allow_seat_self_service : false,
       venue_id: input.has_reserved_seating ? (input.venue_id || null) : null,
       seat_map_id: input.has_reserved_seating ? (input.seat_map_id || null) : null,
       squad_booking_enabled: input.squad_booking_enabled,
@@ -381,6 +383,7 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
       published_at: input.status === 'published' && !event.status.includes('published') ? now : undefined,
       scheduled_publish_at: input.status === 'scheduled' ? input.scheduled_publish_at : null,
       has_reserved_seating: input.has_reserved_seating,
+      allow_seat_self_service: input.has_reserved_seating ? input.allow_seat_self_service : false,
       venue_id: input.has_reserved_seating ? (input.venue_id || null) : null,
       seat_map_id: input.has_reserved_seating ? (input.seat_map_id || null) : null,
       squad_booking_enabled: input.squad_booking_enabled,

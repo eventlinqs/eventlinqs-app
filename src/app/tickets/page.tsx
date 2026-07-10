@@ -3,6 +3,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { TransferTicketForm } from '@/components/features/tickets/transfer-ticket-form'
+import { ChangeSeatControl } from '@/components/features/tickets/change-seat-control'
 import { formatSeatLabel } from '@/lib/seating/format'
 import { AssistantPanel } from '@/components/ai/assistant-panel'
 
@@ -23,12 +24,14 @@ interface MyTicketRow {
     start_date: string
     venue_name: string | null
     venue_city: string | null
+    allow_seat_self_service: boolean | null
   } | null
   order_item: { item_name: string } | null
   /** Reserved seating: the ticket's seat, joined via tickets.seat_id. */
   seat: {
     row_label: string
     seat_number: string
+    note: string | null
     section: { name: string } | null
   } | null
 }
@@ -67,7 +70,7 @@ export default async function MyTicketsPage() {
   const { data } = await supabase
     .from('tickets')
     .select(
-      'id, ticket_code, secret, status, created_at, event:events(title, start_date, venue_name, venue_city), order_item:order_items(item_name), seat:seats(row_label, seat_number, section:seat_map_sections(name))',
+      'id, ticket_code, secret, status, created_at, event:events(title, start_date, venue_name, venue_city, allow_seat_self_service), order_item:order_items(item_name), seat:seats(row_label, seat_number, note, section:seat_map_sections(name))',
     )
     .order('created_at', { ascending: false })
 
@@ -136,13 +139,21 @@ export default async function MyTicketsPage() {
                         </p>
                       )}
                       {t.seat && (
-                        <p className="mt-1 text-sm font-semibold text-ink-900">
-                          {formatSeatLabel({
-                            sectionName: t.seat.section?.name ?? null,
-                            rowLabel: t.seat.row_label,
-                            seatNumber: t.seat.seat_number,
-                          })}
-                        </p>
+                        <>
+                          <p className="mt-1 text-sm font-semibold text-ink-900">
+                            {formatSeatLabel({
+                              sectionName: t.seat.section?.name ?? null,
+                              rowLabel: t.seat.row_label,
+                              seatNumber: t.seat.seat_number,
+                            })}
+                          </p>
+                          {t.seat.note && (
+                            <p className="mt-0.5 text-xs font-medium text-gold-700">{t.seat.note}</p>
+                          )}
+                          {t.event?.allow_seat_self_service && t.status === 'valid' && (
+                            <ChangeSeatControl ticketId={t.id} />
+                          )}
+                        </>
                       )}
                       <p className="mt-1 text-xs text-ink-500">
                         {t.order_item?.item_name ?? 'Admission'} · {t.ticket_code}

@@ -68,6 +68,8 @@ export interface RowsBlock extends BlockBase {
   removedSeats?: string[]
   /** Per-seat label overrides: ref -> display number. */
   labelOverrides?: Record<string, string>
+  /** Per-seat notes: ref -> instruction ("Enter via Door G"). */
+  notes?: Record<string, string>
 }
 
 export interface TableBlock extends BlockBase {
@@ -84,6 +86,8 @@ export interface TableBlock extends BlockBase {
   blockedSeats?: string[]
   /** Per-seat label overrides: ref -> display number. */
   labelOverrides?: Record<string, string>
+  /** Per-seat notes: ref -> instruction. */
+  notes?: Record<string, string>
 }
 
 /**
@@ -108,6 +112,8 @@ export interface GeneratedSeat {
   number: string
   type: SeatTypeName
   blocked?: boolean
+  /** Organiser note materialised onto the seat and shown on the ticket. */
+  note?: string
   x: number
   y: number
   /** Builder round-trip: the block-scoped seat reference ("A-3", "Table 1-2"). */
@@ -245,6 +251,7 @@ function generateRowsBlock(block: RowsBlock): GeneratedRow[] {
         number: block.labelOverrides?.[ref] ?? String(seatNo),
         type: seatType(ref, block),
         ...(block.blockedSeats?.includes(ref) ? { blocked: true } : {}),
+        ...(block.notes?.[ref] ? { note: block.notes[ref] } : {}),
         x: round2(x),
         y: round2(y),
         ref,
@@ -291,6 +298,7 @@ function generateTableBlock(block: TableBlock): GeneratedRow {
       number: block.labelOverrides?.[ref] ?? numberLabel,
       type: seatType(ref, block),
       ...(block.blockedSeats?.includes(ref) ? { blocked: true } : {}),
+      ...(block.notes?.[ref] ? { note: block.notes[ref] } : {}),
       x: round2(x),
       y: round2(y),
       ref,

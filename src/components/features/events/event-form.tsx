@@ -85,6 +85,7 @@ type FormData = {
   max_capacity: string
   // M4: Reserved seating
   has_reserved_seating: boolean
+  allow_seat_self_service: boolean
   venue_id: string
   seat_map_id: string
   // Phase 3B: Squad booking
@@ -200,6 +201,7 @@ function getDefaultFormData(): FormData {
     age_restriction_min: '18',
     max_capacity: '',
     has_reserved_seating: false,
+    allow_seat_self_service: false,
     venue_id: '',
     seat_map_id: '',
     squad_booking_enabled: true,
@@ -268,6 +270,7 @@ function fromExistingEvent(
     age_restriction_min: number | null
     max_capacity: number | null
     has_reserved_seating?: boolean
+    allow_seat_self_service?: boolean
     venue_id?: string | null
     seat_map_id?: string | null
     squad_booking_enabled?: boolean | null
@@ -321,6 +324,7 @@ function fromExistingEvent(
     age_restriction_min: (event.age_restriction_min ?? 18).toString(),
     max_capacity: event.max_capacity?.toString() ?? '',
     has_reserved_seating: event.has_reserved_seating ?? false,
+    allow_seat_self_service: event.allow_seat_self_service ?? false,
     venue_id: event.venue_id ?? '',
     seat_map_id: event.seat_map_id ?? '',
     squad_booking_enabled: event.squad_booking_enabled ?? false,
@@ -444,6 +448,7 @@ export function EventForm({
     status,
     scheduled_publish_at: null,
     has_reserved_seating: formData.has_reserved_seating,
+    allow_seat_self_service: formData.has_reserved_seating ? formData.allow_seat_self_service : false,
     venue_id: formData.has_reserved_seating ? (formData.venue_id || null) : null,
     seat_map_id: formData.has_reserved_seating ? (formData.seat_map_id || null) : null,
     squad_booking_enabled: formData.squad_booking_enabled,
@@ -1439,6 +1444,41 @@ export function EventForm({
                     })()}
                   </div>
                 )}
+                {formData.seat_map_id && (() => {
+                  // Capacity reconciliation: warn when the ticket capacity does
+                  // not cover the chart's seats (the "see issue" check), using
+                  // the selected map's seat count and the entered tier
+                  // capacities. Seated tiers bind by name; this is the coverage
+                  // signal an organiser needs before publishing.
+                  const venue = venues.find(v => v.id === formData.venue_id)
+                  const map = venue?.seat_maps?.find(m => m.id === formData.seat_map_id)
+                  const seatCount = map?.total_seats ?? 0
+                  const tierCapacity = formData.ticket_tiers.reduce((s, t) => s + (parseInt(t.total_capacity) || 0), 0)
+                  if (seatCount === 0) return null
+                  const covered = tierCapacity >= seatCount
+                  return (
+                    <div className={`rounded-lg px-3 py-2 text-xs ${covered ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-800'}`}>
+                      {covered
+                        ? `Capacity check: your tickets cover all ${seatCount} seats in this chart.`
+                        : `Capacity check: this chart has ${seatCount} seats but your tickets only cover ${tierCapacity}. Raise a tier capacity so every seat can sell.`}
+                    </div>
+                  )
+                })()}
+                <label className="flex items-start gap-3 rounded-lg border border-ink-100 bg-ink-50/50 p-3">
+                  <input
+                    type="checkbox"
+                    checked={formData.allow_seat_self_service}
+                    onChange={e => set('allow_seat_self_service', e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-ink-300 text-gold-500 focus:ring-gold-400"
+                  />
+                  <span className="text-sm text-ink-700">
+                    <span className="font-medium text-ink-900">Let attendees change their own seat</span>
+                    <span className="block text-xs text-ink-500">
+                      Buyers can move themselves to another available seat after purchase. Their ticket updates
+                      automatically. Great for friends who want to sit together.
+                    </span>
+                  </span>
+                </label>
               </>
             )}
           </div>

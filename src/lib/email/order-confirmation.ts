@@ -28,17 +28,20 @@ type EmailTicket = {
   seat: {
     row_label: string
     seat_number: string
+    note: string | null
     section: { name: string } | null
   } | null
 }
 
 function seatLine(ticket: EmailTicket): string | null {
   if (!ticket.seat) return null
-  return formatSeatLabel({
+  const label = formatSeatLabel({
     sectionName: ticket.seat.section?.name ?? null,
     rowLabel: ticket.seat.row_label,
     seatNumber: ticket.seat.seat_number,
   })
+  // The organiser note rides with the seat on the emailed ticket too.
+  return ticket.seat.note ? `${label} (${ticket.seat.note})` : label
 }
 
 type EmailOrder = {
@@ -160,7 +163,7 @@ export async function sendConfirmationEmail(
 
   const { data: ticketRows } = await db
     .from('tickets')
-    .select('ticket_code, secret, holder_name, status, seat:seats(row_label, seat_number, section:seat_map_sections(name))')
+    .select('ticket_code, secret, holder_name, status, seat:seats(row_label, seat_number, note, section:seat_map_sections(name))')
     .eq('order_id', order_id)
     .order('created_at', { ascending: true })
 

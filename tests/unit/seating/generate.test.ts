@@ -55,6 +55,14 @@ describe('generateLayout - rows blocks', () => {
     expect(rows[1].seats[0].x).toBe(100)
   })
 
+  it('carries per-seat notes onto the generated seat', () => {
+    const layout = generateLayout([{ ...base, rows: 1, seatsPerRow: 3, notes: { 'A-2': 'Enter via Door G' } }])
+    const seats = layout.sections[0].rows[0].seats
+    expect(seats[0].note).toBeUndefined()
+    expect(seats[1].note).toBe('Enter via Door G')
+    expect(seats[2].note).toBeUndefined()
+  })
+
   it('centres uneven rows over the widest row when align is centre (theatre look)', () => {
     const layout = generateLayout([{ ...base, rows: 3, seatsPerRow: [4, 2, 3], align: 'centre' }])
     const rows = layout.sections[0].rows

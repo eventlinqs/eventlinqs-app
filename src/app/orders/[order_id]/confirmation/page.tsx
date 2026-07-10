@@ -36,6 +36,7 @@ type IssuedTicket = {
   seat: {
     row_label: string
     seat_number: string
+    note: string | null
     section: { name: string } | null
   } | null
 }
@@ -129,7 +130,7 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
   // have been generated yet (a genuine pending state while the webhook runs).
   const { data: ticketRows } = await adminClient
     .from('tickets')
-    .select('ticket_code, secret, status, holder_name, holder_email, order_item:order_items(item_name), seat:seats(row_label, seat_number, section:seat_map_sections(name))')
+    .select('ticket_code, secret, status, holder_name, holder_email, order_item:order_items(item_name), seat:seats(row_label, seat_number, note, section:seat_map_sections(name))')
     .eq('order_id', fullOrder.id)
     .order('created_at', { ascending: true })
 
@@ -158,6 +159,7 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
                 seatNumber: t.seat.seat_number,
               })
             : null,
+          seatNote: t.seat?.note ?? null,
         }
       })
   )
@@ -254,6 +256,12 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
                       <div className="flex justify-between gap-4">
                         <dt className="text-ink-600">Seat</dt>
                         <dd className="font-semibold text-ink-900">{t.seatLabel}</dd>
+                      </div>
+                    )}
+                    {t.seatNote && (
+                      <div className="flex justify-between gap-4">
+                        <dt className="text-ink-600">Note</dt>
+                        <dd className="font-medium text-gold-700">{t.seatNote}</dd>
                       </div>
                     )}
                     <div className="flex justify-between gap-4">

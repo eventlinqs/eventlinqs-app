@@ -21,7 +21,7 @@ import { saveSeatMap } from './actions'
  * generator, so what the organiser sees is exactly what materialises.
  */
 
-type SeatMode = 'move' | 'blocked' | 'accessible' | 'companion' | 'remove' | 'relabel'
+type SeatMode = 'move' | 'blocked' | 'accessible' | 'companion' | 'remove' | 'relabel' | 'note'
 
 const SECTION_COLORS = [
   '#0EA5E9', '#E91E63', '#4CAF50', '#FF9800', '#9C27B0',
@@ -142,6 +142,16 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
       else overrides[ref] = trimmed
       updateBlock(blockId, { labelOverrides: overrides })
     }
+    if (mode === 'note') {
+      const current = block.notes?.[ref] ?? ''
+      const next = window.prompt(`Note for seat ${ref} (shown on the ticket and door scan)`, current)
+      if (next === null) return
+      const notes = { ...(block.notes ?? {}) }
+      const trimmed = next.trim().slice(0, 120)
+      if (trimmed === '') delete notes[ref]
+      else notes[ref] = trimmed
+      updateBlock(blockId, { notes })
+    }
   }
 
   function addBlock(kind: 'rows' | 'round' | 'square' | 'area') {
@@ -247,6 +257,7 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
         {modeButton('companion', 'Toggle companion')}
         {modeButton('remove', 'Remove seat')}
         {modeButton('relabel', 'Relabel seat')}
+        {modeButton('note', 'Add note')}
         <span className="ml-auto text-sm text-ink-600">
           {layout.totalSeats} seats{layout.areas.length > 0 ? ` + ${layout.areas.length} standing ${layout.areas.length === 1 ? 'zone' : 'zones'}` : ''}
         </span>

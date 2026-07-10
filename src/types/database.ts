@@ -798,6 +798,7 @@ export type Database = {
       events: {
         Row: {
           age_restriction_min: number | null
+          allow_seat_self_service: boolean
           category_id: string | null
           city_primary: string | null
           community_primary: string | null
@@ -862,6 +863,7 @@ export type Database = {
         }
         Insert: {
           age_restriction_min?: number | null
+          allow_seat_self_service?: boolean
           category_id?: string | null
           city_primary?: string | null
           community_primary?: string | null
@@ -926,6 +928,7 @@ export type Database = {
         }
         Update: {
           age_restriction_min?: number | null
+          allow_seat_self_service?: boolean
           category_id?: string | null
           city_primary?: string | null
           community_primary?: string | null
