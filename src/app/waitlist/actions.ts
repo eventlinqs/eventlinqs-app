@@ -1,9 +1,13 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { headers } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { actionRateLimit } from '@/lib/rate-limit/action'
 import { isFlagEnabled } from '@/lib/flags'
+import { sendEmail } from '@/lib/email/send'
+import { getSiteUrl } from '@/lib/site-url'
+import { buildWaitlistConfirmationEmail } from '@/lib/waitlist/confirmation-email'
 import {
   CONSENT_VERSION,
   MARKETING_OPT_IN_LABEL,
@@ -18,8 +22,31 @@ import {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
 export type JoinWaitlistResult =
-  | { ok: true; cityName: string; foundingCandidate: boolean; role: WaitlistRole }
+  | {
+      ok: true
+      cityName: string
+      foundingCandidate: boolean
+      role: WaitlistRole
+      /** Whether the confirmation email was accepted by the mail provider. */
+      confirmationEmailed: boolean
+    }
   | { ok: false; error: string }
+
+/** The deployment's own origin, so a staging join emails staging links and a
+ * production join emails production links. Falls back to the canonical site. */
+async function requestOrigin(): Promise<string> {
+  try {
+    const hdrs = await headers()
+    const host = hdrs.get('x-forwarded-host') ?? hdrs.get('host')
+    if (host) {
+      const proto = hdrs.get('x-forwarded-proto') ?? 'https'
+      return `${proto}://${host}`
+    }
+  } catch {
+    // No request store (unit tests): fall through to the canonical URL.
+  }
+  return getSiteUrl()
+}
 
 /**
  * Join a city waitlist. Spam Act posture: the submit button IS the express
@@ -72,29 +99,54 @@ export async function joinCityWaitlist(input: {
   const foundingCandidate = (OPENING_FIRST as readonly string[]).includes(citySlug)
 
   const admin = createAdminClient()
-  const { error } = await admin.from('city_waitlist_signups').upsert(
-    {
-      city_slug: citySlug,
-      full_name: fullName,
-      email,
-      role,
-      marketing_opt_in: marketingOptIn,
-      consent_text: consentText,
-      consent_version: CONSENT_VERSION,
-      source: 'waitlist-page',
-      founding_candidate: foundingCandidate,
-      unsubscribed_at: null,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: 'city_slug,email' },
-  )
+  const { data: row, error } = await admin
+    .from('city_waitlist_signups')
+    .upsert(
+      {
+        city_slug: citySlug,
+        full_name: fullName,
+        email,
+        role,
+        marketing_opt_in: marketingOptIn,
+        consent_text: consentText,
+        consent_version: CONSENT_VERSION,
+        source: 'waitlist-page',
+        founding_candidate: foundingCandidate,
+        unsubscribed_at: null,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'city_slug,email' },
+    )
+    .select('unsubscribe_token')
+    .single()
 
-  if (error) {
+  if (error || !row) {
     console.error('[waitlist] join failed:', error)
     return { ok: false, error: 'Something went wrong. Please try again.' }
   }
 
-  return { ok: true, cityName: city.name, foundingCandidate, role }
+  // Confirmation email (transactional: it confirms the signup and DELIVERS
+  // the one-click unsubscribe link). Best-effort: a mail failure never voids
+  // the join; the UI reports the state honestly either way.
+  let confirmationEmailed = false
+  try {
+    const origin = await requestOrigin()
+    const message = buildWaitlistConfirmationEmail({
+      cityName: city.name,
+      fullName,
+      role,
+      foundingCandidate,
+      marketingOptIn,
+      unsubscribeUrl: `${origin}/waitlist/unsubscribe/${row.unsubscribe_token}`,
+    })
+    const { id } = await sendEmail({ to: email, ...message })
+    confirmationEmailed = true
+    console.log(`[waitlist] confirmation sent to ${email} (resend id ${id})`)
+  } catch (err) {
+    console.error('[waitlist] confirmation email failed (join still recorded):', err)
+  }
+
+  return { ok: true, cityName: city.name, foundingCandidate, role, confirmationEmailed }
 }
 
 /**

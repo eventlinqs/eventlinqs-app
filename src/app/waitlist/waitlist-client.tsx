@@ -34,6 +34,7 @@ export function WaitlistClient({ cities }: { cities: WaitlistCityWithImage[] }) 
     cityName: string
     foundingCandidate: boolean
     role: WaitlistRole
+    confirmationEmailed: boolean
   } | null>(null)
   const [isPending, startTransition] = useTransition()
   const formRef = useRef<HTMLDivElement>(null)
@@ -59,6 +60,7 @@ export function WaitlistClient({ cities }: { cities: WaitlistCityWithImage[] }) 
           cityName: result.cityName,
           foundingCandidate: result.foundingCandidate,
           role: result.role,
+          confirmationEmailed: result.confirmationEmailed,
         })
       } else {
         setError(result.error)
@@ -153,6 +155,11 @@ export function WaitlistClient({ cities }: { cities: WaitlistCityWithImage[] }) 
                   : joined.role === 'organiser'
                     ? `We will email you the moment ${joined.cityName} opens, with organiser onboarding first in line. Until then the platform already works Australia-wide: you can build your event and get your launch kit today.`
                     : `We will email you the moment ${joined.cityName} opens. One email, no noise, and one click unsubscribes you.`}
+              </p>
+              <p className="mt-2 text-xs text-ink-500">
+                {joined.confirmationEmailed
+                  ? 'A confirmation is on its way to your inbox, with a one-click leave link.'
+                  : 'Your spot is recorded. The confirmation email could not be sent right now; the one-click leave link will be in every email we send you.'}
               </p>
               <button
                 type="button"
