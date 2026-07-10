@@ -1,0 +1,19 @@
+{
+  "results": [
+    {
+      "s": "login",
+      "d": "organiser in on staging"
+    },
+    {
+      "s": "wizard",
+      "d": "chart: Seating chart (40 seats)"
+    },
+    {
+      "s": "FAIL wizard",
+      "d": "publish never enabled; review media line: Cover set"
+    }
+  ],
+  "consoleErrors": [],
+  "brokenImages": [],
+  "wlEmail": "eventlinqs-kit-616667@mailinator.com"
+}
