@@ -10,7 +10,7 @@ import {
   type ShareChannel,
 } from '@/lib/broadcast/share-links'
 import { ShareKit } from '@/components/broadcast/share-kit'
-import { getSiteUrl } from '@/lib/site-url'
+import { getRequestOrigin } from '@/lib/site-origin'
 
 export const metadata: Metadata = {
   title: 'Reach | EventLinqs',
@@ -64,7 +64,9 @@ export default async function ReachPage({ params }: Props) {
     ? await fetchReachSummary(id)
     : { totals: { views: 0, clicks: 0, conversions: 0, tickets: 0 }, byChannel: [], linkCount: 0 }
 
-  const origin = getSiteUrl()
+  // Request origin: handed-out links must point at the deployment that
+  // minted them (identical on production, self-referential on staging).
+  const origin = await getRequestOrigin()
   const kitLinks: { channel: ShareChannel; url: string }[] = []
   if (shareOn) {
     for (const channel of KIT_CHANNELS) {

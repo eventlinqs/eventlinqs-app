@@ -23,7 +23,7 @@ import {
   getOrCreateShareLink,
   type ShareChannel,
 } from '@/lib/broadcast/share-links'
-import { getSiteUrl } from '@/lib/site-url'
+import { getRequestOrigin } from '@/lib/site-origin'
 import { HeroMedia, MarketingMedia } from '@/components/media'
 import { Reveal } from '@/components/ui/reveal'
 import { CopyLinkButton } from '@/components/launch-kit/copy-link-button'
@@ -111,7 +111,10 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
 
   const justPublished = published === '1'
   const isLive = event.status === 'published'
-  const siteUrl = getSiteUrl()
+  // Request origin, not the canonical URL: every link and QR the kit hands
+  // out must point at the deployment that minted it (identical on
+  // production, self-referential on staging and previews).
+  const siteUrl = await getRequestOrigin()
   const eventUrl = `${siteUrl}/events/${organiserEvent.slug}`
   const dateLabel = organiserEvent.startDate
     ? formatEventDate(organiserEvent.startDate, organiserEvent.timezone ?? 'Australia/Melbourne')

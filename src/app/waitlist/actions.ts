@@ -1,12 +1,12 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { headers } from 'next/headers'
+
 import { createAdminClient } from '@/lib/supabase/admin'
 import { actionRateLimit } from '@/lib/rate-limit/action'
 import { isFlagEnabled } from '@/lib/flags'
 import { sendEmail } from '@/lib/email/send'
-import { getSiteUrl } from '@/lib/site-url'
+import { getRequestOrigin } from '@/lib/site-origin'
 import { buildWaitlistConfirmationEmail } from '@/lib/waitlist/confirmation-email'
 import {
   CONSENT_VERSION,
@@ -32,21 +32,6 @@ export type JoinWaitlistResult =
     }
   | { ok: false; error: string }
 
-/** The deployment's own origin, so a staging join emails staging links and a
- * production join emails production links. Falls back to the canonical site. */
-async function requestOrigin(): Promise<string> {
-  try {
-    const hdrs = await headers()
-    const host = hdrs.get('x-forwarded-host') ?? hdrs.get('host')
-    if (host) {
-      const proto = hdrs.get('x-forwarded-proto') ?? 'https'
-      return `${proto}://${host}`
-    }
-  } catch {
-    // No request store (unit tests): fall through to the canonical URL.
-  }
-  return getSiteUrl()
-}
 
 /**
  * Join a city waitlist. Spam Act posture: the submit button IS the express
@@ -130,7 +115,7 @@ export async function joinCityWaitlist(input: {
   // the join; the UI reports the state honestly either way.
   let confirmationEmailed = false
   try {
-    const origin = await requestOrigin()
+    const origin = await getRequestOrigin()
     const message = buildWaitlistConfirmationEmail({
       cityName: city.name,
       fullName,
