@@ -241,15 +241,15 @@ export async function PricingPage() {
                 <tr className="border-b border-ink-100 text-left">
                   <th scope="col" className="px-5 py-3.5 font-display text-xs font-bold uppercase tracking-widest text-ink-600">Published, before you sign up</th>
                   <th scope="col" className="px-4 py-3.5 text-center font-display text-xs font-bold uppercase tracking-widest text-ink-900">EventLinqs</th>
-                  <th scope="col" className="px-4 py-3.5 text-center font-display text-xs font-bold uppercase tracking-widest text-ink-600">Humanitix</th>
-                  <th scope="col" className="px-4 py-3.5 text-center font-display text-xs font-bold uppercase tracking-widest text-ink-600">Eventbrite</th>
-                  <th scope="col" className="px-4 py-3.5 text-center font-display text-xs font-bold uppercase tracking-widest text-ink-600">DICE / Ticketek</th>
+                  <th scope="col" className="px-4 py-3.5 text-center font-display text-xs font-bold uppercase tracking-widest text-ink-600">Platform A</th>
+                  <th scope="col" className="px-4 py-3.5 text-center font-display text-xs font-bold uppercase tracking-widest text-ink-600">Platform B</th>
+                  <th scope="col" className="px-4 py-3.5 text-center font-display text-xs font-bold uppercase tracking-widest text-ink-600">Platform C</th>
                 </tr>
               </thead>
               <tbody>
                 {[
                   ['Every fee published', true, true, 'A click deep', false],
-                  ['All-in price at the first click', true, false, false, 'DICE at the button'],
+                  ['All-in price at the first click', true, false, false, 'At the button'],
                   ['Live payout calculator', true, false, false, false],
                   ['Payout timing published', true, true, true, false],
                   ['Full attendee data yours to export', true, false, false, false],
@@ -267,10 +267,11 @@ export async function PricingPage() {
             </table>
           </div>
           <p className="mt-3 max-w-3xl text-xs leading-relaxed text-[var(--text-muted)]">
-            Sources: each platform&rsquo;s public pricing and help pages as at 5 July
-            2026. Humanitix publishes 4% + $0.99 including payment processing;
-            Eventbrite publishes 3.7% + $1.79 plus 2.9% processing behind its
-            organiser pages; DICE and Ticketek publish no organiser pricing.
+            Platforms A, B and C are three of the major ticketing platforms
+            Australian organisers compare, drawn from their public pricing and
+            help pages as at 5 July 2026. One publishes its fees but only shows
+            the all-in total deep in checkout; one keeps organiser pricing
+            behind its own pages; one does not publish organiser pricing at all.
             Compare totals for your own ticket price with the calculator above.
           </p>
         </ContentSection>

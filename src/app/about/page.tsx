@@ -118,10 +118,10 @@ export default function AboutPage() {
                 community seriously, treats every organiser like an actual
                 business partner, and refuses to dress up a checkout fee as
                 a service charge. The product is the work. We measure ourselves
-                against the global benchmarks (Ticketmaster, DICE, Eventbrite,
-                Humanitix) and iterate until we beat them on every public
-                surface that matters: search, discovery, pricing transparency,
-                checkout speed, and post-event experience.
+                against the best ticketing platforms in the world and iterate
+                until we beat them on every public surface that matters: search,
+                discovery, pricing transparency, checkout speed, and post-event
+                experience.
               </p>
             </div>
           </div>
@@ -182,8 +182,8 @@ export default function AboutPage() {
                 EventLinqs was founded by Lawal Adams in Geelong, Victoria.
                 Australian-Nigerian, sole founder, building the platform he
                 wished existed when his community had to use a patchwork of
-                Eventbrite, Facebook events, and bank-transfer DMs to put on
-                community events that mattered.
+                generic event pages, social media posts, and bank-transfer DMs
+                to put on community events that mattered.
               </p>
               <p>
                 The platform is operated as an Australian sole trader (ABN

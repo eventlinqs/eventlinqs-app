@@ -62,7 +62,7 @@ export const helpTopics: HelpTopic[] = [
         a: "Yes. Creating a buyer account is completely free. There are no monthly or annual fees for buyers. For organisers, there is no upfront cost to list events. Our fees are a share of ticket revenue, only charged when paid tickets are sold. Free events incur zero platform fees, permanently. See our pricing page for current fee details.",
       },
       {
-        q: 'How is EventLinqs different from Ticketmaster or Eventbrite?',
+        q: 'How is EventLinqs different from other ticketing platforms?',
         a: "EventLinqs is built for every community, and open to every organiser and every community that wants a platform that gets it right. Mainstream platforms treat community events as a small subset of their business. For us, they are the whole business. That means all-in pricing with no hidden fees at checkout, WhatsApp-native sharing, squad bookings so whole groups can buy together, and support from a team that understands the events we serve. We are also built on transparency: what you see at checkout is what you pay. No convenience fee surprises at the final step.",
       },
       {
