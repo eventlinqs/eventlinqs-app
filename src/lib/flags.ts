@@ -14,6 +14,9 @@ const FLAG_DEFAULTS: Record<string, boolean> = {
   // Event Launch Kit (post-publish kit screen, city waitlist, tool-first
   // organiser positioning). Default ON for testing per the founder directive.
   launch_kit: true,
+  // Magic Start: describe-your-event AI draft + voice input at the top of
+  // event creation. Default ON for testing.
+  magic_start: true,
 }
 
 export async function isFlagEnabled(key: keyof typeof FLAG_DEFAULTS & string): Promise<boolean> {

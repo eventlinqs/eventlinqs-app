@@ -75,6 +75,7 @@ export default async function CreateEventPage() {
         categories={categories ?? []}
         venues={venues}
         launchKitEnabled={await isFlagEnabled('launch_kit')}
+        magicStartEnabled={await isFlagEnabled('magic_start')}
       />
     </div>
   )

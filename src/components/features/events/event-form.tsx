@@ -6,6 +6,8 @@ import { createEvent, updateEvent } from '@/app/(dashboard)/dashboard/events/act
 import { EventMediaStep, type MediaImage } from './event-media-step'
 import { parseGallery } from '@/lib/media/event-media-model'
 import { AssistantPanel, type PanelSuggestion } from '@/components/ai/assistant-panel'
+import { MagicStart } from './magic-start'
+import type { MagicStartDraft } from '@/lib/ai/magic-start'
 import { getAllCommunities, type CommunitySlug } from '@/lib/communities/data'
 import {
   communitiesFromTags,
@@ -350,6 +352,8 @@ type Props = {
   existingStatus?: EventStatus
   /** Launch Kit flag (read server-side): publish delivers the kit screen. */
   launchKitEnabled?: boolean
+  /** Magic Start flag (read server-side): AI describe-your-event prefill. */
+  magicStartEnabled?: boolean
 }
 
 // ─── Main Component ──────────────────────────────────────────────────────────
@@ -365,6 +369,7 @@ export function EventForm({
   existingTiers = [],
   existingStatus = 'draft',
   launchKitEnabled = false,
+  magicStartEnabled = false,
 }: Props) {
   const router = useRouter()
   const eventIdRef = useRef(existingEventId ?? crypto.randomUUID())
@@ -538,6 +543,50 @@ export function EventForm({
 
   // ─── Step Renderers ────────────────────────────────────────────────────────
 
+  // Magic Start: land one description as an editable prefilled draft. Only
+  // fields the AI resolved are written; blanks stay blank. Never publishes.
+  const [magicSummary, setMagicSummary] = useState<{ filled: string[]; unresolved: string[] } | null>(null)
+  const applyMagicDraft = (draft: MagicStartDraft) => {
+    const filled: string[] = []
+    setFormData(d => {
+      const next = { ...d }
+      if (draft.title) { next.title = draft.title; filled.push('Title') }
+      if (draft.description) { next.description = draft.description; filled.push('Description') }
+      if (draft.category) {
+        const match = categories.find(c => c.name.trim().toLowerCase() === draft.category.trim().toLowerCase())
+        if (match) { next.category_id = match.id; filled.push('Category') }
+      }
+      if (draft.start_date) { next.start_date = draft.start_date; filled.push('Start') }
+      if (draft.end_date) { next.end_date = draft.end_date; filled.push('End') }
+      next.event_type = draft.event_type
+      if (draft.venue_name) { next.venue_name = draft.venue_name; filled.push('Venue') }
+      if (draft.venue_address) next.venue_address = draft.venue_address
+      if (draft.venue_city) next.venue_city = draft.venue_city
+      if (draft.venue_state) next.venue_state = draft.venue_state
+      if (draft.venue_postal_code) next.venue_postal_code = draft.venue_postal_code
+      if (draft.ticket_tiers.length > 0) {
+        next.ticket_tiers = draft.ticket_tiers.map((t, i) => ({
+          id: crypto.randomUUID(),
+          name: t.name,
+          description: '',
+          tier_type: (draft.is_free || t.price === 0 ? 'free' : 'general_admission') as TicketTierType,
+          price: String(t.price),
+          currency: t.currency,
+          total_capacity: t.total_capacity != null ? String(t.total_capacity) : '',
+          sale_start: '',
+          sale_end: '',
+          min_per_order: '1',
+          max_per_order: '10',
+          sort_order: i,
+        }))
+        filled.push(draft.is_free ? 'Free ticket' : 'Ticket prices')
+      }
+      return next
+    })
+    setMagicSummary({ filled, unresolved: draft.unresolved })
+    setStep(1)
+  }
+
   const applyHelperSuggestion = (s: PanelSuggestion) => {
     if (s.kind === 'title') {
       set('title', s.value.slice(0, 200))
@@ -551,6 +600,26 @@ export function EventForm({
 
   const renderStep1 = () => (
     <div className="space-y-5">
+      {magicStartEnabled && !editMode && (
+        <>
+          <MagicStart onDraft={applyMagicDraft} />
+          {magicSummary && (
+            <div role="status" className="rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-sm text-ink-900">
+              <p className="font-semibold">
+                Draft ready. {magicSummary.filled.length > 0 ? `Filled: ${magicSummary.filled.join(', ')}.` : ''}
+              </p>
+              {magicSummary.unresolved.length > 0 && (
+                <p className="mt-1 text-ink-600">
+                  Add these yourself: {magicSummary.unresolved.join(', ')}. Everything is editable below before you publish.
+                </p>
+              )}
+              {magicSummary.unresolved.length === 0 && (
+                <p className="mt-1 text-ink-600">Review everything below, then continue. Nothing publishes until you do.</p>
+              )}
+            </div>
+          )}
+        </>
+      )}
       <details className="group rounded-xl border border-gold-400/40 bg-gold-100/40">
         <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium text-ink-900 [&::-webkit-details-marker]:hidden">
           <span className="text-gold-800">Need a hand with the title, description, or category?</span>
