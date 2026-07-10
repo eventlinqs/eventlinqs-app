@@ -135,19 +135,19 @@ export function KnowBeforeYouGo({
       <SectionHeader eyebrow="The practical bits" title="Know before you go" size="sm" />
       <dl className="mt-5 divide-y divide-ink-100 rounded-2xl border border-ink-200 bg-white">
         {rows.map(row => (
-          <div key={row.label} className="flex items-start gap-4 px-5 py-4">
-            <span
-              aria-hidden
-              className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-1)] text-[var(--brand-accent-strong)]"
-            >
-              <row.icon className="h-4.5 w-4.5" />
-            </span>
-            <div className="min-w-0">
-              <dt className="font-display text-[13px] font-bold uppercase tracking-[0.12em] text-ink-900">
+          <div key={row.label} className="px-5 py-4">
+            <dt className="flex items-center gap-4">
+              <span
+                aria-hidden
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-1)] text-[var(--brand-accent-strong)]"
+              >
+                <row.icon className="h-4.5 w-4.5" />
+              </span>
+              <span className="font-display text-[13px] font-bold uppercase tracking-[0.12em] text-ink-900">
                 {row.label}
-              </dt>
-              <dd className="mt-1 text-sm leading-relaxed text-ink-600">{row.value}</dd>
-            </div>
+              </span>
+            </dt>
+            <dd className="mt-1 pl-[3.25rem] text-sm leading-relaxed text-ink-600">{row.value}</dd>
           </div>
         ))}
       </dl>
