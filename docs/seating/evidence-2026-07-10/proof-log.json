@@ -1,0 +1,44 @@
+{
+  "results": [
+    {
+      "s": "login",
+      "d": "organiser in"
+    },
+    {
+      "s": "builder",
+      "d": "chart saved through the real builder (Saved: 18 seats.)"
+    },
+    {
+      "s": "builder-layout",
+      "d": "centred rows [120,144,168], VIP1 override present, scenery Bar present"
+    },
+    {
+      "s": "buyer",
+      "d": "seat reserved, checkout at http://localhost:3000/checkout/b0d3c25a-61cc-40b8-b831-786849171b1b?seat=1"
+    },
+    {
+      "s": "buyer",
+      "d": "order confirmed at http://localhost:3000/orders/799adb00-5976-41f8-a923-075447e86d20/confirmation"
+    },
+    {
+      "s": "buyer-ticket",
+      "d": "ticket EL-F835-B8CD seat A-1"
+    },
+    {
+      "s": "move",
+      "d": "Sam Buyer moved to Row A, Seat 2. Their ticket and the door scan already show the new seat. The email notification could not be sent - let them know directly."
+    },
+    {
+      "s": "move-db",
+      "d": "ticket EL-F835-B8CD: A-1 -> A-2; old seat available, new seat sold with order refs"
+    },
+    {
+      "s": "scan-db",
+      "d": "scanner join resolves EL-F835-B8CD -> Row A Seat 2 (the moved seat)"
+    }
+  ],
+  "consoleErrors": [],
+  "ticket": "EL-F835-B8CD",
+  "beforeSeat": "A-1",
+  "afterSeat": "A-2"
+}

@@ -768,10 +768,19 @@ async function processSeatCheckout({
   if (event.slug) revalidatePath(`/events/${event.slug}`)
   revalidatePath(`/dashboard/events/${event.id}/seats`)
 
-  // Create one order_item per seat
+  // Create one order_item per seat. A seat with no bound tier (a chart whose
+  // section named no ticket tier) falls back to the event's default tier: the
+  // same tier that priced it on the map. item_type 'ticket' REQUIRES a
+  // non-null tier (order_items_type_check), so a null here would abort every
+  // unmapped-seat checkout at the constraint.
+  const itemTierFallback = tierIdsFromSeats[0] ?? fallbackTier?.id ?? null
+  if (seats.some(seat => !(seat.ticket_tier_id ?? itemTierFallback))) {
+    console.error('[checkout-seats] no ticket tier resolvable for seat order items; event has no tiers')
+    return { error: 'This event has no ticket type configured for its seats. Please contact the organiser.' }
+  }
   const orderItems = seats.map(seat => ({
     order_id,
-    ticket_tier_id: seat.ticket_tier_id ?? (tierIdsFromSeats[0] ?? null),
+    ticket_tier_id: seat.ticket_tier_id ?? itemTierFallback,
     addon_id: null,
     item_type: 'ticket' as const,
     item_name: `Row ${seat.row_label} Seat ${seat.seat_number}${seat.seat_type !== 'standard' ? ` (${seat.seat_type})` : ''}`,
