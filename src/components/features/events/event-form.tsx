@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createEvent, updateEvent } from '@/app/(dashboard)/dashboard/events/actions'
 import { EventMediaStep, type MediaImage } from './event-media-step'
@@ -376,7 +376,9 @@ export function EventForm({
   magicStartEnabled = false,
 }: Props) {
   const router = useRouter()
-  const eventIdRef = useRef(existingEventId ?? crypto.randomUUID())
+  // A stable event id, generated once. useState (not useRef) so it can be read
+  // during render (the seat step passes it down) without a ref-in-render access.
+  const [eventId] = useState(() => existingEventId ?? crypto.randomUUID())
 
   const [step, setStep] = useState(1)
   const [formData, setFormData] = useState<FormData>(() =>
@@ -392,20 +394,23 @@ export function EventForm({
     setFormData(d => ({ ...d, [key]: value }))
   }, [])
 
-  // Auto-detect browser timezone on mount (new events only)
+  // Auto-detect the browser timezone on mount (new events only). This must run
+  // in an effect, not the state initializer: reading the browser timezone
+  // during render would differ between the server (UTC) and the client, causing
+  // a hydration mismatch. The one extra render is intentional and one-time.
   useEffect(() => {
-    if (!editMode) {
-      try {
-        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
-        if (tz) set('timezone', tz)
-      } catch {
-        // keep default
-      }
+    if (editMode) return
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time, client-only timezone seed; must be an effect for SSR-safe hydration
+      if (tz) set('timezone', tz)
+    } catch {
+      // keep the default timezone
     }
   }, [editMode, set])
 
   const buildPayload = (status: EventStatus) => ({
-    eventId: eventIdRef.current,
+    eventId: eventId,
     organisationId,
     title: formData.title,
     summary: formData.summary,
@@ -489,10 +494,15 @@ export function EventForm({
       }
       if (result.error) {
         setError(result.error)
+        // Only re-enable the buttons on a FAILED submit. On success the
+        // component is navigating away, so we deliberately keep isSubmitting
+        // true through the navigation: this closes the brief window where a
+        // fast second click could re-fire createEvent with the same event id.
+        setIsSubmitting(false)
       } else if (!editMode && status === 'published' && launchKitEnabled) {
         // The signature moment: publish delivers the launch kit. The organiser
         // lands on their kit screen, never silently back on the events table.
-        router.push(`/dashboard/events/${eventIdRef.current}/launch-kit?published=1`)
+        router.push(`/dashboard/events/${eventId}/launch-kit?published=1`)
         router.refresh()
       } else {
         router.push('/dashboard/events')
@@ -502,7 +512,6 @@ export function EventForm({
       // Re-throw Next.js redirect/navigation errors so they propagate correctly
       if (err !== null && typeof err === 'object' && 'digest' in err) throw err
       setError('Something went wrong. Please try again.')
-    } finally {
       setIsSubmitting(false)
     }
   }
@@ -514,6 +523,18 @@ export function EventForm({
           setStepError('End date and time must be after start date and time.')
           return
         }
+      }
+    }
+    // Event Media (step 4): never advance while a cover or gallery image is
+    // still uploading. The media step lives in local state and unmounts when
+    // the wizard moves on, so leaving mid-upload would strand the finished
+    // upload on an unmounted component and silently lose the cover, leaving
+    // the organiser stuck at Review with "No cover yet". Waiting here is the
+    // root fix for that race.
+    if (step === 4) {
+      if (formData.media.some(m => m.uploading)) {
+        setStepError('Your cover is still uploading. Give it a moment, then continue.')
+        return
       }
     }
     if (step === 5) {
@@ -551,6 +572,16 @@ export function EventForm({
   // Magic Start: land one description as an editable prefilled draft. Only
   // fields the AI resolved are written; blanks stay blank. Never publishes.
   const [magicSummary, setMagicSummary] = useState<{ filled: string[]; unresolved: string[] } | null>(null)
+  // Add hours to a naive "YYYY-MM-DDTHH:mm" datetime-local string, staying in
+  // local components (never through toISOString, which would shift by the UTC
+  // offset and corrupt the time).
+  const addHoursLocal = (localStr: string, hours: number): string => {
+    const d = new Date(localStr)
+    if (Number.isNaN(d.getTime())) return localStr
+    d.setHours(d.getHours() + hours)
+    const p = (n: number) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
+  }
   const applyMagicDraft = (draft: MagicStartDraft) => {
     const filled: string[] = []
     setFormData(d => {
@@ -561,8 +592,25 @@ export function EventForm({
         const match = categories.find(c => c.name.trim().toLowerCase() === draft.category.trim().toLowerCase())
         if (match) { next.category_id = match.id; filled.push('Category') }
       }
-      if (draft.start_date) { next.start_date = draft.start_date; filled.push('Start') }
-      if (draft.end_date) { next.end_date = draft.end_date; filled.push('End') }
+      if (draft.start_date) {
+        next.start_date = draft.start_date
+        filled.push('Start')
+        // Guarantee a valid window: the AI can return an end that is empty,
+        // equal to, or before the start (an ambiguous "8pm to late"). The date
+        // step and publish both require end > start, so default the end to two
+        // hours after the start whenever the returned end is not strictly
+        // after it. The organiser edits it freely.
+        const startMs = new Date(draft.start_date).getTime()
+        const endMs = draft.end_date ? new Date(draft.end_date).getTime() : NaN
+        if (Number.isFinite(startMs) && (!Number.isFinite(endMs) || endMs <= startMs)) {
+          next.end_date = addHoursLocal(draft.start_date, 2)
+        } else if (draft.end_date) {
+          next.end_date = draft.end_date
+        }
+        filled.push('End')
+      } else if (draft.end_date) {
+        next.end_date = draft.end_date
+      }
       next.event_type = draft.event_type
       if (draft.venue_name) { next.venue_name = draft.venue_name; filled.push('Venue') }
       if (draft.venue_address) next.venue_address = draft.venue_address
@@ -585,6 +633,14 @@ export function EventForm({
           sort_order: i,
         }))
         filled.push(draft.is_free ? 'Free ticket' : 'Ticket prices')
+      }
+      // Catch-all invariant: the draft must never leave end <= start (the date
+      // step and publish both reject it). Whatever combination of fields the AI
+      // set, clamp the end to two hours after the start when it is not after.
+      const s = new Date(next.start_date).getTime()
+      const e = new Date(next.end_date).getTime()
+      if (Number.isFinite(s) && (!Number.isFinite(e) || e <= s)) {
+        next.end_date = addHoursLocal(next.start_date, 2)
       }
       return next
     })
@@ -938,7 +994,7 @@ export function EventForm({
 
   const renderStep4 = () => (
     <EventMediaStep
-      eventId={eventIdRef.current}
+      eventId={eventId}
       images={formData.media}
       onImagesChange={imgs => set('media', imgs)}
       video={formData.video_url}
