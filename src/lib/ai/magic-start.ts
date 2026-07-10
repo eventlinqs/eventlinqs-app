@@ -1,10 +1,21 @@
 import 'server-only'
 import Anthropic from '@anthropic-ai/sdk'
 import { getAnthropicClient, isAiConfigured } from './client'
-import { estimateCostMicroUsd, getDefaultModel } from './config'
+import { estimateCostMicroUsd } from './config'
 import { checkMonthlyBudget, recordSpend } from './cost-guard'
 import { logAi } from './logging'
 import { enforceCopyLaws, asUntrustedBlock } from './sanitise'
+
+/**
+ * Magic Start uses a FAST model, not the chat default. Draft extraction is a
+ * structured, low-reasoning task where a smaller model returns in a few
+ * seconds (the whole flow targets under 60s to published) at a fraction of the
+ * cost, so the same monthly guard covers far more calls. Override with
+ * AI_MAGIC_START_MODEL.
+ */
+function getMagicStartModel(): string {
+  return process.env.AI_MAGIC_START_MODEL || 'claude-haiku-4-5-20251001'
+}
 
 /**
  * Magic Start: one description becomes an entire editable event draft.
@@ -141,7 +152,7 @@ export async function extractEventDraft(opts: {
     return { ok: false, reason: 'budget_exhausted' }
   }
 
-  const model = getDefaultModel()
+  const model = getMagicStartModel()
   const system = buildSystem({ categoryNames, nowIso })
   const started = Date.now()
 
