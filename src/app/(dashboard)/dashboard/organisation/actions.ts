@@ -8,7 +8,7 @@ import { cookies } from 'next/headers'
 import { z } from 'zod'
 import { trackOrganiserSignupServer } from '@/lib/analytics/plausible'
 import { acceptFoundingInvite } from '@/lib/founding/invites'
-import { FOUNDING_INVITE_COOKIE } from '@/app/join/[code]/page'
+import { FOUNDING_INVITE_COOKIE } from '@/app/join/[code]/cookie'
 
 const CreateOrgSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(100),

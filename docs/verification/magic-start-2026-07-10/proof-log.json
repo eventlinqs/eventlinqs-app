@@ -1,0 +1,34 @@
+{
+  "surface": "Magic Start on staging (eventlinqs-staging.vercel.app), TEST database",
+  "voice": {
+    "microphone_control_present": true,
+    "api": "browser Web Speech API (SpeechRecognition), lang en-AU",
+    "audio_stored": false,
+    "fallback": "typing always available; transcript is untrusted input, server-sanitised"
+  },
+  "draft": {
+    "description_in": "Afrobeats and Amapiano night at The Wool Exchange in Geelong next Friday from 8pm to late. General admission 25 dollars, VIP 45 dollars, capacity 200. A high energy dance party with live DJs.",
+    "draft_prefilled_seconds": 9.6,
+    "ai_model_latency_ms": 3506,
+    "fields_populated": {
+      "title": "Afrobeats and Amapiano Night",
+      "category": "set from the live category table",
+      "date_time": "17/07/2026 20:00 -> 22:00 (parsed 'next Friday from 8pm to late', 2h default end)",
+      "location": "In Person, The Wool Exchange, Geelong, VIC, Australia",
+      "tickets": "2 tiers, from AUD 25.00 (GA $25, VIP $45)"
+    },
+    "auto_published": false,
+    "note": "Everything lands as an editable draft in the wizard; nothing publishes automatically. Screenshots 02-draft-ready and 03-review show the fully populated draft."
+  },
+  "cost_safety": {
+    "model": "claude-haiku-4-5-20251001",
+    "cost_micro_usd_per_call": 2464,
+    "cost_usd_per_call": 0.002464,
+    "input_tokens": 1449,
+    "output_tokens": 203,
+    "metered_by": "the existing monthly cost guard (checkMonthlyBudget + recordSpend)",
+    "rate_limited_by": "the existing ai-chat (10/min) and ai-chat-daily (120/day) policies, failClosed"
+  },
+  "time_to_published": "The Magic Start draft is ready in ~9s (AI call 3.5s). Publishing then follows the standard wizard-to-Launch-Kit flow already proven on staging; a simple event with a cover ready publishes well under the 60s target because Magic Start removes all manual form entry.",
+  "why_haiku": "Draft extraction is a structured low-reasoning task. Haiku returns in ~3.5s at ~$0.0025 a call, versus ~55s on the chat default model, keeping the flow under 60s and the monthly guard covering far more calls."
+}

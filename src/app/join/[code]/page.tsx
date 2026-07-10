@@ -1,12 +1,12 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { cookies } from 'next/headers'
 import { PageShell } from '@/components/layout/PageShell'
 import { Button } from '@/components/ui/Button'
 import { isFlagEnabled } from '@/lib/flags'
 import { getInviteByCode, getFoundingCounts } from '@/lib/founding/invites'
 import { getCity } from '@/lib/cities/data'
+import { SetInviteCookie } from './set-invite-cookie'
 
 export const metadata: Metadata = {
   title: 'You are invited | EventLinqs',
@@ -16,9 +16,6 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic'
 
 type Props = { params: Promise<{ code: string }> }
-
-/** The invite cookie the signup flow reads to attribute a founding conversion. */
-export const FOUNDING_INVITE_COOKIE = 'el_founding_invite'
 
 /**
  * The warm founding-organiser landing. "[Organiser] invited you to
@@ -97,17 +94,4 @@ export default async function FoundingInvitePage({ params }: Props) {
       </div>
     </PageShell>
   )
-}
-
-/** Server component that stamps the invite cookie so signup can attribute the
- * founding conversion. A first-party, short-lived, path-wide cookie. */
-async function SetInviteCookie({ code }: { code: string }) {
-  const store = await cookies()
-  store.set(FOUNDING_INVITE_COOKIE, code, {
-    path: '/',
-    maxAge: 60 * 60 * 24 * 14,
-    sameSite: 'lax',
-    httpOnly: false,
-  })
-  return null
 }
