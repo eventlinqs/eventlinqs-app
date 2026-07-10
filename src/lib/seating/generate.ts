@@ -51,6 +51,12 @@ export interface RowsBlock extends BlockBase {
   seatStart?: number
   /** Reverse seat numbering direction. */
   reverseSeats?: boolean
+  /**
+   * Horizontal alignment for uneven rows: 'left' anchors every row to the
+   * block origin (historic default); 'centre' centres each shorter row over
+   * the block's widest row (the theatre look).
+   */
+  align?: 'left' | 'centre'
   /** Bow depth in px for curved rows (0 or absent = straight). */
   curveDepth?: number
   rowSpacing?: number
@@ -76,11 +82,15 @@ export interface TableBlock extends BlockBase {
   accessibleSeats?: string[]
   companionSeats?: string[]
   blockedSeats?: string[]
+  /** Per-seat label overrides: ref -> display number. */
+  labelOverrides?: Record<string, string>
 }
 
 /**
- * Standing / general-admission zone. Produces NO reserved seats: it renders
- * on the map and sells through its bound GA ticket tier's normal capacity.
+ * Standing / general-admission zone, or a scenery annotation. Produces NO
+ * reserved seats: a 'zone' renders on the map and sells through its bound GA
+ * ticket tier's normal capacity; 'scenery' is a pure room annotation (bar,
+ * mixing desk, exit, cloakroom) that sells nothing and orients everyone.
  */
 export interface AreaBlock extends BlockBase {
   kind: 'area'
@@ -88,6 +98,8 @@ export interface AreaBlock extends BlockBase {
   width: number
   height: number
   capacity?: number
+  /** 'zone' (default, sells via its GA tier) or 'scenery' (annotation only). */
+  style?: 'zone' | 'scenery'
 }
 
 export type SeatBlock = RowsBlock | TableBlock | AreaBlock
@@ -127,6 +139,8 @@ export interface GeneratedArea {
   width: number
   height: number
   capacity?: number
+  /** 'zone' (default) or 'scenery' (annotation only, sells nothing). */
+  style?: 'zone' | 'scenery'
 }
 
 export interface GeneratedLayout {
@@ -197,6 +211,11 @@ function generateRowsBlock(block: RowsBlock): GeneratedRow[] {
       ? alphaOffset(String(block.rowLabelStart ?? 'A'))
       : Number(block.rowLabelStart ?? 1)
 
+  // Centre alignment: shorter rows centre over the block's widest row.
+  const maxCount = Array.isArray(block.seatsPerRow)
+    ? Math.max(0, ...block.seatsPerRow)
+    : block.seatsPerRow
+
   for (let r = 0; r < block.rows; r++) {
     const label =
       scheme === 'alpha' ? alphaLabel(startOffset + r) : String(startOffset + r)
@@ -204,6 +223,9 @@ function generateRowsBlock(block: RowsBlock): GeneratedRow[] {
       ? (block.seatsPerRow[r] ?? 0)
       : block.seatsPerRow
     if (count <= 0) continue
+
+    const centreShift =
+      block.align === 'centre' ? ((maxCount - count) / 2) * seatSpacing : 0
 
     const seats: GeneratedSeat[] = []
     for (let i = 0; i < count; i++) {
@@ -215,7 +237,7 @@ function generateRowsBlock(block: RowsBlock): GeneratedRow[] {
       // Curve: a symmetric bow, deepest mid-row (t = 0.5).
       const t = count === 1 ? 0.5 : i / (count - 1)
       const bow = (block.curveDepth ?? 0) * Math.sin(Math.PI * t)
-      const rawX = block.x + i * seatSpacing
+      const rawX = block.x + centreShift + i * seatSpacing
       const rawY = block.y + r * rowSpacing - bow
       const { x, y } = rotate(rawX, rawY, block.x, block.y, block.rotation ?? 0)
 
@@ -266,7 +288,7 @@ function generateTableBlock(block: TableBlock): GeneratedRow {
     const { x, y } = rotate(rawX, rawY, block.x, block.y, block.rotation ?? 0)
 
     seats.push({
-      number: numberLabel,
+      number: block.labelOverrides?.[ref] ?? numberLabel,
       type: seatType(ref, block),
       ...(block.blockedSeats?.includes(ref) ? { blocked: true } : {}),
       x: round2(x),
@@ -322,6 +344,7 @@ export function generateLayout(blocks: SeatBlock[]): GeneratedLayout {
         width: block.width,
         height: block.height,
         ...(block.capacity != null ? { capacity: block.capacity } : {}),
+        ...(block.style === 'scenery' ? { style: 'scenery' as const } : {}),
       })
       continue
     }

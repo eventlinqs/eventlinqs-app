@@ -3896,6 +3896,14 @@ export type Database = {
         Args: { p_event_id: string; p_seat_map_id: string }
         Returns: number
       }
+      reassign_ticket_seat: {
+        Args: { p_ticket_id: string; p_new_seat_id: string }
+        Returns: Json
+      }
+      rematerialize_seats_additive: {
+        Args: { p_event_id: string; p_seat_map_id: string }
+        Returns: Json
+      }
       organiser_available_balance: {
         Args: { p_currency: string; p_organisation_id: string }
         Returns: number

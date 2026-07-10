@@ -1,7 +1,10 @@
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { canManageOrganisationSeating } from '@/lib/organisations/access'
 import { SeatsManagementClient } from './seats-client'
+import { SyncChartButton } from './sync-chart-button'
 
 type Props = {
   params: Promise<{ id: string }>
@@ -14,7 +17,8 @@ export default async function SeatsManagementPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: event, error: eventError } = await supabase
+  const admin = createAdminClient()
+  const { data: event, error: eventError } = await admin
     .from('events')
     .select('id, title, organisation_id, has_reserved_seating, seat_map_id')
     .eq('id', eventId)
@@ -22,15 +26,9 @@ export default async function SeatsManagementPage({ params }: Props) {
 
   if (eventError || !event) notFound()
 
-  // Verify ownership
-  const { data: org } = await supabase
-    .from('organisations')
-    .select('id')
-    .eq('id', event.organisation_id)
-    .eq('owner_id', user.id)
-    .single()
-
-  if (!org) notFound()
+  // Owner OR owner/admin/manager member (the door-scan trust level).
+  const allowed = await canManageOrganisationSeating(supabase, user.id, event.organisation_id)
+  if (!allowed) notFound()
 
   if (!event.has_reserved_seating) {
     return (
@@ -98,6 +96,11 @@ export default async function SeatsManagementPage({ params }: Props) {
             {event.title}
           </Link>
           <span className="text-sm font-medium text-ink-900">Seat Management</span>
+          {event.seat_map_id && (
+            <span className="ml-auto">
+              <SyncChartButton eventId={eventId} />
+            </span>
+          )}
         </div>
       </div>
 

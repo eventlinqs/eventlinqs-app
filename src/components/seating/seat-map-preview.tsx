@@ -82,7 +82,7 @@ export function SeatMapPreview({ seats, sections, areas = [], className = '' }: 
         STAGE
       </text>
 
-      {/* Standing / GA zones (display-only, exactly as buyers see them) */}
+      {/* Standing / GA zones and scenery (display-only, as buyers see them) */}
       {areas.map((a, i) => (
         <g key={`${a.label}-${i}`}>
           <rect
@@ -91,9 +91,9 @@ export function SeatMapPreview({ seats, sections, areas = [], className = '' }: 
             width={a.width}
             height={a.height}
             rx="6"
-            fill={a.color}
-            opacity={0.28}
-            stroke={a.color}
+            fill={a.style === 'scenery' ? INK_900 : a.color}
+            opacity={a.style === 'scenery' ? 0.08 : 0.28}
+            stroke={a.style === 'scenery' ? '#9CA3AF' : a.color}
             strokeWidth="1.5"
           />
           <text

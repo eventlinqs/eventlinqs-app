@@ -1,9 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { EmptyState } from '@/components/ui/EmptyState'
 import type { SeatBlock } from '@/lib/seating/generate'
 import { SeatMapBuilder } from './seat-map-builder'
+import { deleteSeatMap } from './actions'
 
 interface SeatMap {
   id: string
@@ -28,7 +30,20 @@ interface Props {
  * remain usable on events but reopen as a fresh canvas.
  */
 export function SeatMapsClient({ venueId, venueName, seatMaps }: Props) {
+  const router = useRouter()
   const [editing, setEditing] = useState<{ id: string | null; name: string; blocks: SeatBlock[] } | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [isPending, startTransition] = useTransition()
+
+  const onDelete = (map: SeatMap) => {
+    if (!window.confirm(`Delete "${map.name}"? Events already using it keep their seats; the template is gone for future events.`)) return
+    setDeleteError(null)
+    startTransition(async () => {
+      const result = await deleteSeatMap(venueId, map.id)
+      if (result?.error) setDeleteError(result.error)
+      else router.refresh()
+    })
+  }
 
   if (editing) {
     return (
@@ -91,17 +106,30 @@ export function SeatMapsClient({ venueId, venueName, seatMaps }: Props) {
                   {new Date(map.created_at).toLocaleDateString('en-AU')}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() =>
-                  setEditing({ id: map.id, name: map.name, blocks: map.layout?.blocks ?? [] })
-                }
-                className="h-10 rounded-control border border-ink-200 bg-white px-4 text-sm font-semibold text-ink-900 hover:border-ink-900"
-              >
-                Edit chart
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setEditing({ id: map.id, name: map.name, blocks: map.layout?.blocks ?? [] })
+                  }
+                  className="h-10 rounded-control border border-ink-200 bg-white px-4 text-sm font-semibold text-ink-900 hover:border-ink-900"
+                >
+                  Edit chart
+                </button>
+                <button
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => onDelete(map)}
+                  className="h-10 rounded-control border border-ink-200 bg-white px-4 text-sm font-semibold text-error hover:border-error disabled:opacity-50"
+                >
+                  Delete
+                </button>
+              </div>
             </div>
           ))}
+          {deleteError && (
+            <p role="alert" className="text-sm text-error">{deleteError}</p>
+          )}
         </div>
       ) : (
         <EmptyState

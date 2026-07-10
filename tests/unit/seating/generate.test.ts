@@ -48,6 +48,28 @@ describe('generateLayout - rows blocks', () => {
     expect(layout.totalSeats).toBe(10)
   })
 
+  it('left-anchors uneven rows by default (historic behaviour preserved)', () => {
+    const layout = generateLayout([{ ...base, rows: 2, seatsPerRow: [4, 2] }])
+    const rows = layout.sections[0].rows
+    expect(rows[0].seats[0].x).toBe(100)
+    expect(rows[1].seats[0].x).toBe(100)
+  })
+
+  it('centres uneven rows over the widest row when align is centre (theatre look)', () => {
+    const layout = generateLayout([{ ...base, rows: 3, seatsPerRow: [4, 2, 3], align: 'centre' }])
+    const rows = layout.sections[0].rows
+    // Widest row (4 seats) anchors at the block origin.
+    expect(rows[0].seats[0].x).toBe(100)
+    // 2-seat row shifts by (4-2)/2 * 24 = 24px.
+    expect(rows[1].seats[0].x).toBe(124)
+    // 3-seat row shifts by (4-3)/2 * 24 = 12px.
+    expect(rows[2].seats[0].x).toBe(112)
+    // Row midpoints coincide: each row is centred over the widest.
+    const mid = (seats: { x: number }[]) => (seats[0].x + seats[seats.length - 1].x) / 2
+    expect(mid(rows[1].seats)).toBe(mid(rows[0].seats))
+    expect(mid(rows[2].seats)).toBe(mid(rows[0].seats))
+  })
+
   it('supports custom numbering: numeric rows, seat start, reversed seats', () => {
     const layout = generateLayout([
       {

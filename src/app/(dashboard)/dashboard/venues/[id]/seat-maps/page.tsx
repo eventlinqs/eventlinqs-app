@@ -1,6 +1,8 @@
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { resolveSeatingOrganisation } from '@/lib/organisations/access'
 import { SeatMapsClient } from './seat-maps-client'
 
 type Props = {
@@ -14,15 +16,16 @@ export default async function SeatMapsPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: org } = await supabase
-    .from('organisations')
-    .select('id')
-    .eq('owner_id', user.id)
-    .single()
-
+  // Owner OR organisation member with the owner/admin/manager role (the same
+  // trust level the door scanner already grants). The gate itself runs under
+  // the session client (RLS applies); the venue/chart reads then run under
+  // the admin client scoped to the resolved organisation, so a member is not
+  // blocked by owner-scoped venue RLS.
+  const org = await resolveSeatingOrganisation(supabase, user.id)
   if (!org) notFound()
 
-  const { data: venue, error: venueError } = await supabase
+  const admin = createAdminClient()
+  const { data: venue, error: venueError } = await admin
     .from('venues')
     .select('id, name')
     .eq('id', venueId)
@@ -32,7 +35,7 @@ export default async function SeatMapsPage({ params }: Props) {
 
   if (venueError || !venue) notFound()
 
-  const { data: seatMaps, error: mapsError } = await supabase
+  const { data: seatMaps, error: mapsError } = await admin
     .from('seat_maps')
     .select('id, name, total_seats, created_at, layout')
     .eq('venue_id', venueId)

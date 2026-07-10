@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { holdSeat, releaseSeat } from './actions'
+import { holdSeat, releaseSeat, reassignSeatOccupant } from './actions'
 
 interface Seat {
   id: string
@@ -51,12 +51,56 @@ export function SeatsManagementClient({ eventId, seats, sections }: Props) {
   const [holdingId, setHoldingId] = useState<string | null>(null)
   const [holdReason, setHoldReason] = useState('comp')
   const [holdNotes, setHoldNotes] = useState('')
+  const [movingId, setMovingId] = useState<string | null>(null)
+  const [moveTargetId, setMoveTargetId] = useState<string>('')
+  const [moveNotice, setMoveNotice] = useState<string | null>(null)
   const [filter, setFilter] = useState<string>('all')
   const [sectionFilter, setSectionFilter] = useState<string>('all')
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
   const sectionColorMap = new Map(sections.map(s => [s.id, s.color]))
+  const sectionNameMap = new Map(sections.map(s => [s.id, s.name]))
+
+  const availableTargets = seatList
+    .filter(s => s.status === 'available')
+    .map(s => ({
+      id: s.id,
+      label: `${sectionNameMap.get(s.seat_map_section_id ?? '') ? `${sectionNameMap.get(s.seat_map_section_id ?? '')} · ` : ''}Row ${s.row_label} · Seat ${s.seat_number}`,
+    }))
+
+  function doMove(fromSeatId: string) {
+    if (!moveTargetId) return
+    setError(null)
+    setMoveNotice(null)
+    startTransition(async () => {
+      const result = await reassignSeatOccupant(eventId, fromSeatId, moveTargetId)
+      if (result.error) {
+        setError(result.error)
+        return
+      }
+      setSeatList(prev =>
+        prev.map(s =>
+          s.id === fromSeatId
+            ? { ...s, status: 'available' }
+            : s.id === moveTargetId
+              ? { ...s, status: 'sold' }
+              : s,
+        ),
+      )
+      setMovingId(null)
+      setMoveTargetId('')
+      if (result.moved) {
+        setMoveNotice(
+          `${result.moved.holder ?? 'The attendee'} moved to ${result.moved.to}.` +
+            ` Their ticket and the door scan already show the new seat.` +
+            (result.moved.emailed
+              ? ' They have been emailed about the change.'
+              : ' The email notification could not be sent - let them know directly.'),
+        )
+      }
+    })
+  }
 
   const displayed = seatList.filter(s => {
     if (filter !== 'all' && s.status !== filter) return false
@@ -178,6 +222,12 @@ export function SeatsManagementClient({ eventId, seats, sections }: Props) {
         </div>
       )}
 
+      {moveNotice && (
+        <div aria-live="polite" className="rounded-lg border border-gold-400/50 bg-gold-100/60 px-4 py-3 text-sm text-ink-900">
+          {moveNotice}
+        </div>
+      )}
+
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <div>
@@ -276,8 +326,57 @@ export function SeatsManagementClient({ eventId, seats, sections }: Props) {
                                 Release
                               </button>
                             )}
+                            {seat.status === 'sold' && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setMovingId(movingId === seat.id ? null : seat.id)
+                                  setMoveTargetId('')
+                                }}
+                                className="rounded-lg border border-gold-400 px-2.5 py-1 text-xs font-medium text-gold-600 hover:bg-gold-100 transition-colors"
+                              >
+                                Move attendee
+                              </button>
+                            )}
                           </div>
                         </div>
+
+                        {movingId === seat.id && (
+                          <div className="flex flex-wrap items-end gap-2 border-t border-gold-100 bg-gold-100/40 px-4 pb-3">
+                            <div className="min-w-56 flex-1">
+                              <label className="mb-1 mt-2 block text-xs font-medium text-ink-600">
+                                New seat (the ticket keeps its price; the holder is emailed)
+                              </label>
+                              <select
+                                value={moveTargetId}
+                                onChange={e => setMoveTargetId(e.target.value)}
+                                className="w-full rounded-lg border border-ink-200 px-2 py-1.5 text-xs focus:border-gold-400 focus:outline-none"
+                              >
+                                <option value="">Choose an available seat…</option>
+                                {availableTargets.map(t => (
+                                  <option key={t.id} value={t.id}>{t.label}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="mt-2 flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => doMove(seat.id)}
+                                disabled={isPending || !moveTargetId}
+                                className="rounded-lg bg-gold-500 px-3 py-1.5 text-xs font-medium text-ink-900 transition-colors hover:bg-gold-600 disabled:opacity-50"
+                              >
+                                {isPending ? 'Moving…' : 'Confirm move'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => { setMovingId(null); setMoveTargetId('') }}
+                                className="rounded-lg px-3 py-1.5 text-xs text-ink-600 transition-colors hover:bg-ink-100"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        )}
 
                         {isHolding && (
                           <div className="px-4 pb-3 flex flex-wrap items-end gap-2 bg-amber-50 border-t border-amber-100">

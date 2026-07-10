@@ -35,6 +35,8 @@ export interface SeatAreaData {
   width: number
   height: number
   capacity?: number
+  /** 'zone' (default, sells via its GA tier) or 'scenery' (annotation only). */
+  style?: 'zone' | 'scenery'
 }
 
 interface Props {
@@ -619,24 +621,31 @@ export function SeatSelector({
               </text>
             ))}
 
-            {/* Standing/GA zones: display-only context beneath the seats
-                (their tickets sell through the general-admission panel). */}
+            {/* Standing/GA zones and scenery: display-only context beneath
+                the seats (GA tickets sell through the general-admission
+                panel; scenery orients the room and sells nothing). */}
             {areas.map(area => {
               const ax = area.x - minX + PADDING + ROW_LABEL_GUTTER
               const ay = area.y - minY + PADDING + STAGE_BAND
+              const scenery = area.style === 'scenery'
               return (
                 <g key={`${area.label}-${area.x}-${area.y}`} aria-hidden="true">
                   <rect
                     x={ax} y={ay} width={area.width} height={area.height} rx={10}
-                    fill={area.color} fillOpacity={0.14}
-                    stroke={area.color} strokeWidth={1.5} strokeDasharray="6 4"
+                    fill={scenery ? INK_900 : area.color}
+                    fillOpacity={scenery ? 0.06 : 0.14}
+                    stroke={scenery ? '#9CA3AF' : area.color}
+                    strokeWidth={1.5}
+                    strokeDasharray={scenery ? undefined : '6 4'}
                   />
-                  <text x={ax + area.width / 2} y={ay + area.height / 2 - 2} textAnchor="middle" fontSize={11} fontWeight={700} fill={INK_900}>
+                  <text x={ax + area.width / 2} y={ay + area.height / 2 + (scenery ? 4 : -2)} textAnchor="middle" fontSize={11} fontWeight={700} fill={INK_900}>
                     {area.label}
                   </text>
-                  <text x={ax + area.width / 2} y={ay + area.height / 2 + 12} textAnchor="middle" fontSize={9} fill="#6B7280">
-                    General admission
-                  </text>
+                  {!scenery && (
+                    <text x={ax + area.width / 2} y={ay + area.height / 2 + 12} textAnchor="middle" fontSize={9} fill="#6B7280">
+                      General admission
+                    </text>
+                  )}
                 </g>
               )
             })}

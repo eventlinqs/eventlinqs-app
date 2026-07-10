@@ -21,7 +21,7 @@ import { saveSeatMap } from './actions'
  * generator, so what the organiser sees is exactly what materialises.
  */
 
-type SeatMode = 'move' | 'blocked' | 'accessible' | 'companion' | 'remove'
+type SeatMode = 'move' | 'blocked' | 'accessible' | 'companion' | 'remove' | 'relabel'
 
 const SECTION_COLORS = [
   '#0EA5E9', '#E91E63', '#4CAF50', '#FF9800', '#9C27B0',
@@ -132,6 +132,16 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
     if (mode === 'remove' && block.kind === 'rows') {
       updateBlock(blockId, { removedSeats: toggleRef(block.removedSeats, ref) })
     }
+    if (mode === 'relabel') {
+      const current = block.labelOverrides?.[ref] ?? ref.split('-').pop() ?? ''
+      const next = window.prompt(`New label for seat ${ref}`, current)
+      if (next === null) return
+      const overrides = { ...(block.labelOverrides ?? {}) }
+      const trimmed = next.trim()
+      if (trimmed === '' || trimmed === ref.split('-').pop()) delete overrides[ref]
+      else overrides[ref] = trimmed
+      updateBlock(blockId, { labelOverrides: overrides })
+    }
   }
 
   function addBlock(kind: 'rows' | 'round' | 'square' | 'area') {
@@ -236,6 +246,7 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
         {modeButton('accessible', 'Toggle accessible')}
         {modeButton('companion', 'Toggle companion')}
         {modeButton('remove', 'Remove seat')}
+        {modeButton('relabel', 'Relabel seat')}
         <span className="ml-auto text-sm text-ink-600">
           {layout.totalSeats} seats{layout.areas.length > 0 ? ` + ${layout.areas.length} standing ${layout.areas.length === 1 ? 'zone' : 'zones'}` : ''}
         </span>
@@ -272,15 +283,20 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
                 >
                   <rect
                     x={area.x} y={area.y} width={area.width} height={area.height} rx={10}
-                    fill={area.color} fillOpacity={0.18}
-                    stroke={isSelected ? '#0A1628' : area.color} strokeWidth={isSelected ? 2.5 : 1.5} strokeDasharray="6 4"
+                    fill={area.style === 'scenery' ? '#0A1628' : area.color}
+                    fillOpacity={area.style === 'scenery' ? 0.08 : 0.18}
+                    stroke={isSelected ? '#0A1628' : area.style === 'scenery' ? '#4A4A4A' : area.color}
+                    strokeWidth={isSelected ? 2.5 : 1.5}
+                    strokeDasharray={area.style === 'scenery' ? undefined : '6 4'}
                   />
                   <text x={area.x + area.width / 2} y={area.y + area.height / 2 - 4} textAnchor="middle" fontSize={12} fontWeight={700} fill="#0A1628">
                     {area.label}
                   </text>
-                  <text x={area.x + area.width / 2} y={area.y + area.height / 2 + 12} textAnchor="middle" fontSize={10} fill="#4A4A4A">
-                    {area.capacity ? `${area.capacity} standing` : 'Standing'}
-                  </text>
+                  {area.style !== 'scenery' && (
+                    <text x={area.x + area.width / 2} y={area.y + area.height / 2 + 12} textAnchor="middle" fontSize={10} fill="#4A4A4A">
+                      {area.capacity ? `${area.capacity} standing` : 'Standing'}
+                    </text>
+                  )}
                 </g>
               )
             })}
@@ -475,6 +491,13 @@ function RowsConfig({ block, onChange }: { block: RowsBlock; onChange: (p: Parti
           <input type="number" className={inputClass} value={block.rotation ?? 0}
             onChange={e => onChange({ rotation: Number(e.target.value) || 0 })} />
         </Field>
+        <Field label="Row alignment (uneven rows)">
+          <select className={inputClass} value={block.align ?? 'left'}
+            onChange={e => onChange({ align: e.target.value as 'left' | 'centre' })}>
+            <option value="left">Left-anchored</option>
+            <option value="centre">Centred (theatre)</option>
+          </select>
+        </Field>
       </div>
       <label className="flex items-center gap-2 text-sm text-ink-900">
         <input type="checkbox" checked={block.reverseSeats ?? false}
@@ -519,8 +542,16 @@ function AreaConfig({ block, onChange }: { block: AreaBlock; onChange: (p: Parti
         <Field label="Zone label">
           <input className={inputClass} value={block.label} onChange={e => onChange({ label: e.target.value })} />
         </Field>
+        <Field label="Type">
+          <select className={inputClass} value={block.style ?? 'zone'}
+            onChange={e => onChange({ style: e.target.value as 'zone' | 'scenery' })}>
+            <option value="zone">Standing zone (sells via tier)</option>
+            <option value="scenery">Scenery (bar, exit, mixer)</option>
+          </select>
+        </Field>
         <Field label="Capacity (sold via the tier)">
           <input type="number" min={0} className={inputClass} value={block.capacity ?? 0}
+            disabled={block.style === 'scenery'}
             onChange={e => onChange({ capacity: Math.max(0, Number(e.target.value) || 0) })} />
         </Field>
         <Field label="Width (px)">

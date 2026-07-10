@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { resolveSeatingOrganisation } from '@/lib/organisations/access'
 import { revalidatePath } from 'next/cache'
 import {
   generateLayout,
@@ -184,16 +185,13 @@ export async function saveSeatMap(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'Not authenticated' }
 
-  // Same ownership gate as the import path: the venue must belong to the
-  // signed-in owner's organisation.
-  const { data: org } = await supabase
-    .from('organisations')
-    .select('id')
-    .eq('owner_id', user.id)
-    .single()
+  // Owner OR owner/admin/manager member (the door-scan trust level). The
+  // venue must belong to the resolved organisation; the venue read runs on
+  // the admin client so a member is not blocked by owner-scoped venue RLS.
+  const org = await resolveSeatingOrganisation(supabase, user.id)
   if (!org) return { success: false, error: 'Organisation not found' }
 
-  const { data: venue } = await supabase
+  const { data: venue } = await createAdminClient()
     .from('venues')
     .select('id')
     .eq('id', venueId)
@@ -282,15 +280,11 @@ export async function importSeatMapCsv(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'Not authenticated' }
 
-  // Verify venue belongs to user's org
-  const { data: org } = await supabase
-    .from('organisations')
-    .select('id')
-    .eq('owner_id', user.id)
-    .single()
+  // Verify venue belongs to an organisation the caller may manage seating for
+  const org = await resolveSeatingOrganisation(supabase, user.id)
   if (!org) return { success: false, error: 'Organisation not found' }
 
-  const { data: venue } = await supabase
+  const { data: venue } = await createAdminClient()
     .from('venues')
     .select('id')
     .eq('id', venueId)
@@ -371,14 +365,21 @@ export async function deleteSeatMap(venueId: string, seatMapId: string): Promise
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
-  const { data: org } = await supabase
-    .from('organisations')
-    .select('id')
-    .eq('owner_id', user.id)
-    .single()
+  const org = await resolveSeatingOrganisation(supabase, user.id)
   if (!org) return { error: 'Organisation not found' }
 
   const admin = createAdminClient()
+
+  // The venue must belong to the caller's organisation: without this check a
+  // caller could soft-delete another organisation's chart by guessing ids.
+  const { data: venue } = await admin
+    .from('venues')
+    .select('id')
+    .eq('id', venueId)
+    .eq('organisation_id', org.id)
+    .single()
+  if (!venue) return { error: 'Venue not found or access denied' }
+
   const { error } = await admin
     .from('seat_maps')
     .update({ is_active: false })
