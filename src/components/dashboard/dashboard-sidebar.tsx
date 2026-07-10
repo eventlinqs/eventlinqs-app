@@ -10,6 +10,7 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
+  Gift,
   Hourglass,
   LayoutDashboard,
   PanelLeft,
@@ -44,6 +45,7 @@ const ITEMS: Item[] = [
   },
   { href: '/dashboard/tickets', label: 'My tickets', icon: Ticket },
   { href: '/dashboard/my-waitlists', label: 'Waitlists', icon: Hourglass },
+  { href: '/dashboard/invites', label: 'Founding invites', icon: Gift, organiserOnly: true },
   { href: '/dashboard/my-squads', label: 'Squads', icon: Users },
   // /dashboard/insights nav entry hidden 23 May 2026 per
   // AUDIT-FUNCTIONALITY-2026-05-23.md MEDIUM-4. Restore when insights

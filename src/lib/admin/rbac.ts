@@ -35,6 +35,8 @@ export type AdminCapability =
   | 'admin.venues.manage'
   // Broadcast Layer stage switches (feature_flags table)
   | 'admin.flags.manage'
+  // Founder demand-signal dashboard + waitlist-to-invite bridge
+  | 'admin.network.manage'
 
 /** Every capability, in display order. Source of truth for the role matrix. */
 export const ALL_CAPABILITIES: readonly AdminCapability[] = [
@@ -50,6 +52,7 @@ export const ALL_CAPABILITIES: readonly AdminCapability[] = [
   'admin.payouts.disburse',
   'admin.venues.manage',
   'admin.flags.manage',
+  'admin.network.manage',
 ]
 
 /** Human-readable capability descriptions for the admin UI matrix. */
@@ -66,6 +69,7 @@ export const CAPABILITY_LABELS: Record<AdminCapability, string> = {
   'admin.payouts.disburse': 'Disburse payouts',
   'admin.venues.manage': 'Manage venue revenue sharing',
   'admin.flags.manage': 'Switch platform feature stages',
+  'admin.network.manage': 'View demand signal and issue founding invites',
 }
 
 const ROLE_CAPABILITIES: Record<AdminRole, ReadonlySet<AdminCapability>> = {
@@ -83,6 +87,7 @@ const ROLE_CAPABILITIES: Record<AdminRole, ReadonlySet<AdminCapability>> = {
     'admin.payouts.disburse',
     'admin.venues.manage',
     'admin.flags.manage',
+    'admin.network.manage',
   ]),
   support: new Set<AdminCapability>([
     'admin.dashboard.view',

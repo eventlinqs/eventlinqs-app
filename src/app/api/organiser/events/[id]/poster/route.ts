@@ -101,6 +101,17 @@ export async function GET(
     coverImage: await embeddableCover(event?.cover_image_url ?? null),
   })
 
+  // Record the download as a real Launch Kit usage signal for the founder's
+  // demand-signal view. Best-effort: never block or fail the download.
+  try {
+    await admin.from('kit_poster_downloads').insert({
+      event_id: id,
+      organisation_id: organiserEvent.organisationId,
+    })
+  } catch {
+    // signal only; a lost row never affects the poster
+  }
+
   const filename = `${organiserEvent.slug || 'event'}-poster.pdf`
   return new NextResponse(Buffer.from(pdf), {
     headers: {

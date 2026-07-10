@@ -252,6 +252,72 @@ export type Database = {
         }
         Relationships: []
       }
+      founding_invites: {
+        Row: {
+          accepted_at: string | null
+          accepted_by_user_id: string | null
+          accepted_org_id: string | null
+          city_slug: string
+          code: string
+          created_at: string
+          id: string
+          invitee_email: string | null
+          inviter_kind: string
+          inviter_name: string
+          inviter_org_id: string | null
+          status: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by_user_id?: string | null
+          accepted_org_id?: string | null
+          city_slug: string
+          code: string
+          created_at?: string
+          id?: string
+          invitee_email?: string | null
+          inviter_kind: string
+          inviter_name: string
+          inviter_org_id?: string | null
+          status?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by_user_id?: string | null
+          accepted_org_id?: string | null
+          city_slug?: string
+          code?: string
+          created_at?: string
+          id?: string
+          invitee_email?: string | null
+          inviter_kind?: string
+          inviter_name?: string
+          inviter_org_id?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
+      kit_poster_downloads: {
+        Row: {
+          downloaded_at: string
+          event_id: string | null
+          id: string
+          organisation_id: string | null
+        }
+        Insert: {
+          downloaded_at?: string
+          event_id?: string | null
+          id?: string
+          organisation_id?: string | null
+        }
+        Update: {
+          downloaded_at?: string
+          event_id?: string | null
+          id?: string
+          organisation_id?: string | null
+        }
+        Relationships: []
+      }
       city_waitlist_signups: {
         Row: {
           city_slug: string
@@ -1448,6 +1514,10 @@ export type Database = {
       organisations: {
         Row: {
           created_at: string
+          founding_bonus_months: number
+          founding_city: string | null
+          founding_since: string | null
+          is_founding: boolean
           description: string | null
           email: string | null
           hold_amount_cents: number
@@ -1479,6 +1549,10 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          founding_bonus_months?: number
+          founding_city?: string | null
+          founding_since?: string | null
+          is_founding?: boolean
           description?: string | null
           email?: string | null
           hold_amount_cents?: number
@@ -1510,6 +1584,10 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          founding_bonus_months?: number
+          founding_city?: string | null
+          founding_since?: string | null
+          is_founding?: boolean
           description?: string | null
           email?: string | null
           hold_amount_cents?: number
@@ -3894,6 +3972,10 @@ export type Database = {
       }
       materialize_seats: {
         Args: { p_event_id: string; p_seat_map_id: string }
+        Returns: number
+      }
+      claim_founding_spot: {
+        Args: { p_org_id: string; p_city_slug: string }
         Returns: number
       }
       reassign_ticket_seat: {
