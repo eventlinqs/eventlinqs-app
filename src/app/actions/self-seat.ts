@@ -26,11 +26,13 @@ export async function getSelfSeatOptions(
   const admin = createAdminClient()
   const { data: ticket } = await admin
     .from('tickets')
-    .select('id, user_id, event_id, seat_id, events:event_id(allow_seat_self_service)')
+    .select('id, order_id, event_id, seat_id, orders:order_id(user_id), events:event_id(allow_seat_self_service)')
     .eq('id', ticketId)
     .maybeSingle()
 
-  if (!ticket || ticket.user_id !== user.id) return { options: [], error: 'Ticket not found.' }
+  // Ownership is via the order's buyer (tickets carry no user_id).
+  const ownerId = (ticket?.orders as { user_id?: string | null } | null)?.user_id
+  if (!ticket || ownerId !== user.id) return { options: [], error: 'Ticket not found.' }
   const allowed = (ticket.events as { allow_seat_self_service?: boolean } | null)?.allow_seat_self_service
   if (!allowed) return { options: [], error: 'Seat changes are not enabled for this event.' }
 
@@ -64,11 +66,12 @@ export async function changeMySeat(
   const admin = createAdminClient()
   const { data: ticket } = await admin
     .from('tickets')
-    .select('id, user_id, event_id, events:event_id(allow_seat_self_service, slug)')
+    .select('id, order_id, event_id, orders:order_id(user_id), events:event_id(allow_seat_self_service, slug)')
     .eq('id', ticketId)
     .maybeSingle()
 
-  if (!ticket || ticket.user_id !== user.id) return { error: 'Ticket not found.' }
+  const ownerId = (ticket?.orders as { user_id?: string | null } | null)?.user_id
+  if (!ticket || ownerId !== user.id) return { error: 'Ticket not found.' }
   const ev = ticket.events as { allow_seat_self_service?: boolean; slug?: string } | null
   if (!ev?.allow_seat_self_service) return { error: 'Seat changes are not enabled for this event.' }
 

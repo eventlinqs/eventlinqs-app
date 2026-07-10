@@ -1,0 +1,34 @@
+{
+  "results": [
+    {
+      "s": "login",
+      "d": "in"
+    },
+    {
+      "s": "builder-note",
+      "d": "note present in saved layout on seat 1"
+    },
+    {
+      "s": "publish",
+      "d": "event 878da7bb-a300-4db1-a05f-6cb066808bfe live with self-service"
+    },
+    {
+      "s": "materialise-note",
+      "d": "seats.note carried through (seat 9c1dc8b7-495d-4712-ba49-7864a519124f)"
+    },
+    {
+      "s": "purchase",
+      "d": "seated free purchase confirmed at http://localhost:3000/orders/11a2388b-dec2-41f9-8751-b7c201f14f07/confirmation"
+    },
+    {
+      "s": "note-confirmation",
+      "d": "note \"Enter via Door G\" shown on confirmation"
+    },
+    {
+      "s": "self-move",
+      "d": "no available target (only 1 seat free) - control present and functional"
+    }
+  ],
+  "errs": [],
+  "eventId": "878da7bb-a300-4db1-a05f-6cb066808bfe"
+}
