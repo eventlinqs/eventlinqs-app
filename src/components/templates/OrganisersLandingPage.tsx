@@ -107,6 +107,7 @@ const BANDS: FeatureBand[] = [
       'A4 QR poster and invitation card, generated for you',
       'Tracked share links for WhatsApp, Instagram, anywhere',
       'Live reach: every click and sale, attributed by channel',
+      'Tag your lineup: each performer gets a profile, a place on your event page, and the exact tickets their sharing sold',
     ],
     image: ORGANISER_BANDS.selfServe,
   },

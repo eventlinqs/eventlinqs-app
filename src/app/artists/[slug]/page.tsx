@@ -1,13 +1,15 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { fetchArtistBySlug, fetchArtistUpcomingShows } from '@/lib/broadcast/artists'
 import { FollowButton } from '@/components/features/follow/follow-button'
-import { OrganiserAvatar } from '@/components/media/OrganiserAvatar'
-import { SiteHeader } from '@/components/layout/site-header'
-import { SiteFooter } from '@/components/layout/site-footer'
+import { PageShell } from '@/components/layout/PageShell'
+import { ContentSection } from '@/components/layout/ContentSection'
+import { SnapRailScroller } from '@/components/ui/snap-rail'
+import { EventCard, type EventCardData } from '@/components/features/events/event-card'
+import { CategoryHeroEmpty } from '@/components/ui/CategoryHeroEmpty'
+import { OrganiserProfileHero } from '@/components/features/organisers/organiser-profile-hero'
 
 export const revalidate = 300
 
@@ -18,6 +20,10 @@ type Props = { params: Promise<{ slug: string }> }
  * shows. An artist exists on the platform independent of any single event.
  * Gated on broadcast_artists: while the stage is off the route is a real
  * 404, so nothing half-on ever faces a user.
+ *
+ * Presentation inherits the established profile pattern (the shared
+ * OrganiserProfileHero banner and the organiser-profile shows rail), so the
+ * artist surface carries the same premium treatment as every other profile.
  */
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -36,6 +42,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
+async function fetchShowCards(
+  admin: ReturnType<typeof createAdminClient>,
+  eventIds: string[],
+): Promise<EventCardData[]> {
+  if (eventIds.length === 0) return []
+  const { data } = await admin
+    .from('events')
+    .select(
+      'id, slug, title, cover_image_url, thumbnail_url, start_date, end_date, venue_name, venue_city, venue_country, created_at, is_free, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)',
+    )
+    .in('id', eventIds)
+    .order('start_date', { ascending: true })
+  return (data ?? []) as unknown as EventCardData[]
+}
+
 export default async function ArtistProfilePage({ params }: Props) {
   const { slug } = await params
   if (!(await isFeatureEnabled('broadcast_artists'))) notFound()
@@ -45,77 +66,87 @@ export default async function ArtistProfilePage({ params }: Props) {
   if (!artist) notFound()
 
   const shows = await fetchArtistUpcomingShows(admin, artist.id)
+  const showCards = await fetchShowCards(admin, shows.map((s) => s.eventId))
+
+  const cityNames = new Set<string>()
+  for (const card of showCards) if (card.venue_city) cityNames.add(card.venue_city)
+
+  // The banner is real photography from the artist's next show; the shared
+  // hero falls back to the navy gradient when no show carries an image, so
+  // the surface is never a blank band.
+  const coverImage =
+    showCards.find((c) => c.cover_image_url)?.cover_image_url ?? null
+
+  const subtitle =
+    artist.bio ??
+    `${artist.name} on EventLinqs: their shows, their lineups, and tickets in one place.`
 
   return (
-    <div className="flex min-h-screen flex-col bg-canvas">
-      <SiteHeader />
-      <main id="main-content" className="flex-1">
-        <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-          <div className="flex flex-wrap items-start gap-6">
-            <OrganiserAvatar src={artist.image_url} name={artist.name} size="lg" />
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gold-800">
-                Artist
-              </p>
-              <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight text-ink-900 sm:text-4xl">
-                {artist.name}
-              </h1>
-              {artist.bio && <p className="mt-3 max-w-2xl text-base text-ink-600">{artist.bio}</p>}
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <FollowButton type="artist" id={artist.id} />
-                {Object.entries(artist.links).map(([label, url]) => (
-                  <a
-                    key={label}
-                    href={url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex h-11 items-center rounded-full border border-ink-200 bg-white px-4 text-sm font-semibold capitalize text-ink-900 transition-colors hover:border-gold-800"
-                  >
-                    {label}
-                  </a>
-                ))}
-              </div>
-            </div>
+    <PageShell>
+      <OrganiserProfileHero
+        name={artist.name}
+        coverImage={coverImage}
+        logoUrl={artist.image_url}
+        subtitle={subtitle}
+        stats={[
+          {
+            label: shows.length === 1 ? 'upcoming show' : 'upcoming shows',
+            value: shows.length,
+            icon: 'cal',
+          },
+          ...(cityNames.size > 0
+            ? [
+                {
+                  label: cityNames.size === 1 ? 'city' : 'cities',
+                  value: cityNames.size,
+                  icon: 'pin' as const,
+                },
+              ]
+            : []),
+        ]}
+        actionSlot={
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <FollowButton type="artist" id={artist.id} />
+            {Object.entries(artist.links).map(([label, url]) => (
+              <a
+                key={label}
+                href={url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex h-11 items-center rounded-full border border-ink-200 bg-white px-4 text-sm font-semibold capitalize text-ink-900 transition-colors hover:border-gold-800"
+              >
+                {label}
+              </a>
+            ))}
           </div>
+        }
+      />
 
-          <div className="mt-12">
-            <h2 className="border-t border-ink-200 pt-6 text-sm font-bold uppercase tracking-[0.14em] text-ink-900">
-              Upcoming shows
-            </h2>
-            {shows.length === 0 ? (
-              <p className="mt-4 text-sm text-ink-600">
-                Nothing announced right now. Follow {artist.name} and you hear the moment the
-                next show lands.
-              </p>
-            ) : (
-              <ul className="mt-5 divide-y divide-ink-200/60 rounded-xl border border-ink-200 bg-white">
-                {shows.map((show) => (
-                  <li key={show.eventId}>
-                    <Link
-                      href={`/events/${show.slug}`}
-                      className="flex min-h-[44px] flex-wrap items-center justify-between gap-3 px-5 py-4 transition-colors hover:bg-ink-100"
-                    >
-                      <span className="min-w-0">
-                        <span className="block text-sm font-semibold text-ink-900">{show.title}</span>
-                        <span className="block text-xs text-ink-600">{show.venueLabel}</span>
-                      </span>
-                      <span className="text-sm font-medium text-gold-800">
-                        {new Date(show.startDate).toLocaleDateString('en-AU', {
-                          weekday: 'short',
-                          day: 'numeric',
-                          month: 'short',
-                          timeZone: show.timezone ?? 'Australia/Sydney',
-                        })}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </section>
-      </main>
-      <SiteFooter />
-    </div>
+      <ContentSection surface="alt" width="wide" topBorder>
+        {showCards.length > 0 ? (
+          <SnapRailScroller
+            railLabel={`Upcoming shows from ${artist.name}`}
+            containerBg="ink-100"
+            header={{
+              eyebrow: 'Upcoming',
+              title: `Upcoming shows from ${artist.name}`,
+            }}
+          >
+            {showCards.map((card) => (
+              <div key={card.id} className="w-[280px] shrink-0 snap-start">
+                <EventCard event={card} variant="rail" />
+              </div>
+            ))}
+          </SnapRailScroller>
+        ) : (
+          <CategoryHeroEmpty
+            eyebrow="UPCOMING"
+            headline={`Nothing announced from ${artist.name} just yet.`}
+            subhead={`Performers on EventLinqs get a profile, a place on every lineup they play, and the exact number of tickets their sharing sold. Follow ${artist.name} and you hear the moment the next show lands.`}
+            primaryAction={{ label: 'Browse events', href: '/events' }}
+          />
+        )}
+      </ContentSection>
+    </PageShell>
   )
 }
