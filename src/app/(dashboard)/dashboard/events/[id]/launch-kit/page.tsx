@@ -24,7 +24,7 @@ import {
   type ShareChannel,
 } from '@/lib/broadcast/share-links'
 import { getSiteUrl } from '@/lib/site-url'
-import { HeroMedia } from '@/components/media'
+import { HeroMedia, MarketingMedia } from '@/components/media'
 import { Reveal } from '@/components/ui/reveal'
 import { CopyLinkButton } from '@/components/launch-kit/copy-link-button'
 import { LaunchShareRow } from '@/components/launch-kit/launch-share-row'
@@ -160,17 +160,20 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
   const kitLinks: Partial<Record<ShareChannel, string>> = {}
   let qrShortUrl: string | null = null
   if (shareOn) {
-    for (const channel of [...KIT_CHANNELS, 'qr'] as ShareChannel[]) {
-      const link = await getOrCreateShareLink({
-        eventId: id,
-        channel,
-        createdBy: organiserEvent.userId,
-      })
-      if (link) {
-        const url = buildShortUrl(siteUrl, link.code)
-        if (channel === 'qr') qrShortUrl = url
-        else kitLinks[channel] = url
-      }
+    // Minted in parallel: the kit is the delivery moment and must land fast.
+    const channels = [...KIT_CHANNELS, 'qr'] as ShareChannel[]
+    const minted = await Promise.all(
+      channels.map(channel =>
+        getOrCreateShareLink({ eventId: id, channel, createdBy: organiserEvent.userId }).then(
+          link => ({ channel, link }),
+        ),
+      ),
+    )
+    for (const { channel, link } of minted) {
+      if (!link) continue
+      const url = buildShortUrl(siteUrl, link.code)
+      if (channel === 'qr') qrShortUrl = url
+      else kitLinks[channel] = url
     }
   } else {
     // Share tooling off: every button still works with the plain live URL, so
@@ -258,7 +261,7 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
             className="pointer-events-none absolute inset-0"
             style={{
               background:
-                'linear-gradient(to top, rgba(10,22,40,0.88) 0%, rgba(10,22,40,0.55) 45%, rgba(10,22,40,0.12) 80%, rgba(10,22,40,0.00) 100%)',
+                'linear-gradient(to top, rgba(10,22,40,0.92) 0%, rgba(10,22,40,0.68) 45%, rgba(10,22,40,0.18) 80%, rgba(10,22,40,0.02) 100%)',
             }}
           />
           <div className="relative z-10 flex min-h-[300px] flex-col justify-end p-6 sm:min-h-[320px] sm:p-8">
@@ -299,10 +302,13 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
                   <ArrowUpRight className="h-4 w-4" aria-hidden />
                 </a>
                 <CopyLinkButton url={eventUrl} variant="dark" />
-                <span className="max-w-full truncate text-xs text-white/70 sm:text-sm">
-                  {eventUrl.replace(/^https?:\/\//, '')}
-                </span>
               </div>
+              {/* The live URL wraps (break-all), never truncates: a nowrap
+                  block's min-content is the full string and stretches the
+                  whole dashboard past the viewport on mobile. */}
+              <p className="mt-3 max-w-full break-all text-xs text-white/70 sm:text-sm">
+                {eventUrl.replace(/^https?:\/\//, '')}
+              </p>
             </div>
           </div>
         </div>
@@ -334,7 +340,10 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
       </Reveal>
 
       {/* ── The print + preview pair: QR poster and invitation card ───────── */}
-      <Reveal stagger as="div" className="mt-6 grid gap-6 lg:grid-cols-2">
+      {/* grid-cols-1 base is load-bearing: without it the mobile track is
+          content-sized (auto) and a card's intrinsic width pushes the whole
+          dashboard wider than the viewport. */}
+      <Reveal stagger as="div" className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* QR poster */}
         <section
           aria-labelledby="kit-poster-heading"
@@ -348,7 +357,7 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
               Your A4 QR poster
             </h2>
           </div>
-          <div className="flex flex-1 flex-wrap items-center gap-6 px-6 py-5">
+          <div className="flex flex-1 flex-wrap content-center items-center gap-6 px-6 py-5">
             {qrSvg ? (
               <div className="flex flex-col items-center gap-2">
                 <div
@@ -389,10 +398,25 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
             </h2>
           </div>
           <div className="flex flex-1 flex-col justify-between px-6 py-5">
-            <p className="text-sm leading-relaxed text-ink-600">
-              Every link you share unfurls as a designed invitation: your cover photo, the title,
-              date and venue on the EventLinqs navy, automatically, on WhatsApp, Instagram,
-              Facebook, X and LinkedIn. Nothing to build, nothing to export.
+            {/* The card's own cover in the invitation's 1200x630 frame: the
+                visual anchor (details stay below the image, never on it). */}
+            <div className="overflow-hidden rounded-xl border border-ink-100 shadow-sm">
+              <div className="relative aspect-[1200/630]">
+                <MarketingMedia src={event.cover_image_url ?? ''} alt="" variant="tile" />
+              </div>
+              <div className="flex items-center justify-between bg-[#0A1628] px-3 py-1.5">
+                <span className="shrink-0 font-display text-[10px] font-bold uppercase tracking-[0.2em] text-white">
+                  Eventlinqs
+                </span>
+                <span className="min-w-0 flex-1 truncate pl-3 text-right text-[10px] text-white/70">
+                  {organiserEvent.title} · {dateLabel}
+                </span>
+              </div>
+            </div>
+            <p className="mt-4 text-sm leading-relaxed text-ink-600">
+              Every link you share unfurls as a designed invitation: your cover photo, title,
+              date and venue on the EventLinqs navy, automatically, on every channel. Nothing
+              to build, nothing to export.
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <a
@@ -485,7 +509,7 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
               <ArrowUpRight className="h-4 w-4" aria-hidden />
             </Link>
           </div>
-          <div className="grid gap-px bg-ink-100 sm:grid-cols-4">
+          <div className="grid grid-cols-1 gap-px bg-ink-100 sm:grid-cols-4">
             {reachStats.map(stat => (
               <div key={stat.label} className="bg-white px-6 py-5">
                 <p className="font-display text-3xl font-extrabold leading-none tracking-tight text-[var(--brand-accent-strong)]">
@@ -523,7 +547,7 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
 
       {/* ── Next steps ────────────────────────────────────────────────────── */}
       <Reveal as="nav" aria-label="Next steps" className="mt-6">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {nextSteps.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}

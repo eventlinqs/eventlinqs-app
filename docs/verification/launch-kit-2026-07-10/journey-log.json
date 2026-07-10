@@ -1,0 +1,79 @@
+{
+  "results": [
+    {
+      "step": "login",
+      "detail": "landed on http://localhost:3000/dashboard"
+    },
+    {
+      "step": "organisation",
+      "detail": "already exists"
+    },
+    {
+      "step": "venue",
+      "detail": "already exists"
+    },
+    {
+      "step": "seat-map",
+      "detail": "already exists (40 seats)"
+    },
+    {
+      "step": "wizard-step6",
+      "detail": "seat map option chosen: Seating chart (40 seats)"
+    },
+    {
+      "step": "publish",
+      "detail": "landed on http://localhost:3000/dashboard/events/438310b9-d1c2-4239-8897-2d7ce2ede1ba/launch-kit?published=1"
+    },
+    {
+      "step": "kit",
+      "detail": "all sections present; seated section: true"
+    },
+    {
+      "step": "poster",
+      "detail": "valid PDF, 285 KB"
+    },
+    {
+      "step": "qr",
+      "detail": "decoded: https://www.eventlinqs.com/s/Id3fLP3Abv"
+    },
+    {
+      "step": "short-link",
+      "detail": "anonymous click landed on http://localhost:3000/events/geelong-waterfront-sessions-73542-yjdzgo"
+    },
+    {
+      "step": "share-whatsapp",
+      "detail": "tracked whatsapp link clicked locally: http://localhost:3000/s/pEtXauMQUC -> http://localhost:3000/events/geelong-waterfront-sessions-73542-yjdzgo"
+    },
+    {
+      "step": "reach-db",
+      "detail": "share links minted: linkedin, instagram, facebook, whatsapp, x, linkedin, qr, copy, qr, email, email, copy, whatsapp, x, instagram, facebook"
+    },
+    {
+      "step": "waitlist-geelong",
+      "detail": "joined as organiser through the real UI"
+    },
+    {
+      "step": "waitlist-sydney",
+      "detail": "joined as attendee with marketing opt-in through the real UI"
+    },
+    {
+      "step": "waitlist-db",
+      "detail": "{\"rows\":[{\"city_slug\":\"geelong\",\"full_name\":\"Jordan Rivers\",\"email\":\"jordan.rivers.kit@example.com\",\"role\":\"organiser\",\"marketing_opt_in\":false,\"founding_candidate\":true,\"consent_text\":\"Join the Geelong waitlist: EventLinqs will email you when Geelong opens and, if you registered as an organiser, about Founding Organiser invitations. Nothing else, and one click unsubscribes you.\",\"unsubscribe_token\":\"redacted\",\"unsubscribed_at\":null},{\"city_slug\":\"sydney\",\"full_name\":\"Priya Nair\",\"email\":\"priya.nair.kit@example.com\",\"role\":\"attendee\",\"marketing_opt_in\":true,\"founding_candidate\":false,\"consent_text\":\"Join the Sydney waitlist: EventLinqs will email you when Sydney opens and, if you registered as an organiser, about Founding Organiser invitations. Nothing else, and one click unsubscribes you. | Optional updates opt-in ticked: Also send me occasional EventLinqs updates: new cities, new tools, and organiser offers.\",\"unsubscribe_token\":\"redacted\",\"unsubscribed_at\":null}],\"counts\":{\"geelong\":1,\"sydney\":1}}"
+    },
+    {
+      "step": "unsubscribe",
+      "detail": "works: unsubscribed_at=2026-07-09T23:30:22.763+00:00, opt-in cleared=true"
+    },
+    {
+      "step": "organisers",
+      "detail": "tool-first hero + founding offer verified on the page"
+    },
+    {
+      "step": "mobile",
+      "detail": "kit + waitlist + organisers captured at 390x844"
+    }
+  ],
+  "consoleErrors": [],
+  "eventId": "438310b9-d1c2-4239-8897-2d7ce2ede1ba",
+  "title": "Geelong Waterfront Sessions 73542"
+}
