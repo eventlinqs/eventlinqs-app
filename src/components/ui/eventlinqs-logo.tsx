@@ -36,7 +36,7 @@ export function EventlinqsLogo({
   // production the photo provides ample contrast, but axe-core's
   // color-contrast rule walks past transparent backgrounds to canvas
   // (#fafaf7) and reports white-on-canvas at 1.04:1 (Lighthouse
-  // Accessibility flags this on `/culture/african/sydney`). Wrapping the
+  // Accessibility flags this on `/community/african/sydney`). Wrapping the
   // inverted wordmark in a small navy chip with alpha 0.95 (axe-opaque
   // threshold) provides a guaranteed-dark background for the contrast
   // computation while keeping the State A look-and-feel subtle. The

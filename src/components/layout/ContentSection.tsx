@@ -1,12 +1,24 @@
 import type { ReactNode } from 'react'
+import { Reveal } from '@/components/ui/reveal'
 
 type SurfaceName = 'base' | 'alt' | 'dark'
 type WidthName = 'prose' | 'default' | 'wide'
+type PadName = 'default' | 'rail'
+
+// Vertical rhythm presets. 'default' is the interior-page band rhythm (unchanged).
+// 'rail' matches the homepage SECTION_RAIL beat (py-6 sm:py-8) so a band stacked
+// among rails produces the same 64px seam as every rail - no oversized gap.
+const pads: Record<PadName, string> = {
+  default: 'py-16 md:py-20 lg:py-24',
+  rail: 'py-6 sm:py-8',
+}
 
 interface ContentSectionProps {
   surface?: SurfaceName
   /** Controls the max-width of the inner container. Default 'default'. */
   width?: WidthName
+  /** Vertical padding rhythm. Default 'default'; 'rail' matches SECTION_RAIL. */
+  pad?: PadName
   children: ReactNode
   /** Optional section id for anchor links / in-page nav */
   id?: string
@@ -15,6 +27,12 @@ interface ContentSectionProps {
   className?: string
   /** Renders a subtle accent gradient line at the top of the section. Default false. */
   topBorder?: boolean
+  /**
+   * Fade-rise the section content on scroll-in (Motion law). Use on below-fold
+   * interior sections. No-ops without JS / under reduced-motion / for headless
+   * audits (the shared Reveal primitive is gated by html[data-motion=1]).
+   */
+  reveal?: boolean
 }
 
 const surfaces: Record<SurfaceName, string> = {
@@ -27,7 +45,8 @@ const surfaces: Record<SurfaceName, string> = {
  * max-w values:
  *   prose   → max-w-3xl  (~672px)  - long-form reading (legal, help, articles)
  *   default → max-w-6xl  (~1152px) - standard content, most interior sections
- *   wide    → max-w-7xl  (~1280px) - full-width grids, matching homepage sections
+ *   wide    → max-w-7xl  (1400px)  - full-width grids, matching homepage sections
+ *             (the sitewide page width; see globals.css `--container-7xl`)
  */
 const widths: Record<WidthName, string> = {
   prose:   'max-w-3xl',
@@ -49,17 +68,19 @@ const widths: Record<WidthName, string> = {
 export function ContentSection({
   surface = 'base',
   width = 'default',
+  pad = 'default',
   children,
   id,
   'aria-labelledby': ariaLabelledby,
   className = '',
   topBorder = false,
+  reveal = false,
 }: ContentSectionProps) {
   return (
     <section
       id={id}
       aria-labelledby={ariaLabelledby}
-      className={`relative ${surfaces[surface]} py-16 md:py-20 lg:py-24 ${className}`}
+      className={`relative ${surfaces[surface]} ${pads[pad]} ${className}`}
     >
       {topBorder && (
         <div
@@ -67,12 +88,13 @@ export function ContentSection({
           className="pointer-events-none absolute left-0 right-0 top-0"
           style={{
             height: '1px',
-            background: 'linear-gradient(90deg, transparent, rgba(74, 144, 217, 0.25) 50%, transparent)',
+            // Brand gold accent (was off-brand blue rgba(74,144,217); #4A90D9).
+            background: 'linear-gradient(90deg, transparent, rgba(212, 160, 23, 0.30) 50%, transparent)',
           }}
         />
       )}
       <div className={`mx-auto ${widths[width]} px-4 md:px-6 lg:px-8`}>
-        {children}
+        {reveal ? <Reveal>{children}</Reveal> : children}
       </div>
     </section>
   )

@@ -6,6 +6,7 @@ import { AccessCodeInput } from '@/components/features/events/access-code-input'
 import { SocialProofBadge } from '@/components/inventory/social-proof-badge'
 import type { TicketTier, EventAddon } from '@/types/database'
 import type { TierInventory } from '@/lib/redis/inventory-cache'
+import type { FeeRates, FeePassType } from '@/lib/payments/fee-math'
 
 // Why a client wrapper: the page used to call `getUnlockedTierIds()` on the
 // server (cookie read), which disqualified `/events/[slug]` from static
@@ -32,6 +33,10 @@ interface Props {
   // Paid event whose organiser has not finished Stripe setup: render the
   // not-on-sale state through the selector and show no buy controls.
   saleBlocked?: boolean
+  // ACCC all-in display: the event's live fee VALUES and who carries them, so
+  // the selector shows the true total (incl. fees) before checkout.
+  feeRates?: FeeRates
+  feePassType?: FeePassType
 }
 
 function isTierVisible(tier: EnrichedTier, now: Date, unlockedIds: string[]): boolean {
@@ -106,6 +111,8 @@ export function TicketPanelClient(props: Props) {
         currency={visibleTiers[0]?.currency ?? props.defaultCurrency}
         waitlistEnabled={props.waitlistEnabled}
         squadBookingEnabled={props.squadBookingEnabled}
+        feeRates={props.feeRates}
+        feePassType={props.feePassType}
       />
 
       {showAccessCodeInput && (

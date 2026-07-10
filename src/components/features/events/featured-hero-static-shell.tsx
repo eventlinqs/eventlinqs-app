@@ -86,7 +86,7 @@ export function FeaturedHeroStaticShell({
               </Link>
               <Link
                 href="/events"
-                className="inline-flex items-center rounded-lg border border-white/25 bg-white/5 px-6 py-3 text-base font-semibold text-white backdrop-blur-md transition-colors duration-200 hover:border-white/50 hover:bg-white/10"
+                className="inline-flex items-center rounded-lg border border-white/30 bg-[var(--color-ink-900)] px-6 py-3 text-base font-semibold text-white transition-colors duration-200 hover:border-white/60 hover:bg-[var(--color-navy-950)]"
               >
                 Browse all events
               </Link>

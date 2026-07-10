@@ -1,0 +1,77 @@
+{
+  "event": {
+    "id": "f19df808-8449-4ac6-b622-171b002adf44",
+    "slug": "harbour-lights-live-geelong-waterfront-sessions-4muhm2",
+    "title": "Harbour Lights Live: Geelong Waterfront Sessions",
+    "status": "published",
+    "cover_image_url": "https://vkapkibzokmfaxqogypq.supabase.co/storage/v1/object/public/event-images/73e72297-dd68-4208-b6a3-266289172bdf/f19df808-8449-4ac6-b622-171b002adf44/1783142639422-2f6ba9c5.jpg",
+    "organisation_id": "5886d5cb-09d8-4f91-9b13-ba6d5c0ecbe2"
+  },
+  "media": 0,
+  "analysis": [
+    {
+      "vp": "desktop",
+      "surface": "browse card",
+      "naturalWidth": 475,
+      "naturalHeight": 267,
+      "renderW": 314,
+      "renderH": 236,
+      "objectFit": "cover",
+      "src": "https://eventlinqs-staging.vercel.app/_next/image?url=https%3A%2F%2Fvkapkibzokmfaxqogypq.supabase.co%2Fstorage%2Fv1%2Fobject%2Fpublic%2Fevent-images%2F73e72297-"
+    },
+    {
+      "vp": "desktop",
+      "surface": "detail hero",
+      "naturalWidth": 1920,
+      "naturalHeight": 1080,
+      "renderW": 1440,
+      "renderH": 432,
+      "objectFit": "cover",
+      "src": "https://eventlinqs-staging.vercel.app/_next/image?url=https%3A%2F%2Fvkapkibzokmfaxqogypq.supabase.co%2Fstorage%2Fv1%2Fobject%2Fpublic%2Fevent-images%2F73e72297-"
+    },
+    {
+      "vp": "desktop",
+      "surface": "detail all imgs",
+      "total": 9,
+      "broken": 0
+    },
+    {
+      "vp": "desktop",
+      "surface": "console errors",
+      "count": 0,
+      "errs": []
+    },
+    {
+      "vp": "mobile",
+      "surface": "browse card",
+      "naturalWidth": 390,
+      "naturalHeight": 219,
+      "renderW": 356,
+      "renderH": 200,
+      "objectFit": "cover",
+      "src": "https://eventlinqs-staging.vercel.app/_next/image?url=https%3A%2F%2Fvkapkibzokmfaxqogypq.supabase.co%2Fstorage%2Fv1%2Fobject%2Fpublic%2Fevent-images%2F73e72297-"
+    },
+    {
+      "vp": "mobile",
+      "surface": "detail hero",
+      "naturalWidth": 292,
+      "naturalHeight": 164,
+      "renderW": 390,
+      "renderH": 354,
+      "objectFit": "cover",
+      "src": "https://eventlinqs-staging.vercel.app/_next/image?url=https%3A%2F%2Fvkapkibzokmfaxqogypq.supabase.co%2Fstorage%2Fv1%2Fobject%2Fpublic%2Fevent-images%2F73e72297-"
+    },
+    {
+      "vp": "mobile",
+      "surface": "detail all imgs",
+      "total": 9,
+      "broken": 0
+    },
+    {
+      "vp": "mobile",
+      "surface": "console errors",
+      "count": 0,
+      "errs": []
+    }
+  ]
+}

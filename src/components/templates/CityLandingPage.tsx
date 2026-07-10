@@ -9,7 +9,7 @@ import { EventTypesRail } from '@/components/features/city/event-types-rail'
 import { CityMap, type MapEventPin, type MapSuburbPolygon } from '@/components/features/city/city-map'
 import { CityOrganiserCtaPanel } from '@/components/features/city/city-organiser-cta-panel'
 import { MobileStickyBar } from '@/components/features/city/mobile-sticky-bar'
-import { BrowseByCultureRail } from '@/components/features/city/browse-by-culture-rail'
+import { BrowseByCommunityRail } from '@/components/features/city/browse-by-community-rail'
 import { SnapRailScroller } from '@/components/ui/snap-rail'
 import { EventCard, type EventCardData } from '@/components/features/events/event-card'
 import { CityTileImage } from '@/components/media/CityTileImage'
@@ -34,8 +34,8 @@ interface Props {
   relatedCityImages: Record<string, string | null>
   /** Map of suburb slug → Pexels landscape URL. Tier 1 only. */
   suburbImages: Record<string, string | null>
-  /** Map of culture slug → Pexels landscape URL for the Browse-by-Culture rail. */
-  cultureImages: Record<string, string | null>
+  /** Map of community slug → Pexels landscape URL for the Browse-by-Community rail. */
+  communityImages: Record<string, string | null>
   suburbs: SuburbContent[]
   /** Pre-built Mapbox pins (geocoded events). */
   mapPins: MapEventPin[]
@@ -50,7 +50,7 @@ interface Props {
  *   S2  DateFilterChips (sticky)
  *   S3  CityEditorialSection
  *   S4  This Week + This Weekend rails
- *   S5  Browse by Culture rail
+ *   S5  Browse by Community rail
  *   S6  EventTypesRail
  *   S7  CityMap (Mapbox)
  *   S8  Popular this month
@@ -78,7 +78,7 @@ export function CityLandingPage({
   eventTypeImages,
   relatedCityImages,
   suburbImages,
-  cultureImages,
+  communityImages,
   suburbs,
   mapPins,
   mapboxToken,
@@ -120,7 +120,7 @@ export function CityLandingPage({
       />
 
       {thisWeekendEvents.length >= 4 ? (
-        <ContentSection surface="alt" width="wide" topBorder>
+        <ContentSection surface="alt" width="wide" topBorder reveal>
           <SnapRailScroller
             railLabel={`Out this weekend in ${city.name}`}
             containerBg="ink-100"
@@ -140,7 +140,7 @@ export function CityLandingPage({
       ) : null}
 
       {thisWeekEvents.length >= 4 ? (
-        <ContentSection surface="base" width="wide" topBorder>
+        <ContentSection surface="base" width="wide" topBorder reveal>
           <SnapRailScroller
             railLabel={`On this week in ${city.name}`}
             header={{
@@ -158,13 +158,13 @@ export function CityLandingPage({
         </ContentSection>
       ) : null}
 
-      {/* S5 Browse by Culture rail - 14 photographic culture tiles routing
-          to /culture/[culture]/[city] for the cross-culture-city
+      {/* S5 Browse by Community rail - 14 photographic community tiles routing
+          to /community/[community]/[city] for the cross-community-city
           intersection page added in Batch 5.5. */}
-      <BrowseByCultureRail
+      <BrowseByCommunityRail
         citySlug={city.slug}
         cityName={city.name}
-        images={cultureImages}
+        images={communityImages}
       />
 
       <EventTypesRail
@@ -174,7 +174,7 @@ export function CityLandingPage({
       />
 
       {mapboxToken ? (
-        <ContentSection surface="base" width="wide" topBorder>
+        <ContentSection surface="base" width="wide" topBorder reveal>
           <div className="mb-6">
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
               Map
@@ -195,7 +195,7 @@ export function CityLandingPage({
       ) : null}
 
       {popularEvents.length >= 4 ? (
-        <ContentSection surface="alt" width="wide" topBorder>
+        <ContentSection surface="alt" width="wide" topBorder reveal>
           <SnapRailScroller
             railLabel={`${city.name} highlights`}
             containerBg="ink-100"
@@ -215,7 +215,7 @@ export function CityLandingPage({
 
       {/* S9 By suburb rail - Tier 1 only. */}
       {city.tier === 1 && suburbs.length > 0 ? (
-        <ContentSection surface="base" width="wide" topBorder>
+        <ContentSection surface="base" width="wide" topBorder reveal>
           <SnapRailScroller
             railLabel={`Pick your part of ${city.name}`}
             header={{
@@ -262,7 +262,7 @@ export function CityLandingPage({
       ) : null}
 
       {/* S12 All city events grid. */}
-      <ContentSection id="all-events" surface="base" width="wide" topBorder>
+      <ContentSection id="all-events" surface="base" width="wide" topBorder reveal>
         <div className="mb-6 flex items-end justify-between gap-4">
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
@@ -308,7 +308,7 @@ export function CityLandingPage({
 
       {/* S13 Related cities rail. */}
       {relatedItems.length > 0 ? (
-        <ContentSection surface="alt" width="wide" topBorder>
+        <ContentSection surface="alt" width="wide" topBorder reveal>
           <SnapRailScroller
             railLabel="Other Australian cities on EventLinqs"
             containerBg="ink-100"

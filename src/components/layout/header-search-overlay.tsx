@@ -18,7 +18,8 @@ const TRIGGER_DOM_ID = 'header-search-trigger'
 /**
  * Header search overlay (Batch 9.1, a11y hardened in 9.1.1).
  *
- * Full-screen modal with backdrop-blur, centred input, and tabbed suggestion
+ * Full-screen modal on a solid navy surface (matches the solid State B
+ * header chrome; no glassmorphism), centred input, and tabbed suggestion
  * strip. Hand-curated fallback suggestions match the locked taxonomy.
  *
  * Accessibility (Batch 9.1.1 closes the WCAG 2.2 AA gaps from 9.1):
@@ -36,22 +37,22 @@ const TRIGGER_DOM_ID = 'header-search-trigger'
  *   - Body scroll lock while open
  */
 
-type Tab = 'cultures' | 'cities' | 'events' | 'organisers'
+type Tab = 'communities' | 'cities' | 'events' | 'organisers'
 
 const TABS: { id: Tab; label: string; route: (q: string) => string }[] = [
-  { id: 'cultures',   label: 'Communities',   route: q => `/events?q=${encodeURIComponent(q)}&tab=cultures` },
+  { id: 'communities',   label: 'Communities',   route: q => `/events?q=${encodeURIComponent(q)}&tab=communities` },
   { id: 'cities',     label: 'Cities',     route: q => `/events?q=${encodeURIComponent(q)}&tab=cities` },
   { id: 'events',     label: 'Events',     route: q => `/events?q=${encodeURIComponent(q)}` },
   { id: 'organisers', label: 'Organisers', route: q => `/events?q=${encodeURIComponent(q)}&tab=organisers` },
 ]
 
 const FALLBACKS: Record<Tab, { label: string; href: string }[]> = {
-  cultures: [
-    { label: 'First Nations',  href: '/culture/aboriginal-torres-strait-islander' },
-    { label: 'African',        href: '/culture/african' },
-    { label: 'Indian',         href: '/culture/indian' },
-    { label: 'Caribbean',      href: '/culture/caribbean' },
-    { label: 'Latin American', href: '/culture/latin-american' },
+  communities: [
+    { label: 'First Nations',  href: '/community/aboriginal-torres-strait-islander' },
+    { label: 'African',        href: '/community/african' },
+    { label: 'Indian',         href: '/community/indian' },
+    { label: 'Caribbean',      href: '/community/caribbean' },
+    { label: 'Latin American', href: '/community/latin-american' },
   ],
   cities: [
     { label: 'Sydney',     href: '/city/sydney' },
@@ -234,12 +235,7 @@ export function HeaderSearchOverlay({ open, onClose, triggerRef }: Props) {
       aria-label="Search EventLinqs"
       ref={dialogRef}
       onKeyDown={handleKeyDown}
-      className="fixed inset-0 z-[60] flex flex-col"
-      style={{
-        background: 'rgba(10, 22, 40, 0.92)',
-        backdropFilter: 'blur(40px) saturate(160%)',
-        WebkitBackdropFilter: 'blur(40px) saturate(160%)',
-      }}
+      className="fixed inset-0 z-[60] flex flex-col bg-[var(--color-ink-900)]"
     >
       <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-4 sm:px-8 sm:py-5">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent)]">

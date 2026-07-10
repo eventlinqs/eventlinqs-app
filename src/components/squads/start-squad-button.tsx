@@ -28,10 +28,10 @@ export function StartSquadButton({
         type="button"
         onClick={() => setIsOpen(true)}
         className="
-          w-full h-12 rounded-xl border-2 border-[#4A90D9] text-[#4A90D9]
+          w-full h-12 rounded-xl border-2 border-gold-500 text-gold-700
           font-semibold text-sm flex items-center justify-center gap-2
-          hover:bg-[#4A90D9] hover:text-white transition-colors
-          focus-visible:outline-2 focus-visible:outline-[#4A90D9] focus-visible:outline-offset-2
+          hover:bg-gold-500 hover:text-ink-900 transition-colors
+          focus-visible:outline-2 focus-visible:outline-gold-500 focus-visible:outline-offset-2
         "
         aria-label={`Start a squad - ${totalSpots} spots`}
       >

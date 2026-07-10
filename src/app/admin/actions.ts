@@ -13,6 +13,8 @@ import {
   verifyRecoveryCode,
   verifyTotp,
 } from '@/lib/admin/totp'
+import { resolveCapabilities } from '@/lib/admin/rbac'
+import { clearTwoFactorProof, issueTwoFactorProof } from '@/lib/admin/two-factor'
 import type { AdminUserRow } from '@/lib/admin/types'
 
 /**
@@ -112,9 +114,16 @@ export async function loginAdminAction(formData: FormData): Promise<LoginResult>
     .update({ last_login_at: new Date().toISOString() })
     .eq('id', admin.id)
 
+  // AUTH-02: mint the 2FA session proof. For an enrolled admin this point is
+  // only reached after verifySecondFactor() passed; for the un-enrolled
+  // first-login bootstrap there is no second factor yet and the user is sent
+  // straight to enrolment. Either way the proof is bound to this session, so a
+  // session minted outside this flow can never present it.
+  await issueTwoFactorProof(signed.user.id)
+
   await recordAuditEvent({
     action: 'admin.session.login.success',
-    session: { userId: signed.user.id, email, admin },
+    session: { userId: signed.user.id, email, admin, capabilities: resolveCapabilities(admin) },
   })
 
   if (!admin.totp_secret_encrypted) {
@@ -157,7 +166,7 @@ async function verifySecondFactor(args: {
       .eq('id', admin.id)
     await recordAuditEvent({
       action: 'admin.totp.recovery_used',
-      session: { userId: admin.id, email: '', admin },
+      session: { userId: admin.id, email: '', admin, capabilities: resolveCapabilities(admin) },
       metadata: { remaining: next.length },
     })
     return { ok: true }
@@ -179,6 +188,7 @@ export async function logoutAdminAction(): Promise<void> {
   if (session) {
     await recordAuditEvent({ action: 'admin.session.logout', session })
   }
+  await clearTwoFactorProof()
   await supa.auth.signOut()
   redirect('/admin/login')
 }
@@ -266,6 +276,11 @@ export async function confirmTotpEnrolmentAction(formData: FormData): Promise<Co
   if (upd.error) {
     return { ok: false, error: 'Could not save enrolment. Try again.' }
   }
+
+  // AUTH-02: enrolment confirms a live TOTP code, so it is itself a valid 2FA
+  // verification. Re-issue the proof so the just-enrolled admin keeps a sealed
+  // session without a second round-trip through the login form.
+  await issueTwoFactorProof(session.userId)
 
   await recordAuditEvent({ action: 'admin.totp.enrolled', session })
   return { ok: true, recoveryCodes: plain }

@@ -55,14 +55,14 @@ export const helpTopics: HelpTopic[] = [
       },
       {
         q: 'How do I list an event on EventLinqs?',
-        a: "Sign up as an organiser in minutes. Go to 'For Organisers' at the top of any page and click 'Start selling tickets.' Create your account, build your first event, and submit it for publishing. Every event is reviewed against our content and safety policy within 24 to 48 hours, and most are approved the same business day. No approval gate on organisers. Only on events.",
+        a: "Sign up as an organiser in minutes. Go to 'Event Organisers' at the top of any page and click 'Start selling tickets.' Create your account, build your first event, and submit it for publishing. Every event is reviewed against our content and safety policy within 24 to 48 hours, and most are approved the same business day. No approval gate on organisers. Only on events.",
       },
       {
         q: 'Is it free to create an account?',
         a: "Yes. Creating a buyer account is completely free. There are no monthly or annual fees for buyers. For organisers, there is no upfront cost to list events. Our fees are a share of ticket revenue, only charged when paid tickets are sold. Free events incur zero platform fees, permanently. See our pricing page for current fee details.",
       },
       {
-        q: 'How is EventLinqs different from Ticketmaster or Eventbrite?',
+        q: 'How is EventLinqs different from other ticketing platforms?',
         a: "EventLinqs is built for every community, and open to every organiser and every community that wants a platform that gets it right. Mainstream platforms treat community events as a small subset of their business. For us, they are the whole business. That means all-in pricing with no hidden fees at checkout, WhatsApp-native sharing, squad bookings so whole groups can buy together, and support from a team that understands the events we serve. We are also built on transparency: what you see at checkout is what you pay. No convenience fee surprises at the final step.",
       },
       {
@@ -91,7 +91,7 @@ export const helpTopics: HelpTopic[] = [
       },
       {
         q: 'Can I transfer my ticket to someone else?',
-        a: "Ticket transfer between buyers is not currently supported. Contact the event organiser directly for any ticket changes.",
+        a: "Yes. Log in, go to 'My Tickets', open the ticket you want to send and choose 'Transfer or gift this ticket'. Enter the new holder's name and email. They receive a fresh ticket and QR code by email, and your old code stops working straight away. You can only transfer a ticket that has not been used or refunded.",
       },
       {
         q: 'Can I resell my ticket above face value?',

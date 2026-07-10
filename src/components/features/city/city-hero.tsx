@@ -5,7 +5,7 @@ import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 /**
  * CityHero - Batch 6 hero band for /city/[slug] and /city/[slug]/[suburb].
  *
- * Mirrors PhotographicCultureHero: landscape Pexels photo behind a
+ * Mirrors PhotographicCommunityHero: landscape Pexels photo behind a
  * left-anchored eyebrow + headline + subtitle, darkened bottom-up
  * gradient so text stays AA-readable, two CTAs anchored bottom-left.
  * Light primary surface picks up immediately below.
@@ -49,10 +49,10 @@ export function CityHero({
       className="relative overflow-hidden"
     >
       <HeroPresenceMarker />
-      {/* Hero is taller on mobile (matches Ticketmaster's destination
-       *  guide pattern at 375px) so the headline carries weight before
-       *  the user scrolls. Desktop reverts to a tighter 52vh band. */}
-      <div className="relative h-[64vh] min-h-[440px] max-h-[560px] w-full sm:h-[52vh] sm:min-h-[360px] sm:max-h-[520px]">
+      {/* Single platform hero scale (.hero-marketing). Flattened from the old
+       *  taller band: the 2026 competitor mirror shows TM/Eventbrite city and
+       *  browse heroes sit at or below the homepage scale, not above it. */}
+      <div className="hero-marketing relative w-full">
         {imageSrc ? (
           <HeroMedia image={imageSrc} alt={`${title} on EventLinqs`} priority />
         ) : (
@@ -78,7 +78,7 @@ export function CityHero({
         />
         <div className="relative z-10 mx-auto flex h-full max-w-7xl items-end px-5 pb-10 sm:px-6 sm:pb-12 lg:px-8 lg:pb-14">
           <div className="max-w-3xl">
-            <p className="font-display text-[11px] font-bold uppercase tracking-[0.22em] text-white/85 sm:text-xs">
+            <p className="font-display text-[11px] font-bold uppercase tracking-[0.22em] text-[var(--brand-accent)] sm:text-xs">
               {eyebrow}
             </p>
             <h1
@@ -106,7 +106,7 @@ export function CityHero({
               </a>
               <Link
                 href={secondaryCtaHref}
-                className="inline-flex h-12 min-w-[44px] items-center justify-center rounded-full border border-white/70 bg-white/10 px-6 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/20 sm:h-11"
+                className="inline-flex h-12 min-w-[44px] items-center justify-center rounded-full border border-white/70 bg-white/10 px-6 text-sm font-semibold text-white transition hover:bg-white/20 sm:h-11"
               >
                 {secondaryCtaLabel}
               </Link>

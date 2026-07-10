@@ -1,0 +1,89 @@
+{
+  "generatedAt": "2026-07-04T22:27:17.140Z",
+  "eventId": "768788e0-8358-490a-8bba-d9920e675b92",
+  "concurrency": {
+    "seat": {
+      "id": "cc21f165-a28b-45f0-9a11-2e119364a2b0",
+      "row_label": "A",
+      "seat_number": "2"
+    },
+    "buyerA": {
+      "success": true,
+      "expires_at": "2026-07-04T22:37:17.723634+00:00",
+      "seat_count": 1,
+      "reservation_id": "31564052-5028-4804-b0e4-ed15ed9e0923"
+    },
+    "buyerB": {
+      "error": "One or more seats are no longer available",
+      "success": false
+    },
+    "exactlyOneSucceeded": true,
+    "loserMessage": "One or more seats are no longer available",
+    "seatRowAfter": {
+      "id": "cc21f165-a28b-45f0-9a11-2e119364a2b0",
+      "row_label": "A",
+      "seat_number": "2",
+      "status": "reserved",
+      "reservation_id": "31564052-5028-4804-b0e4-ed15ed9e0923"
+    },
+    "reservationRows": [
+      {
+        "id": "31564052-5028-4804-b0e4-ed15ed9e0923",
+        "status": "active",
+        "expires_at": "2026-07-04T22:37:17.723634+00:00",
+        "items": {
+          "seat_ids": [
+            "cc21f165-a28b-45f0-9a11-2e119364a2b0"
+          ]
+        }
+      }
+    ]
+  },
+  "adversarial": {
+    "nonExistentSeat": {
+      "rejected": true,
+      "response": {
+        "error": "Some seats not found for this event",
+        "success": false
+      }
+    },
+    "unavailableSeat": {
+      "rejected": true,
+      "response": {
+        "error": "One or more seats are no longer available",
+        "success": false
+      }
+    }
+  },
+  "holdExpiry": {
+    "seat": {
+      "id": "ea388781-f8c7-4190-9f69-95c5868cce3a",
+      "row_label": "A",
+      "seat_number": "3"
+    },
+    "reservationId": "d152c46e-449d-452e-9bc2-368a38088a2e",
+    "seatWhileHeld": {
+      "id": "ea388781-f8c7-4190-9f69-95c5868cce3a",
+      "status": "reserved",
+      "reservation_id": "d152c46e-449d-452e-9bc2-368a38088a2e"
+    },
+    "releasedCountFromRpc": 1,
+    "seatAfterRelease": {
+      "id": "ea388781-f8c7-4190-9f69-95c5868cce3a",
+      "status": "available",
+      "reservation_id": null
+    },
+    "returnedToAvailable": true,
+    "reservationAfter": {
+      "id": "d152c46e-449d-452e-9bc2-368a38088a2e",
+      "status": "expired",
+      "expires_at": "2026-07-04T22:26:18.541+00:00"
+    }
+  },
+  "cleanup": {
+    "concurrencySeatFinal": {
+      "id": "cc21f165-a28b-45f0-9a11-2e119364a2b0",
+      "status": "available"
+    }
+  }
+}

@@ -4,7 +4,11 @@ import QRCode from 'qrcode'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSiteUrl } from '@/lib/site-url'
+import { formatSeatLabel } from '@/lib/seating/format'
 import { ConfirmationActions } from '@/components/orders/confirmation-actions'
+import { EventShareBar } from '@/components/features/events/event-share-bar'
+import { encodeRefCode } from '@/lib/growth/referrals'
+import { recordShareConversionForOrder } from '@/lib/broadcast/conversion'
 import type { Order, OrderItem } from '@/types/database'
 
 export const runtime = 'nodejs'
@@ -28,6 +32,13 @@ type IssuedTicket = {
   holder_name: string | null
   holder_email: string | null
   order_item: { item_name: string } | null
+  /** Reserved seating: the ticket's seat, joined via tickets.seat_id. */
+  seat: {
+    row_label: string
+    seat_number: string
+    note: string | null
+    section: { name: string } | null
+  } | null
 }
 
 function formatCents(cents: number, currency: string) {
@@ -61,6 +72,13 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
   // If Stripe just redirected back with succeeded status, the webhook may still be processing
   // Show confirmation page anyway - the webhook will confirm the order
   const isConfirmed = fullOrder.status === 'confirmed' || redirect_status === 'succeeded'
+
+  // Broadcast Layer share attribution (SPEC 2.3): a confirmed order arriving
+  // with a tracked share cookie credits that link's channel. Read-only
+  // reference to the order id; idempotent; never affects this render.
+  if (isConfirmed) {
+    await recordShareConversionForOrder({ id: fullOrder.id, event_id: fullOrder.event_id })
+  }
 
   const { data: event } = await adminClient
     .from('events')
@@ -112,7 +130,7 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
   // have been generated yet (a genuine pending state while the webhook runs).
   const { data: ticketRows } = await adminClient
     .from('tickets')
-    .select('ticket_code, secret, status, holder_name, holder_email, order_item:order_items(item_name)')
+    .select('ticket_code, secret, status, holder_name, holder_email, order_item:order_items(item_name), seat:seats(row_label, seat_number, note, section:seat_map_sections(name))')
     .eq('order_id', fullOrder.id)
     .order('created_at', { ascending: true })
 
@@ -134,15 +152,23 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
           qrSvg,
           itemName: t.order_item?.item_name || 'Admission',
           holder: t.holder_name ?? t.holder_email ?? 'Ticket holder',
+          seatLabel: t.seat
+            ? formatSeatLabel({
+                sectionName: t.seat.section?.name ?? null,
+                rowLabel: t.seat.row_label,
+                seatNumber: t.seat.seat_number,
+              })
+            : null,
+          seatNote: t.seat?.note ?? null,
         }
       })
   )
 
   return (
-    <div className="min-h-screen bg-ink-100">
+    <div className="min-h-screen bg-canvas">
       <nav className="border-b border-ink-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl">
-          <Link href={logoHref} className="text-xl font-bold text-[#1A1A2E]">EVENTLINQS</Link>
+          <Link href={logoHref} className="text-xl font-bold text-ink-900">EVENTLINQS</Link>
         </div>
       </nav>
 
@@ -215,7 +241,7 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
             </h3>
             <div className="space-y-6">
               {issuedTickets.map(t => (
-                <div key={t.ticket_code} className="rounded-xl border border-ink-200 bg-ink-100 p-5">
+                <div key={t.ticket_code} className="rounded-xl border border-ink-200 bg-white p-5 shadow-sm">
                   <div
                     className="flex items-center justify-center rounded-lg bg-white p-4 [&>svg]:h-auto [&>svg]:w-full [&>svg]:max-w-[220px]"
                     // Server-generated SVG QR (no raw img, satisfies the media rules).
@@ -226,6 +252,18 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
                       <dt className="text-ink-600">Ticket type</dt>
                       <dd className="font-medium text-ink-900">{t.itemName}</dd>
                     </div>
+                    {t.seatLabel && (
+                      <div className="flex justify-between gap-4">
+                        <dt className="text-ink-600">Seat</dt>
+                        <dd className="font-semibold text-ink-900">{t.seatLabel}</dd>
+                      </div>
+                    )}
+                    {t.seatNote && (
+                      <div className="flex justify-between gap-4">
+                        <dt className="text-ink-600">Note</dt>
+                        <dd className="font-medium text-gold-700">{t.seatNote}</dd>
+                      </div>
+                    )}
                     <div className="flex justify-between gap-4">
                       <dt className="text-ink-600">Ticket code</dt>
                       <dd className="font-mono font-semibold text-ink-900">{t.ticket_code}</dd>
@@ -258,6 +296,31 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
           </div>
         ) : null}
 
+        {/* Share your seat (seated orders): the growth loop no competitor
+         *  ties to seating. The buyer's exact seat goes into the invite so
+         *  their people can pick the seats next to them; the link is the
+         *  attributed share-a-ticket URL. */}
+        {issuedTickets.some(t => t.seatLabel) && event.slug && (
+          <section className="mb-6 rounded-xl border border-gold-500/30 bg-white p-6">
+            <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-gold-700">
+              Share your seat
+            </p>
+            <p className="mt-2 text-sm text-ink-600">
+              The seats around you are still open. Tell your people exactly
+              where you are sitting and they can pick the seats next to you.
+            </p>
+            <div className="mt-4">
+              <EventShareBar
+                eventTitle={event.title}
+                eventDate={eventDate}
+                eventUrl={`${siteUrl}/events/${event.slug}`}
+                messageOverride={`I am in ${issuedTickets.find(t => t.seatLabel)?.seatLabel} for ${event.title}. Pick a seat near me:`}
+                variant="light"
+              />
+            </div>
+          </section>
+        )}
+
         {/* Actions */}
         <ConfirmationActions
           eventTitle={event.title}
@@ -266,7 +329,25 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
           location={location}
           orderNumber={fullOrder.order_number}
           eventSlug={event.slug}
+          refCode={user ? encodeRefCode(user.id) ?? undefined : undefined}
         />
+
+        {/* Invite-an-organiser conversion (the acquisition loop). The moment a
+         *  buyer has momentum is the moment to surface that they can run their
+         *  own events. The link is attributed (via=organiser-invite) so we can
+         *  measure how many organisers this hook converts. */}
+        <div className="rounded-xl border border-gold-100 bg-gold-100/60 p-5 text-center mb-6">
+          <p className="text-sm font-semibold text-ink-900">Run your own events on EventLinqs</p>
+          <p className="mt-1 text-xs text-ink-600">
+            It is free to start. List your event, reach your community, and keep every attendee relationship.
+          </p>
+          <Link
+            href="/organisers?via=organiser-invite"
+            className="mt-3 inline-block rounded-lg bg-gold-400 px-5 py-2.5 text-sm font-semibold text-ink-900 transition-colors hover:bg-gold-500"
+          >
+            Become an organiser
+          </Link>
+        </div>
 
         {/* Guest CTA */}
         {isGuest && (
@@ -275,7 +356,7 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
             <p className="mt-1 text-xs text-ink-400">Access order history, digital tickets, and more</p>
             <Link
               href="/signup"
-              className="mt-3 inline-block rounded-lg bg-[#1A1A2E] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#2d2d4a]"
+              className="mt-3 inline-block rounded-lg bg-ink-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-ink-800"
             >
               Create Account
             </Link>

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireCronAuth } from '@/lib/cron/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { runReserveRelease } from '@/lib/payments/payout'
 
@@ -24,11 +25,8 @@ export const dynamic = 'force-dynamic'
  * `Authorization: Bearer <CRON_SECRET>`), mirroring /api/cron/reservation-expire.
  */
 export async function GET(request: NextRequest) {
-  const authHeader = request.headers.get('authorization')
-  const cronSecret = process.env.CRON_SECRET
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
-  }
+  const denied = requireCronAuth(request)
+  if (denied) return denied
 
   const adminClient = createAdminClient()
 

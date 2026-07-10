@@ -4,8 +4,8 @@
 //   - Homepage: 5 hero slides cycled at 1440 + 390 viewports (10 captures)
 //   - Homepage: 768 viewport, scroll positions 0/700/1400 (3 captures)
 //   - /events/{any-real-slug} top + scrolled (2 captures)
-//   - /culture/african top (1 capture)
-//   - /culture/african/sydney top (1 capture)
+//   - /community/african top (1 capture)
+//   - /community/african/sydney top (1 capture)
 //   - /city/sydney top (1 capture)
 //   - Authenticated dropdown header on / (1 capture)
 //
@@ -102,8 +102,8 @@ for (const vp of [{ name: '1440', w: 1440, h: 900 }, { name: '390', w: 390, h: 8
 
 // Other key surfaces at 1440 + 390.
 const SURFACES = [
-  { id: 'culture-african',        path: '/culture/african' },
-  { id: 'culture-african-sydney', path: '/culture/african/sydney' },
+  { id: 'community-african',        path: '/community/african' },
+  { id: 'community-african-sydney', path: '/community/african/sydney' },
   { id: 'city-sydney',            path: '/city/sydney' },
   { id: 'events',                 path: '/events' },
 ]

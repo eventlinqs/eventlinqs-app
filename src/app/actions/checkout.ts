@@ -2,16 +2,24 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { actionRateLimit } from '@/lib/rate-limit/action'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { PaymentCalculator } from '@/lib/payments/payment-calculator'
 import { getDefaultGateway } from '@/lib/payments/gateway-factory'
-import { createDestinationCharge } from '@/lib/payments/create-destination-charge'
+import { createPlatformCharge } from '@/lib/payments/create-platform-charge'
 import { buildPaymentIntentIdempotencyKey } from '@/lib/payments/idempotency'
 import { ChargePreconditionError } from '@/lib/payments/application-fee'
 import { validateDiscountCode } from './discount-codes'
 import { getDynamicPriceMap } from '@/lib/pricing/dynamic-pricing'
+import { pickUnitPriceCents, resolveSeatUnitPriceCents } from '@/lib/checkout/pricing'
 import { getGuestSessionId } from '@/lib/auth/guest-session'
+import { cookies } from 'next/headers'
+import {
+  recordOrganiserMarketingConsent,
+  recordPlatformDigestConsent,
+} from '@/lib/consent/record'
+import { sendConfirmationEmail } from '@/lib/email/order-confirmation'
 import type { FeePassType } from '@/types/database'
 
 const AttendeeSchema = z.object({
@@ -29,6 +37,10 @@ const CheckoutSchema = z.object({
   attendees: z.array(AttendeeSchema).min(0),
   discount_code: z.string().optional(),
   addon_quantities: z.record(z.string().uuid(), z.number().int().min(0)).optional(),
+  // Marketing consent (Spam Act 2003). Both optional and default false: the
+  // purchase succeeds whether or not they are given. Never a purchase condition.
+  organiser_marketing_consent: z.boolean().optional(),
+  platform_updates_consent: z.boolean().optional(),
 })
 
 export type CheckoutFormData = z.infer<typeof CheckoutSchema>
@@ -49,14 +61,101 @@ function generateOrderNumber(): string {
   return result
 }
 
+/**
+ * Persist marketing consent for a completed checkout. Best-effort and fully
+ * isolated from the payment path: a consent write failure must never fail an
+ * order. Records nothing when no box was ticked, so a no-consent purchase
+ * leaves no consent (the lawful default).
+ */
+async function recordCheckoutConsents(params: {
+  adminClient: ReturnType<typeof createAdminClient>
+  organisationId: string
+  organiserName: string
+  email: string
+  userId: string | null
+  orderId: string
+  eventId: string
+  organiserConsent: boolean
+  platformConsent: boolean
+}): Promise<void> {
+  const at = new Date().toISOString()
+  if (params.organiserConsent) {
+    await recordOrganiserMarketingConsent(params.adminClient, {
+      organisationId: params.organisationId,
+      organiserName: params.organiserName,
+      email: params.email,
+      userId: params.userId,
+      orderId: params.orderId,
+      eventId: params.eventId,
+      source: 'checkout',
+      at,
+    })
+  }
+  if (params.platformConsent) {
+    // The digest consent is city scoped (SPEC 3.1): the buyer's chosen city
+    // cookie wins, falling back to the event's city. Both are validated
+    // against the cities taxonomy so the FK can never fail the write.
+    const citySlug = await resolveDigestCity(params.adminClient, params.eventId)
+    await recordPlatformDigestConsent(params.adminClient, {
+      email: params.email,
+      userId: params.userId,
+      citySlug,
+      source: 'checkout',
+      at,
+    })
+  }
+}
+
+/** Resolve the digest locality: el_city cookie if it is a real city, else the
+ * event's primary city, else null (national digest scope decided later). */
+async function resolveDigestCity(
+  adminClient: ReturnType<typeof createAdminClient>,
+  eventId: string,
+): Promise<string | null> {
+  try {
+    const jar = await cookies()
+    const cookieCity = jar.get('el_city')?.value ?? null
+    if (cookieCity) {
+      const { data } = await adminClient
+        .from('cities')
+        .select('slug')
+        .eq('slug', cookieCity)
+        .maybeSingle()
+      if (data?.slug) return data.slug
+    }
+    const { data: event } = await adminClient
+      .from('events')
+      .select('city_primary')
+      .eq('id', eventId)
+      .maybeSingle()
+    return event?.city_primary ?? null
+  } catch {
+    return null
+  }
+}
+
 export async function processCheckout(data: CheckoutFormData): Promise<CheckoutResult> {
+  // Throttle by IP. Defends the PaymentIntent-creation path against card-testing
+  // and repeated charge attempts even if a caller skips the reservation step.
+  const rl = await actionRateLimit('checkout-reserve')
+  if (!rl.ok) return { error: 'Too many attempts. Please wait a moment and try again.' }
+
   const parsed = CheckoutSchema.safeParse(data)
   if (!parsed.success) {
     const issues = parsed.error.issues
     return { error: issues[0]?.message ?? 'Invalid checkout data' }
   }
 
-  const { reservation_id, buyer_email, buyer_name, attendees, discount_code, addon_quantities: _addon_quantities } = parsed.data
+  const {
+    reservation_id,
+    buyer_email,
+    buyer_name,
+    attendees,
+    discount_code,
+    addon_quantities: _addon_quantities,
+    organiser_marketing_consent = false,
+    platform_updates_consent = false,
+  } = parsed.data
 
   const supabase = await createClient()
   const adminClient = createAdminClient()
@@ -96,6 +195,15 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
 
   if (!event) return { error: 'Event not found' }
 
+  // Organiser name for the marketing-consent wording (names the sender, per the
+  // Spam Act). Best-effort: consent recording never blocks the purchase.
+  const { data: organisation } = await adminClient
+    .from('organisations')
+    .select('name')
+    .eq('id', event.organisation_id)
+    .maybeSingle()
+  const organiserName = organisation?.name ?? ''
+
   // ── Seat reservation path ──────────────────────────────────────────────────
   // Seat reservations store items as { seat_ids: string[] } instead of the
   // GA format [ { ticket_tier_id, quantity } ].
@@ -117,6 +225,10 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
       attendees,
       adminClient,
       supabase,
+      organiserName,
+      userId: user?.id ?? null,
+      organiserConsent: organiser_marketing_consent,
+      platformConsent: platform_updates_consent,
     })
   }
   // ── End seat path ──────────────────────────────────────────────────────────
@@ -146,8 +258,9 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
     .filter(i => i.ticket_tier_id)
     .map(i => {
       const tier = tierMap.get(i.ticket_tier_id!)
-      // Use dynamic price if available, fall back to base tier price
-      const unit_price_cents = dynamicPriceMap.get(i.ticket_tier_id!) ?? tier?.price ?? 0
+      // FUN-01: single-sourced price rule (shared with the checkout page so
+      // displayed == charged). Dynamic price overrides base.
+      const unit_price_cents = pickUnitPriceCents(dynamicPriceMap.get(i.ticket_tier_id!), tier?.price)
       return {
         tier_id: i.ticket_tier_id!,
         tier_name: tier?.name ?? 'Ticket',
@@ -217,7 +330,8 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
     currency,
     fee_pass_type,
     discount_cents,
-    event.organisation_id
+    event.organisation_id,
+    event.id
   )
 
   const isFreeOrder = fees.total_cents === 0
@@ -245,7 +359,11 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
       guest_email: user ? null : buyer_email,
       guest_name: user ? null : buyer_name,
       reservation_id,
-      status: isFreeOrder ? 'confirmed' : 'pending',
+      // Free orders insert as 'pending' too, then confirm_order UPDATEs them to
+      // 'confirmed'. Ticket issuance fires on the pending->confirmed UPDATE
+      // (trigger trg_issue_tickets_on_confirm), so an inline 'confirmed' INSERT
+      // would confirm the order but never issue a ticket.
+      status: 'pending',
       subtotal_cents: fees.subtotal_cents,
       addon_total_cents: fees.addon_total_cents,
       platform_fee_cents: fees.platform_fee_cents,
@@ -256,7 +374,7 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
       currency,
       fee_pass_type,
       discount_code_id: discount_code_id ?? null,
-      confirmed_at: isFreeOrder ? new Date().toISOString() : null,
+      confirmed_at: null,
     })
 
   if (orderError) {
@@ -305,24 +423,43 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
 
   const { error: itemsError } = await adminClient.from('order_items').insert(orderItems)
   if (itemsError) {
-    console.error('Order items error:', itemsError)
-    // Order is created, don't fail - items issue should be investigated
+    // FUN-04: fail closed. issue_tickets_for_order expands tickets FROM
+    // order_items, so an order with no items confirms and issues zero tickets:
+    // the buyer pays and gets nothing scannable. Roll back the just-created
+    // order and abort BEFORE any PaymentIntent is created, rather than
+    // swallowing the error and charging.
+    console.error('Order items error, rolling back order:', itemsError)
+    await adminClient.from('orders').delete().eq('id', order_id)
+    return { error: 'We could not set up your order. Please try again.' }
   }
 
-  // 8. For free orders - confirm immediately
-  if (isFreeOrder) {
-    // Mark reservation as converted
-    await supabase
-      .from('reservations')
-      .update({ status: 'converted', converted_at: new Date().toISOString() })
-      .eq('id', reservation_id)
+  // Record marketing consent at the point of collection (Spam Act). Tied to the
+  // event's organiser and the buyer email. Best-effort, never blocks the order.
+  await recordCheckoutConsents({
+    adminClient,
+    organisationId: event.organisation_id,
+    organiserName,
+    email: buyer_email,
+    userId: user?.id ?? null,
+    orderId: order_id,
+    eventId: event.id,
+    organiserConsent: organiser_marketing_consent,
+    platformConsent: platform_updates_consent,
+  })
 
-    // Increment sold_count for each tier
-    for (const ticket of cartTickets) {
-      await supabase.rpc('increment_sold_count', {
-        p_tier_id: ticket.tier_id,
-        p_quantity: ticket.quantity,
-      })
+  // 8. For free orders - confirm immediately, no payment and no webhook.
+  if (isFreeOrder) {
+    // confirm_order atomically UPDATEs the order pending->confirmed (which fires
+    // the issuance trigger to mint the tickets and QR), converts the reservation,
+    // and increments sold_count: exactly the paid path's confirmation gate, minus
+    // the payment. This replaces the old inline reservation-convert and
+    // increment_sold_count, which left a free order confirmed but ticketless.
+    const { error: confirmError } = await adminClient.rpc('confirm_order', {
+      p_order_id: order_id,
+    })
+    if (confirmError) {
+      console.error('[checkout] free confirm_order error:', confirmError)
+      return { error: 'Order created but could not be confirmed. Please try again.' }
     }
 
     // Record discount usage
@@ -334,6 +471,14 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
         discount_amount_cents: fees.discount_cents,
       })
       await supabase.rpc('increment_discount_uses', { p_code_id: discount_code_id })
+    }
+
+    // Send the confirmation email with the ticket QR, exactly as the paid path
+    // does after payment. Best-effort: a mail fault must never fail the order.
+    try {
+      await sendConfirmationEmail(adminClient, order_id, null)
+    } catch (emailErr) {
+      console.error('[checkout] free confirmation email failed (non-fatal):', emailErr)
     }
 
     return { order_id, is_free: true }
@@ -367,15 +512,18 @@ export async function processCheckout(data: CheckoutFormData): Promise<CheckoutR
     return { error: 'Failed to initialise payment' }
   }
 
-  // 10. Create Stripe destination charge (M6 Phase 3)
+  // 10. Create Stripe PLATFORM charge (funds-holding model: platform is merchant
+  //     of record, funds held in the platform balance until post-event transfer)
   try {
     const gateway = getDefaultGateway()
-    const charge = await createDestinationCharge({
+    const charge = await createPlatformCharge({
       gateway,
       organisationId: event.organisation_id,
+      eventId: event.id,
       fees,
       customerEmail: buyer_email,
       idempotencyKey: idempotency_key,
+      transferGroup: order_id,
       metadata: {
         order_id,
         event_id: event.id,
@@ -447,6 +595,10 @@ interface SeatCheckoutArgs {
   attendees: { ticket_tier_id: string; first_name: string; last_name: string; email: string }[]
   adminClient: ReturnType<typeof createAdminClient>
   supabase: Awaited<ReturnType<typeof createClient>>
+  organiserName: string
+  userId: string | null
+  organiserConsent: boolean
+  platformConsent: boolean
 }
 
 async function processSeatCheckout({
@@ -458,6 +610,10 @@ async function processSeatCheckout({
   buyer_name,
   adminClient,
   supabase,
+  organiserName,
+  userId,
+  organiserConsent,
+  platformConsent,
 }: SeatCheckoutArgs): Promise<CheckoutResult> {
   // Load seats
   const { data: seats, error: seatsError } = await adminClient
@@ -507,16 +663,22 @@ async function processSeatCheckout({
   const fee_pass_type = (event.fee_pass_type ?? 'pass_to_buyer') as FeePassType
 
   // Price each seat via get_current_tier_price if tier_id set; else seat.price_cents or fallback
+  // FUN-03: single-sourced seat pricing (shared resolver with the checkout
+  // page so displayed == charged). Tier-bound seats price by the current
+  // dynamic-aware tier price; same fallback ordering on both paths.
+  const seatFallbackCents = fallbackTier?.price ?? 0
   const priceResults = await Promise.all(
-    seats.map(async seat => {
-      if (seat.ticket_tier_id) {
-        const { data: priceData } = await adminClient.rpc('get_current_tier_price', {
-          p_tier_id: seat.ticket_tier_id,
-        })
-        return { seat_id: seat.id, price_cents: (priceData as number | null) ?? seat.price_cents ?? fallbackTier?.price ?? 0 }
-      }
-      return { seat_id: seat.id, price_cents: seat.price_cents ?? fallbackTier?.price ?? 0 }
-    })
+    seats.map(async seat => ({
+      seat_id: seat.id,
+      price_cents: await resolveSeatUnitPriceCents(
+        seat,
+        async (tierId) => {
+          const { data } = await adminClient.rpc('get_current_tier_price', { p_tier_id: tierId })
+          return data as number | null
+        },
+        seatFallbackCents,
+      ),
+    }))
   )
 
   const priceBySeatId = new Map(priceResults.map(r => [r.seat_id, r.price_cents]))
@@ -533,14 +695,29 @@ async function processSeatCheckout({
   }]
 
   const calculator = new PaymentCalculator()
-  const fees = await calculator.calculate(
+  const computedSeatFees = await calculator.calculate(
     aggregatedForFee,
     [],
     currency,
     fee_pass_type,
     0,
-    event.organisation_id
+    event.organisation_id,
+    event.id
   )
+  // FUN-03: charge the EXACT seat sum, not the rounded-average subtotal the
+  // fee aggregate produces. The checkout page displays this exact-sum total, so
+  // overriding here keeps displayed == charged to the cent (same override the
+  // page applies).
+  const exactSeatSubtotalCents = Array.from(priceBySeatId.values()).reduce((s, p) => s + p, 0)
+  const fees = {
+    ...computedSeatFees,
+    subtotal_cents: exactSeatSubtotalCents,
+    total_cents:
+      exactSeatSubtotalCents +
+      computedSeatFees.platform_fee_cents +
+      computedSeatFees.payment_processing_fee_cents +
+      computedSeatFees.tax_cents,
+  }
   const isFreeOrder = fees.total_cents === 0
 
   // Create order
@@ -564,7 +741,11 @@ async function processSeatCheckout({
       guest_email: buyer_email,
       guest_name: buyer_name,
       reservation_id,
-      status: isFreeOrder ? 'confirmed' : 'pending',
+      // Free orders insert as 'pending' too, then confirm_order UPDATEs them to
+      // 'confirmed'. Ticket issuance fires on the pending->confirmed UPDATE
+      // (trigger trg_issue_tickets_on_confirm), so an inline 'confirmed' INSERT
+      // would confirm the order but never issue a ticket.
+      status: 'pending',
       subtotal_cents: fees.subtotal_cents,
       addon_total_cents: 0,
       platform_fee_cents: fees.platform_fee_cents,
@@ -575,7 +756,7 @@ async function processSeatCheckout({
       currency,
       fee_pass_type,
       discount_code_id: null,
-      confirmed_at: isFreeOrder ? new Date().toISOString() : null,
+      confirmed_at: null,
     })
 
   if (orderError) {
@@ -587,10 +768,19 @@ async function processSeatCheckout({
   if (event.slug) revalidatePath(`/events/${event.slug}`)
   revalidatePath(`/dashboard/events/${event.id}/seats`)
 
-  // Create one order_item per seat
+  // Create one order_item per seat. A seat with no bound tier (a chart whose
+  // section named no ticket tier) falls back to the event's default tier: the
+  // same tier that priced it on the map. item_type 'ticket' REQUIRES a
+  // non-null tier (order_items_type_check), so a null here would abort every
+  // unmapped-seat checkout at the constraint.
+  const itemTierFallback = tierIdsFromSeats[0] ?? fallbackTier?.id ?? null
+  if (seats.some(seat => !(seat.ticket_tier_id ?? itemTierFallback))) {
+    console.error('[checkout-seats] no ticket tier resolvable for seat order items; event has no tiers')
+    return { error: 'This event has no ticket type configured for its seats. Please contact the organiser.' }
+  }
   const orderItems = seats.map(seat => ({
     order_id,
-    ticket_tier_id: seat.ticket_tier_id ?? (tierIdsFromSeats[0] ?? null),
+    ticket_tier_id: seat.ticket_tier_id ?? itemTierFallback,
     addon_id: null,
     item_type: 'ticket' as const,
     item_name: `Row ${seat.row_label} Seat ${seat.seat_number}${seat.seat_type !== 'standard' ? ` (${seat.seat_type})` : ''}`,
@@ -605,22 +795,54 @@ async function processSeatCheckout({
 
   const { error: itemsError } = await adminClient.from('order_items').insert(orderItems)
   if (itemsError) {
-    console.error('[checkout-seats] order_items insert failed:', itemsError)
+    // FUN-04: fail closed (seat path). Same rationale as the GA path: a paid
+    // order with no order_items issues zero tickets. Roll back and abort before
+    // any PaymentIntent / seat-sold mutation.
+    console.error('[checkout-seats] order_items insert failed, rolling back order:', itemsError)
+    await adminClient.from('orders').delete().eq('id', order_id)
+    return { error: 'We could not set up your order. Please try again.' }
   }
 
-  if (isFreeOrder) {
-    // Mark reservation as converted
-    await adminClient
-      .from('reservations')
-      .update({ status: 'converted', converted_at: new Date().toISOString() })
-      .eq('id', reservation_id)
+  // Record marketing consent at the point of collection (Spam Act). Best-effort.
+  await recordCheckoutConsents({
+    adminClient,
+    organisationId: event.organisation_id,
+    organiserName,
+    email: buyer_email,
+    userId,
+    orderId: order_id,
+    eventId: event.id,
+    organiserConsent,
+    platformConsent,
+  })
 
-    // Mark seats as sold
+  if (isFreeOrder) {
+    // confirm_order UPDATEs the order pending->confirmed (firing the issuance
+    // trigger to mint the seat tickets and QR) and converts the reservation:
+    // the same gate the paid path uses, minus payment. Without it a free
+    // reserved-seating order confirmed but issued no ticket.
+    const { error: confirmError } = await adminClient.rpc('confirm_order', {
+      p_order_id: order_id,
+    })
+    if (confirmError) {
+      console.error('[checkout-seats] free confirm_order error:', confirmError)
+      return { error: 'Order created but could not be confirmed. Please try again.' }
+    }
+
+    // Mark seats as sold (seat-mode specific; confirm_order handles the order
+    // confirmation, ticket issuance, and reservation conversion).
     await adminClient
       .from('seats')
       .update({ status: 'sold', updated_at: new Date().toISOString() })
       .in('id', seatIds)
       .eq('event_id', event.id)
+
+    // Send the confirmation email with the ticket QR. Best-effort.
+    try {
+      await sendConfirmationEmail(adminClient, order_id, null)
+    } catch (emailErr) {
+      console.error('[checkout-seats] free confirmation email failed (non-fatal):', emailErr)
+    }
 
     return { order_id, is_free: true }
   }
@@ -653,12 +875,14 @@ async function processSeatCheckout({
 
   try {
     const gateway = getDefaultGateway()
-    const charge = await createDestinationCharge({
+    const charge = await createPlatformCharge({
       gateway,
       organisationId: event.organisation_id,
+      eventId: event.id,
       fees,
       customerEmail: buyer_email,
       idempotencyKey: idempotency_key,
+      transferGroup: order_id,
       metadata: {
         order_id,
         event_id: event.id,

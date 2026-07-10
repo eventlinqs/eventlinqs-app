@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { HeroMedia } from '@/components/media'
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
-import { getCultureHeroPhoto } from '@/lib/images/culture-photo'
+import { getCommunityHeroPhoto } from '@/lib/images/community-photo'
 
 /**
  * SplitStateHero (Batch 9.2) - editorial copy left, photographic hero
@@ -12,7 +12,7 @@ import { getCultureHeroPhoto } from '@/lib/images/culture-photo'
  *   - Tablet (768-1023px): 60/40 split, copy left
  *   - Mobile (<768px): single column, copy first, image below at 60vh
  *
- * Brand voice H1 ("Where the culture gathers") locked from the design
+ * Brand voice H1 ("Where the community gathers") locked from the design
  * system tagline. Dual-path CTAs surface both the consumer and organiser
  * journeys from the homepage above the fold, matching Stripe's pattern
  * and surpassing Ticketmaster's no-voice carousel.
@@ -29,10 +29,10 @@ import { getCultureHeroPhoto } from '@/lib/images/culture-photo'
  * applied to the photographic hero templates in this batch.
  */
 export async function SplitStateHero() {
-  // Pull a vibrant culture image as the right-column hero. African is
+  // Pull a vibrant community image as the right-column hero. African is
   // chosen as the default representative because the underlying Pexels
   // query returns the most consistently colour-rich crowd photography.
-  const heroImage = await getCultureHeroPhoto('african')
+  const heroImage = await getCommunityHeroPhoto('african')
 
   return (
     <section

@@ -1,0 +1,178 @@
+{
+  "mode": "magic-free",
+  "throttle": false,
+  "runs": 10,
+  "green": 10,
+  "results": [
+    {
+      "run": 1,
+      "ok": true,
+      "draftMs": 6744,
+      "totalMs": 11947,
+      "actionResponses": [
+        {
+          "status": 200,
+          "url": "aging.vercel.app/dashboard/events/create"
+        },
+        {
+          "status": 200,
+          "url": "aging.vercel.app/dashboard/events/create"
+        }
+      ],
+      "consoleErrors": []
+    },
+    {
+      "run": 2,
+      "ok": true,
+      "draftMs": 6528,
+      "totalMs": 11527,
+      "actionResponses": [
+        {
+          "status": 200,
+          "url": "aging.vercel.app/dashboard/events/create"
+        },
+        {
+          "status": 200,
+          "url": "aging.vercel.app/dashboard/events/create"
+        }
+      ],
+      "consoleErrors": []
+    },
+    {
+      "run": 3,
+      "ok": true,
+      "draftMs": 6069,
+      "totalMs": 11072,
+      "actionResponses": [
+        {
+          "status": 200,
+          "url": "aging.vercel.app/dashboard/events/create"
+        },
+        {
+          "status": 200,
+          "url": "aging.vercel.app/dashboard/events/create"
+        }
+      ],
+      "consoleErrors": []
+    },
+    {
+      "run": 4,
+      "ok": true,
+      "draftMs": 7151,
+      "totalMs": 12301,
+      "actionResponses": [
+        {
+          "status": 200,
+          "url": "aging.vercel.app/dashboard/events/create"
+        },
+        {
+          "status": 200,
+          "url": "aging.vercel.app/dashboard/events/create"
+        }
+      ],
+      "consoleErrors": []
+    },
+    {
+      "run": 5,
+      "ok": true,
+      "draftMs": 6511,
+      "totalMs": 11396,
+      "actionResponses": [
+        {
+          "status": 200,
+          "url": "aging.vercel.app/dashboard/events/create"
+        },
+        {
+          "status": 200,
+          "url": "aging.vercel.app/dashboard/events/create"
+        }
+      ],
+      "consoleErrors": []
+    },
+    {
+      "run": 6,
+      "ok": true,
+      "draftMs": 6459,
+      "totalMs": 11413,
+      "actionResponses": [
+        {
+          "status": 200,
+          "url": "aging.vercel.app/dashboard/events/create"
+        },
+        {
+          "status": 200,
+          "url": "aging.vercel.app/dashboard/events/create"
+        }
+      ],
+      "consoleErrors": []
+    },
+    {
+      "run": 7,
+      "ok": true,
+      "draftMs": 7588,
+      "totalMs": 12553,
+      "actionResponses": [
+        {
+          "status": 200,
+          "url": "aging.vercel.app/dashboard/events/create"
+        },
+        {
+          "status": 200,
+          "url": "aging.vercel.app/dashboard/events/create"
+        }
+      ],
+      "consoleErrors": []
+    },
+    {
+      "run": 8,
+      "ok": true,
+      "draftMs": 7392,
+      "totalMs": 13027,
+      "actionResponses": [
+        {
+          "status": 200,
+          "url": "aging.vercel.app/dashboard/events/create"
+        },
+        {
+          "status": 200,
+          "url": "aging.vercel.app/dashboard/events/create"
+        }
+      ],
+      "consoleErrors": []
+    },
+    {
+      "run": 9,
+      "ok": true,
+      "draftMs": 8084,
+      "totalMs": 13102,
+      "actionResponses": [
+        {
+          "status": 200,
+          "url": "aging.vercel.app/dashboard/events/create"
+        },
+        {
+          "status": 200,
+          "url": "aging.vercel.app/dashboard/events/create"
+        }
+      ],
+      "consoleErrors": []
+    },
+    {
+      "run": 10,
+      "ok": true,
+      "draftMs": 6629,
+      "totalMs": 11502,
+      "actionResponses": [
+        {
+          "status": 200,
+          "url": "aging.vercel.app/dashboard/events/create"
+        },
+        {
+          "status": 200,
+          "url": "aging.vercel.app/dashboard/events/create"
+        }
+      ],
+      "consoleErrors": []
+    }
+  ]
+}

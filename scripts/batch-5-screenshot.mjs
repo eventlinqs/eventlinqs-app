@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-// Batch 5 screenshot capture - culture page audit at 1440 + 375.
+// Batch 5 screenshot capture - community page audit at 1440 + 375.
 //
 // Usage:
 //   node scripts/batch-5-screenshot.mjs after
 //
-// Captures every /culture/[slug] page (14 pages) plus a verification
+// Captures every /community/[slug] page (14 pages) plus a verification
 // pass on the legacy /categories/[slug] redirects (those should land
-// on /culture/* with a 301).
+// on /community/* with a 301).
 
 import { chromium } from 'playwright'
 import path from 'node:path'
@@ -22,22 +22,22 @@ const BASE = process.env.BATCH5_BASE ?? 'http://localhost:3001'
 const OUT = path.join(process.cwd(), 'docs', 'redesign', 'batch-5-evidence', phase)
 
 const PAGES = [
-  // 10 Tier 1 cultures
-  { slug: 'culture-african',         path: '/culture/african' },
-  { slug: 'culture-south-asian',     path: '/culture/south-asian' },
-  { slug: 'culture-caribbean',       path: '/culture/caribbean' },
-  { slug: 'culture-latin',           path: '/culture/latin' },
-  { slug: 'culture-east-asian',      path: '/culture/east-asian' },
-  { slug: 'culture-filipino',        path: '/culture/filipino' },
-  { slug: 'culture-mediterranean',   path: '/culture/mediterranean' },
-  { slug: 'culture-middle-eastern',  path: '/culture/middle-eastern' },
-  { slug: 'culture-european',        path: '/culture/european' },
-  { slug: 'culture-pacific',         path: '/culture/pacific' },
-  // 4 Tier 2 cross-cultural verticals
-  { slug: 'culture-gospel',   path: '/culture/gospel' },
-  { slug: 'culture-comedy',   path: '/culture/comedy' },
-  { slug: 'culture-wellness', path: '/culture/wellness' },
-  { slug: 'culture-pride',    path: '/culture/pride' },
+  // 10 Tier 1 communities
+  { slug: 'community-african',         path: '/community/african' },
+  { slug: 'community-south-asian',     path: '/community/south-asian' },
+  { slug: 'community-caribbean',       path: '/community/caribbean' },
+  { slug: 'community-latin',           path: '/community/latin' },
+  { slug: 'community-east-asian',      path: '/community/east-asian' },
+  { slug: 'community-filipino',        path: '/community/filipino' },
+  { slug: 'community-mediterranean',   path: '/community/mediterranean' },
+  { slug: 'community-middle-eastern',  path: '/community/middle-eastern' },
+  { slug: 'community-european',        path: '/community/european' },
+  { slug: 'community-pacific',         path: '/community/pacific' },
+  // 4 Tier 2 cross-community verticals
+  { slug: 'community-gospel',   path: '/community/gospel' },
+  { slug: 'community-comedy',   path: '/community/comedy' },
+  { slug: 'community-wellness', path: '/community/wellness' },
+  { slug: 'community-pride',    path: '/community/pride' },
 ]
 
 const VIEWPORTS = [
@@ -76,15 +76,15 @@ for (const vp of VIEWPORTS) {
 }
 
 // Redirect verification: the legacy /categories/* slugs that map to
-// new culture pages should 301 to /culture/*. We hit them with
+// new community pages should 301 to /community/*. We hit them with
 // followRedirects=true and record the final URL alongside the screenshot.
 const redirectChecks = [
-  { from: '/categories/afrobeats',                 expected: '/culture/african' },
-  { from: '/categories/amapiano',                  expected: '/culture/african' },
-  { from: '/categories/owambe',                    expected: '/culture/african' },
-  { from: '/categories/heritage-and-independence', expected: '/culture/african' },
-  { from: '/categories/caribbean',                 expected: '/culture/caribbean' },
-  { from: '/categories/gospel',                    expected: '/culture/gospel' },
+  { from: '/categories/afrobeats',                 expected: '/community/african' },
+  { from: '/categories/amapiano',                  expected: '/community/african' },
+  { from: '/categories/owambe',                    expected: '/community/african' },
+  { from: '/categories/heritage-and-independence', expected: '/community/african' },
+  { from: '/categories/caribbean',                 expected: '/community/caribbean' },
+  { from: '/categories/gospel',                    expected: '/community/gospel' },
 ]
 
 const redirectResults = []

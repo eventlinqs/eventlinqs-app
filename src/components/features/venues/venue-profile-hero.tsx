@@ -18,7 +18,7 @@ interface Props {
 
 /**
  * VenueProfileHero - full-bleed photographic banner for /venues/[handle]
- * (Batch 8.3 VP1). Mirrors the city + culture hero pattern (image +
+ * (Batch 8.3 VP1). Mirrors the city + community hero pattern (image +
  * dark gradient + bottom-left content stack) with venue-specific
  * pills (capacity + venue type) and two CTAs.
  */
@@ -43,7 +43,7 @@ export function VenueProfileHero({
   return (
     <section aria-labelledby="venue-hero-heading" className="relative overflow-hidden">
       <HeroPresenceMarker />
-      <div className="relative h-[64vh] min-h-[440px] max-h-[560px] w-full sm:h-[55vh] sm:min-h-[400px] sm:max-h-[600px]">
+      <div className="relative h-[80vh] min-h-[550px] max-h-[700px] w-full sm:h-[69vh] sm:min-h-[500px] sm:max-h-[750px]">
         {imageSrc ? (
           <HeroMedia image={imageSrc} alt={`${venueName}${city ? ` in ${city}` : ''}`} priority />
         ) : (
@@ -87,7 +87,7 @@ export function VenueProfileHero({
                 {pills.map(p => (
                   <li
                     key={p}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-ink-900/95 px-3 py-1.5 text-xs font-semibold text-white"
                   >
                     {p.startsWith('Capacity') ? <Users className="h-3.5 w-3.5" aria-hidden /> : null}
                     {p}
@@ -108,7 +108,7 @@ export function VenueProfileHero({
                   href={directionsUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex h-12 min-w-[44px] items-center justify-center rounded-full border border-white/70 bg-white/10 px-6 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/20 sm:h-11"
+                  className="inline-flex h-12 min-w-[44px] items-center justify-center rounded-full border border-white/70 bg-[var(--color-ink-900)] px-6 text-sm font-semibold text-white transition hover:border-white hover:bg-[var(--color-navy-950)] sm:h-11"
                 >
                   Get directions
                 </Link>

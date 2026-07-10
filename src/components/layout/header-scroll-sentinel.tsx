@@ -9,7 +9,7 @@
  *
  * Why absolute (Batch 11.0 followup): the previous block-level
  * implementation pushed every page's header down by 80px, leaving an
- * off-white body band above the sticky header on /culture, /city,
+ * off-white body band above the sticky header on /community, /city,
  * and intersection routes that broke the white nav's readability.
  * Absolute positioning lets the header sit at y=0 over the hero
  * while preserving the IntersectionObserver trigger geometry.

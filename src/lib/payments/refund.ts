@@ -66,8 +66,6 @@ export interface RefundResult {
   status: Stripe.Refund['status']
   amountCents: number
   currency: string
-  reverseTransfer: true
-  refundedApplicationFee: true
 }
 
 /**
@@ -90,19 +88,22 @@ function mapStripeReason(reason: RefundReason): Stripe.RefundCreateParams.Reason
 }
 
 /**
- * Issues a Stripe refund against the destination charge identified by the
- * order's `payment_intent`.
+ * Refunds the buyer from the PLATFORM balance (funds-holding model). The buyer
+ * charge is a platform charge (separate charges and transfers) with no
+ * `transfer_data`, so `reverse_transfer` / `refund_application_fee` are NOT
+ * passed here - they are only valid on a destination charge and would error.
  *
- * - `reverse_transfer: true` pulls the organiser's share back from the
- *   connected account.
- * - `refund_application_fee: true` refunds the platform fee proportionally
- *   to the refund amount, so partial refunds return a proportional fee.
- * - `metadata` preserves the platform's order id, initiator, and reason for
- *   traceability inside the Stripe Dashboard.
+ * - Pre-disbursement (the common case): the organiser was never paid, so the
+ *   ledger reconcile (reconcile_refund) simply reduces the held liability; no
+ *   transfer clawback is needed.
+ * - Post-disbursement: the organiser's share is clawed back by reversing the
+ *   disbursement transfer (reverseOrganiserTransferForRefund), done in the
+ *   webhook AFTER reconcile so the event balance never looks disbursable.
  *
- * Idempotency key is `refund:${orderId}:${amountCents}:${initiatedBy}` for
- * Phase 3. A persistent refund row with a stronger key is a Phase 4 follow-up
- * once the refunds table extension lands.
+ * `metadata` preserves the order id, initiator, and reason for Stripe Dashboard
+ * traceability. Idempotency key defaults to
+ * `refund:${orderId}:${amountCents}:${initiatedBy}`; callers with a persistent
+ * refund row pass `refund:${refundId}`.
  */
 export async function refundOrder(input: RefundOrderInput): Promise<RefundResult> {
   if (!Number.isInteger(input.amountCents) || input.amountCents <= 0) {
@@ -123,8 +124,6 @@ export async function refundOrder(input: RefundOrderInput): Promise<RefundResult
         payment_intent: input.paymentIntentId,
         amount: input.amountCents,
         reason: mapStripeReason(input.reason),
-        reverse_transfer: true,
-        refund_application_fee: true,
         metadata: {
           order_id: input.orderId,
           initiated_by: input.initiatedBy,
@@ -155,7 +154,5 @@ export async function refundOrder(input: RefundOrderInput): Promise<RefundResult
     status: refund.status,
     amountCents: refund.amount,
     currency: refund.currency.toUpperCase(),
-    reverseTransfer: true,
-    refundedApplicationFee: true,
   }
 }

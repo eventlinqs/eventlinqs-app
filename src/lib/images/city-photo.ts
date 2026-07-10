@@ -1,4 +1,5 @@
 import { unstable_cache } from 'next/cache'
+import { getSpineCity } from './spine'
 
 /**
  * City-aware photo pipeline backed by Pexels.
@@ -110,6 +111,9 @@ const fetchCityPhoto = unstable_cache(
 )
 
 export async function getCityPhoto(slug: string): Promise<string | null> {
+  // Spine-first: the licensed city photo is the slot image platform-wide.
+  const spine = getSpineCity(slug)
+  if (spine) return spine.src
   const key = slug.toLowerCase()
   const query = CITY_QUERIES[key]
   if (!query) return null
@@ -157,6 +161,9 @@ const fetchCityHeroPhoto = unstable_cache(
 )
 
 export async function getCityHeroPhoto(slug: string): Promise<string | null> {
+  // Spine-first: the licensed city photo also fronts the city hero band.
+  const spine = getSpineCity(slug)
+  if (spine) return spine.src
   const key = slug.toLowerCase()
   const query = CITY_QUERIES[key]
   if (!query) return null

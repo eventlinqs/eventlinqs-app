@@ -55,7 +55,6 @@ describe('requestTicketRefund', () => {
     vi.mocked(resolveRefundScope).mockResolvedValue({ allowed: true, via: 'admin', organisationId: 'org1' })
     vi.mocked(refundOrder).mockResolvedValue({
       stripeRefundId: 're_1', status: 'succeeded', amountCents: 5000, currency: 'AUD',
-      reverseTransfer: true, refundedApplicationFee: true,
     })
     const { admin, updates, rpc } = makeAdmin([rpcRow])
 

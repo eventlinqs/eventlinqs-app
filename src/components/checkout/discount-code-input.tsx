@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { validateDiscountCode } from '@/app/actions/discount-codes'
+import { Button } from '@/components/ui/Button'
 
 interface DiscountCodeInputProps {
   eventId: string
@@ -84,19 +85,19 @@ export function DiscountCodeInput({
           onChange={e => setCode(e.target.value.toUpperCase())}
           onKeyDown={e => e.key === 'Enter' && handleApply()}
           placeholder="Enter code"
-          className="flex-1 rounded-lg border border-ink-200 px-3 py-2 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500 font-mono uppercase"
+          className="flex-1 rounded-lg border border-ink-200 px-3.5 py-2.5 text-base text-ink-900 placeholder:text-ink-400 focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500 font-mono uppercase"
         />
-        <button
+        <Button
           type="button"
+          variant="secondary"
           onClick={handleApply}
           disabled={isPending || !code.trim()}
-          className="rounded-lg bg-ink-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 hover:bg-ink-600 transition-colors"
         >
           {isPending ? 'Checking…' : 'Apply'}
-        </button>
+        </Button>
       </div>
       {error && (
-        <p className="mt-2 text-sm text-red-600">{error}</p>
+        <p className="mt-2 text-sm text-error">{error}</p>
       )}
     </div>
   )

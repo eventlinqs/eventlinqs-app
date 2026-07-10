@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { getOrCreateGuestSessionId } from '@/lib/auth/guest-session'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 
@@ -23,6 +24,13 @@ export async function createSeatReservation(
 ): Promise<SeatReservationResult> {
   const parsed = CreateSeatReservationSchema.safeParse(input)
   if (!parsed.success) {
+    // RES-02: name the offending field(s) in the server log.
+    console.error(
+      '[seat-reservations] invalid reservation input:',
+      parsed.error.issues
+        .map((i) => `${i.path.join('.') || '(root)'}: ${i.code} - ${i.message}`)
+        .join('; '),
+    )
     return { error: 'Invalid reservation data' }
   }
 
@@ -31,11 +39,16 @@ export async function createSeatReservation(
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
+  // Signed-out buyers own their hold through the guest-session cookie, the
+  // same owner the GA reservation path uses (reservations_has_owner CHECK).
+  const sessionId = user ? null : await getOrCreateGuestSessionId()
+
   const { data, error } = await supabase.rpc('create_seat_reservation', {
     p_event_id: event_id,
     p_user_id: user?.id ?? null,
     p_seat_ids: seat_ids,
     p_ttl_minutes: ttl_minutes,
+    p_session_id: sessionId,
   })
 
   if (error) {

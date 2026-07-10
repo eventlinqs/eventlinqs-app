@@ -49,10 +49,10 @@ if (!PEXELS_API_KEY) {
   process.exit(1)
 }
 
-// Category slug -> Pexels search query. Queries bias multicultural / diverse
+// Category slug -> Pexels search query. Queries bias multicommunity / diverse
 // crowds, matching docs/MEDIA-ARCHITECTURE.md tone.
 const CATEGORIES = {
-  afrobeats: 'multicultural music festival diverse crowd',
+  afrobeats: 'multicommunity music festival diverse crowd',
   gospel: 'community gospel worship together',
   amapiano: 'african diaspora dance floor celebration',
   owambe: 'african wedding celebration diverse families',

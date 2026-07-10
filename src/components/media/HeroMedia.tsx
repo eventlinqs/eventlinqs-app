@@ -55,9 +55,12 @@ export interface HeroMediaProps {
    */
   priority?: boolean
   /**
-   * CSS object-position value for the cover crop. Defaults to "50% 50%".
-   * Override per slide when the subject sits off-centre (e.g. carousel
-   * slides where the desktop crop otherwise lops off heads or hands).
+   * CSS object-position value for the cover crop. Defaults to "50% 30%":
+   * people photograph with their heads in the upper third, and the wide,
+   * short hero box crops top-and-bottom, so a centred crop lops the top row
+   * of heads. Biasing the focal point up keeps heads and faces in frame and
+   * crops the (less important) lower body instead. Override per slide when
+   * a specific subject sits elsewhere.
    */
   objectPosition?: string
 }
@@ -82,7 +85,7 @@ export function HeroMedia({
   className = '',
   fillParent = true,
   priority = true,
-  objectPosition = '50% 50%',
+  objectPosition = '50% 30%',
 }: HeroMediaProps) {
   assertRaster(image)
 

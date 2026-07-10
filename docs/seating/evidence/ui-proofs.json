@@ -1,0 +1,101 @@
+{
+  "base": "http://localhost:3214",
+  "startedAt": "2026-07-04T22:49:55.833Z",
+  "steps": {
+    "setup": {
+      "testOrg": {
+        "id": "0fdda7aa-9662-4bea-b9e1-3264ca37c55e",
+        "name": "Baseline Capture Draft 2026-07-04"
+      },
+      "builderVenueId": "891eebed-64c9-4a55-8516-df6385065779"
+    },
+    "builder": {
+      "map": {
+        "id": "c8e17c1d-d417-40e2-ab0b-ff664a66f6ae",
+        "name": "Cellar built by organiser flow",
+        "total_seats": 26
+      }
+    },
+    "freePurchase": {
+      "orderId": "e7cd6870-6f53-4526-89b5-bb8014e0687a",
+      "tickets": [
+        {
+          "ticket_code": "EL-J78H-XHSC",
+          "secret": "ef4e2c67-1117-49ba-afe4-900d5a3ffa55",
+          "status": "valid",
+          "seat_id": "a683c14f-e54a-4365-9c6d-8b0e55cdc543",
+          "seat": {
+            "status": "sold",
+            "section": {
+              "name": "Main room"
+            },
+            "row_label": "B",
+            "seat_number": "3"
+          }
+        },
+        {
+          "ticket_code": "EL-K3JE-K4MX",
+          "secret": "04e1c0b1-183c-49a7-9ee2-c6ea0c0ed303",
+          "status": "valid",
+          "seat_id": "1ef717f3-aa89-4b30-9325-264c6cda8a94",
+          "seat": {
+            "status": "sold",
+            "section": {
+              "name": "Main room"
+            },
+            "row_label": "B",
+            "seat_number": "5"
+          }
+        }
+      ]
+    },
+    "paidPurchase": {
+      "orderId": "c0658526-e7dc-4353-8d39-2ccf337a7045",
+      "order": {
+        "id": "c0658526-e7dc-4353-8d39-2ccf337a7045",
+        "order_number": "EL-EJEHVWY3",
+        "status": "confirmed",
+        "total_cents": 2750,
+        "currency": "AUD"
+      },
+      "tickets": [
+        {
+          "ticket_code": "EL-3NDJ-W6YC",
+          "secret": "a1ff76ab-2d70-43a0-9f2d-76e2fe937e84",
+          "status": "valid",
+          "seat_id": "cc21f165-a28b-45f0-9a11-2e119364a2b0",
+          "seat": {
+            "status": "sold",
+            "section": {
+              "name": "Main room"
+            },
+            "row_label": "A",
+            "seat_number": "2"
+          }
+        }
+      ]
+    },
+    "scan": {
+      "ticket": {
+        "id": "91587f5e-6280-4ae3-9b42-a3d3388123ae",
+        "ticket_code": "EL-J78H-XHSC",
+        "status": "scanned",
+        "first_scanned_at": "2026-07-04T22:50:43.320006+00:00",
+        "scan_count": 1
+      },
+      "scanRows": [
+        {
+          "result": "admitted",
+          "scanned_at": "2026-07-04T22:50:43.320006+00:00"
+        }
+      ]
+    },
+    "performance": {
+      "seatNodes": 1201,
+      "pageLoadToMapMs": 2330,
+      "firstSeatClickMs": 210,
+      "note": "Measured on the iPhone 13 Playwright profile against the local production build after the 1000-row cap fix; recorded from the run log of task bb7b8z8o2."
+    }
+  },
+  "finishedAt": "2026-07-04T22:50:51.552Z"
+}

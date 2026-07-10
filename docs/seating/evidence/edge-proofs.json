@@ -1,0 +1,27 @@
+{
+  "startedAt": "2026-07-04T23:57:01.618Z",
+  "tableBooking": {
+    "tableButton": "Table 1 · book all 10",
+    "checkoutUrl": "/checkout/0a64fdb5-5f6e-4e10-a45d-5a792f5bfec7?seat=1",
+    "seatsHeld": 10
+  },
+  "regressionFreePurchase": {
+    "orderId": "f7a8feff-d2a4-481a-800e-ce5ad2c03002",
+    "tickets": [
+      {
+        "ticket_code": "EL-UE4H-84GF",
+        "status": "valid",
+        "seat": {
+          "status": "sold",
+          "section": {
+            "name": "Main room"
+          },
+          "row_label": "C",
+          "seat_number": "1"
+        }
+      }
+    ],
+    "shareCardVisible": true
+  },
+  "finishedAt": "2026-07-04T23:57:34.942Z"
+}

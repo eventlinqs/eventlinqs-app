@@ -46,7 +46,7 @@ export const heroCategories: Record<HeroCategorySlug, HeroCategory> = {
     storyHeadline: 'Afrobeats on EventLinqs',
     storyParagraphs: [
       "Afrobeats isn't just a genre. It's a global movement, and the communities behind it are its engine. Every weekend, in every city with a Nigerian, Ghanaian, or pan-African community, there's an Afrobeats night happening. The promoters running these events are professional, the crowds are loyal, and the experience deserves a ticketing platform that respects both.",
-      "EventLinqs gives Afrobeats organisers what Eventbrite and Ticketmaster don't: transparent fees, WhatsApp-first share flows, squad bookings so the whole crew comes together, and real human support when you need it. No platform tax disguised as a \"convenience fee.\" No bot-scalped tickets. No questions about whether your community is \"big enough\" to matter.",
+      "EventLinqs gives Afrobeats organisers what mainstream platforms don't: transparent fees, WhatsApp-first share flows, squad bookings so the whole crew comes together, and real human support when you need it. No platform tax disguised as a \"convenience fee.\" No bot-scalped tickets. No questions about whether your community is \"big enough\" to matter.",
       'If you run Afrobeats nights, festivals, concerts, or club takeovers, list with us. The first event is on us.',
     ],
     valuePillars: [

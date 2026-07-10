@@ -69,7 +69,7 @@ export function InPageNav({ sections }: InPageNavProps) {
               className={[
                 'block rounded px-2 py-1.5 text-sm transition-colors duration-150',
                 active === id
-                  ? 'font-medium text-[var(--brand-accent)]'
+                  ? 'font-medium text-[var(--brand-accent-strong)]'
                   : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]',
               ].join(' ')}
               onClick={(e) => {

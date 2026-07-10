@@ -1,0 +1,11 @@
+{
+  "users": {
+    "organiser": "d11f5c1d-d18f-429f-a58c-67caafc29d1b",
+    "buyer1": "0b3e58a0-46d8-42e8-8276-1dd8d6ab3849",
+    "buyer2": "2ba9c4de-be40-4e94-8efb-51033c83942f"
+  },
+  "organisation": "e875fa77-1e8a-46fe-8f9d-e82e58b5864b",
+  "event": "8deaff4f-d92f-4dfc-9ef4-cabcda0502a8",
+  "tier": "8156354e-4502-490e-af69-410c58466533",
+  "encoreEvent": "a1bde321-c77c-48d5-8842-f897d2ec0b1d"
+}

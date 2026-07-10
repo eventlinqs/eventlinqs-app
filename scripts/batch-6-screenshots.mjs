@@ -173,7 +173,7 @@ async function main() {
 - Suburb rail (Tier 1) routing to /city/[slug]/[suburb].
 - Mobile sticky CTA bar after hero scroll - documented in
   ../mobile-sticky-cta.png.
-- Editorial section names 3+ cultural communities + 2+ suburbs per city.
+- Editorial section names 3+ community communities + 2+ suburbs per city.
 `
     writeFileSync(`${COMP_DIR}/${city}-vs-tm-airbnb.md`, md)
   }

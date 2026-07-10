@@ -28,7 +28,7 @@ interface PageHeroProps {
  *   - 'premium' variant adds a thin gold rule along the bottom edge
  *     to mark the most-prominent pages (e.g. /pricing, /organisers)
  *
- * Used by: /pricing, /organisers, /about, /blog, /press, /careers,
+ * Used by: /pricing, /organisers, /about, /press, /careers,
  * /help, /help/[slug], /contact, /legal/*, /partners.
  */
 export function PageHero({ eyebrow, title, subtitle, align = 'left', variant = 'default' }: PageHeroProps) {

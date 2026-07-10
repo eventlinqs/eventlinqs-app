@@ -15,8 +15,16 @@
  * renders - correct regardless of the env var.
  */
 
+import { getSupabaseUrl } from '@/lib/supabase/env'
+
+// The ACTIVE supabase URL for this deploy. On the preview this resolves to the
+// TEST project via the *_PREVIEW vars (env.ts), so the allowlist below matches
+// the host that organiser media is actually served from. Using the bare
+// NEXT_PUBLIC_SUPABASE_URL here (the production value, even on a TEST-backed
+// preview) made every TEST-hosted cover and gallery image fall back to the
+// branded placeholder.
 function supabaseUrl(): string {
-  return (process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').replace(/\/+$/, '')
+  return getSupabaseUrl().replace(/\/+$/, '')
 }
 
 function supabaseHost(url: string): string {
@@ -57,9 +65,13 @@ export function resolveImageSrc(url: string | null | undefined): string | null {
     if (tail) return `${sbUrl}/storage/v1/object/public/${tail}`
   }
 
-  // Allow-list mirrors next.config.ts images.remotePatterns hostnames.
+  // Allow-list mirrors next.config.ts images.remotePatterns hostnames. Both the
+  // base and the preview supabase hosts are listed there (and here), so a TEST
+  // -backed preview and production each render their own storage host.
+  const baseHost = supabaseHost(process.env.NEXT_PUBLIC_SUPABASE_URL ?? '')
+  const previewHost = supabaseHost(process.env.NEXT_PUBLIC_SUPABASE_URL_PREVIEW ?? '')
   const allowed = new Set(
-    [sbHost, 'images.eventlinqs.com', 'picsum.photos', 'images.pexels.com'].filter(Boolean),
+    [sbHost, baseHost, previewHost, 'images.eventlinqs.com', 'picsum.photos', 'images.pexels.com'].filter(Boolean),
   )
   return allowed.has(parsed.host) ? trimmed : null
 }

@@ -1,0 +1,21 @@
+{
+  "mode": "magic-paid",
+  "throttle": false,
+  "runs": 1,
+  "green": 0,
+  "results": [
+    {
+      "run": 1,
+      "ok": false,
+      "stage": "exception",
+      "detail": "TimeoutError: page.waitForFunction: Timeout 20000ms exceeded.",
+      "step": 2,
+      "url": "https://eventlinqs-staging.vercel.app/dashboard/events/create",
+      "banners": [
+        "End date and time must be after start date and time."
+      ],
+      "actionResponses": [],
+      "consoleErrors": []
+    }
+  ]
+}

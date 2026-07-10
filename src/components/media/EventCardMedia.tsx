@@ -3,6 +3,7 @@ import { MEDIA_QUALITY } from './quality'
 import { MEDIA_SIZES } from './sizes'
 import { resolveImageSrc } from './safe-image-src'
 import { BrandedPlaceholder } from './decorative/branded-placeholder'
+import { HoverWash } from './hover-wash'
 
 /**
  * EventCardMedia - the only allowed surface for event imagery in card,
@@ -36,6 +37,12 @@ interface Props {
   priority?: boolean
   /** Object-fit override. Defaults to 'cover'. */
   objectFit?: 'cover' | 'contain'
+  /**
+   * CSS object-position for the cover crop. Defaults to centre. Pass a
+   * focal point (e.g. "50% 38%") for slot imagery whose subject sits
+   * off-centre so a square/portrait tile does not lop off heads or hands.
+   */
+  objectPosition?: string
   /** Extra classes for the <Image>. */
   className?: string
 }
@@ -62,6 +69,7 @@ export function EventCardMedia({
   variant,
   priority = false,
   objectFit = 'cover',
+  objectPosition,
   className = '',
 }: Props) {
   // A bad/missing/disallowed URL must never 500 the card or its rail.
@@ -70,17 +78,21 @@ export function EventCardMedia({
     return <BrandedPlaceholder className={className} />
   }
   return (
-    <Image
-      src={safeSrc}
-      alt={alt}
-      fill
-      sizes={SIZES_BY_VARIANT[variant]}
-      quality={QUALITY_BY_VARIANT[variant]}
-      priority={priority}
-      fetchPriority={priority ? 'high' : 'auto'}
-      loading={priority ? 'eager' : 'lazy'}
-      decoding="async"
-      className={`${objectFit === 'cover' ? 'object-cover' : 'object-contain'} ${className}`}
-    />
+    <>
+      <Image
+        src={safeSrc}
+        alt={alt}
+        fill
+        sizes={SIZES_BY_VARIANT[variant]}
+        quality={QUALITY_BY_VARIANT[variant]}
+        priority={priority}
+        fetchPriority={priority ? 'high' : 'auto'}
+        loading={priority ? 'eager' : 'lazy'}
+        decoding="async"
+        className={`card-media-img ${objectFit === 'cover' ? 'object-cover' : 'object-contain'} ${className}`}
+        style={objectPosition ? { objectPosition } : undefined}
+      />
+      <HoverWash />
+    </>
   )
 }

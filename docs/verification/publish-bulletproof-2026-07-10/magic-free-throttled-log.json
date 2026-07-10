@@ -1,0 +1,59 @@
+{
+  "mode": "magic-free",
+  "throttle": true,
+  "runs": 3,
+  "green": 3,
+  "results": [
+    {
+      "run": 1,
+      "ok": true,
+      "draftMs": 9247,
+      "totalMs": 16998,
+      "actionResponses": [
+        {
+          "status": 200,
+          "url": "aging.vercel.app/dashboard/events/create"
+        },
+        {
+          "status": 200,
+          "url": "aging.vercel.app/dashboard/events/create"
+        }
+      ],
+      "consoleErrors": []
+    },
+    {
+      "run": 2,
+      "ok": true,
+      "draftMs": 8628,
+      "totalMs": 16461,
+      "actionResponses": [
+        {
+          "status": 200,
+          "url": "aging.vercel.app/dashboard/events/create"
+        },
+        {
+          "status": 200,
+          "url": "aging.vercel.app/dashboard/events/create"
+        }
+      ],
+      "consoleErrors": []
+    },
+    {
+      "run": 3,
+      "ok": true,
+      "draftMs": 9196,
+      "totalMs": 17045,
+      "actionResponses": [
+        {
+          "status": 200,
+          "url": "aging.vercel.app/dashboard/events/create"
+        },
+        {
+          "status": 200,
+          "url": "aging.vercel.app/dashboard/events/create"
+        }
+      ],
+      "consoleErrors": []
+    }
+  ]
+}

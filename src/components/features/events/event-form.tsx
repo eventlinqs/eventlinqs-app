@@ -1,10 +1,19 @@
 'use client'
 
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
 import { createEvent, updateEvent } from '@/app/(dashboard)/dashboard/events/actions'
-import { uploadEventImage } from '@/lib/upload'
+import { EventMediaStep, type MediaImage } from './event-media-step'
+import { parseGallery } from '@/lib/media/event-media-model'
+import { AssistantPanel, type PanelSuggestion } from '@/components/ai/assistant-panel'
+import { MagicStart } from './magic-start'
+import type { MagicStartDraft } from '@/lib/ai/magic-start'
+import { getAllCommunities, type CommunitySlug } from '@/lib/communities/data'
+import {
+  communitiesFromTags,
+  stripCanonicalCommunityTokens,
+  canonicalTokensForCommunities,
+} from '@/lib/communities/tag-bridge'
 import type {
   EventCategory,
   EventType,
@@ -12,6 +21,7 @@ import type {
   EventStatus,
   TicketTierType,
   TicketTier,
+  FeePassType,
 } from '@/types/database'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -31,6 +41,10 @@ export type TicketTierInput = {
   sort_order: number
 }
 
+// Heritage communities for the create/edit multi-select, ordered so Aboriginal &
+// Torres Strait Islander leads (heritageOrder). Static data, computed once.
+const ALL_COMMUNITIES = getAllCommunities().slice().sort((a, b) => a.heritageOrder - b.heritageOrder)
+
 type FormData = {
   // Step 1
   title: string
@@ -38,6 +52,7 @@ type FormData = {
   description: string
   category_id: string
   tags: string
+  community_slugs: CommunitySlug[]
   // Step 2
   start_date: string
   end_date: string
@@ -54,10 +69,15 @@ type FormData = {
   venue_country: string
   venue_postal_code: string
   virtual_url: string
-  // Step 4
-  cover_image_url: string
+  // Step 4 - Event Media Standard: one ordered list (index 0 = cover, 1..9 =
+  // gallery) plus one optional video link (raw provider URL; parsed server-side).
+  media: MediaImage[]
+  video_url: string
   // Step 5
   ticket_tiers: TicketTierInput[]
+  // Who carries the fees: pass-on (buyer pays, organiser keeps face value -
+  // default) or absorb (deducted from the organiser payout).
+  fee_pass_type: FeePassType
   // Step 6
   visibility: EventVisibility
   is_age_restricted: boolean
@@ -65,6 +85,7 @@ type FormData = {
   max_capacity: string
   // M4: Reserved seating
   has_reserved_seating: boolean
+  allow_seat_self_service: boolean
   venue_id: string
   seat_map_id: string
   // Phase 3B: Squad booking
@@ -122,7 +143,7 @@ const STEPS = [
   'Basic Details',
   'Date & Time',
   'Location',
-  'Cover Image',
+  'Event Media',
   'Tickets',
   'Settings',
   'Review & Publish',
@@ -157,6 +178,7 @@ function getDefaultFormData(): FormData {
     description: '',
     category_id: '',
     tags: '',
+    community_slugs: [],
     start_date: fmt(start),
     end_date: fmt(end),
     timezone: 'Australia/Melbourne',
@@ -171,20 +193,50 @@ function getDefaultFormData(): FormData {
     venue_country: 'Australia',
     venue_postal_code: '',
     virtual_url: '',
-    cover_image_url: '',
+    media: [],
+    video_url: '',
     ticket_tiers: [newTier(0)],
     visibility: 'public',
     is_age_restricted: false,
     age_restriction_min: '18',
     max_capacity: '',
     has_reserved_seating: false,
+    allow_seat_self_service: false,
     venue_id: '',
     seat_map_id: '',
     squad_booking_enabled: true,
     squad_timeout_hours: '24',
     is_high_demand: false,
     queue_admission_window_minutes: '10',
+    fee_pass_type: 'pass_to_buyer',
   }
+}
+
+// Rebuild the ordered media list (cover first, then gallery) from a saved event.
+// Existing images were already valid covers/gallery, so width is set above the
+// cover floor to keep them freely reorderable.
+function existingMedia(event: {
+  cover_image_url: string | null
+  cover_image_alt?: string | null
+  cover_image_blur?: string | null
+  gallery_urls?: unknown
+}): MediaImage[] {
+  const out: MediaImage[] = []
+  if (event.cover_image_url) {
+    out.push({
+      id: crypto.randomUUID(),
+      url: event.cover_image_url,
+      alt: event.cover_image_alt ?? '',
+      blur: event.cover_image_blur ?? undefined,
+      width: 9999,
+      height: 0,
+      uploading: false,
+    })
+  }
+  for (const g of parseGallery(event.gallery_urls)) {
+    out.push({ id: crypto.randomUUID(), url: g.url, alt: g.alt, blur: g.blur, width: 9999, height: 0, uploading: false })
+  }
+  return out
 }
 
 function fromExistingEvent(
@@ -209,17 +261,23 @@ function fromExistingEvent(
     venue_postal_code: string | null
     virtual_url: string | null
     cover_image_url: string | null
+    cover_image_alt?: string | null
+    cover_image_blur?: string | null
+    gallery_urls?: unknown
+    video_url?: string | null
     visibility: EventVisibility
     is_age_restricted: boolean
     age_restriction_min: number | null
     max_capacity: number | null
     has_reserved_seating?: boolean
+    allow_seat_self_service?: boolean
     venue_id?: string | null
     seat_map_id?: string | null
     squad_booking_enabled?: boolean | null
     squad_timeout_hours?: number | null
     is_high_demand?: boolean | null
     queue_admission_window_minutes?: number | null
+    fee_pass_type?: FeePassType | null
   },
   tiers: TicketTier[]
 ): FormData {
@@ -229,7 +287,8 @@ function fromExistingEvent(
     summary: event.summary ?? '',
     description: event.description ?? '',
     category_id: event.category_id ?? '',
-    tags: event.tags.join(', '),
+    tags: stripCanonicalCommunityTokens(event.tags).join(', '),
+    community_slugs: communitiesFromTags(event.tags),
     start_date: fmt(event.start_date),
     end_date: fmt(event.end_date),
     timezone: event.timezone,
@@ -244,7 +303,8 @@ function fromExistingEvent(
     venue_country: event.venue_country ?? '',
     venue_postal_code: event.venue_postal_code ?? '',
     virtual_url: event.virtual_url ?? '',
-    cover_image_url: event.cover_image_url ?? '',
+    media: existingMedia(event),
+    video_url: event.video_url ?? '',
     ticket_tiers: tiers.map((t, i) => ({
       id: t.id,
       name: t.name,
@@ -264,12 +324,14 @@ function fromExistingEvent(
     age_restriction_min: (event.age_restriction_min ?? 18).toString(),
     max_capacity: event.max_capacity?.toString() ?? '',
     has_reserved_seating: event.has_reserved_seating ?? false,
+    allow_seat_self_service: event.allow_seat_self_service ?? false,
     venue_id: event.venue_id ?? '',
     seat_map_id: event.seat_map_id ?? '',
     squad_booking_enabled: event.squad_booking_enabled ?? false,
     squad_timeout_hours: (event.squad_timeout_hours ?? 24).toString(),
     is_high_demand: event.is_high_demand ?? false,
     queue_admission_window_minutes: (event.queue_admission_window_minutes ?? 10).toString(),
+    fee_pass_type: event.fee_pass_type ?? 'pass_to_buyer',
   }
 }
 
@@ -292,6 +354,10 @@ type Props = {
   existingEvent?: Parameters<typeof fromExistingEvent>[0]
   existingTiers?: TicketTier[]
   existingStatus?: EventStatus
+  /** Launch Kit flag (read server-side): publish delivers the kit screen. */
+  launchKitEnabled?: boolean
+  /** Magic Start flag (read server-side): AI describe-your-event prefill. */
+  magicStartEnabled?: boolean
 }
 
 // ─── Main Component ──────────────────────────────────────────────────────────
@@ -306,9 +372,13 @@ export function EventForm({
   existingEvent,
   existingTiers = [],
   existingStatus = 'draft',
+  launchKitEnabled = false,
+  magicStartEnabled = false,
 }: Props) {
   const router = useRouter()
-  const eventIdRef = useRef(existingEventId ?? crypto.randomUUID())
+  // A stable event id, generated once. useState (not useRef) so it can be read
+  // during render (the seat step passes it down) without a ref-in-render access.
+  const [eventId] = useState(() => existingEventId ?? crypto.randomUUID())
 
   const [step, setStep] = useState(1)
   const [formData, setFormData] = useState<FormData>(() =>
@@ -319,35 +389,37 @@ export function EventForm({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [stepError, setStepError] = useState<string | null>(null)
-  const [imageUploading, setImageUploading] = useState(false)
-  const [imageDragOver, setImageDragOver] = useState(false)
-  const [aspectWarning, setAspectWarning] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const set = useCallback(<K extends keyof FormData>(key: K, value: FormData[K]) => {
     setFormData(d => ({ ...d, [key]: value }))
   }, [])
 
-  // Auto-detect browser timezone on mount (new events only)
+  // Auto-detect the browser timezone on mount (new events only). This must run
+  // in an effect, not the state initializer: reading the browser timezone
+  // during render would differ between the server (UTC) and the client, causing
+  // a hydration mismatch. The one extra render is intentional and one-time.
   useEffect(() => {
-    if (!editMode) {
-      try {
-        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
-        if (tz) set('timezone', tz)
-      } catch {
-        // keep default
-      }
+    if (editMode) return
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time, client-only timezone seed; must be an effect for SSR-safe hydration
+      if (tz) set('timezone', tz)
+    } catch {
+      // keep the default timezone
     }
   }, [editMode, set])
 
   const buildPayload = (status: EventStatus) => ({
-    eventId: eventIdRef.current,
+    eventId: eventId,
     organisationId,
     title: formData.title,
     summary: formData.summary,
     description: formData.description,
     category_id: formData.category_id || null,
-    tags: formData.tags.split(',').map(t => t.trim()).filter(Boolean),
+    tags: Array.from(new Set([
+      ...stripCanonicalCommunityTokens(formData.tags.split(',').map(t => t.trim()).filter(Boolean)),
+      ...canonicalTokensForCommunities(formData.community_slugs),
+    ])),
     start_date: new Date(formData.start_date).toISOString(),
     end_date: new Date(formData.end_date).toISOString(),
     timezone: formData.timezone,
@@ -364,7 +436,16 @@ export function EventForm({
     venue_latitude: null,
     venue_longitude: null,
     virtual_url: formData.virtual_url || null,
-    cover_image_url: formData.cover_image_url || null,
+    // Index 0 of the media list is the cover; 1..9 are the gallery. Only fully
+    // uploaded images (a real url) are persisted.
+    cover_image_url: formData.media[0]?.url || null,
+    cover_image_alt: formData.media[0]?.alt?.trim() || null,
+    cover_image_blur: formData.media[0]?.blur || null,
+    gallery: formData.media
+      .slice(1)
+      .filter(m => !!m.url)
+      .map(m => ({ url: m.url, alt: m.alt.trim(), ...(m.blur ? { blur: m.blur } : {}) })),
+    video_url: formData.video_url.trim() || null,
     visibility: formData.visibility,
     is_age_restricted: formData.is_age_restricted,
     age_restriction_min: formData.is_age_restricted ? parseInt(formData.age_restriction_min) : null,
@@ -372,12 +453,14 @@ export function EventForm({
     status,
     scheduled_publish_at: null,
     has_reserved_seating: formData.has_reserved_seating,
+    allow_seat_self_service: formData.has_reserved_seating ? formData.allow_seat_self_service : false,
     venue_id: formData.has_reserved_seating ? (formData.venue_id || null) : null,
     seat_map_id: formData.has_reserved_seating ? (formData.seat_map_id || null) : null,
     squad_booking_enabled: formData.squad_booking_enabled,
     squad_timeout_hours: Math.min(72, Math.max(1, parseInt(formData.squad_timeout_hours) || 24)),
     is_high_demand: formData.is_high_demand,
     queue_admission_window_minutes: Math.min(60, Math.max(5, parseInt(formData.queue_admission_window_minutes) || 10)),
+    fee_pass_type: formData.fee_pass_type,
     ticket_tiers: formData.ticket_tiers.map((t, i) => ({
       name: t.name,
       description: t.description,
@@ -411,6 +494,16 @@ export function EventForm({
       }
       if (result.error) {
         setError(result.error)
+        // Only re-enable the buttons on a FAILED submit. On success the
+        // component is navigating away, so we deliberately keep isSubmitting
+        // true through the navigation: this closes the brief window where a
+        // fast second click could re-fire createEvent with the same event id.
+        setIsSubmitting(false)
+      } else if (!editMode && status === 'published' && launchKitEnabled) {
+        // The signature moment: publish delivers the launch kit. The organiser
+        // lands on their kit screen, never silently back on the events table.
+        router.push(`/dashboard/events/${eventId}/launch-kit?published=1`)
+        router.refresh()
       } else {
         router.push('/dashboard/events')
         router.refresh()
@@ -419,45 +512,7 @@ export function EventForm({
       // Re-throw Next.js redirect/navigation errors so they propagate correctly
       if (err !== null && typeof err === 'object' && 'digest' in err) throw err
       setError('Something went wrong. Please try again.')
-    } finally {
       setIsSubmitting(false)
-    }
-  }
-
-  const handleImageFile = async (file: File) => {
-    if (!file.type.startsWith('image/')) return
-    if (file.size > 10 * 1024 * 1024) {
-      setError('Image must be under 10MB')
-      return
-    }
-    setAspectWarning(null)
-    try {
-      const dims = await new Promise<{ w: number; h: number }>((resolve, reject) => {
-        const img = new window.Image()
-        img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight })
-        img.onerror = () => reject(new Error('image-load'))
-        img.src = URL.createObjectURL(file)
-      })
-      const ratio = dims.w / dims.h
-      const target = 16 / 9
-      if (Math.abs(ratio - target) / target > 0.1) {
-        setAspectWarning(
-          `Heads up: your image is ${dims.w}×${dims.h}. Cover images look best at 16:9 (e.g. 1600×900). Yours will be letterboxed to fit.`
-        )
-      }
-    } catch {
-      // Ignore measurement errors - proceed with upload anyway.
-    }
-    setImageUploading(true)
-    const fd = new FormData()
-    fd.append('file', file)
-    fd.append('eventId', eventIdRef.current)
-    const url = await uploadEventImage(fd)
-    setImageUploading(false)
-    if (url) {
-      set('cover_image_url', url)
-    } else {
-      setError('Image upload failed. Please try again.')
     }
   }
 
@@ -468,6 +523,18 @@ export function EventForm({
           setStepError('End date and time must be after start date and time.')
           return
         }
+      }
+    }
+    // Event Media (step 4): never advance while a cover or gallery image is
+    // still uploading. The media step lives in local state and unmounts when
+    // the wizard moves on, so leaving mid-upload would strand the finished
+    // upload on an unmounted component and silently lose the cover, leaving
+    // the organiser stuck at Review with "No cover yet". Waiting here is the
+    // root fix for that race.
+    if (step === 4) {
+      if (formData.media.some(m => m.uploading)) {
+        setStepError('Your cover is still uploading. Give it a moment, then continue.')
+        return
       }
     }
     if (step === 5) {
@@ -502,8 +569,141 @@ export function EventForm({
 
   // ─── Step Renderers ────────────────────────────────────────────────────────
 
+  // Magic Start: land one description as an editable prefilled draft. Only
+  // fields the AI resolved are written; blanks stay blank. Never publishes.
+  const [magicSummary, setMagicSummary] = useState<{ filled: string[]; unresolved: string[] } | null>(null)
+  // Add hours to a naive "YYYY-MM-DDTHH:mm" datetime-local string, staying in
+  // local components (never through toISOString, which would shift by the UTC
+  // offset and corrupt the time).
+  const addHoursLocal = (localStr: string, hours: number): string => {
+    const d = new Date(localStr)
+    if (Number.isNaN(d.getTime())) return localStr
+    d.setHours(d.getHours() + hours)
+    const p = (n: number) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
+  }
+  const applyMagicDraft = (draft: MagicStartDraft) => {
+    const filled: string[] = []
+    setFormData(d => {
+      const next = { ...d }
+      if (draft.title) { next.title = draft.title; filled.push('Title') }
+      if (draft.description) { next.description = draft.description; filled.push('Description') }
+      if (draft.category) {
+        const match = categories.find(c => c.name.trim().toLowerCase() === draft.category.trim().toLowerCase())
+        if (match) { next.category_id = match.id; filled.push('Category') }
+      }
+      if (draft.start_date) {
+        next.start_date = draft.start_date
+        filled.push('Start')
+        // Guarantee a valid window: the AI can return an end that is empty,
+        // equal to, or before the start (an ambiguous "8pm to late"). The date
+        // step and publish both require end > start, so default the end to two
+        // hours after the start whenever the returned end is not strictly
+        // after it. The organiser edits it freely.
+        const startMs = new Date(draft.start_date).getTime()
+        const endMs = draft.end_date ? new Date(draft.end_date).getTime() : NaN
+        if (Number.isFinite(startMs) && (!Number.isFinite(endMs) || endMs <= startMs)) {
+          next.end_date = addHoursLocal(draft.start_date, 2)
+        } else if (draft.end_date) {
+          next.end_date = draft.end_date
+        }
+        filled.push('End')
+      } else if (draft.end_date) {
+        next.end_date = draft.end_date
+      }
+      next.event_type = draft.event_type
+      if (draft.venue_name) { next.venue_name = draft.venue_name; filled.push('Venue') }
+      if (draft.venue_address) next.venue_address = draft.venue_address
+      if (draft.venue_city) next.venue_city = draft.venue_city
+      if (draft.venue_state) next.venue_state = draft.venue_state
+      if (draft.venue_postal_code) next.venue_postal_code = draft.venue_postal_code
+      if (draft.ticket_tiers.length > 0) {
+        next.ticket_tiers = draft.ticket_tiers.map((t, i) => ({
+          id: crypto.randomUUID(),
+          name: t.name,
+          description: '',
+          tier_type: (draft.is_free || t.price === 0 ? 'free' : 'general_admission') as TicketTierType,
+          price: String(t.price),
+          currency: t.currency,
+          total_capacity: t.total_capacity != null ? String(t.total_capacity) : '',
+          sale_start: '',
+          sale_end: '',
+          min_per_order: '1',
+          max_per_order: '10',
+          sort_order: i,
+        }))
+        filled.push(draft.is_free ? 'Free ticket' : 'Ticket prices')
+      }
+      // Catch-all invariant: the draft must never leave end <= start (the date
+      // step and publish both reject it). Whatever combination of fields the AI
+      // set, clamp the end to two hours after the start when it is not after.
+      const s = new Date(next.start_date).getTime()
+      const e = new Date(next.end_date).getTime()
+      if (Number.isFinite(s) && (!Number.isFinite(e) || e <= s)) {
+        next.end_date = addHoursLocal(next.start_date, 2)
+      }
+      return next
+    })
+    setMagicSummary({ filled, unresolved: draft.unresolved })
+    setStep(1)
+  }
+
+  const applyHelperSuggestion = (s: PanelSuggestion) => {
+    if (s.kind === 'title') {
+      set('title', s.value.slice(0, 200))
+    } else if (s.kind === 'description') {
+      set('description', s.value.slice(0, 5000))
+    } else if (s.kind === 'category') {
+      const match = categories.find(c => c.name.trim().toLowerCase() === s.value.trim().toLowerCase())
+      if (match) set('category_id', match.id)
+    }
+  }
+
   const renderStep1 = () => (
     <div className="space-y-5">
+      {magicStartEnabled && !editMode && (
+        <>
+          <MagicStart onDraft={applyMagicDraft} />
+          {magicSummary && (
+            <div role="status" className="rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-sm text-ink-900">
+              <p className="font-semibold">
+                Draft ready. {magicSummary.filled.length > 0 ? `Filled: ${magicSummary.filled.join(', ')}.` : ''}
+              </p>
+              {magicSummary.unresolved.length > 0 && (
+                <p className="mt-1 text-ink-600">
+                  Add these yourself: {magicSummary.unresolved.join(', ')}. Everything is editable below before you publish.
+                </p>
+              )}
+              {magicSummary.unresolved.length === 0 && (
+                <p className="mt-1 text-ink-600">Review everything below, then continue. Nothing publishes until you do.</p>
+              )}
+            </div>
+          )}
+        </>
+      )}
+      <details className="group rounded-xl border border-gold-400/40 bg-gold-100/40">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium text-ink-900 [&::-webkit-details-marker]:hidden">
+          <span className="text-gold-800">Need a hand with the title, description, or category?</span>
+          <span className="ml-auto text-xs text-ink-600 group-open:hidden">Open the helper</span>
+          <span className="ml-auto hidden text-xs text-ink-600 group-open:inline">Close</span>
+        </summary>
+        <div className="border-t border-gold-400/30 p-3">
+          <AssistantPanel
+            assistant="event-helper"
+            title="Event writing helper"
+            intro="Ask for title ideas, a full description, or the right category. Tap Use this to drop a suggestion straight into the form."
+            placeholder="e.g. Write a description for my Afrobeats night in Geelong"
+            getDraft={() => ({ title: formData.title, description: formData.description })}
+            onApplySuggestion={applyHelperSuggestion}
+            starters={[
+              'Suggest three titles for my event',
+              'Write my event description',
+              'Which category fits my event?',
+            ]}
+          />
+        </div>
+      </details>
+
       <div>
         <label className="block text-sm font-medium text-ink-600 mb-1">
           Event Title <span className="text-red-500">*</span>
@@ -573,6 +773,36 @@ export function EventForm({
           placeholder="music, outdoor, family-friendly"
           className="w-full rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
         />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-ink-600 mb-1">
+          Communities
+          <span className="ml-2 text-xs text-ink-400">Optional. Tick any that fit; your event then shows on their community pages.</span>
+        </label>
+        <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+          {ALL_COMMUNITIES.map(c => {
+            const checked = formData.community_slugs.includes(c.slug)
+            return (
+              <label key={c.slug} className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-ink-200 px-3 py-2 text-sm transition-colors hover:bg-ink-100">
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() =>
+                    set(
+                      'community_slugs',
+                      checked
+                        ? formData.community_slugs.filter(s => s !== c.slug)
+                        : [...formData.community_slugs, c.slug],
+                    )
+                  }
+                  className="h-4 w-4 rounded border-ink-300 text-gold-500 focus:ring-gold-500"
+                />
+                <span className="text-ink-700">{c.displayName}</span>
+              </label>
+            )
+          })}
+        </div>
       </div>
     </div>
   )
@@ -763,80 +993,13 @@ export function EventForm({
   )
 
   const renderStep4 = () => (
-    <div className="space-y-5">
-      <div>
-        <label className="block text-sm font-medium text-ink-600 mb-2">Cover Image</label>
-        <p className="text-xs text-ink-400 mb-4">Max 10MB. Accepted formats: JPEG, PNG, WebP.</p>
-
-        {formData.cover_image_url ? (
-          <div className="relative">
-            <div className="relative aspect-video w-full overflow-hidden rounded-lg border border-ink-200 bg-ink-100">
-              <Image
-                src={formData.cover_image_url}
-                alt="Cover image preview"
-                fill
-                className="object-contain"
-              />
-            </div>
-            {aspectWarning && (
-              <div className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                {aspectWarning}
-              </div>
-            )}
-            <button
-              type="button"
-              onClick={() => {
-                set('cover_image_url', '')
-                setAspectWarning(null)
-              }}
-              className="mt-2 text-sm text-red-600 hover:text-red-800"
-            >
-              Remove image
-            </button>
-          </div>
-        ) : (
-          <div
-            onDragOver={e => { e.preventDefault(); setImageDragOver(true) }}
-            onDragLeave={() => setImageDragOver(false)}
-            onDrop={e => {
-              e.preventDefault()
-              setImageDragOver(false)
-              const file = e.dataTransfer.files[0]
-              if (file) handleImageFile(file)
-            }}
-            onClick={() => fileInputRef.current?.click()}
-            className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-6 py-12 transition-colors ${
-              imageDragOver
-                ? 'border-gold-400 bg-gold-100'
-                : 'border-ink-200 hover:border-ink-400 hover:bg-ink-100'
-            }`}
-          >
-            {imageUploading ? (
-              <p className="text-sm text-ink-600">Uploading…</p>
-            ) : (
-              <>
-                <svg className="mb-3 h-10 w-10 text-ink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <p className="text-sm text-ink-600">
-                  <span className="font-medium text-gold-500">Click to upload</span> or drag and drop
-                </p>
-              </>
-            )}
-          </div>
-        )}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          className="hidden"
-          onChange={e => {
-            const file = e.target.files?.[0]
-            if (file) handleImageFile(file)
-          }}
-        />
-      </div>
-    </div>
+    <EventMediaStep
+      eventId={eventId}
+      images={formData.media}
+      onImagesChange={imgs => set('media', imgs)}
+      video={formData.video_url}
+      onVideoChange={v => set('video_url', v)}
+    />
   )
 
   const renderStep5 = () => (
@@ -1142,6 +1305,49 @@ export function EventForm({
           </div>
         )}
       </div>
+
+      {/* Booking fees: who pays (per-event). Pass-on is the default so the
+          organiser keeps the full face value; absorb deducts the fees from the
+          payout. The buyer always sees the true all-in total before checkout. */}
+      <div className="rounded-lg border border-ink-200 p-5">
+        <p className="text-sm font-semibold text-ink-900">Booking fees</p>
+        <p className="mt-1 text-xs text-ink-400">
+          Choose who pays the EventLinqs service and processing fees. Free tickets are
+          never charged a fee.
+        </p>
+        <div className="mt-4 space-y-3">
+          {([
+            {
+              value: 'pass_to_buyer',
+              label: 'Pass fees to the buyer (recommended)',
+              desc: 'The buyer pays the fees on top at checkout and you keep the full ticket face value. The all-in total is shown to the buyer up front.',
+            },
+            {
+              value: 'absorb',
+              label: 'Absorb the fees',
+              desc: 'The buyer pays only the ticket price and the fees are deducted from your payout.',
+            },
+          ] as { value: FeePassType; label: string; desc: string }[]).map(opt => (
+            <label
+              key={opt.value}
+              className="flex cursor-pointer items-start gap-3 rounded-lg border border-ink-200 p-4 hover:bg-ink-100"
+            >
+              <input
+                type="radio"
+                name="fee_pass_type"
+                value={opt.value}
+                checked={formData.fee_pass_type === opt.value}
+                onChange={() => set('fee_pass_type', opt.value)}
+                className="mt-0.5 h-4 w-4 border-ink-200 text-gold-500 focus:ring-gold-500"
+              />
+              <div>
+                <p className="text-sm font-medium text-ink-900">{opt.label}</p>
+                <p className="text-xs text-ink-400">{opt.desc}</p>
+              </div>
+            </label>
+          ))}
+        </div>
+      </div>
     </div>
   )
 
@@ -1294,6 +1500,41 @@ export function EventForm({
                     })()}
                   </div>
                 )}
+                {formData.seat_map_id && (() => {
+                  // Capacity reconciliation: warn when the ticket capacity does
+                  // not cover the chart's seats (the "see issue" check), using
+                  // the selected map's seat count and the entered tier
+                  // capacities. Seated tiers bind by name; this is the coverage
+                  // signal an organiser needs before publishing.
+                  const venue = venues.find(v => v.id === formData.venue_id)
+                  const map = venue?.seat_maps?.find(m => m.id === formData.seat_map_id)
+                  const seatCount = map?.total_seats ?? 0
+                  const tierCapacity = formData.ticket_tiers.reduce((s, t) => s + (parseInt(t.total_capacity) || 0), 0)
+                  if (seatCount === 0) return null
+                  const covered = tierCapacity >= seatCount
+                  return (
+                    <div className={`rounded-lg px-3 py-2 text-xs ${covered ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-800'}`}>
+                      {covered
+                        ? `Capacity check: your tickets cover all ${seatCount} seats in this chart.`
+                        : `Capacity check: this chart has ${seatCount} seats but your tickets only cover ${tierCapacity}. Raise a tier capacity so every seat can sell.`}
+                    </div>
+                  )
+                })()}
+                <label className="flex items-start gap-3 rounded-lg border border-ink-100 bg-ink-50/50 p-3">
+                  <input
+                    type="checkbox"
+                    checked={formData.allow_seat_self_service}
+                    onChange={e => set('allow_seat_self_service', e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-ink-300 text-gold-500 focus:ring-gold-400"
+                  />
+                  <span className="text-sm text-ink-700">
+                    <span className="font-medium text-ink-900">Let attendees change their own seat</span>
+                    <span className="block text-xs text-ink-500">
+                      Buyers can move themselves to another available seat after purchase. Their ticket updates
+                      automatically. Great for friends who want to sit together.
+                    </span>
+                  </span>
+                </label>
               </>
             )}
           </div>
@@ -1306,10 +1547,11 @@ export function EventForm({
     const totalCapacity = formData.ticket_tiers.reduce(
       (sum, t) => sum + (parseInt(t.total_capacity) || 0), 0
     )
-    const minPrice = formData.ticket_tiers.length > 0
-      ? Math.min(...formData.ticket_tiers.map(t => parseFloat(t.price) || 0))
-      : 0
-    const isFree = minPrice === 0
+    // Free means EVERY tier is $0 (the fee-system definition), not just the
+    // cheapest tier: an event with a free tier plus paid tiers is a paid event.
+    const tierPrices = formData.ticket_tiers.map(t => parseFloat(t.price) || 0)
+    const isFree = tierPrices.length === 0 || tierPrices.every(p => p === 0)
+    const minPaidPrice = isFree ? 0 : Math.min(...tierPrices.filter(p => p > 0))
 
     return (
       <div className="space-y-6">
@@ -1353,8 +1595,18 @@ export function EventForm({
               {formData.ticket_tiers.length} tier{formData.ticket_tiers.length !== 1 ? 's' : ''} · {totalCapacity.toLocaleString()} total capacity
             </p>
             <p className="text-xs text-ink-400">
-              {isFree ? 'Free event' : `From ${formData.ticket_tiers[0]?.currency} ${minPrice.toFixed(2)}`}
+              {isFree ? 'Free event' : `From ${formData.ticket_tiers[0]?.currency} ${minPaidPrice.toFixed(2)}`}
             </p>
+          </div>
+
+          <div className="px-5 py-4">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">Media</h3>
+            <p className="text-sm text-ink-600">
+              {formData.media[0]?.url
+                ? `Cover set${formData.media.length > 1 ? ` + ${formData.media.length - 1} gallery image${formData.media.length - 1 === 1 ? '' : 's'}` : ''}`
+                : 'No cover yet'}
+            </p>
+            {formData.video_url.trim() && <p className="text-xs text-ink-400">Video linked</p>}
           </div>
 
           <div className="px-5 py-4">
@@ -1366,9 +1618,23 @@ export function EventForm({
           </div>
         </div>
 
+        {!formData.media[0]?.url && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            Add a cover image in the Event Media step before publishing. You can still save as a draft.
+          </div>
+        )}
+
         {error && (
           <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
+          </div>
+        )}
+
+        {launchKitEnabled && !editMode && (
+          <div className="rounded-lg border border-gold-500/40 bg-gold-500/10 px-4 py-3 text-sm text-ink-900">
+            <span className="font-semibold">Publishing delivers your launch kit:</span>{' '}
+            your live page link, a print-ready QR poster, your invitation card, one-tap
+            tracked sharing, and live reach numbers, all on one screen.
           </div>
         )}
 
@@ -1384,10 +1650,16 @@ export function EventForm({
           <button
             type="button"
             onClick={() => handleSubmit('published')}
-            disabled={isSubmitting || !formData.title.trim()}
+            disabled={isSubmitting || !formData.title.trim() || !formData.media[0]?.url || formData.media.some(m => m.uploading)}
             className="flex-1 rounded-lg bg-gold-500 px-4 py-3 text-sm font-medium text-ink-900 hover:bg-gold-600 disabled:opacity-50 transition-colors"
           >
-            {isSubmitting ? 'Publishing…' : editMode ? 'Save Changes' : 'Publish Now'}
+            {isSubmitting
+              ? 'Publishing…'
+              : editMode
+              ? 'Save Changes'
+              : launchKitEnabled
+              ? 'Publish and get your launch kit'
+              : 'Publish Now'}
           </button>
         </div>
       </div>

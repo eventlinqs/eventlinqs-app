@@ -2,6 +2,10 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
+import { TransferTicketForm } from '@/components/features/tickets/transfer-ticket-form'
+import { ChangeSeatControl } from '@/components/features/tickets/change-seat-control'
+import { formatSeatLabel } from '@/lib/seating/format'
+import { AssistantPanel } from '@/components/ai/assistant-panel'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,6 +15,7 @@ export const metadata: Metadata = {
 }
 
 interface MyTicketRow {
+  id: string
   ticket_code: string
   secret: string
   status: string
@@ -19,8 +24,16 @@ interface MyTicketRow {
     start_date: string
     venue_name: string | null
     venue_city: string | null
+    allow_seat_self_service: boolean | null
   } | null
   order_item: { item_name: string } | null
+  /** Reserved seating: the ticket's seat, joined via tickets.seat_id. */
+  seat: {
+    row_label: string
+    seat_number: string
+    note: string | null
+    section: { name: string } | null
+  } | null
 }
 
 function formatAuDate(iso: string): string {
@@ -57,7 +70,7 @@ export default async function MyTicketsPage() {
   const { data } = await supabase
     .from('tickets')
     .select(
-      'ticket_code, secret, status, created_at, event:events(title, start_date, venue_name, venue_city), order_item:order_items(item_name)',
+      'id, ticket_code, secret, status, created_at, event:events(title, start_date, venue_name, venue_city, allow_seat_self_service), order_item:order_items(item_name), seat:seats(row_label, seat_number, note, section:seat_map_sections(name))',
     )
     .order('created_at', { ascending: false })
 
@@ -73,18 +86,33 @@ export default async function MyTicketsPage() {
       </p>
 
       {tickets.length === 0 ? (
-        <div className="mt-8 rounded-2xl border border-ink-200 bg-white p-8 text-center">
-          <p className="font-display text-lg font-bold text-ink-900">No tickets yet</p>
-          <p className="mt-2 text-sm text-ink-600">
-            When you book an event, your tickets appear here.
-          </p>
-          <Link
-            href="/events"
-            className="mt-5 inline-flex rounded-full bg-gold-500 px-5 py-2.5 text-sm font-semibold text-ink-900 hover:bg-gold-600"
-          >
-            Browse events
-          </Link>
-        </div>
+        <>
+          <div className="mt-8 rounded-2xl border border-ink-200 bg-white p-8 text-center">
+            <p className="font-display text-lg font-bold text-ink-900">No tickets yet</p>
+            <p className="mt-2 text-sm text-ink-600">
+              When you book an event, your tickets appear here.
+            </p>
+            <Link
+              href="/events"
+              className="mt-5 inline-flex rounded-full bg-gold-500 px-5 py-2.5 text-sm font-semibold text-ink-900 hover:bg-gold-600"
+            >
+              Browse events
+            </Link>
+          </div>
+          <div className="mt-6">
+            <AssistantPanel
+              assistant="buyer-onboarding"
+              title="New here? Ask away"
+              intro="Ask how to find events, book tickets, or what happens after you buy."
+              placeholder="Ask about finding events or buying tickets"
+              starters={[
+                'How do I find events near me?',
+                'How does buying a ticket work?',
+                'Where will my ticket arrive?',
+              ]}
+            />
+          </div>
+        </>
       ) : (
         <ul role="list" className="mt-8 space-y-3">
           {tickets.map(t => {
@@ -110,6 +138,23 @@ export default async function MyTicketsPage() {
                           {[t.event?.venue_name, t.event?.venue_city].filter(Boolean).join(', ')}
                         </p>
                       )}
+                      {t.seat && (
+                        <>
+                          <p className="mt-1 text-sm font-semibold text-ink-900">
+                            {formatSeatLabel({
+                              sectionName: t.seat.section?.name ?? null,
+                              rowLabel: t.seat.row_label,
+                              seatNumber: t.seat.seat_number,
+                            })}
+                          </p>
+                          {t.seat.note && (
+                            <p className="mt-0.5 text-xs font-medium text-gold-700">{t.seat.note}</p>
+                          )}
+                          {t.event?.allow_seat_self_service && t.status === 'valid' && (
+                            <ChangeSeatControl ticketId={t.id} />
+                          )}
+                        </>
+                      )}
                       <p className="mt-1 text-xs text-ink-500">
                         {t.order_item?.item_name ?? 'Admission'} · {t.ticket_code}
                       </p>
@@ -119,6 +164,9 @@ export default async function MyTicketsPage() {
                     </span>
                   </div>
                 </Link>
+                {t.status === 'valid' && (
+                  <TransferTicketForm ticketId={t.id} eventTitle={t.event?.title ?? 'this event'} />
+                )}
               </li>
             )
           })}

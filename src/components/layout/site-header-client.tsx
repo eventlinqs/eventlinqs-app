@@ -25,11 +25,17 @@ import type { PickerCityGroups } from '@/lib/locations/picker-cities'
  */
 export const EL_CITY_UPDATED_EVENT = 'el_city_updated'
 
+// Launch-blocker nav (2026-06-21): About Us added first (immediately after the
+// EVENTLINQS logo); "For Organisers" renamed to "Event Organisers"; the
+// "Communities" tab removed - community discovery lives in the homepage rail and
+// the Communities doorway tile, and events now carry community tags set in event
+// creation. Labels stay Title Case to match the approved header design (no design
+// change). See CLAUDE.md "Launch sequence and parked workstreams".
 const NAV_LINKS = [
-  { label: 'Browse Events',  href: '/events' },
-  { label: 'Communities',       href: '/cultures' },
-  { label: 'Cities',         href: '/cities' },
-  { label: 'For Organisers', href: '/organisers' },
+  { label: 'About Us',         href: '/about' },
+  { label: 'Browse Events',    href: '/events' },
+  { label: 'Cities',           href: '/cities' },
+  { label: 'Event Organisers', href: '/organisers' },
 ]
 
 interface SiteHeaderClientProps {
@@ -39,6 +45,8 @@ interface SiteHeaderClientProps {
   user: AccountUser | null
   /** Authenticated user's email; surfaces in the avatar dropdown header. */
   userEmail?: string | null
+  /** Founder/admin: surface the role-gated Admin entry in the account menu. */
+  isAdmin?: boolean
 }
 
 /**
@@ -76,17 +84,24 @@ export function readCityCookie(): DetectedLocation | null {
 }
 
 /**
- * SiteHeaderClient - dual-state glassmorphism navigation (Batch 9.1).
+ * SiteHeaderClient - dual-state solid-navy navigation.
+ *
+ * The header is opaque navy in both resting states: no backdrop blur, no
+ * glassmorphism. This mirrors the captured Ticketmaster (solid blue bar)
+ * and Eventbrite (solid white bar) evidence, and honours the CLAUDE.md
+ * design law that forbids glassmorphism. The earlier frosted State B was
+ * dropped in the Batch 11.0 legibility fix; the docstring and the
+ * `.site-header-bar` class were renamed to match (was `.site-header-glass`).
  *
  * State A (top of page on hero-bearing routes):
- *   - Fully transparent background, no border, no backdrop filter
+ *   - Transparent base with a top-to-fade navy gradient so the white
+ *     wordmark and nav read on ANY underlying hero raster
  *   - White wordmark, white nav links, gold dot in EventLinqs logo
  *   - Sits above the hero raster painted by HeroMedia
  *   - Inline search hidden (the hero contains its own primary search)
  *
  * State B (scrolled past 80px, OR no-hero route):
- *   - Background: rgba(10, 22, 40, 0.72)
- *   - backdrop-filter: blur(20px) saturate(180%) (with -webkit prefix)
+ *   - Solid navy #0A1628 background, no gradient, no blur
  *   - 1px solid rgba(212, 164, 55, 0.30) gold border-bottom
  *   - Compact 360px desktop search pill becomes visible
  *   - Mobile retains an icon-only search trigger always
@@ -106,10 +121,8 @@ export function readCityCookie(): DetectedLocation | null {
  *     forced from initial paint to avoid SSR transparent flash.
  *   - HeroMedia itself is NOT mutated; only a thin tracker wrapper
  *     registers with the HeroPresenceProvider.
- *   - Glassmorphism degrades to rgba(10, 22, 40, 0.95) on browsers
- *     without backdrop-filter via the @supports rule in globals.css.
  */
-export function SiteHeaderClient({ location, cities, user, userEmail }: SiteHeaderClientProps) {
+export function SiteHeaderClient({ location, cities, user, userEmail, isAdmin = false }: SiteHeaderClientProps) {
   const dropdownUser = user && userEmail ? { ...user, email: userEmail } : null
   const [isOpen, setIsOpen] = useState(false)
 
@@ -206,7 +219,7 @@ export function SiteHeaderClient({ location, cities, user, userEmail }: SiteHead
         data-scrolled={stateB ? '1' : '0'}
         data-no-hero={!hasHero ? '1' : '0'}
         className={[
-          'site-header-glass',
+          'site-header-bar',
           'sticky top-0 z-50 w-full',
           'transition-[background-color,backdrop-filter,border-color,box-shadow] duration-300',
           'motion-reduce:transition-none',
@@ -260,7 +273,7 @@ export function SiteHeaderClient({ location, cities, user, userEmail }: SiteHead
 
             {dropdownUser ? (
               <div className="hidden md:flex items-center">
-                <SiteHeaderAccountDropdown user={dropdownUser} size="header" />
+                <SiteHeaderAccountDropdown user={dropdownUser} size="header" isAdmin={isAdmin} />
               </div>
             ) : (
               <>
@@ -271,7 +284,7 @@ export function SiteHeaderClient({ location, cities, user, userEmail }: SiteHead
                 >
                   Sign in
                 </Link>
-                <Button href="/signup" prefetch={false} variant="primary" size="sm" className="hidden md:inline-flex">
+                <Button href="/signup" prefetch={false} variant="primary" size="sm" className="inline-flex min-h-11 items-center">
                   Get Started
                 </Button>
               </>
@@ -280,7 +293,7 @@ export function SiteHeaderClient({ location, cities, user, userEmail }: SiteHead
             {/* Mobile avatar (authenticated only) - sits left of the hamburger so the nav drawer remains the canonical mobile-nav surface. */}
             {dropdownUser ? (
               <div className="md:hidden">
-                <SiteHeaderAccountDropdown user={dropdownUser} size="header" />
+                <SiteHeaderAccountDropdown user={dropdownUser} size="header" isAdmin={isAdmin} />
               </div>
             ) : null}
 
@@ -328,7 +341,13 @@ export function SiteHeaderClient({ location, cities, user, userEmail }: SiteHead
         />
       )}
 
-      {/* Mobile sheet */}
+      {/* Mobile sheet, inside a viewport-sized clip wrapper so the closed
+          (translated off-screen-right) panel never expands the document width.
+          `overflow-x: clip` on html/body does NOT clip a position:fixed panel
+          (its containing block is the viewport), so the panel is `absolute`
+          inside this fixed inset-0 clip container instead. pointer-events-none on
+          the wrapper lets backdrop clicks through; the panel re-enables them. */}
+      <div className="pointer-events-none fixed inset-0 z-50 overflow-x-clip md:hidden">
       <div
         id="mobile-nav-sheet"
         ref={sheetRef}
@@ -337,7 +356,7 @@ export function SiteHeaderClient({ location, cities, user, userEmail }: SiteHead
         aria-label="Navigation menu"
         onKeyDown={handleSheetKeyDown}
         className={[
-          'fixed inset-y-0 right-0 z-50 w-full max-w-sm bg-white shadow-2xl md:hidden',
+          'pointer-events-auto absolute inset-y-0 right-0 w-full max-w-sm bg-white shadow-2xl',
           'flex flex-col transition-transform duration-300 ease-out',
           isOpen ? 'translate-x-0' : 'translate-x-full',
         ].join(' ')}
@@ -413,6 +432,7 @@ export function SiteHeaderClient({ location, cities, user, userEmail }: SiteHead
             </>
           )}
         </div>
+      </div>
       </div>
     </>
   )

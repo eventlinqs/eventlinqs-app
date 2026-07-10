@@ -162,6 +162,7 @@ export async function recordOrderConfirmedLedger(
     .from('organiser_balance_ledger')
     .insert({
       organisation_id: order.organisation_id,
+      event_id: order.event_id,
       delta_cents: organiserShareCents,
       currency: order.currency,
       reason: 'order_confirmed',
@@ -219,6 +220,7 @@ export async function recordOrderConfirmedLedger(
         .from('organiser_balance_ledger')
         .insert({
           organisation_id: order.organisation_id,
+          event_id: order.event_id,
           delta_cents: -reserveCents,
           currency: order.currency,
           reason: 'reserve_hold',

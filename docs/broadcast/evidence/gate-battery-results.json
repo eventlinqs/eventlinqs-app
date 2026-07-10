@@ -1,0 +1,40 @@
+{
+  "artistLinks": {
+    "codeA": "7FOvGU4EJe",
+    "codeB": "tn6PacRC58"
+  },
+  "buyer1.landed": "https://eventlinqs-app-git-feat-broadca-62d6b2-lawals-projects-c20c0be8.vercel.app/events/broadcast-gate-proof-night-geelong",
+  "buyer1.confirmation": "https://eventlinqs-app-git-feat-broadca-62d6b2-lawals-projects-c20c0be8.vercel.app/orders/100cf6ff-aeac-4998-b9d9-07dcfeef9d60/confirmation",
+  "buyer2.confirmation": "https://eventlinqs-app-git-feat-broadca-62d6b2-lawals-projects-c20c0be8.vercel.app/orders/0659725b-b5c5-42a5-828d-ffce8bce6395/confirmation",
+  "stage2.follow.row": 1,
+  "stage2.push.subscription": "button_not_available",
+  "stage1.poster": {
+    "status": 200,
+    "bytes": 45868,
+    "pdfMagic": "%PDF-"
+  },
+  "stage3.artistCard": {
+    "status": 200,
+    "bytes": 205886,
+    "png": true
+  },
+  "stage3.conversions": [
+    {
+      "artist": "Marlo Reyes",
+      "order": "0659725b"
+    },
+    {
+      "artist": "Sienna Vale",
+      "order": "100cf6ff"
+    }
+  ],
+  "stage2.consent.row": [
+    {
+      "email": "broadcast.gate.buyer.one@eventlinqs.com",
+      "status": "granted",
+      "city_slug": "geelong",
+      "source": "checkout",
+      "consent_version": "v1"
+    }
+  ]
+}

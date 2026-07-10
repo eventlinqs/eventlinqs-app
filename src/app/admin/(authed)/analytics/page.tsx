@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { requireAdminSession } from '@/lib/admin/auth'
-import { hasCapability } from '@/lib/admin/rbac'
+import { can } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { AdminStatTile } from '@/components/admin/admin-stat-tile'
 import { getAnalyticsDashboard, ANALYTICS_CURRENCY } from '@/lib/admin/analytics'
@@ -27,7 +27,7 @@ function monthLabel(ym: string): string {
 
 export default async function AdminAnalyticsPage() {
   const session = await requireAdminSession()
-  if (!hasCapability(session.admin.role, 'admin.pricing.manage')) redirect('/admin')
+  if (!can(session, 'admin.pricing.manage')) redirect('/admin')
 
   await recordAuditEvent({ action: 'admin.analytics.view', session })
 

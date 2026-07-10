@@ -32,7 +32,7 @@ export default async function SquadPayPage({ params }: Props) {
       squad:squads!squad_id (
         id, status, expires_at, share_token, total_spots,
         ticket_tier:ticket_tiers!ticket_tier_id ( id, name, price, currency ),
-        event:events!event_id ( id, title, slug, start_date, timezone, venue_name, venue_city )
+        event:events!event_id ( id, title, slug, start_date, timezone, venue_name, venue_city, organisation_id )
       )
     `)
     .eq('id', member_id)
@@ -47,7 +47,7 @@ export default async function SquadPayPage({ params }: Props) {
     share_token: string
     total_spots: number
     ticket_tier: { id: string; name: string; price: number; currency: string }
-    event: { id: string; title: string; slug: string; start_date: string; timezone: string; venue_name: string | null; venue_city: string | null }
+    event: { id: string; title: string; slug: string; start_date: string; timezone: string; venue_name: string | null; venue_city: string | null; organisation_id: string }
   } | null
 
   if (!squad) notFound()
@@ -86,6 +86,14 @@ export default async function SquadPayPage({ params }: Props) {
 
   const memberName = [member.attendee_first_name, member.attendee_last_name].filter(Boolean).join(' ')
   const memberEmail = member.attendee_email ?? member.guest_email ?? ''
+
+  // Organiser name for the marketing-consent opt-in wording (names the sender).
+  const { data: organisation } = await adminClient
+    .from('organisations')
+    .select('name')
+    .eq('id', event.organisation_id)
+    .maybeSingle()
+  const organiserName = organisation?.name ?? ''
 
   return (
     <div className="min-h-screen bg-ink-100">
@@ -133,6 +141,7 @@ export default async function SquadPayPage({ params }: Props) {
             squadToken={token}
             memberName={memberName}
             memberEmail={memberEmail}
+            organiserName={organiserName}
             pricePerSpotCents={tier.price}
             currency={tier.currency}
             publishableKey={process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? ''}

@@ -17,7 +17,7 @@
 import { describe, expect, test } from 'vitest'
 import {
   COMPANY,
-  CULTURES,
+  COMMUNITIES,
   DISCOVER,
   FOR_ORGANISERS,
   LEGAL,
@@ -35,7 +35,7 @@ interface FooterLink {
 
 const ALL_ARRAYS: { name: string; items: ReadonlyArray<FooterLink> }[] = [
   { name: 'DISCOVER', items: DISCOVER },
-  { name: 'CULTURES', items: CULTURES },
+  { name: 'COMMUNITIES', items: COMMUNITIES },
   { name: 'FOR_ORGANISERS', items: FOR_ORGANISERS },
   { name: 'COMPANY', items: COMPANY },
   { name: 'LEGAL', items: LEGAL },
@@ -76,7 +76,7 @@ describe('site-footer link integrity', () => {
               `(see src/lib/events/search-params.ts: PRESETS, SORTS, VIEWS).`,
           ).toBe(true)
         }
-        // Non-/events paths (e.g. /cities, /culture/african, /legal/...)
+        // Non-/events paths (e.g. /cities, /community/african, /legal/...)
         // are real routes; their existence is verified by Next.js build
         // (every page.tsx under src/app/** is enumerated), not here.
       })
@@ -88,9 +88,9 @@ describe('site-footer link integrity', () => {
     expect(byCity?.href, '"By city" should route to /cities, not /events?view=cities').toBe('/cities')
   })
 
-  test('DISCOVER "By community" routes to the dedicated /cultures page, not /events', () => {
+  test('DISCOVER "By community" routes to the dedicated /communities page, not /events', () => {
     const byCommunity = DISCOVER.find(l => l.label === 'By community')
-    expect(byCommunity?.href, '"By community" should route to /cultures, not /events?view=cultures').toBe('/cultures')
+    expect(byCommunity?.href, '"By community" should route to /communities, not /events?view=communities').toBe('/communities')
   })
 })
 

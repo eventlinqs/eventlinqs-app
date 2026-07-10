@@ -21,7 +21,7 @@ type Props = {
  */
 export async function EventsGrid({ events, params, page, totalPages, firstCardEager }: Props) {
   if (events.length === 0) {
-    return <EventsEmptyState />
+    return <EventsEmptyState query={typeof params.q === 'string' ? params.q.trim().slice(0, 80) : undefined} />
   }
 
   const initialCards = await projectToCardData(events)

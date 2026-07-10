@@ -46,7 +46,7 @@ export function FilterSheet({ open, onClose, title, children, footer }: Props) {
         type="button"
         aria-label="Close filters"
         onClick={onClose}
-        className="absolute inset-0 bg-ink-900/40 backdrop-blur-sm"
+        className="absolute inset-0 bg-ink-900/60"
       />
       <div
         className="

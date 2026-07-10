@@ -22,7 +22,7 @@ const CSP_REPORT_ONLY = [
   "style-src 'self' 'unsafe-inline' https://api.mapbox.com",
   "font-src 'self' data:",
   "connect-src 'self' https://*.supabase.co https://api.stripe.com https://plausible.io https://*.upstash.io https://api.mapbox.com https://*.tiles.mapbox.com https://events.mapbox.com https://maps.googleapis.com",
-  "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com",
+  "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com https://www.youtube-nocookie.com https://www.youtube.com https://player.vimeo.com https://www.instagram.com https://www.tiktok.com",
   "worker-src 'self' blob:",
 ].join('; ')
 
@@ -41,21 +41,55 @@ const SECURITY_HEADERS = [
 
 const nextConfig: NextConfig = {
   trailingSlash: false,
+  // Render page metadata (<title>, <meta name="description">, etc.) in the
+  // initial <head> for EVERY user agent, opting out of Next's streaming-
+  // metadata optimisation. By default Next streams metadata into the body for
+  // "browser" UAs (hoisted to <head> client-side) and only blocks it in <head>
+  // for UAs in its built-in crawler list. Lighthouse 13's mobile UA is a pure
+  // "moto g power" device string with no "Chrome-Lighthouse" token, so it was
+  // treated as a browser: the meta description streamed into the body and
+  // Lighthouse's head-only meta-description audit scored SEO 0.92 on event
+  // detail. Any crawler/preview tool not on Next's list would be hidden the same
+  // way. `htmlLimitedBots: '.'` matches every UA, so metadata is always
+  // head-blocking - SEO-safe for all crawlers, not just the ones Next ships.
+  // This affects metadata placement ONLY; body/Suspense streaming (the /events
+  // grid + event-detail loading skeletons) is governed by Next's separate
+  // built-in bot regex and is unchanged.
+  htmlLimitedBots: /./,
+  // Preview-density fixture. The homepage reads the 55-event catalogue fixture
+  // (src/lib/dev/home-seed-fixture.json) at runtime via fs when
+  // HOMEPAGE_SEED_FIXTURE=1. Trace it into the homepage serverless bundle so
+  // PREVIEW deployments - where the prebuild step regenerates it - can read it
+  // at runtime. On normal/production builds the file is absent and this is a
+  // no-op; the flag is never honoured in production (VERCEL_ENV guard in
+  // loadHomeUpcoming + the prebuild abort).
+  outputFileTracingIncludes: {
+    '/': ['./src/lib/dev/home-seed-fixture.json'],
+    // The event-detail data path is fixture-aware under HOMEPAGE_SEED_FIXTURE=1
+    // (one source of truth with the homepage), so its lambda needs the fixture
+    // file too or a fixture card would 404 on the Preview. No-op when the file
+    // is absent (normal/production builds).
+    '/events/[slug]': ['./src/lib/dev/home-seed-fixture.json'],
+  },
   async redirects() {
-    // Batch 5 - /categories/[slug] → /culture/[slug] migration.
-    // The legacy /categories/[slug] route still serves 7 hero categories
-    // (afrobeats, amapiano, gospel, owambe, caribbean, heritage-and-
-    // independence, networking) but the new taxonomy lives under
-    // /culture/[slug]. We 301 the matching legacy slugs to their new
-    // culture home so existing inbound links and Google index entries
-    // forward to the new pages.
+    // Legacy /categories/[slug] -> the community taxonomy (Batch 5). The legacy
+    // /categories/[slug] route still serves the hero categories but the taxonomy
+    // lives under /community/[slug], so we 301 the matching slugs forward.
+    //
+    // The word "culture" is banned (CLAUDE.md): the taxonomy routes were renamed
+    // /cultures -> /communities and /culture/[...] -> /community/[...], with the
+    // permanent 301s below so every existing link, share, and search-index entry
+    // forwards and no path breaks.
     return [
-      { source: '/categories/afrobeats',                   destination: '/culture/african',  permanent: true },
-      { source: '/categories/amapiano',                    destination: '/culture/african',  permanent: true },
-      { source: '/categories/owambe',                      destination: '/culture/african',  permanent: true },
-      { source: '/categories/heritage-and-independence',   destination: '/culture/african',  permanent: true },
-      { source: '/categories/caribbean',                   destination: '/culture/caribbean', permanent: true },
-      { source: '/categories/gospel',                      destination: '/culture/gospel',   permanent: true },
+      { source: '/categories/afrobeats',                   destination: '/community/african',   permanent: true },
+      { source: '/categories/amapiano',                    destination: '/community/african',   permanent: true },
+      { source: '/categories/owambe',                      destination: '/community/african',   permanent: true },
+      { source: '/categories/heritage-and-independence',   destination: '/community/african',   permanent: true },
+      { source: '/categories/caribbean',                   destination: '/community/caribbean', permanent: true },
+      { source: '/categories/gospel',                      destination: '/community/gospel',    permanent: true },
+      { source: '/cultures',                               destination: '/communities',           permanent: true },
+      { source: '/culture/:slug',                          destination: '/community/:slug',       permanent: true },
+      { source: '/culture/:slug/:city',                    destination: '/community/:slug/:city', permanent: true },
     ]
   },
   async headers() {
@@ -108,6 +142,26 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: '10mb',
     },
+    // ── Build stability against the live Supabase pool ──
+    // Static generation runs page data fetchers against the live Sydney
+    // Supabase pool at build time. On Vercel's 30-core builders Next spawned
+    // ~29 export workers x 8 concurrent pages each (~230 concurrent
+    // prerenders), which exhausted the connection pool (PGRST003) and
+    // produced statement timeouts that killed the build (notably
+    // /events/[slug] after its retries). Local builds pass only because they
+    // run far fewer workers at higher latency.
+    //
+    // Cap to <=8 workers (cpus) x 4 pages/worker (staticGenerationMaxConcurrency)
+    // = <=32 concurrent renders, and let Next retry a flaky page a few times
+    // (staticGenerationRetryCount) before failing the build. This is the
+    // first of three defences; the others are bounded retry/backoff in the
+    // build-time fetchers and a head/long-tail prerender split that moves the
+    // bulk of dynamic DB-backed routes to on-demand ISR (see each route's
+    // generateStaticParams). cpus also throttles compile parallelism, an
+    // acceptable build-time cost for deploy reliability.
+    cpus: 8,
+    staticGenerationMaxConcurrency: 4,
+    staticGenerationRetryCount: 3,
     // Tree-shake barrel imports per Next.js docs. Without this, importing
     // `{ Home } from 'lucide-react'` drags the full icon barrel into the
     // shared chunk on every route. Phase 1B Pre-Task 3 iter-2 measured
@@ -139,6 +193,15 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'gndnldyfudbytbboxesk.supabase.co',
+        pathname: '/storage/v1/object/public/**',
+      },
+      // TEST/staging Supabase project. The preview deployment is pointed at the
+      // TEST project (vkapkibzokmfaxqogypq) via the *_PREVIEW env vars, so
+      // organiser media uploaded on the preview is served from this host and
+      // must be allowlisted or next/image rejects it (the cover would 404).
+      {
+        protocol: 'https',
+        hostname: 'vkapkibzokmfaxqogypq.supabase.co',
         pathname: '/storage/v1/object/public/**',
       },
       // Batch 10 branded storage domain. Listed here so next/image accepts

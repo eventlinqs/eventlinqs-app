@@ -2,10 +2,10 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
-// PhotographicCultureHero is the generic flexible-copy variant (eyebrow / title /
+// PhotographicCommunityHero is the generic flexible-copy variant (eyebrow / title /
 // subtitle); PhotographicCityHero hardcodes "Events in {city}" which doesn't
 // match the cities-index headline. Reuse the flexible component.
-import { PhotographicCultureHero } from '@/components/templates/PhotographicCultureHero'
+import { PhotographicCommunityHero } from '@/components/templates/PhotographicCommunityHero'
 import { CityTileImage } from '@/components/media/CityTileImage'
 import { getCityHeroPhoto, getCityPhoto } from '@/lib/images/city-photo'
 import { getCityIndexEntries, type CityIndexEntry } from '@/lib/cities/index-page-data'
@@ -23,6 +23,7 @@ export const metadata: Metadata = {
     description: 'Find community-relevant events in 20 cities across Australia.',
     url: '/cities',
     type: 'website',
+    images: ['/opengraph-image'],
   },
   twitter: {
     card: 'summary_large_image',
@@ -65,7 +66,7 @@ export default async function CitiesIndexPage() {
     <div className="flex min-h-screen flex-col bg-canvas">
       <SiteHeader />
       <main className="flex-1">
-        <PhotographicCultureHero
+        <PhotographicCommunityHero
           eyebrow="Browse by city"
           title="20 cities. From Sydney to Hobart."
           subtitle="Find community-relevant events near you."
@@ -162,7 +163,7 @@ async function CityTile({
 }) {
   const image = await getCityPhoto(entry.slug)
   // Never render a dead "Coming soon" state. A city with no live events
-  // yet still has a real landing (culture rails, formats, organiser
+  // yet still has a real landing (community rails, formats, organiser
   // invite), so the tile invites the first organiser instead of
   // advertising absence.
   const countLabel =
@@ -203,15 +204,14 @@ async function CityTile({
           <p className="mt-1 text-xs font-medium text-white/85 sm:text-sm">
             {entry.state}
           </p>
-          {/* Frosted-glass pill background raises gold chip contrast
-           *  from 3.8:1 to 9.4:1 worst case. */}
+          {/* Solid navy pill background keeps the gold chip legible over
+           *  any photo (gold on solid navy #0A1628 clears AA with room to
+           *  spare; no glassmorphism, per the design system). */}
           <p
             className="mt-2 inline-flex items-center self-start rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent)]"
             style={{
-              background: 'rgba(10, 22, 40, 0.55)',
-              backdropFilter: 'blur(12px)',
-              WebkitBackdropFilter: 'blur(12px)',
-              border: '1px solid rgba(212, 164, 55, 0.35)',
+              background: 'rgb(10, 22, 40)',
+              border: '1px solid rgba(212, 160, 23, 0.35)',
             }}
           >
             {countLabel}

@@ -132,6 +132,7 @@ export function AttendeeTable({ attendees, ticketTypes }: AttendeeTableProps) {
                 <th scope="col" className="px-4 py-3">Order ref</th>
                 <th scope="col" className="px-4 py-3">Purchase date</th>
                 <th scope="col" className="px-4 py-3">Check-in</th>
+                <th scope="col" className="px-4 py-3">Marketing</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-ink-100">
@@ -152,6 +153,19 @@ export function AttendeeTable({ attendees, ticketTypes }: AttendeeTableProps) {
                       <span className="inline-flex items-center gap-1.5 rounded-full bg-ink-100 px-2 py-0.5 text-xs font-medium text-ink-600">
                         <span className="h-1.5 w-1.5 rounded-full bg-ink-400" aria-hidden="true" />
                         Not checked in
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {a.marketingConsent ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-gold-100 px-2 py-0.5 text-xs font-medium text-gold-700">
+                        <span className="h-1.5 w-1.5 rounded-full bg-gold-500" aria-hidden="true" />
+                        Opted in
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-ink-100 px-2 py-0.5 text-xs font-medium text-ink-600">
+                        <span className="h-1.5 w-1.5 rounded-full bg-ink-400" aria-hidden="true" />
+                        Not opted in
                       </span>
                     )}
                   </td>

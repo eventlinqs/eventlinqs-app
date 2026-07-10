@@ -11,26 +11,35 @@ import {
 import { useDragScroll } from '@/hooks/use-drag-scroll'
 
 /**
- * SnapRail primitives - Rail Standard v2.0 (Batch 6.6).
+ * SnapRail primitives - Rail Control System v3.0 (Mission 3).
  *
- * Layout contract: arrows + progress sit TOP-RIGHT, on the same
- * horizontal line as the rail headline. Industry standard: every
- * major platform (Ticketmaster, Airbnb, Eventbrite, Netflix,
- * Amazon Prime Video) places horizontal-rail controls at top-right.
+ * Control law (derived from live competitor evidence, NOT taste -
+ * docs/benchmark/rail-controls/CATALOGUE.md):
+ *   - Arrows sit TOP-RIGHT, on the rail headline's horizontal line.
+ *     Airbnb + Ticketmaster both anchor rail controls in the header.
+ *     Header-anchored = structurally STABLE: they live in normal flow,
+ *     so they never float, jump, or vanish on scroll or window resize.
+ *   - Buttons are circular, solid, opaque (navy fill / gold-on-hover),
+ *     >= 44px. No glassmorphism. Airbnb #F2F2F2, Humanitix #F9F9FA are
+ *     both opaque; 44px is Ticketmaster-real and meets the touch floor.
+ *   - Disabled at either end = muted fill + muted icon (Airbnb dims the
+ *     Previous button to opacity 0.5 + grey border at a rail's start).
+ *   - NO progress device. The gold standard (Airbnb) shows arrows alone;
+ *     the travelling dot/bar is removed and replaced with nothing.
+ *   - Arrows stay reachable on mobile (header-anchored, so zero layout
+ *     cost) on top of native swipe. Desktop adds mouse drag-to-scroll.
  *
- *   [eyebrow]                                    [< >] [progress ──]
+ *   [eyebrow]                                         [ < ] [ > ]
  *   [TITLE]
  *   [tile][tile][tile][tile][tile][tile] →
  *
  * Components:
  *   - <SnapRail>: full-chrome rail with built-in eyebrow + title +
  *     optional headerLink. Use this everywhere by default.
- *   - <SnapRailScroller>: drag/swipe scroller that the caller
- *     composes its own header around. Now also exposes an optional
- *     `header` slot so callers can hand in eyebrow/title and get the
- *     standard top-right controls without writing the layout
- *     themselves. Used inside parent sections that need custom header
- *     content (tabs, dual headlines, etc).
+ *   - <SnapRailScroller>: drag/swipe scroller that the caller composes
+ *     its own header around, with an optional `header` slot.
+ *   - <RailArrows>: the canonical control pair, exported so rails that
+ *     compose their own header (DragRail-based) share the exact control.
  *
  * Cards inside must be 280px wide, flex-shrink-0, snap-start, gap-4.
  */
@@ -40,6 +49,12 @@ interface HeaderLink {
   label: string
 }
 
+// Inter-card gap on the scroll track. Default 'gap-3' (12px) keeps every
+// existing rail identical; the homepage rhythm variants pass a wider class
+// per rail (Tailwind gap utility) to open the side-to-side spacing without
+// touching vertical rhythm. Threaded through to ScrollTrack.
+type CardGap = string
+
 interface SnapRailProps {
   eyebrow: string
   title: string
@@ -47,12 +62,16 @@ interface SnapRailProps {
   headerLink?: HeaderLink
   railLabel: string
   containerBg?: 'canvas' | 'ink-100'
+  /** Tailwind gap utility for the scroll track. Default 'gap-3'. */
+  cardGap?: CardGap
   children: ReactNode
 }
 
 interface SnapRailScrollerProps {
   railLabel: string
   containerBg?: 'canvas' | 'ink-100'
+  /** Tailwind gap utility for the scroll track. Default 'gap-3'. */
+  cardGap?: CardGap
   /**
    * Optional structured header. When provided, the scroller renders
    * a full top row with the headline on the left and arrows + progress
@@ -69,9 +88,37 @@ interface SnapRailScrollerProps {
   children: ReactNode
 }
 
+/** Measure the card pitch (card width + gap) from the live DOM so paging and
+ *  snap-boundary landing track the real layout at any viewport, not a guess. */
+function measurePitch(el: HTMLElement): number {
+  const first = el.firstElementChild as HTMLElement | null
+  const second = first?.nextElementSibling as HTMLElement | null
+  if (first && second) {
+    const pitch = second.offsetLeft - first.offsetLeft
+    if (pitch > 0) return pitch
+  }
+  if (first && first.offsetWidth > 0) return first.offsetWidth + 16
+  return 296 // 280px card + 16px gap fallback
+}
+
+function prefersReducedMotion(): boolean {
+  return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
 function useScrollState() {
   const scrollRef = useRef<HTMLDivElement>(null)
-  const [progress, setProgress] = useState(0)
+  const rafRef = useRef<number | null>(null)
+  // The rails ship with NO scroll-snap active on first paint. scroll-snap-type
+  // mandatory (and even proximity) forces Chrome to re-snap the container every
+  // time a lazy card image loads and reflows it, firing browser-induced scroll
+  // events that STOP Largest Contentful Paint recording before the hero raster
+  // paints - this was the homepage/community NO_LCP defect (zero LCP entries while
+  // event-detail measured fine). Snap is a scroll-interaction affordance, so we
+  // arm it only once the user actually grabs the rail (see cancelGlide). Until
+  // then snapBaseRef stays 'none' and the hero image anchors LCP normally.
+  // Do NOT move scroll-snap back into the static className - it reintroduces the
+  // measurement-stopping on-load re-snap. (docs/benchmark/system-pass Unit 3.)
+  const snapBaseRef = useRef<'none' | 'x mandatory'>('none')
   const [canPrev, setCanPrev] = useState(false)
   const [canNext, setCanNext] = useState(true)
 
@@ -80,15 +127,31 @@ function useScrollState() {
     if (!el) return
     const maxScroll = el.scrollWidth - el.clientWidth
     if (maxScroll <= 0) {
-      setProgress(0)
       setCanPrev(false)
       setCanNext(false)
       return
     }
-    const pct = Math.max(0, Math.min(1, el.scrollLeft / maxScroll))
-    setProgress(pct)
     setCanPrev(el.scrollLeft > 4)
     setCanNext(el.scrollLeft < maxScroll - 4)
+  }, [])
+
+  // Stop any in-flight glide and hand the rail back to the user's natural
+  // scroll. Called the instant the user grabs the rail (pointer/touch/wheel, and
+  // via scrollByCards for the arrow keys) - which is also where we ARM
+  // scroll-snap for the first time. Arming it here (never on load) keeps the
+  // snap engine from re-snapping during the LCP window; the set is applied
+  // synchronously in the engage event so it takes effect for that same gesture.
+  const cancelGlide = useCallback(() => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current)
+      rafRef.current = null
+    }
+    const el = scrollRef.current
+    if (el) {
+      snapBaseRef.current = 'x mandatory'
+      el.style.scrollSnapType = snapBaseRef.current
+      el.style.scrollBehavior = ''
+    }
   }, [])
 
   useEffect(() => {
@@ -99,18 +162,69 @@ function useScrollState() {
     const ro = new ResizeObserver(updateScrollState)
     ro.observe(el)
     el.addEventListener('scroll', updateScrollState, { passive: true })
+    // Hand the rail straight back to the user the instant they touch it.
+    el.addEventListener('pointerdown', cancelGlide, { passive: true })
+    el.addEventListener('wheel', cancelGlide, { passive: true })
+    el.addEventListener('touchstart', cancelGlide, { passive: true })
     return () => {
       ro.disconnect()
       el.removeEventListener('scroll', updateScrollState)
+      el.removeEventListener('pointerdown', cancelGlide)
+      el.removeEventListener('wheel', cancelGlide)
+      el.removeEventListener('touchstart', cancelGlide)
+      cancelGlide()
     }
-  }, [updateScrollState])
+  }, [updateScrollState, cancelGlide])
 
+  // Distance-eased programmatic glide: cubic ease-out, ~400-550ms for a page of
+  // cards, scaled by distance, always landing on a card snap boundary. Snap is
+  // suspended for the duration so the per-frame scrollLeft writes do not fight
+  // the snap engine, then restored on the boundary we land on. Touch/trackpad
+  // scrolling is never touched - only the arrows and keyboard drive this.
   const scrollByCards = useCallback((direction: 1 | -1) => {
     const el = scrollRef.current
     if (!el) return
-    const step = 296 // 280px card + 16px gap
-    el.scrollBy({ left: direction * step * 1.5, behavior: 'smooth' })
-  }, [])
+    const pitch = measurePitch(el)
+    const max = el.scrollWidth - el.clientWidth
+    const visible = Math.max(1, Math.floor(el.clientWidth / pitch))
+    const rawTarget = el.scrollLeft + direction * visible * pitch
+    // Snap the destination to the nearest card boundary, then clamp to the rail.
+    const dest = Math.max(0, Math.min(max, Math.round(rawTarget / pitch) * pitch))
+
+    if (prefersReducedMotion()) {
+      cancelGlide()
+      el.scrollLeft = dest
+      return
+    }
+
+    const start = el.scrollLeft
+    const delta = dest - start
+    if (Math.abs(delta) < 1) return
+
+    cancelGlide()
+    const cards = Math.abs(delta) / pitch
+    const duration = Math.min(550, Math.max(400, cards * 120))
+    el.style.scrollSnapType = 'none'
+    el.style.scrollBehavior = 'auto'
+    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
+    let startTs: number | null = null
+    const step = (ts: number) => {
+      if (startTs === null) startTs = ts
+      const t = Math.min(1, (ts - startTs) / duration)
+      el.scrollLeft = start + delta * easeOutCubic(t)
+      if (t < 1) {
+        rafRef.current = requestAnimationFrame(step)
+      } else {
+        el.scrollLeft = dest
+        // Restore to the armed base (cancelGlide ran above, so it is now
+        // 'x mandatory'); the arrow glide lands on a card snap boundary.
+        el.style.scrollSnapType = snapBaseRef.current
+        el.style.scrollBehavior = ''
+        rafRef.current = null
+      }
+    }
+    rafRef.current = requestAnimationFrame(step)
+  }, [cancelGlide])
 
   const onKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'ArrowRight') {
@@ -122,10 +236,33 @@ function useScrollState() {
     }
   }, [scrollByCards])
 
-  return { scrollRef, progress, canPrev, canNext, scrollByCards, onKeyDown }
+  return { scrollRef, canPrev, canNext, scrollByCards, onKeyDown }
 }
 
-function ArrowButtons({
+// One canonical arrow button. Solid opaque navy circle (>= 44px) with a
+// white chevron that turns gold on hover; lifts on hover, presses on active,
+// and goes to a clearly-muted fill when disabled at a rail end. No glass, no
+// translucency. This is the single source of the rail-control look - every
+// rail renders RailArrows, never its own button markup.
+const ARROW_BTN =
+  'flex h-11 w-11 items-center justify-center rounded-full ' +
+  'bg-[var(--color-ink-900)] text-white ' +
+  'shadow-[0_2px_8px_rgba(10,22,40,0.18)] ' +
+  'transition-[transform,background-color,box-shadow,color] duration-200 ease-out ' +
+  'hover:-translate-y-0.5 hover:bg-[var(--color-navy-950)] hover:text-[var(--color-gold-400)] ' +
+  'hover:shadow-[0_8px_18px_rgba(10,22,40,0.30)] ' +
+  'active:translate-y-0 active:scale-95 active:duration-75 ' +
+  'disabled:cursor-not-allowed disabled:bg-[var(--surface-2)] disabled:text-[var(--text-muted)] ' +
+  'disabled:shadow-none disabled:translate-y-0 ' +
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2'
+
+/**
+ * RailArrows - the canonical rail control pair. Top-right, header-anchored,
+ * visible at every viewport (reachable on mobile alongside native swipe).
+ * Exported so rails that build their own header (e.g. the DragRail-based
+ * recommended rail) attach the identical control instead of re-rolling it.
+ */
+export function RailArrows({
   canPrev,
   canNext,
   onPrev,
@@ -138,16 +275,20 @@ function ArrowButtons({
   onNext: () => void
   railLabel: string
 }) {
+  // A rail that fits its viewport (no overflow either way) shows no controls -
+  // arrows only appear when there is somewhere to scroll. Matches Airbnb, and
+  // keeps short rails (and any rail on a wide screen) free of dead arrows.
+  if (!canPrev && !canNext) return null
   return (
-    <div className="hidden items-center gap-2 md:flex">
+    <div className="flex items-center gap-2">
       <button
         type="button"
         onClick={onPrev}
         disabled={!canPrev}
         aria-label={`Scroll ${railLabel} left`}
-        className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--surface-2)] bg-[var(--surface-0)] text-[var(--text-primary)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent-strong)] hover:text-[var(--brand-accent-strong)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:border-[var(--surface-2)] disabled:hover:text-[var(--text-primary)] disabled:hover:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2"
+        className={ARROW_BTN}
       >
-        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden>
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden>
           <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
         </svg>
       </button>
@@ -156,58 +297,12 @@ function ArrowButtons({
         onClick={onNext}
         disabled={!canNext}
         aria-label={`Scroll ${railLabel} right`}
-        className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--surface-2)] bg-[var(--surface-0)] text-[var(--text-primary)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-accent-strong)] hover:text-[var(--brand-accent-strong)] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:border-[var(--surface-2)] disabled:hover:text-[var(--text-primary)] disabled:hover:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2"
+        className={ARROW_BTN}
       >
-        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden>
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden>
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
         </svg>
       </button>
-    </div>
-  )
-}
-
-function ProgressBar({ progress }: { progress: number }) {
-  return (
-    <div className="hidden h-0.5 w-32 rounded-full bg-[var(--surface-2)] md:block lg:w-40" aria-hidden>
-      <div
-        className="h-full rounded-full bg-[var(--brand-accent-strong)] transition-[width] duration-200 ease-out"
-        style={{ width: `${Math.max(8, progress * 100)}%` }}
-      />
-    </div>
-  )
-}
-
-/**
- * Compact controls cluster (progress + arrows) for the top-right of a
- * rail header. Hidden on mobile (md:flex) since arrows are not the
- * primary scroll mechanism on touch devices - swipe is. Progress sits
- * to the LEFT of the arrows, fading to track as the rail scrolls.
- */
-function HeaderControls({
-  progress,
-  canPrev,
-  canNext,
-  onPrev,
-  onNext,
-  railLabel,
-}: {
-  progress: number
-  canPrev: boolean
-  canNext: boolean
-  onPrev: () => void
-  onNext: () => void
-  railLabel: string
-}) {
-  return (
-    <div className="hidden items-center gap-3 md:flex">
-      <ProgressBar progress={progress} />
-      <ArrowButtons
-        canPrev={canPrev}
-        canNext={canNext}
-        onPrev={onPrev}
-        onNext={onNext}
-        railLabel={railLabel}
-      />
     </div>
   )
 }
@@ -216,28 +311,28 @@ function ScrollTrack({
   scrollRef,
   railLabel,
   onKeyDown,
-  fadeFromClass,
-  canNext,
+  gapClass,
   children,
 }: {
   scrollRef: React.RefObject<HTMLDivElement | null>
   railLabel: string
   onKeyDown: (e: React.KeyboardEvent) => void
-  fadeFromClass: string
-  canNext: boolean
+  gapClass: string
   children: ReactNode
 }) {
+  // CONTAINED look (founder law): NO edge-fade masks and NO negative-margin
+  // bleed. The rail lives fully inside the standard container, so it ends
+  // cleanly with even margins on both sides (the Ticketmaster/Eventbrite
+  // contained look). A partial next card still peeks at the contained right
+  // edge to invite the scroll - the peek comes from card pitch, never a fade.
+  // No static snap-x/snap-mandatory: scroll-snap is armed on first user
+  // engagement (useScrollState/cancelGlide) so the load-time re-snap never stops
+  // LCP. Cards keep their snap-start; it activates with snap.
   return (
-    <div className="relative -mx-4 sm:-mx-6 lg:-mx-8">
-      {canNext && (
-        <div
-          aria-hidden
-          className={`pointer-events-none absolute right-0 top-0 z-10 h-full w-16 bg-gradient-to-l ${fadeFromClass} to-transparent sm:w-24`}
-        />
-      )}
+    <div className="relative">
       <div
         ref={scrollRef}
-        role="region"
+        role="group"
         aria-label={railLabel}
         tabIndex={0}
         onKeyDown={onKeyDown}
@@ -248,7 +343,7 @@ function ScrollTrack({
             e.stopPropagation()
           }
         }}
-        className="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-4 pb-4 pt-1 scrollbar-none focus-visible:outline-none sm:px-6 lg:px-8"
+        className={`rail-stagger flex ${gapClass} overflow-x-auto scroll-smooth pb-3 pt-1 scrollbar-none focus-visible:outline-none`}
       >
         {children}
       </div>
@@ -259,16 +354,16 @@ function ScrollTrack({
 export function SnapRailScroller({
   railLabel,
   containerBg = 'canvas',
+  cardGap = 'gap-3',
   header,
   children,
 }: SnapRailScrollerProps) {
-  const { scrollRef, progress, canPrev, canNext, scrollByCards, onKeyDown } = useScrollState()
+  const { scrollRef, canPrev, canNext, scrollByCards, onKeyDown } = useScrollState()
   useDragScroll(scrollRef)
-  const fadeFromClass = containerBg === 'canvas' ? 'from-canvas' : 'from-ink-100'
+  void containerBg
 
   const controls = (
-    <HeaderControls
-      progress={progress}
+    <RailArrows
       canPrev={canPrev}
       canNext={canNext}
       onPrev={() => scrollByCards(-1)}
@@ -280,7 +375,7 @@ export function SnapRailScroller({
   return (
     <div>
       {header ? (
-        <div className="mb-5 flex items-end justify-between gap-4 sm:mb-6">
+        <div className="mb-3 flex items-end justify-between gap-4 sm:mb-4">
           <div className="min-w-0">
             {header.eyebrow ? (
               <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
@@ -289,7 +384,7 @@ export function SnapRailScroller({
             ) : null}
             <h2
               id={header.headingId}
-              className="type-h2 font-display text-[var(--text-primary)]"
+              className="type-rail-heading font-headline uppercase tracking-tight text-[var(--text-primary)]"
             >
               {header.title}
             </h2>
@@ -314,8 +409,7 @@ export function SnapRailScroller({
         scrollRef={scrollRef}
         railLabel={railLabel}
         onKeyDown={onKeyDown}
-        fadeFromClass={fadeFromClass}
-        canNext={canNext}
+        gapClass={cardGap}
       >
         {children}
       </ScrollTrack>
@@ -330,11 +424,12 @@ export function SnapRail({
   headerLink,
   railLabel,
   containerBg = 'canvas',
+  cardGap = 'gap-3',
   children,
 }: SnapRailProps) {
-  const { scrollRef, progress, canPrev, canNext, scrollByCards, onKeyDown } = useScrollState()
+  const { scrollRef, canPrev, canNext, scrollByCards, onKeyDown } = useScrollState()
   useDragScroll(scrollRef)
-  const fadeFromClass = containerBg === 'canvas' ? 'from-canvas' : 'from-ink-100'
+  void containerBg
 
   return (
     <div>
@@ -347,7 +442,7 @@ export function SnapRail({
             </p>
             <h2
               id={headingId}
-              className="type-h2 font-display text-[var(--text-primary)]"
+              className="type-rail-heading font-headline uppercase tracking-tight text-[var(--text-primary)]"
             >
               {title}
             </h2>
@@ -363,8 +458,7 @@ export function SnapRail({
               {headerLink.label} &rsaquo;
             </Link>
           )}
-          <HeaderControls
-            progress={progress}
+          <RailArrows
             canPrev={canPrev}
             canNext={canNext}
             onPrev={() => scrollByCards(-1)}
@@ -374,13 +468,12 @@ export function SnapRail({
         </div>
       </div>
 
-      <div className="mt-5">
+      <div className="mt-3">
         <ScrollTrack
           scrollRef={scrollRef}
           railLabel={railLabel}
           onKeyDown={onKeyDown}
-          fadeFromClass={fadeFromClass}
-          canNext={canNext}
+          gapClass={cardGap}
         >
           {children}
         </ScrollTrack>

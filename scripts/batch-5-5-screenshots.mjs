@@ -1,5 +1,5 @@
 // Batch 5.5 closing screenshot run.
-// - 14 culture pages x 2 viewports (1440 desktop, 375 mobile) = 28 captures
+// - 14 community pages x 2 viewports (1440 desktop, 375 mobile) = 28 captures
 //   into docs/redesign/batch-5-evidence/after/
 // - Footer-after at 1440 + 375 (cropped to footer using y-offset of full
 //   page height - 1200 / 600) into docs/redesign/batch-5-evidence/.
@@ -13,7 +13,7 @@ const FOOTER_DIR = 'docs/redesign/batch-5-evidence'
 
 if (!existsSync(AFTER_DIR)) mkdirSync(AFTER_DIR, { recursive: true })
 
-const cultures = [
+const communities = [
   'african', 'south-asian', 'caribbean', 'latin', 'east-asian',
   'filipino', 'mediterranean', 'middle-eastern', 'european', 'pacific',
   'gospel', 'comedy', 'wellness', 'pride',
@@ -31,21 +31,21 @@ async function main() {
     userAgent: 'Mozilla/5.0 (compatible; EventLinqsScreenshot/1.0)',
   })
 
-  // 1) Culture pages: 14 x 2 = 28
+  // 1) Community pages: 14 x 2 = 28
   for (const vp of viewports) {
     await ctx.setExtraHTTPHeaders({})
     const page = await ctx.newPage()
     await page.setViewportSize({ width: vp.width, height: vp.height })
 
-    for (const slug of cultures) {
-      const url = `${BASE}/culture/${slug}`
+    for (const slug of communities) {
+      const url = `${BASE}/community/${slug}`
       console.log(`[${vp.name}] capture ${slug}`)
       try {
         await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45_000 })
         await page.waitForLoadState('networkidle', { timeout: 20_000 }).catch(() => {})
         await page.waitForTimeout(1000) // settle hero raster
         await page.screenshot({
-          path: `${AFTER_DIR}/culture-${slug}-${vp.name}.png`,
+          path: `${AFTER_DIR}/community-${slug}-${vp.name}.png`,
           fullPage: true,
         })
       } catch (e) {

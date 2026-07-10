@@ -1,12 +1,13 @@
 import { HeroMedia } from '@/components/media'
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
+import { getSpineCategoryHero } from '@/lib/images/spine'
 
 /**
  * PhotographicCategoryHero - Batch 4 replacement for the navy-950 + radial
  * gold "premium" PageHero on /categories/[slug].
  *
  * Pattern (per DESIGN-SYSTEM.md 6.2.1 - allowed image-band overlay):
- *   - photographic culture hero raster behind the headline
+ *   - photographic community hero raster behind the headline
  *   - darkened linear gradient bottom-up (10,22,40 navy) so the heading
  *     stays AA-readable without painting the whole hero black
  *   - place-name eyebrow + bold display headline + supporting body in
@@ -40,7 +41,11 @@ interface Props {
 }
 
 export function PhotographicCategoryHero({ slug, eyebrow, title, subtitle }: Props) {
-  const src = HERO_RASTER_BY_SLUG[slug] ?? HERO_RASTER_DEFAULT
+  // Spine-first: the licensed category hero. Falls back to the bundled community
+  // raster (old slugs) then the default for anything without a spine slot.
+  const spine = getSpineCategoryHero(slug)
+  const src = spine?.src ?? HERO_RASTER_BY_SLUG[slug] ?? HERO_RASTER_DEFAULT
+  const objectPosition = spine?.objectPosition ?? '50% 30%'
   const alt = `${title} on EventLinqs`
 
   return (
@@ -49,8 +54,8 @@ export function PhotographicCategoryHero({ slug, eyebrow, title, subtitle }: Pro
       className="relative overflow-hidden"
     >
       <HeroPresenceMarker />
-      <div className="relative h-[64vh] min-h-[420px] max-h-[640px] w-full">
-        <HeroMedia image={src} alt={alt} priority />
+      <div className="hero-marketing relative w-full">
+        <HeroMedia image={src} alt={alt} objectPosition={objectPosition} priority />
         {/* Darkened gradient: bottom-up navy so headline stays readable */}
         <div
           aria-hidden
@@ -63,12 +68,12 @@ export function PhotographicCategoryHero({ slug, eyebrow, title, subtitle }: Pro
         {/* Left-anchored content column - no body copy on the brightest band */}
         <div className="relative z-10 mx-auto flex h-full max-w-7xl items-end px-4 pb-10 sm:px-6 sm:pb-14 lg:px-8 lg:pb-20">
           <div className="max-w-2xl">
-            <p className="font-display text-xs font-bold uppercase tracking-[0.22em] text-white/85">
+            <p className="font-display text-xs font-bold uppercase tracking-[0.22em] text-[var(--brand-accent)]">
               {eyebrow}
             </p>
             <h1
               id="category-hero-heading"
-              className="mt-3 font-display text-4xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-6xl"
+              className="mt-3 font-display text-3xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-4xl lg:text-5xl"
             >
               {title}
             </h1>

@@ -1,7 +1,7 @@
 // Batch 9.1.1 - 4 side-by-side composites at 1440 viewport.
 //
 // 1. home-1440.png      : 9.1 BEFORE (top + scrolled) over 9.1.1 AFTER (top + scrolled)
-// 2. cultures-1440.png  : NEW page (top + scrolled, AFTER only) - no BEFORE
+// 2. communities-1440.png  : NEW page (top + scrolled, AFTER only) - no BEFORE
 // 3. cities-1440.png    : NEW page (top + scrolled, AFTER only) - no BEFORE
 // 4. search-overlay-1440.png : 9.1 baseline (no highlight) vs 9.1.1 (with keyboard highlight)
 import sharp from 'sharp'
@@ -78,11 +78,11 @@ async function buildComposite(name, cells) {
   ])
 }
 
-// Composite 2: cultures (NEW page, AFTER only)
+// Composite 2: communities (NEW page, AFTER only)
 {
-  const top = await loadCell(`${AFTER_911_1}/cultures-1440-top.png`)
-  const scrolled = await loadCell(`${AFTER_911_1}/cultures-1440-scrolled.png`)
-  await buildComposite('cultures-1440.png', [
+  const top = await loadCell(`${AFTER_911_1}/communities-1440-top.png`)
+  const scrolled = await loadCell(`${AFTER_911_1}/communities-1440-scrolled.png`)
+  await buildComposite('communities-1440.png', [
     { label: '9.1.1 NEW - top',     cell: top },
     { label: '9.1.1 NEW - scrolled', cell: scrolled },
   ])

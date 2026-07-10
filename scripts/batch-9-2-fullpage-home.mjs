@@ -25,7 +25,7 @@ const file = 'docs/redesign/batch-9-2-evidence/sections/home-fullpage-1440.png'
 await page.screenshot({ path: file, fullPage: true })
 console.log(`fullpage ${file}  ${(statSync(file).size / 1024).toFixed(1)}KB`)
 
-// Locate the cultural moments + email panel sections specifically by their headings
+// Locate the community moments + email panel sections specifically by their headings
 const momentsBox = await page.locator('#moments-bento-heading').boundingBox()
 const emailBox   = await page.locator('#email-signup-heading').boundingBox()
 console.log('moments heading box:', momentsBox)

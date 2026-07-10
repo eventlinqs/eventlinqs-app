@@ -1,4 +1,5 @@
 import { createPublicClient } from '@/lib/supabase/public-client'
+import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
@@ -6,10 +7,13 @@ import type {
   Event, TicketTier, Organisation, EventCategory, EventAddon,
 } from '@/types/database'
 import { jsonAsStringArray } from '@/lib/json-narrow'
+import { priceLabel, lowestPaidCents } from '@/lib/events/price-label'
 import {
-  SeatSelector, type SeatData, type SectionData,
+  SeatSelector, type SeatData, type SectionData, type SeatAreaData,
 } from '@/components/checkout/seat-selector'
+import { isFlagEnabled } from '@/lib/flags'
 import { SocialProofBadge } from '@/components/inventory/social-proof-badge'
+import { GoingProof } from '@/components/inventory/going-proof'
 import { TicketPanelClient } from '@/components/features/events/ticket-panel-client'
 import { getEventInventoryStatic, getTierInventoryStatic } from '@/lib/redis/inventory-cache'
 import { getDynamicPriceMap } from '@/lib/pricing/dynamic-pricing'
@@ -17,32 +21,45 @@ import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { HeroMedia } from '@/components/media'
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
-import { GlassCard } from '@/components/ui/glass-card'
 import { getFeaturedHeroBackground } from '@/lib/images/event-media'
 import { StickyActionBar } from '@/components/features/events/sticky-action-bar'
 import { RelatedEventsGrid } from '@/components/features/events/related-events-grid'
+import { Reveal } from '@/components/ui/reveal'
 import type { EventCardData } from '@/components/features/events/event-card'
 import { projectToCardData } from '@/lib/events/event-card-projection'
+import { buildEventMetaDescription } from '@/lib/events/event-meta'
 import type { PublicEventRow } from '@/lib/events/types'
-import dynamic from 'next/dynamic'
+import nextDynamic from 'next/dynamic'
 import { EventTrustSignals } from '@/components/features/event/EventTrustSignals'
+import { fetchFixtureEvent } from '@/lib/dev/fixture-events'
 
 // VenueMap pulls in @googlemaps/js-api-loader (~290KB). Loading it statically
 // makes it part of the event-detail route chunk, which Next.js eagerly
 // prefetches from any page linking to /events/*. next/dynamic splits it into
 // its own chunk so the map code stays out of the initial bundle on every cell.
-const VenueMap = dynamic(
+const VenueMap = nextDynamic(
   () => import('@/components/features/events/venue-map').then(m => m.VenueMap)
 )
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { EventSoldOut, type EventSoldOutRelated } from '@/components/features/events/event-sold-out'
 import { TicketsNotOnSale } from '@/components/features/events/tickets-not-on-sale'
 import { eventIsPaid, isOrganiserSellable } from '@/lib/payments/sale-status'
+import { getEventFeeRates } from '@/lib/pricing/event-fee-config'
+import type { FeePassType } from '@/lib/payments/fee-math'
 import { EventViewTracker } from '@/components/features/events/event-view-tracker'
+import { ShareViewBeacon } from '@/components/broadcast/share-view-beacon'
+import { isFeatureEnabled } from '@/lib/flags/broadcast'
+import { FollowButton } from '@/components/features/follow/follow-button'
 import { EventSchemaJsonLd } from '@/components/features/events/event-schema-jsonld'
+import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import { EventShareBar } from '@/components/features/events/event-share-bar'
+import { KnowBeforeYouGo } from '@/components/features/events/know-before-you-go'
 import { EventStateBanner } from '@/components/features/events/event-state-banner'
 import { SaveEventButton } from '@/components/features/events/save-event-button'
+import { EventGallery } from '@/components/features/events/event-gallery'
+import { EventVideo } from '@/components/features/events/event-video'
+import { parseGallery } from '@/lib/media/event-media-model'
+import { isVideoProvider } from '@/lib/media/video-embed'
 
 // Why ISR: every published event detail page is the same for all anonymous
 // visitors, so the shell ships as static HTML (revalidated every 5 minutes
@@ -53,23 +70,18 @@ import { SaveEventButton } from '@/components/features/events/save-event-button'
 // respectively. Per-tier inventory + dynamic pricing still come from
 // Redis/Postgres at render time, but they go through `createPublicClient`
 // which doesn't read cookies.
+// No generateStaticParams: this route is rendered DYNAMICALLY on demand (see
+// the headers() note in the component). The build-pool fix (985e46d) needed
+// individual events kept off the build-time Supabase pool; it did that with
+// `generateStaticParams -> []`, but an EMPTY gSP pins Turbopack to a STATIC
+// classification (zero params to prerender, no chance to observe the chrome +
+// Sentry render-time cookie read), so the first on-demand request 500'd
+// ("static to dynamic at runtime, reason: cookies") on every event. Dropping
+// gSP entirely (with the headers() marker in the component) makes the route
+// dynamic - nothing prerenders at build (still pool-safe), and notFound()
+// returns a real 404 (force-dynamic would have soft-404'd it 200). The sitemap
+// still lists every event, so discovery and indexing are unaffected.
 export const revalidate = 300
-export const dynamicParams = true
-
-export async function generateStaticParams() {
-  const supabase = createPublicClient()
-  const { data, error } = await supabase
-    .from('events')
-    .select('slug')
-    .eq('status', 'published')
-    .eq('visibility', 'public')
-
-  if (error || !data) {
-    console.error('[event-detail] generateStaticParams failed:', error)
-    return []
-  }
-  return data.map(row => ({ slug: row.slug as string }))
-}
 
 type Props = {
   params: Promise<{ slug: string }>
@@ -88,6 +100,14 @@ type EnrichedTier = TicketTier & {
 }
 
 async function fetchEvent(slug: string): Promise<FullEvent | null> {
+  // Density fixture (Preview + local only, double-guarded in fetchFixtureEvent):
+  // the homepage rails and this detail path read ONE fixture, so a fixture
+  // card resolves to a fully rendered detail page instead of a 404. Returns
+  // null for unknown slugs and is a no-op on production, so the real-DB query
+  // below stays the single path for every live event.
+  const fixture = await fetchFixtureEvent(slug)
+  if (fixture) return fixture as unknown as FullEvent
+
   const supabase = createPublicClient()
   const { data, error } = await supabase
     .from('events')
@@ -174,16 +194,23 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   // SEO format per Batch 8.1 brief: "[Event Name] - [Date] - [Venue] - EventLinqs".
-  // Description: city + culture/category + date packed into 155 chars for click-through.
+  // Description: city + community/category + date packed into 155 chars for click-through.
   const dateLabel = formatShortDate(event.start_date, event.timezone)
   const venueLabel = [event.venue_name, event.venue_city].filter(Boolean).join(', ')
   const titleParts = [event.title, dateLabel, venueLabel || null].filter(Boolean) as string[]
   const title = `${titleParts.join(' - ')} - EventLinqs`
 
-  const summarySource = event.summary
-    ?? (event.description ? event.description.replace(/<[^>]*>/g, '') : '')
-  const cityLine = event.venue_city ? `In ${event.venue_city}. ` : ''
-  const description = (cityLine + summarySource).slice(0, 155)
+  // Always non-empty (root fix for the SEO meta-description failure on events
+  // with no summary/description/venue_city - see buildEventMetaDescription).
+  const description = buildEventMetaDescription({
+    title: event.title,
+    summary: event.summary,
+    description: event.description,
+    venueCity: event.venue_city,
+    venueName: event.venue_name,
+    dateLabel,
+    categoryName: event.category?.name,
+  })
 
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
 
@@ -198,20 +225,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       'events',
     ].filter(Boolean) as string[],
     alternates: { canonical: `/events/${slug}` },
+    // og:image and twitter:image come from the designed per-event share card
+    // (opengraph-image.tsx in this route folder): the branded invitation with
+    // the cover photo, scrim, title, date and venue. Setting raw cover images
+    // here would override the file-convention card with an unbranded photo.
     openGraph: {
       title: event.title,
       description,
       url: `${baseUrl}/events/${slug}`,
       type: 'website',
-      images: event.cover_image_url
-        ? [{ url: event.cover_image_url, width: 1200, height: 630, alt: event.title }]
-        : [],
     },
     twitter: {
       card: 'summary_large_image',
       title: event.title,
       description,
-      images: event.cover_image_url ? [event.cover_image_url] : [],
     },
   }
 }
@@ -240,23 +267,66 @@ function formatShortDate(iso: string, timezone: string) {
 
 function cheapestPrice(tiers: { price: number; currency: string }[]): string | null {
   if (!tiers.length) return null
-  // Genuinely free only when EVERY tier is $0. When a $0 tier (e.g. a
-  // free RSVP) coexists with paid tiers, the event is a paid event and
-  // must advertise its lowest PAID price, never "Free entry" (deriving
-  // free-ness from min(price) mislabelled paid events as free).
-  const paid = tiers.filter(t => t.price > 0)
-  if (paid.length === 0) return 'Free entry'
-  const m = paid.reduce((x, t) => (t.price < x.price ? t : x), paid[0])
-  const dollars = m.price / 100
-  const formatted = Number.isInteger(dollars) ? `$${dollars}` : `$${dollars.toFixed(2)}`
-  return `From ${m.currency ?? 'AUD'} ${formatted}`
+  // The shared price-label rule: free only when EVERY tier is $0, otherwise
+  // the lowest PAID price (see src/lib/events/price-label.ts).
+  return priceLabel(tiers, 'Free entry')
 }
 
 export default async function EventDetailPage({ params }: Props) {
+  // Render this route DYNAMICALLY. The build-pool fix (985e46d) set
+  // generateStaticParams -> [] to keep individual events off the build-time
+  // Supabase pool. But with no params to prerender Next classified the route
+  // STATIC, so the first on-demand request hit the render-time cookie/header
+  // read performed by the shared chrome + Sentry tracing instrumentation and
+  // threw a hard 500 ("Page changed from static to dynamic at runtime, reason:
+  // cookies") on EVERY event - the flagship surface was down. `connection()`
+  // declares the dependency on the request up front so Next marks the route
+  // dynamic the SAME natural way the sibling /city + /community routes already
+  // are (NOT `dynamic = 'force-dynamic'`, which renders notFound() as a soft
+  // 200 instead of a real 404). It never prerenders at build (pool-safe) and is
+  // still edge-cached via the CDN-Cache-Control header in next.config - the
+  // shell is anonymous (SiteHeader is rendered `staticSafe`, no per-user avatar
+  // in the shared cache entry; only Sentry's per-request trace id varies, which
+  // is not user data).
   const { slug } = await params
   const event = await fetchEvent(slug)
 
+  // notFound() BEFORE any request-data access, so a missing event returns a
+  // real 404 (the cookie-free createPublicClient fetch above keeps this guard
+  // static-classifiable; accessing headers() first would commit a streaming
+  // 200 and soft-404 the not-found - the bug city/[slug] avoids the same way).
   if (!event) notFound()
+
+  // Mark the route dynamic for real events: a no-op `headers()` read. Per this
+  // repo's ISR notes (app/layout.tsx + the /events page) a server `headers()`
+  // call disqualifies a route from static generation, which (together with no
+  // generateStaticParams) keeps this route off the static classification that
+  // 500'd on the chrome + Sentry render-time cookie read.
+  await headers()
+
+  // Broadcast Layer Stage 2 (SPEC 3.3): the organiser follow prompt on the
+  // event page, gated on broadcast_follow. ISR means a flag flip lands
+  // within the revalidate window.
+  const followOn = await isFeatureEnabled('broadcast_follow')
+
+  // Broadcast Layer Stage 3 (SPEC 4.2): confirmed lineup tags appear on the
+  // event page, gated on broadcast_artists. Public-read RLS on both tables.
+  const artistsOn = await isFeatureEnabled('broadcast_artists')
+  let lineup: { id: string; slug: string; name: string }[] = []
+  if (artistsOn) {
+    const publicDb = createPublicClient()
+    const { data: lineupRows } = await publicDb
+      .from('event_artists')
+      .select('billing_order, status, artist:artists(id, slug, name)')
+      .eq('event_id', event.id)
+      .eq('status', 'confirmed')
+      .order('billing_order', { ascending: true })
+    lineup = ((lineupRows ?? []) as unknown as {
+      artist: { id: string; slug: string; name: string } | { id: string; slug: string; name: string }[] | null
+    }[])
+      .map((r) => (Array.isArray(r.artist) ? r.artist[0] ?? null : r.artist))
+      .filter((a): a is { id: string; slug: string; name: string } => !!a)
+  }
 
   // Queue gate moved to `src/middleware.ts`. The middleware redirects
   // unauthenticated visitors to `/queue/[slug]` before this page renders,
@@ -278,7 +348,7 @@ export default async function EventDetailPage({ params }: Props) {
   if (event.visibility === 'private') {
     return (
       <div className="min-h-screen bg-canvas">
-        <SiteHeader />
+        <SiteHeader staticSafe />
         <main className="mx-auto flex max-w-3xl flex-col items-center px-4 py-24 text-center sm:px-6 lg:px-8">
           <h1 className="font-display text-2xl font-bold text-ink-900">This is a private event</h1>
           <p className="mt-2 text-ink-600">You need an invitation to view this event.</p>
@@ -291,7 +361,7 @@ export default async function EventDetailPage({ params }: Props) {
   if (event.status === 'draft' || event.status === 'scheduled') {
     return (
       <div className="min-h-screen bg-canvas">
-        <SiteHeader />
+        <SiteHeader staticSafe />
         <main className="mx-auto flex max-w-3xl flex-col items-center px-4 py-24 text-center sm:px-6 lg:px-8">
           <h1 className="font-display text-2xl font-bold text-ink-900">This event is not yet published</h1>
           <p className="mt-2 text-ink-600">Check back soon.</p>
@@ -308,13 +378,35 @@ export default async function EventDetailPage({ params }: Props) {
   const seatsPromise = event.has_reserved_seating
     ? (async () => {
         const seatSupabase = createPublicClient()
-        const [seatsResult, sectionsResult] = await Promise.all([
-          seatSupabase
-            .from('seats')
-            .select('id, row_label, seat_number, seat_type, status, x, y, price_cents, seat_map_section_id, ticket_tier_id')
-            .eq('event_id', event.id)
-            .order('row_label')
-            .order('seat_number'),
+        // PostgREST caps a single response at 1,000 rows, which silently
+        // truncated charts beyond 1,000 seats (found by the 1,200-seat
+        // performance proof). Page in 1,000-seat chunks; hard stop at 10,000.
+        // Bound outside the closures: TS null-narrowing on `event` does not
+        // flow into deferred functions.
+        const seatsEventId = event.id
+        const fetchAllSeats = async () => {
+          const PAGE = 1000
+          const all: NonNullable<Awaited<ReturnType<typeof firstPage>>['data']> = []
+          function firstPage(from: number) {
+            return seatSupabase
+              .from('seats')
+              .select('id, row_label, seat_number, seat_type, status, x, y, price_cents, seat_map_section_id, ticket_tier_id')
+              .eq('event_id', seatsEventId)
+              .order('row_label')
+              .order('seat_number')
+              .order('id')
+              .range(from, from + PAGE - 1)
+          }
+          for (let from = 0; from < 10000; from += PAGE) {
+            const { data, error } = await firstPage(from)
+            if (error) return { data: all, error }
+            all.push(...(data ?? []))
+            if (!data || data.length < PAGE) break
+          }
+          return { data: all, error: null }
+        }
+        const [seatsResult, sectionsResult, mapResult] = await Promise.all([
+          fetchAllSeats(),
           event.seat_map_id
             ? seatSupabase
                 .from('seat_map_sections')
@@ -322,8 +414,17 @@ export default async function EventDetailPage({ params }: Props) {
                 .eq('seat_map_id', event.seat_map_id)
                 .order('sort_order')
             : Promise.resolve({ data: [] as { id: string; name: string; color: string }[], error: null }),
+          // Standing/GA zones drawn on the chart (display-only; they sell
+          // through their bound GA tier's normal capacity).
+          event.seat_map_id
+            ? seatSupabase
+                .from('seat_maps')
+                .select('layout')
+                .eq('id', event.seat_map_id)
+                .maybeSingle()
+            : Promise.resolve({ data: null, error: null }),
         ])
-        return { seatsResult, sectionsResult }
+        return { seatsResult, sectionsResult, mapResult }
       })()
     : Promise.resolve(null)
 
@@ -333,6 +434,9 @@ export default async function EventDetailPage({ params }: Props) {
     media,
     related,
     seatsData,
+    feeRates,
+    seatedFlagEnabled,
+    surpassEdgesEnabled,
   ] = await Promise.all([
     getDynamicPriceMap(allTiers.map(t => t.id)),
     getEventInventoryStatic(event.id),
@@ -351,7 +455,25 @@ export default async function EventDetailPage({ params }: Props) {
       event.venue_city,
     ),
     seatsPromise,
+    // ACCC all-in: resolve this event's live fee VALUES (event > org > region
+    // precedence, same rows the charge resolves) so the ticket selector can show
+    // the true total incl. fees before checkout.
+    getEventFeeRates({
+      organisationId: event.organisation_id,
+      eventId: event.id,
+      currency: allTiers[0]?.currency ?? 'AUD',
+    }),
+    isFlagEnabled('seated_events'),
+    isFlagEnabled('surpass_edges'),
   ])
+  const eventFeePassType = (event.fee_pass_type ?? 'pass_to_buyer') as FeePassType
+
+  // Event Media Standard: the gallery (below the hero, lazy) and the one optional
+  // allowlisted video embed. The cover raster (media.image) is the video poster so
+  // the video never competes for the LCP.
+  const gallery = parseGallery(event.gallery_urls)
+  const videoProvider = isVideoProvider(event.video_provider) ? event.video_provider : null
+  const hasVideo = !!(event.video_url && videoProvider)
 
   function resolvePrice(tier: TicketTier): number {
     const dynamic = dynamicPriceMap.get(tier.id)
@@ -370,8 +492,9 @@ export default async function EventDetailPage({ params }: Props) {
 
   let eventSeats: SeatData[] = []
   let eventSections: SectionData[] = []
+  let eventAreas: SeatAreaData[] = []
   if (seatsData) {
-    const { seatsResult, sectionsResult } = seatsData
+    const { seatsResult, sectionsResult, mapResult } = seatsData
     if (seatsResult.error) {
       console.error('[event-detail] failed to load seats:', seatsResult.error)
     }
@@ -382,7 +505,23 @@ export default async function EventDetailPage({ params }: Props) {
       ticket_tier_id: s.ticket_tier_id ?? null,
     }))
     eventSections = (sectionsResult.data ?? []) as SectionData[]
+    const rawAreas = (mapResult?.data?.layout as { areas?: SeatAreaData[] } | null)?.areas
+    if (Array.isArray(rawAreas)) eventAreas = rawAreas
   }
+
+  // The seated experience runs only when the flag is on AND the event has a
+  // materialised chart; otherwise the event sells as general admission.
+  const seatedActive = event.has_reserved_seating && seatedFlagEnabled && eventSeats.length > 0
+
+  // Mixed events: tiers not bound to any seat sell as general admission
+  // alongside the chart (a standing-zone tier, a GA balcony). Seat-bound
+  // tiers stay out of the GA panel so a buyer cannot bypass seat selection.
+  const seatBoundTierIds = new Set(
+    eventSeats.map(s => s.ticket_tier_id).filter(Boolean) as string[]
+  )
+  const gaTiersAlongsideSeats = seatedActive
+    ? enrichedAllTiers.filter(t => !seatBoundTierIds.has(t.id) && !t.seat_map_section_id)
+    : []
 
   const tierPriceCentsMap: Record<string, number> = {}
   for (const t of allTiers) tierPriceCentsMap[t.id] = resolvePrice(t)
@@ -412,7 +551,7 @@ export default async function EventDetailPage({ params }: Props) {
   const tierInventory = Object.fromEntries(tierInventoryEntries)
 
   const isSoldOut =
-    !event.has_reserved_seating &&
+    !seatedActive &&
     !!eventInventory &&
     eventInventory.total_capacity > 0 &&
     eventInventory.available === 0
@@ -426,7 +565,10 @@ export default async function EventDetailPage({ params }: Props) {
     eventIsPaid(allTiers) && !isOrganiserSellable(event.organisation)
 
   const soldOutRelated: EventSoldOutRelated[] = related.slice(0, 3).map(e => {
-    const firstTier = e.ticket_tiers?.[0]
+    const tiers = e.ticket_tiers ?? []
+    // Lowest PAID price (the shared price-label rule); 0 only when the event
+    // is genuinely free (every tier $0). The first tier is not the price.
+    const paid = lowestPaidCents(tiers)
     return {
       id: e.id,
       slug: e.slug,
@@ -436,8 +578,8 @@ export default async function EventDetailPage({ params }: Props) {
       venue_country: e.venue_country,
       cover_image_url: e.cover_image_url,
       category_name: e.category?.name ?? null,
-      from_price_cents: firstTier?.price ?? null,
-      currency: firstTier?.currency ?? null,
+      from_price_cents: tiers.length === 0 ? null : paid ?? 0,
+      currency: tiers[0]?.currency ?? null,
     }
   })
 
@@ -451,12 +593,24 @@ export default async function EventDetailPage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-canvas">
-      <EventSchemaJsonLd
-        event={event}
-        organisation={event.organisation}
-        ticketTiers={allTiers}
-        state={eventStateForSchema}
-        baseUrl={baseUrl}
+      {/* Organiser-dependent structured data only renders when the organiser
+          record loaded. A sellable organiser excluded from the public query
+          (e.g. not yet active) must never crash the page. */}
+      {event.organisation && (
+        <EventSchemaJsonLd
+          event={event}
+          organisation={event.organisation}
+          ticketTiers={allTiers}
+          state={eventStateForSchema}
+          baseUrl={baseUrl}
+        />
+      )}
+      <BreadcrumbJsonLd
+        items={[
+          { name: 'Home', url: baseUrl },
+          { name: 'Events', url: `${baseUrl}/events` },
+          { name: event.title, url: `${baseUrl}/events/${event.slug}` },
+        ]}
       />
       <EventViewTracker
         eventId={event.id}
@@ -465,12 +619,13 @@ export default async function EventDetailPage({ params }: Props) {
         venueCity={event.venue_city ?? 'Unknown'}
         priceRange={priceLabel ?? 'Free'}
       />
-      <SiteHeader />
+      <ShareViewBeacon />
+      <SiteHeader staticSafe />
 
       {eventBannerState ? (
         <EventStateBanner
           state={eventBannerState}
-          organiserHandle={event.organisation.slug ?? null}
+          organiserHandle={event.organisation?.slug ?? null}
         />
       ) : null}
 
@@ -483,16 +638,18 @@ export default async function EventDetailPage({ params }: Props) {
       />
 
       <main>
-        {/* Cinematic hero */}
+        {/* Hero at the single platform scale (.hero-marketing). Flattened from
+            the retired 55-70vh content tier per the 2026 competitor mirror:
+            neither TM nor Eventbrite runs a taller event-detail hero. */}
         <section
           aria-label="Event hero"
-          className="relative flex min-h-[55vh] items-end overflow-hidden bg-navy-950 md:min-h-[70vh]"
+          className="hero-marketing relative flex items-end overflow-hidden bg-navy-950"
         >
           <HeroPresenceMarker />
           <div className="absolute inset-0">
             <HeroMedia
               image={media.image}
-              alt={media.alt}
+              alt={event.cover_image_alt || media.alt}
               videoSrc={media.videoSrc}
               kenBurns={media.kenBurns}
             />
@@ -509,17 +666,16 @@ export default async function EventDetailPage({ params }: Props) {
           <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-14 sm:px-6 lg:px-8 lg:pb-20">
             <div className="max-w-3xl animate-fade-rise">
               {event.category && (
-                <GlassCard
-                  variant="dark"
-                  className="inline-flex rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-gold-400"
-                >
+                <span className="inline-flex rounded-full border border-gold-500/40 bg-ink-900/85 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-gold-400 shadow-sm">
                   {event.category.name}
-                </GlassCard>
+                </span>
               )}
 
               <h1
                 className="mt-4 font-display font-extrabold leading-[1.02] tracking-tight text-white"
-                style={{ fontSize: 'clamp(2rem, 5vw, 4rem)' }}
+                /* Homepage display scale (text-3xl -> text-5xl). Capped at 3rem
+                   per the hero law: never text-6xl/7xl. */
+                style={{ fontSize: 'clamp(1.875rem, 5vw, 3rem)' }}
               >
                 {event.title}
               </h1>
@@ -543,8 +699,13 @@ export default async function EventDetailPage({ params }: Props) {
               </div>
 
               {eventInventory && (
-                <div className="mt-4">
+                <div className="mt-4 flex flex-wrap items-center gap-2">
                   <SocialProofBadge inventory={eventInventory} createdAt={event.created_at} />
+                  {/* Honest social proof: real confirmed sales (total_sold,
+                      paid only) drive a "N people going" pill, shown only at
+                      or above the floor so a thin event never reads weak.
+                      Engine 4 of the demand engine; no new query, ISR-safe. */}
+                  <GoingProof totalSold={eventInventory.total_sold} />
                 </div>
               )}
 
@@ -581,11 +742,38 @@ export default async function EventDetailPage({ params }: Props) {
           </div>
         </section>
 
+        {/* Event Media: the video (allowlisted embed, click-to-play facade so the
+            cover raster stays the LCP) and the gallery (lazy, below the fold).
+            Rendered directly below the hero per the Event Media Standard. */}
+        {(hasVideo || gallery.length > 0) && (
+          <Reveal as="section" className="bg-canvas pt-10 sm:pt-12">
+            <div className="mx-auto max-w-7xl space-y-8 px-4 sm:px-6 lg:px-8">
+              {hasVideo && videoProvider && event.video_url && (
+                <EventVideo
+                  embedUrl={event.video_url}
+                  provider={videoProvider}
+                  poster={media.image}
+                  posterBlur={event.cover_image_blur ?? undefined}
+                  title={event.title}
+                />
+              )}
+              {gallery.length > 0 && (
+                <div>
+                  <SectionHeader eyebrow="Gallery" title="Event photos" size="sm" />
+                  <div className="mt-5">
+                    <EventGallery images={gallery} eventTitle={event.title} />
+                  </div>
+                </div>
+              )}
+            </div>
+          </Reveal>
+        )}
+
         {/* Content column + Ticket panel */}
         <section className="bg-canvas pt-12 sm:pt-16">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className={event.has_reserved_seating ? 'space-y-10' : 'flex flex-col gap-10 lg:flex-row'}>
-              <div className={event.has_reserved_seating ? '' : 'flex-1 min-w-0'}>
+            <div className={seatedActive ? 'space-y-10' : 'flex flex-col gap-10 lg:flex-row'}>
+              <div className={seatedActive ? '' : 'flex-1 min-w-0'}>
                 {event.is_age_restricted && (
                   <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-warning/15 px-3 py-1.5 text-xs font-semibold text-warning">
                     <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
@@ -603,16 +791,20 @@ export default async function EventDetailPage({ params }: Props) {
                       <p className="mt-5 text-base leading-relaxed text-ink-600">{event.summary}</p>
                     )}
                     {event.description && (
-                      <div
-                        className="prose prose-sm mt-5 max-w-none text-ink-600 prose-headings:text-ink-900 prose-headings:font-display prose-a:text-gold-600 hover:prose-a:text-gold-500"
-                        dangerouslySetInnerHTML={{ __html: event.description }}
-                      />
+                      // Organiser description is free-text from a plain textarea, not
+                      // sanitised HTML. Render it as escaped text (React-escaped) with
+                      // line breaks preserved, never via dangerouslySetInnerHTML, so an
+                      // organiser cannot inject stored XSS into the public event page.
+                      <div className="mt-5 max-w-none whitespace-pre-line text-base leading-relaxed text-ink-600">
+                        {event.description}
+                      </div>
                     )}
                   </div>
                 )}
 
-                {/* When + Where */}
-                <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2">
+                {/* When + Where. Reveal each discrete block (transform+opacity,
+                    no reflow) so the sticky ticket panel is untouched. */}
+                <Reveal as="div" className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2">
                   <div className="rounded-2xl border border-ink-200 bg-white p-5">
                     <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-gold-700">
                       When
@@ -646,11 +838,30 @@ export default async function EventDetailPage({ params }: Props) {
                       </p>
                     )}
                   </div>
-                </div>
+                </Reveal>
+
+                {/* Know before you go: the practical answers in one card
+                    (surpass edge B1; rows render only from known data). */}
+                {surpassEdgesEnabled && (
+                  <Reveal>
+                    <KnowBeforeYouGo
+                      startLabel={formatDateTime(event.start_date, event.timezone)}
+                      timezone={event.timezone}
+                      venueName={event.venue_name}
+                      fullAddress={fullAddress || null}
+                      isVirtual={event.event_type === 'virtual'}
+                      ageMin={event.is_age_restricted ? (event.age_restriction_min ?? 18) : null}
+                      hasAccessibleSeats={eventSeats.some(
+                        s => s.seat_type === 'accessible' || s.seat_type === 'companion'
+                      )}
+                      isFree={event.is_free ?? false}
+                    />
+                  </Reveal>
+                )}
 
                 {/* Venue map */}
                 {event.event_type !== 'virtual' && (fullAddress || event.venue_name) && (
-                  <div className="mt-10">
+                  <Reveal as="div" className="mt-10">
                     <SectionHeader eyebrow="Location" title="Venue" size="sm" />
                     <div className="mt-5">
                       <VenueMap
@@ -663,14 +874,36 @@ export default async function EventDetailPage({ params }: Props) {
                         longitude={event.venue_longitude}
                       />
                     </div>
-                  </div>
+                  </Reveal>
                 )}
 
-                {/* Organiser card */}
-                <div className="mt-10">
+                {/* Organiser card. Guarded: when the organiser record did not
+                    load (e.g. a sellable organiser excluded from the public
+                    query), the whole card is skipped rather than crashing. */}
+                {/* Broadcast Stage 3 (SPEC 4.2): the confirmed lineup. Each
+                    name is a working link to the artist profile (Law 5). */}
+                {lineup.length > 0 && (
+                <Reveal as="div" className="mt-10">
+                  <SectionHeader eyebrow="On the lineup" title="Performing" size="sm" />
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    {lineup.map((artist) => (
+                      <Link
+                        key={artist.id}
+                        href={`/artists/${artist.slug}`}
+                        className="inline-flex h-11 items-center rounded-full border border-ink-200 bg-white px-4 text-sm font-semibold text-ink-900 transition-all hover:-translate-y-0.5 hover:border-[var(--brand-accent-strong)]"
+                      >
+                        {artist.name}
+                      </Link>
+                    ))}
+                  </div>
+                </Reveal>
+                )}
+
+                {event.organisation && (
+                <Reveal as="div" className="mt-10">
                   <SectionHeader eyebrow="Organised by" title={event.organisation.name} size="sm" />
                   <div className="mt-5 rounded-2xl border border-ink-200 bg-white p-6">
-                    <div className="flex items-start gap-4">
+                    <div className="flex flex-wrap items-start gap-4">
                       <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-ink-900 text-sm font-bold text-gold-400">
                         {event.organisation.name.slice(0, 2).toUpperCase()}
                       </div>
@@ -678,10 +911,19 @@ export default async function EventDetailPage({ params }: Props) {
                         {event.organisation.description && (
                           <p className="text-sm text-ink-600 line-clamp-3">{event.organisation.description}</p>
                         )}
+                        {followOn && (
+                          <div className="mt-3">
+                            <FollowButton type="organiser" id={event.organisation.id} variant="outline" />
+                          </div>
+                        )}
                       </div>
+                      {/* Demand-graph follow: their next event lands in the
+                          follower's feed and alerts the moment it goes live. */}
+                      <FollowButton type="organiser" id={event.organisation.id} className="shrink-0" />
                     </div>
                   </div>
-                </div>
+                </Reveal>
+                )}
 
                 {/* Tags - events.tags is jsonb in the live schema; narrow
                     Json -> string[] before iterating. */}
@@ -702,7 +944,7 @@ export default async function EventDetailPage({ params }: Props) {
                   )
                 })()}
 
-                {/* Share - WhatsApp first per Batch 8.1 brief (cultural events
+                {/* Share - WhatsApp first per Batch 8.1 brief (community events
                  *  spread through WhatsApp more than any other channel in the
                  *  EventLinqs target communities). */}
                 <div className="mt-8">
@@ -712,6 +954,7 @@ export default async function EventDetailPage({ params }: Props) {
                   <EventShareBar
                     eventTitle={event.title}
                     eventDate={shortDate}
+                    eventSlug={event.slug}
                     eventUrl={`${baseUrl}/events/${event.slug}`}
                     variant="light"
                   />
@@ -721,27 +964,53 @@ export default async function EventDetailPage({ params }: Props) {
               {/* Ticket panel */}
               <div
                 id="tickets"
-                className={`w-full shrink-0 ${event.has_reserved_seating ? '' : 'lg:w-[360px]'}`}
+                className={`w-full shrink-0 ${seatedActive ? '' : 'lg:w-[360px]'}`}
               >
-                {event.has_reserved_seating ? (
-                  <div className="rounded-2xl border border-ink-200 bg-white p-6 shadow-sm">
-                    <SectionHeader eyebrow="Seating" title="Choose your seats" size="sm" className="mb-5" />
-                    {isTicketingSuspended ? (
-                      <p className="rounded-lg bg-warning/10 px-4 py-3 text-sm text-warning">
-                        Ticketing is temporarily paused for this event.
-                      </p>
-                    ) : saleBlocked ? (
-                      <TicketsNotOnSale embedded />
-                    ) : (
-                      <SeatSelector
-                        eventId={event.id}
-                        seats={eventSeats}
-                        sections={eventSections}
-                        defaultPriceCents={defaultPriceCents}
-                        currency={allTiers[0]?.currency ?? 'AUD'}
-                        maxPerOrder={allTiers[0]?.max_per_order ?? 10}
-                        tierPriceCentsMap={tierPriceCentsMap}
-                      />
+                {seatedActive ? (
+                  <div className="space-y-6">
+                    <div className="rounded-2xl border border-ink-200 bg-white p-6 shadow-sm">
+                      <SectionHeader eyebrow="Seating" title="Choose your seats" size="sm" className="mb-5" />
+                      {isTicketingSuspended ? (
+                        <p className="rounded-lg bg-warning/10 px-4 py-3 text-sm text-warning">
+                          Ticketing is temporarily paused for this event.
+                        </p>
+                      ) : saleBlocked ? (
+                        <TicketsNotOnSale embedded />
+                      ) : (
+                        <SeatSelector
+                          eventId={event.id}
+                          seats={eventSeats}
+                          sections={eventSections}
+                          areas={eventAreas}
+                          defaultPriceCents={defaultPriceCents}
+                          currency={allTiers[0]?.currency ?? 'AUD'}
+                          maxPerOrder={allTiers[0]?.max_per_order ?? 10}
+                          tierPriceCentsMap={tierPriceCentsMap}
+                        />
+                      )}
+                    </div>
+
+                    {/* Mixed events: tiers with no seats (standing zones, GA
+                        balconies) sell through the standard panel beside the
+                        chart. Seat-bound tiers never appear here. */}
+                    {gaTiersAlongsideSeats.length > 0 && !saleBlocked && !isTicketingSuspended && (
+                      <div className="rounded-2xl border border-ink-200 bg-white p-6 shadow-sm lg:max-w-md">
+                        <SectionHeader eyebrow="No seat needed" title="General admission" size="sm" className="mb-5" />
+                        <TicketPanelClient
+                          eventId={event.id}
+                          eventCreatedAt={event.created_at}
+                          allTiers={gaTiersAlongsideSeats}
+                          addons={event.event_addons ?? []}
+                          isTicketingSuspended={isTicketingSuspended}
+                          defaultCurrency="AUD"
+                          waitlistEnabled={event.waitlist_enabled ?? false}
+                          squadBookingEnabled={event.squad_booking_enabled ?? false}
+                          tierInventory={tierInventory}
+                          saleBlocked={saleBlocked}
+                          feeRates={feeRates}
+                          feePassType={eventFeePassType}
+                        />
+                      </div>
                     )}
                   </div>
                 ) : isSoldOut && !saleBlocked ? (
@@ -753,21 +1022,46 @@ export default async function EventDetailPage({ params }: Props) {
                     />
                   </div>
                 ) : (
-                  <div className="sticky top-20 rounded-2xl border border-ink-200 bg-white p-6 shadow-sm">
-                    <SectionHeader eyebrow="Get in" title="Tickets" size="sm" className="mb-5" />
+                  <div className="sticky top-20 space-y-5">
+                    <div className="rounded-2xl border border-ink-200 bg-white p-6 shadow-sm">
+                      <SectionHeader eyebrow="Get in" title="Tickets" size="sm" className="mb-5" />
 
-                    <TicketPanelClient
-                      eventId={event.id}
-                      eventCreatedAt={event.created_at}
-                      allTiers={enrichedAllTiers}
-                      addons={event.event_addons ?? []}
-                      isTicketingSuspended={isTicketingSuspended}
-                      defaultCurrency="AUD"
-                      waitlistEnabled={event.waitlist_enabled ?? false}
-                      squadBookingEnabled={event.squad_booking_enabled ?? false}
-                      tierInventory={tierInventory}
-                      saleBlocked={saleBlocked}
-                    />
+                      <TicketPanelClient
+                        eventId={event.id}
+                        eventCreatedAt={event.created_at}
+                        allTiers={enrichedAllTiers}
+                        addons={event.event_addons ?? []}
+                        isTicketingSuspended={isTicketingSuspended}
+                        defaultCurrency="AUD"
+                        waitlistEnabled={event.waitlist_enabled ?? false}
+                        squadBookingEnabled={event.squad_booking_enabled ?? false}
+                        tierInventory={tierInventory}
+                        saleBlocked={saleBlocked}
+                        feeRates={feeRates}
+                        feePassType={eventFeePassType}
+                      />
+                    </div>
+
+                    {/* The acquisition loop at the decision point: the share
+                        card rides with the sticky panel so the ticket column
+                        never runs empty on a long page (desktop), and every
+                        share link is attributed (share-a-ticket). */}
+                    <div className="hidden rounded-2xl border border-gold-500/30 bg-white p-6 shadow-sm lg:block">
+                      <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-gold-700">
+                        Bring your people
+                      </p>
+                      <p className="mt-2 text-sm text-ink-600">
+                        Nights out are better booked together. Send this to the group chat.
+                      </p>
+                      <div className="mt-4">
+                        <EventShareBar
+                          eventTitle={event.title}
+                          eventDate={shortDate}
+                          eventUrl={`${baseUrl}/events/${event.slug}`}
+                          variant="light"
+                        />
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -775,9 +1069,11 @@ export default async function EventDetailPage({ params }: Props) {
           </div>
         </section>
 
-        {/* Related events */}
+        {/* Related events - fade-rise on scroll-in (below-fold). */}
         {related.length > 0 && (
-          <RelatedEventsGrid events={relatedCards} dynamicPrices={relatedPrices} />
+          <Reveal>
+            <RelatedEventsGrid events={relatedCards} dynamicPrices={relatedPrices} />
+          </Reveal>
         )}
       </main>
 

@@ -1,4 +1,4 @@
-// Batch 5.5 task 6 - Lighthouse 3-pass on production build for 6 culture routes.
+// Batch 5.5 task 6 - Lighthouse 3-pass on production build for 6 community routes.
 // Founder-authorized localhost run (override of CLAUDE.md "no localhost
 // performance" rule for this batch).
 //
@@ -11,12 +11,12 @@ const BASE = 'http://localhost:3002'
 const OUT = 'docs/redesign/batch-5-evidence/lighthouse'
 
 const routes = [
-  ['culture-african',         '/culture/african'],
-  ['culture-south-asian',     '/culture/south-asian'],
-  ['culture-mediterranean',   '/culture/mediterranean'],
-  ['culture-east-asian',      '/culture/east-asian'],
-  ['culture-caribbean',       '/culture/caribbean'],
-  ['culture-latin',           '/culture/latin'],
+  ['community-african',         '/community/african'],
+  ['community-south-asian',     '/community/south-asian'],
+  ['community-mediterranean',   '/community/mediterranean'],
+  ['community-east-asian',      '/community/east-asian'],
+  ['community-caribbean',       '/community/caribbean'],
+  ['community-latin',           '/community/latin'],
 ]
 
 console.log('=== Warm-up: curl every route once ===')

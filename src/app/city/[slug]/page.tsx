@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { createPublicClient } from '@/lib/supabase/public-client'
+import { withBuildRetry } from '@/lib/supabase/build-retry'
 import {
   getCity,
   getAllCities,
@@ -8,12 +9,13 @@ import {
   getSuburbsForCity,
   CITY_EVENT_TYPES,
 } from '@/lib/cities/data'
-import { getAllCultures } from '@/lib/cultures/data'
+import { getAllCommunities } from '@/lib/communities/data'
 import { getCityHeroPhoto, getCityPhoto } from '@/lib/images/city-photo'
 import { getSuburbHeroPhoto } from '@/lib/images/suburb-photo'
 import { getCategoryPhoto } from '@/lib/images/category-photo'
-import { getCultureHeroPhoto } from '@/lib/images/culture-photo'
+import { getCommunityHeroPhoto } from '@/lib/images/community-photo'
 import { CityLandingPage } from '@/components/templates/CityLandingPage'
+import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import type { EventCardData } from '@/components/features/events/event-card'
 import type { MapEventPin } from '@/components/features/city/city-map'
 
@@ -39,7 +41,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description,
     keywords: city.keywords,
     alternates: { canonical: `/city/${city.slug}` },
-    openGraph: { title, description, url: `/city/${city.slug}`, type: 'website' },
+    openGraph: { title, description, url: `/city/${city.slug}`, type: 'website', images: ['/opengraph-image'] },
   }
 }
 
@@ -76,15 +78,19 @@ export default async function CityPage({ params }: Props) {
   const baseSelect =
     'id, slug, title, cover_image_url, thumbnail_url, start_date, end_date, venue_name, venue_city, venue_country, venue_latitude, venue_longitude, created_at, is_free, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
 
-  const { data: rows } = await supabase
-    .from('events')
-    .select(baseSelect)
-    .eq('status', 'published')
-    .eq('visibility', 'public')
-    .gte('start_date', w.nowIso)
-    .ilike('venue_city', `%${city.name}%`)
-    .order('start_date', { ascending: true })
-    .limit(120)
+  const { data: rows } = await withBuildRetry(
+    () =>
+      supabase
+        .from('events')
+        .select(baseSelect)
+        .eq('status', 'published')
+        .eq('visibility', 'public')
+        .gte('start_date', w.nowIso)
+        .ilike('venue_city', `%${city.name}%`)
+        .order('start_date', { ascending: true })
+        .limit(120),
+    { label: `city/${city.slug}` },
+  )
 
   const allRaw = (rows ?? []) as unknown as (EventCardData & { end_date?: string; venue_latitude?: number | null; venue_longitude?: number | null })[]
 
@@ -122,15 +128,15 @@ export default async function CityPage({ params }: Props) {
   const suburbs = getSuburbsForCity(city.slug)
   const eventTypeSlugs = CITY_EVENT_TYPES.map(t => t.slug)
 
-  const cultures = getAllCultures()
+  const communities = getAllCommunities()
 
   const heroImage = await getCityHeroPhoto(city.slug)
 
-  const [eventTypePhotos, suburbPhotos, relatedCityPhotos, culturePhotos] = await Promise.all([
+  const [eventTypePhotos, suburbPhotos, relatedCityPhotos, communityPhotos] = await Promise.all([
     Promise.all(eventTypeSlugs.map(s => getCategoryPhoto(s))),
     Promise.all(suburbs.map(s => getSuburbHeroPhoto(s.slug))),
     Promise.all(city.relatedCities.map(s => getCityPhoto(s))),
-    Promise.all(cultures.map(c => getCultureHeroPhoto(c.slug))),
+    Promise.all(communities.map(c => getCommunityHeroPhoto(c.slug))),
   ])
 
   const eventTypeImages: Record<string, string | null> = {}
@@ -148,9 +154,9 @@ export default async function CityPage({ params }: Props) {
     relatedCityImages[s] = relatedCityPhotos[i] ?? null
   })
 
-  const cultureImages: Record<string, string | null> = {}
-  cultures.forEach((c, i) => {
-    cultureImages[c.slug] = culturePhotos[i] ?? null
+  const communityImages: Record<string, string | null> = {}
+  communities.forEach((c, i) => {
+    communityImages[c.slug] = communityPhotos[i] ?? null
   })
 
   const caption = `${allEvents.length} upcoming event${allEvents.length === 1 ? '' : 's'}`
@@ -190,6 +196,13 @@ export default async function CityPage({ params }: Props) {
         suppressHydrationWarning
         dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListLd) }}
       />
+      <BreadcrumbJsonLd
+        items={[
+          { name: 'Home', url: baseUrl },
+          { name: 'Cities', url: `${baseUrl}/cities` },
+          { name: city.name, url: `${baseUrl}/city/${city.slug}` },
+        ]}
+      />
       <CityLandingPage
         city={city}
         heroImage={heroImage}
@@ -201,7 +214,7 @@ export default async function CityPage({ params }: Props) {
         eventTypeImages={eventTypeImages}
         relatedCityImages={relatedCityImages}
         suburbImages={suburbImages}
-        cultureImages={cultureImages}
+        communityImages={communityImages}
         suburbs={suburbs}
         mapPins={mapPins}
         mapboxToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? ''}

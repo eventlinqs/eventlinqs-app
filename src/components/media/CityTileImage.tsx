@@ -3,6 +3,7 @@ import { MEDIA_QUALITY } from './quality'
 import { MEDIA_SIZES } from './sizes'
 import { resolveImageSrc } from './safe-image-src'
 import { BrandedPlaceholder } from './decorative/branded-placeholder'
+import { HoverWash } from './hover-wash'
 
 /**
  * CityTileImage - the only allowed surface for city-specific imagery
@@ -23,6 +24,8 @@ interface Props {
   alt: string
   /** Optional priority for above-fold city heroes. Defaults false. */
   priority?: boolean
+  /** CSS object-position for the cover crop (focal point). Defaults to centre. */
+  objectPosition?: string
   className?: string
 }
 
@@ -34,18 +37,23 @@ export function CityTileImage({
   src,
   alt,
   priority = false,
+  objectPosition,
   className = '',
 }: Props) {
   if (isLocalSvg(src)) {
     return (
-      <img
-        src={src}
-        alt={alt}
-        loading={priority ? 'eager' : 'lazy'}
-        decoding="async"
-        fetchPriority={priority ? 'high' : 'auto'}
-        className={`absolute inset-0 h-full w-full object-cover ${className}`}
-      />
+      <>
+        <img
+          src={src}
+          alt={alt}
+          loading={priority ? 'eager' : 'lazy'}
+          decoding="async"
+          fetchPriority={priority ? 'high' : 'auto'}
+          className={`card-media-img absolute inset-0 h-full w-full object-cover ${className}`}
+          style={objectPosition ? { objectPosition } : undefined}
+        />
+        <HoverWash />
+      </>
     )
   }
 
@@ -55,17 +63,21 @@ export function CityTileImage({
   }
 
   return (
-    <Image
-      src={safeSrc}
-      alt={alt}
-      fill
-      sizes={MEDIA_SIZES.rail}
-      quality={MEDIA_QUALITY.rail}
-      priority={priority}
-      fetchPriority={priority ? 'high' : 'auto'}
-      loading={priority ? 'eager' : 'lazy'}
-      decoding="async"
-      className={`object-cover ${className}`}
-    />
+    <>
+      <Image
+        src={safeSrc}
+        alt={alt}
+        fill
+        sizes={MEDIA_SIZES.rail}
+        quality={MEDIA_QUALITY.rail}
+        priority={priority}
+        fetchPriority={priority ? 'high' : 'auto'}
+        loading={priority ? 'eager' : 'lazy'}
+        decoding="async"
+        className={`card-media-img object-cover ${className}`}
+        style={objectPosition ? { objectPosition } : undefined}
+      />
+      <HoverWash />
+    </>
   )
 }

@@ -47,7 +47,7 @@ export interface CityContent {
   longitude: number
   /** Single-sentence descriptor used under the hero. */
   descriptor: string
-  /** Editorial prose, 200-300 words. Mention 3+ cultural communities,
+  /** Editorial prose, 200-300 words. Mention 3+ community communities,
    *  2+ suburbs, 2+ event types, end on organiser-pride line. */
   editorial: string
   /** Suggested zoom level for the Mapbox map (10 = wide metro, 12 = tight CBD). */
@@ -111,7 +111,7 @@ const CITIES: Record<CitySlug, CityContent> = {
   perth: {
     slug: 'perth', name: 'Perth', state: 'WA', region: 'Perth Metropolitan',
     tier: 1, population: 2192000, latitude: -31.9523, longitude: 115.8613,
-    descriptor: 'Western capital with deep multicultural roots.',
+    descriptor: 'Western capital with deep multicommunity roots.',
     editorial:
       "Perth is a city of Indian Ocean sunsets, Sunday markets and a global festival calendar tucked into the western edge of the country. Filipino fiestas in Mirrabooka, Italian community feasts in Balcatta, Burmese new year water festivals in Cannington, South African braais in Joondalup, Korean lunar new year in Northbridge, Croatian club dances in Fremantle. Beach DJs at Scarborough every summer Sunday. Concerts at RAC Arena. Comedy at the Astor. Theatre at His Majesty's. Workshop weekends at PICA. Community festivals in Hyde Park year round. EventLinqs gives Perth organisers fees that make sense, share flows that respect WhatsApp, and a platform tuned for a city that runs on long days and warm nights.",
     mapZoom: 11,
@@ -135,7 +135,7 @@ const CITIES: Record<CitySlug, CityContent> = {
     tier: 1, population: 727000, latitude: -28.0167, longitude: 153.4000,
     descriptor: 'Beach city, festival weekends, year-round sunshine.',
     editorial:
-      "Gold Coast is 70km of beach, theme parks, surf community and a steady rhythm of festival weekends. Bleach Festival turns the coast into outdoor theatre every winter. SWELL Sculpture Festival lines the beach with art for ten days. Korean Cultural Festival at Broadbeach, Filipino fiestas in Southport, Pacific Island youth festivals at Burleigh, Indian Diwali in Robina, Brazilian beach parties at Surfers Paradise. Cooly Rocks On runs vintage music down the Coolangatta strip. Theatre at HOTA. Comedy at the Star. Workshops at the Surf Club. Community family days at Kurrawa Park. EventLinqs gives Gold Coast organisers a platform tuned for short-form weekend events and a beach city that never quite turns off.",
+      "Gold Coast is 70km of beach, theme parks, surf community and a steady rhythm of festival weekends. Bleach Festival turns the coast into outdoor theatre every winter. SWELL Sculpture Festival lines the beach with art for ten days. Korean Community Festival at Broadbeach, Filipino fiestas in Southport, Pacific Island youth festivals at Burleigh, Indian Diwali in Robina, Brazilian beach parties at Surfers Paradise. Cooly Rocks On runs vintage music down the Coolangatta strip. Theatre at HOTA. Comedy at the Star. Workshops at the Surf Club. Community family days at Kurrawa Park. EventLinqs gives Gold Coast organisers a platform tuned for short-form weekend events and a beach city that never quite turns off.",
     mapZoom: 11,
     relatedCities: ['brisbane', 'sunshine-coast', 'toowoomba', 'sydney', 'cairns', 'newcastle'],
     suburbs: ['gold-coast-surfers-paradise', 'gold-coast-broadbeach'],
@@ -146,11 +146,11 @@ const CITIES: Record<CitySlug, CityContent> = {
     tier: 1, population: 463000, latitude: -35.2809, longitude: 149.1300,
     descriptor: 'National capital, embassy quarter, civic community.',
     editorial:
-      "Canberra is small, surprisingly young, and full of Friday night events. Embassies host community nights for every country represented. Multicultural Festival turns the city centre into a 200-stall outdoor party every February. Filipino, Vietnamese, Indian, Sudanese and Korean community festivals run through the year. Floriade brings live music and food to Commonwealth Park every spring. Live music at the Polish Club, jazz at Smith's Alternative, comedy at the Belconnen Arts Centre, theatre at the Canberra Theatre Centre. Concerts at GIO Stadium and AIS Arena. Workshops at the National Gallery and the National Portrait Gallery. EventLinqs gives Canberra organisers a fair platform for a city that punches well above its population.",
+      "Canberra is small, surprisingly young, and full of Friday night events. Embassies host community nights for every country represented. Multicommunity Festival turns the city centre into a 200-stall outdoor party every February. Filipino, Vietnamese, Indian, Sudanese and Korean community festivals run through the year. Floriade brings live music and food to Commonwealth Park every spring. Live music at the Polish Club, jazz at Smith's Alternative, comedy at the Belconnen Arts Centre, theatre at the Canberra Theatre Centre. Concerts at GIO Stadium and AIS Arena. Workshops at the National Gallery and the National Portrait Gallery. EventLinqs gives Canberra organisers a fair platform for a city that punches well above its population.",
     mapZoom: 11,
     relatedCities: ['sydney', 'wollongong', 'melbourne', 'newcastle', 'albury', 'geelong'],
     suburbs: ['canberra-civic'],
-    keywords: ['canberra events', 'things to do canberra', 'canberra festivals', 'canberra concerts', 'canberra multicultural', 'canberra comedy'],
+    keywords: ['canberra events', 'things to do canberra', 'canberra festivals', 'canberra concerts', 'canberra multicommunity', 'canberra comedy'],
   },
   hobart: {
     slug: 'hobart', name: 'Hobart', state: 'TAS', region: 'Greater Hobart',
@@ -201,7 +201,7 @@ const CITIES: Record<CitySlug, CityContent> = {
     tier: 2, population: 195000, latitude: -19.2589, longitude: 146.8169,
     descriptor: 'Tropical north Queensland anchor city.',
     editorial:
-      "Townsville is the gateway to Magnetic Island, the largest city in tropical north Queensland, and a community that runs every event around the dry season. Australian Festival of Chamber Music in winter. Townsville Cultural Festival every August. Greek Glendi at the Greek Hall, Italian community festival in Belgian Gardens, Filipino fiestas at Riverway, Indian Diwali at the Civic Theatre, Pacific Island community festivals at Strand Park. Live music at Flinders Street venues, theatre at the Civic Theatre, comedy at the Brewery, concerts at Townsville Entertainment Centre. Workshops at Pinnacles Gallery. Community events along the Strand. EventLinqs is built for tropical-north organisers running a calendar tuned to the wet and the dry.",
+      "Townsville is the gateway to Magnetic Island, the largest city in tropical north Queensland, and a community that runs every event around the dry season. Australian Festival of Chamber Music in winter. Townsville Community Festival every August. Greek Glendi at the Greek Hall, Italian community festival in Belgian Gardens, Filipino fiestas at Riverway, Indian Diwali at the Civic Theatre, Pacific Island community festivals at Strand Park. Live music at Flinders Street venues, theatre at the Civic Theatre, comedy at the Brewery, concerts at Townsville Entertainment Centre. Workshops at Pinnacles Gallery. Community events along the Strand. EventLinqs is built for tropical-north organisers running a calendar tuned to the wet and the dry.",
     mapZoom: 11,
     relatedCities: ['cairns', 'brisbane', 'gold-coast', 'sunshine-coast', 'darwin', 'sydney'],
     suburbs: [],
@@ -245,7 +245,7 @@ const CITIES: Record<CitySlug, CityContent> = {
     tier: 2, population: 100000, latitude: -36.7570, longitude: 144.2794,
     descriptor: 'Goldfields heritage city.',
     editorial:
-      "Bendigo is the heart of the Victorian goldfields: heritage architecture, a Chinese community precinct, a major regional gallery and a calendar of festivals that fills every season. Bendigo Easter Festival is one of the longest-running multicultural festivals in Australia. Chinese New Year at the Golden Dragon Museum. Festival of Light around Diwali. Greek paneghiri at the Greek Centre. Filipino community fiesta at Lake Weeroona. Italian Festa in central Bendigo. Live music at the Old Church on the Hill. Theatre at the Capital Theatre. Comedy at the Golden Vine. Concerts at Ulumbarra Theatre. Workshops at the Bendigo Art Gallery. EventLinqs is built for goldfields organisers running events that honour the heritage and the diversity of a city built by the rest of the world.",
+      "Bendigo is the heart of the Victorian goldfields: heritage architecture, a Chinese community precinct, a major regional gallery and a calendar of festivals that fills every season. Bendigo Easter Festival is one of the longest-running multicommunity festivals in Australia. Chinese New Year at the Golden Dragon Museum. Festival of Light around Diwali. Greek paneghiri at the Greek Centre. Filipino community fiesta at Lake Weeroona. Italian Festa in central Bendigo. Live music at the Old Church on the Hill. Theatre at the Capital Theatre. Comedy at the Golden Vine. Concerts at Ulumbarra Theatre. Workshops at the Bendigo Art Gallery. EventLinqs is built for goldfields organisers running events that honour the heritage and the diversity of a city built by the rest of the world.",
     mapZoom: 11,
     relatedCities: ['ballarat', 'melbourne', 'geelong', 'albury', 'adelaide', 'sydney'],
     suburbs: [],
@@ -360,7 +360,7 @@ const SUBURBS: Record<SuburbSlug, SuburbContent> = {
     characterDescriptor: 'Box Hill, Camberwell, leafy and growing.',
     latitude: -37.8500, longitude: 145.1500,
     editorial:
-      "Eastern Suburbs Melbourne is Box Hill, Camberwell, Glen Waverley and Doncaster: Chinese, Korean and Indian communities, leafy residential streets and a growing live event scene. Box Hill Lunar new year. Korean Festival in Glen Waverley. Indian Diwali at Wantirna. Live music at the Croxton. Comedy at the Camberwell Hotel. Theatre at the Burrinja Cultural Centre. Family festivals at Whitehorse and Monash council parks.",
+      "Eastern Suburbs Melbourne is Box Hill, Camberwell, Glen Waverley and Doncaster: Chinese, Korean and Indian communities, leafy residential streets and a growing live event scene. Box Hill Lunar new year. Korean Festival in Glen Waverley. Indian Diwali at Wantirna. Live music at the Croxton. Comedy at the Camberwell Hotel. Theatre at the Burrinja Community Centre. Family festivals at Whitehorse and Monash council parks.",
     relatedSuburbs: ['melbourne-southern-suburbs', 'melbourne-northern-suburbs', 'melbourne-inner-melbourne'],
   },
   'melbourne-western-suburbs': {
@@ -475,7 +475,7 @@ const SUBURBS: Record<SuburbSlug, SuburbContent> = {
     characterDescriptor: 'Casino, dining, family-friendly beach.',
     latitude: -28.0356, longitude: 153.4317,
     editorial:
-      "Broadbeach sits below Surfers Paradise as the Gold Coast's family-friendly dining and casino quarter. Korean Cultural Festival every September. Comedy at the Star. Live music at the Star Casino. Family beach days at Kurrawa Park. Pacific Island community festivals through the year. Community events at Broadbeach Mall.",
+      "Broadbeach sits below Surfers Paradise as the Gold Coast's family-friendly dining and casino quarter. Korean Community Festival every September. Comedy at the Star. Live music at the Star Casino. Family beach days at Kurrawa Park. Pacific Island community festivals through the year. Community events at Broadbeach Mall.",
     relatedSuburbs: ['gold-coast-surfers-paradise'],
   },
 
@@ -484,7 +484,7 @@ const SUBURBS: Record<SuburbSlug, SuburbContent> = {
     characterDescriptor: "Canberra's central nightlife and arts.",
     latitude: -35.2809, longitude: 149.1300,
     editorial:
-      "Civic and Braddon together form Canberra's central nightlife and arts quarter: Lonsdale Street dining, the Australian Centre for Christian and Culture, the Canberra Theatre Centre, embassies running community nights every weekend. Multicultural Festival turns Civic into a 200-stall outdoor party every February. Floriade across spring. Live music at the Polish Club, jazz at Smith's Alternative, comedy at the Belconnen Arts Centre, theatre at the Canberra Theatre Centre.",
+      "Civic and Braddon together form Canberra's central nightlife and arts quarter: Lonsdale Street dining, the Australian Centre for Christian and Community, the Canberra Theatre Centre, embassies running community nights every weekend. Multicommunity Festival turns Civic into a 200-stall outdoor party every February. Floriade across spring. Live music at the Polish Club, jazz at Smith's Alternative, comedy at the Belconnen Arts Centre, theatre at the Canberra Theatre Centre.",
     relatedSuburbs: [],
   },
 
@@ -533,7 +533,7 @@ export function getSuburbsForCity(citySlug: CitySlug): SuburbContent[] {
 
 /**
  * The 8 city-page event types. Backed by event_types in DB after the
- * Batch 6 migration adds dj-set + cultural; the rest are reused from
+ * Batch 6 migration adds dj-set + community; the rest are reused from
  * the existing event_types seed.
  */
 export const CITY_EVENT_TYPES = [
@@ -542,7 +542,7 @@ export const CITY_EVENT_TYPES = [
   { slug: 'comedy',     label: 'Comedy',       icon: 'mic' },
   { slug: 'theatre',    label: 'Theatre',      icon: 'theater' },
   { slug: 'workshop',   label: 'Workshops',    icon: 'hammer' },
-  { slug: 'cultural',   label: 'Community',    icon: 'flag' },
+  { slug: 'community',   label: 'Community',    icon: 'flag' },
   { slug: 'food-drink', label: 'Food & Drink', icon: 'utensils' },
   { slug: 'sport',      label: 'Sports',       icon: 'trophy' },
 ] as const

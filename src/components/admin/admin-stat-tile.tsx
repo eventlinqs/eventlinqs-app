@@ -4,13 +4,14 @@ interface AdminStatTileProps {
   label: string
   value: string | number | ReactNode
   hint?: string
-  status?: 'ok' | 'warn' | 'pending'
+  status?: 'ok' | 'warn' | 'pending' | 'down'
 }
 
 const STATUS_DOT: Record<NonNullable<AdminStatTileProps['status']>, string> = {
   ok:      'bg-emerald-400',
   warn:    'bg-amber-400',
   pending: 'bg-white/30',
+  down:    'bg-rose-500',
 }
 
 /**

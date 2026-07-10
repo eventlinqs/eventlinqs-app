@@ -60,6 +60,15 @@ function RowActions({ event, onDone }: { event: EventRow; onDone: () => void }) 
         View
       </Link>
 
+      {event.status === 'published' && (
+        <Link
+          href={`/dashboard/events/${event.id}/launch-kit`}
+          className="text-xs font-semibold text-gold-500 hover:text-gold-600"
+        >
+          Launch Kit
+        </Link>
+      )}
+
       <button
         disabled={isPending}
         onClick={() => run(() => duplicateEvent(event.id))}

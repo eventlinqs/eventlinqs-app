@@ -1,0 +1,217 @@
+import type { Metadata } from 'next'
+import Link from 'next/link'
+import { SiteHeader } from '@/components/layout/site-header'
+import { SiteFooter } from '@/components/layout/site-footer'
+import { PhotographicCommunityHero } from '@/components/templates/PhotographicCommunityHero'
+import { CategoryTileImage } from '@/components/media/CategoryTileImage'
+import { getCommunityHeroPhoto } from '@/lib/images/community-photo'
+import { getCommunityIndexEntries, type CommunityIndexEntry } from '@/lib/communities/index-page-data'
+
+// ISR: 5-minute revalidate matches the rest of the public surface.
+export const revalidate = 300
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
+
+export const metadata: Metadata = {
+  title: 'Browse by Community | EventLinqs',
+  description: 'Browse 21 community heritages across Australia, led by Aboriginal and Torres Strait Islander peoples, plus five faith communities and every event type.',
+  alternates: { canonical: '/communities' },
+  openGraph: {
+    title: 'Browse by Community | EventLinqs',
+    description: 'Every community. Every event. One platform.',
+    url: '/communities',
+    type: 'website',
+    images: ['/opengraph-image'],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Browse by Community | EventLinqs',
+  },
+}
+
+export default async function CommunitiesIndexPage() {
+  const [entries, heroImage] = await Promise.all([
+    getCommunityIndexEntries(),
+    getCommunityHeroPhoto('african'),
+  ])
+
+  // v2: one ordered list. getCommunityIndexEntries() is sorted by
+  // heritageOrder, so Aboriginal & Torres Strait Islander is always
+  // entries[0]. No tier split in v2 (every heritage is a first-class
+  // heritage; Decision A-G locked).
+
+  // Schema.org BreadcrumbList + ItemList for the 21 heritages.
+  const itemListSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'EventLinqs Community Heritages',
+    description: 'Browse 21 community heritages across Australia, led by Aboriginal and Torres Strait Islander peoples.',
+    numberOfItems: entries.length,
+    itemListElement: entries.map((e, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: e.displayName,
+      url: `${SITE_URL}/community/${e.slug}`,
+    })),
+  }
+  const breadcrumbSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home',     item: SITE_URL },
+      { '@type': 'ListItem', position: 2, name: 'Communities', item: `${SITE_URL}/communities` },
+    ],
+  }
+
+  return (
+    <div className="flex min-h-screen flex-col bg-canvas">
+      <SiteHeader />
+      <main className="flex-1">
+        <PhotographicCommunityHero
+          eyebrow="Browse by community"
+          title="Every community. Every event."
+          subtitle="21 community heritages, led by Aboriginal and Torres Strait Islander peoples. Each with its own home, sub-communities and city pages."
+          imageSrc={heroImage}
+        />
+
+        <Section
+          heading="Community Heritages"
+          subheading="Twenty-one heritages, First Nations always first. Faith communities and event types are browseable as their own dimensions."
+        >
+          <CommunitiesGrid entries={entries} priority />
+        </Section>
+      </main>
+      <SiteFooter />
+
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+      />
+    </div>
+  )
+}
+
+function Section({
+  heading,
+  subheading,
+  children,
+}: {
+  heading: string
+  subheading: string
+  children: React.ReactNode
+}) {
+  return (
+    <section
+      aria-labelledby="communities-heritages-heading"
+      className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20"
+    >
+      <div className="mb-8 max-w-2xl sm:mb-10">
+        <h2
+          id="communities-heritages-heading"
+          className="font-display text-2xl font-extrabold tracking-tight text-ink-900 sm:text-3xl lg:text-4xl"
+        >
+          {heading}
+        </h2>
+        <p className="mt-3 text-sm text-ink-600 sm:text-base">{subheading}</p>
+      </div>
+      {children}
+    </section>
+  )
+}
+
+function CommunitiesGrid({
+  entries,
+  priority,
+}: {
+  entries: CommunityIndexEntry[]
+  priority: boolean
+}) {
+  return (
+    <ul
+      role="list"
+      className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5"
+    >
+      {entries.map((entry, idx) => (
+        <li key={entry.slug}>
+          <CommunityTile entry={entry} priority={priority && idx < 4} />
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+async function CommunityTile({
+  entry,
+  priority,
+}: {
+  entry: CommunityIndexEntry
+  priority: boolean
+}) {
+  const image = await getCommunityHeroPhoto(entry.slug)
+  const subtitle = entry.tagline
+  // Never render a dead "Coming soon" state. When a community has no live
+  // events yet, the landing is still a real, useful page (sub-communities,
+  // cities, organiser invite), so the tile invites the first organiser
+  // rather than advertising absence.
+  const countLabel =
+    entry.eventCount > 0
+      ? `${entry.eventCount} event${entry.eventCount === 1 ? '' : 's'}`
+      : 'Be the first'
+
+  return (
+    <Link
+      href={`/community/${entry.slug}`}
+      className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2"
+    >
+      <div className="relative aspect-[4/5] w-full overflow-hidden rounded-2xl bg-ink-200">
+        {image ? (
+          <CategoryTileImage src={image} alt={`${entry.displayName} community`} priority={priority} />
+        ) : (
+          <div
+            aria-hidden
+            className="absolute inset-0"
+            style={{
+              background:
+                'linear-gradient(135deg, rgb(10,22,40) 0%, rgb(20,32,56) 50%, rgb(10,22,40) 100%)',
+            }}
+          />
+        )}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              'linear-gradient(180deg, rgba(10,22,40,0.0) 35%, rgba(10,22,40,0.55) 70%, rgba(10,22,40,0.92) 100%)',
+          }}
+        />
+        <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
+          <p className="font-display text-xl font-extrabold leading-tight text-white sm:text-2xl">
+            {entry.displayName}
+          </p>
+          <p className="mt-1 text-xs font-medium text-white/85 sm:text-sm">{subtitle}</p>
+          {/* Solid navy pill background keeps the gold chip legible over
+           *  any photo (gold on solid navy #0A1628 clears AA with room to
+           *  spare; no glassmorphism, per the design system). */}
+          <p
+            className="mt-2 inline-flex items-center self-start rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent)]"
+            style={{
+              background: 'rgb(10, 22, 40)',
+              border: '1px solid rgba(212, 160, 23, 0.35)',
+            }}
+          >
+            {countLabel}
+          </p>
+        </div>
+        <div
+          aria-hidden
+          className="absolute inset-0 ring-0 ring-[var(--brand-accent)]/0 transition-all duration-300 group-hover:ring-2 group-hover:ring-[var(--brand-accent)]/60 motion-reduce:transition-none"
+          style={{ borderRadius: '1rem' }}
+        />
+      </div>
+    </Link>
+  )
+}

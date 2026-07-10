@@ -51,17 +51,17 @@ export type FetchPublicEventsFilters = {
   preset?: 'all' | 'today' | 'tomorrow' | 'weekend' | '7d' | 'month' | 'free'
   category?: string
   /**
-   * Culture filter (one of CultureSlug). Resolved against the
-   * culture -> legacy-category bridge until the culture_primary column
+   * Community filter (one of CommunitySlug). Resolved against the
+   * community -> legacy-category bridge until the community_primary column
    * lands in production.
    */
-  culture?: string
+  community?: string
   /**
-   * Sub-culture slug (e.g. amapiano, owambe, garba-raas). When the slug
+   * Sub-community slug (e.g. amapiano, owambe, garba-raas). When the slug
    * matches a legacy category-slug it narrows further; otherwise it
-   * falls through and only the culture filter applies.
+   * falls through and only the community filter applies.
    */
-  sub_culture?: string
+  sub_community?: string
   price_min?: number
   price_max?: number
   from?: string

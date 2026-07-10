@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { CalendarDays, MapPin } from 'lucide-react'
 import { OrganiserAvatar } from '@/components/media/OrganiserAvatar'
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
@@ -5,7 +6,7 @@ import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 interface Props {
   /** Organiser display name. */
   name: string
-  /** Optional cover image URL (Pexels-derived from primary culture if not set). */
+  /** Optional cover image URL (Pexels-derived from primary community if not set). */
   coverImage: string | null
   /** Organisation logo URL or null - falls back to brand initials. */
   logoUrl: string | null
@@ -15,22 +16,28 @@ interface Props {
   stats: { label: string; value: string | number; icon?: 'cal' | 'pin' }[]
   /** Optional verified badge surface. */
   verified?: boolean
+  /**
+   * Optional action slot rendered below the stats (e.g. the Follow button).
+   * Kept as a slot so the hero stays a server component and the interactive
+   * control hydrates independently without forcing the page dynamic.
+   */
+  actionSlot?: ReactNode
 }
 
 /**
  * OrganiserProfileHero - cover banner + avatar + name + subtitle + stats
  * for /organisers/[handle] (Batch 8.2).
  *
- * Pattern matches the Batch 6 city / culture hero - photographic banner
+ * Pattern matches the Batch 6 city / community hero - photographic banner
  * with dark gradient, anchored content. Logo sits centred at the top of
  * the content stack and slightly overlaps the banner so the page reads
  * as profile-first.
  */
-export function OrganiserProfileHero({ name, coverImage, logoUrl, subtitle, stats, verified }: Props) {
+export function OrganiserProfileHero({ name, coverImage, logoUrl, subtitle, stats, verified, actionSlot }: Props) {
   return (
     <section aria-labelledby="organiser-hero-heading" className="relative overflow-hidden">
       <HeroPresenceMarker />
-      <div className="relative h-[40vh] min-h-[280px] max-h-[420px] w-full">
+      <div className="relative h-[50vh] min-h-[350px] max-h-[525px] w-full">
         {coverImage ? (
           <div
             className="absolute inset-0 bg-cover bg-center"
@@ -99,6 +106,8 @@ export function OrganiserProfileHero({ name, coverImage, logoUrl, subtitle, stat
               ))}
             </ul>
           ) : null}
+
+          {actionSlot ? <div className="mt-6">{actionSlot}</div> : null}
         </div>
       </div>
     </section>

@@ -1,0 +1,54 @@
+{
+  "startedAt": "2026-07-05T00:22:59.727Z",
+  "steps": {
+    "pricing": {
+      "calculatorVisible": true,
+      "disclosureTableVisible": true
+    },
+    "knowBeforeYouGo": {
+      "rows": [
+        "When",
+        "Getting there",
+        "At the door",
+        "Accessible seating",
+        "If plans change"
+      ],
+      "accessibleRowShown": true
+    },
+    "fillTheRoom": {
+      "stats": [
+        "3",
+        "0",
+        "0"
+      ],
+      "shareKitVisible": true
+    },
+    "wizardSmoke": {
+      "advancedToStep3": true
+    },
+    "seatedRegression": {
+      "orderId": "98923257-55c2-448c-b9f3-d952f9017faf",
+      "shareYourSeatVisible": true,
+      "tickets": [
+        {
+          "ticket_code": "EL-HS8J-KQDW",
+          "status": "valid",
+          "seat": {
+            "status": "sold",
+            "row_label": "C",
+            "seat_number": "2"
+          }
+        }
+      ]
+    },
+    "gaCheckoutRegression": {
+      "checkoutUrl": "/checkout/b869e4ce-c417-42a9-8936-04cf24280c86",
+      "payButtonPresent": true
+    },
+    "shareRegression": {
+      "shareBarPresent": true,
+      "whatsappPresent": true
+    }
+  },
+  "finishedAt": "2026-07-05T00:23:33.644Z"
+}

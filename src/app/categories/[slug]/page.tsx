@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { createPublicClient } from '@/lib/supabase/public-client'
+import { withBuildRetry } from '@/lib/supabase/build-retry'
 import {
   getHeroCategory,
   getAllHeroCategories,
@@ -61,16 +62,20 @@ export default async function CategoryPage({ params }: Props) {
   // since the slug is the stable identifier in this data model.
   const supabase = createPublicClient()
 
-  const { data: eventsRaw } = await supabase
-    .from('events')
-    .select(
-      'id, slug, title, cover_image_url, thumbnail_url, start_date, venue_name, venue_city, venue_country, created_at, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)',
-    )
-    .eq('status', 'published')
-    .eq('visibility', 'public')
-    .gte('start_date', new Date().toISOString())
-    .order('start_date', { ascending: true })
-    .limit(6)
+  const { data: eventsRaw } = await withBuildRetry(
+    () =>
+      supabase
+        .from('events')
+        .select(
+          'id, slug, title, cover_image_url, thumbnail_url, start_date, venue_name, venue_city, venue_country, created_at, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)',
+        )
+        .eq('status', 'published')
+        .eq('visibility', 'public')
+        .gte('start_date', new Date().toISOString())
+        .order('start_date', { ascending: true })
+        .limit(6),
+    { label: `categories/${slug}` },
+  )
 
   // Filter client-side by category slug - Supabase doesn't allow nested WHERE
   // on joined tables without a view or RPC. Safe at this event volume.

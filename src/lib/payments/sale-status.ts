@@ -19,6 +19,29 @@ export const TICKETS_NOT_ON_SALE_BODY =
 export const TICKETS_NOT_ON_SALE_RESERVATION_ERROR =
   'Tickets for this event are not on sale yet.'
 
+// Mirrors the user-facing message returned by create_reservation when a
+// tier's sale window has ended (migration 20260704000005).
+export const TICKET_SALES_CLOSED_ERROR =
+  'Ticket sales for this event have closed.'
+
+export type SaleWindowState = 'not_yet_open' | 'open' | 'closed'
+
+/**
+ * Mirror of the create_reservation sale-window gate (migration
+ * 20260704000005), for UI state and pre-flight checks. The database
+ * function remains the authoritative enforcement: a NULL sale_start
+ * means on sale as soon as the tier is active, a NULL sale_end means
+ * sales never auto-close.
+ */
+export function tierSaleWindowState(
+  tier: { sale_start: string | null; sale_end: string | null },
+  now: Date = new Date()
+): SaleWindowState {
+  if (tier.sale_start && now.getTime() < new Date(tier.sale_start).getTime()) return 'not_yet_open'
+  if (tier.sale_end && now.getTime() > new Date(tier.sale_end).getTime()) return 'closed'
+  return 'open'
+}
+
 type OrgSaleFields = Pick<Organisation, 'stripe_account_id' | 'stripe_charges_enabled'>
 
 /** True when the organiser can take card payments (connected + charges enabled). */

@@ -14,6 +14,9 @@ import {
   Wallet,
 } from 'lucide-react'
 import type { Event, EventStatus, TicketTier } from '@/types/database'
+import { isFlagEnabled } from '@/lib/flags'
+import { FillTheRoom } from '@/components/features/dashboard/fill-the-room'
+import { isFeatureEnabled } from '@/lib/flags/broadcast'
 
 type Props = {
   params: Promise<{ id: string }>
@@ -57,6 +60,9 @@ export default async function EventViewPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  // Broadcast Stage 3: the Lineup tab appears only when the stage is on.
+  const artistsOn = await isFeatureEnabled('broadcast_artists')
+
   const { data: event } = await supabase
     .from('events')
     .select('*, ticket_tiers(id, name, total_capacity, sold_count, price, currency)')
@@ -95,6 +101,31 @@ export default async function EventViewPage({ params }: Props) {
   const status = STATUS_COPY[event.status] ?? STATUS_COPY.draft
   const coverUrl = event.cover_image_url
   const isPublished = event.status === 'published' || event.status === 'scheduled'
+
+  // Fill the room (surpass edge A1/D1): the organiser's live reach numbers.
+  // Aggregate counts only (no buyer PII), via the admin client after the
+  // ownership gate above, exactly like the revenue stats.
+  const [surpassEdgesEnabled, launchKitEnabled, followerCountRes, shareSignupsRes] = await Promise.all([
+    isFlagEnabled('surpass_edges'),
+    isFlagEnabled('launch_kit'),
+    admin
+      .from('saved_organisers')
+      .select('id', { count: 'exact', head: true })
+      .eq('organisation_id', org.id),
+    admin
+      .from('profiles')
+      .select('id', { count: 'exact', head: true })
+      .filter('metadata->attribution->>event', 'eq', event.slug ?? ''),
+  ])
+  const followerCount = followerCountRes.count ?? 0
+  const shareSignups = shareSignupsRes.count ?? 0
+  const eventDateLabel = new Date(event.start_date).toLocaleDateString('en-AU', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    timeZone: event.timezone ?? 'Australia/Sydney',
+  })
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
 
   return (
     <div>
@@ -170,6 +201,14 @@ export default async function EventViewPage({ params }: Props) {
           </div>
 
           <div className="flex flex-wrap gap-2">
+            {event.status === 'published' && launchKitEnabled && (
+              <Link
+                href={`/dashboard/events/${event.id}/launch-kit`}
+                className="inline-flex h-10 items-center gap-2 rounded-lg border border-gold-500/50 bg-gold-500/10 px-4 text-sm font-semibold text-ink-900 transition-all hover:-translate-y-0.5 hover:bg-gold-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
+              >
+                Launch Kit
+              </Link>
+            )}
             {isPublished && (
               <a
                 href={`/events/${event.slug}`}
@@ -192,6 +231,20 @@ export default async function EventViewPage({ params }: Props) {
         </div>
       </section>
 
+      {/* ─── Fill the room (surpass edge A1/D1) ─────────────────────────── */}
+      {surpassEdgesEnabled && (
+        <FillTheRoom
+          eventSlug={event.slug ?? ''}
+          eventTitle={event.title}
+          eventDateLabel={eventDateLabel}
+          siteUrl={siteUrl}
+          goingCount={ticketsSold}
+          followerCount={followerCount}
+          shareSignups={shareSignups}
+          isPublished={isPublished}
+        />
+      )}
+
       {/* ─── KPI row ────────────────────────────────────────────────────── */}
       <section className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <KpiCard
@@ -206,19 +259,22 @@ export default async function EventViewPage({ params }: Props) {
           value={formatMoney(grossCents, currency)}
           hint={`${confirmed.length} confirmed order${confirmed.length === 1 ? '' : 's'}`}
         />
+        {/* Page views and Conversion tiles REMOVED (founder decision
+            2026-07-05): no page-view tracking exists on the platform, so
+            there is no honest data source to wire; a live surface never
+            carries a placeholder (Definition of Done). Reinstate only
+            with real analytics behind them. */}
         <KpiCard
           icon={<Eye className="h-4 w-4" aria-hidden="true" />}
-          label="Page views"
-          value=":"
-          hint="Wiring up in M5"
-          dim
+          label="Capacity"
+          value={totalCapacity > 0 ? totalCapacity.toLocaleString() : 'Open'}
+          hint={totalCapacity > 0 ? `${Math.max(totalCapacity - ticketsSold, 0).toLocaleString()} still available` : 'No capacity cap set'}
         />
         <KpiCard
           icon={<TrendingUp className="h-4 w-4" aria-hidden="true" />}
-          label="Conversion"
-          value=":"
-          hint="Wiring up in M5"
-          dim
+          label="Sell-through"
+          value={totalCapacity > 0 ? `${sellThrough}%` : 'n/a'}
+          hint="Confirmed tickets against capacity"
         />
       </section>
 
@@ -228,6 +284,10 @@ export default async function EventViewPage({ params }: Props) {
           <TabLink href={`/dashboard/events/${event.id}`} active>Overview</TabLink>
           <TabLink href={`/dashboard/events/${event.id}/orders`}>Orders</TabLink>
           <TabLink href={`/dashboard/events/${event.id}/attendees`}>Attendees</TabLink>
+          <TabLink href={`/dashboard/events/${event.id}/reach`}>Reach</TabLink>
+          {artistsOn && (
+            <TabLink href={`/dashboard/events/${event.id}/lineup`}>Lineup</TabLink>
+          )}
           <TabLink href={`/dashboard/events/${event.id}/edit`}>Settings</TabLink>
         </ul>
       </nav>
@@ -331,6 +391,12 @@ export default async function EventViewPage({ params }: Props) {
                 className="inline-flex h-9 items-center justify-center rounded-lg border border-ink-200 bg-white text-sm font-medium text-ink-900 transition-colors hover:bg-ink-100"
               >
                 Discount codes
+              </Link>
+              <Link
+                href={`/scan/${event.id}`}
+                className="inline-flex h-9 items-center justify-center rounded-lg border border-ink-200 bg-white text-sm font-medium text-ink-900 transition-colors hover:bg-ink-100"
+              >
+                Door check-in
               </Link>
               <Link
                 href={`/dashboard/events/${event.id}/edit`}

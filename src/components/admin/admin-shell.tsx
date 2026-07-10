@@ -27,7 +27,7 @@ export function AdminShell({ session, children, breadcrumbs }: AdminShellProps) 
   return (
     <div className="min-h-screen bg-[#0A0F1A] text-white">
       <div className="flex min-h-screen">
-        <AdminSidebar role={session.admin.role} />
+        <AdminSidebar capabilities={session.capabilities} />
         <div className="flex min-w-0 flex-1 flex-col">
           <AdminTopbar session={session} />
           <main className="flex-1 px-6 py-8 lg:px-10">

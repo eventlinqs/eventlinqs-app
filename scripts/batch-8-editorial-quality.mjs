@@ -1,5 +1,5 @@
 // Batch 8 - intersection editorial quality verification.
-// Captures 10 random intersection pages (mix of cultures and cities,
+// Captures 10 random intersection pages (mix of communities and cities,
 // AU and international) to prove all 271 hand-crafted editorials
 // render correctly.
 import { chromium } from 'playwright'
@@ -30,10 +30,10 @@ const ctx = await browser.newContext({
 const page = await ctx.newPage()
 await page.setViewportSize({ width: 1440, height: 900 })
 
-for (const [culture, city] of SAMPLES) {
-  console.log(`capture ${culture}/${city}`)
+for (const [community, city] of SAMPLES) {
+  console.log(`capture ${community}/${city}`)
   try {
-    await page.goto(`${BASE}/culture/${culture}/${city}`, { waitUntil: 'domcontentloaded', timeout: 90_000 })
+    await page.goto(`${BASE}/community/${community}/${city}`, { waitUntil: 'domcontentloaded', timeout: 90_000 })
     await page.waitForLoadState('networkidle', { timeout: 25_000 }).catch(() => {})
     await page.waitForTimeout(800)
     // Locate the editorial section and capture it.
@@ -42,10 +42,10 @@ for (const [culture, city] of SAMPLES) {
     if (found > 0) {
       await editorial.scrollIntoViewIfNeeded()
       await page.waitForTimeout(400)
-      await editorial.screenshot({ path: `${OUT}/${culture}-${city}-editorial.png` })
+      await editorial.screenshot({ path: `${OUT}/${community}-${city}-editorial.png` })
     } else {
       // Fallback: full-page capture
-      await page.screenshot({ path: `${OUT}/${culture}-${city}-full.png`, fullPage: true })
+      await page.screenshot({ path: `${OUT}/${community}-${city}-full.png`, fullPage: true })
     }
   } catch (e) {
     console.log(`  fail: ${e.message?.slice(0, 100)}`)

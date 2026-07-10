@@ -6,12 +6,13 @@ import { captureException } from '@/lib/observability/sentry'
  * M6 payout disbursement, application layer. The data model + RPCs live in
  * supabase/migrations/20260531000003_m6_payout_disbursement.sql.
  *
- * ARCHITECTURE (locked): sales are Stripe destination charges, so the
- * organiser's full share (including the reserve) already lands in their
- * CONNECTED account at sale time. Disbursement is therefore a Stripe PAYOUT
- * created ON the connected account (connected balance -> organiser bank), NOT
- * a transfer to it. Connected accounts are on a MANUAL payout schedule, so the
- * reserve stays put until release_holds() matures it and an operator disburses.
+ * ARCHITECTURE (funds-holding model): under separate charges and transfers the
+ * organiser is paid by a platform->connected TRANSFER after the event (see
+ * event-transfer.ts / disburse_transfer). This module retains the complementary
+ * primitives: the connected-account PAYOUT helper (createPayout, connected
+ * balance -> organiser bank), the failed-payout/transfer compensation
+ * (voidPayoutById), and the matured-reserve release (runReserveRelease).
+ * createPayout is no longer the disbursement path; the post-event transfer is.
  *
  * organiser_balance_ledger is the authoritative accounting. disburse_payout
  * atomically claims an available amount (under a row lock, refusing overpay)

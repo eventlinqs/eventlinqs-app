@@ -1,0 +1,513 @@
+{
+  "capturedAtBase": "http://localhost:3200",
+  "uploadSmoke": "preview-appeared-immediately",
+  "checkoutResult": "reached /orders/28ccbed5-283a-4cdb-9301-047308130ba4/confirmation from /events/ballarat-night-noodle-and-street-food-market-ballarat",
+  "failures": [],
+  "smoke": [
+    {
+      "file": "home-desktop.png",
+      "path": "/",
+      "status": 200,
+      "finalUrl": "/",
+      "horizontalOverflowPx": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "auth": false
+    },
+    {
+      "file": "events-browse-desktop.png",
+      "path": "/events",
+      "status": 200,
+      "finalUrl": "/events",
+      "horizontalOverflowPx": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "auth": false
+    },
+    {
+      "file": "event-detail-desktop.png",
+      "path": "/events/naming-ceremony-showcase-yoruba-traditions-night",
+      "status": 200,
+      "finalUrl": "/events/naming-ceremony-showcase-yoruba-traditions-night",
+      "horizontalOverflowPx": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Google Maps JavaScript API error: RefererNotAllowedMapError\nhttps://developers.google.com/maps/documentation/javascript/error-messages#referer-not-allowed-map-error\nYour site URL to be authorized: htt"
+      ],
+      "auth": false
+    },
+    {
+      "file": "category-landing-desktop.png",
+      "path": "/categories/music",
+      "status": 404,
+      "finalUrl": "/categories/music",
+      "horizontalOverflowPx": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "auth": false
+    },
+    {
+      "file": "city-landing-desktop.png",
+      "path": "/city/melbourne",
+      "status": 200,
+      "finalUrl": "/city/melbourne",
+      "horizontalOverflowPx": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "auth": false
+    },
+    {
+      "file": "cities-index-desktop.png",
+      "path": "/cities",
+      "status": 200,
+      "finalUrl": "/cities",
+      "horizontalOverflowPx": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "auth": false
+    },
+    {
+      "file": "communities-index-desktop.png",
+      "path": "/communities",
+      "status": 200,
+      "finalUrl": "/communities",
+      "horizontalOverflowPx": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "auth": false
+    },
+    {
+      "file": "community-landing-desktop.png",
+      "path": "/community/first-nations",
+      "status": 404,
+      "finalUrl": "/community/first-nations",
+      "horizontalOverflowPx": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "auth": false
+    },
+    {
+      "file": "organisers-landing-desktop.png",
+      "path": "/organisers",
+      "status": 200,
+      "finalUrl": "/organisers",
+      "horizontalOverflowPx": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "auth": false
+    },
+    {
+      "file": "pricing-desktop.png",
+      "path": "/pricing",
+      "status": 200,
+      "finalUrl": "/pricing",
+      "horizontalOverflowPx": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "auth": false
+    },
+    {
+      "file": "about-desktop.png",
+      "path": "/about",
+      "status": 200,
+      "finalUrl": "/about",
+      "horizontalOverflowPx": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "auth": false
+    },
+    {
+      "file": "help-desktop.png",
+      "path": "/help",
+      "status": 200,
+      "finalUrl": "/help",
+      "horizontalOverflowPx": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "auth": false
+    },
+    {
+      "file": "signin-desktop.png",
+      "path": "/login",
+      "status": 200,
+      "finalUrl": "/login",
+      "horizontalOverflowPx": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "auth": false
+    },
+    {
+      "file": "signup-desktop.png",
+      "path": "/signup",
+      "status": 200,
+      "finalUrl": "/signup",
+      "horizontalOverflowPx": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "auth": false
+    },
+    {
+      "file": "feed-desktop.png",
+      "path": "/feed",
+      "status": 200,
+      "finalUrl": "/login?redirect=/feed",
+      "horizontalOverflowPx": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "auth": false
+    },
+    {
+      "file": "account-desktop.png",
+      "path": "/account",
+      "status": 200,
+      "finalUrl": "/account",
+      "horizontalOverflowPx": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "auth": true
+    },
+    {
+      "file": "account-tickets-desktop.png",
+      "path": "/account/tickets",
+      "status": 200,
+      "finalUrl": "/account/tickets",
+      "horizontalOverflowPx": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "auth": true
+    },
+    {
+      "file": "organiser-dashboard-desktop.png",
+      "path": "/dashboard",
+      "status": 200,
+      "finalUrl": "/dashboard",
+      "horizontalOverflowPx": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "auth": true
+    },
+    {
+      "file": "organiser-events-desktop.png",
+      "path": "/dashboard/events",
+      "status": 200,
+      "finalUrl": "/dashboard/events",
+      "horizontalOverflowPx": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "auth": true
+    },
+    {
+      "file": "home-mobile.png",
+      "path": "/",
+      "status": 200,
+      "finalUrl": "/",
+      "horizontalOverflowPx": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "auth": false
+    },
+    {
+      "file": "events-browse-mobile.png",
+      "path": "/events",
+      "status": 200,
+      "finalUrl": "/events",
+      "horizontalOverflowPx": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "auth": false
+    },
+    {
+      "file": "event-detail-mobile.png",
+      "path": "/events/naming-ceremony-showcase-yoruba-traditions-night",
+      "status": 200,
+      "finalUrl": "/events/naming-ceremony-showcase-yoruba-traditions-night",
+      "horizontalOverflowPx": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Google Maps JavaScript API error: RefererNotAllowedMapError\nhttps://developers.google.com/maps/documentation/javascript/error-messages#referer-not-allowed-map-error\nYour site URL to be authorized: htt"
+      ],
+      "auth": false
+    },
+    {
+      "file": "category-landing-mobile.png",
+      "path": "/categories/music",
+      "status": 404,
+      "finalUrl": "/categories/music",
+      "horizontalOverflowPx": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "auth": false
+    },
+    {
+      "file": "city-landing-mobile.png",
+      "path": "/city/melbourne",
+      "status": 200,
+      "finalUrl": "/city/melbourne",
+      "horizontalOverflowPx": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "auth": false
+    },
+    {
+      "file": "cities-index-mobile.png",
+      "path": "/cities",
+      "status": 200,
+      "finalUrl": "/cities",
+      "horizontalOverflowPx": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "auth": false
+    },
+    {
+      "file": "communities-index-mobile.png",
+      "path": "/communities",
+      "status": 200,
+      "finalUrl": "/communities",
+      "horizontalOverflowPx": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "auth": false
+    },
+    {
+      "file": "community-landing-mobile.png",
+      "path": "/community/first-nations",
+      "status": 404,
+      "finalUrl": "/community/first-nations",
+      "horizontalOverflowPx": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "auth": false
+    },
+    {
+      "file": "organisers-landing-mobile.png",
+      "path": "/organisers",
+      "status": 200,
+      "finalUrl": "/organisers",
+      "horizontalOverflowPx": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "auth": false
+    },
+    {
+      "file": "pricing-mobile.png",
+      "path": "/pricing",
+      "status": 200,
+      "finalUrl": "/pricing",
+      "horizontalOverflowPx": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "auth": false
+    },
+    {
+      "file": "about-mobile.png",
+      "path": "/about",
+      "status": 200,
+      "finalUrl": "/about",
+      "horizontalOverflowPx": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "auth": false
+    },
+    {
+      "file": "help-mobile.png",
+      "path": "/help",
+      "status": 200,
+      "finalUrl": "/help",
+      "horizontalOverflowPx": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "auth": false
+    },
+    {
+      "file": "signin-mobile.png",
+      "path": "/login",
+      "status": 200,
+      "finalUrl": "/login",
+      "horizontalOverflowPx": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "auth": false
+    },
+    {
+      "file": "signup-mobile.png",
+      "path": "/signup",
+      "status": 200,
+      "finalUrl": "/signup",
+      "horizontalOverflowPx": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "auth": false
+    },
+    {
+      "file": "feed-mobile.png",
+      "path": "/feed",
+      "status": 200,
+      "finalUrl": "/login?redirect=/feed",
+      "horizontalOverflowPx": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "auth": false
+    },
+    {
+      "file": "account-mobile.png",
+      "path": "/account",
+      "status": 200,
+      "finalUrl": "/account",
+      "horizontalOverflowPx": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "auth": true
+    },
+    {
+      "file": "account-tickets-mobile.png",
+      "path": "/account/tickets",
+      "status": 200,
+      "finalUrl": "/account/tickets",
+      "horizontalOverflowPx": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "auth": true
+    },
+    {
+      "file": "organiser-dashboard-mobile.png",
+      "path": "/dashboard",
+      "status": 200,
+      "finalUrl": "/dashboard",
+      "horizontalOverflowPx": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "auth": true
+    },
+    {
+      "file": "organiser-events-mobile.png",
+      "path": "/dashboard/events",
+      "status": 200,
+      "finalUrl": "/dashboard/events",
+      "horizontalOverflowPx": 0,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+        "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+      ],
+      "auth": true
+    }
+  ]
+}

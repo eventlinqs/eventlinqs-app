@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireCronAuth } from '@/lib/cron/auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,11 +20,8 @@ const WARM_PATHS = [
  * Protected by CRON_SECRET.
  */
 export async function GET(request: NextRequest) {
-  const authHeader = request.headers.get('authorization')
-  const cronSecret = process.env.CRON_SECRET
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
-  }
+  const denied = requireCronAuth(request)
+  if (denied) return denied
 
   const base =
     process.env.NEXT_PUBLIC_SITE_URL ??

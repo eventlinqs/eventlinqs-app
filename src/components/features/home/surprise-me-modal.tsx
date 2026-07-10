@@ -99,7 +99,7 @@ export function SurpriseMeModal({ open, onClose, initial = [] }: Props) {
         type="button"
         aria-label="Close"
         onClick={onClose}
-        className="absolute inset-0 bg-[var(--color-navy-950)]/70 backdrop-blur-sm"
+        className="absolute inset-0 bg-[var(--color-navy-950)]/60"
       />
 
       {/* Sheet / dialog */}

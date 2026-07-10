@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import QRCode from 'qrcode'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSiteUrl } from '@/lib/site-url'
+import { formatSeatLabel } from '@/lib/seating/format'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -23,9 +24,6 @@ interface BearerTicket {
   status: string
   holder_name: string | null
   holder_email: string
-  // V1 is general-admission. seat_id exists on the row but seat display
-  // is deferred to the locked seated-events design slice (not rendered
-  // here) so this page does not differ between GA and seated yet.
   event: {
     title: string
     start_date: string
@@ -34,6 +32,12 @@ interface BearerTicket {
     venue_city: string | null
   } | null
   order_item: { item_name: string } | null
+  /** Reserved seating: the ticket's seat, joined via tickets.seat_id. */
+  seat: {
+    row_label: string
+    seat_number: string
+    section: { name: string } | null
+  } | null
 }
 
 // Render the event start in the event's own local timezone, matching the
@@ -83,7 +87,7 @@ export default async function TicketBearerPage({ params, searchParams }: Props) 
   const { data } = await admin
     .from('tickets')
     .select(
-      'ticket_code, secret, status, holder_name, holder_email, event:events(title, start_date, timezone, venue_name, venue_city), order_item:order_items(item_name)',
+      'ticket_code, secret, status, holder_name, holder_email, event:events(title, start_date, timezone, venue_name, venue_city), order_item:order_items(item_name), seat:seats(row_label, seat_number, section:seat_map_sections(name))',
     )
     .eq('ticket_code', code)
     .maybeSingle()
@@ -149,6 +153,18 @@ export default async function TicketBearerPage({ params, searchParams }: Props) 
             <dt className="text-ink-500">Ticket type</dt>
             <dd className="font-medium text-ink-900">{ticket.order_item?.item_name ?? 'Admission'}</dd>
           </div>
+          {ticket.seat && (
+            <div className="flex justify-between gap-4">
+              <dt className="text-ink-500">Seat</dt>
+              <dd className="font-semibold text-ink-900">
+                {formatSeatLabel({
+                  sectionName: ticket.seat.section?.name ?? null,
+                  rowLabel: ticket.seat.row_label,
+                  seatNumber: ticket.seat.seat_number,
+                })}
+              </dd>
+            </div>
+          )}
           <div className="flex justify-between gap-4">
             <dt className="text-ink-500">Ticket code</dt>
             <dd className="font-mono font-semibold text-ink-900">{ticket.ticket_code}</dd>

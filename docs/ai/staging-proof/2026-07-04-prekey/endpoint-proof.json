@@ -1,0 +1,130 @@
+{
+  "unknownAssistant": {
+    "status": 400,
+    "json": {
+      "ok": false,
+      "error": "unknown_assistant"
+    },
+    "headers": {}
+  },
+  "roleSmuggling": {
+    "status": 400,
+    "json": {
+      "ok": false,
+      "error": "invalid_messages"
+    },
+    "headers": {}
+  },
+  "badShape": {
+    "status": 400,
+    "json": {
+      "ok": false,
+      "error": "invalid_messages"
+    },
+    "headers": {}
+  },
+  "guestOrganiser": {
+    "status": 401,
+    "json": {
+      "ok": false,
+      "error": "auth_required"
+    },
+    "headers": {}
+  },
+  "unconfigured": {
+    "status": 503,
+    "json": {
+      "ok": false,
+      "error": "unconfigured",
+      "message": "The assistant is not available yet. Please use the contact form and our team will help."
+    },
+    "headers": {}
+  },
+  "burst": [
+    {
+      "i": 0,
+      "status": 503,
+      "headers": {}
+    },
+    {
+      "i": 1,
+      "status": 503,
+      "headers": {}
+    },
+    {
+      "i": 2,
+      "status": 503,
+      "headers": {}
+    },
+    {
+      "i": 3,
+      "status": 503,
+      "headers": {}
+    },
+    {
+      "i": 4,
+      "status": 503,
+      "headers": {}
+    },
+    {
+      "i": 5,
+      "status": 503,
+      "headers": {}
+    },
+    {
+      "i": 6,
+      "status": 503,
+      "headers": {}
+    },
+    {
+      "i": 7,
+      "status": 429,
+      "headers": {
+        "ratelimit-limit": "10",
+        "ratelimit-remaining": "0",
+        "ratelimit-reset": "54",
+        "retry-after": "54"
+      }
+    },
+    {
+      "i": 8,
+      "status": 429,
+      "headers": {
+        "ratelimit-limit": "10",
+        "ratelimit-remaining": "0",
+        "ratelimit-reset": "54",
+        "retry-after": "54"
+      }
+    },
+    {
+      "i": 9,
+      "status": 429,
+      "headers": {
+        "ratelimit-limit": "10",
+        "ratelimit-remaining": "0",
+        "ratelimit-reset": "54",
+        "retry-after": "54"
+      }
+    },
+    {
+      "i": 10,
+      "status": 429,
+      "headers": {
+        "ratelimit-limit": "10",
+        "ratelimit-remaining": "0",
+        "ratelimit-reset": "54",
+        "retry-after": "54"
+      }
+    },
+    {
+      "i": 11,
+      "status": 429,
+      "headers": {
+        "ratelimit-limit": "10",
+        "ratelimit-remaining": "0",
+        "ratelimit-reset": "54",
+        "retry-after": "54"
+      }
+    }
+  ]
+}

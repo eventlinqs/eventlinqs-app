@@ -1,10 +1,10 @@
 /**
- * Faith Communities registry - the Faith dimension of Culture Taxonomy
+ * Faith Communities registry - the Faith dimension of Community Taxonomy
  * v2 (founder Decision D, locked 2026-05-16).
  *
- * Faith is a separate, opt-in axis from Cultural Heritage. An event can
+ * Faith is a separate, opt-in axis from Community Heritage. An event can
  * carry a heritage AND a faith (a Diwali gala is heritage:indian +
- * faith:hindu) and surfaces on both /culture/[slug] and /faith/[slug].
+ * faith:hindu) and surfaces on both /community/[slug] and /faith/[slug].
  *
  * Five faiths get dedicated /faith/[slug] landings: Christian, Muslim,
  * Hindu, Buddhist, Jewish. Smaller faiths (Sikh, Baha'i and others)
@@ -33,10 +33,10 @@ export interface FaithContent {
   heroHeadline: string
   heroBody: string
   storyParagraphs: string[]
-  /** Major cultural moments to highlight on the landing. */
+  /** Major community moments to highlight on the landing. */
   moments: FaithMoment[]
   /** Heritages this faith most commonly intersects (cross-link rail). */
-  relatedCultures: string[]
+  relatedCommunities: string[]
   organiserPersonas: string[]
   keywords: string[]
 }
@@ -69,7 +69,7 @@ const FAITHS: Record<FaithSlug, FaithContent> = {
       { label: 'Gospel & Worship', blurb: 'Choir showcases, praise nights, tours.' },
       { label: 'Conferences', blurb: 'Conventions, revivals, bootcamps.' },
     ],
-    relatedCultures: ['african', 'pacific-pasifika', 'filipino', 'caribbean'],
+    relatedCommunities: ['african', 'pacific-pasifika', 'filipino', 'caribbean'],
     organiserPersonas: [
       'Church choir directors booking concerts',
       'Gospel festival and worship-night organisers',
@@ -98,7 +98,7 @@ const FAITHS: Record<FaithSlug, FaithContent> = {
       { label: 'Eid al-Adha', blurb: 'Festival of sacrifice, four days of community.' },
       { label: 'Mawlid & Nasheed', blurb: 'Devotional concerts and community nights.' },
     ],
-    relatedCultures: ['lebanese-levantine', 'arab', 'turkish', 'other-south-asian'],
+    relatedCommunities: ['lebanese-levantine', 'arab', 'turkish', 'other-south-asian'],
     organiserPersonas: [
       'Mosque and community-association event committees',
       'Ramadan night-market and iftar organisers',
@@ -127,7 +127,7 @@ const FAITHS: Record<FaithSlug, FaithContent> = {
       { label: 'Navratri', blurb: 'Nine nights of garba and raas.' },
       { label: 'Temple & Puja', blurb: 'Community celebrations and galas.' },
     ],
-    relatedCultures: ['indian', 'other-south-asian', 'pacific-pasifika'],
+    relatedCommunities: ['indian', 'other-south-asian', 'pacific-pasifika'],
     organiserPersonas: [
       'Temple and Hindu society committees',
       'Diwali and Holi festival organisers',
@@ -156,7 +156,7 @@ const FAITHS: Record<FaithSlug, FaithContent> = {
       { label: 'Temple Open Days', blurb: 'Community days, blessings, food.' },
       { label: 'Retreats', blurb: 'Meditation and practice intensives.' },
     ],
-    relatedCultures: ['vietnamese', 'chinese', 'other-east-southeast-asian', 'other-south-asian'],
+    relatedCommunities: ['vietnamese', 'chinese', 'other-east-southeast-asian', 'other-south-asian'],
     organiserPersonas: [
       'Temple and Buddhist society committees',
       'Vesak and lantern festival organisers',
@@ -185,7 +185,7 @@ const FAITHS: Record<FaithSlug, FaithContent> = {
       { label: 'High Holy Days', blurb: 'Rosh Hashanah and Yom Kippur.' },
       { label: 'Film & Klezmer', blurb: 'Festivals, concerts, food.' },
     ],
-    relatedCultures: ['other-european', 'arab'],
+    relatedCommunities: ['other-european', 'arab'],
     organiserPersonas: [
       'Community centre and synagogue event committees',
       'Jewish film and food festival organisers',

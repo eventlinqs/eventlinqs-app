@@ -1,9 +1,14 @@
 import { Suspense } from 'react'
+import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { countPendingRefunds } from '@/lib/admin/refunds'
+import { countOpenDisputes } from '@/lib/admin/disputes'
 import { AdminStatTile } from '@/components/admin/admin-stat-tile'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { requireAdminSession } from '@/lib/admin/auth'
+import { aggregateGmv, ANALYTICS_CURRENCY, type GmvOrderRow } from '@/lib/admin/analytics'
 import { formatMoneyDisplay } from '@/lib/money/format'
+import { checkStripeHealth, checkSupabaseHealth, checkRedisHealth, type HealthResult } from '@/lib/admin/health'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -12,11 +17,10 @@ export const revalidate = 0
  * Admin dashboard.
  *
  * Glanceable numeric tiles. Each tile fetches only its own data via
- * Suspense so a slow tile cannot block the others. Tables that have
- * not yet shipped (refund_requests, stripe_disputes, payouts) render
- * a "Pending Session 1" tile - this is intentional per scope §3.4.
- *
- * No charts in A1; charts arrive in A4.
+ * Suspense so a slow tile cannot block the others. Every tile reads live
+ * data: GMV (net of refunds), the operations queues (new organisers, KYC,
+ * pending refunds, active disputes), and live system-health probes (Stripe,
+ * Supabase, Redis). The refunds and disputes tiles link to their queues.
  */
 export default async function AdminDashboardPage() {
   const session = await requireAdminSession()
@@ -32,7 +36,7 @@ export default async function AdminDashboardPage() {
           Operations dashboard
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-white/60">
-          Real-time numeric view of the platform. Charts and trends arrive in Phase A4.
+          Live numeric view of the platform: value, operations queues, and system health. Trend charts live in Analytics.
         </p>
       </header>
 
@@ -64,8 +68,12 @@ export default async function AdminDashboardPage() {
           <Suspense fallback={<TileSkeleton label="KYC queue" />}>
             <KycQueueTile />
           </Suspense>
-          <PendingTile label="Pending refunds"   reason="Refund table arrives in M6 Phase 5" />
-          <PendingTile label="Active disputes"   reason="Dispute table arrives in M6 Phase 6" />
+          <Suspense fallback={<TileSkeleton label="Pending refunds" />}>
+            <RefundsTile />
+          </Suspense>
+          <Suspense fallback={<TileSkeleton label="Active disputes" />}>
+            <DisputesTile />
+          </Suspense>
         </div>
       </section>
 
@@ -74,9 +82,15 @@ export default async function AdminDashboardPage() {
           System health
         </h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <PendingTile label="Stripe API latency"     reason="Wired by Session 2 (observability)" status="pending" />
-          <PendingTile label="Supabase response time" reason="Wired by Session 2 (observability)" status="pending" />
-          <PendingTile label="Redis health"           reason="Wired by Session 2 (observability)" status="pending" />
+          <Suspense fallback={<TileSkeleton label="Stripe API latency" />}>
+            <HealthTile label="Stripe API latency" check={checkStripeHealth} />
+          </Suspense>
+          <Suspense fallback={<TileSkeleton label="Supabase response time" />}>
+            <HealthTile label="Supabase response time" check={checkSupabaseHealth} />
+          </Suspense>
+          <Suspense fallback={<TileSkeleton label="Redis health" />}>
+            <HealthTile label="Redis health" check={checkRedisHealth} />
+          </Suspense>
         </div>
       </section>
     </div>
@@ -91,27 +105,98 @@ function TileSkeleton({ label }: { label: string }) {
   return <AdminStatTile label={label} value={<span className="inline-block h-8 w-24 animate-pulse rounded bg-white/10" />} />
 }
 
-function PendingTile({ label, reason, status = 'pending' }: { label: string; reason: string; status?: 'pending' | 'warn' }) {
-  return <AdminStatTile label={label} value="-" hint={reason} status={status} />
+async function RefundsTile() {
+  let count: number | null = null
+  try {
+    count = await countPendingRefunds()
+  } catch {
+    count = null
+  }
+  if (count == null) {
+    return <AdminStatTile label="Pending refunds" value="-" hint="refunds table query failed" status="warn" />
+  }
+  return (
+    <Link
+      href="/admin/refunds"
+      className="block rounded-xl outline-none transition hover:brightness-110 focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]"
+    >
+      <AdminStatTile
+        label="Pending refunds"
+        value={count}
+        hint="pending, processing or failed, click to manage"
+        status={count > 0 ? 'warn' : 'ok'}
+      />
+    </Link>
+  )
+}
+
+async function DisputesTile() {
+  const res = await countOpenDisputes()
+  if (!res.ok) {
+    return <AdminStatTile label="Active disputes" value="-" hint="Stripe disputes unreachable" status="warn" />
+  }
+  return (
+    <Link
+      href="/admin/disputes"
+      className="block rounded-xl outline-none transition hover:brightness-110 focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]"
+    >
+      <AdminStatTile
+        label="Active disputes"
+        value={res.count}
+        hint="open chargebacks needing a response, click to manage"
+        status={res.count > 0 ? 'warn' : 'ok'}
+      />
+    </Link>
+  )
+}
+
+async function HealthTile({ label, check }: { label: string; check: () => Promise<HealthResult> }) {
+  const r = await check()
+  const value = r.ok ? (r.latencyMs != null ? `${r.latencyMs} ms` : 'OK') : 'Down'
+  const hint = r.ok
+    ? `${r.detail}, ${r.status === 'warn' ? 'elevated latency' : 'healthy'}`
+    : `unreachable: ${r.detail}`
+  return <AdminStatTile label={label} value={value} hint={hint} status={r.status} />
 }
 
 async function GmvTile({ label, sinceMsAgo }: { label: string; sinceMsAgo: number }) {
   const since = new Date(Date.now() - sinceMsAgo).toISOString()
   try {
     const client = createAdminClient()
-    const { data, error } = await client
+    // PAY-02: value GMV net of refunds, using the same audited aggregator as
+    // /admin/analytics. The previous query read a non-existent `total_amount_cents`
+    // column (so the tile silently failed) and, had it worked, would have counted
+    // every confirmed order at FULL value while ignoring refunds entirely. We now
+    // pull the paid statuses (confirmed, partially_refunded, refunded) on the
+    // real `total_cents` column and subtract completed refunds for those orders,
+    // so a fully refunded order nets to zero and a partial refund nets to the
+    // retained amount.
+    const { data: orderRows, error } = await client
       .from('orders')
-      .select('total_amount_cents, currency')
-      .eq('status', 'confirmed')
+      .select('id, total_cents, platform_fee_cents, status, currency')
+      .in('status', ['confirmed', 'partially_refunded', 'refunded'])
+      .eq('currency', ANALYTICS_CURRENCY)
       .gte('created_at', since)
-      .returns<{ total_amount_cents: number; currency: string }[]>()
+      .returns<(GmvOrderRow & { id: string; currency: string })[]>()
     if (error) throw error
-    const audCents = (data ?? [])
-      .filter(r => (r.currency ?? 'AUD').toUpperCase() === 'AUD')
-      .reduce((sum, r) => sum + (r.total_amount_cents ?? 0), 0)
+    const orders = orderRows ?? []
+
+    let refunds: { amount_cents: number; status: string }[] = []
+    if (orders.length > 0) {
+      const { data: refundRows, error: refundErr } = await client
+        .from('refunds')
+        .select('amount_cents, status')
+        .eq('status', 'completed')
+        .in('order_id', orders.map(o => o.id))
+        .returns<{ amount_cents: number; status: string }[]>()
+      if (refundErr) throw refundErr
+      refunds = refundRows ?? []
+    }
+
+    const { netGmvCents } = aggregateGmv(orders, refunds)
     // Exact-cents display (item 9 fix): never round revenue to whole dollars.
-    const formatted = formatMoneyDisplay(audCents, 'AUD')
-    return <AdminStatTile label={label} value={formatted} hint="AUD only; multi-currency view in A4" />
+    const formatted = formatMoneyDisplay(netGmvCents, 'AUD')
+    return <AdminStatTile label={label} value={formatted} hint="AUD, net of refunds; multi-currency view in A4" />
   } catch {
     return <AdminStatTile label={label} value="-" hint="orders table query failed" status="warn" />
   }

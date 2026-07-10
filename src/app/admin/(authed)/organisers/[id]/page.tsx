@@ -1,11 +1,12 @@
 import Link from 'next/link'
 import { redirect, notFound } from 'next/navigation'
 import { requireAdminSession } from '@/lib/admin/auth'
-import { hasCapability } from '@/lib/admin/rbac'
+import { can } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { getOrganiserDetail } from '@/lib/admin/organisers'
 import { AdminStatTile } from '@/components/admin/admin-stat-tile'
 import { OrganiserControls } from './organiser-controls'
+import { PayoutHoldControl } from './payout-hold-control'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -40,11 +41,13 @@ function YesNo({ ok, label }: { ok: boolean; label: string }) {
 
 export default async function AdminOrganiserDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await requireAdminSession()
-  if (!hasCapability(session.admin.role, 'admin.users.manage')) redirect('/admin')
+  if (!can(session, 'admin.users.manage')) redirect('/admin')
 
   const { id } = await params
   const org = await getOrganiserDetail(id)
   if (!org) notFound()
+
+  const canHoldPayouts = can(session, 'admin.payouts.disburse')
 
   await recordAuditEvent({
     action: 'admin.organiser.view',
@@ -117,7 +120,10 @@ export default async function AdminOrganiserDetailPage({ params }: { params: Pro
           )}
         </section>
 
-        <OrganiserControls organisationId={org.id} availableActions={org.availableActions} />
+        <div className="flex flex-col gap-6">
+          <OrganiserControls organisationId={org.id} availableActions={org.availableActions} />
+          {canHoldPayouts ? <PayoutHoldControl organisationId={org.id} payoutStatus={org.payoutStatus} /> : null}
+        </div>
       </div>
     </div>
   )

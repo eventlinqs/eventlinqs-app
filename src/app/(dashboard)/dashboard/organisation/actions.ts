@@ -4,8 +4,11 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
+import { cookies } from 'next/headers'
 import { z } from 'zod'
 import { trackOrganiserSignupServer } from '@/lib/analytics/plausible'
+import { acceptFoundingInvite } from '@/lib/founding/invites'
+import { FOUNDING_INVITE_COOKIE } from '@/app/join/[code]/cookie'
 
 const CreateOrgSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(100),
@@ -98,6 +101,24 @@ export async function createOrganisation(formData: FormData) {
     .from('profiles')
     .update({ role: 'organiser' })
     .eq('id', user.id)
+
+  // Founding invite conversion: if this signup arrived via a founding invite,
+  // attribute it now. Best-effort - a founding-grant failure never blocks
+  // organisation creation. The cookie is dropped by the /join/[code] landing.
+  try {
+    const inviteCode = (await cookies()).get(FOUNDING_INVITE_COOKIE)?.value
+    if (inviteCode) {
+      await acceptFoundingInvite({
+        code: inviteCode,
+        userId: user.id,
+        orgId: org.id,
+        cityFromOrg: null,
+      })
+      ;(await cookies()).delete(FOUNDING_INVITE_COOKIE)
+    }
+  } catch (err) {
+    console.warn('[createOrganisation] founding invite attribution failed:', err)
+  }
 
   // Plausible: new-organiser conversion. Fire-and-forget before redirect.
   const origin = process.env.NEXT_PUBLIC_APP_URL ?? 'https://eventlinqs.com'

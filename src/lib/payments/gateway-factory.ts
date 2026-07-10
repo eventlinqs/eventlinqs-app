@@ -1,4 +1,4 @@
-import type { PaymentGateway } from './gateway'
+import type { PaymentGateway, TransferGateway } from './gateway'
 import { StripeAdapter } from './stripe-adapter'
 
 export function getPaymentGateway(gatewayName: string): PaymentGateway {
@@ -15,4 +15,12 @@ export function getPaymentGateway(gatewayName: string): PaymentGateway {
 
 export function getDefaultGateway(): PaymentGateway {
   return getPaymentGateway('stripe')
+}
+
+/**
+ * The default platform->connected transfer gateway (funds-holding disbursement).
+ * StripeAdapter implements both PaymentGateway and TransferGateway.
+ */
+export function getDefaultTransferGateway(): TransferGateway {
+  return new StripeAdapter()
 }

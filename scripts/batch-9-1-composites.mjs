@@ -19,7 +19,7 @@ if (!existsSync(OUT)) mkdirSync(OUT, { recursive: true })
 
 const PAGES = [
   { slug: 'home',            id: 'home' },
-  { slug: 'culture-african', id: 'culture-african' },
+  { slug: 'community-african', id: 'community-african' },
   { slug: 'city-sydney',     id: 'city-sydney' },
   { slug: 'legal-terms',     id: 'legal-terms' },
 ]
