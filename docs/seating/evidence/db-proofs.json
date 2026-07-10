@@ -1,17 +1,17 @@
 {
-  "generatedAt": "2026-07-04T22:27:17.140Z",
+  "generatedAt": "2026-07-10T22:42:30.512Z",
   "eventId": "768788e0-8358-490a-8bba-d9920e675b92",
   "concurrency": {
     "seat": {
-      "id": "cc21f165-a28b-45f0-9a11-2e119364a2b0",
+      "id": "34c74771-04e7-4cb0-bf6b-541930b25253",
       "row_label": "A",
-      "seat_number": "2"
+      "seat_number": "4"
     },
     "buyerA": {
       "success": true,
-      "expires_at": "2026-07-04T22:37:17.723634+00:00",
+      "expires_at": "2026-07-10T22:52:30.389943+00:00",
       "seat_count": 1,
-      "reservation_id": "31564052-5028-4804-b0e4-ed15ed9e0923"
+      "reservation_id": "3e8e3201-d65d-4011-9f57-df0393da79a5"
     },
     "buyerB": {
       "error": "One or more seats are no longer available",
@@ -20,20 +20,20 @@
     "exactlyOneSucceeded": true,
     "loserMessage": "One or more seats are no longer available",
     "seatRowAfter": {
-      "id": "cc21f165-a28b-45f0-9a11-2e119364a2b0",
+      "id": "34c74771-04e7-4cb0-bf6b-541930b25253",
       "row_label": "A",
-      "seat_number": "2",
+      "seat_number": "4",
       "status": "reserved",
-      "reservation_id": "31564052-5028-4804-b0e4-ed15ed9e0923"
+      "reservation_id": "3e8e3201-d65d-4011-9f57-df0393da79a5"
     },
     "reservationRows": [
       {
-        "id": "31564052-5028-4804-b0e4-ed15ed9e0923",
+        "id": "3e8e3201-d65d-4011-9f57-df0393da79a5",
         "status": "active",
-        "expires_at": "2026-07-04T22:37:17.723634+00:00",
+        "expires_at": "2026-07-10T22:52:30.389943+00:00",
         "items": {
           "seat_ids": [
-            "cc21f165-a28b-45f0-9a11-2e119364a2b0"
+            "34c74771-04e7-4cb0-bf6b-541930b25253"
           ]
         }
       }
@@ -57,32 +57,32 @@
   },
   "holdExpiry": {
     "seat": {
-      "id": "ea388781-f8c7-4190-9f69-95c5868cce3a",
-      "row_label": "A",
-      "seat_number": "3"
+      "id": "c4e2746d-921e-4c34-bdbe-5be1be0e0e78",
+      "row_label": "B",
+      "seat_number": "1"
     },
-    "reservationId": "d152c46e-449d-452e-9bc2-368a38088a2e",
+    "reservationId": "ecef27bd-e9e1-499e-90b0-d55c5d035731",
     "seatWhileHeld": {
-      "id": "ea388781-f8c7-4190-9f69-95c5868cce3a",
+      "id": "c4e2746d-921e-4c34-bdbe-5be1be0e0e78",
       "status": "reserved",
-      "reservation_id": "d152c46e-449d-452e-9bc2-368a38088a2e"
+      "reservation_id": "ecef27bd-e9e1-499e-90b0-d55c5d035731"
     },
-    "releasedCountFromRpc": 1,
+    "releasedCountFromRpc": 17,
     "seatAfterRelease": {
-      "id": "ea388781-f8c7-4190-9f69-95c5868cce3a",
+      "id": "c4e2746d-921e-4c34-bdbe-5be1be0e0e78",
       "status": "available",
       "reservation_id": null
     },
     "returnedToAvailable": true,
     "reservationAfter": {
-      "id": "d152c46e-449d-452e-9bc2-368a38088a2e",
+      "id": "ecef27bd-e9e1-499e-90b0-d55c5d035731",
       "status": "expired",
-      "expires_at": "2026-07-04T22:26:18.541+00:00"
+      "expires_at": "2026-07-10T22:41:31.845+00:00"
     }
   },
   "cleanup": {
     "concurrencySeatFinal": {
-      "id": "cc21f165-a28b-45f0-9a11-2e119364a2b0",
+      "id": "34c74771-04e7-4cb0-bf6b-541930b25253",
       "status": "available"
     }
   }
