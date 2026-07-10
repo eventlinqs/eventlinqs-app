@@ -1,0 +1,42 @@
+{
+  "mode": "ordinary",
+  "throttle": false,
+  "runs": 2,
+  "green": 2,
+  "results": [
+    {
+      "run": 1,
+      "ok": true,
+      "draftMs": null,
+      "totalMs": 5702,
+      "actionResponses": [
+        {
+          "status": 200,
+          "url": "aging.vercel.app/dashboard/events/create"
+        },
+        {
+          "status": 200,
+          "url": "aging.vercel.app/dashboard/events/create"
+        }
+      ],
+      "consoleErrors": []
+    },
+    {
+      "run": 2,
+      "ok": true,
+      "draftMs": null,
+      "totalMs": 5936,
+      "actionResponses": [
+        {
+          "status": 200,
+          "url": "aging.vercel.app/dashboard/events/create"
+        },
+        {
+          "status": 200,
+          "url": "aging.vercel.app/dashboard/events/create"
+        }
+      ],
+      "consoleErrors": []
+    }
+  ]
+}
