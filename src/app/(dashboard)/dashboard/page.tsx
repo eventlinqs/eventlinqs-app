@@ -15,6 +15,7 @@ import {
   type ChecklistStatus,
 } from '@/components/dashboard/get-started-checklist'
 import { QuickActionsPanel } from '@/components/dashboard/quick-actions-panel'
+import { AssistantPanel } from '@/components/ai/assistant-panel'
 
 type OrderSummary = {
   id: string
@@ -263,6 +264,19 @@ export default async function DashboardPage() {
         </div>
         <div className="space-y-6">
           {showChecklist && <GetStartedChecklist status={checklistStatus} />}
+          {showChecklist && (
+            <AssistantPanel
+              assistant="organiser-onboarding"
+              title="Your setup guide"
+              intro="Ask anything about getting set up and getting your first event live."
+              placeholder="Ask about setup, events, or payouts"
+              starters={[
+                'Walk me through getting my first event live',
+                'Help me write a great event description',
+                'How do payouts work?',
+              ]}
+            />
+          )}
           <QuickActionsPanel />
         </div>
       </div>

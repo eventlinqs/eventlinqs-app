@@ -12,6 +12,7 @@ import { PageShell } from '@/components/layout/PageShell'
 import { PageHero } from '@/components/layout/PageHero'
 import { ContentSection } from '@/components/layout/ContentSection'
 import { Button } from '@/components/ui/Button'
+import { AssistantPanel } from '@/components/ai/assistant-panel'
 import { helpTopics } from '@/lib/help-content'
 import type { ComponentType } from 'react'
 
@@ -142,6 +143,38 @@ export default function HelpPage() {
         </div>
       </ContentSection>
 
+      {/* Ask the assistant */}
+      <ContentSection surface="alt" width="wide">
+        <div className="grid grid-cols-1 items-start gap-10 lg:grid-cols-[1fr_1.2fr]">
+          <div>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
+              Ask EventLinqs
+            </p>
+            <h2 className="font-display text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">
+              Get an answer in seconds.
+            </h2>
+            <p className="mt-4 text-base leading-relaxed text-[var(--text-secondary)]">
+              Our assistant answers from the same knowledge base as this Help Centre: tickets,
+              refunds, transfers, payouts, and how the platform works. If it cannot help, it
+              passes your conversation straight to our support team.
+            </p>
+          </div>
+          <AssistantPanel
+            assistant="support"
+            title="EventLinqs support assistant"
+            intro="Ask about tickets, refunds, transfers, or anything on the platform."
+            placeholder="Type your question"
+            collectEmail
+            starters={[
+              'My ticket email has not arrived',
+              'How do refunds work?',
+              'How do I transfer a ticket to a friend?',
+              'What does it cost to sell tickets?',
+            ]}
+          />
+        </div>
+      </ContentSection>
+
       {/* Popular questions */}
       {POPULAR.length > 0 && (
         <ContentSection surface="alt" width="prose">
@@ -196,8 +229,7 @@ export default function HelpPage() {
             Can&apos;t find what you need?
           </h2>
           <p className="max-w-md text-base text-[var(--text-secondary)]">
-            Our support team replies within 24 hours, Monday to Friday.
-            We&apos;re real people, not bots.
+            Prefer a person? Our support team replies within 24 hours, Monday to Friday.
           </p>
           <Button href="/contact" variant="primary" size="lg">
             Contact support

@@ -4,6 +4,7 @@ import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { TransferTicketForm } from '@/components/features/tickets/transfer-ticket-form'
 import { formatSeatLabel } from '@/lib/seating/format'
+import { AssistantPanel } from '@/components/ai/assistant-panel'
 
 export const dynamic = 'force-dynamic'
 
@@ -82,18 +83,33 @@ export default async function MyTicketsPage() {
       </p>
 
       {tickets.length === 0 ? (
-        <div className="mt-8 rounded-2xl border border-ink-200 bg-white p-8 text-center">
-          <p className="font-display text-lg font-bold text-ink-900">No tickets yet</p>
-          <p className="mt-2 text-sm text-ink-600">
-            When you book an event, your tickets appear here.
-          </p>
-          <Link
-            href="/events"
-            className="mt-5 inline-flex rounded-full bg-gold-500 px-5 py-2.5 text-sm font-semibold text-ink-900 hover:bg-gold-600"
-          >
-            Browse events
-          </Link>
-        </div>
+        <>
+          <div className="mt-8 rounded-2xl border border-ink-200 bg-white p-8 text-center">
+            <p className="font-display text-lg font-bold text-ink-900">No tickets yet</p>
+            <p className="mt-2 text-sm text-ink-600">
+              When you book an event, your tickets appear here.
+            </p>
+            <Link
+              href="/events"
+              className="mt-5 inline-flex rounded-full bg-gold-500 px-5 py-2.5 text-sm font-semibold text-ink-900 hover:bg-gold-600"
+            >
+              Browse events
+            </Link>
+          </div>
+          <div className="mt-6">
+            <AssistantPanel
+              assistant="buyer-onboarding"
+              title="New here? Ask away"
+              intro="Ask how to find events, book tickets, or what happens after you buy."
+              placeholder="Ask about finding events or buying tickets"
+              starters={[
+                'How do I find events near me?',
+                'How does buying a ticket work?',
+                'Where will my ticket arrive?',
+              ]}
+            />
+          </div>
+        </>
       ) : (
         <ul role="list" className="mt-8 space-y-3">
           {tickets.map(t => {
