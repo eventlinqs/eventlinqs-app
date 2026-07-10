@@ -737,9 +737,12 @@ async function processSeatCheckout({
       order_number,
       event_id: event.id,
       organisation_id: event.organisation_id,
-      user_id: null,
-      guest_email: buyer_email,
-      guest_name: buyer_name,
+      // Identical attachment rule to the GA insert above: a signed-in buyer's
+      // order carries their user_id (My Tickets RLS and transfer ownership
+      // both key off orders.user_id); only a true guest gets the guest fields.
+      user_id: userId,
+      guest_email: userId ? null : buyer_email,
+      guest_name: userId ? null : buyer_name,
       reservation_id,
       // Free orders insert as 'pending' too, then confirm_order UPDATEs them to
       // 'confirmed'. Ticket issuance fires on the pending->confirmed UPDATE
