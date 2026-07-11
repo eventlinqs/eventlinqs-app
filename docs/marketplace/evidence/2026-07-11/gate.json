@@ -1,0 +1,164 @@
+{
+  "base": "https://eventlinqs-staging.vercel.app",
+  "startedAt": "2026-07-11T01:46:28.598Z",
+  "stages": [
+    "showcase",
+    "directory",
+    "abuse",
+    "notify",
+    "mobile",
+    "restore"
+  ],
+  "post": {
+    "gig": {
+      "id": "67ef06aa-b2fe-434b-8357-bb3f17ead7ec",
+      "title": "Opening comedy set: Marketplace Gate Night",
+      "status": "open",
+      "event_id": "7c2e5b1d-4f8a-4e6b-9d3c-8a1b2c3d4e5f",
+      "city_slug": "geelong",
+      "performance_type": "comedian"
+    }
+  },
+  "apply": {
+    "applications": [
+      {
+        "id": "bcd0599c-9c2c-450c-b51e-76c6e00f4eaf",
+        "artist_id": "af36e0f7-2b8f-4d49-a786-9da4ccd81b51",
+        "status": "submitted"
+      },
+      {
+        "id": "56176b36-62c2-44af-943f-711667c7ae2c",
+        "artist_id": "907bf08a-d3de-4255-b0b6-2596c360f6b6",
+        "status": "submitted"
+      }
+    ],
+    "bothApplied": true
+  },
+  "review": {
+    "request": {
+      "id": "50b02174-effb-4061-a686-57d249705cad",
+      "status": "pending",
+      "event_id": "7c2e5b1d-4f8a-4e6b-9d3c-8a1b2c3d4e5f",
+      "artist_id": "907bf08a-d3de-4255-b0b6-2596c360f6b6"
+    }
+  },
+  "accept": {
+    "requestStatus": "accepted",
+    "onLineup": true,
+    "applicationStatus": "booked"
+  },
+  "sale": {
+    "linkCode": "b7HGCxANds",
+    "conversions": [
+      {
+        "order_id": "0c0026e2-157b-4c7b-9eae-3c364265899b"
+      }
+    ],
+    "attributed": true,
+    "artistDashboardShowsGateEvent": true
+  },
+  "finishedAt": "2026-07-11T02:02:49.868Z",
+  "showcase": {
+    "saved": {
+      "performance_types": [
+        "comedian"
+      ],
+      "city_slug": "geelong",
+      "available_for_booking": true,
+      "draw_consent": true,
+      "mentor_open": true,
+      "showcase_embeds": [
+        {
+          "embedUrl": "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ",
+          "provider": "youtube",
+          "sourceUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        }
+      ]
+    },
+    "badEmbedRejected": true,
+    "goodEmbedStored": true
+  },
+  "directory": {
+    "cityTypeFilterShowsBoth": true,
+    "consentBadgeOnlyWithConsent": true,
+    "siennaHasNoDrawBadge": true,
+    "availabilityToggleExcludes": true,
+    "embedFacadeRendered": true,
+    "proofOfDrawRendered": true,
+    "embedFacadeSource": "directory-profile-with-embed-1440.png: click-to-play facade with Watch on YouTube badge"
+  },
+  "abuse": {
+    "applySuccessesBeforeThrottle": 5,
+    "rateLimitTripped": true,
+    "blockRefusesApplication": true,
+    "reportQueued": true,
+    "sprayGigIds": [
+      "2065edd8-9a1a-45ab-a04b-03e092f369e2",
+      "90cec368-2bed-4bb0-8984-9f3beef6dde3",
+      "5fac8821-7576-4359-b5db-6f2bb9547a7d",
+      "6c2b3fac-c5af-4a2d-b369-6273575589e0",
+      "d787d1cc-0630-4d7a-b30b-1ed5449cec48",
+      "e43b69a3-59be-4234-9b46-9d64a75b414c"
+    ]
+  },
+  "notify": {
+    "rowsPerType": {
+      "gig_posted": 3,
+      "gig_application": 7,
+      "booking_request": 1,
+      "booking_accepted": 1,
+      "mentoring_request": 1
+    },
+    "optOutBefore": 1,
+    "optOutAfter": 1,
+    "optOutExcluded": true,
+    "optOutProbeGigId": "975fe149-3c83-4fb4-9e63-868b4221cf76",
+    "allTypesDelivered": true,
+    "realInboxEvidence": "notify-mailinator-inbox.png (gig_posted x2 + mentoring_request emails from EventLinqs)",
+    "dispatchFix": "32dbcf7: single-recipient dispatches awaited, fan-out via after()"
+  },
+  "restore": {
+    "flags": [
+      {
+        "flag": "artist_showcase",
+        "enabled": false
+      },
+      {
+        "flag": "broadcast_artists",
+        "enabled": true
+      },
+      {
+        "flag": "broadcast_digest",
+        "enabled": false
+      },
+      {
+        "flag": "broadcast_follow",
+        "enabled": false
+      },
+      {
+        "flag": "broadcast_share",
+        "enabled": true
+      },
+      {
+        "flag": "community_giving",
+        "enabled": false
+      },
+      {
+        "flag": "gig_board",
+        "enabled": false
+      },
+      {
+        "flag": "launch_kit",
+        "enabled": true
+      },
+      {
+        "flag": "seated_events",
+        "enabled": true
+      },
+      {
+        "flag": "surpass_edges",
+        "enabled": true
+      }
+    ]
+  }
+}

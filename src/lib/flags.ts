@@ -10,6 +10,9 @@ import { createPublicClient } from '@/lib/supabase/public-client'
  */
 const FLAG_DEFAULTS: Record<string, boolean> = {
   seated_events: true,
+  // Surpass edges (Fill the room panel, Know before you go, What you keep
+  // pricing comparison): launch features, ON for launch (founder ruling
+  // 2026-07-11, migration 20260711000003 records it).
   surpass_edges: true,
   // Event Launch Kit (post-publish kit screen, city waitlist, tool-first
   // organiser positioning). Default ON for testing per the founder directive.

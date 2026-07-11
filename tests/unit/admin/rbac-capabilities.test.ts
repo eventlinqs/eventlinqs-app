@@ -45,9 +45,14 @@ describe('role baselines (the matrix)', () => {
     )
   })
 
-  test('moderator is limited to dashboard, profile, events', () => {
+  test('moderator is limited to dashboard, profile, events, marketplace moderation', () => {
     expect(resolveCapabilities(makeSession('moderator').admin).sort()).toEqual(
-      ['admin.dashboard.view', 'admin.events.manage', 'admin.profile.read'].sort(),
+      [
+        'admin.dashboard.view',
+        'admin.events.manage',
+        'admin.profile.read',
+        'admin.marketplace.manage',
+      ].sort(),
     )
   })
 })

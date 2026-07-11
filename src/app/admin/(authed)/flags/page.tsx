@@ -21,6 +21,8 @@ const STAGE_LABELS: Record<string, string> = {
   broadcast_digest: 'Stage 2: weekly local digest',
   broadcast_follow: 'Stage 2: follow surfaces',
   broadcast_artists: 'Stage 3: performer attribution',
+  gig_board: 'Marketplace A: gig board',
+  artist_showcase: 'Marketplace B: showcase and directory',
 }
 
 /**

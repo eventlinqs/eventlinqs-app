@@ -10,9 +10,14 @@ import {
   fetchArtistUpcomingShows,
 } from '@/lib/broadcast/artists'
 import { buildShortUrl, getOrCreateShareLink } from '@/lib/broadcast/share-links'
+import { fetchArtistApplications, fetchArtistRequests } from '@/lib/marketplace/gigs'
+import { fetchShowcaseArtistForOwner } from '@/lib/marketplace/showcase'
 import { OrganiserAvatar } from '@/components/media/OrganiserAvatar'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
+import { CreateProfileForm } from '@/components/marketplace/create-profile-form'
+import { RequestsPanel } from '@/components/marketplace/requests-panel'
+import { ShowcaseEditor } from '@/components/marketplace/showcase-editor'
 import { getSiteUrl } from '@/lib/site-url'
 
 export const metadata: Metadata = {
@@ -47,6 +52,8 @@ export default async function ArtistDashboardPage({
   const admin = createAdminClient()
   const artist = await fetchArtistForOwner(admin, user.id)
   const { claimed } = await searchParams
+  const showcaseOn = await isFeatureEnabled('artist_showcase')
+  const gigBoardOn = await isFeatureEnabled('gig_board')
 
   if (!artist) {
     return (
@@ -58,16 +65,21 @@ export default async function ArtistDashboardPage({
               Your artist dashboard
             </h1>
             <p className="mt-3 text-base text-ink-600">
-              No artist profile is linked to your account yet. When an organiser tags you on a
-              lineup they can send you a claim link, and claiming it unlocks your numbers here:
-              every show, every click, every ticket you drove.
+              No artist profile is linked to your account yet.{' '}
+              {showcaseOn
+                ? 'Create one below, or claim the link an organiser sends when they tag you on a lineup. Either way your numbers build here: every show, every click, every ticket you drove.'
+                : 'When an organiser tags you on a lineup they can send you a claim link, and claiming it unlocks your numbers here: every show, every click, every ticket you drove.'}
             </p>
-            <Link
-              href="/events"
-              className="mt-6 inline-flex h-11 items-center rounded-lg bg-gold-400 px-5 text-sm font-semibold text-ink-900 transition-colors hover:bg-gold-500"
-            >
-              Browse events
-            </Link>
+            {showcaseOn ? (
+              <CreateProfileForm />
+            ) : (
+              <Link
+                href="/events"
+                className="mt-6 inline-flex h-11 items-center rounded-lg bg-gold-400 px-5 text-sm font-semibold text-ink-900 transition-colors hover:bg-gold-500"
+              >
+                Browse events
+              </Link>
+            )}
           </section>
         </main>
         <SiteFooter />
@@ -75,10 +87,17 @@ export default async function ArtistDashboardPage({
     )
   }
 
-  const [attribution, upcoming] = await Promise.all([
+  const [attribution, upcoming, applications, requests, showcase, citiesResult] = await Promise.all([
     fetchArtistAttribution(admin, artist.id),
     fetchArtistUpcomingShows(admin, artist.id, 6),
+    gigBoardOn ? fetchArtistApplications(admin, artist.id) : Promise.resolve([]),
+    gigBoardOn || showcaseOn ? fetchArtistRequests(admin, artist.id) : Promise.resolve([]),
+    showcaseOn ? fetchShowcaseArtistForOwner(admin, user.id) : Promise.resolve(null),
+    showcaseOn
+      ? admin.from('cities').select('slug, name').order('tier').order('name')
+      : Promise.resolve({ data: [] }),
   ])
+  const cities = ((citiesResult as { data: unknown }).data ?? []) as { slug: string; name: string }[]
 
   // One tracked share link per upcoming show for the artist's own channels.
   const origin = getSiteUrl()
@@ -210,6 +229,116 @@ export default async function ArtistDashboardPage({
                   </p>
                 </div>
               ))}
+            </div>
+          )}
+
+          {(gigBoardOn || showcaseOn) && (
+            <div className="mt-8 overflow-hidden rounded-xl border border-ink-200 bg-white">
+              <div className="border-b border-ink-200 px-5 py-4">
+                <h2 className="text-sm font-bold uppercase tracking-[0.14em] text-ink-900">
+                  Booking and mentoring requests
+                </h2>
+                <p className="mt-1 text-sm text-ink-600">
+                  Structured asks only: you see the gig, the terms, and the note, then accept or
+                  decline in one tap.
+                </p>
+              </div>
+              <RequestsPanel
+                requests={requests.map((r) => ({
+                  id: r.id,
+                  kind: r.kind,
+                  subject: r.subject,
+                  note: r.note,
+                  pay_type: r.pay_type,
+                  pay_amount_cents: r.pay_amount_cents,
+                  pay_note: r.pay_note,
+                  proposed_date: r.proposed_date,
+                  event_id: r.event_id,
+                  status: r.status,
+                  created_at: r.created_at,
+                  organisationName: r.organisation?.name ?? null,
+                }))}
+              />
+            </div>
+          )}
+
+          {gigBoardOn && (
+            <div className="mt-8 overflow-hidden rounded-xl border border-ink-200 bg-white">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-200 px-5 py-4">
+                <div>
+                  <h2 className="text-sm font-bold uppercase tracking-[0.14em] text-ink-900">
+                    Your gig applications
+                  </h2>
+                  <p className="mt-1 text-sm text-ink-600">
+                    Every application carries your live numbers automatically.
+                  </p>
+                </div>
+                <Link
+                  href="/gigs"
+                  className="inline-flex h-11 items-center rounded-lg bg-gold-400 px-4 text-sm font-semibold text-ink-900 transition-colors hover:bg-gold-500"
+                >
+                  Browse open gigs
+                </Link>
+              </div>
+              {applications.length === 0 ? (
+                <p className="px-5 py-6 text-sm text-ink-600">
+                  No applications yet. Find a gig in your city and apply with your profile.
+                </p>
+              ) : (
+                <ul className="divide-y divide-ink-200/60">
+                  {applications.map((app) => (
+                    <li key={app.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+                      <div className="min-w-0">
+                        {app.gig ? (
+                          <Link href={`/gigs/${app.gig.id}`} className="text-sm font-semibold text-ink-900 hover:underline">
+                            {app.gig.title}
+                          </Link>
+                        ) : (
+                          <p className="text-sm font-semibold text-ink-900">Gig no longer listed</p>
+                        )}
+                        <p className="mt-0.5 text-xs text-ink-600">
+                          Applied{' '}
+                          {new Intl.DateTimeFormat('en-AU', { day: 'numeric', month: 'short' }).format(
+                            new Date(app.created_at),
+                          )}
+                        </p>
+                      </div>
+                      <span
+                        className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
+                          app.status === 'booked'
+                            ? 'bg-success/15 text-success'
+                            : app.status === 'shortlisted'
+                              ? 'bg-gold-100 text-gold-800'
+                              : app.status === 'declined'
+                                ? 'bg-error/10 text-error'
+                                : 'bg-ink-100 text-ink-700'
+                        }`}
+                      >
+                        {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {showcaseOn && showcase && (
+            <div className="mt-8">
+              <ShowcaseEditor
+                cities={cities}
+                initial={{
+                  bio: showcase.bio ?? '',
+                  performanceTypes: showcase.performance_types,
+                  genres: showcase.genres.join(', '),
+                  citySlug: showcase.city_slug ?? '',
+                  availableForBooking: showcase.available_for_booking,
+                  payExpectation: showcase.pay_expectation ?? '',
+                  embedUrls: showcase.showcase_embeds.map((e) => e.sourceUrl),
+                  drawConsent: showcase.draw_consent,
+                  mentorOpen: showcase.mentor_open,
+                }}
+              />
             </div>
           )}
         </section>

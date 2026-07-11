@@ -1,0 +1,52 @@
+{
+  "base": "https://eventlinqs-staging.vercel.app",
+  "startedAt": "2026-07-10T23:38:19.428Z",
+  "stages": [
+    "visualonly"
+  ],
+  "links": {
+    "Sienna Vale": "10Ct5Cc6Ud",
+    "Marlo Reyes": "VEPJ1npbw6"
+  },
+  "attribution": {
+    "artistA": {
+      "clicks": 2,
+      "conversions": [
+        {
+          "kind": "conversion",
+          "order_id": "d0016e7a-8c19-476d-8dc2-dd7470da7763"
+        }
+      ]
+    },
+    "artistB": {
+      "clicks": 1,
+      "conversions": [
+        {
+          "kind": "conversion",
+          "order_id": "e9f85765-ccc1-4a43-90f5-5eabbd760798"
+        }
+      ]
+    },
+    "splitCorrect": true
+  },
+  "follow": {
+    "rowCount": 1,
+    "followed": true
+  },
+  "finishedAt": "2026-07-10T23:38:30.160Z",
+  "organiserDashboard": {
+    "showsBothArtists": true
+  },
+  "artistDashboard": {
+    "showsArtist": true,
+    "showsGateEvent": true
+  },
+  "shareCard": {
+    "landingStatus": 200,
+    "ogTitle": "Marlo Reyes live at Artist Layer Launch Night, Geelong | EventLinqs",
+    "ogImageCarriesArtist": true,
+    "cardStatus": 200,
+    "cardBytes": 201462,
+    "cardIsPng": true
+  }
+}

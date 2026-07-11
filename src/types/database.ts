@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       admin_invites: {
@@ -122,39 +147,71 @@ export type Database = {
       }
       artists: {
         Row: {
+          available_for_booking: boolean
           bio: string | null
+          city_slug: string | null
           created_at: string
+          draw_consent: boolean
+          genres: string[]
           id: string
           image_url: string | null
           links: Json
+          mentor_open: boolean
           name: string
           owner_user_id: string | null
+          pay_expectation: string | null
+          performance_types: string[]
+          showcase_embeds: Json
           slug: string
           updated_at: string
         }
         Insert: {
+          available_for_booking?: boolean
           bio?: string | null
+          city_slug?: string | null
           created_at?: string
+          draw_consent?: boolean
+          genres?: string[]
           id?: string
           image_url?: string | null
           links?: Json
+          mentor_open?: boolean
           name: string
           owner_user_id?: string | null
+          pay_expectation?: string | null
+          performance_types?: string[]
+          showcase_embeds?: Json
           slug: string
           updated_at?: string
         }
         Update: {
+          available_for_booking?: boolean
           bio?: string | null
+          city_slug?: string | null
           created_at?: string
+          draw_consent?: boolean
+          genres?: string[]
           id?: string
           image_url?: string | null
           links?: Json
+          mentor_open?: boolean
           name?: string
           owner_user_id?: string | null
+          pay_expectation?: string | null
+          performance_types?: string[]
+          showcase_embeds?: Json
           slug?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "artists_city_slug_fkey"
+            columns: ["city_slug"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["slug"]
+          },
+        ]
       }
       audit_log: {
         Row: {
@@ -197,6 +254,112 @@ export type Database = {
           user_agent?: string | null
         }
         Relationships: []
+      }
+      booking_requests: {
+        Row: {
+          application_id: string | null
+          artist_id: string
+          created_at: string
+          event_id: string | null
+          from_artist_id: string | null
+          gig_id: string | null
+          id: string
+          kind: string
+          note: string
+          organisation_id: string | null
+          pay_amount_cents: number | null
+          pay_note: string | null
+          pay_type: string | null
+          proposed_date: string | null
+          responded_at: string | null
+          sent_by: string | null
+          status: string
+          subject: string
+        }
+        Insert: {
+          application_id?: string | null
+          artist_id: string
+          created_at?: string
+          event_id?: string | null
+          from_artist_id?: string | null
+          gig_id?: string | null
+          id?: string
+          kind?: string
+          note?: string
+          organisation_id?: string | null
+          pay_amount_cents?: number | null
+          pay_note?: string | null
+          pay_type?: string | null
+          proposed_date?: string | null
+          responded_at?: string | null
+          sent_by?: string | null
+          status?: string
+          subject: string
+        }
+        Update: {
+          application_id?: string | null
+          artist_id?: string
+          created_at?: string
+          event_id?: string | null
+          from_artist_id?: string | null
+          gig_id?: string | null
+          id?: string
+          kind?: string
+          note?: string
+          organisation_id?: string | null
+          pay_amount_cents?: number | null
+          pay_note?: string | null
+          pay_type?: string | null
+          proposed_date?: string | null
+          responded_at?: string | null
+          sent_by?: string | null
+          status?: string
+          subject?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_requests_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "gig_applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_requests_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_requests_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_requests_from_artist_id_fkey"
+            columns: ["from_artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_requests_gig_id_fkey"
+            columns: ["gig_id"]
+            isOneToOne: false
+            referencedRelation: "gigs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_requests_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cities: {
         Row: {
@@ -249,72 +412,6 @@ export type Database = {
           state?: string
           tier?: number
           updated_at?: string
-        }
-        Relationships: []
-      }
-      founding_invites: {
-        Row: {
-          accepted_at: string | null
-          accepted_by_user_id: string | null
-          accepted_org_id: string | null
-          city_slug: string
-          code: string
-          created_at: string
-          id: string
-          invitee_email: string | null
-          inviter_kind: string
-          inviter_name: string
-          inviter_org_id: string | null
-          status: string
-        }
-        Insert: {
-          accepted_at?: string | null
-          accepted_by_user_id?: string | null
-          accepted_org_id?: string | null
-          city_slug: string
-          code: string
-          created_at?: string
-          id?: string
-          invitee_email?: string | null
-          inviter_kind: string
-          inviter_name: string
-          inviter_org_id?: string | null
-          status?: string
-        }
-        Update: {
-          accepted_at?: string | null
-          accepted_by_user_id?: string | null
-          accepted_org_id?: string | null
-          city_slug?: string
-          code?: string
-          created_at?: string
-          id?: string
-          invitee_email?: string | null
-          inviter_kind?: string
-          inviter_name?: string
-          inviter_org_id?: string | null
-          status?: string
-        }
-        Relationships: []
-      }
-      kit_poster_downloads: {
-        Row: {
-          downloaded_at: string
-          event_id: string | null
-          id: string
-          organisation_id: string | null
-        }
-        Insert: {
-          downloaded_at?: string
-          event_id?: string | null
-          id?: string
-          organisation_id?: string | null
-        }
-        Update: {
-          downloaded_at?: string
-          event_id?: string | null
-          id?: string
-          organisation_id?: string | null
         }
         Relationships: []
       }
@@ -404,6 +501,51 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      community_contributions: {
+        Row: {
+          amount_cents: number
+          city: string | null
+          created_at: string
+          currency: string
+          event_id: string | null
+          id: string
+          order_id: string
+        }
+        Insert: {
+          amount_cents: number
+          city?: string | null
+          created_at?: string
+          currency?: string
+          event_id?: string | null
+          id?: string
+          order_id: string
+        }
+        Update: {
+          amount_cents?: number
+          city?: string | null
+          created_at?: string
+          currency?: string
+          event_id?: string | null
+          id?: string
+          order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_contributions_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_contributions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       digest_sends: {
         Row: {
@@ -1119,6 +1261,66 @@ export type Database = {
         }
         Relationships: []
       }
+      founding_invites: {
+        Row: {
+          accepted_at: string | null
+          accepted_by_user_id: string | null
+          accepted_org_id: string | null
+          city_slug: string
+          code: string
+          created_at: string
+          id: string
+          invitee_email: string | null
+          inviter_kind: string
+          inviter_name: string
+          inviter_org_id: string | null
+          status: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by_user_id?: string | null
+          accepted_org_id?: string | null
+          city_slug: string
+          code: string
+          created_at?: string
+          id?: string
+          invitee_email?: string | null
+          inviter_kind: string
+          inviter_name: string
+          inviter_org_id?: string | null
+          status?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by_user_id?: string | null
+          accepted_org_id?: string | null
+          city_slug?: string
+          code?: string
+          created_at?: string
+          id?: string
+          invitee_email?: string | null
+          inviter_kind?: string
+          inviter_name?: string
+          inviter_org_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "founding_invites_accepted_org_id_fkey"
+            columns: ["accepted_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "founding_invites_inviter_org_id_fkey"
+            columns: ["inviter_org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       genres: {
         Row: {
           created_at: string
@@ -1142,6 +1344,172 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      gig_applications: {
+        Row: {
+          applicant_user_id: string
+          artist_id: string
+          created_at: string
+          gig_id: string
+          id: string
+          note: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          applicant_user_id: string
+          artist_id: string
+          created_at?: string
+          gig_id: string
+          id?: string
+          note?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          applicant_user_id?: string
+          artist_id?: string
+          created_at?: string
+          gig_id?: string
+          id?: string
+          note?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gig_applications_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gig_applications_gig_id_fkey"
+            columns: ["gig_id"]
+            isOneToOne: false
+            referencedRelation: "gigs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gigs: {
+        Row: {
+          application_deadline: string
+          city_slug: string
+          created_at: string
+          created_by: string | null
+          description: string
+          event_date: string
+          event_id: string | null
+          id: string
+          organisation_id: string
+          pay_amount_cents: number | null
+          pay_note: string | null
+          pay_type: string
+          performance_type: string
+          status: string
+          title: string
+          updated_at: string
+          venue_name: string | null
+        }
+        Insert: {
+          application_deadline: string
+          city_slug: string
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          event_date: string
+          event_id?: string | null
+          id?: string
+          organisation_id: string
+          pay_amount_cents?: number | null
+          pay_note?: string | null
+          pay_type: string
+          performance_type: string
+          status?: string
+          title: string
+          updated_at?: string
+          venue_name?: string | null
+        }
+        Update: {
+          application_deadline?: string
+          city_slug?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          event_date?: string
+          event_id?: string | null
+          id?: string
+          organisation_id?: string
+          pay_amount_cents?: number | null
+          pay_note?: string | null
+          pay_type?: string
+          performance_type?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          venue_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gigs_city_slug_fkey"
+            columns: ["city_slug"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "gigs_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gigs_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kit_poster_downloads: {
+        Row: {
+          downloaded_at: string
+          event_id: string | null
+          id: string
+          organisation_id: string | null
+        }
+        Insert: {
+          downloaded_at?: string
+          event_id?: string | null
+          id?: string
+          organisation_id?: string | null
+        }
+        Update: {
+          downloaded_at?: string
+          event_id?: string | null
+          id?: string
+          organisation_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kit_poster_downloads_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kit_poster_downloads_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       marketing_consents: {
         Row: {
@@ -1196,6 +1564,87 @@ export type Database = {
           },
         ]
       }
+      marketplace_blocks: {
+        Row: {
+          artist_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          organisation_id: string
+          reason: string | null
+        }
+        Insert: {
+          artist_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          organisation_id: string
+          reason?: string | null
+        }
+        Update: {
+          artist_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          organisation_id?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_blocks_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_blocks_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketplace_reports: {
+        Row: {
+          created_at: string
+          id: string
+          note: string
+          reason: string
+          reporter_user_id: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          target_id: string
+          target_type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          note?: string
+          reason: string
+          reporter_user_id?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          target_id: string
+          target_type: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          note?: string
+          reason?: string
+          reporter_user_id?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          target_id?: string
+          target_type?: string
+        }
+        Relationships: []
+      }
       notification_prefs: {
         Row: {
           email_enabled: boolean
@@ -1236,6 +1685,7 @@ export type Database = {
           opened_at: string | null
           scheduled_for: string | null
           sent_at: string | null
+          subject_id: string | null
           type: string
           user_id: string
         }
@@ -1248,6 +1698,7 @@ export type Database = {
           opened_at?: string | null
           scheduled_for?: string | null
           sent_at?: string | null
+          subject_id?: string | null
           type: string
           user_id: string
         }
@@ -1260,6 +1711,7 @@ export type Database = {
           opened_at?: string | null
           scheduled_for?: string | null
           sent_at?: string | null
+          subject_id?: string | null
           type?: string
           user_id?: string
         }
@@ -1517,14 +1969,14 @@ export type Database = {
       organisations: {
         Row: {
           created_at: string
+          description: string | null
+          email: string | null
           founding_bonus_months: number
           founding_city: string | null
           founding_since: string | null
-          is_founding: boolean
-          description: string | null
-          email: string | null
           hold_amount_cents: number
           id: string
+          is_founding: boolean
           logo_url: string | null
           metadata: Json | null
           name: string
@@ -1552,14 +2004,14 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          description?: string | null
+          email?: string | null
           founding_bonus_months?: number
           founding_city?: string | null
           founding_since?: string | null
-          is_founding?: boolean
-          description?: string | null
-          email?: string | null
           hold_amount_cents?: number
           id?: string
+          is_founding?: boolean
           logo_url?: string | null
           metadata?: Json | null
           name: string
@@ -1587,14 +2039,14 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          description?: string | null
+          email?: string | null
           founding_bonus_months?: number
           founding_city?: string | null
           founding_since?: string | null
-          is_founding?: boolean
-          description?: string | null
-          email?: string | null
           hold_amount_cents?: number
           id?: string
+          is_founding?: boolean
           logo_url?: string | null
           metadata?: Json | null
           name?: string
@@ -2545,6 +2997,7 @@ export type Database = {
           held_reason: string | null
           id: string
           metadata: Json
+          note: string | null
           order_item_id: string | null
           price_cents: number | null
           reservation_id: string | null
@@ -2565,6 +3018,7 @@ export type Database = {
           held_reason?: string | null
           id?: string
           metadata?: Json
+          note?: string | null
           order_item_id?: string | null
           price_cents?: number | null
           reservation_id?: string | null
@@ -2585,6 +3039,7 @@ export type Database = {
           held_reason?: string | null
           id?: string
           metadata?: Json
+          note?: string | null
           order_item_id?: string | null
           price_cents?: number | null
           reservation_id?: string | null
@@ -3790,6 +4245,11 @@ export type Database = {
         }
         Returns: number
       }
+      assign_order_seats: { Args: { p_order_id: string }; Returns: number }
+      claim_founding_spot: {
+        Args: { p_city_slug: string; p_org_id: string }
+        Returns: number
+      }
       confirm_order: { Args: { p_order_id: string }; Returns: boolean }
       create_refund_request: {
         Args: {
@@ -3821,6 +4281,7 @@ export type Database = {
         Args: {
           p_event_id: string
           p_seat_ids: string[]
+          p_session_id?: string
           p_ttl_minutes?: number
           p_user_id: string
         }
@@ -3869,6 +4330,7 @@ export type Database = {
         Args: { p_lat: number; p_lng: number; p_radius_km: number }
         Returns: {
           age_restriction_min: number | null
+          allow_seat_self_service: boolean
           category_id: string | null
           city_primary: string | null
           community_primary: string | null
@@ -3977,18 +4439,6 @@ export type Database = {
         Args: { p_event_id: string; p_seat_map_id: string }
         Returns: number
       }
-      claim_founding_spot: {
-        Args: { p_org_id: string; p_city_slug: string }
-        Returns: number
-      }
-      reassign_ticket_seat: {
-        Args: { p_ticket_id: string; p_new_seat_id: string }
-        Returns: Json
-      }
-      rematerialize_seats_additive: {
-        Args: { p_event_id: string; p_seat_map_id: string }
-        Returns: Json
-      }
       organiser_available_balance: {
         Args: { p_currency: string; p_organisation_id: string }
         Returns: number
@@ -4010,6 +4460,10 @@ export type Database = {
         }
         Returns: number
       }
+      reassign_ticket_seat: {
+        Args: { p_new_seat_id: string; p_ticket_id: string }
+        Returns: Json
+      }
       reconcile_refund: {
         Args: {
           p_charge_id: string
@@ -4018,7 +4472,12 @@ export type Database = {
         }
         Returns: string
       }
+      release_expired_seat_reservations: { Args: never; Returns: number }
       release_holds: { Args: never; Returns: number }
+      rematerialize_seats_additive: {
+        Args: { p_event_id: string; p_seat_map_id: string }
+        Returns: Json
+      }
       resolve_chargeback: {
         Args: { p_dispute_id: string; p_outcome: string }
         Returns: Json
@@ -4029,6 +4488,7 @@ export type Database = {
           first_scanned_at: string
           holder_name: string
           result: string
+          seat_label: string
         }[]
       }
       transfer_ticket: {
@@ -4269,6 +4729,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       admin_role: ["super_admin", "admin", "support", "moderator"],
