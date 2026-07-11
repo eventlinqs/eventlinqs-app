@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { PlusCircle, Palette, UserPlus } from 'lucide-react'
+import { PlusCircle, Palette, Wallet } from 'lucide-react'
 
 type Action = {
   label: string
@@ -10,6 +10,8 @@ type Action = {
   badge?: string
 }
 
+// Every action here is live: no placeholders, no "soon" (Law 1 / Definition
+// of Done - a disabled coming-soon tile is a defect, not a teaser).
 const ACTIONS: Action[] = [
   {
     label: 'Create event',
@@ -24,12 +26,10 @@ const ACTIONS: Action[] = [
     icon: Palette,
   },
   {
-    label: 'Invite team member',
-    description: 'Add a teammate to manage your events.',
-    href: '#',
-    icon: UserPlus,
-    disabled: true,
-    badge: 'Soon',
+    label: 'Set up payouts',
+    description: 'Connect your bank so ticket money reaches you.',
+    href: '/dashboard/payouts',
+    icon: Wallet,
   },
 ]
 
