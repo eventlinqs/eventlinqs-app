@@ -1,0 +1,248 @@
+[
+  {
+    "path": "/",
+    "vp": "1440",
+    "status": 200,
+    "consoleErrors": [],
+    "brokenImages": []
+  },
+  {
+    "path": "/events",
+    "vp": "1440",
+    "status": 200,
+    "consoleErrors": [],
+    "brokenImages": []
+  },
+  {
+    "path": "/events/harbour-lights-live-geelong-waterfront-sessions-4muhm2",
+    "vp": "1440",
+    "status": 200,
+    "consoleErrors": [],
+    "brokenImages": []
+  },
+  {
+    "path": "/events/cellar-comedy-night-seated-season-opener",
+    "vp": "1440",
+    "status": 200,
+    "consoleErrors": [],
+    "brokenImages": []
+  },
+  {
+    "path": "/events/assign-mode-proof-night",
+    "vp": "1440",
+    "status": 200,
+    "consoleErrors": [],
+    "brokenImages": []
+  },
+  {
+    "path": "/pricing",
+    "vp": "1440",
+    "status": 200,
+    "consoleErrors": [],
+    "brokenImages": []
+  },
+  {
+    "path": "/organisers",
+    "vp": "1440",
+    "status": 200,
+    "consoleErrors": [],
+    "brokenImages": []
+  },
+  {
+    "path": "/about",
+    "vp": "1440",
+    "status": 200,
+    "consoleErrors": [],
+    "brokenImages": []
+  },
+  {
+    "path": "/city/geelong",
+    "vp": "1440",
+    "status": 200,
+    "consoleErrors": [],
+    "brokenImages": []
+  },
+  {
+    "path": "/city/melbourne",
+    "vp": "1440",
+    "status": 200,
+    "consoleErrors": [],
+    "brokenImages": []
+  },
+  {
+    "path": "/communities",
+    "vp": "1440",
+    "status": 200,
+    "consoleErrors": [],
+    "brokenImages": []
+  },
+  {
+    "path": "/community/first-nations",
+    "vp": "1440",
+    "status": 404,
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 ()"
+    ],
+    "brokenImages": []
+  },
+  {
+    "path": "/categories/music",
+    "vp": "1440",
+    "status": 404,
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 ()"
+    ],
+    "brokenImages": []
+  },
+  {
+    "path": "/artists/marlo-reyes-lojdor",
+    "vp": "1440",
+    "status": 200,
+    "consoleErrors": [],
+    "brokenImages": []
+  },
+  {
+    "path": "/waitlist",
+    "vp": "1440",
+    "status": 200,
+    "consoleErrors": [],
+    "brokenImages": []
+  },
+  {
+    "path": "/feed",
+    "vp": "1440",
+    "status": 200,
+    "consoleErrors": [],
+    "brokenImages": []
+  },
+  {
+    "path": "/help",
+    "vp": "1440",
+    "status": 200,
+    "consoleErrors": [],
+    "brokenImages": []
+  },
+  {
+    "path": "/",
+    "vp": "390",
+    "status": 200,
+    "consoleErrors": [],
+    "brokenImages": []
+  },
+  {
+    "path": "/events",
+    "vp": "390",
+    "status": 200,
+    "consoleErrors": [],
+    "brokenImages": []
+  },
+  {
+    "path": "/events/harbour-lights-live-geelong-waterfront-sessions-4muhm2",
+    "vp": "390",
+    "status": 200,
+    "consoleErrors": [],
+    "brokenImages": []
+  },
+  {
+    "path": "/events/cellar-comedy-night-seated-season-opener",
+    "vp": "390",
+    "status": 200,
+    "consoleErrors": [],
+    "brokenImages": []
+  },
+  {
+    "path": "/events/assign-mode-proof-night",
+    "vp": "390",
+    "status": 200,
+    "consoleErrors": [],
+    "brokenImages": []
+  },
+  {
+    "path": "/pricing",
+    "vp": "390",
+    "status": 200,
+    "consoleErrors": [],
+    "brokenImages": []
+  },
+  {
+    "path": "/organisers",
+    "vp": "390",
+    "status": 200,
+    "consoleErrors": [],
+    "brokenImages": []
+  },
+  {
+    "path": "/about",
+    "vp": "390",
+    "status": 200,
+    "consoleErrors": [],
+    "brokenImages": []
+  },
+  {
+    "path": "/city/geelong",
+    "vp": "390",
+    "status": 200,
+    "consoleErrors": [],
+    "brokenImages": []
+  },
+  {
+    "path": "/city/melbourne",
+    "vp": "390",
+    "status": 200,
+    "consoleErrors": [],
+    "brokenImages": []
+  },
+  {
+    "path": "/communities",
+    "vp": "390",
+    "status": 200,
+    "consoleErrors": [],
+    "brokenImages": []
+  },
+  {
+    "path": "/community/first-nations",
+    "vp": "390",
+    "status": 404,
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 ()"
+    ],
+    "brokenImages": []
+  },
+  {
+    "path": "/categories/music",
+    "vp": "390",
+    "status": 404,
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 ()"
+    ],
+    "brokenImages": []
+  },
+  {
+    "path": "/artists/marlo-reyes-lojdor",
+    "vp": "390",
+    "status": 200,
+    "consoleErrors": [],
+    "brokenImages": []
+  },
+  {
+    "path": "/waitlist",
+    "vp": "390",
+    "status": 200,
+    "consoleErrors": [],
+    "brokenImages": []
+  },
+  {
+    "path": "/feed",
+    "vp": "390",
+    "status": 200,
+    "consoleErrors": [],
+    "brokenImages": []
+  },
+  {
+    "path": "/help",
+    "vp": "390",
+    "status": 200,
+    "consoleErrors": [],
+    "brokenImages": []
+  }
+]
