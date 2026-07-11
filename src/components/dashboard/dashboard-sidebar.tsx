@@ -7,6 +7,7 @@ import {
   // BarChart3 import removed alongside the hidden /dashboard/insights
   // nav entry (AUDIT-FUNCTIONALITY-2026-05-23.md MEDIUM-4). Restore
   // when the Insights feature ships and the nav entry comes back.
+  Building2,
   Calendar,
   ChevronLeft,
   ChevronRight,
@@ -52,7 +53,12 @@ const ITEMS: Item[] = [
   // feature ships. Route file at src/app/dashboard/insights/page.tsx
   // stays on disk and remains reachable by direct URL.
   // { href: '/dashboard/insights', label: 'Insights', icon: BarChart3, organiserOnly: true, badge: 'Soon' },
-  { href: '/dashboard/payouts', label: 'Payouts', icon: Wallet, organiserOnly: true, badge: 'Soon' },
+  // Payouts is live (Stripe Connect onboarding + disbursements): the stale
+  // 'Soon' badge was an audit persona C finding.
+  { href: '/dashboard/payouts', label: 'Payouts', icon: Wallet, organiserOnly: true },
+  // Venues (and their seating charts) were reachable only through a wizard
+  // hint link; seated organisers need the front door (audit persona C).
+  { href: '/dashboard/venues', label: 'Venues', icon: Building2, organiserOnly: true },
   // Venue revenue entry removed with the Venue Revenue Sharing Program
   // (founder decision 2026-07-05).
   { href: '/dashboard/organisation', label: 'Organisation', icon: Settings, organiserOnly: true },
