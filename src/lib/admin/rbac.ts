@@ -37,6 +37,8 @@ export type AdminCapability =
   | 'admin.flags.manage'
   // Founder demand-signal dashboard + waitlist-to-invite bridge
   | 'admin.network.manage'
+  // Performer marketplace moderation: report queue, gig removal
+  | 'admin.marketplace.manage'
 
 /** Every capability, in display order. Source of truth for the role matrix. */
 export const ALL_CAPABILITIES: readonly AdminCapability[] = [
@@ -53,6 +55,7 @@ export const ALL_CAPABILITIES: readonly AdminCapability[] = [
   'admin.venues.manage',
   'admin.flags.manage',
   'admin.network.manage',
+  'admin.marketplace.manage',
 ]
 
 /** Human-readable capability descriptions for the admin UI matrix. */
@@ -70,6 +73,7 @@ export const CAPABILITY_LABELS: Record<AdminCapability, string> = {
   'admin.venues.manage': 'Manage venue revenue sharing',
   'admin.flags.manage': 'Switch platform feature stages',
   'admin.network.manage': 'View demand signal and issue founding invites',
+  'admin.marketplace.manage': 'Moderate the performer marketplace',
 }
 
 const ROLE_CAPABILITIES: Record<AdminRole, ReadonlySet<AdminCapability>> = {
@@ -88,6 +92,7 @@ const ROLE_CAPABILITIES: Record<AdminRole, ReadonlySet<AdminCapability>> = {
     'admin.venues.manage',
     'admin.flags.manage',
     'admin.network.manage',
+    'admin.marketplace.manage',
   ]),
   support: new Set<AdminCapability>([
     'admin.dashboard.view',
@@ -101,6 +106,7 @@ const ROLE_CAPABILITIES: Record<AdminRole, ReadonlySet<AdminCapability>> = {
     'admin.dashboard.view',
     'admin.profile.read',
     'admin.events.manage',
+    'admin.marketplace.manage',
   ]),
 }
 

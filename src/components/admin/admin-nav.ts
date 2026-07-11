@@ -24,6 +24,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
   { label: 'Disputes',         href: '/admin/disputes',   capability: 'admin.disputes.manage' },
   { label: 'Payouts',          href: '/admin/payouts',    capability: 'admin.payouts.disburse' },
   { label: 'Venue revenue',    href: '/admin/venues',     capability: 'admin.venues.manage' },
+  { label: 'Marketplace',      href: '/admin/marketplace', capability: 'admin.marketplace.manage' },
   { label: 'Feature flags',    href: '/admin/flags',      capability: 'admin.flags.manage' },
   { label: 'Admin staff',      href: '/admin/staff',      capability: 'admin.invites.manage' },
   { label: 'Analytics (GMV)',  href: '/admin/analytics',  capability: 'admin.pricing.manage' },

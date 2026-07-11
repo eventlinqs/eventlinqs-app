@@ -40,14 +40,17 @@ function clientReturning(row: { flag: string; enabled: boolean } | null, error?:
 }
 
 describe('broadcast flag resolver', () => {
-  test('seeded defaults match SPEC section 6', () => {
+  test('seeded defaults match SPEC section 6 plus the marketplace stages', () => {
     expect(BROADCAST_FLAG_DEFAULTS).toEqual({
       broadcast_share: true,
       broadcast_digest: false,
       broadcast_follow: false,
       broadcast_artists: false,
+      // Performer marketplace stages ship built but OFF by default.
+      gig_board: false,
+      artist_showcase: false,
     })
-    expect(BROADCAST_FLAGS).toHaveLength(4)
+    expect(BROADCAST_FLAGS).toHaveLength(6)
   })
 
   test('DB row wins over the default in both directions', async () => {

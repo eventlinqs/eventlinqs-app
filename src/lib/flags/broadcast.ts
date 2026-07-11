@@ -28,6 +28,10 @@ export const BROADCAST_FLAGS = [
   'broadcast_digest',
   'broadcast_follow',
   'broadcast_artists',
+  // Performer marketplace stages ride the same governed switch system
+  // (admin surface, audit log, cache) as the broadcast stages.
+  'gig_board',
+  'artist_showcase',
 ] as const
 
 export type BroadcastFlag = (typeof BROADCAST_FLAGS)[number]
@@ -45,6 +49,8 @@ export const BROADCAST_FLAG_DEFAULTS: Record<BroadcastFlag, boolean> = {
   broadcast_digest: false,
   broadcast_follow: false,
   broadcast_artists: false,
+  gig_board: false,
+  artist_showcase: false,
 }
 
 // Minimal structural type so both the service-role admin client and the

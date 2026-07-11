@@ -24,6 +24,10 @@ export type PolicyName =
   | 'waitlist-join'
   | 'ai-chat'
   | 'ai-chat-daily'
+  | 'gig-post'
+  | 'gig-apply'
+  | 'booking-request'
+  | 'marketplace-report'
 
 export type Policy = {
   /** Stable prefix used to namespace the redis key. Keep short. */
@@ -152,5 +156,36 @@ export const POLICIES: Record<PolicyName, Policy> = {
     failClosed: true,
     rationale:
       'Daily AI assistant cap per user (or IP for guests). 120 turns a day is far beyond any legitimate support or onboarding session and caps the worst-case daily spend a single abuser can inflict, alongside the platform-wide monthly cost guard.',
+  },
+  'gig-post': {
+    keyPrefix: 'gig-p',
+    limit: 10,
+    windowSec: 86400,
+    failClosed: true,
+    rationale:
+      'Gig postings per organiser per day. Ten real gigs a day is beyond any venue booker; higher rates are listing spam. Keyed by user id.',
+  },
+  'gig-apply': {
+    keyPrefix: 'gig-a',
+    limit: 5,
+    windowSec: 600,
+    failClosed: true,
+    rationale:
+      'Gig applications per performer per ten minutes. A considered application takes minutes to write; five per window stops spray-applying while never blocking a genuine performer. Keyed by user id.',
+  },
+  'booking-request': {
+    keyPrefix: 'bkg-r',
+    limit: 10,
+    windowSec: 3600,
+    failClosed: true,
+    rationale:
+      'Structured booking and mentoring requests per sender per hour. The pending-pair unique index already stops duplicates; this caps cross-target spraying. Keyed by user id.',
+  },
+  'marketplace-report': {
+    keyPrefix: 'mkt-rep',
+    limit: 10,
+    windowSec: 86400,
+    rationale:
+      'Abuse reports per user per day. Enough for genuine moderation help, low enough to stop report-bombing a performer or organiser.',
   },
 }
