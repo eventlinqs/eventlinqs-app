@@ -373,7 +373,11 @@ export default async function EventDetailPage({ params }: Props) {
 
   const now = new Date()
   const isTicketingSuspended = event.status === 'paused' || event.status === 'postponed'
-  const allTiers = event.ticket_tiers
+  // Embedded joins return in arbitrary order; the organiser's tier order
+  // (sort_order, then creation) is the display order everywhere.
+  const allTiers = [...event.ticket_tiers].sort(
+    (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.created_at.localeCompare(b.created_at)
+  )
 
   const seatsPromise = event.has_reserved_seating
     ? (async () => {
