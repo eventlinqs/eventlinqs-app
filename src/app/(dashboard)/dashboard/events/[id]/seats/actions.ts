@@ -202,6 +202,71 @@ export async function reassignSeatOccupant(
 }
 
 /**
+ * Assign a seat to a paid ticket that has none yet (organiser-assigns mode,
+ * or any unseated ticket on a seated event). Rides the same atomic
+ * reassign_ticket_seat RPC as Move attendee - the RPC's no-old-seat path -
+ * so the ticket, QR and door scan reflect the seat immediately. The holder
+ * is emailed their seat, best-effort.
+ */
+export async function assignTicketToSeat(
+  eventId: string,
+  ticketId: string,
+  toSeatId: string
+): Promise<ReassignResult> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  const event = await getEventWithAuth(eventId, user.id)
+  if (!event) return { error: 'Event not found or access denied' }
+
+  const admin = createAdminClient()
+
+  const { data: ticket } = await admin
+    .from('tickets')
+    .select('id, holder_name, holder_email, event_id, seat_id, status')
+    .eq('id', ticketId)
+    .eq('event_id', eventId)
+    .maybeSingle()
+  if (!ticket) return { error: 'Ticket not found for this event.' }
+  if (ticket.seat_id) return { error: 'This ticket already has a seat - use Move attendee instead.' }
+  if (ticket.status !== 'valid') return { error: 'Only a valid ticket can be assigned a seat.' }
+
+  const { data: moved, error: rpcError } = await admin.rpc('reassign_ticket_seat', {
+    p_ticket_id: ticket.id,
+    p_new_seat_id: toSeatId,
+  })
+  if (rpcError) {
+    console.error('[seats] assignTicketToSeat failed:', rpcError)
+    return { error: rpcError.message ?? 'Failed to assign the seat.' }
+  }
+
+  const result = moved as {
+    new_seat: { row_label: string; seat_number: string }
+  }
+  const toLabel = `Row ${result.new_seat.row_label}, Seat ${result.new_seat.seat_number}`
+
+  let emailed = false
+  if (ticket.holder_email) {
+    try {
+      await sendEmail({
+        to: ticket.holder_email,
+        subject: `Your seat for ${event.title} has been assigned`,
+        text: `Hi ${ticket.holder_name ?? 'there'},\n\nThe organiser has assigned your seat for ${event.title}.\n\nYour seat: ${toLabel}\n\nYour ticket and its QR code stay exactly the same - the seat now shows on the ticket, and the door scanner knows. Nothing else about your order changes.\n\nEventLinqs`,
+        html: `<p>Hi ${ticket.holder_name ?? 'there'},</p><p>The organiser has assigned your seat for <strong>${event.title}</strong>.</p><p><strong>Your seat: ${toLabel}</strong></p><p>Your ticket and its QR code stay exactly the same - the seat now shows on the ticket, and the door scanner knows. Nothing else about your order changes.</p><p>EventLinqs</p>`,
+      })
+      emailed = true
+    } catch (err) {
+      console.error('[seats] seat-assignment email failed (assignment still applied):', err)
+    }
+  }
+
+  revalidatePath(`/dashboard/events/${eventId}/seats`)
+  if (event.slug) revalidatePath(`/events/${event.slug}`)
+  return { moved: { from: null, to: toLabel, holder: ticket.holder_name, emailed } }
+}
+
+/**
  * Sync a LIVE event with its edited seating chart, additively: new seats are
  * added, free seats repositioned, never-sold seats missing from the chart
  * removed. Reserved, sold, and held seats are provably untouched (the RPC

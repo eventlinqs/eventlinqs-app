@@ -86,6 +86,7 @@ type FormData = {
   // M4: Reserved seating
   has_reserved_seating: boolean
   allow_seat_self_service: boolean
+  organiser_assigns_seats: boolean
   venue_id: string
   seat_map_id: string
   // Phase 3B: Squad booking
@@ -202,6 +203,7 @@ function getDefaultFormData(): FormData {
     max_capacity: '',
     has_reserved_seating: false,
     allow_seat_self_service: false,
+    organiser_assigns_seats: false,
     venue_id: '',
     seat_map_id: '',
     squad_booking_enabled: true,
@@ -271,6 +273,7 @@ function fromExistingEvent(
     max_capacity: number | null
     has_reserved_seating?: boolean
     allow_seat_self_service?: boolean
+    organiser_assigns_seats?: boolean
     venue_id?: string | null
     seat_map_id?: string | null
     squad_booking_enabled?: boolean | null
@@ -325,6 +328,7 @@ function fromExistingEvent(
     max_capacity: event.max_capacity?.toString() ?? '',
     has_reserved_seating: event.has_reserved_seating ?? false,
     allow_seat_self_service: event.allow_seat_self_service ?? false,
+    organiser_assigns_seats: event.organiser_assigns_seats ?? false,
     venue_id: event.venue_id ?? '',
     seat_map_id: event.seat_map_id ?? '',
     squad_booking_enabled: event.squad_booking_enabled ?? false,
@@ -454,6 +458,7 @@ export function EventForm({
     scheduled_publish_at: null,
     has_reserved_seating: formData.has_reserved_seating,
     allow_seat_self_service: formData.has_reserved_seating ? formData.allow_seat_self_service : false,
+    organiser_assigns_seats: formData.has_reserved_seating ? formData.organiser_assigns_seats : false,
     venue_id: formData.has_reserved_seating ? (formData.venue_id || null) : null,
     seat_map_id: formData.has_reserved_seating ? (formData.seat_map_id || null) : null,
     squad_booking_enabled: formData.squad_booking_enabled,
@@ -1512,14 +1517,48 @@ export function EventForm({
                   const tierCapacity = formData.ticket_tiers.reduce((s, t) => s + (parseInt(t.total_capacity) || 0), 0)
                   if (seatCount === 0) return null
                   const covered = tierCapacity >= seatCount
+                  const shortfall = seatCount - tierCapacity
                   return (
                     <div className={`rounded-lg px-3 py-2 text-xs ${covered ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-800'}`}>
                       {covered
                         ? `Capacity check: your tickets cover all ${seatCount} seats in this chart.`
-                        : `Capacity check: this chart has ${seatCount} seats but your tickets only cover ${tierCapacity}. Raise a tier capacity so every seat can sell.`}
+                        : `Capacity check: this chart has ${seatCount} seats but your tickets only cover ${tierCapacity}.`}
+                      {!covered && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            // One-action fix: raise the first tier's capacity by
+                            // the shortfall so every seat can sell.
+                            const tiers = formData.ticket_tiers.map((t, i) =>
+                              i === 0
+                                ? { ...t, total_capacity: ((parseInt(t.total_capacity) || 0) + shortfall).toString() }
+                                : t,
+                            )
+                            set('ticket_tiers', tiers)
+                          }}
+                          className="ml-2 rounded-full border border-amber-300 bg-white px-2.5 py-0.5 text-[11px] font-semibold text-amber-800 hover:bg-amber-100"
+                        >
+                          Fix it: add {shortfall} to {formData.ticket_tiers[0]?.name || 'the first tier'}
+                        </button>
+                      )}
                     </div>
                   )
                 })()}
+                <label className="flex items-start gap-3 rounded-lg border border-ink-100 bg-ink-50/50 p-3">
+                  <input
+                    type="checkbox"
+                    checked={formData.organiser_assigns_seats}
+                    onChange={e => set('organiser_assigns_seats', e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-ink-300 text-gold-500 focus:ring-gold-400"
+                  />
+                  <span className="text-sm text-ink-700">
+                    <span className="font-medium text-ink-900">I&apos;ll assign seats myself</span>
+                    <span className="block text-xs text-ink-500">
+                      Buyers purchase tickets without picking seats; you allocate seats from Seat Management
+                      after each sale. Tickets, QR codes and the door scan update the moment you assign.
+                    </span>
+                  </span>
+                </label>
                 <label className="flex items-start gap-3 rounded-lg border border-ink-100 bg-ink-50/50 p-3">
                   <input
                     type="checkbox"

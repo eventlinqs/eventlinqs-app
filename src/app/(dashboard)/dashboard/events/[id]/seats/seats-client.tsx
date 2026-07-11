@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { holdSeat, releaseSeat, reassignSeatOccupant } from './actions'
+import { holdSeat, releaseSeat, reassignSeatOccupant, assignTicketToSeat } from './actions'
 
 interface Seat {
   id: string
@@ -29,10 +29,19 @@ interface Section {
   color: string
 }
 
+interface UnassignedTicket {
+  id: string
+  ticket_code: string
+  holder_name: string | null
+  holder_email: string | null
+  item_name: string
+}
+
 interface Props {
   eventId: string
   seats: Seat[]
   sections: Section[]
+  unassignedTickets?: UnassignedTicket[]
 }
 
 const STATUS_LABEL: Record<string, { label: string; bg: string; text: string }> = {
@@ -46,8 +55,11 @@ const STATUS_LABEL: Record<string, { label: string; bg: string; text: string }> 
 
 const HOLD_REASONS = ['comp', 'vip', 'accessibility', 'sponsor', 'media', 'artist', 'staff']
 
-export function SeatsManagementClient({ eventId, seats, sections }: Props) {
+export function SeatsManagementClient({ eventId, seats, sections, unassignedTickets = [] }: Props) {
   const [seatList, setSeatList] = useState<Seat[]>(seats)
+  const [pendingTickets, setPendingTickets] = useState<UnassignedTicket[]>(unassignedTickets)
+  const [assignTargets, setAssignTargets] = useState<Record<string, string>>({})
+  const [assignNotice, setAssignNotice] = useState<string | null>(null)
   const [holdingId, setHoldingId] = useState<string | null>(null)
   const [holdReason, setHoldReason] = useState('comp')
   const [holdNotes, setHoldNotes] = useState('')
@@ -118,6 +130,31 @@ export function SeatsManagementClient({ eventId, seats, sections }: Props) {
     }, new Map<string, Seat[]>())
   )
 
+  function doAssign(ticket: UnassignedTicket) {
+    const targetId = assignTargets[ticket.id]
+    if (!targetId) return
+    setError(null)
+    setAssignNotice(null)
+    startTransition(async () => {
+      const result = await assignTicketToSeat(eventId, ticket.id, targetId)
+      if (result.error) {
+        setError(result.error)
+        return
+      }
+      setSeatList(prev => prev.map(s => (s.id === targetId ? { ...s, status: 'sold' } : s)))
+      setPendingTickets(prev => prev.filter(t => t.id !== ticket.id))
+      if (result.moved) {
+        setAssignNotice(
+          `${result.moved.holder ?? ticket.holder_email ?? 'The attendee'} assigned to ${result.moved.to}.` +
+            ` Their ticket and the door scan already show the seat.` +
+            (result.moved.emailed
+              ? ' They have been emailed their seat.'
+              : ' The email notification could not be sent - let them know directly.'),
+        )
+      }
+    })
+  }
+
   function doHold(seatId: string) {
     setError(null)
     startTransition(async () => {
@@ -158,6 +195,53 @@ export function SeatsManagementClient({ eventId, seats, sections }: Props) {
 
   return (
     <div className="space-y-6">
+      {/* Organiser-assigns mode: paid tickets waiting for a seat. */}
+      {pendingTickets.length > 0 && (
+        <div className="rounded-xl border border-gold-300 bg-gold-50/50 p-4">
+          <p className="text-sm font-semibold text-ink-900">
+            Awaiting seat assignment ({pendingTickets.length})
+          </p>
+          <p className="mt-0.5 text-xs text-ink-500">
+            These attendees have paid and are waiting for you to allocate their seat. Their ticket,
+            QR code and the door scan update the moment you assign, and they are emailed their seat.
+          </p>
+          <ul className="mt-3 space-y-2">
+            {pendingTickets.map(t => (
+              <li key={t.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-ink-200 bg-white px-3 py-2">
+                <span className="min-w-0 flex-1 text-sm text-ink-900">
+                  <span className="font-medium">{t.holder_name || t.holder_email || t.ticket_code}</span>
+                  <span className="ml-2 text-xs text-ink-500">{t.item_name} · {t.ticket_code}</span>
+                </span>
+                <select
+                  value={assignTargets[t.id] ?? ''}
+                  onChange={e => setAssignTargets(prev => ({ ...prev, [t.id]: e.target.value }))}
+                  className="rounded-lg border border-ink-200 px-2 py-1.5 text-xs focus:border-gold-500 focus:outline-none"
+                  aria-label={`Seat for ${t.holder_name || t.ticket_code}`}
+                >
+                  <option value="">Choose a seat…</option>
+                  {availableTargets.map(target => (
+                    <option key={target.id} value={target.id}>{target.label}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  disabled={isPending || !assignTargets[t.id]}
+                  onClick={() => doAssign(t)}
+                  className="rounded-full bg-gold-500 px-3 py-1.5 text-xs font-semibold text-ink-900 hover:bg-gold-600 disabled:opacity-50"
+                >
+                  Assign seat
+                </button>
+              </li>
+            ))}
+          </ul>
+          {assignNotice && (
+            <p role="status" className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+              {assignNotice}
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {[

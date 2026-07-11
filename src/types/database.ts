@@ -967,6 +967,7 @@ export type Database = {
           max_capacity: number | null
           metadata: Json | null
           organisation_id: string
+          organiser_assigns_seats: boolean
           parent_event_id: string | null
           published_at: string | null
           queue_admission_window_minutes: number
@@ -1032,6 +1033,7 @@ export type Database = {
           max_capacity?: number | null
           metadata?: Json | null
           organisation_id: string
+          organiser_assigns_seats?: boolean
           parent_event_id?: string | null
           published_at?: string | null
           queue_admission_window_minutes?: number
@@ -1097,6 +1099,7 @@ export type Database = {
           max_capacity?: number | null
           metadata?: Json | null
           organisation_id?: string
+          organiser_assigns_seats?: boolean
           parent_event_id?: string | null
           published_at?: string | null
           queue_admission_window_minutes?: number
@@ -4357,6 +4360,7 @@ export type Database = {
           max_capacity: number | null
           metadata: Json | null
           organisation_id: string
+          organiser_assigns_seats: boolean
           parent_event_id: string | null
           published_at: string | null
           queue_admission_window_minutes: number
