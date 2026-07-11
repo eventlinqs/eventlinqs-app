@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { after } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -129,8 +130,11 @@ export async function postGigAction(input: z.infer<typeof PostGigSchema>): Promi
 
   if (error || !created) return { ok: false, error: 'Could not post the gig. Try again.' }
 
-  // Alert matching available performers. Best-effort, never blocks posting.
-  notifyMatchingPerformers(admin, created).catch(() => {})
+  // Alert matching available performers after the response is sent: after()
+  // guarantees post-response work runs on serverless (a bare fire-and-forget
+  // promise can be frozen with the instance). Best-effort, never blocks
+  // posting.
+  after(() => notifyMatchingPerformers(admin, created).catch(() => {}))
 
   revalidatePath('/gigs')
   revalidatePath('/dashboard/gigs')
@@ -238,7 +242,9 @@ export async function applyToGigAction(input: z.infer<typeof ApplySchema>): Prom
     .eq('id', gig.organisation_id)
     .maybeSingle()
   if (org?.owner_id) {
-    dispatchMarketplaceAlert({
+    // Awaited so the send is never lost to a frozen serverless instance;
+    // .catch keeps a notify fault from failing the application.
+    await dispatchMarketplaceAlert({
       admin,
       userId: org.owner_id as string,
       type: 'gig_application',
@@ -399,7 +405,7 @@ export async function sendBookingRequestAction(
     .eq('id', req.artistId)
     .maybeSingle()
   if (artist?.owner_user_id) {
-    dispatchMarketplaceAlert({
+    await dispatchMarketplaceAlert({
       admin,
       userId: artist.owner_user_id as string,
       type: 'booking_request',
@@ -473,9 +479,9 @@ export async function respondToRequestAction(
     }
   }
 
-  // Tell the sender. Best-effort.
+  // Tell the sender. Best-effort, awaited so the send is never lost.
   if (request.sent_by) {
-    dispatchMarketplaceAlert({
+    await dispatchMarketplaceAlert({
       admin,
       userId: request.sent_by,
       type: 'booking_accepted',
@@ -549,7 +555,7 @@ export async function sendMentoringRequestAction(
     return { ok: false, error: 'Could not send the request. Try again.' }
   }
 
-  dispatchMarketplaceAlert({
+  await dispatchMarketplaceAlert({
     admin,
     userId: mentor.owner_user_id as string,
     type: 'mentoring_request',
