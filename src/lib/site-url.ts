@@ -9,9 +9,13 @@
  * production Open Graph and Twitter tags across every marketing page.
  *
  *   1. NEXT_PUBLIC_SITE_URL            explicit override (any environment)
- *   2. VERCEL_PROJECT_PRODUCTION_URL   stable production domain (Vercel, build time)
- *   3. VERCEL_URL                      per-deployment URL (correct OG on preview deployments)
- *   4. https://eventlinqs.com          last-resort production default (never localhost)
+ *   2. VERCEL_URL on PREVIEW deploys   the deployment itself - a preview's
+ *      emails/links must resolve against the preview's own build + database,
+ *      never the production domain (audit finding 2026-07-11: staging ticket
+ *      emails pointed at production, where the ticket does not exist)
+ *   3. VERCEL_PROJECT_PRODUCTION_URL   stable production domain (Vercel, build time)
+ *   4. VERCEL_URL                      per-deployment URL (correct OG on preview deployments)
+ *   5. https://eventlinqs.com          last-resort production default (never localhost)
  *
  * VERCEL_* are bare hostnames with no scheme, so https:// is prefixed.
  * The value is normalised to its origin (no trailing slash, no path) for
@@ -38,6 +42,7 @@ function withScheme(value: string): string {
 export function getSiteUrl(): string {
   const candidate =
     process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.VERCEL_ENV === 'preview' ? process.env.VERCEL_URL : undefined) ||
     process.env.VERCEL_PROJECT_PRODUCTION_URL ||
     process.env.VERCEL_URL ||
     PRODUCTION_FALLBACK
