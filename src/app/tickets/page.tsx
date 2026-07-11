@@ -151,9 +151,6 @@ export default async function MyTicketsPage() {
                           {t.seat.note && (
                             <p className="mt-0.5 text-xs font-medium text-gold-700">{t.seat.note}</p>
                           )}
-                          {t.event?.allow_seat_self_service && t.status === 'valid' && (
-                            <ChangeSeatControl ticketId={t.id} />
-                          )}
                         </>
                       )}
                       {!t.seat && t.event?.organiser_assigns_seats && t.status === 'valid' && (
@@ -171,6 +168,14 @@ export default async function MyTicketsPage() {
                     </span>
                   </div>
                 </Link>
+                {/* Interactive controls live OUTSIDE the card link: a button
+                    nested in an anchor both navigates and acts (audit persona
+                    B finding), and nested interactives fail accessibility. */}
+                {t.seat && t.event?.allow_seat_self_service && t.status === 'valid' && (
+                  <div className="px-5">
+                    <ChangeSeatControl ticketId={t.id} />
+                  </div>
+                )}
                 {t.status === 'valid' && (
                   <TransferTicketForm ticketId={t.id} eventTitle={t.event?.title ?? 'this event'} />
                 )}
