@@ -20,7 +20,7 @@ export default async function SeatsManagementPage({ params }: Props) {
   const admin = createAdminClient()
   const { data: event, error: eventError } = await admin
     .from('events')
-    .select('id, title, organisation_id, has_reserved_seating, seat_map_id')
+    .select('id, title, organisation_id, has_reserved_seating, seat_map_id, organiser_assigns_seats')
     .eq('id', eventId)
     .single()
 
@@ -67,7 +67,7 @@ export default async function SeatsManagementPage({ params }: Props) {
     }
     return { data: all, error: null }
   }
-  const [seatsResult, sectionsResult] = await Promise.all([
+  const [seatsResult, sectionsResult, unassignedResult] = await Promise.all([
     fetchAllSeats(),
     event.seat_map_id
       ? supabase
@@ -76,6 +76,17 @@ export default async function SeatsManagementPage({ params }: Props) {
           .eq('seat_map_id', event.seat_map_id)
           .order('sort_order')
       : Promise.resolve({ data: [] as { id: string; name: string; color: string }[], error: null }),
+    // Organiser-assigns mode: paid tickets awaiting a seat. Admin client so
+    // the organiser sees every holder regardless of buyer-scoped RLS.
+    event.organiser_assigns_seats
+      ? admin
+          .from('tickets')
+          .select('id, ticket_code, holder_name, holder_email, order_item:order_items(item_name)')
+          .eq('event_id', eventId)
+          .eq('status', 'valid')
+          .is('seat_id', null)
+          .order('created_at')
+      : Promise.resolve({ data: [], error: null }),
   ])
 
   if (seatsResult.error) {
@@ -108,6 +119,13 @@ export default async function SeatsManagementPage({ params }: Props) {
         eventId={eventId}
         seats={seatsResult.data ?? []}
         sections={sectionsResult.data ?? []}
+        unassignedTickets={(unassignedResult.data ?? []).map(t => ({
+          id: t.id,
+          ticket_code: t.ticket_code,
+          holder_name: t.holder_name,
+          holder_email: t.holder_email,
+          item_name: (t.order_item as { item_name?: string } | null)?.item_name ?? 'Admission',
+        }))}
       />
     </div>
   )

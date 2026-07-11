@@ -25,6 +25,7 @@ interface MyTicketRow {
     venue_name: string | null
     venue_city: string | null
     allow_seat_self_service: boolean | null
+    organiser_assigns_seats: boolean | null
   } | null
   order_item: { item_name: string } | null
   /** Reserved seating: the ticket's seat, joined via tickets.seat_id. */
@@ -70,7 +71,7 @@ export default async function MyTicketsPage() {
   const { data } = await supabase
     .from('tickets')
     .select(
-      'id, ticket_code, secret, status, created_at, event:events(title, start_date, venue_name, venue_city, allow_seat_self_service), order_item:order_items(item_name), seat:seats(row_label, seat_number, note, section:seat_map_sections(name))',
+      'id, ticket_code, secret, status, created_at, event:events(title, start_date, venue_name, venue_city, allow_seat_self_service, organiser_assigns_seats), order_item:order_items(item_name), seat:seats(row_label, seat_number, note, section:seat_map_sections(name))',
     )
     .order('created_at', { ascending: false })
 
@@ -150,10 +151,13 @@ export default async function MyTicketsPage() {
                           {t.seat.note && (
                             <p className="mt-0.5 text-xs font-medium text-gold-700">{t.seat.note}</p>
                           )}
-                          {t.event?.allow_seat_self_service && t.status === 'valid' && (
-                            <ChangeSeatControl ticketId={t.id} />
-                          )}
                         </>
+                      )}
+                      {!t.seat && t.event?.organiser_assigns_seats && t.status === 'valid' && (
+                        <p className="mt-1 text-sm text-ink-600">
+                          Seat: allocated by the organiser before the event - it will appear here
+                          and on your ticket automatically.
+                        </p>
                       )}
                       <p className="mt-1 text-xs text-ink-500">
                         {t.order_item?.item_name ?? 'Admission'} · {t.ticket_code}
@@ -164,6 +168,14 @@ export default async function MyTicketsPage() {
                     </span>
                   </div>
                 </Link>
+                {/* Interactive controls live OUTSIDE the card link: a button
+                    nested in an anchor both navigates and acts (audit persona
+                    B finding), and nested interactives fail accessibility. */}
+                {t.seat && t.event?.allow_seat_self_service && t.status === 'valid' && (
+                  <div className="px-5">
+                    <ChangeSeatControl ticketId={t.id} />
+                  </div>
+                )}
                 {t.status === 'valid' && (
                   <TransferTicketForm ticketId={t.id} eventTitle={t.event?.title ?? 'this event'} />
                 )}

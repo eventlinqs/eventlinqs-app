@@ -1,0 +1,12 @@
+{
+  "before": {
+    "row_label": "A",
+    "seat_number": "4"
+  },
+  "after": {
+    "row_label": "C",
+    "seat_number": "1"
+  },
+  "oldSeatFreed": true,
+  "consoleErrors": []
+}

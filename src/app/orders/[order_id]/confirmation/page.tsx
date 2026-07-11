@@ -82,7 +82,7 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
 
   const { data: event } = await adminClient
     .from('events')
-    .select('title, start_date, end_date, timezone, venue_name, venue_city, venue_country, slug')
+    .select('title, start_date, end_date, timezone, venue_name, venue_city, venue_country, slug, has_reserved_seating, organiser_assigns_seats')
     .eq('id', fullOrder.event_id)
     .single()
 
@@ -256,6 +256,12 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
                       <div className="flex justify-between gap-4">
                         <dt className="text-ink-600">Seat</dt>
                         <dd className="font-semibold text-ink-900">{t.seatLabel}</dd>
+                      </div>
+                    )}
+                    {!t.seatLabel && event.has_reserved_seating && event.organiser_assigns_seats && (
+                      <div className="flex justify-between gap-4">
+                        <dt className="text-ink-600">Seat</dt>
+                        <dd className="font-medium text-ink-700">Allocated by the organiser before the event</dd>
                       </div>
                     )}
                     {t.seatNote && (

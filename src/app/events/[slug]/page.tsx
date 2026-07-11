@@ -373,7 +373,11 @@ export default async function EventDetailPage({ params }: Props) {
 
   const now = new Date()
   const isTicketingSuspended = event.status === 'paused' || event.status === 'postponed'
-  const allTiers = event.ticket_tiers
+  // Embedded joins return in arbitrary order; the organiser's tier order
+  // (sort_order, then creation) is the display order everywhere.
+  const allTiers = [...event.ticket_tiers].sort(
+    (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.created_at.localeCompare(b.created_at)
+  )
 
   const seatsPromise = event.has_reserved_seating
     ? (async () => {
@@ -511,7 +515,11 @@ export default async function EventDetailPage({ params }: Props) {
 
   // The seated experience runs only when the flag is on AND the event has a
   // materialised chart; otherwise the event sells as general admission.
-  const seatedActive = event.has_reserved_seating && seatedFlagEnabled && eventSeats.length > 0
+  // Organiser-assigns mode: the event stays seated (dashboard, tickets, scan)
+  // but buyers purchase GA-style and the organiser allocates seats post-sale.
+  const organiserAssigns = Boolean(event.organiser_assigns_seats)
+  const seatedActive =
+    event.has_reserved_seating && seatedFlagEnabled && eventSeats.length > 0 && !organiserAssigns
 
   // Mixed events: tiers not bound to any seat sell as general admission
   // alongside the chart (a standing-zone tier, a GA balcony). Seat-bound
@@ -1025,6 +1033,13 @@ export default async function EventDetailPage({ params }: Props) {
                   <div className="sticky top-20 space-y-5">
                     <div className="rounded-2xl border border-ink-200 bg-white p-6 shadow-sm">
                       <SectionHeader eyebrow="Get in" title="Tickets" size="sm" className="mb-5" />
+
+                      {event.has_reserved_seating && organiserAssigns && (
+                        <p className="mb-4 rounded-lg bg-ink-50 px-3 py-2 text-xs text-ink-600">
+                          This is a seated event. The organiser allocates your seat after purchase
+                          and it appears on your ticket automatically.
+                        </p>
+                      )}
 
                       <TicketPanelClient
                         eventId={event.id}

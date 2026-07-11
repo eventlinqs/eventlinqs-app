@@ -1,4 +1,4 @@
-# Reserved seating: supremacy comparison (2026-07-10, final)
+# Reserved seating: supremacy comparison (2026-07-11, parity-audit update)
 
 Feature-by-feature comparison of EventLinqs reserved seating against the
 founder-chosen reference standard (Humanitix), studied strictly as a user via
@@ -63,6 +63,7 @@ actually accomplish.
 | Capability | Reference standard | EventLinqs | Verdict | Our evidence |
 |---|---|---|---|---|
 | Organiser reassignment after purchase | Move any holder via manage attendees; ticket updates; NO notification to the attendee | Move attendee on any sold seat: atomic RPC (old seat freed, new seat sold, ticket repointed), ticket/email/scan reflect immediately, AND the holder is emailed about the change | BETTER (built this pass) | `reassign_ticket_seat` (migration 20260710000001); `reassignSeatOccupant`; E2E proof |
+| Organiser-assigns mode (buy first, seats allocated later) | Documented flow: sell tiers without the map, organiser assigns from the order list | Per-event toggle (`events.organiser_assigns_seats`, migration 20260711000004): buyers purchase GA-style with an honest "allocated by the organiser" state on event page, confirmation and my-tickets; the organiser assigns from an Awaiting-seat panel in Seat Management; ticket, QR and door scan resolve the seat live and the holder is EMAILED their seat | EQUAL, BETTER on notification (built 2026-07-11) | `assignTicketToSeat`; awaiting panel in `seats-client.tsx`; E2E proof `docs/seating/evidence-assign-mode-2026-07-11/` |
 | Buyer self-service seat change | Optional toggle via manage-order | Per-event opt-in (events.allow_seat_self_service); the holder moves themselves to any available seat from /tickets through the same proven reassign path, so the ticket, QR, email and door scan update | EQUAL | `app/actions/self-seat.ts`; `change-seat-control.tsx`; wizard step 6 toggle |
 | Door check-in with seat | Seat shown in their scanning app | Seat label on the ADMIT/REJECT scan panel, resolved live so post-move scans show the new seat | EQUAL | `scan_ticket` seat_label; scanner UI |
 | Sold vs remaining views | Assigned-tab list; no inventory report documented | Live stats tiles (total/available/held/reserved/sold), status + section filters, room view coloured by live status | BETTER at-a-glance; no CSV export (noted) | `seats-client.tsx` |
@@ -88,6 +89,26 @@ table above carries zero BEHIND:
    writes the note into the chart layout; `materialize_seats` carries it to
    `seats.note`; and it shows on my-tickets, the confirmation and the
    confirmation email, with a pinned unit test on the generator.
+
+## Parity-audit additions (2026-07-11)
+
+1. **Organiser-assigns mode BUILT.** The third flagged mechanic: buyers buy a
+   seated event without picking seats; the organiser allocates post-sale.
+   Proven A to Z on staging (fixture `assign-mode-proof-night`): purchase with
+   no picker + honest awaiting states, Awaiting-seat panel assignment through
+   the real UI, DB seat sold, QR page carrying the seat, and the assignment
+   email delivered to a real inbox. Edge kept: the holder is notified on every
+   organiser-initiated assignment or move (the reference standard notifies on
+   neither).
+2. **Latent RPC defect found and root-fixed.** `reassign_ticket_seat`'s
+   documented unassigned-ticket path threw `record "v_old_seat" is not
+   assigned yet` (the record is never selected when the ticket has no seat).
+   Fixed with scalar old-seat variables (migration 20260711000005); the
+   with-old-seat path is byte-for-byte behaviourally unchanged.
+3. **Capacity check one-action fix.** The wizard's capacity-coverage warning
+   now carries a "Fix it: add N to [tier]" button that raises the first
+   tier's capacity by the shortfall - warning plus one-action fix, matching
+   the reference standard's auto-match affordance.
 
 Every founder-named gap from the earlier pass (post-sale reassignment,
 uneven-row centring, builder access beyond the owner) was already closed, plus

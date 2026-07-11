@@ -1,0 +1,11 @@
+{
+  "joined": true,
+  "unsubLink": "https://eventlinqs-staging.vercel.app/waitlist/unsubscribe/f3b536d2-e233-4091-b3ab-bd312f8e29dc",
+  "unsubOk": true,
+  "consoleErrors": [
+    {
+      "step": "email",
+      "text": "Loading the script 'https://assets.apollo.io/micro/website-tracker/tracker.iife.js?nocache=npixtf' violates the following Content Security Policy directive: \"script-src 'self' http://js.hsforms.net ht"
+    }
+  ]
+}

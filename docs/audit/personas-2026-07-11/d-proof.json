@@ -1,0 +1,23 @@
+{
+  "secondEvent": {
+    "id": "a56b5c62-883b-4c0e-9cdf-5e2a860c5338",
+    "slug": "persona-c-trivia-return-kgy3b1",
+    "seat_map_id": "3987c898-a5d2-4b3d-8334-db32e65d9836",
+    "seats": 32
+  },
+  "attendeeVisible": true,
+  "exportFile": "docs/audit/personas-2026-07-11/d-attendees-export.csv",
+  "moveNotice": "Persona D Guest moved to Row A, Seat 6. Their ticket and the door scan already show the new seat. They have been emailed about the change.",
+  "moved": {
+    "before": {
+      "row_label": "A",
+      "seat_number": "1"
+    },
+    "after": {
+      "row_label": "A",
+      "seat_number": "6"
+    },
+    "oldSeatFreed": true
+  },
+  "consoleErrors": []
+}

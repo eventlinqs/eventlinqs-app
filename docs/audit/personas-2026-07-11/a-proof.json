@@ -1,0 +1,18 @@
+{
+  "sharedLink": "https://eventlinqs-staging.vercel.app/events/harbour-lights-live-geelong-waterfront-sessions-4muhm2",
+  "orderId": "31a1040d-c3ac-4dca-ba4c-627cfa832723",
+  "order": {
+    "order_number": "EL-H7PN7XUK",
+    "status": "confirmed",
+    "user_id": null,
+    "guest_email": "persona-a-buyer@mailinator.com",
+    "total_cents": 2750
+  },
+  "ticketFromEmail": true,
+  "consoleErrors": [
+    {
+      "step": "email",
+      "text": "Loading the script 'https://assets.apollo.io/micro/website-tracker/tracker.iife.js?nocache=vrl6er' violates the following Content Security Policy directive: \"script-src 'self' http://js.hsforms.net https://cdnjs.cloudflare.com http://js.hs-scripts.co"
+    }
+  ]
+}
