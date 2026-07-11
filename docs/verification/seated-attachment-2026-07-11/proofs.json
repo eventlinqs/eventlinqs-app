@@ -1,14 +1,14 @@
 {
   "base": "https://eventlinqs-staging.vercel.app",
-  "startedAt": "2026-07-10T22:52:37.496Z",
+  "startedAt": "2026-07-11T02:08:09.331Z",
   "stages": [
-    "c",
-    "d"
+    "a",
+    "c"
   ],
   "a_loggedInSeated": {
     "order": {
-      "id": "20613b52-d81a-4a00-910a-02f8abab8951",
-      "order_number": "EL-8QMW9WF4",
+      "id": "bac3efe1-4c11-4982-adc6-5dc6448f52c1",
+      "order_number": "EL-FPJ72MQE",
       "status": "confirmed",
       "user_id": "57101100-eec8-4e72-a464-97e11e66bea1",
       "guest_email": null,
@@ -18,8 +18,8 @@
     },
     "tickets": [
       {
-        "id": "57939ec4-90d3-420a-a544-11d7aa2507fe",
-        "ticket_code": "EL-E9UG-YNFP",
+        "id": "2310cb8d-18c6-4988-9bba-2b627c2572b9",
+        "ticket_code": "EL-2RGC-KZH3",
         "status": "valid",
         "holder_email": "test-user@eventlinqs.com",
         "seat": {
@@ -27,7 +27,7 @@
             "name": "Main room"
           },
           "row_label": "B",
-          "seat_number": "1"
+          "seat_number": "3"
         }
       }
     ],
@@ -60,8 +60,8 @@
   },
   "c_loggedInGA": {
     "order": {
-      "id": "f9783472-e425-40f9-af8a-a931a378acff",
-      "order_number": "EL-MCKPKUEC",
+      "id": "dc2bb248-699d-4654-8b8c-462996298dbc",
+      "order_number": "EL-LYT45BYD",
       "status": "confirmed",
       "user_id": "57101100-eec8-4e72-a464-97e11e66bea1",
       "guest_email": null,
@@ -76,11 +76,11 @@
     "uiStatus": "Sent to transfer-attach-proof@mailinator.com. Their new QR is on the way and your old code no longer works.",
     "before": {
       "holder_email": "test-user@eventlinqs.com",
-      "secret_prefix": "feef1b28"
+      "secret_prefix": "f6b4e95d"
     },
     "after": {
-      "id": "57939ec4-90d3-420a-a544-11d7aa2507fe",
-      "ticket_code": "EL-E9UG-YNFP",
+      "id": "2310cb8d-18c6-4988-9bba-2b627c2572b9",
+      "ticket_code": "EL-2RGC-KZH3",
       "status": "valid",
       "holder_email": "transfer-attach-proof@mailinator.com",
       "holder_name": "Transfer Proof",
@@ -91,12 +91,12 @@
         "from_user_id": "57101100-eec8-4e72-a464-97e11e66bea1",
         "from_email": "test-user@eventlinqs.com",
         "to_email": "transfer-attach-proof@mailinator.com",
-        "created_at": "2026-07-10T22:53:06.944398+00:00"
+        "created_at": "2026-07-11T02:09:15.074417+00:00"
       }
     ],
     "holderReassigned": true,
     "secretRotated": true,
     "transferLogged": true
   },
-  "finishedAt": "2026-07-10T22:53:09.677Z"
+  "finishedAt": "2026-07-11T02:09:19.013Z"
 }
