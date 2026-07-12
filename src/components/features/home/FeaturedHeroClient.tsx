@@ -277,6 +277,30 @@ export function FeaturedHeroClient({ slides }: Props) {
               })}
             </div>
           </div>
+
+          {/* Hero progress cue (founder request 2026-07-12): a slim gold
+              hairline along the hero's base fills across each slide's 4.8s
+              and resets on advance, so the next event's arrival is always
+              legible. Keyed on `active` to restart per slide; play-state
+              tracks the exact rotation pause conditions, so hover, touch and
+              focus pause fill and timer TOGETHER. Without data-motion (no JS,
+              reduced motion, audits) the fill has no animation and renders as
+              a calm static hairline. Pure transform animation: no layout, no
+              LCP cost. */}
+          <div
+            aria-hidden
+            className="absolute inset-x-0 bottom-0 z-10 h-[2px] bg-[rgba(232,183,56,0.16)]"
+          >
+            <div
+              key={active}
+              className="hero-progress-fill h-full w-full origin-left bg-[var(--brand-accent)]/80"
+              style={{
+                animationDuration: `${ROTATE_MS}ms`,
+                animationPlayState:
+                  armed && playing && !hovered && !focused && !touching ? 'running' : 'paused',
+              }}
+            />
+          </div>
         </>
       )}
     </div>

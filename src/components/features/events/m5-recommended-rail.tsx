@@ -1,6 +1,7 @@
 import { projectToCardData } from '@/lib/events/event-card-projection'
 import type { PublicEventRow } from '@/lib/events/types'
 import { EventCard } from './event-card'
+import { InvitationCard, invitationFillCount } from './invitation-card'
 import { SnapRailScroller } from '@/components/ui/snap-rail'
 
 type Props = {
@@ -62,6 +63,18 @@ export async function RecommendedRail({
                 catches up.
               */}
               <EventCard event={c} variant="rail" priority={i === 0} />
+            </div>
+          ))}
+          {/* Launch-day sparse-rail discipline: top up a thin rail with
+              invitation cards; they vanish once five real events exist. */}
+          {Array.from({ length: invitationFillCount(cards.length) }, (_, i) => (
+            <div key={`invite-${i}`} className="w-64 shrink-0 snap-start sm:w-72">
+              <InvitationCard
+                fitParent
+                variant="landscape"
+                angle={i === 1 ? 'performer' : 'organiser'}
+                subject="live"
+              />
             </div>
           ))}
         </SnapRailScroller>

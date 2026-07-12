@@ -654,6 +654,20 @@ html[data-motion="1"] button:not(:disabled):active {
 }
 html[data-motion="1"] .link-underline:hover { background-size: 100% 1px; }
 
+/* 6. HERO PROGRESS CUE (founder request 2026-07-12): the gold hairline fill
+ * that paces the featured-event rotation. Armed only under the motion flag;
+ * reduced-motion and no-JS render the calm static hairline instead. Linear
+ * by design: the fill IS the timer. */
+@keyframes hero-progress {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+html[data-motion="1"] .hero-progress-fill {
+  animation-name: hero-progress;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+}
+
 /* ─── Respect user reduced-motion preference ─────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   *,
