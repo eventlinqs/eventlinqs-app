@@ -39,7 +39,7 @@ import { fileURLToPath } from 'node:url'
 // the top edge).
 const CURATED_COVERS = {
   'Late Night Jazz at the Metro':
-    'https://images.pexels.com/photos/9002893/pexels-photo-9002893.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=1067&w=1600',
+    'https://images.pexels.com/photos/9002048/pexels-photo-9002048.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=1067&w=1600',
   'Chocolate and Dessert Fair':
     'https://images.pexels.com/photos/33814449/pexels-photo-33814449.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=1067&w=1600',
   'Ballet Gala Evening':
