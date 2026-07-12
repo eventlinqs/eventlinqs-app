@@ -1,0 +1,63 @@
+{
+  "wide": {
+    "stored": true,
+    "detail": {
+      "390": {
+        "broken": 0
+      },
+      "1440": {
+        "broken": 0
+      }
+    },
+    "card": {
+      "390": {
+        "broken": 0
+      },
+      "1440": {
+        "broken": 0
+      }
+    }
+  },
+  "tall": {
+    "changed": false,
+    "coverFile": "1783856388612-a1f321ea.jpg",
+    "uploadRejected": true,
+    "detail": {
+      "390": {
+        "broken": 0
+      },
+      "1440": {
+        "broken": 0
+      }
+    },
+    "card": {
+      "390": {
+        "broken": 0
+      },
+      "1440": {
+        "broken": 0
+      }
+    }
+  },
+  "large": {
+    "changed": true,
+    "coverFile": "1783857045718-be9e609f.jpg",
+    "uploadRejected": true,
+    "detail": {
+      "390": {
+        "broken": 0
+      },
+      "1440": {
+        "broken": 0
+      }
+    },
+    "card": {
+      "390": {
+        "broken": 0
+      },
+      "1440": {
+        "broken": 0
+      }
+    }
+  }
+}

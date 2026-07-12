@@ -1,0 +1,101 @@
+{
+  "surfaces": {
+    "home": {
+      "1440x900": {
+        "status": 200,
+        "consoleErrors": 0,
+        "errorSample": [],
+        "images": 81,
+        "brokenImages": 0,
+        "brokenSrc": []
+      },
+      "390x844": {
+        "status": 200,
+        "consoleErrors": 0,
+        "errorSample": [],
+        "images": 81,
+        "brokenImages": 0,
+        "brokenSrc": []
+      }
+    },
+    "browse": {
+      "1440x900": {
+        "status": 200,
+        "consoleErrors": 0,
+        "errorSample": [],
+        "images": 56,
+        "brokenImages": 0,
+        "brokenSrc": []
+      },
+      "390x844": {
+        "status": 200,
+        "consoleErrors": 0,
+        "errorSample": [],
+        "images": 254,
+        "brokenImages": 0,
+        "brokenSrc": []
+      }
+    },
+    "search": {
+      "1440x900": {
+        "status": 200,
+        "consoleErrors": 0,
+        "errorSample": [],
+        "images": 4,
+        "brokenImages": 0,
+        "brokenSrc": []
+      },
+      "390x844": {
+        "status": 200,
+        "consoleErrors": 0,
+        "errorSample": [],
+        "images": 4,
+        "brokenImages": 0,
+        "brokenSrc": []
+      }
+    },
+    "city": {
+      "1440x900": {
+        "status": 200,
+        "consoleErrors": 0,
+        "errorSample": [],
+        "images": 71,
+        "brokenImages": 0,
+        "brokenSrc": []
+      },
+      "390x844": {
+        "status": 200,
+        "consoleErrors": 0,
+        "errorSample": [],
+        "images": 71,
+        "brokenImages": 0,
+        "brokenSrc": []
+      }
+    },
+    "category": {
+      "1440x900": {
+        "status": 200,
+        "consoleErrors": 0,
+        "errorSample": [],
+        "images": 1,
+        "brokenImages": 0,
+        "brokenSrc": []
+      },
+      "390x844": {
+        "status": 200,
+        "consoleErrors": 0,
+        "errorSample": [],
+        "images": 1,
+        "brokenImages": 0,
+        "brokenSrc": []
+      }
+    }
+  },
+  "map": {
+    "rendered": true,
+    "kind": "google-js",
+    "keyMissing": false,
+    "consoleErrors": 0,
+    "errorSample": []
+  }
+}

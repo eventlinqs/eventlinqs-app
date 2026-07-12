@@ -1,0 +1,34 @@
+
+[link-crawl] base: https://eventlinqs-staging.vercel.app
+[link-crawl] harvesting links from 18 seed surfaces...
+
+  [seed 200] /press  -> 37 links
+  [seed 200] /careers  -> 37 links
+  [seed 200] /communities  -> 52 links
+  [seed 200] /about  -> 37 links
+  [seed 200] /cities  -> 57 links
+  [seed 200] /organisers  -> 49 links
+  [seed 200] /city/sydney  -> 104 links
+  [seed 200] /  -> 92 links
+  [seed 200] /signup  -> 11 links
+  [seed 200] /events  -> 64 links
+  [seed 200] /login  -> 10 links
+  [seed 200] /city/sydney/inner-west  -> 66 links
+  [seed 200] /community/african/sydney  -> 58 links
+  [seed 200] /legal/privacy  -> 37 links
+  [seed 200] /legal/terms  -> 37 links
+  [seed 200] /pricing  -> 40 links
+  [seed 200] /city/melbourne  -> 104 links
+  [seed 200] /community/african  -> 73 links
+
+[link-crawl] verifying 297 unique internal links...
+
+[link-crawl] 4 link(s) resolved via redirect to 200 (OK):
+    /  ->  /
+    /account  ->  /login?next=/account
+    /account/saved  ->  /login?next=/account/saved
+    /organisers/signup  ->  /signup?role=organiser
+
+
+✅ ZERO DEAD LINKS. 297 internal links all resolve to 200 on https://eventlinqs-staging.vercel.app
+

@@ -1,0 +1,18 @@
+{
+  "signup": {
+    "email": "org-fresh-hpzx2d@mailinator.com",
+    "afterUrl": "https://eventlinqs-staging.vercel.app/verify-email-sent?email=org-fresh-hpzx2d%40mailinator.com"
+  },
+  "dashboardReached": true,
+  "org": {
+    "id": "9521e546-4d18-45c9-b5e0-3b05e12b916c",
+    "slug": "fresh-org-hpzx2d"
+  },
+  "seatMap": "Saved: 24 seats.",
+  "magicStart": {
+    "draftTitle": "Fresh Org Jazz Night"
+  },
+  "imageUpload": {
+    "widePreviewImmediate": true
+  }
+}

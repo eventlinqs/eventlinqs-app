@@ -1,0 +1,34 @@
+enumerated 345 published events
+  20/345 done; failures so far: 0
+  40/345 done; failures so far: 0
+  60/345 done; failures so far: 1
+  80/345 done; failures so far: 2
+  100/345 done; failures so far: 2
+  120/345 done; failures so far: 2
+  140/345 done; failures so far: 2
+  160/345 done; failures so far: 2
+  180/345 done; failures so far: 2
+  200/345 done; failures so far: 2
+  220/345 done; failures so far: 2
+  240/345 done; failures so far: 2
+  260/345 done; failures so far: 2
+  280/345 done; failures so far: 2
+  300/345 done; failures so far: 2
+  320/345 done; failures so far: 2
+  340/345 done; failures so far: 2
+=== EVERY EVENT CHECKOUT RESULTS ===
+by type: {"paid-ga":{"pass":277,"fail":0},"free-ga":{"pass":53,"fail":1},"seated":{"pass":13,"fail":1}}
+total FAILURES: 2
+failing: [
+ {
+  "slug": "assign-mode-proof-night",
+  "type": "seated",
+  "error": "TimeoutError: page.waitForSelector: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - "
+ },
+ {
+  "slug": "broadcast-gate-encore-session-geelong",
+  "type": "free-ga",
+  "error": "no ticket stepper"
+ }
+]
+SOME FAIL
