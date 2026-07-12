@@ -781,13 +781,14 @@ export function SeatSelector({
               const ax = area.x - minX + PADDING + ROW_LABEL_GUTTER
               const ay = area.y - minY + PADDING + STAGE_BAND
               const scenery = area.style === 'scenery'
+              const areaColor = editorialSectionColor(area.color)
               return (
                 <g key={`${area.label}-${area.x}-${area.y}`} aria-hidden="true">
                   <rect
                     x={ax} y={ay} width={area.width} height={area.height} rx={10}
-                    fill={scenery ? INK_900 : area.color}
+                    fill={scenery ? INK_900 : areaColor}
                     fillOpacity={scenery ? 0.06 : 0.14}
-                    stroke={scenery ? '#9CA3AF' : area.color}
+                    stroke={scenery ? '#9CA3AF' : areaColor}
                     strokeWidth={1.5}
                     strokeDasharray={scenery ? undefined : '6 4'}
                   />
