@@ -180,8 +180,27 @@ const HERO_RASTER_SLUGS = new Set([
 // already remote) and every tile; the homepage hero default stays local.
 const HERO_RASTER_DEFAULT = `${HERO_RASTER_DIR}/afrobeats.jpg`
 
-function heroRasterFor(slug: string | null | undefined): string {
+// Ordered list for the deterministic-variety fallback below. A carousel of
+// coverless events must never wear one identical photo across every slide
+// (hero wiring fix 2026-07-12: five fixture slides all rendered the single
+// afrobeats default). Order is stable so the same event always gets the
+// same raster across builds and requests.
+const HERO_RASTER_POOL = [...HERO_RASTER_SLUGS].sort()
+
+function hashSeed(seed: string): number {
+  let h = 0
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0
+  return h
+}
+
+function heroRasterFor(slug: string | null | undefined, seed?: string | null): string {
   if (slug && HERO_RASTER_SLUGS.has(slug)) return `${HERO_RASTER_DIR}/${slug}.jpg`
+  // Unmapped category: pick deterministically by the event's own identity so
+  // sibling slides differ; without a seed, keep the canonical default.
+  if (seed) {
+    const pick = HERO_RASTER_POOL[hashSeed(seed) % HERO_RASTER_POOL.length]
+    return `${HERO_RASTER_DIR}/${pick}.jpg`
+  }
   return HERO_RASTER_DEFAULT
 }
 
@@ -210,7 +229,8 @@ export async function getFeaturedHeroBackground(
   // Priority 2: pre-generated category raster (fast LCP, no remote fetch).
   // Used when no event-specific cover is available (e.g. category highlight
   // slides on the homepage carousel that exist to fill empty event slots).
-  const heroImage = heroRasterFor(event.category?.slug)
+  // Seeded by the event's own title so coverless siblings vary.
+  const heroImage = heroRasterFor(event.category?.slug, event.title)
 
   if (event.video_url) {
     return { image: heroImage, alt, videoSrc: event.video_url }

@@ -147,6 +147,20 @@ jobs:
           fi
           echo "curl-el_city: pass"
 
+      - name: Payment sentinel probe (post-deploy hook)
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -u
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo "::warning::CRON_SECRET not configured as a GitHub secret; sentinel probe skipped. Add it at go-live (docs/payments/WEBHOOK-CANON.md)."
+            exit 0
+          fi
+          BODY=$(curl -sS -m 30 -H "Authorization: Bearer ${CRON_SECRET}" "https://www.eventlinqs.com/api/cron/webhook-sentinel")
+          echo "$BODY"
+          echo "$BODY" | grep -q '"ok":true' || { echo "payment sentinel RED"; exit 1; }
+          echo "payment sentinel GREEN"
+
       - name: Email alert via Resend on failure
         if: failure()
         env:
