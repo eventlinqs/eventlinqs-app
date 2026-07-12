@@ -39,7 +39,7 @@ async function enumerateEvents() {
     const h = { apikey: key, authorization: `Bearer ${key}` }
     const out = []
     for (let from = 0; from < 4000; from += 1000) {
-      const r = await fetch(`${url}/rest/v1/events?status=eq.published&select=slug,title,has_reserved_seating,is_free&order=slug&limit=1000&offset=${from}`, { headers: h })
+      const r = await fetch(`${url}/rest/v1/events?status=eq.published&select=slug,title,has_reserved_seating,organiser_assigns_seats,is_free&order=slug&limit=1000&offset=${from}`, { headers: h })
       const rows = await r.json()
       out.push(...rows)
       if (rows.length < 1000) break
@@ -68,7 +68,10 @@ for (const ev of events) {
     const resp = await page.goto(`${BASE}/events/${ev.slug}`, { waitUntil: 'load', timeout: 60000 })
     if (!resp || resp.status() >= 400) throw new Error(`page ${resp?.status() ?? 'no-response'}`)
     await page.waitForTimeout(800)
-    if (ev.has_reserved_seating) {
+    // Organiser-assigns events are seated but sell GA-style (no seat map:
+    // the buyer picks a quantity and the organiser allocates seats later).
+    const picksOwnSeat = ev.has_reserved_seating && !ev.organiser_assigns_seats
+    if (picksOwnSeat) {
       await page.waitForSelector('svg[aria-label="Seat map"]', { timeout: 20000 })
       for (let a = 0; a < 6 && !reached; a++) {
         const seats = page.locator('svg[aria-label="Seat map"] g[style*="pointer"]')
@@ -93,7 +96,7 @@ for (const ev of events) {
       if (!reached) throw new Error('did not reach checkout')
     }
   } catch (e) { error = String(e.message ?? e).slice(0, 90) }
-  if (!reached) failures.push({ slug: ev.slug, type: ev.has_reserved_seating ? 'seated' : ev.is_free ? 'free' : 'paid', error })
+  if (!reached) failures.push({ slug: ev.slug, type: ev.has_reserved_seating && !ev.organiser_assigns_seats ? 'seated' : ev.is_free ? 'free' : 'paid', error })
   done++
   if (done % 25 === 0) console.log(`  ${done}/${events.length} (${failures.length} failing)`)
   await page.close()
