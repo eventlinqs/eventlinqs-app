@@ -61,6 +61,26 @@ const SECTION_COLORS = [
   '#6E2B4F', // plum
 ]
 
+/**
+ * The retired auto-assigned material palette, remapped index-wise to the
+ * editorial tones when a saved chart loads. These hexes were assigned by
+ * index, never chosen by an organiser, so remapping restores brand without
+ * touching a meaningful choice. Live events keep their materialised colours;
+ * the chart picks up the editorial tones on its next save.
+ */
+const LEGACY_COLOR_REMAP: Record<string, string> = {
+  '#0EA5E9': SECTION_COLORS[0],
+  '#E91E63': SECTION_COLORS[1],
+  '#4CAF50': SECTION_COLORS[2],
+  '#FF9800': SECTION_COLORS[3],
+  '#9C27B0': SECTION_COLORS[4],
+  '#00BCD4': SECTION_COLORS[5],
+  '#F44336': SECTION_COLORS[6],
+  '#3F51B5': SECTION_COLORS[7],
+  '#8BC34A': SECTION_COLORS[8],
+  '#FF5722': SECTION_COLORS[9],
+}
+
 const GOLD = '#D4A017' // --color-gold-500
 const INK_900 = '#0A1628'
 
@@ -104,7 +124,11 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
   const lastEditKeyRef = useRef<string | null>(null)
 
   const [name, setName] = useState(initialName)
-  const [blocks, setBlocks] = useState<SeatBlock[]>(initialBlocks)
+  const [blocks, setBlocks] = useState<SeatBlock[]>(() =>
+    initialBlocks.map(b =>
+      b.color && LEGACY_COLOR_REMAP[b.color] ? { ...b, color: LEGACY_COLOR_REMAP[b.color] } : b,
+    ),
+  )
   const [selectedId, setSelectedId] = useState<string | null>(initialBlocks[0]?.id ?? null)
   const [mode, setMode] = useState<SeatMode>('move')
   const [zoom, setZoom] = useState(1)
@@ -166,6 +190,23 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
     const h = Math.max(...ys) - minY + pad
     return { minX, minY, w, h }
   }, [layout])
+
+  // Selection outline: one dashed gold bound around the selected block, the
+  // design-tool convention, instead of a halo on every seat.
+  const selectionBounds = useMemo(() => {
+    if (!selectedId) return null
+    const xs: number[] = []
+    const ys: number[] = []
+    for (const s of layout.sections)
+      for (const r of s.rows)
+        for (const seat of r.seats)
+          if (seat.blockId === selectedId) { xs.push(seat.x); ys.push(seat.y) }
+    if (xs.length === 0) return null
+    const pad = SEAT_R + 6
+    const minX = Math.min(...xs) - pad
+    const minY = Math.min(...ys) - pad
+    return { x: minX, y: minY, w: Math.max(...xs) + pad - minX, h: Math.max(...ys) + pad - minY }
+  }, [layout, selectedId])
 
   function svgPoint(e: React.PointerEvent): { x: number; y: number } {
     const svg = svgRef.current
@@ -412,7 +453,7 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
 
       <div className="mt-4 grid gap-5 lg:grid-cols-[1fr_320px]">
         {/* ── Canvas: the drafting table ── */}
-        <div className="relative">
+        <div className="relative self-start">
           <div className="overflow-auto rounded-panel border border-ink-200 bg-canvas" style={{ maxHeight: 560, touchAction: 'none' }}>
             <svg
               ref={svgRef}
@@ -481,14 +522,10 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
               {layout.sections.map(section =>
                 section.rows.map(row =>
                   row.seats.map(seat => {
-                    const isSelectedBlock = seat.blockId === selectedId
                     const isEditTarget = seatEdit?.blockId === seat.blockId && seatEdit?.ref === seat.ref
                     const blocked = !!seat.blocked
                     return (
                       <g key={`${section.name}-${row.label}-${seat.number}-${seat.x}-${seat.y}`}>
-                        {isSelectedBlock && (
-                          <circle cx={seat.x} cy={seat.y} r={SEAT_R + 2.5} fill="none" stroke={GOLD} strokeWidth={1.5} opacity={0.9} pointerEvents="none" />
-                        )}
                         <circle
                           cx={seat.x}
                           cy={seat.y}
@@ -515,6 +552,16 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
                     )
                   })
                 )
+              )}
+
+              {/* Selection outline: one dashed gold bound around the block */}
+              {selectionBounds && (
+                <rect
+                  x={selectionBounds.x} y={selectionBounds.y}
+                  width={selectionBounds.w} height={selectionBounds.h}
+                  rx={10} fill="none" stroke={GOLD} strokeWidth={1.5}
+                  strokeDasharray="6 5" pointerEvents="none"
+                />
               )}
 
               {/* Alignment guides: gold hairlines while a drag is locked */}
