@@ -22,6 +22,13 @@ interface Props {
   /** Optional empty-state copy. When set and events is empty, renders the empty card; otherwise hides the section. */
   emptyTitle?: string
   emptyBody?: string
+  /**
+   * Subject word for the invitation-card copy ("The next {subject} night
+   * here is yours"). Defaults to the railLabel with a trailing "events"
+   * stripped; pass explicitly when the label does not start with the
+   * subject (e.g. "Events this weekend").
+   */
+  invitationSubject?: string
 }
 
 export async function EventRailSection({
@@ -36,6 +43,7 @@ export async function EventRailSection({
   cardGap = RHYTHM_GAP,
   emptyTitle,
   emptyBody,
+  invitationSubject,
 }: Props) {
   if (events.length === 0 && !emptyTitle) return null
 
@@ -70,7 +78,7 @@ export async function EventRailSection({
                   key={`invite-${i}`}
                   variant={cardVariant === 'feature' ? 'landscape' : cardVariant}
                   angle={i === 1 ? 'performer' : 'organiser'}
-                  subject={railLabel.toLowerCase().replace(/\s*events?\s*$/i, '') || 'community'}
+                  subject={invitationSubject ?? (railLabel.toLowerCase().replace(/\s*events?\s*$/i, '') || 'community')}
                 />
               ))}
             </>
