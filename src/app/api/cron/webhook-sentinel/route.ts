@@ -88,7 +88,7 @@ async function driftWatchdog(): Promise<CheckResult> {
     const cutoffOld = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
     const { data: stuck, error } = await admin
       .from('orders')
-      .select('order_number, total_cents, created_at')
+      .select('id, order_number, total_cents, created_at')
       .eq('status', 'pending')
       .gt('total_cents', 0)
       .lt('created_at', cutoffNew)
@@ -96,10 +96,37 @@ async function driftWatchdog(): Promise<CheckResult> {
       .limit(10)
     if (error) return { name, ok: false, detail: `orders query failed: ${error.message}`, probableCause: 'database unreachable from sentinel' }
     if (!stuck || stuck.length === 0) return { name, ok: true, detail: 'no paid orders stuck pending beyond the grace window' }
+
+    // TRUE DRIFT ONLY: an abandoned checkout (buyer never paid) is normal
+    // and expires through its own flow. Alert only when Stripe holds a
+    // SUCCEEDED intent for a stuck-pending order - money taken, order not
+    // confirmed, the 2026-07-12 incident class.
+    const key = process.env.STRIPE_SECRET_KEY
+    let succeededOrderIds = new Set<string>()
+    if (key) {
+      const res = await fetch('https://api.stripe.com/v1/events?types[]=payment_intent.succeeded&limit=50', {
+        headers: { authorization: `Bearer ${key}` },
+        signal: AbortSignal.timeout(15000),
+      })
+      const j = (await res.json()) as { data?: { data: { object: { metadata?: Record<string, string> } } }[] }
+      succeededOrderIds = new Set(
+        (j.data ?? [])
+          .map(e => e.data?.object?.metadata?.order_id)
+          .filter((v): v is string => Boolean(v)),
+      )
+    }
+    const drifted = stuck.filter(o => succeededOrderIds.has(o.id))
+    if (drifted.length === 0) {
+      return {
+        name,
+        ok: true,
+        detail: `${stuck.length} pending order(s) are abandoned checkouts (no succeeded intent) - no drift`,
+      }
+    }
     return {
       name,
       ok: false,
-      detail: `${stuck.length} paid order(s) pending > ${PENDING_GRACE_MINUTES}m: ${stuck.map(o => o.order_number).join(', ')}`,
+      detail: `${drifted.length} order(s) PAID at Stripe but still pending: ${drifted.map(o => o.order_number).join(', ')}`,
       probableCause: 'webhook deliveries failing (signature mismatch or endpoint misdelivery) while payments succeed',
     }
   } catch (err) {
