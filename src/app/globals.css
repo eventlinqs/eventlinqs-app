@@ -497,6 +497,21 @@ html[data-motion="1"] .reveal.is-visible .rail-stagger > *:nth-child(5) { transi
 html[data-motion="1"] .reveal.is-visible .rail-stagger > *:nth-child(6) { transition-delay: 360ms; }
 html[data-motion="1"] .reveal.is-visible .rail-stagger > *:nth-child(n+7) { transition-delay: 400ms; }
 
+/* Seat-map gold bloom: a newly selected seat lands with a gentle 240ms scale
+ * pop (the box-office moment). SVG rects need fill-box origin to scale in
+ * place. Armed only under html[data-motion="1"]; reduced motion and headless
+ * audits render the selected state statically from first paint. */
+@keyframes seat-bloom {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+html[data-motion="1"] .seat-bloom {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: seat-bloom 240ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
+}
+
 /* Hero slide swap: when the featured hero rotates (or is stepped manually),
  * the incoming slide's CONTENT stack (kicker, title, detail, CTA) rises in
  * gently behind the image crossfade, so each featured event ARRIVES rather

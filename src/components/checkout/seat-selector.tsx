@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useMemo, useCallback, useRef } from 'react'
+import { useState, useTransition, useMemo, useCallback, useRef, useLayoutEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createSeatReservation } from '@/app/actions/seat-reservations'
 
@@ -64,7 +64,7 @@ const STATUS_FILL: Record<
   string,
   { fill: string; stroke: string; text: string; clickable: boolean }
 > = {
-  available:  { fill: 'var(--section-color)', stroke: 'rgba(255,255,255,0.55)', text: '#FFFFFF', clickable: true },
+  available:  { fill: 'var(--section-color)', stroke: 'rgba(255,255,255,0.35)', text: '#FFFFFF', clickable: true },
   selected:   { fill: GOLD,                    stroke: INK_900,                   text: INK_900,  clickable: true },
   reserved:   { fill: INK_200,                 stroke: 'transparent',             text: INK_400,  clickable: false },
   sold:       { fill: INK_200,                 stroke: 'transparent',             text: INK_400,  clickable: false },
@@ -95,6 +95,141 @@ export function SeatSelector({
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  // ── Touch-first zoom and pan engine ─────────────────────────────────────
+  // Drag pans (after a 6px intent threshold so taps still select), two
+  // fingers pinch-zoom around the gesture midpoint, Ctrl+scroll and trackpad
+  // pinch zoom around the cursor, double-tap steps in. All zoom paths keep
+  // the focal point stationary by correcting scroll after the width change.
+  const MIN_ZOOM = 0.5
+  const MAX_ZOOM = 3
+  const zoomRef = useRef(1)
+  const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map())
+  const gestureRef = useRef<{
+    mode: 'idle' | 'pan' | 'pinch'
+    startX: number
+    startY: number
+    scrollLeft: number
+    scrollTop: number
+    startDist: number
+    startZoom: number
+  }>({ mode: 'idle', startX: 0, startY: 0, scrollLeft: 0, scrollTop: 0, startDist: 0, startZoom: 1 })
+  const suppressClickRef = useRef(false)
+  const pendingFocalRef = useRef<{ fx: number; fy: number; ratio: number; left: number; top: number } | null>(null)
+
+  const applyZoom = useCallback((next: number, clientX?: number, clientY?: number) => {
+    const el = scrollRef.current
+    const clamped = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, +next.toFixed(3)))
+    if (el && clamped !== zoomRef.current) {
+      const rect = el.getBoundingClientRect()
+      const fx = clientX !== undefined ? clientX - rect.left : rect.width / 2
+      const fy = clientY !== undefined ? clientY - rect.top : rect.height / 2
+      pendingFocalRef.current = {
+        fx, fy,
+        ratio: clamped / zoomRef.current,
+        left: el.scrollLeft,
+        top: el.scrollTop,
+      }
+    }
+    zoomRef.current = clamped
+    setZoom(clamped)
+  }, [])
+
+  useLayoutEffect(() => {
+    const p = pendingFocalRef.current
+    const el = scrollRef.current
+    if (!p || !el) return
+    pendingFocalRef.current = null
+    el.scrollLeft = (p.left + p.fx) * p.ratio - p.fx
+    el.scrollTop = (p.top + p.fy) * p.ratio - p.fy
+  }, [zoom])
+
+  function onMapPointerDown(e: React.PointerEvent) {
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    const el = scrollRef.current
+    if (!el) return
+    const pts = [...pointersRef.current.values()]
+    if (pts.length === 1) {
+      gestureRef.current = {
+        mode: 'idle',
+        startX: e.clientX,
+        startY: e.clientY,
+        scrollLeft: el.scrollLeft,
+        scrollTop: el.scrollTop,
+        startDist: 0,
+        startZoom: zoomRef.current,
+      }
+    } else if (pts.length === 2) {
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y)
+      gestureRef.current = { ...gestureRef.current, mode: 'pinch', startDist: dist, startZoom: zoomRef.current }
+      suppressClickRef.current = true
+    }
+  }
+
+  function onMapPointerMove(e: React.PointerEvent) {
+    const el = scrollRef.current
+    if (!el || !pointersRef.current.has(e.pointerId)) return
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    const g = gestureRef.current
+    const pts = [...pointersRef.current.values()]
+
+    if (g.mode === 'pinch' && pts.length === 2 && g.startDist > 0) {
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y)
+      const midX = (pts[0].x + pts[1].x) / 2
+      const midY = (pts[0].y + pts[1].y) / 2
+      applyZoom(g.startZoom * (dist / g.startDist), midX, midY)
+      return
+    }
+
+    if (pts.length === 1) {
+      const dx = e.clientX - g.startX
+      const dy = e.clientY - g.startY
+      if (g.mode === 'idle' && Math.hypot(dx, dy) > 6) {
+        g.mode = 'pan'
+        suppressClickRef.current = true
+      }
+      if (g.mode === 'pan') {
+        el.scrollLeft = g.scrollLeft - dx
+        el.scrollTop = g.scrollTop - dy
+      }
+    }
+  }
+
+  function onMapPointerEnd(e: React.PointerEvent) {
+    pointersRef.current.delete(e.pointerId)
+    if (pointersRef.current.size === 0) {
+      gestureRef.current.mode = 'idle'
+      // Let the click that follows this pointerup be judged first, then re-arm.
+      setTimeout(() => { suppressClickRef.current = false }, 0)
+    }
+  }
+
+  function onMapClickCapture(e: React.MouseEvent) {
+    if (suppressClickRef.current) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+  }
+
+  // Ctrl+wheel is the browser convention for zoom (trackpad pinch arrives the
+  // same way); plain wheel keeps scrolling the page. React registers wheel as
+  // passive, so this must be a native non-passive listener to preventDefault.
+  useLayoutEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    function onWheel(e: WheelEvent) {
+      if (!e.ctrlKey && !e.metaKey) return
+      e.preventDefault()
+      const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15
+      applyZoom(zoomRef.current * factor, e.clientX, e.clientY)
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [applyZoom])
+
+  function onMapDoubleClick(e: React.MouseEvent) {
+    applyZoom(zoomRef.current >= MAX_ZOOM ? 1 : zoomRef.current * 1.5, e.clientX, e.clientY)
+  }
 
   // Primitive keys: only recompute memos when content changes, not on every array reference change
   const seatsKey = seats.map(s => `${s.id}:${s.status}`).join('|')
@@ -372,6 +507,8 @@ export function SeatSelector({
             onMouseLeave={handleMouseLeave}
           >
             <rect
+              key={`${seat.id}:${isSelected ? 'sel' : 'open'}`}
+              className={isSelected ? 'seat-bloom' : undefined}
               x={cx - SEAT_SIZE / 2}
               y={cy - SEAT_SIZE / 2}
               width={SEAT_SIZE}
@@ -429,6 +566,8 @@ export function SeatSelector({
   const hovered = hoveredId ? seats.find(s => s.id === hoveredId) : null
 
   function zoomToFit() {
+    zoomRef.current = 1
+    pendingFocalRef.current = null
     setZoom(1)
     if (scrollRef.current) {
       scrollRef.current.scrollTo({ left: 0, top: 0, behavior: 'smooth' })
@@ -436,11 +575,11 @@ export function SeatSelector({
   }
 
   function zoomIn() {
-    setZoom(z => Math.min(2, +(z + 0.25).toFixed(2)))
+    applyZoom(zoomRef.current + 0.25)
   }
 
   function zoomOut() {
-    setZoom(z => Math.max(0.5, +(z - 0.25).toFixed(2)))
+    applyZoom(zoomRef.current - 0.25)
   }
 
   if (seats.length === 0) {
@@ -462,19 +601,23 @@ export function SeatSelector({
         <div className="flex items-center gap-1.5">
           <span
             className="h-3 w-3 rounded-sm"
-            style={{ backgroundColor: INK_900, outline: `2px solid ${GOLD}`, outlineOffset: '1px' }}
+            style={{ backgroundColor: GOLD, outline: `1.5px solid ${INK_900}`, outlineOffset: '1px' }}
           />
           <span className="text-ink-600">Selected</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="h-3 w-3 rounded-sm bg-ink-400" />
+          <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: INK_200 }} />
           <span className="text-ink-600">Unavailable</span>
         </div>
         {seats.some(s => s.seat_type === 'accessible' || s.seat_type === 'companion') && (
           <div className="flex items-center gap-1.5">
             <span
               className="h-3 w-3 rounded-sm"
-              style={{ backgroundColor: GOLD, outline: '2px solid #FFFFFF', outlineOffset: '-2px' }}
+              style={{
+                backgroundColor: sections[0]?.color ?? GOLD,
+                outline: '1.5px solid #FFFFFF',
+                outlineOffset: '-2px',
+              }}
             />
             <span className="text-ink-600">Accessible and companion</span>
           </div>
@@ -562,14 +705,23 @@ export function SeatSelector({
       <div className="relative">
         <div
           ref={scrollRef}
-          className="overflow-auto rounded-xl border border-ink-200 bg-canvas"
-          style={{ touchAction: 'pan-x pan-y pinch-zoom' }}
+          className="overflow-auto overscroll-contain rounded-xl border border-ink-200 bg-canvas"
+          style={{ touchAction: 'none', cursor: 'grab' }}
+          onPointerDown={onMapPointerDown}
+          onPointerMove={onMapPointerMove}
+          onPointerUp={onMapPointerEnd}
+          onPointerCancel={onMapPointerEnd}
+          onPointerLeave={onMapPointerEnd}
+          onClickCapture={onMapClickCapture}
+          onDoubleClick={onMapDoubleClick}
+          role="group"
+          aria-label="Seat map viewport: drag to pan, pinch or Ctrl and scroll to zoom"
         >
           <svg
             viewBox={`0 0 ${viewWidth} ${viewHeight}`}
             style={{
               width: `${100 * zoom}%`,
-              minWidth: `${Math.min(viewWidth * zoom, 900)}px`,
+              minWidth: `${Math.min(viewWidth, 900) * zoom}px`,
               display: 'block',
             }}
             role="img"
@@ -661,7 +813,7 @@ export function SeatSelector({
           <button
             type="button"
             onClick={zoomOut}
-            disabled={zoom <= 0.5}
+            disabled={zoom <= MIN_ZOOM}
             className="flex h-8 w-8 items-center justify-center rounded-l-lg text-sm font-bold text-ink-600 hover:bg-ink-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             aria-label="Zoom out"
           >
@@ -670,7 +822,7 @@ export function SeatSelector({
           <button
             type="button"
             onClick={zoomIn}
-            disabled={zoom >= 2}
+            disabled={zoom >= MAX_ZOOM}
             className="flex h-8 w-8 items-center justify-center text-sm font-bold text-ink-600 hover:bg-ink-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             aria-label="Zoom in"
           >
@@ -714,7 +866,9 @@ export function SeatSelector({
             </span>
           </div>
         ) : (
-          <p className="text-xs text-ink-400">Hover a seat for details · tap to select</p>
+          <p className="text-xs text-ink-400">
+            Tap a seat to select · drag to pan · pinch or Ctrl+scroll to zoom
+          </p>
         )}
       </div>
 
@@ -732,7 +886,7 @@ export function SeatSelector({
                   setSelectedIds(new Set())
                   pickBestAvailable(n)
                 }}
-                className="rounded-lg border border-ink-200 px-2.5 py-1 text-xs font-medium text-ink-600 hover:border-gold-500 hover:text-ink-900 transition-colors"
+                className="min-w-8 rounded-full border border-ink-200 px-2.5 py-1 text-xs font-semibold text-ink-600 transition-colors hover:border-gold-500 hover:text-ink-900"
               >
                 {n}
               </button>
