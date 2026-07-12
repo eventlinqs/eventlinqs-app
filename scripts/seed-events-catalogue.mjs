@@ -22,14 +22,33 @@
 // when set, else NEXT_PUBLIC_SUPABASE_URL, and aborts if that resolves to prod.
 // Never seed prod.
 //
-// Imagery: cover_image_url is left null on purpose. The media components render
-// the branded placeholder until the Adobe Stock library lands, at which point
-// this script is re-run with real cover URLs wired in.
+// Imagery: most fixture events render the branded placeholder or the varied
+// category raster. The CURATED_COVERS entries below carry real, licensed
+// covers for the events that reach the HOMEPAGE HERO, so the featured
+// carousel always tells distinct stories (hero wiring fix, 2026-07-12:
+// five slides once shared one fallback raster). URLs are the same licensed
+// Pexels set the national seed catalogue uses.
 
 import { createClient } from '@supabase/supabase-js'
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+
+// Title-keyed curated covers for hero-reaching fixture events. Framing is
+// hero-safe at the platform 50% 30% crop (subjects mid-frame, no heads at
+// the top edge).
+const CURATED_COVERS = {
+  'Late Night Jazz at the Metro':
+    'https://images.pexels.com/photos/9002893/pexels-photo-9002893.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=900&w=1600',
+  'Chocolate and Dessert Fair':
+    'https://images.pexels.com/photos/33814449/pexels-photo-33814449.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=900&w=1600',
+  'Ballet Gala Evening':
+    'https://images.pexels.com/photos/20471000/pexels-photo-20471000.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=900&w=1600',
+  'New Music Friday Live':
+    'https://images.pexels.com/photos/8639383/pexels-photo-8639383.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=900&w=1600',
+  'Folk and Roots Night':
+    'https://images.pexels.com/photos/24482580/pexels-photo-24482580.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=900&w=1600',
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(__dirname, '..')
@@ -284,8 +303,8 @@ function writeFixture(rows) {
     title: r.title,
     summary: r.summary,
     description: r.description,
-    cover_image_url: null,
-    thumbnail_url: null,
+    cover_image_url: CURATED_COVERS[r.title] ?? null,
+    thumbnail_url: CURATED_COVERS[r.title] ?? null,
     gallery_urls: null,
     start_date: r.start_date,
     end_date: r.end_date,
