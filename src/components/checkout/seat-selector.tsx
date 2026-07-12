@@ -3,6 +3,7 @@
 import { useState, useTransition, useMemo, useCallback, useRef, useLayoutEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createSeatReservation } from '@/app/actions/seat-reservations'
+import { editorialSectionColor } from '@/lib/seating/palette'
 
 export interface SeatData {
   id: string
@@ -238,7 +239,7 @@ export function SeatSelector({
   const selectedIdsKey = [...selectedIds].sort().join(',')
 
   const sectionColorMap = useMemo(
-    () => new Map(sections.map(s => [s.id, s.color])),
+    () => new Map(sections.map(s => [s.id, editorialSectionColor(s.color)])),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [sectionsKey]
   )
@@ -614,7 +615,7 @@ export function SeatSelector({
             <span
               className="h-3 w-3 rounded-sm"
               style={{
-                backgroundColor: sections[0]?.color ?? GOLD,
+                backgroundColor: editorialSectionColor(sections[0]?.color) ?? GOLD,
                 outline: '1.5px solid #FFFFFF',
                 outlineOffset: '-2px',
               }}
@@ -641,7 +642,7 @@ export function SeatSelector({
             <div key={s.id} className="flex items-center gap-1.5">
               <span
                 className="h-3 w-3 rounded-sm"
-                style={{ backgroundColor: s.color }}
+                style={{ backgroundColor: editorialSectionColor(s.color) }}
                 aria-hidden="true"
               />
               <span className="text-ink-900 font-medium">{s.name}</span>

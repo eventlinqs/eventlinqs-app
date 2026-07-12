@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { editorialSectionColor } from '@/lib/seating/palette'
 import { holdSeat, releaseSeat, reassignSeatOccupant, assignTicketToSeat } from './actions'
 
 interface Seat {
@@ -71,7 +72,7 @@ export function SeatsManagementClient({ eventId, seats, sections, unassignedTick
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
-  const sectionColorMap = new Map(sections.map(s => [s.id, s.color]))
+  const sectionColorMap = new Map(sections.map(s => [s.id, editorialSectionColor(s.color)]))
   const sectionNameMap = new Map(sections.map(s => [s.id, s.name]))
 
   const availableTargets = seatList

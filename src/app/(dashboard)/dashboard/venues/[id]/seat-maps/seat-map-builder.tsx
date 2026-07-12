@@ -27,6 +27,7 @@ import {
   type SeatBlock,
   type TableBlock,
 } from '@/lib/seating/generate'
+import { SECTION_COLORS, editorialSectionColor } from '@/lib/seating/palette'
 import { saveSeatMap } from './actions'
 
 /**
@@ -41,45 +42,6 @@ import { saveSeatMap } from './actions'
  */
 
 type SeatMode = 'move' | 'blocked' | 'accessible' | 'companion' | 'remove' | 'relabel' | 'note'
-
-/**
- * Editorial section palette: deep tones derived from the brand family so the
- * chart reads as EventLinqs, never a default swatch row. Every tone passes
- * 4.5:1 with a white numeral (verified: 6.8 to 10.8). Saved charts keep the
- * colours they were built with; this palette governs new picks.
- */
-const SECTION_COLORS = [
-  '#1F5673', // harbour blue
-  '#7A1F3D', // garnet
-  '#2D5A3D', // forest
-  '#9A3E1C', // terracotta
-  '#5B2A5E', // aubergine
-  '#215E5E', // petrol
-  '#8C3B2E', // rust
-  '#3A4675', // indigo ink
-  '#5C5518', // olive
-  '#6E2B4F', // plum
-]
-
-/**
- * The retired auto-assigned material palette, remapped index-wise to the
- * editorial tones when a saved chart loads. These hexes were assigned by
- * index, never chosen by an organiser, so remapping restores brand without
- * touching a meaningful choice. Live events keep their materialised colours;
- * the chart picks up the editorial tones on its next save.
- */
-const LEGACY_COLOR_REMAP: Record<string, string> = {
-  '#0EA5E9': SECTION_COLORS[0],
-  '#E91E63': SECTION_COLORS[1],
-  '#4CAF50': SECTION_COLORS[2],
-  '#FF9800': SECTION_COLORS[3],
-  '#9C27B0': SECTION_COLORS[4],
-  '#00BCD4': SECTION_COLORS[5],
-  '#F44336': SECTION_COLORS[6],
-  '#3F51B5': SECTION_COLORS[7],
-  '#8BC34A': SECTION_COLORS[8],
-  '#FF5722': SECTION_COLORS[9],
-}
 
 const GOLD = '#D4A017' // --color-gold-500
 const INK_900 = '#0A1628'
@@ -126,7 +88,7 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
   const [name, setName] = useState(initialName)
   const [blocks, setBlocks] = useState<SeatBlock[]>(() =>
     initialBlocks.map(b =>
-      b.color && LEGACY_COLOR_REMAP[b.color] ? { ...b, color: LEGACY_COLOR_REMAP[b.color] } : b,
+      b.color ? { ...b, color: editorialSectionColor(b.color) } : b,
     ),
   )
   const [selectedId, setSelectedId] = useState<string | null>(initialBlocks[0]?.id ?? null)
