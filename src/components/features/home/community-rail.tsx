@@ -48,8 +48,8 @@ export async function CommunityRail() {
   )
 
   return (
-    // Gold-accent top divider marks the community moat as its own moment.
-    <section aria-label="Find your community" className={`border-t-2 border-[var(--brand-accent-strong)]/30 bg-canvas ${SECTION_RAIL}`}>
+    // Founder consistency law 2026-07-12: ONE faint divider weight platform-wide (border-t border-ink-200); the community moat is marked by its gold eyebrow, not a heavier rule.
+    <section aria-label="Find your community" className={`border-t border-ink-200 bg-canvas ${SECTION_RAIL}`}>
       <Reveal className={CONTAINER}>
         <SnapRail
           eyebrow="Find your community"

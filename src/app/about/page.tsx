@@ -1,9 +1,11 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { PageShell } from '@/components/layout/PageShell'
-import { PageHero } from '@/components/layout/PageHero'
 import { ContentSection } from '@/components/layout/ContentSection'
 import { Button } from '@/components/ui/Button'
+import { HeroMedia } from '@/components/media'
+import { MarketingMedia } from '@/components/media/MarketingMedia'
+import { ABOUT_PHOTOS } from '@/lib/images/about-photos'
 
 export const metadata: Metadata = {
   title: 'About | EventLinqs',
@@ -86,12 +88,30 @@ const PRINCIPLES = [
 export default function AboutPage() {
   return (
     <PageShell>
-      <PageHero
-        eyebrow="ABOUT"
-        title="Built for every community"
-        subtitle="The ticketing platform built for every community. All-in pricing, guest checkout, and tools that respect both organisers and attendees."
-        variant="premium"
-      />
+      {/* Luxury pass 2026-07-12 (Law 4): the brand story opens photographic,
+          on the platform hero token with the cinematic scrim - same copy,
+          worthy frame. */}
+      <section aria-labelledby="about-hero-heading" className="hero-marketing relative flex items-end overflow-hidden bg-[var(--color-navy-950)]">
+        <HeroMedia
+          image={ABOUT_PHOTOS.hero.src}
+          alt={ABOUT_PHOTOS.hero.alt}
+          objectPosition={ABOUT_PHOTOS.hero.objectPosition}
+        />
+        <div className="hero-scrim" aria-hidden />
+        <div className="hero-scrim-top" aria-hidden />
+        <div className="relative mx-auto w-full max-w-7xl px-4 pb-12 sm:px-6 lg:px-8">
+          <div className="hero-enter max-w-2xl">
+            <p className="type-eyebrow font-display text-[var(--brand-accent)]">About</p>
+            <h1 id="about-hero-heading" className="mt-3 font-headline text-3xl font-extrabold tracking-[-0.015em] text-white sm:text-4xl lg:text-5xl">
+              Built for every community
+            </h1>
+            <p className="mt-4 max-w-xl text-base leading-relaxed text-white/85 sm:text-lg">
+              The ticketing platform built for every community. All-in pricing, guest
+              checkout, and tools that respect both organisers and attendees.
+            </p>
+          </div>
+        </div>
+      </section>
 
       <ContentSection surface="base" width="default">
         <div className="grid gap-12 md:grid-cols-3 md:gap-16">
@@ -140,6 +160,22 @@ export default function AboutPage() {
           </dl>
         </div>
       </ContentSection>
+
+      {/* Photographic story band (Law 4): the mission made visible. */}
+      <section aria-hidden className="relative h-[38vh] min-h-[280px] max-h-[420px] overflow-hidden bg-[var(--color-navy-950)]">
+        <MarketingMedia
+          src={ABOUT_PHOTOS.storyBand.src}
+          alt={ABOUT_PHOTOS.storyBand.alt}
+          variant="band"
+          objectPosition={ABOUT_PHOTOS.storyBand.objectPosition}
+        />
+        <div className="hero-scrim" aria-hidden />
+        <div className="relative mx-auto flex h-full max-w-7xl items-end px-4 pb-8 sm:px-6 lg:px-8">
+          <p className="type-eyebrow font-display text-[var(--brand-accent)]">
+            Every community. Every event. One platform.
+          </p>
+        </div>
+      </section>
 
       <ContentSection surface="alt" width="wide" topBorder>
         <div className="max-w-3xl">
