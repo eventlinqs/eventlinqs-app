@@ -156,3 +156,4 @@ src/lib/dev/home-seed-fixture.json
 # scripts/ingest-imagery.mjs reads these and emits supabase/seed/imagery-map.json.
 design-assets/
 .firecrawl/
+tmp-repro.mjs
