@@ -39,15 +39,15 @@ import { fileURLToPath } from 'node:url'
 // the top edge).
 const CURATED_COVERS = {
   'Late Night Jazz at the Metro':
-    'https://images.pexels.com/photos/9002893/pexels-photo-9002893.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=900&w=1600',
+    'https://images.pexels.com/photos/9002893/pexels-photo-9002893.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=1067&w=1600',
   'Chocolate and Dessert Fair':
-    'https://images.pexels.com/photos/33814449/pexels-photo-33814449.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=900&w=1600',
+    'https://images.pexels.com/photos/33814449/pexels-photo-33814449.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=1067&w=1600',
   'Ballet Gala Evening':
-    'https://images.pexels.com/photos/20471000/pexels-photo-20471000.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=900&w=1600',
+    'https://images.pexels.com/photos/20471000/pexels-photo-20471000.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=1067&w=1600',
   'New Music Friday Live':
-    'https://images.pexels.com/photos/8639383/pexels-photo-8639383.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=900&w=1600',
+    'https://images.pexels.com/photos/8639383/pexels-photo-8639383.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=1067&w=1600',
   'Folk and Roots Night':
-    'https://images.pexels.com/photos/24482580/pexels-photo-24482580.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=900&w=1600',
+    'https://images.pexels.com/photos/24482580/pexels-photo-24482580.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=1067&w=1600',
 }
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
