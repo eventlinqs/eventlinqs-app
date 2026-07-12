@@ -17,12 +17,14 @@ export const MAX_IMAGE_DIMENSION = 4000
 
 /**
  * Minimum width for a COVER image. The cover is the hero + card + LCP raster, so
- * a tiny image reads as broken at full bleed. 1200px is the hard floor that
- * rejects genuinely under-size covers; 1920px is the recommended source width
- * (SPEC 1.1). Gallery images have no minimum (they render small, below the fold).
+ * a tiny image reads as broken at full bleed. 1000px is the hard floor that
+ * rejects genuinely under-size covers, matched to the category-leader bar
+ * (1000px wide minimum, 2160px recommended source width) so we are never
+ * stricter than the market. Gallery images have no minimum (they render small,
+ * below the fold).
  */
-export const MIN_COVER_WIDTH = 1200
-export const RECOMMENDED_COVER_WIDTH = 1920
+export const MIN_COVER_WIDTH = 1000
+export const RECOMMENDED_COVER_WIDTH = 2160
 
 /**
  * Accepted upload formats by their real (magic-byte) sharp format id. SVG and any
