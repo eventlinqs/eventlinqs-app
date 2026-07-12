@@ -201,7 +201,7 @@ export function EventCard({ event, dynamicPrices = new Map(), initiallySaved = f
         {/* Title - --type-h4 (22/600/1.3 desktop, 18/600/1.35 mobile).
          *  Hover: navy stays, gold underline added (spec). */}
         <h3
-          className="type-h4 mt-1 text-[var(--text-primary)] line-clamp-2 underline-offset-4 decoration-[var(--brand-accent)] decoration-2 group-hover:underline"
+          className="type-h4 font-headline tracking-[-0.01em] mt-1 text-[var(--text-primary)] line-clamp-2 underline-offset-4 decoration-[var(--brand-accent)] decoration-2 group-hover:underline"
           style={{ transition: 'text-decoration-color var(--motion-quick)' }}
         >
           {title}
