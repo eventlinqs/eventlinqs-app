@@ -24,7 +24,10 @@ interface Props {
   slides: FeaturedHeroSlide[]
 }
 
-const ROTATE_MS = 6500
+// Founder tempo ruling 2026-07-12: a confident, alive 4 to 5 second beat
+// (6.5s sat static too long). The 700ms eased crossfade stays, so each
+// slide holds just over four seconds before gliding on.
+const ROTATE_MS = 4800
 
 /**
  * FeaturedHeroClient - one strong featured event at a time, auto-rotating to the
@@ -32,7 +35,7 @@ const ROTATE_MS = 6500
  * docs/benchmark/rail-controls/CATALOGUE.md).
  *
  * Auto-rotation (Hero Carousel law, CLAUDE.md Motion):
- *   - Advances every ~6.5s with an eased opacity crossfade, mobile and desktop.
+ *   - Advances every ~4.8s with an eased opacity crossfade, mobile and desktop.
  *   - Pauses on hover (desktop), touch/swipe (mobile), and while any element
  *     inside has keyboard focus; resumes after. A manual move resets the timer
  *     (the timer effect keys on `active`).
