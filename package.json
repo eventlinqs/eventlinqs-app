@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "pretest": "node scripts/seed-events-catalogue.mjs --fixture",
     "test": "vitest run",
     "test:watch": "vitest",
     "admin:proof:setup": "playwright test --config playwright.admin.config.ts --project setup --headed",

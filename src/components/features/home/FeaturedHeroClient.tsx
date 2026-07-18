@@ -75,11 +75,15 @@ export function FeaturedHeroClient({ slides }: Props) {
   // and keys the fill element, restarting fill and timer as one clock.
   const running = armed && playing && !hovered && !focused && !touching
   const [fillEpoch, setFillEpoch] = useState(0)
-  const prevRunning = useRef(running)
-  useEffect(() => {
-    if (running && !prevRunning.current) setFillEpoch(e => e + 1)
-    prevRunning.current = running
-  }, [running])
+  // Adjust derived state during render (React's documented escape hatch, no
+  // effect needed): bump the fill epoch ONLY on a pause-to-running transition
+  // so the progress fill and the rotation timer restart from full together. A
+  // running-to-pause transition must NOT bump - the fill freezes in place.
+  const [prevRunning, setPrevRunning] = useState(running)
+  if (running !== prevRunning) {
+    setPrevRunning(running)
+    if (running) setFillEpoch(e => e + 1)
+  }
 
   const goTo = useCallback(
     (idx: number) => setActive(((idx % total) + total) % total),
