@@ -1,0 +1,48 @@
+{
+  "base": "http://localhost:3000",
+  "startedAt": "2026-07-12T13:11:26.821Z",
+  "purchase": {
+    "orderId": "a407d8ff-2163-44d7-b787-1257ef54f0b6",
+    "order_number": "EL-5ND9ZRXA",
+    "confirmed": true,
+    "buyerAttached": true,
+    "ticketCount": 1,
+    "seatOnTicket": true,
+    "seat": {
+      "section": "Main room",
+      "row": "A",
+      "number": "3"
+    },
+    "bearerPageShowsSeat": true
+  },
+  "concurrency": {
+    "rounds": [
+      {
+        "seat": "bd184bd6-d4bd-4f32-adc1-e03dad38929d",
+        "aWon": true,
+        "bWon": false,
+        "exactlyOneWinner": true
+      },
+      {
+        "seat": "1b1777e5-63e2-4833-9fc0-5a57f0a8cdb7",
+        "aWon": true,
+        "bWon": false,
+        "exactlyOneWinner": true
+      },
+      {
+        "seat": "ceb2c618-7036-44e3-b0fa-a5bf57d9f229",
+        "aWon": true,
+        "bWon": false,
+        "exactlyOneWinner": true
+      },
+      {
+        "seat": "3a9e10c7-c23e-463b-af7e-433bb038c6a9",
+        "aWon": true,
+        "bWon": false,
+        "exactlyOneWinner": true
+      }
+    ],
+    "everyRoundExactlyOneWinner": true
+  },
+  "finishedAt": "2026-07-12T13:11:51.634Z"
+}
