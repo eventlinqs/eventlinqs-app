@@ -1,0 +1,74 @@
+[
+  {
+    "surface": "Home",
+    "url": "https://eventlinqs-staging.vercel.app/",
+    "eventLink": "/events/cat-late-night-jazz-at-the-metro-sydney",
+    "reachedEvent": true,
+    "reachedCheckout": true,
+    "error": null
+  },
+  {
+    "surface": "Browse (/events)",
+    "url": "https://eventlinqs-staging.vercel.app/events",
+    "eventLink": "/events/matsuri-japanese-summer-festival-cairns-cairns",
+    "reachedEvent": true,
+    "reachedCheckout": true,
+    "error": null
+  },
+  {
+    "surface": "Search results",
+    "url": "https://eventlinqs-staging.vercel.app/events?q=live",
+    "eventLink": "/events/afrobeats-amapiano-live-at-the-rosemount-perth",
+    "reachedEvent": true,
+    "reachedCheckout": true,
+    "error": null
+  },
+  {
+    "surface": "City page",
+    "url": "https://eventlinqs-staging.vercel.app/city/geelong",
+    "eventLink": "/events/geelong-waterfront-sessions-73542-yjdzgo",
+    "reachedEvent": true,
+    "reachedCheckout": true,
+    "error": null
+  },
+  {
+    "surface": "City page (Melbourne)",
+    "url": "https://eventlinqs-staging.vercel.app/city/melbourne",
+    "eventLink": "/events/cat-chocolate-and-dessert-fair-melbourne",
+    "reachedEvent": true,
+    "reachedCheckout": true,
+    "error": null
+  },
+  {
+    "surface": "Category / scene page",
+    "url": "https://eventlinqs-staging.vercel.app/categories/afrobeats",
+    "eventLink": "/events/afrobeats-amapiano-live-at-the-rosemount-perth",
+    "reachedEvent": true,
+    "reachedCheckout": true,
+    "error": null
+  },
+  {
+    "surface": "Community page",
+    "url": "https://eventlinqs-staging.vercel.app/community/aboriginal-torres-strait-islander",
+    "eventLink": "/events/blak-music-and-dance-night-melbourne-melbourne",
+    "reachedEvent": true,
+    "reachedCheckout": true,
+    "error": null
+  },
+  {
+    "surface": "Community-city page",
+    "url": "https://eventlinqs-staging.vercel.app/community/aboriginal-torres-strait-islander/sydney",
+    "eventLink": null,
+    "reachedEvent": false,
+    "reachedCheckout": false,
+    "error": "no event card on surface"
+  },
+  {
+    "surface": "Organiser page",
+    "url": "https://eventlinqs-staging.vercel.app/organisers/harbour-lights-collective",
+    "eventLink": "/events/cat-late-night-jazz-at-the-metro-sydney",
+    "reachedEvent": true,
+    "reachedCheckout": true,
+    "error": null
+  }
+]

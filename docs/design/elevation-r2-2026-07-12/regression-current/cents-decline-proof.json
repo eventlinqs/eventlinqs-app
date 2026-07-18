@@ -1,0 +1,14 @@
+{
+  "displayed": "27.50",
+  "checkoutTotal": "25.00",
+  "order": {
+    "order_number": "EL-SPN58CEW",
+    "status": "confirmed",
+    "total_cents": 2750
+  },
+  "centsOk": false,
+  "declined": {
+    "stillOnCheckout": true,
+    "declineShown": true
+  }
+}

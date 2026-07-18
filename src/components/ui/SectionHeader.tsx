@@ -27,9 +27,15 @@ export function SectionHeader({
 }: Props) {
   return (
     <div className={`flex items-start gap-3 ${className}`}>
-      <div className="mt-1 h-8 w-0.5 shrink-0 bg-gold-500" aria-hidden />
+      {/* Design elevation 2026-07-12: the gold keyline gains a grounded foot
+          (a 2px node) - the house section mark - and the eyebrow uses the one
+          platform eyebrow utility. */}
+      <div className="mt-1 flex h-8 w-0.5 shrink-0 flex-col" aria-hidden>
+        <span className="min-h-0 flex-1 bg-gold-500" />
+        <span className="h-[3px] w-[3px] -ml-px self-center bg-gold-700" />
+      </div>
       <div>
-        <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-700">
+        <p className="type-eyebrow font-display text-gold-700">
           {eyebrow}
         </p>
         <h2 id={id} className={`font-display ${titleSizes[size]} text-ink-900`}>

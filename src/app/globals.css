@@ -554,6 +554,120 @@ html[data-motion="1"] .hero-enter > *:nth-child(n+5) { animation-delay: 300ms; }
 .scrollbar-none::-webkit-scrollbar { display: none; }
 .scrollbar-none { scrollbar-width: none; -ms-overflow-style: none; }
 
+/* ─── DESIGN ELEVATION 2026-07-12 (feat/design-elevation) ─────────────────────
+ * The house grade, the cinematic scrim, and the editorial type refinements.
+ * One colourist for every photograph, one scrim curve for every hero, one
+ * tracking discipline for every display setting. All within the locked
+ * identity: navy alphas and the existing gold only, no new colours, no
+ * glassmorphism, everything reduced-motion safe (filters and gradients are
+ * static paint, not motion).
+ */
+
+/* 1. THE HOUSE GRADE (signature). Every photograph on the platform passes
+ * through one grade: gently deepened saturation and contrast, as if a single
+ * colourist touched the whole catalogue. Idle state - not a hover effect -
+ * so audits and reduced-motion visitors see the same graded image. */
+.card-media-img,
+.hero-grade img,
+.hero-grade video {
+  filter: saturate(1.06) contrast(1.03);
+}
+html[data-motion="1"] .group:hover .card-media-img {
+  filter: saturate(1.1) contrast(1.03) brightness(1.07);
+}
+
+/* The permanent veil: a whisper of navy anchoring every card photo's base
+ * (depth + brand, distinct from the hover wash which rides above it). */
+.media-grade-veil {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to top,
+    rgba(10, 22, 40, 0.22) 0%,
+    rgba(10, 22, 40, 0.07) 30%,
+    rgba(10, 22, 40, 0) 52%
+  );
+}
+
+/* 2. THE CINEMATIC SCRIM - one curve for every hero. Five stops: solid
+ * anchor for the bottom text block, a long readable mid, faces protected
+ * above half, clean sky at the top. Pair with .hero-scrim-top on pages
+ * where the transparent header needs its own breath of legibility. */
+.hero-scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to top,
+    rgba(10, 22, 40, 0.88) 0%,
+    rgba(10, 22, 40, 0.56) 20%,
+    rgba(10, 22, 40, 0.24) 44%,
+    rgba(10, 22, 40, 0.06) 68%,
+    rgba(10, 22, 40, 0) 88%
+  );
+}
+.hero-scrim-top {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    rgba(10, 22, 40, 0.36) 0%,
+    rgba(10, 22, 40, 0) 20%
+  );
+}
+
+/* 3. EDITORIAL TYPE DISCIPLINE. Archivo carries negative tracking at display
+ * sizes (the confident, set-by-hand read); eyebrows are one utility
+ * everywhere; dashboard numerals align in columns. */
+.type-hero-display { letter-spacing: -0.02em; }
+.type-h1           { letter-spacing: -0.015em; }
+.type-h2           { letter-spacing: -0.01em; }
+.type-eyebrow {
+  font-size: 11px;
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.nums-tabular { font-variant-numeric: tabular-nums; }
+
+/* 4. PANEL DEPTH for the organiser surfaces: quieter than a card, present
+ * enough to lift the panel off the canvas. */
+:root { --shadow-panel: 0 1px 2px rgba(10, 22, 40, 0.04), 0 6px 20px -8px rgba(10, 22, 40, 0.08); }
+.panel-elevated { box-shadow: var(--shadow-panel); }
+
+/* 5. MICRO-INTERACTIONS, gated and quiet. Buttons acknowledge the press
+ * (a transform-only snap: no transition override, so every button keeps
+ * its own colour transitions); inline links underline with intent. Armed
+ * only under the motion flag so reduced-motion and audits never see them. */
+html[data-motion="1"] button:not(:disabled):active {
+  transform: scale(0.99);
+}
+.link-underline {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-size: 0% 1px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  transition: background-size 220ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
+}
+html[data-motion="1"] .link-underline:hover { background-size: 100% 1px; }
+
+/* 6. HERO PROGRESS CUE (founder request 2026-07-12): the gold hairline fill
+ * that paces the featured-event rotation. Armed only under the motion flag;
+ * reduced-motion and no-JS render the calm static hairline instead. Linear
+ * by design: the fill IS the timer. */
+@keyframes hero-progress {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+html[data-motion="1"] .hero-progress-fill {
+  animation-name: hero-progress;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+}
+
 /* ─── Respect user reduced-motion preference ─────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   *,

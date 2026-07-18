@@ -310,6 +310,7 @@ export default async function HomePage() {
             title="On this weekend"
             ariaLabel="Events this weekend"
             railLabel="Events this weekend"
+            invitationSubject="weekend"
             events={thisWeekend}
             viewAllHref="/events?preset=weekend"
           />
@@ -397,6 +398,7 @@ export default async function HomePage() {
             title="Fresh on the platform"
             ariaLabel="Recently added events"
             railLabel="Recently added events"
+            invitationSubject="fresh"
             events={justAdded}
             viewAllHref="/events?sort=date_asc"
           />

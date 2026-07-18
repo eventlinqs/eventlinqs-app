@@ -83,7 +83,20 @@ export default async function MyTicketsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-ink-900 mb-6">My Tickets</h1>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold text-ink-900">My Tickets</h1>
+        {/* Launch-face finalisation 2026-07-12: this screen lists ORDERS;
+            the per-ticket controls (QR at the door, change my seat,
+            transfer or gift) live in the ticket wallet. Surface that entry
+            point here so a buyer arriving via the dashboard always finds
+            them. */}
+        <Link
+          href="/tickets"
+          className="inline-flex h-10 items-center rounded-full bg-[var(--color-navy-950)] px-5 text-sm font-semibold text-white transition-colors hover:bg-ink-800"
+        >
+          Open ticket wallet: QR, seat moves, transfers
+        </Link>
+      </div>
 
       {orderRows.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-ink-100 bg-white px-6 py-14 text-center">

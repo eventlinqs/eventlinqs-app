@@ -1,0 +1,102 @@
+{
+  "base": "https://eventlinqs-staging.vercel.app",
+  "startedAt": "2026-07-12T02:11:03.131Z",
+  "stages": [
+    "a",
+    "c"
+  ],
+  "a_loggedInSeated": {
+    "order": {
+      "id": "1197c3b1-604b-4eaf-b4c1-d8397ca88887",
+      "order_number": "EL-A2J23QUW",
+      "status": "confirmed",
+      "user_id": "57101100-eec8-4e72-a464-97e11e66bea1",
+      "guest_email": null,
+      "guest_name": null,
+      "total_cents": 2750,
+      "currency": "AUD"
+    },
+    "tickets": [
+      {
+        "id": "16b3f783-25b2-4783-bab0-d3eec714abcf",
+        "ticket_code": "EL-8YGQ-PCMW",
+        "status": "valid",
+        "holder_email": "test-user@eventlinqs.com",
+        "seat": {
+          "section": {
+            "name": "Main room"
+          },
+          "row_label": "C",
+          "seat_number": "6"
+        }
+      }
+    ],
+    "userAttached": true,
+    "guestFieldsNull": true,
+    "confirmed": true,
+    "myTicketsShowsTicket": true
+  },
+  "b_guestSeated": {
+    "order": {
+      "id": "9a8571cf-19ac-4c53-811e-e336bd421dea",
+      "order_number": "EL-CYV5MDTU",
+      "status": "confirmed",
+      "user_id": null,
+      "guest_email": "guest-attach-proof@mailinator.com",
+      "guest_name": "Guest Proof",
+      "total_cents": 2750,
+      "currency": "AUD"
+    },
+    "tickets": [
+      {
+        "ticket_code": "EL-24HK-8282",
+        "status": "valid",
+        "holder_email": "guest-attach-proof@mailinator.com"
+      }
+    ],
+    "userIdNull": true,
+    "guestEmailCorrect": true,
+    "confirmed": true
+  },
+  "c_loggedInGA": {
+    "order": {
+      "id": "de97bc90-d172-49b4-8f4d-dbe0bfab3463",
+      "order_number": "EL-WLNMRFQ2",
+      "status": "confirmed",
+      "user_id": "57101100-eec8-4e72-a464-97e11e66bea1",
+      "guest_email": null,
+      "guest_name": null,
+      "total_cents": 2750,
+      "currency": "AUD"
+    },
+    "userAttached": true,
+    "confirmed": true
+  },
+  "d_transfer": {
+    "uiStatus": "Sent to transfer-attach-proof@mailinator.com. Their new QR is on the way and your old code no longer works.",
+    "before": {
+      "holder_email": "test-user@eventlinqs.com",
+      "secret_prefix": "6cb6a5c7"
+    },
+    "after": {
+      "id": "16b3f783-25b2-4783-bab0-d3eec714abcf",
+      "ticket_code": "EL-8YGQ-PCMW",
+      "status": "valid",
+      "holder_email": "transfer-attach-proof@mailinator.com",
+      "holder_name": "Transfer Proof",
+      "transferred_to_email": "transfer-attach-proof@mailinator.com"
+    },
+    "log": [
+      {
+        "from_user_id": "57101100-eec8-4e72-a464-97e11e66bea1",
+        "from_email": "test-user@eventlinqs.com",
+        "to_email": "transfer-attach-proof@mailinator.com",
+        "created_at": "2026-07-12T02:12:13.387705+00:00"
+      }
+    ],
+    "holderReassigned": true,
+    "secretRotated": true,
+    "transferLogged": true
+  },
+  "finishedAt": "2026-07-12T02:12:15.968Z"
+}

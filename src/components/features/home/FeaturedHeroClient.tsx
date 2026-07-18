@@ -67,6 +67,20 @@ export function FeaturedHeroClient({ slides }: Props) {
   const total = slides.length
   const multi = total > 1
 
+  // Progress-cue sync (surgical fix 2026-07-12). The rotation timer restarts
+  // FROM FULL whenever a pause ends (the effect below re-runs), but a CSS
+  // animation resumed via play-state carries on from where it stopped - so
+  // after any hover the fill finished early and sat frozen at 100% until the
+  // late advance. The epoch increments on every pause-to-running transition
+  // and keys the fill element, restarting fill and timer as one clock.
+  const running = armed && playing && !hovered && !focused && !touching
+  const [fillEpoch, setFillEpoch] = useState(0)
+  const prevRunning = useRef(running)
+  useEffect(() => {
+    if (running && !prevRunning.current) setFillEpoch(e => e + 1)
+    prevRunning.current = running
+  }, [running])
+
   const goTo = useCallback(
     (idx: number) => setActive(((idx % total) + total) % total),
     [total],
@@ -169,7 +183,7 @@ export function FeaturedHeroClient({ slides }: Props) {
               className="pointer-events-none absolute inset-0"
               style={{
                 background:
-                  'linear-gradient(to top, rgba(10,22,40,0.80) 0%, rgba(10,22,40,0.40) 42%, rgba(10,22,40,0.06) 78%, rgba(10,22,40,0.00) 100%)',
+                  'linear-gradient(to top, rgba(10,22,40,0.84) 0%, rgba(10,22,40,0.54) 20%, rgba(10,22,40,0.24) 44%, rgba(10,22,40,0.06) 68%, rgba(10,22,40,0) 88%)',
               }}
             />
             <div className="relative z-10 mx-auto flex h-full max-w-7xl items-end px-6 pb-8 sm:px-8 sm:pb-10 lg:px-12 lg:pb-12">
@@ -276,6 +290,36 @@ export function FeaturedHeroClient({ slides }: Props) {
                 )
               })}
             </div>
+          </div>
+
+          {/* Hero progress cue (founder request 2026-07-12): a slim gold
+              hairline along the hero's base fills across each slide's 4.8s
+              and resets on advance, so the next event's arrival is always
+              legible. Keyed on `active` to restart per slide; play-state
+              tracks the exact rotation pause conditions, so hover, touch and
+              focus pause fill and timer TOGETHER. Without data-motion (no JS,
+              reduced motion, audits) the fill has no animation and renders as
+              a calm static hairline. Pure transform animation: no layout, no
+              LCP cost. */}
+          <div
+            aria-hidden
+            className="absolute inset-x-0 bottom-0 z-10 h-px bg-[rgba(232,183,56,0.10)]"
+          >
+            {/* A delicate luminous hairline, not a bar: the fill fades in
+                from nothing and gathers to a soft glowing gold leading edge.
+                Keyed on slide AND resume epoch so it always shares the
+                rotation timer's clock exactly (see fillEpoch above). */}
+            <div
+              key={`${active}-${fillEpoch}`}
+              className="hero-progress-fill h-full w-full origin-left"
+              style={{
+                background:
+                  'linear-gradient(90deg, rgba(232,183,56,0) 0%, rgba(232,183,56,0.35) 55%, rgba(232,183,56,0.7) 86%, rgba(240,199,94,0.95) 100%)',
+                boxShadow: '0 0 6px rgba(232,183,56,0.35)',
+                animationDuration: `${ROTATE_MS}ms`,
+                animationPlayState: running ? 'running' : 'paused',
+              }}
+            />
           </div>
         </>
       )}

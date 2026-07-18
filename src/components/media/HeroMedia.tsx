@@ -89,9 +89,12 @@ export function HeroMedia({
 }: HeroMediaProps) {
   assertRaster(image)
 
+  // Design elevation 2026-07-12: every hero photograph passes through the
+  // house grade (.hero-grade filters the img/video children) - one
+  // colourist for the whole platform. Static paint, LCP-safe.
   const wrapClasses = fillParent
-    ? `absolute inset-0 overflow-hidden ${className}`
-    : `relative h-full w-full overflow-hidden ${className}`
+    ? `hero-grade absolute inset-0 overflow-hidden ${className}`
+    : `hero-grade relative h-full w-full overflow-hidden ${className}`
 
   // A bad/missing/disallowed hero URL must never 500 the page. Fall back to
   // the branded placeholder as the hero layer instead.

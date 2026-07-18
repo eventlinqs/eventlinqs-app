@@ -62,6 +62,20 @@ probe to prove the alert path end to end.
 The sentinel READS ONLY: it never mutates orders, seats, or money, and the
 funds-holding engine is untouched.
 
+## Crons run on PRODUCTION only (launch-day verification step)
+
+Vercel executes vercel.json crons on PRODUCTION deployments only, by
+platform design. On previews and staging this whole mission exercised the
+routes manually (Bearer CRON_SECRET). At go-live, verify in the Vercel
+dashboard that BOTH money-path crons are listed and firing:
+
+- `/api/cron/reservation-expire` (every minute) - releases abandoned GA and
+  seated holds; the sweeper's mixed-shape fix is migration 20260712000001.
+- `/api/cron/webhook-sentinel` (every 10 minutes) - the payment sentinel.
+
+First-hour proof on launch day: one green sentinel response in the cron
+logs and one abandoned test hold releasing inside two minutes.
+
 ## Go-live day (production)
 
 1. Mint the PRODUCTION endpoint: same procedure, URL

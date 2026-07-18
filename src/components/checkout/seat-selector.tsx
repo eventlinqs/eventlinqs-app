@@ -331,7 +331,11 @@ export function SeatSelector({
         seat_ids: Array.from(selectedIds),
       })
       if (result.error) {
+        // Concurrency loser path (launch-face finalisation 2026-07-12): say
+        // exactly what happened and clear the stale selection so the
+        // refreshed map is honest - no silent failure, no ghost picks.
         setError(result.error)
+        setSelectedIds(new Set())
         router.refresh()
         return
       }

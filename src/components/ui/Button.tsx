@@ -20,16 +20,19 @@ const base = [
  * Primary uses text-[var(--text-primary)] (near-black on gold) per DESIGN-SYSTEM §3:
  * "Gold buttons use --ink-900 text, NOT white." Contrast ratio ~7.4:1 (WCAG AAA).
  */
+// Luxury pass 2026-07-12: shadows come from the navy-tinted house family
+// (never the grey Tailwind defaults), and the primary hover blooms GOLD -
+// the same light the FeaturedHero CTA already carries, made systemic.
 const variants: Record<Variant, string> = {
   primary: [
-    'bg-[var(--brand-accent)] text-[var(--text-primary)] shadow-md',
-    'hover:bg-[var(--brand-accent-hover)] hover:shadow-lg hover:-translate-y-0.5',
-    'active:bg-[var(--brand-accent-active)] active:shadow-sm active:translate-y-0',
+    'bg-[var(--brand-accent)] text-[var(--text-primary)] shadow-[0_2px_8px_rgba(10,22,40,0.14)]',
+    'hover:bg-[var(--brand-accent-hover)] hover:shadow-[0_10px_28px_rgba(212,160,23,0.30)] hover:-translate-y-0.5',
+    'active:bg-[var(--brand-accent-active)] active:shadow-[0_2px_6px_rgba(10,22,40,0.14)] active:translate-y-0',
   ].join(' '),
   secondary: [
-    'bg-[var(--surface-2)] text-[var(--text-primary)] shadow-sm',
-    'hover:bg-[var(--surface-1)] hover:shadow-md hover:-translate-y-0.5',
-    'active:bg-[var(--surface-2)] active:shadow-sm active:translate-y-0',
+    'bg-[var(--surface-2)] text-[var(--text-primary)] shadow-[0_1px_3px_rgba(10,22,40,0.08)]',
+    'hover:bg-[var(--surface-1)] hover:shadow-[0_6px_16px_rgba(10,22,40,0.12)] hover:-translate-y-0.5',
+    'active:bg-[var(--surface-2)] active:shadow-[0_1px_3px_rgba(10,22,40,0.08)] active:translate-y-0',
   ].join(' '),
   ghost: [
     'bg-transparent text-[var(--text-primary)]',
