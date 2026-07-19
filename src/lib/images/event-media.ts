@@ -173,19 +173,28 @@ const HERO_RASTER_SLUGS = new Set([
   'filipino',
   'lunar',
 ])
+// The founder's own licensed homepage hero photography (Adobe Stock / Stocksy
+// source), encoded to local AVIF by scripts/build-homepage-hero-rasters.mjs.
+// These are the platform's curated hero backdrop - shot for the homepage - so
+// they LEAD the variety pool and are the default. A featured slide with no real
+// cover, and every category-highlight padding slide, now wears the founder's
+// premium photography rather than a generic Pexels category shot.
+const HOMEPAGE_HERO_RASTERS = ['homepage-day-festival', 'homepage-festival-night', 'homepage-rooftop']
+
 // LCP law (docs/MEDIA-ARCHITECTURE.md §5; comment below): the homepage hero
 // raster MUST be a LOCAL bundled AVIF for direct CDN delivery - routing it
 // through /_next/image (remote spine URL) adds ~1100ms cold-encode on the LCP
 // path. The spine fronts the city/community/category landing heroes (which were
-// already remote) and every tile; the homepage hero default stays local.
-const HERO_RASTER_DEFAULT = `${HERO_RASTER_DIR}/afrobeats.jpg`
+// already remote) and every tile; the homepage hero default stays local. The
+// default is now the founder's flagship homepage shot, not a category stock.
+const HERO_RASTER_DEFAULT = `${HERO_RASTER_DIR}/${HOMEPAGE_HERO_RASTERS[0]}.jpg`
 
 // Ordered list for the deterministic-variety fallback below. A carousel of
 // coverless events must never wear one identical photo across every slide
 // (hero wiring fix 2026-07-12: five fixture slides all rendered the single
-// afrobeats default). Order is stable so the same event always gets the
-// same raster across builds and requests.
-const HERO_RASTER_POOL = [...HERO_RASTER_SLUGS].sort()
+// afrobeats default). Founder homepage heroes lead, then the category rasters.
+// Order is stable so the same event always gets the same raster across builds.
+const HERO_RASTER_POOL = [...HOMEPAGE_HERO_RASTERS, ...[...HERO_RASTER_SLUGS].sort()]
 
 function hashSeed(seed: string): number {
   let h = 0

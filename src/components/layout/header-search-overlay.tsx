@@ -260,6 +260,7 @@ export function HeaderSearchOverlay({ open, onClose, triggerRef }: Props) {
             <Search className="h-6 w-6 text-white/70" aria-hidden />
             <input
               id="header-search-input"
+              name="search"
               ref={inputRef}
               type="search"
               role="combobox"

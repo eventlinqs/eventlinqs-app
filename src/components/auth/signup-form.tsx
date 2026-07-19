@@ -158,6 +158,8 @@ export function SignupForm({ role = 'attendee' }: Props) {
 
         <label className="flex min-h-[44px] cursor-pointer items-start gap-3 py-1">
           <input
+            id="digest-opt-in"
+            name="digest-opt-in"
             type="checkbox"
             checked={digestOptIn}
             onChange={(e) => setDigestOptIn(e.target.checked)}

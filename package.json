@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "node scripts/prebuild-fixture.mjs",
+    "prebuild": "node scripts/check-public-env.mjs && node scripts/prebuild-fixture.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

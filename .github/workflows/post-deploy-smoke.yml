@@ -161,6 +161,23 @@ jobs:
           echo "$BODY" | grep -q '"ok":true' || { echo "payment sentinel RED"; exit 1; }
           echo "payment sentinel GREEN"
 
+      - name: Platform health sentinel probe (post-deploy hook)
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -u
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo "::warning::CRON_SECRET not configured; platform health probe skipped. Add it at go-live (docs/ops/HEALTH-ALERTS.md)."
+            exit 0
+          fi
+          # Runs the full check battery after deploy. The sentinel itself emails
+          # the founder on any CRITICAL fault; here we fail the gate on critical
+          # (warnings like push/AI config are known soft gaps, not blockers).
+          BODY=$(curl -sS -m 60 -H "Authorization: Bearer ${CRON_SECRET}" "https://www.eventlinqs.com/api/cron/health-sentinel")
+          echo "$BODY"
+          if echo "$BODY" | grep -q '"status":"critical"'; then echo "platform health CRITICAL"; exit 1; fi
+          echo "platform health OK (green or warnings only)"
+
       - name: Email alert via Resend on failure
         if: failure()
         env:

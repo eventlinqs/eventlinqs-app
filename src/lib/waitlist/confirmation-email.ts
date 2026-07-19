@@ -20,6 +20,15 @@ export function buildWaitlistConfirmationEmail(input: {
 }): { subject: string; html: string; text: string } {
   const { cityName, fullName, role, foundingCandidate, unsubscribeUrl, marketingOptIn } = input
   const firstName = fullName.split(' ')[0] || fullName
+  // Env-driven base: reuse the SAME origin as the (already env-driven)
+  // unsubscribe link instead of a hardcoded apex domain, so this email always
+  // carries the right domain (and switches to eventlinqs.com.au automatically).
+  let baseUrl = 'https://www.eventlinqs.com'
+  try {
+    baseUrl = new URL(unsubscribeUrl).origin
+  } catch {
+    // keep the canonical default
+  }
 
   const subject = `You are on the ${cityName} waitlist`
 
@@ -67,7 +76,7 @@ export function buildWaitlistConfirmationEmail(input: {
           <p style="font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:#666666;margin:0 0 20px;">${optInLine}</p>
           <table role="presentation" cellpadding="0" cellspacing="0"><tr>
             <td style="background:#D4A017;border-radius:999px;">
-              <a href="https://eventlinqs.com/events" style="display:inline-block;padding:11px 22px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;color:#0A1628;text-decoration:none;">Browse events across Australia</a>
+              <a href="${baseUrl}/events" style="display:inline-block;padding:11px 22px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;color:#0A1628;text-decoration:none;">Browse events across Australia</a>
             </td>
           </tr></table>
         </td>

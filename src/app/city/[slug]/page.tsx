@@ -217,7 +217,6 @@ export default async function CityPage({ params }: Props) {
         communityImages={communityImages}
         suburbs={suburbs}
         mapPins={mapPins}
-        mapboxToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? ''}
       />
     </>
   )

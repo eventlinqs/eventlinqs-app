@@ -1,0 +1,17 @@
+{
+  "note": "Founder-supplied licensed homepage hero photography (Adobe Stock / Stocksy source, see docs/IMAGERY-STRATEGY.md). Encoded from design-assets/incoming via scripts/build-homepage-hero-rasters.mjs. Licence held by EventLinqs; not Pexels.",
+  "heroes": [
+    {
+      "slug": "homepage-day-festival",
+      "alt": "A daytime festival crowd under open sky"
+    },
+    {
+      "slug": "homepage-festival-night",
+      "alt": "A festival main stage lit up at night"
+    },
+    {
+      "slug": "homepage-rooftop",
+      "alt": "A rooftop gathering at golden hour"
+    }
+  ]
+}

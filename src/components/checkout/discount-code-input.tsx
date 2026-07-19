@@ -77,10 +77,14 @@ export function DiscountCodeInput({
 
   return (
     <div className="rounded-xl border border-ink-200 bg-white p-6">
-      <h3 className="text-base font-semibold text-ink-900 mb-3">Discount Code</h3>
+      <h3 id="discount-code-label" className="text-base font-semibold text-ink-900 mb-3">Discount Code</h3>
       <div className="flex gap-2">
         <input
+          id="discount-code"
+          name="discount-code"
           type="text"
+          autoComplete="off"
+          aria-labelledby="discount-code-label"
           value={code}
           onChange={e => setCode(e.target.value.toUpperCase())}
           onKeyDown={e => e.key === 'Enter' && handleApply()}

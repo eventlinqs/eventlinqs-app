@@ -512,6 +512,51 @@ html[data-motion="1"] .seat-bloom {
   animation: seat-bloom 240ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
+/* Order-confirmation celebration - the post-purchase reward moment. Light
+ * canvas, navy/gold, premium not childish: the success badge pops in with a
+ * single expanding gold ring, the header stack rises in a short stagger, and
+ * one slow gold sheen sweeps the issued ticket so it reads as a reward that
+ * ARRIVES. Armed ONLY under html[data-motion="1"], so reduced-motion, no-JS,
+ * and headless audits render the settled success state from first paint (the
+ * decorative ring and sheen carry a base opacity:0 / no ::after so nothing
+ * static shows without motion). */
+@keyframes confirm-pop {
+  0%   { opacity: 0; transform: scale(0.72); }
+  60%  { transform: scale(1.06); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes confirm-ring {
+  0%   { opacity: 0.5; transform: scale(0.6); }
+  100% { opacity: 0; transform: scale(2.3); }
+}
+@keyframes confirm-sheen {
+  0%   { opacity: 0; transform: translateX(-120%) skewX(-12deg); }
+  18%  { opacity: 0.5; }
+  100% { opacity: 0; transform: translateX(120%) skewX(-12deg); }
+}
+html[data-motion="1"] .confirm-badge {
+  animation: confirm-pop 460ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)) both;
+}
+html[data-motion="1"] .confirm-ring {
+  animation: confirm-ring 900ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)) 120ms both;
+}
+html[data-motion="1"] .confirm-enter > * {
+  animation: fade-rise 320ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)) both;
+}
+html[data-motion="1"] .confirm-enter > *:nth-child(1) { animation-delay: 160ms; }
+html[data-motion="1"] .confirm-enter > *:nth-child(2) { animation-delay: 230ms; }
+html[data-motion="1"] .confirm-enter > *:nth-child(3) { animation-delay: 300ms; }
+html[data-motion="1"] .confirm-enter > *:nth-child(n+4) { animation-delay: 360ms; }
+html[data-motion="1"] .confirm-sheen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 30%, rgba(232, 183, 56, 0.28) 50%, transparent 70%);
+  animation: confirm-sheen 1100ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)) 520ms both;
+}
+
 /* Hero slide swap: when the featured hero rotates (or is stepped manually),
  * the incoming slide's CONTENT stack (kicker, title, detail, CTA) rises in
  * gently behind the image crossfade, so each featured event ARRIVES rather

@@ -60,9 +60,11 @@ export function NavSearch({ variant = 'desktop' }: Props) {
           <path d="M21 21l-4.35-4.35" strokeLinecap="round" />
         </svg>
         <input
+          id="nav-search"
           ref={inputRef}
           type="search"
           name="q"
+          autoComplete="off"
           placeholder="Search events, artists, venues"
           aria-label="Search events, artists, venues"
           className="flex-1 border-0 bg-transparent text-sm text-ink-900 outline-none placeholder:text-ink-400"

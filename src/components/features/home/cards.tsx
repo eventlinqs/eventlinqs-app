@@ -54,8 +54,14 @@ export interface CityTileData {
 
 // Shared finish. Quiet confidence: hairline border + soft shadow, a small
 // hover lift, gold focus ring with offset.
+// h-full: every card fills its rail/grid cell so cards in one rail share a
+// single height. The flex track (and grid rows) stretch cells to the tallest
+// item; without h-full a shorter card top-aligns and leaves dead space beneath
+// it. With it, every card's footer baseline lines up and the rail reads as one
+// symmetrical grid (founder rail-symmetry law). Body uses flex-1 + mt-auto so
+// the extra height opens above the footer, never below the card.
 const SURFACE =
-  'group block overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-[var(--surface-0)] ' +
+  'group flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--surface-2)] bg-[var(--surface-0)] ' +
   'shadow-[0_1px_3px_rgba(10,22,40,0.05)] transition-all duration-200 ease-out ' +
   'hover:-translate-y-1 hover:shadow-[0_14px_34px_rgba(10,22,40,0.13)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 ' +
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-400)] focus-visible:ring-offset-2'
@@ -172,7 +178,7 @@ export function CommunityTile({ community }: { community: CommunityTileData }) {
           className={IMG_MOTION}
         />
       </div>
-      <div className="flex items-center justify-between gap-2 p-4">
+      <div className="flex flex-1 items-center justify-between gap-2 p-4">
         <span className={`text-base ${TITLE}`}>{community.name}</span>
         <span className="shrink-0 text-xs text-[var(--text-secondary)]">{community.metaLabel}</span>
       </div>
@@ -187,7 +193,7 @@ export function CityTile({ city }: { city: CityTileData }) {
       <div className={`${IMG_WRAP} aspect-[3/2]`}>
         <CityTileImage src={city.imageSrc} alt={city.alt} priority={city.priority} objectPosition={city.objectPosition} className={IMG_MOTION} />
       </div>
-      <div className="flex items-center justify-between gap-2 p-4">
+      <div className="flex flex-1 items-center justify-between gap-2 p-4">
         <span className={`text-lg ${TITLE}`}>{city.name}</span>
         <span className="text-xs text-[var(--text-secondary)]">{city.metaLabel}</span>
       </div>
@@ -220,7 +226,7 @@ export function CategoryTile({ category }: { category: CategoryTileData }) {
       <div className={`${IMG_WRAP} aspect-[3/2]`}>
         <CategoryTileImage src={category.imageSrc} alt={category.alt} priority={category.priority} objectPosition={category.objectPosition} className={IMG_MOTION} />
       </div>
-      <div className="flex items-center justify-between gap-2 p-4">
+      <div className="flex flex-1 items-center justify-between gap-2 p-4">
         <span className={`text-lg ${TITLE}`}>{category.name}</span>
         <span className="text-xs text-[var(--text-secondary)]">{category.metaLabel}</span>
       </div>

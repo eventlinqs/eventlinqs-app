@@ -290,7 +290,6 @@ export default async function CommunityByCityPage({ params }: Props) {
         relatedCities={relatedCities}
         relatedCommunities={relatedCommunities}
         mapPins={mapPins}
-        mapboxToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? ''}
       />
     </>
   )

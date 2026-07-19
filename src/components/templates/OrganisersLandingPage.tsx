@@ -67,11 +67,11 @@ interface FeatureBand {
   reverse?: boolean
 }
 
-// The demand-engine band: the first blade of the wedge, rendered directly
+// The discovery band: the first blade of the wedge, rendered directly
 // after the stats band so the discovery pitch leads the page argument. Every
 // point names a mechanism that exists on the platform today.
 const DISCOVERY_BAND: FeatureBand = {
-  eyebrow: 'The demand engine',
+  eyebrow: 'Built-in discovery',
   title: 'We bring the audience, not just the checkout.',
   body: 'Every event you list goes into the discovery feed and out through push alerts to attendees who chose to hear about events like yours. Buyers see who else is going, and everyone who follows you gets your next event the moment it goes live.',
   points: [

@@ -331,9 +331,12 @@ export function CheckoutForm({
                 <h3 className="text-base font-semibold text-ink-900 mb-4">Your Details</h3>
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-xs text-ink-600 mb-1">Full name</label>
+                    <label htmlFor="buyer-name" className="block text-xs text-ink-600 mb-1">Full name</label>
                     <input
+                      id="buyer-name"
+                      name="name"
                       type="text"
+                      autoComplete="name"
                       value={buyerName}
                       onChange={e => setBuyerName(e.target.value)}
                       required
@@ -342,9 +345,12 @@ export function CheckoutForm({
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-ink-600 mb-1">Email</label>
+                    <label htmlFor="buyer-email" className="block text-xs text-ink-600 mb-1">Email</label>
                     <input
+                      id="buyer-email"
+                      name="email"
                       type="email"
+                      autoComplete="email"
                       value={buyerEmail}
                       onChange={e => setBuyerEmail(e.target.value)}
                       required

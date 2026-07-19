@@ -50,7 +50,7 @@ export function InvitationCard({ variant = 'landscape', angle = 'organiser', sub
     <Link
       href={href}
       prefetch={false}
-      className={`${fitParent ? 'h-full w-full' : WIDTHS[variant]} group/invite flex min-h-[220px] flex-col justify-between overflow-hidden rounded-card border border-dashed border-[rgba(232,183,56,0.35)] p-5 transition-shadow duration-200 hover:shadow-[0_10px_28px_rgba(10,22,40,0.25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]`}
+      className={`${fitParent ? 'h-full w-full' : `${WIDTHS[variant]} h-full`} group/invite flex min-h-[220px] flex-col justify-between overflow-hidden rounded-card border border-dashed border-[rgba(232,183,56,0.35)] p-5 transition-shadow duration-200 hover:shadow-[0_10px_28px_rgba(10,22,40,0.25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)]`}
       style={{
         background:
           'linear-gradient(150deg, #0A1628 0%, #101f38 55%, #0A1628 100%)',

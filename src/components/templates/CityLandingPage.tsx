@@ -39,7 +39,6 @@ interface Props {
   suburbs: SuburbContent[]
   /** Pre-built Mapbox pins (geocoded events). */
   mapPins: MapEventPin[]
-  mapboxToken: string
 }
 
 /**
@@ -81,7 +80,6 @@ export function CityLandingPage({
   communityImages,
   suburbs,
   mapPins,
-  mapboxToken,
 }: Props) {
   const allCities = getAllCities()
   const relatedItems = city.relatedCities
@@ -173,7 +171,7 @@ export function CityLandingPage({
         images={eventTypeImages}
       />
 
-      {mapboxToken ? (
+      {mapPins.length > 0 ? (
         <ContentSection surface="base" width="wide" topBorder reveal>
           <div className="mb-6">
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
@@ -189,7 +187,6 @@ export function CityLandingPage({
             zoom={city.mapZoom}
             pins={mapPins}
             suburbs={polygons.length > 0 ? polygons : undefined}
-            accessToken={mapboxToken}
           />
         </ContentSection>
       ) : null}

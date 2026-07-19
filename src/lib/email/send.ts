@@ -42,7 +42,11 @@ export type SendEmailInput = {
  * shaping the user-facing error.
  */
 export async function sendEmail(input: SendEmailInput): Promise<{ id: string }> {
-  const from = process.env.EMAIL_FROM ?? 'EventLinqs <hello@eventlinqs.com>'
+  // `||` not `??`: an EMPTY EMAIL_FROM (present but blank) must fall back to the
+  // verified default, not be sent as an empty from (Resend rejects it as "domain
+  // is invalid"). Empty-string env vars are the silent-failure class this whole
+  // platform-health push exists to eliminate.
+  const from = process.env.EMAIL_FROM?.trim() || 'EventLinqs <hello@eventlinqs.com>'
   const resend = getResend()
   const { data, error } = await resend.emails.send({
     from,

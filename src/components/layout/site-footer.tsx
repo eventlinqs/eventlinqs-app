@@ -163,6 +163,8 @@ function LanguagePicker() {
         <path d="M12 2a15 15 0 010 20M12 2a15 15 0 000 20" />
       </svg>
       <select
+        id="footer-language"
+        name="language"
         defaultValue="en-AU"
         className="bg-transparent text-xs text-white/70 outline-none focus:text-white"
         aria-label="Language"
