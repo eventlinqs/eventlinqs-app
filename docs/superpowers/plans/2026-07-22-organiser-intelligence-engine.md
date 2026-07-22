@@ -1777,10 +1777,34 @@ def test_detail_never_extracts_an_email_even_though_the_page_publishes_one(tmp_p
     assert find_addresses(serialised) == []
 
 
-def test_phone_is_extracted_when_published() -> None:
-    phone = extract_geelong_phone(_detail())
-    # May be None if this particular event publishes no phone; assert the type contract.
-    assert phone is None or isinstance(phone, str)
+def test_phone_is_extracted_from_the_published_field() -> None:
+    """Deterministic: the live fixture may or may not carry a phone, so assert
+    extraction against known markup rather than writing a test that passes
+    whatever the fixture happens to contain."""
+    html = (
+        '<html><body>'
+        '<div class="field field--name-field-event-contact-phone field__item">03 5272 5272</div>'
+        '</body></html>'
+    )
+    page = CachedPage(
+        url="https://www.geelongcity.vic.gov.au/whats-happening/events/x",
+        body=html,
+        status_code=200,
+        retrieved_at=datetime.now(UTC),
+        from_cache=True,
+    )
+    assert extract_geelong_phone(page) == "03 5272 5272"
+
+
+def test_phone_is_none_when_no_phone_is_published() -> None:
+    page = CachedPage(
+        url="https://www.geelongcity.vic.gov.au/whats-happening/events/y",
+        body="<html><body><h1>An event</h1></body></html>",
+        status_code=200,
+        retrieved_at=datetime.now(UTC),
+        from_cache=True,
+    )
+    assert extract_geelong_phone(page) is None
 ```
 
 - [ ] **Step 3: Run the tests to verify they fail**
@@ -1877,7 +1901,7 @@ def parse_geelong_detail(
 - [ ] **Step 5: Run the tests to verify they pass**
 
 Run: `.venv/Scripts/python.exe -m pytest tests/test_parse_geelong.py -v`
-Expected: 5 passed.
+Expected: 6 passed.
 
 If `test_detail_yields_an_event_with_a_named_presenter` fails because the chosen event has
 no associated org, capture a different detail fixture. Do not weaken the assertion: a
@@ -2705,9 +2729,6 @@ ENGINE_COLUMNS: tuple[str, ...] = (
     ID_HEADER,
 )
 
-# Engine-owned columns that already exist in the founder's layout.
-ENGINE_OWNED_EXISTING = ("Current Platform", "City")
-
 _RANGE_RE = re.compile(r"(Pipeline!\$?[A-Z]{1,2}\$?4:\$?[A-Z]{1,2}\$?)220")
 
 
@@ -2913,9 +2934,11 @@ git commit -m "feat(export): atomic tracker write with strict column partition"
 from datetime import date
 from pathlib import Path
 
+import pytest
+
 from src.guards import find_addresses
 from src.models import OrganiserRecord
-from src.verify_queue import build_queue, write_queue
+from src.verify_queue import QUEUE_HEADERS, build_queue, write_queue
 
 TODAY = date(2026, 7, 22)
 
@@ -2960,10 +2983,34 @@ def test_blocked_sources_are_queued() -> None:
 
 def test_written_queue_contains_no_address(tmp_path: Path) -> None:
     """Rail 1 at write time only. Once Cowork fills it, it is never scanned again."""
+    from openpyxl import load_workbook
+
     path = tmp_path / "verification_queue.xlsx"
     write_queue(build_queue([_org("X", presenter_inferred=True)], [], [], TODAY), path)
     assert path.exists()
-    assert find_addresses(path.read_bytes().decode("latin-1")) == []
+    ws = load_workbook(path)["Verification"]
+    cells = [str(c) for row in ws.iter_rows(values_only=True) for c in row if c is not None]
+    assert find_addresses("\n".join(cells)) == []
+    assert len(cells) > len(QUEUE_HEADERS)  # header row plus at least one real row
+
+
+def test_write_queue_aborts_if_a_row_carries_an_address(tmp_path: Path) -> None:
+    """The guard must actually fire, not just be called. If a future change ever
+    routes an address into the queue, this write fails loudly."""
+    from src.guards import GuardViolation
+
+    path = tmp_path / "verification_queue.xlsx"
+    poisoned = [
+        {
+            "organiser": "X",
+            "organiser_id": "id-X",
+            "reason": "no_contact_route",
+            "detail": "found sam@example.com on their site",
+            "source_url": "https://x",
+        }
+    ]
+    with pytest.raises(GuardViolation):
+        write_queue(poisoned, path)
 ```
 
 - [ ] **Step 3: Run the tests to verify they fail**
@@ -3058,7 +3105,7 @@ def write_queue(rows: Sequence[dict[str, str]], path: Path) -> None:
 - [ ] **Step 5: Run the queue tests to verify they pass**
 
 Run: `.venv/Scripts/python.exe -m pytest tests/test_verify_queue.py -v`
-Expected: 7 passed.
+Expected: 8 passed.
 
 - [ ] **Step 6: Write the failing gate test**
 
@@ -3347,16 +3394,45 @@ lowering the threshold.
 
 - [ ] **Step 4: Do the spot check**
 
-Pick 10 rows at random from the run output. Open each row's Source URL in a browser and
-confirm the organiser name and the platform are correct. Record the result. **At least 9 of
-10 must be right.** Below that, fix parsing before writing the tracker.
+Add `--spot-check N` to `run.py`: after scoring, it prints N organisers drawn with a fixed
+seed (so the sample is reproducible and cannot be re-rolled until it looks good) with the
+three facts a human needs to verify each one.
+
+In `run.py`, add to the argument parser:
+
+```python
+    parser.add_argument("--spot-check", type=int, default=0, metavar="N")
+```
+
+and immediately before the gate block:
+
+```python
+    if args.spot_check:
+        import random
+
+        sample = random.Random(20260722).sample(
+            organisers, min(args.spot_check, len(organisers))
+        )
+        print(f"\n=== spot check: {len(sample)} rows, verify 9 of 10 by hand ===")
+        for org in sample:
+            source = org.evidence[0]["source_url"] if org.evidence else "(none)"
+            print(f"\norganiser : {org.canonical_name}")
+            print(f"inferred  : {org.presenter_inferred}")
+            print(f"platform  : {org.primary_platform} ({org.primary_bucket})")
+            print(f"source    : {source}")
+```
+
+Then run it and verify by hand:
 
 ```bash
-.venv/Scripts/python.exe -c "
-import random, json
-from run import main
-" # then read the printed rows, or open verification_queue.xlsx for the sample
+.venv/Scripts/python.exe run.py --region corridor --dry-run --spot-check 10
 ```
+
+Open each printed source URL in a browser. For each row confirm two things: the organiser
+name matches what the page shows (for an inferred row, that the venue is right), and the
+platform matches the ticket link on that page. **At least 9 of 10 must be right.** Record
+each row as pass or fail with its URL in Step 5. Below 9, fix parsing before writing the
+tracker; do not re-draw the sample.
 
 - [ ] **Step 5: Write `docs/SLICE-1-RESULTS.md`**
 
