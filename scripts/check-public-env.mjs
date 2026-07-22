@@ -26,6 +26,26 @@ for (const r of results) {
   console.log(`[public-env] ${tag.padEnd(9)} ${r.name}  (${r.describe})${r.ok ? '' : ' - ' + r.reason}`)
 }
 
+// Server-critical secrets are not build-baked, so they cannot block the build -
+// but a MISSING one is silently catastrophic at runtime. CRON_SECRET is the
+// worst: requireCronAuth fails closed, so with it unset EVERY cron (payment
+// sentinel, reservation expiry, payout holds, event disbursement, the health
+// heartbeat) is rejected 401 and the platform goes quiet with no error anywhere.
+// Surface it loudly in the build log on every deploy.
+const serverRules = CRITICAL_ENV_RULES.filter(r => !r.buildCritical)
+const serverResults = serverRules.map(r => evalEnvRule(r, env))
+const serverBad = serverResults.filter(r => !r.ok)
+if (serverBad.length > 0 && onVercel) {
+  console.warn(
+    `\n[public-env] ==================== SERVER SECRET WARNING ====================\n` +
+      serverBad.map(f => `  ! ${f.name}: ${f.reason}`).join('\n') +
+      (serverBad.some(f => f.name === 'CRON_SECRET')
+        ? `\n\n  CRON_SECRET is missing or weak: cron auth FAILS CLOSED, so every\n  scheduled job (payment sentinel, reservation expiry, payout holds,\n  event disbursement, health heartbeat) will be rejected 401 and run\n  NEVER, with no error surfaced. Set it in Vercel for this environment.`
+        : '') +
+      `\n[public-env] ===============================================================\n`,
+  )
+}
+
 if (failures.length === 0) {
   console.log('[public-env] all critical public env vars present, non-empty, and well-formed.')
   process.exit(0)
