@@ -178,6 +178,18 @@ jobs:
           if echo "$BODY" | grep -q '"status":"critical"'; then echo "platform health CRITICAL"; exit 1; fi
           echo "platform health OK (green or warnings only)"
 
+      - name: Browser-level map guard (post-deploy)
+        # Opt-in blocking: enable the repo variable MAP_GUARD_ENABLED=true once
+        # production maps are confirmed live (env key baked, code deployed, event
+        # coordinates present). Until then it is skipped so it cannot red every
+        # deploy for a known-pending prod state. It loads real map surfaces in a
+        # browser and asserts a live Google canvas, not just a key string.
+        if: ${{ vars.MAP_GUARD_ENABLED == 'true' }}
+        run: |
+          set -u
+          npx playwright install chromium >/dev/null 2>&1 || true
+          node scripts/verify/map-guard.mjs "https://www.eventlinqs.com" || { echo "::error::A map surface ships a dead (fallback) map"; exit 1; }
+
       - name: Email alert via Resend on failure
         if: failure()
         env:
