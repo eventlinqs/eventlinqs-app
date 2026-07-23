@@ -4,9 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "node scripts/check-public-env.mjs && node scripts/prebuild-fixture.mjs",
+    "prebuild": "node scripts/check-disk-space.mjs && node scripts/check-public-env.mjs && node scripts/prebuild-fixture.mjs",
     "build": "next build",
     "start": "next start",
+    "reclaim": "node scripts/reclaim-space.mjs",
     "lint": "eslint",
     "pretest": "node scripts/seed-events-catalogue.mjs --fixture",
     "test": "vitest run",

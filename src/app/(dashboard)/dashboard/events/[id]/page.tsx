@@ -17,6 +17,9 @@ import type { Event, EventStatus, TicketTier } from '@/types/database'
 import { isFlagEnabled } from '@/lib/flags'
 import { FillTheRoom } from '@/components/features/dashboard/fill-the-room'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
+import { LineupLoopPanel } from '@/components/broadcast/lineup-loop-panel'
+import { getLineupPanelData, type LineupPanelData } from '@/lib/broadcast/lineup-panel'
+import { getRequestOrigin } from '@/lib/site-origin'
 
 type Props = {
   params: Promise<{ id: string }>
@@ -70,6 +73,13 @@ export default async function EventViewPage({ params }: Props) {
     .single() as { data: (Event & { ticket_tiers: TicketTier[] }) | null }
 
   if (!event) notFound()
+
+  // The lineup loop panel: each tagged act's tracked link plus the sales it
+  // drove. Same assembler the Launch Kit uses, so both surfaces agree.
+  let lineupPanel: LineupPanelData = { acts: [], totals: { clicks: 0, orders: 0, tickets: 0 } }
+  if (artistsOn) {
+    lineupPanel = await getLineupPanelData(id, await getRequestOrigin(), user.id)
+  }
 
   const { data: org } = await supabase
     .from('organisations')
@@ -350,6 +360,17 @@ export default async function EventViewPage({ params }: Props) {
               <p className="px-5 py-6 text-sm text-ink-600">No ticket tiers yet.</p>
             )}
           </div>
+
+          {/* The lineup loop: who filled the room, and the prompt to tag when
+              nobody is tagged yet. */}
+          {artistsOn && (
+            <LineupLoopPanel
+              eventId={id}
+              acts={lineupPanel.acts}
+              totals={lineupPanel.totals}
+              variant="dashboard"
+            />
+          )}
         </div>
 
         <aside className="space-y-4">
