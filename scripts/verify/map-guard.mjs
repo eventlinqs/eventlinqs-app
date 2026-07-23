@@ -39,11 +39,13 @@ async function mapRenders(page, url) {
   const gmaps = []
   page.on('response', r => { if (/maps\.googleapis\.com/.test(r.url())) gmaps.push(r.status()) })
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 }).catch(() => {})
-  // Scroll to trigger the lazy IntersectionObserver map load.
-  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight)).catch(() => {})
-  // Poll up to 15s for a real Google canvas.
+  // Scroll DOWN THE PAGE IN STEPS so every lazy IntersectionObserver (the maps
+  // sit mid to lower page) fires - a single jump to the bottom can skip a
+  // mid-page observer. Poll up to 25s for a real Google canvas (the geocode
+  // fallback adds a round-trip before the map paints).
   let canvas = 0
-  for (let i = 0; i < 15; i++) {
+  for (let i = 0; i < 25; i++) {
+    await page.evaluate(y => window.scrollTo(0, y), i * 600).catch(() => {})
     canvas = await page.locator('.gm-style, canvas.mapboxgl-canvas, gmp-map').count().catch(() => 0)
     if (canvas > 0) break
     await page.waitForTimeout(1000)
