@@ -157,3 +157,6 @@ src/lib/dev/home-seed-fixture.json
 design-assets/
 .firecrawl/
 tmp-repro.mjs
+
+# Scratch credential notes are never committed. Keep on disk, out of git.
+.secret-tmp.txt
