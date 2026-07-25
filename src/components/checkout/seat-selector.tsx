@@ -3,7 +3,9 @@
 import { useState, useTransition, useMemo, useCallback, useRef, useLayoutEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createSeatReservation } from '@/app/actions/seat-reservations'
+import { pickBestAvailableAction } from '@/app/actions/best-available'
 import { editorialSectionColor } from '@/lib/seating/palette'
+import { selectionCreatedOrphans, type BASeat } from '@/lib/seating/best-available'
 
 export interface SeatData {
   id: string
@@ -95,6 +97,11 @@ export function SeatSelector({
   const [zoom, setZoom] = useState(1)
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
+  const [pickPending, setPickPending] = useState(false)
+  /** S4: the active price band [min, max] cents; seats outside it recede. */
+  const [priceFilter, setPriceFilter] = useState<[number, number] | null>(null)
+  /** Eased zoom only for button zooms: gestures must track fingers 1:1. */
+  const [animateZoom, setAnimateZoom] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   // ── Touch-first zoom and pan engine ─────────────────────────────────────
@@ -146,6 +153,7 @@ export function SeatSelector({
   }, [zoom])
 
   function onMapPointerDown(e: React.PointerEvent) {
+    setAnimateZoom(false)
     pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
     const el = scrollRef.current
     if (!el) return
@@ -222,6 +230,7 @@ export function SeatSelector({
       if (!e.ctrlKey && !e.metaKey) return
       e.preventDefault()
       const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15
+      setAnimateZoom(false)
       applyZoom(zoomRef.current * factor, e.clientX, e.clientY)
     }
     el.addEventListener('wheel', onWheel, { passive: false })
@@ -360,7 +369,55 @@ export function SeatSelector({
     setHoveredId(null)
   }, [])
 
-  function pickBestAvailable(n: number) {
+  /** Seats in the pure-cascade shape (S1/S2 share one geometry brain). */
+  const baSeats = useMemo<BASeat[]>(
+    () =>
+      seats.map(s => ({
+        id: s.id,
+        section_id: s.seat_map_section_id,
+        row_label: s.row_label,
+        seat_number: s.seat_number,
+        x: s.x,
+        y: s.y,
+        status: s.status,
+        seat_type: s.seat_type,
+      })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [seatsKey],
+  )
+
+  /** S2: the single seats this selection would strand (never pre-existing ones). */
+  const strandedBySelection = useMemo(
+    () => selectionCreatedOrphans(baSeats, selectedIds),
+    [baSeats, selectedIds],
+  )
+
+  /**
+   * S1: best available, server side. The cascade runs on the live seat
+   * state with the chart's focal point; the local contiguous fallback only
+   * answers if the action itself fails (offline, cold deploy).
+   */
+  async function pickBestAvailable(n: number) {
+    setPickPending(true)
+    try {
+      const pick = await pickBestAvailableAction({ event_id: eventId, quantity: n })
+      const openIds = new Set(seats.filter(s => s.status === 'available').map(s => s.id))
+      const usable = pick.seat_ids.filter(id => openIds.has(id)).slice(0, maxPerOrder)
+      if (usable.length > 0) {
+        setSelectedIds(new Set(usable))
+        return
+      }
+      if (pick.strategy !== 'error') return // an honest "nothing fits" stays empty
+    } catch {
+      // fall through to the local picker
+    } finally {
+      setPickPending(false)
+    }
+    pickBestAvailableLocal(n)
+  }
+
+  /** The pre-v2 client picker, kept as the degraded-mode fallback only. */
+  function pickBestAvailableLocal(n: number) {
     const available = seats.filter(s => s.status === 'available' && !selectedIds.has(s.id))
     if (available.length === 0) return
 
@@ -458,6 +515,34 @@ export function SeatSelector({
     [currency]
   )
 
+  /**
+   * S4: the price bands the filter offers. Every distinct seat price gets
+   * its own chip up to five; busier houses collapse into four even ranges.
+   * One price only means no filter is worth showing.
+   */
+  const priceBands = useMemo(() => {
+    const prices = [
+      ...new Set(seats.filter(s => s.status === 'available').map(getSeatPrice)),
+    ].sort((a, b) => a - b)
+    if (prices.length <= 1) return []
+    if (prices.length <= 5) {
+      return prices.map(p => ({ label: formatPrice(p), min: p, max: p }))
+    }
+    const bands: { label: string; min: number; max: number }[] = []
+    for (let i = 0; i < 4; i++) {
+      const lo = prices[Math.floor((i * prices.length) / 4)]
+      const hi = prices[Math.min(prices.length - 1, Math.floor(((i + 1) * prices.length) / 4) - 1)]
+      if (bands.length > 0 && bands[bands.length - 1].max >= lo) continue
+      bands.push({
+        label: lo === hi ? formatPrice(lo) : `${formatPrice(lo)} to ${formatPrice(hi)}`,
+        min: lo,
+        max: hi,
+      })
+    }
+    return bands
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seatsKey, getSeatPrice, formatPrice])
+
   function handleProceed() {
     if (selectedIds.size === 0) return
     setError(null)
@@ -481,6 +566,14 @@ export function SeatSelector({
     })
   }
 
+  // Density optics (3e): numerals and keylines earn their place by effective
+  // on-screen size, so 50-seat rooms read warm and 2000-seat rooms read
+  // clean. Quantised to booleans so pinch zoom never re-renders every seat.
+  const effectiveSeatPx = (Math.min(viewWidth, 900) * zoom * SEAT_SIZE) / viewWidth
+  const showNumerals = effectiveSeatPx >= 13
+  const thinKeylines = effectiveSeatPx < 10
+  const priceFilterKey = priceFilter ? `${priceFilter[0]}-${priceFilter[1]}` : 'all'
+
   // Seat <g> elements - memoised on stable primitive keys, NOT on hoveredId.
   // Hover highlight is an overlay rendered above this layer so it never busts this memo.
   const seatElements = useMemo(
@@ -494,20 +587,35 @@ export function SeatSelector({
         const sectionColor = sectionColorMap.get(seat.seat_map_section_id ?? '') ?? GOLD
         const fill = styleInfo.fill.replace('var(--section-color)', sectionColor)
 
+        // S4: seats priced outside the active band recede and stop selling
+        // until the filter clears (they stay visible so the room reads whole).
+        const price = getSeatPrice(seat)
+        const outsideFilter =
+          priceFilter !== null &&
+          styleInfo.clickable &&
+          (price < priceFilter[0] || price > priceFilter[1])
+        const clickable = styleInfo.clickable && !outsideFilter
+
         const statusWord = isSelected
           ? 'selected'
-          : styleInfo.clickable
-            ? 'available'
-            : 'unavailable'
+          : outsideFilter
+            ? 'outside your price filter'
+            : styleInfo.clickable
+              ? 'available'
+              : 'unavailable'
         return (
           <g
             key={seat.id}
             role="img"
             aria-label={`${seat.row_label} seat ${seat.seat_number}, ${statusWord}${
-              styleInfo.clickable ? `, ${formatPrice(getSeatPrice(seat))}` : ''
+              clickable ? `, ${formatPrice(price)}` : ''
             }`}
-            style={{ cursor: styleInfo.clickable ? 'pointer' : 'not-allowed' }}
-            onClick={() => toggleSeat(seat)}
+            opacity={outsideFilter ? 0.22 : 1}
+            style={{
+              cursor: clickable ? 'pointer' : 'not-allowed',
+              transition: 'opacity 200ms ease-out',
+            }}
+            onClick={() => clickable && toggleSeat(seat)}
             onMouseEnter={() => handleMouseEnter(seat.id)}
             onMouseLeave={handleMouseLeave}
           >
@@ -518,28 +626,36 @@ export function SeatSelector({
               y={cy - SEAT_SIZE / 2}
               width={SEAT_SIZE}
               height={SEAT_SIZE}
-              rx="6"
+              rx={SEAT_SIZE * 0.3}
               fill={fill}
               stroke={styleInfo.stroke}
-              strokeWidth={isSelected ? 2 : 1}
+              strokeWidth={isSelected ? 2 : thinKeylines ? 0.6 : 1}
+              filter={isSelected ? 'url(#seat-elevation)' : undefined}
               style={{ transition: 'fill 150ms ease-out, stroke 150ms ease-out' }}
             />
-            <text
-              x={cx}
-              y={cy + 3.5}
-              textAnchor="middle"
-              fontSize="7.5"
-              fontWeight={isSelected ? 700 : 500}
-              fill={styleInfo.text}
-              style={{ pointerEvents: 'none', userSelect: 'none' }}
-            >
-              {seat.seat_number}
-            </text>
+            {showNumerals && (
+              <text
+                x={cx}
+                y={cy + 3.5}
+                textAnchor="middle"
+                fontSize="7.5"
+                fontWeight={isSelected ? 700 : 600}
+                letterSpacing="0.02em"
+                fill={styleInfo.text}
+                style={{
+                  pointerEvents: 'none',
+                  userSelect: 'none',
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
+                {seat.seat_number}
+              </text>
+            )}
           </g>
         )
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [seatsKey, selectedIdsKey, minX, minY, sectionsKey, toggleSeat, handleMouseEnter, handleMouseLeave, getSeatPrice, formatPrice]
+    [seatsKey, selectedIdsKey, minX, minY, sectionsKey, toggleSeat, handleMouseEnter, handleMouseLeave, getSeatPrice, formatPrice, priceFilterKey, showNumerals, thinKeylines]
   )
 
   // Hover highlight rendered as a separate SVG layer, ABOVE seatElements, with pointer-events:none
@@ -570,7 +686,18 @@ export function SeatSelector({
 
   const hovered = hoveredId ? seats.find(s => s.id === hoveredId) : null
 
+  // Button zooms glide on a real easing curve; gesture zooms track fingers
+  // 1:1 (animating a pinch would fight the hand). Reduced motion gets no
+  // glide at all.
+  const prefersReducedMotion = useMemo(
+    () =>
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    [],
+  )
+
   function zoomToFit() {
+    setAnimateZoom(!prefersReducedMotion)
     zoomRef.current = 1
     pendingFocalRef.current = null
     setZoom(1)
@@ -580,10 +707,12 @@ export function SeatSelector({
   }
 
   function zoomIn() {
+    setAnimateZoom(!prefersReducedMotion)
     applyZoom(zoomRef.current + 0.25)
   }
 
   function zoomOut() {
+    setAnimateZoom(!prefersReducedMotion)
     applyZoom(zoomRef.current - 0.25)
   }
 
@@ -601,40 +730,35 @@ export function SeatSelector({
 
   return (
     <div className="space-y-4">
-      {/* Legend */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
-        <div className="flex items-center gap-1.5">
+      {/* The legend: a designed bar, seat-shaped swatches, sections as
+          chips with their prices, the open count holding the right edge. */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-2 rounded-xl border border-ink-200 bg-white px-3 py-2.5">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EDF0F4] px-2.5 py-1 text-xs text-ink-900">
           <span
-            className="h-3 w-3 rounded-sm"
+            aria-hidden
+            className="h-3.5 w-3.5 rounded-[30%] shadow-sm"
             style={{ backgroundColor: GOLD, outline: `1.5px solid ${INK_900}`, outlineOffset: '1px' }}
           />
-          <span className="text-ink-600">Selected</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: INK_200 }} />
-          <span className="text-ink-600">Unavailable</span>
-        </div>
+          Selected
+        </span>
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EDF0F4] px-2.5 py-1 text-xs text-ink-600">
+          <span aria-hidden className="h-3.5 w-3.5 rounded-[30%]" style={{ backgroundColor: INK_200 }} />
+          Unavailable
+        </span>
         {seats.some(s => s.seat_type === 'accessible' || s.seat_type === 'companion') && (
-          <div className="flex items-center gap-1.5">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EDF0F4] px-2.5 py-1 text-xs text-ink-600">
             <span
-              className="h-3 w-3 rounded-sm"
+              aria-hidden
+              className="h-3.5 w-3.5 rounded-[30%]"
               style={{
                 backgroundColor: editorialSectionColor(sections[0]?.color) ?? GOLD,
                 outline: '1.5px solid #FFFFFF',
                 outlineOffset: '-2px',
               }}
             />
-            <span className="text-ink-600">Accessible and companion</span>
-          </div>
+            Accessible and companion
+          </span>
         )}
-        <span aria-live="polite" className="ml-auto font-semibold text-ink-900">
-          {seats.filter(s => s.status === 'available').length} of {seats.length} seats open
-        </span>
-
-        {sections.length > 0 && (
-          <span className="h-4 w-px bg-ink-200" aria-hidden="true" />
-        )}
-
         {sections.map(s => {
           const summary = sectionPriceSummary.get(s.id)
           const priceLabel = summary
@@ -643,20 +767,63 @@ export function SeatSelector({
               : `from ${formatPrice(summary.min)}`
             : null
           return (
-            <div key={s.id} className="flex items-center gap-1.5">
+            <span key={s.id} className="inline-flex items-center gap-1.5 rounded-full bg-[#EDF0F4] px-2.5 py-1 text-xs">
               <span
-                className="h-3 w-3 rounded-sm"
+                aria-hidden
+                className="h-3.5 w-3.5 rounded-[30%]"
                 style={{ backgroundColor: editorialSectionColor(s.color) }}
-                aria-hidden="true"
               />
-              <span className="text-ink-900 font-medium">{s.name}</span>
-              {priceLabel && (
-                <span className="text-ink-400">· {priceLabel}</span>
-              )}
-            </div>
+              <span className="font-medium text-ink-900">{s.name}</span>
+              {priceLabel && <span className="text-ink-400">{priceLabel}</span>}
+            </span>
           )
         })}
+        <span
+          aria-live="polite"
+          className="ml-auto font-display text-xs font-bold uppercase tracking-[0.08em] text-ink-900"
+        >
+          {seats.filter(s => s.status === 'available').length} of {seats.length} open
+        </span>
       </div>
+
+      {/* S4: the price filter. Seats outside the chosen band recede on the
+          map until the filter clears; the room always stays whole. */}
+      {priceBands.length > 1 && (
+        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter seats by price">
+          <span className="text-xs font-medium text-ink-600">Price:</span>
+          <button
+            type="button"
+            aria-pressed={priceFilter === null}
+            onClick={() => setPriceFilter(null)}
+            className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-1 ${
+              priceFilter === null
+                ? 'border-ink-900 bg-ink-900 text-white'
+                : 'border-ink-200 bg-white text-ink-600 hover:border-gold-500 hover:text-ink-900'
+            }`}
+          >
+            All prices
+          </button>
+          {priceBands.map(band => {
+            const active =
+              priceFilter !== null && priceFilter[0] === band.min && priceFilter[1] === band.max
+            return (
+              <button
+                key={`${band.min}-${band.max}`}
+                type="button"
+                aria-pressed={active}
+                onClick={() => setPriceFilter(active ? null : [band.min, band.max])}
+                className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-1 ${
+                  active
+                    ? 'border-ink-900 bg-ink-900 text-white'
+                    : 'border-ink-200 bg-white text-ink-600 hover:border-gold-500 hover:text-ink-900'
+                }`}
+              >
+                {band.label}
+              </button>
+            )
+          })}
+        </div>
+      )}
 
       {/* Whole-table booking: the gala flow, one tap per table. */}
       {tableGroups.length > 0 && (
@@ -687,7 +854,7 @@ export function SeatSelector({
                   disabled={soldOut}
                   aria-pressed={fullTableSelected}
                   onClick={() => toggleTable(group)}
-                  className={`inline-flex h-10 items-center gap-1.5 rounded-full border px-4 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
+                  className={`inline-flex h-10 items-center gap-1.5 rounded-full border px-4 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-1 ${
                     fullTableSelected
                       ? 'border-ink-900 bg-gold-500 text-ink-900'
                       : 'border-ink-200 bg-white text-ink-900 hover:border-gold-500'
@@ -728,12 +895,37 @@ export function SeatSelector({
               width: `${100 * zoom}%`,
               minWidth: `${Math.min(viewWidth, 900) * zoom}px`,
               display: 'block',
+              transition: animateZoom
+                ? 'width 240ms cubic-bezier(0.22, 1, 0.36, 1), min-width 240ms cubic-bezier(0.22, 1, 0.36, 1)'
+                : undefined,
             }}
             role="img"
             aria-label="Seat map"
           >
-            {/* STAGE: a solid navy proscenium band with a gold footlight
-                keyline, the same visual language as the platform chrome. */}
+            <defs>
+              {/* The stage light: the signature element. A quiet gold wash
+                  cast from the stage apron, clamped so a 2000-seat plan
+                  stays clean. The good seats sit in the light. */}
+              <radialGradient id="stage-light" cx="0.5" cy="0" r="1">
+                <stop offset="0%" stopColor={GOLD} stopOpacity="0.14" />
+                <stop offset="55%" stopColor={GOLD} stopOpacity="0.05" />
+                <stop offset="100%" stopColor={GOLD} stopOpacity="0" />
+              </radialGradient>
+              {/* Elevation on selection: a soft navy lift, not a heavy drop. */}
+              <filter id="seat-elevation" x="-40%" y="-40%" width="180%" height="180%">
+                <feDropShadow
+                  dx="0"
+                  dy="1.4"
+                  stdDeviation="1.8"
+                  floodColor="#0A1628"
+                  floodOpacity="0.45"
+                />
+              </filter>
+            </defs>
+
+            {/* STAGE: the designed proscenium. Navy body, gold filament
+                footlight, letterspaced wordmark: the platform chrome
+                carried into the room. */}
             <rect
               x={PADDING + ROW_LABEL_GUTTER}
               y={4}
@@ -749,6 +941,16 @@ export function SeatSelector({
               height={2}
               rx="1"
               fill={GOLD}
+            />
+            {/* The light apron the filament casts onto the plan. */}
+            <rect
+              x={PADDING + ROW_LABEL_GUTTER}
+              y={STAGE_BAND - 10}
+              width={viewWidth - PADDING * 2 - ROW_LABEL_GUTTER}
+              height={Math.min(150, viewHeight * 0.35)}
+              fill="url(#stage-light)"
+              style={{ pointerEvents: 'none' }}
+              aria-hidden="true"
             />
             <text
               x={viewWidth / 2}
@@ -820,7 +1022,7 @@ export function SeatSelector({
             type="button"
             onClick={zoomOut}
             disabled={zoom <= MIN_ZOOM}
-            className="flex h-8 w-8 items-center justify-center rounded-l-lg text-sm font-bold text-ink-600 hover:bg-ink-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-l-lg text-sm font-bold text-ink-600 hover:bg-ink-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold-400"
             aria-label="Zoom out"
           >
             −
@@ -829,7 +1031,7 @@ export function SeatSelector({
             type="button"
             onClick={zoomIn}
             disabled={zoom >= MAX_ZOOM}
-            className="flex h-8 w-8 items-center justify-center text-sm font-bold text-ink-600 hover:bg-ink-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            className="flex h-8 w-8 items-center justify-center text-sm font-bold text-ink-600 hover:bg-ink-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold-400"
             aria-label="Zoom in"
           >
             +
@@ -838,7 +1040,7 @@ export function SeatSelector({
           <button
             type="button"
             onClick={zoomToFit}
-            className="flex h-8 items-center gap-1 rounded-r-lg px-2.5 text-[11px] font-semibold text-ink-600 hover:bg-ink-100 transition-colors"
+            className="flex h-8 items-center gap-1 rounded-r-lg px-2.5 text-[11px] font-semibold text-ink-600 hover:bg-ink-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold-400"
             aria-label="Zoom to fit"
           >
             <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -878,25 +1080,56 @@ export function SeatSelector({
         )}
       </div>
 
-      {/* Best available */}
+      {/* Best available: the server cascade picks from the stage light out. */}
       {[1, 2, 3, 4, 5, 6, 8, 10].filter(n => n <= maxPerOrder).length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-medium text-ink-600">Best available:</span>
+          <span className="text-xs font-medium text-ink-600">
+            {pickPending ? 'Finding the best seats…' : 'Best available:'}
+          </span>
           {[1, 2, 3, 4, 5, 6, 8, 10]
             .filter(n => n <= maxPerOrder)
             .map(n => (
               <button
                 key={n}
                 type="button"
+                disabled={pickPending}
                 onClick={() => {
                   setSelectedIds(new Set())
-                  pickBestAvailable(n)
+                  void pickBestAvailable(n)
                 }}
-                className="min-w-8 rounded-full border border-ink-200 px-2.5 py-1 text-xs font-semibold text-ink-600 transition-colors hover:border-gold-500 hover:text-ink-900"
+                className="min-w-8 rounded-full border border-ink-200 px-2.5 py-1 text-xs font-semibold text-ink-600 transition-colors hover:border-gold-500 hover:text-ink-900 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-1"
               >
                 {n}
               </button>
             ))}
+        </div>
+      )}
+
+      {/* S2: the orphan nudge. Advisory, never a wall: the buyer keeps the
+          right to their exact seats; one tap re-picks the party cleanly. */}
+      {strandedBySelection.length > 0 && (
+        <div
+          role="status"
+          className="flex flex-wrap items-center gap-3 rounded-xl border border-gold-500/40 bg-gold-500/10 px-4 py-3"
+        >
+          <p className="text-xs text-ink-900">
+            <span className="font-semibold">
+              Your picks leave{' '}
+              {strandedBySelection.length === 1
+                ? `seat ${strandedBySelection[0].row_label}-${strandedBySelection[0].seat_number} stranded on its own`
+                : `${strandedBySelection.length} single seats stranded`}
+              .
+            </span>{' '}
+            Rooms sell out cleaner without lone seats.
+          </p>
+          <button
+            type="button"
+            disabled={pickPending}
+            onClick={() => void pickBestAvailable(selectedIds.size)}
+            className="rounded-full border border-ink-900 bg-white px-3 py-1 text-xs font-semibold text-ink-900 transition-colors hover:bg-gold-500 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-1"
+          >
+            Sit us together, best spot
+          </button>
         </div>
       )}
 
@@ -917,8 +1150,23 @@ export function SeatSelector({
                       <span className="ml-1 text-xs text-ink-400 capitalize">({s.seat_type})</span>
                     )}
                   </span>
-                  <span className="font-semibold text-ink-900">
-                    {formatPrice(getSeatPrice(s))}
+                  <span className="inline-flex items-center gap-2">
+                    <span className="font-semibold text-ink-900">
+                      {formatPrice(getSeatPrice(s))}
+                    </span>
+                    {/* The keyboard path to remove one seat (the map itself
+                        is pointer-first; selection is fully keyboard-editable
+                        from this list). */}
+                    <button
+                      type="button"
+                      aria-label={`Remove row ${s.row_label} seat ${s.seat_number}`}
+                      onClick={() => toggleSeat(s)}
+                      className="flex h-6 w-6 items-center justify-center rounded-full text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+                    >
+                      <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} aria-hidden>
+                        <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
+                      </svg>
+                    </button>
                   </span>
                 </div>
               ))}
@@ -934,7 +1182,7 @@ export function SeatSelector({
               <button
                 type="button"
                 onClick={() => setSelectedIds(new Set())}
-                className="text-xs font-medium text-ink-400 hover:text-ink-900 hover:underline decoration-gold-500 decoration-2 underline-offset-2 transition-colors"
+                className="rounded text-xs font-medium text-ink-400 transition-colors hover:text-ink-900 hover:underline decoration-gold-500 decoration-2 underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
               >
                 Clear
               </button>
@@ -959,7 +1207,7 @@ export function SeatSelector({
           type="button"
           onClick={handleProceed}
           disabled={selectedIds.size === 0 || isPending}
-          className="mt-4 w-full rounded-xl bg-gold-500 hover:bg-gold-600 py-3 text-sm font-semibold text-ink-900 disabled:bg-ink-200 disabled:text-ink-400 disabled:cursor-not-allowed transition-colors shadow-sm hover:shadow-md"
+          className="mt-4 w-full rounded-xl bg-gold-500 hover:bg-gold-600 py-3 text-sm font-semibold text-ink-900 disabled:bg-ink-200 disabled:text-ink-400 disabled:cursor-not-allowed transition-colors shadow-sm hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-900 focus-visible:ring-offset-2"
         >
           {isPending
             ? 'Reserving seats…'
