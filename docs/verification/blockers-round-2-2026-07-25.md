@@ -486,11 +486,61 @@ These are NOT done and are not claimed as done.
 ## Gates
 
 - `npx tsc --noEmit` exit 0
-- `npx eslint src scripts` exit 0 (9 pre-existing warnings, 0 errors)
-- `npx vitest run` **765 passed / 765**, 94 files
-- Disk free before deploy: 24 GB (guard is 1.5 GB)
+- `npx eslint src scripts tests` exit 0 (9 pre-existing warnings, 0 errors)
+- `npx vitest run` **783 passed / 783**, 95 files
+- Disk free: 24.4 GB (guard is 1.5 GB)
 
 Two existing tests failed on first run and were rewritten, not deleted: both
 encoded the superseded HARD-01 ruling (apex -> `www.eventlinqs.com`, 308).
 `canonical-host-redirect.test.ts` now covers all three redirected hosts plus
 the three exemptions.
+
+Note on the count: an unrelated concurrent session was committing to this same
+branch during the work (`bc1465a`, `b253057`, and the unpushed `782c09c`). The
+suite total moved 765 -> 783 because of their new test file, not because of a
+change here. Their in-progress files were deliberately kept OUT of these
+commits: the first attempt at the URL-sweep commit swept in four legal pages
+and `checkout-form.tsx`, and was amended to exclude them.
+
+---
+
+## FINAL RE-VERIFICATION (against the last pushed commit)
+
+Everything above was proven as each job landed. Because the branch moved
+afterwards, the whole battery was re-run against the FINAL artefact rather
+than left resting on intermediate builds.
+
+Deployment `eventlinqs-cxq0vbn33`, built from `f8d85e9` (which also contains
+the concurrent session's `bc1465a` and `b253057`), aliased to
+`eventlinqs-staging.vercel.app`.
+
+| Check | Result |
+|---|---|
+| Build-time `SUPABASE_ENV_ISOLATION` guard | `[public-env] ok SUPABASE_ENV_ISOLATION` |
+| Served bundle: TEST project ref | 752 occurrences |
+| Served bundle: PRODUCTION project ref | **0 occurrences** |
+| Served bundle: `service_role` markers | **0 occurrences** |
+| Webhook, account endpoint secret | **200** `{"received":true}` |
+| Webhook, connected-accounts endpoint secret | **200** `{"received":true}` |
+| Webhook, corrupted signature | **400** `{"error":"Invalid signature"}` |
+| Webhook, old drifted secret | **400** `{"error":"Invalid signature"}` |
+| Stripe endpoints at the staging host | 1 account + 1 connected-account enabled, 3 disabled |
+| Paid purchase end to end | **PASS** order `EL-HFFMD4QF`, confirmed in 3s, 1 ticket |
+
+The paid purchase is a SECOND, independent order (the first was
+`EL-K6BWXD8Q` on the previous build), so the result is reproducible rather
+than a one-off.
+
+Production hosts were re-probed and are deliberately UNCHANGED, because the
+branch has not been promoted:
+
+```
+eventlinqs.com        -> 308 https://www.eventlinqs.com/
+www.eventlinqs.com    -> 200
+eventlinqs.com.au     -> 200
+www.eventlinqs.com.au -> 200
+```
+
+That is the old behaviour, and it is what production will keep serving until
+the branch is promoted with founder sign-off. The canonical 301 is proven by
+unit test and deployed to staging only.
