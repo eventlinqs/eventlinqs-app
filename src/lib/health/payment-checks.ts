@@ -127,16 +127,45 @@ export async function endpointConfigCheck(origin: string): Promise<PaymentCheckR
       headers: { authorization: `Bearer ${key}` },
       signal: AbortSignal.timeout(15000),
     })
-    const j = (await res.json()) as { data?: { status: string; url: string }[] }
+    const j = (await res.json()) as { data?: { status: string; url: string; application?: string | null }[] }
     const enabled = (j.data ?? []).filter(w => w.status === 'enabled')
     const host = new URL(origin).host
     const canonicalHost = process.env.WEBHOOK_CANONICAL_HOST || host
     const matching = enabled.filter(w => new URL(w.url).host === canonicalHost)
-    if (matching.length === 1) return { name, ok: true, detail: `one enabled endpoint at ${canonicalHost}` }
-    if (matching.length === 0) {
-      return { name, ok: false, detail: `no ENABLED endpoint points at ${canonicalHost} (enabled: ${enabled.map(w => w.url).join(', ') || 'none'})`, probableCause: 'endpoint down or misconfigured' }
+
+    // The invariant is per DELIVERY CHANNEL, not per host. Stripe splits
+    // deliveries into ACCOUNT events (payment_intent, charge, checkout.session,
+    // transfer) and CONNECTED-ACCOUNT events (account.*, payout.*,
+    // charge.dispute.*), and an endpoint serves one channel or the other. The
+    // platform deliberately runs one of each at the same URL, each with its own
+    // signing secret - which is why the route verifies against every secret in
+    // STRIPE_WEBHOOK_SECRETS.
+    //
+    // What still must never happen is TWO endpoints on the SAME channel: that
+    // is the historical drift failure, where deliveries alternate between two
+    // signers and half of them 400.
+    // A connected-account endpoint is identified by a NON-NULL `application`
+    // (the Connect application it is attached to). Stripe does not echo the
+    // `connect: true` create parameter back as a boolean on the object, so
+    // testing for one silently classifies every endpoint as an account
+    // endpoint - and the duplicate check then fires on a correct setup.
+    const accountEps = matching.filter(w => !w.application)
+    const connectEps = matching.filter(w => Boolean(w.application))
+
+    if (accountEps.length === 0) {
+      return { name, ok: false, detail: `no ENABLED account endpoint points at ${canonicalHost} (enabled: ${enabled.map(w => w.url).join(', ') || 'none'})`, probableCause: 'endpoint down or misconfigured' }
     }
-    return { name, ok: false, detail: `${matching.length} enabled endpoints at ${canonicalHost} - two signers invite drift`, probableCause: 'duplicate endpoints (the historical two-secret failure)' }
+    const dupes: string[] = []
+    if (accountEps.length > 1) dupes.push(`${accountEps.length} account`)
+    if (connectEps.length > 1) dupes.push(`${connectEps.length} connected-account`)
+    if (dupes.length > 0) {
+      return { name, ok: false, detail: `${dupes.join(' and ')} enabled endpoints at ${canonicalHost} - two signers on one channel invite drift`, probableCause: 'duplicate endpoints on the same delivery channel (the historical two-secret failure)' }
+    }
+    return {
+      name,
+      ok: true,
+      detail: `1 account endpoint${connectEps.length === 1 ? ' + 1 connected-account endpoint' : ' (no connected-account endpoint)'} at ${canonicalHost}`,
+    }
   } catch (err) {
     return { name, ok: false, detail: String(err).slice(0, 160), probableCause: 'Stripe API unreachable from sentinel' }
   }
