@@ -7,7 +7,7 @@ import type {
   Event, TicketTier, Organisation, EventCategory, EventAddon,
 } from '@/types/database'
 import { jsonAsStringArray } from '@/lib/json-narrow'
-import { priceLabel, lowestPaidCents } from '@/lib/events/price-label'
+import { priceLabel } from '@/lib/events/price-label'
 import {
   SeatSelector, type SeatData, type SectionData, type SeatAreaData,
 } from '@/components/checkout/seat-selector'
@@ -23,12 +23,8 @@ import { HeroMedia } from '@/components/media'
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 import { getFeaturedHeroBackground } from '@/lib/images/event-media'
 import { StickyActionBar } from '@/components/features/events/sticky-action-bar'
-import { RelatedEventsGrid } from '@/components/features/events/related-events-grid'
 import { Reveal } from '@/components/ui/reveal'
-import type { EventCardData } from '@/components/features/events/event-card'
-import { projectToCardData } from '@/lib/events/event-card-projection'
 import { buildEventMetaDescription } from '@/lib/events/event-meta'
-import type { PublicEventRow } from '@/lib/events/types'
 import nextDynamic from 'next/dynamic'
 import { EventTrustSignals } from '@/components/features/event/EventTrustSignals'
 import { fetchFixtureEvent } from '@/lib/dev/fixture-events'
@@ -41,7 +37,7 @@ const VenueMap = nextDynamic(
   () => import('@/components/features/events/venue-map').then(m => m.VenueMap)
 )
 import { SectionHeader } from '@/components/ui/SectionHeader'
-import { EventSoldOut, type EventSoldOutRelated } from '@/components/features/events/event-sold-out'
+import { EventSoldOut } from '@/components/features/events/event-sold-out'
 import { TicketsNotOnSale } from '@/components/features/events/tickets-not-on-sale'
 import { eventIsPaid, isOrganiserSellable } from '@/lib/payments/sale-status'
 import { getEventFeeRates } from '@/lib/pricing/event-fee-config'
@@ -121,69 +117,6 @@ async function fetchEvent(slug: string): Promise<FullEvent | null> {
     return null
   }
   return data
-}
-
-async function fetchRelatedEvents(
-  currentId: string,
-  categoryId: string | null,
-  organisationId: string,
-  city: string | null,
-): Promise<EventCardData[]> {
-  const supabase = createPublicClient()
-  const now = new Date().toISOString()
-
-  // Same organiser upcoming events
-  const orgPromise = supabase
-    .from('events')
-    .select('id, slug, title, cover_image_url, thumbnail_url, start_date, venue_name, venue_city, venue_country, created_at, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)')
-    .eq('status', 'published')
-    .eq('visibility', 'public')
-    .eq('organisation_id', organisationId)
-    .neq('id', currentId)
-    .gte('start_date', now)
-    .order('start_date', { ascending: true })
-    .limit(4)
-
-  const catPromise = categoryId
-    ? supabase
-        .from('events')
-        .select('id, slug, title, cover_image_url, thumbnail_url, start_date, venue_name, venue_city, venue_country, created_at, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)')
-        .eq('status', 'published')
-        .eq('visibility', 'public')
-        .eq('category_id', categoryId)
-        .neq('id', currentId)
-        .gte('start_date', now)
-        .order('start_date', { ascending: true })
-        .limit(4)
-    : Promise.resolve({ data: [] as unknown[] })
-
-  const cityPromise = city
-    ? supabase
-        .from('events')
-        .select('id, slug, title, cover_image_url, thumbnail_url, start_date, venue_name, venue_city, venue_country, created_at, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)')
-        .eq('status', 'published')
-        .eq('visibility', 'public')
-        .ilike('venue_city', `%${city}%`)
-        .neq('id', currentId)
-        .gte('start_date', now)
-        .order('start_date', { ascending: true })
-        .limit(4)
-    : Promise.resolve({ data: [] as unknown[] })
-
-  const [org, cat, cty] = await Promise.all([orgPromise, catPromise, cityPromise])
-
-  const seen = new Set<string>()
-  const merged: EventCardData[] = []
-  for (const bucket of [org.data ?? [], cat.data ?? [], cty.data ?? []]) {
-    for (const raw of bucket as unknown as EventCardData[]) {
-      if (seen.has(raw.id)) continue
-      seen.add(raw.id)
-      merged.push(raw)
-      if (merged.length >= 4) break
-    }
-    if (merged.length >= 4) break
-  }
-  return merged
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -437,7 +370,6 @@ export default async function EventDetailPage({ params }: Props) {
     dynamicPriceMap,
     eventInventory,
     media,
-    related,
     seatsData,
     feeRates,
     seatedFlagEnabled,
@@ -453,12 +385,6 @@ export default async function EventDetailPage({ params }: Props) {
       gallery_urls: jsonAsStringArray(event.gallery_urls),
       category: event.category ? { slug: event.category.slug ?? null, name: event.category.name } : null,
     }),
-    fetchRelatedEvents(
-      event.id,
-      event.category_id,
-      event.organisation_id,
-      event.venue_city,
-    ),
     seatsPromise,
     // ACCC all-in: resolve this event's live fee VALUES (event > org > region
     // precedence, same rows the charge resolves) so the ticket selector can show
@@ -548,15 +474,9 @@ export default async function EventDetailPage({ params }: Props) {
     .filter(Boolean)
     .join(', ')
 
-  const relatedTierIds = related
-    .map(e => e.ticket_tiers?.[0]?.id)
-    .filter((id): id is string => typeof id === 'string')
-
-  const [tierInventoryEntries, relatedCards, relatedPrices] = await Promise.all([
-    Promise.all(enrichedAllTiers.map(async t => [t.id, await getTierInventoryStatic(t.id)] as const)),
-    projectToCardData(related as unknown as PublicEventRow[]),
-    getDynamicPriceMap(relatedTierIds),
-  ])
+  const tierInventoryEntries = await Promise.all(
+    enrichedAllTiers.map(async t => [t.id, await getTierInventoryStatic(t.id)] as const),
+  )
   const tierInventory = Object.fromEntries(tierInventoryEntries)
 
   const isSoldOut =
@@ -572,25 +492,6 @@ export default async function EventDetailPage({ params }: Props) {
   // Stripe and stay fully sellable.
   const saleBlocked =
     eventIsPaid(allTiers) && !isOrganiserSellable(event.organisation)
-
-  const soldOutRelated: EventSoldOutRelated[] = related.slice(0, 3).map(e => {
-    const tiers = e.ticket_tiers ?? []
-    // Lowest PAID price (the shared price-label rule); 0 only when the event
-    // is genuinely free (every tier $0). The first tier is not the price.
-    const paid = lowestPaidCents(tiers)
-    return {
-      id: e.id,
-      slug: e.slug,
-      title: e.title,
-      start_date: e.start_date,
-      venue_city: e.venue_city,
-      venue_country: e.venue_country,
-      cover_image_url: e.cover_image_url,
-      category_name: e.category?.name ?? null,
-      from_price_cents: tiers.length === 0 ? null : paid ?? 0,
-      currency: tiers[0]?.currency ?? null,
-    }
-  })
 
   const baseUrl = getSiteUrl()
   const eventStateForSchema =
@@ -1027,7 +928,7 @@ export default async function EventDetailPage({ params }: Props) {
                     <EventSoldOut
                       event={{ id: event.id, slug: event.slug, title: event.title }}
                       primaryTierId={allTiers[0]?.id ?? null}
-                      relatedEvents={soldOutRelated}
+                      relatedEvents={[]}
                     />
                   </div>
                 ) : (
@@ -1085,12 +986,9 @@ export default async function EventDetailPage({ params }: Props) {
           </div>
         </section>
 
-        {/* Related events - fade-rise on scroll-in (below-fold). */}
-        {related.length > 0 && (
-          <Reveal>
-            <RelatedEventsGrid events={relatedCards} dynamicPrices={relatedPrices} />
-          </Reveal>
-        )}
+        {/* Founder ruling 2026-07-25: the event page sells THIS event alone.
+            No cross-promotion of any other event renders here; discovery
+            lives on the city and browse pages only. */}
       </main>
 
       <SiteFooter />
