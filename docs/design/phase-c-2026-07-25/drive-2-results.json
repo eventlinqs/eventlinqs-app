@@ -1,0 +1,25 @@
+{
+  "events": {
+    "Seat Proof Fifty": {
+      "eventId": "909ec311-f80e-4cf6-8836-60edd10b1ea6",
+      "liveHref": "https://eventlinqs-app-git-feat-walkthr-37f703-lawals-projects-c20c0be8.vercel.app/events/seat-proof-fifty-nwltxi"
+    },
+    "Seat Proof Five Hundred": {
+      "eventId": "acab8b0b-c1e9-4a93-86f6-3aed7f93edd2",
+      "liveHref": "https://eventlinqs-app-git-feat-walkthr-37f703-lawals-projects-c20c0be8.vercel.app/events/seat-proof-five-hundred-wlx93m"
+    },
+    "Seat Proof Two Thousand": {
+      "eventId": "395d7957-0c38-42ba-b81e-a8555f2084b5",
+      "liveHref": "https://eventlinqs-app-git-feat-walkthr-37f703-lawals-projects-c20c0be8.vercel.app/events/seat-proof-two-thousand-p9qe32"
+    },
+    "Seat Proof Two Prices": {
+      "eventId": "615bb4a3-d95b-442c-8738-9a87e47fb484",
+      "liveHref": "https://eventlinqs-app-git-feat-walkthr-37f703-lawals-projects-c20c0be8.vercel.app/events/seat-proof-two-prices-ts8nfy"
+    }
+  },
+  "checks": {
+    "nudgeShown": true,
+    "nudgeGoneAfterFix": true,
+    "priceFilterCaptured": false
+  }
+}

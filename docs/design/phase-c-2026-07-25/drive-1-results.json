@@ -1,0 +1,27 @@
+{
+  "c1": {
+    "before": {
+      "mentionsAlsoLike": false,
+      "mentionsRelated": false
+    },
+    "after": {
+      "mentionsAlsoLike": false,
+      "mentionsRelated": false
+    }
+  },
+  "charts": [
+    "Proof 50",
+    "Proof 500 Curved",
+    "Proof 2000"
+  ],
+  "latency": {
+    "before": [
+      12923,
+      3710
+    ],
+    "after": [
+      9900,
+      9234
+    ]
+  }
+}
