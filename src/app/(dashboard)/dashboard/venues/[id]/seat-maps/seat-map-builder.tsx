@@ -8,6 +8,7 @@ import {
   Circle,
   Eraser,
   HeartHandshake,
+  ImageUp,
   Maximize,
   Minus,
   MousePointer2,
@@ -18,6 +19,7 @@ import {
   StickyNote,
   Tag,
   Undo2,
+  X,
 } from 'lucide-react'
 import {
   generateLayout,
@@ -99,6 +101,23 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
   const [canUndo, setCanUndo] = useState(false)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  /**
+   * S3: the tracing underlay. A floor plan photo or PDF-export image sits
+   * under the grid at low opacity so the organiser draws the REAL room.
+   * Session-only by design: the image never persists into the chart (object
+   * URL, revoked on replacement), so venue documents stay on the venue's
+   * machine.
+   */
+  const [underlay, setUnderlay] = useState<{ url: string; opacity: number } | null>(null)
+  const underlayInputRef = useRef<HTMLInputElement | null>(null)
+
+  function onUnderlayFile(file: File | undefined) {
+    if (!file || !file.type.startsWith('image/')) return
+    setUnderlay(prev => {
+      if (prev) URL.revokeObjectURL(prev.url)
+      return { url: URL.createObjectURL(file), opacity: 0.3 }
+    })
+  }
 
   const layout = useMemo(() => generateLayout(blocks), [blocks])
   const issues = useMemo(() => validateLayout(layout), [layout])
@@ -369,7 +388,7 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
               key={a.kind}
               type="button"
               onClick={() => addBlock(a.kind)}
-              className="inline-flex h-10 items-center gap-1.5 rounded-control border border-ink-200 bg-white px-3 text-xs font-semibold text-ink-900 transition-colors hover:border-gold-500"
+              className="inline-flex h-10 items-center gap-1.5 rounded-control border border-ink-200 bg-white px-3 text-xs font-semibold text-ink-900 transition-colors hover:border-gold-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-1"
             >
               {a.icon}
               {a.label}
@@ -388,7 +407,7 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
               type="button"
               onClick={() => { setMode(t.m); setSeatEdit(null) }}
               aria-pressed={mode === t.m}
-              className={`inline-flex items-center gap-1.5 rounded-control px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+              className={`inline-flex items-center gap-1.5 rounded-control px-2.5 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 ${
                 mode === t.m ? 'bg-ink-900 text-white' : 'bg-transparent text-ink-900 hover:bg-white'
               }`}
             >
@@ -403,11 +422,58 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
           disabled={!canUndo}
           aria-label="Undo"
           title="Undo (Ctrl+Z)"
-          className="inline-flex h-9 items-center gap-1.5 rounded-control border border-ink-200 bg-white px-3 text-xs font-semibold text-ink-900 transition-colors hover:border-gold-500 disabled:cursor-not-allowed disabled:opacity-40"
+          className="inline-flex h-9 items-center gap-1.5 rounded-control border border-ink-200 bg-white px-3 text-xs font-semibold text-ink-900 transition-colors hover:border-gold-500 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-1"
         >
           <Undo2 className="h-3.5 w-3.5" aria-hidden />
           Undo
         </button>
+
+        {/* S3: trace a real floor plan. Session-only tracing aid. */}
+        <input
+          ref={underlayInputRef}
+          type="file"
+          accept="image/*"
+          className="sr-only"
+          aria-label="Choose a floor plan image to trace"
+          onChange={e => onUnderlayFile(e.target.files?.[0])}
+        />
+        {underlay ? (
+          <span className="inline-flex h-9 items-center gap-2 rounded-control border border-gold-500/50 bg-gold-500/10 px-3 text-xs font-semibold text-ink-900">
+            <ImageUp className="h-3.5 w-3.5 text-gold-700" aria-hidden />
+            Floor plan
+            <input
+              type="range"
+              min={10}
+              max={60}
+              value={Math.round(underlay.opacity * 100)}
+              aria-label="Floor plan visibility"
+              onChange={e => setUnderlay(u => (u ? { ...u, opacity: Number(e.target.value) / 100 } : u))}
+              className="h-1 w-20 accent-gold-500"
+            />
+            <button
+              type="button"
+              aria-label="Remove the floor plan underlay"
+              onClick={() =>
+                setUnderlay(prev => {
+                  if (prev) URL.revokeObjectURL(prev.url)
+                  return null
+                })
+              }
+              className="flex h-5 w-5 items-center justify-center rounded-full text-ink-600 transition-colors hover:bg-white hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+            >
+              <X className="h-3 w-3" aria-hidden />
+            </button>
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={() => underlayInputRef.current?.click()}
+            className="inline-flex h-9 items-center gap-1.5 rounded-control border border-ink-200 bg-white px-3 text-xs font-semibold text-ink-900 transition-colors hover:border-gold-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-1"
+          >
+            <ImageUp className="h-3.5 w-3.5" aria-hidden />
+            Trace a floor plan
+          </button>
+        )}
         <span className="ml-auto rounded-full border border-ink-200 bg-canvas px-3 py-1 text-xs font-semibold text-ink-900">
           {layout.totalSeats.toLocaleString()} seats{layout.areas.length > 0 ? ` + ${layout.areas.length} standing ${layout.areas.length === 1 ? 'zone' : 'zones'}` : ''}
         </span>
@@ -431,22 +497,48 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
                 <pattern id="builder-dot-grid" width="24" height="24" patternUnits="userSpaceOnUse">
                   <circle cx="1.2" cy="1.2" r="1.2" fill={INK_900} opacity="0.07" />
                 </pattern>
+                {/* The stage light: one signature across builder, buyer map,
+                    kit preview. The good seats sit in the light. */}
+                <radialGradient id="builder-stage-light" cx="0.5" cy="0" r="1">
+                  <stop offset="0%" stopColor={GOLD} stopOpacity="0.13" />
+                  <stop offset="55%" stopColor={GOLD} stopOpacity="0.045" />
+                  <stop offset="100%" stopColor={GOLD} stopOpacity="0" />
+                </radialGradient>
               </defs>
+
+              {/* S3: the floor plan underlay, beneath everything, so the
+                  organiser traces the real room. */}
+              {underlay && (
+                <image
+                  href={underlay.url}
+                  x={view.minX}
+                  y={view.minY + 40}
+                  width={view.w}
+                  height={view.h - 40}
+                  opacity={underlay.opacity}
+                  preserveAspectRatio="xMidYMid meet"
+                  aria-hidden="true"
+                />
+              )}
+
               <rect x={view.minX} y={view.minY} width={view.w} height={view.h} fill="url(#builder-dot-grid)" />
 
               {/* STAGE: navy proscenium with the gold footlight keyline, the
                   same language the buyer map carries */}
               <rect x={view.minX + 24} y={view.minY + 8} width={view.w - 48} height={24} rx={5} fill={INK_900} />
               <rect x={view.minX + 24} y={view.minY + 36} width={view.w - 48} height={2} rx={1} fill={GOLD} />
+              <rect
+                x={view.minX + 24}
+                y={view.minY + 38}
+                width={view.w - 48}
+                height={Math.min(140, view.h * 0.35)}
+                fill="url(#builder-stage-light)"
+                style={{ pointerEvents: 'none' }}
+                aria-hidden="true"
+              />
               <text x={view.minX + view.w / 2} y={view.minY + 24} textAnchor="middle" fontSize={11} fontWeight={700} fill="#FFFFFF" letterSpacing={4}>
                 STAGE
               </text>
-
-              {blocks.length === 0 && (
-                <text x={view.minX + view.w / 2} y={view.minY + view.h / 2} textAnchor="middle" fontSize={13} fill="#6B7280">
-                  Add rows, tables or a standing zone to begin drawing the room
-                </text>
-              )}
 
               {/* Standing areas */}
               {layout.areas.map(area => {
@@ -535,6 +627,49 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
               )}
             </svg>
           </div>
+
+          {/* The empty canvas is an invitation, never a blank grid: the
+              stage is lit, the first block is one tap away. */}
+          {blocks.length === 0 && (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+              <div className="pointer-events-auto mx-4 max-w-sm rounded-2xl border border-ink-200 bg-white/95 p-6 text-center shadow-lg">
+                <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-gold-700">
+                  The room studio
+                </p>
+                <h3 className="mt-1 font-display text-xl font-bold text-ink-900">Draw your room</h3>
+                <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-ink-600">
+                  The stage is set. Lay your first rows, tables or standing
+                  zone, or trace the real floor plan and build over it.
+                </p>
+                <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => addBlock('rows')}
+                    className="inline-flex h-10 items-center gap-1.5 rounded-full bg-gold-500 px-4 text-xs font-semibold text-ink-900 transition-colors hover:bg-gold-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-900 focus-visible:ring-offset-1"
+                  >
+                    <Rows3 className="h-3.5 w-3.5" aria-hidden />
+                    Lay rows
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => addBlock('round')}
+                    className="inline-flex h-10 items-center gap-1.5 rounded-full border border-ink-200 bg-white px-4 text-xs font-semibold text-ink-900 transition-colors hover:border-gold-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-1"
+                  >
+                    <Circle className="h-3.5 w-3.5" aria-hidden />
+                    Seat a table
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => underlayInputRef.current?.click()}
+                    className="inline-flex h-10 items-center gap-1.5 rounded-full border border-ink-200 bg-white px-4 text-xs font-semibold text-ink-900 transition-colors hover:border-gold-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-1"
+                  >
+                    <ImageUp className="h-3.5 w-3.5" aria-hidden />
+                    Trace a plan
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Floating zoom controls, the buyer-map cluster */}
           <div className="absolute bottom-3 right-3 flex items-center gap-1 rounded-lg border border-ink-200 bg-white shadow-sm">
@@ -755,9 +890,17 @@ function RowsConfig({ block, onChange }: { block: RowsBlock; onChange: (p: Parti
           <input type="number" className={inputClass} value={block.seatStart ?? 1}
             onChange={e => onChange({ seatStart: Number(e.target.value) || 1 })} />
         </Field>
-        <Field label="Curve depth (px)">
-          <input type="number" min={0} className={inputClass} value={block.curveDepth ?? 0}
-            onChange={e => onChange({ curveDepth: Math.max(0, Number(e.target.value) || 0) })} />
+        <Field label={`Row curve${(block.curveDepth ?? 0) > 0 ? ` · ${block.curveDepth}px bow` : ' · straight'}`}>
+          <input
+            type="range"
+            min={0}
+            max={80}
+            step={2}
+            value={block.curveDepth ?? 0}
+            aria-label="Row curve: 0 is straight, higher bows the rows toward the stage"
+            onChange={e => onChange({ curveDepth: Math.max(0, Number(e.target.value) || 0) })}
+            className="h-1.5 w-full accent-gold-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+          />
         </Field>
         <Field label="Rotation (degrees)">
           <input type="number" className={inputClass} value={block.rotation ?? 0}
