@@ -67,6 +67,20 @@ export function trackSaveEvent(data: { event_id: string }): void {
   trackEvent('save_event', data)
 }
 
+// ── Creation-funnel activation (the four kit metrics) ───────────────────────
+// The activation funnel is kit_started -> kit_rendered ->
+// email_captured_after_render -> event_published. The first two fire client
+// side (queued by the layout stub until Plausible boots); the last two fire
+// server side where the truth is finalised.
+
+export function trackKitStarted(data: { mode: 'wizard' | 'magic_start' }): void {
+  trackEvent('kit_started', data)
+}
+
+export function trackKitRendered(data: { event_id: string; just_published: 0 | 1 }): void {
+  trackEvent('kit_rendered', data)
+}
+
 // ── Server-side tracking (Stripe webhook, server actions) ───────────────────
 
 const PLAUSIBLE_DOMAIN = 'eventlinqs.com'
@@ -119,6 +133,29 @@ export function trackTicketPurchaseCompleteServer(
   },
 ): Promise<void> {
   return trackEventServer('ticket_purchase_complete', url, data)
+}
+
+export function trackEventPublishedServer(
+  url: string,
+  data: {
+    event_id: string
+    is_free: 0 | 1
+    first_publish: 0 | 1
+  },
+): Promise<void> {
+  return trackEventServer('event_published', url, data)
+}
+
+/**
+ * Fires when an email is captured AFTER a rendered kit (the product-qualified
+ * moment). Guarded at the call site by the /launch kit-draft cookie, so it can
+ * only ever count value-first captures, never ordinary signups.
+ */
+export function trackEmailCapturedAfterRenderServer(
+  url: string,
+  data: { source: 'launch_composer' },
+): Promise<void> {
+  return trackEventServer('email_captured_after_render', url, data)
 }
 
 export function trackOrganiserSignupServer(

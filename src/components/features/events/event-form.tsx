@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createEvent, updateEvent } from '@/app/(dashboard)/dashboard/events/actions'
 import { EventMediaStep, type MediaImage } from './event-media-step'
@@ -9,6 +9,7 @@ import { AssistantPanel, type PanelSuggestion } from '@/components/ai/assistant-
 import { MagicStart } from './magic-start'
 import type { MagicStartDraft } from '@/lib/ai/magic-start'
 import { getAllCommunities, type CommunitySlug } from '@/lib/communities/data'
+import { trackKitStarted } from '@/lib/analytics/plausible'
 import {
   communitiesFromTags,
   stripCanonicalCommunityTokens,
@@ -401,6 +402,18 @@ export function EventForm({
     setFormData(d => ({ ...d, [key]: value }))
   }, [])
 
+  // Activation metric: kit_started fires once per create-mode session, on the
+  // first meaningful input (typing a title, or applying a Magic Start draft).
+  const kitStartedRef = useRef(false)
+  const markKitStarted = useCallback(
+    (mode: 'wizard' | 'magic_start') => {
+      if (editMode || kitStartedRef.current) return
+      kitStartedRef.current = true
+      trackKitStarted({ mode })
+    },
+    [editMode],
+  )
+
   // Auto-detect the browser timezone on mount (new events only). This must run
   // in an effect, not the state initializer: reading the browser timezone
   // during render would differ between the server (UTC) and the client, causing
@@ -591,6 +604,7 @@ export function EventForm({
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
   }
   const applyMagicDraft = (draft: MagicStartDraft) => {
+    markKitStarted('magic_start')
     const filled: string[] = []
     setFormData(d => {
       const next = { ...d }
@@ -719,7 +733,10 @@ export function EventForm({
         <input
           type="text"
           value={formData.title}
-          onChange={e => set('title', e.target.value)}
+          onChange={e => {
+            markKitStarted('wizard')
+            set('title', e.target.value)
+          }}
           placeholder="e.g. Summer Music Festival 2026"
           className="w-full rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
         />

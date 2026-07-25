@@ -10,6 +10,8 @@ import { parseVideoEmbed } from '@/lib/media/video-embed'
 import { serializeGallery, type GalleryImage } from '@/lib/media/event-media-model'
 import { moderateEventMedia } from '@/lib/media/moderation'
 import { cleanupEventMedia } from '@/lib/upload'
+import { getSiteUrl } from '@/lib/site-url'
+import { trackEventPublishedServer } from '@/lib/analytics/plausible'
 import type { EventStatus, EventVisibility, EventType, TicketTierType, FeePassType, Json } from '@/types/database'
 
 // Resolve the organiser media fields from a create/update input into the columns
@@ -269,6 +271,18 @@ export async function createEvent(input: CreateEventInput): Promise<{ error?: st
   }
   // New city may have appeared in the picker merge source.
   updateTag('picker-cities')
+
+  // Activation metric: event_published (fire-and-forget, never blocks the
+  // organiser's publish). A create with status published is always a first
+  // publish.
+  if (input.status === 'published') {
+    void trackEventPublishedServer(`${getSiteUrl()}/events/${slug}`, {
+      event_id: input.eventId,
+      is_free: input.ticket_tiers.every(t => t.price === 0) ? 1 : 0,
+      first_publish: 1,
+    })
+  }
+
   return {}
 }
 
@@ -442,6 +456,17 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
   }
   // venue_city may have changed - refresh the picker merge source.
   updateTag('picker-cities')
+
+  // Activation metric: a draft transitioning to published through the edit
+  // path is that event's first publish.
+  if (input.status === 'published' && !event.status.includes('published')) {
+    void trackEventPublishedServer(`${getSiteUrl()}/events/${event.slug}`, {
+      event_id: input.eventId,
+      is_free: input.ticket_tiers.every(t => t.price === 0) ? 1 : 0,
+      first_publish: 1,
+    })
+  }
+
   redirect('/dashboard/events?saved=1')
 }
 
@@ -452,7 +477,7 @@ export async function publishEvent(eventId: string): Promise<{ error?: string }>
 
   const { data: event } = await supabase
     .from('events')
-    .select('status, organisation_id, cover_image_url')
+    .select('status, organisation_id, cover_image_url, slug')
     .eq('id', eventId)
     .single()
 
@@ -481,6 +506,15 @@ export async function publishEvent(eventId: string): Promise<{ error?: string }>
   if (error) return { error: 'Failed to publish event' }
   // A newly published event may bring a previously absent city into the picker.
   updateTag('picker-cities')
+
+  // Activation metric: publishing from the events table. A draft going live
+  // is a first publish; resuming a paused event is not.
+  void trackEventPublishedServer(`${getSiteUrl()}/events/${event.slug}`, {
+    event_id: eventId,
+    is_free: (tiers ?? []).every(t => t.price === 0) ? 1 : 0,
+    first_publish: event.status === 'draft' ? 1 : 0,
+  })
+
   return {}
 }
 

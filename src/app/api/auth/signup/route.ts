@@ -10,6 +10,8 @@ import {
   type CapturedAttribution,
 } from '@/lib/growth/referrals'
 import { recordPlatformDigestConsent } from '@/lib/consent/record'
+import { KIT_DRAFT_COOKIE, isKitDraftToken } from '@/lib/growth/kit-draft'
+import { trackEmailCapturedAfterRenderServer } from '@/lib/analytics/plausible'
 
 export const dynamic = 'force-dynamic'
 
@@ -216,6 +218,17 @@ export async function POST(request: NextRequest) {
     } catch {
       // swallow - consent capture must never fail the signup
     }
+  }
+
+  // Activation metric: an email captured while a rendered kit draft is
+  // waiting (the /launch composer's signed draft cookie) is the
+  // product-qualified capture, counted separately from ordinary signups.
+  // Fire-and-forget; never blocks or fails the signup.
+  const kitDraft = request.cookies.get(KIT_DRAFT_COOKIE)?.value
+  if (isKitDraftToken(kitDraft)) {
+    void trackEmailCapturedAfterRenderServer(`${origin}/launch`, {
+      source: 'launch_composer',
+    })
   }
 
   return NextResponse.json({ ok: true }, { status: 200 })
