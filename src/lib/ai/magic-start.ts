@@ -5,6 +5,7 @@ import { estimateCostMicroUsd } from './config'
 import { checkMonthlyBudget, recordSpend } from './cost-guard'
 import { logAi } from './logging'
 import { enforceCopyLaws, asUntrustedBlock } from './sanitise'
+import { findCopyTells } from './copy-tells'
 
 /**
  * Magic Start uses a FAST model, not the chat default. Draft extraction is a
@@ -154,6 +155,100 @@ export async function extractEventDraft(opts: {
 
   const model = getMagicStartModel()
   const system = buildSystem({ categoryNames, nowIso })
+
+  const baseMessages: Anthropic.MessageParam[] = [
+    {
+      role: 'user',
+      content: `Build an event draft from this description.\n\n${asUntrustedBlock('event_description', description)}`,
+    },
+  ]
+
+  const first = await callDraftModel({ model, system, messages: baseMessages, who })
+  if (!first.ok) return { ok: false, reason: first.reason }
+
+  let parsed = safeParse(first.text, categoryNames)
+  if (!parsed) {
+    logAi({ evt: 'ai.error', assistant: 'magic-start', who, errorType: 'UnparseableDraft', model })
+    return { ok: false, reason: 'upstream_error' }
+  }
+  let costMicroUsd = first.costMicroUsd
+
+  // ── The anti-tell gate (C3, layer 2) ─────────────────────────────────────
+  // A draft whose prose carries a banned pattern gets exactly ONE
+  // regeneration with the violations named. Whatever comes back, a telling
+  // field is blanked and flagged rather than shipped: the gate never loses.
+  const tells = draftTells(parsed)
+  if (tells.length > 0) {
+    const retry = await callDraftModel({
+      model,
+      system,
+      who,
+      messages: [
+        ...baseMessages,
+        { role: 'assistant', content: first.text },
+        {
+          role: 'user',
+          content:
+            `The draft is rejected: it used banned phrasing (${tells.join(', ')}). ` +
+            'Rewrite the title and description with concrete, specific language about this exact event: ' +
+            'what happens, who performs, where, when. No marketing filler, no stock phrases. ' +
+            'Return the full corrected draft JSON.',
+        },
+      ],
+    })
+    if (retry.ok) {
+      costMicroUsd += retry.costMicroUsd
+      const reparsed = safeParse(retry.text, categoryNames)
+      if (reparsed) parsed = reparsed
+    }
+    parsed = blankTellingFields(parsed, who, model)
+  }
+
+  return { ok: true, draft: parsed, costMicroUsd }
+}
+
+/** Tell names across the draft's generated prose (title + description). */
+function draftTells(draft: MagicStartDraft): string[] {
+  return Array.from(
+    new Set([...findCopyTells(draft.title), ...findCopyTells(draft.description)]),
+  )
+}
+
+/**
+ * The gate's last word: any prose field still carrying a tell after the one
+ * permitted regeneration is returned empty and named in `unresolved`, so the
+ * organiser writes that line themselves and a tell never reaches a surface.
+ */
+function blankTellingFields(draft: MagicStartDraft, who: string, model: string): MagicStartDraft {
+  const next = { ...draft, unresolved: [...draft.unresolved] }
+  const flag = (label: string) => {
+    if (!next.unresolved.includes(label)) next.unresolved.push(label)
+  }
+  if (findCopyTells(next.title).length > 0) {
+    next.title = ''
+    flag('Title')
+    logAi({ evt: 'ai.error', assistant: 'magic-start', who, errorType: 'TellBlankedTitle', model })
+  }
+  if (findCopyTells(next.description).length > 0) {
+    next.description = ''
+    flag('Description')
+    logAi({ evt: 'ai.error', assistant: 'magic-start', who, errorType: 'TellBlankedDescription', model })
+  }
+  return next
+}
+
+type DraftCall =
+  | { ok: true; text: string; costMicroUsd: number }
+  | { ok: false; reason: 'upstream_error' | 'refused' }
+
+/** One model call: request, spend recording, structured logging, refusal. */
+async function callDraftModel(opts: {
+  model: string
+  system: string
+  messages: Anthropic.MessageParam[]
+  who: string
+}): Promise<DraftCall> {
+  const { model, system, messages, who } = opts
   const started = Date.now()
 
   let response: Anthropic.Message
@@ -162,12 +257,7 @@ export async function extractEventDraft(opts: {
       model,
       max_tokens: 1500,
       system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
-      messages: [
-        {
-          role: 'user',
-          content: `Build an event draft from this description.\n\n${asUntrustedBlock('event_description', description)}`,
-        },
-      ],
+      messages,
       output_config: { format: { type: 'json_schema', schema: DRAFT_SCHEMA } },
     })
   } catch (err) {
@@ -210,13 +300,8 @@ export async function extractEventDraft(opts: {
   const textBlock = response.content.find(
     (b): b is Anthropic.TextBlock => b.type === 'text',
   )
-  const parsed = textBlock ? safeParse(textBlock.text, categoryNames) : null
-  if (!parsed) {
-    logAi({ evt: 'ai.error', assistant: 'magic-start', who, errorType: 'UnparseableDraft', model })
-    return { ok: false, reason: 'upstream_error' }
-  }
-
-  return { ok: true, draft: parsed, costMicroUsd }
+  if (!textBlock) return { ok: false, reason: 'upstream_error' }
+  return { ok: true, text: textBlock.text, costMicroUsd }
 }
 
 function safeParse(text: string, allowedCategories: string[]): MagicStartDraft | null {

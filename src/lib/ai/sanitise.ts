@@ -68,6 +68,11 @@ export function enforceCopyLaws(text: string): string {
     .replace(/\s*—\s*/g, ' - ') // em-dash
     .replace(/\s*–\s*/g, ' - ') // en-dash
     .replace(/‑/g, '-') // non-breaking hyphen
+    // No exclamation marks in user-facing copy (constitution). A bang run
+    // after ? drops entirely; any other run becomes a full stop.
+    .replace(/\?!+/g, '?')
+    .replace(/\s*!+(?=\s|$)/g, '.')
+    .replace(/!+/g, '.')
 }
 
 /**

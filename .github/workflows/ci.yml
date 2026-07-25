@@ -40,6 +40,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Copy laws + AI-tell lexicon
+        run: node scripts/copy-tell-gate.mjs
+
       - name: Typecheck
         run: npx tsc --noEmit
 

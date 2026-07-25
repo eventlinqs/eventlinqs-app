@@ -1,0 +1,31 @@
+{
+  "comment": "The researched AI-tell lexicon (audit 2026-07-25, sources in docs/design/LAUNCH-KIT-AUDIT.md C1). phrases + hard fail ANY copy, repo and generated. generatedOnlyWords fail GENERATED copy only: in code they carry legitimate meanings (payouts unlock, robust types), in marketing prose they are tells.",
+  "phrases": [
+    { "name": "unforgettable", "source": "\\bunforgettable\\b" },
+    { "name": "look-no-further", "source": "\\blook no further\\b" },
+    { "name": "stands-as-a-testament", "source": "\\bstands? as a testament\\b" },
+    { "name": "nestled", "source": "\\bnestled\\b" },
+    { "name": "in-the-heart-of", "source": "\\bin the heart of\\b" },
+    { "name": "delve", "source": "\\bdelv(e|es|ed|ing)\\b" },
+    { "name": "tapestry", "source": "\\btapestr(y|ies)\\b" },
+    { "name": "navigate-the-landscape", "source": "\\bnavigat(e|ing) the [a-z]{2,24} ?landscape\\b" },
+    { "name": "plays-a-pivotal-role", "source": "\\bplays? a (pivotal|crucial|vital) role\\b" },
+    { "name": "not-just-x-its-y", "source": "\\b(not just|more than just) [^.,;:!?]{1,40}[,;] (it's|it is|this is)\\b" },
+    { "name": "get-ready-to", "source": "\\bget ready to\\b" },
+    { "name": "whether-youre-x-or-y", "source": "\\bwhether you('re|re| are) [^.!?]{1,60}\\bor\\b" }
+  ],
+  "generatedOnlyWords": [
+    { "name": "elevate", "source": "\\belevat(e|es|ed|ing)\\b" },
+    { "name": "unlock", "source": "\\bunlock(s|ed|ing)?\\b" },
+    { "name": "vibrant", "source": "\\bvibrant\\b" },
+    { "name": "seamless", "source": "\\bseamless(ly)?\\b" },
+    { "name": "robust", "source": "\\brobust\\b" },
+    { "name": "leverage", "source": "\\bleverag(e|es|ed|ing)\\b" }
+  ],
+  "hard": [
+    { "name": "em-or-en-dash", "source": "[\\u2014\\u2013]" },
+    { "name": "exclamation-mark", "source": "!" },
+    { "name": "banned-word-community-law", "source": "\\bcultur(e|es|al|ally)\\b" },
+    { "name": "competitor-name", "source": "\\b(eventbrite|humanitix|ticketmaster|ticketek|moshtix|oztix|trybooking|try booking|megatix|sticky tickets|stickytickets|eventbookings|ticketebo|seats\\.io)\\b" }
+  ]
+}
