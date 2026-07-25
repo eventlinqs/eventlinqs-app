@@ -20,8 +20,13 @@
  * client bundle (Vercel surfaces the new env var on next request).
  */
 
+import { getSupabaseUrl } from '@/lib/supabase/env'
+
 function readSupabaseUrl(): string | undefined {
-  return process.env.NEXT_PUBLIC_SUPABASE_URL
+  // Resolver, not the raw base var: on a TEST-backed preview the raw var still
+  // holds the PRODUCTION project, so every storage URL pointed at the live
+  // bucket while the rows came from TEST.
+  return getSupabaseUrl() || undefined
 }
 
 function readBrandedDomain(): string | undefined {

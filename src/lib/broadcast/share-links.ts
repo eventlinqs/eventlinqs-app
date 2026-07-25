@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getSupabaseServiceRoleKey } from '@/lib/supabase/env'
 
 /**
  * Broadcast Layer Stage 1 core: trackable share links.
@@ -55,7 +56,10 @@ export function generateShareCode(): string {
  * deployment without a dedicated secret.
  */
 export function visitorHash(ip: string | null, userAgent: string | null): string {
-  const salt = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? 'el-broadcast').slice(0, 16)
+  // Resolver, not the raw base var: on a preview the raw var holds the
+  // PRODUCTION service-role key, so preview visitor hashes were salted with a
+  // production secret and collided with the production hash space.
+  const salt = (getSupabaseServiceRoleKey() || 'el-broadcast').slice(0, 16)
   return createHash('sha256')
     .update(`${salt}|${ip ?? 'unknown'}|${userAgent ?? 'unknown'}`)
     .digest('hex')

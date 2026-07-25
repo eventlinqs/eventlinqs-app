@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getSupabaseServiceRoleKey } from '@/lib/supabase/env'
 
 /**
  * Get the current effective price for a ticket tier.
@@ -13,7 +14,10 @@ import { createAdminClient } from '@/lib/supabase/admin'
  * that intentionally withhold the service role secret from the build.
  */
 export async function getCurrentTierPrice(tierId: string): Promise<number> {
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return 0
+  // Resolver, not the raw base var: createAdminClient() below resolves the
+  // *_PREVIEW key, so this guard has to ask the same question the client does
+  // or a preview would gate on the presence of a key it never uses.
+  if (!getSupabaseServiceRoleKey()) return 0
 
   const supabase = createAdminClient()
 

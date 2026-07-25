@@ -2,6 +2,7 @@ import { updateSession } from '@/lib/supabase/middleware'
 import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { validateAdmissionToken } from '@/lib/queue/tokens'
+import { getSupabaseAnonKey, getSupabaseUrl } from '@/lib/supabase/env'
 
 /**
  * /dev/* production gate.
@@ -33,6 +34,23 @@ function gateDevRoutes(request: NextRequest): NextResponse | null {
   return null
 }
 
+/**
+ * Does this admission token admit the bearer to THIS event?
+ *
+ * A signed token carries the event it was issued for
+ * (`queueId:eventId:expiresAtMs`), but the gate used to check only
+ * `validateAdmissionToken(token).valid` and throw the embedded eventId away.
+ * A signature is only a proof of ISSUANCE, never a proof of SCOPE: one
+ * legitimately-earned token for a low-demand event admitted the bearer to
+ * every high-demand event on the platform, which is the whole thing the queue
+ * exists to prevent. Comparing the embedded eventId to the event actually being
+ * requested is what binds the two together.
+ */
+export function admitsToEvent(token: string, eventId: string): boolean {
+  const result = validateAdmissionToken(token)
+  return result.valid && result.eventId === eventId
+}
+
 // /events/<slug> queue gate. This used to live inline in the page via
 // `searchParams.queue_token`, which forced dynamic SSR and disqualified the
 // route from `generateStaticParams` + `revalidate`. Lifting it here lets
@@ -48,8 +66,12 @@ async function gateHighDemandEvent(request: NextRequest): Promise<NextResponse |
   if (rest.includes('/')) return null
 
   const slug = rest
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  // Resolver, never the raw NEXT_PUBLIC_* pair. Reading the base vars directly
+  // here made every preview deployment query the PRODUCTION database on every
+  // /events/<slug> request, because the *_PREVIEW overrides that point previews
+  // at the TEST project are only applied by src/lib/supabase/env.ts.
+  const url = getSupabaseUrl()
+  const key = getSupabaseAnonKey()
   if (!url || !key) return null
 
   const supabase = createClient(url, key, {
@@ -58,9 +80,9 @@ async function gateHighDemandEvent(request: NextRequest): Promise<NextResponse |
 
   const { data: event } = await supabase
     .from('events')
-    .select('is_high_demand, status')
+    .select('id, is_high_demand, status')
     .eq('slug', slug)
-    .maybeSingle<{ is_high_demand: boolean; status: string }>()
+    .maybeSingle<{ id: string; is_high_demand: boolean; status: string }>()
 
   if (!event) return null
   if (event.status !== 'published') return null
@@ -72,8 +94,7 @@ async function gateHighDemandEvent(request: NextRequest): Promise<NextResponse |
   // Pre-queue scheduling returns when the column ships.
 
   const queueToken = request.nextUrl.searchParams.get('queue_token')
-  const tokenValid = queueToken ? validateAdmissionToken(queueToken).valid : false
-  if (tokenValid) return null
+  if (queueToken && admitsToEvent(queueToken, event.id)) return null
 
   const redirectUrl = request.nextUrl.clone()
   redirectUrl.pathname = `/queue/${slug}`
@@ -81,20 +102,36 @@ async function gateHighDemandEvent(request: NextRequest): Promise<NextResponse |
   return NextResponse.redirect(redirectUrl)
 }
 
-// HARD-01: canonicalise the bare apex onto the www host so auth cookies and
-// sessions only ever live on one host (the Supabase Auth Site URL is
-// https://www.eventlinqs.com). Exact-hostname match leaves localhost and
-// *.vercel.app preview hosts untouched. The Stripe webhook is left alone - it
-// is configured to POST the www URL directly and must never see a 3xx.
-const APEX_HOST = 'eventlinqs.com'
-const CANONICAL_HOST = 'www.eventlinqs.com'
+// Canonical host ruling (founder, 2026-07-25): www.eventlinqs.com.au is THE
+// canonical host and every other branded host 301s to it. One host means auth
+// cookies, sessions, share links, OG cards and the Google index all agree, and
+// it removes the four-way split (eventlinqs.com, www.eventlinqs.com,
+// eventlinqs.com.au, www.eventlinqs.com.au) that previously all served 200.
+//
+// 301 (permanent), not 308: browsers and search engines treat 301 as the
+// canonicalisation signal, and consolidating link equity onto one host is the
+// point. The redirected hosts only ever serve GET/HEAD marketing traffic, so
+// the method-preservation that 308 buys is not needed here.
+//
+// The list is EXPLICIT rather than a suffix match on purpose: localhost,
+// *.vercel.app preview hosts and the staging alias must never be redirected, or
+// every preview deployment would bounce its own traffic at production.
+const CANONICAL_HOST = 'www.eventlinqs.com.au'
+const REDIRECT_HOSTS = new Set([
+  'eventlinqs.com',
+  'www.eventlinqs.com',
+  'eventlinqs.com.au',
+])
 
 function canonicaliseHost(request: NextRequest): NextResponse | null {
-  if (request.nextUrl.hostname !== APEX_HOST) return null
+  if (!REDIRECT_HOSTS.has(request.nextUrl.hostname)) return null
+  // Stripe does NOT follow redirects: a 3xx here silently breaks every webhook
+  // delivery. The endpoint is configured on the canonical host directly, and
+  // this bypass is the safety net if it is ever pointed at another alias.
   if (request.nextUrl.pathname === '/api/webhooks/stripe') return null
   const url = request.nextUrl.clone()
   url.hostname = CANONICAL_HOST
-  return NextResponse.redirect(url, 308)
+  return NextResponse.redirect(url, 301)
 }
 
 export async function proxy(request: NextRequest) {

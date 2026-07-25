@@ -21,6 +21,36 @@
 
 const nonEmpty = v => (v && v.trim().length > 0)
 
+/**
+ * The PRODUCTION Supabase project ref. Not a secret: it is compiled into every
+ * production browser bundle as part of NEXT_PUBLIC_SUPABASE_URL. It is named
+ * here so the isolation rule below can state, concretely, which project a
+ * non-production deployment must never resolve.
+ */
+export const PRODUCTION_SUPABASE_REF = 'gndnldyfudbytbboxesk'
+
+/** Extract the project ref from a Supabase URL, or '' when it is not one. */
+function refFromUrl(v) {
+  const m = /^https:\/\/([a-z0-9]+)\.supabase\.co\/?$/i.exec((v ?? '').trim())
+  return m ? m[1].toLowerCase() : ''
+}
+
+/**
+ * Extract the project ref from a legacy `eyJ` service-role/anon JWT. Returns ''
+ * for the newer opaque `sb_secret_` / `sb_publishable_` keys, which carry no
+ * readable ref - those are checked by URL alone.
+ */
+function refFromJwt(v) {
+  const t = (v ?? '').trim()
+  if (!t.startsWith('eyJ')) return ''
+  try {
+    const payload = JSON.parse(Buffer.from(t.split('.')[1], 'base64').toString('utf8'))
+    return typeof payload.ref === 'string' ? payload.ref.toLowerCase() : ''
+  } catch {
+    return ''
+  }
+}
+
 /** @type {EnvRule[]} */
 export const CRITICAL_ENV_RULES = [
   {
@@ -66,8 +96,21 @@ export const CRITICAL_ENV_RULES = [
     name: 'STRIPE_WEBHOOK_SECRET',
     buildCritical: false,
     publicVar: false,
-    describe: 'Stripe webhook signing secret (server)',
-    validate: v => (v.startsWith('whsec_') ? { ok: true } : { ok: false, reason: 'must start with whsec_' }),
+    describe: 'Stripe webhook signing secret(s) (server)',
+    // Accepts either form: the comma-separated STRIPE_WEBHOOK_SECRETS (one
+    // secret per Stripe endpoint - the platform endpoint and the
+    // connected-accounts endpoint have different ones) or the original
+    // singular STRIPE_WEBHOOK_SECRET. Mirrors resolveWebhookSecrets() in
+    // src/lib/payments/stripe-adapter.ts.
+    resolve: e => e.STRIPE_WEBHOOK_SECRETS || e.STRIPE_WEBHOOK_SECRET,
+    validate: v => {
+      const parts = v.split(',').map(s => s.trim()).filter(s => s.length > 0)
+      if (parts.length === 0) return { ok: false, reason: 'no signing secret listed' }
+      const bad = parts.filter(p => !p.startsWith('whsec_'))
+      return bad.length === 0
+        ? { ok: true }
+        : { ok: false, reason: `${bad.length} of ${parts.length} entries do not start with whsec_` }
+    },
   },
   {
     name: 'SUPABASE_SERVICE_ROLE_KEY',
@@ -102,6 +145,50 @@ export const CRITICAL_ENV_RULES = [
     publicVar: false,
     describe: 'Queue admission token signing secret (server)',
     validate: v => (v.length >= 32 ? { ok: true } : { ok: false, reason: 'expected a strong secret (>= 32 chars)' }),
+  },
+  {
+    // CROSS-VARIABLE RULE (2026-07-25). Every other rule asks "is this one
+    // variable sane"; this one asks "is this DEPLOYMENT pointed at the right
+    // database". The gap it closes: NEXT_PUBLIC_SUPABASE_URL,
+    // NEXT_PUBLIC_SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY were
+    // byte-identical across Production, Preview and Development, all on the
+    // production project, so every preview deployment carried a production
+    // service-role key - which bypasses row level security - in its runtime
+    // environment. The *_PREVIEW overrides steered the resolver to TEST, but
+    // any code reading the base var directly (src/proxy.ts did) went straight
+    // to the live database, and the raw key stayed reachable regardless.
+    //
+    // Two things are asserted for any non-production deployment:
+    //   1. the RESOLVED url + service-role key are not the production project;
+    //   2. the RAW base service-role key is not the production one either, so
+    //      a future direct read cannot resurrect the bypass.
+    // On production, and on a local run with no VERCEL_ENV, it is a no-op pass.
+    name: 'SUPABASE_ENV_ISOLATION',
+    buildCritical: true,
+    publicVar: false,
+    describe: 'Non-production deployments must never resolve the PRODUCTION Supabase project',
+    resolve: e => {
+      const target = e.VERCEL_ENV || e.NEXT_PUBLIC_VERCEL_ENV || 'local'
+      const resolvedUrl = e.NEXT_PUBLIC_SUPABASE_URL_PREVIEW || e.NEXT_PUBLIC_SUPABASE_URL || ''
+      const resolvedKey = e.SUPABASE_SERVICE_ROLE_KEY_PREVIEW || e.SUPABASE_SERVICE_ROLE_KEY || ''
+      const rawKey = e.SUPABASE_SERVICE_ROLE_KEY || ''
+      // Packed into one string because the shared evaluator hands validate() a
+      // single resolved value. Order is fixed and parsed below.
+      return [target, refFromUrl(resolvedUrl), refFromJwt(resolvedKey), refFromJwt(rawKey)].join('|')
+    },
+    validate: v => {
+      const [target, urlRef, keyRef, rawKeyRef] = v.split('|')
+      if (target === 'production' || target === 'local') return { ok: true }
+      const offenders = []
+      if (urlRef === PRODUCTION_SUPABASE_REF) offenders.push('resolved NEXT_PUBLIC_SUPABASE_URL')
+      if (keyRef === PRODUCTION_SUPABASE_REF) offenders.push('resolved SUPABASE_SERVICE_ROLE_KEY')
+      if (rawKeyRef === PRODUCTION_SUPABASE_REF) offenders.push('raw SUPABASE_SERVICE_ROLE_KEY (reachable via a direct process.env read)')
+      if (offenders.length === 0) return { ok: true }
+      return {
+        ok: false,
+        reason: `VERCEL_ENV=${target} but ${offenders.join(' and ')} point at the PRODUCTION project ${PRODUCTION_SUPABASE_REF}. A preview must never be able to read or write the live database.`,
+      }
+    },
   },
 ]
 
