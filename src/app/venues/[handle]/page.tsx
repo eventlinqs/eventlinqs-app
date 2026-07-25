@@ -18,6 +18,7 @@ import { VenueSchemaJsonLd } from '@/components/features/venues/venue-schema-jso
 import { VenueProfileHero } from '@/components/features/venues/venue-profile-hero'
 import { VenueAmenitiesGrid } from '@/components/features/venues/venue-amenities-grid'
 import { VenueMobileStickyBar } from '@/components/features/venues/venue-mobile-sticky-bar'
+import { getSiteUrl } from '@/lib/site-url'
 
 export const revalidate = 300
 
@@ -100,7 +101,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const venue = await resolveVenueProfile(handle)
   if (!venue) return { title: 'Venue not found | EventLinqs' }
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
+  const baseUrl = getSiteUrl()
   const cityPart = venue.city ? ` - ${venue.city}` : ''
   const title = `${venue.name} - Events & Info${cityPart} - EventLinqs`
 
@@ -172,7 +173,7 @@ export default async function VenueProfilePage({ params }: Props) {
     return null
   })()
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
+  const baseUrl = getSiteUrl()
   const upcomingForSchema = upcoming.slice(0, 12).map(e => ({
     slug: e.slug,
     title: e.title,

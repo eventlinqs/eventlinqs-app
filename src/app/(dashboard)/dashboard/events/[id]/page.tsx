@@ -21,6 +21,7 @@ import { LineupLoopPanel } from '@/components/broadcast/lineup-loop-panel'
 import { getLineupPanelData, type LineupPanelData } from '@/lib/broadcast/lineup-panel'
 import { getRequestOrigin } from '@/lib/site-origin'
 
+import { getSiteUrl } from '@/lib/site-url'
 type Props = {
   params: Promise<{ id: string }>
 }
@@ -135,7 +136,7 @@ export default async function EventViewPage({ params }: Props) {
     month: 'short',
     timeZone: event.timezone ?? 'Australia/Sydney',
   })
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
+  const siteUrl = getSiteUrl()
 
   return (
     <div>

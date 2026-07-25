@@ -29,11 +29,12 @@
  * remains an optional explicit override, not a dependency.
  */
 
-// HARD-01: the canonical production host is www. The Supabase Auth Site URL is
-// https://www.eventlinqs.com, so auth cookies + sessions live on www; emitting
-// links/emails on the apex would split the session across two hosts. Middleware
-// 308-redirects the apex onto www to enforce this at runtime as well.
-const PRODUCTION_FALLBACK = 'https://www.eventlinqs.com'
+// Canonical host ruling (founder, 2026-07-25): www.eventlinqs.com.au. Every
+// other branded host 301s to it in src/proxy.ts, so this fallback must be the
+// canonical host itself - emitting any other host here would put a redirect in
+// front of every link we generate, and Stripe and some email clients do not
+// follow redirects. Auth cookies and sessions live on this one host.
+const PRODUCTION_FALLBACK = 'https://www.eventlinqs.com.au'
 
 function withScheme(value: string): string {
   return /^https?:\/\//i.test(value) ? value : `https://${value}`
@@ -73,6 +74,12 @@ export function getAppUrl(): string {
   const candidate =
     process.env.NEXT_PUBLIC_APP_URL ||
     process.env.NEXT_PUBLIC_SITE_URL ||
+    // Same preview carve-out as getSiteUrl(): on a preview deploy the
+    // deployment's OWN url must win over VERCEL_PROJECT_PRODUCTION_URL, or
+    // staging emits production links for tickets and payouts that only exist in
+    // the TEST database. Without this line the production domain came first and
+    // every preview-built link pointed at production.
+    (process.env.VERCEL_ENV === 'preview' ? process.env.VERCEL_URL : undefined) ||
     process.env.VERCEL_PROJECT_PRODUCTION_URL ||
     process.env.VERCEL_URL ||
     PRODUCTION_FALLBACK

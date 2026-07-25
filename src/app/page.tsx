@@ -24,6 +24,7 @@ import {
   CityRailSkeleton,
 } from '@/components/features/home/section-skeletons'
 
+import { getSiteUrl } from '@/lib/site-url'
 /**
  * Homepage - the visceral experience layer.
  *
@@ -166,7 +167,7 @@ export default async function HomePage() {
     .slice(0, 10)
     .map(toBentoEvent)
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
+  const baseUrl = getSiteUrl()
 
   return (
     <div className="min-h-screen bg-canvas">

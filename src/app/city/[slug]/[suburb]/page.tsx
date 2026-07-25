@@ -11,6 +11,7 @@ import { getSuburbHeroPhoto } from '@/lib/images/suburb-photo'
 import { SuburbLandingPage } from '@/components/templates/SuburbLandingPage'
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import type { EventCardData } from '@/components/features/events/event-card'
+import { getSiteUrl } from '@/lib/site-url'
 
 export const revalidate = 300
 
@@ -104,7 +105,7 @@ export default async function SuburbPage({ params }: Props) {
     relatedSuburbImages[s] = (rest[i] as string | null) ?? null
   })
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
+  const baseUrl = getSiteUrl()
   const placeLd = {
     '@context': 'https://schema.org',
     '@type': 'Place',

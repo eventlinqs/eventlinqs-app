@@ -61,6 +61,7 @@ import { EventVideo } from '@/components/features/events/event-video'
 import { parseGallery } from '@/lib/media/event-media-model'
 import { isVideoProvider } from '@/lib/media/video-embed'
 
+import { getSiteUrl } from '@/lib/site-url'
 // Why ISR: every published event detail page is the same for all anonymous
 // visitors, so the shell ships as static HTML (revalidated every 5 minutes
 // from Postgres). Personalisation that previously made this dynamic
@@ -212,7 +213,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     categoryName: event.category?.name,
   })
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
+  const baseUrl = getSiteUrl()
 
   return {
     title,
@@ -591,7 +592,7 @@ export default async function EventDetailPage({ params }: Props) {
     }
   })
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
+  const baseUrl = getSiteUrl()
   const eventStateForSchema =
     eventBannerState === 'cancelled' ? 'cancelled' as const :
     eventBannerState === 'postponed' ? 'postponed' as const :

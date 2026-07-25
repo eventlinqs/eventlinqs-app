@@ -15,11 +15,12 @@ import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { PhotographicCommunityHero } from '@/components/templates/PhotographicCommunityHero'
 import { EventCard, type EventCardData } from '@/components/features/events/event-card'
+import { getSiteUrl } from '@/lib/site-url'
 
 // ISR: 5-minute revalidate matches the rest of the public surface.
 export const revalidate = 300
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
+const SITE_URL = getSiteUrl()
 
 interface Props {
   params: Promise<{ faith: string }>

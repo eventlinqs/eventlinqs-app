@@ -17,6 +17,40 @@ function getResend(): Resend {
   return client
 }
 
+/**
+ * Is this a real production deployment?
+ *
+ * Anything else - a preview, staging, a local run - is reading the TEST
+ * database, so every address and every order it emails about is test data.
+ */
+function isProductionDeploy(): boolean {
+  return process.env.VERCEL_ENV === 'production'
+}
+
+/**
+ * Non-production mail must never look like production mail.
+ *
+ * Production and staging share one Resend account, so a staging deployment can
+ * physically send from the production sender. If it does, a recipient cannot
+ * tell a staging test from a real ticket - and staging's data comes from the
+ * TEST database, so the links point at orders that do not exist in production.
+ * Stamping the display name makes the origin unmistakable while keeping the
+ * underlying verified mailbox (so delivery still works without a second
+ * verified domain).
+ */
+export function stampSender(from: string): string {
+  if (isProductionDeploy()) return from
+  const withName = /^(.*?)\s*<(.+)>$/.exec(from)
+  if (withName) return `${withName[1].trim()} [STAGING] <${withName[2].trim()}>`
+  return `EventLinqs [STAGING] <${from}>`
+}
+
+/** Prefix non-production subjects so a staging email is obvious in an inbox. */
+export function stampSubject(subject: string): string {
+  if (isProductionDeploy()) return subject
+  return subject.startsWith('[STAGING]') ? subject : `[STAGING] ${subject}`
+}
+
 export type SendEmailInput = {
   to: string
   subject: string
@@ -49,9 +83,9 @@ export async function sendEmail(input: SendEmailInput): Promise<{ id: string }> 
   const from = process.env.EMAIL_FROM?.trim() || 'EventLinqs <hello@eventlinqs.com>'
   const resend = getResend()
   const { data, error } = await resend.emails.send({
-    from,
+    from: stampSender(from),
     to: input.to,
-    subject: input.subject,
+    subject: stampSubject(input.subject),
     html: input.html,
     text: input.text,
   })

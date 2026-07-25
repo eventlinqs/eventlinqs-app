@@ -22,6 +22,7 @@ import { CommunityCityLandingPage } from '@/components/templates/CommunityCityLa
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import type { EventCardData } from '@/components/features/events/event-card'
 import type { MapEventPin } from '@/components/features/city/city-map'
+import { getSiteUrl } from '@/lib/site-url'
 
 export const revalidate = 300
 
@@ -237,7 +238,7 @@ export default async function CommunityByCityPage({ params }: Props) {
 
   const caption = `${allEvents.length} upcoming event${allEvents.length === 1 ? '' : 's'}`
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
+  const baseUrl = getSiteUrl()
   const collectionLd = {
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',
