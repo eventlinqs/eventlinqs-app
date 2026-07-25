@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Accessibility,
@@ -90,9 +90,27 @@ interface SeatEdit {
 export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks, liveUsage, initialSectionViews, onClose }: Props) {
   const router = useRouter()
   const svgRef = useRef<SVGSVGElement | null>(null)
+  const scrollRef = useRef<HTMLDivElement | null>(null)
   const dragRef = useRef<{ blockId: string; startX: number; startY: number; originX: number; originY: number } | null>(null)
   const historyRef = useRef<SeatBlock[][]>([])
+  const redoRef = useRef<SeatBlock[][]>([])
   const lastEditKeyRef = useRef<string | null>(null)
+  // Touch engine (the buyer map's, brought to the studio): one finger on
+  // empty canvas pans, two fingers pinch around their midpoint, Ctrl+wheel
+  // zooms at the cursor. A finger that lands on a block still drags the
+  // block; a second finger cancels the drag and pinches.
+  const zoomRef = useRef(1)
+  const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map())
+  const gestureRef = useRef<{
+    mode: 'idle' | 'pan' | 'pinch'
+    startX: number
+    startY: number
+    scrollLeft: number
+    scrollTop: number
+    startDist: number
+    startZoom: number
+  }>({ mode: 'idle', startX: 0, startY: 0, scrollLeft: 0, scrollTop: 0, startDist: 0, startZoom: 1 })
+  const pendingFocalRef = useRef<{ fx: number; fy: number; ratio: number; left: number; top: number } | null>(null)
 
   const [name, setName] = useState(initialName)
   const [blocks, setBlocks] = useState<SeatBlock[]>(() =>
@@ -106,6 +124,9 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
   const [guides, setGuides] = useState<{ x: number | null; y: number | null }>({ x: null, y: null })
   const [seatEdit, setSeatEdit] = useState<SeatEdit | null>(null)
   const [canUndo, setCanUndo] = useState(false)
+  const [canRedo, setCanRedo] = useState(false)
+  /** Visually hidden announcement for keyboard block selection. */
+  const [announce, setAnnounce] = useState('')
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   /**
@@ -175,22 +196,39 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
   const issues = useMemo(() => validateLayout(layout), [layout])
   const selected = blocks.find(b => b.id === selectedId) ?? null
 
-  // ── Undo history: a typed burst in one inspector field coalesces to one
-  // step (keyed by block + fields edited); every discrete action is its own ──
+  // ── Undo and redo: a typed burst in one inspector field coalesces to one
+  // step (keyed by block + fields edited); every discrete action is its own.
+  // A new edit clears the redo lane, the design-tool convention. ──
   function pushHistory(editKey: string | null = null) {
     if (editKey !== null && lastEditKeyRef.current === editKey) return
     lastEditKeyRef.current = editKey
     historyRef.current.push(blocks.map(b => ({ ...b })))
     if (historyRef.current.length > 50) historyRef.current.shift()
+    redoRef.current = []
     setCanUndo(true)
+    setCanRedo(false)
   }
 
   function undo() {
     const prev = historyRef.current.pop()
     if (!prev) return
     lastEditKeyRef.current = null
+    redoRef.current.push(blocks.map(b => ({ ...b })))
     setBlocks(prev)
     setCanUndo(historyRef.current.length > 0)
+    setCanRedo(true)
+    setSeatEdit(null)
+    setGuides({ x: null, y: null })
+  }
+
+  function redo() {
+    const next = redoRef.current.pop()
+    if (!next) return
+    lastEditKeyRef.current = null
+    historyRef.current.push(blocks.map(b => ({ ...b })))
+    setBlocks(next)
+    setCanUndo(true)
+    setCanRedo(redoRef.current.length > 0)
     setSeatEdit(null)
     setGuides({ x: null, y: null })
   }
@@ -201,13 +239,18 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
       const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(target?.tagName ?? '')
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !typing) {
         e.preventDefault()
-        undo()
+        if (e.shiftKey) redo()
+        else undo()
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y' && !typing) {
+        e.preventDefault()
+        redo()
       }
       if (e.key === 'Escape') setSeatEdit(null)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  })
 
   // Canvas viewport from content bounds.
   const view = useMemo(() => {
@@ -240,6 +283,141 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
     const minY = Math.min(...ys) - pad
     return { x: minX, y: minY, w: Math.max(...xs) + pad - minX, h: Math.max(...ys) + pad - minY }
   }, [layout, selectedId])
+
+  // ── Zoom with a stationary focal point, the buyer map's engine ──────────
+  const MIN_ZOOM = 0.5
+  const MAX_ZOOM = 2.5
+
+  const applyZoom = useCallback((next: number, clientX?: number, clientY?: number) => {
+    const el = scrollRef.current
+    const clamped = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, +next.toFixed(3)))
+    if (el && clamped !== zoomRef.current) {
+      const rect = el.getBoundingClientRect()
+      const fx = clientX !== undefined ? clientX - rect.left : rect.width / 2
+      const fy = clientY !== undefined ? clientY - rect.top : rect.height / 2
+      pendingFocalRef.current = {
+        fx, fy,
+        ratio: clamped / zoomRef.current,
+        left: el.scrollLeft,
+        top: el.scrollTop,
+      }
+    }
+    zoomRef.current = clamped
+    setZoom(clamped)
+  }, [])
+
+  useLayoutEffect(() => {
+    const p = pendingFocalRef.current
+    const el = scrollRef.current
+    if (!p || !el) return
+    pendingFocalRef.current = null
+    el.scrollLeft = (p.left + p.fx) * p.ratio - p.fx
+    el.scrollTop = (p.top + p.fy) * p.ratio - p.fy
+  }, [zoom])
+
+  useLayoutEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    function onWheel(e: WheelEvent) {
+      if (!e.ctrlKey && !e.metaKey) return
+      e.preventDefault()
+      const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15
+      applyZoom(zoomRef.current * factor, e.clientX, e.clientY)
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [applyZoom])
+
+  function onCanvasPointerDown(e: React.PointerEvent) {
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    const el = scrollRef.current
+    if (!el) return
+    const pts = [...pointersRef.current.values()]
+    if (pts.length === 1) {
+      gestureRef.current = {
+        mode: 'idle',
+        startX: e.clientX,
+        startY: e.clientY,
+        scrollLeft: el.scrollLeft,
+        scrollTop: el.scrollTop,
+        startDist: 0,
+        startZoom: zoomRef.current,
+      }
+    } else if (pts.length === 2) {
+      // A second finger always pinches; any block drag in flight ends.
+      dragRef.current = null
+      setGuides({ x: null, y: null })
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y)
+      gestureRef.current = { ...gestureRef.current, mode: 'pinch', startDist: dist, startZoom: zoomRef.current }
+    }
+  }
+
+  function onCanvasPointerMove(e: React.PointerEvent) {
+    const el = scrollRef.current
+    if (!el || !pointersRef.current.has(e.pointerId)) return
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    const g = gestureRef.current
+    const pts = [...pointersRef.current.values()]
+
+    if (g.mode === 'pinch' && pts.length === 2 && g.startDist > 0) {
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y)
+      applyZoom(g.startZoom * (dist / g.startDist), (pts[0].x + pts[1].x) / 2, (pts[0].y + pts[1].y) / 2)
+      return
+    }
+
+    // One finger on empty canvas pans (a block drag owns its pointer via
+    // dragRef; panning stays out of its way).
+    if (pts.length === 1 && !dragRef.current) {
+      const dx = e.clientX - g.startX
+      const dy = e.clientY - g.startY
+      if (g.mode === 'idle' && Math.hypot(dx, dy) > 8) g.mode = 'pan'
+      if (g.mode === 'pan') {
+        el.scrollLeft = g.scrollLeft - dx
+        el.scrollTop = g.scrollTop - dy
+      }
+    }
+  }
+
+  function onCanvasPointerEnd(e: React.PointerEvent) {
+    pointersRef.current.delete(e.pointerId)
+    if (pointersRef.current.size === 0) gestureRef.current.mode = 'idle'
+  }
+
+  // ── Full keyboard operation of the canvas: Tab cycles blocks, arrows
+  // nudge by the grid (Shift for a larger step), Delete removes. ──────────
+  function onCanvasKeyDown(e: React.KeyboardEvent) {
+    if (blocks.length === 0) return
+    if (e.key === 'Tab') {
+      e.preventDefault()
+      const index = blocks.findIndex(b => b.id === selectedId)
+      const nextIndex = e.shiftKey
+        ? (index <= 0 ? blocks.length - 1 : index - 1)
+        : (index === -1 || index === blocks.length - 1 ? 0 : index + 1)
+      const next = blocks[nextIndex]
+      setSelectedId(next.id)
+      setAnnounce(
+        `Selected ${next.section} ${next.kind === 'rows' ? 'rows block' : next.kind === 'table' ? 'table' : 'area'}. Arrow keys move it; Delete removes it.`,
+      )
+      return
+    }
+    if (!selectedId) return
+    const step = e.shiftKey ? SNAP_GRID * 5 : SNAP_GRID
+    const block = blocks.find(b => b.id === selectedId)
+    if (!block) return
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      e.preventDefault()
+      pushHistory(`nudge:${selectedId}`)
+      updateBlock(selectedId, {
+        x: block.x + (e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0),
+        y: block.y + (e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0),
+      })
+    }
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      e.preventDefault()
+      deleteSelected()
+      setAnnounce(`Removed ${block.section}.`)
+    }
+  }
 
   function svgPoint(e: React.PointerEvent): { x: number; y: number } {
     const svg = svgRef.current
@@ -373,6 +551,52 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
     setSelectedId(block.id)
   }
 
+  /**
+   * Starter shapes: a composed room in one tap, then make it yours. The
+   * theatre opens with true auto-bow arcs; the gala with six eights; the
+   * studio with rows and a standing zone.
+   */
+  function addPreset(preset: 'theatre' | 'gala' | 'studio') {
+    pushHistory()
+    let next: SeatBlock[] = []
+    if (preset === 'theatre') {
+      next = [
+        {
+          id: newId('rows'), kind: 'rows', section: 'Stalls', tierName: undefined,
+          color: SECTION_COLORS[0], x: 140, y: 150, rows: 6, seatsPerRow: 14,
+          align: 'centre', autoBow: true, focalRise: 200,
+        } satisfies RowsBlock,
+        {
+          id: newId('rows'), kind: 'rows', section: 'Back Stalls',
+          color: SECTION_COLORS[1], x: 140, y: 330, rows: 4, seatsPerRow: 16,
+          align: 'centre', autoBow: true, focalRise: 380,
+        } satisfies RowsBlock,
+      ]
+    } else if (preset === 'gala') {
+      next = Array.from({ length: 6 }, (_, i) => ({
+        id: newId('table'), kind: 'table' as const, shape: 'round' as const,
+        section: 'Tables', color: SECTION_COLORS[2],
+        label: `Table ${i + 1}`, seats: 8,
+        x: 160 + (i % 3) * 170, y: 160 + Math.floor(i / 3) * 160,
+      } satisfies TableBlock))
+    } else {
+      next = [
+        {
+          id: newId('rows'), kind: 'rows', section: 'Seated',
+          color: SECTION_COLORS[5], x: 140, y: 150, rows: 5, seatsPerRow: 10,
+          align: 'centre',
+        } satisfies RowsBlock,
+        {
+          id: newId('area'), kind: 'area', section: 'Standing',
+          color: SECTION_COLORS[0], label: 'Standing zone',
+          x: 140, y: 300, width: 240, height: 100, capacity: 120,
+        } satisfies AreaBlock,
+      ]
+    }
+    setBlocks(next)
+    setSelectedId(next[0].id)
+  }
+
   function duplicateSelected() {
     if (!selected) return
     pushHistory()
@@ -456,7 +680,7 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
               key={a.kind}
               type="button"
               onClick={() => addBlock(a.kind)}
-              className="inline-flex h-10 items-center gap-1.5 rounded-control border border-ink-200 bg-white px-3 text-xs font-semibold text-ink-900 transition-colors hover:border-gold-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-1"
+              className="inline-flex h-11 items-center gap-1.5 rounded-control border border-ink-200 bg-white px-3 text-xs font-semibold text-ink-900 transition-colors hover:border-gold-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-1 sm:h-10"
             >
               {a.icon}
               {a.label}
@@ -475,12 +699,14 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
               type="button"
               onClick={() => { setMode(t.m); setSeatEdit(null) }}
               aria-pressed={mode === t.m}
-              className={`inline-flex items-center gap-1.5 rounded-control px-2.5 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 ${
+              aria-label={t.label}
+              title={t.label}
+              className={`inline-flex min-h-11 items-center gap-1.5 rounded-control px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 sm:min-h-0 sm:px-2.5 sm:py-1.5 ${
                 mode === t.m ? 'bg-ink-900 text-white' : 'bg-transparent text-ink-900 hover:bg-white'
               }`}
             >
               {t.icon}
-              {t.label}
+              <span className="hidden sm:inline">{t.label}</span>
             </button>
           ))}
         </div>
@@ -490,10 +716,21 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
           disabled={!canUndo}
           aria-label="Undo"
           title="Undo (Ctrl+Z)"
-          className="inline-flex h-9 items-center gap-1.5 rounded-control border border-ink-200 bg-white px-3 text-xs font-semibold text-ink-900 transition-colors hover:border-gold-500 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-1"
+          className="inline-flex h-11 items-center gap-1.5 rounded-control border border-ink-200 bg-white px-3 text-xs font-semibold text-ink-900 transition-colors hover:border-gold-500 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-1 sm:h-9"
         >
           <Undo2 className="h-3.5 w-3.5" aria-hidden />
-          Undo
+          <span className="hidden sm:inline">Undo</span>
+        </button>
+        <button
+          type="button"
+          onClick={redo}
+          disabled={!canRedo}
+          aria-label="Redo"
+          title="Redo (Ctrl+Shift+Z)"
+          className="inline-flex h-11 items-center gap-1.5 rounded-control border border-ink-200 bg-white px-3 text-xs font-semibold text-ink-900 transition-colors hover:border-gold-500 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-1 sm:h-9"
+        >
+          <Undo2 className="h-3.5 w-3.5 -scale-x-100" aria-hidden />
+          <span className="hidden sm:inline">Redo</span>
         </button>
 
         {/* S3: trace a real floor plan. Session-only tracing aid. */}
@@ -550,15 +787,27 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
       <div className="mt-4 grid gap-5 lg:grid-cols-[1fr_320px]">
         {/* ── Canvas: the drafting table ── */}
         <div className="relative self-start">
-          <div className="overflow-auto rounded-panel border border-ink-200 bg-canvas" style={{ maxHeight: 560, touchAction: 'none' }}>
+          <div
+            ref={scrollRef}
+            className="overflow-auto rounded-panel border border-ink-200 bg-canvas"
+            style={{ maxHeight: 560, touchAction: 'none' }}
+            onPointerDown={onCanvasPointerDown}
+            onPointerMove={onCanvasPointerMove}
+            onPointerUp={onCanvasPointerEnd}
+            onPointerCancel={onCanvasPointerEnd}
+            onPointerLeave={onCanvasPointerEnd}
+          >
             <svg
               ref={svgRef}
               viewBox={`${view.minX} ${view.minY} ${view.w} ${view.h}`}
               style={{ width: `${100 * zoom}%`, minHeight: 380, display: 'block' }}
               onPointerMove={onPointerMove}
               onPointerUp={onPointerUp}
+              onKeyDown={onCanvasKeyDown}
+              tabIndex={0}
               role="application"
-              aria-label="Seating chart canvas"
+              aria-label="Seating chart canvas. Tab cycles blocks, arrow keys move the selected block, Shift steps larger, Delete removes it. Drag to pan, pinch or Ctrl and scroll to zoom."
+              className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
             >
               {/* Drafting dot grid: the quiet paper under every serious tool */}
               <defs>
@@ -735,6 +984,26 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
                     Trace a plan
                   </button>
                 </div>
+                {/* Starter shapes: a whole room in one tap, then make it yours. */}
+                <p className="mt-4 font-display text-[11px] font-semibold uppercase tracking-widest text-ink-400">
+                  Or start from a shape
+                </p>
+                <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+                  {([
+                    ['theatre', 'Theatre'],
+                    ['gala', 'Gala tables'],
+                    ['studio', 'Rows and standing'],
+                  ] as const).map(([preset, label]) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => addPreset(preset)}
+                      className="inline-flex h-10 items-center rounded-full border border-ink-200 bg-white px-4 text-xs font-semibold text-ink-900 transition-colors hover:border-gold-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-1"
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           )}
@@ -787,18 +1056,18 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
           <div className="absolute bottom-3 right-3 flex items-center gap-1 rounded-lg border border-ink-200 bg-white shadow-sm">
             <button
               type="button"
-              onClick={() => setZoom(z => Math.max(0.5, +(z - 0.25).toFixed(2)))}
-              disabled={zoom <= 0.5}
-              className="flex h-9 w-9 items-center justify-center rounded-l-lg text-ink-600 transition-colors hover:bg-ink-100 disabled:cursor-not-allowed disabled:opacity-30"
+              onClick={() => applyZoom(zoomRef.current - 0.25)}
+              disabled={zoom <= MIN_ZOOM}
+              className="flex h-11 w-11 items-center justify-center rounded-l-lg text-ink-600 transition-colors hover:bg-ink-100 disabled:cursor-not-allowed disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold-400"
               aria-label="Zoom out"
             >
               <Minus className="h-3.5 w-3.5" aria-hidden />
             </button>
             <button
               type="button"
-              onClick={() => setZoom(z => Math.min(2, +(z + 0.25).toFixed(2)))}
-              disabled={zoom >= 2}
-              className="flex h-9 w-9 items-center justify-center text-ink-600 transition-colors hover:bg-ink-100 disabled:cursor-not-allowed disabled:opacity-30"
+              onClick={() => applyZoom(zoomRef.current + 0.25)}
+              disabled={zoom >= MAX_ZOOM}
+              className="flex h-11 w-11 items-center justify-center text-ink-600 transition-colors hover:bg-ink-100 disabled:cursor-not-allowed disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold-400"
               aria-label="Zoom in"
             >
               <Plus className="h-3.5 w-3.5" aria-hidden />
@@ -806,8 +1075,11 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
             <span className="h-6 w-px bg-ink-200" aria-hidden="true" />
             <button
               type="button"
-              onClick={() => setZoom(1)}
-              className="flex h-9 items-center gap-1 rounded-r-lg px-2.5 text-[11px] font-semibold text-ink-600 transition-colors hover:bg-ink-100"
+              onClick={() => {
+                applyZoom(1)
+                scrollRef.current?.scrollTo({ left: 0, top: 0 })
+              }}
+              className="flex h-11 items-center gap-1 rounded-r-lg px-2.5 text-[11px] font-semibold text-ink-600 transition-colors hover:bg-ink-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold-400"
               aria-label="Zoom to fit"
             >
               <Maximize className="h-3 w-3" aria-hidden />
@@ -816,8 +1088,29 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
           </div>
         </div>
 
-        {/* ── Inspector ── */}
-        <div className="space-y-4">
+        {/* ── Inspector: a column on desktop; on a phone it becomes a solid
+            bottom sheet while a block is selected, so the room stays in
+            view while its numbers are edited. ── */}
+        <div
+          className={
+            selected
+              ? 'fixed inset-x-0 bottom-0 z-40 max-h-[60vh] space-y-4 overflow-y-auto rounded-t-2xl border-t border-ink-200 bg-white p-4 shadow-xl lg:static lg:z-auto lg:max-h-none lg:space-y-4 lg:overflow-visible lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none'
+              : 'space-y-4'
+          }
+        >
+          {selected && (
+            <div className="flex items-center justify-between lg:hidden">
+              <span aria-hidden className="mx-auto h-1.5 w-10 rounded-full bg-ink-900/10" />
+              <button
+                type="button"
+                aria-label="Close the block editor"
+                onClick={() => setSelectedId(null)}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+              >
+                <X className="h-4 w-4" aria-hidden />
+              </button>
+            </div>
+          )}
           {seatEdit && (
             <div className="rounded-panel border border-gold-500/50 bg-white p-4">
               <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-gold-800">
@@ -904,6 +1197,8 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
           {message && <p aria-live="polite" className="text-sm text-ink-700">{message}</p>}
         </div>
       </div>
+      {/* Keyboard block selection, announced for screen readers. */}
+      <span aria-live="polite" className="sr-only">{announce}</span>
     </div>
   )
 }
@@ -1082,6 +1377,16 @@ function RowsConfig({ block, onChange }: { block: RowsBlock; onChange: (p: Parti
         <Field label="Rotation (degrees)">
           <input type="number" className={inputClass} value={block.rotation ?? 0}
             onChange={e => onChange({ rotation: Number(e.target.value) || 0 })} />
+        </Field>
+        <Field label="Skew (px per row)">
+          <input
+            type="number"
+            className={inputClass}
+            value={block.skew ?? 0}
+            disabled={block.autoBow ?? false}
+            title={block.autoBow ? 'Auto-bow already angles the room' : undefined}
+            onChange={e => onChange({ skew: Number(e.target.value) || 0 })}
+          />
         </Field>
         <Field label="Row alignment (uneven rows)">
           <select className={inputClass} value={block.align ?? 'left'}

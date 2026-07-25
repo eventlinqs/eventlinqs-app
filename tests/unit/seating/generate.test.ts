@@ -195,6 +195,16 @@ describe('generateLayout - rows blocks', () => {
     }
   })
 
+  it('skew shears each row sideways by skew times its index', () => {
+    const layout = generateLayout([{ ...base, rows: 3, seatsPerRow: 4, skew: 10 }])
+    const rows = layout.sections[0].rows
+    expect(rows[0].seats[0].x).toBe(100)
+    expect(rows[1].seats[0].x).toBe(110)
+    expect(rows[2].seats[0].x).toBe(120)
+    // y positions untouched by skew
+    expect(rows[2].seats[0].y).toBe(152)
+  })
+
   it('auto-bow bends row ends toward the stage, the way a real room wraps', () => {
     const layout = generateLayout([
       { ...base, rows: 1, seatsPerRow: 9, autoBow: true, focalRise: 120 },

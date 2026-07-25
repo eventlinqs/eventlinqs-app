@@ -80,6 +80,12 @@ export interface RowsBlock extends BlockBase {
    * autoBow. Smaller = tighter curve. Default 160.
    */
   focalRise?: number
+  /**
+   * Horizontal shear in px per row: each row shifts sideways by
+   * `skew * rowIndex`, the angled-bank look. Ignored under autoBow
+   * (concentric geometry already angles the room).
+   */
+  skew?: number
   rowSpacing?: number
   seatSpacing?: number
   /** Seat refs ("A-1") marked accessible / companion / blocked, or removed. */
@@ -298,10 +304,11 @@ function generateRowsBlock(block: RowsBlock): GeneratedRow[] {
         rawY = focalY + radius * Math.cos(theta)
       } else {
         // Manual curve: a symmetric bow, deepest mid-row (t = 0.5), with
-        // per-row depth from the overrides or the front-to-back pair.
+        // per-row depth from the overrides or the front-to-back pair, and
+        // an optional per-row horizontal shear (skew).
         const t = count === 1 ? 0.5 : i / (count - 1)
         const bow = rowBowDepth(block, r) * Math.sin(Math.PI * t)
-        rawX = block.x + centreShift + i * seatSpacing
+        rawX = block.x + centreShift + i * seatSpacing + r * (block.skew ?? 0)
         rawY = block.y + r * rowSpacing - bow
       }
       const { x, y } = rotate(rawX, rawY, block.x, block.y, block.rotation ?? 0)
