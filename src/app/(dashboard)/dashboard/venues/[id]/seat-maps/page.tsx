@@ -51,8 +51,17 @@ export default async function SeatMapsPage({ params }: Props) {
   // The builder and the list surface this so post-publish editing is never
   // a surprise: edits stay template-side until reviewed per event.
   const liveUsage: Record<string, { events: number; protectedSeats: number }> = {}
+  const sectionViews: Record<string, Record<string, string>> = {}
   const mapIds = (seatMaps ?? []).map(m => m.id)
   if (mapIds.length > 0) {
+    const { data: views } = await admin
+      .from('seat_section_views')
+      .select('seat_map_id, section_name, photo_url')
+      .in('seat_map_id', mapIds)
+    for (const view of views ?? []) {
+      const chart = (sectionViews[view.seat_map_id] ??= {})
+      chart[view.section_name.toLowerCase()] = view.photo_url
+    }
     const { data: liveEvents } = await admin
       .from('events')
       .select('id, seat_map_id')
@@ -87,6 +96,7 @@ export default async function SeatMapsPage({ params }: Props) {
         venueName={venue.name}
         seatMaps={(seatMaps ?? []) as unknown as Parameters<typeof SeatMapsClient>[0]['seatMaps']}
         liveUsage={liveUsage}
+        sectionViews={sectionViews}
       />
     </div>
   )

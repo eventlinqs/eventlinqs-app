@@ -31,6 +31,8 @@ import {
 } from '@/lib/seating/generate'
 import { SECTION_COLORS, editorialSectionColor, sectionColorForSet } from '@/lib/seating/palette'
 import { useSeatPaletteSet } from '@/lib/seating/use-seat-palette'
+import { uploadSectionViewPhoto, removeSectionViewPhoto } from '@/app/actions/section-view-photo'
+import { SectionViewImage } from '@/components/media/SectionViewImage'
 import { saveSeatMap } from './actions'
 
 /**
@@ -73,6 +75,8 @@ interface Props {
   initialBlocks: SeatBlock[]
   /** Live attachment: how many published events sit on this chart. */
   liveUsage?: { events: number; protectedSeats: number }
+  /** View-from-seat photos for this chart: lowercased section name -> url. */
+  initialSectionViews?: Record<string, string>
   onClose: () => void
 }
 
@@ -83,7 +87,7 @@ interface SeatEdit {
   value: string
 }
 
-export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks, liveUsage, onClose }: Props) {
+export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks, liveUsage, initialSectionViews, onClose }: Props) {
   const router = useRouter()
   const svgRef = useRef<SVGSVGElement | null>(null)
   const dragRef = useRef<{ blockId: string; startX: number; startY: number; originX: number; originY: number } | null>(null)
@@ -115,6 +119,49 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
   const underlayInputRef = useRef<HTMLInputElement | null>(null)
   /** Colour-vision palette set: display-time only, shared with the buyer map. */
   const [paletteSet] = useSeatPaletteSet()
+  /** View-from-seat photos by lowercased section name (item 9). */
+  const [sectionViews, setSectionViews] = useState<Record<string, string>>(initialSectionViews ?? {})
+  const [viewBusy, setViewBusy] = useState<string | null>(null)
+  const [viewError, setViewError] = useState<string | null>(null)
+
+  async function onSectionViewFile(sectionName: string, file: File | undefined) {
+    if (!file || !seatMapId) return
+    setViewError(null)
+    setViewBusy(sectionName.toLowerCase())
+    try {
+      const form = new FormData()
+      form.set('file', file)
+      form.set('seat_map_id', seatMapId)
+      form.set('section_name', sectionName)
+      const result = await uploadSectionViewPhoto(form)
+      if (result.ok) {
+        setSectionViews(prev => ({ ...prev, [sectionName.toLowerCase()]: result.photo_url }))
+      } else {
+        setViewError(result.error)
+      }
+    } finally {
+      setViewBusy(null)
+    }
+  }
+
+  async function onSectionViewRemove(sectionName: string) {
+    if (!seatMapId) return
+    setViewError(null)
+    setViewBusy(sectionName.toLowerCase())
+    try {
+      const result = await removeSectionViewPhoto(seatMapId, sectionName)
+      if (result.error) setViewError(result.error)
+      else {
+        setSectionViews(prev => {
+          const next = { ...prev }
+          delete next[sectionName.toLowerCase()]
+          return next
+        })
+      }
+    } finally {
+      setViewBusy(null)
+    }
+  }
 
   function onUnderlayFile(file: File | undefined) {
     if (!file || !file.type.startsWith('image/')) return
@@ -813,6 +860,14 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
               onChange={patch => editBlock(selected.id, patch)}
               onDuplicate={duplicateSelected}
               onDelete={deleteSelected}
+              viewSlot={{
+                canUpload: !!seatMapId,
+                url: sectionViews[selected.section.toLowerCase()],
+                busy: viewBusy === selected.section.toLowerCase(),
+                error: viewError,
+                onFile: file => void onSectionViewFile(selected.section, file),
+                onRemove: () => void onSectionViewRemove(selected.section),
+              }}
             />
           ) : (
             <p className="rounded-panel border border-ink-200 bg-canvas p-4 text-sm text-ink-600">
@@ -867,16 +922,27 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 const inputClass =
   'h-10 w-full rounded-control border border-ink-200 bg-white px-2.5 text-sm text-ink-900 focus:border-gold-500 focus:outline-none'
 
+interface ViewSlot {
+  canUpload: boolean
+  url?: string
+  busy: boolean
+  error: string | null
+  onFile: (file: File | undefined) => void
+  onRemove: () => void
+}
+
 function BlockConfig({
   block,
   onChange,
   onDuplicate,
   onDelete,
+  viewSlot,
 }: {
   block: SeatBlock
   onChange: (patch: Partial<SeatBlock>) => void
   onDuplicate: () => void
   onDelete: () => void
+  viewSlot?: ViewSlot
 }) {
   return (
     <div className="space-y-3 rounded-panel border border-ink-200 bg-canvas p-4">
@@ -914,6 +980,64 @@ function BlockConfig({
       {block.kind === 'rows' && <RowsConfig block={block as RowsBlock} onChange={onChange} />}
       {block.kind === 'table' && <TableConfig block={block as TableBlock} onChange={onChange} />}
       {block.kind === 'area' && <AreaConfig block={block as AreaBlock} onChange={onChange} />}
+
+      {/* View from seat, by photograph: one real photo per SECTION, shown
+          to buyers on tap. Uploads run the proven media pipeline. */}
+      {viewSlot && (
+        <div className="rounded-panel border border-ink-200 bg-white p-3">
+          <p className="text-xs font-semibold text-ink-600">
+            View from {block.section}
+            <span className="ml-1 font-normal text-ink-400">(shown to buyers on tap)</span>
+          </p>
+          {!viewSlot.canUpload ? (
+            <p className="mt-1.5 text-xs text-ink-400">
+              Save the chart first, then add a photo taken from this section.
+            </p>
+          ) : viewSlot.url ? (
+            <div className="mt-2 space-y-2">
+              <div className="relative aspect-[3/2] overflow-hidden rounded-lg">
+                <SectionViewImage src={viewSlot.url} alt={`The view from ${block.section}`} />
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="cursor-pointer rounded-full border border-ink-200 bg-white px-3 py-1.5 text-xs font-semibold text-ink-900 transition-colors hover:border-gold-500 focus-within:ring-2 focus-within:ring-gold-400">
+                  {viewSlot.busy ? 'Uploading…' : 'Replace photo'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    disabled={viewSlot.busy}
+                    onChange={e => viewSlot.onFile(e.target.files?.[0])}
+                  />
+                </label>
+                <button
+                  type="button"
+                  disabled={viewSlot.busy}
+                  onClick={viewSlot.onRemove}
+                  className="rounded text-xs font-semibold text-ink-400 transition-colors hover:text-ink-900 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          ) : (
+            <label className="mt-2 inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3 py-1.5 text-xs font-semibold text-ink-900 transition-colors hover:border-gold-500 focus-within:ring-2 focus-within:ring-gold-400">
+              <ImageUp className="h-3.5 w-3.5" aria-hidden />
+              {viewSlot.busy ? 'Uploading…' : 'Add a photo from this section'}
+              <input
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                aria-label={`Upload the view photographed from ${block.section}`}
+                disabled={viewSlot.busy}
+                onChange={e => viewSlot.onFile(e.target.files?.[0])}
+              />
+            </label>
+          )}
+          {viewSlot.error && (
+            <p role="alert" className="mt-1.5 text-xs text-error">{viewSlot.error}</p>
+          )}
+        </div>
+      )}
     </div>
   )
 }

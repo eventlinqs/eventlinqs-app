@@ -362,7 +362,14 @@ export default async function EventDetailPage({ params }: Props) {
                 .maybeSingle()
             : Promise.resolve({ data: null, error: null }),
         ])
-        return { seatsResult, sectionsResult, mapResult }
+        // View-from-seat photographs, keyed by section name (item 9).
+        const viewsResult = event.seat_map_id
+          ? await seatSupabase
+              .from('seat_section_views')
+              .select('section_name, photo_url')
+              .eq('seat_map_id', event.seat_map_id)
+          : { data: null }
+        return { seatsResult, sectionsResult, mapResult, viewsResult }
       })()
     : Promise.resolve(null)
 
@@ -424,8 +431,9 @@ export default async function EventDetailPage({ params }: Props) {
   let eventSeats: SeatData[] = []
   let eventSections: SectionData[] = []
   let eventAreas: SeatAreaData[] = []
+  let sectionViews: Record<string, string> = {}
   if (seatsData) {
-    const { seatsResult, sectionsResult, mapResult } = seatsData
+    const { seatsResult, sectionsResult, mapResult, viewsResult } = seatsData
     if (seatsResult.error) {
       console.error('[event-detail] failed to load seats:', seatsResult.error)
     }
@@ -438,6 +446,9 @@ export default async function EventDetailPage({ params }: Props) {
     eventSections = (sectionsResult.data ?? []) as SectionData[]
     const rawAreas = (mapResult?.data?.layout as { areas?: SeatAreaData[] } | null)?.areas
     if (Array.isArray(rawAreas)) eventAreas = rawAreas
+    sectionViews = Object.fromEntries(
+      (viewsResult?.data ?? []).map(v => [v.section_name.toLowerCase(), v.photo_url]),
+    )
   }
 
   // The seated experience runs only when the flag is on AND the event has a
@@ -896,6 +907,7 @@ export default async function EventDetailPage({ params }: Props) {
                           currency={allTiers[0]?.currency ?? 'AUD'}
                           maxPerOrder={allTiers[0]?.max_per_order ?? 10}
                           tierPriceCentsMap={tierPriceCentsMap}
+                          sectionViews={sectionViews}
                         />
                       )}
                     </div>

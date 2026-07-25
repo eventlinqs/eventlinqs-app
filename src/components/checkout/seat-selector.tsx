@@ -7,6 +7,7 @@ import { pickBestAvailableAction } from '@/app/actions/best-available'
 import { sectionColorForSet, SEAT_PALETTE_SET_META, SEAT_PALETTE_SETS } from '@/lib/seating/palette'
 import { useSeatPaletteSet } from '@/lib/seating/use-seat-palette'
 import { selectionCreatedOrphans, type BASeat } from '@/lib/seating/best-available'
+import { SectionViewImage } from '@/components/media/SectionViewImage'
 
 export interface SeatData {
   id: string
@@ -52,6 +53,8 @@ interface Props {
   currency: string
   maxPerOrder: number
   tierPriceCentsMap?: Record<string, number>
+  /** View-from-seat photographs, keyed by LOWERCASED section name. */
+  sectionViews?: Record<string, string>
 }
 
 // Brand tokens (referenced inline from the SVG where className is not available)
@@ -91,6 +94,7 @@ export function SeatSelector({
   currency,
   maxPerOrder,
   tierPriceCentsMap = {},
+  sectionViews = {},
 }: Props) {
   const router = useRouter()
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -105,6 +109,8 @@ export function SeatSelector({
   const [partySize, setPartySize] = useState(2)
   /** Honest feedback after a concierge pick, worded by the strategy used. */
   const [pickNote, setPickNote] = useState<string | null>(null)
+  /** The section whose view-from-seat photograph is open, or null. */
+  const [viewingSection, setViewingSection] = useState<string | null>(null)
   /** Eased zoom only for button zooms: gestures must track fingers 1:1. */
   const [animateZoom, setAnimateZoom] = useState(false)
   /** Colour-vision palette set, shared across seating surfaces on this device. */
@@ -829,6 +835,7 @@ export function SeatSelector({
               ? formatPrice(summary.min)
               : `from ${formatPrice(summary.min)}`
             : null
+          const viewUrl = sectionViews[s.name.toLowerCase()]
           return (
             <span key={s.id} className="inline-flex items-center gap-1.5 rounded-full bg-[#EDF0F4] px-2.5 py-1 text-xs">
               <span
@@ -838,6 +845,19 @@ export function SeatSelector({
               />
               <span className="font-medium text-ink-900">{s.name}</span>
               {priceLabel && <span className="text-ink-400">{priceLabel}</span>}
+              {viewUrl && (
+                <button
+                  type="button"
+                  aria-label={`See the real view from ${s.name}`}
+                  onClick={() => setViewingSection(s.name)}
+                  className="-mr-1 flex h-6 w-6 items-center justify-center rounded-full text-ink-600 transition-colors hover:bg-white hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+                >
+                  <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.8 7h-2A1.8 1.8 0 0 0 3 8.8v9.4A1.8 1.8 0 0 0 4.8 20h14.4a1.8 1.8 0 0 0 1.8-1.8V8.8A1.8 1.8 0 0 0 19.2 7h-2l-1.4-2.1A1.8 1.8 0 0 0 14.3 4H9.7a1.8 1.8 0 0 0-1.5.9L6.8 7Z" />
+                    <circle cx="12" cy="13" r="3.4" />
+                  </svg>
+                </button>
+              )}
             </span>
           )
         })}
@@ -1275,6 +1295,51 @@ export function SeatSelector({
           </p>
         )}
       </div>
+
+      {/* View from seat, by photograph: the organiser's real photo from
+          this section, a card in the seating context, never a lightbox. */}
+      {viewingSection && sectionViews[viewingSection.toLowerCase()] && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`The real view from ${viewingSection}`}
+          className="fixed inset-0 z-50 flex items-end justify-center bg-ink-900/40 p-4 sm:items-center"
+          onClick={() => setViewingSection(null)}
+        >
+          <div
+            className="w-full max-w-xl overflow-hidden rounded-2xl bg-ink-900 shadow-xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="relative aspect-[3/2]">
+              <SectionViewImage
+                src={sectionViews[viewingSection.toLowerCase()]}
+                alt={`The view from ${viewingSection}, photographed in the room`}
+              />
+              <button
+                type="button"
+                aria-label="Close the view photo"
+                onClick={() => setViewingSection(null)}
+                className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-ink-900 text-white shadow-sm transition-colors hover:bg-ink-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+              >
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} aria-hidden>
+                  <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
+                </svg>
+              </button>
+            </div>
+            <div className="border-t-2 border-gold-500 px-5 py-3.5">
+              <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-gold-400">
+                The real view
+              </p>
+              <p className="mt-0.5 font-display text-base font-bold uppercase tracking-[0.08em] text-white">
+                From {viewingSection}
+              </p>
+              <p className="mt-0.5 text-xs text-white/70">
+                Photographed from this section, not a render.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* S2: the orphan nudge. Advisory, never a wall: the buyer keeps the
           right to their exact seats; one tap re-picks the party cleanly. */}

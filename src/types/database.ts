@@ -2992,6 +2992,44 @@ export type Database = {
           },
         ]
       }
+      seat_section_views: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          photo_url: string
+          seat_map_id: string
+          section_name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          photo_url: string
+          seat_map_id: string
+          section_name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          photo_url?: string
+          seat_map_id?: string
+          section_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seat_section_views_seat_map_id_fkey"
+            columns: ["seat_map_id"]
+            isOneToOne: false
+            referencedRelation: "seat_maps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       seats: {
         Row: {
           created_at: string
