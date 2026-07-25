@@ -27,6 +27,7 @@ import { getRequestOrigin } from '@/lib/site-origin'
 import { HeroMedia, MarketingMedia } from '@/components/media'
 import { Reveal } from '@/components/ui/reveal'
 import { CopyLinkButton } from '@/components/launch-kit/copy-link-button'
+import { KitRenderedTracker } from '@/components/launch-kit/kit-rendered-tracker'
 import { LaunchShareRow } from '@/components/launch-kit/launch-share-row'
 import { LineupLoopPanel } from '@/components/broadcast/lineup-loop-panel'
 import { getLineupPanelData, type LineupPanelData } from '@/lib/broadcast/lineup-panel'
@@ -256,6 +257,7 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
 
   return (
     <div className="pb-4">
+      <KitRenderedTracker eventId={id} justPublished={justPublished} />
       {/* ── The delivery moment: the kit masthead ─────────────────────────── */}
       <section
         aria-labelledby="launch-kit-heading"
