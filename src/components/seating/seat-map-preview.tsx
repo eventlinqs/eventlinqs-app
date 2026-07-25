@@ -1,4 +1,5 @@
 import type { SeatData, SectionData, SeatAreaData } from '@/components/checkout/seat-selector'
+import { editorialSectionColor } from '@/lib/seating/palette'
 
 /**
  * SeatMapPreview - the read-only miniature of an event's room, for the Launch
@@ -53,31 +54,47 @@ export function SeatMapPreview({ seats, sections, areas = [], className = '' }: 
       role="img"
       aria-label={`Seat map preview: ${seats.length} seats across ${sections.length} section${sections.length === 1 ? '' : 's'}`}
     >
-      {/* Stage band, same treatment as the buyer map */}
-      <line
-        x1={PADDING}
-        y1={STAGE_BAND / 2 + 2}
-        x2={viewWidth - PADDING}
-        y2={STAGE_BAND / 2 + 2}
-        stroke={GOLD}
-        strokeWidth="1.5"
+      {/* The designed proscenium + the stage light: the ONE seating
+          signature, identical on the builder, the buyer map, and here. */}
+      <defs>
+        <radialGradient id="preview-stage-light" cx="0.5" cy="0" r="1">
+          <stop offset="0%" stopColor={GOLD} stopOpacity="0.13" />
+          <stop offset="55%" stopColor={GOLD} stopOpacity="0.045" />
+          <stop offset="100%" stopColor={GOLD} stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <rect
+        x={PADDING}
+        y={4}
+        width={viewWidth - PADDING * 2}
+        height={STAGE_BAND - 16}
+        rx="6"
+        fill={INK_900}
       />
       <rect
-        x={viewWidth / 2 - 44}
-        y={STAGE_BAND / 2 - 8}
-        width={88}
-        height={20}
-        rx="4"
-        fill="#FFFFFF"
+        x={PADDING}
+        y={STAGE_BAND - 12}
+        width={viewWidth - PADDING * 2}
+        height={2}
+        rx="1"
+        fill={GOLD}
+      />
+      <rect
+        x={PADDING}
+        y={STAGE_BAND - 10}
+        width={viewWidth - PADDING * 2}
+        height={Math.min(140, viewHeight * 0.35)}
+        fill="url(#preview-stage-light)"
+        aria-hidden="true"
       />
       <text
         x={viewWidth / 2}
-        y={STAGE_BAND / 2 + 6}
+        y={STAGE_BAND / 2 + 1}
         textAnchor="middle"
         fontSize="10"
         fontWeight="700"
-        letterSpacing="2"
-        fill={INK_900}
+        letterSpacing="4"
+        fill="#FFFFFF"
       >
         STAGE
       </text>
@@ -109,10 +126,13 @@ export function SeatMapPreview({ seats, sections, areas = [], className = '' }: 
         </g>
       ))}
 
-      {/* Seats: section colour when open, quiet ink when not */}
+      {/* Seats: section colour when open, quiet ink when not. One geometry
+          with the buyer map: the 30 percent corner radius. */}
       {seats.map(seat => {
         const open = seat.status === 'available'
-        const fill = open ? (colorFor.get(seat.seat_map_section_id ?? '') ?? GOLD) : INK_200
+        const fill = open
+          ? editorialSectionColor(colorFor.get(seat.seat_map_section_id ?? '') ?? GOLD)
+          : INK_200
         return (
           <rect
             key={seat.id}
@@ -120,7 +140,7 @@ export function SeatMapPreview({ seats, sections, areas = [], className = '' }: 
             y={seat.y - minY + PADDING + STAGE_BAND}
             width={SEAT_SIZE}
             height={SEAT_SIZE}
-            rx="3"
+            rx={SEAT_SIZE * 0.3}
             fill={fill}
             stroke={open ? 'rgba(255,255,255,0.55)' : 'transparent'}
             strokeWidth="1"
