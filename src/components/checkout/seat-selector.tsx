@@ -741,10 +741,9 @@ export function SeatSelector({
           />
           Selected
         </span>
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EDF0F4] px-2.5 py-1 text-xs text-ink-600">
-          <span aria-hidden className="h-3.5 w-3.5 rounded-[30%]" style={{ backgroundColor: INK_200 }} />
-          Unavailable
-        </span>
+        {/* The Chanel cut (3e): the Unavailable chip came off the finished
+            screen. Stone-grey receded seats explain themselves; the chip was
+            the legend's least informative element. */}
         {seats.some(s => s.seat_type === 'accessible' || s.seat_type === 'companion') && (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EDF0F4] px-2.5 py-1 text-xs text-ink-600">
             <span
