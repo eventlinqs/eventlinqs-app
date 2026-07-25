@@ -91,6 +91,18 @@ export const CRITICAL_ENV_RULES = [
     describe: 'Cron/sentinel bearer secret (server)',
     validate: v => (v.length >= 16 ? { ok: true } : { ok: false, reason: 'expected a strong secret (>= 16 chars)' }),
   },
+  {
+    // Signs queue position + admission tokens (src/lib/queue/tokens.ts). If it
+    // is missing, token issuance and validation fail CLOSED (everyone queues)
+    // rather than falling back to the public dev constant, which would let
+    // anyone mint a token and skip the /events/<slug> gate. Health-checked so
+    // the founder is alerted instead of discovering it from a bypass.
+    name: 'QUEUE_SECRET',
+    buildCritical: false,
+    publicVar: false,
+    describe: 'Queue admission token signing secret (server)',
+    validate: v => (v.length >= 32 ? { ok: true } : { ok: false, reason: 'expected a strong secret (>= 32 chars)' }),
+  },
 ]
 
 /**
