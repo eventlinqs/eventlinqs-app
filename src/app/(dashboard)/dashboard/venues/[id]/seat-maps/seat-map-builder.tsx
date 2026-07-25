@@ -71,6 +71,8 @@ interface Props {
   seatMapId: string | null
   initialName: string
   initialBlocks: SeatBlock[]
+  /** Live attachment: how many published events sit on this chart. */
+  liveUsage?: { events: number; protectedSeats: number }
   onClose: () => void
 }
 
@@ -81,7 +83,7 @@ interface SeatEdit {
   value: string
 }
 
-export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks, onClose }: Props) {
+export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks, liveUsage, onClose }: Props) {
   const router = useRouter()
   const svgRef = useRef<SVGSVGElement | null>(null)
   const dragRef = useRef<{ blockId: string; startX: number; startY: number; originX: number; originY: number } | null>(null)
@@ -377,6 +379,22 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
 
   return (
     <div className="rounded-card border border-ink-200 bg-white p-5">
+      {/* Post-publish safety, stated where the editing happens: template
+          edits never touch a live event until reviewed and applied there. */}
+      {liveUsage && liveUsage.events > 0 && (
+        <div className="mb-4 rounded-panel border border-gold-500/40 bg-gold-500/10 px-4 py-2.5 text-xs text-ink-900">
+          <span className="font-semibold" style={{ fontVariantNumeric: 'tabular-nums' }}>
+            This chart is on {liveUsage.events} live {liveUsage.events === 1 ? 'event' : 'events'}
+            {liveUsage.protectedSeats > 0 &&
+              `, with ${liveUsage.protectedSeats} sold, reserved or held ${
+                liveUsage.protectedSeats === 1 ? 'seat' : 'seats'
+              }`}
+            .
+          </span>{' '}
+          Edits here stay on the template; each event applies them from its Seats page after a
+          review, and sold or held seats are never touched.
+        </div>
+      )}
       {/* ── Header: chart identity + element palette ── */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <input

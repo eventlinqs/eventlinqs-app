@@ -46,6 +46,35 @@ export default async function SeatMapsPage({ params }: Props) {
     console.error('[seat-maps/page] failed to load seat maps:', mapsError)
   }
 
+  // Live usage per chart: which published events sit on it, and how many
+  // of their seats are sold, reserved or held (the protected inventory).
+  // The builder and the list surface this so post-publish editing is never
+  // a surprise: edits stay template-side until reviewed per event.
+  const liveUsage: Record<string, { events: number; protectedSeats: number }> = {}
+  const mapIds = (seatMaps ?? []).map(m => m.id)
+  if (mapIds.length > 0) {
+    const { data: liveEvents } = await admin
+      .from('events')
+      .select('id, seat_map_id')
+      .in('seat_map_id', mapIds)
+      .eq('status', 'published')
+    const byMap = new Map<string, string[]>()
+    for (const ev of liveEvents ?? []) {
+      if (!ev.seat_map_id) continue
+      const list = byMap.get(ev.seat_map_id) ?? []
+      list.push(ev.id)
+      byMap.set(ev.seat_map_id, list)
+    }
+    for (const [mapId, eventIds] of byMap) {
+      const { count } = await admin
+        .from('seats')
+        .select('id', { count: 'exact', head: true })
+        .in('event_id', eventIds)
+        .in('status', ['reserved', 'sold', 'held'])
+      liveUsage[mapId] = { events: eventIds.length, protectedSeats: count ?? 0 }
+    }
+  }
+
   return (
     <div>
       <div className="mb-6">
@@ -57,6 +86,7 @@ export default async function SeatMapsPage({ params }: Props) {
         venueId={venueId}
         venueName={venue.name}
         seatMaps={(seatMaps ?? []) as unknown as Parameters<typeof SeatMapsClient>[0]['seatMaps']}
+        liveUsage={liveUsage}
       />
     </div>
   )

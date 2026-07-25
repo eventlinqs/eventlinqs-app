@@ -445,7 +445,16 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
       p_seat_map_id: input.seat_map_id,
     })
     if (matError) {
+      // Never a silent no-op: the DB refuses a destructive re-materialise
+      // once seats are reserved or sold, and the organiser must hear that
+      // in plain words, not discover it at the door.
       console.error('[events] materialize_seats failed on update:', matError)
+      const refused = /reserved or sold/i.test(matError.message ?? '')
+      return {
+        error: refused
+          ? 'The seating chart was NOT swapped: this event already has reserved or sold seats. Use "Review chart edits" on the Seats page to apply safe changes, or refund the sold seats first.'
+          : `The seating chart could not be applied: ${matError.message}. The rest of your changes were saved.`,
+      }
     }
   }
 
