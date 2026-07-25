@@ -28,6 +28,8 @@ export interface BASeat {
   y: number
   status: string
   seat_type: string
+  /** Seat price in cents, when the caller wants price-banded picking. */
+  price_cents?: number | null
 }
 
 export interface FocalPoint {
@@ -43,6 +45,15 @@ export interface BestAvailableInput {
   accessibleNeeded?: number
   /** Orphan-seat prevention. ON unless explicitly disabled. */
   preventOrphans?: boolean
+  /**
+   * The price band, in cents: the ONE control's "under this price". Seats
+   * priced outside the band cannot be picked; they still split rows the
+   * way a sold seat does, and the true orphan accounting (the quality
+   * score) always runs on the real room, so a price-banded pick stays
+   * orphan-safe against every seat, not just the affordable ones.
+   */
+  maxPriceCents?: number
+  minPriceCents?: number
 }
 
 export type BestAvailableStrategy =
@@ -280,6 +291,7 @@ function bestSplitPick(
   rows: Row[],
   quantity: number,
   focal: FocalPoint,
+  scoringSeats: BASeat[] = seats,
 ): BASeat[] | null {
   const none = new Set<string>()
   const seen = new Set<string>()
@@ -297,7 +309,7 @@ function bestSplitPick(
       for (const singlesNear of ['group', 'focal'] as const) {
         const pick = completeSplit(seats, rows, seed, quantity, focal, singlesNear)
         if (!pick) continue
-        const quality = scorePick(seats, pick.map(s => s.id), focal)
+        const quality = scorePick(scoringSeats, pick.map(s => s.id), focal)
         if (!best || quality.composite > best.composite) {
           best = { pick, composite: quality.composite }
         }
@@ -445,8 +457,25 @@ export function pickBestAvailable(input: BestAvailableInput): BestAvailableResul
 
   if (quantity <= 0 || seats.length === 0) return { seatIds: [], strategy: 'none' }
 
-  // Accessibility-mixed requests take their own path: proximity to the
-  // wheelchair space outranks every other preference.
+  // The price band masks unaffordable seats as un-pickable (they split
+  // rows exactly like sold seats), while every quality score below still
+  // runs on the REAL room, so true orphan accounting is never fooled.
+  const banded = input.maxPriceCents != null || input.minPriceCents != null
+  const inBand = (s: BASeat) => {
+    const price = s.price_cents ?? 0
+    if (input.maxPriceCents != null && price > input.maxPriceCents) return false
+    if (input.minPriceCents != null && price < input.minPriceCents) return false
+    return true
+  }
+  const workingSeats = banded
+    ? seats.map(s => (s.status === 'available' && !inBand(s) ? { ...s, status: 'reserved' } : s))
+    : seats
+
+  // An under-supplied band is an honest "nothing fits", never a GA shrug.
+  if (banded && workingSeats.filter(isOpen).length < quantity) {
+    return { seatIds: [], strategy: 'none' }
+  }
+
   const withQuality = (
     ids: string[],
     strategy: BestAvailableStrategy,
@@ -456,14 +485,16 @@ export function pickBestAvailable(input: BestAvailableInput): BestAvailableResul
     quality: scorePick(seats, ids, focal),
   })
 
+  // Accessibility-mixed requests take their own path: proximity to the
+  // wheelchair space outranks every other preference.
   if (accessibleNeeded > 0) {
-    const picked = accessiblePick(seats, quantity, accessibleNeeded, focal)
+    const picked = accessiblePick(workingSeats, quantity, accessibleNeeded, focal)
     return picked
       ? withQuality(picked.map(s => s.id), 'scattered')
       : { seatIds: [], strategy: 'none' }
   }
 
-  const rows = buildRows(seats)
+  const rows = buildRows(workingSeats)
 
   // 1. Contiguous, no orphans stranded.
   const contiguous = bestContiguousWindow(rows, quantity, focal, preventOrphans)
@@ -477,10 +508,10 @@ export function pickBestAvailable(input: BestAvailableInput): BestAvailableResul
 
   // 3. Scattered, done properly: the fewest groups that hold the party,
   //    anchored on each other, singles only as the remainder.
-  const split = bestSplitPick(seats, rows, quantity, focal)
+  const split = bestSplitPick(workingSeats, rows, quantity, focal, seats)
   if (split) return withQuality(split.map(s => s.id), 'scattered')
 
-  const scattered = nearestOpen(seats, focal, quantity)
+  const scattered = nearestOpen(workingSeats, focal, quantity)
   if (scattered.length >= quantity) {
     return withQuality(scattered.map(s => s.id), 'scattered')
   }

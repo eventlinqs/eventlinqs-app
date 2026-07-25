@@ -101,6 +101,10 @@ export function SeatSelector({
   const [pickPending, setPickPending] = useState(false)
   /** S4: the active price band [min, max] cents; seats outside it recede. */
   const [priceFilter, setPriceFilter] = useState<[number, number] | null>(null)
+  /** The ONE control: how many of us. Price comes from the same row's band. */
+  const [partySize, setPartySize] = useState(2)
+  /** Honest feedback after a concierge pick, worded by the strategy used. */
+  const [pickNote, setPickNote] = useState<string | null>(null)
   /** Eased zoom only for button zooms: gestures must track fingers 1:1. */
   const [animateZoom, setAnimateZoom] = useState(false)
   /** Colour-vision palette set, shared across seating surfaces on this device. */
@@ -419,16 +423,46 @@ export function SeatSelector({
   /**
    * S1: best available, server side. The cascade runs on the live seat
    * state with the chart's focal point; the local contiguous fallback only
-   * answers if the action itself fails (offline, cold deploy).
+   * answers if the action itself fails (offline, cold deploy). The active
+   * price band travels with the request: one control, one contract, and
+   * the pick is orphan-safe against the whole room, not just the band.
    */
   async function pickBestAvailable(n: number) {
     setPickPending(true)
+    setPickNote(null)
     try {
-      const pick = await pickBestAvailableAction({ event_id: eventId, quantity: n })
+      const pick = await pickBestAvailableAction({
+        event_id: eventId,
+        quantity: n,
+        ...(priceFilter ? { min_price_cents: priceFilter[0], max_price_cents: priceFilter[1] } : {}),
+      })
       const openIds = new Set(seats.filter(s => s.status === 'available').map(s => s.id))
       const usable = pick.seat_ids.filter(id => openIds.has(id)).slice(0, maxPerOrder)
       if (usable.length > 0) {
         setSelectedIds(new Set(usable))
+        setPickNote(
+          pick.strategy === 'contiguous'
+            ? n === 1
+              ? 'Found: the best open seat in the room.'
+              : `Found: ${usable.length} together, the best block open.`
+            : pick.strategy === 'table'
+              ? 'Found: a whole table for your party.'
+              : pick.strategy === 'contiguous-with-orphan' || pick.strategy === 'scattered'
+                ? 'Found: the closest the room can seat you together right now.'
+                : null,
+        )
+        return
+      }
+      if (pick.strategy === 'ga') {
+        setPickNote('No seated block fits this party; the standing zone sells through its own tickets below.')
+        return
+      }
+      if (pick.strategy === 'none') {
+        setPickNote(
+          priceFilter
+            ? 'Nothing fits under that price right now; try widening the price or the party.'
+            : 'Not enough open seats for that party size.',
+        )
         return
       }
       if (pick.strategy !== 'error') return // an honest "nothing fits" stays empty
@@ -442,7 +476,13 @@ export function SeatSelector({
 
   /** The pre-v2 client picker, kept as the degraded-mode fallback only. */
   function pickBestAvailableLocal(n: number) {
-    const available = seats.filter(s => s.status === 'available' && !selectedIds.has(s.id))
+    const available = seats.filter(
+      s =>
+        s.status === 'available' &&
+        !selectedIds.has(s.id) &&
+        (priceFilter === null ||
+          (getSeatPrice(s) >= priceFilter[0] && getSeatPrice(s) <= priceFilter[1])),
+    )
     if (available.length === 0) return
 
     type Key = string
@@ -881,44 +921,105 @@ export function SeatSelector({
         </div>
       </div>
 
-      {/* S4: the price filter. Seats outside the chosen band recede on the
-          map until the filter clears; the room always stays whole. */}
-      {priceBands.length > 1 && (
-        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter seats by price">
-          <span className="text-xs font-medium text-ink-600">Price:</span>
-          <button
-            type="button"
-            aria-pressed={priceFilter === null}
-            onClick={() => setPriceFilter(null)}
-            className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-1 ${
-              priceFilter === null
-                ? 'border-ink-900 bg-ink-900 text-white'
-                : 'border-ink-200 bg-white text-ink-600 hover:border-gold-500 hover:text-ink-900'
-            }`}
-          >
-            All prices
-          </button>
-          {priceBands.map(band => {
-            const active =
-              priceFilter !== null && priceFilter[0] === band.min && priceFilter[1] === band.max
-            return (
+      {/* The ONE control: party size, price band, one action. The band
+          also drives the S4 map recede, so what you ask for is what the
+          room shows. No surveyed platform anywhere combines these into a
+          single orphan-safe request. */}
+      <div
+        role="group"
+        aria-label="Find seats together under your price"
+        className="rounded-xl border border-ink-200 bg-white px-4 py-3"
+      >
+        <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-gold-800">
+          Seats together
+        </p>
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2.5">
+          <div className="inline-flex items-center gap-1" role="group" aria-label="Party size">
+            <button
+              type="button"
+              aria-label="One fewer person"
+              disabled={partySize <= 1}
+              onClick={() => setPartySize(n => Math.max(1, n - 1))}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-ink-200 text-sm font-bold text-ink-600 transition-colors hover:border-gold-500 hover:text-ink-900 disabled:cursor-not-allowed disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-1"
+            >
+              −
+            </button>
+            <span
+              aria-live="polite"
+              className="min-w-11 text-center font-display text-sm font-bold text-ink-900"
+              style={{ fontVariantNumeric: 'tabular-nums' }}
+            >
+              {partySize} {partySize === 1 ? 'seat' : 'of us'}
+            </span>
+            <button
+              type="button"
+              aria-label="One more person"
+              disabled={partySize >= maxPerOrder}
+              onClick={() => setPartySize(n => Math.min(maxPerOrder, n + 1))}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-ink-200 text-sm font-bold text-ink-600 transition-colors hover:border-gold-500 hover:text-ink-900 disabled:cursor-not-allowed disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-1"
+            >
+              +
+            </button>
+          </div>
+
+          {priceBands.length > 1 && (
+            <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Under this price">
               <button
-                key={`${band.min}-${band.max}`}
                 type="button"
-                aria-pressed={active}
-                onClick={() => setPriceFilter(active ? null : [band.min, band.max])}
+                aria-pressed={priceFilter === null}
+                onClick={() => setPriceFilter(null)}
                 className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-1 ${
-                  active
+                  priceFilter === null
                     ? 'border-ink-900 bg-ink-900 text-white'
                     : 'border-ink-200 bg-white text-ink-600 hover:border-gold-500 hover:text-ink-900'
                 }`}
               >
-                {band.label}
+                Any price
               </button>
-            )
-          })}
+              {priceBands.map(band => {
+                const active =
+                  priceFilter !== null && priceFilter[0] === band.min && priceFilter[1] === band.max
+                return (
+                  <button
+                    key={`${band.min}-${band.max}`}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => setPriceFilter(active ? null : [band.min, band.max])}
+                    className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-1 ${
+                      active
+                        ? 'border-ink-900 bg-ink-900 text-white'
+                        : 'border-ink-200 bg-white text-ink-600 hover:border-gold-500 hover:text-ink-900'
+                    }`}
+                  >
+                    {band.label}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
+          <button
+            type="button"
+            disabled={pickPending}
+            onClick={() => {
+              setSelectedIds(new Set())
+              void pickBestAvailable(partySize)
+            }}
+            className="ml-auto rounded-full bg-gold-500 px-4 py-2 text-xs font-semibold text-ink-900 shadow-sm transition-colors hover:bg-gold-600 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-900 focus-visible:ring-offset-1"
+          >
+            {pickPending
+              ? 'Finding your seats…'
+              : partySize === 1
+                ? 'Find my seat'
+                : 'Find our seats'}
+          </button>
         </div>
-      )}
+        {pickNote && (
+          <p aria-live="polite" className="mt-2 text-xs text-ink-600">
+            {pickNote}
+          </p>
+        )}
+      </div>
 
       {/* Whole-table booking: the gala flow, one tap per table. */}
       {tableGroups.length > 0 && (
@@ -1174,31 +1275,6 @@ export function SeatSelector({
           </p>
         )}
       </div>
-
-      {/* Best available: the server cascade picks from the stage light out. */}
-      {[1, 2, 3, 4, 5, 6, 8, 10].filter(n => n <= maxPerOrder).length > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-medium text-ink-600">
-            {pickPending ? 'Finding the best seats…' : 'Best available:'}
-          </span>
-          {[1, 2, 3, 4, 5, 6, 8, 10]
-            .filter(n => n <= maxPerOrder)
-            .map(n => (
-              <button
-                key={n}
-                type="button"
-                disabled={pickPending}
-                onClick={() => {
-                  setSelectedIds(new Set())
-                  void pickBestAvailable(n)
-                }}
-                className="min-w-8 rounded-full border border-ink-200 px-2.5 py-1 text-xs font-semibold text-ink-600 transition-colors hover:border-gold-500 hover:text-ink-900 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-1"
-              >
-                {n}
-              </button>
-            ))}
-        </div>
-      )}
 
       {/* S2: the orphan nudge. Advisory, never a wall: the buyer keeps the
           right to their exact seats; one tap re-picks the party cleanly. */}
