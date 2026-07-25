@@ -121,3 +121,20 @@ describe('Magic Start anti-tell gate', () => {
     expect(messagesCreate).toHaveBeenCalledTimes(2)
   })
 })
+
+describe('C4: the six voice registers ride in the system prompt', () => {
+  it('names every register and the universal mandates', async () => {
+    messagesCreate.mockResolvedValueOnce(reply(CLEAN_DRAFT))
+    await extractEventDraft(OPTS)
+    const system: string = messagesCreate.mock.calls[0][0].system[0].text
+    expect(system).toContain('Music and nightlife:')
+    expect(system).toContain('Comedy:')
+    expect(system).toContain('Corporate and business:')
+    expect(system).toContain('Family:')
+    expect(system).toContain('Community and faith:')
+    expect(system).toContain('Festivals:')
+    expect(system).toContain('most concrete benefit')
+    expect(system).toContain('Every sentence states something true')
+    expect(system).toContain('experienced Australian event producer')
+  })
+})
