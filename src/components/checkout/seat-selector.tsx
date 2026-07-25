@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useTransition, useMemo, useCallback, useRef, useLayoutEffect } from 'react'
+import { useState, useTransition, useMemo, useCallback, useRef, useEffect, useLayoutEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createSeatReservation } from '@/app/actions/seat-reservations'
 import { pickBestAvailableAction } from '@/app/actions/best-available'
-import { editorialSectionColor } from '@/lib/seating/palette'
+import { sectionColorForSet, SEAT_PALETTE_SET_META, SEAT_PALETTE_SETS } from '@/lib/seating/palette'
+import { useSeatPaletteSet } from '@/lib/seating/use-seat-palette'
 import { selectionCreatedOrphans, type BASeat } from '@/lib/seating/best-available'
 
 export interface SeatData {
@@ -102,6 +103,10 @@ export function SeatSelector({
   const [priceFilter, setPriceFilter] = useState<[number, number] | null>(null)
   /** Eased zoom only for button zooms: gestures must track fingers 1:1. */
   const [animateZoom, setAnimateZoom] = useState(false)
+  /** Colour-vision palette set, shared across seating surfaces on this device. */
+  const [paletteSet, setPaletteSet] = useSeatPaletteSet()
+  const [paletteMenuOpen, setPaletteMenuOpen] = useState(false)
+  const paletteMenuRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   // ── Touch-first zoom and pan engine ─────────────────────────────────────
@@ -248,10 +253,29 @@ export function SeatSelector({
   const selectedIdsKey = [...selectedIds].sort().join(',')
 
   const sectionColorMap = useMemo(
-    () => new Map(sections.map(s => [s.id, editorialSectionColor(s.color)])),
+    () => new Map(sections.map(s => [s.id, sectionColorForSet(s.color, paletteSet)])),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sectionsKey]
+    [sectionsKey, paletteSet]
   )
+
+  // Close the palette menu on outside click or Escape.
+  useEffect(() => {
+    if (!paletteMenuOpen) return
+    function onDown(e: MouseEvent) {
+      if (paletteMenuRef.current && !paletteMenuRef.current.contains(e.target as Node)) {
+        setPaletteMenuOpen(false)
+      }
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setPaletteMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [paletteMenuOpen])
 
   const sectionNameMap = useMemo(
     () => new Map(sections.map(s => [s.id, s.name])),
@@ -655,7 +679,7 @@ export function SeatSelector({
         )
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [seatsKey, selectedIdsKey, minX, minY, sectionsKey, toggleSeat, handleMouseEnter, handleMouseLeave, getSeatPrice, formatPrice, priceFilterKey, showNumerals, thinKeylines]
+    [seatsKey, selectedIdsKey, minX, minY, sectionsKey, paletteSet, toggleSeat, handleMouseEnter, handleMouseLeave, getSeatPrice, formatPrice, priceFilterKey, showNumerals, thinKeylines]
   )
 
   // Hover highlight rendered as a separate SVG layer, ABOVE seatElements, with pointer-events:none
@@ -750,7 +774,7 @@ export function SeatSelector({
               aria-hidden
               className="h-3.5 w-3.5 rounded-[30%]"
               style={{
-                backgroundColor: editorialSectionColor(sections[0]?.color) ?? GOLD,
+                backgroundColor: sectionColorForSet(sections[0]?.color, paletteSet) ?? GOLD,
                 outline: '1.5px solid #FFFFFF',
                 outlineOffset: '-2px',
               }}
@@ -770,7 +794,7 @@ export function SeatSelector({
               <span
                 aria-hidden
                 className="h-3.5 w-3.5 rounded-[30%]"
-                style={{ backgroundColor: editorialSectionColor(s.color) }}
+                style={{ backgroundColor: sectionColorForSet(s.color, paletteSet) }}
               />
               <span className="font-medium text-ink-900">{s.name}</span>
               {priceLabel && <span className="text-ink-400">{priceLabel}</span>}
@@ -783,6 +807,78 @@ export function SeatSelector({
         >
           {seats.filter(s => s.status === 'available').length} of {seats.length} open
         </span>
+        {/* Seat colours: colour-vision palette sets. Plain words, live
+            swatches, remembered per device; the gold selection and stone
+            recede never move, only the section tones adapt. */}
+        <div ref={paletteMenuRef} className="relative">
+          <button
+            type="button"
+            aria-haspopup="menu"
+            aria-expanded={paletteMenuOpen}
+            onClick={() => setPaletteMenuOpen(open => !open)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-white px-2.5 py-1 text-xs font-semibold text-ink-600 transition-colors hover:border-gold-500 hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-1"
+          >
+            <span aria-hidden className="flex items-center">
+              {SEAT_PALETTE_SETS[paletteSet].slice(0, 3).map((tone, i) => (
+                <span
+                  key={tone}
+                  className="h-2.5 w-2.5 rounded-full border border-white"
+                  style={{ backgroundColor: tone, marginLeft: i === 0 ? 0 : '-3px' }}
+                />
+              ))}
+            </span>
+            Seat colours
+          </button>
+          {paletteMenuOpen && (
+            <div
+              role="menu"
+              aria-label="Seat colour sets"
+              className="absolute right-0 top-full z-20 mt-1.5 w-64 rounded-xl border border-ink-200 bg-white p-1.5 shadow-lg"
+            >
+              {SEAT_PALETTE_SET_META.map(meta => (
+                <button
+                  key={meta.id}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={paletteSet === meta.id}
+                  onClick={() => {
+                    setPaletteSet(meta.id)
+                    setPaletteMenuOpen(false)
+                  }}
+                  className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 ${
+                    paletteSet === meta.id ? 'bg-[#EDF0F4]' : 'hover:bg-[#EDF0F4]'
+                  }`}
+                >
+                  <span aria-hidden className="flex shrink-0 items-center">
+                    {SEAT_PALETTE_SETS[meta.id].slice(0, 4).map((tone, i) => (
+                      <span
+                        key={tone}
+                        className="h-3.5 w-3.5 rounded-[30%] border border-white"
+                        style={{ backgroundColor: tone, marginLeft: i === 0 ? 0 : '-4px' }}
+                      />
+                    ))}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-xs font-semibold text-ink-900">{meta.label}</span>
+                    <span className="block text-[11px] text-ink-400">{meta.hint}</span>
+                  </span>
+                  {paletteSet === meta.id && (
+                    <svg
+                      className="ml-auto h-3.5 w-3.5 shrink-0 text-ink-900"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={3}
+                      aria-hidden
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* S4: the price filter. Seats outside the chosen band recede on the
@@ -986,7 +1082,7 @@ export function SeatSelector({
               const ax = area.x - minX + PADDING + ROW_LABEL_GUTTER
               const ay = area.y - minY + PADDING + STAGE_BAND
               const scenery = area.style === 'scenery'
-              const areaColor = editorialSectionColor(area.color)
+              const areaColor = sectionColorForSet(area.color, paletteSet)
               return (
                 <g key={`${area.label}-${area.x}-${area.y}`} aria-hidden="true">
                   <rect

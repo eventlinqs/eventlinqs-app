@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { editorialSectionColor } from '@/lib/seating/palette'
+import { editorialSectionColor, SEAT_STATE_COLORS } from '@/lib/seating/palette'
 import { holdSeat, releaseSeat, reassignSeatOccupant, assignTicketToSeat } from './actions'
 
 interface Seat {
@@ -16,12 +16,15 @@ interface Seat {
   y?: number | string | null
 }
 
+// Brand-derived status tones from the single seating source: never
+// traffic-light. Open reads as harbour blue, organiser holds carry the
+// gold attention, everything settled recedes toward stone and dusk.
 const MAP_STATUS_FILL: Record<string, string> = {
-  available: '#4CAF50',
-  held: '#F59E0B',
-  reserved: '#D4A017',
-  sold: '#4A4A4A',
-  blocked: '#374151',
+  available: '#1F5673',
+  held: SEAT_STATE_COLORS.gold,
+  reserved: SEAT_STATE_COLORS.dusk,
+  sold: SEAT_STATE_COLORS.stone,
+  blocked: SEAT_STATE_COLORS.stoneText,
 }
 
 interface Section {
