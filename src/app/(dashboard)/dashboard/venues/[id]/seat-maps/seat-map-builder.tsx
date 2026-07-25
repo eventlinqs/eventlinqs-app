@@ -29,7 +29,8 @@ import {
   type SeatBlock,
   type TableBlock,
 } from '@/lib/seating/generate'
-import { SECTION_COLORS, editorialSectionColor } from '@/lib/seating/palette'
+import { SECTION_COLORS, editorialSectionColor, sectionColorForSet } from '@/lib/seating/palette'
+import { useSeatPaletteSet } from '@/lib/seating/use-seat-palette'
 import { saveSeatMap } from './actions'
 
 /**
@@ -110,6 +111,8 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
    */
   const [underlay, setUnderlay] = useState<{ url: string; opacity: number } | null>(null)
   const underlayInputRef = useRef<HTMLInputElement | null>(null)
+  /** Colour-vision palette set: display-time only, shared with the buyer map. */
+  const [paletteSet] = useSeatPaletteSet()
 
   function onUnderlayFile(file: File | undefined) {
     if (!file || !file.type.startsWith('image/')) return
@@ -553,9 +556,9 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
                   >
                     <rect
                       x={area.x} y={area.y} width={area.width} height={area.height} rx={10}
-                      fill={scenery ? INK_900 : area.color}
+                      fill={scenery ? INK_900 : sectionColorForSet(area.color, paletteSet)}
                       fillOpacity={scenery ? 0.07 : 0.13}
-                      stroke={isSelected ? GOLD : scenery ? '#9CA3AF' : area.color}
+                      stroke={isSelected ? GOLD : scenery ? '#9CA3AF' : sectionColorForSet(area.color, paletteSet)}
                       strokeWidth={isSelected ? 2.5 : 1.5}
                       strokeDasharray={scenery ? undefined : '6 4'}
                     />
@@ -584,7 +587,7 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
                           cx={seat.x}
                           cy={seat.y}
                           r={SEAT_R}
-                          fill={blocked ? '#374151' : section.color}
+                          fill={blocked ? '#374151' : sectionColorForSet(section.color, paletteSet)}
                           stroke={isEditTarget ? GOLD : seat.type === 'accessible' ? '#FFFFFF' : 'rgba(255,255,255,0.5)'}
                           strokeWidth={isEditTarget ? 2.5 : seat.type === 'accessible' ? 2 : 1}
                           onPointerDown={e => seat.blockId && onBlockPointerDown(e, seat.blockId)}
@@ -668,6 +671,50 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
                   </button>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* The live bow slider, on the lit canvas: drag it and watch the
+              rows arc in place. Manual mode bows the front row; auto mode
+              tightens the arc around the stage. */}
+          {selected && selected.kind === 'rows' && (
+            <div className="absolute bottom-3 left-3 flex items-center gap-2.5 rounded-lg border border-ink-200 bg-white px-3 py-2 shadow-sm">
+              <span className="font-display text-[11px] font-semibold uppercase tracking-widest text-ink-600">
+                {(selected as RowsBlock).autoBow ? 'Arc' : 'Bow'}
+              </span>
+              <input
+                type="range"
+                min={0}
+                max={(selected as RowsBlock).autoBow ? 100 : 80}
+                step={2}
+                value={
+                  (selected as RowsBlock).autoBow
+                    ? Math.round(((400 - Math.min(400, Math.max(60, (selected as RowsBlock).focalRise ?? 160))) / 340) * 100)
+                    : ((selected as RowsBlock).curveDepth ?? 0)
+                }
+                aria-label={
+                  (selected as RowsBlock).autoBow
+                    ? 'Arc tightness: rows wrap closer around the stage'
+                    : 'Live bow: bows the selected rows toward the stage'
+                }
+                onChange={e => {
+                  const v = Math.max(0, Number(e.target.value) || 0)
+                  if ((selected as RowsBlock).autoBow) {
+                    editBlock(selected.id, { focalRise: Math.round(400 - (Math.min(100, v) / 100) * 340) } as Partial<SeatBlock>)
+                  } else {
+                    editBlock(selected.id, { curveDepth: v } as Partial<SeatBlock>)
+                  }
+                }}
+                className="h-1.5 w-32 accent-gold-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+              />
+              <span
+                className="min-w-9 text-right text-[11px] font-semibold text-ink-900"
+                style={{ fontVariantNumeric: 'tabular-nums' }}
+              >
+                {(selected as RowsBlock).autoBow
+                  ? `${Math.round(((400 - Math.min(400, Math.max(60, (selected as RowsBlock).focalRise ?? 160))) / 340) * 100)}%`
+                  : `${(selected as RowsBlock).curveDepth ?? 0}px`}
+              </span>
             </div>
           )}
 
@@ -890,18 +937,6 @@ function RowsConfig({ block, onChange }: { block: RowsBlock; onChange: (p: Parti
           <input type="number" className={inputClass} value={block.seatStart ?? 1}
             onChange={e => onChange({ seatStart: Number(e.target.value) || 1 })} />
         </Field>
-        <Field label={`Row curve${(block.curveDepth ?? 0) > 0 ? ` · ${block.curveDepth}px bow` : ' · straight'}`}>
-          <input
-            type="range"
-            min={0}
-            max={80}
-            step={2}
-            value={block.curveDepth ?? 0}
-            aria-label="Row curve: 0 is straight, higher bows the rows toward the stage"
-            onChange={e => onChange({ curveDepth: Math.max(0, Number(e.target.value) || 0) })}
-            className="h-1.5 w-full accent-gold-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
-          />
-        </Field>
         <Field label="Rotation (degrees)">
           <input type="number" className={inputClass} value={block.rotation ?? 0}
             onChange={e => onChange({ rotation: Number(e.target.value) || 0 })} />
@@ -914,6 +949,128 @@ function RowsConfig({ block, onChange }: { block: RowsBlock; onChange: (p: Parti
           </select>
         </Field>
       </div>
+
+      {/* The curve group: auto-bow arcs every row around the stage the way
+          a real room rakes; manual mode shapes the bow front to back, and
+          row by row when the room demands it. */}
+      <div className="space-y-2 rounded-panel border border-ink-200 bg-white p-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold text-ink-600">Curve</span>
+          <label className="flex items-center gap-2 text-xs font-semibold text-ink-900">
+            <input
+              type="checkbox"
+              checked={block.autoBow ?? false}
+              onChange={e => onChange({ autoBow: e.target.checked })}
+              className="accent-gold-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+            />
+            Bow to the stage
+          </label>
+        </div>
+        {block.autoBow ? (
+          <Field label={`Curve tightness · rows arc around the stage`}>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={2}
+              value={Math.round(((400 - Math.min(400, Math.max(60, block.focalRise ?? 160))) / 340) * 100)}
+              aria-label="Curve tightness: higher wraps the rows closer around the stage"
+              onChange={e => {
+                const t = Math.max(0, Math.min(100, Number(e.target.value) || 0))
+                onChange({ focalRise: Math.round(400 - (t / 100) * 340) })
+              }}
+              className="h-1.5 w-full accent-gold-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+            />
+          </Field>
+        ) : (
+          <>
+            <Field label={`Bow, front row${(block.curveDepth ?? 0) > 0 ? ` · ${block.curveDepth}px` : ' · straight'}`}>
+              <input
+                type="range"
+                min={0}
+                max={80}
+                step={2}
+                value={block.curveDepth ?? 0}
+                aria-label="Front row bow: 0 is straight, higher bows the row toward the stage"
+                onChange={e => onChange({ curveDepth: Math.max(0, Number(e.target.value) || 0) })}
+                className="h-1.5 w-full accent-gold-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+              />
+            </Field>
+            <Field label={`Bow, back row${block.curveBack != null ? ` · ${block.curveBack}px` : ' · follows the front'}`}>
+              <input
+                type="range"
+                min={0}
+                max={80}
+                step={2}
+                value={block.curveBack ?? block.curveDepth ?? 0}
+                aria-label="Back row bow: rows between interpolate front to back"
+                onChange={e => onChange({ curveBack: Math.max(0, Number(e.target.value) || 0) })}
+                className="h-1.5 w-full accent-gold-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+              />
+            </Field>
+            <details className="group">
+              <summary className="cursor-pointer list-none text-xs font-semibold text-ink-600 transition-colors hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400">
+                <span className="underline decoration-gold-500 decoration-2 underline-offset-2">
+                  Shape row by row
+                </span>
+                {Object.keys(block.rowCurveOverrides ?? {}).length > 0 && (
+                  <span className="ml-1.5 text-ink-400">
+                    {Object.keys(block.rowCurveOverrides ?? {}).length} shaped
+                  </span>
+                )}
+              </summary>
+              <div className="mt-2 max-h-44 space-y-1.5 overflow-y-auto pr-1">
+                {Array.from({ length: Math.min(block.rows, 60) }, (_, r) => {
+                  const scheme = block.rowLabelScheme ?? 'alpha'
+                  const label = scheme === 'alpha'
+                    ? String.fromCharCode(65 + (r % 26))
+                    : String((Number(block.rowLabelStart) || 1) + r)
+                  const override = block.rowCurveOverrides?.[String(r)]
+                  return (
+                    <div key={r} className="flex items-center gap-2">
+                      <span
+                        className="w-7 shrink-0 text-right text-[11px] font-semibold text-ink-600"
+                        style={{ fontVariantNumeric: 'tabular-nums' }}
+                      >
+                        {label}
+                      </span>
+                      <input
+                        type="range"
+                        min={0}
+                        max={80}
+                        step={2}
+                        value={override ?? ''}
+                        aria-label={`Bow for row ${label}`}
+                        onChange={e => {
+                          const next = { ...(block.rowCurveOverrides ?? {}) }
+                          next[String(r)] = Math.max(0, Number(e.target.value) || 0)
+                          onChange({ rowCurveOverrides: next })
+                        }}
+                        className="h-1 w-full accent-gold-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+                      />
+                      {override != null && (
+                        <button
+                          type="button"
+                          aria-label={`Clear the bow override for row ${label}`}
+                          onClick={() => {
+                            const next = { ...(block.rowCurveOverrides ?? {}) }
+                            delete next[String(r)]
+                            onChange({ rowCurveOverrides: next })
+                          }}
+                          className="shrink-0 text-[11px] font-semibold text-ink-400 transition-colors hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </details>
+          </>
+        )}
+      </div>
+
       <label className="flex items-center gap-2 text-sm text-ink-900">
         <input type="checkbox" checked={block.reverseSeats ?? false}
           onChange={e => onChange({ reverseSeats: e.target.checked })} />

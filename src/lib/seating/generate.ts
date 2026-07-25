@@ -59,6 +59,27 @@ export interface RowsBlock extends BlockBase {
   align?: 'left' | 'centre'
   /** Bow depth in px for curved rows (0 or absent = straight). */
   curveDepth?: number
+  /**
+   * Back-row bow depth. When set, each row's bow interpolates linearly from
+   * `curveDepth` (front row) to `curveBack` (back row), so the room can
+   * flatten or deepen towards the rear. Absent = every row uses curveDepth
+   * (the historic behaviour, byte-identical for existing charts).
+   */
+  curveBack?: number
+  /** Explicit per-row bow overrides, keyed by row INDEX as a string ("0"). */
+  rowCurveOverrides?: Record<string, number>
+  /**
+   * Automatic bowing toward the focal point: rows become true concentric
+   * arcs centred above the block (the stage), seats spaced evenly ALONG
+   * each arc so aisles radiate from the focal point the way a real theatre
+   * rakes. When on, it wins over the manual bow controls.
+   */
+  autoBow?: boolean
+  /**
+   * Distance in px from the block's top row up to the arc centre used by
+   * autoBow. Smaller = tighter curve. Default 160.
+   */
+  focalRise?: number
   rowSpacing?: number
   seatSpacing?: number
   /** Seat refs ("A-1") marked accessible / companion / blocked, or removed. */
@@ -207,6 +228,23 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100
 }
 
+/**
+ * The bow depth for one row: an explicit per-row override wins; otherwise
+ * the front-to-back interpolation (curveDepth to curveBack); a block with
+ * neither keeps the historic single-depth behaviour byte for byte.
+ */
+function rowBowDepth(block: RowsBlock, rowIndex: number): number {
+  const override = block.rowCurveOverrides?.[String(rowIndex)]
+  if (typeof override === 'number' && Number.isFinite(override)) {
+    return Math.max(0, override)
+  }
+  const front = block.curveDepth ?? 0
+  const back = block.curveBack ?? front
+  if (block.rows <= 1) return front
+  const t = rowIndex / (block.rows - 1)
+  return front + (back - front) * t
+}
+
 function generateRowsBlock(block: RowsBlock): GeneratedRow[] {
   const rows: GeneratedRow[] = []
   const rowSpacing = block.rowSpacing ?? DEFAULT_ROW_SPACING
@@ -221,6 +259,12 @@ function generateRowsBlock(block: RowsBlock): GeneratedRow[] {
   const maxCount = Array.isArray(block.seatsPerRow)
     ? Math.max(0, ...block.seatsPerRow)
     : block.seatsPerRow
+
+  // Auto-bow: the arc centre sits focalRise above the front row, on the
+  // block's horizontal centre; every row is a true circle around it.
+  const focalRise = Math.max(40, block.focalRise ?? 160)
+  const focalX = block.x + (Math.max(1, maxCount) - 1) * seatSpacing * 0.5
+  const focalY = block.y - focalRise
 
   for (let r = 0; r < block.rows; r++) {
     const label =
@@ -240,11 +284,26 @@ function generateRowsBlock(block: RowsBlock): GeneratedRow[] {
       const ref = `${label}-${seatNo}`
       if (block.removedSeats?.includes(ref)) continue
 
-      // Curve: a symmetric bow, deepest mid-row (t = 0.5).
-      const t = count === 1 ? 0.5 : i / (count - 1)
-      const bow = (block.curveDepth ?? 0) * Math.sin(Math.PI * t)
-      const rawX = block.x + centreShift + i * seatSpacing
-      const rawY = block.y + r * rowSpacing - bow
+      let rawX: number
+      let rawY: number
+      if (block.autoBow) {
+        // Concentric geometry: this row's radius from the shared arc
+        // centre, seats spread evenly ALONG the arc (constant arc length,
+        // so aisles radiate and back rows flatten naturally: the way a
+        // real room rakes toward its stage).
+        const radius = focalRise + r * rowSpacing
+        const step = seatSpacing / radius // radians whose arc length = seatSpacing
+        const theta = (i - (count - 1) / 2) * step
+        rawX = focalX + radius * Math.sin(theta)
+        rawY = focalY + radius * Math.cos(theta)
+      } else {
+        // Manual curve: a symmetric bow, deepest mid-row (t = 0.5), with
+        // per-row depth from the overrides or the front-to-back pair.
+        const t = count === 1 ? 0.5 : i / (count - 1)
+        const bow = rowBowDepth(block, r) * Math.sin(Math.PI * t)
+        rawX = block.x + centreShift + i * seatSpacing
+        rawY = block.y + r * rowSpacing - bow
+      }
       const { x, y } = rotate(rawX, rawY, block.x, block.y, block.rotation ?? 0)
 
       seats.push({

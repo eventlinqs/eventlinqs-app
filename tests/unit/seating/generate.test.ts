@@ -124,6 +124,90 @@ describe('generateLayout - rows blocks', () => {
     expect(seats[2].y).toBe(80) // mid-row, full bow
   })
 
+  it('per-row curvature: front-to-back interpolation shapes each row', () => {
+    const layout = generateLayout([
+      { ...base, rows: 3, seatsPerRow: 5, curveDepth: 20, curveBack: 0 },
+    ])
+    const mid = (r: number) => layout.sections[0].rows[r].seats[2]
+    // Front row carries the full 20px bow; the back row is straight; the
+    // middle row interpolates to 10px. Baselines are 100, 126, 152.
+    expect(mid(0).y).toBe(80)
+    expect(mid(1).y).toBe(116)
+    expect(mid(2).y).toBe(152)
+  })
+
+  it('per-row curvature: an explicit row override beats the interpolation', () => {
+    const layout = generateLayout([
+      {
+        ...base,
+        rows: 2,
+        seatsPerRow: 5,
+        curveDepth: 20,
+        curveBack: 20,
+        rowCurveOverrides: { '1': 0 },
+      },
+    ])
+    expect(layout.sections[0].rows[0].seats[2].y).toBe(80) // bowed
+    expect(layout.sections[0].rows[1].seats[2].y).toBe(126) // overridden straight
+  })
+
+  it('a block without the new curve fields is byte-identical to the historic output', () => {
+    const legacy = generateLayout([{ ...base, rows: 2, seatsPerRow: 7, curveDepth: 14 }])
+    for (const row of legacy.sections[0].rows) {
+      // every row uses the single depth, as before (mid seat carries it all)
+      const ys = row.seats.map(s => s.y)
+      expect(Math.min(...ys)).toBeCloseTo(Math.max(...ys) - 14, 0)
+    }
+  })
+
+  it('auto-bow lays true concentric arcs: every seat of a row equidistant from the arc centre', () => {
+    const layout = generateLayout([
+      { ...base, rows: 3, seatsPerRow: 9, autoBow: true, focalRise: 120 },
+    ])
+    // The arc centre sits focalRise above the front row on the block's
+    // horizontal centre: x = 100 + (9-1)*24/2 = 196, y = 100 - 120 = -20.
+    const cx = 196
+    const cy = -20
+    layout.sections[0].rows.forEach((row, r) => {
+      const radius = 120 + r * 26
+      for (const seat of row.seats) {
+        const d = Math.hypot(seat.x - cx, seat.y - cy)
+        expect(d).toBeCloseTo(radius, 1)
+      }
+    })
+  })
+
+  it('auto-bow spaces seats evenly ALONG each arc so aisles radiate', () => {
+    const layout = generateLayout([
+      { ...base, rows: 2, seatsPerRow: 7, autoBow: true, focalRise: 150 },
+    ])
+    for (const row of layout.sections[0].rows) {
+      const seats = row.seats
+      const gaps: number[] = []
+      for (let i = 1; i < seats.length; i++) {
+        gaps.push(Math.hypot(seats[i].x - seats[i - 1].x, seats[i].y - seats[i - 1].y))
+      }
+      // Chord of a 24px arc: constant within a row, marginally under 24.
+      const first = gaps[0]
+      for (const g of gaps) expect(g).toBeCloseTo(first, 1)
+      expect(first).toBeGreaterThan(22)
+      expect(first).toBeLessThanOrEqual(24)
+    }
+  })
+
+  it('auto-bow bends row ends toward the stage, the way a real room wraps', () => {
+    const layout = generateLayout([
+      { ...base, rows: 1, seatsPerRow: 9, autoBow: true, focalRise: 120 },
+    ])
+    const seats = layout.sections[0].rows[0].seats
+    const mid = seats[4]
+    // End seats sit CLOSER to the stage (smaller y) than the row centre.
+    expect(seats[0].y).toBeLessThan(mid.y)
+    expect(seats[8].y).toBeLessThan(mid.y)
+    // And symmetrically so.
+    expect(seats[0].y).toBeCloseTo(seats[8].y, 1)
+  })
+
   it('rotation rotates the whole block around its origin', () => {
     const layout = generateLayout([{ ...base, rows: 1, seatsPerRow: 2, rotation: 90 }])
     const seats = layout.sections[0].rows[0].seats
