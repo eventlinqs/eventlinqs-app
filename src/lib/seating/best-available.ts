@@ -53,9 +53,37 @@ export type BestAvailableStrategy =
   | 'ga'
   | 'none'
 
+/**
+ * The quality of a pick, scored on the three things a buyer actually
+ * feels: whether the party sits together (contiguity), how close to the
+ * action they sit (focal proximity), and whether the pick wrecked the room
+ * for the next buyer (orphans created). The composite is 0 to 100.
+ */
+export interface PickQuality {
+  /**
+   * The largest contiguous picked block over the party size: 1 = the whole
+   * party together, 0.5 = a four split into pairs, approaching 0 =
+   * scattered singles. Split pairs never masquerade as together.
+   */
+  contiguity: number
+  /** Mean distance from the focal point, normalised 0 (at focal) to 1 (farthest seat). */
+  focalDistance: number
+  /** Stranded singles this pick creates that did not exist before. */
+  orphansCreated: number
+  /**
+   * 0 to 100. The buyer-felt base (55% contiguity, 45% focal proximity)
+   * multiplied by 0.7 per orphan created: an orphan is a defect of the
+   * pick as a WHOLE (the platform's cascade treats orphan-freedom
+   * lexicographically), so it scales the score rather than nibbling it.
+   */
+  composite: number
+}
+
 export interface BestAvailableResult {
   seatIds: string[]
   strategy: BestAvailableStrategy
+  /** Present whenever seats were picked: the scored quality of the pick. */
+  quality?: PickQuality
 }
 
 /** A seat is takeable when open and of a sellable type for this request. */
@@ -125,22 +153,6 @@ function rowSegments(row: Row): BASeat[][] {
   return segments
 }
 
-/** Open runs (maximal stretches of open seats) within a physical segment. */
-function openRuns(segment: BASeat[]): { start: number; length: number }[] {
-  const runs: { start: number; length: number }[] = []
-  let start = -1
-  segment.forEach((seat, i) => {
-    if (isOpen(seat)) {
-      if (start === -1) start = i
-    } else if (start !== -1) {
-      runs.push({ start, length: i - start })
-      start = -1
-    }
-  })
-  if (start !== -1) runs.push({ start, length: segment.length - start })
-  return runs
-}
-
 function centroid(seats: BASeat[]): { x: number; y: number } {
   const n = seats.length
   return {
@@ -154,30 +166,145 @@ function centroid(seats: BASeat[]): { x: number; y: number } {
  * With orphan prevention a window is admissible only when it leaves 0 or
  * >= 2 open seats on EACH side of itself within its run.
  */
-function bestContiguousWindow(
+/**
+ * Every admissible window of the given size, ranked by distance from the
+ * anchor, capped at `limit`. The exclusion set makes an already picked
+ * seat split a run exactly like a sold one.
+ */
+function topContiguousWindows(
   rows: Row[],
   quantity: number,
-  focal: FocalPoint,
+  anchor: { x: number; y: number },
   preventOrphans: boolean,
-): BASeat[] | null {
-  let best: { seats: BASeat[]; score: number } | null = null
+  exclude: Set<string>,
+  limit: number,
+): BASeat[][] {
+  const found: { seats: BASeat[]; score: number }[] = []
+  const open = (s: BASeat) => isOpen(s) && !exclude.has(s.id)
   for (const row of rows) {
     if (isTableRow(row.seats[0]?.row_label ?? '')) continue
     for (const segment of rowSegments(row)) {
-      for (const run of openRuns(segment)) {
+      const runs: { start: number; length: number }[] = []
+      let start = -1
+      segment.forEach((seat, i) => {
+        if (open(seat)) {
+          if (start === -1) start = i
+        } else if (start !== -1) {
+          runs.push({ start, length: i - start })
+          start = -1
+        }
+      })
+      if (start !== -1) runs.push({ start, length: segment.length - start })
+
+      for (const run of runs) {
         if (run.length < quantity) continue
         for (let offset = 0; offset + quantity <= run.length; offset++) {
           const leftGap = offset
           const rightGap = run.length - quantity - offset
           if (preventOrphans && (leftGap === 1 || rightGap === 1)) continue
           const windowSeats = segment.slice(run.start + offset, run.start + offset + quantity)
-          const score = dist(centroid(windowSeats), focal)
-          if (!best || score < best.score) best = { seats: windowSeats, score }
+          found.push({ seats: windowSeats, score: dist(centroid(windowSeats), anchor) })
         }
       }
     }
   }
-  return best?.seats ?? null
+  found.sort((a, b) => a.score - b.score)
+  return found.slice(0, limit).map(f => f.seats)
+}
+
+function bestContiguousWindow(
+  rows: Row[],
+  quantity: number,
+  focal: FocalPoint,
+  preventOrphans: boolean,
+  exclude: Set<string> = new Set(),
+): BASeat[] | null {
+  return topContiguousWindows(rows, quantity, focal, preventOrphans, exclude, 1)[0] ?? null
+}
+
+/**
+ * Complete a partial pick greedily: largest nearby groups, then singles.
+ * The remainder singles anchor either on the party (sit near your group)
+ * or on the focal point (the odd one out gets the best seat); the caller
+ * scores both and keeps the winner.
+ */
+function completeSplit(
+  seats: BASeat[],
+  rows: Row[],
+  firstGroup: BASeat[],
+  quantity: number,
+  focal: FocalPoint,
+  singlesNear: 'group' | 'focal',
+): BASeat[] | null {
+  const picked = [...firstGroup]
+  const pickedIds = new Set(firstGroup.map(s => s.id))
+  let remaining = quantity - picked.length
+  let anchor = centroid(picked)
+
+  while (remaining > 1) {
+    let window: BASeat[] | null = null
+    for (let size = remaining; size >= 2 && !window; size--) {
+      window =
+        topContiguousWindows(rows, size, anchor, true, pickedIds, 1)[0] ??
+        topContiguousWindows(rows, size, anchor, false, pickedIds, 1)[0] ??
+        null
+    }
+    if (!window) break
+    for (const seat of window) {
+      pickedIds.add(seat.id)
+      picked.push(seat)
+    }
+    remaining -= window.length
+    anchor = centroid(picked)
+  }
+
+  if (remaining > 0) {
+    const singleAnchor = singlesNear === 'group' ? anchor : focal
+    const singles = nearestOpen(seats, singleAnchor, remaining, pickedIds)
+    if (singles.length < remaining) return null
+    picked.push(...singles)
+  }
+  return picked.length === quantity ? picked : null
+}
+
+/**
+ * The best-split leg: when no single window can hold the party, seat it in
+ * the FEWEST groups instead of spraying singles at the focal point. A
+ * small deterministic beam: the leading windows of every feasible group
+ * size seed a candidate split each, every candidate is completed greedily
+ * around its own centroid, and the pick quality score itself judges the
+ * winner, so the algorithm optimises exactly what the platform measures.
+ */
+function bestSplitPick(
+  seats: BASeat[],
+  rows: Row[],
+  quantity: number,
+  focal: FocalPoint,
+): BASeat[] | null {
+  const none = new Set<string>()
+  const seen = new Set<string>()
+  let best: { pick: BASeat[]; composite: number } | null = null
+
+  for (let size = quantity - 1; size >= 2; size--) {
+    const seeds = [
+      ...topContiguousWindows(rows, size, focal, true, none, 4),
+      ...topContiguousWindows(rows, size, focal, false, none, 2),
+    ]
+    for (const seed of seeds) {
+      const signature = seed.map(s => s.id).sort().join('|')
+      if (seen.has(signature)) continue
+      seen.add(signature)
+      for (const singlesNear of ['group', 'focal'] as const) {
+        const pick = completeSplit(seats, rows, seed, quantity, focal, singlesNear)
+        if (!pick) continue
+        const quality = scorePick(seats, pick.map(s => s.id), focal)
+        if (!best || quality.composite > best.composite) {
+          best = { pick, composite: quality.composite }
+        }
+      }
+    }
+  }
+  return best?.pick ?? null
 }
 
 /** Nearest open seats to a point, optionally excluding some ids. */
@@ -248,6 +375,65 @@ function accessiblePick(
 }
 
 /**
+ * Score a pick on contiguity, focal proximity and orphans created.
+ * Pure and deterministic: the reproducible proof that the cascade beats a
+ * naive row-fill lives on this function.
+ */
+export function scorePick(
+  seats: BASeat[],
+  pickedIds: string[],
+  focal: FocalPoint,
+): PickQuality {
+  const picked = new Set(pickedIds)
+  const pickedSeats = seats.filter(s => picked.has(s.id))
+  if (pickedSeats.length === 0) {
+    return { contiguity: 0, focalDistance: 1, orphansCreated: 0, composite: 0 }
+  }
+
+  // Contiguity: the largest run of picked seats sitting directly beside
+  // each other within one physical row segment, over the party size. A
+  // party of one is together by definition; a four split into two pairs
+  // scores 0.5, never 1.
+  let largestRun = pickedSeats.length === 1 ? 1 : 0
+  if (pickedSeats.length > 1) {
+    for (const row of buildRows(seats)) {
+      for (const segment of rowSegments(row)) {
+        let run = 0
+        for (const seat of segment) {
+          if (picked.has(seat.id)) {
+            run += 1
+            if (run > largestRun) largestRun = run
+          } else {
+            run = 0
+          }
+        }
+      }
+    }
+    largestRun = Math.max(largestRun, 1) // every picked seat is at least its own block
+  }
+  const contiguity = largestRun / pickedSeats.length
+
+  // Focal proximity: the party's mean distance, normalised by the farthest
+  // seat in the room so the score is chart-scale independent.
+  const maxDist = Math.max(1, ...seats.map(s => dist(s, focal)))
+  const meanDist =
+    pickedSeats.reduce((sum, s) => sum + dist(s, focal), 0) / pickedSeats.length
+  const focalDistance = Math.min(1, meanDist / maxDist)
+
+  const orphansCreated = selectionCreatedOrphans(seats, picked).length
+
+  const base = 0.55 * contiguity + 0.45 * (1 - focalDistance)
+  const composite = 100 * base * Math.pow(0.7, orphansCreated)
+
+  return {
+    contiguity: +contiguity.toFixed(3),
+    focalDistance: +focalDistance.toFixed(3),
+    orphansCreated,
+    composite: +composite.toFixed(1),
+  }
+}
+
+/**
  * The cascade. Returns the picked seat ids and which leg produced them;
  * `ga` signals that only a general admission zone can host the party
  * (no seats are returned for it: GA sells through its tier).
@@ -261,10 +447,19 @@ export function pickBestAvailable(input: BestAvailableInput): BestAvailableResul
 
   // Accessibility-mixed requests take their own path: proximity to the
   // wheelchair space outranks every other preference.
+  const withQuality = (
+    ids: string[],
+    strategy: BestAvailableStrategy,
+  ): BestAvailableResult => ({
+    seatIds: ids,
+    strategy,
+    quality: scorePick(seats, ids, focal),
+  })
+
   if (accessibleNeeded > 0) {
     const picked = accessiblePick(seats, quantity, accessibleNeeded, focal)
     return picked
-      ? { seatIds: picked.map(s => s.id), strategy: 'scattered' }
+      ? withQuality(picked.map(s => s.id), 'scattered')
       : { seatIds: [], strategy: 'none' }
   }
 
@@ -272,23 +467,27 @@ export function pickBestAvailable(input: BestAvailableInput): BestAvailableResul
 
   // 1. Contiguous, no orphans stranded.
   const contiguous = bestContiguousWindow(rows, quantity, focal, preventOrphans)
-  if (contiguous) return { seatIds: contiguous.map(s => s.id), strategy: 'contiguous' }
+  if (contiguous) return withQuality(contiguous.map(s => s.id), 'contiguous')
 
   // 2. Contiguous, orphans tolerated (better together than apart).
   if (preventOrphans) {
     const relaxed = bestContiguousWindow(rows, quantity, focal, false)
-    if (relaxed) return { seatIds: relaxed.map(s => s.id), strategy: 'contiguous-with-orphan' }
+    if (relaxed) return withQuality(relaxed.map(s => s.id), 'contiguous-with-orphan')
   }
 
-  // 3. Scattered: the nearest open seats to the focal point.
+  // 3. Scattered, done properly: the fewest groups that hold the party,
+  //    anchored on each other, singles only as the remainder.
+  const split = bestSplitPick(seats, rows, quantity, focal)
+  if (split) return withQuality(split.map(s => s.id), 'scattered')
+
   const scattered = nearestOpen(seats, focal, quantity)
   if (scattered.length >= quantity) {
-    return { seatIds: scattered.map(s => s.id), strategy: 'scattered' }
+    return withQuality(scattered.map(s => s.id), 'scattered')
   }
 
   // 4. A whole table that can host the party.
   const table = bestTable(rows, quantity, focal)
-  if (table) return { seatIds: table.map(s => s.id), strategy: 'table' }
+  if (table) return withQuality(table.map(s => s.id), 'table')
 
   // 5. Nothing seated fits; the GA zone (when the event has one) is the
   //    honest answer, signalled without pretending seats were found.
