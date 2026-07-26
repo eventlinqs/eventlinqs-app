@@ -161,6 +161,12 @@ export const SeatCanvas = forwardRef<SeatCanvasHandle, SeatCanvasProps>(function
     const scale = cameraRef.current.scale
     const lod = lodState(scale)
     lastLodRef.current = lod
+    // The proof harness and tests read the live LOD state off the DOM.
+    const el = containerRef.current
+    if (el) {
+      el.dataset.lod = lod
+      el.dataset.scale = scale.toFixed(3)
+    }
     onCamera?.({ scale, fitScale: fitScaleRef.current, lod })
   }, [onCamera])
 
@@ -393,6 +399,22 @@ export const SeatCanvas = forwardRef<SeatCanvasHandle, SeatCanvasProps>(function
   useEffect(() => {
     invalidate()
   }, [paintKey, hoverIndex, focusIndex, groupIndices, highlightSectionId, trace, invalidate])
+
+  // The proof-harness bridge: resolve a seat to its screen point so the
+  // evidence drives click exactly what a finger would.
+  useEffect(() => {
+    const el = containerRef.current as (HTMLDivElement & { __seatDebug?: unknown }) | null
+    if (!el) return
+    el.__seatDebug = {
+      seatScreen: (row: string, num: string) => {
+        const i = scene.seats.findIndex(s => s.row_label === row && s.seat_number === num)
+        if (i < 0) return null
+        const cam = cameraRef.current
+        return { x: scene.seats[i].x * cam.scale + cam.tx, y: scene.seats[i].y * cam.scale + cam.ty }
+      },
+      scale: () => cameraRef.current.scale,
+    }
+  }, [scene])
 
   // Ctrl+wheel zooms at the cursor; plain wheel keeps scrolling the page.
   useLayoutEffect(() => {
