@@ -199,11 +199,24 @@ export const SeatCanvas = forwardRef<SeatCanvasHandle, SeatCanvasProps>(function
     })
   }, [scene])
 
+  /**
+   * The zoom floor: half the fit scale, except that a sectioned room may
+   * always reach the overview state (polygons and price ranges), the way
+   * the evidenced wedge maps orient their buyers.
+   */
+  const minScale = useCallback(
+    () =>
+      scene.polygons.length >= 2
+        ? Math.min(fitScaleRef.current * 0.5, 0.26)
+        : fitScaleRef.current * 0.5,
+    [scene],
+  )
+
   const clampCamera = useCallback(
     (cam: Camera): Camera => {
       const { width, height } = sizeRef.current
-      const minScale = fitScaleRef.current * 0.5
-      const scale = Math.min(ZOOM_MAX, Math.max(minScale, cam.scale))
+      const min = minScale()
+      const scale = Math.min(ZOOM_MAX, Math.max(min, cam.scale))
       // Keep at least a third of the room inside the viewport.
       const b = scene.bounds
       const roomW = (b.maxX - b.minX) * scale
@@ -218,7 +231,7 @@ export const SeatCanvas = forwardRef<SeatCanvasHandle, SeatCanvasProps>(function
         ty: Math.min(maxTy, Math.max(minTy, cam.ty)),
       }
     },
-    [scene],
+    [scene, minScale],
   )
 
   const setCamera = useCallback(
@@ -263,13 +276,13 @@ export const SeatCanvas = forwardRef<SeatCanvasHandle, SeatCanvasProps>(function
       const fx = cx ?? width / 2
       const fy = cy ?? height / 2
       const cam = cameraRef.current
-      const nextScale = Math.min(ZOOM_MAX, Math.max(fitScaleRef.current * 0.5, cam.scale * factor))
+      const nextScale = Math.min(ZOOM_MAX, Math.max(minScale(), cam.scale * factor))
       const k = nextScale / cam.scale
       const next = { scale: nextScale, tx: fx - (fx - cam.tx) * k, ty: fy - (fy - cam.ty) * k }
       if (animate) animateTo(next)
       else setCamera(next)
     },
-    [animateTo, setCamera],
+    [animateTo, setCamera, minScale],
   )
 
   const fit = useCallback(
@@ -351,7 +364,19 @@ export const SeatCanvas = forwardRef<SeatCanvasHandle, SeatCanvasProps>(function
       const cam = fitCamera(scene, width, height)
       fitScaleRef.current = cam.scale
       if (firstFit) {
-        cameraRef.current = cam
+        // Big sectioned rooms enter at the overview: the whole house as
+        // labelled price wedges, one tap to dive into a section.
+        if (scene.polygons.length >= 3 && scene.seats.length >= 800 && cam.scale > 0.28) {
+          const s = Math.max(0.26, Math.min(0.28, cam.scale))
+          const b = scene.bounds
+          cameraRef.current = {
+            scale: s,
+            tx: (width - (b.maxX - b.minX) * s) / 2 - b.minX * s,
+            ty: (height - (b.maxY - b.minY) * s) / 2 - b.minY * s,
+          }
+        } else {
+          cameraRef.current = cam
+        }
         notifyCamera()
       } else {
         cameraRef.current = clampCamera(cameraRef.current)
@@ -437,7 +462,7 @@ export const SeatCanvas = forwardRef<SeatCanvasHandle, SeatCanvasProps>(function
       const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y)
       const midX = (pts[0].x + pts[1].x) / 2
       const midY = (pts[0].y + pts[1].y) / 2
-      const nextScale = Math.min(ZOOM_MAX, Math.max(fitScaleRef.current * 0.5, g.startScale * (dist / g.startDist)))
+      const nextScale = Math.min(ZOOM_MAX, Math.max(minScale(), g.startScale * (dist / g.startDist)))
       const cam = cameraRef.current
       const k = nextScale / cam.scale
       setCamera({ scale: nextScale, tx: midX - (midX - cam.tx) * k, ty: midY - (midY - cam.ty) * k })
