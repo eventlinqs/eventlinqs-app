@@ -15,6 +15,7 @@ import {
   Plus,
   RectangleHorizontal,
   Rows3,
+  ScanLine,
   Square,
   StickyNote,
   Tag,
@@ -46,7 +47,7 @@ import { saveSeatMap } from './actions'
  * pure generator, so what the organiser sees is exactly what materialises.
  */
 
-type SeatMode = 'move' | 'blocked' | 'accessible' | 'companion' | 'remove' | 'relabel' | 'note'
+type SeatMode = 'move' | 'blocked' | 'accessible' | 'companion' | 'remove' | 'relabel' | 'note' | 'detect'
 
 const GOLD = '#D4A017' // --color-gold-500
 const INK_900 = '#0A1628'
@@ -138,6 +139,16 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
    */
   const [underlay, setUnderlay] = useState<{ url: string; opacity: number } | null>(null)
   const underlayInputRef = useRef<HTMLInputElement | null>(null)
+  /**
+   * Assisted seat detection (item 2): in Detect mode the organiser clicks
+   * the two ends of a row ON the floor plan; the underlay's pixels are
+   * sampled along that line, dark blobs are counted as seats, and a rows
+   * block lands on the line with the detected count, spacing and angle.
+   * What remains for full auto-detect is stated in the report: whole-plan
+   * blob detection and row clustering without the guiding line.
+   */
+  const [detectStart, setDetectStart] = useState<{ x: number; y: number } | null>(null)
+  const [detectCursor, setDetectCursor] = useState<{ x: number; y: number } | null>(null)
   /** Colour-vision palette set: display-time only, shared with the buyer map. */
   const [paletteSet] = useSeatPaletteSet()
   /** View-from-seat photos by lowercased section name (item 9). */
@@ -419,16 +430,148 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
     }
   }
 
-  function svgPoint(e: React.PointerEvent): { x: number; y: number } {
+  function svgPointFromClient(clientX: number, clientY: number): { x: number; y: number } {
     const svg = svgRef.current
     if (!svg) return { x: 0, y: 0 }
     const pt = svg.createSVGPoint()
-    pt.x = e.clientX
-    pt.y = e.clientY
+    pt.x = clientX
+    pt.y = clientY
     const ctm = svg.getScreenCTM()
     if (!ctm) return { x: 0, y: 0 }
     const p = pt.matrixTransform(ctm.inverse())
     return { x: p.x, y: p.y }
+  }
+
+  function svgPoint(e: React.PointerEvent): { x: number; y: number } {
+    return svgPointFromClient(e.clientX, e.clientY)
+  }
+
+  /**
+   * Sample the underlay's pixels along the drawn line and count dark
+   * blobs as seats. Pure image work on a downscaled offscreen canvas; on
+   * low contrast or a decode failure it lays an evenly spaced row instead
+   * and says so, never silently.
+   */
+  async function detectRowAlongLine(a: { x: number; y: number }, b: { x: number; y: number }) {
+    const u = underlay
+    const lineLength = Math.hypot(b.x - a.x, b.y - a.y)
+    if (!u || lineLength < 24) {
+      setMessage('Draw a longer line along one row of the plan.')
+      return
+    }
+    const angleDeg = (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI
+
+    let detected: number | null = null
+    try {
+      const img = new window.Image()
+      img.src = u.url
+      await img.decode()
+      const scaleDown = Math.min(1, 1400 / img.naturalWidth)
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.max(1, Math.round(img.naturalWidth * scaleDown))
+      canvas.height = Math.max(1, Math.round(img.naturalHeight * scaleDown))
+      const ctx = canvas.getContext('2d', { willReadFrequently: true })
+      if (!ctx) throw new Error('no 2d context')
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+      const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data
+
+      // The underlay renders contained in (minX, minY+40, w, h-40).
+      const boxX = view.minX
+      const boxY = view.minY + 40
+      const boxW = view.w
+      const boxH = view.h - 40
+      const fit = Math.min(boxW / canvas.width, boxH / canvas.height)
+      const offX = boxX + (boxW - canvas.width * fit) / 2
+      const offY = boxY + (boxH - canvas.height * fit) / 2
+      const toImage = (p: { x: number; y: number }) => ({
+        x: (p.x - offX) / fit,
+        y: (p.y - offY) / fit,
+      })
+      const A = toImage(a)
+      const B = toImage(b)
+      const samples = 500
+      // Perpendicular unit vector: average a 3-pixel-thick band so thin
+      // plan linework does not read as noise.
+      const ux = (B.y - A.y) / Math.hypot(B.x - A.x, B.y - A.y)
+      const uy = -(B.x - A.x) / Math.hypot(B.x - A.x, B.y - A.y)
+      const lums: number[] = []
+      for (let i = 0; i < samples; i++) {
+        const t = i / (samples - 1)
+        const px = A.x + (B.x - A.x) * t
+        const py = A.y + (B.y - A.y) * t
+        let sum = 0
+        let n = 0
+        for (const k of [-1, 0, 1]) {
+          const x = Math.round(px + ux * k)
+          const y = Math.round(py + uy * k)
+          if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) continue
+          const at = (y * canvas.width + x) * 4
+          sum += 0.2126 * data[at] + 0.7152 * data[at + 1] + 0.0722 * data[at + 2]
+          n += 1
+        }
+        lums.push(n > 0 ? sum / n : 255)
+      }
+      const mean = lums.reduce((s, v) => s + v, 0) / lums.length
+      const std = Math.sqrt(lums.reduce((s, v) => s + (v - mean) ** 2, 0) / lums.length)
+      if (std > 10) {
+        const threshold = mean - 0.6 * std
+        let runs = 0
+        let dark = 0
+        let light = 3
+        for (const lum of lums) {
+          if (lum < threshold) {
+            dark += 1
+            if (dark === 2 && light >= 2) runs += 1
+            light = 0
+          } else {
+            light += 1
+            dark = 0
+          }
+        }
+        if (runs >= 2) detected = Math.min(60, runs)
+      }
+    } catch {
+      detected = null
+    }
+
+    const fallbackCount = Math.min(60, Math.max(2, Math.round(lineLength / 24)))
+    const count = detected ?? fallbackCount
+    const spacing = Math.min(44, Math.max(14, lineLength / Math.max(1, count - 1)))
+
+    pushHistory()
+    const idx = blocks.length
+    const block: RowsBlock = {
+      id: newId('rows'),
+      kind: 'rows',
+      section: `Section ${idx + 1}`,
+      color: SECTION_COLORS[idx % SECTION_COLORS.length],
+      x: Math.round(a.x / SNAP_GRID) * SNAP_GRID,
+      y: Math.round(a.y / SNAP_GRID) * SNAP_GRID,
+      rows: 1,
+      seatsPerRow: count,
+      rotation: Math.round(angleDeg * 10) / 10,
+      seatSpacing: Math.round(spacing * 10) / 10,
+    }
+    setBlocks(prev => [...prev, block])
+    setSelectedId(block.id)
+    setMessage(
+      detected !== null
+        ? `Detected ${count} seats along the line. Adjust the count, spacing or rows in the inspector; draw the next row to keep going.`
+        : `Low contrast along that line, so ${count} seats were laid evenly instead. Adjust in the inspector.`,
+    )
+  }
+
+  function onDetectClick(e: React.MouseEvent) {
+    if (mode !== 'detect' || !underlay) return
+    const p = svgPointFromClient(e.clientX, e.clientY)
+    if (!detectStart) {
+      setDetectStart(p)
+      return
+    }
+    const start = detectStart
+    setDetectStart(null)
+    setDetectCursor(null)
+    void detectRowAlongLine(start, p)
   }
 
   function updateBlock(id: string, patch: Partial<SeatBlock>) {
@@ -453,6 +596,9 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
   }
 
   function onPointerMove(e: React.PointerEvent) {
+    if (mode === 'detect' && detectStart) {
+      setDetectCursor(svgPoint(e))
+    }
     const drag = dragRef.current
     if (!drag) return
     const p = svgPoint(e)
@@ -639,6 +785,10 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
     { m: 'remove', label: 'Remove seat', icon: <Eraser className="h-3.5 w-3.5" aria-hidden /> },
     { m: 'relabel', label: 'Relabel seat', icon: <Tag className="h-3.5 w-3.5" aria-hidden /> },
     { m: 'note', label: 'Add note', icon: <StickyNote className="h-3.5 w-3.5" aria-hidden /> },
+    // Assisted detection needs a plan to read; the tool appears with one.
+    ...(underlay
+      ? [{ m: 'detect' as const, label: 'Detect a row', icon: <ScanLine className="h-3.5 w-3.5" aria-hidden /> }]
+      : []),
   ]
 
   const ADDERS: Array<{ kind: 'rows' | 'round' | 'square' | 'area'; label: string; icon: React.ReactNode }> = [
@@ -697,7 +847,7 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
             <button
               key={t.m}
               type="button"
-              onClick={() => { setMode(t.m); setSeatEdit(null) }}
+              onClick={() => { setMode(t.m); setSeatEdit(null); setDetectStart(null); setDetectCursor(null) }}
               aria-pressed={mode === t.m}
               aria-label={t.label}
               title={t.label}
@@ -800,9 +950,15 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
             <svg
               ref={svgRef}
               viewBox={`${view.minX} ${view.minY} ${view.w} ${view.h}`}
-              style={{ width: `${100 * zoom}%`, minHeight: 380, display: 'block' }}
+              style={{
+                width: `${100 * zoom}%`,
+                minHeight: 380,
+                display: 'block',
+                ...(mode === 'detect' ? { cursor: 'crosshair' } : {}),
+              }}
               onPointerMove={onPointerMove}
               onPointerUp={onPointerUp}
+              onClick={onDetectClick}
               onKeyDown={onCanvasKeyDown}
               tabIndex={0}
               role="application"
@@ -933,6 +1089,21 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
                   rx={10} fill="none" stroke={GOLD} strokeWidth={1.5}
                   strokeDasharray="6 5" pointerEvents="none"
                 />
+              )}
+
+              {/* Detect mode: the guiding line the organiser draws along a
+                  row of the plan; the first click drops the gold anchor. */}
+              {mode === 'detect' && detectStart && (
+                <g pointerEvents="none">
+                  {detectCursor && (
+                    <line
+                      x1={detectStart.x} y1={detectStart.y}
+                      x2={detectCursor.x} y2={detectCursor.y}
+                      stroke={GOLD} strokeWidth={1.5} strokeDasharray="6 5"
+                    />
+                  )}
+                  <circle cx={detectStart.x} cy={detectStart.y} r={5} fill={GOLD} stroke={INK_900} strokeWidth={1.5} />
+                </g>
               )}
 
               {/* Alignment guides: gold hairlines while a drag is locked */}
