@@ -464,6 +464,19 @@ html[data-motion="1"] .reveal-stagger.is-visible > * {
   transform: none;
   will-change: auto;
 }
+/* Guidance panels (first-run coach, contextual hint, the help panel) enter with
+ * the same fade-rise vocabulary as every other surface, armed only under
+ * html[data-motion="1"]. Without JS, under reduced motion, or for a headless
+ * audit, the panel is simply there from first paint: guidance must never be
+ * the reason someone cannot read an instruction. */
+html[data-motion="1"] .guidance-rise {
+  animation: guidance-rise 220ms var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)) both;
+}
+@keyframes guidance-rise {
+  from { opacity: 0; transform: translate3d(0, 10px, 0); }
+  to   { opacity: 1; transform: none; }
+}
+
 /* Left-to-right child stagger for rails + card grids (50-80ms apart). Capped so
  * a dense grid never trails a long tail; items past the cap share the max. */
 html[data-motion="1"] .reveal-stagger.is-visible > *:nth-child(1) { transition-delay: 0ms; }
