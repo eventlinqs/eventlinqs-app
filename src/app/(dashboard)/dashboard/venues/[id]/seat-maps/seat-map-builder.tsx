@@ -585,8 +585,11 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
   }
 
   function onBlockPointerDown(e: React.PointerEvent, blockId: string) {
-    setSelectedId(blockId)
+    // Marking tools act on the seat without switching block selection:
+    // on a phone, selecting here would open the bottom sheet on
+    // pointerdown and swallow the very click the tool needs.
     if (mode !== 'move') return
+    setSelectedId(blockId)
     const block = blocks.find(b => b.id === blockId)
     if (!block) return
     pushHistory()
@@ -1258,18 +1261,21 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
             view while its numbers are edited. ── */}
         <div
           className={
-            selected
+            selected || seatEdit
               ? 'fixed inset-x-0 bottom-0 z-40 max-h-[60vh] space-y-4 overflow-y-auto rounded-t-2xl border-t border-ink-200 bg-white p-4 shadow-xl lg:static lg:z-auto lg:max-h-none lg:space-y-4 lg:overflow-visible lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none'
               : 'space-y-4'
           }
         >
-          {selected && (
+          {(selected || seatEdit) && (
             <div className="flex items-center justify-between lg:hidden">
               <span aria-hidden className="mx-auto h-1.5 w-10 rounded-full bg-ink-900/10" />
               <button
                 type="button"
                 aria-label="Close the block editor"
-                onClick={() => setSelectedId(null)}
+                onClick={() => {
+                  setSelectedId(null)
+                  setSeatEdit(null)
+                }}
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
               >
                 <X className="h-4 w-4" aria-hidden />
