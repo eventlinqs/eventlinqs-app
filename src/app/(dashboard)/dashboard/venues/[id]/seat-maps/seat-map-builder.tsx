@@ -31,6 +31,7 @@ import {
   type TableBlock,
 } from '@/lib/seating/generate'
 import { SECTION_COLORS, editorialSectionColor, sectionColorForSet } from '@/lib/seating/palette'
+import { detectSeatCount } from '@/lib/seating/detect'
 import { useSeatPaletteSet } from '@/lib/seating/use-seat-palette'
 import { uploadSectionViewPhoto, removeSectionViewPhoto } from '@/app/actions/section-view-photo'
 import { SectionViewImage } from '@/components/media/SectionViewImage'
@@ -511,25 +512,7 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
         }
         lums.push(n > 0 ? sum / n : 255)
       }
-      const mean = lums.reduce((s, v) => s + v, 0) / lums.length
-      const std = Math.sqrt(lums.reduce((s, v) => s + (v - mean) ** 2, 0) / lums.length)
-      if (std > 10) {
-        const threshold = mean - 0.6 * std
-        let runs = 0
-        let dark = 0
-        let light = 3
-        for (const lum of lums) {
-          if (lum < threshold) {
-            dark += 1
-            if (dark === 2 && light >= 2) runs += 1
-            light = 0
-          } else {
-            light += 1
-            dark = 0
-          }
-        }
-        if (runs >= 2) detected = Math.min(60, runs)
-      }
+      detected = detectSeatCount(lums)
     } catch {
       detected = null
     }
