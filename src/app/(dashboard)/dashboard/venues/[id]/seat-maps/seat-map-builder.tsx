@@ -1120,8 +1120,10 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
           </div>
 
           {/* The empty canvas is an invitation, never a blank grid: the
-              stage is lit, the first block is one tap away. */}
-          {blocks.length === 0 && (
+              stage is lit, the first block is one tap away. Once a floor
+              plan is traced the invitation stands aside: the canvas is in
+              use and detect clicks must land on the plan. */}
+          {blocks.length === 0 && !underlay && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
               <div className="pointer-events-auto mx-4 max-w-sm rounded-2xl border border-ink-200 bg-white/95 p-6 text-center shadow-lg">
                 <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-gold-700">
