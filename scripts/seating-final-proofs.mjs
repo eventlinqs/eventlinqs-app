@@ -298,10 +298,18 @@ if (STEPS.has('chair')) {
   const chair = (px, state) => {
     const sw = (1.25 * 24) / px
     const tier = tierFor(px)
+    // Mirror draw.ts bodyParts/keyParts EXACTLY. The mid tier draws the WIDE
+    // mid pair, not the full tier's narrowed back and pan: the full parts are
+    // narrow only to clear the armrests, so drawing them at 14px understated
+    // the chair and made the evidence disagree with the renderer.
     const parts = tier === 'mark' ? [CHAIR_MARK_PATH] : tier === 'mid'
-      ? [CHAIR_BACK_PATH, CHAIR_PAN_PATH]
+      ? [CHAIR_MID_BACK_PATH, CHAIR_MID_PAN_PATH]
       : [CHAIR_BACK_PATH, CHAIR_PAN_PATH, CHAIR_ARM_LEFT_PATH, CHAIR_ARM_RIGHT_PATH]
-    const keyParts = tier === 'mark' ? [CHAIR_MARK_PATH] : [CHAIR_BACK_PATH, CHAIR_PAN_PATH]
+    const keyParts = tier === 'mark'
+      ? [CHAIR_MARK_PATH]
+      : tier === 'mid'
+        ? [CHAIR_MID_BACK_PATH, CHAIR_MID_PAN_PATH]
+        : [CHAIR_BACK_PATH, CHAIR_PAN_PATH]
     let body = ''
     if (state === 'available') {
       body = parts.map(d => `<path d="${d}" fill="${C.white}" stroke="${HARBOUR}" stroke-width="${sw}" stroke-linejoin="round"/>`).join('')
