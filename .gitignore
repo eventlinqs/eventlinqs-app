@@ -58,6 +58,16 @@ next-env.d.ts
 !public/images/hero/*.png
 !public/**/*.svg
 
+# Allowlist the EVIDENCE trees. A capture under docs/design or docs/verification
+# is the proof a surface was built, benchmarked and verified, so it is a
+# deliverable, not a screenshot artifact. Without these two lines the *.png rule
+# above hides every one of them from `git add`, they never reach a commit, and
+# they die with the machine. That is exactly what happened to the seating plan
+# proof and the seating final build, found by the recovery audit on 27 July 2026
+# with 22 images sitting untracked and invisible.
+!docs/design/**
+!docs/verification/**
+
 # Allowlist Pre-Task 2 visual regression evidence - BEFORE/AFTER screenshots
 # captured at 7 viewports per refactor. Tracked as proof of "no visual
 # regression" for each migration commit; reviewers can diff before/ vs after/.
