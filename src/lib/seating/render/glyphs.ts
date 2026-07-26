@@ -39,6 +39,18 @@ export const CHAIR_ARM_LEFT_PATH =
 export const CHAIR_ARM_RIGHT_PATH =
   'M20 10.3a1.6 1.6 0 0 1 3.2 0v9.4a1.6 1.6 0 0 1-3.2 0Z'
 
+/**
+ * The MID tier (10 to 20px) drops the armrests, so its back and pan widen
+ * to the full box and the chair keeps its presence at small sizes; the
+ * full tier's narrower parts exist only to make room for the armrest
+ * verticals. Back: x 3..21, y 1.7..12.9, r 3.2. Pan: x 4..20, y
+ * 14.7..22.3, r 2.4.
+ */
+export const CHAIR_MID_BACK_PATH =
+  'M6.2 1.7h11.6a3.2 3.2 0 0 1 3.2 3.2v4.8a3.2 3.2 0 0 1-3.2 3.2H6.2A3.2 3.2 0 0 1 3 9.7V4.9a3.2 3.2 0 0 1 3.2-3.2Z'
+export const CHAIR_MID_PAN_PATH =
+  'M6.4 14.7h11.2a2.4 2.4 0 0 1 2.4 2.4v2.8a2.4 2.4 0 0 1-2.4 2.4H6.4A2.4 2.4 0 0 1 4 19.9v-2.8a2.4 2.4 0 0 1 2.4-2.4Z'
+
 /** Mark below 10px: one rounded seat-from-above form, wider than tall. */
 export const CHAIR_MARK_PATH =
   'M6 4h12a4 4 0 0 1 4 4v9a3.5 3.5 0 0 1-3.5 3.5h-13A3.5 3.5 0 0 1 2 17V8a4 4 0 0 1 4-4Z'
@@ -55,6 +67,8 @@ export interface ChairPaths {
   pan: Path2D
   armLeft: Path2D
   armRight: Path2D
+  midBack: Path2D
+  midPan: Path2D
   mark: Path2D
   access: Path2D
 }
@@ -69,6 +83,8 @@ export function chairPaths(): ChairPaths {
       pan: new Path2D(CHAIR_PAN_PATH),
       armLeft: new Path2D(CHAIR_ARM_LEFT_PATH),
       armRight: new Path2D(CHAIR_ARM_RIGHT_PATH),
+      midBack: new Path2D(CHAIR_MID_BACK_PATH),
+      midPan: new Path2D(CHAIR_MID_PAN_PATH),
       mark: new Path2D(CHAIR_MARK_PATH),
       access: new Path2D(CHAIR_ACCESS_PATH),
     }

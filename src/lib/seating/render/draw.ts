@@ -92,7 +92,7 @@ function hullPath(hull: { x: number; y: number }[]): Path2D {
 /** Scaled chair Path2Ds centred on the origin, cached per chair width. */
 const chairWorldCache = new Map<
   number,
-  Record<'back' | 'pan' | 'armLeft' | 'armRight' | 'mark' | 'access', Path2D>
+  Record<'back' | 'pan' | 'armLeft' | 'armRight' | 'midBack' | 'midPan' | 'mark' | 'access', Path2D>
 >()
 
 function chairWorldPaths(chairW: number) {
@@ -112,6 +112,8 @@ function chairWorldPaths(chairW: number) {
       pan: scaled(src.pan),
       armLeft: scaled(src.armLeft),
       armRight: scaled(src.armRight),
+      midBack: scaled(src.midBack),
+      midPan: scaled(src.midPan),
       mark: scaled(src.mark),
       access: scaled(src.access),
     }
@@ -277,12 +279,25 @@ function drawSeats(ctx: CanvasRenderingContext2D, scene: Scene, camera: Camera, 
       draw(paths.mark)
       return
     }
+    if (tier === 'mid') {
+      // No armrests at this size, so the wide mid pair keeps the chair's
+      // presence instead of the full tier's narrower parts.
+      draw(paths.midBack)
+      draw(paths.midPan)
+      return
+    }
     draw(paths.back)
     draw(paths.pan)
-    if (tier === 'full') {
-      draw(paths.armLeft)
-      draw(paths.armRight)
+    draw(paths.armLeft)
+    draw(paths.armRight)
+  }
+  const keyParts = (draw: (p: Path2D) => void) => {
+    if (tier === 'mark') {
+      draw(paths.mark)
+      return
     }
+    draw(tier === 'mid' ? paths.midBack : paths.back)
+    draw(tier === 'mid' ? paths.midPan : paths.pan)
   }
 
   for (const [key, indices] of batches) {
@@ -302,8 +317,7 @@ function drawSeats(ctx: CanvasRenderingContext2D, scene: Scene, camera: Camera, 
         bodyParts(p => ctx.fill(p))
         ctx.strokeStyle = C.night
         ctx.lineWidth = keylineW
-        ctx.stroke(tier === 'mark' ? paths.mark : paths.back)
-        if (tier !== 'mark') ctx.stroke(paths.pan)
+        keyParts(p => ctx.stroke(p))
       } else if (state === 'taken') {
         // SOLID DARK, no stroke, no numeral: the benchmark's high-contrast
         // sold state does most of the visual work on the plan.
@@ -316,8 +330,7 @@ function drawSeats(ctx: CanvasRenderingContext2D, scene: Scene, camera: Camera, 
         ctx.strokeStyle = hue ?? C.dusk
         ctx.lineWidth = outlineW
         ctx.setLineDash(dash)
-        ctx.stroke(tier === 'mark' ? paths.mark : paths.back)
-        if (tier !== 'mark') ctx.stroke(paths.pan)
+        keyParts(p => ctx.stroke(p))
         ctx.setLineDash([])
       } else {
         // AVAILABLE: outline in the tier hue over paper, never a solid

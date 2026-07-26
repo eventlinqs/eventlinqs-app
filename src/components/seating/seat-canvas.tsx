@@ -158,6 +158,14 @@ export const SeatCanvas = forwardRef<SeatCanvasHandle, SeatCanvasProps>(function
     moved: boolean
   }>({ mode: 'idle', startX: 0, startY: 0, startTx: 0, startTy: 0, startDist: 0, startScale: 1, moved: false })
   const animRef = useRef<number | null>(null)
+  /**
+   * The proof harness's deliberate-failure probe: one extra text run
+   * stamped at a screen point every frame until cleared, so the
+   * drawn-frame collision assertion can prove it FAILS on a real
+   * collision and passes again once the probe is removed. Set only via
+   * __seatDebug; product code never touches it.
+   */
+  const probeRef = useRef<{ text: string; x: number; y: number } | null>(null)
 
   const prefersReducedMotion = useMemo(
     () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
@@ -207,6 +215,15 @@ export const SeatCanvas = forwardRef<SeatCanvasHandle, SeatCanvasProps>(function
         paintWorld: p.paintWorld,
         paintScreen: p.paintScreen,
       })
+      const probe = probeRef.current
+      if (probe) {
+        ctx.setTransform(sizeRef.current.dpr, 0, 0, sizeRef.current.dpr, 0, 0)
+        ctx.font = '700 12px Manrope, ui-sans-serif, system-ui, sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillStyle = '#0A1628'
+        ctx.fillText(probe.text, probe.x, probe.y)
+      }
       const took = performance.now() - t0
       if (typeof window !== 'undefined') {
         const ring = (window.__seatFrameTimes ??= [])
@@ -233,7 +250,10 @@ export const SeatCanvas = forwardRef<SeatCanvasHandle, SeatCanvasProps>(function
    */
   const minScale = useCallback(
     () =>
-      scene.polygons.length >= 2
+      // A room with multiple polygons OR multiple blocks earns the
+      // overview state: a one-section theatre split by aisles into three
+      // blocks orients its buyers the same way a sectioned room does.
+      scene.polygons.length >= 2 || scene.blocks.length >= 2
         ? Math.min(fitScaleRef.current * 0.5, 0.26)
         : fitScaleRef.current * 0.5,
     [scene],
@@ -441,8 +461,12 @@ export const SeatCanvas = forwardRef<SeatCanvasHandle, SeatCanvasProps>(function
         return { x: scene.seats[i].x * cam.scale + cam.tx, y: scene.seats[i].y * cam.scale + cam.ty }
       },
       scale: () => cameraRef.current.scale,
+      setProbe: (probe: { text: string; x: number; y: number } | null) => {
+        probeRef.current = probe
+        invalidate()
+      },
     }
-  }, [scene])
+  }, [scene, invalidate])
 
   // Ctrl+wheel zooms at the cursor; plain wheel keeps scrolling the page.
   useLayoutEffect(() => {

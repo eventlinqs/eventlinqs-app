@@ -80,7 +80,8 @@ export function sceneToPrintSvg(scene: Scene, title: string): string {
   }
 
   // Chairs at full anatomy: available prints as the outline chair over
-  // paper (the benchmark's breathing room), everything taken as stone.
+  // paper (the benchmark's breathing room), everything taken as the
+  // plan's solid dark sold state.
   const k = scene.chairW / GLYPH_BOX
   for (let i = 0; i < scene.seats.length; i++) {
     const s = scene.seats[i]
@@ -92,7 +93,7 @@ export function sceneToPrintSvg(scene: Scene, title: string): string {
     for (const d of [CHAIR_BACK_PATH, CHAIR_PAN_PATH, CHAIR_ARM_LEFT_PATH, CHAIR_ARM_RIGHT_PATH]) {
       parts.push(
         taken
-          ? `<path d="${d}" fill="${C.stone}"/>`
+          ? `<path d="${d}" fill="${C.dusk}"/>`
           : `<path d="${d}" fill="${C.white}" stroke="${hue}" stroke-width="1.25"/>`,
       )
     }
