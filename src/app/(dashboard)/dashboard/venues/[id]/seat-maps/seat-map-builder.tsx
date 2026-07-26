@@ -839,9 +839,9 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
         </div>
       </div>
 
-      {/* ── Toolbar: seat tools + undo + live count ── */}
+      {/* ── Toolbar: seat tools + undo/redo + live count. The Chanel cut
+          (2026-07-26): the Tool eyebrow came off; the rail says it. ── */}
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <span className="font-display text-[11px] font-semibold uppercase tracking-widest text-ink-400">Tool</span>
         <div className="flex flex-wrap gap-1 rounded-control border border-ink-200 bg-canvas p-1">
           {TOOLS.map(t => (
             <button
@@ -1138,14 +1138,8 @@ export function SeatMapBuilder({ venueId, seatMapId, initialName, initialBlocks,
                     <Rows3 className="h-3.5 w-3.5" aria-hidden />
                     Lay rows
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => addBlock('round')}
-                    className="inline-flex h-10 items-center gap-1.5 rounded-full border border-ink-200 bg-white px-4 text-xs font-semibold text-ink-900 transition-colors hover:border-gold-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-1"
-                  >
-                    <Circle className="h-3.5 w-3.5" aria-hidden />
-                    Seat a table
-                  </button>
+                  {/* The Chanel cut (2026-07-26): Seat a table came off the
+                      invitation; the Gala shape below lays six of them. */}
                   <button
                     type="button"
                     onClick={() => underlayInputRef.current?.click()}

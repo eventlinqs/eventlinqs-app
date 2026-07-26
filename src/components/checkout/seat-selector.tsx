@@ -111,6 +111,9 @@ export function SeatSelector({
   const [pickNote, setPickNote] = useState<string | null>(null)
   /** The section whose view-from-seat photograph is open, or null. */
   const [viewingSection, setViewingSection] = useState<string | null>(null)
+  /** Keyboard seat cursor: full keyboard operation of the map itself. */
+  const [focusSeatId, setFocusSeatId] = useState<string | null>(null)
+  const [keyboardNote, setKeyboardNote] = useState('')
   /** Eased zoom only for button zooms: gestures must track fingers 1:1. */
   const [animateZoom, setAnimateZoom] = useState(false)
   /** Colour-vision palette set, shared across seating surfaces on this device. */
@@ -254,6 +257,95 @@ export function SeatSelector({
 
   function onMapDoubleClick(e: React.MouseEvent) {
     applyZoom(zoomRef.current >= MAX_ZOOM ? 1 : zoomRef.current * 1.5, e.clientX, e.clientY)
+  }
+
+  // ── Full keyboard operation of the map: arrows walk the room seat by
+  // seat (nearest in the pressed direction), Enter or Space toggles,
+  // Escape rests. The cursor seat is announced and scrolled into view. ──
+  function announceSeat(seat: SeatData) {
+    const style = STATUS_FILL[seat.status] ?? STATUS_FILL.sold
+    const selectedWord = selectedIds.has(seat.id) ? 'selected' : style.clickable ? 'available' : 'unavailable'
+    setKeyboardNote(
+      `Row ${seat.row_label} seat ${seat.seat_number}, ${selectedWord}${
+        style.clickable ? `, ${formatPrice(getSeatPrice(seat))}` : ''
+      }`,
+    )
+    const el = scrollRef.current
+    if (el) {
+      const scale = el.scrollWidth / viewWidth
+      const cx = (seat.x - minX + PADDING + ROW_LABEL_GUTTER + SEAT_SIZE / 2) * scale
+      const cy = (seat.y - minY + PADDING + STAGE_BAND + SEAT_SIZE / 2) * scale
+      el.scrollTo({
+        left: Math.max(0, cx - el.clientWidth / 2),
+        top: Math.max(0, cy - el.clientHeight / 2),
+        behavior: prefersReducedMotion ? 'auto' : 'smooth',
+      })
+    }
+  }
+
+  function onMapKeyDown(e: React.KeyboardEvent) {
+    const dirs: Record<string, [number, number]> = {
+      ArrowLeft: [-1, 0],
+      ArrowRight: [1, 0],
+      ArrowUp: [0, -1],
+      ArrowDown: [0, 1],
+    }
+    if (e.key in dirs) {
+      e.preventDefault()
+      const current = seats.find(s => s.id === focusSeatId)
+      if (!current) {
+        const first = [...seats]
+          .filter(s => s.status === 'available')
+          .sort((a, b) => a.y - b.y || a.x - b.x)[0]
+        if (first) {
+          setFocusSeatId(first.id)
+          announceSeat(first)
+        }
+        return
+      }
+      const [dx, dy] = dirs[e.key]
+      let best: SeatData | null = null
+      let bestScore = Infinity
+      for (const seat of seats) {
+        if (seat.id === current.id) continue
+        const vx = seat.x - current.x
+        const vy = seat.y - current.y
+        const along = vx * dx + vy * dy
+        if (along <= 4) continue
+        const perpendicular = Math.abs(vx * dy - vy * dx)
+        const score = along + perpendicular * 2
+        if (score < bestScore) {
+          bestScore = score
+          best = seat
+        }
+      }
+      if (best) {
+        setFocusSeatId(best.id)
+        announceSeat(best)
+      }
+      return
+    }
+    if ((e.key === 'Enter' || e.key === ' ') && focusSeatId) {
+      e.preventDefault()
+      const seat = seats.find(s => s.id === focusSeatId)
+      if (!seat) return
+      const style = STATUS_FILL[seat.status] ?? STATUS_FILL.sold
+      const price = getSeatPrice(seat)
+      const outside =
+        priceFilter !== null && (price < priceFilter[0] || price > priceFilter[1])
+      if (style.clickable && !outside) {
+        toggleSeat(seat)
+        setKeyboardNote(
+          `Row ${seat.row_label} seat ${seat.seat_number} ${selectedIds.has(seat.id) ? 'removed' : 'selected'}`,
+        )
+      } else {
+        setKeyboardNote(
+          `Row ${seat.row_label} seat ${seat.seat_number} is ${outside ? 'outside your price filter' : 'unavailable'}`,
+        )
+      }
+      return
+    }
+    if (e.key === 'Escape') setFocusSeatId(null)
   }
 
   // Primitive keys: only recompute memos when content changes, not on every array reference change
@@ -1093,7 +1185,7 @@ export function SeatSelector({
       <div className="relative">
         <div
           ref={scrollRef}
-          className="overflow-auto overscroll-contain rounded-xl border border-ink-200 bg-canvas"
+          className="overflow-auto overscroll-contain rounded-xl border border-ink-200 bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
           style={{ touchAction: 'none', cursor: 'grab' }}
           onPointerDown={onMapPointerDown}
           onPointerMove={onMapPointerMove}
@@ -1102,8 +1194,10 @@ export function SeatSelector({
           onPointerLeave={onMapPointerEnd}
           onClickCapture={onMapClickCapture}
           onDoubleClick={onMapDoubleClick}
+          onKeyDown={onMapKeyDown}
+          tabIndex={0}
           role="group"
-          aria-label="Seat map viewport: drag to pan, pinch or Ctrl and scroll to zoom"
+          aria-label="Seat map. Arrow keys move seat to seat, Enter selects, Escape rests. Drag to pan, pinch or Ctrl and scroll to zoom."
         >
           <svg
             viewBox={`0 0 ${viewWidth} ${viewHeight}`}
@@ -1226,11 +1320,46 @@ export function SeatSelector({
               )
             })}
 
-            {/* Seats first, then hover overlay - overlay MUST render last so it layers on top */}
+            {/* Seats first, then the overlays - they MUST render last so
+                they layer on top. The keyboard cursor is the navy-ringed
+                gold frame; hover is the plain gold frame. */}
             {seatElements}
             {hoverOverlay}
+            {focusSeatId && (() => {
+              const seat = seats.find(s => s.id === focusSeatId)
+              if (!seat) return null
+              const cx = seat.x - minX + PADDING + ROW_LABEL_GUTTER + SEAT_SIZE / 2
+              const cy = seat.y - minY + PADDING + STAGE_BAND + SEAT_SIZE / 2
+              return (
+                <g style={{ pointerEvents: 'none' }}>
+                  <rect
+                    x={cx - SEAT_SIZE / 2 - 3}
+                    y={cy - SEAT_SIZE / 2 - 3}
+                    width={SEAT_SIZE + 6}
+                    height={SEAT_SIZE + 6}
+                    rx="6"
+                    fill="none"
+                    stroke={INK_900}
+                    strokeWidth={3.5}
+                  />
+                  <rect
+                    x={cx - SEAT_SIZE / 2 - 3}
+                    y={cy - SEAT_SIZE / 2 - 3}
+                    width={SEAT_SIZE + 6}
+                    height={SEAT_SIZE + 6}
+                    rx="6"
+                    fill="none"
+                    stroke={GOLD}
+                    strokeWidth={2}
+                  />
+                </g>
+              )
+            })()}
           </svg>
         </div>
+
+        {/* The keyboard cursor's voice: what the arrows land on. */}
+        <span aria-live="polite" className="sr-only">{keyboardNote}</span>
 
         {/* Floating zoom controls bottom-right */}
         <div className="absolute bottom-3 right-3 flex items-center gap-1 rounded-lg border border-ink-200 bg-white shadow-sm">
@@ -1253,16 +1382,18 @@ export function SeatSelector({
             +
           </button>
           <span className="h-6 w-px bg-ink-200" aria-hidden="true" />
+          {/* The Chanel cut (2026-07-26): the word Fit came off; the frame
+              glyph and its label say it. */}
           <button
             type="button"
             onClick={zoomToFit}
-            className="flex h-8 items-center gap-1 rounded-r-lg px-2.5 text-[11px] font-semibold text-ink-600 hover:bg-ink-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold-400"
+            className="flex h-8 w-8 items-center justify-center rounded-r-lg text-ink-600 hover:bg-ink-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold-400"
             aria-label="Zoom to fit"
+            title="Zoom to fit"
           >
-            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4h4M20 8V4h-4M4 16v4h4M20 16v4h-4" />
             </svg>
-            Fit
           </button>
         </div>
       </div>
@@ -1326,12 +1457,11 @@ export function SeatSelector({
                 </svg>
               </button>
             </div>
+            {/* The Chanel cut (2026-07-26): the eyebrow came off; the title
+                and the honesty line carry the card. */}
             <div className="border-t-2 border-gold-500 px-5 py-3.5">
-              <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-gold-400">
-                The real view
-              </p>
-              <p className="mt-0.5 font-display text-base font-bold uppercase tracking-[0.08em] text-white">
-                From {viewingSection}
+              <p className="font-display text-base font-bold uppercase tracking-[0.08em] text-white">
+                The view from {viewingSection}
               </p>
               <p className="mt-0.5 text-xs text-white/70">
                 Photographed from this section, not a render.
