@@ -26,12 +26,19 @@ export const NUMERAL_MIN = 0.9
 /** The chair's world-unit width as a fraction of the room's seat pitch. */
 export const CHAIR_PITCH_RATIO = 0.75
 
-/** Glyph tier by the chair's on-screen width in px. */
+/**
+ * Glyph tier by the chair's on-screen width in px: full anatomy (back,
+ * gap, pan, armrests) from 20px, back and pan from 10px, one rounded
+ * seat-from-above mark below that.
+ */
 export function glyphTier(chairPx: number): GlyphTier {
-  if (chairPx >= 14) return 'full'
-  if (chairPx >= 6) return 'mid'
+  if (chairPx >= 20) return 'full'
+  if (chairPx >= 10) return 'mid'
   return 'mark'
 }
+
+/** Numerals sit BELOW the chair, and only from this on-screen size. */
+export const NUMERAL_CHAIR_PX = 20
 
 export function lodState(scale: number): LodState {
   if (scale < LOD_OVERVIEW_MAX) return 'overview'

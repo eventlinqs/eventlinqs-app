@@ -11,7 +11,14 @@ import {
 import { convexHull, pointInHull, polygonCentroid } from '@/lib/seating/render/polygons'
 import { defaultStageForBounds, stageGeometry } from '@/lib/seating/render/stage'
 import { buildScene, cullSeats, estimatePitch, hitTestSeat, type SceneSeatInput } from '@/lib/seating/render/scene'
-import { CHAIR_BACK_PATH, CHAIR_MARK_PATH, CHAIR_MID_PATH, CHAIR_PAN_PATH, OBJECT_GLYPHS } from '@/lib/seating/render/glyphs'
+import {
+  CHAIR_ARM_LEFT_PATH,
+  CHAIR_ARM_RIGHT_PATH,
+  CHAIR_BACK_PATH,
+  CHAIR_MARK_PATH,
+  CHAIR_PAN_PATH,
+  OBJECT_GLYPHS,
+} from '@/lib/seating/render/glyphs'
 import { sceneToPrintSvg } from '@/lib/seating/render/svg-export'
 
 function seat(partial: Partial<SceneSeatInput> & { id: string; x: number; y: number }): SceneSeatInput {
@@ -78,21 +85,34 @@ describe('lod', () => {
     expect(lodFlags(NUMERAL_MIN).rowLetters).toBe(true)
   })
 
-  it('glyph tier degrades full to mid to mark by chair pixels', () => {
+  it('glyph tier: full anatomy at 20px, back and pan to 10px, then the mark', () => {
+    expect(glyphTier(24)).toBe('full')
     expect(glyphTier(20)).toBe('full')
-    expect(glyphTier(14)).toBe('full')
+    expect(glyphTier(14)).toBe('mid')
     expect(glyphTier(10)).toBe('mid')
-    expect(glyphTier(6)).toBe('mid')
-    expect(glyphTier(5)).toBe('mark')
+    expect(glyphTier(9)).toBe('mark')
   })
 })
 
 describe('chair glyph', () => {
-  it('ships one silhouette in three sizes as real paths', () => {
-    for (const path of [CHAIR_BACK_PATH, CHAIR_PAN_PATH, CHAIR_MID_PATH, CHAIR_MARK_PATH]) {
+  it('ships the benchmark anatomy as real closed paths', () => {
+    for (const path of [
+      CHAIR_BACK_PATH,
+      CHAIR_PAN_PATH,
+      CHAIR_ARM_LEFT_PATH,
+      CHAIR_ARM_RIGHT_PATH,
+      CHAIR_MARK_PATH,
+    ]) {
       expect(path).toMatch(/^M[\d.]/)
       expect(path.endsWith('Z')).toBe(true)
     }
+  })
+
+  it('keeps the gap between back and pan visible at 24px', () => {
+    // Back ends at y 11.8, pan starts at y 13.7: a 1.9px gap in the
+    // 24-box, which is ~8 percent of the glyph height.
+    expect(13.7 - 11.8).toBeCloseTo(1.9, 5)
+    expect((13.7 - 11.8) / 24).toBeGreaterThan(0.075)
   })
 
   it('describes every required venue object glyph', () => {

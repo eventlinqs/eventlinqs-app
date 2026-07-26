@@ -7,7 +7,7 @@
 
 import { SEAT_STATE_COLORS } from '../palette'
 import { chairPaths, objectPaths, OBJECT_GLYPHS, GLYPH_BOX, type VenueObjectKind } from './glyphs'
-import { glyphTier, lodFlags, NUMERAL_MIN, type GlyphTier } from './lod'
+import { glyphTier, lodFlags, NUMERAL_CHAIR_PX, type GlyphTier } from './lod'
 import { cullSeats, type Scene, type SceneBounds } from './scene'
 
 export interface Camera {
@@ -16,7 +16,7 @@ export interface Camera {
   ty: number
 }
 
-export type SeatVisualState = 'available' | 'taken' | 'selected' | 'dimmed'
+export type SeatVisualState = 'available' | 'taken' | 'selected' | 'dimmed' | 'held'
 
 export interface PaintOptions {
   dpr: number
@@ -76,7 +76,10 @@ function hullPath(hull: { x: number; y: number }[]): Path2D {
 }
 
 /** Scaled chair Path2Ds centred on the origin, cached per chair width. */
-const chairWorldCache = new Map<number, Record<'back' | 'pan' | 'mid' | 'mark', Path2D>>()
+const chairWorldCache = new Map<
+  number,
+  Record<'back' | 'pan' | 'armLeft' | 'armRight' | 'mark' | 'access', Path2D>
+>()
 
 function chairWorldPaths(chairW: number) {
   const key = Math.round(chairW * 100)
@@ -90,7 +93,14 @@ function chairWorldPaths(chairW: number) {
       out.addPath(p, m)
       return out
     }
-    paths = { back: scaled(src.back), pan: scaled(src.pan), mid: scaled(src.mid), mark: scaled(src.mark) }
+    paths = {
+      back: scaled(src.back),
+      pan: scaled(src.pan),
+      armLeft: scaled(src.armLeft),
+      armRight: scaled(src.armRight),
+      mark: scaled(src.mark),
+      access: scaled(src.access),
+    }
     chairWorldCache.set(key, paths)
   }
   return paths
@@ -167,59 +177,71 @@ function drawSeats(ctx: CanvasRenderingContext2D, scene: Scene, camera: Camera, 
     else batches.set(key, [i])
   }
 
-  const strokeW = Math.min(1.5 / camera.scale, scene.chairW * 0.09)
+  // Stroke widths are screen-fixed: the benchmark's outline is what lets
+  // the room breathe, so the line never fattens with zoom.
+  const outlineW = 1.25 / camera.scale
+  const keylineW = 2 / camera.scale
+  const dash = [3 / camera.scale, 2.5 / camera.scale]
+
+  const bodyParts = (draw: (p: Path2D) => void) => {
+    if (tier === 'mark') {
+      draw(paths.mark)
+      return
+    }
+    draw(paths.back)
+    draw(paths.pan)
+    if (tier === 'full') {
+      draw(paths.armLeft)
+      draw(paths.armRight)
+    }
+  }
+
   for (const [key, indices] of batches) {
     const [state, hue] = key.split('|') as [SeatVisualState, string | undefined]
     ctx.save()
     if (state === 'dimmed') ctx.globalAlpha = 0.22
     let lastX = 0
     let lastY = 0
-    ctx.translate(0, 0)
     for (const i of indices) {
       const s = scene.seats[i]
       ctx.translate(s.x - lastX, s.y - lastY)
       lastX = s.x
       lastY = s.y
-      if (tier === 'full') {
-        if (state === 'selected') {
-          ctx.fillStyle = C.gold
-          ctx.fill(paths.back)
-          ctx.fill(paths.pan)
-          ctx.strokeStyle = C.night
-          ctx.lineWidth = strokeW * 1.3
-          ctx.stroke(paths.back)
-          ctx.stroke(paths.pan)
-        } else if (state === 'taken') {
-          ctx.fillStyle = C.stone
-          ctx.fill(paths.back)
-          ctx.fill(paths.pan)
-        } else {
-          ctx.fillStyle = hue ?? C.dusk
-          ctx.fill(paths.back)
-          ctx.fillStyle = C.white
-          ctx.fill(paths.pan)
-          ctx.strokeStyle = hue ?? C.dusk
-          ctx.lineWidth = strokeW
-          ctx.stroke(paths.pan)
-        }
+      if (state === 'selected') {
+        // Solid gold with the ink keyline.
+        ctx.fillStyle = C.gold
+        bodyParts(p => ctx.fill(p))
+        ctx.strokeStyle = C.night
+        ctx.lineWidth = keylineW
+        ctx.stroke(tier === 'mark' ? paths.mark : paths.back)
+        if (tier !== 'mark') ctx.stroke(paths.pan)
+      } else if (state === 'taken') {
+        // Solid stone, no stroke, no numeral: it recedes.
+        ctx.fillStyle = C.stone
+        bodyParts(p => ctx.fill(p))
+      } else if (state === 'held') {
+        // Stone body with the dashed tier-hue stroke.
+        ctx.fillStyle = C.stone
+        bodyParts(p => ctx.fill(p))
+        ctx.strokeStyle = hue ?? C.dusk
+        ctx.lineWidth = outlineW
+        ctx.setLineDash(dash)
+        ctx.stroke(tier === 'mark' ? paths.mark : paths.back)
+        if (tier !== 'mark') ctx.stroke(paths.pan)
+        ctx.setLineDash([])
       } else {
-        const path = tier === 'mid' ? paths.mid : paths.mark
-        ctx.fillStyle =
-          state === 'selected' ? C.gold : state === 'taken' ? C.stone : (hue ?? C.dusk)
-        ctx.fill(path)
-        if (state === 'selected') {
-          ctx.strokeStyle = C.night
-          ctx.lineWidth = strokeW
-          ctx.stroke(path)
+        // AVAILABLE: outline in the tier hue over paper, never a solid
+        // mass: the anatomy the benchmark breathes through.
+        ctx.fillStyle = C.white
+        bodyParts(p => ctx.fill(p))
+        ctx.strokeStyle = hue ?? C.dusk
+        ctx.lineWidth = outlineW
+        bodyParts(p => ctx.stroke(p))
+        if (s.seat_type === 'accessible' && tier !== 'mark') {
+          ctx.lineWidth = Math.max(outlineW, scene.chairW * 0.045)
+          ctx.lineCap = 'round'
+          ctx.stroke(paths.access)
         }
-      }
-      // Accessible and companion: the white inner ring at every tier.
-      if (s.seat_type === 'accessible' || s.seat_type === 'companion') {
-        ctx.strokeStyle = C.white
-        ctx.lineWidth = strokeW
-        ctx.beginPath()
-        ctx.arc(0, 0, scene.chairW * 0.32, 0, Math.PI * 2)
-        ctx.stroke()
       }
     }
     ctx.restore()
@@ -365,23 +387,25 @@ function drawScreenPass(ctx: CanvasRenderingContext2D, scene: Scene, camera: Cam
     ctx.restore()
   }
 
-  // Numerals on the chairs: Dusk on the white pan, Night on gold.
-  if (flags.numerals && camera.scale >= NUMERAL_MIN) {
+  // Numerals live OUTSIDE the chair: below it, dusk ink, and only once
+  // the chair renders at 20px or more. The chair itself stays clean; the
+  // flank letters, the ruler and the tooltip carry location before that.
+  const chairPx = scene.chairW * camera.scale
+  if (flags.numerals && chairPx >= NUMERAL_CHAIR_PX) {
     const visible = cullSeats(scene, view)
-    const panDropPx = scene.chairW * camera.scale * 0.19
+    const dropPx = chairPx * 0.62 + 7
     ctx.save()
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    const px = Math.min(11, Math.max(8, scene.chairW * camera.scale * 0.34))
-    ctx.font = `600 ${px}px ${DATA_FONT}`
+    ctx.font = `600 9px ${DATA_FONT}`
+    ctx.fillStyle = C.dusk
     for (const i of visible) {
       const state = opts.stateFor(i)
-      if (state === 'taken') continue
+      if (state === 'taken' || state === 'held') continue
       const s = scene.seats[i]
       const at = worldToScreen(camera, s.x, s.y)
       ctx.globalAlpha = state === 'dimmed' ? 0.35 : 1
-      ctx.fillStyle = state === 'selected' ? C.night : C.dusk
-      ctx.fillText(s.seat_number, at.x, at.y + panDropPx)
+      ctx.fillText(s.seat_number, at.x, at.y + dropPx)
     }
     ctx.restore()
   }

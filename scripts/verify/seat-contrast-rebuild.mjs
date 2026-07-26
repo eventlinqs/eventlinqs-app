@@ -110,18 +110,21 @@ const checkDelta = (label, a, b, kind, needed) => {
 }
 
 for (const [setName, tones] of Object.entries(PALETTE_SETS)) {
-  // The chair anatomy's text pairs, identical bar for every set.
-  check(`[${setName}] available numeral: dusk on the white pan`, DUSK, WHITE, 4.5)
-  check(`[${setName}] selected numeral: night on gold`, NIGHT, GOLD, 4.5)
+  // The chair anatomy's text pairs, identical bar for every set. Numerals
+  // sit BELOW the chair on the paper (never inside it).
+  check(`[${setName}] seat numeral below the chair: dusk on veil`, DUSK, VEIL, 4.5)
   check(`[${setName}] row letters and ruler: dusk on veil paper`, DUSK, VEIL, 4.5)
   check(`[${setName}] polygon name: night on veil paper`, NIGHT, VEIL, 4.5)
   check(`[${setName}] polygon price: dusk on veil paper`, DUSK, VEIL, 4.5)
   check(`[${setName}] stage word: dusk on veil (drafting hatch ground)`, DUSK, VEIL, 4.5)
 
-  // Non-text component boundaries against the paper.
+  // Non-text component boundaries: the available chair is an OUTLINE in
+  // the tier hue over a paper fill, judged against both grounds; the held
+  // chair's dashed hue stroke is judged against its stone body.
   tones.forEach((hex, i) => {
-    check(`[${setName}] chair back and mid mark: tone ${i + 1} ${hex} vs veil`, hex, VEIL, 3)
-    check(`[${setName}] pan keyline: tone ${i + 1} ${hex} vs white pan`, hex, WHITE, 3)
+    check(`[${setName}] outline chair: tone ${i + 1} ${hex} vs veil ground`, hex, VEIL, 3)
+    check(`[${setName}] outline chair: tone ${i + 1} ${hex} vs paper fill`, hex, WHITE, 3)
+    check(`[${setName}] held dash: tone ${i + 1} ${hex} vs stone body (receded state, recorded)`, hex, STONE, null)
   })
   // The selected chair's boundary is its ALWAYS-DRAWN night keyline (2px,
   // every glyph tier), so the keyline pairs carry the 1.4.11 requirement;

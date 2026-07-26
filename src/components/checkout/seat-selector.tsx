@@ -29,7 +29,7 @@ import {
   type BASeat,
 } from '@/lib/seating/best-available'
 import { buildScene, type SceneObjectInput } from '@/lib/seating/render/scene'
-import { CHAIR_MID_PATH } from '@/lib/seating/render/glyphs'
+import { CHAIR_BACK_PATH, CHAIR_PAN_PATH } from '@/lib/seating/render/glyphs'
 import type { SeatVisualState } from '@/lib/seating/render/draw'
 import type { LodState } from '@/lib/seating/render/lod'
 import { SeatCanvas, type SeatCanvasHandle } from '@/components/seating/seat-canvas'
@@ -823,7 +823,8 @@ export function SeatSelector({
                     }`}
                   >
                     <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" aria-hidden>
-                      <path d={CHAIR_MID_PATH} fill={row.hue} />
+                      <path d={CHAIR_BACK_PATH} fill="none" stroke={row.hue} strokeWidth={1.8} />
+                      <path d={CHAIR_PAN_PATH} fill="none" stroke={row.hue} strokeWidth={1.8} />
                     </svg>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-xs font-semibold text-ink-900">{row.tier.name}</span>
@@ -893,7 +894,8 @@ export function SeatSelector({
                       <span aria-hidden className="flex shrink-0 items-center">
                         {SEAT_PALETTE_SETS[meta.id].slice(0, 4).map(tone => (
                           <svg key={tone} viewBox="0 0 24 24" className="-ml-1 h-3.5 w-3.5 first:ml-0" aria-hidden>
-                            <path d={CHAIR_MID_PATH} fill={tone} />
+                            <path d={CHAIR_BACK_PATH} fill="none" stroke={tone} strokeWidth={2.2} />
+                            <path d={CHAIR_PAN_PATH} fill="none" stroke={tone} strokeWidth={2.2} />
                           </svg>
                         ))}
                       </span>

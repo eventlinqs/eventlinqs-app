@@ -10,20 +10,35 @@
 
 import type { GlyphTier } from './lod'
 
-/** Chair back: x 5..19, y 3..12, top radius 3. */
-export const CHAIR_BACK_PATH = 'M8 3h8a3 3 0 0 1 3 3v6H5V6a3 3 0 0 1 3-3Z'
+/**
+ * The chair, matched to the benchmark's anatomy and viewed from behind and
+ * above: a wide rounded BACK across the top ~45%, a clear GAP (~8% of the
+ * glyph, visible at 24px), a slightly NARROWER PAN across the lower ~40%,
+ * and two short ARMREST strokes flanking the pan. One silhouette, three
+ * degradation tiers.
+ */
 
-/** Chair pan: x 3..21, y 12..21, wider than the back. */
+/** Back: x 3..21 (w 18), y 1..11.8 (h 10.8), r 3.2 (~30% of its height). */
+export const CHAIR_BACK_PATH =
+  'M6.2 1h11.6a3.2 3.2 0 0 1 3.2 3.2v4.4a3.2 3.2 0 0 1-3.2 3.2H6.2A3.2 3.2 0 0 1 3 8.6V4.2A3.2 3.2 0 0 1 6.2 1Z'
+
+/** Pan: x 5..19 (w 14, narrower than the back), y 13.7..23.3, r 2.8. */
 export const CHAIR_PAN_PATH =
-  'M5.5 12h13a2.5 2.5 0 0 1 2.5 2.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4.5A2.5 2.5 0 0 1 5.5 12Z'
+  'M7.8 13.7h8.4a2.8 2.8 0 0 1 2.8 2.8v4a2.8 2.8 0 0 1-2.8 2.8H7.8A2.8 2.8 0 0 1 5 20.5v-4a2.8 2.8 0 0 1 2.8-2.8Z'
 
-/** Mid mark: the two forms merged into one armchair silhouette. */
-export const CHAIR_MID_PATH =
-  'M7 3h10a3 3 0 0 1 3 3v5h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2h1V6a3 3 0 0 1 3-3Z'
+/** Armrests: short vertical bars flanking the pan (~30% of pan height). */
+export const CHAIR_ARM_LEFT_PATH =
+  'M3.5 13.7a0.8 0.8 0 0 1 0.8 0.8v2a0.8 0.8 0 0 1-1.6 0v-2a0.8 0.8 0 0 1 0.8-0.8Z'
+export const CHAIR_ARM_RIGHT_PATH =
+  'M20.5 13.7a0.8 0.8 0 0 1 0.8 0.8v2a0.8 0.8 0 0 1-1.6 0v-2a0.8 0.8 0 0 1 0.8-0.8Z'
 
-/** Mark at 6px: a 4:5 rounded chip, narrow top kept by the tighter top radius. */
+/** Mark below 10px: one rounded seat-from-above form, wider than tall. */
 export const CHAIR_MARK_PATH =
-  'M6 2h12a4 4 0 0 1 4 4v12a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V6a4 4 0 0 1 4-4Z'
+  'M6 4h12a4 4 0 0 1 4 4v9a3.5 3.5 0 0 1-3.5 3.5h-13A3.5 3.5 0 0 1 2 17V8a4 4 0 0 1 4-4Z'
+
+/** The accessibility mark drawn inside the back on accessible seats. */
+export const CHAIR_ACCESS_PATH =
+  'M10.6 3.4a1.1 1.1 0 1 0 2.2 0a1.1 1.1 0 1 0-2.2 0M11.7 5v3.2h2.6M11.7 6.6h2.2M9.2 7.2a3 3 0 1 0 4.6 3.4'
 
 /** The authored box every glyph lives in. */
 export const GLYPH_BOX = 24
@@ -31,8 +46,10 @@ export const GLYPH_BOX = 24
 export interface ChairPaths {
   back: Path2D
   pan: Path2D
-  mid: Path2D
+  armLeft: Path2D
+  armRight: Path2D
   mark: Path2D
+  access: Path2D
 }
 
 let chairCache: ChairPaths | null = null
@@ -43,17 +60,19 @@ export function chairPaths(): ChairPaths {
     chairCache = {
       back: new Path2D(CHAIR_BACK_PATH),
       pan: new Path2D(CHAIR_PAN_PATH),
-      mid: new Path2D(CHAIR_MID_PATH),
+      armLeft: new Path2D(CHAIR_ARM_LEFT_PATH),
+      armRight: new Path2D(CHAIR_ARM_RIGHT_PATH),
       mark: new Path2D(CHAIR_MARK_PATH),
+      access: new Path2D(CHAIR_ACCESS_PATH),
     }
   }
   return chairCache
 }
 
-/** Which authored paths a glyph tier draws (data for painter and print alike). */
-export function chairTierParts(tier: GlyphTier): ('back' | 'pan' | 'mid' | 'mark')[] {
-  if (tier === 'full') return ['back', 'pan']
-  if (tier === 'mid') return ['mid']
+/** Which authored parts a glyph tier draws (painter and print alike). */
+export function chairTierParts(tier: GlyphTier): ('back' | 'pan' | 'arms' | 'mark')[] {
+  if (tier === 'full') return ['back', 'pan', 'arms']
+  if (tier === 'mid') return ['back', 'pan']
   return ['mark']
 }
 

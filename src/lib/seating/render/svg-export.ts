@@ -6,7 +6,13 @@
  */
 
 import { SEAT_STATE_COLORS } from '../palette'
-import { CHAIR_BACK_PATH, CHAIR_PAN_PATH, GLYPH_BOX } from './glyphs'
+import {
+  CHAIR_ARM_LEFT_PATH,
+  CHAIR_ARM_RIGHT_PATH,
+  CHAIR_BACK_PATH,
+  CHAIR_PAN_PATH,
+  GLYPH_BOX,
+} from './glyphs'
 import type { Scene } from './scene'
 
 const C = SEAT_STATE_COLORS
@@ -72,21 +78,23 @@ export function sceneToPrintSvg(scene: Scene, title: string): string {
     )
   }
 
-  // Chairs at full furniture LOD, printed in ink for every state.
+  // Chairs at full anatomy: available prints as the outline chair over
+  // paper (the benchmark's breathing room), everything taken as stone.
   const k = scene.chairW / GLYPH_BOX
   for (let i = 0; i < scene.seats.length; i++) {
     const s = scene.seats[i]
     const taken = s.status !== 'available'
-    const hue = taken ? C.stone : scene.seatColor[i]
+    const hue = scene.seatColor[i]
     const tx = s.x + ox - 12 * k
     const ty = s.y + oy - 12 * k
     parts.push(`<g transform="translate(${tx.toFixed(1)} ${ty.toFixed(1)}) scale(${k.toFixed(3)})">`)
-    parts.push(`<path d="${CHAIR_BACK_PATH}" fill="${hue}"/>`)
-    parts.push(
-      taken
-        ? `<path d="${CHAIR_PAN_PATH}" fill="${hue}"/>`
-        : `<path d="${CHAIR_PAN_PATH}" fill="${C.white}" stroke="${hue}" stroke-width="1.5"/>`,
-    )
+    for (const d of [CHAIR_BACK_PATH, CHAIR_PAN_PATH, CHAIR_ARM_LEFT_PATH, CHAIR_ARM_RIGHT_PATH]) {
+      parts.push(
+        taken
+          ? `<path d="${d}" fill="${C.stone}"/>`
+          : `<path d="${d}" fill="${C.white}" stroke="${hue}" stroke-width="1.25"/>`,
+      )
+    }
     parts.push('</g>')
   }
 
