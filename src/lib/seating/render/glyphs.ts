@@ -11,26 +11,33 @@
 import type { GlyphTier } from './lod'
 
 /**
- * The chair, matched to the benchmark's anatomy and viewed from behind and
- * above: a wide rounded BACK across the top ~45%, a clear GAP (~8% of the
- * glyph, visible at 24px), a slightly NARROWER PAN across the lower ~40%,
- * and two short ARMREST strokes flanking the pan. One silhouette, three
- * degradation tiers.
+ * The chair, matched to the benchmark's anatomy: a TALL rounded BACK, two
+ * TALL ARMREST VERTICALS flanking the seat pan at full stroke weight (the
+ * founder's Correction 1: armrests must read unmistakably as armrests at
+ * 24px, visibly separate from both the back and the pan), and the PAN
+ * between them. Every part keeps a >= 1.8-unit clear gap from its
+ * neighbours so the separation survives the stroke. Three degradation
+ * tiers: full (back, pan, arms), mid (back, pan), mark (one form).
  */
 
-/** Back: x 3..21 (w 18), y 1..11.8 (h 10.8), r 3.2 (~30% of its height). */
+/** Back: x 6..18 (w 12), y 1.7..12.9 (h 11.2), r 3. */
 export const CHAIR_BACK_PATH =
-  'M6.2 1h11.6a3.2 3.2 0 0 1 3.2 3.2v4.4a3.2 3.2 0 0 1-3.2 3.2H6.2A3.2 3.2 0 0 1 3 8.6V4.2A3.2 3.2 0 0 1 6.2 1Z'
+  'M9 1.7h6a3 3 0 0 1 3 3v5.2a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3V4.7a3 3 0 0 1 3-3Z'
 
-/** Pan: x 5..19 (w 14, narrower than the back), y 13.7..23.3, r 2.8. */
+/** Pan: x 6..18, y 14.7..22.3 (h 7.6), r 2.4: between the armrests. */
 export const CHAIR_PAN_PATH =
-  'M7.8 13.7h8.4a2.8 2.8 0 0 1 2.8 2.8v4a2.8 2.8 0 0 1-2.8 2.8H7.8A2.8 2.8 0 0 1 5 20.5v-4a2.8 2.8 0 0 1 2.8-2.8Z'
+  'M8.4 14.7h7.2a2.4 2.4 0 0 1 2.4 2.4v2.8a2.4 2.4 0 0 1-2.4 2.4H8.4A2.4 2.4 0 0 1 6 19.9v-2.8a2.4 2.4 0 0 1 2.4-2.4Z'
 
-/** Armrests: short vertical bars flanking the pan (~30% of pan height). */
+/**
+ * Armrests: TALL verticals (w 3.2, h 12.6, more than half the glyph's
+ * height) flanking the pan, rounded both ends, with a 2-unit clear
+ * channel to the back and the pan so they read as their own strokes at
+ * 24px under the 1.25px screen-fixed outline.
+ */
 export const CHAIR_ARM_LEFT_PATH =
-  'M3.5 13.7a0.8 0.8 0 0 1 0.8 0.8v2a0.8 0.8 0 0 1-1.6 0v-2a0.8 0.8 0 0 1 0.8-0.8Z'
+  'M0.8 10.3a1.6 1.6 0 0 1 3.2 0v9.4a1.6 1.6 0 0 1-3.2 0Z'
 export const CHAIR_ARM_RIGHT_PATH =
-  'M20.5 13.7a0.8 0.8 0 0 1 0.8 0.8v2a0.8 0.8 0 0 1-1.6 0v-2a0.8 0.8 0 0 1 0.8-0.8Z'
+  'M20 10.3a1.6 1.6 0 0 1 3.2 0v9.4a1.6 1.6 0 0 1-3.2 0Z'
 
 /** Mark below 10px: one rounded seat-from-above form, wider than tall. */
 export const CHAIR_MARK_PATH =

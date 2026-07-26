@@ -108,11 +108,24 @@ describe('chair glyph', () => {
     }
   })
 
-  it('keeps the gap between back and pan visible at 24px', () => {
-    // Back ends at y 11.8, pan starts at y 13.7: a 1.9px gap in the
-    // 24-box, which is ~8 percent of the glyph height.
-    expect(13.7 - 11.8).toBeCloseTo(1.9, 5)
-    expect((13.7 - 11.8) / 24).toBeGreaterThan(0.075)
+  it('keeps every part separation visible at 24px (correction 1)', () => {
+    // Back ends at y 12.9, pan starts at y 14.7: a 1.8-unit gap in the
+    // 24-box, which stays visible under the 1.25px screen-fixed stroke.
+    expect(14.7 - 12.9).toBeCloseTo(1.8, 5)
+    // Armrest inner edge x 4, back and pan left edge x 6: a 2-unit clear
+    // channel each side, so the armrests read as their own strokes.
+    expect(6 - 4).toBeCloseTo(2, 5)
+  })
+
+  it('armrests are tall verticals, not nubs (correction 1)', () => {
+    // Arm spans y 8.7..21.3 (h 12.6): taller than half the 24-box, taller
+    // than the pan, at the same full stroke weight as every other part.
+    const armTop = 10.3 - 1.6
+    const armBottom = 10.3 + 9.4 + 1.6
+    expect(armBottom - armTop).toBeCloseTo(12.6, 5)
+    expect(armBottom - armTop).toBeGreaterThan(24 / 2)
+    // Width 3.2: wide enough to carry fill plus stroke at 24px.
+    expect(3.2).toBeGreaterThanOrEqual(3)
   })
 
   it('describes every required venue object glyph', () => {
