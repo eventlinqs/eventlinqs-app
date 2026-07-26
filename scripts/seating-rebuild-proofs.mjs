@@ -23,7 +23,7 @@ const BASE = process.argv[2]
 if (!BASE) throw new Error('usage: node scripts/seating-rebuild-proofs.mjs <baseUrl> [steps]')
 const STEPS = new Set((process.argv[3] ?? 'buyer,extras,keyboard,builder,perf').split(','))
 const PERF_LABEL = process.env.PERF_LABEL ?? 'after'
-const OUT = 'docs/design/seating-rebuild-2026-07-26'
+const OUT = process.env.OUT ?? 'docs/design/seating-rebuild-2026-07-26'
 fs.mkdirSync(OUT, { recursive: true })
 
 const PROD_REF = 'gndnldyfudbytbboxesk'
@@ -548,6 +548,86 @@ if (STEPS.has('perf')) {
   }
   fs.writeFileSync(`${OUT}/perf-${PERF_LABEL}.json`, JSON.stringify(results, null, 2))
   proofs.steps[`perf-${PERF_LABEL}`] = results
+}
+
+// ── Assertions: label collisions and clipping, 3 LODs x 1440 and 390 ──────
+if (STEPS.has('assert')) {
+  const results = []
+  for (const [vp, ctxOpts] of [['1440', DESKTOP], ['390', MOBILE]]) {
+    const ctx = await browser.newContext(ctxOpts)
+    const page = await ctx.newPage()
+    await openSeats(page, SLUG_2000)
+    for (const [state, dir] of [['overview', 'out'], ['mid', 'in'], ['seat', 'in']]) {
+      await driveToLod(page, state, dir)
+      await page.waitForTimeout(500)
+      const data = await page.locator(CONTAINER).first().evaluate(el => {
+        const d = el.__seatLabels
+        if (!d) return null
+        const rect = { w: el.clientWidth, h: el.clientHeight }
+        const inside = (b, m) => b.x >= m && b.y >= m && b.x + b.w <= rect.w - m && b.y + b.h <= rect.h - m
+        return {
+          counts: d.counts,
+          labels: d.labels.length,
+          labelsClipped: d.labels.filter(b => !inside(b, 2)).length,
+          objectsClipped: d.objectBoxes.filter(b => !inside(b, 0)).length,
+        }
+      })
+      results.push({ room: SLUG_2000, viewport: vp, lod: state, ...data })
+    }
+    // Clipping at FIT: the whole room inside the canvas with margin.
+    await openSeats(page, SLUG_500)
+    await page.getByRole('button', { name: 'Zoom to fit' }).first().click()
+    await page.waitForTimeout(600)
+    const fit = await page.locator(CONTAINER).first().evaluate(el => {
+      const d = el.__seatLabels
+      const rect = { w: el.clientWidth, h: el.clientHeight }
+      const inside = (b, m) => b.x >= m && b.y >= m && b.x + b.w <= rect.w - m && b.y + b.h <= rect.h - m
+      return {
+        counts: d.counts,
+        seats: d.seatBoxes.length,
+        seatsClipped: d.seatBoxes.filter(b => !inside(b, 2)).length,
+        labelsClipped: d.labels.filter(b => !inside(b, 2)).length,
+        objectsClipped: d.objectBoxes.filter(b => !inside(b, 0)).length,
+      }
+    })
+    results.push({ room: SLUG_500, viewport: vp, lod: 'fit', ...fit })
+    await ctx.close()
+  }
+  fs.writeFileSync(`${OUT}/assertions.json`, JSON.stringify(results, null, 2))
+  // Collisions are gated at every configuration; the CLIPPING law is
+  // stated at fit scale (a zoomed viewport legitimately crops the room).
+  const bad = results.filter(r =>
+    (r.counts && (r.counts.labelSeat || r.counts.labelLabel || r.counts.labelObject)) ||
+    r.labelsClipped ||
+    (r.lod === 'fit' && (r.objectsClipped || r.seatsClipped)))
+  console.log(`[proof] assertions: ${results.length} configurations, ${bad.length} failures`)
+  proofs.steps.assertions = { configurations: results.length, failures: bad.length }
+}
+
+// ── The chair beside the benchmark at 24, 14 and 8px ───────────────────────
+if (STEPS.has('chair')) {
+  const bench = 'file:///' + process.cwd().replaceAll(String.fromCharCode(92), '/') + '/docs/design/seating-final-2026-07-26/r47/trybooking-buyer-01.png'
+  const BACK = 'M6.2 1h11.6a3.2 3.2 0 0 1 3.2 3.2v4.4a3.2 3.2 0 0 1-3.2 3.2H6.2A3.2 3.2 0 0 1 3 8.6V4.2A3.2 3.2 0 0 1 6.2 1Z'
+  const PAN = 'M7.8 13.7h8.4a2.8 2.8 0 0 1 2.8 2.8v4a2.8 2.8 0 0 1-2.8 2.8H7.8A2.8 2.8 0 0 1 5 20.5v-4a2.8 2.8 0 0 1 2.8-2.8Z'
+  const AL = 'M3.5 13.7a0.8 0.8 0 0 1 0.8 0.8v2a0.8 0.8 0 0 1-1.6 0v-2a0.8 0.8 0 0 1 0.8-0.8Z'
+  const AR = 'M20.5 13.7a0.8 0.8 0 0 1 0.8 0.8v2a0.8 0.8 0 0 1-1.6 0v-2a0.8 0.8 0 0 1 0.8-0.8Z'
+  const MARK = 'M6 4h12a4 4 0 0 1 4 4v9a3.5 3.5 0 0 1-3.5 3.5h-13A3.5 3.5 0 0 1 2 17V8a4 4 0 0 1 4-4Z'
+  const chair = (px, mark) => `<svg width="${px}" height="${px}" viewBox="0 0 24 24">${
+    mark ? `<path d="${MARK}" fill="#FFFFFF" stroke="#1F5673" stroke-width="1.6"/>`
+    : `<path d="${BACK}" fill="#FFFFFF" stroke="#1F5673" stroke-width="1.25"/><path d="${PAN}" fill="#FFFFFF" stroke="#1F5673" stroke-width="1.25"/><path d="${AL}" fill="#FFFFFF" stroke="#1F5673" stroke-width="1.25"/><path d="${AR}" fill="#FFFFFF" stroke="#1F5673" stroke-width="1.25"/>`}</svg>`
+  const cell = (inner, cap) => `<div style="text-align:center"><div style="height:64px;display:flex;align-items:center;justify-content:center">${inner}</div><div style="font:600 11px Manrope,sans-serif;color:#24344D">${cap}</div></div>`
+  const crop = scalePct => `<div style="width:26px;height:26px;overflow:hidden;position:relative"><img src="${bench}" style="position:absolute;left:-427px;top:-441px;transform:scale(${scalePct});transform-origin:427px 441px"/></div>`
+  const ctx = await browser.newContext({ viewport: { width: 780, height: 240 } })
+  const page = await ctx.newPage()
+  await page.setContent(`<body style="margin:0;background:#EDF0F4;display:flex;gap:26px;align-items:center;justify-content:center;height:240px">
+    ${cell(chair(24), 'Ours 24px')}${cell(chair(48), 'Ours 48px')}${cell(chair(14), 'Ours 14px (mid)')}${cell(chair(8, true), 'Ours 8px (mark)')}
+    <div style="width:1px;height:120px;background:#0A162833"></div>
+    ${cell(crop(1.05), 'Benchmark ~24px')}${cell('<div style="transform:scale(2);transform-origin:center">' + crop(1.05) + '</div>', 'Benchmark scaled')}
+  </body>`)
+  await page.waitForTimeout(700)
+  await page.screenshot({ path: `${OUT}/chair-vs-benchmark.png` })
+  console.log('[proof] shot chair-vs-benchmark')
+  await ctx.close()
 }
 
 await browser.close()

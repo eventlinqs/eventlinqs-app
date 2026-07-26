@@ -1,0 +1,53 @@
+{
+  "seats-502": {
+    "pan": {
+      "frames": 170,
+      "meanMs": 16.67,
+      "p95Ms": 16.7
+    },
+    "zoom": {
+      "frames": 311,
+      "meanMs": 16.67,
+      "p95Ms": 16.8
+    },
+    "paint": {
+      "paints": 87,
+      "meanMs": 2.76,
+      "p95Ms": 3.4
+    }
+  },
+  "seats-2016": {
+    "pan": {
+      "frames": 141,
+      "meanMs": 16.67,
+      "p95Ms": 16.7
+    },
+    "zoom": {
+      "frames": 321,
+      "meanMs": 16.67,
+      "p95Ms": 16.7
+    },
+    "paint": {
+      "paints": 83,
+      "meanMs": 1.79,
+      "p95Ms": 4.9
+    }
+  },
+  "seats-5000": {
+    "pan": {
+      "frames": 131,
+      "meanMs": 16.67,
+      "p95Ms": 16.8
+    },
+    "zoom": {
+      "frames": 313,
+      "meanMs": 16.77,
+      "p95Ms": 16.8
+    },
+    "paint": {
+      "paints": 85,
+      "meanMs": 0.9,
+      "p95Ms": 1.2
+    }
+  }
+}
