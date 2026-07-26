@@ -6,8 +6,9 @@
  */
 
 import { SEAT_STATE_COLORS } from '../palette'
-import { chairPaths, objectPaths, OBJECT_GLYPHS, GLYPH_BOX, type VenueObjectKind } from './glyphs'
+import { chairPaths, objectPaths, GLYPH_BOX, type VenueObjectKind } from './glyphs'
 import { glyphTier, lodFlags, NUMERAL_CHAIR_PX, type GlyphTier } from './lod'
+import { objectObstacles, placeLabels, seatObstacles, type LabelBox, type PlacedLabel } from './labels'
 import { cullSeats, type Scene, type SceneBounds } from './scene'
 
 export interface Camera {
@@ -56,15 +57,26 @@ export function viewBounds(camera: Camera, width: number, height: number): Scene
   return { minX: a.x, minY: a.y, maxX: b.x, maxY: b.y }
 }
 
-/** Fit the camera to the scene with a margin, returning the fit scale. */
-export function fitCamera(scene: Scene, width: number, height: number, margin = 36): Camera {
+/**
+ * Fit the camera to the scene with a margin. `bottomReserve` is dead
+ * chrome (the key plan and zoom band): the room fits and centres in the
+ * space ABOVE it, so nothing ever renders underneath.
+ */
+export function fitCamera(
+  scene: Scene,
+  width: number,
+  height: number,
+  margin = 36,
+  bottomReserve = 0,
+): Camera {
   const w = scene.bounds.maxX - scene.bounds.minX
   const h = scene.bounds.maxY - scene.bounds.minY
-  const scale = Math.min((width - margin * 2) / Math.max(1, w), (height - margin * 2) / Math.max(1, h))
+  const availH = height - bottomReserve
+  const scale = Math.min((width - margin * 2) / Math.max(1, w), (availH - margin * 2) / Math.max(1, h))
   return {
     scale,
     tx: (width - w * scale) / 2 - scene.bounds.minX * scale,
-    ty: (height - h * scale) / 2 - scene.bounds.minY * scale,
+    ty: (availH - h * scale) / 2 - scene.bounds.minY * scale,
   }
 }
 
@@ -104,6 +116,81 @@ function chairWorldPaths(chairW: number) {
     chairWorldCache.set(key, paths)
   }
   return paths
+}
+
+/** Flat blend of `top` over `under` at alpha t: tints with no halo. */
+function hexBlend(top: string, under: string, t: number): string {
+  const c = (h: string) => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16))
+  const [tr, tg, tb] = c(top)
+  const [ur, ug, ub] = c(under)
+  const mix = (a: number, b: number) => Math.round(a * t + b * (1 - t))
+  return `#${[mix(tr, ur), mix(tg, ug), mix(tb, ub)].map(v => v.toString(16).padStart(2, '0')).join('')}`
+}
+
+const FLOOR = hexBlend('#FFFFFF', SEAT_STATE_COLORS.veil, 0.55)
+
+/**
+ * The building shell: a room has walls. A double-line wall (the drafting
+ * convention) wraps everything: the stage, every section, every object,
+ * with the floor tone inside so the plan sits in a building, not a void.
+ */
+function drawShell(ctx: CanvasRenderingContext2D, scene: Scene, camera: Camera) {
+  const pad = scene.pitch * 1.6
+  const b = scene.bounds
+  const x = b.minX - pad
+  const y = b.minY - pad
+  const w = b.maxX - b.minX + pad * 2
+  const h = b.maxY - b.minY + pad * 2
+  ctx.save()
+  ctx.beginPath()
+  ctx.roundRect(x, y, w, h, 6)
+  ctx.fillStyle = FLOOR
+  ctx.fill()
+  ctx.strokeStyle = 'rgba(10, 22, 40, 0.55)'
+  ctx.lineWidth = 1.5 / camera.scale
+  ctx.stroke()
+  ctx.beginPath()
+  ctx.roundRect(x + 5, y + 5, w - 10, h - 10, 4)
+  ctx.strokeStyle = 'rgba(10, 22, 40, 0.22)'
+  ctx.lineWidth = 0.75 / camera.scale
+  ctx.stroke()
+  ctx.restore()
+}
+
+/**
+ * Tier breaks: where stacked bands of sections step back (stalls, circle,
+ * balcony), a thin section-break rule runs across the shell so the levels
+ * read as receding tiers, the printed-plan convention.
+ */
+function drawTierBreaks(ctx: CanvasRenderingContext2D, scene: Scene, camera: Camera) {
+  if (scene.polygons.length < 2) return
+  const bands: { minY: number; maxY: number }[] = []
+  const sorted = [...scene.polygons]
+    .map(p => ({ minY: Math.min(...p.hull.map(h => h.y)), maxY: Math.max(...p.hull.map(h => h.y)) }))
+    .sort((a, b) => a.minY - b.minY)
+  for (const p of sorted) {
+    const band = bands.find(b => p.minY <= b.maxY + scene.pitch)
+    if (band) band.maxY = Math.max(band.maxY, p.maxY)
+    else bands.push({ ...p })
+  }
+  if (bands.length < 2) return
+  const pad = scene.pitch * 1.6
+  const x0 = scene.bounds.minX - pad + 10
+  const x1 = scene.bounds.maxX + pad - 10
+  ctx.save()
+  ctx.strokeStyle = 'rgba(10, 22, 40, 0.16)'
+  ctx.lineWidth = 0.9 / camera.scale
+  for (let i = 1; i < bands.length; i++) {
+    const gapTop = bands[i - 1].maxY
+    const gapBottom = bands[i].minY
+    if (gapBottom - gapTop < scene.pitch * 1.2) continue
+    const y = (gapTop + gapBottom) / 2
+    ctx.beginPath()
+    ctx.moveTo(x0, y)
+    ctx.lineTo(x1, y)
+    ctx.stroke()
+  }
+  ctx.restore()
 }
 
 function drawStage(ctx: CanvasRenderingContext2D, scene: Scene, camera: Camera) {
@@ -261,25 +348,24 @@ function drawScreenPass(ctx: CanvasRenderingContext2D, scene: Scene, camera: Cam
       ctx.setTransform(opts.dpr * camera.scale, 0, 0, opts.dpr * camera.scale, opts.dpr * camera.tx, opts.dpr * camera.ty)
       const pad = poly.pad
       if (flags.polygonFill) {
-        // Rounded padding: stroke the hull thick and round-joined in the
-        // fill tone, then fill; the outline rides the padded edge.
+        // A drafted plan, not a card stack: the padded wedge paints in ONE
+        // flat tint (hue pre-blended over the floor) so no alpha halo can
+        // read as a drop shadow; depth is carried by line weight alone.
+        const tint = hexBlend(poly.color, FLOOR, 0.24)
         ctx.lineJoin = 'round'
         ctx.lineWidth = pad * 2
-        ctx.strokeStyle = `${poly.color}42`
+        ctx.strokeStyle = tint
         ctx.stroke(path)
-        ctx.fillStyle = `${poly.color}42`
+        ctx.fillStyle = tint
         ctx.fill(path)
-        ctx.lineWidth = 1.5 / camera.scale
+        ctx.lineWidth = 1 / camera.scale
         ctx.strokeStyle = poly.color
         ctx.stroke(path)
       } else {
+        // Mid zoom: the boundary as a solid hairline, drafting weight.
         ctx.lineJoin = 'round'
-        ctx.lineWidth = pad * 2
-        ctx.strokeStyle = 'rgba(10, 22, 40, 0)'
-        ctx.stroke(path)
-        ctx.setLineDash([5 / camera.scale, 4 / camera.scale])
-        ctx.lineWidth = 1.25 / camera.scale
-        ctx.strokeStyle = `${poly.color}88`
+        ctx.lineWidth = 1 / camera.scale
+        ctx.strokeStyle = hexBlend(poly.color, FLOOR, 0.55)
         ctx.stroke(path)
       }
       if (opts.highlightSectionId === poly.sectionId) {
@@ -290,26 +376,7 @@ function drawScreenPass(ctx: CanvasRenderingContext2D, scene: Scene, camera: Cam
         ctx.stroke(path)
       }
       ctx.restore()
-
-      // The in-place label, screen-fixed type.
-      const at = worldToScreen(camera, poly.centroid.x, poly.centroid.y)
-      if (at.x < -80 || at.x > opts.width + 80 || at.y < -40 || at.y > opts.height + 40) continue
-      ctx.save()
-      ctx.textAlign = 'center'
-      ctx.font = `700 ${flags.polygonFill ? 13 : 11}px ${DISPLAY_FONT}`
-      ctx.fillStyle = C.night
-      const name = poly.name.toUpperCase()
-      ctx.fillText(name, at.x, at.y - (flags.polygonFill ? 3 : 0))
-      if (flags.polygonFill && poly.minPriceCents != null) {
-        ctx.font = `600 12px ${DATA_FONT}`
-        ctx.fillStyle = C.dusk
-        const price =
-          poly.maxPriceCents != null && poly.maxPriceCents !== poly.minPriceCents
-            ? `${opts.formatPrice(poly.minPriceCents)} to ${opts.formatPrice(poly.maxPriceCents)}`
-            : opts.formatPrice(poly.minPriceCents ?? 0)
-        ctx.fillText(price, at.x, at.y + 14)
-      }
-      ctx.restore()
+      // Names and prices are placed by the label engine, never here.
     }
   } else if (opts.highlightSectionId) {
     for (const poly of scene.polygons) {
@@ -355,37 +422,7 @@ function drawScreenPass(ctx: CanvasRenderingContext2D, scene: Scene, camera: Cam
     ctx.restore()
   }
 
-  // Row letters on BOTH flanks. Dusk ink: 4.5:1 on the Veil paper.
-  if (flags.rowLetters) {
-    ctx.save()
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.font = `600 11px ${DATA_FONT}`
-    ctx.fillStyle = C.dusk
-    for (const row of scene.rowLabels) {
-      for (const side of [row.left, row.right]) {
-        if (side.x < view.minX - 30 || side.x > view.maxX + 30 || side.y < view.minY - 30 || side.y > view.maxY + 30) continue
-        const at = worldToScreen(camera, side.x, side.y)
-        ctx.fillText(row.label, at.x, at.y)
-      }
-    }
-    ctx.restore()
-  }
-
-  // The seat-number ruler along each section's front edge.
-  if (flags.numerals) {
-    ctx.save()
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.font = `600 10px ${DATA_FONT}`
-    ctx.fillStyle = C.dusk
-    for (const mark of scene.rulers) {
-      if (mark.x < view.minX || mark.x > view.maxX || mark.y < view.minY - 30 || mark.y > view.maxY) continue
-      const at = worldToScreen(camera, mark.x, mark.y)
-      ctx.fillText(mark.text, at.x, at.y)
-    }
-    ctx.restore()
-  }
+  // Row letters and rulers are placed by the label engine, never here.
 
   // Numerals live OUTSIDE the chair: below it, dusk ink, and only once
   // the chair renders at 20px or more. The chair itself stays clean; the
@@ -468,29 +505,35 @@ function drawObjects(ctx: CanvasRenderingContext2D, scene: Scene, camera: Camera
     if (obj.rotation) ctx.rotate((obj.rotation * Math.PI) / 180)
 
     if (obj.kind === 'text') {
-      ctx.setTransform(opts.dpr, 0, 0, opts.dpr, 0, 0)
-      const at = worldToScreen(camera, obj.x + w / 2, obj.y + h / 2)
-      ctx.translate(at.x, at.y)
-      if (obj.rotation) ctx.rotate((obj.rotation * Math.PI) / 180)
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      const px = Math.max(9, (obj.size ?? 14) * camera.scale)
-      ctx.font = `700 ${px}px ${DISPLAY_FONT}`
-      ctx.fillStyle = C.night
-      ctx.fillText((obj.text ?? '').toUpperCase(), 0, 0)
+      // Captions place through the label engine, never here.
       ctx.restore()
       continue
     }
 
     const kind = (obj.object ?? 'bar') as VenueObjectKind
     if (obj.kind === 'object') {
-      // The chip: paper fill, ink outline.
+      // Room furniture in the drafting language: a hairline ink outline
+      // with the same 45 degree hatch as the stage, never a floating chip.
       ctx.beginPath()
-      ctx.roundRect(-w / 2, -h / 2, w, h, 8)
+      ctx.roundRect(-w / 2, -h / 2, w, h, 1.5)
       ctx.fillStyle = C.veil
       ctx.fill()
-      ctx.strokeStyle = 'rgba(10, 22, 40, 0.45)'
-      ctx.lineWidth = 1.25 / camera.scale
+      ctx.save()
+      ctx.clip()
+      ctx.strokeStyle = 'rgba(10, 22, 40, 0.07)'
+      ctx.lineWidth = 1 / camera.scale
+      ctx.beginPath()
+      const span = w + h
+      for (let d = -span; d <= span; d += 7) {
+        ctx.moveTo(-w / 2 + d, -h / 2)
+        ctx.lineTo(-w / 2 + d + span, -h / 2 + span)
+      }
+      ctx.stroke()
+      ctx.restore()
+      ctx.beginPath()
+      ctx.roundRect(-w / 2, -h / 2, w, h, 1.5)
+      ctx.strokeStyle = 'rgba(10, 22, 40, 0.6)'
+      ctx.lineWidth = 1 / camera.scale
       ctx.stroke()
     }
     // The glyph, centred, at 55% of the chip's smaller side.
@@ -505,33 +548,36 @@ function drawObjects(ctx: CanvasRenderingContext2D, scene: Scene, camera: Camera
     for (const p of objectPaths(kind)) ctx.stroke(p)
     ctx.restore()
 
-    // The label under the glyph, screen-fixed: identity transform, since
-    // the surrounding pass still carries the world matrix.
-    if (obj.kind === 'object') {
-      const at = worldToScreen(camera, obj.x + w / 2, obj.y + h * 0.82)
-      ctx.save()
-      ctx.setTransform(opts.dpr, 0, 0, opts.dpr, 0, 0)
-      ctx.textAlign = 'center'
-      ctx.font = `600 10px ${DATA_FONT}`
-      ctx.fillStyle = C.dusk
-      ctx.fillText(obj.label ?? OBJECT_GLYPHS[kind].label, at.x, at.y)
-      ctx.restore()
-    }
+    // Object labels place through the label engine, never here.
   }
 }
 
-/** The full frame: clears, paints world geometry, then the screen pass. */
+export interface PaintResult {
+  labels: PlacedLabel[]
+  seatBoxes: LabelBox[]
+  objectBoxes: LabelBox[]
+}
+
+/** The full frame: clears, paints world geometry, then the screen pass,
+ *  then every label the placement engine cleared. Returns the placed
+ *  labels and obstacle boxes so the proof harness asserts the SAME data
+ *  the frame drew. */
 export function paintScene(
   ctx: CanvasRenderingContext2D,
   scene: Scene,
   camera: Camera,
   opts: PaintOptions,
-) {
+): PaintResult {
   const { dpr, width, height } = opts
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   ctx.clearRect(0, 0, width, height)
   ctx.fillStyle = C.veil
   ctx.fillRect(0, 0, width, height)
+  // Everything paints inside the sheet frame: nothing bleeds to the edge.
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(3, 3, width - 6, height - 6)
+  ctx.clip()
 
   if (opts.trace) {
     ctx.save()
@@ -563,8 +609,10 @@ export function paintScene(
     ctx.restore()
   }
 
-  // World pass.
+  // World pass: the building shell first, then everything inside it.
   ctx.setTransform(dpr * camera.scale, 0, 0, dpr * camera.scale, dpr * camera.tx, dpr * camera.ty)
+  drawShell(ctx, scene, camera)
+  drawTierBreaks(ctx, scene, camera)
   drawStage(ctx, scene, camera)
   drawAreas(ctx, scene, camera)
   drawSeats(ctx, scene, camera, opts)
@@ -577,6 +625,54 @@ export function paintScene(
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   drawScreenPass(ctx, scene, camera, opts)
   opts.paintScreen?.(ctx, camera)
+
+  // The label engine: one pure pass places every piece of text; the frame
+  // draws exactly its output.
+  const flags = lodFlags(camera.scale)
+  const chairPx = scene.chairW * camera.scale
+  const labels = placeLabels({
+    scene,
+    camera,
+    width: opts.width,
+    height: opts.height,
+    flags,
+    chairPx,
+    formatPrice: opts.formatPrice,
+    measure: (text, px, weight) => {
+      ctx.font = `${weight} ${px}px ${DATA_FONT}`
+      return ctx.measureText(text).width
+    },
+  })
+  ctx.save()
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  for (const label of labels) {
+    if (label.leader) {
+      ctx.strokeStyle = 'rgba(10, 22, 40, 0.35)'
+      ctx.lineWidth = 0.75
+      ctx.beginPath()
+      ctx.moveTo(label.leader.x1, label.leader.y1)
+      ctx.lineTo(label.leader.x2, label.leader.y2)
+      ctx.stroke()
+    }
+    const font = label.kind === 'section' || label.kind === 'caption' ? DISPLAY_FONT : DATA_FONT
+    ctx.font = `${label.weight} ${label.fontPx}px ${font}`
+    ctx.fillStyle = label.kind === 'price' || label.kind === 'ruler' || label.kind === 'rowLetter' || label.kind === 'objectLabel' ? C.dusk : C.night
+    ctx.fillText(label.text, label.cx, label.cy)
+    if (label.sublabel) {
+      ctx.font = `600 11px ${DATA_FONT}`
+      ctx.fillStyle = C.dusk
+      ctx.fillText(label.sublabel, label.cx, label.cy + 15)
+    }
+  }
+  ctx.restore()
+  ctx.restore() // the sheet-frame clip
+
+  return {
+    labels,
+    seatBoxes: flags.seats ? seatObstacles(scene, camera, opts.width, opts.height, Math.max(chairPx, 6)) : [],
+    objectBoxes: objectObstacles(scene, camera),
+  }
 }
 
 /** The key plan: polygons, stage and the one gold viewport rectangle. */
@@ -595,6 +691,9 @@ export function paintMiniMap(
   const mini = fitCamera(scene, width, height, 8)
   ctx.setTransform(dpr * mini.scale, 0, 0, dpr * mini.scale, dpr * mini.tx, dpr * mini.ty)
 
+  // A true miniature of the plan: the same shell, the same wedges, the
+  // same stage geometry, not abstract rectangles.
+  drawShell(ctx, scene, mini)
   if (scene.stage) {
     const path = scene.stage.ellipse
       ? (() => {
@@ -611,17 +710,24 @@ export function paintMiniMap(
           return p
         })()
       : hullPath(scene.stage.outline)
-    ctx.fillStyle = 'rgba(10, 22, 40, 0.12)'
+    ctx.fillStyle = 'rgba(10, 22, 40, 0.14)'
     ctx.fill(path)
+    ctx.strokeStyle = 'rgba(10, 22, 40, 0.5)'
+    ctx.lineWidth = 1 / mini.scale
+    ctx.stroke(path)
   }
   for (const poly of scene.polygons) {
     const path = hullPath(poly.hull)
+    const tint = hexBlend(poly.color, FLOOR, 0.3)
     ctx.lineJoin = 'round'
     ctx.lineWidth = poly.pad * 2
-    ctx.strokeStyle = `${poly.color}55`
+    ctx.strokeStyle = tint
     ctx.stroke(path)
-    ctx.fillStyle = `${poly.color}55`
+    ctx.fillStyle = tint
     ctx.fill(path)
+    ctx.lineWidth = 0.75 / mini.scale
+    ctx.strokeStyle = poly.color
+    ctx.stroke(path)
   }
   if (scene.polygons.length === 0) {
     // Sectionless rooms: the seat field as soft dots.
@@ -633,7 +739,7 @@ export function paintMiniMap(
     }
   }
   for (const area of scene.areas) {
-    ctx.fillStyle = `${area.color}33`
+    ctx.fillStyle = hexBlend(area.color, FLOOR, 0.2)
     ctx.fillRect(area.x, area.y, area.width, area.height)
   }
 

@@ -94,18 +94,23 @@ const PLAYHOUSE_BLOCKS = [
     color: '#215E5E', label: 'General admission', x: 150, y: 862, width: 420, height: 64, capacity: 60,
   },
   // The ten venue objects, the text caption and the free icon.
-  { id: 'ph-bar', kind: 'object', section: '', object: 'bar', x: 880, y: 130, width: 64, height: 64, label: 'Long bar' },
-  { id: 'ph-food', kind: 'object', section: '', object: 'food', x: 880, y: 214, width: 64, height: 64, label: 'Food stalls' },
-  { id: 'ph-toilet', kind: 'object', section: '', object: 'toilet', x: 880, y: 298, width: 64, height: 64, label: 'Toilets' },
-  { id: 'ph-rail', kind: 'object', section: '', object: 'rail', x: 880, y: 382, width: 64, height: 64, label: 'Standing rail' },
-  { id: 'ph-balc-obj', kind: 'object', section: '', object: 'balcony', x: 880, y: 466, width: 64, height: 64, label: 'Balcony' },
-  { id: 'ph-box', kind: 'object', section: '', object: 'box', x: 880, y: 550, width: 64, height: 64, label: 'Box' },
-  { id: 'ph-lift', kind: 'object', section: '', object: 'lift', x: 880, y: 634, width: 64, height: 64, label: 'Lift' },
-  { id: 'ph-entrance', kind: 'object', section: '', object: 'entrance', x: -80, y: 620, width: 64, height: 64, label: 'Entrance' },
-  { id: 'ph-exit', kind: 'object', section: '', object: 'exit', x: -80, y: 130, width: 64, height: 64, label: 'Exit' },
-  { id: 'ph-stairs', kind: 'object', section: '', object: 'stairs', x: -80, y: 380, width: 64, height: 64, label: 'Stairs' },
-  { id: 'ph-caption', kind: 'text', section: '', text: 'Balcony centre', x: 380, y: 614, size: 13 },
-  { id: 'ph-icon', kind: 'icon', section: '', object: 'stairs', x: 700, y: 905, size: 30 },
+  // Room furniture at architectural scale, placed where such a thing
+  // would actually be: the bar and food along the rear foyer wall,
+  // toilets off the foyer, stairs and lift at the flanks, the entrance at
+  // the rear centre, exits at the front corners near the stage.
+  { id: 'ph-bar', kind: 'object', section: '', object: 'bar', x: 140, y: 975, width: 190, height: 40, label: 'Long bar' },
+  { id: 'ph-food', kind: 'object', section: '', object: 'food', x: 360, y: 975, width: 150, height: 40, label: 'Food stalls' },
+  { id: 'ph-toilet', kind: 'object', section: '', object: 'toilet', x: 540, y: 975, width: 110, height: 40, label: 'Toilets' },
+  { id: 'ph-entrance', kind: 'object', section: '', object: 'entrance', x: 300, y: 1040, width: 120, height: 34, label: 'Entrance' },
+  { id: 'ph-exit-west', kind: 'object', section: '', object: 'exit', x: -95, y: 40, width: 78, height: 32, label: 'Exit' },
+  { id: 'ph-exit-east', kind: 'object', section: '', object: 'exit', x: 830, y: 40, width: 78, height: 32, label: 'Exit' },
+  { id: 'ph-stairs', kind: 'object', section: '', object: 'stairs', x: -95, y: 560, width: 62, height: 62, label: 'Stairs' },
+  { id: 'ph-lift', kind: 'object', section: '', object: 'lift', x: 850, y: 560, width: 62, height: 62, label: 'Lift' },
+  { id: 'ph-rail', kind: 'object', section: '', object: 'rail', x: 690, y: 975, width: 130, height: 40, label: 'Standing rail' },
+  { id: 'ph-balc-obj', kind: 'object', section: '', object: 'balcony', x: 850, y: 700, width: 66, height: 56, label: 'Balcony' },
+  { id: 'ph-box', kind: 'object', section: '', object: 'box', x: -95, y: 700, width: 66, height: 56, label: 'Box' },
+  { id: 'ph-caption', kind: 'text', section: '', text: 'Cloakroom', x: 505, y: 1052, size: 12 },
+  { id: 'ph-icon', kind: 'icon', section: '', object: 'stairs', x: 452, y: 1042, size: 26 },
 ]
 
 // ── Room 2: the Grand Hall, exactly 2000 seats, five sections ───────────────
