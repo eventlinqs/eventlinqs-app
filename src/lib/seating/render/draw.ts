@@ -325,7 +325,7 @@ function drawScreenPass(ctx: CanvasRenderingContext2D, scene: Scene, camera: Cam
     ctx.font = `700 12px ${DISPLAY_FONT}`
     ctx.fillStyle = C.night
     ctx.fillText(area.label, at.x, at.y + (area.style === 'scenery' ? 4 : -2))
-    if (area.style !== 'scenery') {
+    if (area.style !== 'scenery' && area.label.trim().toLowerCase() !== 'general admission') {
       ctx.font = `500 10px ${DATA_FONT}`
       ctx.fillStyle = C.dusk
       ctx.fillText('General admission', at.x, at.y + 12)

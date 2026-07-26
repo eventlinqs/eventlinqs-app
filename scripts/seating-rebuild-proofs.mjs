@@ -367,11 +367,10 @@ if (STEPS.has('builder')) {
 
   const page = await authed.newPage()
   await page.goto(`${BASE}/dashboard/venues/${venueId}/seat-maps`, { waitUntil: 'load', timeout: 90000 })
-  // Open the builder (new chart or the existing proof chart).
-  const openExisting = page.getByRole('button', { name: /edit|open/i }).first()
-  const newChart = page.getByRole('button', { name: /new seating chart|create/i }).first()
-  if (await newChart.count()) await newChart.click()
-  else await openExisting.click()
+  await page.getByRole('button', { name: 'New seating chart' }).waitFor({ timeout: 45000 })
+  const editChart = page.getByRole('button', { name: 'Edit chart' }).first()
+  if (await editChart.count()) await editChart.click()
+  else await page.getByRole('button', { name: 'New seating chart' }).click()
   await page.waitForSelector('canvas', { timeout: 30000 })
   await page.waitForTimeout(800)
 
@@ -403,7 +402,7 @@ if (STEPS.has('builder')) {
       if (await page.getByRole('button', { name: 'Thrust' }).count()) break
     }
     if (await page.getByRole('button', { name: 'Thrust' }).count()) {
-      await page.getByRole('button', { name: 'Thrust' }).click()
+      await page.getByRole('button', { name: 'Thrust' }).last().click()
       await page.waitForTimeout(600)
       await shotEl(page, 'body', 'builder-stage-thrust-1440')
     }
@@ -430,9 +429,10 @@ if (STEPS.has('builder')) {
   const mctx = await browser.newContext({ ...MOBILE, storageState })
   const mpage = await mctx.newPage()
   await mpage.goto(`${BASE}/dashboard/venues/${venueId}/seat-maps`, { waitUntil: 'load', timeout: 90000 })
-  const mNew = mpage.getByRole('button', { name: /new seating chart|create/i }).first()
-  if (await mNew.count()) await mNew.click()
-  else await mpage.getByRole('button', { name: /edit|open/i }).first().click()
+  await mpage.getByRole('button', { name: 'New seating chart' }).waitFor({ timeout: 45000 })
+  const mEdit = mpage.getByRole('button', { name: 'Edit chart' }).first()
+  if (await mEdit.count()) await mEdit.click()
+  else await mpage.getByRole('button', { name: 'New seating chart' }).click()
   await mpage.waitForSelector('canvas', { timeout: 30000 })
   const mTheatre = mpage.getByRole('button', { name: 'Theatre', exact: true })
   if (await mTheatre.count()) {

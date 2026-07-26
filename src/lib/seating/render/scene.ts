@@ -292,17 +292,27 @@ export function buildScene(input: SceneInput): Scene {
   for (const [key, group] of rowGroups) {
     // Tables label through their own geometry, not the flanks.
     if (/table|booth/i.test(group.label)) continue
-    let leftIdx = group.indices[0]
-    let rightIdx = group.indices[0]
+    // The letters sit one pitch beyond the row's two ENDS along its own
+    // principal axis, so rotated galleries flank correctly too.
+    const xs2 = group.indices.map(i => seats[i].x)
+    const ys2 = group.indices.map(i => seats[i].y)
+    const horizontal = Math.max(...xs2) - Math.min(...xs2) >= Math.max(...ys2) - Math.min(...ys2)
+    let firstIdx = group.indices[0]
+    let lastIdx = group.indices[0]
     for (const i of group.indices) {
-      if (seats[i].x < seats[leftIdx].x) leftIdx = i
-      if (seats[i].x > seats[rightIdx].x) rightIdx = i
+      const v = horizontal ? seats[i].x : seats[i].y
+      if (v < (horizontal ? seats[firstIdx].x : seats[firstIdx].y)) firstIdx = i
+      if (v > (horizontal ? seats[lastIdx].x : seats[lastIdx].y)) lastIdx = i
     }
     rowLabels.push({
       key,
       label: group.label,
-      left: { x: seats[leftIdx].x - pitch, y: seats[leftIdx].y },
-      right: { x: seats[rightIdx].x + pitch, y: seats[rightIdx].y },
+      left: horizontal
+        ? { x: seats[firstIdx].x - pitch, y: seats[firstIdx].y }
+        : { x: seats[firstIdx].x, y: seats[firstIdx].y - pitch },
+      right: horizontal
+        ? { x: seats[lastIdx].x + pitch, y: seats[lastIdx].y }
+        : { x: seats[lastIdx].x, y: seats[lastIdx].y + pitch },
     })
   }
 
