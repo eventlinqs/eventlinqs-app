@@ -88,6 +88,22 @@ export interface RowsBlock extends BlockBase {
   skew?: number
   rowSpacing?: number
   seatSpacing?: number
+  /**
+   * Brick-bond stagger: odd rows shift sideways by this many px, the way a
+   * real house offsets rows so heads do not align. Ignored under autoBow.
+   */
+  stagger?: number
+  /**
+   * Row label direction: 'down' labels A at the front (historic default);
+   * 'up' labels A at the back row.
+   */
+  rowOrder?: 'down' | 'up'
+  /**
+   * Seat number direction: 'ltr' numbers from stage left (historic
+   * default); 'rtl' numbers from stage right. Wins over the legacy
+   * `reverseSeats` flag when present.
+   */
+  seatOrder?: 'ltr' | 'rtl'
   /** Seat refs ("A-1") marked accessible / companion / blocked, or removed. */
   accessibleSeats?: string[]
   companionSeats?: string[]
@@ -133,7 +149,71 @@ export interface AreaBlock extends BlockBase {
   style?: 'zone' | 'scenery'
 }
 
-export type SeatBlock = RowsBlock | TableBlock | AreaBlock
+/**
+ * A vertical or horizontal aisle: a void punched through the seat field.
+ * Every seat on the far side of the aisle's line, within its span, shifts
+ * outward by the aisle's width, so blocks split visibly and the cascade's
+ * gap detection sees a real gap. Produces no seats itself.
+ */
+export interface AisleBlock extends BlockBase {
+  kind: 'aisle'
+  orientation: 'vertical' | 'horizontal'
+  /** Span along the aisle's own axis. */
+  length: number
+  /** The gap forced through the field, in px. */
+  width: number
+}
+
+/** The stage as geometry: one per chart, drawn by the renderer. */
+export interface StageBlockDef extends BlockBase {
+  kind: 'stage'
+  shape: 'proscenium' | 'thrust' | 'round' | 'band'
+  width: number
+  depth: number
+}
+
+/** A designed venue object (bar, food, toilets, stairs...), display-only. */
+export interface ObjectBlock extends BlockBase {
+  kind: 'object'
+  object:
+    | 'bar'
+    | 'food'
+    | 'toilet'
+    | 'entrance'
+    | 'exit'
+    | 'stairs'
+    | 'lift'
+    | 'balcony'
+    | 'box'
+    | 'rail'
+  width: number
+  height: number
+  label?: string
+}
+
+/** A free text caption on the plan. */
+export interface TextBlock extends BlockBase {
+  kind: 'text'
+  text: string
+  size?: number
+}
+
+/** A free-floating glyph without the chip. */
+export interface IconBlock extends BlockBase {
+  kind: 'icon'
+  object: ObjectBlock['object']
+  size?: number
+}
+
+export type SeatBlock =
+  | RowsBlock
+  | TableBlock
+  | AreaBlock
+  | AisleBlock
+  | StageBlockDef
+  | ObjectBlock
+  | TextBlock
+  | IconBlock
 
 export interface GeneratedSeat {
   number: string
@@ -176,6 +256,30 @@ export interface GeneratedArea {
   style?: 'zone' | 'scenery'
 }
 
+/** A display-only plan object carried to every renderer via the layout. */
+export interface GeneratedObject {
+  kind: 'object' | 'text' | 'icon'
+  object?: ObjectBlock['object']
+  text?: string
+  x: number
+  y: number
+  width?: number
+  height?: number
+  rotation?: number
+  label?: string
+  size?: number
+}
+
+/** The stage geometry carried to every renderer via the layout. */
+export interface GeneratedStage {
+  shape: StageBlockDef['shape']
+  x: number
+  y: number
+  width: number
+  depth: number
+  rotation?: number
+}
+
 export interface GeneratedLayout {
   version: 2
   /** The editable source of truth: re-open the builder from these. */
@@ -184,6 +288,10 @@ export interface GeneratedLayout {
   sections: GeneratedSection[]
   /** Display-only GA zones. */
   areas: GeneratedArea[]
+  /** The stage as geometry, when the organiser placed one. */
+  stage?: GeneratedStage
+  /** Designed venue objects, text and icons. */
+  objects?: GeneratedObject[]
   totalSeats: number
 }
 
@@ -272,9 +380,14 @@ function generateRowsBlock(block: RowsBlock): GeneratedRow[] {
   const focalX = block.x + (Math.max(1, maxCount) - 1) * seatSpacing * 0.5
   const focalY = block.y - focalRise
 
+  // Directionality: 'up' labels row A at the back; 'rtl' numbers from
+  // stage right. `seatOrder` wins over the legacy reverseSeats flag.
+  const reverse = block.seatOrder ? block.seatOrder === 'rtl' : (block.reverseSeats ?? false)
+
   for (let r = 0; r < block.rows; r++) {
+    const labelIdx = block.rowOrder === 'up' ? block.rows - 1 - r : r
     const label =
-      scheme === 'alpha' ? alphaLabel(startOffset + r) : String(startOffset + r)
+      scheme === 'alpha' ? alphaLabel(startOffset + labelIdx) : String(startOffset + labelIdx)
     const count = Array.isArray(block.seatsPerRow)
       ? (block.seatsPerRow[r] ?? 0)
       : block.seatsPerRow
@@ -285,7 +398,7 @@ function generateRowsBlock(block: RowsBlock): GeneratedRow[] {
 
     const seats: GeneratedSeat[] = []
     for (let i = 0; i < count; i++) {
-      const seatIdx = block.reverseSeats ? count - 1 - i : i
+      const seatIdx = reverse ? count - 1 - i : i
       const seatNo = (block.seatStart ?? 1) + seatIdx
       const ref = `${label}-${seatNo}`
       if (block.removedSeats?.includes(ref)) continue
@@ -304,11 +417,17 @@ function generateRowsBlock(block: RowsBlock): GeneratedRow[] {
         rawY = focalY + radius * Math.cos(theta)
       } else {
         // Manual curve: a symmetric bow, deepest mid-row (t = 0.5), with
-        // per-row depth from the overrides or the front-to-back pair, and
-        // an optional per-row horizontal shear (skew).
+        // per-row depth from the overrides or the front-to-back pair, an
+        // optional per-row horizontal shear (skew), and the brick-bond
+        // stagger on odd rows.
         const t = count === 1 ? 0.5 : i / (count - 1)
         const bow = rowBowDepth(block, r) * Math.sin(Math.PI * t)
-        rawX = block.x + centreShift + i * seatSpacing + r * (block.skew ?? 0)
+        rawX =
+          block.x +
+          centreShift +
+          i * seatSpacing +
+          r * (block.skew ?? 0) +
+          (r % 2) * (block.stagger ?? 0)
         rawY = block.y + r * rowSpacing - bow
       }
       const { x, y } = rotate(rawX, rawY, block.x, block.y, block.rotation ?? 0)
@@ -400,13 +519,72 @@ export function validateLayout(layout: GeneratedLayout): LayoutIssue[] {
   return issues
 }
 
+/**
+ * Punch the aisles through the generated seats: every seat past a vertical
+ * aisle's line (within its span) shifts right by the aisle width; every
+ * seat below a horizontal aisle's line shifts down. The cascade's
+ * self-calibrating gap detection then reads the void as a real aisle.
+ */
+function applyAisles(sections: GeneratedSection[], aisles: AisleBlock[]): void {
+  for (const aisle of aisles) {
+    for (const section of sections) {
+      for (const row of section.rows) {
+        for (const seat of row.seats) {
+          if (aisle.orientation === 'vertical') {
+            if (seat.x > aisle.x && seat.y >= aisle.y && seat.y <= aisle.y + aisle.length) {
+              seat.x = Math.round((seat.x + aisle.width) * 100) / 100
+            }
+          } else {
+            if (seat.y > aisle.y && seat.x >= aisle.x && seat.x <= aisle.x + aisle.length) {
+              seat.y = Math.round((seat.y + aisle.width) * 100) / 100
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 export function generateLayout(blocks: SeatBlock[]): GeneratedLayout {
   const sectionMap = new Map<string, GeneratedSection>()
   const areas: GeneratedArea[] = []
+  const aisles: AisleBlock[] = []
+  const objects: GeneratedObject[] = []
+  let stage: GeneratedStage | undefined
   let sortOrder = 0
   let totalSeats = 0
 
   for (const block of blocks) {
+    if (block.kind === 'aisle') {
+      aisles.push(block)
+      continue
+    }
+    if (block.kind === 'stage') {
+      stage = {
+        shape: block.shape,
+        x: block.x,
+        y: block.y,
+        width: block.width,
+        depth: block.depth,
+        ...(block.rotation ? { rotation: block.rotation } : {}),
+      }
+      continue
+    }
+    if (block.kind === 'object' || block.kind === 'text' || block.kind === 'icon') {
+      objects.push({
+        kind: block.kind,
+        x: block.x,
+        y: block.y,
+        ...(block.kind !== 'text' ? { object: block.object } : {}),
+        ...(block.kind === 'text' ? { text: block.text, size: block.size } : {}),
+        ...(block.kind === 'icon' ? { size: block.size } : {}),
+        ...(block.kind === 'object'
+          ? { width: block.width, height: block.height, label: block.label }
+          : {}),
+        ...(block.rotation ? { rotation: block.rotation } : {}),
+      })
+      continue
+    }
     if (block.kind === 'area') {
       areas.push({
         label: block.label,
@@ -446,11 +624,16 @@ export function generateLayout(blocks: SeatBlock[]): GeneratedLayout {
     }
   }
 
+  const sections = [...sectionMap.values()]
+  applyAisles(sections, aisles)
+
   return {
     version: 2,
     blocks,
-    sections: [...sectionMap.values()],
+    sections,
     areas,
+    ...(stage ? { stage } : {}),
+    ...(objects.length > 0 ? { objects } : {}),
     totalSeats,
   }
 }
