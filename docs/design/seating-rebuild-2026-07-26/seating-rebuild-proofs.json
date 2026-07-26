@@ -1,0 +1,51 @@
+{
+  "base": "http://localhost:3100",
+  "startedAt": "2026-07-26T05:27:21.162Z",
+  "steps": {
+    "setup": {
+      "sectionView": true
+    },
+    "perf-before": {
+      "seats-502": {
+        "pan": {
+          "frames": 138,
+          "meanMs": 16.67,
+          "p95Ms": 16.7
+        },
+        "zoom": {
+          "frames": 301,
+          "meanMs": 16.67,
+          "p95Ms": 16.8
+        },
+        "paint": null
+      },
+      "seats-2016": {
+        "pan": {
+          "frames": 138,
+          "meanMs": 16.67,
+          "p95Ms": 16.7
+        },
+        "zoom": {
+          "frames": 339,
+          "meanMs": 21.68,
+          "p95Ms": 49.9
+        },
+        "paint": null
+      },
+      "seats-5000": {
+        "pan": {
+          "frames": 142,
+          "meanMs": 16.67,
+          "p95Ms": 16.7
+        },
+        "zoom": {
+          "frames": 147,
+          "meanMs": 16.67,
+          "p95Ms": 16.7
+        },
+        "paint": null
+      }
+    }
+  },
+  "finishedAt": "2026-07-26T05:27:49.378Z"
+}

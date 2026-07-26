@@ -36,23 +36,30 @@ buyer surface, not a demo harness.
 
 ## Frame time, before and after
 
-Measured as requestAnimationFrame intervals during scripted pointer pan and
-Ctrl-wheel zoom on the same three live TEST rooms, production builds, same
-machine, plus the new renderer's true per-paint duration
-(`window.__seatFrameTimes`). Files: `perf-before.json` (the retired
-SVG-per-seat renderer at commit 94d957f), `perf-after.json` (the canvas
-scene graph).
+Measured as requestAnimationFrame intervals during identical scripted
+pointer pans and Ctrl-wheel zooms on the same three live TEST rooms,
+production builds, same desktop machine. Files: `perf-before.json` (the
+retired SVG-per-seat renderer, built at commit 12675b9, the last commit that
+still shipped it), `perf-after.json` (the canvas scene graph), plus the new
+renderer's true per-paint duration ring (`window.__seatFrameTimes`).
 
-| Room | Before: pan mean / p95 | After: pan mean / p95 | Before: zoom mean / p95 | After: zoom mean / p95 | After: paint mean / p95 |
+| Room | Before: pan mean / p95 | After: pan mean / p95 | Before: zoom mean / p95 | After: zoom mean / p95 | After: true paint mean / p95 |
 |---|---|---|---|---|---|
-| 502 seats | see perf-before.json | 16.67 / 16.7 ms | see perf-before.json | 16.67 / 16.7 ms | 1.13 / 1.4 ms |
-| 2,016 seats | see perf-before.json | 16.67 / 16.8 ms | see perf-before.json | 16.67 / 16.8 ms | 0.68 / 2.6 ms |
-| 5,000 seats | see perf-before.json | 16.67 / 16.7 ms | see perf-before.json | 16.78 / 16.7 ms | 0.31 / 0.4 ms |
+| 502 seats | 16.67 / 16.7 ms | 16.67 / 16.7 ms | 16.67 / 16.8 ms | 16.67 / 16.7 ms | 1.13 / 1.4 ms |
+| 2,016 seats | 16.67 / 16.7 ms | 16.67 / 16.8 ms | **21.68 / 49.9 ms** | 16.67 / 16.8 ms | 0.68 / 2.6 ms |
+| 5,000 seats | 16.67 / 16.7 ms | 16.67 / 16.7 ms | 16.67 / 16.7 ms | 16.78 / 16.7 ms | 0.31 / 0.4 ms |
 
-The after columns are a locked 60 frames per second at every size: the frame
-interval IS the display's 16.67ms tick, and the true paint cost stays under
-3ms at the 95th percentile, leaving over 13ms of headroom per frame at 5,000
-seats.
+Read honestly: on a desktop, PANNING was already smooth on the old renderer
+(its pan was a composited scroll of a rasterised SVG layer) and stays
+locked. The measured difference is ZOOM, where the old renderer re-laid-out
+one DOM node plus one text node per seat: at 2,016 seats it averaged 21.7ms
+per frame with a 49.9ms p95 (three times the 60fps budget, visible hitching)
+while the rebuild holds the 16.7ms tick with a true paint cost of 0.7ms,
+leaving over 13ms of headroom per frame even at 5,000 seats. The old
+renderer's phone-class behaviour was not measured on this desktop lane and
+is NOT VERIFIED here; the new renderer's headroom is what makes the
+phone-class case tractable, and the docked-strip and LOD captures at 390
+show the rebuild operating at that width.
 
 ## Contrast and keyboard
 
