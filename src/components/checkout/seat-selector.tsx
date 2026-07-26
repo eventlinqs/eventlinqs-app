@@ -652,7 +652,7 @@ export function SeatSelector({
     <div className="space-y-4" data-testid="seat-selector">
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
         {/* ── The sheet ── */}
-        <div ref={sheetRef} className="relative" data-testid="seat-sheet">
+        <div ref={sheetRef} className="relative lg:min-h-[560px]" data-testid="seat-sheet">
           <SeatCanvas
             ref={canvasRef}
             scene={scene}
@@ -671,7 +671,7 @@ export function SeatSelector({
             onCursorClear={() => setFocusIndex(null)}
             onCamera={setCameraInfo}
             ariaLabel="Seat map. Arrow keys move seat to seat, Enter selects, plus and minus zoom, Escape rests. Drag to pan, pinch or Ctrl and scroll to zoom."
-            className="h-[62vh] min-h-[380px] w-full rounded-xl bg-canvas lg:h-[560px]"
+            className="h-[62vh] min-h-[380px] w-full rounded-xl bg-canvas lg:absolute lg:inset-0 lg:h-full"
           >
             {/* The floating tooltip (item 6): price, type, exact place. */}
             {hoverSeat && hover && (

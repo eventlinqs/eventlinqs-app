@@ -113,6 +113,65 @@ function cellKey(cx: number, cy: number): string {
   return `${cx},${cy}`
 }
 
+/**
+ * Single-linkage spatial clustering over a grid: indices whose seats sit
+ * within `threshold` of each other share a cluster. Splits a section's
+ * disjoint blocks (boxes on both flanks) into their own polygons.
+ */
+function clusterIndices(
+  indices: number[],
+  seats: { x: number; y: number }[],
+  threshold: number,
+): number[][] {
+  if (indices.length <= 1) return [indices]
+  const cell = threshold
+  const grid = new Map<string, number[]>()
+  for (const i of indices) {
+    const key = cellKey(Math.floor(seats[i].x / cell), Math.floor(seats[i].y / cell))
+    const bucket = grid.get(key)
+    if (bucket) bucket.push(i)
+    else grid.set(key, [i])
+  }
+  const parent = new Map<number, number>()
+  const find = (i: number): number => {
+    let root = i
+    while (parent.get(root) !== root) root = parent.get(root)!
+    let cur = i
+    while (parent.get(cur) !== cur) {
+      const next = parent.get(cur)!
+      parent.set(cur, root)
+      cur = next
+    }
+    return root
+  }
+  for (const i of indices) parent.set(i, i)
+  const t2 = threshold * threshold
+  for (const i of indices) {
+    const cx = Math.floor(seats[i].x / cell)
+    const cy = Math.floor(seats[i].y / cell)
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const bucket = grid.get(cellKey(cx + dx, cy + dy))
+        if (!bucket) continue
+        for (const j of bucket) {
+          if (j <= i) continue
+          const ddx = seats[i].x - seats[j].x
+          const ddy = seats[i].y - seats[j].y
+          if (ddx * ddx + ddy * ddy <= t2) parent.set(find(i), find(j))
+        }
+      }
+    }
+  }
+  const byRoot = new Map<number, number[]>()
+  for (const i of indices) {
+    const root = find(i)
+    const list = byRoot.get(root)
+    if (list) list.push(i)
+    else byRoot.set(root, [i])
+  }
+  return [...byRoot.values()]
+}
+
 /** Median distance to the nearest neighbour, sampled for large rooms. */
 export function estimatePitch(seats: { x: number; y: number }[]): number {
   if (seats.length < 2) return DEFAULT_PITCH
@@ -197,23 +256,28 @@ export function buildScene(input: SceneInput): Scene {
   for (const [sectionId, indices] of bySection) {
     const section = sectionsById.get(sectionId)
     if (!section) continue
-    const pts = indices.map(i => ({ x: seats[i].x, y: seats[i].y }))
-    const hull = convexHull(pts)
     const prices = indices.map(i => seatPrice[i]).filter((p): p is number => p != null)
     // Dominant tier hue: the most common resolved seat colour in the section.
     const hueCount = new Map<string, number>()
     for (const i of indices) hueCount.set(seatColor[i], (hueCount.get(seatColor[i]) ?? 0) + 1)
     const dominant = [...hueCount.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? section.color
-    polygons.push({
-      sectionId,
-      name: section.name,
-      hull,
-      centroid: polygonCentroid(hull),
-      pad: pitch,
-      minPriceCents: prices.length ? Math.min(...prices) : null,
-      maxPriceCents: prices.length ? Math.max(...prices) : null,
-      color: dominant,
-    })
+    // A split section (boxes flanking the room) hulls PER SPATIAL CLUSTER,
+    // never as one band across the house: single-linkage clustering at
+    // three pitches, cheap at chart sizes.
+    const clusters = clusterIndices(indices, seats, pitch * 3)
+    for (const cluster of clusters) {
+      const hull = convexHull(cluster.map(i => ({ x: seats[i].x, y: seats[i].y })))
+      polygons.push({
+        sectionId,
+        name: section.name,
+        hull,
+        centroid: polygonCentroid(hull),
+        pad: pitch,
+        minPriceCents: prices.length ? Math.min(...prices) : null,
+        maxPriceCents: prices.length ? Math.max(...prices) : null,
+        color: dominant,
+      })
+    }
   }
 
   // Row labels: per section + row, anchored one pitch outside each flank.

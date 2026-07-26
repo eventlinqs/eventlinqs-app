@@ -303,24 +303,31 @@ export const SeatCanvas = forwardRef<SeatCanvasHandle, SeatCanvasProps>(function
     [animateTo, scene, setCamera],
   )
 
-  const zoomToSection = useCallback(
-    (sectionId: string) => {
-      const poly = scene.polygons.find(p => p.sectionId === sectionId)
-      if (!poly) return
+  const zoomToHulls = useCallback(
+    (hulls: { x: number; y: number }[][], pad: number) => {
+      if (hulls.length === 0) return
       const { width, height } = sizeRef.current
-      const xs = poly.hull.map(p => p.x)
-      const ys = poly.hull.map(p => p.y)
-      const pad = poly.pad * 2
-      const w = Math.max(...xs) - Math.min(...xs) + pad * 2
-      const h = Math.max(...ys) - Math.min(...ys) + pad * 2
+      const xs = hulls.flat().map(p => p.x)
+      const ys = hulls.flat().map(p => p.y)
+      const w = Math.max(...xs) - Math.min(...xs) + pad * 4
+      const h = Math.max(...ys) - Math.min(...ys) + pad * 4
       const scale = Math.min(ZOOM_MAX, Math.min((width - 40) / w, (height - 40) / h))
       animateTo({
         scale,
-        tx: (width - w * scale) / 2 - (Math.min(...xs) - pad) * scale,
-        ty: (height - h * scale) / 2 - (Math.min(...ys) - pad) * scale,
+        tx: (width - w * scale) / 2 - (Math.min(...xs) - pad * 2) * scale,
+        ty: (height - h * scale) / 2 - (Math.min(...ys) - pad * 2) * scale,
       })
     },
-    [animateTo, scene],
+    [animateTo],
+  )
+
+  const zoomToSection = useCallback(
+    (sectionId: string) => {
+      const polys = scene.polygons.filter(p => p.sectionId === sectionId)
+      if (polys.length === 0) return
+      zoomToHulls(polys.map(p => p.hull), polys[0].pad)
+    },
+    [scene, zoomToHulls],
   )
 
   const centreOnWorld = useCallback(
@@ -529,11 +536,11 @@ export const SeatCanvas = forwardRef<SeatCanvasHandle, SeatCanvasProps>(function
     const world = screenToWorld(cameraRef.current, local.x, local.y)
     const lod = lodState(cameraRef.current.scale)
     if (lod === 'overview') {
-      // A tap at overview enters the tapped section.
+      // A tap at overview enters the tapped wedge, not the whole section.
       const poly = scene.polygons.find(p => pointInHull(world, p.hull, p.pad))
       if (poly) {
         onSectionTap?.(poly.sectionId)
-        zoomToSection(poly.sectionId)
+        zoomToHulls([poly.hull], poly.pad)
         return
       }
     }

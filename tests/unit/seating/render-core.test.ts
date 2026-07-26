@@ -185,6 +185,20 @@ describe('scene graph', () => {
     expect(scene.polygons[0].color).toBe('#7A1F3D')
   })
 
+  it('hulls a split section per spatial cluster, never one band across the house', () => {
+    // Two box blocks flanking the room, one section: two polygons.
+    const west = gridSeats(2, 3)
+    const east = gridSeats(2, 3).map(s => ({ ...s, id: `e-${s.id}`, x: s.x + 900 }))
+    const scene = buildScene({
+      seats: [...west, ...east],
+      sections: [{ id: 'sec-1', name: 'Boxes', color: '#8C3B2E' }],
+    })
+    expect(scene.polygons.length).toBe(2)
+    expect(scene.polygons.every(p => p.name === 'Boxes')).toBe(true)
+    const spans = scene.polygons.map(p => Math.max(...p.hull.map(h => h.x)) - Math.min(...p.hull.map(h => h.x)))
+    expect(Math.max(...spans)).toBeLessThan(200)
+  })
+
   it('anchors row letters one pitch outside both flanks', () => {
     const scene = buildScene({
       seats: gridSeats(2, 5),

@@ -290,8 +290,8 @@ function drawScreenPass(ctx: CanvasRenderingContext2D, scene: Scene, camera: Cam
       ctx.restore()
     }
   } else if (opts.highlightSectionId) {
-    const poly = scene.polygons.find(p => p.sectionId === opts.highlightSectionId)
-    if (poly) {
+    for (const poly of scene.polygons) {
+      if (poly.sectionId !== opts.highlightSectionId) continue
       ctx.save()
       ctx.setTransform(opts.dpr * camera.scale, 0, 0, opts.dpr * camera.scale, opts.dpr * camera.tx, opts.dpr * camera.ty)
       ctx.lineJoin = 'round'

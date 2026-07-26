@@ -127,11 +127,20 @@ const MOBILE = { ...devices['iPhone 13'] }
 {
   const cover = (await q('events?status=eq.published&select=cover_image_url&cover_image_url=not.is.null&limit=1'))[0]?.cover_image_url
   if (cover) {
-    await upsert(
-      'seat_section_views',
-      { id: uuidFrom('rebuildview:playhouse:stalls'), seat_map_id: MAP_500, section_name: 'Stalls', photo_url: cover },
-      'seat_map_id,section_name',
-    )
+    const existing = await q(`seat_section_views?seat_map_id=eq.${MAP_500}&section_name=eq.Stalls&select=id`)
+    if (!Array.isArray(existing) || existing.length === 0) {
+      const res = await fetch(`${URL_}/rest/v1/seat_section_views`, {
+        method: 'POST',
+        headers: svcH,
+        body: JSON.stringify({
+          id: uuidFrom('rebuildview:playhouse:stalls'),
+          seat_map_id: MAP_500,
+          section_name: 'Stalls',
+          photo_url: cover,
+        }),
+      })
+      if (!res.ok) console.log('[proof] section view insert skipped:', (await res.text()).slice(0, 160))
+    }
   }
   proofs.steps.setup = { sectionView: !!cover }
 }
