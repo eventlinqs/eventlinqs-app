@@ -17,6 +17,7 @@
  */
 import fs from 'node:fs'
 import { createHash } from 'node:crypto'
+import sharp from 'sharp'
 import { chromium, devices } from 'playwright'
 
 const BASE = process.argv[2]
@@ -550,57 +551,196 @@ if (STEPS.has('perf')) {
   proofs.steps[`perf-${PERF_LABEL}`] = results
 }
 
-// ── Assertions: label collisions and clipping, 3 LODs x 1440 and 390 ──────
+// ── Assertions: the DRAWN FRAME, not the model ─────────────────────────────
+// The old gate read el.__seatLabels, the label engine's own planned boxes,
+// so it re-marked the engine's homework with the engine's numbers, and it
+// only ran 8 hand-picked configurations that excluded the two that visibly
+// failed (the mobile docked strip and the 2,016-seat room at fit). This
+// gate reads what the frame actually drew: every fillText/strokeText run
+// is recorded at draw time with its true device-space extent, text-on-text
+// is rect-intersected on the final frame, and text-on-ink is measured by
+// sampling the pixels UNDER each run with text suppressed. Zero is the
+// only passing number.
 if (STEPS.has('assert')) {
+  const INIT = () => {
+    window.__frameN = 0
+    const tick = () => { window.__frameN++; requestAnimationFrame(tick) }
+    requestAnimationFrame(tick)
+    const runs = (window.__drawnTextRuns = [])
+    for (const name of ['fillText', 'strokeText']) {
+      const orig = CanvasRenderingContext2D.prototype[name]
+      CanvasRenderingContext2D.prototype[name] = function (text, x, y, ...rest) {
+        if (window.__suppressText) return
+        try {
+          const m = this.measureText(String(text))
+          const t = this.getTransform()
+          const x0 = x - (m.actualBoundingBoxLeft ?? 0)
+          const x1 = x + (m.actualBoundingBoxRight ?? 0)
+          const y0 = y - (m.actualBoundingBoxAscent ?? 0)
+          const y1 = y + (m.actualBoundingBoxDescent ?? 0)
+          const px = (wx, wy) => ({ x: t.a * wx + t.c * wy + t.e, y: t.b * wx + t.d * wy + t.f })
+          const p0 = px(x0, y0)
+          const p1 = px(x1, y1)
+          runs.push({
+            text: String(text),
+            frame: window.__frameN,
+            x: Math.min(p0.x, p1.x),
+            y: Math.min(p0.y, p1.y),
+            w: Math.abs(p1.x - p0.x),
+            h: Math.abs(p1.y - p0.y),
+            cw: this.canvas?.width ?? 0,
+            ch: this.canvas?.height ?? 0,
+          })
+          if (runs.length > 20000) runs.splice(0, runs.length - 20000)
+        } catch {}
+        return orig.call(this, text, x, y, ...rest)
+      }
+    }
+  }
+
+  const CANVAS = `${SHEET} canvas`
+  const nudge = async page => {
+    const zin = page.getByRole('button', { name: 'Zoom in' }).first()
+    const zout = page.getByRole('button', { name: 'Zoom out' }).first()
+    if (await zin.isEnabled()) {
+      await zin.click(); await page.waitForTimeout(350); await zout.click()
+    } else {
+      await zout.click(); await page.waitForTimeout(350); await zin.click()
+    }
+    await page.waitForTimeout(550)
+  }
+  const shrink = (r, m) => ({ x: r.x + m, y: r.y + m, w: r.w - 2 * m, h: r.h - 2 * m })
+  const hit = (a, b) =>
+    a.w > 0 && a.h > 0 && b.w > 0 && b.h > 0 &&
+    a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y
+  const overlapArea = (a, b) =>
+    Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)) *
+    Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y))
+
+  async function assertDrawnFrame(page) {
+    // A fresh redraw burst so the recording holds one complete final frame.
+    await page.evaluate(() => { (window.__drawnTextRuns ?? []).length = 0 })
+    await nudge(page)
+    const main = await page.locator(CANVAS).first().evaluate(c => ({ w: c.width, h: c.height }))
+    const all = await page.evaluate(() => window.__drawnTextRuns ?? [])
+    const last = Math.max(0, ...all.map(r => r.frame))
+    // The final frame's runs on the MAIN canvas only (key plan is its own).
+    const runs = all.filter(r => r.frame === last && r.cw === main.w && r.ch === main.h)
+
+    // Text on text, as drawn.
+    let textText = 0
+    const pairs = []
+    for (let i = 0; i < runs.length; i++) {
+      for (let j = i + 1; j < runs.length; j++) {
+        const a = shrink(runs[i], 1)
+        const b = shrink(runs[j], 1)
+        if (!hit(a, b)) continue
+        const area = overlapArea(runs[i], runs[j])
+        const minArea = Math.min(runs[i].w * runs[i].h, runs[j].w * runs[j].h)
+        // The same text twice in one spot is a crispness double-draw, and
+        // single glyphs (letter-spaced runs) must genuinely overlap, not abut.
+        if (runs[i].text === runs[j].text && area > 0.8 * minArea) continue
+        if (runs[i].text.length === 1 && runs[j].text.length === 1 && area < 0.3 * minArea) continue
+        textText++
+        if (pairs.length < 12) pairs.push(`"${runs[i].text}" x "${runs[j].text}"`)
+      }
+    }
+
+    // Text on ink: the pixels under each run with text suppressed.
+    await page.evaluate(() => { window.__suppressText = true })
+    await nudge(page)
+    const shot = await page.locator(CANVAS).first().screenshot()
+    await page.evaluate(() => { window.__suppressText = false })
+    await nudge(page)
+    const { data, info } = await sharp(shot).raw().toBuffer({ resolveWithObject: true })
+    const sx = info.width / main.w
+    const sy = info.height / main.h
+    let textInk = 0
+    const inkHits = []
+    for (const r of runs) {
+      const b = shrink({ x: r.x * sx, y: r.y * sy, w: r.w * sx, h: r.h * sy }, 1)
+      const x0 = Math.max(0, Math.floor(b.x))
+      const y0 = Math.max(0, Math.floor(b.y))
+      const x1 = Math.min(info.width, Math.ceil(b.x + b.w))
+      const y1 = Math.min(info.height, Math.ceil(b.y + b.h))
+      if (x1 - x0 < 3 || y1 - y0 < 3) continue
+      let n = 0
+      let sum = 0
+      let sum2 = 0
+      for (let yy = y0; yy < y1; yy++) {
+        for (let xx = x0; xx < x1; xx++) {
+          const k = (yy * info.width + xx) * info.channels
+          const l = 0.299 * data[k] + 0.587 * data[k + 1] + 0.114 * data[k + 2]
+          n++; sum += l; sum2 += l * l
+        }
+      }
+      const sd = Math.sqrt(Math.max(0, sum2 / n - (sum / n) ** 2))
+      // A flat fill under text (a chair pan numeral, a polygon wash) reads
+      // near zero; strokes, glyphs and other text read far above 16.
+      if (sd > 16) {
+        textInk++
+        if (inkHits.length < 12) inkHits.push(`"${r.text}" sd ${sd.toFixed(1)}`)
+      }
+    }
+
+    // Clipping by DRAWN extent, plus the model's own counts for comparison.
+    const clipped = runs.filter(r => r.x < -1 || r.y < -1 || r.x + r.w > main.w + 1 || r.y + r.h > main.h + 1).length
+    const model = await page.locator(CONTAINER).first().evaluate(el => el.__seatLabels?.counts ?? null)
+    return { runs: runs.length, textText, textInk, clipped, pairs, inkHits, model }
+  }
+
   const results = []
   for (const [vp, ctxOpts] of [['1440', DESKTOP], ['390', MOBILE]]) {
     const ctx = await browser.newContext(ctxOpts)
+    await ctx.addInitScript(INIT)
     const page = await ctx.newPage()
     await openSeats(page, SLUG_2000)
     for (const [state, dir] of [['overview', 'out'], ['mid', 'in'], ['seat', 'in']]) {
       await driveToLod(page, state, dir)
-      await page.waitForTimeout(500)
-      const data = await page.locator(CONTAINER).first().evaluate(el => {
-        const d = el.__seatLabels
-        if (!d) return null
-        const rect = { w: el.clientWidth, h: el.clientHeight }
-        const inside = (b, m) => b.x >= m && b.y >= m && b.x + b.w <= rect.w - m && b.y + b.h <= rect.h - m
-        return {
-          counts: d.counts,
-          labels: d.labels.length,
-          labelsClipped: d.labels.filter(b => !inside(b, 2)).length,
-          objectsClipped: d.objectBoxes.filter(b => !inside(b, 0)).length,
-        }
-      })
-      results.push({ room: SLUG_2000, viewport: vp, lod: state, ...data })
+      await page.waitForTimeout(400)
+      results.push({ room: SLUG_2000, viewport: vp, lod: state, ...(await assertDrawnFrame(page)) })
     }
-    // Clipping at FIT: the whole room inside the canvas with margin.
+    await page.getByRole('button', { name: 'Zoom to fit' }).first().click()
+    await page.waitForTimeout(600)
+    results.push({ room: SLUG_2000, viewport: vp, lod: 'fit', ...(await assertDrawnFrame(page)) })
+
     await openSeats(page, SLUG_500)
     await page.getByRole('button', { name: 'Zoom to fit' }).first().click()
     await page.waitForTimeout(600)
-    const fit = await page.locator(CONTAINER).first().evaluate(el => {
-      const d = el.__seatLabels
-      const rect = { w: el.clientWidth, h: el.clientHeight }
-      const inside = (b, m) => b.x >= m && b.y >= m && b.x + b.w <= rect.w - m && b.y + b.h <= rect.h - m
-      return {
-        counts: d.counts,
-        seats: d.seatBoxes.length,
-        seatsClipped: d.seatBoxes.filter(b => !inside(b, 2)).length,
-        labelsClipped: d.labels.filter(b => !inside(b, 2)).length,
-        objectsClipped: d.objectBoxes.filter(b => !inside(b, 0)).length,
-      }
-    })
-    results.push({ room: SLUG_500, viewport: vp, lod: 'fit', ...fit })
+    results.push({ room: SLUG_500, viewport: vp, lod: 'fit', ...(await assertDrawnFrame(page)) })
     await ctx.close()
   }
+
+  // The mobile docked strip: tap a seat so the sheet docks, then assert.
+  {
+    const ctx = await browser.newContext(MOBILE)
+    await ctx.addInitScript(INIT)
+    const page = await ctx.newPage()
+    await openSeats(page, SLUG_500)
+    for (let i = 0; i < 3; i++) {
+      await page.getByRole('button', { name: 'Zoom in' }).first().click()
+      await page.waitForTimeout(380)
+    }
+    const pos = await seatScreen(page, 'H', '10')
+    if (pos) {
+      const box = await page.locator(CONTAINER).first().boundingBox()
+      if (pos.x > 0 && pos.y > 0 && pos.x < box.width && pos.y < box.height) {
+        await page.mouse.click(box.x + pos.x, box.y + pos.y)
+        await page.waitForTimeout(400)
+      }
+    }
+    results.push({ room: SLUG_500, viewport: '390', lod: 'docked', ...(await assertDrawnFrame(page)) })
+    await ctx.close()
+  }
+
   fs.writeFileSync(`${OUT}/assertions.json`, JSON.stringify(results, null, 2))
-  // Collisions are gated at every configuration; the CLIPPING law is
-  // stated at fit scale (a zoomed viewport legitimately crops the room).
-  const bad = results.filter(r =>
-    (r.counts && (r.counts.labelSeat || r.counts.labelLabel || r.counts.labelObject)) ||
-    r.labelsClipped ||
-    (r.lod === 'fit' && (r.objectsClipped || r.seatsClipped)))
-  console.log(`[proof] assertions: ${results.length} configurations, ${bad.length} failures`)
+  const bad = results.filter(r => r.textText || r.textInk || r.clipped)
+  console.log(`[proof] drawn-frame assertions: ${results.length} configurations, ${bad.length} failures`)
+  for (const r of bad) {
+    console.log(`[proof]   FAIL ${r.room} ${r.viewport} ${r.lod}: textText=${r.textText} textInk=${r.textInk} clipped=${r.clipped}`)
+    for (const p of r.pairs) console.log(`[proof]     pair ${p}`)
+    for (const h of r.inkHits) console.log(`[proof]     ink ${h}`)
+  }
   proofs.steps.assertions = { configurations: results.length, failures: bad.length }
 }
 
