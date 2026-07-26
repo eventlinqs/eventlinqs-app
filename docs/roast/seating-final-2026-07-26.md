@@ -230,7 +230,7 @@ TEST-baked production builds served the live drives.
 - F61 MET: the NOT VERIFIED list is explicit (below).
 - F62 MET, F63 MET, F64 MET, F65 MET: evidence and reports at exactly
   the mandated paths.
-- F66 MET: eighteen commits, one unit each, fixes separate from
+- F66 MET: seventeen commits, one unit each, fixes separate from
   features.
 - F67 MET: the other session's uncommitted files remain untouched and
   uncommitted.
