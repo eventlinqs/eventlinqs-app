@@ -18,8 +18,6 @@ export type GlyphTier = 'mark' | 'mid' | 'full'
 /** Seat state begins where the full chair glyph is legible (14px at the default pitch). */
 export const LOD_OVERVIEW_MAX = 0.3
 export const LOD_SEAT_MIN = 0.78
-/** Row letters appear on the flanks from this scale (inside the mid state). */
-export const ROW_LETTER_MIN = 0.45
 /** Numerals appear on chairs from this scale (chair at or above 16px). */
 export const NUMERAL_MIN = 0.9
 
@@ -54,9 +52,11 @@ export interface LodFlags {
   polygonFill: boolean
   /** Polygon boundary hairline and pinned label (mid state). */
   polygonEdge: boolean
-  /** Row letters on both flanks. */
+  /** Row letters on both flanks: on the plan whenever the chairs are. */
   rowLetters: boolean
-  /** Numerals on chairs and the seat-number ruler along block top edges. */
+  /** The per-block seat-number ruler: on the plan whenever the chairs are. */
+  rulers: boolean
+  /** Numerals on chairs, only once the chair itself is large enough. */
   numerals: boolean
 }
 
@@ -67,7 +67,8 @@ export function lodFlags(scale: number): LodFlags {
     seats: state !== 'overview',
     polygonFill: state === 'overview',
     polygonEdge: state === 'mid',
-    rowLetters: state === 'seat' || (state === 'mid' && scale >= ROW_LETTER_MIN),
+    rowLetters: state !== 'overview',
+    rulers: state !== 'overview',
     numerals: state === 'seat' && scale >= NUMERAL_MIN,
   }
 }

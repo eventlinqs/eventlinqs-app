@@ -91,6 +91,18 @@ export interface Scene {
   seatColor: string[]
   seatPrice: (number | null)[]
   bounds: SceneBounds
+  /**
+   * Bounds of the SEATS alone (no stage, areas or objects): the row
+   * letter gutters hang a fixed distance off this field's outer flanks,
+   * the benchmark's grammar, whatever the block count.
+   */
+  seatField: SceneBounds
+  /**
+   * Contiguous seat blocks: spatial clusters split by real aisle gaps,
+   * table seats excluded, ordered left to right. Any number of blocks;
+   * rulers and block-aware chrome derive from these automatically.
+   */
+  blocks: number[][]
   /** Median nearest-neighbour distance: the room's seat pitch. */
   pitch: number
   /** The chair's world width, derived from the pitch. */
@@ -324,58 +336,110 @@ export function buildScene(input: SceneInput): Scene {
     }
   }
 
-  // Row labels: per section + row, anchored one pitch outside each flank.
-  const rowGroups = new Map<string, { label: string; indices: number[] }>()
+  // The seat field: seats alone, the datum the gutters hang off.
+  const seatField: SceneBounds =
+    seats.length > 0
+      ? {
+          minX: Math.min(...seats.map(s => s.x)),
+          minY: Math.min(...seats.map(s => s.y)),
+          maxX: Math.max(...seats.map(s => s.x)),
+          maxY: Math.max(...seats.map(s => s.y)),
+        }
+      : { ...seatBounds }
+
+  // ── Blocks: contiguous seat clusters split by real aisle gaps, ANY
+  // count, ordered left to right. Tables sit outside the block system
+  // (they label through their own geometry). The 1.9-pitch threshold
+  // holds a block together across half-pitch offsets (diagonal 1.12
+  // pitch) and splits at any aisle one pitch wide or more. ──
+  const gridSeatIndices: number[] = []
   seats.forEach((s, i) => {
-    const key = `${s.seat_map_section_id ?? 'none'}::${s.row_label}`
-    const g = rowGroups.get(key)
-    if (g) g.indices.push(i)
-    else rowGroups.set(key, { label: s.row_label, indices: [i] })
+    if (!/table|booth/i.test(s.row_label)) gridSeatIndices.push(i)
   })
+  const blocks = clusterIndices(gridSeatIndices, seats, pitch * 1.9).sort((a, b) => {
+    const ax = a.reduce((sum, i) => sum + seats[i].x, 0) / a.length
+    const bx = b.reduce((sum, i) => sum + seats[i].x, 0) / b.length
+    return ax - bx
+  })
+
+  // ── Row letters: ONE line per row across the whole room, whatever the
+  // block count. Seats sharing a label cluster spatially; horizontal
+  // lines at the same height merge (a row crossing three blocks is one
+  // row), and the letters anchor one pitch off the seat field's OUTER
+  // flanks, the benchmark's fixed gutters. Rotated galleries (vertical
+  // lines) keep letters at their own two ends. ──
   const rowLabels: RowLabelAnchor[] = []
-  for (const [key, group] of rowGroups) {
-    // Tables label through their own geometry, not the flanks.
-    if (/table|booth/i.test(group.label)) continue
-    // The letters sit one pitch beyond the row's two ENDS along its own
-    // principal axis, so rotated galleries flank correctly too.
-    const xs2 = group.indices.map(i => seats[i].x)
-    const ys2 = group.indices.map(i => seats[i].y)
-    const horizontal = Math.max(...xs2) - Math.min(...xs2) >= Math.max(...ys2) - Math.min(...ys2)
-    let firstIdx = group.indices[0]
-    let lastIdx = group.indices[0]
-    for (const i of group.indices) {
-      const v = horizontal ? seats[i].x : seats[i].y
-      if (v < (horizontal ? seats[firstIdx].x : seats[firstIdx].y)) firstIdx = i
-      if (v > (horizontal ? seats[lastIdx].x : seats[lastIdx].y)) lastIdx = i
+  const byLabel = new Map<string, number[]>()
+  for (const i of gridSeatIndices) {
+    const list = byLabel.get(seats[i].row_label)
+    if (list) list.push(i)
+    else byLabel.set(seats[i].row_label, [i])
+  }
+  for (const [label, indices] of byLabel) {
+    const lineYs: number[] = []
+    for (const cluster of clusterIndices(indices, seats, pitch * 1.9)) {
+      const cxs = cluster.map(i => seats[i].x)
+      const cys = cluster.map(i => seats[i].y)
+      const xExt = Math.max(...cxs) - Math.min(...cxs)
+      const yExt = Math.max(...cys) - Math.min(...cys)
+      if (xExt >= yExt) {
+        lineYs.push(cys.reduce((a, b) => a + b, 0) / cys.length)
+        continue
+      }
+      // A rotated gallery row: letters at its own two ends.
+      let top = cluster[0]
+      let bottom = cluster[0]
+      for (const i of cluster) {
+        if (seats[i].y < seats[top].y) top = i
+        if (seats[i].y > seats[bottom].y) bottom = i
+      }
+      rowLabels.push({
+        key: `v:${label}:${seats[top].x.toFixed(0)}:${seats[top].y.toFixed(0)}`,
+        label,
+        left: { x: seats[top].x, y: seats[top].y - pitch },
+        right: { x: seats[bottom].x, y: seats[bottom].y + pitch },
+      })
     }
-    rowLabels.push({
-      key,
-      label: group.label,
-      left: horizontal
-        ? { x: seats[firstIdx].x - pitch, y: seats[firstIdx].y }
-        : { x: seats[firstIdx].x, y: seats[firstIdx].y - pitch },
-      right: horizontal
-        ? { x: seats[lastIdx].x + pitch, y: seats[lastIdx].y }
-        : { x: seats[lastIdx].x, y: seats[lastIdx].y + pitch },
-    })
+    lineYs.sort((a, b) => a - b)
+    let acc: { sum: number; n: number } | null = null
+    const mergedYs: number[] = []
+    for (const y of lineYs) {
+      if (acc && Math.abs(y - acc.sum / acc.n) <= pitch * 0.6) {
+        acc.sum += y
+        acc.n++
+      } else {
+        if (acc) mergedYs.push(acc.sum / acc.n)
+        acc = { sum: y, n: 1 }
+      }
+    }
+    if (acc) mergedYs.push(acc.sum / acc.n)
+    for (const y of mergedYs) {
+      rowLabels.push({
+        key: `h:${label}:${y.toFixed(0)}`,
+        label,
+        left: { x: seatField.minX - pitch, y },
+        right: { x: seatField.maxX + pitch, y },
+      })
+    }
   }
 
-  // The seat-number ruler: the front row of each section, numbers set one
-  // pitch above each seat of that row (curved rows keep their own x).
+  // ── One number ruler per horizontal block, above that block's own
+  // front row, however many blocks the room has. ──
   const rulers: RulerMark[] = []
-  for (const [sectionId, indices] of bySection) {
+  for (const block of blocks) {
+    const bxs = block.map(i => seats[i].x)
+    const bys = block.map(i => seats[i].y)
+    if (Math.max(...bxs) - Math.min(...bxs) < Math.max(...bys) - Math.min(...bys)) continue
     const rows = new Map<string, number[]>()
-    for (const i of indices) {
-      const label = seats[i].row_label
-      if (/table|booth/i.test(label)) continue
-      const list = rows.get(label)
+    for (const i of block) {
+      const list = rows.get(seats[i].row_label)
       if (list) list.push(i)
-      else rows.set(label, [i])
+      else rows.set(seats[i].row_label, [i])
     }
     let frontRow: number[] | null = null
     let frontY = Infinity
     for (const list of rows.values()) {
-      const avgY = list.reduce((s, i) => s + seats[i].y, 0) / list.length
+      const avgY = list.reduce((sum, i) => sum + seats[i].y, 0) / list.length
       if (avgY < frontY) {
         frontY = avgY
         frontRow = list
@@ -385,7 +449,6 @@ export function buildScene(input: SceneInput): Scene {
     for (const i of frontRow) {
       rulers.push({ x: seats[i].x, y: seats[i].y - pitch, text: seats[i].seat_number })
     }
-    void sectionId
   }
 
   // Spatial hash for hit tests and culling.
@@ -403,6 +466,8 @@ export function buildScene(input: SceneInput): Scene {
     seatColor,
     seatPrice,
     bounds,
+    seatField,
+    blocks,
     pitch,
     chairW,
     polygons,

@@ -22,7 +22,7 @@
 
 import type { Camera } from './draw'
 import type { LodFlags } from './lod'
-import { pointInHull, type HullPoint, type SectionPolygon } from './polygons'
+import { pointInHull, type HullPoint } from './polygons'
 import { cullSeats, type Scene } from './scene'
 
 export interface LabelBox {
@@ -59,8 +59,6 @@ export interface PlaceLabelsInput {
   /** Text width in px for a font size and weight (canvas measureText). */
   measure: (text: string, px: number, weight: number) => number
 }
-
-const GUTTER_GAP = 14
 
 function intersects(a: LabelBox, b: LabelBox): boolean {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y
@@ -143,18 +141,6 @@ function hullBoxInside(hull: HullPoint[], pad: number, box: LabelBox, camera: Ca
   )
 }
 
-function polygonRows(scene: Scene, poly: SectionPolygon): Map<string, number[]> {
-  const rows = new Map<string, number[]>()
-  for (const i of poly.seatIndices) {
-    const label = scene.seats[i].row_label
-    if (/table|booth/i.test(label)) continue
-    const list = rows.get(label)
-    if (list) list.push(i)
-    else rows.set(label, [i])
-  }
-  return rows
-}
-
 export function placeLabels(input: PlaceLabelsInput): PlacedLabel[] {
   const { scene, camera, width, height, flags, chairPx, measure, formatPrice } = input
   const placed: PlacedLabel[] = []
@@ -173,63 +159,50 @@ export function placeLabels(input: PlaceLabelsInput): PlacedLabel[] {
     obstacles.push(label)
   }
 
-  // ── 1. Rulers: per contiguous block, immediately above its first row. ──
-  if (flags.numerals) {
-    for (const poly of scene.polygons) {
-      const rows = polygonRows(scene, poly)
-      let front: number[] | null = null
-      let frontY = Infinity
-      for (const list of rows.values()) {
-        const meanY = list.reduce((a, i) => a + scene.seats[i].y, 0) / list.length
-        if (meanY < frontY) {
-          frontY = meanY
-          front = list
-        }
-      }
-      if (!front) continue
-      for (const i of front) {
-        const s = scene.seats[i]
-        const at = toScreen(camera, s.x, s.y - scene.pitch * 0.85)
-        const w = Math.max(10, measure(s.seat_number, 10, 600) + 2)
-        const box: LabelBox = { x: at.x - w / 2, y: at.y - 6, w, h: 12 }
-        if (!insideCanvas(box) || collides(box, obstacles)) continue
-        push({
-          kind: 'ruler',
-          text: s.seat_number,
-          ...box,
-          cx: at.x,
-          cy: at.y,
-          fontPx: 10,
-          weight: 600,
-        })
-      }
+  // ── 1. Rulers: the scene's block-derived marks, one ruler per block,
+  // above that block's own front row, whatever the block count. ──
+  if (flags.rulers) {
+    for (const mark of scene.rulers) {
+      const at = toScreen(camera, mark.x, mark.y)
+      const w = Math.max(10, measure(mark.text, 10, 600) + 2)
+      const box: LabelBox = { x: at.x - w / 2, y: at.y - 6, w, h: 12 }
+      if (!insideCanvas(box) || collides(box, obstacles)) continue
+      push({
+        kind: 'ruler',
+        text: mark.text,
+        ...box,
+        cx: at.x,
+        cy: at.y,
+        fontPx: 10,
+        weight: 600,
+      })
     }
   }
 
-  // ── 2. Row letters in the two dedicated gutters. ───────────────────────
+  // ── 2. Row letters at the scene's anchors: the seat field's two fixed
+  // gutters for horizontal rows, a gallery's own ends for vertical. ──
   if (flags.rowLetters) {
-    const leftX = toScreen(camera, scene.bounds.minX, 0).x - GUTTER_GAP
-    const rightX = toScreen(camera, scene.bounds.maxX, 0).x + GUTTER_GAP
-    const rowsByY = [...scene.rowLabels]
-      .map(r => ({ label: r.label, y: (r.left.y + r.right.y) / 2 }))
-      .sort((a, b) => a.y - b.y)
-    for (const gutterX of [leftX, rightX]) {
-      let lastBottom = -Infinity
-      for (const row of rowsByY) {
-        const at = toScreen(camera, 0, row.y)
-        const w = Math.max(10, measure(row.label, 11, 600) + 2)
-        const box: LabelBox = { x: gutterX - w / 2, y: at.y - 7, w, h: 14 }
-        // Front rows carry priority: a letter that would collide with the
-        // one above it is dropped, never drawn askew.
-        if (box.y < lastBottom + 1) continue
+    for (const side of ['left', 'right'] as const) {
+      const anchors = [...scene.rowLabels]
+        .map(r => ({ label: r.label, at: toScreen(camera, r[side].x, r[side].y) }))
+        .sort((a, b) => a.at.y - b.at.y)
+      // Front rows carry priority per gutter: a letter that would collide
+      // with the one above it is dropped, never drawn askew.
+      const lastBottomByBand = new Map<number, number>()
+      for (const row of anchors) {
+        const text = row.label
+        const w = Math.max(10, measure(text, 11, 600) + 2)
+        const box: LabelBox = { x: row.at.x - w / 2, y: row.at.y - 7, w, h: 14 }
+        const band = Math.round(row.at.x / 48)
+        if (box.y < (lastBottomByBand.get(band) ?? -Infinity) + 1) continue
         if (!insideCanvas(box) || collides(box, obstacles)) continue
-        lastBottom = box.y + box.h
+        lastBottomByBand.set(band, box.y + box.h)
         push({
           kind: 'rowLetter',
-          text: row.label,
+          text,
           ...box,
-          cx: gutterX,
-          cy: at.y,
+          cx: row.at.x,
+          cy: row.at.y,
           fontPx: 11,
           weight: 600,
         })

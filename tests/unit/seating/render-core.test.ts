@@ -6,7 +6,6 @@ import {
   LOD_OVERVIEW_MAX,
   LOD_SEAT_MIN,
   NUMERAL_MIN,
-  ROW_LETTER_MIN,
 } from '@/lib/seating/render/lod'
 import { convexHull, pointInHull, polygonCentroid } from '@/lib/seating/render/polygons'
 import { defaultStageForBounds, stageGeometry } from '@/lib/seating/render/stage'
@@ -70,13 +69,14 @@ describe('lod', () => {
     expect(flags.rowLetters).toBe(false)
   })
 
-  it('mid draws chairs and flank letters but never numerals', () => {
+  it('mid draws chairs, flank letters and rulers but never numerals', () => {
+    // The restraint grammar: letters and rulers are on the plan whenever
+    // the chairs are, at every zoom past overview.
     const early = lodFlags(0.35)
     expect(early.seats).toBe(true)
-    expect(early.rowLetters).toBe(false)
-    const late = lodFlags(ROW_LETTER_MIN)
-    expect(late.rowLetters).toBe(true)
-    expect(late.numerals).toBe(false)
+    expect(early.rowLetters).toBe(true)
+    expect(early.rulers).toBe(true)
+    expect(early.numerals).toBe(false)
   })
 
   it('seat state carries numerals from the numeral threshold', () => {
