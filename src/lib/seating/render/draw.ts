@@ -133,69 +133,12 @@ function hexBlend(top: string, under: string, t: number): string {
 
 const FLOOR = hexBlend('#FFFFFF', SEAT_STATE_COLORS.veil, 0.55)
 
-/**
- * The building shell: a room has walls. A double-line wall (the drafting
- * convention) wraps everything: the stage, every section, every object,
- * with the floor tone inside so the plan sits in a building, not a void.
- */
-function drawShell(ctx: CanvasRenderingContext2D, scene: Scene, camera: Camera) {
-  const pad = scene.pitch * 1.6
-  const b = scene.bounds
-  const x = b.minX - pad
-  const y = b.minY - pad
-  const w = b.maxX - b.minX + pad * 2
-  const h = b.maxY - b.minY + pad * 2
-  ctx.save()
-  ctx.beginPath()
-  ctx.roundRect(x, y, w, h, 6)
-  ctx.fillStyle = FLOOR
-  ctx.fill()
-  ctx.strokeStyle = 'rgba(10, 22, 40, 0.55)'
-  ctx.lineWidth = 1.5 / camera.scale
-  ctx.stroke()
-  ctx.beginPath()
-  ctx.roundRect(x + 5, y + 5, w - 10, h - 10, 4)
-  ctx.strokeStyle = 'rgba(10, 22, 40, 0.22)'
-  ctx.lineWidth = 0.75 / camera.scale
-  ctx.stroke()
-  ctx.restore()
-}
-
-/**
- * Tier breaks: where stacked bands of sections step back (stalls, circle,
- * balcony), a thin section-break rule runs across the shell so the levels
- * read as receding tiers, the printed-plan convention.
- */
-function drawTierBreaks(ctx: CanvasRenderingContext2D, scene: Scene, camera: Camera) {
-  if (scene.polygons.length < 2) return
-  const bands: { minY: number; maxY: number }[] = []
-  const sorted = [...scene.polygons]
-    .map(p => ({ minY: Math.min(...p.hull.map(h => h.y)), maxY: Math.max(...p.hull.map(h => h.y)) }))
-    .sort((a, b) => a.minY - b.minY)
-  for (const p of sorted) {
-    const band = bands.find(b => p.minY <= b.maxY + scene.pitch)
-    if (band) band.maxY = Math.max(band.maxY, p.maxY)
-    else bands.push({ ...p })
-  }
-  if (bands.length < 2) return
-  const pad = scene.pitch * 1.6
-  const x0 = scene.bounds.minX - pad + 10
-  const x1 = scene.bounds.maxX + pad - 10
-  ctx.save()
-  ctx.strokeStyle = 'rgba(10, 22, 40, 0.16)'
-  ctx.lineWidth = 0.9 / camera.scale
-  for (let i = 1; i < bands.length; i++) {
-    const gapTop = bands[i - 1].maxY
-    const gapBottom = bands[i].minY
-    if (gapBottom - gapTop < scene.pitch * 1.2) continue
-    const y = (gapTop + gapBottom) / 2
-    ctx.beginPath()
-    ctx.moveTo(x0, y)
-    ctx.lineTo(x1, y)
-    ctx.stroke()
-  }
-  ctx.restore()
-}
+// The building shell and the tier-break rules are retired: the restraint
+// law puts chairs, row letters, rulers, the stage and the aisles on the
+// plan and NOTHING else, and the approved room proof carries neither. At
+// small scales the shell's inner wall also collided with the screen-fixed
+// flank letters, which the drawn-frame gate caught. The paper canvas is
+// the room.
 
 function drawStage(ctx: CanvasRenderingContext2D, scene: Scene, camera: Camera) {
   const stage = scene.stage
@@ -390,10 +333,19 @@ function drawScreenPass(ctx: CanvasRenderingContext2D, scene: Scene, camera: Cam
     }
   }
 
-  // Stage label: small caps in the apron, never a bar.
+  // Stage label: small caps in the apron, never a bar, and ONLY when the
+  // drawn stage is tall enough to hold the text clear of its own outline
+  // and apron: at a far-out fit the stage is a shape, not a label holder,
+  // and text riding its linework is a drawn collision.
   if (scene.stage) {
+    const stageYs = scene.stage.outline.map(p => p.y)
+    const stageScreenH = (Math.max(...stageYs) - Math.min(...stageYs)) * camera.scale
     const at = worldToScreen(camera, scene.stage.labelAt.x, scene.stage.labelAt.y)
-    if (at.x > -60 && at.x < opts.width + 60 && at.y > -20 && at.y < opts.height + 20) {
+    // Fully inside the canvas or not at all: a half-cropped STAGE at the
+    // sheet edge is a drawn defect, not a label.
+    const inside =
+      at.x - 40 >= 4 && at.x + 40 <= opts.width - 4 && at.y - 12 >= 4 && at.y + 4 <= opts.height - 4
+    if (stageScreenH >= 26 && inside) {
       ctx.save()
       ctx.textAlign = 'center'
       ctx.font = `600 10px ${DATA_FONT}`
@@ -580,10 +532,8 @@ export function paintScene(
     ctx.restore()
   }
 
-  // World pass: the building shell first, then everything inside it.
+  // World pass: the stage first, then everything else on the paper.
   ctx.setTransform(dpr * camera.scale, 0, 0, dpr * camera.scale, dpr * camera.tx, dpr * camera.ty)
-  drawShell(ctx, scene, camera)
-  drawTierBreaks(ctx, scene, camera)
   drawStage(ctx, scene, camera)
   drawAreas(ctx, scene, camera)
   drawSeats(ctx, scene, camera, opts)
@@ -655,9 +605,8 @@ export function paintMiniMap(
   const mini = fitCamera(scene, width, height, 8)
   ctx.setTransform(dpr * mini.scale, 0, 0, dpr * mini.scale, dpr * mini.tx, dpr * mini.ty)
 
-  // A true miniature of the plan: the same shell, the same wedges, the
-  // same stage geometry, not abstract rectangles.
-  drawShell(ctx, scene, mini)
+  // A true miniature of the plan: the same wedges and the same stage
+  // geometry, not abstract rectangles.
   if (scene.stage) {
     const path = scene.stage.ellipse
       ? (() => {

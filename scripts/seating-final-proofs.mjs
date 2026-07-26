@@ -86,6 +86,22 @@ async function shotEl(page, selector, name) {
   console.log(`[final] shot ${name}`)
 }
 
+/**
+ * The plan itself: the canvas element's OWN bitmap via toDataURL, so a
+ * sheet taller than the viewport never stitches the sticky header or any
+ * other page furniture into the evidence. The context shots (viewport
+ * screenshots) carry the page chrome honestly, separately.
+ */
+async function shotCanvas(page, name) {
+  await page.waitForTimeout(300)
+  const b64 = await page
+    .locator(CANVAS)
+    .first()
+    .evaluate(c => c.toDataURL('image/png').split(',')[1])
+  fs.writeFileSync(`${OUT}/${name}.png`, Buffer.from(b64, 'base64'))
+  console.log(`[final] plan ${name}`)
+}
+
 async function getLod(page) {
   return page.locator(CONTAINER).first().getAttribute('data-lod')
 }
@@ -108,6 +124,21 @@ async function driveToLod(page, target, dir) {
     await page.waitForTimeout(420)
   }
   return (await getLod(page)) === target
+}
+
+/**
+ * Contextual hints arm on the buyer's own actions (zooming, tapping) and
+ * float OVER the sheet until dismissed. Spend them the way a real user
+ * would, so captures show the plan and the canvas-region pixel scans read
+ * the canvas alone. One dismissal spends a hint for the whole context.
+ */
+async function dismissHints(page) {
+  for (let i = 0; i < 4; i++) {
+    const hint = page.getByRole('button', { name: 'Dismiss this hint' }).first()
+    if ((await hint.count()) === 0) return
+    await hint.evaluate(el => el.click()).catch(() => {})
+    await page.waitForTimeout(250)
+  }
 }
 
 // ── The drawn-frame recorder: every fillText/strokeText the frame draws ─────
@@ -169,6 +200,9 @@ const overlapArea = (a, b) =>
   Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y))
 
 async function assertDrawnFrame(page) {
+  // Arm and spend any zoom-triggered hint BEFORE the measured frames.
+  await nudge(page)
+  await dismissHints(page)
   await page.evaluate(() => { (window.__drawnTextRuns ?? []).length = 0 })
   await nudge(page)
   const main = await page.locator(CANVAS).first().evaluate(c => ({ w: c.width, h: c.height }))
@@ -194,7 +228,12 @@ async function assertDrawnFrame(page) {
 
   await page.evaluate(() => { window.__suppressText = true })
   await nudge(page)
-  const shot = await page.locator(CANVAS).first().screenshot()
+  // The canvas's OWN bitmap: the drawn frame with nothing over it.
+  const shotB64 = await page
+    .locator(CANVAS)
+    .first()
+    .evaluate(c => c.toDataURL('image/png').split(',')[1])
+  const shot = Buffer.from(shotB64, 'base64')
   await page.evaluate(() => { window.__suppressText = false })
   await nudge(page)
   const { data, info } = await sharp(shot).raw().toBuffer({ resolveWithObject: true })
@@ -327,12 +366,13 @@ if (STEPS.has('rooms')) {
       await openSeats(page, room.slug)
       await pressButton(page, 'Zoom to fit')
       await page.waitForTimeout(600)
-      await shotEl(page, SHEET, `room-${room.key}-${vp}`)
+      await dismissHints(page)
+      await shotCanvas(page, `room-${room.key}-${vp}`)
     }
     await ctx.close()
   }
-  // The mobile context shot: the page top at 390, header plus sheet, so
-  // the header-overlap claim is visible evidence.
+  // The context shots: full viewport screenshots with the page chrome
+  // shown honestly (header, key plan, zoom cluster), one per viewport.
   const mctx = await browser.newContext(MOBILE)
   const mpage = await mctx.newPage()
   await openSeats(mpage, THEATRE)
@@ -340,6 +380,13 @@ if (STEPS.has('rooms')) {
   await mpage.waitForTimeout(500)
   await mpage.screenshot({ path: `${OUT}/mobile-390-context.png` })
   await mctx.close()
+  const dctx = await browser.newContext(DESKTOP)
+  const dpage = await dctx.newPage()
+  await openSeats(dpage, THEATRE)
+  await dpage.locator(SHEET).first().scrollIntoViewIfNeeded()
+  await dpage.waitForTimeout(500)
+  await dpage.screenshot({ path: `${OUT}/desktop-1440-context.png` })
+  await dctx.close()
   console.log('[final] room captures done')
   proofs.steps.rooms = { rooms: ROOMS.length, viewports: 2 }
 }
@@ -353,7 +400,8 @@ if (STEPS.has('lods')) {
     for (const [state, dir] of [['overview', 'out'], ['mid', 'in'], ['seat', 'in']]) {
       const ok = await driveToLod(page, state, dir)
       console.log(`[final] theatre ${vp} lod ${state}: ${ok ? 'reached' : 'NOT VERIFIED'}`)
-      await shotEl(page, SHEET, `theatre-lod-${state}-${vp}`)
+      await dismissHints(page)
+      await shotCanvas(page, `theatre-lod-${state}-${vp}`)
     }
     await ctx.close()
   }
@@ -417,7 +465,7 @@ if (STEPS.has('probe')) {
   }, { x: (stage.x + stage.w / 2) / dpr, y: (stage.y + stage.h / 2) / dpr })
   await page.waitForTimeout(400)
   const withProbe = await assertDrawnFrame(page)
-  await shotEl(page, SHEET, 'probe-collision-1440')
+  await shotCanvas(page, 'probe-collision-1440')
   await page.locator(CONTAINER).first().evaluate(el => el.__seatDebug?.setProbe(null))
   await page.waitForTimeout(400)
   const clean2 = await assertDrawnFrame(page)
