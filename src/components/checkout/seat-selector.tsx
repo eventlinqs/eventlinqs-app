@@ -35,6 +35,11 @@ import type { LodState } from '@/lib/seating/render/lod'
 import { SeatCanvas, type SeatCanvasHandle } from '@/components/seating/seat-canvas'
 import { KeyPlan } from '@/components/seating/key-plan'
 import { SectionViewImage } from '@/components/media/SectionViewImage'
+import { SurfaceGuidance } from '@/components/guidance/surface-guidance'
+import { ContextualHint } from '@/components/guidance/contextual-hint'
+import { TeachingEmptyState } from '@/components/guidance/teaching-empty-state'
+import { useContextualHint } from '@/lib/guidance/memory'
+import { CONTEXTUAL_HINTS } from '@/lib/guidance/registry'
 import { Camera, Maximize, Minus, Plus, X } from 'lucide-react'
 
 export interface SeatData {
@@ -151,6 +156,12 @@ export function SeatSelector({
     fitScale: 1,
     lod: 'mid',
   })
+
+  // ── Guidance: hints armed by what the buyer just did, never by arrival.
+  // Each is spent after one showing on this device (see lib/guidance/memory). ──
+  const takenHint = useContextualHint('seat-map-taken-seat')
+  const filteredHint = useContextualHint('seat-map-filtered-out')
+  const panHint = useContextualHint('seat-map-pan')
 
   const formatPrice = useCallback(
     (cents: number) => `${currency} ${(cents / 100).toFixed(2)}`,
@@ -334,9 +345,11 @@ export function SeatSelector({
       const state = stateFor(index)
       if (state === 'taken') {
         setKeyboardNote(`Row ${seat.row_label} seat ${seat.seat_number} is unavailable`)
+        takenHint.trigger()
         return
       }
       if (state === 'dimmed') {
+        filteredHint.trigger()
         setKeyboardNote(
           priceFilter && tierFilter
             ? 'That seat sits outside your filters'
@@ -389,7 +402,7 @@ export function SeatSelector({
       setSelectedIds(prev => new Set(prev).add(seat.id))
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [seatsKey, selectedIdsKey, stateFor, tierById, baSeats, seatIndexById, maxPerOrder, priceFilter, tierFilter, deselectSeat],
+    [seatsKey, selectedIdsKey, stateFor, tierById, baSeats, seatIndexById, maxPerOrder, priceFilter, tierFilter, deselectSeat, takenHint, filteredHint],
   )
 
   // Keyboard cursor: announce and keep the seat in view.
@@ -638,10 +651,16 @@ export function SeatSelector({
     : null
 
   if (seats.length === 0) {
+    // An empty room teaches instead of shrugging: what the state is, what this
+    // area becomes, and where to read the rest (the teaching-empty-state law).
     return (
-      <div className="rounded-xl border border-dashed border-ink-200 py-10 text-center text-sm text-ink-400">
-        Seats are not yet available for this event.
-      </div>
+      <TeachingEmptyState
+        eyebrow="Reserved seating"
+        title="The seats for this event are not open yet"
+        status="The organiser has not released this room for sale. Nothing has sold out; there is simply nothing on the plan yet."
+        teach="When they do, this becomes the venue plan: every chair priced by its ticket type, with a control that finds your group the best block open."
+        guide={{ slug: 'building-a-seating-chart', title: 'How a seating chart is built' }}
+      />
     )
   }
 
@@ -672,7 +691,13 @@ export function SeatSelector({
             }
             onCursorSeat={handleCursor}
             onCursorClear={() => setFocusIndex(null)}
-            onCamera={setCameraInfo}
+            onCamera={info => {
+              setCameraInfo(info)
+              // The moment of confusion on a seat map is the moment the room
+              // stops fitting the screen: once zoomed past the fit, say how to
+              // move. Once only, per device.
+              if (info.fitScale > 0 && info.scale > info.fitScale * 1.25) panHint.trigger()
+            }}
             ariaLabel="Seat map. Arrow keys move seat to seat, Enter selects, plus and minus zoom, Escape rests. Drag to pan, pinch or Ctrl and scroll to zoom."
             className="h-[62vh] min-h-[380px] w-full rounded-xl bg-canvas lg:absolute lg:inset-0 lg:h-full"
             reservedBottomPx={112}
@@ -700,6 +725,30 @@ export function SeatSelector({
                   <p className="mt-1 inline-block rounded-full bg-gold-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ink-900">
                     Selected
                   </p>
+                )}
+              </div>
+            )}
+
+            {/* Contextual hints: top-left of the sheet, clear of the chrome
+                band at the bottom and of the tooltip that follows the cursor.
+                One at a time, most specific first. */}
+            {(takenHint.visible || filteredHint.visible || panHint.visible) && (
+              <div className="absolute left-3 top-3 z-20 max-w-[min(17rem,calc(100%-1.5rem))]">
+                {takenHint.visible ? (
+                  <ContextualHint
+                    text={CONTEXTUAL_HINTS['seat-map-taken-seat']}
+                    onDismiss={takenHint.dismiss}
+                  />
+                ) : filteredHint.visible ? (
+                  <ContextualHint
+                    text={CONTEXTUAL_HINTS['seat-map-filtered-out']}
+                    onDismiss={filteredHint.dismiss}
+                  />
+                ) : (
+                  <ContextualHint
+                    text={CONTEXTUAL_HINTS['seat-map-pan']}
+                    onDismiss={panHint.dismiss}
+                  />
                 )}
               </div>
             )}
@@ -1191,6 +1240,10 @@ export function SeatSelector({
       <span aria-live="polite" className="sr-only">
         {keyboardNote}
       </span>
+
+      {/* First-run coaching, the persistent way back to it, the written guide
+          and the in-context assistant. One mount, everything else is shared. */}
+      <SurfaceGuidance surface="buyer-seat-map" />
     </div>
   )
 }

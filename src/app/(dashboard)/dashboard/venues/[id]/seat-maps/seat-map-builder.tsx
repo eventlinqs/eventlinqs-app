@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   Accessibility,
@@ -46,6 +47,10 @@ import type { Camera } from '@/lib/seating/render/draw'
 import { SeatCanvas, type SeatCanvasHandle } from '@/components/seating/seat-canvas'
 import { uploadSectionViewPhoto, removeSectionViewPhoto } from '@/app/actions/section-view-photo'
 import { SectionViewImage } from '@/components/media/SectionViewImage'
+import { SurfaceGuidance } from '@/components/guidance/surface-guidance'
+import { ContextualHint } from '@/components/guidance/contextual-hint'
+import { useContextualHint } from '@/lib/guidance/memory'
+import { CONTEXTUAL_HINTS } from '@/lib/guidance/registry'
 import { saveSeatMap } from './actions'
 
 /**
@@ -146,6 +151,8 @@ export function SeatMapBuilder({
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [roomMenuOpen, setRoomMenuOpen] = useState(false)
+  /** Armed when the first block lands, spent after one showing per device. */
+  const firstBlockHint = useContextualHint('studio-first-block')
   const [inspectorExpanded, setInspectorExpanded] = useState(false)
   /**
    * The trace: a floor plan photo INSIDE the canvas, under the grid, with
@@ -721,6 +728,9 @@ export function SeatMapBuilder({
     }
     setBlocks(prev => [...prev, block])
     setSelectedId(block.id)
+    // The moment of confusion in the studio is right after the first block
+    // lands: the room exists, but nothing tells you it still has no price.
+    if (blocks.length === 0) firstBlockHint.trigger()
   }
 
   function addRoomBlock(
@@ -1189,6 +1199,17 @@ export function SeatMapBuilder({
               </div>
             )}
 
+            {/* The first-block hint: top-left of the sheet, clear of the trace
+                controls and the zoom cluster. */}
+            {firstBlockHint.visible && (
+              <div className="absolute left-3 top-3 z-20 max-w-[min(18rem,calc(100%-1.5rem))]">
+                <ContextualHint
+                  text={CONTEXTUAL_HINTS['studio-first-block']}
+                  onDismiss={firstBlockHint.dismiss}
+                />
+              </div>
+            )}
+
             {/* Zoom cluster. */}
             <div className="absolute bottom-3 right-3 flex items-center gap-1 rounded-lg border border-ink-200 bg-white shadow-sm">
               <button
@@ -1304,6 +1325,14 @@ export function SeatMapBuilder({
                     </button>
                   ))}
                 </div>
+                {/* The empty sheet teaches into the written guide, so the
+                    surface and the article are one system. */}
+                <Link
+                  href="/guides/building-a-seating-chart"
+                  className="mt-4 inline-block text-xs font-semibold text-gold-800 underline decoration-gold-500 decoration-2 underline-offset-4 transition-colors hover:text-ink-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+                >
+                  Read: building a seating chart
+                </Link>
               </div>
             </div>
           )}
@@ -1446,6 +1475,10 @@ export function SeatMapBuilder({
       <span aria-live="polite" className="sr-only">
         {announce}
       </span>
+
+      {/* First-run coaching, the persistent way back to it, the written guides
+          and the in-context assistant. One mount. */}
+      <SurfaceGuidance surface="room-studio" />
     </div>
   )
 }
