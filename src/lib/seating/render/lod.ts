@@ -50,8 +50,6 @@ export interface LodFlags {
   seats: boolean
   /** Filled section polygons with name and price range (overview only). */
   polygonFill: boolean
-  /** Polygon boundary hairline and pinned label (mid state). */
-  polygonEdge: boolean
   /** Row letters on both flanks: on the plan whenever the chairs are. */
   rowLetters: boolean
   /** The per-block seat-number ruler: on the plan whenever the chairs are. */
@@ -66,7 +64,6 @@ export function lodFlags(scale: number): LodFlags {
     state,
     seats: state !== 'overview',
     polygonFill: state === 'overview',
-    polygonEdge: state === 'mid',
     rowLetters: state !== 'overview',
     rulers: state !== 'overview',
     numerals: state === 'seat' && scale >= NUMERAL_MIN,

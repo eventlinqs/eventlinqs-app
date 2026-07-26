@@ -75,6 +75,7 @@ export interface SeatCanvasProps {
   /** Builder extras. */
   trace?: PaintOptions['trace']
   gridDots?: boolean
+  builderInk?: boolean
   paintWorld?: PaintOptions['paintWorld']
   paintScreen?: PaintOptions['paintScreen']
   /**
@@ -122,6 +123,7 @@ export const SeatCanvas = forwardRef<SeatCanvasHandle, SeatCanvasProps>(function
     onSectionTap,
     trace,
     gridDots,
+    builderInk,
     paintWorld,
     paintScreen,
     onWorldPointerDown,
@@ -162,8 +164,8 @@ export const SeatCanvas = forwardRef<SeatCanvasHandle, SeatCanvasProps>(function
     [],
   )
 
-  const propsRef = useRef({ stateFor, formatPrice, hoverIndex, focusIndex, groupIndices, highlightSectionId, trace, gridDots, paintWorld, paintScreen })
-  propsRef.current = { stateFor, formatPrice, hoverIndex, focusIndex, groupIndices, highlightSectionId, trace, gridDots, paintWorld, paintScreen }
+  const propsRef = useRef({ stateFor, formatPrice, hoverIndex, focusIndex, groupIndices, highlightSectionId, trace, gridDots, builderInk, paintWorld, paintScreen })
+  propsRef.current = { stateFor, formatPrice, hoverIndex, focusIndex, groupIndices, highlightSectionId, trace, gridDots, builderInk, paintWorld, paintScreen }
 
   const notifyCamera = useCallback(() => {
     const scale = cameraRef.current.scale
@@ -201,6 +203,7 @@ export const SeatCanvas = forwardRef<SeatCanvasHandle, SeatCanvasProps>(function
         formatPrice: p.formatPrice,
         trace: p.trace,
         gridDots: p.gridDots,
+        builderInk: p.builderInk,
         paintWorld: p.paintWorld,
         paintScreen: p.paintScreen,
       })

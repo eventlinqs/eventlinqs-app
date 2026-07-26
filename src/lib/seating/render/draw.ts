@@ -34,6 +34,8 @@ export interface PaintOptions {
   /** Builder extras. */
   trace?: { image: CanvasImageSource; opacity: number; x: number; y: number; width: number; height: number } | null
   gridDots?: boolean
+  /** The builder's surface draws free captions; the buyer plan never does. */
+  builderInk?: boolean
   /** Extra painters, world space then screen space. */
   paintWorld?: (ctx: CanvasRenderingContext2D, camera: Camera) => void
   paintScreen?: (ctx: CanvasRenderingContext2D, camera: Camera) => void
@@ -303,8 +305,9 @@ function drawSeats(ctx: CanvasRenderingContext2D, scene: Scene, camera: Camera, 
         ctx.stroke(tier === 'mark' ? paths.mark : paths.back)
         if (tier !== 'mark') ctx.stroke(paths.pan)
       } else if (state === 'taken') {
-        // Solid stone, no stroke, no numeral: it recedes.
-        ctx.fillStyle = C.stone
+        // SOLID DARK, no stroke, no numeral: the benchmark's high-contrast
+        // sold state does most of the visual work on the plan.
+        ctx.fillStyle = C.dusk
         bodyParts(p => ctx.fill(p))
       } else if (state === 'held') {
         // Stone body with the dashed tier-hue stroke.
@@ -340,34 +343,28 @@ function drawScreenPass(ctx: CanvasRenderingContext2D, scene: Scene, camera: Cam
   const flags = lodFlags(camera.scale)
   const view = viewBounds(camera, opts.width, opts.height)
 
-  // Section polygons: filled cards at overview, boundary and label at mid.
-  if (flags.polygonFill || flags.polygonEdge) {
+  // Section polygons: filled cards at OVERVIEW ONLY (the restraint law);
+  // past overview the plan carries chairs, letters, rulers, stage and
+  // aisles, nothing else.
+  if (flags.polygonFill) {
     for (const poly of scene.polygons) {
       const path = hullPath(poly.hull)
       ctx.save()
       ctx.setTransform(opts.dpr * camera.scale, 0, 0, opts.dpr * camera.scale, opts.dpr * camera.tx, opts.dpr * camera.ty)
       const pad = poly.pad
-      if (flags.polygonFill) {
-        // A drafted plan, not a card stack: the padded wedge paints in ONE
-        // flat tint (hue pre-blended over the floor) so no alpha halo can
-        // read as a drop shadow; depth is carried by line weight alone.
-        const tint = hexBlend(poly.color, FLOOR, 0.24)
-        ctx.lineJoin = 'round'
-        ctx.lineWidth = pad * 2
-        ctx.strokeStyle = tint
-        ctx.stroke(path)
-        ctx.fillStyle = tint
-        ctx.fill(path)
-        ctx.lineWidth = 1 / camera.scale
-        ctx.strokeStyle = poly.color
-        ctx.stroke(path)
-      } else {
-        // Mid zoom: the boundary as a solid hairline, drafting weight.
-        ctx.lineJoin = 'round'
-        ctx.lineWidth = 1 / camera.scale
-        ctx.strokeStyle = hexBlend(poly.color, FLOOR, 0.55)
-        ctx.stroke(path)
-      }
+      // A drafted plan, not a card stack: the padded wedge paints in ONE
+      // flat tint (hue pre-blended over the floor) so no alpha halo can
+      // read as a drop shadow; depth is carried by line weight alone.
+      const tint = hexBlend(poly.color, FLOOR, 0.24)
+      ctx.lineJoin = 'round'
+      ctx.lineWidth = pad * 2
+      ctx.strokeStyle = tint
+      ctx.stroke(path)
+      ctx.fillStyle = tint
+      ctx.fill(path)
+      ctx.lineWidth = 1 / camera.scale
+      ctx.strokeStyle = poly.color
+      ctx.stroke(path)
       if (opts.highlightSectionId === poly.sectionId) {
         ctx.setLineDash([])
         ctx.lineWidth = 2.5 / camera.scale
@@ -405,21 +402,25 @@ function drawScreenPass(ctx: CanvasRenderingContext2D, scene: Scene, camera: Cam
     }
   }
 
-  // Area labels.
-  for (const area of scene.areas) {
-    const at = worldToScreen(camera, area.x + area.width / 2, area.y + area.height / 2)
-    if (at.x < -100 || at.x > opts.width + 100 || at.y < -30 || at.y > opts.height + 30) continue
-    ctx.save()
-    ctx.textAlign = 'center'
-    ctx.font = `700 12px ${DISPLAY_FONT}`
-    ctx.fillStyle = C.night
-    ctx.fillText(area.label, at.x, at.y + (area.style === 'scenery' ? 4 : -2))
-    if (area.style !== 'scenery' && area.label.trim().toLowerCase() !== 'general admission') {
-      ctx.font = `500 10px ${DATA_FONT}`
-      ctx.fillStyle = C.dusk
-      ctx.fillText('General admission', at.x, at.y + 12)
+  // Area labels: overview only, like section names (the restraint law).
+  // Past overview a zone is its architectural outline; the ticket rail
+  // names it.
+  if (flags.polygonFill) {
+    for (const area of scene.areas) {
+      const at = worldToScreen(camera, area.x + area.width / 2, area.y + area.height / 2)
+      if (at.x < -100 || at.x > opts.width + 100 || at.y < -30 || at.y > opts.height + 30) continue
+      ctx.save()
+      ctx.textAlign = 'center'
+      ctx.font = `700 12px ${DISPLAY_FONT}`
+      ctx.fillStyle = C.night
+      ctx.fillText(area.label, at.x, at.y + (area.style === 'scenery' ? 4 : -2))
+      if (area.style !== 'scenery' && area.label.trim().toLowerCase() !== 'general admission') {
+        ctx.font = `500 10px ${DATA_FONT}`
+        ctx.fillStyle = C.dusk
+        ctx.fillText('General admission', at.x, at.y + 12)
+      }
+      ctx.restore()
     }
-    ctx.restore()
   }
 
   // Row letters and rulers are placed by the label engine, never here.
@@ -638,6 +639,7 @@ export function paintScene(
     flags,
     chairPx,
     formatPrice: opts.formatPrice,
+    builderInk: opts.builderInk,
     measure: (text, px, weight) => {
       ctx.font = `${weight} ${px}px ${DATA_FONT}`
       return ctx.measureText(text).width
@@ -647,17 +649,9 @@ export function paintScene(
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   for (const label of labels) {
-    if (label.leader) {
-      ctx.strokeStyle = 'rgba(10, 22, 40, 0.35)'
-      ctx.lineWidth = 0.75
-      ctx.beginPath()
-      ctx.moveTo(label.leader.x1, label.leader.y1)
-      ctx.lineTo(label.leader.x2, label.leader.y2)
-      ctx.stroke()
-    }
     const font = label.kind === 'section' || label.kind === 'caption' ? DISPLAY_FONT : DATA_FONT
     ctx.font = `${label.weight} ${label.fontPx}px ${font}`
-    ctx.fillStyle = label.kind === 'price' || label.kind === 'ruler' || label.kind === 'rowLetter' || label.kind === 'objectLabel' ? C.dusk : C.night
+    ctx.fillStyle = label.kind === 'price' || label.kind === 'ruler' || label.kind === 'rowLetter' ? C.dusk : C.night
     ctx.fillText(label.text, label.cx, label.cy)
     if (label.sublabel) {
       ctx.font = `600 11px ${DATA_FONT}`

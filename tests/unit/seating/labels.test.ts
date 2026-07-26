@@ -58,7 +58,11 @@ describe('the label placement engine (task 2)', () => {
       expect(counts.labelSeat).toBe(0)
       expect(counts.labelLabel).toBe(0)
       expect(counts.labelObject).toBe(0)
-      expect(counts.labels).toBeGreaterThan(0)
+      // Past overview the plan always carries letters and rulers. At
+      // overview this small fixture's polygon cannot host its name, and
+      // the restraint law DROPS a name that does not fit inside: zero
+      // labels is the correct output there, never a leader to the margin.
+      if (scale > 0.3) expect(counts.labels).toBeGreaterThan(0)
     }
   })
 
@@ -92,37 +96,57 @@ describe('the label placement engine (task 2)', () => {
     })
     const section = labels.find(l => l.kind === 'section')
     expect(section).toBeDefined()
-    expect(section!.leader).toBeUndefined()
     expect(section!.sublabel).toContain('AUD 89.00')
   })
 
-  it('moves a label to the margin with a leader when the interior is full', () => {
-    // A tiny 2x2 section cannot host its name at seat zoom: the label
-    // must leave the seats and carry a leader line.
+  it('section names exist at overview only and never grow a leader', () => {
+    // The restraint law: a tiny 2x2 section that cannot host its long
+    // name inside its own polygon DROPS the name; nothing moves to the
+    // margin, no leader line exists anywhere, and past overview no
+    // section name is placed at all.
     const seats = grid(2, 2, 'tiny')
     const scene = buildScene({
       seats,
       sections: [{ id: 'tiny', name: 'Royal Circle Boxes', color: '#7A1F3D' }],
     })
-    const camera = { scale: 0.5, tx: 40, ty: 40 }
-    const labels = placeLabels({
-      scene,
-      camera,
-      width: 1440,
-      height: 900,
-      flags: lodFlags(0.5),
-      chairPx: scene.chairW * 0.5,
-      formatPrice: c => `AUD ${(c / 100).toFixed(2)}`,
-      measure,
+    const placeAt = (scale: number) =>
+      placeLabels({
+        scene,
+        camera: { scale, tx: 40, ty: 40 },
+        width: 1440,
+        height: 900,
+        flags: lodFlags(scale),
+        chairPx: scene.chairW * scale,
+        formatPrice: c => `AUD ${(c / 100).toFixed(2)}`,
+        measure,
+      })
+    for (const scale of [0.5, 1.1]) {
+      expect(placeAt(scale).filter(l => l.kind === 'section')).toHaveLength(0)
+    }
+    const overview = placeAt(0.26)
+    expect(overview.find(l => l.kind === 'section')).toBeUndefined()
+    expect(overview.some(l => 'leader' in l && (l as Record<string, unknown>).leader)).toBe(false)
+  })
+
+  it('free captions place for the builder only, never the buyer plan', () => {
+    const scene = buildScene({
+      seats: grid(8, 12),
+      sections: [{ id: 'sec-1', name: 'Stalls', color: '#1F5673' }],
+      objects: [{ kind: 'text', text: 'Cloakroom', x: 60, y: 340, size: 12 }],
     })
-    const section = labels.find(l => l.kind === 'section')
-    expect(section).toBeDefined()
-    expect(section!.leader).toBeDefined()
-    const counts = assertLabelCollisions(
-      labels,
-      seatObstacles(scene, camera, 1440, 900, scene.chairW * 0.5),
-      [],
-    )
-    expect(counts.labelSeat).toBe(0)
+    const placeWith = (builderInk: boolean) =>
+      placeLabels({
+        scene,
+        camera: { scale: 0.6, tx: 40, ty: 40 },
+        width: 1440,
+        height: 900,
+        flags: lodFlags(0.6),
+        chairPx: scene.chairW * 0.6,
+        formatPrice: c => `AUD ${(c / 100).toFixed(2)}`,
+        measure,
+        builderInk,
+      })
+    expect(placeWith(false).filter(l => l.kind === 'caption')).toHaveLength(0)
+    expect(placeWith(true).filter(l => l.kind === 'caption')).toHaveLength(1)
   })
 })

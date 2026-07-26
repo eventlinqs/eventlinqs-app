@@ -263,6 +263,9 @@ export function SeatSelector({
       const seat = seats[index]
       if (!seat) return 'taken'
       if (selectedIds.has(seat.id)) return 'selected'
+      // A house hold is not a sale: stone body, dashed tier-hue stroke,
+      // visibly different from the solid dark sold state.
+      if (seat.status === 'held') return 'held'
       if (seat.status !== 'available') return 'taken'
       const price = getSeatPrice(seat)
       if (priceFilter && (price < priceFilter[0] || price > priceFilter[1])) return 'dimmed'

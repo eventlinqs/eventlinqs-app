@@ -5,19 +5,21 @@
  * what this returns; the proof harness asserts zero intersections over
  * the same output, so the drawing and the guarantee cannot diverge.
  *
- * Placement rules, in priority order:
- *  1. Rulers: one band per contiguous seat block (polygon cluster),
- *     immediately above that block's first row; marks that would collide
- *     are dropped, never drawn askew.
- *  2. Row letters: two dedicated gutters, a fixed distance outside the
- *     seat field's bounding edge; when two letters would collide
- *     vertically the lower-priority (further back) one is dropped.
- *  3. Section names (and the price at overview): centred in the
+ * Placement rules, in priority order (the restraint law: ON the plan at
+ * every zoom sit chairs, row letters, rulers, the stage and the aisles,
+ * NOTHING else; section names and prices exist at overview only, inside
+ * their polygon, and vanish at mid and seat):
+ *  1. Rulers: one band per contiguous seat block, immediately above that
+ *     block's own front row; marks that would collide are dropped, never
+ *     drawn askew.
+ *  2. Row letters: the seat field's two fixed gutters (galleries at
+ *     their own ends); a letter that would collide is dropped.
+ *  3. Section names with the price range: OVERVIEW ONLY, centred in the
  *     polygon's largest clear interior position found by sampling; if no
- *     clear interior position exists, the label moves to the margin with
- *     a hairline leader back to the polygon.
- *  4. Object labels and free captions: drawn only where clear, dropped
- *     on collision.
+ *     clear interior position exists the label is DROPPED. No leader
+ *     lines, ever: prices otherwise live in the ticket rail.
+ *  4. Free captions: the BUILDER's surface only, never the buyer plan.
+ *     Object labels do not exist; a venue object is its hairline outline.
  */
 
 import type { Camera } from './draw'
@@ -33,7 +35,7 @@ export interface LabelBox {
 }
 
 export interface PlacedLabel extends LabelBox {
-  kind: 'section' | 'price' | 'rowLetter' | 'ruler' | 'objectLabel' | 'caption'
+  kind: 'section' | 'price' | 'rowLetter' | 'ruler' | 'caption'
   text: string
   /** A second line inside the SAME box (the price under a section name). */
   sublabel?: string
@@ -44,7 +46,6 @@ export interface PlacedLabel extends LabelBox {
   weight: number
   display?: boolean
   color?: string
-  leader?: { x1: number; y1: number; x2: number; y2: number }
 }
 
 export interface PlaceLabelsInput {
@@ -58,6 +59,11 @@ export interface PlaceLabelsInput {
   formatPrice: (cents: number) => string
   /** Text width in px for a font size and weight (canvas measureText). */
   measure: (text: string, px: number, weight: number) => number
+  /**
+   * The builder's surface places free captions; the buyer plan never
+   * does (the restraint law). Default false.
+   */
+  builderInk?: boolean
 }
 
 /**
@@ -220,13 +226,16 @@ export function placeLabels(input: PlaceLabelsInput): PlacedLabel[] {
     }
   }
 
-  // ── 3. Section names, with the price range at overview. ───────────────
-  if (flags.polygonFill || flags.polygonEdge) {
+  // ── 3. Section names with the price range: OVERVIEW ONLY, inside the
+  // polygon or not at all. No leader lines, no margin placement: a name
+  // that cannot sit clear inside its own polygon is dropped, and the
+  // ticket rail carries the prices. ──
+  if (flags.polygonFill) {
     for (const poly of scene.polygons) {
-      const namePx = flags.polygonFill ? 13 : 11
+      const namePx = 13
       const nameText = poly.name.toUpperCase()
       const priceText =
-        flags.polygonFill && poly.minPriceCents != null
+        poly.minPriceCents != null
           ? poly.maxPriceCents != null && poly.maxPriceCents !== poly.minPriceCents
             ? `${formatPrice(poly.minPriceCents)} to ${formatPrice(poly.maxPriceCents)}`
             : formatPrice(poly.minPriceCents)
@@ -249,7 +258,6 @@ export function placeLabels(input: PlaceLabelsInput): PlacedLabel[] {
           candidates.push(toScreen(camera, wx, wy))
         }
       }
-      let done = false
       for (const c of candidates) {
         const box: LabelBox = { x: c.x - w / 2, y: c.y - h / 2, w, h }
         if (!insideCanvas(box)) continue
@@ -265,83 +273,22 @@ export function placeLabels(input: PlaceLabelsInput): PlacedLabel[] {
           fontPx: namePx,
           weight: 700,
         })
-        done = true
-        break
-      }
-      if (done) continue
-
-      // Margin placement with a hairline leader to the polygon.
-      const hullMinX = Math.min(...xs)
-      const hullMaxX = Math.max(...xs)
-      const midY = (Math.min(...ys) + Math.max(...ys)) / 2
-      const sides: { x: number; y: number; edge: HullPoint }[] = [
-        { x: toScreen(camera, hullMinX, midY).x - w / 2 - 18, y: toScreen(camera, 0, midY).y, edge: { x: hullMinX, y: midY } },
-        { x: toScreen(camera, hullMaxX, midY).x + w / 2 + 18, y: toScreen(camera, 0, midY).y, edge: { x: hullMaxX, y: midY } },
-        { x: centroidAt.x, y: toScreen(camera, 0, Math.min(...ys)).y - h / 2 - 14, edge: { x: poly.centroid.x, y: Math.min(...ys) } },
-        { x: centroidAt.x, y: toScreen(camera, 0, Math.max(...ys)).y + h / 2 + 14, edge: { x: poly.centroid.x, y: Math.max(...ys) } },
-      ]
-      for (const s of sides) {
-        const box: LabelBox = { x: s.x - w / 2, y: s.y - h / 2, w, h }
-        if (!insideCanvas(box) || collides(box, obstacles)) continue
-        const edgeAt = toScreen(camera, s.edge.x, s.edge.y)
-        const leader = {
-          x1: s.x + (edgeAt.x > s.x ? w / 2 - 2 : -(w / 2) + 2),
-          y1: s.y,
-          x2: edgeAt.x,
-          y2: edgeAt.y,
-        }
-        push({
-          kind: 'section',
-          text: nameText,
-          sublabel: priceText ?? undefined,
-          ...box,
-          cx: s.x,
-          cy: priceText ? s.y - 7 : s.y,
-          fontPx: namePx,
-          weight: 700,
-          leader,
-        })
         break
       }
     }
   }
 
-  // ── 4. Object labels and free captions: clear or dropped. ─────────────
-  for (const obj of scene.objects) {
-    if (obj.kind === 'text') {
+  // ── 4. Free captions: the builder's surface only, clear or dropped.
+  // The buyer plan never carries them, and object labels do not exist. ──
+  if (input.builderInk) {
+    for (const obj of scene.objects) {
+      if (obj.kind !== 'text') continue
       const px = Math.max(9, (obj.size ?? 14) * camera.scale)
       const w = measure((obj.text ?? '').toUpperCase(), px, 700) + 4
       const at = toScreen(camera, obj.x + (obj.width ?? 0) / 2, obj.y + (obj.height ?? 0) / 2)
       const box: LabelBox = { x: at.x - w / 2, y: at.y - px / 2 - 2, w, h: px + 4 }
       if (!insideCanvas(box) || collides(box, obstacles)) continue
       push({ kind: 'caption', text: (obj.text ?? '').toUpperCase(), ...box, cx: at.x, cy: at.y, fontPx: px, weight: 700 })
-      continue
-    }
-    if (obj.kind !== 'object' || !obj.label) continue
-    const w = (obj.width ?? 48) * camera.scale
-    const h = (obj.height ?? 48) * camera.scale
-    const text = obj.label
-    const tw = measure(text, 10, 600) + 4
-    const at = toScreen(camera, obj.x + (obj.width ?? 48) / 2, obj.y + (obj.height ?? 48) / 2)
-    const ownChip: LabelBox = { x: at.x - w / 2, y: at.y - h / 2, w, h }
-    // Inside the outline when it fits (composition, not collision),
-    // otherwise immediately beside it; dropped when nowhere is clear.
-    const candidates: LabelBox[] = [
-      { x: at.x - tw / 2, y: at.y + h / 2 - 15, w: tw, h: 12 },
-      { x: at.x - tw / 2, y: at.y + h / 2 + 4, w: tw, h: 12 },
-      { x: at.x + w / 2 + 6, y: at.y - 6, w: tw, h: 12 },
-      { x: at.x - w / 2 - tw - 6, y: at.y - 6, w: tw, h: 12 },
-    ]
-    for (const [ci, box] of candidates.entries()) {
-      if (ci === 0) {
-        if (!contains(ownChip, box)) continue
-        const others = obstacles.filter(o => !contains(o, box))
-        if (!insideCanvas(box) || collides(box, others)) continue
-      } else if (!insideCanvas(box) || collides(box, obstacles)) {
-        continue
-      }
-      push({ kind: 'objectLabel', text, ...box, cx: box.x + box.w / 2, cy: box.y + box.h / 2, fontPx: 10, weight: 600 })
-      break
     }
   }
 

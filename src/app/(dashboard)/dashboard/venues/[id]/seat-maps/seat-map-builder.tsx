@@ -1164,6 +1164,7 @@ export function SeatMapBuilder({
             paintWorld={paintWorld}
             trace={tracePlacement}
             gridDots
+            builderInk
             ariaLabel="Seating chart canvas. Tab cycles blocks, arrow keys move the selected block, Shift steps larger, Delete removes it. Drag to pan, pinch or Ctrl and scroll to zoom."
             className="h-[58vh] min-h-[380px] w-full rounded-panel bg-canvas lg:h-[560px]"
           >
