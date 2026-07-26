@@ -28,6 +28,8 @@ const PAGES = [
   ['category', '/events?category=music'],
   ['community-city', '/community/african/sydney'],
   ['help', '/help'],
+  ['guides-hub', '/guides'],
+  ['guide-page', '/guides/mapping-ticket-tiers-to-seats'],
   ['press', '/press'],
   ['careers', '/careers'],
   ['legal-terms', '/legal/terms'],
