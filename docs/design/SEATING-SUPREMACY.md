@@ -1,5 +1,215 @@
 # Seating supremacy: research, matrix, build, proof
 
+## ROUND 2 - 2026-07-26: one benchmark (Humanitix), one parts bin
+
+Ledger: `docs/roast/seating-final-2026-07-26.md`. Evidence:
+`docs/design/seating-final-2026-07-26/`. The eleven-platform row-by-row
+comparison below (Round 1) is retained as history; from this round there is
+ONE benchmark to beat on design (Humanitix) and a parts bin to absorb.
+Results are appended to this section as the round completes.
+
+### R2.1 The aesthetic brainstorm (written before any code, 2026-07-26)
+
+The Round 1 system holds: the six seating tokens (`seat-night`, `seat-dusk`,
+`seat-veil`, `seat-gold`, `seat-bloom`, `seat-stone`), the editorial section
+tones, the stage light signature, tabular numerals, the chip legend. This
+round adds nine capabilities; the brainstorm below is the token DELTA for
+the new surfaces only. No new brand colours; every delta derives from the
+existing tokens or is a functional accessibility ramp derived from the
+editorial palette.
+
+1. **Colour-vision palette sets (new, functional).** Three alternate section
+   ramps beside the house editorial ramp: red-green (protan), red-green
+   (deutan), blue-yellow (tritan). Each tone keeps the house tone's depth
+   (white numerals stay 4.5:1+) while moving hue onto the axis the viewer
+   can separate: the protan and deutan ramps live on blue against
+   gold-brown; the tritan ramp lives on red against blue-green, with
+   luminance steps carrying what hue cannot. Gold selection, navy stage,
+   stone recede are IDENTICAL in every set: the brand does not dim for
+   accessibility, the sections adapt around it. The switcher is a quiet
+   "Seat colours" chip at the legend's end, not an eye-icon dropdown.
+2. **One concierge row (party + price in one control).** The best-available
+   row and the price chips merge into a single bordered group: a party
+   stepper (tabular numerals), the price chips, one gold action. One label:
+   "Seats together". Two controls become one; the map above stays the hero.
+3. **The diff sheet (post-publish editing).** No git red-green. Four
+   semantics from the existing system: protected sold and held seats lead,
+   gold lock glyph on navy chip; additions carry the section tone keyline;
+   repositioned seats carry `seat-dusk`; removals carry `seat-stone` with a
+   struck numeral. The sheet opens from the sync action and nothing commits
+   until the founder-grade sentence at the top is true: "Sold and held
+   seats are never touched."
+4. **Mobile studio chrome.** Below `lg` the inspector becomes a solid white
+   bottom sheet with a navy-tinted grab handle; the tool rail becomes a
+   44px icon bar; the canvas gains the buyer map's pinch and pan engine.
+   Nothing translucent, nothing glass.
+5. **View from seat.** A photo card, not a lightbox: navy scrim base, the
+   gold filament rule, Archivo caps caption ("VIEW FROM A RESERVE"), the
+   photograph full-bleed above it. Entered from a camera glyph on the
+   section legend chip; closed by the one control.
+6. **Curve controls.** The bow slider stays the hero; per-row shaping is a
+   front-and-back pair of sliders plus an auto-bow toggle labelled "Bow to
+   the stage", so the theatre curves the way real rooms do: around the
+   focal point, deeper at the back.
+7. **Floor plan assist.** The trace tool inherits the underlay language:
+   the detected row previews as ghost seats in `seat-dusk` at 40 percent
+   until accepted, then takes the section tone. Gold dashed line while
+   drawing, the same alignment-guide gold as the studio's snap guides.
+
+### R2.2 The critique (against generic defaults, before code)
+
+- **Refused: the assistive-tech cliche.** An eye icon and "Colorblind mode"
+  toggle is the generic default. Changed to: "Seat colours" chip, three
+  sets named by what they solve (red-green, blue-yellow), live swatch
+  preview in the menu, remembered per device. Plain words, no medicalised
+  icon, no US spelling.
+- **Refused: the git diff.** Added-green and removed-red is the default
+  the whole industry ships. Changed to the four-semantic navy system above;
+  the protected count leads because safety is the story, not churn.
+- **Refused: the airline widget.** Party size and price as two dropdowns
+  and a submit button reads as a flight search. Changed to one bordered
+  row where the stepper and chips share a baseline and the single action
+  carries the gold; it reads as one sentence: this many of us, under this,
+  find us seats.
+- **Refused: the lightbox.** View-from-seat as a dimmed overlay with a
+  corner X is every gallery since 2012. Changed to the photo card anchored
+  in the seating context with the section's own name in Archivo caps.
+- **Refused: the three AI-default looks** (cream and serif and terracotta;
+  near-black and acid; broadsheet hairlines) - unchanged from Round 1,
+  still refused; nothing in this round introduces them.
+- **Kept and named: the bottom sheet grab handle.** It is a genuine
+  convention doing real work on a 390 canvas; it is tinted navy at 8
+  percent, the one generic-adjacent element this round retains.
+
+### R2.3 The build record (all nine parts-bin items, one commit each)
+
+Evidence: `docs/design/seating-final-2026-07-26/` (34 files, every capability
+driven LIVE on the TEST build at 1440 and 390, plus the contrast proof).
+Gates at delivery: 875 unit tests, typecheck, lint (0 errors) and the
+production build all green.
+
+1. **Curved rows done properly.** Auto-bow lays true concentric arcs
+   around the stage: every row a circle on a shared focal centre, seats
+   spaced evenly ALONG the arc so aisles radiate and back rows flatten
+   the way a real room rakes; manual mode gains a front-and-back bow pair
+   with per-row overrides behind a Shape row by row disclosure; the live
+   bow slider sits ON the lit canvas. Skew (px-per-row shear) joins it.
+   Existing charts render byte-identical, pinned by test. What a person
+   notices: the theatre starter opens as a genuine fanned auditorium
+   (`builder-preset-theatre-autobow-1440.png`), not a stack of bent lines.
+2. **Floor plan intelligence, assisted.** With a plan traced under the
+   grid, Detect a row samples the plan's pixels along a drawn line (a
+   three-pixel band on a downscaled offscreen canvas), counts dark blobs
+   as seats and lays the row on the line with count, spacing and angle
+   (`builder-detect-anchor-1440.png`, `builder-detect-row-placed-1440.png`).
+   Low contrast lays an even row and says so. HONESTLY REMAINING for full
+   auto-detect: whole-plan blob detection and row clustering with no
+   guiding line; not shipped this session.
+3. **Price and party size in ONE control.** One bordered row reads as a
+   sentence: this many of us, under this price, find our seats. The band
+   also drives the map recede, the cascade runs inside the band, orphan
+   accounting runs on the whole real room, and an under-supplied band
+   answers an honest none (`buyer-banded-receded-1440.png`,
+   `buyer-banded-found-1440.png`). Research verdict at R2.4.
+4. **Best-available quality scoring.** Every pick scored on contiguity
+   (largest block over party size), focal proximity, and orphans created
+   (a multiplicative 0.7 per strand); writing the score exposed a real
+   weakness and produced the best-split leg, a deterministic beam judged
+   by the score itself. Reproducible proof: on a real generated
+   two-section curved chart across three deterministic occupancies and
+   five party sizes, our pick meets or beats naive row-fill in EVERY
+   case, wins in aggregate, and strands strictly fewer singles
+   (`tests/unit/seating/quality-score.test.ts`).
+5. **Mobile builder, fully usable at 390.** Pinch and pan from the buyer
+   map's engine, a solid bottom-sheet inspector, 44px tools, and every
+   operation captured live at 390: draw, bind a tier, move, relabel,
+   save (`mobile-01..05-*.png`). Plus redo, and three starter shapes.
+6. **Safe post-publish editing.** A read-only diff of exactly what the
+   additive sync will do, protected sold and held counts leading with the
+   lock, then adds, moves and never-sold removals with named seats; only
+   an explicit confirm commits (`diff-sheet-1440.png`, driven against an
+   event with 7 sold and 2 reserved seats). The room studio and chart
+   list name their live attachments, and the silent chart-swap failure in
+   updateEvent now refuses in plain words.
+7. **Colour-vision palette sets.** Protan, deutan and tritan sets beside
+   the house ramp, six wide-separated tones each, switchable from the
+   legend and remembered per device; gold selection, navy stage and stone
+   recede identical in every set. Proof: WCAG text and boundary pairs
+   PLUS Machado-simulated Lab separation for every seat state in every
+   set, machine-checked (`seat-contrast-all-palettes.txt`, 164 rows, all
+   pass).
+8. **Attendee self-move that cannot strand a seat.** Flag-gated and
+   organiser opt-in as before; the offered list is orphan-guarded and
+   price-matched server-side, the guard re-runs at move time, and the
+   control names the held-back count (`selfmove-control-1440.png`).
+9. **View from seat by photograph.** One real photo per section, uploaded
+   in the studio through the proven pipeline (magic bytes, EXIF strip,
+   ownership scoping; the capture drive uploaded a real JPEG end to end
+   into the section-views bucket), shown to buyers from a camera glyph on
+   the section chip as a navy photo card with the honesty line
+   "Photographed from this section, not a render"
+   (`buyer-view-from-seat-1440.png`). Migration `20260726000001`, applied
+   to TEST.
+
+Also shipped: full keyboard operation of both surfaces (Tab cycles blocks,
+arrows nudge in the studio; arrows walk seat to seat with a spoken cursor
+on the buyer map: `buyer-keyboard-cursor-1440.png`), and the organiser room
+view's traffic-light status colours replaced with brand tones.
+
+**Defects the live drive caught and fixed in the same session** (the
+reason the drive exists): the mobile sheet swallowing marking-tool taps;
+the empty-canvas invitation blocking detect clicks over a traced plan;
+and the price band reading tier prices from a non-existent column, which
+made every banded request answer "nothing fits". All three are separate
+fix commits with the story in the message.
+
+### R2.4 The research verdict for the ONE control (F22, cited, 2026-07-26)
+
+Live survey of 16 platforms and vendors (Ticketmaster, Ticketek,
+Eventbrite, Humanitix, AXS, SeatGeek, StubHub, Vivid Seats, TodayTix,
+DICE, Tixel, Oztix, TryBooking, Sticky Tickets, EventBookings, Seats.io,
+plus the 3D vendors): **no surveyed platform documents a single
+buyer-facing control that takes party size and a price ceiling together
+and returns contiguous seats with orphan protection applied in that same
+request.** The closest prior art, honestly stated: Seats.io's
+best-available API combines quantity plus CATEGORY constraints with
+orphan prevention on by default, developer-facing only, no price-number
+input (docs.seats.io/docs/api/best-available, viewed 2026-07-26);
+Ticketmaster's "Choose Seats For Me" takes quantity and a price dropdown
+in one form but its documentation is silent on contiguity and orphans
+(ticketmaster.com.au/interactiveseatmap/faq.html, viewed 2026-07-26);
+Ticketek allocates best-available within a chosen price CATEGORY and
+separately enforces a no-single-seats rule in seat changes
+(premier.ticketek.com.au Seatmap.HelpGuide, viewed 2026-07-26). The
+supportable claim is exactly: FIRST TO COMBINE the four documented
+guarantees (party size + price ceiling + contiguity + orphan safety) in
+one buyer control; never "first to auto-pick seats".
+
+### R2.5 The outstanding items from the last round, closed
+
+- **R31 (PARTIAL: curved rows LEVEL, price filter LEVEL).** Closed by
+  build: curvature now carries auto-bow concentric geometry, per-row
+  shaping, skew and the on-canvas live slider, beyond any surveyed
+  implementation including the specialist's; the price filter is now half
+  of the ONE control no platform documents (R2.4). Both formerly LEVEL
+  rows are now AHEAD with capture proof.
+- **R46 (PARTIAL: the poster seat map premise).** Closed by founder
+  ruling, recorded verbatim in the brief: no seat mini-map on the A4
+  poster. Not revisited.
+- **R47 (PARTIAL: three platforms not viewed).** Closed by evidence:
+  Humanitix (live buyer captures plus 43 builder images), EventBookings
+  and Oztix imagery obtained and judged; verdicts in
+  `SEATING-VISUAL-COMPARISON.md`. Also corrected there: Round 1's matrix
+  wrongly recorded Humanitix as having no curve control; their builder
+  has Skew and Curve sliders, and the corrected verdict is LEVEL on
+  having a slider, AHEAD on curvature done properly.
+- **Founder rulings held:** no poster mini-map; 3D view-from-seat stays
+  parked (the photograph ships instead); seating cost stays free.
+
+---
+
+## ROUND 1 - 2026-07-25 (history)
+
 Date: 2026-07-25. Companion to `docs/design/PHASE-C.md`. Evidence in
 `docs/design/phase-c-2026-07-25/`. Roast ledger:
 `docs/roast/phase-c-launch-kit-seating-2026-07-25.md`.
