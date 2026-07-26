@@ -9,7 +9,7 @@ import type {
 import { jsonAsStringArray } from '@/lib/json-narrow'
 import { priceLabel } from '@/lib/events/price-label'
 import {
-  SeatSelector, type SeatData, type SectionData, type SeatAreaData,
+  SeatSelector, type SeatData, type SectionData, type SeatAreaData, type SeatDecorData,
 } from '@/components/checkout/seat-selector'
 import { isFlagEnabled } from '@/lib/flags'
 import { SocialProofBadge } from '@/components/inventory/social-proof-badge'
@@ -431,6 +431,7 @@ export default async function EventDetailPage({ params }: Props) {
   let eventSeats: SeatData[] = []
   let eventSections: SectionData[] = []
   let eventAreas: SeatAreaData[] = []
+  let eventDecor: SeatDecorData = {}
   let sectionViews: Record<string, string> = {}
   if (seatsData) {
     const { seatsResult, sectionsResult, mapResult, viewsResult } = seatsData
@@ -444,8 +445,16 @@ export default async function EventDetailPage({ params }: Props) {
       ticket_tier_id: s.ticket_tier_id ?? null,
     }))
     eventSections = (sectionsResult.data ?? []) as SectionData[]
-    const rawAreas = (mapResult?.data?.layout as { areas?: SeatAreaData[] } | null)?.areas
-    if (Array.isArray(rawAreas)) eventAreas = rawAreas
+    const rawLayout = mapResult?.data?.layout as {
+      areas?: SeatAreaData[]
+      stage?: SeatDecorData['stage']
+      objects?: SeatDecorData['objects']
+    } | null
+    if (Array.isArray(rawLayout?.areas)) eventAreas = rawLayout.areas
+    eventDecor = {
+      stage: rawLayout?.stage ?? null,
+      objects: Array.isArray(rawLayout?.objects) ? rawLayout.objects : [],
+    }
     sectionViews = Object.fromEntries(
       (viewsResult?.data ?? []).map(v => [v.section_name.toLowerCase(), v.photo_url]),
     )
@@ -903,6 +912,15 @@ export default async function EventDetailPage({ params }: Props) {
                           seats={eventSeats}
                           sections={eventSections}
                           areas={eventAreas}
+                          decor={eventDecor}
+                          tiers={allTiers
+                            .filter(t => seatBoundTierIds.has(t.id))
+                            .map(t => ({
+                              id: t.id,
+                              name: t.name,
+                              price_cents: resolvePrice(t),
+                              min_per_order: t.min_per_order ?? 1,
+                            }))}
                           defaultPriceCents={defaultPriceCents}
                           currency={allTiers[0]?.currency ?? 'AUD'}
                           maxPerOrder={allTiers[0]?.max_per_order ?? 10}
