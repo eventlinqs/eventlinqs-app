@@ -631,8 +631,8 @@ export function SeatSelector({
 
   // ── Whole-table booking (the gala edge) ────────────────────────────────
   // Any row whose label reads as a table or booth sells in ONE action: a tap
-  // holds every free seat at that table. Humanitix routes organisers to a
-  // packaged-ticket workaround; Eventbrite sells chair by chair.
+  // holds every free seat at that table. No surveyed platform books a whole
+  // table in one tap (the benchmark record lives in docs/design).
   const tableGroups = useMemo(() => {
     const groups = new Map<string, { key: string; label: string; sectionId: string | null; seats: SeatData[] }>()
     for (const seat of seats) {
@@ -936,7 +936,7 @@ export function SeatSelector({
                 style={{ backgroundColor: sectionColorForSet(s.color, paletteSet) }}
               />
               <span className="font-medium text-ink-900">{s.name}</span>
-              {priceLabel && <span className="text-ink-400">{priceLabel}</span>}
+              {priceLabel && <span className="text-ink-600">{priceLabel}</span>}
               {viewUrl && (
                 <button
                   type="button"
@@ -1012,7 +1012,7 @@ export function SeatSelector({
                   </span>
                   <span className="min-w-0">
                     <span className="block text-xs font-semibold text-ink-900">{meta.label}</span>
-                    <span className="block text-[11px] text-ink-400">{meta.hint}</span>
+                    <span className="block text-[11px] text-ink-600">{meta.hint}</span>
                   </span>
                   {paletteSet === meta.id && (
                     <svg
