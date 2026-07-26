@@ -1,14 +1,14 @@
 {
   "base": "https://eventlinqs-staging.vercel.app",
-  "startedAt": "2026-07-11T02:08:09.331Z",
+  "startedAt": "2026-07-19T02:32:46.773Z",
   "stages": [
     "a",
     "c"
   ],
   "a_loggedInSeated": {
     "order": {
-      "id": "bac3efe1-4c11-4982-adc6-5dc6448f52c1",
-      "order_number": "EL-FPJ72MQE",
+      "id": "fe3a9f85-d8a4-45e9-a802-64f61c5b1c0c",
+      "order_number": "EL-YH6P96AL",
       "status": "confirmed",
       "user_id": "57101100-eec8-4e72-a464-97e11e66bea1",
       "guest_email": null,
@@ -18,16 +18,16 @@
     },
     "tickets": [
       {
-        "id": "2310cb8d-18c6-4988-9bba-2b627c2572b9",
-        "ticket_code": "EL-2RGC-KZH3",
+        "id": "36b9907b-ecff-471c-92a9-205f1a9e8b96",
+        "ticket_code": "EL-KAC9-FAD2",
         "status": "valid",
         "holder_email": "test-user@eventlinqs.com",
         "seat": {
           "section": {
             "name": "Main room"
           },
-          "row_label": "B",
-          "seat_number": "3"
+          "row_label": "E",
+          "seat_number": "4"
         }
       }
     ],
@@ -38,30 +38,24 @@
   },
   "b_guestSeated": {
     "order": {
-      "id": "80a18602-d6d3-4711-b8b4-717f011e94e6",
-      "order_number": "EL-AZ2Z6S7R",
-      "status": "confirmed",
+      "id": "bfffbf6a-1230-43da-8b7a-743e641d3b7f",
+      "order_number": "EL-ZZKE3TQZ",
+      "status": "pending",
       "user_id": null,
       "guest_email": "guest-attach-proof@mailinator.com",
       "guest_name": "Guest Proof",
       "total_cents": 2750,
       "currency": "AUD"
     },
-    "tickets": [
-      {
-        "ticket_code": "EL-DJXG-6BME",
-        "status": "valid",
-        "holder_email": "guest-attach-proof@mailinator.com"
-      }
-    ],
+    "tickets": [],
     "userIdNull": true,
     "guestEmailCorrect": true,
-    "confirmed": true
+    "confirmed": false
   },
   "c_loggedInGA": {
     "order": {
-      "id": "dc2bb248-699d-4654-8b8c-462996298dbc",
-      "order_number": "EL-LYT45BYD",
+      "id": "ac21dd6a-b6ca-4dea-9447-9b8ae079c49b",
+      "order_number": "EL-VNSR8R4K",
       "status": "confirmed",
       "user_id": "57101100-eec8-4e72-a464-97e11e66bea1",
       "guest_email": null,
@@ -76,11 +70,11 @@
     "uiStatus": "Sent to transfer-attach-proof@mailinator.com. Their new QR is on the way and your old code no longer works.",
     "before": {
       "holder_email": "test-user@eventlinqs.com",
-      "secret_prefix": "f6b4e95d"
+      "secret_prefix": "91f0c9c2"
     },
     "after": {
-      "id": "2310cb8d-18c6-4988-9bba-2b627c2572b9",
-      "ticket_code": "EL-2RGC-KZH3",
+      "id": "36b9907b-ecff-471c-92a9-205f1a9e8b96",
+      "ticket_code": "EL-KAC9-FAD2",
       "status": "valid",
       "holder_email": "transfer-attach-proof@mailinator.com",
       "holder_name": "Transfer Proof",
@@ -91,12 +85,12 @@
         "from_user_id": "57101100-eec8-4e72-a464-97e11e66bea1",
         "from_email": "test-user@eventlinqs.com",
         "to_email": "transfer-attach-proof@mailinator.com",
-        "created_at": "2026-07-11T02:09:15.074417+00:00"
+        "created_at": "2026-07-19T02:34:49.436926+00:00"
       }
     ],
     "holderReassigned": true,
     "secretRotated": true,
     "transferLogged": true
   },
-  "finishedAt": "2026-07-11T02:09:19.013Z"
+  "finishedAt": "2026-07-19T02:34:52.554Z"
 }

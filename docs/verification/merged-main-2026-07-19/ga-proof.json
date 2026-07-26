@@ -1,0 +1,18 @@
+{
+  "base": "https://eventlinqs-staging.vercel.app",
+  "slug": "community-open-mic-night-at-the-wool-exchange-w02t2x",
+  "startedAt": "2026-07-19T00:28:30.023Z",
+  "eventIsFreeGA": true,
+  "checkoutButtons": [
+    "Clear",
+    "Apply",
+    "Register for free"
+  ],
+  "orderId": "5966b7fa-d1ed-428e-a92f-5a26585d24ab",
+  "order_number": "EL-R7GG5BB7",
+  "confirmed": true,
+  "buyerAttached": true,
+  "ticketCount": 1,
+  "bearerPageRenders": false,
+  "PASS": true
+}
