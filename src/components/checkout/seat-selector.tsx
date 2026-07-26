@@ -628,7 +628,6 @@ export function SeatSelector({
   }, [seatsKey, tiersKey, tierHueMap])
 
   const openCount = seats.filter(s => s.status === 'available').length
-  const showKeyPlan = cameraInfo.scale > cameraInfo.fitScale * 1.15
 
   const hoverSeat = hover ? seats[hover.index] : null
   const stripSeat = stripIndex != null ? seats[stripIndex] : null
@@ -653,7 +652,7 @@ export function SeatSelector({
   }
 
   return (
-    <div className="space-y-4" data-testid="seat-selector">
+    <div className="scroll-mt-24 space-y-4" data-testid="seat-selector">
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
         {/* ── The sheet ── */}
         <div ref={sheetRef} className="relative lg:min-h-[560px]" data-testid="seat-sheet">
@@ -676,6 +675,7 @@ export function SeatSelector({
             onCamera={setCameraInfo}
             ariaLabel="Seat map. Arrow keys move seat to seat, Enter selects, plus and minus zoom, Escape rests. Drag to pan, pinch or Ctrl and scroll to zoom."
             className="h-[62vh] min-h-[380px] w-full rounded-xl bg-canvas lg:absolute lg:inset-0 lg:h-full"
+            reservedBottomPx={112}
           >
             {/* The floating tooltip (item 6): price, type, exact place. */}
             {hoverSeat && hover && (
@@ -704,36 +704,55 @@ export function SeatSelector({
               </div>
             )}
 
-            {/* The key plan (item 7): the sheet's corner block. */}
-            {showKeyPlan && (
-              <>
-                <div className="absolute bottom-3 left-3 hidden sm:block">
-                  <KeyPlan
-                    scene={scene}
-                    camera={canvasRef.current?.getCamera() ?? { scale: cameraInfo.scale, tx: 0, ty: 0 }}
-                    viewWidth={canvasRef.current?.getViewSize().width ?? 0}
-                    viewHeight={canvasRef.current?.getViewSize().height ?? 0}
-                    width={150}
-                    height={104}
-                    onNavigate={(x, y) => canvasRef.current?.centreOnWorld(x, y)}
-                  />
-                </div>
-                <div className="absolute right-2 top-2 sm:hidden">
-                  <KeyPlan
-                    scene={scene}
-                    camera={canvasRef.current?.getCamera() ?? { scale: cameraInfo.scale, tx: 0, ty: 0 }}
-                    viewWidth={canvasRef.current?.getViewSize().width ?? 0}
-                    viewHeight={canvasRef.current?.getViewSize().height ?? 0}
-                    width={96}
-                    height={66}
-                    onNavigate={(x, y) => canvasRef.current?.centreOnWorld(x, y)}
-                  />
-                </div>
-              </>
-            )}
+            {/* The chrome band: DEAD space the fit reserves, so the key
+                plan, the strip and the zoom cluster can never sit over the
+                room (the fit keeps every seat above this band). */}
+            <div className="absolute inset-x-0 bottom-0 flex h-[112px] items-end justify-between gap-2 px-3 pb-3">
+              <KeyPlan
+                scene={scene}
+                camera={canvasRef.current?.getCamera() ?? { scale: cameraInfo.scale, tx: 0, ty: 0 }}
+                viewWidth={canvasRef.current?.getViewSize().width ?? 0}
+                viewHeight={canvasRef.current?.getViewSize().height ?? 0}
+                width={130}
+                height={90}
+                onNavigate={(x, y) => canvasRef.current?.centreOnWorld(x, y)}
+                className="hidden sm:block"
+              />
+              <KeyPlan
+                scene={scene}
+                camera={canvasRef.current?.getCamera() ?? { scale: cameraInfo.scale, tx: 0, ty: 0 }}
+                viewWidth={canvasRef.current?.getViewSize().width ?? 0}
+                viewHeight={canvasRef.current?.getViewSize().height ?? 0}
+                width={92}
+                height={64}
+                onNavigate={(x, y) => canvasRef.current?.centreOnWorld(x, y)}
+                className="sm:hidden"
+              />
 
-            {/* Zoom cluster: rides above the docked strip on a phone. */}
-            <div className="absolute bottom-12 right-3 flex items-center gap-1 rounded-lg border border-ink-200 bg-white shadow-sm sm:bottom-3">
+              {/* The strip: seat detail on touch, in dead space. */}
+              <div className="min-w-0 flex-1 self-end pb-1 sm:hidden">
+                {stripSeat ? (
+                  <p className="truncate text-xs text-ink-900">
+                    <span className="font-display font-bold" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                      {stripSeat.status === 'available' ? formatPrice(getSeatPrice(stripSeat)) : 'Unavailable'}
+                    </span>
+                    <span className="ml-1.5 text-ink-600">{seatInfoLine(stripSeat)}</span>
+                    {selectedIds.has(stripSeat.id) && (
+                      <span className="ml-1.5 rounded-full bg-gold-500 px-1.5 py-0.5 text-[10px] font-bold uppercase text-ink-900">
+                        Selected
+                      </span>
+                    )}
+                  </p>
+                ) : (
+                  <p className="truncate text-xs text-ink-600">
+                    {cameraInfo.lod === 'overview'
+                      ? 'Tap a section to enter the room'
+                      : 'Tap a seat for its price and place'}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center gap-1 rounded-lg border border-ink-200 bg-white shadow-sm">
               <button
                 type="button"
                 onClick={() => canvasRef.current?.zoomOut()}
@@ -759,35 +778,7 @@ export function SeatSelector({
               >
                 <Maximize className="h-3 w-3" aria-hidden />
               </button>
-            </div>
-
-            {/* The docked strip: seat detail on touch, never covering the
-                room. At overview it invites the tap into a section. */}
-            <div className="absolute inset-x-0 bottom-0 border-t border-ink-200 bg-white/95 px-3 py-1.5 sm:hidden">
-              {stripSeat ? (
-                <p className="truncate text-xs text-ink-900">
-                  <span className="font-display font-bold" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                    {stripSeat.status === 'available' ? formatPrice(getSeatPrice(stripSeat)) : 'Unavailable'}
-                  </span>
-                  {stripSeat.ticket_tier_id && tierById.get(stripSeat.ticket_tier_id) && (
-                    <span className="ml-1.5 font-semibold" style={{ color: tierHueMap.get(stripSeat.ticket_tier_id) }}>
-                      {tierById.get(stripSeat.ticket_tier_id)!.name}
-                    </span>
-                  )}
-                  <span className="ml-1.5 text-ink-600">{seatInfoLine(stripSeat)}</span>
-                  {selectedIds.has(stripSeat.id) && (
-                    <span className="ml-1.5 rounded-full bg-gold-500 px-1.5 py-0.5 text-[10px] font-bold uppercase text-ink-900">
-                      Selected
-                    </span>
-                  )}
-                </p>
-              ) : (
-                <p className="truncate text-xs text-ink-600">
-                  {cameraInfo.lod === 'overview'
-                    ? 'Tap a section to enter the room'
-                    : 'Tap a seat for its price and place'}
-                </p>
-              )}
+              </div>
             </div>
           </SeatCanvas>
         </div>

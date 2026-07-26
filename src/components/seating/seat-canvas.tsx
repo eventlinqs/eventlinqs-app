@@ -28,6 +28,7 @@ import {
   type SeatVisualState,
 } from '@/lib/seating/render/draw'
 import { lodState, type LodState } from '@/lib/seating/render/lod'
+import { assertLabelCollisions } from '@/lib/seating/render/labels'
 import { hitTestSeat, type Scene } from '@/lib/seating/render/scene'
 import { pointInHull } from '@/lib/seating/render/polygons'
 
@@ -90,6 +91,12 @@ export interface SeatCanvasProps {
   /** Non-interactive preview mode (the kit card). */
   readOnly?: boolean
   minHeight?: number
+  /**
+   * Dead chrome reserved at the sheet's foot (the key plan and the zoom
+   * band): the fit keeps the whole room above it, so no seat, label or
+   * object ever renders underneath the controls.
+   */
+  reservedBottomPx?: number
   /** Overlays rendered above the canvas (tooltip, key plan, controls). */
   children?: React.ReactNode
 }
@@ -125,6 +132,7 @@ export const SeatCanvas = forwardRef<SeatCanvasHandle, SeatCanvasProps>(function
     className,
     readOnly,
     minHeight,
+    reservedBottomPx = 0,
     children,
   },
   ref,
@@ -181,7 +189,7 @@ export const SeatCanvas = forwardRef<SeatCanvasHandle, SeatCanvasProps>(function
       const { width, height, dpr } = sizeRef.current
       const p = propsRef.current
       const t0 = performance.now()
-      paintScene(ctx, scene, cameraRef.current, {
+      const result = paintScene(ctx, scene, cameraRef.current, {
         dpr,
         width,
         height,
@@ -201,6 +209,16 @@ export const SeatCanvas = forwardRef<SeatCanvasHandle, SeatCanvasProps>(function
         const ring = (window.__seatFrameTimes ??= [])
         ring.push(took)
         if (ring.length > 600) ring.splice(0, ring.length - 600)
+      }
+      // The collision guarantee, asserted on exactly what this frame drew.
+      const el = containerRef.current as
+        | (HTMLDivElement & { __seatLabels?: unknown })
+        | null
+      if (el) {
+        el.__seatLabels = {
+          ...result,
+          counts: assertLabelCollisions(result.labels, result.seatBoxes, result.objectBoxes),
+        }
       }
     })
   }, [scene])
@@ -295,7 +313,7 @@ export const SeatCanvas = forwardRef<SeatCanvasHandle, SeatCanvasProps>(function
     (animate = false) => {
       const { width, height } = sizeRef.current
       if (width === 0 || height === 0) return
-      const cam = fitCamera(scene, width, height)
+      const cam = fitCamera(scene, width, height, 36, reservedBottomPx)
       fitScaleRef.current = cam.scale
       if (animate) animateTo(cam)
       else setCamera(cam)
@@ -374,7 +392,7 @@ export const SeatCanvas = forwardRef<SeatCanvasHandle, SeatCanvasProps>(function
       canvas.height = Math.round(height * dpr)
       canvas.style.width = `${width}px`
       canvas.style.height = `${height}px`
-      const cam = fitCamera(scene, width, height)
+      const cam = fitCamera(scene, width, height, 36, reservedBottomPx)
       fitScaleRef.current = cam.scale
       if (firstFit) {
         // Big sectioned rooms enter at the overview: the whole house as
