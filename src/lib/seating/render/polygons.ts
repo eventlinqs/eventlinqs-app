@@ -48,6 +48,8 @@ export interface SectionPolygon {
   maxPriceCents: number | null
   /** The hue the polygon wears (the section's dominant tier hue). */
   color: string
+  /** The seat indices of THIS contiguous cluster (labels and rulers). */
+  seatIndices: number[]
 }
 
 export function polygonCentroid(hull: HullPoint[]): HullPoint {

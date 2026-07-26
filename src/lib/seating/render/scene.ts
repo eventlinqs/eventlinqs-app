@@ -192,6 +192,47 @@ export function estimatePitch(seats: { x: number; y: number }[]): number {
   return Number.isFinite(median) && median > 4 ? median : DEFAULT_PITCH
 }
 
+/**
+ * The section outline traced along its real rows, so arced and staggered
+ * blocks keep their curvature instead of being squared off by a convex
+ * hull: front row left to right, then the right flank front to back, the
+ * back row right to left, and the left flank back to front. Falls back to
+ * null (convex hull) for single rows and table clusters.
+ */
+function rowTraceOutline(
+  indices: number[],
+  seats: { x: number; y: number; row_label: string }[],
+): { x: number; y: number }[] | null {
+  const rows = new Map<string, number[]>()
+  for (const i of indices) {
+    const label = seats[i].row_label
+    if (/table|booth/i.test(label)) return null
+    const list = rows.get(label)
+    if (list) list.push(i)
+    else rows.set(label, [i])
+  }
+  if (rows.size < 2) return null
+  const xs = indices.map(i => seats[i].x)
+  const ys = indices.map(i => seats[i].y)
+  const horizontal = Math.max(...xs) - Math.min(...xs) >= Math.max(...ys) - Math.min(...ys)
+  const along = (i: number) => (horizontal ? seats[i].x : seats[i].y)
+  const cross = (i: number) => (horizontal ? seats[i].y : seats[i].x)
+  const pt = (i: number) => ({ x: seats[i].x, y: seats[i].y })
+
+  const ordered = [...rows.values()]
+    .map(list => ({ list: [...list].sort((a, b) => along(a) - along(b)), mean: list.reduce((s, i) => s + cross(i), 0) / list.length }))
+    .sort((a, b) => a.mean - b.mean)
+
+  const front = ordered[0].list.map(pt)
+  const back = [...ordered[ordered.length - 1].list].reverse().map(pt)
+  const rightFlank = ordered.slice(1, -1).map(r => pt(r.list[r.list.length - 1]))
+  const leftFlank = ordered
+    .slice(1, -1)
+    .reverse()
+    .map(r => pt(r.list[0]))
+  return [...front, ...rightFlank, ...back, ...leftFlank]
+}
+
 export function buildScene(input: SceneInput): Scene {
   const seats = input.seats
   const sectionsById = new Map(input.sections.map(s => [s.id, s]))
@@ -266,7 +307,9 @@ export function buildScene(input: SceneInput): Scene {
     // three pitches, cheap at chart sizes.
     const clusters = clusterIndices(indices, seats, pitch * 3)
     for (const cluster of clusters) {
-      const hull = convexHull(cluster.map(i => ({ x: seats[i].x, y: seats[i].y })))
+      const hull =
+        rowTraceOutline(cluster, seats) ??
+        convexHull(cluster.map(i => ({ x: seats[i].x, y: seats[i].y })))
       polygons.push({
         sectionId,
         name: section.name,
@@ -276,6 +319,7 @@ export function buildScene(input: SceneInput): Scene {
         minPriceCents: prices.length ? Math.min(...prices) : null,
         maxPriceCents: prices.length ? Math.max(...prices) : null,
         color: dominant,
+        seatIndices: cluster,
       })
     }
   }
