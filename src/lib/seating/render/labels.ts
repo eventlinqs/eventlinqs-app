@@ -113,6 +113,31 @@ export function seatObstacles(
   return out
 }
 
+/**
+ * The stage's drawn extent on screen. The restraint law keeps the stage ON
+ * the plan at every zoom, so it is ink like any other and no ruler, row
+ * letter or section name may sit on it. Its own letter-spaced STAGE caption
+ * is painted by the world pass inside the flat fill, with nothing under it,
+ * so it is not placed through this engine and does not self-collide.
+ *
+ * Without this the mobile mid-zoom rulers landed on the stage outline: the
+ * marks anchor one pitch above their block's front row, and on a room whose
+ * front row sits close under the apron that anchor is on the stage. The
+ * model never saw it (a stage is not a seat and not an object), which is
+ * exactly why the gate reads the drawn frame instead.
+ */
+export function stageObstacles(scene: Scene, camera: Camera): LabelBox[] {
+  const stage = scene.stage
+  if (!stage) return []
+  const pts = [...stage.outline, ...stage.apron]
+  if (pts.length === 0) return []
+  const xs = pts.map(p => p.x)
+  const ys = pts.map(p => p.y)
+  const tl = toScreen(camera, Math.min(...xs), Math.min(...ys))
+  const br = toScreen(camera, Math.max(...xs), Math.max(...ys))
+  return [{ x: tl.x, y: tl.y, w: Math.max(br.x - tl.x, 1), h: Math.max(br.y - tl.y, 1) }]
+}
+
 /** Venue object obstacle boxes (their drawn extent on screen). */
 export function objectObstacles(scene: Scene, camera: Camera): LabelBox[] {
   const out: LabelBox[] = []
@@ -164,7 +189,8 @@ export function placeLabels(input: PlaceLabelsInput): PlacedLabel[] {
 
   const seats = flags.seats ? seatObstacles(scene, camera, width, height, Math.max(chairPx, 6)) : []
   const objects = objectObstacles(scene, camera)
-  obstacles.push(...seats, ...objects)
+  const stage = stageObstacles(scene, camera)
+  obstacles.push(...seats, ...objects, ...stage)
 
   const canvasBox: LabelBox = { x: 4, y: 4, w: width - 8, h: height - 8 }
   const insideCanvas = (b: LabelBox) =>

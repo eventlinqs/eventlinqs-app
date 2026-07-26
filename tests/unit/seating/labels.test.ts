@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { assertLabelCollisions, placeLabels, seatObstacles, objectObstacles } from '@/lib/seating/render/labels'
+import { assertLabelCollisions, placeLabels, seatObstacles, objectObstacles, stageObstacles } from '@/lib/seating/render/labels'
 import { lodFlags } from '@/lib/seating/render/lod'
 import { buildScene, type SceneSeatInput } from '@/lib/seating/render/scene'
 
@@ -148,5 +148,72 @@ describe('the label placement engine (task 2)', () => {
       })
     expect(placeWith(false).filter(l => l.kind === 'caption')).toHaveLength(0)
     expect(placeWith(true).filter(l => l.kind === 'caption')).toHaveLength(1)
+  })
+})
+
+describe('the stage is ink: no label may sit on it', () => {
+  // The mobile mid-zoom regression: ruler marks anchor one pitch above their
+  // block's front row, and on a room whose front row sits close under the
+  // apron that anchor lands on the stage. Seats and objects were obstacles;
+  // the stage was not, so the numerals were drawn straight onto its outline.
+  function sceneWithTightStage() {
+    return buildScene({
+      seats: grid(6, 10),
+      sections: [{ id: 'sec-1', name: 'Stalls', color: '#1F5673' }],
+      // A proscenium whose apron sits directly above the front row (y 100),
+      // so the ruler's y - pitch anchor (y 76) is inside the stage box.
+      stage: { shape: 'proscenium', x: 100, y: 40, width: 240, depth: 50 },
+      priceForSeat: () => 8900,
+    })
+  }
+
+  it('reports a stage obstacle box covering the drawn extent', () => {
+    const scene = sceneWithTightStage()
+    const boxes = stageObstacles(scene, { scale: 1, tx: 0, ty: 0 })
+    expect(boxes).toHaveLength(1)
+    expect(boxes[0].w).toBeGreaterThan(0)
+    expect(boxes[0].h).toBeGreaterThan(0)
+  })
+
+  it('guards the default stage too: an unspecified stage still blocks labels', () => {
+    // buildScene resolves defaultStageForBounds when the organiser drew no
+    // stage, so scene.stage is present on every chart. The obstacle must
+    // follow that default, not only an explicit one.
+    const scene = buildScene({
+      seats: grid(3, 4),
+      sections: [{ id: 'sec-1', name: 'Stalls', color: '#1F5673' }],
+      stage: null,
+      priceForSeat: () => 8900,
+    })
+    expect(scene.stage).not.toBeNull()
+    const boxes = stageObstacles(scene, { scale: 1, tx: 0, ty: 0 })
+    expect(boxes).toHaveLength(1)
+    expect(boxes[0].w).toBeGreaterThan(0)
+  })
+
+  it('places no label inside the stage box at any zoom past overview', () => {
+    const scene = sceneWithTightStage()
+    for (const scale of [0.4, 0.6, 0.9, 1.3]) {
+      const camera = { scale, tx: 40, ty: 40 }
+      const labels = placeLabels({
+        scene,
+        camera,
+        width: 1440,
+        height: 900,
+        flags: lodFlags(scale),
+        chairPx: scene.chairW * scale,
+        formatPrice: (c: number) => `$${(c / 100).toFixed(0)}`,
+        measure,
+      })
+      const stage = stageObstacles(scene, camera)[0]
+      for (const label of labels) {
+        const hits =
+          label.x < stage.x + stage.w &&
+          label.x + label.w > stage.x &&
+          label.y < stage.y + stage.h &&
+          label.y + label.h > stage.y
+        expect(hits, `"${label.text}" (${label.kind}) sits on the stage at scale ${scale}`).toBe(false)
+      }
+    }
   })
 })

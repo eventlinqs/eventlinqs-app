@@ -320,8 +320,15 @@ export const SeatCanvas = forwardRef<SeatCanvasHandle, SeatCanvasProps>(function
   const zoomAround = useCallback(
     (factor: number, cx?: number, cy?: number, animate = false) => {
       const { width, height } = sizeRef.current
+      // Anchor on the centre of the VISIBLE plan area, not the raw canvas.
+      // The bottom strip is under the fixed ticket bar, so fitCamera centres
+      // the room in (height - reservedBottomPx); a zoom anchored at height/2
+      // pulls against that every step and marches the plan off the top edge.
+      // On the 390 buyer sheet that is a 56px disagreement per press, which
+      // is what pushed the mid-zoom theatre into the top third of the frame
+      // with seats clipped off both flanks.
       const fx = cx ?? width / 2
-      const fy = cy ?? height / 2
+      const fy = cy ?? (height - reservedBottomPx) / 2
       const cam = cameraRef.current
       const nextScale = Math.min(ZOOM_MAX, Math.max(minScale(), cam.scale * factor))
       const k = nextScale / cam.scale
@@ -329,7 +336,7 @@ export const SeatCanvas = forwardRef<SeatCanvasHandle, SeatCanvasProps>(function
       if (animate) animateTo(next)
       else setCamera(next)
     },
-    [animateTo, setCamera, minScale],
+    [animateTo, setCamera, minScale, reservedBottomPx],
   )
 
   const fit = useCallback(
@@ -341,7 +348,7 @@ export const SeatCanvas = forwardRef<SeatCanvasHandle, SeatCanvasProps>(function
       if (animate) animateTo(cam)
       else setCamera(cam)
     },
-    [animateTo, scene, setCamera],
+    [animateTo, scene, setCamera, reservedBottomPx],
   )
 
   const zoomToHulls = useCallback(
@@ -352,14 +359,17 @@ export const SeatCanvas = forwardRef<SeatCanvasHandle, SeatCanvasProps>(function
       const ys = hulls.flat().map(p => p.y)
       const w = Math.max(...xs) - Math.min(...xs) + pad * 4
       const h = Math.max(...ys) - Math.min(...ys) + pad * 4
-      const scale = Math.min(ZOOM_MAX, Math.min((width - 40) / w, (height - 40) / h))
+      // Same visible-area rule as fitCamera and zoomAround: a section framed
+      // into the full canvas height would sit half under the ticket bar.
+      const availH = height - reservedBottomPx
+      const scale = Math.min(ZOOM_MAX, Math.min((width - 40) / w, (availH - 40) / h))
       animateTo({
         scale,
         tx: (width - w * scale) / 2 - (Math.min(...xs) - pad * 2) * scale,
-        ty: (height - h * scale) / 2 - (Math.min(...ys) - pad * 2) * scale,
+        ty: (availH - h * scale) / 2 - (Math.min(...ys) - pad * 2) * scale,
       })
     },
-    [animateTo],
+    [animateTo, reservedBottomPx],
   )
 
   const zoomToSection = useCallback(
@@ -423,10 +433,14 @@ export const SeatCanvas = forwardRef<SeatCanvasHandle, SeatCanvasProps>(function
         if (scene.polygons.length >= 3 && scene.seats.length >= 800 && cam.scale > 0.28) {
           const s = Math.max(0.26, Math.min(0.28, cam.scale))
           const b = scene.bounds
+          // Centre in the VISIBLE area, the same rule fitCamera and
+          // zoomAround follow, so the overview entry does not sit its
+          // bottom rows under the fixed ticket bar.
+          const availH = height - reservedBottomPx
           cameraRef.current = {
             scale: s,
             tx: (width - (b.maxX - b.minX) * s) / 2 - b.minX * s,
-            ty: (height - (b.maxY - b.minY) * s) / 2 - b.minY * s,
+            ty: (availH - (b.maxY - b.minY) * s) / 2 - b.minY * s,
           }
         } else {
           cameraRef.current = cam
@@ -441,7 +455,7 @@ export const SeatCanvas = forwardRef<SeatCanvasHandle, SeatCanvasProps>(function
     const observer = new ResizeObserver(measure)
     observer.observe(container)
     return () => observer.disconnect()
-  }, [scene, clampCamera, invalidate, notifyCamera])
+  }, [scene, clampCamera, invalidate, notifyCamera, reservedBottomPx])
 
   // Repaint when display state changes.
   useEffect(() => {
