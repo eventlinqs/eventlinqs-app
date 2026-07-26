@@ -433,6 +433,18 @@ export function CheckoutForm({
                     : `Continue to payment - ${currency.toUpperCase()} ${(fees.total_cents / 100).toFixed(2)}`}
                 </Button>
               )}
+
+              {/* The terms the buyer is accepting at the point of commitment.
+                  The all-in total is already shown above and on the event page
+                  before this step (ACCC all-in display). */}
+              <p className="mt-3 text-center text-xs text-ink-400">
+                By completing this order you agree to our{' '}
+                <a href="/legal/terms" className="underline hover:text-gold-600">Terms</a>
+                {', '}
+                <a href="/legal/refunds" className="underline hover:text-gold-600">Refund and Ticket Policy</a>
+                {' '}and{' '}
+                <a href="/legal/privacy" className="underline hover:text-gold-600">Privacy Policy</a>.
+              </p>
             </div>
 
             {/* Sidebar: order summary */}

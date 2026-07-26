@@ -180,9 +180,18 @@ export function SignupForm({ role = 'attendee' }: Props) {
               : 'Create account'}
         </button>
 
+        {/* Organisers take on the Organiser Agreement (fees, payouts, chargeback
+            liability, prohibited events) in addition to the general terms, so it
+            is surfaced at the point of consent, not only in the footer. */}
         <p className="text-center text-xs text-ink-400">
           By signing up you agree to our{' '}
           <a href="/legal/terms" className="underline hover:text-gold-600">Terms</a>
+          {isOrganiser ? (
+            <>
+              {', '}
+              <a href="/legal/organiser-terms" className="underline hover:text-gold-600">Organiser Agreement</a>
+            </>
+          ) : null}
           {' '}and{' '}
           <a href="/legal/privacy" className="underline hover:text-gold-600">Privacy Policy</a>.
         </p>

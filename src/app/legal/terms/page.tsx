@@ -1,306 +1,490 @@
 import type { Metadata } from 'next'
 import { LegalPageShell } from '@/components/ui/LegalPageShell'
+import { getEventFeeRates } from '@/lib/pricing/event-fee-config'
 
 export const metadata: Metadata = {
-  title: 'Terms of Use | EventLinqs',
+  title: 'Terms of Service | EventLinqs',
   description:
-    'The terms and conditions that govern your use of the EventLinqs platform, including ticket purchases and organiser responsibilities.',
+    'The terms that govern your use of EventLinqs, including accounts, ticket purchases, fees, acceptable use, liability, and your rights under Australian law.',
   alternates: { canonical: '/legal/terms' },
 }
 
+// The fee figures below are read live from `pricing_rules`. Without this the
+// page would be statically rendered once and could quote a stale rate forever.
+// 60s matches the resolver's own cache TTL and the /organisers precedent.
+export const revalidate = 60
+
 const SECTIONS = [
-  { id: 'agreement',           title: 'Agreement' },
-  { id: 'eligibility',         title: 'Eligibility' },
-  { id: 'account-terms',       title: 'Account Terms' },
-  { id: 'ticket-purchase',     title: 'Ticket Purchase Terms' },
-  { id: 'organiser-terms',     title: 'Organiser Terms' },
-  { id: 'acceptable-use',      title: 'Acceptable Use' },
-  { id: 'payments-payouts',    title: 'Payments and Payouts' },
-  { id: 'intellectual-property', title: 'Intellectual Property' },
-  { id: 'platform-availability', title: 'Platform Availability' },
-  { id: 'liability-limits',    title: 'Liability Limits' },
-  { id: 'dispute-resolution',  title: 'Dispute Resolution' },
-  { id: 'governing-law',       title: 'Governing Law' },
-  { id: 'changes',             title: 'Changes to These Terms' },
-  { id: 'contact-legal',       title: 'Contact' },
+  { id: 'about',           title: 'About These Terms' },
+  { id: 'our-role',        title: 'Our Role' },
+  { id: 'eligibility',     title: 'Eligibility' },
+  { id: 'accounts',        title: 'Your Account' },
+  { id: 'buying',          title: 'Buying Tickets' },
+  { id: 'fees',            title: 'Fees and Pricing' },
+  { id: 'refunds',         title: 'Refunds' },
+  { id: 'organisers',      title: 'If You Run Events' },
+  { id: 'acceptable-use',  title: 'Acceptable Use' },
+  { id: 'your-content',    title: 'Your Content' },
+  { id: 'our-ip',          title: 'Our Intellectual Property' },
+  { id: 'availability',    title: 'Availability of the Platform' },
+  { id: 'consumer-rights', title: 'Consumer Guarantees' },
+  { id: 'liability',       title: 'Liability' },
+  { id: 'suspension',      title: 'Suspension and Termination' },
+  { id: 'privacy',         title: 'Privacy' },
+  { id: 'communications',  title: 'Communications' },
+  { id: 'disputes',        title: 'Disputes and Governing Law' },
+  { id: 'changes',         title: 'Changes to These Terms' },
+  { id: 'contact',         title: 'Contact' },
+  { id: 'related',         title: 'Related Policies' },
 ]
 
-export default function TermsOfUsePage() {
+export default async function TermsOfServicePage() {
+  // Live fee values from `pricing_rules` through the same resolver the charge
+  // uses, so the rates quoted here can never drift from the rates charged.
+  const rates = await getEventFeeRates({})
+  const platformLabel = `${Number(rates.platformFeePercent.toFixed(2))}% + AUD ${(
+    rates.platformFeeFixedCents / 100
+  ).toFixed(2)}`
+  const processingLabel = `${Number(rates.processingFeePercent.toFixed(2))}%`
+
   return (
     <LegalPageShell
-      title="Terms of Use"
-      lastUpdated="15 April 2026"
+      title="Terms of Service"
+      lastUpdated="24 July 2026"
       sections={SECTIONS}
     >
-      <h2 id="agreement">Agreement</h2>
+      <h2 id="about">About These Terms</h2>
       <p>
-        EventLinqs is the ticketing platform built for every community. By accessing
-        or using the EventLinqs platform (including the website at{' '}
-        <a href="https://eventlinqs.com">eventlinqs.com</a>, any associated mobile
-        experience, or any related services), you agree to be bound by these Terms
-        of Use. If you do not agree to these terms, do not use the platform.
+        These Terms of Service govern your use of EventLinqs, including the
+        website at <a href="https://eventlinqs.com">eventlinqs.com</a>, any
+        associated mobile experience, and every related service. By creating an
+        account, buying a ticket, or listing an event, you agree to these terms.
+        If you do not agree, please do not use the platform.
       </p>
       <p>
-        These terms form a legally binding agreement between you and EventLinqs
-        (operated by Lawal Adams, trading as EventLinqs, ABN 30 837 447 587,
-        PO Box 141, Newcomb VIC 3219, Australia). References to &ldquo;EventLinqs&rdquo;,
-        &ldquo;we&rdquo;, &ldquo;us&rdquo; or &ldquo;our&rdquo; refer to that entity.
-      </p>
-
-      <h2 id="eligibility">Eligibility</h2>
-      <p>
-        You must be at least 16 years old to create an account on EventLinqs.
-        If you are under 18, you represent that you have parental or guardian
-        consent to use the platform and that your parent or guardian has read and
-        agreed to these terms on your behalf.
+        EventLinqs is operated by Lawal Adams, trading as EventLinqs, ABN 30 837
+        447 587, PO Box 141, Newcomb VIC 3219, Australia. In these terms,
+        &ldquo;EventLinqs&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo; and
+        &ldquo;our&rdquo; mean that entity, and &ldquo;you&rdquo; means the
+        person or organisation using the platform.
       </p>
       <p>
-        To create an organiser account and sell paid tickets, you must be at least
-        18 years old and legally capable of entering into contracts in your
-        jurisdiction. Organisers based in Australia must hold a valid ABN or be
-        registered as a business entity.
+        Some parts of the platform have their own terms. The{' '}
+        <a href="/legal/refunds">Refund and Ticket Policy</a> governs refunds and
+        ticket conditions. The{' '}
+        <a href="/legal/organiser-terms">Organiser Agreement</a> governs anyone
+        who lists or sells events. The{' '}
+        <a href="/legal/privacy">Privacy Policy</a> governs personal information.
+        Those documents form part of your agreement with us.
       </p>
 
-      <h2 id="account-terms">Account Terms</h2>
+      <h2 id="our-role">Our Role</h2>
       <p>
-        Each person may hold only one EventLinqs account. Your account is personal
-        to you and may not be shared with or transferred to another person.
+        EventLinqs is a ticketing platform. We provide the technology that lets
+        independent organisers list events, sell tickets, and manage attendees.
       </p>
       <p>
-        You are responsible for providing accurate, current, and complete
-        information when creating your account. Providing false information
-        (including a false name, email address, or payment details) is a violation
-        of these terms and may result in immediate suspension of your account.
+        <strong>The organiser, not EventLinqs, is the seller of the ticket and
+        the provider of the event.</strong> We are not the event producer,
+        promoter, venue operator, or co-organiser of any event listed on the
+        platform, unless we say so explicitly on the event itself.
       </p>
       <p>
-        You are responsible for maintaining the confidentiality of your password
-        and for all activity that occurs under your account. If you suspect
-        unauthorised access, contact us immediately at{' '}
-        <a href="mailto:hello@eventlinqs.com">hello@eventlinqs.com</a>. We are
-        not liable for losses resulting from unauthorised use of your account.
-      </p>
-      <p>
-        We reserve the right to suspend or permanently terminate your account if
-        you violate these terms, engage in fraudulent activity, or behave in a
-        manner that harms other users or the platform.
-      </p>
-
-      <h2 id="ticket-purchase">Ticket Purchase Terms</h2>
-      <p>
-        A ticket purchased through EventLinqs is a licence to attend a specific
-        event, subject to the terms and conditions set by the event organiser.
-        EventLinqs facilitates the sale but is not the event producer.
-      </p>
-      <p>
-        <strong>All sales are final unless:</strong>
-      </p>
-      <ul>
-        <li>The event is cancelled by the organiser.</li>
-        <li>
-          The event is rescheduled to a date you cannot attend and the organiser
-          has authorised refunds for the new date.
-        </li>
-        <li>
-          The event is materially changed (such as a change of venue, cancellation
-          of the headline act, or a change of format) in circumstances covered
-          by Australian Consumer Law.
-        </li>
-        <li>The organiser&apos;s own posted refund policy applies.</li>
-      </ul>
-      <p>
-        EventLinqs service fees are non-refundable except where the event is
-        cancelled by the organiser, in which case the full amount including service
-        fees is refunded. See our{' '}
-        <a href="/legal/refunds">Refund Policy</a> for full details.
-      </p>
-      <p>
-        Tickets are issued for the named event on the stated date. EventLinqs is
-        not responsible for your inability to attend due to personal circumstances,
-        travel disruptions, or events outside our control.
-      </p>
-
-      <h2 id="organiser-terms">Organiser Terms</h2>
-      <p>
-        Event organisers using EventLinqs are independent operators. They set their
-        own event details, ticket pricing, refund policy, and event terms and
-        conditions. EventLinqs provides the technology platform; we are not a
-        co-organiser, promoter, or partner in any event unless explicitly stated.
-      </p>
-      <p>
-        Organisers are solely responsible for:
-      </p>
-      <ul>
-        <li>Delivering the event as advertised: on the stated date, at the stated venue, with the stated programme.</li>
-        <li>Complying with all applicable laws, including venue licensing, public liability insurance, health and safety obligations, and any permits required to run the event.</li>
-        <li>Honouring their own posted refund policy.</li>
-        <li>Responding promptly to attendee enquiries and complaints.</li>
-      </ul>
-      <p>
-        By creating an event on EventLinqs, organisers warrant that all information
-        provided is accurate and that they have the legal right to sell tickets for
-        the event.
-      </p>
-
-      <h2 id="acceptable-use">Acceptable Use</h2>
-      <p>You agree not to use EventLinqs to:</p>
-      <ul>
-        <li>
-          <strong>Scalp or resell tickets</strong> above face value using automated
-          means, bots, or mass-purchase accounts.
-        </li>
-        <li>
-          <strong>Use bots or scrapers</strong> to access, copy, or extract data
-          from the platform without our written permission.
-        </li>
-        <li>
-          <strong>Initiate fraudulent chargebacks:</strong> that is, disputing
-          a legitimate charge with your bank without first contacting us.
-        </li>
-        <li>
-          <strong>Harass or harm other users:</strong> including organisers,
-          attendees, or EventLinqs staff.
-        </li>
-        <li>
-          <strong>List illegal events:</strong> including events that promote
-          unlawful activity, violence, or discrimination.
-        </li>
-        <li>
-          <strong>Impersonate</strong> another person or organisation, including
-          EventLinqs itself.
-        </li>
-      </ul>
-      <p>
-        Violations of this section may result in immediate account suspension and,
-        where appropriate, referral to law enforcement.
-      </p>
-
-      <h2 id="payments-payouts">Payments and Payouts</h2>
-      <p>
-        All payments on EventLinqs are processed by Stripe. By purchasing a ticket
-        or accepting payments as an organiser, you agree to{' '}
+        For payments, EventLinqs acts as the organiser&apos;s limited payment
+        collection agent. We collect the ticket money from you, hold it, and pay
+        the organiser after the event. A payment made to EventLinqs discharges
+        your obligation to pay the organiser for that ticket. Payments are
+        processed by Stripe, and by paying you also accept{' '}
         <a
           href="https://stripe.com/au/legal"
           target="_blank"
           rel="noopener noreferrer"
         >
-          Stripe&apos;s Terms of Service
+          Stripe&apos;s terms
         </a>
         .
       </p>
+
+      <h2 id="eligibility">Eligibility</h2>
       <p>
-        EventLinqs is the merchant of record for ticket payments and collects all
-        ticket funds, acting as the organiser&apos;s limited payment collection
-        agent. The organiser remains the seller of the ticket. Ticket funds are
-        held by EventLinqs and paid out to the organiser only after the event.
+        You must be at least 16 years old to hold an EventLinqs account. If you
+        are under 18, you confirm that a parent or guardian has agreed to these
+        terms on your behalf and accepts responsibility for your use of the
+        platform.
       </p>
       <p>
-        <strong>For organisers:</strong> Payouts of ticket revenue (less
-        EventLinqs service fees) are released after the event date, net of a
-        reserve held to cover refunds and chargebacks. Payouts are subject to
-        Stripe&apos;s identity verification requirements. If a chargeback is
-        successfully raised against a sale, the disputed amount is deducted from
-        the organiser&apos;s balance.
+        To sell paid tickets you must be at least 18, legally capable of entering
+        contracts, and able to meet the requirements in the{' '}
+        <a href="/legal/organiser-terms">Organiser Agreement</a>, including
+        identity verification.
       </p>
       <p>
-        EventLinqs reserves the right to withhold payouts where there is a
-        reasonable suspicion of fraud, a high rate of disputes, or a material
-        breach of organiser obligations.
+        Individual events may carry their own age restrictions set by the
+        organiser or the venue. Meeting our eligibility requirements does not
+        entitle you to enter an age-restricted event.
       </p>
 
-      <h2 id="intellectual-property">Intellectual Property</h2>
+      <h2 id="accounts">Your Account</h2>
       <p>
-        The EventLinqs platform (including its design, code, branding, and
-        copy) is owned by EventLinqs and protected by Australian and international
-        intellectual property law. You may not copy, reproduce, or redistribute
-        any part of the platform without our written permission.
+        You are responsible for the accuracy of the information you give us, and
+        for keeping it current. Your name and email address matter: tickets,
+        refunds, and cancellation notices all depend on them.
       </p>
       <p>
-        Content you upload to EventLinqs (including event descriptions, images,
-        and videos) remains your property. By uploading it, you grant EventLinqs
-        a non-exclusive, royalty-free, worldwide licence to display that content
-        on the platform and in promotional materials related to your event. This
-        licence ends when you remove the content or close your account, except
-        where the content has already been included in published promotional materials.
-      </p>
-
-      <h2 id="platform-availability">Platform Availability</h2>
-      <p>
-        We aim for 99.9% uptime and work hard to keep EventLinqs fast and reliable.
-        Scheduled maintenance is announced via our status page and, where possible,
-        scheduled outside peak hours.
+        Keep your password confidential. You are responsible for activity carried
+        out through your account, unless it results from our own failure. If you
+        believe your account has been accessed without your permission, tell us
+        promptly at{' '}
+        <a href="mailto:hello@eventlinqs.com">hello@eventlinqs.com</a> so we can
+        secure it.
       </p>
       <p>
-        We are not liable for service interruptions caused by events beyond our
-        reasonable control, including but not limited to natural disasters,
-        government action, infrastructure failures at third-party providers, or
-        widespread internet outages (force majeure events).
+        Accounts are personal. Do not sell, share or transfer your account to
+        anyone else. Organisations may give access to staff through the roles
+        provided in the dashboard rather than by sharing a login.
       </p>
 
-      <h2 id="liability-limits">Liability Limits</h2>
+      <h2 id="buying">Buying Tickets</h2>
       <p>
-        EventLinqs is a technology platform that connects organisers and attendees.
-        We are not the event organiser, venue operator, or producer of any event
-        listed on the platform. We are not liable for:
+        When you buy a ticket, you enter a contract with the organiser for
+        attendance at that event, and a contract with us for the ticketing
+        service. A ticket is a licence to attend a specific event on the stated
+        date, subject to the organiser&apos;s conditions of entry and the
+        venue&apos;s rules.
       </p>
+      <p>
+        Your order is confirmed when we issue your ticket and send confirmation,
+        not when you submit payment details. Occasionally an order cannot be
+        completed, for example where the last tickets sell during checkout or a
+        listing contained a pricing error. Where that happens we refund you in
+        full.
+      </p>
+      <p>
+        Ticket conditions, transfers, resale limits, and entry requirements are
+        set out in the <a href="/legal/refunds">Refund and Ticket Policy</a>.
+      </p>
+
+      <h2 id="fees">Fees and Pricing</h2>
+      <p>
+        EventLinqs charges a platform fee of{' '}
+        <strong>{platformLabel}</strong> per paid ticket and a payment processing
+        fee of <strong>{processingLabel}</strong> of the order value.{' '}
+        <strong>Free events carry no fees.</strong>
+      </p>
+      <p>
+        These are the current published rates, read live from our pricing system.
+        Organisers may be on a promotional or negotiated rate, in which case the
+        rate that applies to their event is the one charged.
+      </p>
+      <p>
+        <strong>All-in pricing.</strong> The total amount you will pay, including
+        every unavoidable fee, is shown to you on the event page as soon as you
+        select tickets, before you commit to buy, and again at checkout. We do
+        not reveal compulsory fees only at the final step.
+      </p>
+      <p>
+        Organisers choose whether to pass fees on to you or absorb them. Where
+        fees are absorbed, the displayed ticket price already includes them and
+        the checkout says so.
+      </p>
+      <p>
+        Prices are in Australian dollars and are inclusive of GST where GST
+        applies. The organiser is responsible for GST on the ticket price.
+      </p>
+
+      <h2 id="refunds">Refunds</h2>
+      <p>
+        Refunds are governed by the{' '}
+        <a href="/legal/refunds">Refund and Ticket Policy</a>, which forms part of
+        these terms. In summary: a cancelled event is refunded in full including
+        all fees, a rescheduled event gives you the choice of keeping your ticket
+        or taking a full refund, and change of mind carries no automatic right to
+        a refund.
+      </p>
+      <p>
+        Nothing in these terms limits your rights under the Australian Consumer
+        Law where those rights cannot lawfully be excluded.
+      </p>
+
+      <h2 id="organisers">If You Run Events</h2>
+      <p>
+        Listing or selling an event on EventLinqs means you also agree to the{' '}
+        <a href="/legal/organiser-terms">Organiser Agreement</a>, which covers
+        fees, payouts, cancellation obligations, chargeback liability, and
+        prohibited events. Where these terms and the Organiser Agreement conflict
+        on an organiser matter, the Organiser Agreement applies.
+      </p>
+
+      <h2 id="acceptable-use">Acceptable Use</h2>
+      <p>You must not use EventLinqs to:</p>
       <ul>
-        <li>The quality, safety, or delivery of any event.</li>
-        <li>Injury or loss suffered at or in connection with an event.</li>
-        <li>Conduct of event organisers, venues, or other attendees.</li>
-        <li>Events cancelled, rescheduled, or materially changed by the organiser.</li>
+        <li>
+          Buy tickets using bots, scripts, or multiple accounts to get around
+          published purchase limits.
+        </li>
+        <li>
+          Resell tickets above the total amount you paid, or resell for
+          commercial gain in breach of Australian ticket resale laws.
+        </li>
+        <li>
+          Scrape, crawl, or harvest data from the platform without our written
+          permission, or attempt to extract another user&apos;s personal
+          information.
+        </li>
+        <li>
+          Raise a chargeback you know to be unfounded, or provide false
+          information to obtain a refund.
+        </li>
+        <li>
+          Interfere with the platform&apos;s security or operation, including
+          probing for vulnerabilities without authorisation, or introducing
+          malicious code.
+        </li>
+        <li>
+          Harass, threaten, defame or abuse other users, organisers, venue staff
+          or our team.
+        </li>
+        <li>
+          Impersonate another person or organisation, including EventLinqs, or
+          misrepresent your association with anyone.
+        </li>
+        <li>
+          List or promote an event prohibited under the{' '}
+          <a href="/legal/organiser-terms">Organiser Agreement</a>, or otherwise
+          use the platform for an unlawful purpose.
+        </li>
       </ul>
       <p>
-        To the maximum extent permitted by Australian law, EventLinqs&apos; total
-        liability to you in respect of any claim arising from your use of the platform
-        is capped at the total amount of service fees you paid to EventLinqs in the
-        12 months preceding the claim.
-      </p>
-      <p>
-        Nothing in these terms excludes liability that cannot be excluded under
-        Australian Consumer Law, including guarantees relating to services.
+        We investigate suspected breaches and may suspend access while we do so.
+        Serious matters may be reported to the police or a regulator.
       </p>
 
-      <h2 id="dispute-resolution">Dispute Resolution</h2>
+      <h2 id="your-content">Your Content</h2>
       <p>
-        If you have a dispute with EventLinqs, please contact us first at{' '}
-        <a href="mailto:legal@eventlinqs.com">legal@eventlinqs.com</a>. We will
-        make a genuine effort to resolve the matter directly and quickly.
+        You keep ownership of everything you upload, including event
+        descriptions, images, and video. You are responsible for having the
+        rights to use it, including the rights to any photographs, artwork, music
+        and performer likenesses.
       </p>
       <p>
-        If we cannot resolve the dispute directly within 30 days, either party may
-        refer the matter to mediation through the Resolution Institute (Australia).
-        If mediation is unsuccessful, the dispute will be resolved by the courts
-        of Victoria, Australia.
+        By uploading content you grant us a non-exclusive, royalty-free licence to
+        host, store, reproduce, adapt for formatting and display, and publish that
+        content for the purpose of operating and promoting the platform and your
+        event, including in search results, listings, and platform marketing.
+      </p>
+      <p>
+        This licence ends when you remove the content or close your account,
+        except for copies already distributed in published material, and copies
+        we must keep for legal or record-keeping reasons.
+      </p>
+      <p>
+        We may remove content that breaches these terms, infringes someone
+        else&apos;s rights, or exposes us to legal risk. If you believe content on
+        EventLinqs infringes your copyright, contact{' '}
+        <a href="mailto:legal@eventlinqs.com">legal@eventlinqs.com</a> with enough
+        detail to identify the material.
       </p>
 
-      <h2 id="governing-law">Governing Law</h2>
+      <h2 id="our-ip">Our Intellectual Property</h2>
       <p>
-        These terms are governed by the laws of Victoria, Australia. You submit
-        to the non-exclusive jurisdiction of the courts of Victoria for the
-        resolution of any dispute arising from these terms or your use of the
-        platform.
+        The platform itself, including its software, design, branding, and
+        written material, belongs to EventLinqs or our licensors and is protected
+        by Australian and international law. We grant you a personal,
+        non-transferable, revocable licence to use the platform in line with these
+        terms. Everything else is reserved.
+      </p>
+      <p>
+        You must not copy, adapt, decompile, or create derivative works from the
+        platform, or use our name and branding without written permission, except
+        as needed to promote your own event listed with us.
+      </p>
+
+      <h2 id="availability">Availability of the Platform</h2>
+      <p>
+        We work to keep EventLinqs available and fast, and we monitor it
+        continuously. We schedule maintenance outside peak hours wherever we can.
+      </p>
+      <p>
+        We do not guarantee uninterrupted or error-free service. We are not
+        responsible for interruptions caused by matters outside our reasonable
+        control, including failures at infrastructure providers, network outages,
+        natural disasters, industrial action, or government action.
+      </p>
+      <p>
+        If an outage on our side stops you completing a purchase, contact us and
+        we will help. If it stops an organiser selling tickets, the remedies in
+        the <a href="/legal/organiser-terms">Organiser Agreement</a> apply.
+      </p>
+
+      <h2 id="consumer-rights">Consumer Guarantees</h2>
+      <p>
+        Our services come with guarantees that cannot be excluded under the
+        Australian Consumer Law. Nothing in these terms excludes, restricts or
+        modifies those guarantees, or any other right or remedy you have under a
+        law that cannot lawfully be excluded.
+      </p>
+      <p>
+        For a major failure with the ticketing service we provide, you are
+        entitled to cancel your service contract with us and to a refund of the
+        unused portion, or to compensation for the reduction in value. You are
+        also entitled to be compensated for any other reasonably foreseeable loss
+        or damage. If the failure is not major, you are entitled to have the
+        problem fixed within a reasonable time, and if it is not fixed, to cancel
+        and obtain a refund.
+      </p>
+
+      <h2 id="liability">Liability</h2>
+      <p>
+        Because we are not the provider of the events sold here, we are not
+        responsible for the event itself. Subject always to the consumer
+        guarantees above, we are not liable for:
+      </p>
+      <ul>
+        <li>The quality, safety, content or delivery of any event.</li>
+        <li>
+          Injury, loss or damage suffered at or in connection with an event.
+        </li>
+        <li>
+          The acts or omissions of organisers, venues, performers, or other
+          attendees.
+        </li>
+        <li>
+          An event being cancelled, postponed, rescheduled or changed by the
+          organiser, beyond the refund obligations in our{' '}
+          <a href="/legal/refunds">Refund and Ticket Policy</a>.
+        </li>
+        <li>
+          Your inability to attend for personal reasons, including illness,
+          travel, or work.
+        </li>
+      </ul>
+      <p>
+        To the extent permitted by law, and except where the consumer guarantees
+        say otherwise, neither party is liable for indirect or consequential loss,
+        or for loss of profit, revenue, goodwill or anticipated savings.
+      </p>
+      <p>
+        To the extent permitted by law, our total liability to you for all claims
+        connected with your use of the platform in any 12 month period is limited
+        to the greater of the total fees you paid EventLinqs in that period, or
+        AUD 100. Where liability arises under a consumer guarantee that can be
+        limited, our liability is limited to resupplying the service or paying the
+        cost of resupply.
+      </p>
+      <p>
+        Nothing in this section limits liability for fraud, or for death or
+        personal injury caused by our negligence, or any other liability that
+        cannot lawfully be limited.
+      </p>
+
+      <h2 id="suspension">Suspension and Termination</h2>
+      <p>
+        You may close your account at any time. Closing your account does not
+        cancel tickets you have already bought, or release an organiser from
+        obligations for events already sold.
+      </p>
+      <p>
+        We may suspend or close your account where you materially breach these
+        terms, where we reasonably suspect fraud or unlawful activity, or where we
+        are required to by law. Except where the matter is serious or urgent, we
+        will tell you first and give you a reasonable chance to put it right.
+      </p>
+      <p>
+        Where we close an organiser account, funds properly owed for events
+        already delivered remain payable in line with the{' '}
+        <a href="/legal/organiser-terms">Organiser Agreement</a>, subject to any
+        refund, chargeback or reserve obligations.
+      </p>
+
+      <h2 id="privacy">Privacy</h2>
+      <p>
+        We handle personal information in line with the Privacy Act 1988 (Cth)
+        and the Australian Privacy Principles. Our{' '}
+        <a href="/legal/privacy">Privacy Policy</a> explains what we collect, why,
+        who we share it with, and how to access, correct or delete it.
+      </p>
+      <p>
+        When you buy a ticket, the organiser of that event receives the attendee
+        information they need to run it. The organiser is a separate entity
+        responsible for its own handling of that information.
+      </p>
+
+      <h2 id="communications">Communications</h2>
+      <p>
+        We send transactional messages you cannot opt out of while you hold an
+        account or a ticket, such as order confirmations, tickets, event changes,
+        cancellations and refund notices. These are necessary to deliver the
+        service.
+      </p>
+      <p>
+        Marketing messages are separate. We only send them where you have opted
+        in, consistent with the Spam Act 2003 (Cth), and every one carries an
+        unsubscribe link that works without logging in.
+      </p>
+
+      <h2 id="disputes">Disputes and Governing Law</h2>
+      <p>
+        If you have a problem, contact us first at{' '}
+        <a href="mailto:legal@eventlinqs.com">legal@eventlinqs.com</a>. Most
+        matters are resolved quickly this way, and we ask that you raise it with
+        us before starting a formal process.
+      </p>
+      <p>
+        If we cannot resolve it within 30 days, either of us may refer the matter
+        to mediation administered by the Resolution Institute, with each party
+        bearing its own costs and sharing the mediator&apos;s fee equally.
+      </p>
+      <p>
+        These terms are governed by the laws of Victoria, Australia. Both parties
+        submit to the non-exclusive jurisdiction of the courts of Victoria.
+        Nothing here prevents you from bringing a claim in a tribunal or a court
+        that a consumer protection law entitles you to use, or from complaining to
+        a regulator.
       </p>
 
       <h2 id="changes">Changes to These Terms</h2>
       <p>
-        We may update these terms from time to time. When we make material changes,
-        we will notify you by email at least 30 days before the changes take effect.
-        Your continued use of EventLinqs after the effective date constitutes
-        acceptance of the updated terms.
+        We may update these terms as the platform develops or the law changes.
+        For material changes we will give you at least 30 days notice by email or
+        through the platform before they take effect.
       </p>
       <p>
-        We will always keep the current version of these terms available at{' '}
+        If you do not accept a change, you may close your account before it takes
+        effect. The version in force when you bought a ticket continues to govern
+        that purchase. The current version always sits at{' '}
         <a href="/legal/terms">eventlinqs.com/legal/terms</a>.
       </p>
 
-      <h2 id="contact-legal">Contact</h2>
+      <h2 id="contact">Contact</h2>
       <p>
-        For legal enquiries, please contact:{' '}
-        <a href="mailto:legal@eventlinqs.com">legal@eventlinqs.com</a>
-      </p>
-      <p>
-        For general support:{' '}
+        General support:{' '}
         <a href="mailto:hello@eventlinqs.com">hello@eventlinqs.com</a>
       </p>
+      <p>
+        Ticket and refund enquiries:{' '}
+        <a href="mailto:support@eventlinqs.com">support@eventlinqs.com</a>
+      </p>
+      <p>
+        Legal notices:{' '}
+        <a href="mailto:legal@eventlinqs.com">legal@eventlinqs.com</a>, or by post
+        to PO Box 141, Newcomb VIC 3219, Australia.
+      </p>
+
+      <h2 id="related">Related Policies</h2>
+      <ul>
+        <li>
+          <a href="/legal/privacy">Privacy Policy</a>: what we do with your
+          personal information.
+        </li>
+        <li>
+          <a href="/legal/refunds">Refund and Ticket Policy</a>: refunds,
+          cancellations, and ticket conditions.
+        </li>
+        <li>
+          <a href="/legal/organiser-terms">Organiser Agreement</a>: the terms for
+          running events on EventLinqs.
+        </li>
+      </ul>
     </LegalPageShell>
   )
 }

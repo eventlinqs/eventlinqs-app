@@ -61,11 +61,12 @@ export const COMPANY = [
 ]
 
 export const LEGAL = [
-  { label: 'Terms',          href: '/legal/terms' },
-  { label: 'Privacy',        href: '/legal/privacy' },
-  { label: 'Refund policy',  href: '/legal/refunds' },
-  { label: 'Cookie policy',  href: '/legal/cookies' },
-  { label: 'Accessibility',  href: '/legal/accessibility' },
+  { label: 'Terms',                href: '/legal/terms' },
+  { label: 'Privacy',              href: '/legal/privacy' },
+  { label: 'Refund policy',        href: '/legal/refunds' },
+  { label: 'Organiser agreement',  href: '/legal/organiser-terms' },
+  { label: 'Cookie policy',        href: '/legal/cookies' },
+  { label: 'Accessibility',        href: '/legal/accessibility' },
 ]
 
 function InstagramIcon() {
