@@ -68,11 +68,12 @@ export async function pickBestAvailableAction(input: {
         ...new Set(seats.map(s => s.ticket_tier_id as string | null).filter(Boolean)),
       ] as string[]
       if (tierIds.length > 0) {
+        // ticket_tiers.price IS cents (the schema's convention).
         const { data: tiers } = await client
           .from('ticket_tiers')
-          .select('id, price_cents')
+          .select('id, price')
           .in('id', tierIds)
-        tierPrices = new Map((tiers ?? []).map(t => [t.id as string, (t.price_cents as number) ?? 0]))
+        tierPrices = new Map((tiers ?? []).map(t => [t.id as string, Number(t.price) || 0]))
       }
     }
 
