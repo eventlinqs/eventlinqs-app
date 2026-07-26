@@ -34,9 +34,11 @@ export function sceneToPrintSvg(scene: Scene, title: string): string {
   parts.push(
     `<rect x="14" y="14" width="${(w - 28).toFixed(0)}" height="${(h - 28).toFixed(0)}" fill="none" stroke="${C.night}" stroke-opacity="0.35" stroke-width="0.75" />`,
   )
-  parts.push(
-    `<text x="${(w / 2).toFixed(0)}" y="30" text-anchor="middle" font-size="14" font-weight="700" letter-spacing="2" fill="${C.night}">${esc(title.toUpperCase())}</text>`,
-  )
+  if (title.trim().length > 0) {
+    parts.push(
+      `<text x="${(w / 2).toFixed(0)}" y="30" text-anchor="middle" font-size="14" font-weight="700" letter-spacing="2" fill="${C.night}">${esc(title.toUpperCase())}</text>`,
+    )
+  }
 
   // Stage geometry with drafting hatch.
   if (scene.stage) {

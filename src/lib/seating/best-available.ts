@@ -605,11 +605,13 @@ export function selectionCreatedOrphans(seats: BASeat[], selectedIds: Set<string
 
 /**
  * Focal point for a chart, no migration required: explicit layout focal ->
- * a scenery area named like a stage -> the top-centre of the seat field.
+ * the stage GEOMETRY's apron midpoint -> a scenery area named like a stage
+ * -> the top-centre of the seat field.
  */
 export function resolveFocalPoint(
   layout: {
     focal?: { x?: unknown; y?: unknown } | null
+    stage?: { x?: unknown; y?: unknown; width?: unknown; depth?: unknown } | null
     areas?: { label?: string | null; style?: string | null; x: number; y: number; width?: number; height?: number }[]
   } | null,
   seats: { x: number; y: number }[],
@@ -617,6 +619,18 @@ export function resolveFocalPoint(
   const explicit = layout?.focal
   if (explicit && typeof explicit.x === 'number' && typeof explicit.y === 'number') {
     return { x: explicit.x, y: explicit.y }
+  }
+  // The stage as geometry (the rebuilt charts): the apron midpoint is the
+  // definition of "best". The house sits below the stage box.
+  const stageGeo = layout?.stage
+  if (
+    stageGeo &&
+    typeof stageGeo.x === 'number' &&
+    typeof stageGeo.y === 'number' &&
+    typeof stageGeo.width === 'number' &&
+    typeof stageGeo.depth === 'number'
+  ) {
+    return { x: stageGeo.x + stageGeo.width / 2, y: stageGeo.y + stageGeo.depth }
   }
   const stage = layout?.areas?.find(
     a => a.style === 'scenery' && /stage/i.test(a.label ?? ''),

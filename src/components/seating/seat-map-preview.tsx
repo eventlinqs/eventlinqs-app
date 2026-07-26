@@ -1,152 +1,49 @@
-import type { SeatData, SectionData, SeatAreaData } from '@/components/checkout/seat-selector'
+import type { SeatData, SectionData, SeatAreaData, SeatDecorData } from '@/components/checkout/seat-selector'
 import { editorialSectionColor } from '@/lib/seating/palette'
+import { buildScene } from '@/lib/seating/render/scene'
+import { sceneToPrintSvg } from '@/lib/seating/render/svg-export'
 
 /**
- * SeatMapPreview - the read-only miniature of an event's room, for the Launch
- * Kit and any organiser surface that shows the map without selling from it.
- *
- * Pure server-rendered SVG: no client bundle, no interactivity, no zoom. It
- * mirrors the buyer map's visual language (stage band with gold accent line,
- * section colours, quiet ink for anything unavailable) so the organiser sees
- * exactly the room their buyers see, at a glance.
+ * SeatMapPreview - the read-only miniature of an event's room, for the
+ * Launch Kit and any organiser surface that shows the map without selling
+ * from it. Server-rendered through the printed-plan path (the one SVG
+ * renderer kept), so the preview IS the plan: stage geometry, chair
+ * glyphs, flank letters and section names, no client bundle.
  */
-
-const GOLD = '#D4A017' // --color-gold-500
-const INK_900 = '#0A1628' // --color-ink-900
-const INK_200 = '#D9D9D6' // --color-ink-200
-
-const SEAT_SIZE = 20
-const PADDING = 28
-const STAGE_BAND = 44
 
 interface Props {
   seats: SeatData[]
   sections: SectionData[]
   areas?: SeatAreaData[]
+  decor?: SeatDecorData
   className?: string
 }
 
-export function SeatMapPreview({ seats, sections, areas = [], className = '' }: Props) {
+export function SeatMapPreview({ seats, sections, areas = [], decor, className = '' }: Props) {
   if (seats.length === 0 && areas.length === 0) return null
 
-  const xs = [
-    ...seats.map(s => s.x),
-    ...areas.flatMap(a => [a.x, a.x + a.width]),
-  ]
-  const ys = [
-    ...seats.map(s => s.y),
-    ...areas.flatMap(a => [a.y, a.y + a.height]),
-  ]
-  const minX = Math.min(...xs)
-  const maxX = Math.max(...xs)
-  const minY = Math.min(...ys)
-  const maxY = Math.max(...ys)
-
-  const viewWidth = maxX - minX + SEAT_SIZE + PADDING * 2
-  const viewHeight = maxY - minY + SEAT_SIZE + PADDING * 2 + STAGE_BAND
-
-  const colorFor = new Map(sections.map(s => [s.id, s.color]))
+  const sectionColor = new Map(
+    sections.map(s => [s.id, editorialSectionColor(s.color)]),
+  )
+  const scene = buildScene({
+    seats,
+    sections,
+    areas: areas.map(a => ({ ...a, color: editorialSectionColor(a.color) })),
+    stage: decor?.stage ?? undefined,
+    objects: decor?.objects ?? [],
+    colorForSeat: s => sectionColor.get(s.seat_map_section_id ?? '') ?? '#1F5673',
+  })
+  const svg = sceneToPrintSvg(scene, '')
 
   return (
-    <svg
-      viewBox={`0 0 ${viewWidth} ${viewHeight}`}
-      className={className}
+    <div
+      className={`[&>svg]:block [&>svg]:h-auto [&>svg]:max-h-[inherit] [&>svg]:w-full ${className}`}
       role="img"
-      aria-label={`Seat map preview: ${seats.length} seats across ${sections.length} section${sections.length === 1 ? '' : 's'}`}
-    >
-      {/* The designed proscenium + the stage light: the ONE seating
-          signature, identical on the builder, the buyer map, and here. */}
-      <defs>
-        <radialGradient id="preview-stage-light" cx="0.5" cy="0" r="1">
-          <stop offset="0%" stopColor={GOLD} stopOpacity="0.13" />
-          <stop offset="55%" stopColor={GOLD} stopOpacity="0.045" />
-          <stop offset="100%" stopColor={GOLD} stopOpacity="0" />
-        </radialGradient>
-      </defs>
-      <rect
-        x={PADDING}
-        y={4}
-        width={viewWidth - PADDING * 2}
-        height={STAGE_BAND - 16}
-        rx="6"
-        fill={INK_900}
-      />
-      <rect
-        x={PADDING}
-        y={STAGE_BAND - 12}
-        width={viewWidth - PADDING * 2}
-        height={2}
-        rx="1"
-        fill={GOLD}
-      />
-      <rect
-        x={PADDING}
-        y={STAGE_BAND - 10}
-        width={viewWidth - PADDING * 2}
-        height={Math.min(140, viewHeight * 0.35)}
-        fill="url(#preview-stage-light)"
-        aria-hidden="true"
-      />
-      <text
-        x={viewWidth / 2}
-        y={STAGE_BAND / 2 + 1}
-        textAnchor="middle"
-        fontSize="10"
-        fontWeight="700"
-        letterSpacing="4"
-        fill="#FFFFFF"
-      >
-        STAGE
-      </text>
-
-      {/* Standing / GA zones and scenery (display-only, as buyers see them) */}
-      {areas.map((a, i) => (
-        <g key={`${a.label}-${i}`}>
-          <rect
-            x={a.x - minX + PADDING}
-            y={a.y - minY + PADDING + STAGE_BAND}
-            width={a.width}
-            height={a.height}
-            rx="6"
-            fill={a.style === 'scenery' ? INK_900 : a.color}
-            opacity={a.style === 'scenery' ? 0.08 : 0.28}
-            stroke={a.style === 'scenery' ? '#9CA3AF' : a.color}
-            strokeWidth="1.5"
-          />
-          <text
-            x={a.x - minX + PADDING + a.width / 2}
-            y={a.y - minY + PADDING + STAGE_BAND + a.height / 2 + 4}
-            textAnchor="middle"
-            fontSize="11"
-            fontWeight="700"
-            fill={INK_900}
-          >
-            {a.label}
-          </text>
-        </g>
-      ))}
-
-      {/* Seats: section colour when open, quiet ink when not. One geometry
-          with the buyer map: the 30 percent corner radius. */}
-      {seats.map(seat => {
-        const open = seat.status === 'available'
-        const fill = open
-          ? editorialSectionColor(colorFor.get(seat.seat_map_section_id ?? '') ?? GOLD)
-          : INK_200
-        return (
-          <rect
-            key={seat.id}
-            x={seat.x - minX + PADDING}
-            y={seat.y - minY + PADDING + STAGE_BAND}
-            width={SEAT_SIZE}
-            height={SEAT_SIZE}
-            rx={SEAT_SIZE * 0.3}
-            fill={fill}
-            stroke={open ? 'rgba(255,255,255,0.55)' : 'transparent'}
-            strokeWidth="1"
-          />
-        )
-      })}
-    </svg>
+      aria-label={`Seat map preview: ${seats.length} seats across ${sections.length} section${
+        sections.length === 1 ? '' : 's'
+      }`}
+      // Our own generator, every text node escaped: safe to inline.
+      dangerouslySetInnerHTML={{ __html: svg }}
+    />
   )
 }
