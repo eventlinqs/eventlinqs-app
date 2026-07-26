@@ -526,6 +526,54 @@ export function pickBestAvailable(input: BestAvailableInput): BestAvailableResul
 }
 
 /**
+ * Group tickets: the contiguous window of `quantity` open seats that
+ * contains the anchor seat, orphan-admissible when the row allows it.
+ * The caller passes the GROUP TIER's seats only, so the window can never
+ * mix ticket types. Preference order: orphan-safe windows first, then the
+ * window whose centre sits closest to the anchor, so the tapped seat
+ * anchors its party naturally. Null when the anchor's run cannot hold the
+ * group.
+ */
+export function contiguousGroupWindow(
+  seats: BASeat[],
+  anchorId: string,
+  quantity: number,
+): string[] | null {
+  if (quantity <= 0) return null
+  for (const row of buildRows(seats)) {
+    for (const segment of rowSegments(row)) {
+      const anchorIdx = segment.findIndex(s => s.id === anchorId)
+      if (anchorIdx === -1) continue
+      if (!isOpen(segment[anchorIdx])) return null
+      // The maximal open run containing the anchor.
+      let start = anchorIdx
+      while (start > 0 && isOpen(segment[start - 1])) start--
+      let end = anchorIdx
+      while (end < segment.length - 1 && isOpen(segment[end + 1])) end++
+      const runLength = end - start + 1
+      if (runLength < quantity) return null
+
+      let best: { ids: string[]; safe: boolean; offCentre: number } | null = null
+      for (let w = Math.max(start, anchorIdx - quantity + 1); w + quantity - 1 <= end && w <= anchorIdx; w++) {
+        const leftGap = w - start
+        const rightGap = end - (w + quantity - 1)
+        const safe = leftGap !== 1 && rightGap !== 1
+        const offCentre = Math.abs(w + (quantity - 1) / 2 - anchorIdx)
+        if (
+          !best ||
+          (safe && !best.safe) ||
+          (safe === best.safe && offCentre < best.offCentre)
+        ) {
+          best = { ids: segment.slice(w, w + quantity).map(s => s.id), safe, offCentre }
+        }
+      }
+      return best?.ids ?? null
+    }
+  }
+  return null
+}
+
+/**
  * S2: the buyer-selection orphan guard. Returns every open seat that the
  * given selection leaves stranded (no open neighbour within its physical
  * row segment). Callers diff against the empty selection so seats that
