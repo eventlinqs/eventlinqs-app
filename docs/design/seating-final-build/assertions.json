@@ -299,17 +299,10 @@
     "lod": "mid",
     "runs": 13,
     "textText": 0,
-    "textInk": 6,
+    "textInk": 0,
     "clipped": 0,
     "pairs": [],
-    "inkHits": [
-      "\"10\" sd 100.9",
-      "\"12\" sd 99.0",
-      "\"14\" sd 86.3",
-      "\"16\" sd 98.0",
-      "\"18\" sd 102.3",
-      "\"20\" sd 102.4"
-    ],
+    "inkHits": [],
     "model": {
       "counts": {
         "labelSeat": 0,
@@ -338,8 +331,8 @@
         "labelObject": 0,
         "labels": 0
       },
-      "seats": 120,
-      "seatsClipped": 65
+      "seats": 225,
+      "seatsClipped": 71
     }
   }
 ]

@@ -1,5 +1,5 @@
 {
-  "base": "http://localhost:3100",
+  "base": "http://localhost:3131",
   "steps": {
     "chair": {
       "written": true
@@ -13,7 +13,7 @@
     },
     "assertions": {
       "configurations": 16,
-      "failures": 1
+      "failures": 0
     },
     "probe": {
       "cleanBefore": {
