@@ -1,0 +1,345 @@
+[
+  {
+    "room": "theatre",
+    "viewport": "1440",
+    "lod": "fit",
+    "runs": 61,
+    "textText": 0,
+    "textInk": 0,
+    "clipped": 0,
+    "pairs": [],
+    "inkHits": [],
+    "model": {
+      "counts": {
+        "labelSeat": 0,
+        "labelLabel": 0,
+        "labelObject": 0,
+        "labels": 60
+      },
+      "seats": 506,
+      "seatsClipped": 0
+    }
+  },
+  {
+    "room": "two-block",
+    "viewport": "1440",
+    "lod": "fit",
+    "runs": 44,
+    "textText": 0,
+    "textInk": 0,
+    "clipped": 0,
+    "pairs": [],
+    "inkHits": [],
+    "model": {
+      "counts": {
+        "labelSeat": 0,
+        "labelLabel": 0,
+        "labelObject": 0,
+        "labels": 43
+      },
+      "seats": 500,
+      "seatsClipped": 0
+    }
+  },
+  {
+    "room": "cabaret",
+    "viewport": "1440",
+    "lod": "fit",
+    "runs": 1,
+    "textText": 0,
+    "textInk": 0,
+    "clipped": 0,
+    "pairs": [],
+    "inkHits": [],
+    "model": {
+      "counts": {
+        "labelSeat": 0,
+        "labelLabel": 0,
+        "labelObject": 0,
+        "labels": 0
+      },
+      "seats": 152,
+      "seatsClipped": 0
+    }
+  },
+  {
+    "room": "mixed",
+    "viewport": "1440",
+    "lod": "fit",
+    "runs": 39,
+    "textText": 0,
+    "textInk": 0,
+    "clipped": 0,
+    "pairs": [],
+    "inkHits": [],
+    "model": {
+      "counts": {
+        "labelSeat": 0,
+        "labelLabel": 0,
+        "labelObject": 0,
+        "labels": 38
+      },
+      "seats": 176,
+      "seatsClipped": 0
+    }
+  },
+  {
+    "room": "four-tier",
+    "viewport": "1440",
+    "lod": "fit",
+    "runs": 153,
+    "textText": 0,
+    "textInk": 0,
+    "clipped": 0,
+    "pairs": [],
+    "inkHits": [],
+    "model": {
+      "counts": {
+        "labelSeat": 0,
+        "labelLabel": 0,
+        "labelObject": 0,
+        "labels": 152
+      },
+      "seats": 590,
+      "seatsClipped": 0
+    }
+  },
+  {
+    "room": "theatre",
+    "viewport": "1440",
+    "lod": "overview",
+    "runs": 2,
+    "textText": 0,
+    "textInk": 0,
+    "clipped": 0,
+    "pairs": [],
+    "inkHits": [],
+    "model": {
+      "counts": {
+        "labelSeat": 0,
+        "labelLabel": 0,
+        "labelObject": 0,
+        "labels": 1
+      },
+      "seats": 0,
+      "seatsClipped": 0
+    }
+  },
+  {
+    "room": "theatre",
+    "viewport": "1440",
+    "lod": "mid",
+    "runs": 14,
+    "textText": 0,
+    "textInk": 0,
+    "clipped": 0,
+    "pairs": [],
+    "inkHits": [],
+    "model": {
+      "counts": {
+        "labelSeat": 0,
+        "labelLabel": 0,
+        "labelObject": 0,
+        "labels": 14
+      },
+      "seats": 506,
+      "seatsClipped": 0
+    }
+  },
+  {
+    "room": "theatre",
+    "viewport": "1440",
+    "lod": "seat",
+    "runs": 60,
+    "textText": 0,
+    "textInk": 0,
+    "clipped": 0,
+    "pairs": [],
+    "inkHits": [],
+    "model": {
+      "counts": {
+        "labelSeat": 0,
+        "labelLabel": 0,
+        "labelObject": 0,
+        "labels": 60
+      },
+      "seats": 506,
+      "seatsClipped": 0
+    }
+  },
+  {
+    "room": "theatre",
+    "viewport": "390",
+    "lod": "fit",
+    "runs": 2,
+    "textText": 0,
+    "textInk": 0,
+    "clipped": 0,
+    "pairs": [],
+    "inkHits": [],
+    "model": {
+      "counts": {
+        "labelSeat": 0,
+        "labelLabel": 0,
+        "labelObject": 0,
+        "labels": 1
+      },
+      "seats": 0,
+      "seatsClipped": 0
+    }
+  },
+  {
+    "room": "two-block",
+    "viewport": "390",
+    "lod": "fit",
+    "runs": 24,
+    "textText": 0,
+    "textInk": 0,
+    "clipped": 0,
+    "pairs": [],
+    "inkHits": [],
+    "model": {
+      "counts": {
+        "labelSeat": 0,
+        "labelLabel": 0,
+        "labelObject": 0,
+        "labels": 0
+      },
+      "seats": 500,
+      "seatsClipped": 0
+    }
+  },
+  {
+    "room": "cabaret",
+    "viewport": "390",
+    "lod": "fit",
+    "runs": 0,
+    "textText": 0,
+    "textInk": 0,
+    "clipped": 0,
+    "pairs": [],
+    "inkHits": [],
+    "model": {
+      "counts": {
+        "labelSeat": 0,
+        "labelLabel": 0,
+        "labelObject": 0,
+        "labels": 0
+      },
+      "seats": 0,
+      "seatsClipped": 0
+    }
+  },
+  {
+    "room": "mixed",
+    "viewport": "390",
+    "lod": "fit",
+    "runs": 8,
+    "textText": 0,
+    "textInk": 0,
+    "clipped": 0,
+    "pairs": [],
+    "inkHits": [],
+    "model": {
+      "counts": {
+        "labelSeat": 0,
+        "labelLabel": 0,
+        "labelObject": 0,
+        "labels": 8
+      },
+      "seats": 176,
+      "seatsClipped": 0
+    }
+  },
+  {
+    "room": "four-tier",
+    "viewport": "390",
+    "lod": "fit",
+    "runs": 4,
+    "textText": 0,
+    "textInk": 0,
+    "clipped": 0,
+    "pairs": [],
+    "inkHits": [],
+    "model": {
+      "counts": {
+        "labelSeat": 0,
+        "labelLabel": 0,
+        "labelObject": 0,
+        "labels": 2
+      },
+      "seats": 0,
+      "seatsClipped": 0
+    }
+  },
+  {
+    "room": "theatre",
+    "viewport": "390",
+    "lod": "overview",
+    "runs": 2,
+    "textText": 0,
+    "textInk": 0,
+    "clipped": 0,
+    "pairs": [],
+    "inkHits": [],
+    "model": {
+      "counts": {
+        "labelSeat": 0,
+        "labelLabel": 0,
+        "labelObject": 0,
+        "labels": 1
+      },
+      "seats": 0,
+      "seatsClipped": 0
+    }
+  },
+  {
+    "room": "theatre",
+    "viewport": "390",
+    "lod": "mid",
+    "runs": 13,
+    "textText": 0,
+    "textInk": 6,
+    "clipped": 0,
+    "pairs": [],
+    "inkHits": [
+      "\"10\" sd 100.9",
+      "\"12\" sd 99.0",
+      "\"14\" sd 86.3",
+      "\"16\" sd 98.0",
+      "\"18\" sd 102.3",
+      "\"20\" sd 102.4"
+    ],
+    "model": {
+      "counts": {
+        "labelSeat": 0,
+        "labelLabel": 0,
+        "labelObject": 0,
+        "labels": 0
+      },
+      "seats": 488,
+      "seatsClipped": 29
+    }
+  },
+  {
+    "room": "theatre",
+    "viewport": "390",
+    "lod": "seat",
+    "runs": 0,
+    "textText": 0,
+    "textInk": 0,
+    "clipped": 0,
+    "pairs": [],
+    "inkHits": [],
+    "model": {
+      "counts": {
+        "labelSeat": 0,
+        "labelLabel": 0,
+        "labelObject": 0,
+        "labels": 0
+      },
+      "seats": 120,
+      "seatsClipped": 65
+    }
+  }
+]
