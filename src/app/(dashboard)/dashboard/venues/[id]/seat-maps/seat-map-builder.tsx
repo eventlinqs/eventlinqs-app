@@ -1720,6 +1720,34 @@ function RowsConfig({ block, onChange }: { block: RowsBlock; onChange: (p: Parti
           }}
         />
       </Field>
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Taper (seats per row, toward the back)">
+          <input
+            type="number"
+            step={0.5}
+            className={inputClass}
+            value={block.taper ?? 0}
+            disabled={Array.isArray(block.seatsPerRow)}
+            title={
+              Array.isArray(block.seatsPerRow)
+                ? 'A per-row seat list already sets each row length'
+                : 'Positive lengthens the back rows, negative shortens them: the raked edge'
+            }
+            onChange={e => onChange({ taper: Number(e.target.value) || 0 })}
+          />
+        </Field>
+        <Field label="Rows I and O">
+          <select
+            className={inputClass}
+            value={block.rowLetterConvention ?? 'dash'}
+            disabled={(block.rowLabelScheme ?? 'alpha') !== 'alpha'}
+            onChange={e => onChange({ rowLetterConvention: e.target.value as 'dash' | 'skip' })}
+          >
+            <option value="dash">Keep, shown as I- and O-</option>
+            <option value="skip">Skip both letters</option>
+          </select>
+        </Field>
+      </div>
       {/* Directionality (item 10): where row A sits, where seat 1 sits. */}
       <div className="grid grid-cols-2 gap-2">
         <Field label="Row order">

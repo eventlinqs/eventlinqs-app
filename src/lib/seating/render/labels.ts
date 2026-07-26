@@ -60,6 +60,16 @@ export interface PlaceLabelsInput {
   measure: (text: string, px: number, weight: number) => number
 }
 
+/**
+ * The venue lettering convention (correction 4, dash mode): rows lettered
+ * I and O display as "I-" and "O-" so they never read as 1 and 0. Rooms
+ * built under the skip convention have no such rows, so this fires only
+ * where the organiser chose (or defaulted to) the dash.
+ */
+export function displayRowLabel(label: string): string {
+  return label === 'I' || label === 'O' ? `${label}-` : label
+}
+
 function intersects(a: LabelBox, b: LabelBox): boolean {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y
 }
@@ -190,7 +200,7 @@ export function placeLabels(input: PlaceLabelsInput): PlacedLabel[] {
       // with the one above it is dropped, never drawn askew.
       const lastBottomByBand = new Map<number, number>()
       for (const row of anchors) {
-        const text = row.label
+        const text = displayRowLabel(row.label)
         const w = Math.max(10, measure(text, 11, 600) + 2)
         const box: LabelBox = { x: row.at.x - w / 2, y: row.at.y - 7, w, h: 14 }
         const band = Math.round(row.at.x / 48)

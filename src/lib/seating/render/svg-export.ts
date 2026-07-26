@@ -6,6 +6,7 @@
  */
 
 import { SEAT_STATE_COLORS } from '../palette'
+import { displayRowLabel } from './labels'
 import {
   CHAIR_ARM_LEFT_PATH,
   CHAIR_ARM_RIGHT_PATH,
@@ -102,7 +103,7 @@ export function sceneToPrintSvg(scene: Scene, title: string): string {
   for (const row of scene.rowLabels) {
     for (const side of [row.left, row.right]) {
       parts.push(
-        `<text x="${(side.x + ox).toFixed(1)}" y="${(side.y + oy + 3.5).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="600" fill="${C.stoneText}">${esc(row.label)}</text>`,
+        `<text x="${(side.x + ox).toFixed(1)}" y="${(side.y + oy + 3.5).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="600" fill="${C.stoneText}">${esc(displayRowLabel(row.label))}</text>`,
       )
     }
   }

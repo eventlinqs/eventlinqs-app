@@ -47,6 +47,24 @@ export interface RowsBlock extends BlockBase {
   rowLabelScheme?: NumberingScheme
   /** Starting row label: a letter for alpha ('A'), a number for numeric (1). */
   rowLabelStart?: string | number
+  /**
+   * The venue lettering convention for I and O (correction 4): 'dash'
+   * (the default) keeps both letters and the plan renders them as "I-"
+   * and "O-" so they never read as 1 and 0; 'skip' omits both letters
+   * from the alpha sequence entirely, so H is followed by J and N by P.
+   * Alpha scheme only; numeric rows ignore it.
+   */
+  rowLetterConvention?: 'dash' | 'skip'
+  /**
+   * Deliberate raked taper (correction 3): each row's seat count changes
+   * by this many seats per row toward the BACK of the block, rounded per
+   * row and clamped at 1 seat. Positive lengthens the back rows, negative
+   * shortens them: a STATED, regular pattern with a visible raked edge,
+   * never random noise. Applies only when seatsPerRow is a single number;
+   * an explicit per-row list wins. Pairs with align: 'centre' for the
+   * mirrored theatre edge.
+   */
+  taper?: number
   /** First seat number in each row (default 1). */
   seatStart?: number
   /** Reverse seat numbering direction. */
@@ -299,24 +317,29 @@ const DEFAULT_ROW_SPACING = 26
 const DEFAULT_SEAT_SPACING = 24
 const DEFAULT_SECTION_COLOR = '#D4A017' // gold-500 token value
 
-/** Excel-style alphabetical label: 0 -> A, 25 -> Z, 26 -> AA. */
-export function alphaLabel(index: number): string {
+const ALPHABET_FULL = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+/** The skip convention's sequence: no I (reads as 1), no O (reads as 0). */
+export const ALPHABET_NO_IO = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
+
+/** Excel-style alphabetical label over an alphabet: 0 -> A, 26 -> AA. */
+export function alphaLabel(index: number, alphabet: string = ALPHABET_FULL): string {
+  const base = alphabet.length
   let n = index
   let out = ''
   do {
-    out = String.fromCharCode(65 + (n % 26)) + out
-    n = Math.floor(n / 26) - 1
+    out = alphabet[n % base] + out
+    n = Math.floor(n / base) - 1
   } while (n >= 0)
   return out
 }
 
 /** Inverse start offset for an alpha start label like 'C' or 'AA'. */
-function alphaOffset(start: string): number {
+function alphaOffset(start: string, alphabet: string = ALPHABET_FULL): number {
   let n = 0
   for (const ch of start.toUpperCase()) {
-    const c = ch.charCodeAt(0) - 64
-    if (c < 1 || c > 26) return 0
-    n = n * 26 + c
+    const c = alphabet.indexOf(ch) + 1
+    if (c < 1) return 0
+    n = n * alphabet.length + c
   }
   return n - 1
 }
@@ -364,15 +387,22 @@ function generateRowsBlock(block: RowsBlock): GeneratedRow[] {
   const rowSpacing = block.rowSpacing ?? DEFAULT_ROW_SPACING
   const seatSpacing = block.seatSpacing ?? DEFAULT_SEAT_SPACING
   const scheme = block.rowLabelScheme ?? 'alpha'
+  const alphabet = block.rowLetterConvention === 'skip' ? ALPHABET_NO_IO : ALPHABET_FULL
   const startOffset =
     scheme === 'alpha'
-      ? alphaOffset(String(block.rowLabelStart ?? 'A'))
+      ? alphaOffset(String(block.rowLabelStart ?? 'A'), alphabet)
       : Number(block.rowLabelStart ?? 1)
 
+  // Per-row seat counts: an explicit list wins; otherwise the base count
+  // with the deliberate taper applied row by row, clamped at one seat.
+  const rowCounts: number[] = Array.from({ length: block.rows }, (_, r) => {
+    if (Array.isArray(block.seatsPerRow)) return block.seatsPerRow[r] ?? 0
+    if (!block.taper) return block.seatsPerRow
+    return Math.max(1, Math.round(block.seatsPerRow + block.taper * r))
+  })
+
   // Centre alignment: shorter rows centre over the block's widest row.
-  const maxCount = Array.isArray(block.seatsPerRow)
-    ? Math.max(0, ...block.seatsPerRow)
-    : block.seatsPerRow
+  const maxCount = Math.max(0, ...rowCounts)
 
   // Auto-bow: the arc centre sits focalRise above the front row, on the
   // block's horizontal centre; every row is a true circle around it.
@@ -387,10 +417,10 @@ function generateRowsBlock(block: RowsBlock): GeneratedRow[] {
   for (let r = 0; r < block.rows; r++) {
     const labelIdx = block.rowOrder === 'up' ? block.rows - 1 - r : r
     const label =
-      scheme === 'alpha' ? alphaLabel(startOffset + labelIdx) : String(startOffset + labelIdx)
-    const count = Array.isArray(block.seatsPerRow)
-      ? (block.seatsPerRow[r] ?? 0)
-      : block.seatsPerRow
+      scheme === 'alpha'
+        ? alphaLabel(startOffset + labelIdx, alphabet)
+        : String(startOffset + labelIdx)
+    const count = rowCounts[r]
     if (count <= 0) continue
 
     const centreShift =
