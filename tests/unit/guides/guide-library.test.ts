@@ -10,6 +10,7 @@ import {
   populatedCategories,
   searchGuides,
 } from '@/lib/guides'
+import { findCopyTells } from '@/lib/ai/copy-tells'
 
 /**
  * The guide library is content, so its gates are content gates. These assert
@@ -119,6 +120,19 @@ describe('guide library: illustrated with real screenshots', () => {
 })
 
 describe('guide library: the copy laws', () => {
+  // The guides are marketing-grade prose, so they are held to the FULL
+  // researched lexicon the AI layer is held to (src/lib/ai/copy-tells.json),
+  // not to a list invented here. That is the difference between a gate and a
+  // gesture: when the lexicon grows, these guides are re-checked for free.
+  it('carries none of the researched copy tells', () => {
+    const offenders: string[] = []
+    for (const text of ALL_STRINGS) {
+      const hits = findCopyTells(text)
+      if (hits.length > 0) offenders.push(`${hits.join(', ')} in: ${text.slice(0, 80)}`)
+    }
+    expect(offenders).toEqual([])
+  })
+
   it('uses no em-dash or en-dash anywhere', () => {
     const offenders = ALL_STRINGS.filter(s => /[–—]/.test(s))
     expect(offenders).toEqual([])

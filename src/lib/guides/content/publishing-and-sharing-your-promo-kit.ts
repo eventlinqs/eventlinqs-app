@@ -6,7 +6,7 @@ import type { Guide } from '../types'
  *   Your A4 QR poster, Your invitation card, Your seat map live and selling,
  *   Watch it travel.
  * - Tracked links per channel (src/lib/broadcast/share-codes.ts SHARE_CHANNELS).
- * - The kit unlocks on publish; before publish the screen explains what lands.
+ * - The kit switches on at publish; before publish the screen explains what lands.
  */
 export const publishingAndSharingYourPromoKit: Guide = {
   slug: 'publishing-and-sharing-your-promo-kit',
@@ -32,7 +32,7 @@ export const publishingAndSharingYourPromoKit: Guide = {
   hero: {
     src: '/guides/publishing-and-sharing-your-promo-kit-1.png',
     alt: 'The Launch Kit screen for a live event, showing the share row, the A4 QR poster and the invitation card.',
-    caption: 'The Launch Kit, unlocked the moment the event goes live. Everything on this screen is built from your event.',
+    caption: 'The Launch Kit, live the moment the event is published. Everything on this screen is built from your event.',
     viewport: 1440,
   },
   related: ['tracking-your-reach', 'creating-your-first-event', 'running-the-door-with-the-qr-scanner'],

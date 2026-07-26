@@ -7,6 +7,7 @@ import {
   type GuidanceSurfaceId,
 } from '@/lib/guidance/registry'
 import { getGuide } from '@/lib/guides'
+import { findCopyTells } from '@/lib/ai/copy-tells'
 
 /**
  * The guidance registry is the contract between an interactive surface and the
@@ -129,6 +130,16 @@ describe('guidance registry: storage keys', () => {
 })
 
 describe('guidance registry: the copy laws apply in-product too', () => {
+  // In-product copy is held to the same researched lexicon as everything else.
+  it('carries none of the researched copy tells', () => {
+    const offenders: string[] = []
+    for (const text of ALL_STRINGS) {
+      const hits = findCopyTells(text)
+      if (hits.length > 0) offenders.push(`${hits.join(', ')} in: ${text.slice(0, 80)}`)
+    }
+    expect(offenders).toEqual([])
+  })
+
   it('uses no em-dash or en-dash', () => {
     expect(ALL_STRINGS.filter(s => /[–—]/.test(s))).toEqual([])
   })

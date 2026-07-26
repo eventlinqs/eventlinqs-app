@@ -53,12 +53,24 @@ export function SurfaceGuidance({
     if (panelOpen) panelRef.current?.focus()
   }, [panelOpen])
 
+  // Mobile stacking: the platform's bottom bars (MobileBottomNav on most
+  // routes, StickyActionBar on event detail) both fill bottom-0 at z-40, and
+  // the established convention for anything that must sit above them is
+  // bottom-16 z-50. Without this the help launcher is unreachable by finger on
+  // a phone, which the accessibility drive caught. Desktop hides those bars, so
+  // it returns to bottom-4.
   return (
     <div
-      className={`pointer-events-none fixed bottom-4 right-4 z-40 flex flex-col items-end gap-2 ${className}`}
+      className={`pointer-events-none fixed bottom-16 right-4 z-50 flex flex-col items-end gap-2 md:bottom-4 ${className}`}
     >
+      {/* On desktop the coach steps left of the surface's right-hand rail (the
+          buyer's schedule rail, the studio's inspector), because coaching that
+          covers the control it is describing is worse than no coaching. On a
+          phone everything is stacked, so it sits where it lands. */}
       {coachOpen && !panelOpen && (
-        <FirstRunCoach surface={surface} onDismiss={dismiss} returnFocusTo={launcherRef} />
+        <div className="lg:mr-[20rem]">
+          <FirstRunCoach surface={surface} onDismiss={dismiss} returnFocusTo={launcherRef} />
+        </div>
       )}
 
       {panelOpen && (
@@ -68,7 +80,7 @@ export function SurfaceGuidance({
           aria-modal="false"
           aria-labelledby={panelHeadingId}
           tabIndex={-1}
-          className="guidance-rise pointer-events-auto max-h-[min(32rem,calc(100vh-6rem))] w-[min(21rem,calc(100vw-2rem))] overflow-y-auto rounded-2xl border border-ink-200 bg-white p-4 shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
+          className="guidance-rise pointer-events-auto max-h-[min(32rem,calc(100vh-11rem))] w-[min(21rem,calc(100vw-2rem))] overflow-y-auto rounded-2xl border border-ink-200 bg-white p-4 shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-400"
         >
           <div className="flex items-start justify-between gap-3">
             <div>
