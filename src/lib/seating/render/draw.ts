@@ -7,7 +7,7 @@
 
 import { SEAT_STATE_COLORS } from '../palette'
 import { chairPaths, objectPaths, GLYPH_BOX, type VenueObjectKind } from './glyphs'
-import { glyphTier, lodFlags, NUMERAL_CHAIR_PX, type GlyphTier } from './lod'
+import { glyphTier, lodFlags, type GlyphTier } from './lod'
 import { objectObstacles, placeLabels, seatObstacles, type LabelBox, type PlacedLabel } from './labels'
 import { cullSeats, type Scene, type SceneBounds } from './scene'
 
@@ -208,22 +208,12 @@ function drawStage(ctx: CanvasRenderingContext2D, scene: Scene, camera: Camera) 
       })()
     : hullPath(stage.outline)
 
-  // Paper fill, drafting hatch, ink outline, heavier apron line.
+  // FLAT paper fill, ink outline, heavier apron line: the benchmark's
+  // stage is flat, and flat is what lets the letter-spaced STAGE sit on
+  // it with nothing under the text (the drawn-frame gate reads the
+  // pixels). The old drafting hatch is retired with the other decoration.
   ctx.fillStyle = C.veil
   ctx.fill(path)
-  ctx.save()
-  ctx.clip(path)
-  ctx.strokeStyle = 'rgba(10, 22, 40, 0.08)'
-  ctx.lineWidth = 1.25 / camera.scale
-  const b = scene.bounds
-  const span = Math.max(b.maxX - b.minX, b.maxY - b.minY) + 200
-  ctx.beginPath()
-  for (let d = -span; d <= span; d += 9) {
-    ctx.moveTo(b.minX - 100 + d, b.minY - 100)
-    ctx.lineTo(b.minX - 100 + d + span, b.minY - 100 + span)
-  }
-  ctx.stroke()
-  ctx.restore()
   ctx.strokeStyle = C.night
   ctx.lineWidth = 1.5 / camera.scale
   ctx.stroke(path)
@@ -351,10 +341,9 @@ function drawSeats(ctx: CanvasRenderingContext2D, scene: Scene, camera: Camera, 
   }
 }
 
-/** Screen-space text and rings: numerals, rulers, labels, cursors. */
+/** Screen-space text and rings: the stage label, area labels, cursors. */
 function drawScreenPass(ctx: CanvasRenderingContext2D, scene: Scene, camera: Camera, opts: PaintOptions) {
   const flags = lodFlags(camera.scale)
-  const view = viewBounds(camera, opts.width, opts.height)
 
   // Section polygons: filled cards at OVERVIEW ONLY (the restraint law);
   // past overview the plan carries chairs, letters, rulers, stage and
@@ -437,29 +426,11 @@ function drawScreenPass(ctx: CanvasRenderingContext2D, scene: Scene, camera: Cam
   }
 
   // Row letters and rulers are placed by the label engine, never here.
-
-  // Numerals live OUTSIDE the chair: below it, dusk ink, and only once
-  // the chair renders at 20px or more. The chair itself stays clean; the
-  // flank letters, the ruler and the tooltip carry location before that.
-  const chairPx = scene.chairW * camera.scale
-  if (flags.numerals && chairPx >= NUMERAL_CHAIR_PX) {
-    const visible = cullSeats(scene, view)
-    const dropPx = chairPx * 0.62 + 7
-    ctx.save()
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.font = `600 9px ${DATA_FONT}`
-    ctx.fillStyle = C.dusk
-    for (const i of visible) {
-      const state = opts.stateFor(i)
-      if (state === 'taken' || state === 'held') continue
-      const s = scene.seats[i]
-      const at = worldToScreen(camera, s.x, s.y)
-      ctx.globalAlpha = state === 'dimmed' ? 0.35 : 1
-      ctx.fillText(s.seat_number, at.x, at.y + dropPx)
-    }
-    ctx.restore()
-  }
+  // Per-seat numerals are OFF the plan entirely (the restraint law lists
+  // chairs, letters, rulers, stage and aisles, nothing else): at standard
+  // pitch a below-chair numeral must collide with the next row, and the
+  // ruler, the flank letters and the tooltip carry seat identity, the way
+  // the benchmark does.
 
   // The group outline: one gold bound around a group ticket's block.
   if (opts.groupIndices && opts.groupIndices.length > 0) {
@@ -526,26 +497,12 @@ function drawObjects(ctx: CanvasRenderingContext2D, scene: Scene, camera: Camera
 
     const kind = (obj.object ?? 'bar') as VenueObjectKind
     if (obj.kind === 'object') {
-      // Room furniture in the drafting language: a hairline ink outline
-      // with the same 45 degree hatch as the stage, never a floating chip.
+      // Room furniture as an architectural hairline outline over flat
+      // paper: no hatch, no chip, just linework in the negative space.
       ctx.beginPath()
       ctx.roundRect(-w / 2, -h / 2, w, h, 1.5)
       ctx.fillStyle = C.veil
       ctx.fill()
-      ctx.save()
-      ctx.clip()
-      ctx.strokeStyle = 'rgba(10, 22, 40, 0.07)'
-      ctx.lineWidth = 1 / camera.scale
-      ctx.beginPath()
-      const span = w + h
-      for (let d = -span; d <= span; d += 7) {
-        ctx.moveTo(-w / 2 + d, -h / 2)
-        ctx.lineTo(-w / 2 + d + span, -h / 2 + span)
-      }
-      ctx.stroke()
-      ctx.restore()
-      ctx.beginPath()
-      ctx.roundRect(-w / 2, -h / 2, w, h, 1.5)
       ctx.strokeStyle = 'rgba(10, 22, 40, 0.6)'
       ctx.lineWidth = 1 / camera.scale
       ctx.stroke()

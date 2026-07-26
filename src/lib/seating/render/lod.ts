@@ -18,8 +18,6 @@ export type GlyphTier = 'mark' | 'mid' | 'full'
 /** Seat state begins where the full chair glyph is legible (14px at the default pitch). */
 export const LOD_OVERVIEW_MAX = 0.3
 export const LOD_SEAT_MIN = 0.78
-/** Numerals appear on chairs from this scale (chair at or above 16px). */
-export const NUMERAL_MIN = 0.9
 
 /** The chair's world-unit width as a fraction of the room's seat pitch. */
 export const CHAIR_PITCH_RATIO = 0.75
@@ -34,9 +32,6 @@ export function glyphTier(chairPx: number): GlyphTier {
   if (chairPx >= 10) return 'mid'
   return 'mark'
 }
-
-/** Numerals sit BELOW the chair, and only from this on-screen size. */
-export const NUMERAL_CHAIR_PX = 20
 
 export function lodState(scale: number): LodState {
   if (scale < LOD_OVERVIEW_MAX) return 'overview'
@@ -54,8 +49,6 @@ export interface LodFlags {
   rowLetters: boolean
   /** The per-block seat-number ruler: on the plan whenever the chairs are. */
   rulers: boolean
-  /** Numerals on chairs, only once the chair itself is large enough. */
-  numerals: boolean
 }
 
 export function lodFlags(scale: number): LodFlags {
@@ -66,6 +59,5 @@ export function lodFlags(scale: number): LodFlags {
     polygonFill: state === 'overview',
     rowLetters: state !== 'overview',
     rulers: state !== 'overview',
-    numerals: state === 'seat' && scale >= NUMERAL_MIN,
   }
 }

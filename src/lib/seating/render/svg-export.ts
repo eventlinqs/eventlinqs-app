@@ -47,18 +47,16 @@ export function sceneToPrintSvg(scene: Scene, title: string): string {
     )
   }
 
-  // Stage geometry with drafting hatch.
+  // Stage geometry: flat paper fill, matched to the plan's flat stage.
   if (scene.stage) {
     const pts = scene.stage.outline.map(p => `${(p.x + ox).toFixed(1)},${(p.y + oy).toFixed(1)}`).join(' ')
-    parts.push(`<defs><pattern id="hatch" width="9" height="9" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">`)
-    parts.push(`<line x1="0" y1="0" x2="0" y2="9" stroke="${C.night}" stroke-opacity="0.12" stroke-width="1"/></pattern></defs>`)
     if (scene.stage.ellipse) {
       const e = scene.stage.ellipse
       parts.push(
-        `<ellipse cx="${(e.cx + ox).toFixed(1)}" cy="${(e.cy + oy).toFixed(1)}" rx="${e.rx.toFixed(1)}" ry="${e.ry.toFixed(1)}" fill="url(#hatch)" stroke="${C.night}" stroke-width="1.5"/>`,
+        `<ellipse cx="${(e.cx + ox).toFixed(1)}" cy="${(e.cy + oy).toFixed(1)}" rx="${e.rx.toFixed(1)}" ry="${e.ry.toFixed(1)}" fill="${C.veil}" stroke="${C.night}" stroke-width="1.5"/>`,
       )
     } else {
-      parts.push(`<polygon points="${pts}" fill="url(#hatch)" stroke="${C.night}" stroke-width="1.5"/>`)
+      parts.push(`<polygon points="${pts}" fill="${C.veil}" stroke="${C.night}" stroke-width="1.5"/>`)
     }
     const apron = scene.stage.apron
       .map((p, i) => `${i === 0 ? 'M' : 'L'}${(p.x + ox).toFixed(1)} ${(p.y + oy).toFixed(1)}`)

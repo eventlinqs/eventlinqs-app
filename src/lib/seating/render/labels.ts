@@ -54,7 +54,7 @@ export interface PlaceLabelsInput {
   width: number
   height: number
   flags: LodFlags
-  /** Chair px decides whether below-chair numerals reserve their band. */
+  /** The chair's on-screen size: sizes the seat obstacle boxes. */
   chairPx: number
   formatPrice: (cents: number) => string
   /** Text width in px for a font size and weight (canvas measureText). */
