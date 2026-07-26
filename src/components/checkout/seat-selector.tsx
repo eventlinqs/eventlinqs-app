@@ -312,7 +312,11 @@ export function SeatSelector({
         for (const id of ids) next.delete(id)
         return next
       })
-      if (unit) setGroupUnits(prev => prev.filter(u => u !== unit))
+      if (unit) {
+        setGroupUnits(prev => prev.filter(u => u !== unit))
+        // The held-together note describes a unit that no longer exists.
+        setPickNote(null)
+      }
     },
     [groupUnits],
   )
