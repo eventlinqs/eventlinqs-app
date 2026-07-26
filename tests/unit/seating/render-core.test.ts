@@ -248,6 +248,53 @@ describe('scene graph', () => {
     expect(scene.rulers.map(m => m.text)).toEqual(['1', '2', '3', '4'])
   })
 
+  it('a tall narrow block still earns its ruler; a rotated gallery does not', () => {
+    // The gate is the FRONT ROW's orientation, never the block's aspect:
+    // a three-block theatre's outer blocks are taller than wide yet their
+    // rows run horizontally (the correction-2 regression).
+    const tall = gridSeats(20, 6)
+    const tallScene = buildScene({
+      seats: tall,
+      sections: [{ id: 'sec-1', name: 'Stalls', color: '#1F5673' }],
+    })
+    expect(tallScene.rulers.length).toBe(6)
+    // A rotated gallery: each row is a VERTICAL line of seats.
+    const gallery: SceneSeatInput[] = []
+    for (let r = 0; r < 3; r++) {
+      for (let c = 0; c < 8; c++) {
+        gallery.push(
+          seat({
+            id: `g-${r}-${c}`,
+            x: 100 + r * 24,
+            y: 100 + c * 24,
+            row_label: String.fromCharCode(87 + r),
+            seat_number: String(c + 1),
+          }),
+        )
+      }
+    }
+    const galleryScene = buildScene({
+      seats: gallery,
+      sections: [{ id: 'sec-1', name: 'West Gallery', color: '#7A1F3D' }],
+    })
+    expect(galleryScene.rulers.length).toBe(0)
+  })
+
+  it('blocks split at real aisle gaps, whatever the count', () => {
+    const west = gridSeats(15, 8)
+    const centre = gridSeats(15, 10).map(s => ({ ...s, id: `c-${s.id}`, x: s.x + 8 * 24 + 60 }))
+    const east = gridSeats(15, 8).map(s => ({ ...s, id: `e-${s.id}`, x: s.x + 18 * 24 + 120 }))
+    const scene = buildScene({
+      seats: [...west, ...centre, ...east],
+      sections: [{ id: 'sec-1', name: 'Stalls', color: '#1F5673' }],
+    })
+    expect(scene.blocks.length).toBe(3)
+    // One ruler per block: every block's front row is numbered.
+    expect(scene.rulers.length).toBe(8 + 10 + 8)
+    // Row lines merge across the blocks: one letter anchor pair per row.
+    expect(scene.rowLabels.filter(r => r.label === 'A').length).toBe(1)
+  })
+
   it('synthesises a default stage above the front row', () => {
     const scene = buildScene({
       seats: gridSeats(3, 4),

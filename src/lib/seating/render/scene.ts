@@ -383,13 +383,13 @@ export function buildScene(input: SceneInput): Scene {
     }
   }
 
-  // ── One number ruler per horizontal block, above that block's own
-  // front row, however many blocks the room has. ──
+  // ── One number ruler per block, above that block's own front row,
+  // however many blocks the room has. The gate is the FRONT ROW's own
+  // orientation, never the block's aspect: a narrow three-abreast stalls
+  // block is taller than wide yet its rows run horizontally and earn a
+  // ruler; a rotated gallery's "row" is a vertical line and does not. ──
   const rulers: RulerMark[] = []
   for (const block of blocks) {
-    const bxs = block.map(i => seats[i].x)
-    const bys = block.map(i => seats[i].y)
-    if (Math.max(...bxs) - Math.min(...bxs) < Math.max(...bys) - Math.min(...bys)) continue
     const rows = new Map<string, number[]>()
     for (const i of block) {
       const list = rows.get(seats[i].row_label)
@@ -406,6 +406,9 @@ export function buildScene(input: SceneInput): Scene {
       }
     }
     if (!frontRow) continue
+    const fxs = frontRow.map(i => seats[i].x)
+    const fys = frontRow.map(i => seats[i].y)
+    if (Math.max(...fxs) - Math.min(...fxs) < Math.max(...fys) - Math.min(...fys)) continue
     for (const i of frontRow) {
       rulers.push({ x: seats[i].x, y: seats[i].y - pitch, text: seats[i].seat_number })
     }
