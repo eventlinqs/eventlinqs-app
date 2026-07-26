@@ -481,10 +481,12 @@ function drawObjects(ctx: CanvasRenderingContext2D, scene: Scene, camera: Camera
     for (const p of objectPaths(kind)) ctx.stroke(p)
     ctx.restore()
 
-    // The label under the glyph, screen-fixed.
+    // The label under the glyph, screen-fixed: identity transform, since
+    // the surrounding pass still carries the world matrix.
     if (obj.kind === 'object') {
       const at = worldToScreen(camera, obj.x + w / 2, obj.y + h * 0.82)
       ctx.save()
+      ctx.setTransform(opts.dpr, 0, 0, opts.dpr, 0, 0)
       ctx.textAlign = 'center'
       ctx.font = `600 10px ${DATA_FONT}`
       ctx.fillStyle = C.dusk

@@ -111,6 +111,8 @@ async function seatScreen(page, row, num) {
 }
 
 async function clickSeat(page, row, num) {
+  await page.locator(SHEET).first().scrollIntoViewIfNeeded()
+  await page.waitForTimeout(300)
   const pos = await seatScreen(page, row, num)
   if (!pos) throw new Error(`seat ${row}-${num} not resolvable`)
   const box = await page.locator(CONTAINER).first().boundingBox()
@@ -195,12 +197,22 @@ if (STEPS.has('extras')) {
 
   // Tooltip: hover a known stalls seat (row C seat 10).
   {
+    await page.locator(SHEET).first().scrollIntoViewIfNeeded()
+    await page.waitForTimeout(400)
     const box = await page.locator(CONTAINER).first().boundingBox()
     const pos = await seatScreen(page, 'C', '10')
     if (pos) {
       await page.mouse.move(box.x + pos.x, box.y + pos.y)
+      await page.waitForTimeout(250)
+      await page.mouse.move(box.x + pos.x + 1, box.y + pos.y)
       await page.waitForTimeout(500)
-      await shotEl(page, SHEET, 'tooltip-1440')
+      const tipVisible = await page.locator(`${SHEET} [role="status"]`).count()
+      console.log(`[proof] tooltip visible: ${tipVisible}`)
+      await page.screenshot({
+        path: `${OUT}/tooltip-1440.png`,
+        clip: { x: box.x, y: Math.max(0, box.y), width: box.width, height: Math.min(box.height, 940) },
+      })
+      console.log('[proof] shot tooltip-1440')
     }
   }
 
