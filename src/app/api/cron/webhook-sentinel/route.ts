@@ -41,12 +41,24 @@ export async function GET(request: NextRequest) {
   const origin = getSiteUrl()
   const deployment = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : origin
 
+  // selfProbe returns ONE result PER CONFIGURED SIGNING SECRET, so both the
+  // account endpoint's secret and the connected-accounts endpoint's secret are
+  // exercised through the real route on every run.
   const checks: PaymentCheckResult[] = [
-    await selfProbe(origin, missign),
+    ...(await selfProbe(origin, missign)),
     ...(missign ? [] : [await driftWatchdog(), await endpointConfigCheck(origin)]),
   ]
 
   const failures = checks.filter(c => !c.ok)
+
+  // Each check has already logged its own result and reason via payment-checks.
+  // This is the one-line verdict that says WHY the route is about to return
+  // 503, so the response status and its cause sit together in the runtime log.
+  console.log(
+    `[webhook-sentinel] ${failures.length === 0 ? 'GREEN' : 'RED'} ` +
+      `(${checks.length - failures.length}/${checks.length} checks passed)` +
+      (failures.length > 0 ? `: ${failures.map(f => `${f.name} - ${f.detail}`).join(' | ')}` : ''),
+  )
   let alerted = false
   if (failures.length > 0) {
     const lines = failures

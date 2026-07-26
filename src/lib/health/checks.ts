@@ -5,6 +5,7 @@ import { getSiteUrl } from '@/lib/site-url'
 import { isAiConfigured } from '@/lib/ai/client'
 import { isPushConfigured } from '@/lib/notifications/web-push'
 import { selfProbe, driftWatchdog, endpointConfigCheck } from '@/lib/health/payment-checks'
+import { senderDomainsInUse } from '@/lib/email/send'
 import { CRITICAL_ENV_RULES, evalEnvRule } from '@/lib/health/critical-env.mjs'
 
 /**
@@ -33,13 +34,31 @@ export interface HealthResult {
   skipped?: boolean
 }
 
+/**
+ * Log one check's own result and reason (2026-07-26).
+ *
+ * The payment sentinel returned 503 on production and the runtime log could not
+ * say which check failed, because only the alert-email failure was ever logged.
+ * Every check now leaves its own verdict in the log, so an incident starts with
+ * the answer instead of a guess. Results carry names, plain-language details and
+ * probable causes only, never secrets.
+ */
+function logHealthResult(r: HealthResult): void {
+  console.log(
+    `[health-check] ${r.ok ? 'PASS' : r.severity === 'critical' ? 'FAIL' : 'WARN'} ${r.id} (${r.label}) :: ${r.detail}` +
+      (r.ok ? '' : (r.probableCause ? ` :: probable cause: ${r.probableCause}` : '') + (r.action ? ` :: fix: ${r.action}` : '')),
+  )
+}
+
 async function timed(id: string, fn: () => Promise<HealthResult>): Promise<HealthResult> {
   const start = Date.now()
   try {
     const r = await fn()
-    return { ...r, durationMs: Date.now() - start }
+    const result = { ...r, durationMs: Date.now() - start }
+    logHealthResult(result)
+    return result
   } catch (err) {
-    return {
+    const result: HealthResult = {
       id,
       label: id,
       severity: 'critical',
@@ -49,17 +68,21 @@ async function timed(id: string, fn: () => Promise<HealthResult>): Promise<Healt
       action: 'Check the deployment logs for this check; a thrown check usually means a missing dependency or env var.',
       durationMs: Date.now() - start,
     }
+    logHealthResult(result)
+    return result
   }
 }
 
 // (a)+(b) PAYMENT PATH - reuse the payment sentinel checks verbatim.
 async function checkPayment(origin: string): Promise<HealthResult> {
-  const [probe, drift, endpoint] = await Promise.all([
+  // selfProbe returns one result per configured webhook signing secret, so the
+  // platform and connected-accounts destinations are both covered here too.
+  const [probes, drift, endpoint] = await Promise.all([
     selfProbe(origin, false),
     driftWatchdog(),
     endpointConfigCheck(origin),
   ])
-  const parts = [probe, drift, endpoint]
+  const parts = [...probes, drift, endpoint]
   const failed = parts.filter(p => !p.ok)
   if (failed.length === 0) {
     return { id: 'payment', label: 'Payment path (webhook + drift)', severity: 'critical', ok: true, detail: 'signed probe accepted, no drifted orders, one enabled endpoint' }
@@ -118,7 +141,7 @@ async function checkEmail(): Promise<HealthResult> {
       action: 'Vercel → Project → Settings → Environment Variables → add RESEND_API_KEY (all environments), then redeploy.',
     }
   }
-  const { error } = await new Resend(key).domains.list()
+  const { data, error } = await new Resend(key).domains.list()
   if (error) {
     return {
       id: 'email', label: 'Email delivery (Resend)', severity: 'critical', ok: false,
@@ -127,7 +150,31 @@ async function checkEmail(): Promise<HealthResult> {
       action: 'Resend dashboard → API Keys: confirm the key is active, then update RESEND_API_KEY in Vercel and redeploy.',
     }
   }
-  return { id: 'email', label: 'Email delivery (Resend)', severity: 'critical', ok: true, detail: 'Resend key valid, domains reachable' }
+
+  // A VALID KEY IS NOT A WORKING SENDER (2026-07-26). This check used to stop
+  // at "the key works". Production's EMAIL_FROM points at send.eventlinqs.com,
+  // which is not a verified domain at Resend, so every send through sendEmail
+  // threw "The send.eventlinqs.com domain is not verified" - including the
+  // payment sentinel's own alert email. The monitor detected a payment fault
+  // and then could not tell the founder, and nothing surfaced that for weeks.
+  // So the domains we actually send FROM are now asserted, not just reachable.
+  const domains = (data?.data ?? []) as { name?: string; status?: string }[]
+  const verified = new Set(
+    domains.filter(d => d.status === 'verified').map(d => (d.name ?? '').toLowerCase()),
+  )
+  const unverified = senderDomainsInUse().filter(d => !verified.has(d))
+  if (unverified.length > 0) {
+    return {
+      id: 'email', label: 'Email delivery (Resend)', severity: 'critical', ok: false,
+      detail: `sender domain(s) not verified at Resend: ${unverified.join(', ')} (verified: ${[...verified].join(', ') || 'none'})`,
+      probableCause: 'the platform sends from a domain Resend will not accept, so those sends fail with "domain is not verified" - including the sentinel alert emails, which is why a fault here can stay silent',
+      action: `Resend dashboard → Domains: verify ${unverified.join(', ')} by adding the DNS records it shows. Faster alternative if another domain is already verified: change EMAIL_FROM in Vercel to an address at that domain and redeploy.`,
+    }
+  }
+  return {
+    id: 'email', label: 'Email delivery (Resend)', severity: 'critical', ok: true,
+    detail: `Resend key valid; sender domain(s) verified: ${senderDomainsInUse().join(', ')}`,
+  }
 }
 
 // (c) MAP surfaces - the single Google Maps key present + non-empty. Every map

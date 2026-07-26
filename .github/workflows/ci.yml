@@ -88,7 +88,14 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: Verify SUPABASE_ACCESS_TOKEN is configured
+      - name: Verify SUPABASE_ACCESS_TOKEN is configured AND still valid
+        # PRESENT is not the same as VALID. On 2026-07-10 this token expired.
+        # The presence check below still passed, the guard then failed with a
+        # generic "could not reach the live DB", CI concluded failure, and the
+        # post-deploy smoke gate was skipped for two weeks as a side effect.
+        # That is the platform's named worst failure class: a variable that
+        # EXISTS but does not WORK. So the token is now actually exercised, and
+        # an expired one says so in one line instead of masquerading as drift.
         run: |
           if [[ -z "${SUPABASE_ACCESS_TOKEN}" ]]; then
             echo "::error::types-drift-guard requires repository secret SUPABASE_ACCESS_TOKEN."
@@ -97,6 +104,20 @@ jobs:
             exit 1
           fi
           echo "SUPABASE_ACCESS_TOKEN is set (length ${#SUPABASE_ACCESS_TOKEN})."
+          CODE=$(curl -sS -o /dev/null -w '%{http_code}' \
+            -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
+            "https://api.supabase.com/v1/projects" || echo "000")
+          if [[ "$CODE" == "401" || "$CODE" == "403" ]]; then
+            echo "::error::SUPABASE_ACCESS_TOKEN is PRESENT but REJECTED by Supabase (HTTP $CODE): it has expired or been revoked."
+            echo "::error::Rotate it: supabase.com/dashboard > account > access tokens, then update the repository secret."
+            echo "::error::This is NOT schema drift. Nothing is wrong with the committed types."
+            exit 1
+          fi
+          if [[ "$CODE" != "200" ]]; then
+            echo "::warning::Unexpected HTTP $CODE from the Supabase API while validating the token; continuing to the drift check."
+          else
+            echo "SUPABASE_ACCESS_TOKEN accepted by the Supabase API (HTTP 200)."
+          fi
 
       - name: Run types-drift guard
         run: bash scripts/check-types-drift.sh

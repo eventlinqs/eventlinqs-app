@@ -51,6 +51,52 @@ export function stampSubject(subject: string): string {
   return subject.startsWith('[STAGING]') ? subject : `[STAGING] ${subject}`
 }
 
+/**
+ * The sender used when `EMAIL_FROM` is unset or blank.
+ */
+export const DEFAULT_FROM = 'EventLinqs <hello@eventlinqs.com>'
+
+/**
+ * The sender the BUYER-FACING transactional mail is hardcoded to.
+ *
+ * Mirrors the literal in the four call sites that build their own Resend
+ * client rather than going through `sendEmail`: the order confirmation (the
+ * ticket email, src/lib/email/order-confirmation.ts), the refund confirmation
+ * (src/app/api/webhooks/stripe/route.ts), the payout emails
+ * (src/lib/payouts/email.ts) and the waitlist promotion
+ * (src/lib/waitlist/promote.ts). Declared here so the email health check can
+ * assert this domain is verified at Resend without importing the webhook route,
+ * whose money logic must not be disturbed.
+ */
+export const TRANSACTIONAL_FROM = 'EventLinqs <noreply@eventlinqs.com>'
+
+/** The configured sender for everything that goes through `sendEmail`. */
+export function resolveFrom(): string {
+  // `||` not `??`: an EMPTY EMAIL_FROM (present but blank) must fall back to
+  // the verified default, not be sent as an empty from.
+  return process.env.EMAIL_FROM?.trim() || DEFAULT_FROM
+}
+
+/** Just the domain part of a `Name <user@domain>` or bare `user@domain`. */
+export function senderDomain(from: string): string {
+  const m = /<([^>]+)>\s*$/.exec(from.trim())
+  const address = (m ? m[1] : from).trim()
+  return (address.split('@')[1] ?? '').toLowerCase()
+}
+
+/**
+ * Every domain this deployment can actually send from, deduplicated.
+ *
+ * Why this exists (2026-07-26): production's `EMAIL_FROM` points at
+ * `send.eventlinqs.com`, which is NOT verified at Resend, so every send through
+ * `sendEmail` failed. It went unnoticed for as long as it did because the email
+ * health check only asked "is the API key valid", never "can we actually send
+ * from the addresses we use". Both answers are needed.
+ */
+export function senderDomainsInUse(): string[] {
+  return [...new Set([senderDomain(resolveFrom()), senderDomain(TRANSACTIONAL_FROM)])].filter(Boolean)
+}
+
 export type SendEmailInput = {
   to: string
   subject: string
@@ -76,11 +122,9 @@ export type SendEmailInput = {
  * shaping the user-facing error.
  */
 export async function sendEmail(input: SendEmailInput): Promise<{ id: string }> {
-  // `||` not `??`: an EMPTY EMAIL_FROM (present but blank) must fall back to the
-  // verified default, not be sent as an empty from (Resend rejects it as "domain
-  // is invalid"). Empty-string env vars are the silent-failure class this whole
-  // platform-health push exists to eliminate.
-  const from = process.env.EMAIL_FROM?.trim() || 'EventLinqs <hello@eventlinqs.com>'
+  // Single source: resolveFrom() carries the "present but blank falls back"
+  // rule, so the health check and the sender can never disagree.
+  const from = resolveFrom()
   const resend = getResend()
   const { data, error } = await resend.emails.send({
     from: stampSender(from),

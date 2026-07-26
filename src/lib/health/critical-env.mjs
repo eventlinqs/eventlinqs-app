@@ -51,6 +51,37 @@ function refFromJwt(v) {
   }
 }
 
+/**
+ * The MODE a Stripe key declares in its own prefix: 'live', 'test', or
+ * 'missing'/'malformed' when there is nothing usable to read.
+ *
+ * Deliberately reads the prefix ONLY. Nothing here ever returns, logs or packs
+ * key material.
+ */
+function stripeKeyMode(v) {
+  const t = (v ?? '').trim()
+  if (t.length === 0) return 'missing'
+  const m = /^(?:pk|sk|rk)_(test|live)_/.exec(t)
+  return m ? m[1] : 'malformed'
+}
+
+/**
+ * The Stripe ACCOUNT REF both key types embed after the `_51` version marker.
+ *
+ * A publishable key `pk_live_51T8WBhGuiZ9cvxuu...` and its matching secret key
+ * `sk_live_51T8WBhGuiZ9cvxuu...` carry the same 15-character ref, which is the
+ * account id minus its `acct_1` prefix (`acct_1T8WBhGuiZ9cvxuu`). Comparing the
+ * two refs is how a mismatched PAIR is caught.
+ *
+ * Returns '' when the key is absent or not in that shape, so the caller can
+ * report "unreadable" rather than silently comparing two empty strings and
+ * calling that a match.
+ */
+function stripeAccountRef(v) {
+  const m = /^(?:pk|sk|rk)_(?:test|live)_51([A-Za-z0-9]{15})/.exec((v ?? '').trim())
+  return m ? m[1] : ''
+}
+
 /** @type {EnvRule[]} */
 export const CRITICAL_ENV_RULES = [
   {
@@ -188,6 +219,88 @@ export const CRITICAL_ENV_RULES = [
         ok: false,
         reason: `VERCEL_ENV=${target} but ${offenders.join(' and ')} point at the PRODUCTION project ${PRODUCTION_SUPABASE_REF}. A preview must never be able to read or write the live database.`,
       }
+    },
+  },
+  {
+    // CROSS-VARIABLE RULE (2026-07-26). The SECOND cross-variable rule, and the
+    // one that makes PRODUCTION PROVE ITS OWN STRIPE KEYS at build time.
+    //
+    // Two failures it closes, both of which produced NO error anywhere:
+    //
+    //   1. TEST KEYS ON PRODUCTION. Production ran `sk_test_` / `pk_test_`
+    //      while holding a LIVE webhook signing secret. That combination looks
+    //      configured and takes card details, but every charge is a test charge
+    //      and no money ever moves. The per-variable STRIPE_SECRET_KEY rule
+    //      cannot catch it: it accepts `sk_test_` and `sk_live_` equally,
+    //      because a preview legitimately needs the test key.
+    //
+    //   2. A MISMATCHED PAIR. A publishable key from one Stripe account and a
+    //      secret key from another. Stripe.js cannot resolve a clientSecret
+    //      minted by a different account, so the payment element renders
+    //      NOTHING, with no console error and no network error. Found on the
+    //      Preview scope on 2026-07-25; it must never be discovered on live
+    //      traffic.
+    //
+    // Why buildCritical: the founder will not paste the live secret key into a
+    // session, and Vercel stores it Sensitive so it cannot be read back by
+    // anyone. The deployment itself is therefore the only witness. Making this
+    // block the BUILD turns "are the live keys right?" into a question
+    // production answers on every deploy, with no human holding a secret. A
+    // green production build IS the proof.
+    //
+    // SECRECY: resolve() packs only non-secret facts (the deployment target,
+    // each key's declared MODE, and the account ref). validate() returns a
+    // boolean and a reason that names NEITHER key value NOR either account ref.
+    // Both consumers (scripts/check-public-env.mjs and the runtime sentinel in
+    // src/lib/health/checks.ts) print only name, state and reason, so no key
+    // material can reach a build log or an alert email.
+    name: 'STRIPE_LIVE_KEY_PAIRING',
+    buildCritical: true,
+    publicVar: false,
+    describe: 'Production runs LIVE Stripe keys, and both keys are the same account',
+    resolve: e => {
+      const target = e.VERCEL_ENV || e.NEXT_PUBLIC_VERCEL_ENV || 'local'
+      const sk = e.STRIPE_SECRET_KEY ?? ''
+      const pk = e.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? ''
+      // Fixed order, parsed below. No key material is packed.
+      return [target, stripeKeyMode(sk), stripeKeyMode(pk), stripeAccountRef(sk), stripeAccountRef(pk)].join('|')
+    },
+    validate: v => {
+      const [target, skMode, pkMode, skRef, pkRef] = v.split('|')
+      // Only production must be LIVE. A preview or a local run legitimately
+      // carries test keys, and this rule is a no-op pass for them.
+      if (target !== 'production') return { ok: true }
+
+      const modeProblems = []
+      if (skMode !== 'live') modeProblems.push(`STRIPE_SECRET_KEY is ${skMode}, expected a key starting sk_live_`)
+      if (pkMode !== 'live') modeProblems.push(`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is ${pkMode}, expected a key starting pk_live_`)
+      if (modeProblems.length > 0) {
+        return {
+          ok: false,
+          reason: `${modeProblems.join('; ')}. Production would take card details and settle NOTHING: a test-mode charge moves no money.`,
+        }
+      }
+
+      // Both are live. Now the pair. An unreadable ref is reported as its own
+      // failure rather than being compared, so two empty strings can never be
+      // mistaken for a match.
+      if (!skRef || !pkRef) {
+        const which = !skRef && !pkRef ? 'neither key' : !skRef ? 'STRIPE_SECRET_KEY' : 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY'
+        return {
+          ok: false,
+          reason: `the Stripe account id could not be read out of ${which}, so the two keys cannot be proven to be the same account. Expected the shape <prefix>_live_51<15-character account id>.`,
+        }
+      }
+      if (skRef !== pkRef) {
+        return {
+          ok: false,
+          reason:
+            'the publishable and secret keys belong to DIFFERENT Stripe accounts. ' +
+            'Stripe.js cannot resolve a clientSecret minted by another account, so the payment element renders nothing and reports no error: checkout would look fine and take no money. ' +
+            'Re-copy BOTH keys from the same account in the Stripe dashboard (live mode).',
+        }
+      }
+      return { ok: true }
     },
   },
 ]
