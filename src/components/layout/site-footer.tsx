@@ -46,10 +46,11 @@ export const COMMUNITIES = [
 ]
 
 export const FOR_ORGANISERS = [
-  { label: 'Sell tickets',     href: '/organisers/signup' },
-  { label: 'Pricing',          href: '/pricing' },
-  { label: 'Organiser guide',  href: '/organisers' },
-  { label: 'Help centre',      href: '/help/selling-tickets' },
+  { label: 'Sell tickets',        href: '/organisers/signup' },
+  { label: 'Pricing',             href: '/pricing' },
+  { label: 'Organiser guide',     href: '/organisers' },
+  { label: 'Step-by-step guides', href: '/guides' },
+  { label: 'Help centre',         href: '/help/selling-tickets' },
 ]
 
 export const COMPANY = [
