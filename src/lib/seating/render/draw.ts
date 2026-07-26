@@ -327,19 +327,19 @@ function drawScreenPass(ctx: CanvasRenderingContext2D, scene: Scene, camera: Cam
     ctx.fillText(area.label, at.x, at.y + (area.style === 'scenery' ? 4 : -2))
     if (area.style !== 'scenery') {
       ctx.font = `500 10px ${DATA_FONT}`
-      ctx.fillStyle = C.stoneText
+      ctx.fillStyle = C.dusk
       ctx.fillText('General admission', at.x, at.y + 12)
     }
     ctx.restore()
   }
 
-  // Row letters on BOTH flanks.
+  // Row letters on BOTH flanks. Dusk ink: 4.5:1 on the Veil paper.
   if (flags.rowLetters) {
     ctx.save()
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.font = `600 11px ${DATA_FONT}`
-    ctx.fillStyle = C.stoneText
+    ctx.fillStyle = C.dusk
     for (const row of scene.rowLabels) {
       for (const side of [row.left, row.right]) {
         if (side.x < view.minX - 30 || side.x > view.maxX + 30 || side.y < view.minY - 30 || side.y > view.maxY + 30) continue
@@ -356,7 +356,7 @@ function drawScreenPass(ctx: CanvasRenderingContext2D, scene: Scene, camera: Cam
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.font = `600 10px ${DATA_FONT}`
-    ctx.fillStyle = C.stoneText
+    ctx.fillStyle = C.dusk
     for (const mark of scene.rulers) {
       if (mark.x < view.minX || mark.x > view.maxX || mark.y < view.minY - 30 || mark.y > view.maxY) continue
       const at = worldToScreen(camera, mark.x, mark.y)
