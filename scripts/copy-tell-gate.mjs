@@ -48,6 +48,31 @@ const ALLOWLIST = [
   },
 ]
 
+/**
+ * FEE LITERALS (LOCK 4, 2026-07-27). docs/PRICING.md is the ONLY place a fee
+ * figure may exist in prose. Everywhere else reads the live value through
+ * getPricingRule / getLivePublicFee, so the number shown can never drift from
+ * the number charged.
+ *
+ * Context-gated on purpose. A bare percentage is legitimate copy ("100 percent
+ * Australian owned"), so a match requires BOTH a fee-shaped figure AND a
+ * fee word in the same copy chunk. That keeps the gate precise enough to stay
+ * on, which a noisy gate never does.
+ */
+const FEE_WORD_RE = /\b(fee|fees|charge|charged|commission|service charge|processing|platform fee|payout|per ticket|all[- ]in|take[- ]rate)\b/i
+const FEE_PERCENT_RE = /\b\d{1,3}(\.\d+)?\s*(%|per ?cent)/i
+const FEE_MONEY_RE = /\b(?:AUD|A?\$)\s?\d+\.\d{2}\b|\b\d+\.\d{2}\s?(?:AUD|dollars)\b/i
+/** The locked figures are barred from copy even without a fee word nearby. */
+const LOCKED_FIGURE_RE = /\b3\.5\s*%|\b2\.5\s*%|\bAUD\s?0\.99\b|\$0\.99\b/i
+
+function feeLiteralViolation(chunk) {
+  if (LOCKED_FIGURE_RE.test(chunk)) return 'fee-literal-locked-figure'
+  if (!FEE_WORD_RE.test(chunk)) return null
+  if (FEE_PERCENT_RE.test(chunk)) return 'fee-literal-percentage'
+  if (FEE_MONEY_RE.test(chunk)) return 'fee-literal-money'
+  return null
+}
+
 const DASH_RE = /[—–]/
 const BANNED_WORD_RE = new RegExp(
   LEXICON.hard.find(h => h.name === 'banned-word-community-law').source,
@@ -106,6 +131,16 @@ for (const file of walk(path.join(ROOT, 'src'))) {
     for (const tell of STRING_SCOPED) {
       if (allowed.includes(tell.name)) continue
       if (chunks.some(c => tell.re.test(c))) violations.push(`${where} ${tell.name}`)
+    }
+    // LOCK 4: no fee figure as a literal in copy. docs/PRICING.md is the only
+    // place a fee number is allowed to exist, and it is not scanned here.
+    if (allowed.includes('fee-literal')) return
+    for (const c of chunks) {
+      const kind = feeLiteralViolation(c)
+      if (kind) {
+        violations.push(`${where} ${kind}  -> read the live value (getLivePublicFee); docs/PRICING.md is the only home for a fee figure`)
+        break
+      }
     }
   })
 }
