@@ -1975,6 +1975,7 @@ export type Database = {
           description: string | null
           email: string | null
           founding_bonus_months: number
+          founding_fee_free_until: string | null
           founding_city: string | null
           founding_since: string | null
           hold_amount_cents: number
@@ -2010,6 +2011,7 @@ export type Database = {
           description?: string | null
           email?: string | null
           founding_bonus_months?: number
+          founding_fee_free_until?: string | null
           founding_city?: string | null
           founding_since?: string | null
           hold_amount_cents?: number
@@ -2045,6 +2047,7 @@ export type Database = {
           description?: string | null
           email?: string | null
           founding_bonus_months?: number
+          founding_fee_free_until?: string | null
           founding_city?: string | null
           founding_since?: string | null
           hold_amount_cents?: number
