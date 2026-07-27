@@ -1,3 +1,4 @@
+import { isWaiverActive } from '@/lib/payments/founding-waiver'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
@@ -30,7 +31,7 @@ export default async function InvitesPage() {
 
   const { data: org } = await supabase
     .from('organisations')
-    .select('id, name, is_founding, founding_city, founding_bonus_months')
+    .select('id, name, is_founding, founding_city, founding_bonus_months, founding_fee_free_until')
     .eq('owner_id', user.id)
     .maybeSingle()
 
@@ -82,8 +83,8 @@ export default async function InvitesPage() {
         <InvitesClient
           initialInvites={rows}
           allowance={INVITES_PER_FOUNDING_ORGANISER}
-          bonusMonths={org.founding_bonus_months ?? 0}
-          bonusPerReferral={REFERRAL_BONUS_MONTHS}
+          feeFreeUntil={org.founding_fee_free_until ?? null}
+          waiverActive={isWaiverActive(org.founding_fee_free_until)}
           acceptedCount={acceptedCount}
         />
       ) : (

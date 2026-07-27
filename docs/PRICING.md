@@ -106,18 +106,60 @@ third-party cost and is still passed on.
 This is the founder's second locked anchor: 20.50 all in during the founding
 fee-free period.
 
-## 4. The founding offer
+## 4. The founding offer: a DATE WINDOW
 
-Founding organisers in the founding cities (Geelong and Melbourne) earn
-fee-free months: `INVITES_PER_FOUNDING_ORGANISER = 5` invites each, and
-`REFERRAL_BONUS_MONTHS = 3` fee-free months per converted referral, tracked on
-`organisations.founding_bonus_months` (`src/lib/founding/invites.ts`).
+Founder decision, locked 27 July 2026: the waiver is a **date window**, not a
+months counter. A counter has no expiry and no audit trail; a timestamp answers
+"is this organisation inside the window right now" with one comparison that the
+charge, the display and the payout each make identically.
+
+**The terms.**
+
+| Term | Value | Where it lives |
+|---|---|---|
+| Initial grant | 6 months from onboarding | `FOUNDING_INITIAL_MONTHS` |
+| Per confirmed referral | plus 3 months | `FOUNDING_REFERRAL_MONTHS` |
+| Cap | the first 50 organisations, Geelong and Melbourne | `FOUNDING_WAIVER_CAP` |
+| Stored as | `organisations.founding_fee_free_until` (TIMESTAMPTZ) | migration `20260727000002` |
 
 **Fee-free means the PLATFORM fee only.** The payment processing fee is a real
 cost paid to the processor and is never waived. A fee-free 20.00 ticket is
 therefore 20.50 all in, not 20.00.
 
-**Implementation status: the waiver is NOT automatic.** See section 7.
+**Referrals stack.** An extension adds three months to the CURRENT expiry, not
+to today, so two referrals in the same week give six months rather than one
+overwriting the other. A window that has already lapsed extends from today
+instead, so the grant is real rather than a silent no-op.
+
+**Month arithmetic is done in UTC.** `setMonth` works in the host's local time
+while the value is stored and compared as UTC, so a six-month window granted in
+July (UTC+10) and expiring in January (UTC+11) came out a day short. The helper
+uses `setUTCMonth` so the window is identical wherever it is computed.
+
+**The cap is enforced twice**: in code
+(`acceptFoundingInvite` checks the holder count and audit-logs a refusal) and by
+the database trigger `trg_founding_waiver_cap`, which cannot be bypassed by a
+direct SQL grant or a code path nobody has written yet.
+
+**Every grant and extension is audit-logged** with the organisation, the reason,
+the previous expiry and the new expiry: `founding.waiver.granted`,
+`founding.waiver.extended`, `founding.waiver.cap_reached`.
+
+**Where the waiver is applied.** One shared function,
+`applyFoundingWaiver()` in `src/lib/payments/founding-waiver.ts`, called from
+BOTH resolution points so the shown total and the charged total cannot diverge:
+
+| Point | File | Covers |
+|---|---|---|
+| Charge authority | `payment-calculator.ts` | checkout, capture, and payout (the payout composes the application fee from the amounts stored on the order) |
+| Display resolver | `event-fee-config.ts` | the event page all-in, and the ticket selector that consumes its rates |
+
+A lookup failure reads the waiver as INACTIVE, so an error charges the standard
+rate rather than silently giving the platform fee away.
+
+Marketing and legal surfaces call `getEventFeeRates({})` with no organisation,
+so they keep showing the standard public rates. That is correct: those pages
+describe the platform's rates, not one organiser's deal.
 
 ## 5. Where the value lives
 
@@ -151,14 +193,13 @@ One resolver, no exceptions: `getPricingRule()` in
 
 ## 7. Known gaps, stated not hidden
 
-1. **The founding fee waiver is not wired to the charge.**
-   `organisations.founding_bonus_months` is incremented by the referral flow and
-   displayed on the invites dashboard as "Fee-free months earned", but NO code in
-   the payment path reads `is_founding` or `founding_bonus_months`. A founding
-   organiser inside their fee-free window is charged the full platform fee today.
-   The offer is expressible only by an admin creating a per-organiser override in
-   `/admin/pricing`, done by hand, with no expiry. Until this is built, the
-   20.50 anchor is reachable only through that manual override.
+1. **RESOLVED 27 July 2026: the founding fee waiver is now wired to the charge.**
+   It was previously displayed and never applied. It is now a date window read by
+   both resolution points (section 4). `founding_bonus_months` is retained as the
+   historical record of referrals earned, but nothing prices from it.
+   Outstanding: the migration must be applied before the column exists, and no
+   organisation currently holds a window (0 of 50 on both databases as at
+   27 July 2026).
 2. **Superseded versions are never ended.** A new version is inserted with
    `effective_until = NULL` and the previous row is left open, so several
    versions of the same rule are simultaneously "active" and correctness rests
