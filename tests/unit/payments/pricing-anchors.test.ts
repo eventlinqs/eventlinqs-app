@@ -16,6 +16,12 @@
 import { describe, expect, it } from 'vitest'
 import { computeAllInTotalCents, computeFeeLineCents, type FeeRates } from '@/lib/payments/fee-math'
 import { parseLockedValues, LOCKED_RULE_TYPES } from '@/lib/health/pricing-lock.mjs'
+import {
+  applyFoundingWaiver,
+  extendWaiver,
+  initialWaiverUntil,
+  isWaiverActive,
+} from '@/lib/payments/founding-waiver'
 
 const locked = parseLockedValues(process.cwd()) as Record<string, number | string>
 
@@ -209,5 +215,99 @@ describe('the last-resort fallback cannot become a second source', () => {
       processingFeeFixedCents: PUBLIC_PROCESSING_FEE.fixedCents,
     })
     expect(fees.platform_fee_cents + fees.payment_processing_fee_cents).toBe(219)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// The Founding Organiser waiver (founder decision 2026-07-27: a DATE WINDOW).
+// The waiver zeroes the PLATFORM fee only; the processing fee is a real
+// third-party cost and is never waived, which is why an inside-window 20.00
+// ticket is 20.50 all in and not 20.00.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('FOUNDING WAIVER: a 20.00 ticket inside and outside the window', () => {
+  const NOW = new Date('2026-07-27T00:00:00.000Z')
+  const INSIDE = new Date('2026-08-01T00:00:00.000Z').toISOString()
+  const EXPIRED_YESTERDAY = new Date('2026-07-26T00:00:00.000Z').toISOString()
+
+  const ratesFor = (until: string | null) =>
+    applyFoundingWaiver(PUBLIC_RATES, isWaiverActive(until, NOW))
+
+  it('treats a future date as active and a past date as expired', () => {
+    expect(isWaiverActive(INSIDE, NOW)).toBe(true)
+    expect(isWaiverActive(EXPIRED_YESTERDAY, NOW)).toBe(false)
+    expect(isWaiverActive(null, NOW)).toBe(false)
+    // The boundary itself is NOT free: the window ends at the instant it ends.
+    expect(isWaiverActive(NOW.toISOString(), NOW)).toBe(false)
+  })
+
+  it('INSIDE the window is EXACTLY 20.50 all in, pass-on', () => {
+    const fees = computeFeeLineCents(TWENTY_DOLLARS, 1, ratesFor(INSIDE))
+    expect(fees.platform_fee_cents).toBe(0)
+    expect(fees.payment_processing_fee_cents).toBe(50)
+    expect(computeAllInTotalCents(TWENTY_DOLLARS, fees, 'pass_to_buyer')).toBe(2050)
+  })
+
+  it('INSIDE the window the organiser still keeps the full 20.00', () => {
+    const fees = computeFeeLineCents(TWENTY_DOLLARS, 1, ratesFor(INSIDE))
+    const buyerPays = computeAllInTotalCents(TWENTY_DOLLARS, fees, 'pass_to_buyer')
+    expect(buyerPays - fees.platform_fee_cents - fees.payment_processing_fee_cents).toBe(2000)
+  })
+
+  it('ONE DAY AFTER expiry the same ticket is 22.19 all in', () => {
+    const fees = computeFeeLineCents(TWENTY_DOLLARS, 1, ratesFor(EXPIRED_YESTERDAY))
+    expect(fees.platform_fee_cents).toBe(169)
+    expect(fees.payment_processing_fee_cents).toBe(50)
+    expect(computeAllInTotalCents(TWENTY_DOLLARS, fees, 'pass_to_buyer')).toBe(2219)
+  })
+
+  it('ABSORB inside the window: buyer pays 20.00 and the organiser keeps 19.50', () => {
+    const fees = computeFeeLineCents(TWENTY_DOLLARS, 1, ratesFor(INSIDE))
+    expect(computeAllInTotalCents(TWENTY_DOLLARS, fees, 'absorb')).toBe(2000)
+    // Only the 50c processing fee comes out of the payout, not the platform fee.
+    expect(TWENTY_DOLLARS - fees.platform_fee_cents - fees.payment_processing_fee_cents).toBe(1950)
+  })
+
+  it('ABSORB after expiry: buyer pays 20.00 and the organiser keeps 17.81', () => {
+    const fees = computeFeeLineCents(TWENTY_DOLLARS, 1, ratesFor(EXPIRED_YESTERDAY))
+    expect(computeAllInTotalCents(TWENTY_DOLLARS, fees, 'absorb')).toBe(2000)
+    expect(TWENTY_DOLLARS - fees.platform_fee_cents - fees.payment_processing_fee_cents).toBe(1781)
+  })
+
+  it('NEVER waives the processing fee, at any quantity', () => {
+    const fees = computeFeeLineCents(TWENTY_DOLLARS * 4, 4, ratesFor(INSIDE))
+    expect(fees.platform_fee_cents).toBe(0)
+    // 2.5% of 80.00 = 200c, still charged in full.
+    expect(fees.payment_processing_fee_cents).toBe(200)
+  })
+})
+
+describe('FOUNDING WAIVER: referrals stack from the current expiry', () => {
+  const NOW = new Date('2026-07-27T00:00:00.000Z')
+
+  it('extends from the CURRENT expiry, not from today', () => {
+    const current = new Date('2027-01-27T00:00:00.000Z').toISOString()
+    const next = extendWaiver(current, 3, NOW)
+    // 27 Jan 2027 plus three months, NOT 27 July 2026 plus three months.
+    expect(next.slice(0, 10)).toBe('2027-04-27')
+  })
+
+  it('stacks two referrals to six months rather than overwriting', () => {
+    const start = initialWaiverUntil(NOW) // 2027-01-27
+    const afterOne = extendWaiver(start, 3, NOW)
+    const afterTwo = extendWaiver(afterOne, 3, NOW)
+    expect(start.slice(0, 10)).toBe('2027-01-27')
+    expect(afterOne.slice(0, 10)).toBe('2027-04-27')
+    expect(afterTwo.slice(0, 10)).toBe('2027-07-27')
+  })
+
+  it('extends from TODAY when the window has already lapsed, so the grant is real', () => {
+    const lapsed = new Date('2026-01-01T00:00:00.000Z').toISOString()
+    const next = extendWaiver(lapsed, 3, NOW)
+    expect(next.slice(0, 10)).toBe('2026-10-27')
+    expect(isWaiverActive(next, NOW)).toBe(true)
+  })
+
+  it('grants six months at onboarding', () => {
+    expect(initialWaiverUntil(NOW).slice(0, 10)).toBe('2027-01-27')
   })
 })
