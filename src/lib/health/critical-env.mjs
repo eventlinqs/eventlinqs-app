@@ -189,35 +189,63 @@ export const CRITICAL_ENV_RULES = [
     // any code reading the base var directly (src/proxy.ts did) went straight
     // to the live database, and the raw key stayed reachable regardless.
     //
-    // Two things are asserted for any non-production deployment:
+    // Two things are asserted for any non-production context:
     //   1. the RESOLVED url + service-role key are not the production project;
     //   2. the RAW base service-role key is not the production one either, so
     //      a future direct read cannot resurrect the bypass.
-    // On production, and on a local run with no VERCEL_ENV, it is a no-op pass.
+    //
+    // LOCAL IS NOT EXEMPT (2026-07-27). It used to be a no-op pass, and that
+    // exemption caused three separate near-misses: `.env.local` in this repo
+    // points at the PRODUCTION project, so any local build or proof run that
+    // did not explicitly export `.env.test` first baked PRODUCTION public vars
+    // and the local server then read the live database. A written procedure is
+    // not a control, so `local` is now held to the same bar as preview. The
+    // only way past it is the explicit, named override below, which exists so a
+    // deliberate read-only local investigation against production is still
+    // possible and is never accidental.
+    //
+    // A machine with no Supabase variables at all still passes: an unreadable
+    // ref is not the production ref, so fresh clones and CI (which uses
+    // https://example.supabase.co) are unaffected.
     name: 'SUPABASE_ENV_ISOLATION',
     buildCritical: true,
     publicVar: false,
-    describe: 'Non-production deployments must never resolve the PRODUCTION Supabase project',
+    describe: 'Only production may resolve the PRODUCTION Supabase project',
     resolve: e => {
       const target = e.VERCEL_ENV || e.NEXT_PUBLIC_VERCEL_ENV || 'local'
       const resolvedUrl = e.NEXT_PUBLIC_SUPABASE_URL_PREVIEW || e.NEXT_PUBLIC_SUPABASE_URL || ''
       const resolvedKey = e.SUPABASE_SERVICE_ROLE_KEY_PREVIEW || e.SUPABASE_SERVICE_ROLE_KEY || ''
       const rawKey = e.SUPABASE_SERVICE_ROLE_KEY || ''
+      const override = e.ALLOW_PRODUCTION_SUPABASE === '1' ? 'override' : 'guarded'
       // Packed into one string because the shared evaluator hands validate() a
       // single resolved value. Order is fixed and parsed below.
-      return [target, refFromUrl(resolvedUrl), refFromJwt(resolvedKey), refFromJwt(rawKey)].join('|')
+      return [
+        target,
+        refFromUrl(resolvedUrl),
+        refFromJwt(resolvedKey),
+        refFromJwt(rawKey),
+        override,
+      ].join('|')
     },
     validate: v => {
-      const [target, urlRef, keyRef, rawKeyRef] = v.split('|')
-      if (target === 'production' || target === 'local') return { ok: true }
+      const [target, urlRef, keyRef, rawKeyRef, override] = v.split('|')
+      // Production resolving production is the entire point of production.
+      if (target === 'production') return { ok: true }
+      // The deliberate, named escape hatch.
+      if (override === 'override') return { ok: true }
       const offenders = []
       if (urlRef === PRODUCTION_SUPABASE_REF) offenders.push('resolved NEXT_PUBLIC_SUPABASE_URL')
       if (keyRef === PRODUCTION_SUPABASE_REF) offenders.push('resolved SUPABASE_SERVICE_ROLE_KEY')
       if (rawKeyRef === PRODUCTION_SUPABASE_REF) offenders.push('raw SUPABASE_SERVICE_ROLE_KEY (reachable via a direct process.env read)')
       if (offenders.length === 0) return { ok: true }
+      const where = target === 'local' ? 'This LOCAL run' : `VERCEL_ENV=${target}`
+      const localAdvice =
+        target === 'local'
+          ? ' A local build bakes these NEXT_PUBLIC_ values into the bundle, so the app you then run reads the LIVE database. Export .env.test before building (set -a; . ./.env.test; set +a), or run against TEST some other way.'
+          : ' A preview must never be able to read or write the live database.'
       return {
         ok: false,
-        reason: `VERCEL_ENV=${target} but ${offenders.join(' and ')} point at the PRODUCTION project ${PRODUCTION_SUPABASE_REF}. A preview must never be able to read or write the live database.`,
+        reason: `${where}: ${offenders.join(' and ')} point at the PRODUCTION project ${PRODUCTION_SUPABASE_REF}.${localAdvice} Deliberate override: ALLOW_PRODUCTION_SUPABASE=1.`,
       }
     },
   },

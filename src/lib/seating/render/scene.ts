@@ -38,6 +38,14 @@ export interface SceneAreaInput {
   height: number
   style?: 'zone' | 'scenery'
   tier_name?: string
+  /**
+   * The zone's price, resolved from its bound tier by the caller. A zone holds
+   * no seats, so unlike a seated section its price cannot be derived from the
+   * plan: without this the zone was the only shape on the map carrying a name
+   * and no price. Null or absent means genuinely unpriced (scenery), and the
+   * plan then shows the name alone.
+   */
+  priceCents?: number | null
 }
 
 export interface SceneObjectInput {
@@ -107,6 +115,11 @@ export interface Scene {
    * the benchmark's grammar, whatever the block count.
    */
   seatField: SceneBounds
+  /**
+   * The bounds the CAMERA FIT frames: seats, stage and sellable zones, but
+   * NOT venue fixtures. See the note where it is built.
+   */
+  fitBounds: SceneBounds
   /**
    * Contiguous seat blocks: spatial clusters split by real aisle gaps,
    * table seats excluded, ordered left to right. Any number of blocks;
@@ -261,11 +274,33 @@ export function buildScene(input: SceneInput): Scene {
   for (const p of stage.apron) {
     bounds.maxY = Math.max(bounds.maxY, p.y)
   }
+  // THE ROOM, without the fixtures: what the fit should frame.
+  // `bounds` grows to contain every venue object too, because panning and
+  // culling must reach them. But a fit computed on THAT box is dominated by
+  // fixtures sitting far outside the seating: on the proof theatre the exit
+  // markers at x -70 and x 1100 and the entrance at y 610 stretched the box
+  // from 864 x 498 (the actual room) to 1170 x 624, which shrank the drawn
+  // room by about 26 per cent and left a third of the mobile canvas empty.
+  // The fit therefore frames the room, and the areas that sell, alone.
+  const fitBounds: SceneBounds = { ...bounds }
+  for (const a of input.areas ?? []) {
+    fitBounds.minX = Math.min(fitBounds.minX, a.x)
+    fitBounds.minY = Math.min(fitBounds.minY, a.y)
+    fitBounds.maxX = Math.max(fitBounds.maxX, a.x + a.width)
+    fitBounds.maxY = Math.max(fitBounds.maxY, a.y + a.height)
+  }
+
   for (const o of input.objects ?? []) {
     bounds.minX = Math.min(bounds.minX, o.x)
     bounds.minY = Math.min(bounds.minY, o.y)
     bounds.maxX = Math.max(bounds.maxX, o.x + (o.width ?? 48))
     bounds.maxY = Math.max(bounds.maxY, o.y + (o.height ?? 48))
+  }
+  for (const a of input.areas ?? []) {
+    bounds.minX = Math.min(bounds.minX, a.x)
+    bounds.minY = Math.min(bounds.minY, a.y)
+    bounds.maxX = Math.max(bounds.maxX, a.x + a.width)
+    bounds.maxY = Math.max(bounds.maxY, a.y + a.height)
   }
 
   // Per-seat display data resolved once.
@@ -298,14 +333,26 @@ export function buildScene(input: SceneInput): Scene {
       // trapezoid, and the serrated row-traced edges are off the plan
       // for good (the restraint law).
       const hull = convexHull(cluster.map(i => ({ x: seats[i].x, y: seats[i].y })))
+      // A cluster that IS one table names itself after that table. Without
+      // this, a cabaret room drew a dozen identical "FLOOR TABLES" blobs at
+      // overview and a buyer could not tell one from another; with it, each
+      // polygon carries the name the buyer will actually book against. A
+      // cluster spanning two tables keeps the section name, which is the
+      // honest label for a group.
+      const clusterRowLabels = new Set(cluster.map(i => seats[i].row_label))
+      const singleTable =
+        clusterRowLabels.size === 1 && /table|booth/i.test([...clusterRowLabels][0])
+      const prices2 = cluster.map(i => seatPrice[i]).filter((p): p is number => p != null)
       polygons.push({
         sectionId,
-        name: section.name,
+        name: singleTable ? [...clusterRowLabels][0] : section.name,
         hull,
         centroid: polygonCentroid(hull),
         pad: pitch,
-        minPriceCents: prices.length ? Math.min(...prices) : null,
-        maxPriceCents: prices.length ? Math.max(...prices) : null,
+        // Prices come from THIS cluster, not the whole section, so a per-table
+        // polygon states its own price rather than the section's range.
+        minPriceCents: prices2.length ? Math.min(...prices2) : prices.length ? Math.min(...prices) : null,
+        maxPriceCents: prices2.length ? Math.max(...prices2) : prices.length ? Math.max(...prices) : null,
         color: dominant,
         seatIndices: cluster,
       })
@@ -471,6 +518,7 @@ export function buildScene(input: SceneInput): Scene {
     seatPrice,
     bounds,
     seatField,
+    fitBounds,
     blocks,
     pitch,
     chairW,

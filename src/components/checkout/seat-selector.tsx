@@ -67,6 +67,9 @@ export interface SeatAreaData {
   label: string
   section: string
   tier_name?: string
+  /** Resolved on the server from the zone's bound tier: a zone has no seats
+   *  to derive a price from, and the client only receives seat-bound tiers. */
+  priceCents?: number | null
   color: string
   x: number
   y: number
@@ -216,6 +219,8 @@ export function SeatSelector({
     return buildScene({
       seats,
       sections,
+      // priceCents is resolved on the server (a zone's tier is not seat-bound,
+      // so it is not in the tiers this component receives) and passed through.
       areas: areas.map(a => ({ ...a, color: sectionColorForSet(a.color, paletteSet) })),
       stage: decor?.stage ?? undefined,
       objects: decor?.objects ?? [],
@@ -702,7 +707,12 @@ export function SeatSelector({
               if (info.fitScale > 0 && info.scale > info.fitScale * 1.25) panHint.trigger()
             }}
             ariaLabel="Seat map. Arrow keys move seat to seat, Enter selects, plus and minus zoom, Escape rests. Drag to pan, pinch or Ctrl and scroll to zoom."
-            className="h-[62vh] min-h-[380px] w-full rounded-xl bg-canvas lg:absolute lg:inset-0 lg:h-full"
+            // 52vh on mobile, not 62: a room is wider than it is tall, so a
+            // tall narrow frame can only ever be filled on its width and the
+            // remaining height reads as dead space under the plan. Bringing
+            // the frame closer to the room's own proportion removes about
+            // 85px of that band at 390 without changing the drawn scale.
+            className="h-[52vh] min-h-[340px] w-full rounded-xl bg-canvas lg:absolute lg:inset-0 lg:h-full"
             reservedBottomPx={112}
           >
             {/* The floating tooltip (item 6): price, type, exact place. */}
@@ -782,7 +792,11 @@ export function SeatSelector({
               />
 
               {/* The strip: seat detail on touch, in dead space. */}
-              <div className="min-w-0 flex-1 self-end pb-1 sm:hidden">
+              {/* shrink-0 + nowrap: with min-w-0 flex-1 the hint was allowed to
+                  shrink below its own text and wrapped to three lines. It now
+                  takes exactly the width of its sentence, which fits at 390
+                  beside the mini-map and the controls. */}
+              <div className="min-w-0 shrink-0 self-end pb-1 sm:hidden">
                 {stripSeat ? (
                   <p className="truncate text-xs text-ink-900">
                     <span className="font-display font-bold" style={{ fontVariantNumeric: 'tabular-nums' }}>
@@ -796,10 +810,12 @@ export function SeatSelector({
                     )}
                   </p>
                 ) : (
-                  <p className="truncate text-xs text-ink-600">
-                    {cameraInfo.lod === 'overview'
-                      ? 'Tap a section to enter the room'
-                      : 'Tap a seat for its price and place'}
+                  // Short enough to show WHOLE at 390 beside the mini-map and
+                  // the zoom controls. The longer wording truncated to "Tap..."
+                  // there, which tells a buyer nothing; a half-instruction is
+                  // worse than a brief one.
+                  <p className="whitespace-nowrap text-xs text-ink-600">
+                    {cameraInfo.lod === 'overview' ? 'Tap a section' : 'Tap a seat'}
                   </p>
                 )}
               </div>
@@ -839,7 +855,12 @@ export function SeatSelector({
         <div className="min-w-0 space-y-3">
           {/* The schedule: ticket types as selectable rows (item 9). */}
           <div className="rounded-xl border border-ink-200 bg-white p-3">
-            <div className="flex items-baseline justify-between gap-2">
+            {/* The counter sits UNDER the label on mobile, not out at the
+                right edge. The floating help control is pinned bottom-right of
+                the viewport, and at 390 it landed on top of the count, which
+                read "361 OF 506 OPE" with the button covering the N. Stacking
+                moves the count out of that corner entirely. */}
+            <div className="flex flex-col items-start gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-2">
               <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-gold-800">
                 Tickets on this chart
               </p>

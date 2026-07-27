@@ -79,14 +79,21 @@ export function fitCamera(
   margin = 36,
   bottomReserve = 0,
 ): Camera {
-  const w = scene.bounds.maxX - scene.bounds.minX
-  const h = scene.bounds.maxY - scene.bounds.minY
+  // Frame the ROOM (seats, stage, sellable zones), not the venue fixtures
+  // scattered outside it. See Scene.fitBounds.
+  const box = scene.fitBounds ?? scene.bounds
+  const w = box.maxX - box.minX
+  const h = box.maxY - box.minY
   const availH = height - bottomReserve
-  const scale = Math.min((width - margin * 2) / Math.max(1, w), (availH - margin * 2) / Math.max(1, h))
+  // The margin scales down on a narrow viewport. A flat 36px costs 72px of a
+  // 390px sheet, nearly a fifth of the width, which on mobile is the
+  // difference between a room that fills its frame and one that floats in it.
+  const m = Math.max(12, Math.min(margin, width * 0.06))
+  const scale = Math.min((width - m * 2) / Math.max(1, w), (availH - m * 2) / Math.max(1, h))
   return {
     scale,
-    tx: (width - w * scale) / 2 - scene.bounds.minX * scale,
-    ty: (availH - h * scale) / 2 - scene.bounds.minY * scale,
+    tx: (width - w * scale) / 2 - box.minX * scale,
+    ty: (availH - h * scale) / 2 - box.minY * scale,
   }
 }
 
@@ -342,10 +349,20 @@ function drawScreenPass(ctx: CanvasRenderingContext2D, scene: Scene, camera: Cam
     // Inside the stage when it can hold the text clear of its own linework,
     // otherwise lifted just above the apron.
     const insideStage = stageScreenH >= fontPx + 10
-    const y = insideStage ? at.y : Math.min(...stageYs) * camera.scale + camera.ty - 6
+    const topY = Math.min(...stageYs) * camera.scale + camera.ty
     const halfW = 26 + spacing * 2.5
-    const onCanvas =
-      at.x - halfW >= 4 && at.x + halfW <= opts.width - 4 && y - fontPx >= 4 && y + 4 <= opts.height - 4
+    const fitsY = (y: number) => y - fontPx >= 4 && y + 4 <= opts.height - 4
+    // Inside the stage when it can hold the text, otherwise on the paper just
+    // above it. There is deliberately no BELOW option: below a stage is the
+    // front row, and a caption placed there lands on the seating, which the
+    // drawn-frame gate correctly rejects as ink under the text. A stage
+    // pressed hard against the top of the sheet with seats immediately under
+    // it therefore carries no caption at that zoom, and the room's own
+    // section labels identify the plan.
+    const y = [insideStage ? at.y : null, topY - 6].find(
+      (candidate): candidate is number => candidate != null && fitsY(candidate),
+    )
+    const onCanvas = y != null && at.x - halfW >= 4 && at.x + halfW <= opts.width - 4
     if (onCanvas) {
       ctx.save()
       ctx.textAlign = 'center'
@@ -367,13 +384,24 @@ function drawScreenPass(ctx: CanvasRenderingContext2D, scene: Scene, camera: Cam
       if (at.x < -100 || at.x > opts.width + 100 || at.y < -30 || at.y > opts.height + 30) continue
       ctx.save()
       ctx.textAlign = 'center'
+      // A zone carries its NAME and its PRICE, exactly as a seated polygon
+      // does. Its price comes from the bound tier (a zone has no seats to
+      // derive one from); where there is none, the zone says what it is
+      // instead, and scenery carries its name alone.
+      const priceText =
+        area.style !== 'scenery' && area.priceCents != null ? opts.formatPrice(area.priceCents) : null
+      const subText =
+        priceText ??
+        (area.style !== 'scenery' && area.label.trim().toLowerCase() !== 'general admission'
+          ? 'General admission'
+          : null)
       ctx.font = `700 12px ${DISPLAY_FONT}`
       ctx.fillStyle = C.night
-      ctx.fillText(area.label, at.x, at.y + (area.style === 'scenery' ? 4 : -2))
-      if (area.style !== 'scenery' && area.label.trim().toLowerCase() !== 'general admission') {
-        ctx.font = `500 10px ${DATA_FONT}`
+      ctx.fillText(area.label, at.x, at.y + (subText ? -2 : area.style === 'scenery' ? 4 : 0))
+      if (subText) {
+        ctx.font = `600 11px ${DATA_FONT}`
         ctx.fillStyle = C.dusk
-        ctx.fillText('General admission', at.x, at.y + 12)
+        ctx.fillText(subText, at.x, at.y + 13)
       }
       ctx.restore()
     }
@@ -435,6 +463,11 @@ function drawScreenPass(ctx: CanvasRenderingContext2D, scene: Scene, camera: Cam
 }
 
 function drawObjects(ctx: CanvasRenderingContext2D, scene: Scene, camera: Camera, opts: PaintOptions) {
+  // NOT AT OVERVIEW. A venue fixture at overview is a 12px box with no room
+  // for its label, and an unlabelled icon is noise a buyer cannot act on. The
+  // fixtures appear the moment the plan carries chairs, at a size that can
+  // hold their glyph and their name.
+  if (!lodFlags(camera.scale, scene.chairW * camera.scale).seats) return
   for (const obj of scene.objects) {
     const w = obj.width ?? 48
     const h = obj.height ?? 48

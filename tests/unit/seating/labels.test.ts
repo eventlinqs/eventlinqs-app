@@ -99,11 +99,13 @@ describe('the label placement engine (task 2)', () => {
     expect(section!.sublabel).toContain('AUD 89.00')
   })
 
-  it('section names exist at overview only and never grow a leader', () => {
-    // The restraint law: a tiny 2x2 section that cannot host its long
-    // name inside its own polygon DROPS the name; nothing moves to the
-    // margin, no leader line exists anywhere, and past overview no
-    // section name is placed at all.
+  it('section names exist at overview only, always placed, never with a leader', () => {
+    // SUPERSEDES the old assertion that a tiny polygon DROPS its name. A
+    // cabaret room is a dozen small polygons, and dropping their names left a
+    // buyer looking at anonymous blobs. Every polygon is now named at
+    // overview: it is placed inside its own outline when it fits and centred
+    // on the polygon when it cannot. What has NOT changed: no leader line
+    // exists anywhere, and past overview no section name is placed at all.
     const seats = grid(2, 2, 'tiny')
     const scene = buildScene({
       seats,
@@ -124,7 +126,9 @@ describe('the label placement engine (task 2)', () => {
       expect(placeAt(scale).filter(l => l.kind === 'section')).toHaveLength(0)
     }
     const overview = placeAt(0.26)
-    expect(overview.find(l => l.kind === 'section')).toBeUndefined()
+    const named = overview.find(l => l.kind === 'section')
+    expect(named).toBeDefined()
+    expect(named!.text).toBe('ROYAL CIRCLE BOXES')
     expect(overview.some(l => 'leader' in l && (l as Record<string, unknown>).leader)).toBe(false)
   })
 

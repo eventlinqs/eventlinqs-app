@@ -259,6 +259,24 @@ export function placeLabels(input: PlaceLabelsInput): PlacedLabel[] {
   // that cannot sit clear inside its own polygon is dropped, and the
   // ticket rail carries the prices. ──
   if (flags.polygonFill) {
+    // Screen-space boxes of every polygon's drawn extent (hull plus its pad).
+    // A label that cannot fit inside its own polygon is placed on CLEAR PAPER
+    // beside it, never straddling an outline: text crossing a polygon edge is
+    // what the drawn-frame gate reports as ink under the glyphs, and it is
+    // genuinely hard to read.
+    const polyBoxes: LabelBox[] = scene.polygons.map(p => {
+      const xs = p.hull.map(h => h.x)
+      const ys = p.hull.map(h => h.y)
+      const tl = toScreen(camera, Math.min(...xs), Math.min(...ys))
+      const br = toScreen(camera, Math.max(...xs), Math.max(...ys))
+      // 0.55 of the pad, not all of it: the drawn tint fades through that
+      // band, and reserving the full pad closed the gaps between adjacent
+      // tables so tightly that a label could find no clear paper at all. The
+      // drawn-frame gate is the arbiter of whether text lands on ink.
+      const pad = p.pad * camera.scale * 0.55
+      return { x: tl.x - pad, y: tl.y - pad, w: br.x - tl.x + pad * 2, h: br.y - tl.y + pad * 2 }
+    })
+
     for (const poly of scene.polygons) {
       const nameText = poly.name.toUpperCase()
       const priceText =
@@ -285,37 +303,114 @@ export function placeLabels(input: PlaceLabelsInput): PlacedLabel[] {
       // failure, not a restraint. So the size steps down until the pair
       // fits inside the polygon; only if even the smallest will not fit does
       // the price drop, and the name alone then steps down again.
-      const SIZES = [13, 11.5, 10, 9]
+      const SIZES = [13, 11.5, 10, 9, 8]
+      const OUTSIDE_SIZES = [10, 9, 8, 7]
       let done = false
-      for (const withPrice of priceText ? [true, false] : [false]) {
-        for (const namePx of SIZES) {
-          const pricePx = Math.max(8, namePx - 2)
-          const nameW = measure(nameText, namePx, 700) + 6
-          const priceW = withPrice ? measure(priceText!, pricePx, 600) + 6 : 0
-          const w = Math.max(nameW, priceW)
-          const h = withPrice ? namePx + pricePx + 6 : namePx + 3
-          for (const c of candidates) {
-            const box: LabelBox = { x: c.x - w / 2, y: c.y - h / 2, w, h }
-            if (!insideCanvas(box)) continue
-            if (!hullBoxInside(poly.hull, poly.pad * 0.6, box, camera)) continue
-            if (collides(box, obstacles)) continue
-            push({
-              kind: 'section',
-              text: nameText,
-              sublabel: withPrice ? priceText! : undefined,
-              ...box,
-              cx: c.x,
-              cy: withPrice ? c.y - (pricePx + 2) / 2 : c.y,
-              fontPx: namePx,
-              subFontPx: withPrice ? pricePx : undefined,
-              weight: 700,
-            })
-            done = true
-            break
+      // Pass 1 keeps the label wholly INSIDE its polygon, which is the ideal.
+      // Pass 2 puts it on the clear paper immediately outside the polygon,
+      // touching no polygon at all. Pass 2 exists because a small polygon (a
+      // cabaret table at 390 is about 40px across) can never contain its own
+      // name at any legible size, and an anonymous blob is worse than a label
+      // sitting just beneath its table. NO POLYGON GOES UNNAMED.
+      const own = polyBoxes[scene.polygons.indexOf(poly)]
+      // PRICE FIRST. The name and the price are one unit: a polygon labelled
+      // with a bare name is still an unpriced blob, so every placement and
+      // every size is tried WITH the price before the price is given up.
+      // `capped` keeps a label no wider than its own polygon, which is what
+      // stops one small polygon starving its neighbours. It is a PREFERENCE,
+      // not a rule: everything is tried capped first, then uncapped, because a
+      // long name on a tiny polygon must still be drawn rather than dropped.
+      // The price is only given up when it cannot be drawn at all. Stacked is
+      // the ideal; INLINE is the fallback for a polygon whose only clear paper
+      // is a single-line gap (a middle row of cabaret tables has about 33px
+      // between its neighbours, which fits one line and not two); name alone
+      // is the last resort.
+      const MODES: ('stacked' | 'inline' | 'nameOnly')[] = priceText
+        ? ['stacked', 'inline', 'nameOnly']
+        : ['nameOnly']
+      for (const capped of [true, false]) {
+      for (const mode of MODES) {
+        const withPrice = mode === 'stacked'
+        // Three placements, in order of preference:
+        //   hull  - wholly inside the polygon's own seat hull (the ideal)
+        //   paper - on the clear paper just outside it, touching no polygon
+        //   tint  - on the polygon's own flat fill, inside its drawn box and
+        //           clear of every other polygon. This is how the large
+        //           four-tier labels already sit; for a small table it is the
+        //           only place a name AND price can both be drawn when the
+        //           neighbouring rows leave no paper free.
+        for (const place of ['hull', 'paper', 'tint'] as const) {
+          const mustFitInside = place === 'hull'
+          // A label placed OUTSIDE its polygon stays compact. A 13px label on
+          // the paper beside a small table is wider than the table itself and
+          // physically blocks the paper its neighbours need, which is what
+          // left half a row of identical tables anonymous. Inside its own
+          // polygon a label may still take the full ladder.
+          for (const namePx of place === 'hull' ? SIZES : OUTSIDE_SIZES) {
+            const pricePx = Math.max(8, namePx - 2)
+            const drawnText = mode === 'inline' ? `${nameText} ${priceText}` : nameText
+            const nameW = measure(drawnText, namePx, 700) + 6
+            const priceW = withPrice ? measure(priceText!, pricePx, 600) + 6 : 0
+            const w = Math.max(nameW, priceW)
+            const h = withPrice ? namePx + pricePx + 6 : namePx + 3
+            // A label is capped to its own polygon's width (plus a little).
+            // Without this the first small polygon greedily took a 13px label
+            // wider than itself and physically starved its neighbours of the
+            // paper they needed, so a row of equal tables ended up with two
+            // labelled and two anonymous. Sizing each label to its own shape
+            // keeps the row consistent and leaves room for every one of them.
+            if (capped && place === 'paper' && own && w > Math.max(own.w * 1.15, 56)) continue
+            // Inside: the centroid then a grid over the hull. Outside: the
+            // clear paper directly under the polygon, then directly over it.
+            const cx0 = own ? own.x + own.w / 2 : 0
+            const cy0 = own ? own.y + own.h / 2 : 0
+            const spots =
+              place === 'hull'
+                ? candidates
+                : place === 'tint'
+                  ? own
+                    ? [{ x: cx0, y: cy0 }]
+                    : []
+                  : own
+                    ? [
+                        { x: cx0, y: own.y + own.h + h / 2 + 3 },
+                        { x: cx0, y: own.y - h / 2 - 3 },
+                        { x: own.x + own.w + w / 2 + 3, y: cy0 },
+                        { x: own.x - w / 2 - 3, y: cy0 },
+                      ]
+                    : []
+            for (const c of spots) {
+              const box: LabelBox = { x: c.x - w / 2, y: c.y - h / 2, w, h }
+              if (!insideCanvas(box)) continue
+              if (place === 'hull' && !hullBoxInside(poly.hull, poly.pad * 0.6, box, camera)) continue
+              if (place === 'paper' && polyBoxes.some(pb => intersects(box, pb))) continue
+              if (place === 'tint') {
+                // Wholly on its OWN fill, and touching no other polygon.
+                if (!own || !contains(own, box)) continue
+                if (polyBoxes.some(pb => pb !== own && intersects(box, pb))) continue
+              }
+              if (collides(box, obstacles)) continue
+              push({
+                kind: 'section',
+                text: drawnText,
+                sublabel: withPrice ? priceText! : undefined,
+                ...box,
+                cx: c.x,
+                cy: withPrice ? c.y - (pricePx + 2) / 2 : c.y,
+                fontPx: namePx,
+                subFontPx: withPrice ? pricePx : undefined,
+                weight: 700,
+              })
+              done = true
+              break
+            }
+            if (done) break
           }
           if (done) break
         }
         if (done) break
+      }
+      if (done) break
       }
     }
   }

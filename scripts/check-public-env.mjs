@@ -11,7 +11,23 @@
  * WARNS but does not block (so local gates and fresh clones still build). Set
  * ALLOW_EMPTY_PUBLIC_ENV=1 to force past it in a genuine emergency.
  */
+// @next/env is CommonJS, so it is imported by default export, not by name.
+import nextEnv from '@next/env'
 import { CRITICAL_ENV_RULES, evalEnvRule } from '../src/lib/health/critical-env.mjs'
+
+// RESOLVE THE ENV THE WAY next build WILL, before judging it.
+//
+// This script runs in `prebuild`, as a plain node process. Node does not read
+// .env files, so without this the guard inspected an EMPTY environment, passed,
+// and `next build` then loaded .env.local a second later and baked whatever it
+// found into the bundle. A guard that cannot see what the build will see is not
+// a guard: this exact hole let a clean-shell build sail through while pointing
+// at the production project.
+//
+// loadEnvConfig is Next's own loader, so the precedence (.env.production.local,
+// .env.local, .env.production, .env, with existing process.env winning) cannot
+// drift from the build's.
+nextEnv.loadEnvConfig(process.cwd(), false, { info: () => {}, error: () => {} })
 
 const onVercel = Boolean(process.env.VERCEL || process.env.VERCEL_ENV)
 const bypass = process.env.ALLOW_EMPTY_PUBLIC_ENV === '1'
@@ -49,6 +65,26 @@ if (serverBad.length > 0 && onVercel) {
 if (failures.length === 0) {
   console.log('[public-env] all critical public env vars present, non-empty, and well-formed.')
   process.exit(0)
+}
+
+// ── ALWAYS-BLOCKING CLASS: pointed at the PRODUCTION database ──────────────
+// Every other failure here is "a value is missing or malformed", which on a
+// local machine is a fresh-clone nuisance and only warns. Being pointed at the
+// LIVE database is a different class entirely: it is never a nuisance and never
+// correct outside production, and it has caused three near-misses in this repo
+// because `.env.local` resolves the production project. So this one blocks
+// wherever it fires, local included. The rule itself already honours the
+// explicit ALLOW_PRODUCTION_SUPABASE=1 override, so reaching here means no
+// override was set. ALLOW_EMPTY_PUBLIC_ENV deliberately does NOT bypass it:
+// that flag is for empty values, not for the wrong database.
+const productionDbFailures = failures.filter(f => f.name === 'SUPABASE_ENV_ISOLATION')
+if (productionDbFailures.length > 0) {
+  console.error(
+    `\n[public-env] ==================== BUILD BLOCKED ====================\n` +
+      productionDbFailures.map(f => `  ! ${f.name}: ${f.reason}`).join('\n') +
+      `\n[public-env] =======================================================\n`,
+  )
+  process.exit(1)
 }
 
 const summary = failures.map(f => `  - ${f.name}: ${f.reason}`).join('\n')

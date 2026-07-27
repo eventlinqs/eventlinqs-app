@@ -11,6 +11,44 @@ Nothing here is inferred from a filename.
 
 ---
 
+## 0A. ROUND 3 (27 July 2026): zone prices, mobile chrome, the frame, the env guard
+
+- **Every polygon is named.** The cabaret room drew twelve anonymous blobs at
+  390. The label engine now tries three placements in order (inside the hull, on
+  the clear paper outside it, on the polygon's own flat tint) across a five-step
+  size ladder, and gives up the PRICE last, not the name. Result: 12 of 12 named,
+  8 of 12 priced. Tables 5 to 8 carry the name alone because that row is boxed in
+  above and below; the honest detail is in
+  `docs/roast/ga-price-env-guard-2026-07-27.md`.
+- **A per-table polygon names itself.** A cluster that is exactly one table takes
+  that table's name and its own price, so a buyer can tell Table 3 from Table 7
+  at overview.
+- **Zones carry their price.** A standing or GA zone has no seats, so its price
+  is resolved SERVER-side from its bound tier by name (the client is handed
+  seat-bound tiers only). `room-mixed-390.png`: Grandstand AUD 79.00, General
+  admission AUD 49.00.
+- **Mobile chrome.** Venue fixtures are no longer drawn at overview (an
+  unlabelled 12px box is noise); the hint shows its full sentence on one line;
+  the open-seat counter stacks under its label so the floating help control
+  cannot cover it.
+- **The plan fills its frame.** Measured cause: three venue fixtures at x -70,
+  x 1100 and y 610 stretched the theatre's fit box from 864 x 498 to 1170 x 624,
+  shrinking the drawn room by about 26 per cent. `Scene.fitBounds` now frames the
+  room and its sellable zones only, the fit margin scales with viewport width,
+  and the mobile canvas is 52vh rather than 62vh.
+- **The .env.local footgun is now a build failure.** See section 0.6 below,
+  which is superseded by this: `SUPABASE_ENV_ISOLATION` no longer exempts a
+  local run, `scripts/check-public-env.mjs` blocks on it wherever it fires, and
+  the script resolves the environment through Next's own `loadEnvConfig` first
+  so it sees exactly what `next build` will bake. Proven: clean-shell
+  `npm run build` exits 1 and names the production project; the same shell with
+  `.env.test` exported exits 0; `ALLOW_PRODUCTION_SUPABASE=1` releases it.
+- **Gates, clean shell:** tsc 0, eslint 0 errors, vitest 1068/1068 over 114
+  files, production build 0, copy gate clean. Drive: 16 of 16, 0 failures, probe
+  still failing correctly.
+
+---
+
 ## 0. ROUND 2 (27 July 2026, later the same day): the chair, the grid, the labels
 
 This section supersedes the chair sections below where they conflict.

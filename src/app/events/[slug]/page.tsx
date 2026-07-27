@@ -450,7 +450,20 @@ export default async function EventDetailPage({ params }: Props) {
       stage?: SeatDecorData['stage']
       objects?: SeatDecorData['objects']
     } | null
-    if (Array.isArray(rawLayout?.areas)) eventAreas = rawLayout.areas
+    // A standing/GA zone carries its PRICE on the plan, like every seated
+    // polygon. It has no seats, so the price cannot be derived from the chart:
+    // it is resolved here from the zone's bound tier by name, the same way
+    // materialize_seats binds a section to a tier. It must happen on the
+    // server because the client is handed SEAT-BOUND tiers only, and a zone's
+    // tier is by definition not seat-bound.
+    if (Array.isArray(rawLayout?.areas)) {
+      eventAreas = rawLayout.areas.map(a => {
+        const tier = a.tier_name
+          ? allTiers.find(t => t.name.toLowerCase() === a.tier_name!.toLowerCase())
+          : undefined
+        return tier ? { ...a, priceCents: resolvePrice(tier) } : a
+      })
+    }
     eventDecor = {
       stage: rawLayout?.stage ?? null,
       objects: Array.isArray(rawLayout?.objects) ? rawLayout.objects : [],

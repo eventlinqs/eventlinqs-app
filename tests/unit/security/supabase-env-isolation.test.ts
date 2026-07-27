@@ -97,12 +97,54 @@ describe('SUPABASE_ENV_ISOLATION rule', () => {
     expect(result.ok).toBe(true)
   })
 
-  test('a local run with no VERCEL_ENV is a no-op pass, so local builds and gates are unaffected', () => {
+  test('THE LOCAL FOOTGUN: a local run resolving production FAILS', () => {
+    // SUPERSEDES the old assertion that local was a no-op pass. That exemption
+    // is what let `.env.local`, which points at the production project, bake
+    // production public vars into a local build three separate times. A written
+    // procedure is not a control.
     const result = evalEnvRule(rule, {
       NEXT_PUBLIC_SUPABASE_URL: prodUrl,
       SUPABASE_SERVICE_ROLE_KEY: jwtFor(PRODUCTION_SUPABASE_REF),
     })
+    expect(result.ok).toBe(false)
+    expect(result.reason).toContain(PRODUCTION_SUPABASE_REF)
+    expect(result.reason).toContain('LOCAL')
+    expect(result.reason).toContain('ALLOW_PRODUCTION_SUPABASE=1')
+  })
+
+  test('the explicit override lets a deliberate local run through', () => {
+    const result = evalEnvRule(rule, {
+      NEXT_PUBLIC_SUPABASE_URL: prodUrl,
+      SUPABASE_SERVICE_ROLE_KEY: jwtFor(PRODUCTION_SUPABASE_REF),
+      ALLOW_PRODUCTION_SUPABASE: '1',
+    })
     expect(result.ok).toBe(true)
+  })
+
+  test('the override must be exactly "1": a truthy-looking value does not open the gate', () => {
+    for (const value of ['true', 'yes', '0', '']) {
+      const result = evalEnvRule(rule, {
+        NEXT_PUBLIC_SUPABASE_URL: prodUrl,
+        SUPABASE_SERVICE_ROLE_KEY: jwtFor(PRODUCTION_SUPABASE_REF),
+        ALLOW_PRODUCTION_SUPABASE: value,
+      })
+      expect(result.ok).toBe(false)
+    }
+  })
+
+  test('a local run on TEST passes, so the normal local workflow is unaffected', () => {
+    const result = evalEnvRule(rule, {
+      NEXT_PUBLIC_SUPABASE_URL: testUrl,
+      SUPABASE_SERVICE_ROLE_KEY: jwtFor(TEST_REF),
+    })
+    expect(result.ok).toBe(true)
+  })
+
+  test('a fresh clone with no Supabase variables at all passes', () => {
+    // An unreadable ref is not the production ref. CI uses a placeholder URL
+    // (https://example.supabase.co) and must keep building.
+    expect(evalEnvRule(rule, {}).ok).toBe(true)
+    expect(evalEnvRule(rule, { NEXT_PUBLIC_SUPABASE_URL: 'https://example.supabase.co' }).ok).toBe(true)
   })
 
   test('opaque sb_secret_ keys carry no readable ref and do not false-fail a preview', () => {
