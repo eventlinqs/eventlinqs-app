@@ -164,10 +164,16 @@ export class PaymentCalculator {
     // The platform fee goes to zero inside the window; the processing fee never
     // does. On any lookup failure the waiver reads INACTIVE, so an error charges
     // the standard rate rather than silently giving the fee away.
-    const waiver = await getFoundingWaiver(
-      createAdminClient() as unknown as OrganisationReadClient,
-      orgId,
-    )
+    // The client is built ONLY when there is an organisation to look up. A
+    // null orgId needs no query, so the no-organisation path never constructs
+    // a service-role client at all. Building it unconditionally was wasteful
+    // in production (a second admin client per calculate(), on top of the one
+    // getPricingRule already makes) and it reached around the module boundary
+    // the unit tests mock, which is what turned 11 green tests red the moment
+    // the ambient env went away.
+    const waiver = orgId
+      ? await getFoundingWaiver(createAdminClient() as unknown as OrganisationReadClient, orgId)
+      : { feeFreeUntil: null, active: false }
     const waivedRates = applyFoundingWaiver(
       {
         platformFeePercent,
