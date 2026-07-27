@@ -63,19 +63,27 @@ describe('generateLayout - rows blocks', () => {
     expect(seats[2].note).toBeUndefined()
   })
 
-  it('centres uneven rows over the widest row when align is centre (theatre look)', () => {
+  it('centres uneven rows over the widest row, on whole seats (theatre look)', () => {
     const layout = generateLayout([{ ...base, rows: 3, seatsPerRow: [4, 2, 3], align: 'centre' }])
     const rows = layout.sections[0].rows
     // Widest row (4 seats) anchors at the block origin.
     expect(rows[0].seats[0].x).toBe(100)
-    // 2-seat row shifts by (4-2)/2 * 24 = 24px.
+    // 2-seat row shifts by (4-2)/2 = 1 whole seat = 24px.
     expect(rows[1].seats[0].x).toBe(124)
-    // 3-seat row shifts by (4-3)/2 * 24 = 12px.
-    expect(rows[2].seats[0].x).toBe(112)
-    // Row midpoints coincide: each row is centred over the widest.
+    // 3-seat row: the difference is ODD, so the shift rounds to 1 whole seat
+    // rather than half of one. Grid discipline beats exact centring: a
+    // half-seat shift threw the row off the column grid, which is what made
+    // tapered blocks read as drifting rows.
+    expect(rows[2].seats[0].x).toBe(124)
+    // Every seat sits on the same column grid as the widest row.
+    const columns = new Set(rows[0].seats.map(s => s.x))
+    for (const row of rows) for (const s of row.seats) expect(columns.has(s.x)).toBe(true)
+    // Rows stay centred over the widest to within half a seat: the residual
+    // is the price of keeping every seat on the grid, and it is bounded.
     const mid = (seats: { x: number }[]) => (seats[0].x + seats[seats.length - 1].x) / 2
-    expect(mid(rows[1].seats)).toBe(mid(rows[0].seats))
-    expect(mid(rows[2].seats)).toBe(mid(rows[0].seats))
+    const target = mid(rows[0].seats)
+    expect(mid(rows[1].seats)).toBe(target)
+    expect(Math.abs(mid(rows[2].seats) - target)).toBeLessThanOrEqual(12)
   })
 
   it('supports custom numbering: numeric rows, seat start, reversed seats', () => {

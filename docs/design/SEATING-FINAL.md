@@ -11,6 +11,127 @@ Nothing here is inferred from a filename.
 
 ---
 
+## 0. ROUND 2 (27 July 2026, later the same day): the chair, the grid, the labels
+
+This section supersedes the chair sections below where they conflict.
+
+### 0.1 One glyph replaces the three-tier system
+
+The tier system is DELETED. The chair is now ONE silhouette, uniformly scaled,
+its stroke scaling with it (`CHAIR_STROKE` 6.5 on a 100-box). The founder's
+approved rectangles are held as data in `CHAIR_RECTS`
+(`src/lib/seating/render/glyphs.ts`) and the path strings are DERIVED from them,
+so a path cannot drift from the specification:
+
+| Part | x | y | w | h | r |
+|---|---|---|---|---|---|
+| back | 18 | 6 | 64 | 30 | 11 |
+| arm left | 4 | 40 | 15 | 46 | 7 |
+| arm right | 81 | 40 | 15 | 46 | 7 |
+| pan | 22 | 62 | 56 | 24 | 9 |
+
+The arms span x 4..96 (92 wide) against the back's 64, so the arms are the
+widest part and the glyph reads as furniture rather than stacked bars. The
+middle stays open: the back ends at y 36, the arms begin at y 40, the pan at
+y 62. Symmetry is arithmetic (4 <-> 96, 18 <-> 82, 22 <-> 78) and is MEASURED,
+not asserted: each part and the whole silhouette are rasterised at 600px,
+flopped about the centreline and differenced. All four report **0 pixels off,
+max channel delta 0**, and the chair step aborts if any ever stops matching.
+Evidence: `chair-final.png` (48, 24, 14 and 8px beside the benchmark at matched
+sizes; four states at 24px; three real rows at 24px with 31 per cent sold; the
+symmetry row).
+
+### 0.2 The rows were not straight: it was the taper, not curves
+
+Both causes were checked before anything changed.
+
+**Cause 1, curves: RULED OUT.** `scripts/seed-seating-final.mjs` sets
+`curveDepth`, `curveBack`, `rowCurveOverrides`, `autoBow`, `focalRise`, `skew`
+and `stagger` on ZERO blocks in ZERO rooms: a repo-wide search of the seed file
+for all seven returns no matches. They also default to off in the generator
+itself, which is now covered by a test.
+
+**Cause 2, the taper shifting rows sideways: CONFIRMED, and measured.** The
+theatre block (`seed-seating-final.mjs:97`, `taper: 0.5, align: 'centre'`) ran
+through `generate.ts` and produced:
+
+```
+rows whose first seat is OFF the column grid: 7 of 15
+offending offsets: 3.5, 2.5, 1.5, 0.5   (half a seat spacing)
+distinct x values: 73; widest row: 37 seats   -> GRID BROKEN
+```
+
+`centreShift` computed `((maxCount - count) / 2) * seatSpacing`. Whenever
+`maxCount - count` was odd, the whole row moved sideways by half a pitch and
+every seat in it left the column grid. Two interleaved column sets is what read
+as drifting, freehand rows.
+
+**The fix** quantises the shift to whole seats, so taper only ever removes seats
+from the ENDS of a row:
+
+```
+distinct x values: 37; widest row: 37 seats   -> GRID CLEAN
+rows off the column grid: 0 of 15
+```
+
+Verified again on the STORED seat coordinates after re-seeding, per room:
+theatre 37 distinct x for a 37-seat widest row (column gaps 24 and 58, the two
+real aisles); two-block 20 for 20 (gaps 24 and 64); four-tier 30 for 30 (gap 23
+throughout). Grid discipline matches the approved
+`docs/design/seating-plan-proof/room-proof.png`.
+
+**The trade-off, stated:** a row whose seat difference is odd can be centred
+exactly OR sit on the grid, not both. The grid wins, so such a row is centred to
+within half a seat. Two existing tests asserted the old half-seat shift as
+intended behaviour and have been rewritten against the grid law.
+
+**The lock:** `tests/unit/seating/taper-convention.test.ts` now asserts that a
+default block puts every seat in column N at an identical x, that curve, skew
+and stagger are off by default in the generator, that a row only bows when a
+curve is set explicitly, and that a tapered block's distinct x count equals its
+widest row.
+
+### 0.3 Marks never reach a buyer
+
+`MIN_CHAIR_PX = 10` (`render/lod.ts`) is the legibility floor. Below it
+`lodFlags` turns `seats` off and `polygonFill` on, so the plan shows SECTION
+POLYGONS instead of seats at any viewport width. At 390 a fitted room lands
+around 6 to 8px per chair, which is exactly the case this catches. Evidence:
+`theatre-lod-mid-390.png` now shows the STALLS polygon with its price where it
+previously showed a grid of marks.
+
+### 0.4 The four label defects
+
+| Defect | State |
+|---|---|
+| four-tier 390: green and orange polygons carried no label and no price | FIXED. All four polygons carry name and price (`room-four-tier-390.png`). The engine now steps the type down 13 / 11.5 / 10 / 9 until the pair fits inside the polygon, instead of dropping both at one fixed size |
+| mixed 390: stage was an empty rectangle with no caption | FIXED. The caption sizes itself to the stage and lifts just above it when the stage is too shallow to hold text inside, instead of vanishing below 26px of drawn height (`room-mixed-390.png`) |
+| mixed 390: general admission zone unlabelled | FIXED. A zone holds no seats, so it now names itself at every zoom rather than only at overview (`room-mixed-390.png`) |
+| cabaret 1440: tables unlabelled | FIXED. Each table carries its own name, centred in its ring, from a new `scene.tableLabels` anchor set (`room-cabaret-1440.png`, Table 1 to Table 16) |
+
+### 0.5 Round 2 gate result
+
+```
+16 configurations, 0 failures
+probe armed:   FAIL (correct: the probe collides)  pair "STAGE" x "PROBE"
+probe removed: PASS
+chair symmetry: silhouette 0, back 0, arms 0, pan 0 pixels off at 600px
+```
+
+Gates: tsc 0, eslint 0 errors, vitest 1064/1064 across 114 files, next build 0,
+copy gate clean.
+
+### 0.6 A safety finding worth recording
+
+`.env.local` in this working tree points at the PRODUCTION project. A build that
+does not explicitly export `.env.test` first bakes PRODUCTION public vars, and
+the proof server then reads Production. This was caught when the drive returned
+0 rows for every proof room. It was read-only and nothing was written, but the
+correct procedure is to export `.env.test` before BOTH the build and the server
+start, which is what produced the captures in this round.
+
+---
+
 ## 1. The gate result
 
 ```

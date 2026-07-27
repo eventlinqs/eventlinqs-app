@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
-  glyphTier,
+  chairsLegible,
   lodFlags,
   lodState,
   LOD_OVERVIEW_MAX,
   LOD_SEAT_MIN,
+  MIN_CHAIR_PX,
 } from '@/lib/seating/render/lod'
 import { convexHull, pointInHull, polygonCentroid } from '@/lib/seating/render/polygons'
 import { defaultStageForBounds, stageGeometry } from '@/lib/seating/render/stage'
@@ -13,9 +14,12 @@ import {
   CHAIR_ARM_LEFT_PATH,
   CHAIR_ARM_RIGHT_PATH,
   CHAIR_BACK_PATH,
-  CHAIR_MARK_PATH,
   CHAIR_PAN_PATH,
+  CHAIR_PART_PATHS,
+  CHAIR_RECTS,
+  GLYPH_BOX,
   OBJECT_GLYPHS,
+  roundedRectPath,
 } from '@/lib/seating/render/glyphs'
 import { sceneToPrintSvg } from '@/lib/seating/render/svg-export'
 
@@ -80,47 +84,93 @@ describe('lod', () => {
     }
   })
 
-  it('glyph tier: full anatomy at 20px, back and pan to 10px, then the mark', () => {
-    expect(glyphTier(24)).toBe('full')
-    expect(glyphTier(20)).toBe('full')
-    expect(glyphTier(14)).toBe('mid')
-    expect(glyphTier(10)).toBe('mid')
-    expect(glyphTier(9)).toBe('mark')
+  it('shows polygons instead of chairs below the legibility floor', () => {
+    // The buyer-facing rule: a chair too small to read as furniture is
+    // never degraded into an abstract mark, at any viewport width.
+    const belowFloor = lodFlags(1.4, MIN_CHAIR_PX - 1)
+    expect(belowFloor.seats).toBe(false)
+    expect(belowFloor.polygonFill).toBe(true)
+    expect(belowFloor.rowLetters).toBe(false)
+    expect(belowFloor.rulers).toBe(false)
+
+    const atFloor = lodFlags(1.4, MIN_CHAIR_PX)
+    expect(atFloor.seats).toBe(true)
+    expect(atFloor.polygonFill).toBe(false)
+
+    expect(chairsLegible(MIN_CHAIR_PX)).toBe(true)
+    expect(chairsLegible(MIN_CHAIR_PX - 0.01)).toBe(false)
   })
 })
 
-describe('chair glyph', () => {
-  it('ships the benchmark anatomy as real closed paths', () => {
-    for (const path of [
-      CHAIR_BACK_PATH,
-      CHAIR_PAN_PATH,
-      CHAIR_ARM_LEFT_PATH,
-      CHAIR_ARM_RIGHT_PATH,
-      CHAIR_MARK_PATH,
-    ]) {
+describe('chair glyph: the approved specification', () => {
+  it('carries the exact approved rectangles on the 100 box', () => {
+    expect(GLYPH_BOX).toBe(100)
+    expect(CHAIR_RECTS.back).toEqual({ x: 18, y: 6, w: 64, h: 30, r: 11 })
+    expect(CHAIR_RECTS.armLeft).toEqual({ x: 4, y: 40, w: 15, h: 46, r: 7 })
+    expect(CHAIR_RECTS.armRight).toEqual({ x: 81, y: 40, w: 15, h: 46, r: 7 })
+    expect(CHAIR_RECTS.pan).toEqual({ x: 22, y: 62, w: 56, h: 24, r: 9 })
+  })
+
+  it('is ONE silhouette: four parts, no tier variants', () => {
+    expect(CHAIR_PART_PATHS).toHaveLength(4)
+    for (const path of CHAIR_PART_PATHS) {
       expect(path).toMatch(/^M[\d.]/)
       expect(path.endsWith('Z')).toBe(true)
     }
+    // The paths are derived from the rectangles, so they cannot drift.
+    expect(CHAIR_BACK_PATH).toBe(roundedRectPath(CHAIR_RECTS.back))
+    expect(CHAIR_PAN_PATH).toBe(roundedRectPath(CHAIR_RECTS.pan))
+    expect(CHAIR_ARM_LEFT_PATH).toBe(roundedRectPath(CHAIR_RECTS.armLeft))
+    expect(CHAIR_ARM_RIGHT_PATH).toBe(roundedRectPath(CHAIR_RECTS.armRight))
   })
 
-  it('keeps every part separation visible at 24px (correction 1)', () => {
-    // Back ends at y 12.9, pan starts at y 14.7: a 1.8-unit gap in the
-    // 24-box, which stays visible under the 1.25px screen-fixed stroke.
-    expect(14.7 - 12.9).toBeCloseTo(1.8, 5)
-    // Armrest inner edge x 4, back and pan left edge x 6: a 2-unit clear
-    // channel each side, so the armrests read as their own strokes.
-    expect(6 - 4).toBeCloseTo(2, 5)
+  it('is symmetric about x = 50 by construction', () => {
+    const mirror = (r: { x: number; w: number }) => GLYPH_BOX - (r.x + r.w)
+    // Each arm mirrors onto the other, exactly.
+    expect(mirror(CHAIR_RECTS.armLeft)).toBe(CHAIR_RECTS.armRight.x)
+    expect(mirror(CHAIR_RECTS.armRight)).toBe(CHAIR_RECTS.armLeft.x)
+    expect(CHAIR_RECTS.armLeft.w).toBe(CHAIR_RECTS.armRight.w)
+    expect(CHAIR_RECTS.armLeft.h).toBe(CHAIR_RECTS.armRight.h)
+    expect(CHAIR_RECTS.armLeft.y).toBe(CHAIR_RECTS.armRight.y)
+    expect(CHAIR_RECTS.armLeft.r).toBe(CHAIR_RECTS.armRight.r)
+    // The back and the pan are each centred on the centreline.
+    for (const r of [CHAIR_RECTS.back, CHAIR_RECTS.pan]) {
+      expect(r.x + r.w / 2).toBe(GLYPH_BOX / 2)
+    }
   })
 
-  it('armrests are tall verticals, not nubs (correction 1)', () => {
-    // Arm spans y 8.7..21.3 (h 12.6): taller than half the 24-box, taller
-    // than the pan, at the same full stroke weight as every other part.
-    const armTop = 10.3 - 1.6
-    const armBottom = 10.3 + 9.4 + 1.6
-    expect(armBottom - armTop).toBeCloseTo(12.6, 5)
-    expect(armBottom - armTop).toBeGreaterThan(24 / 2)
-    // Width 3.2: wide enough to carry fill plus stroke at 24px.
-    expect(3.2).toBeGreaterThanOrEqual(3)
+  it('makes the arms the widest part, wider than the back', () => {
+    const armSpan = CHAIR_RECTS.armRight.x + CHAIR_RECTS.armRight.w - CHAIR_RECTS.armLeft.x
+    const backSpan = CHAIR_RECTS.back.w
+    const panSpan = CHAIR_RECTS.pan.w
+    expect(armSpan).toBe(92)
+    expect(armSpan).toBeGreaterThan(backSpan)
+    expect(armSpan).toBeGreaterThan(panSpan)
+    // And the arms reach outside the back on BOTH sides, equally.
+    expect(CHAIR_RECTS.back.x - CHAIR_RECTS.armLeft.x).toBe(14)
+    expect(
+      CHAIR_RECTS.armRight.x + CHAIR_RECTS.armRight.w - (CHAIR_RECTS.back.x + CHAIR_RECTS.back.w),
+    ).toBe(14)
+  })
+
+  it('keeps the middle open: back on top, arms down the sides, pan at the bottom', () => {
+    const backBottom = CHAIR_RECTS.back.y + CHAIR_RECTS.back.h
+    // Air between the back and everything below it.
+    expect(backBottom).toBeLessThan(CHAIR_RECTS.armLeft.y)
+    expect(backBottom).toBeLessThan(CHAIR_RECTS.pan.y)
+    // The pan sits between the arms, not across them.
+    expect(CHAIR_RECTS.pan.x).toBeGreaterThan(CHAIR_RECTS.armLeft.x + CHAIR_RECTS.armLeft.w)
+    expect(CHAIR_RECTS.pan.x + CHAIR_RECTS.pan.w).toBeLessThan(CHAIR_RECTS.armRight.x)
+    // The arms start above the pan, so the sides read before the seat does.
+    expect(CHAIR_RECTS.armLeft.y).toBeLessThan(CHAIR_RECTS.pan.y)
+  })
+
+  it('fits inside the box once the scaling stroke is counted', () => {
+    const half = 6.5 / 2
+    expect(CHAIR_RECTS.armLeft.x - half).toBeGreaterThan(0)
+    expect(CHAIR_RECTS.armRight.x + CHAIR_RECTS.armRight.w + half).toBeLessThan(GLYPH_BOX)
+    expect(CHAIR_RECTS.back.y - half).toBeGreaterThan(0)
+    expect(CHAIR_RECTS.pan.y + CHAIR_RECTS.pan.h + half).toBeLessThan(GLYPH_BOX)
   })
 
   it('describes every required venue object glyph', () => {

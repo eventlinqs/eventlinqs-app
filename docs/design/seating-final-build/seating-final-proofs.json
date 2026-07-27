@@ -1,7 +1,11 @@
 {
   "base": "http://localhost:3131",
   "ranSteps": [
-    "chair"
+    "chair",
+    "rooms",
+    "lods",
+    "assert",
+    "probe"
   ],
   "steps": {
     "chair": {
@@ -39,17 +43,22 @@
       }
     },
     "chairSymmetry": {
-      "full": {
+      "silhouette": {
         "maxDiff": 0,
         "offPixels": 0,
         "match": true
       },
-      "mid": {
+      "back": {
         "maxDiff": 0,
         "offPixels": 0,
         "match": true
       },
-      "mark": {
+      "arms": {
+        "maxDiff": 0,
+        "offPixels": 0,
+        "match": true
+      },
+      "pan": {
         "maxDiff": 0,
         "offPixels": 0,
         "match": true

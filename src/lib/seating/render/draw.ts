@@ -6,8 +6,16 @@
  */
 
 import { SEAT_STATE_COLORS } from '../palette'
-import { chairPaths, objectPaths, GLYPH_BOX, type VenueObjectKind } from './glyphs'
-import { glyphTier, lodFlags, type GlyphTier } from './lod'
+import {
+  chairPaths,
+  objectPaths,
+  CHAIR_ACCESS_STROKE,
+  CHAIR_STROKE,
+  GLYPH_BOX,
+  OBJECT_BOX,
+  type VenueObjectKind,
+} from './glyphs'
+import { lodFlags } from './lod'
 import { objectObstacles, placeLabels, seatObstacles, type LabelBox, type PlacedLabel } from './labels'
 import { cullSeats, type Scene, type SceneBounds } from './scene'
 
@@ -92,7 +100,7 @@ function hullPath(hull: { x: number; y: number }[]): Path2D {
 /** Scaled chair Path2Ds centred on the origin, cached per chair width. */
 const chairWorldCache = new Map<
   number,
-  Record<'back' | 'pan' | 'armLeft' | 'armRight' | 'midBack' | 'midPan' | 'mark' | 'access', Path2D>
+  Record<'back' | 'pan' | 'armLeft' | 'armRight' | 'access', Path2D>
 >()
 
 function chairWorldPaths(chairW: number) {
@@ -100,7 +108,8 @@ function chairWorldPaths(chairW: number) {
   let paths = chairWorldCache.get(key)
   if (!paths) {
     const k = chairW / GLYPH_BOX
-    const m = new DOMMatrix([k, 0, 0, k, -12 * k, -12 * k])
+    const half = (GLYPH_BOX / 2) * k
+    const m = new DOMMatrix([k, 0, 0, k, -half, -half])
     const src = chairPaths()
     const scaled = (p: Path2D) => {
       const out = new Path2D()
@@ -112,9 +121,6 @@ function chairWorldPaths(chairW: number) {
       pan: scaled(src.pan),
       armLeft: scaled(src.armLeft),
       armRight: scaled(src.armRight),
-      midBack: scaled(src.midBack),
-      midPan: scaled(src.midPan),
-      mark: scaled(src.mark),
       access: scaled(src.access),
     }
     chairWorldCache.set(key, paths)
@@ -184,10 +190,9 @@ function drawAreas(ctx: CanvasRenderingContext2D, scene: Scene, camera: Camera) 
 }
 
 function drawSeats(ctx: CanvasRenderingContext2D, scene: Scene, camera: Camera, opts: PaintOptions) {
-  const flags = lodFlags(camera.scale)
-  if (!flags.seats) return
   const chairPx = scene.chairW * camera.scale
-  const tier: GlyphTier = glyphTier(chairPx)
+  const flags = lodFlags(camera.scale, chairPx)
+  if (!flags.seats) return
   const paths = chairWorldPaths(scene.chairW)
   const visible = cullSeats(scene, viewBounds(camera, opts.width, opts.height))
 
@@ -201,37 +206,22 @@ function drawSeats(ctx: CanvasRenderingContext2D, scene: Scene, camera: Camera, 
     else batches.set(key, [i])
   }
 
-  // Stroke widths are screen-fixed: the benchmark's outline is what lets
-  // the room breathe, so the line never fattens with zoom.
-  const outlineW = 1.25 / camera.scale
-  const keylineW = 2 / camera.scale
-  const dash = [3 / camera.scale, 2.5 / camera.scale]
+  // The stroke SCALES WITH THE GLYPH (founder specification): one silhouette
+  // uniformly scaled, so its outline keeps the same proportion at every size
+  // rather than fattening relative to the chair as the map zooms out. World
+  // units, so it is drawn under the camera transform like the paths.
+  const outlineW = (scene.chairW / GLYPH_BOX) * CHAIR_STROKE
+  const keylineW = outlineW * 1.15
+  const dash = [outlineW * 2.2, outlineW * 1.8]
 
+  // ONE glyph. Every part every time: there are no tiers to branch on.
   const bodyParts = (draw: (p: Path2D) => void) => {
-    if (tier === 'mark') {
-      draw(paths.mark)
-      return
-    }
-    if (tier === 'mid') {
-      // No armrests at this size, so the wide mid pair keeps the chair's
-      // presence instead of the full tier's narrower parts.
-      draw(paths.midBack)
-      draw(paths.midPan)
-      return
-    }
     draw(paths.back)
-    draw(paths.pan)
     draw(paths.armLeft)
     draw(paths.armRight)
+    draw(paths.pan)
   }
-  const keyParts = (draw: (p: Path2D) => void) => {
-    if (tier === 'mark') {
-      draw(paths.mark)
-      return
-    }
-    draw(tier === 'mid' ? paths.midBack : paths.back)
-    draw(tier === 'mid' ? paths.midPan : paths.pan)
-  }
+  const keyParts = bodyParts
 
   for (const [key, indices] of batches) {
     const [state, hue] = key.split('|') as [SeatVisualState, string | undefined]
@@ -273,8 +263,8 @@ function drawSeats(ctx: CanvasRenderingContext2D, scene: Scene, camera: Camera, 
         ctx.strokeStyle = hue ?? C.dusk
         ctx.lineWidth = outlineW
         bodyParts(p => ctx.stroke(p))
-        if (s.seat_type === 'accessible' && tier !== 'mark') {
-          ctx.lineWidth = Math.max(outlineW, scene.chairW * 0.045)
+        if (s.seat_type === 'accessible') {
+          ctx.lineWidth = (scene.chairW / GLYPH_BOX) * CHAIR_ACCESS_STROKE
           ctx.lineCap = 'round'
           ctx.stroke(paths.access)
         }
@@ -286,11 +276,11 @@ function drawSeats(ctx: CanvasRenderingContext2D, scene: Scene, camera: Camera, 
 
 /** Screen-space text and rings: the stage label, area labels, cursors. */
 function drawScreenPass(ctx: CanvasRenderingContext2D, scene: Scene, camera: Camera, opts: PaintOptions) {
-  const flags = lodFlags(camera.scale)
+  const flags = lodFlags(camera.scale, scene.chairW * camera.scale)
 
-  // Section polygons: filled cards at OVERVIEW ONLY (the restraint law);
-  // past overview the plan carries chairs, letters, rulers, stage and
-  // aisles, nothing else.
+  // Section polygons: filled cards whenever the plan is NOT drawing chairs,
+  // which is overview and any width where the chair falls below the
+  // legibility floor. Never a grid of abstract marks on a buyer's map.
   if (flags.polygonFill) {
     for (const poly of scene.polygons) {
       const path = hullPath(poly.hull)
@@ -337,29 +327,41 @@ function drawScreenPass(ctx: CanvasRenderingContext2D, scene: Scene, camera: Cam
   // drawn stage is tall enough to hold the text clear of its own outline
   // and apron: at a far-out fit the stage is a shape, not a label holder,
   // and text riding its linework is a drawn collision.
+  // THE STAGE ALWAYS CARRIES ITS CAPTION. A short stage used to lose it
+  // entirely (the old gate dropped the text below 26px of drawn height),
+  // which left a blank rectangle a buyer cannot identify: at 390 that is the
+  // normal case, not the exception. The caption now sizes itself to the
+  // stage, and when the stage is too shallow to hold text inside its own
+  // outline the caption sits just above it instead of vanishing.
   if (scene.stage) {
     const stageYs = scene.stage.outline.map(p => p.y)
     const stageScreenH = (Math.max(...stageYs) - Math.min(...stageYs)) * camera.scale
     const at = worldToScreen(camera, scene.stage.labelAt.x, scene.stage.labelAt.y)
-    // Fully inside the canvas or not at all: a half-cropped STAGE at the
-    // sheet edge is a drawn defect, not a label.
-    const inside =
-      at.x - 40 >= 4 && at.x + 40 <= opts.width - 4 && at.y - 12 >= 4 && at.y + 4 <= opts.height - 4
-    if (stageScreenH >= 26 && inside) {
+    const fontPx = stageScreenH >= 26 ? 10 : stageScreenH >= 16 ? 9 : 8
+    const spacing = fontPx >= 10 ? 3 : 2
+    // Inside the stage when it can hold the text clear of its own linework,
+    // otherwise lifted just above the apron.
+    const insideStage = stageScreenH >= fontPx + 10
+    const y = insideStage ? at.y : Math.min(...stageYs) * camera.scale + camera.ty - 6
+    const halfW = 26 + spacing * 2.5
+    const onCanvas =
+      at.x - halfW >= 4 && at.x + halfW <= opts.width - 4 && y - fontPx >= 4 && y + 4 <= opts.height - 4
+    if (onCanvas) {
       ctx.save()
       ctx.textAlign = 'center'
-      ctx.font = `600 10px ${DATA_FONT}`
+      ctx.font = `600 ${fontPx}px ${DATA_FONT}`
       ctx.fillStyle = C.dusk
-      ctx.letterSpacing = '3px'
-      ctx.fillText('STAGE', at.x, at.y)
+      ctx.letterSpacing = `${spacing}px`
+      ctx.fillText('STAGE', at.x, y)
       ctx.restore()
     }
   }
 
-  // Area labels: overview only, like section names (the restraint law).
-  // Past overview a zone is its architectural outline; the ticket rail
-  // names it.
-  if (flags.polygonFill) {
+  // Area labels: ALWAYS. A zone holds no seats, so unlike a seated section
+  // it has no other identity on the plan: unlabelled it is simply a blank
+  // rectangle. The restraint law lists what the SEAT field carries; a
+  // general admission zone naming itself is not decoration.
+  {
     for (const area of scene.areas) {
       const at = worldToScreen(camera, area.x + area.width / 2, area.y + area.height / 2)
       if (at.x < -100 || at.x > opts.width + 100 || at.y < -30 || at.y > opts.height + 30) continue
@@ -459,9 +461,10 @@ function drawObjects(ctx: CanvasRenderingContext2D, scene: Scene, camera: Camera
       ctx.lineWidth = 1 / camera.scale
       ctx.stroke()
     }
-    // The glyph, centred, at 55% of the chip's smaller side.
+    // The glyph, centred, at 55% of the chip's smaller side. Venue objects
+    // keep their own 24-box; only the chair moved to the 100-box.
     const g = Math.min(w, h) * (obj.kind === 'icon' ? 0.9 : 0.5)
-    const k = g / GLYPH_BOX
+    const k = g / OBJECT_BOX
     ctx.translate(-g / 2, obj.kind === 'object' ? -g / 2 - h * 0.08 : -g / 2)
     ctx.scale(k, k)
     ctx.strokeStyle = C.night
@@ -549,8 +552,8 @@ export function paintScene(
 
   // The label engine: one pure pass places every piece of text; the frame
   // draws exactly its output.
-  const flags = lodFlags(camera.scale)
   const chairPx = scene.chairW * camera.scale
+  const flags = lodFlags(camera.scale, chairPx)
   const labels = placeLabels({
     scene,
     camera,
@@ -569,14 +572,21 @@ export function paintScene(
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   for (const label of labels) {
-    const font = label.kind === 'section' || label.kind === 'caption' ? DISPLAY_FONT : DATA_FONT
+    const font =
+      label.kind === 'section' || label.kind === 'caption' || label.kind === 'table'
+        ? DISPLAY_FONT
+        : DATA_FONT
     ctx.font = `${label.weight} ${label.fontPx}px ${font}`
     ctx.fillStyle = label.kind === 'price' || label.kind === 'ruler' || label.kind === 'rowLetter' ? C.dusk : C.night
     ctx.fillText(label.text, label.cx, label.cy)
     if (label.sublabel) {
-      ctx.font = `600 11px ${DATA_FONT}`
+      // The engine sized this line and reserved the room for it, so the
+      // painter must use ITS size, not a fixed 11px that can overflow the
+      // box the collision gate measured.
+      const subPx = label.subFontPx ?? Math.max(8, label.fontPx - 2)
+      ctx.font = `600 ${subPx}px ${DATA_FONT}`
       ctx.fillStyle = C.dusk
-      ctx.fillText(label.sublabel, label.cx, label.cy + 15)
+      ctx.fillText(label.sublabel, label.cx, label.cy + (label.fontPx + subPx) / 2 + 2)
     }
   }
   ctx.restore()

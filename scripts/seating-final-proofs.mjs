@@ -15,15 +15,7 @@
 import fs from 'node:fs'
 import sharp from 'sharp'
 import { chromium, devices } from 'playwright'
-import {
-  CHAIR_ARM_LEFT_PATH,
-  CHAIR_ARM_RIGHT_PATH,
-  CHAIR_BACK_PATH,
-  CHAIR_MARK_PATH,
-  CHAIR_MID_BACK_PATH,
-  CHAIR_MID_PAN_PATH,
-  CHAIR_PAN_PATH,
-} from '../src/lib/seating/render/glyphs.ts'
+import { CHAIR_PART_PATHS, CHAIR_STROKE, GLYPH_BOX } from '../src/lib/seating/render/glyphs.ts'
 import { SEAT_STATE_COLORS } from '../src/lib/seating/palette.ts'
 
 const BASE = process.argv[2]
@@ -300,38 +292,29 @@ if (STEPS.has('chair')) {
     const buf = await sharp(BENCH).extract(box).resize(targetW, targetH, { kernel: 'lanczos3', fit: 'fill' }).png().toBuffer()
     return { uri: `data:image/png;base64,${buf.toString('base64')}`, w: targetW, h: targetH }
   }
-  const tierFor = px => (px >= 20 ? 'full' : px >= 10 ? 'mid' : 'mark')
-  const chair = (px, state) => {
-    const sw = (1.25 * 24) / px
-    const tier = tierFor(px)
-    // Mirror draw.ts bodyParts/keyParts EXACTLY. The mid tier draws the WIDE
-    // mid pair, not the full tier's narrowed back and pan: the full parts are
-    // narrow only to clear the armrests, so drawing them at 14px understated
-    // the chair and made the evidence disagree with the renderer.
-    const parts = tier === 'mark' ? [CHAIR_MARK_PATH] : tier === 'mid'
-      ? [CHAIR_MID_BACK_PATH, CHAIR_MID_PAN_PATH]
-      : [CHAIR_BACK_PATH, CHAIR_PAN_PATH, CHAIR_ARM_LEFT_PATH, CHAIR_ARM_RIGHT_PATH]
-    const keyParts = tier === 'mark'
-      ? [CHAIR_MARK_PATH]
-      : tier === 'mid'
-        ? [CHAIR_MID_BACK_PATH, CHAIR_MID_PAN_PATH]
-        : [CHAIR_BACK_PATH, CHAIR_PAN_PATH]
-    let body = ''
-    if (state === 'available') {
-      body = parts.map(d => `<path d="${d}" fill="${C.white}" stroke="${HARBOUR}" stroke-width="${sw}" stroke-linejoin="round"/>`).join('')
-    } else if (state === 'sold') {
-      body = parts.map(d => `<path d="${d}" fill="${C.dusk}"/>`).join('')
-    } else if (state === 'selected') {
-      body =
+  // ONE glyph, uniformly scaled, its stroke scaling with it: exactly what
+  // draw.ts does, so the evidence cannot disagree with the renderer.
+  const chairBody = state => {
+    const parts = CHAIR_PART_PATHS
+    if (state === 'sold') return parts.map(d => `<path d="${d}" fill="${C.dusk}"/>`).join('')
+    if (state === 'selected') {
+      return (
         parts.map(d => `<path d="${d}" fill="${C.gold}"/>`).join('') +
-        keyParts.map(d => `<path d="${d}" fill="none" stroke="${C.night}" stroke-width="${sw * 1.4}"/>`).join('')
-    } else {
-      body =
-        parts.map(d => `<path d="${d}" fill="${C.stone}"/>`).join('') +
-        keyParts.map(d => `<path d="${d}" fill="none" stroke="${HARBOUR}" stroke-width="${sw}" stroke-dasharray="${2.4} ${1.7}"/>`).join('')
+        parts.map(d => `<path d="${d}" fill="none" stroke="${C.night}" stroke-width="${CHAIR_STROKE * 1.15}" stroke-linejoin="round"/>`).join('')
+      )
     }
-    return `<svg width="${px}" height="${px}" viewBox="0 0 24 24" style="display:block">${body}</svg>`
+    if (state === 'held') {
+      return (
+        parts.map(d => `<path d="${d}" fill="${C.stone}"/>`).join('') +
+        parts.map(d => `<path d="${d}" fill="none" stroke="${HARBOUR}" stroke-width="${CHAIR_STROKE}" stroke-dasharray="${CHAIR_STROKE * 2.2} ${CHAIR_STROKE * 1.8}" stroke-linejoin="round"/>`).join('')
+      )
+    }
+    return parts
+      .map(d => `<path d="${d}" fill="${C.white}" stroke="${HARBOUR}" stroke-width="${CHAIR_STROKE}" stroke-linejoin="round"/>`)
+      .join('')
   }
+  const chair = (px, state) =>
+    `<svg width="${px}" height="${px}" viewBox="0 0 ${GLYPH_BOX} ${GLYPH_BOX}" style="display:block">${chairBody(state)}</svg>`
   const img = c => `<img src="${c.uri}" width="${c.w}" height="${c.h}" style="display:block">`
   const cell = (inner, cap) =>
     `<div style="text-align:center;min-width:92px"><div style="height:44px;display:flex;align-items:center;justify-content:center">${inner}</div>` +
@@ -342,21 +325,24 @@ if (STEPS.has('chair')) {
     `<div style="font:700 12px 'Segoe UI',Arial,sans-serif;letter-spacing:.14em;color:${C.night};margin-bottom:14px">${title}</div>` +
     `<div style="display:flex;align-items:flex-start;gap:10px">${inner}</div></div>`
 
-  // ── The symmetry check: rasterise each tier, flip it, compare ────────────
+  // ── The symmetry check: rasterise the glyph, flip it, compare ───────────
   // The chair regressed twice by losing mirror symmetry, so this is measured
-  // from the SAME path strings the renderer uses, not asserted. Each tier is
-  // filled solid at 480px, flopped about the image centre (which is the
-  // glyph's own centreline x = 12 in the 0..24 viewBox), and differenced
-  // pixel by pixel. Any pixel off by more than the antialiasing floor fails.
-  const TIER_PARTS = {
-    full: [CHAIR_BACK_PATH, CHAIR_PAN_PATH, CHAIR_ARM_LEFT_PATH, CHAIR_ARM_RIGHT_PATH],
-    mid: [CHAIR_MID_BACK_PATH, CHAIR_MID_PAN_PATH],
-    mark: [CHAIR_MARK_PATH],
+  // from the SAME path strings the renderer uses, not asserted. It is filled
+  // solid at 600px, flopped about the image centre (which is the glyph's own
+  // centreline x = 50 in the 0..100 viewBox) and differenced pixel by pixel.
+  // Each part is checked on its own as well as the assembled silhouette, so
+  // a break can be located, not just detected.
+  const SYM_PX = 600
+  const SYM_TARGETS = {
+    silhouette: CHAIR_PART_PATHS,
+    back: [CHAIR_PART_PATHS[0]],
+    arms: [CHAIR_PART_PATHS[1], CHAIR_PART_PATHS[2]],
+    pan: [CHAIR_PART_PATHS[3]],
   }
   const symmetry = {}
-  for (const [tier, paths] of Object.entries(TIER_PARTS)) {
+  for (const [name, paths] of Object.entries(SYM_TARGETS)) {
     const svg = Buffer.from(
-      `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="480" viewBox="0 0 24 24">` +
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${SYM_PX}" height="${SYM_PX}" viewBox="0 0 ${GLYPH_BOX} ${GLYPH_BOX}">` +
         paths.map(d => `<path d="${d}" fill="#000"/>`).join('') +
         `</svg>`,
     )
@@ -372,9 +358,9 @@ if (STEPS.has('chair')) {
       if (d > maxDiff) maxDiff = d
       if (d > 2) offPixels++
     }
-    symmetry[tier] = { maxDiff, offPixels, match: offPixels === 0 }
+    symmetry[name] = { maxDiff, offPixels, match: offPixels === 0 }
     console.log(
-      `[final] symmetry ${tier}: ${offPixels === 0 ? 'MATCH' : 'MISMATCH'} ` +
+      `[final] symmetry ${name}: ${offPixels === 0 ? 'MATCH' : 'MISMATCH'} ` +
         `(pixels off ${offPixels}, max channel delta ${maxDiff})`,
     )
   }
@@ -383,12 +369,14 @@ if (STEPS.has('chair')) {
     throw new Error('ABORT: chair glyph is not mirror-symmetrical about its centreline')
   }
 
+  const SIZES = [48, 24, 14, 8]
   const bench = {}
   for (const [state, box] of Object.entries(CHIPS)) {
-    bench[state] = { 24: await crop(box, 24), 14: await crop(box, 14), 8: await crop(box, 8) }
+    bench[state] = {}
+    for (const px of SIZES) bench[state][px] = await crop(box, px)
   }
-  const sizes = [24, 14, 8]
-    .map(px => cell(chair(px, 'available'), `Ours ${px}px`) + cell(img(bench.available[px]), `TryBooking ${px}px`) + (px !== 8 ? gap : ''))
+  const sizes = SIZES
+    .map((px, i) => cell(chair(px, 'available'), `Ours ${px}px`) + cell(img(bench.available[px]), `TryBooking ${px}px`) + (i < SIZES.length - 1 ? gap : ''))
     .join('')
   const states =
     cell(chair(24, 'available'), 'Ours available') + cell(chair(24, 'sold'), 'Ours sold') +
@@ -401,9 +389,9 @@ if (STEPS.has('chair')) {
   // as read it.
   const mirrorCell = (paths, label, result) => {
     const svg = flip =>
-      `<svg width="64" height="64" viewBox="0 0 24 24" style="display:block">` +
-      `<g${flip ? ' transform="translate(24 0) scale(-1 1)"' : ''}>` +
-      paths.map(d => `<path d="${d}" fill="none" stroke="${HARBOUR}" stroke-width="1.25" stroke-linejoin="round"/>`).join('') +
+      `<svg width="64" height="64" viewBox="0 0 ${GLYPH_BOX} ${GLYPH_BOX}" style="display:block">` +
+      `<g${flip ? ` transform="translate(${GLYPH_BOX} 0) scale(-1 1)"` : ''}>` +
+      paths.map(d => `<path d="${d}" fill="none" stroke="${HARBOUR}" stroke-width="${CHAIR_STROKE}" stroke-linejoin="round"/>`).join('') +
       `</g></svg>`
     return (
       `<div style="text-align:center;min-width:170px">` +
@@ -412,22 +400,55 @@ if (STEPS.has('chair')) {
       `<div style="font:700 11px 'Segoe UI',Arial,sans-serif;color:${result.match ? '#0F6B3D' : '#DC2626'};margin-top:3px">` +
       `${result.match ? 'MIRRORED HALVES MATCH' : 'MISMATCH'}</div>` +
       `<div style="font:400 10px 'Segoe UI',Arial,sans-serif;color:${C.stoneText};margin-top:2px">` +
-      `${result.offPixels} pixels off at 480px</div></div>`
+      `${result.offPixels} pixels off at ${SYM_PX}px</div></div>`
     )
   }
   const symmetryRow =
-    mirrorCell(TIER_PARTS.full, 'Full tier, drawn then mirrored', symmetry.full) + gap +
-    mirrorCell(TIER_PARTS.mid, 'Mid tier, drawn then mirrored', symmetry.mid) + gap +
-    mirrorCell(TIER_PARTS.mark, 'Mark tier, drawn then mirrored', symmetry.mark)
+    mirrorCell(SYM_TARGETS.silhouette, 'The silhouette, drawn then mirrored', symmetry.silhouette) + gap +
+    mirrorCell(SYM_TARGETS.back, 'Back alone', symmetry.back) + gap +
+    mirrorCell(SYM_TARGETS.arms, 'Arms alone', symmetry.arms) + gap +
+    mirrorCell(SYM_TARGETS.pan, 'Pan alone', symmetry.pan)
+
+  // ── THREE REAL ROWS AT 24PX, roughly 30 per cent sold ───────────────────
+  // The glyph judged in context rather than in isolation: a real row rhythm
+  // at the renderer's own chair-to-pitch ratio (CHAIR_PITCH_RATIO 0.75), so
+  // the gaps between chairs are the gaps a buyer actually sees.
+  const ROW_COUNT = 3
+  const COLS = 14
+  const CHAIR_PX = 24
+  const PITCH = Math.round(CHAIR_PX / 0.75) // the renderer's chair:pitch ratio
+  // A fixed, reproducible sold pattern at ~30 per cent (13 of 42 = 31.0%).
+  const SOLD = new Set([2, 3, 9, 13, 16, 17, 21, 27, 30, 31, 34, 38, 41])
+  let rowsSvg = ''
+  for (let r = 0; r < ROW_COUNT; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const i = r * COLS + c
+      const state = SOLD.has(i) ? 'sold' : 'available'
+      const x = c * PITCH
+      const y = r * PITCH
+      const k = CHAIR_PX / GLYPH_BOX
+      rowsSvg +=
+        `<g transform="translate(${x} ${y}) scale(${k.toFixed(4)})">${chairBody(state)}</g>`
+    }
+  }
+  const rowsW = (COLS - 1) * PITCH + CHAIR_PX
+  const rowsH = (ROW_COUNT - 1) * PITCH + CHAIR_PX
+  const soldPct = Math.round((SOLD.size / (ROW_COUNT * COLS)) * 100)
+  const rowsBlock =
+    `<div>` +
+    `<svg width="${rowsW}" height="${rowsH}" viewBox="0 0 ${rowsW} ${rowsH}" style="display:block">${rowsSvg}</svg>` +
+    `<div style="font:600 11px 'Segoe UI',Arial,sans-serif;color:${C.dusk};margin-top:12px">` +
+    `${ROW_COUNT} rows x ${COLS} seats at ${CHAIR_PX}px on a ${PITCH}px pitch, ${SOLD.size} sold (${soldPct} per cent)</div></div>`
 
   const html =
     `<body style="margin:0;background:${C.veil};padding:26px 30px;width:1200px;box-sizing:border-box">` +
-    `<div style="font:700 13px 'Segoe UI',Arial,sans-serif;letter-spacing:.16em;color:${C.night}">CHAIR FINAL: THE RENDERER'S OWN PATHS BESIDE TRYBOOKING</div>` +
-    `<div style="font:400 11px 'Segoe UI',Arial,sans-serif;color:${C.stoneText};margin-top:6px">Paths imported from src/lib/seating/render/glyphs.ts; benchmark cropped from ${BENCH}</div>` +
-    card('SIZES: 24PX (FULL), 14PX (MID), 8PX (MARK)', sizes) +
+    `<div style="font:700 13px 'Segoe UI',Arial,sans-serif;letter-spacing:.16em;color:${C.night}">CHAIR FINAL: ONE GLYPH, UNIFORMLY SCALED, BESIDE TRYBOOKING</div>` +
+    `<div style="font:400 11px 'Segoe UI',Arial,sans-serif;color:${C.stoneText};margin-top:6px">Paths imported from src/lib/seating/render/glyphs.ts (100-box, stroke ${CHAIR_STROKE} scaling with the glyph); benchmark cropped from ${BENCH}</div>` +
+    card('ONE SILHOUETTE AT 48, 24, 14 AND 8PX', sizes) +
     card('STATES AT 24PX', states) +
-    card('SYMMETRY CHECK: EACH TIER AGAINST ITS OWN MIRROR', symmetryRow) + '</body>'
-  const page = await browser.newPage({ viewport: { width: 1240, height: 760 }, deviceScaleFactor: 2 })
+    card('IN CONTEXT: THREE REAL ROWS AT 24PX', rowsBlock) +
+    card('SYMMETRY CHECK: DRAWN AGAINST ITS OWN MIRROR', symmetryRow) + '</body>'
+  const page = await browser.newPage({ viewport: { width: 1240, height: 1120 }, deviceScaleFactor: 2 })
   await page.setContent(html, { waitUntil: 'load' })
   const bad = await page.evaluate(() => [...document.images].filter(i => !i.complete || i.naturalWidth === 0).length)
   if (bad) throw new Error(`ABORT: ${bad} benchmark crop(s) failed to load`)

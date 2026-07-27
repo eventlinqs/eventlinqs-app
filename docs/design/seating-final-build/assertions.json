@@ -24,7 +24,7 @@
     "room": "two-block",
     "viewport": "1440",
     "lod": "fit",
-    "runs": 44,
+    "runs": 3,
     "textText": 0,
     "textInk": 0,
     "clipped": 0,
@@ -35,9 +35,9 @@
         "labelSeat": 0,
         "labelLabel": 0,
         "labelObject": 0,
-        "labels": 43
+        "labels": 1
       },
-      "seats": 500,
+      "seats": 0,
       "seatsClipped": 0
     }
   },
@@ -45,7 +45,7 @@
     "room": "cabaret",
     "viewport": "1440",
     "lod": "fit",
-    "runs": 1,
+    "runs": 17,
     "textText": 0,
     "textInk": 0,
     "clipped": 0,
@@ -56,7 +56,7 @@
         "labelSeat": 0,
         "labelLabel": 0,
         "labelObject": 0,
-        "labels": 0
+        "labels": 16
       },
       "seats": 152,
       "seatsClipped": 0
@@ -66,7 +66,7 @@
     "room": "mixed",
     "viewport": "1440",
     "lod": "fit",
-    "runs": 39,
+    "runs": 40,
     "textText": 0,
     "textInk": 0,
     "clipped": 0,
@@ -108,7 +108,7 @@
     "room": "theatre",
     "viewport": "1440",
     "lod": "overview",
-    "runs": 2,
+    "runs": 3,
     "textText": 0,
     "textInk": 0,
     "clipped": 0,
@@ -129,7 +129,7 @@
     "room": "theatre",
     "viewport": "1440",
     "lod": "mid",
-    "runs": 14,
+    "runs": 3,
     "textText": 0,
     "textInk": 0,
     "clipped": 0,
@@ -140,9 +140,9 @@
         "labelSeat": 0,
         "labelLabel": 0,
         "labelObject": 0,
-        "labels": 14
+        "labels": 1
       },
-      "seats": 506,
+      "seats": 0,
       "seatsClipped": 0
     }
   },
@@ -171,7 +171,7 @@
     "room": "theatre",
     "viewport": "390",
     "lod": "fit",
-    "runs": 2,
+    "runs": 3,
     "textText": 0,
     "textInk": 0,
     "clipped": 0,
@@ -192,7 +192,7 @@
     "room": "two-block",
     "viewport": "390",
     "lod": "fit",
-    "runs": 24,
+    "runs": 3,
     "textText": 0,
     "textInk": 0,
     "clipped": 0,
@@ -203,9 +203,9 @@
         "labelSeat": 0,
         "labelLabel": 0,
         "labelObject": 0,
-        "labels": 0
+        "labels": 1
       },
-      "seats": 500,
+      "seats": 0,
       "seatsClipped": 0
     }
   },
@@ -213,7 +213,7 @@
     "room": "cabaret",
     "viewport": "390",
     "lod": "fit",
-    "runs": 0,
+    "runs": 1,
     "textText": 0,
     "textInk": 0,
     "clipped": 0,
@@ -234,27 +234,6 @@
     "room": "mixed",
     "viewport": "390",
     "lod": "fit",
-    "runs": 8,
-    "textText": 0,
-    "textInk": 0,
-    "clipped": 0,
-    "pairs": [],
-    "inkHits": [],
-    "model": {
-      "counts": {
-        "labelSeat": 0,
-        "labelLabel": 0,
-        "labelObject": 0,
-        "labels": 8
-      },
-      "seats": 176,
-      "seatsClipped": 0
-    }
-  },
-  {
-    "room": "four-tier",
-    "viewport": "390",
-    "lod": "fit",
     "runs": 4,
     "textText": 0,
     "textInk": 0,
@@ -266,7 +245,28 @@
         "labelSeat": 0,
         "labelLabel": 0,
         "labelObject": 0,
-        "labels": 2
+        "labels": 1
+      },
+      "seats": 0,
+      "seatsClipped": 0
+    }
+  },
+  {
+    "room": "four-tier",
+    "viewport": "390",
+    "lod": "fit",
+    "runs": 9,
+    "textText": 0,
+    "textInk": 0,
+    "clipped": 0,
+    "pairs": [],
+    "inkHits": [],
+    "model": {
+      "counts": {
+        "labelSeat": 0,
+        "labelLabel": 0,
+        "labelObject": 0,
+        "labels": 4
       },
       "seats": 0,
       "seatsClipped": 0
@@ -276,7 +276,7 @@
     "room": "theatre",
     "viewport": "390",
     "lod": "overview",
-    "runs": 2,
+    "runs": 3,
     "textText": 0,
     "textInk": 0,
     "clipped": 0,
@@ -297,7 +297,7 @@
     "room": "theatre",
     "viewport": "390",
     "lod": "mid",
-    "runs": 13,
+    "runs": 3,
     "textText": 0,
     "textInk": 0,
     "clipped": 0,
@@ -308,10 +308,10 @@
         "labelSeat": 0,
         "labelLabel": 0,
         "labelObject": 0,
-        "labels": 0
+        "labels": 1
       },
-      "seats": 488,
-      "seatsClipped": 29
+      "seats": 0,
+      "seatsClipped": 0
     }
   },
   {

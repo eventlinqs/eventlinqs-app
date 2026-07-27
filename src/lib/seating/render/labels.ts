@@ -35,7 +35,7 @@ export interface LabelBox {
 }
 
 export interface PlacedLabel extends LabelBox {
-  kind: 'section' | 'price' | 'rowLetter' | 'ruler' | 'caption'
+  kind: 'section' | 'price' | 'rowLetter' | 'ruler' | 'caption' | 'table'
   text: string
   /** A second line inside the SAME box (the price under a section name). */
   sublabel?: string
@@ -43,6 +43,8 @@ export interface PlacedLabel extends LabelBox {
   cx: number
   cy: number
   fontPx: number
+  /** Font size for the sublabel line; defaults to fontPx - 2. */
+  subFontPx?: number
   weight: number
   display?: boolean
   color?: string
@@ -258,7 +260,6 @@ export function placeLabels(input: PlaceLabelsInput): PlacedLabel[] {
   // ticket rail carries the prices. ──
   if (flags.polygonFill) {
     for (const poly of scene.polygons) {
-      const namePx = 13
       const nameText = poly.name.toUpperCase()
       const priceText =
         poly.minPriceCents != null
@@ -266,14 +267,8 @@ export function placeLabels(input: PlaceLabelsInput): PlacedLabel[] {
             ? `${formatPrice(poly.minPriceCents)} to ${formatPrice(poly.maxPriceCents)}`
             : formatPrice(poly.minPriceCents)
           : null
-      const nameW = measure(nameText, namePx, 700) + 6
-      const priceW = priceText ? measure(priceText, 11, 600) + 6 : 0
-      const w = Math.max(nameW, priceW)
-      const h = priceText ? 30 : 16
 
       const centroidAt = toScreen(camera, poly.centroid.x, poly.centroid.y)
-      // Candidate interior positions: the centroid, then a coarse grid
-      // over the hull, scored by clearance.
       const xs = poly.hull.map(p => p.x)
       const ys = poly.hull.map(p => p.y)
       const candidates: { x: number; y: number }[] = [centroidAt]
@@ -284,19 +279,68 @@ export function placeLabels(input: PlaceLabelsInput): PlacedLabel[] {
           candidates.push(toScreen(camera, wx, wy))
         }
       }
-      for (const c of candidates) {
-        const box: LabelBox = { x: c.x - w / 2, y: c.y - h / 2, w, h }
-        if (!insideCanvas(box)) continue
-        if (!hullBoxInside(poly.hull, poly.pad * 0.6, box, camera)) continue
-        if (collides(box, obstacles)) continue
+
+      // EVERY POLYGON CARRIES ITS NAME AND PRICE. A single fixed size meant
+      // a narrow band on a 390 viewport simply lost both, which is a
+      // failure, not a restraint. So the size steps down until the pair
+      // fits inside the polygon; only if even the smallest will not fit does
+      // the price drop, and the name alone then steps down again.
+      const SIZES = [13, 11.5, 10, 9]
+      let done = false
+      for (const withPrice of priceText ? [true, false] : [false]) {
+        for (const namePx of SIZES) {
+          const pricePx = Math.max(8, namePx - 2)
+          const nameW = measure(nameText, namePx, 700) + 6
+          const priceW = withPrice ? measure(priceText!, pricePx, 600) + 6 : 0
+          const w = Math.max(nameW, priceW)
+          const h = withPrice ? namePx + pricePx + 6 : namePx + 3
+          for (const c of candidates) {
+            const box: LabelBox = { x: c.x - w / 2, y: c.y - h / 2, w, h }
+            if (!insideCanvas(box)) continue
+            if (!hullBoxInside(poly.hull, poly.pad * 0.6, box, camera)) continue
+            if (collides(box, obstacles)) continue
+            push({
+              kind: 'section',
+              text: nameText,
+              sublabel: withPrice ? priceText! : undefined,
+              ...box,
+              cx: c.x,
+              cy: withPrice ? c.y - (pricePx + 2) / 2 : c.y,
+              fontPx: namePx,
+              subFontPx: withPrice ? pricePx : undefined,
+              weight: 700,
+            })
+            done = true
+            break
+          }
+          if (done) break
+        }
+        if (done) break
+      }
+    }
+  }
+
+  // ── 3b. Table names: one per table, centred in its own ring. Tables sit
+  // outside the block system, so this is where they carry their identity.
+  // Drawn whenever the chairs are, because a table without its name is an
+  // unidentifiable ring of seats. ──
+  if (flags.seats) {
+    for (const table of scene.tableLabels) {
+      const at = toScreen(camera, table.x, table.y)
+      const ringPx = table.radius * camera.scale
+      // Sized to the table, never larger than the ring can hold.
+      for (const px of [12, 11, 10, 9]) {
+        const w = measure(table.label, px, 700) + 6
+        if (w > ringPx * 1.9) continue
+        const box: LabelBox = { x: at.x - w / 2, y: at.y - (px + 4) / 2, w, h: px + 4 }
+        if (!insideCanvas(box) || collides(box, obstacles)) continue
         push({
-          kind: 'section',
-          text: nameText,
-          sublabel: priceText ?? undefined,
+          kind: 'table',
+          text: table.label,
           ...box,
-          cx: c.x,
-          cy: priceText ? c.y - 7 : c.y,
-          fontPx: namePx,
+          cx: at.x,
+          cy: at.y,
+          fontPx: px,
           weight: 700,
         })
         break

@@ -3,110 +3,124 @@
  * exported as SVG path strings (pure, unit-testable, reused by the printed
  * plan) plus lazy Path2D factories for the canvas painter.
  *
- * The chair reads as furniture: a narrow back over a wider pan, drawn from
- * the front. One silhouette, three sizes (full, mid, mark), all authored in
- * a 24 x 24 box with the seat centre at (12, 12).
+ * The chair is ONE silhouette, uniformly scaled, authored in a 100 x 100
+ * box with the seat centre at (50, 50). The venue objects keep their own
+ * 24-box (OBJECT_BOX) and are unaffected.
  */
 
-import type { GlyphTier } from './lod'
-
 /**
- * The chair, redrawn 2026-07-27 to the benchmark's tub-chair anatomy: ONE
- * closed silhouette, PERFECTLY SYMMETRICAL about the vertical centreline
- * x = 12. Every horizontal coordinate below pairs under the mirror
- * m(x) = 24 - x (1 <-> 23, 4.3 <-> 19.7), which is what makes the mirrored
- * halves match exactly. The proof rasterises each tier and compares it
- * against its own horizontal flip, so a future edit that breaks the pairing
- * fails visibly instead of shipping.
+ * THE CHAIR: one silhouette, uniformly scaled (founder specification,
+ * approved 2026-07-27). The three-tier system it replaces is deleted.
  *
- * Anatomy, in the authored 24-box, drawn extent inset to x 1..23 so the
- * screen-fixed outline never clips at the box edge (glyph width W = 22,
- * assembly height 20.46, aspect 1.075: square, slightly wider than tall):
+ * The benchmark scales ONE glyph, which is why it still reads as a chair at
+ * 14px while our tiers collapsed into stacked bars and then a T shape. So
+ * there is one geometry here and one only; size is expressed by scale, and
+ * the stroke scales with it (CHAIR_STROKE below), never screen-fixed.
  *
- *   BACK  full glyph width, top 45% of the assembly, r = 30% of its height
- *   GAP   8% of the assembly height, still open at 24px
- *   PAN   70% of glyph width, centred, the lower 40%
- *   ARMS  15% of glyph width each, pan edge to glyph edge, pan height
+ * The geometry is EXACT on a 100 x 100 box, seat centre (50, 50):
  *
- * The armrests are SUPPORTING: they sit inside the back's own width and
- * never outboard of it, which is what the previous revision broke by
- * scaling them into the dominant forms.
+ *   BACK       x 18  y 6   w 64  h 30  r 11
+ *   ARM LEFT   x 4   y 40  w 15  h 46  r 7
+ *   ARM RIGHT  x 81  y 40  w 15  h 46  r 7
+ *   PAN        x 22  y 62  w 56  h 24  r 9
  *
- * Three degradation tiers, one silhouette throughout: full (back, pan,
- * arms), mid (back and pan, the identical paths minus the arms), mark (one
- * closed stepped form, never a plain square).
+ * Why it reads as furniture, so nobody drifts from it:
+ *   - The ARMS are the widest part (x 4..96, 92 wide) and are wider than the
+ *     back (x 18..82, 64 wide). That is what stops it reading as stacked bars.
+ *   - The middle stays OPEN: back on top, arms down the sides, pan at the
+ *     bottom between them, air in between.
+ *   - It is symmetric about x = 50 by construction (4 <-> 96, 18 <-> 82,
+ *     19 <-> 81, 22 <-> 78), so the mirror test passes by arithmetic.
  */
 
-/** Back: x 1..23 (w 22, full glyph width), y 1.77..11.67 (h 9.9), r 3. */
-export const CHAIR_BACK_PATH =
-  'M4 1.77h16a3 3 0 0 1 3 3v3.9a3 3 0 0 1-3 3H4a3 3 0 0 1-3-3V4.77a3 3 0 0 1 3-3Z'
-
-/** Pan: x 4.3..19.7 (w 15.4, 70% of glyph width), y 13.43..22.23 (h 8.8), r 2.2. */
-export const CHAIR_PAN_PATH =
-  'M6.5 13.43h11a2.2 2.2 0 0 1 2.2 2.2v4.4a2.2 2.2 0 0 1-2.2 2.2h-11a2.2 2.2 0 0 1-2.2-2.2v-4.4a2.2 2.2 0 0 1 2.2-2.2Z'
+export interface GlyphRect {
+  x: number
+  y: number
+  w: number
+  h: number
+  r: number
+}
 
 /**
- * Armrests: narrow verticals (w 3.3 = 15% of glyph width) filling the space
- * between the pan's edge and the glyph's edge, at the pan's own height so
- * the lower band reads as one seat. Left x 1..4.3, right x 19.7..23: exact
- * mirrors.
+ * THE SPECIFICATION, as data. The path strings below are DERIVED from these
+ * rectangles, so a path can never drift from the approved numbers and the
+ * numbers themselves are unit-testable.
  */
-export const CHAIR_ARM_LEFT_PATH =
-  'M2.2 13.43h0.9a1.2 1.2 0 0 1 1.2 1.2v6.4a1.2 1.2 0 0 1-1.2 1.2h-0.9a1.2 1.2 0 0 1-1.2-1.2v-6.4a1.2 1.2 0 0 1 1.2-1.2Z'
-export const CHAIR_ARM_RIGHT_PATH =
-  'M20.9 13.43h0.9a1.2 1.2 0 0 1 1.2 1.2v6.4a1.2 1.2 0 0 1-1.2 1.2h-0.9a1.2 1.2 0 0 1-1.2-1.2v-6.4a1.2 1.2 0 0 1 1.2-1.2Z'
+export const CHAIR_RECTS = {
+  back: { x: 18, y: 6, w: 64, h: 30, r: 11 },
+  armLeft: { x: 4, y: 40, w: 15, h: 46, r: 7 },
+  armRight: { x: 81, y: 40, w: 15, h: 46, r: 7 },
+  pan: { x: 22, y: 62, w: 56, h: 24, r: 9 },
+} as const satisfies Record<string, GlyphRect>
+
+/** A closed rounded-rectangle path, clockwise from the top-left arc end. */
+export function roundedRectPath({ x, y, w, h, r }: GlyphRect): string {
+  const n = (v: number) => Number(v.toFixed(4)).toString()
+  return (
+    `M${n(x + r)} ${n(y)}` +
+    `h${n(w - 2 * r)}` +
+    `a${n(r)} ${n(r)} 0 0 1 ${n(r)} ${n(r)}` +
+    `v${n(h - 2 * r)}` +
+    `a${n(r)} ${n(r)} 0 0 1 ${n(-r)} ${n(r)}` +
+    `h${n(-(w - 2 * r))}` +
+    `a${n(r)} ${n(r)} 0 0 1 ${n(-r)} ${n(-r)}` +
+    `v${n(-(h - 2 * r))}` +
+    `a${n(r)} ${n(r)} 0 0 1 ${n(r)} ${n(-r)}` +
+    'Z'
+  )
+}
+
+/** BACK: x 18 y 6 w 64 h 30 r 11. */
+export const CHAIR_BACK_PATH = roundedRectPath(CHAIR_RECTS.back)
+
+/** PAN: x 22 y 62 w 56 h 24 r 9. */
+export const CHAIR_PAN_PATH = roundedRectPath(CHAIR_RECTS.pan)
+
+/** ARM LEFT: x 4 y 40 w 15 h 46 r 7. The widest part of the glyph. */
+export const CHAIR_ARM_LEFT_PATH = roundedRectPath(CHAIR_RECTS.armLeft)
+
+/** ARM RIGHT: x 81 y 40 w 15 h 46 r 7. The exact mirror of ARM LEFT. */
+export const CHAIR_ARM_RIGHT_PATH = roundedRectPath(CHAIR_RECTS.armRight)
 
 /**
- * The MID tier (10 to 20px) is the SAME back and pan minus the armrests, so
- * the silhouette does not change shape as the map zooms: the back keeps the
- * full glyph width and the pan stays at 70%, which is what keeps it reading
- * as a chair rather than as two equal stacked bars.
+ * The stroke weight at the authored box size. It SCALES with the glyph:
+ * a painter drawing the chair at width w uses w / GLYPH_BOX * CHAIR_STROKE,
+ * so one silhouette keeps its proportions at every size. This replaces the
+ * old screen-fixed outline, which was what forced the tier system.
  */
-export const CHAIR_MID_BACK_PATH = CHAIR_BACK_PATH
-export const CHAIR_MID_PAN_PATH = CHAIR_PAN_PATH
+export const CHAIR_STROKE = 6.5
 
 /**
- * Mark below 10px: ONE closed chair silhouette, a full-width back stepping
- * in to a narrower pan. The step is 4.5 units per side (1.5px at 8px), so
- * the notch where back meets pan survives at the smallest size. Never a
- * plain square.
- *
- * The pan here is 59% of glyph width, narrower than the 70% the full and
- * mid tiers use, and that difference is deliberate. Variants at 70% were
- * rendered at 6, 8 and 10px and compared: at 6px a 3.3-unit step washes out
- * and the glyph collapses to a rounded square, which is the one outcome
- * this tier may not produce. 4.5 units per side is the smallest step that
- * still reads at 6px.
- */
-export const CHAIR_MARK_PATH =
-  'M4 1.77h16a3 3 0 0 1 3 3v7.73h-4.5v7.33a2.4 2.4 0 0 1-2.4 2.4H7.9a2.4 2.4 0 0 1-2.4-2.4V12.5H1V4.77a3 3 0 0 1 3-3Z'
-
-/**
- * The accessibility mark drawn inside the back on accessible seats.
- *
- * The SAME pictogram as before (head, backrest, arm, wheel), uniformly
- * scaled to 0.655 and recentred on the glyph's centreline so it sits inside
- * the redrawn back with clear margin. It needed refitting: measured against
- * the old back it already overran the bottom stroke by 0.98 units, and the
- * redrawn back is 1.23 units shorter, which took the overrun to 2.21. The
- * scale accounts for the 1.3 stroke, which adds 0.65 of ink beyond the path
- * on every side: ink now clears both the back's top and bottom strokes.
- * Re-measure the same way if either shape changes.
+ * The accessibility mark drawn inside the back on accessible seats. The same
+ * approved pictogram (head, backrest, arm, wheel), scaled and centred into
+ * the 100-box back. Fit is measured, not assumed: with the mark's own stroke
+ * of CHAIR_ACCESS_STROKE its ink clears the back's inner edges on all sides.
  */
 export const CHAIR_ACCESS_PATH =
-  'M11.48 4.07a0.72 0.72 0 1 0 1.44 0a0.72 0.72 0 1 0-1.44 0M12.2 5.11v2.1h1.7M12.2 6.16h1.44M10.56 6.55a1.97 1.97 0 1 0 3.01 2.23'
+  'M50.57 14.52a1.77 1.77 0 1 0 3.54 0a1.77 1.77 0 1 0-3.54 0M52.34 17.08v5.17h4.18M52.34 19.66h3.54M48.3 20.62a4.85 4.85 0 1 0 7.4 5.49'
 
-/** The authored box every glyph lives in. */
-export const GLYPH_BOX = 24
+/** Stroke for the accessibility mark at the authored box size. */
+export const CHAIR_ACCESS_STROKE = 4.4
+
+/** The authored box the CHAIR lives in. */
+export const GLYPH_BOX = 100
+
+/** The authored box the VENUE OBJECT glyphs live in (unchanged). */
+export const OBJECT_BOX = 24
+
+/** Every part of the one chair silhouette, in paint order. */
+export const CHAIR_PART_PATHS: readonly string[] = [
+  CHAIR_BACK_PATH,
+  CHAIR_ARM_LEFT_PATH,
+  CHAIR_ARM_RIGHT_PATH,
+  CHAIR_PAN_PATH,
+]
 
 export interface ChairPaths {
   back: Path2D
   pan: Path2D
   armLeft: Path2D
   armRight: Path2D
-  midBack: Path2D
-  midPan: Path2D
-  mark: Path2D
   access: Path2D
 }
 
@@ -120,20 +134,10 @@ export function chairPaths(): ChairPaths {
       pan: new Path2D(CHAIR_PAN_PATH),
       armLeft: new Path2D(CHAIR_ARM_LEFT_PATH),
       armRight: new Path2D(CHAIR_ARM_RIGHT_PATH),
-      midBack: new Path2D(CHAIR_MID_BACK_PATH),
-      midPan: new Path2D(CHAIR_MID_PAN_PATH),
-      mark: new Path2D(CHAIR_MARK_PATH),
       access: new Path2D(CHAIR_ACCESS_PATH),
     }
   }
   return chairCache
-}
-
-/** Which authored parts a glyph tier draws (painter and print alike). */
-export function chairTierParts(tier: GlyphTier): ('back' | 'pan' | 'arms' | 'mark')[] {
-  if (tier === 'full') return ['back', 'pan', 'arms']
-  if (tier === 'mid') return ['back', 'pan']
-  return ['mark']
 }
 
 // ── Venue object glyphs ────────────────────────────────────────────────────

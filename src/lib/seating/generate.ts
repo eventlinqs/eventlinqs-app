@@ -423,8 +423,16 @@ function generateRowsBlock(block: RowsBlock): GeneratedRow[] {
     const count = rowCounts[r]
     if (count <= 0) continue
 
+    // THE GRID LAW: a seat's x is its column index times the pitch, and
+    // nothing else may move it. Centring a tapered row therefore shifts it by
+    // a WHOLE number of seats, never half of one. Without the rounding, an
+    // odd (maxCount - count) shifted the row by half a pitch and threw every
+    // seat in it off the column grid: on the 15-row taper-0.5 theatre that was
+    // 7 of 15 rows off-grid and 73 distinct x values across a 37-seat widest
+    // row, which is what read as drifting, freehand rows. Taper now only ever
+    // removes seats from the ENDS of a row.
     const centreShift =
-      block.align === 'centre' ? ((maxCount - count) / 2) * seatSpacing : 0
+      block.align === 'centre' ? Math.round((maxCount - count) / 2) * seatSpacing : 0
 
     const seats: GeneratedSeat[] = []
     for (let i = 0; i < count; i++) {

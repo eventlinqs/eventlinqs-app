@@ -7,13 +7,7 @@
 
 import { SEAT_STATE_COLORS } from '../palette'
 import { displayRowLabel } from './labels'
-import {
-  CHAIR_ARM_LEFT_PATH,
-  CHAIR_ARM_RIGHT_PATH,
-  CHAIR_BACK_PATH,
-  CHAIR_PAN_PATH,
-  GLYPH_BOX,
-} from './glyphs'
+import { CHAIR_PART_PATHS, CHAIR_STROKE, GLYPH_BOX } from './glyphs'
 import type { Scene } from './scene'
 
 const C = SEAT_STATE_COLORS
@@ -80,19 +74,22 @@ export function sceneToPrintSvg(scene: Scene, title: string): string {
   // Chairs at full anatomy: available prints as the outline chair over
   // paper (the benchmark's breathing room), everything taken as the
   // plan's solid dark sold state.
+  // ONE glyph, uniformly scaled, its stroke scaling with it: the printed
+  // plan and the canvas painter draw the identical silhouette.
   const k = scene.chairW / GLYPH_BOX
+  const half = GLYPH_BOX / 2
   for (let i = 0; i < scene.seats.length; i++) {
     const s = scene.seats[i]
     const taken = s.status !== 'available'
     const hue = scene.seatColor[i]
-    const tx = s.x + ox - 12 * k
-    const ty = s.y + oy - 12 * k
-    parts.push(`<g transform="translate(${tx.toFixed(1)} ${ty.toFixed(1)}) scale(${k.toFixed(3)})">`)
-    for (const d of [CHAIR_BACK_PATH, CHAIR_PAN_PATH, CHAIR_ARM_LEFT_PATH, CHAIR_ARM_RIGHT_PATH]) {
+    const tx = s.x + ox - half * k
+    const ty = s.y + oy - half * k
+    parts.push(`<g transform="translate(${tx.toFixed(1)} ${ty.toFixed(1)}) scale(${k.toFixed(4)})">`)
+    for (const d of CHAIR_PART_PATHS) {
       parts.push(
         taken
           ? `<path d="${d}" fill="${C.dusk}"/>`
-          : `<path d="${d}" fill="${C.white}" stroke="${hue}" stroke-width="1.25"/>`,
+          : `<path d="${d}" fill="${C.white}" stroke="${hue}" stroke-width="${CHAIR_STROKE}"/>`,
       )
     }
     parts.push('</g>')

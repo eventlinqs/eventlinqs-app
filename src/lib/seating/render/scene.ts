@@ -86,6 +86,16 @@ export interface SceneBounds {
   maxY: number
 }
 
+export interface TableLabelAnchor {
+  /** The table's own name, exactly as the organiser set it. */
+  label: string
+  /** The ring centre, in world units. */
+  x: number
+  y: number
+  /** Half the ring's width, so a label can be sized to the table. */
+  radius: number
+}
+
 export interface Scene {
   seats: SceneSeatInput[]
   seatColor: string[]
@@ -109,6 +119,12 @@ export interface Scene {
   chairW: number
   polygons: SectionPolygon[]
   rowLabels: RowLabelAnchor[]
+  /**
+   * One anchor per table or booth, at the ring's centre, carrying that
+   * table's own name. Tables sit outside the block system, so without this
+   * they carried no identity at all on the plan.
+   */
+  tableLabels: TableLabelAnchor[]
   rulers: RulerMark[]
   stage: StageGeometry | null
   stageSpec: StageSpec | null
@@ -313,9 +329,34 @@ export function buildScene(input: SceneInput): Scene {
   // holds a block together across half-pitch offsets (diagonal 1.12
   // pitch) and splits at any aisle one pitch wide or more. ──
   const gridSeatIndices: number[] = []
+  const tableSeatsByLabel = new Map<string, number[]>()
   seats.forEach((s, i) => {
-    if (!/table|booth/i.test(s.row_label)) gridSeatIndices.push(i)
+    if (/table|booth/i.test(s.row_label)) {
+      const list = tableSeatsByLabel.get(s.row_label)
+      if (list) list.push(i)
+      else tableSeatsByLabel.set(s.row_label, [i])
+      return
+    }
+    gridSeatIndices.push(i)
   })
+
+  // ── Table names: one anchor per table, at its ring centre. Tables sit
+  // outside the block system, so this is the only place they can carry
+  // their own identity on the plan. ──
+  const tableLabels: TableLabelAnchor[] = []
+  for (const [label, indices] of tableSeatsByLabel) {
+    if (indices.length === 0) continue
+    const xs = indices.map(i => seats[i].x)
+    const ys = indices.map(i => seats[i].y)
+    const cx = (Math.min(...xs) + Math.max(...xs)) / 2
+    const cy = (Math.min(...ys) + Math.max(...ys)) / 2
+    const radius = Math.max(
+      (Math.max(...xs) - Math.min(...xs)) / 2,
+      (Math.max(...ys) - Math.min(...ys)) / 2,
+    )
+    tableLabels.push({ label, x: cx, y: cy, radius })
+  }
+  tableLabels.sort((a, b) => a.y - b.y || a.x - b.x)
   const blocks = clusterIndices(gridSeatIndices, seats, pitch * 1.9).sort((a, b) => {
     const ax = a.reduce((sum, i) => sum + seats[i].x, 0) / a.length
     const bx = b.reduce((sum, i) => sum + seats[i].x, 0) / b.length
@@ -435,6 +476,7 @@ export function buildScene(input: SceneInput): Scene {
     chairW,
     polygons,
     rowLabels,
+    tableLabels,
     rulers,
     stage,
     stageSpec: stageSpec ?? null,
