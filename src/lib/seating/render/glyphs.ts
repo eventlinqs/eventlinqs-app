@@ -11,53 +11,90 @@
 import type { GlyphTier } from './lod'
 
 /**
- * The chair, matched to the benchmark's anatomy: a TALL rounded BACK, two
- * TALL ARMREST VERTICALS flanking the seat pan at full stroke weight (the
- * founder's Correction 1: armrests must read unmistakably as armrests at
- * 24px, visibly separate from both the back and the pan), and the PAN
- * between them. Every part keeps a >= 1.8-unit clear gap from its
- * neighbours so the separation survives the stroke. Three degradation
- * tiers: full (back, pan, arms), mid (back, pan), mark (one form).
+ * The chair, redrawn 2026-07-27 to the benchmark's tub-chair anatomy: ONE
+ * closed silhouette, PERFECTLY SYMMETRICAL about the vertical centreline
+ * x = 12. Every horizontal coordinate below pairs under the mirror
+ * m(x) = 24 - x (1 <-> 23, 4.3 <-> 19.7), which is what makes the mirrored
+ * halves match exactly. The proof rasterises each tier and compares it
+ * against its own horizontal flip, so a future edit that breaks the pairing
+ * fails visibly instead of shipping.
+ *
+ * Anatomy, in the authored 24-box, drawn extent inset to x 1..23 so the
+ * screen-fixed outline never clips at the box edge (glyph width W = 22,
+ * assembly height 20.46, aspect 1.075: square, slightly wider than tall):
+ *
+ *   BACK  full glyph width, top 45% of the assembly, r = 30% of its height
+ *   GAP   8% of the assembly height, still open at 24px
+ *   PAN   70% of glyph width, centred, the lower 40%
+ *   ARMS  15% of glyph width each, pan edge to glyph edge, pan height
+ *
+ * The armrests are SUPPORTING: they sit inside the back's own width and
+ * never outboard of it, which is what the previous revision broke by
+ * scaling them into the dominant forms.
+ *
+ * Three degradation tiers, one silhouette throughout: full (back, pan,
+ * arms), mid (back and pan, the identical paths minus the arms), mark (one
+ * closed stepped form, never a plain square).
  */
 
-/** Back: x 6..18 (w 12), y 1.7..12.9 (h 11.2), r 3. */
+/** Back: x 1..23 (w 22, full glyph width), y 1.77..11.67 (h 9.9), r 3. */
 export const CHAIR_BACK_PATH =
-  'M9 1.7h6a3 3 0 0 1 3 3v5.2a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3V4.7a3 3 0 0 1 3-3Z'
+  'M4 1.77h16a3 3 0 0 1 3 3v3.9a3 3 0 0 1-3 3H4a3 3 0 0 1-3-3V4.77a3 3 0 0 1 3-3Z'
 
-/** Pan: x 6..18, y 14.7..22.3 (h 7.6), r 2.4: between the armrests. */
+/** Pan: x 4.3..19.7 (w 15.4, 70% of glyph width), y 13.43..22.23 (h 8.8), r 2.2. */
 export const CHAIR_PAN_PATH =
-  'M8.4 14.7h7.2a2.4 2.4 0 0 1 2.4 2.4v2.8a2.4 2.4 0 0 1-2.4 2.4H8.4A2.4 2.4 0 0 1 6 19.9v-2.8a2.4 2.4 0 0 1 2.4-2.4Z'
+  'M6.5 13.43h11a2.2 2.2 0 0 1 2.2 2.2v4.4a2.2 2.2 0 0 1-2.2 2.2h-11a2.2 2.2 0 0 1-2.2-2.2v-4.4a2.2 2.2 0 0 1 2.2-2.2Z'
 
 /**
- * Armrests: TALL verticals (w 3.2, h 12.6, more than half the glyph's
- * height) flanking the pan, rounded both ends, with a 2-unit clear
- * channel to the back and the pan so they read as their own strokes at
- * 24px under the 1.25px screen-fixed outline.
+ * Armrests: narrow verticals (w 3.3 = 15% of glyph width) filling the space
+ * between the pan's edge and the glyph's edge, at the pan's own height so
+ * the lower band reads as one seat. Left x 1..4.3, right x 19.7..23: exact
+ * mirrors.
  */
 export const CHAIR_ARM_LEFT_PATH =
-  'M0.8 10.3a1.6 1.6 0 0 1 3.2 0v9.4a1.6 1.6 0 0 1-3.2 0Z'
+  'M2.2 13.43h0.9a1.2 1.2 0 0 1 1.2 1.2v6.4a1.2 1.2 0 0 1-1.2 1.2h-0.9a1.2 1.2 0 0 1-1.2-1.2v-6.4a1.2 1.2 0 0 1 1.2-1.2Z'
 export const CHAIR_ARM_RIGHT_PATH =
-  'M20 10.3a1.6 1.6 0 0 1 3.2 0v9.4a1.6 1.6 0 0 1-3.2 0Z'
+  'M20.9 13.43h0.9a1.2 1.2 0 0 1 1.2 1.2v6.4a1.2 1.2 0 0 1-1.2 1.2h-0.9a1.2 1.2 0 0 1-1.2-1.2v-6.4a1.2 1.2 0 0 1 1.2-1.2Z'
 
 /**
- * The MID tier (10 to 20px) drops the armrests, so its back and pan widen
- * to the full box and the chair keeps its presence at small sizes; the
- * full tier's narrower parts exist only to make room for the armrest
- * verticals. Back: x 3..21, y 1.7..12.9, r 3.2. Pan: x 4..20, y
- * 14.7..22.3, r 2.4.
+ * The MID tier (10 to 20px) is the SAME back and pan minus the armrests, so
+ * the silhouette does not change shape as the map zooms: the back keeps the
+ * full glyph width and the pan stays at 70%, which is what keeps it reading
+ * as a chair rather than as two equal stacked bars.
  */
-export const CHAIR_MID_BACK_PATH =
-  'M6.2 1.7h11.6a3.2 3.2 0 0 1 3.2 3.2v4.8a3.2 3.2 0 0 1-3.2 3.2H6.2A3.2 3.2 0 0 1 3 9.7V4.9a3.2 3.2 0 0 1 3.2-3.2Z'
-export const CHAIR_MID_PAN_PATH =
-  'M6.4 14.7h11.2a2.4 2.4 0 0 1 2.4 2.4v2.8a2.4 2.4 0 0 1-2.4 2.4H6.4A2.4 2.4 0 0 1 4 19.9v-2.8a2.4 2.4 0 0 1 2.4-2.4Z'
+export const CHAIR_MID_BACK_PATH = CHAIR_BACK_PATH
+export const CHAIR_MID_PAN_PATH = CHAIR_PAN_PATH
 
-/** Mark below 10px: one rounded seat-from-above form, wider than tall. */
+/**
+ * Mark below 10px: ONE closed chair silhouette, a full-width back stepping
+ * in to a narrower pan. The step is 4.5 units per side (1.5px at 8px), so
+ * the notch where back meets pan survives at the smallest size. Never a
+ * plain square.
+ *
+ * The pan here is 59% of glyph width, narrower than the 70% the full and
+ * mid tiers use, and that difference is deliberate. Variants at 70% were
+ * rendered at 6, 8 and 10px and compared: at 6px a 3.3-unit step washes out
+ * and the glyph collapses to a rounded square, which is the one outcome
+ * this tier may not produce. 4.5 units per side is the smallest step that
+ * still reads at 6px.
+ */
 export const CHAIR_MARK_PATH =
-  'M6 4h12a4 4 0 0 1 4 4v9a3.5 3.5 0 0 1-3.5 3.5h-13A3.5 3.5 0 0 1 2 17V8a4 4 0 0 1 4-4Z'
+  'M4 1.77h16a3 3 0 0 1 3 3v7.73h-4.5v7.33a2.4 2.4 0 0 1-2.4 2.4H7.9a2.4 2.4 0 0 1-2.4-2.4V12.5H1V4.77a3 3 0 0 1 3-3Z'
 
-/** The accessibility mark drawn inside the back on accessible seats. */
+/**
+ * The accessibility mark drawn inside the back on accessible seats.
+ *
+ * The SAME pictogram as before (head, backrest, arm, wheel), uniformly
+ * scaled to 0.655 and recentred on the glyph's centreline so it sits inside
+ * the redrawn back with clear margin. It needed refitting: measured against
+ * the old back it already overran the bottom stroke by 0.98 units, and the
+ * redrawn back is 1.23 units shorter, which took the overrun to 2.21. The
+ * scale accounts for the 1.3 stroke, which adds 0.65 of ink beyond the path
+ * on every side: ink now clears both the back's top and bottom strokes.
+ * Re-measure the same way if either shape changes.
+ */
 export const CHAIR_ACCESS_PATH =
-  'M10.6 3.4a1.1 1.1 0 1 0 2.2 0a1.1 1.1 0 1 0-2.2 0M11.7 5v3.2h2.6M11.7 6.6h2.2M9.2 7.2a3 3 0 1 0 4.6 3.4'
+  'M11.48 4.07a0.72 0.72 0 1 0 1.44 0a0.72 0.72 0 1 0-1.44 0M12.2 5.11v2.1h1.7M12.2 6.16h1.44M10.56 6.55a1.97 1.97 0 1 0 3.01 2.23'
 
 /** The authored box every glyph lives in. */
 export const GLYPH_BOX = 24

@@ -53,7 +53,13 @@ const MOBILE = { ...devices['iPhone 13'] }
 const C = SEAT_STATE_COLORS
 const HARBOUR = '#1F5673'
 const BENCH = 'docs/design/seating-final-2026-07-26/r47/trybooking-buyer-01.png'
-const proofs = { base: BASE, steps: {} }
+// A partial run (a single step) must NEVER erase the record of the steps it
+// did not run: the results file is loaded first and only the steps that
+// actually execute are overwritten. Without this, `... chair` silently
+// deleted the room, LOD, assertion and probe evidence from the last full run.
+const RESULTS = `${OUT}/seating-final-proofs.json`
+const previous = fs.existsSync(RESULTS) ? JSON.parse(fs.readFileSync(RESULTS, 'utf8')) : { steps: {} }
+const proofs = { base: BASE, ranSteps: [...STEPS], steps: { ...(previous.steps ?? {}) } }
 
 async function openSeats(page, slug) {
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -336,6 +342,47 @@ if (STEPS.has('chair')) {
     `<div style="font:700 12px 'Segoe UI',Arial,sans-serif;letter-spacing:.14em;color:${C.night};margin-bottom:14px">${title}</div>` +
     `<div style="display:flex;align-items:flex-start;gap:10px">${inner}</div></div>`
 
+  // ── The symmetry check: rasterise each tier, flip it, compare ────────────
+  // The chair regressed twice by losing mirror symmetry, so this is measured
+  // from the SAME path strings the renderer uses, not asserted. Each tier is
+  // filled solid at 480px, flopped about the image centre (which is the
+  // glyph's own centreline x = 12 in the 0..24 viewBox), and differenced
+  // pixel by pixel. Any pixel off by more than the antialiasing floor fails.
+  const TIER_PARTS = {
+    full: [CHAIR_BACK_PATH, CHAIR_PAN_PATH, CHAIR_ARM_LEFT_PATH, CHAIR_ARM_RIGHT_PATH],
+    mid: [CHAIR_MID_BACK_PATH, CHAIR_MID_PAN_PATH],
+    mark: [CHAIR_MARK_PATH],
+  }
+  const symmetry = {}
+  for (const [tier, paths] of Object.entries(TIER_PARTS)) {
+    const svg = Buffer.from(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="480" viewBox="0 0 24 24">` +
+        paths.map(d => `<path d="${d}" fill="#000"/>`).join('') +
+        `</svg>`,
+    )
+    const base = sharp(svg).greyscale()
+    const [a, b] = await Promise.all([
+      base.clone().raw().toBuffer(),
+      base.clone().flop().raw().toBuffer(),
+    ])
+    let maxDiff = 0
+    let offPixels = 0
+    for (let i = 0; i < a.length; i++) {
+      const d = Math.abs(a[i] - b[i])
+      if (d > maxDiff) maxDiff = d
+      if (d > 2) offPixels++
+    }
+    symmetry[tier] = { maxDiff, offPixels, match: offPixels === 0 }
+    console.log(
+      `[final] symmetry ${tier}: ${offPixels === 0 ? 'MATCH' : 'MISMATCH'} ` +
+        `(pixels off ${offPixels}, max channel delta ${maxDiff})`,
+    )
+  }
+  proofs.steps.chairSymmetry = symmetry
+  if (Object.values(symmetry).some(s => !s.match)) {
+    throw new Error('ABORT: chair glyph is not mirror-symmetrical about its centreline')
+  }
+
   const bench = {}
   for (const [state, box] of Object.entries(CHIPS)) {
     bench[state] = { 24: await crop(box, 24), 14: await crop(box, 14), 8: await crop(box, 8) }
@@ -349,13 +396,38 @@ if (STEPS.has('chair')) {
     cell(img(bench.available[24]), 'TryBooking available') + cell(img(bench.sold[24]), 'TryBooking sold') +
     cell(img(bench.selected[24]), 'TryBooking selected') +
     cell(`<div style="font:600 11px 'Segoe UI',Arial,sans-serif;color:${C.stoneText}">none</div>`, 'TryBooking held')
+  // The symmetry row: each tier at 64px beside its own mirrored copy, with
+  // the measured verdict underneath, so the founder can see the test as well
+  // as read it.
+  const mirrorCell = (paths, label, result) => {
+    const svg = flip =>
+      `<svg width="64" height="64" viewBox="0 0 24 24" style="display:block">` +
+      `<g${flip ? ' transform="translate(24 0) scale(-1 1)"' : ''}>` +
+      paths.map(d => `<path d="${d}" fill="none" stroke="${HARBOUR}" stroke-width="1.25" stroke-linejoin="round"/>`).join('') +
+      `</g></svg>`
+    return (
+      `<div style="text-align:center;min-width:170px">` +
+      `<div style="display:flex;align-items:center;justify-content:center;gap:10px">${svg(false)}${svg(true)}</div>` +
+      `<div style="font:600 11px 'Segoe UI',Arial,sans-serif;color:${C.dusk};margin-top:8px">${label}</div>` +
+      `<div style="font:700 11px 'Segoe UI',Arial,sans-serif;color:${result.match ? '#0F6B3D' : '#DC2626'};margin-top:3px">` +
+      `${result.match ? 'MIRRORED HALVES MATCH' : 'MISMATCH'}</div>` +
+      `<div style="font:400 10px 'Segoe UI',Arial,sans-serif;color:${C.stoneText};margin-top:2px">` +
+      `${result.offPixels} pixels off at 480px</div></div>`
+    )
+  }
+  const symmetryRow =
+    mirrorCell(TIER_PARTS.full, 'Full tier, drawn then mirrored', symmetry.full) + gap +
+    mirrorCell(TIER_PARTS.mid, 'Mid tier, drawn then mirrored', symmetry.mid) + gap +
+    mirrorCell(TIER_PARTS.mark, 'Mark tier, drawn then mirrored', symmetry.mark)
+
   const html =
     `<body style="margin:0;background:${C.veil};padding:26px 30px;width:1200px;box-sizing:border-box">` +
     `<div style="font:700 13px 'Segoe UI',Arial,sans-serif;letter-spacing:.16em;color:${C.night}">CHAIR FINAL: THE RENDERER'S OWN PATHS BESIDE TRYBOOKING</div>` +
     `<div style="font:400 11px 'Segoe UI',Arial,sans-serif;color:${C.stoneText};margin-top:6px">Paths imported from src/lib/seating/render/glyphs.ts; benchmark cropped from ${BENCH}</div>` +
     card('SIZES: 24PX (FULL), 14PX (MID), 8PX (MARK)', sizes) +
-    card('STATES AT 24PX', states) + '</body>'
-  const page = await browser.newPage({ viewport: { width: 1240, height: 520 }, deviceScaleFactor: 2 })
+    card('STATES AT 24PX', states) +
+    card('SYMMETRY CHECK: EACH TIER AGAINST ITS OWN MIRROR', symmetryRow) + '</body>'
+  const page = await browser.newPage({ viewport: { width: 1240, height: 760 }, deviceScaleFactor: 2 })
   await page.setContent(html, { waitUntil: 'load' })
   const bad = await page.evaluate(() => [...document.images].filter(i => !i.complete || i.naturalWidth === 0).length)
   if (bad) throw new Error(`ABORT: ${bad} benchmark crop(s) failed to load`)
@@ -494,6 +566,6 @@ if (STEPS.has('probe')) {
   proofs.steps.probe = demo
 }
 
-fs.writeFileSync(`${OUT}/seating-final-proofs.json`, JSON.stringify(proofs, null, 2))
+fs.writeFileSync(RESULTS, JSON.stringify(proofs, null, 2))
 await browser.close()
 console.log('[final] DONE')

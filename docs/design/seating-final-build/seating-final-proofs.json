@@ -1,5 +1,8 @@
 {
   "base": "http://localhost:3131",
+  "ranSteps": [
+    "chair"
+  ],
   "steps": {
     "chair": {
       "written": true
@@ -33,6 +36,23 @@
         "textText": 0,
         "textInk": 0,
         "verdict": "PASS"
+      }
+    },
+    "chairSymmetry": {
+      "full": {
+        "maxDiff": 0,
+        "offPixels": 0,
+        "match": true
+      },
+      "mid": {
+        "maxDiff": 0,
+        "offPixels": 0,
+        "match": true
+      },
+      "mark": {
+        "maxDiff": 0,
+        "offPixels": 0,
+        "match": true
       }
     }
   }
