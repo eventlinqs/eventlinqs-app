@@ -11,6 +11,56 @@ Nothing here is inferred from a filename.
 
 ---
 
+## SEATING IS CLOSED (founder ruling, 28 July 2026)
+
+Both remaining open items were reviewed and ACCEPTED by the founder. They are
+recorded here as **accepted limitations, not defects**, so a future reader does
+not reopen them as bugs or "fix" them by weakening the evidence.
+
+### Accepted limitation 1: cabaret Tables 5 to 8 show the name without the price at 390
+
+**What a buyer sees.** At the overview zoom on the cabaret room at 390, the
+middle row of four tables carries its table name with no price beneath it. The
+other eight polygons carry name and price.
+
+**Why it stands.** That row is boxed in: row 1 sits immediately above it and
+row 3 immediately below, its own hull is too small to hold two legible lines,
+and every outside spot is occupied by a neighbouring polygon. Four approaches
+were built and are in the code, each of which improved the count and none of
+which closed the last four: a size ladder down to 7px, a single-line
+"name price" variant for one-line gaps, placement on the polygon's own flat
+tint, and a width cap so no polygon starves its neighbours. A fifth attempt
+would have meant text drawn on ink, which the drawn-frame gate correctly
+rejects, or labels overlapping each other.
+
+**Why it is acceptable.** The buyer sees the table name, one tap opens that
+section, and the ticket rail beside the chart already lists every tier with its
+price. The information is never withheld, only deferred by one tap for four
+polygons out of twelve.
+
+**What must NOT be done about it.** Do not respace the cabaret proof room to
+make the label fit. The proof room exists to show how a real organiser spaces a
+cabaret floor; respacing it to flatter a label would make the evidence
+misrepresent the product.
+
+### Accepted limitation 2: the two-block room shows no STAGE caption at 390
+
+**What a buyer sees.** At the fitted zoom on the two-block room at 390, the
+stage is drawn but carries no STAGE caption.
+
+**Why it stands.** That room's stage sits hard against the top edge of the
+sheet with the seating immediately beneath it, so there is no clear paper above
+it and none below. A below-the-stage position was implemented and reverted: the
+drawn-frame gate rejected it twice, first for landing on the apron stroke and
+then for landing on the seating. The revert was correct. The room's own section
+label (HOUSE, with its price) identifies the plan.
+
+**Standing rule this preserves.** A caption is never drawn on ink to satisfy a
+checklist. The gate is the arbiter, and a missing caption is preferable to an
+illegible one.
+
+---
+
 ## 0A. ROUND 3 (27 July 2026): zone prices, mobile chrome, the frame, the env guard
 
 - **Every polygon is named.** The cabaret room drew twelve anonymous blobs at

@@ -135,7 +135,23 @@ pre-existing, was not in the brief, and is now recorded rather than left silent.
 Tables 5 to 8 showing a name without a price is acceptable at 390, or whether
 the cabaret proof room should be respaced so every table has room for both.
 
-## Phase 4 gate
+## Phase 4 gate (at the time of reporting)
 
 NOT MET: 0. PARTIAL: 2 (Job 1.2 and 1.5, the same finding counted twice).
 Unresolved adversarial findings: 0. Everything else MET.
+
+## CLOSED by founder ruling, 28 July 2026
+
+Both remaining items were put to the founder and ACCEPTED as limitations rather
+than defects. They are recorded in `docs/design/SEATING-FINAL.md` under
+"SEATING IS CLOSED", with the reasoning and, for the cabaret row, an explicit
+instruction NOT to respace the proof room to make a label fit.
+
+- Job 1.2 and 1.5, cabaret Tables 5 to 8 name without price at 390:
+  **ACCEPTED, CLOSED.** The buyer sees the table name, one tap opens the
+  section, and the rail lists every tier with its price.
+- The two-block room's missing STAGE caption at 390: **ACCEPTED, CLOSED.** The
+  revert of the below-stage position was confirmed correct.
+
+Final state: NOT MET 0, PARTIAL 0, ACCEPTED 2, unresolved adversarial findings
+0. Seating is closed.
