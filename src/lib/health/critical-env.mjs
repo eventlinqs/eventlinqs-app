@@ -15,72 +15,27 @@
 
 /**
  * @typedef {{ name: string, buildCritical: boolean, publicVar: boolean,
- *   describe: string, resolve?: (env: Record<string,string|undefined>) => string|undefined,
+ *   describe: string, alwaysBlocking?: boolean,
+ *   resolve?: (env: Record<string,string|undefined>) => string|undefined,
  *   validate: (v: string) => { ok: boolean, reason?: string } }} EnvRule
+ *
+ * `alwaysBlocking` marks the class of failure that is NEVER a fresh-clone
+ * nuisance and never correct: pointed at the live database, running test keys on
+ * production, or carrying a variable a scope forbids. Those block wherever they
+ * fire, local included, and `ALLOW_EMPTY_PUBLIC_ENV` deliberately does not
+ * bypass them - that flag is for empty values, not for the wrong database or a
+ * guard someone switched off.
  */
 
 const nonEmpty = v => (v && v.trim().length > 0)
 
-/**
- * The PRODUCTION Supabase project ref. Not a secret: it is compiled into every
- * production browser bundle as part of NEXT_PUBLIC_SUPABASE_URL. It is named
- * here so the isolation rule below can state, concretely, which project a
- * non-production deployment must never resolve.
- */
-export const PRODUCTION_SUPABASE_REF = 'gndnldyfudbytbboxesk'
+// The project ref and the four prefix readers live in the leaf module so the
+// manifest, the manifest evaluators and these rules all share one definition.
+import { PRODUCTION_SUPABASE_REF, refFromUrl, refFromJwt, stripeKeyMode, stripeAccountRef } from '../env/refs.mjs'
+import { evaluateProcessEnv, formatFinding } from '../env/manifest-checks.mjs'
+import { ENV_MANIFEST } from '../env/manifest.mjs'
 
-/** Extract the project ref from a Supabase URL, or '' when it is not one. */
-function refFromUrl(v) {
-  const m = /^https:\/\/([a-z0-9]+)\.supabase\.co\/?$/i.exec((v ?? '').trim())
-  return m ? m[1].toLowerCase() : ''
-}
-
-/**
- * Extract the project ref from a legacy `eyJ` service-role/anon JWT. Returns ''
- * for the newer opaque `sb_secret_` / `sb_publishable_` keys, which carry no
- * readable ref - those are checked by URL alone.
- */
-function refFromJwt(v) {
-  const t = (v ?? '').trim()
-  if (!t.startsWith('eyJ')) return ''
-  try {
-    const payload = JSON.parse(Buffer.from(t.split('.')[1], 'base64').toString('utf8'))
-    return typeof payload.ref === 'string' ? payload.ref.toLowerCase() : ''
-  } catch {
-    return ''
-  }
-}
-
-/**
- * The MODE a Stripe key declares in its own prefix: 'live', 'test', or
- * 'missing'/'malformed' when there is nothing usable to read.
- *
- * Deliberately reads the prefix ONLY. Nothing here ever returns, logs or packs
- * key material.
- */
-function stripeKeyMode(v) {
-  const t = (v ?? '').trim()
-  if (t.length === 0) return 'missing'
-  const m = /^(?:pk|sk|rk)_(test|live)_/.exec(t)
-  return m ? m[1] : 'malformed'
-}
-
-/**
- * The Stripe ACCOUNT REF both key types embed after the `_51` version marker.
- *
- * A publishable key `pk_live_51T8WBhGuiZ9cvxuu...` and its matching secret key
- * `sk_live_51T8WBhGuiZ9cvxuu...` carry the same 15-character ref, which is the
- * account id minus its `acct_1` prefix (`acct_1T8WBhGuiZ9cvxuu`). Comparing the
- * two refs is how a mismatched PAIR is caught.
- *
- * Returns '' when the key is absent or not in that shape, so the caller can
- * report "unreadable" rather than silently comparing two empty strings and
- * calling that a match.
- */
-function stripeAccountRef(v) {
-  const m = /^(?:pk|sk|rk)_(?:test|live)_51([A-Za-z0-9]{15})/.exec((v ?? '').trim())
-  return m ? m[1] : ''
-}
+export { PRODUCTION_SUPABASE_REF }
 
 /** @type {EnvRule[]} */
 export const CRITICAL_ENV_RULES = [
@@ -209,6 +164,7 @@ export const CRITICAL_ENV_RULES = [
     // https://example.supabase.co) are unaffected.
     name: 'SUPABASE_ENV_ISOLATION',
     buildCritical: true,
+    alwaysBlocking: true,
     publicVar: false,
     describe: 'Only production may resolve the PRODUCTION Supabase project',
     resolve: e => {
@@ -284,6 +240,7 @@ export const CRITICAL_ENV_RULES = [
     // material can reach a build log or an alert email.
     name: 'STRIPE_LIVE_KEY_PAIRING',
     buildCritical: true,
+    alwaysBlocking: true,
     publicVar: false,
     describe: 'Production runs LIVE Stripe keys, and both keys are the same account',
     resolve: e => {
@@ -331,7 +288,98 @@ export const CRITICAL_ENV_RULES = [
       return { ok: true }
     },
   },
+  {
+    // LOCK 2 (2026-07-31). THE MANIFEST-DRIVEN BUILD GUARD. The THIRD
+    // cross-variable rule, and the one that makes every OTHER variable
+    // unbreakable rather than just the four hand-written ones above.
+    //
+    // WHAT IT CLOSES. The rules above this line are a hand-maintained list: a
+    // variable is only guarded if somebody remembered to write a rule for it.
+    // That is the same class of failure as a document that records the truth -
+    // correct on the day it was written, silently stale afterwards. This rule
+    // reads `src/lib/env/manifest.mjs`, which declares EVERY variable the code
+    // requires along with the scopes it must and must not live on, its expected
+    // shape, and whether production needs it to take a real payment. Adding a
+    // variable to the manifest is the whole change: this rule picks it up with
+    // no edit here.
+    //
+    // THIS IS THE "REQUIRED AND WELL-SHAPED" HALF, and it is bypassable by
+    // ALLOW_EMPTY_PUBLIC_ENV in a genuine emergency, exactly like the
+    // hand-written per-variable rules. The half that must NEVER be bypassable
+    // is the next rule down.
+    //
+    // WHY IT CAN ONLY SEE ITS OWN SCOPE, said plainly so a pass is not read as
+    // more than it is: a build has the environment of the scope it is building
+    // and no view of the others, and no view of the Sensitive flag. Those are
+    // store facts, and `scripts/check-env-stores.mjs` (LOCK 3) checks them
+    // against the same manifest.
+    //
+    // SECRECY: resolve() packs FINDINGS, which carry a name, a state, a reason
+    // and at most a length and an 8-character fingerprint. No value can reach a
+    // build log through this path.
+    name: 'ENV_MANIFEST_CONFORMANCE',
+    buildCritical: true,
+    publicVar: false,
+    describe: `Every variable in the manifest is present and correctly shaped for this scope (${ENV_MANIFEST.length} declared)`,
+    resolve: e => JSON.stringify(evaluateProcessEnv(e).blocking),
+    validate: v => {
+      const findings = JSON.parse(v)
+      if (!Array.isArray(findings) || findings.length === 0) return { ok: true }
+      return {
+        ok: false,
+        reason:
+          `${findings.length} manifest violation(s):\n` +
+          findings.map(f => `      - ${formatFinding(f)}`).join('\n'),
+      }
+    },
+  },
+  {
+    // LOCK 2, THE HALF THAT CANNOT BE SWITCHED OFF.
+    //
+    // Three failure classes live here, and none of them is ever a nuisance:
+    //
+    //   1. A variable PRESENT ON A SCOPE THAT FORBIDS IT. HOMEPAGE_SEED_FIXTURE
+    //      on production serves the benchmark fixture catalogue to real buyers.
+    //      A *_PREVIEW override on production points live traffic at the TEST
+    //      database. Neither errors anywhere.
+    //
+    //   2. A GUARD BYPASS FLAG LEFT SET ON A SCOPE. ALLOW_EMPTY_PUBLIC_ENV,
+    //      ALLOW_PRODUCTION_SUPABASE, ALLOW_PRICING_DRIFT and ALLOW_LOW_DISK are
+    //      one-command, one-machine escape hatches. Stored on a Vercel scope they
+    //      are permanent, invisible, and disable the very guards that protect the
+    //      platform. A bypass used once in an emergency and never removed is
+    //      indistinguishable from a bypass nobody knows about - which is why
+    //      ALLOW_EMPTY_PUBLIC_ENV must not be able to bypass the rule that
+    //      forbids ALLOW_EMPTY_PUBLIC_ENV.
+    //
+    //   3. A CROSS-VARIABLE DISAGREEMENT: a mismatched Stripe key pair, a test
+    //      key on production, a non-production scope resolving the live database,
+    //      or fewer webhook signing secrets than Stripe delivery channels.
+    //
+    // Every one of these produced NO error the last time it happened here.
+    name: 'ENV_MANIFEST_FORBIDDEN_AND_CROSS',
+    buildCritical: true,
+    alwaysBlocking: true,
+    publicVar: false,
+    describe: 'No variable sits on a scope that forbids it, no guard bypass is stored, and every cross-variable rule holds',
+    resolve: e => JSON.stringify(evaluateProcessEnv(e).alwaysBlocking),
+    validate: v => {
+      const findings = JSON.parse(v)
+      if (!Array.isArray(findings) || findings.length === 0) return { ok: true }
+      return {
+        ok: false,
+        reason:
+          `${findings.length} violation(s) of the never-bypassable class:\n` +
+          findings.map(f => `      - ${formatFinding(f)}`).join('\n'),
+      }
+    },
+  },
 ]
+
+/** Rule names whose failure blocks wherever it fires and cannot be bypassed. */
+export const ALWAYS_BLOCKING_RULES = new Set(
+  CRITICAL_ENV_RULES.filter(r => r.alwaysBlocking).map(r => r.name),
+)
 
 /**
  * Evaluate a rule against an env bag. Returns present/nonEmpty/wellFormed.

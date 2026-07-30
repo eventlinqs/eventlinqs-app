@@ -13,7 +13,7 @@
  */
 // @next/env is CommonJS, so it is imported by default export, not by name.
 import nextEnv from '@next/env'
-import { CRITICAL_ENV_RULES, evalEnvRule } from '../src/lib/health/critical-env.mjs'
+import { CRITICAL_ENV_RULES, evalEnvRule, ALWAYS_BLOCKING_RULES } from '../src/lib/health/critical-env.mjs'
 
 // RESOLVE THE ENV THE WAY next build WILL, before judging it.
 //
@@ -67,21 +67,32 @@ if (failures.length === 0) {
   process.exit(0)
 }
 
-// ── ALWAYS-BLOCKING CLASS: pointed at the PRODUCTION database ──────────────
-// Every other failure here is "a value is missing or malformed", which on a
-// local machine is a fresh-clone nuisance and only warns. Being pointed at the
-// LIVE database is a different class entirely: it is never a nuisance and never
-// correct outside production, and it has caused three near-misses in this repo
-// because `.env.local` resolves the production project. So this one blocks
-// wherever it fires, local included. The rule itself already honours the
-// explicit ALLOW_PRODUCTION_SUPABASE=1 override, so reaching here means no
-// override was set. ALLOW_EMPTY_PUBLIC_ENV deliberately does NOT bypass it:
-// that flag is for empty values, not for the wrong database.
-const productionDbFailures = failures.filter(f => f.name === 'SUPABASE_ENV_ISOLATION')
-if (productionDbFailures.length > 0) {
+// ── ALWAYS-BLOCKING CLASS ───────────────────────────────────────────────────
+// Most failures here are "a value is missing or malformed", which on a local
+// machine is a fresh-clone nuisance and only warns. A handful are a different
+// class entirely: never a nuisance, never correct, and each one has already cost
+// this project real money or real time.
+//
+//   SUPABASE_ENV_ISOLATION            pointed at the LIVE database
+//   STRIPE_LIVE_KEY_PAIRING           test keys, or a mismatched pair, on production
+//   ENV_MANIFEST_FORBIDDEN_AND_CROSS  a variable on a scope that forbids it, a
+//                                     stored guard bypass, or a cross-variable
+//                                     disagreement
+//
+// These block wherever they fire, local included, and ALLOW_EMPTY_PUBLIC_ENV
+// deliberately does NOT bypass them: that flag is for empty values, not for the
+// wrong database, not for a dead checkout, and certainly not for a guard someone
+// switched off and forgot. Each rule carries its own named, deliberate override
+// where one is legitimate (ALLOW_PRODUCTION_SUPABASE=1), so reaching here means
+// no override was set.
+//
+// The list is derived from the rules themselves (`alwaysBlocking: true`), not
+// re-typed here, so a new rule joins this class by declaring it.
+const alwaysBlockingFailures = failures.filter(f => ALWAYS_BLOCKING_RULES.has(f.name))
+if (alwaysBlockingFailures.length > 0) {
   console.error(
     `\n[public-env] ==================== BUILD BLOCKED ====================\n` +
-      productionDbFailures.map(f => `  ! ${f.name}: ${f.reason}`).join('\n') +
+      alwaysBlockingFailures.map(f => `  ! ${f.name}: ${f.reason}`).join('\n') +
       `\n[public-env] =======================================================\n`,
   )
   process.exit(1)
@@ -90,10 +101,10 @@ if (productionDbFailures.length > 0) {
 const summary = failures.map(f => `  - ${f.name}: ${f.reason}`).join('\n')
 if (onVercel && !bypass) {
   console.error(
-    `\n[public-env] BUILD BLOCKED. ${failures.length} critical public variable(s) are empty or malformed:\n${summary}\n\n` +
-      `These NEXT_PUBLIC_ values are compiled into the browser bundle at build time. Shipping them empty silently breaks the feature with no runtime error (the exact map failure this guard exists to prevent).\n` +
-      `Fix: set the correct value in Vercel → Project → Settings → Environment Variables for this scope, then redeploy.\n` +
-      `Emergency bypass (not recommended): set ALLOW_EMPTY_PUBLIC_ENV=1.\n`,
+    `\n[public-env] BUILD BLOCKED. ${failures.length} build-critical rule(s) failed:\n${summary}\n\n` +
+      `Why this blocks: a NEXT_PUBLIC_ value is compiled into the browser bundle at build time, so shipping it empty or malformed breaks the feature with no runtime error (the exact map failure this guard exists to prevent), and a variable that fails its declared shape in src/lib/env/manifest.mjs is wrong in a way nothing downstream will report.\n` +
+      `Fix: set the correct value in Vercel → Project → Settings → Environment Variables for this scope, then redeploy. The manifest states what each variable must look like and which scopes it belongs on.\n` +
+      `Emergency bypass (not recommended, and it does NOT cover the always-blocking class above): set ALLOW_EMPTY_PUBLIC_ENV=1.\n`,
   )
   process.exit(1)
 }
