@@ -7,6 +7,8 @@ import { isPushConfigured } from '@/lib/notifications/web-push'
 import { selfProbe, driftWatchdog, endpointConfigCheck } from '@/lib/health/payment-checks'
 import { senderDomainsInUse } from '@/lib/email/send'
 import { CRITICAL_ENV_RULES, evalEnvRule } from '@/lib/health/critical-env.mjs'
+import { evaluateProcessEnv, evaluateStores } from '@/lib/env/manifest-checks.mjs'
+import { githubActionsNames } from '@/lib/env/manifest.mjs'
 
 /**
  * PLATFORM HEALTH SENTINEL - the check library.
@@ -298,7 +300,131 @@ async function checkEnvVars(): Promise<HealthResult> {
   }
 }
 
-export const CHECK_IDS = ['payment', 'database', 'email', 'storage', 'maps', 'ai', 'push', 'pages', 'ssl', 'env'] as const
+// (l) LOCK 4: MANIFEST DRIFT, checked on the sentinel's own schedule.
+//
+// WHY A SEPARATE CHECK FROM (k). Check (k) asks whether the ten hand-written
+// critical rules hold. This one asks whether the WHOLE declared contract in
+// src/lib/env/manifest.mjs holds for this deployment: every variable on the
+// right scope, in the right shape, with no variable present that this scope
+// forbids and no cross-variable disagreement. Adding a variable to the manifest
+// extends this check with no edit here.
+//
+// WHAT IT CAN AND CANNOT SEE, said plainly so a green result is not read as more
+// than it is. Vercel SNAPSHOTS a deployment's environment at build time, so this
+// check sees the configuration the serving deployment was built with. That
+// catches a deployment that shipped wrong, and it catches drift in anything read
+// at request time. It does NOT, on its own, catch somebody editing a variable in
+// the Vercel dashboard after the deploy: that edit does not reach the running
+// deployment until the next build.
+//
+// Closing that last gap needs a read of the STORE, which needs a Vercel API
+// token. When VERCEL_API_TOKEN is present this check reads the live store and
+// compares it to the manifest, which detects a dashboard edit within one
+// sentinel run. When it is absent, the check says so as a NAMED WARNING rather
+// than passing quietly, because a capability that silently does not run is the
+// same failure this whole system exists to prevent.
+async function checkEnvManifest(): Promise<HealthResult> {
+  const snapshot = evaluateProcessEnv(process.env as Record<string, string | undefined>)
+  const store = await checkManifestAgainstStore()
+
+  const problems: string[] = []
+  if (snapshot.findings.length > 0) {
+    problems.push(
+      `deployment snapshot (${snapshot.scope}): ` +
+        snapshot.findings.map((f: { name: string; reason: string }) => `${f.name} ${f.reason}`).join(' | '),
+    )
+  }
+  if (store.findings.length > 0) {
+    problems.push(`live store: ${store.findings.join(' | ')}`)
+  }
+
+  if (problems.length === 0) {
+    return {
+      id: 'manifest',
+      label: 'Environment manifest (scope, shape, cross-variable)',
+      severity: 'critical',
+      ok: true,
+      detail:
+        `all ${snapshot.checked} declared variables conform on the ${snapshot.scope} snapshot; ` +
+        `live store: ${store.mode}`,
+    }
+  }
+  return {
+    id: 'manifest',
+    label: 'Environment manifest (scope, shape, cross-variable)',
+    severity: 'critical',
+    ok: false,
+    detail: problems.join(' || '),
+    probableCause:
+      snapshot.alwaysBlocking.length > 0
+        ? 'a variable is on a scope that forbids it, a guard bypass is stored on the deployment, or two variables that must agree do not'
+        : 'a declared variable is missing, empty or malformed on the deployment serving traffic',
+    action:
+      'Open src/lib/env/manifest.mjs: it states what each variable must look like and which scopes it belongs on. ' +
+      'Fix the value in Vercel → Settings → Environment Variables for the named scope, then REDEPLOY (NEXT_PUBLIC_ values are baked at build time). ' +
+      'Run `node scripts/check-env-stores.mjs` locally for the full cross-store picture.',
+  }
+}
+
+/**
+ * The live-store half of LOCK 4, which is the only half that can catch a
+ * dashboard edit made AFTER the deploy.
+ *
+ * Reads the project's environment records from the Vercel API and checks scope
+ * membership and branch scoping against the manifest. Values are never
+ * requested: `decrypt` is not set, so the response carries metadata only and no
+ * secret can travel this path even in principle.
+ *
+ * Returns `mode` so a green sentinel is honest about which half actually ran.
+ */
+async function checkManifestAgainstStore(): Promise<{ mode: string; findings: string[] }> {
+  const token = process.env.VERCEL_API_TOKEN
+  const projectId = process.env.VERCEL_PROJECT_ID
+  const teamId = process.env.VERCEL_TEAM_ID
+  if (!token || !projectId) {
+    return {
+      mode:
+        'NOT CHECKED (no VERCEL_API_TOKEN + VERCEL_PROJECT_ID on this deployment, so a dashboard edit made after this deploy would not be seen until the next build)',
+      findings: [],
+    }
+  }
+  try {
+    const url = new URL(`https://api.vercel.com/v10/projects/${projectId}/env`)
+    if (teamId) url.searchParams.set('teamId', teamId)
+    const res = await fetch(url, {
+      headers: { authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(15000),
+    })
+    if (!res.ok) return { mode: `unreadable (HTTP ${res.status})`, findings: [`the Vercel environment API returned HTTP ${res.status}, so live-store drift is UNVERIFIED`] }
+    const body = (await res.json()) as { envs?: { key: string; target?: string[]; gitBranch?: string | null }[] }
+    const records = (body.envs ?? []).flatMap(e =>
+      (e.target ?? []).map(t => ({
+        name: e.key,
+        scope: t,
+        gitBranch: e.gitBranch ?? null,
+        // Values were never requested, so read-back exposure is unknown here and
+        // is checked by scripts/check-env-stores.mjs, which can probe it.
+        readable: null as boolean | null,
+        length: 0,
+        fp: null as string | null,
+      })),
+    )
+    // GitHub Actions membership is not visible from here either; that half is
+    // the store checker's. Passing the declared names keeps this from reporting
+    // a false absence.
+    const verdict = evaluateStores({ records, githubSecrets: githubActionsNames() })
+    return {
+      mode: `checked (${records.length} records)`,
+      findings: verdict.findings
+        .filter((f: { state: string }) => f.state !== 'missing-github-secret')
+        .map((f: { name: string; scope?: string; reason: string }) => `${f.name} [${f.scope}] ${f.reason}`),
+    }
+  } catch (err) {
+    return { mode: 'unreadable', findings: [`the Vercel environment API could not be reached: ${String(err).slice(0, 100)}`] }
+  }
+}
+
+export const CHECK_IDS = ['payment', 'database', 'email', 'storage', 'maps', 'ai', 'push', 'pages', 'ssl', 'env', 'manifest'] as const
 export type CheckId = (typeof CHECK_IDS)[number]
 
 /**
@@ -321,6 +447,7 @@ export async function runAllChecks(opts?: { drill?: string }): Promise<HealthRes
     timed('pages', () => checkPrimaryPages(origin)),
     timed('ssl', () => checkSslDomain(origin)),
     timed('env', () => checkEnvVars()),
+    timed('manifest', () => checkEnvManifest()),
   ])
 
   if (!drill) return results
