@@ -184,14 +184,27 @@ jobs:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           set -u
+          # A MISSING SECRET IS A FAILURE, NOT A SKIP. This step used to warn and
+          # exit 0, so from 2026-07-12 to 2026-07-30 production deployed with no
+          # sentinel probe at all and the gate reported green every time. A gate
+          # that quietly switches itself off when its input is absent is worse
+          # than no gate, because everyone reads the tick.
           if [ -z "${CRON_SECRET:-}" ]; then
-            echo "::warning::CRON_SECRET not configured as a GitHub secret; sentinel probe skipped. Add it at go-live (docs/payments/WEBHOOK-CANON.md)."
-            exit 0
+            echo "::error::CRON_SECRET is not configured as a GitHub Actions secret, so the payment sentinel cannot be probed."
+            echo "::error::Fix: gh secret set CRON_SECRET (the same value as the Vercel Production scope). See docs/payments/WEBHOOK-CANON.md."
+            exit 1
           fi
-          # -L so the probe survives the canonical 301: a redirected response
-          # body would never contain "ok":true and the gate would red for the
-          # wrong reason. Uses $PROD_URL so there is one host in this file.
-          BODY=$(curl -sSL -m 30 -H "Authorization: Bearer ${CRON_SECRET}" "$PROD_URL/api/cron/webhook-sentinel")
+          # NO REDIRECTS. curl DROPS the Authorization header across a cross-host
+          # redirect, so probing a host that 301s to the canonical one arrives
+          # unauthenticated and 401s, which reads exactly like a wrong secret.
+          # Asserting zero redirects names the real fault instead.
+          REDIRECTS=$(curl -s -o /dev/null -w '%{num_redirects}' -m 30 "$PROD_URL/api/cron/webhook-sentinel")
+          if [ "$REDIRECTS" != "0" ]; then
+            echo "::error::$PROD_URL redirected ($REDIRECTS hop(s)). A bearer token is dropped across a cross-host redirect,"
+            echo "::error::so this probe can never authenticate. Point PROD_URL at the canonical host."
+            exit 1
+          fi
+          BODY=$(curl -sS -m 30 -H "Authorization: Bearer ${CRON_SECRET}" "$PROD_URL/api/cron/webhook-sentinel")
           echo "$BODY"
           echo "$BODY" | grep -q '"ok":true' || { echo "payment sentinel RED"; exit 1; }
           echo "payment sentinel GREEN"
@@ -202,13 +215,15 @@ jobs:
         run: |
           set -u
           if [ -z "${CRON_SECRET:-}" ]; then
-            echo "::warning::CRON_SECRET not configured; platform health probe skipped. Add it at go-live (docs/ops/HEALTH-ALERTS.md)."
-            exit 0
+            echo "::error::CRON_SECRET is not configured, so the platform health sentinel cannot be probed."
+            echo "::error::Fix: gh secret set CRON_SECRET. See docs/ops/HEALTH-ALERTS.md."
+            exit 1
           fi
           # Runs the full check battery after deploy. The sentinel itself emails
           # the founder on any CRITICAL fault; here we fail the gate on critical
           # (warnings like push/AI config are known soft gaps, not blockers).
-          BODY=$(curl -sSL -m 60 -H "Authorization: Bearer ${CRON_SECRET}" "$PROD_URL/api/cron/health-sentinel")
+          # No -L, for the same bearer-dropping reason as the step above.
+          BODY=$(curl -sS -m 60 -H "Authorization: Bearer ${CRON_SECRET}" "$PROD_URL/api/cron/health-sentinel")
           echo "$BODY"
           if echo "$BODY" | grep -q '"status":"critical"'; then echo "platform health CRITICAL"; exit 1; fi
           echo "platform health OK (green or warnings only)"

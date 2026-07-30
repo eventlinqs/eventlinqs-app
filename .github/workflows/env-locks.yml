@@ -1,0 +1,87 @@
+name: env locks
+
+# LOCK 3 and LOCK 4, on a schedule, in CI.
+#
+# WHY A SCHEDULE. The build guard runs when something is deployed and the runtime
+# sentinel sees only the deployment it is serving. Neither notices a
+# configuration change made between deploys. This workflow runs on its own clock,
+# so a drift that nobody deployed still gets found.
+#
+# WHY THIS IS A WORKING ALERT PATH TODAY. The platform's email alerts go through
+# Resend, and Resend will only send from a verified domain, which is exactly how
+# a detected fault once stayed silent. A failing GitHub Actions run does not
+# depend on Resend at all: GitHub emails the repository owner on a failed
+# scheduled run and the failure is visible in the Actions UI. That is the second,
+# independent delivery path.
+#
+# Jobs:
+#   locks        proves every lock can still fire (pure, no credentials at all)
+#   cross-store  proves the Vercel Production and GitHub Actions copies of
+#                CRON_SECRET are the SAME secret, by authenticating with one
+#                against the deployment that holds the other
+
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'src/lib/env/**'
+      - 'src/lib/health/**'
+      - 'scripts/check-env-stores.mjs'
+      - 'scripts/check-public-env.mjs'
+      - 'scripts/verify/env-locks-verify.mjs'
+      - '.github/workflows/env-locks.yml'
+  schedule:
+    # Every six hours. Configuration drift is not urgent to the minute, but a
+    # week of silence is how the last one survived eighteen days.
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: env-locks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  locks:
+    name: every lock can still fire
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      # No dependencies and no credentials: the harness drives the evaluators
+      # over synthetic values built from repeated characters.
+      - name: break and restore every declared expectation
+        run: node scripts/verify/env-locks-verify.mjs
+
+  cross-store:
+    name: CRON_SECRET agrees across both stores
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Scheduled and manual only. A push from a fork must never be handed the
+    # production bearer.
+    if: ${{ github.event_name != 'push' || github.repository == 'eventlinqs/eventlinqs-app' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: the GitHub Actions copy authenticates against Vercel Production
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -u
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo "::error::CRON_SECRET is not a repository secret. The two stores cannot be compared, and every"
+            echo "::error::sentinel probe in the post-deploy gate is skipped. Fix: gh secret set CRON_SECRET"
+            exit 1
+          fi
+          # NOT VERIFIED is a failure here, never a warning that exits 0. A gate
+          # that skips itself when its input is missing is how this exact check
+          # stayed silent from 2026-07-12 to 2026-07-30.
+          node scripts/check-env-stores.mjs --mode=handshake
