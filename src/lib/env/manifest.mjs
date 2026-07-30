@@ -828,6 +828,19 @@ export const ENV_MANIFEST = [
  * @property {string}   describe
  * @property {string[]} appliesTo  the scopes the rule is evaluated on
  * @property {'value'|'store'} needs
+ * @property {string}   [publishable]   stripeAccountPair: the publishable key
+ * @property {string}   [secret]        stripeAccountPair: the secret key
+ * @property {string[]} [members]       stripeModeAgreement: the keys that must agree
+ * @property {string}   [requiredMode]  stripeModeAgreement: 'live' or 'test'
+ * @property {string[]} [urlVars]       productionRefIsolation: url vars, most-preferred first
+ * @property {string[]} [keyVars]       productionRefIsolation: key vars, most-preferred first
+ * @property {string}   [rawKeyVar]     productionRefIsolation: the base key a direct read would find
+ * @property {string}   [variable]      requiredListOnScope / crossStore: the variable
+ * @property {string}   [scope]         requiredListOnScope: the scope it is required on
+ * @property {number}   [minimumEntries] requiredListOnScope: fewest acceptable list entries
+ * @property {string[]} [stores]        crossStore: the stores that must agree
+ * @property {string}   [equalityProof] crossStore: how equality is proven without printing a value
+ * @property {string}   [handshakePath] crossStore: the authenticated path the handshake calls
  *   'value' rules need the real values, so they run where the values are real:
  *   inside the build and inside the serving deployment. 'store' rules compare
  *   two configuration STORES and run in the store checker.
