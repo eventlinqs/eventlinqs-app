@@ -22,7 +22,7 @@
  */
 
 import crypto from 'node:crypto'
-import { ENV_MANIFEST, CROSS_RULES, policyFor, shapeFor } from './manifest.mjs'
+import { ENV_MANIFEST, CROSS_RULES, policyFor, shapeFor, SENSITIVE_CAPABLE_SCOPES } from './manifest.mjs'
 import {
   PRODUCTION_SUPABASE_REF,
   refFromUrl,
@@ -195,6 +195,65 @@ export function evaluateValueCrossRules(env, opts = {}) {
             `${wrong.map(w => `${w.name} is ${w.mode}`).join('; ')}, expected ${rule.requiredMode} on ${scope}. ` +
             `Production would take card details and settle NOTHING: a test-mode charge moves no money.`,
         })
+      }
+      continue
+    }
+
+    // THE MIRROR IMAGE OF STRIPE_MODE_FAMILY. That rule holds PRODUCTION to live
+    // keys. This one holds every other scope AWAY from them. It is the guarantee
+    // that makes a readable Development secret tolerable: the platform will not
+    // let a live credential be the thing sitting there in plain text.
+    if (rule.kind === 'liveCredentialIsolation') {
+      const offenders = rule.modeVars
+        .map(name => ({ name, mode: stripeKeyMode(env[name]) }))
+        .filter(m => m.mode === rule.forbiddenMode)
+      if (offenders.length > 0) {
+        findings.push({
+          name: rule.id,
+          state: 'cross-rule',
+          severity: 'always-blocking',
+          scope,
+          reason:
+            `${offenders.map(o => `${o.name} is ${o.mode} mode`).join('; ')} on the ${scope} scope, which must ` +
+            `never hold a ${rule.forbiddenMode} credential. A live key off production can move real money from a ` +
+            `deployment nobody is watching, and on development the platform cannot even store it sensitive, so ` +
+            `anyone with project access can read it. Replace it with the test-mode key.`,
+        })
+      }
+      continue
+    }
+
+    // TWO ORIGINS THAT DISAGREE. Neither variable is wrong on its own, which is
+    // why no page, no build and no log ever reports this.
+    if (rule.kind === 'originAgreement') {
+      const raw = { canonical: env[rule.canonical], alias: env[rule.alias] }
+      // Only meaningful when BOTH are set: either one alone is authoritative,
+      // and getAppUrl() already falls back to the canonical when the alias is
+      // absent, which is the intended arrangement rather than a defect.
+      if (raw.canonical?.trim() && raw.alias?.trim()) {
+        const originOf = v => {
+          try {
+            return new URL(/^https?:\/\//i.test(v.trim()) ? v.trim() : `https://${v.trim()}`).origin
+          } catch {
+            return null
+          }
+        }
+        const a = originOf(raw.canonical)
+        const b = originOf(raw.alias)
+        if (a && b && a !== b) {
+          findings.push({
+            name: rule.id,
+            state: 'cross-rule',
+            severity: 'always-blocking',
+            scope,
+            reason:
+              `${rule.canonical} resolves to ${a} but ${rule.alias} resolves to ${b} on the ${scope} scope. ` +
+              `These must be the same origin. Canonical tags, og:url, the sitemap and every QR-encoded poster ` +
+              `link are built from the first; Stripe return URLs, payout emails and share cards from the second. ` +
+              `Split them and half of every generated link becomes a redirect, and Stripe does not follow a ` +
+              `redirect on a return URL. Set ${rule.alias} to ${a}, or unset it and let it derive.`,
+          })
+        }
       }
       continue
     }
@@ -419,7 +478,15 @@ export function evaluateStores(inventory, opts = {}) {
       // read back out of the store by anyone with project access. A readable
       // record is a definitive failure; an unreadable one is either sensitive or
       // empty, and the build and runtime guards resolve which.
-      if (entry.mustBeSensitive && rows.some(r => r.readable)) {
+      //
+      // ONLY ON THE SCOPES THAT CAN HOLD A SECRET. Vercel rejects a sensitive
+      // value on Development outright (reason `sensitive_not_allowed_on_development`),
+      // so demanding it there produced a permanent failure whose printed advice,
+      // "re-add it with --sensitive", the platform refuses to carry out. That is
+      // worse than no check: it trains a reader to skip the whole section. What
+      // protects a Development secret instead is LIVE_CREDENTIAL_ISOLATION,
+      // which guarantees the readable value is a test credential.
+      if (entry.mustBeSensitive && SENSITIVE_CAPABLE_SCOPES.includes(scope) && rows.some(r => r.readable)) {
         const exposed = rows.filter(r => r.readable)
         findings.push({
           name: entry.name,
@@ -429,7 +496,8 @@ export function evaluateStores(inventory, opts = {}) {
           reason:
             `must be stored as SENSITIVE but ${exposed.length} record(s) on the ${scope} scope can be read ` +
             `back in plain text by anyone with project access. ${entry.describe}. ` +
-            `Fix: re-add it with --sensitive so the store will no longer reveal it.`,
+            `Fix: remove the record and re-add it with --sensitive, because --force does NOT change ` +
+            `an existing record's sensitivity.`,
         })
       }
     }

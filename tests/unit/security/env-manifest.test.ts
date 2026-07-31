@@ -32,6 +32,13 @@ function goodProductionEnv(): Record<string, string> {
     QUEUE_SECRET: rep('q', 64),
     RESEND_API_KEY: `re_${rep('r', 24)}`,
     EMAIL_FROM: 'EventLinqs <hello@eventlinqs.com>',
+    // Both became REQUIRED on production when the manifest stopped leaving them
+    // with no opinion. Each has an in-code fallback, so nothing was ever lost,
+    // but the destination for a support escalation and for every payment and
+    // health alert was a literal in a source file rather than a value anyone
+    // could see or change.
+    PAYMENT_ALERT_EMAIL: 'alerts@eventlinqs.com',
+    SUPPORT_INBOX_EMAIL: 'hello@eventlinqs.com',
     NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: `AIza${rep('G', 35)}`,
     GOOGLE_MAPS_API_KEY: `AIza${rep('g', 35)}`,
     UPSTASH_REDIS_REST_URL: 'https://apt-mudfish-12345.upstash.io',
