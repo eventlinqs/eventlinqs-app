@@ -1975,8 +1975,8 @@ export type Database = {
           description: string | null
           email: string | null
           founding_bonus_months: number
-          founding_fee_free_until: string | null
           founding_city: string | null
+          founding_fee_free_until: string | null
           founding_since: string | null
           hold_amount_cents: number
           id: string
@@ -2011,8 +2011,8 @@ export type Database = {
           description?: string | null
           email?: string | null
           founding_bonus_months?: number
-          founding_fee_free_until?: string | null
           founding_city?: string | null
+          founding_fee_free_until?: string | null
           founding_since?: string | null
           hold_amount_cents?: number
           id?: string
@@ -2047,8 +2047,8 @@ export type Database = {
           description?: string | null
           email?: string | null
           founding_bonus_months?: number
-          founding_fee_free_until?: string | null
           founding_city?: string | null
+          founding_fee_free_until?: string | null
           founding_since?: string | null
           hold_amount_cents?: number
           id?: string
@@ -2668,7 +2668,9 @@ export type Database = {
           requested_by: string | null
           status: Database["public"]["Enums"]["refund_status"]
           stripe_application_fee_refund_id: string | null
+          stripe_pending_reason: string | null
           stripe_refund_id: string | null
+          stripe_refund_status: string | null
           updated_at: string
         }
         Insert: {
@@ -2691,7 +2693,9 @@ export type Database = {
           requested_by?: string | null
           status?: Database["public"]["Enums"]["refund_status"]
           stripe_application_fee_refund_id?: string | null
+          stripe_pending_reason?: string | null
           stripe_refund_id?: string | null
+          stripe_refund_status?: string | null
           updated_at?: string
         }
         Update: {
@@ -2714,7 +2718,9 @@ export type Database = {
           requested_by?: string | null
           status?: Database["public"]["Enums"]["refund_status"]
           stripe_application_fee_refund_id?: string | null
+          stripe_pending_reason?: string | null
           stripe_refund_id?: string | null
+          stripe_refund_status?: string | null
           updated_at?: string
         }
         Relationships: [
