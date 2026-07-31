@@ -152,8 +152,161 @@ recorded here so the merge is never mistaken for a unilateral act.
 
 ## Adjudication
 
-Filled in after the work.
+### Job 1: state of the branch
+
+| # | Verdict | Evidence |
+|---|---|---|
+| 1.1 | MET | `git fetch --all --prune`. |
+| 1.2 | MET | `origin/feat/walkthrough-defects` = `a44e9e795e65f8492d2b8b8fa12ced4fdba2dd8d` (was `97fbb6c` before the drift fix). |
+| 1.3 | MET | `origin/main` = `414d801ab1bca4ba3ec4a6186af0bd51cc75a774`. |
+| 1.4 | MET | 127 ahead, 0 behind. `git rev-list --left-right --count` returned `0 126` before the drift commit. |
+| 1.5 | MET | 16 open PRs listed. |
+| 1.6 | MET | NO PR targeted main from this branch. PR #108 was opened by this mission. |
+| 1.7 | MET | ZERO conflicts. `git merge-tree --write-tree` exit 0, no CONFLICT markers, and `main` is an ancestor, so the merge is a fast-forward. |
+
+### Job 2: the full gate
+
+| # | Verdict | Evidence |
+|---|---|---|
+| 2.1 | MET | `env -i` with only PATH, HOME, USERPROFILE, APPDATA, LOCALAPPDATA, SYSTEMROOT, TEMP, TMP, COMSPEC. |
+| 2.2 | MET | Proven, not asserted: `git merge-tree` result tree `de5a291a217d71a20595f807c892988b51bbfa3e` is byte-identical to the branch tip tree, and `git merge-base --is-ancestor origin/main origin/feat/walkthrough-defects` returned YES. |
+| 2.3 | MET | typecheck exit 0. |
+| 2.4 | MET | lint 0 errors (50 pre-existing warnings). |
+| 2.5 | MET | 1098 tests, 115 files, all pass. |
+| 2.6 | MET | production build exit 0. |
+| 2.7 | MET | `copy-tell-gate: clean`. |
+| 2.8 | MET | 24 of 24 break-restore cases behaved as declared. |
+| 2.9 | MET | All six green. |
+| 2.10 | MET | The inherited variable names were printed inside the shell, and a grep for NEXT_PUBLIC / STRIPE / SUPABASE / RESEND / CRON / ANTHROPIC / VERCEL / UPSTASH / GOOGLE / ALLOW_ returned 0. |
+
+### Job 3: the merge
+
+| # | Verdict | Evidence |
+|---|---|---|
+| 3.1, 3.2, 3.3, 3.4 | MET | PR #108, exact title, body lists the carried work and names all four locks. |
+| 3.5 | MET | Waited. Three Lighthouse runs plus two CI runs. |
+| 3.6 | **NOT MET** | CI is NOT green. `Lighthouse mobile gate`, a required status check under branch protection, fails. The merge did not happen. |
+| 3.7 | PARTIAL | One cause fixed properly: the types-drift guard. The Lighthouse cause is a genuine performance shortfall that I will not fix by lowering the threshold, and cannot responsibly fix by guessing at JavaScript execution cost inside a ship mission. |
+| 3.8 | **NOT MET** | There is no merge commit. |
+
+### Job 4: promote to production
+
+| # | Verdict | Evidence |
+|---|---|---|
+| 4.1 to 4.5 | **BLOCKED** | Nothing merged, so there is nothing new to promote. Production still serves `dpl_AhvSgGgGftab33CGYT7yGxvbkiKL` built from `main`. Promoting the branch directly would bypass the gate the merge is blocked on. |
+| 4.6 | **BLOCKED** | The env manifest rule is not in `main`, so no production build runs it yet. It IS proven to run and pass on a real Vercel build of this branch. |
+| 4.7 | MET | Read-only query against project `gndnldyfudbytbboxesk`: all five locked rules resolve exactly (3.5, 99, 2.5, 0, 1) with exactly one open row each. The pricing lock would pass on a production build. |
+| 4.8 | MET | Production `/api/cron/webhook-sentinel`: both self-probes accepted, `1 account endpoint + 1 connected-account endpoint, 2 signing secret(s) configured`. |
+| 4.9 | MET | GitHub Actions job `CRON_SECRET agrees across both stores` PASS, HTTP 200, fp `ef22fd7f`. |
+| 4.10 | **NOT MET** | Confirmed the OPPOSITE: `main` still carries `PROD_URL: https://www.eventlinqs.com`, the host that 301s cross-host and drops the bearer, and still warns-and-exits-0 when CRON_SECRET is absent. The fix exists only on the branch. |
+| 4.11 | MET | 200, no error boundary, 0 console errors, at 1440 and 390. |
+| 4.12 | PARTIAL | Event pages load 200 at both viewports. NO production event has a seat map: `seat_maps` and `seats` both hold 0 rows, and the page renders 0 `<canvas>` elements. |
+| 4.13 | MET | `/legal/privacy`, `/legal/terms`, `/legal/refunds`, `/legal/cookies` all 200 at both viewports. The repo carries six legal pages, not four. |
+| 4.14 | **NOT MET** | `/guides` is 404 on production. It is the ONLY dead link the crawler found. The merge is what fixes it. |
+| 4.15 | MET | `/organisers/signup` 307 to `/signup?role=organiser`, which renders 200. |
+| 4.16 | **NOT MET** | On a live production event page the only price shown is "From AUD $35". No total, no fees-included phrase, no fee line. "Get tickets" links to `#tickets` and no ticket-selection UI renders there, so there is no surface on which an all-in total could appear. |
+| 4.17 | MET | `scripts/link-integrity-crawl.mjs` against production: 236 unique internal links, 4 legitimate redirects, **1 dead link, `/guides`**. |
+
+### Job 5: seated and general admission on production
+
+| # | Verdict | Evidence |
+|---|---|---|
+| 5.1 | NOT VERIFIED | I did not locate a `seated_events` flag row to read. The seating SCHEMA is present on production (`seat_maps`, `seat_map_sections`, `seats`, `seat_holds`, `seat_section_views` all exist). |
+| 5.2 to 5.6 | **BLOCKED** | Production holds ZERO seat maps and ZERO seats, so no seated surface exists to render. The three LOD states, the tooltip price, the key plan and ticket-type colouring cannot be observed on production. Proving them requires a seated event, which the brief forbids me from creating. |
+| 5.7, 5.8, 5.9 | MET | 21 captures at 1440 and 390 from `https://www.eventlinqs.com.au` into `docs/verification/production-launch/`. |
+| 5.10 | MET | No production event created. No write of any kind to the production database. |
+| 5.11 | MET | Stated above and in the report. |
+| 5.12 | PARTIAL | All 14 published future events have open, in-window, in-stock tiers. But every one of the 16 organisations has `stripe_charges_enabled = false`, and no ticket picker renders, so a general-admission purchase cannot be completed either. |
+
+### Job 6: the three open items
+
+| # | Verdict | Evidence |
+|---|---|---|
+| 6.1 | MET, with a corrected premise | The brief said the three branches no longer exist. They DO still exist on the remote. Their env pins were deleted anyway (15 records across the three), which is correct because the branches are superseded and the pins only shadowed the scope-wide TEST values. |
+| 6.2 | PARTIAL | `SUPABASE_SERVICE_ROLE_KEY` and `SUPABASE_SERVICE_ROLE_KEY_PREVIEW` on preview are now SENSITIVE and verified withheld on pull. `STRIPE_SECRET_KEY` on preview could NOT be flipped: four further branch pins remain (staging/merged-main-final, feat/launch-kit, release/launch-line, feat/event-media-standard) and the CLI cannot target a scope-wide record while siblings exist. Those four were not authorised for deletion. The development-scope records are unchanged by design. |
+| 6.3 | MET | One founder step given. |
+| 6.4 | MET | One founder step given. |
+| 6.5 | MET | The code path exists and is gated on the token; `checkManifestAgainstStore()` reports NOT CHECKED without it and reads the live store within one sentinel run with it. |
+| 6.6 | MET, as a negative | `main` does NOT carry the fix. Diff evidence above. |
+
+### Job 7
+
+| # | Verdict | Evidence |
+|---|---|---|
+| 7.1 to 7.9 | MET | Given in the report in founder-step-delivery format. |
+
+### Discipline
+
+| # | Verdict | Evidence |
+|---|---|---|
+| D1 | MET | No secret value printed anywhere. Fingerprints, lengths and scopes only. |
+| D2 | MET | ZERO writes to the production database. Every production query was a read, and each is named in the report. |
+| D3 | MET | No change to `src/lib/payments/*`. |
+| D4 | MET | No guard weakened. The Lighthouse threshold was NOT relaxed even though the config's own note anticipates relaxing `/events`, and `--admin` was not used. |
+| D5, D6 | MET | Copy gate clean; zero em-dashes and en-dashes. |
+| D7 | MET | No competitor named in public-facing copy. |
+| D8 | MET | The three wrong readings I made are all corrected in the report rather than buried. |
+| D9 | MET | `[disk] 11.8 GB free - ok to build.` |
+| D10 | MET | Banned word absent. |
 
 ## Adversarial pass
 
-Filled in after adjudication.
+**Silent drops.** None. Every ledger row appears in the report, including the six
+that are NOT MET and the five that are BLOCKED.
+
+**Interpretation drift.** The strongest temptation in this mission was to read
+"SHIP" as permission to relax the Lighthouse assertion for `/events` and the
+event detail route. The config file itself invites it ("relax it only when it
+actually fails", and it has now actually failed), and `/` and `/culture/*`
+already carry that exemption. I did not do it, because both CLAUDE.md ("never
+lower a threshold or mark a check optional to go green") and this brief ("do not
+weaken any guard to make anything pass") forbid it, and because the decision to
+accept a documented performance exemption on the two highest-traffic commercial
+surfaces is a founder decision, not mine. `--admin` was likewise available and
+not used.
+
+**The match-versus-surpass test.** Not applicable: no competitor comparison was
+asked for. Measured against the prior state, the branch is AHEAD of production on
+the one performance number I could compare like for like, and that is worth
+stating precisely because it cuts against the gate: warmed production `/events`
+scored 0.62, 0.65, 0.50 in three local mobile runs, while the PR preview scored
+0.71 to 0.79 in CI. Those two numbers come from different machines and are NOT
+directly comparable as absolutes; what they support is the narrower claim that
+the release did not introduce this shortfall.
+
+**The unverifiable claim hunt.** Three claims were tested and DELETED or
+corrected rather than softened. (1) "Production has no seating schema" was wrong:
+I probed invented table names (`seating_charts`, `seat_sections`) and read 404 as
+absence. The real tables exist. (2) "Zero of 14 events have ticket tiers" was
+wrong: I filtered on `quantity_available`, `quantity_sold` and `sale_starts_at`,
+none of which exist on `ticket_tiers`, so every row was silently excluded. The
+real columns are `total_capacity`, `sold_count`, `sale_start`, `sale_end`, and
+all 14 events DO have open tiers. (3) "The production build was blocked by the
+new manifest rule" was carried in from the previous session and is corrected in
+the report. Each of these is the same failure class this whole week of work is
+about: a query that succeeds while measuring the wrong thing.
+
+**The generic test.** Not generic. The evidence is specific to this platform:
+named production event slugs, the exact `dpl_` ids, the 236-link crawl result,
+the `#tickets` anchor that leads nowhere, the 16 organisations with Stripe
+charges disabled.
+
+**The regression sweep.** DESIGN-LOCK: nothing visual was touched. The only file
+changed in this mission is `src/types/database.ts`, regenerated above the legacy
+marker to match the live schema, with `tsc` and the full suite green afterwards.
+Three temporary Playwright scripts were created in the repo root and deleted.
+
+**The founder-cost test.** Two things that could have become founder steps were
+done in code instead: the types drift was fixed rather than reported, and the two
+preview secrets were flipped rather than handed over. Four genuine founder steps
+remain, and each names precisely why it cannot be done from here.
+
+**The evidence-visibility test.** 21 production captures at 1440 and 390 in
+`docs/verification/production-launch/`, PR #108 with its checks, and the CI run
+records are all inspectable without taking my word for anything.
+
+## Gate
+
+NOT MET: 6. BLOCKED: 5. PARTIAL: 4.
+The mission's headline outcome, the merge and the production promotion, did NOT
+happen. The report opens with UNFULFILLED.
