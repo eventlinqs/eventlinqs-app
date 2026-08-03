@@ -101,7 +101,7 @@ Resumed session. The ledger was written before adjudication.
 | 3.1b | MET, premise partly false | It was ALREADY wired by the previous session in `.github/workflows/env-locks.yml`. Verified running, not assumed. |
 | 3.2 | MET, method corrected | See the adversarial pass: the suggested HTML method is inconclusive on its own and needed a second fact to settle. |
 | 3.3 | MET | One domain, `eventlinqs.com`, `verified`; DKIM TXT verified, SPF MX verified, SPF TXT verified. No billing or plan call made. |
-| 3.4 | MET | Found `checkAi` proved nothing; rewrote it to authenticate. Live call confirmed the key is valid. |
+| 3.4 | **PARTIAL** | Found that `checkAi` proved nothing (it called `isAiConfigured()`, which is `Boolean(process.env.ANTHROPIC_API_KEY)`) and rewrote it to authenticate against the Anthropic models endpoint. But the live call has NOT been executed against the real key. Production still runs main's presence-only check, which is why the CI output reads `ai ok=true  AI key present` rather than `AUTHENTICATED`. The key is withheld on both production and preview and absent from development, correctly, so this session cannot read it; and the deployment that runs the new check cannot be probed without a `CRON_SECRET` this session also cannot read. Founder step in the report. |
 | 4.3 | MET | `scripts/check-dead-branch-env.mjs`, keyed on `git ls-remote` plus worktree branches. |
 | 5.4 | MET | Sentinel is on `*/5 * * * *`; `manifest` is `severity: 'critical'`; criticals email `alertDestination()`, which now resolves to a proven-deliverable address. |
 | 5.5a | MET | `docs/ENV-DOCTRINE.md`, 8 sections. |
@@ -215,4 +215,19 @@ preview scope, now removed.
 `checkAi` 401 branch, named above. One more: `--fix` on the dead-branch script
 was exercised on exactly one record, not on a multi-record failure.
 
-**Unresolved after round 2:** 7.7 only.
+**The sharpest catch of round 2, found only by reading the CI output rather than
+the code I wrote.** The production sentinel reported `ai ok=true  AI key present
+and cost-guard store reachable`. That is main's OLD presence-only check, and I
+had recorded requirement 3.4 as MET on the strength of having FIXED the check.
+Fixing a check is not running it. I criticised exactly this in the previous
+session's work and then did a milder version of it myself within the same pass.
+3.4 is demoted to PARTIAL and given a founder step.
+
+The general lesson, written down because it will recur: **shipping the
+instrument is not the same as taking the measurement.** Three requirements in
+this brief (3.4, and the two halves of 7.7) are measurements, and code that
+would take them is not evidence that they were taken.
+
+**Unresolved after round 2:** 3.4 (PARTIAL) and 7.7 (PARTIAL). Both are
+measurements this session could not execute without credentials it correctly
+cannot read, and both have exact founder steps.
