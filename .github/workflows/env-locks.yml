@@ -106,9 +106,21 @@ jobs:
           echo "$BODY" | jq -r '.checks[] | select(.id=="manifest" or .id=="ai" or .id=="email") | "\(.id)\tok=\(.ok)\t\(.detail)"'
           echo "---"
           echo "$BODY" | jq -r '"overall status: \(.status)"'
-          # The manifest check is severity critical, so a red one means a declared
-          # variable is missing, empty, malformed or on a scope that forbids it ON
-          # THE DEPLOYMENT SERVING TRAFFIC.
+          # ABSENT AND FAILING ARE DIFFERENT ANSWERS AND NEED DIFFERENT FIXES.
+          # Collapsing them is the same defect this whole workflow exists to
+          # catch. Production runs whatever is on main, so until the manifest
+          # check MERGES there is no `manifest` entry in this response at all,
+          # and reporting that as RED sends the reader hunting for a broken
+          # variable that does not exist.
+          if ! echo "$BODY" | jq -e '.checks[] | select(.id=="manifest")' >/dev/null; then
+            echo "::warning::the deployed production build has NO manifest check."
+            echo "::warning::That is expected until this branch merges to main: LOCK 4 ships with it."
+            echo "::warning::The store half (LOCK 3) still covers production and ran above."
+            exit 0
+          fi
+          # Present, so its verdict is real: red means a declared variable is
+          # missing, empty, malformed or on a scope that forbids it ON THE
+          # DEPLOYMENT SERVING TRAFFIC.
           echo "$BODY" | jq -e '.checks[] | select(.id=="manifest") | .ok' >/dev/null \
             || { echo "::error::the production manifest check is RED"; exit 1; }
           echo "production manifest check: GREEN"

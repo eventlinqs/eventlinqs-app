@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { ENV_MANIFEST, CROSS_RULES, policyFor, storePolicyFor, shapeFor } from '@/lib/env/manifest.mjs'
+import { ENV_MANIFEST, CROSS_RULES, storePolicyFor, shapeFor } from '@/lib/env/manifest.mjs'
 import { evaluateProcessEnv, evaluateStores, checkShape } from '@/lib/env/manifest-checks.mjs'
 import { CRITICAL_ENV_RULES, ALWAYS_BLOCKING_RULES, evalEnvRule } from '@/lib/health/critical-env.mjs'
 

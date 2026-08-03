@@ -50,8 +50,8 @@ import path from 'node:path'
 import crypto from 'node:crypto'
 import { execFileSync } from 'node:child_process'
 import os from 'node:os'
-import { ENV_MANIFEST, CROSS_RULES, policyFor } from '../src/lib/env/manifest.mjs'
-import { evaluateStores, formatFinding } from '../src/lib/env/manifest-checks.mjs'
+import { ENV_MANIFEST, CROSS_RULES } from '../src/lib/env/manifest.mjs'
+import { evaluateStores } from '../src/lib/env/manifest-checks.mjs'
 
 const args = process.argv.slice(2)
 const arg = name => {

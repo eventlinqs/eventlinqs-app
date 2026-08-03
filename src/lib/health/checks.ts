@@ -207,13 +207,57 @@ async function checkAi(): Promise<HealthResult> {
       action: 'Vercel → Environment Variables → add ANTHROPIC_API_KEY (Production + Preview), then redeploy. AI is a soft feature; checkout and browsing are unaffected.',
     }
   }
+  // A PRESENT KEY IS NOT A WORKING KEY (2026-08-03). This check used to stop at
+  // isAiConfigured(), which is `Boolean(process.env.ANTHROPIC_API_KEY)` and
+  // nothing more, then report "AI key present" as a pass. A revoked, expired or
+  // mistyped key would have reported exactly the same green. That is an
+  // assertion wearing the costume of a proof, and it is the same defect
+  // checkEmail was fixed for on 2026-07-26.
+  //
+  // The models endpoint authenticates the key without generating a single
+  // token, so this costs nothing and cannot be rate-limited into a false alarm
+  // the way a completion could. The key itself is never logged: only the HTTP
+  // status reaches the detail string.
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/models?limit=1', {
+      headers: {
+        'x-api-key': process.env.ANTHROPIC_API_KEY ?? '',
+        'anthropic-version': '2023-06-01',
+      },
+      signal: AbortSignal.timeout(10000),
+    })
+    if (res.status === 401 || res.status === 403) {
+      return {
+        id: 'ai', label: 'AI layer (Anthropic + cost guard)', severity: 'warning', ok: false,
+        detail: `Anthropic rejected the key (HTTP ${res.status}) - every assistant surface is dead while this stands`,
+        probableCause: 'ANTHROPIC_API_KEY is revoked, expired, or belongs to a different workspace',
+        action: 'console.anthropic.com → API keys: issue a new key, update ANTHROPIC_API_KEY in Vercel (Production + Preview), then redeploy.',
+      }
+    }
+    if (!res.ok) {
+      return {
+        id: 'ai', label: 'AI layer (Anthropic + cost guard)', severity: 'warning', ok: false,
+        detail: `Anthropic API unreachable or erroring (HTTP ${res.status})`,
+        probableCause: 'an Anthropic outage, or a network egress problem from this deployment',
+        action: 'Check status.anthropic.com. If it is green, re-run this check; the key itself was not rejected.',
+      }
+    }
+  } catch (err) {
+    return {
+      id: 'ai', label: 'AI layer (Anthropic + cost guard)', severity: 'warning', ok: false,
+      detail: `could not reach the Anthropic API: ${String(err).slice(0, 120)}`,
+      probableCause: 'network egress failure or timeout from this deployment',
+      action: 'Check status.anthropic.com, then re-run this check.',
+    }
+  }
+
   // Cost guard is backed by Redis. If Redis is unreachable the guard fails OPEN,
   // which is a warning worth surfacing (spend is uncapped until Redis returns).
   const redis = getRedisClient()
   if (!redis) {
-    return { id: 'ai', label: 'AI layer (Anthropic + cost guard)', severity: 'warning', ok: true, detail: 'AI key present; cost-guard store (Redis) not configured here so the monthly budget guard is fail-open' }
+    return { id: 'ai', label: 'AI layer (Anthropic + cost guard)', severity: 'warning', ok: true, detail: 'AI key AUTHENTICATED against the Anthropic API; cost-guard store (Redis) not configured here so the monthly budget guard is fail-open' }
   }
-  return { id: 'ai', label: 'AI layer (Anthropic + cost guard)', severity: 'warning', ok: true, detail: 'AI key present and cost-guard store reachable' }
+  return { id: 'ai', label: 'AI layer (Anthropic + cost guard)', severity: 'warning', ok: true, detail: 'AI key AUTHENTICATED against the Anthropic API and cost-guard store reachable' }
 }
 
 // (h) PUSH notification configuration.
