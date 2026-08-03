@@ -48,13 +48,13 @@ The auth sentinel check **"sender domain verified in Resend"** reads
 
 ---
 
-## PART 2: Supabase (about 8 minutes) — TWO separate jobs
+## PART 2: Supabase (about 8 minutes), TWO separate jobs
 
 **Site:** https://supabase.com/dashboard
 **Project:** `gndnldyfudbytbboxesk` (this is production; verified by scanning the
 16 JS chunks served by the live `/login` page on 2026-08-03)
 
-### 2A. Fix the Site URL — DO THIS ONE FIRST, IT IS WRONG TODAY
+### 2A. Fix the Site URL. DO THIS ONE FIRST, IT IS WRONG TODAY
 
 **Page:** Authentication -> URL Configuration
 
