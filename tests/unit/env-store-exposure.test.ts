@@ -166,6 +166,11 @@ describe('R2: alert destinations derive from one definition, not a literal', () 
     'src/lib/health/runner.ts',
     'src/app/api/cron/webhook-sentinel/route.ts',
     'src/lib/ai/handoff.ts',
+    // Added 2026-08-05 with the auth sentinel. It shipped from a branch cut
+    // before R2 and carried a THIRD copy of the personal literal, which this
+    // list did not catch because the list is enumerated rather than discovered.
+    // Any new alerting surface belongs here on the day it is written.
+    'src/app/api/cron/auth-sentinel/route.ts',
   ]
 
   it('no shipped call site contains a personal email literal', () => {

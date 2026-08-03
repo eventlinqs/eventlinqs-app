@@ -1,0 +1,40 @@
+
+=== GUARD FAILURE DRILLS ===
+
+Each drill introduces a real regression, runs the guard, and restores the file.
+
+  FAILS AS EXPECTED  ungated provider button (the 2026-08-02 production defect)
+      exit 1: CHECK 3: src/components/auth/login-form.tsx:178 renders <GoogleButton> without the "googleEnabled &&" gate.
+
+  FAILS AS EXPECTED  provider button in an unregistered file
+      exit 1: CHECK 1: src/components/auth/auth-divider.tsx calls signInWithOAuth but is not a registered provider button.
+
+  FAILS AS EXPECTED  gate prop weakened to optional
+      exit 1: CHECK 5: SignupForm declares "googleEnabled" as OPTIONAL in src/components/auth/signup-form.tsx.
+
+  FAILS AS EXPECTED  page renders a gated form without resolving provider state
+      exit 1: CHECK 4: src/app/(auth)/login/page.tsx renders a gated auth form but never calls isProviderEnabled() or getEnabledProviders().
+
+  FAILS AS EXPECTED  password reset back on Supabase SMTP (the recovery-email defect)
+      exit 1: src/components/auth/forgot-password-form.tsx:24 calls auth.resetPasswordForEmail(), which sends through Supabase
+
+  FAILS AS EXPECTED  magic link back on Supabase SMTP
+      exit 1: src/components/auth/login-form.tsx:121 calls auth.signInWithOtp(), which sends through Supabase
+
+  FAILS AS EXPECTED  sender address literal reintroduced
+      exit 1: src/lib/waitlist/promote.ts:124 contains a literal sender address on a from/replyTo property:
+
+  FAILS AS EXPECTED  sign-in email field reverted to autocomplete="email"
+      exit 1: src/components/auth/login-form.tsx: input#email must carry autoComplete="username".
+
+  FAILS AS EXPECTED  name attribute dropped from the sign-in password field
+      exit 1: src/components/auth/login-form.tsx: input#password must carry a stable name="password".
+
+  FAILS AS EXPECTED  hidden username field removed from the reset form
+      exit 1: src/components/auth/reset-password-form.tsx: no <input id="username"> found (reset-completion).
+
+--- restoring and re-verifying a clean tree ---
+  all guards PASS on the restored tree.
+
+=== 10/10 drills fired correctly ===
+
