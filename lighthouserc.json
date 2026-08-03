@@ -34,8 +34,20 @@
           }
         },
         {
+          "_note": "EVENT DETAIL CRITICAL-PATH BUDGET. An overall performance score hides WHICH thing regressed: this route sat at a 0.78 median for weeks while the cause (a 187KB chunk carrying rrweb, 1,047ms of evaluation, LCP render delay 3,071ms) was invisible behind a single number. These assertions name the individual costs so a regression says what broke. They are additive to the global entry above, which still applies its own error-level floors to this URL - nothing here relaxes anything. Values carry deliberate headroom over the measured warm-preview medians (TBT 402ms, LCP 3547ms, main thread 2054ms, script 433KB) so the budget catches real regressions without flaking on runner variance. total-blocking-time and largest-contentful-paint are RAISED from warn to error at their existing numeric values, never loosened. Script byte weight is capped where it is because the split that fixed the critical path also duplicated some shared runtime and pushed script bytes UP from 370KB to 433KB: sequencing improved, byte weight did not, and this budget stops that trend continuing unnoticed.",
+          "matchingUrlPattern": "/events/[^/]+$",
+          "assertions": {
+            "total-blocking-time": ["error", { "maxNumericValue": 600 }],
+            "largest-contentful-paint": ["error", { "maxNumericValue": 4000 }],
+            "mainthread-work-breakdown": ["error", { "maxNumericValue": 3000 }],
+            "resource-summary:script:size": ["error", { "maxNumericValue": 491520 }]
+          }
+        },
+        {
           "_note": "Login and signup are intentionally noindex/nofollow per fan-protection: auth pages should not be indexed (signed-in users get redirected away, indexing dilutes brand SEO). is-crawlable and canonical audits would fail on these pages by design, so the SEO category assertion is downgraded to warn here while perf/a11y/bp stay error-level.",
           "matchingUrlPattern": "/(login|signup)$",
+          "_permanent": true,
+          "_expiryReason": "Auth pages are deliberately noindex/nofollow (signed-in users get redirected away, indexing dilutes brand SEO), so the is-crawlable and canonical audits can never pass by design. This is a settled design decision, not a deferred fix, so it carries no expiry date. scripts/ci/lighthouse-exemption-expiry.mjs reprints it on every run so it stays visible.",
           "assertions": {
             "categories:performance": ["error", { "minScore": 0.80 }],
             "categories:accessibility": ["error", { "minScore": 1.0 }],
@@ -51,6 +63,8 @@
         {
           "_note": "Culture landing pages (/culture/<slug>) hit a cold-start Vercel image optimiser race that drops mobile performance score below the global 0.80 floor on heavy hero rasters. Surfaced after PR #40 fixed the /events 500 that previously masked Lighthouse from reaching this URL's assertion phase at all. Issue #42 tracks the proper fix (image-optimiser pre-warm or static raster hero on culture pages). Until then, performance is gated at warn-level on this route only - the score is still measured and visible in CI, just non-blocking - while accessibility, best-practices, and SEO stay at the full error-level 1.0 floor. Restore performance to error-level when Issue #42 closes.",
           "matchingUrlPattern": "/culture/.+$",
+          "_expiresOn": "2026-11-01",
+          "_expiryReason": "Issue #42 image-optimiser cold-start. Performance is warn-level on this route only. scripts/ci/lighthouse-exemption-expiry.mjs FAILS the build once this date passes, so the waiver cannot outlive its justification unnoticed.",
           "assertions": {
             "categories:performance": ["warn", { "minScore": 0.80 }],
             "categories:accessibility": ["error", { "minScore": 1.0 }],
@@ -66,6 +80,8 @@
         {
           "_note": "Homepage / mobile cold-cache image-optimiser race - same class as /culture/* per Issue #42 and CLAUDE.md docs/perf/v2/closure-report.md ('Mobile homepage and /events have known cold-cache measurement issue to be revisited with production warm-cache data, do not block on it'). The homepage hero is a heavy priority-painted raster on mobile and trips the same Vercel image optimiser cold-start race already documented for /culture/*. Observed in this PR's run (median-of-3): perf 0.76 on /, while /culture/african produced null/NaN for perf/LCP/TBT in the same run - both routes are stuck below the 0.80 floor for the same documented reason. Performance is gated at warn-level so the score stays visible in CI without blocking deploys; accessibility, best-practices, SEO, and CLS remain at the full error-level. Restore performance to error-level when the underlying cold-cache fix lands (same fix horizon as Issue #42). /events is also flagged in CLAUDE.md as having the same issue but is left at error-level for now because the current run still measured it above 0.80 - relax it only when it actually fails.",
           "matchingUrlPattern": "^https?://[^/]+/?$",
+          "_expiresOn": "2026-11-01",
+          "_expiryReason": "Homepage cold-cache image-optimiser race, same class as Issue #42. Performance is warn-level here only. scripts/ci/lighthouse-exemption-expiry.mjs FAILS the build once this date passes.",
           "assertions": {
             "categories:performance": ["warn", { "minScore": 0.80 }],
             "categories:accessibility": ["error", { "minScore": 1.0 }],

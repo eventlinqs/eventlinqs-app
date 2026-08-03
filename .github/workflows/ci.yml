@@ -43,6 +43,20 @@ jobs:
       - name: Copy laws + AI-tell lexicon
         run: node scripts/copy-tell-gate.mjs
 
+      # Three critical-path defects that all LOOK correct in review:
+      # next/dynamic called from a Server Component (splits nothing), a heavy
+      # subsystem statically imported by a hot route, and Session Replay back
+      # in the Sentry.init integrations array. Each one shipped here at least
+      # once. Runs before the build because it is a source-level check and
+      # fails in under a second.
+      - name: Critical-path guard
+        run: node scripts/ci/critical-path-guard.mjs
+
+      # No Lighthouse exemption without a clock: every warn-level relaxation
+      # carries an expiry date and this FAILS the build once that date passes.
+      - name: Lighthouse exemption expiry
+        run: node scripts/ci/lighthouse-exemption-expiry.mjs
+
       - name: Typecheck
         run: npx tsc --noEmit
 
