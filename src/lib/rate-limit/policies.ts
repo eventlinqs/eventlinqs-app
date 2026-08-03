@@ -17,6 +17,9 @@ export type PolicyName =
   | 'payouts-stripe-link'
   | 'auth-signup'
   | 'auth-login'
+  | 'auth-recover'
+  | 'auth-magic-link'
+  | 'auth-resend-verification'
   | 'checkout-reserve'
   | 'media-upload'
   | 'share-link-mint'
@@ -104,6 +107,30 @@ export const POLICIES: Record<PolicyName, Policy> = {
     failClosed: true,
     rationale:
       'Login attempts per IP per 10 min. 10 covers a user mistyping a few times across sessions while bouncing credential-stuffing / brute-force runs through the app login form. Supabase GoTrue retains its own limit underneath.',
+  },
+  'auth-recover': {
+    keyPrefix: 'auth-rec',
+    limit: 5,
+    windowSec: 900,
+    failClosed: true,
+    rationale:
+      'Password reset requests per IP per 15 min. Reset now drives OUR Resend transport rather than Supabase built-in SMTP, so the old 2-per-hour project-wide ceiling no longer throttles abuse for us: this policy is the ceiling. 5 covers a user retrying with a typo and re-requesting after a slow inbox, while bouncing reset-bombing of a known address.',
+  },
+  'auth-magic-link': {
+    keyPrefix: 'auth-magic',
+    limit: 5,
+    windowSec: 900,
+    failClosed: true,
+    rationale:
+      'Magic-link requests per IP per 15 min. Same transport and same abuse shape as auth-recover (email-bombing a known address), so the same cap. Deliberately separate from auth-login, which gates password attempts and needs a looser limit for typo retries.',
+  },
+  'auth-resend-verification': {
+    keyPrefix: 'auth-resend',
+    limit: 5,
+    windowSec: 900,
+    failClosed: true,
+    rationale:
+      'Verification resends per IP per 15 min. The button already enforces a 60-second client-side cooldown; this is the server-side floor that a scripted caller cannot skip, sized to match the other two mail-sending auth endpoints.',
   },
   'checkout-reserve': {
     keyPrefix: 'co-res',
