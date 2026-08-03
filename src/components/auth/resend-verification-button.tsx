@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { authMessage, RESEND_VERIFICATION_GENERIC_RESPONSE } from '@/lib/auth/auth-errors'
 
 const COOLDOWN_SECONDS = 60
 const STORAGE_KEY = 'el_verify_resend_ts'
@@ -9,7 +9,6 @@ const STORAGE_KEY = 'el_verify_resend_ts'
 type Props = { email: string }
 
 export function ResendVerificationButton({ email }: Props) {
-  const supabase = createClient()
   const [remaining, setRemaining] = useState<number>(() => {
     if (typeof window === 'undefined') return 0
     const raw = sessionStorage.getItem(STORAGE_KEY)
@@ -35,21 +34,35 @@ export function ResendVerificationButton({ email }: Props) {
     setStatus('sending')
     setErrorMsg(null)
 
-    const { error } = await supabase.auth.resend({
-      type: 'signup',
-      email,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
-    })
+    // Posts to our own endpoint instead of `supabase.auth.resend()`. That call
+    // went through Supabase Auth's built-in mailer and its 2-per-hour
+    // project-wide cap, so the button meant to rescue a missing confirmation
+    // email was itself the flow most likely to be throttled. The May 2026
+    // closure report named this as a follow-up and it was never done.
+    try {
+      const res = await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+      const payload = (await res.json().catch(() => ({}))) as {
+        ok?: boolean
+        message?: string
+      }
 
-    if (error) {
+      if (!res.ok || !payload.ok) {
+        setStatus('error')
+        setErrorMsg(payload.message ?? authMessage('unknown'))
+        return
+      }
+
+      sessionStorage.setItem(STORAGE_KEY, Date.now().toString())
+      setRemaining(COOLDOWN_SECONDS)
+      setStatus('sent')
+    } catch {
       setStatus('error')
-      setErrorMsg(error.message)
-      return
+      setErrorMsg(authMessage('network'))
     }
-
-    sessionStorage.setItem(STORAGE_KEY, Date.now().toString())
-    setRemaining(COOLDOWN_SECONDS)
-    setStatus('sent')
   }
 
   const disabled = !email || remaining > 0 || status === 'sending'
@@ -68,7 +81,7 @@ export function ResendVerificationButton({ email }: Props) {
       </button>
       {status === 'sent' && remaining > 0 && (
         <p className="text-center text-xs text-success">
-          Sent. Check your inbox.
+          {RESEND_VERIFICATION_GENERIC_RESPONSE}
         </p>
       )}
       {status === 'error' && errorMsg && (
