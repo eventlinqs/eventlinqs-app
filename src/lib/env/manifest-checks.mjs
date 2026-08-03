@@ -22,7 +22,7 @@
  */
 
 import crypto from 'node:crypto'
-import { ENV_MANIFEST, CROSS_RULES, policyFor, shapeFor, SENSITIVE_CAPABLE_SCOPES } from './manifest.mjs'
+import { ENV_MANIFEST, CROSS_RULES, policyFor, storePolicyFor, shapeFor, SENSITIVE_CAPABLE_SCOPES } from './manifest.mjs'
 import {
   PRODUCTION_SUPABASE_REF,
   refFromUrl,
@@ -399,25 +399,55 @@ export function evaluateProcessEnv(env, opts = {}) {
  * a serving deployment can both see whether the value is there. No single source
  * is trusted for a claim it cannot support.
  *
+ * EVERY RECORD IS ASSESSED, OR THE CHECK FAILS SAYING SO. `readable` used to be
+ * allowed to arrive as `null` meaning "unknown", and unknown never failed
+ * anything. That is how 22 branch-pinned records, including STRIPE_SECRET_KEY
+ * and CRON_SECRET, went unmeasured for the entire life of this checker while it
+ * printed ALL CHECKS PASSED. A checker that silently declines to measure a
+ * record class is indistinguishable from one that measured it and found nothing.
+ *
+ * So exposure assessment is now DECLARED by the caller, not inferred:
+ *
+ *   exposureAssessed: true   (the DEFAULT, and deliberately the strict one)
+ *     every record must carry a boolean `readable`. Anything else is a BLOCKING
+ *     finding naming the record, because the caller promised a measurement and
+ *     did not supply one. Defaulting to strict means a future caller that
+ *     forgets the flag fails loudly rather than passing silently, which is the
+ *     failure this whole file exists to end.
+ *
+ *   exposureAssessed: false  the caller states plainly that it never requested
+ *     values and cannot know. Exposure checks are skipped and the caller is
+ *     responsible for saying so in its own output. Used by the runtime sentinel,
+ *     which reads the Vercel API WITHOUT `decrypt` on purpose, so no secret can
+ *     travel that path even in principle.
+ *
  * @param {object} inventory
- * @param {Array<{name: string, scope: string, gitBranch: string|null, readable: boolean|null, length?: number, fp?: string|null}>} inventory.records
- *   `readable` is `null` when this run could not determine read-back exposure
- *   (a branch-pinned record, or a caller that deliberately never requested
- *   values). Unknown never fails a check: only a proven `true` does.
+ * `readable` is deliberately OPTIONAL in this type. Omitting it is exactly the
+ * mistake a future caller makes, so the type must permit it and the check must
+ * catch it, rather than the type forbidding it and the check assuming it is
+ * always there.
+ *
+ * @param {Array<{name: string, scope: string, gitBranch: string|null, readable?: boolean|'unassessed'|null, length?: number, fp?: string|null}>} inventory.records
  * @param {string[]} inventory.githubSecrets  names present in GitHub Actions
- * @param {string[]} [inventory.scopesListed]  which scopes the listing covered
+ * @param {object} [opts]
+ * @param {boolean} [opts.exposureAssessed=true]  whether `readable` is trustworthy
  */
 export function evaluateStores(inventory, opts = {}) {
   const manifest = opts.manifest ?? ENV_MANIFEST
   const records = inventory.records ?? []
   const ghSecrets = new Set(inventory.githubSecrets ?? [])
+  const exposureAssessed = opts.exposureAssessed !== false
   const findings = []
 
   const recordsFor = (name, scope) => records.filter(r => r.name === name && r.scope === scope)
 
   for (const entry of manifest) {
     for (const scope of ['production', 'preview', 'development']) {
-      const policy = policyFor(entry, scope)
+      // storePolicyFor, not policyFor: this asks what the STORE may hold, which
+      // additionally forbids a secret on any scope the platform cannot mark
+      // sensitive (the Development scope). What a running PROCESS needs is a
+      // separate question, answered by policyFor in evaluateScopeConformance.
+      const policy = storePolicyFor(entry, scope)
       const rows = recordsFor(entry.name, scope)
 
       // A record with no gitBranch applies to the WHOLE scope. One pinned to a
@@ -427,14 +457,23 @@ export function evaluateStores(inventory, opts = {}) {
 
       if (policy === 'forbidden') {
         if (rows.length > 0) {
+          // Name the REASON, because the two causes need opposite fixes: a
+          // declared forbiddenOn means "this variable does not belong here at
+          // all, delete it", while a secret on a scope that cannot protect it
+          // means "this value belongs in a local .env file instead".
+          const becauseSecret = entry.mustBeSensitive && !SENSITIVE_CAPABLE_SCOPES.includes(scope)
           findings.push({
             name: entry.name,
-            state: 'forbidden-scope',
+            state: becauseSecret ? 'secret-on-unprotectable-scope' : 'forbidden-scope',
             severity: 'always-blocking',
             scope,
-            reason:
-              `is FORBIDDEN on the ${scope} scope but ${rows.length} record(s) exist there` +
-              `${branchPinned.length ? ` (branches: ${branchPinned.map(r => r.gitBranch).join(', ')})` : ''}. ${entry.describe}.`,
+            reason: becauseSecret
+              ? `is a SECRET and ${rows.length} record(s) exist on the ${scope} scope, which the platform refuses ` +
+                `to store sensitively, so the value is readable in plain text by anyone with project access and no ` +
+                `setting can change that. ${entry.describe}. Fix: delete it from this scope ` +
+                `(vercel env rm ${entry.name} ${scope}) and put it in a local .env.local instead. See docs/ENV-DOCTRINE.md.`
+              : `is FORBIDDEN on the ${scope} scope but ${rows.length} record(s) exist there` +
+                `${branchPinned.length ? ` (branches: ${branchPinned.map(r => r.gitBranch).join(', ')})` : ''}. ${entry.describe}.`,
           })
         }
         continue
@@ -486,19 +525,43 @@ export function evaluateStores(inventory, opts = {}) {
       // worse than no check: it trains a reader to skip the whole section. What
       // protects a Development secret instead is LIVE_CREDENTIAL_ISOLATION,
       // which guarantees the readable value is a test credential.
-      if (entry.mustBeSensitive && SENSITIVE_CAPABLE_SCOPES.includes(scope) && rows.some(r => r.readable)) {
-        const exposed = rows.filter(r => r.readable)
-        findings.push({
-          name: entry.name,
-          state: 'readable-secret',
-          severity: 'blocking',
-          scope,
-          reason:
-            `must be stored as SENSITIVE but ${exposed.length} record(s) on the ${scope} scope can be read ` +
-            `back in plain text by anyone with project access. ${entry.describe}. ` +
-            `Fix: remove the record and re-add it with --sensitive, because --force does NOT change ` +
-            `an existing record's sensitivity.`,
-        })
+      if (entry.mustBeSensitive && SENSITIVE_CAPABLE_SCOPES.includes(scope)) {
+        // EVERY row is measured, branch-pinned ones included. A branch-pinned
+        // record is pulled with `--git-branch`, so there is no record class this
+        // cannot reach and therefore no excuse for an unknown.
+        const exposed = rows.filter(r => r.readable === true)
+        if (exposed.length > 0) {
+          const where = exposed.map(r => (r.gitBranch ? `branch ${r.gitBranch}` : 'scope-wide')).join(', ')
+          findings.push({
+            name: entry.name,
+            state: 'readable-secret',
+            severity: 'blocking',
+            scope,
+            reason:
+              `must be stored as SENSITIVE but ${exposed.length} record(s) on the ${scope} scope (${where}) can be ` +
+              `read back in plain text by anyone with project access. ${entry.describe}. ` +
+              `Fix: remove the record and re-add it with --sensitive, because --force does NOT change ` +
+              `an existing record's sensitivity.`,
+          })
+        }
+        if (exposureAssessed) {
+          const unmeasured = rows.filter(r => typeof r.readable !== 'boolean')
+          if (unmeasured.length > 0) {
+            const where = unmeasured.map(r => (r.gitBranch ? `branch ${r.gitBranch}` : 'scope-wide')).join(', ')
+            findings.push({
+              name: entry.name,
+              state: 'exposure-unassessed',
+              severity: 'blocking',
+              scope,
+              reason:
+                `${unmeasured.length} record(s) on the ${scope} scope (${where}) were NOT assessed for read-back ` +
+                `exposure, and this run claimed it had assessed them. An unmeasured secret is reported as a ` +
+                `FAILURE, never passed over in silence: that silence is how ${entry.name} could sit readable ` +
+                `behind a green tick. Fix: make the pull cover that scope and git branch, or pass ` +
+                `exposureAssessed:false and say so in the output.`,
+            })
+          }
+        }
       }
     }
 

@@ -412,9 +412,19 @@ async function checkManifestAgainstStore(): Promise<{ mode: string; findings: st
     // GitHub Actions membership is not visible from here either; that half is
     // the store checker's. Passing the declared names keeps this from reporting
     // a false absence.
-    const verdict = evaluateStores({ records, githubSecrets: githubActionsNames() })
+    //
+    // exposureAssessed:false IS THE HONEST DECLARATION, NOT A BYPASS. This path
+    // calls the Vercel API without `decrypt`, deliberately, so no secret can
+    // travel it even in principle - which also means it cannot know whether a
+    // record is readable. It says so rather than passing `null` into a check
+    // that would treat unknown as safe, and the `mode` string below tells the
+    // reader which half actually ran.
+    const verdict = evaluateStores(
+      { records, githubSecrets: githubActionsNames() },
+      { exposureAssessed: false },
+    )
     return {
-      mode: `checked (${records.length} records)`,
+      mode: `checked (${records.length} records, metadata only: read-back exposure is scripts/check-env-stores.mjs's half)`,
       findings: verdict.findings
         .filter((f: { state: string }) => f.state !== 'missing-github-secret')
         .map((f: { name: string; scope?: string; reason: string }) => `${f.name} [${f.scope}] ${f.reason}`),

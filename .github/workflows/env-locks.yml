@@ -85,3 +85,30 @@ jobs:
           # that skips itself when its input is missing is how this exact check
           # stayed silent from 2026-07-12 to 2026-07-30.
           node scripts/check-env-stores.mjs --mode=handshake
+
+      - name: the production deployment's own manifest verdict
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          PROD_URL: https://www.eventlinqs.com.au
+        run: |
+          set -u
+          # WHY THIS EXISTS. `vercel env pull` returns an EMPTY string both for a
+          # SENSITIVE record and for a genuinely EMPTY one, so no amount of store
+          # inspection can tell "withheld" from "not set". Only a process holding
+          # the real values can, and the deployment serving traffic is exactly
+          # that process. This asks it.
+          #
+          # ?dry=1 runs the full battery and sends NO email, so a scheduled proof
+          # run can never spam the founder.
+          #
+          # No -L: a bearer token is DROPPED across a cross-host redirect.
+          BODY=$(curl -sS -m 90 -H "Authorization: Bearer ${CRON_SECRET}" "$PROD_URL/api/cron/health-sentinel?dry=1")
+          echo "$BODY" | jq -r '.checks[] | select(.id=="manifest" or .id=="ai" or .id=="email") | "\(.id)\tok=\(.ok)\t\(.detail)"'
+          echo "---"
+          echo "$BODY" | jq -r '"overall status: \(.status)"'
+          # The manifest check is severity critical, so a red one means a declared
+          # variable is missing, empty, malformed or on a scope that forbids it ON
+          # THE DEPLOYMENT SERVING TRAFFIC.
+          echo "$BODY" | jq -e '.checks[] | select(.id=="manifest") | .ok' >/dev/null \
+            || { echo "::error::the production manifest check is RED"; exit 1; }
+          echo "production manifest check: GREEN"

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireCronAuth } from '@/lib/cron/auth'
 import { sendEmail } from '@/lib/email/send'
+import { alertDestination } from '@/lib/env/destinations'
 import { getSiteUrl } from '@/lib/site-url'
 import {
   selfProbe,
@@ -31,7 +32,7 @@ export const runtime = 'nodejs'
  * purpose - the alert-path drill used for the documented proof.
  */
 
-const ALERT_TO = () => process.env.PAYMENT_ALERT_EMAIL || 'lawaladams9@gmail.com'
+const ALERT_TO = () => alertDestination()
 
 export async function GET(request: NextRequest) {
   const denied = requireCronAuth(request)

@@ -1,4 +1,5 @@
 import { sendEmail } from '@/lib/email/send'
+import { alertDestination } from '@/lib/env/destinations'
 import { getRedisClient } from '@/lib/redis/client'
 import { getSiteUrl } from '@/lib/site-url'
 import { type HealthResult, overallStatus } from '@/lib/health/checks'
@@ -14,7 +15,7 @@ const ALERT_COOLDOWN_SECONDS = 30 * 60 // re-alert a still-broken check at most 
 const DEDUPE_PREFIX = 'health:alert:'
 
 export function alertRecipient(): string {
-  return process.env.PAYMENT_ALERT_EMAIL || 'lawaladams9@gmail.com'
+  return alertDestination()
 }
 
 function deployIdentity() {

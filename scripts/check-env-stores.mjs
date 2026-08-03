@@ -91,15 +91,20 @@ function parseEnvListing(text) {
   const records = []
   for (const line of text.split(/\r?\n/)) {
     const cells = line.trim().split(/\s{2,}/)
-    // name | type | environments | age
+    // name | value | environments | age
     if (cells.length < 3) continue
     if (!/^[A-Z][A-Z0-9_]*$/.test(cells[0])) continue
     const name = cells[0]
-    const type = cells[1]
+    // THE `value` COLUMN IS DELIBERATELY NOT CAPTURED. `vercel env ls` prints
+    // "Encrypted" for a genuinely sensitive record AND for a merely encrypted
+    // one that `env pull` hands back in plain text. The two are visually
+    // identical and only one is safe, so treating that column as an exposure
+    // signal reports secrets as protected when they are readable. Exposure is
+    // measured by what `env pull` actually returns, below, and by nothing else.
     for (const token of cells[2].split(',').map(s => s.trim()).filter(Boolean)) {
       const m = /^(Production|Preview|Development)(?:\s*\((.+)\))?$/.exec(token)
       if (!m) continue
-      records.push({ name, scope: SCOPE_LABEL[m[1]], gitBranch: m[2] ?? null, type })
+      records.push({ name, scope: SCOPE_LABEL[m[1]], gitBranch: m[2] ?? null })
     }
   }
   return records
@@ -124,9 +129,28 @@ function parseEnvListing(text) {
  * CLI is upgraded.
  */
 const REDACTED = new Set(['', '[SENSITIVE]', '[REDACTED]'])
-function readabilityForScope(scope) {
-  const tmp = path.join(os.tmpdir(), `el-env-${scope}-${crypto.randomBytes(6).toString('hex')}.env`)
-  const res = run('npx', [...VERCEL, 'env', 'pull', tmp, `--environment=${scope}`, '--yes'])
+
+/**
+ * Pull one (scope, git branch) combination and return what came back.
+ *
+ * A BRANCH-PINNED RECORD IS ONLY VISIBLE TO A BRANCH-SCOPED PULL. A plain
+ * `--environment=preview` pull resolves the scope-wide records and nothing that
+ * is pinned to a git branch, so every pinned record used to fall through as
+ * "unknown" and unknown never failed anything. Twenty-two records sat that way,
+ * STRIPE_SECRET_KEY, CRON_SECRET, QUEUE_SECRET and HEALTH_CHECK_TOKEN among
+ * them, while this script printed ALL CHECKS PASSED. Passing `--git-branch`
+ * resolves exactly the environment that branch's deployments receive, so there
+ * is now no record this cannot reach.
+ *
+ * Returns null ONLY when the pull itself failed, which the caller turns into a
+ * loud failure rather than a silent unknown.
+ */
+function readabilityFor(scope, gitBranch) {
+  const tmp = path.join(os.tmpdir(), `el-env-${crypto.randomBytes(8).toString('hex')}.env`)
+  const argv = [...VERCEL, 'env', 'pull', tmp, `--environment=${scope}`]
+  if (gitBranch) argv.push(`--git-branch=${gitBranch}`)
+  argv.push('--yes')
+  const res = run('npx', argv)
   if (!res.ok || !fs.existsSync(tmp)) return null
   const map = new Map()
   for (const line of fs.readFileSync(tmp, 'utf8').split(/\r?\n/)) {
@@ -157,19 +181,41 @@ if (mode === 'all' || mode === 'stores') {
     const parsed = parseEnvListing(listing.out)
     record('the Vercel environment listing is readable', parsed.length > 0, `${parsed.length} scope records across ${new Set(parsed.map(r => r.name)).size} variables`)
 
-    const readable = {}
-    for (const scope of SCOPES) readable[scope] = readabilityForScope(scope)
+    // EVERY distinct (scope, git branch) the listing mentions gets its own pull,
+    // so no record class is left unmeasured. The scope-wide pull is always run
+    // even when nothing is pinned there, because that is what covers the
+    // ordinary records.
+    const pairs = new Map()
+    for (const scope of SCOPES) pairs.set(`${scope} `, { scope, gitBranch: null })
+    for (const r of parsed) {
+      if (r.gitBranch) pairs.set(`${r.scope} ${r.gitBranch}`, { scope: r.scope, gitBranch: r.gitBranch })
+    }
+
+    const pulled = new Map()
+    const failedPulls = []
+    for (const [key, pair] of pairs) {
+      const map = readabilityFor(pair.scope, pair.gitBranch)
+      pulled.set(key, map)
+      if (map === null) failedPulls.push(pair.gitBranch ? `${pair.scope} (${pair.gitBranch})` : pair.scope)
+    }
+    record(
+      'read-back exposure was measured for every scope and every pinned branch',
+      failedPulls.length === 0,
+      failedPulls.length === 0
+        ? `${pairs.size} scope/branch combination(s) pulled, covering all ${parsed.length} records`
+        : `could not pull: ${failedPulls.join('; ')}. Those records are reported UNASSESSED, never assumed safe.`,
+    )
 
     const records = parsed.map(r => {
-      const pulled = r.gitBranch ? undefined : readable[r.scope]?.get(r.name)
-      const isReadable = typeof pulled === 'string' && !REDACTED.has(pulled)
+      const map = pulled.get(`${r.scope} ${r.gitBranch ?? ''}`)
+      if (!map) return { ...r, readable: 'unassessed', length: 0, fp: null }
+      const value = map.get(r.name)
+      const isReadable = typeof value === 'string' && !REDACTED.has(value)
       return {
         ...r,
-        // A branch-pinned record is not covered by a scope-wide pull, so its
-        // read-back exposure is unknown rather than assumed safe.
-        readable: r.gitBranch ? null : isReadable,
-        length: isReadable ? pulled.length : 0,
-        fp: isReadable ? crypto.createHash('sha256').update(pulled).digest('hex').slice(0, 8) : null,
+        readable: isReadable,
+        length: isReadable ? value.length : 0,
+        fp: isReadable ? crypto.createHash('sha256').update(value).digest('hex').slice(0, 8) : null,
       }
     })
 
@@ -180,7 +226,10 @@ if (mode === 'all' || mode === 'stores') {
     record('the GitHub Actions secret list is readable', gh.ok, gh.ok ? `${ghSecrets.length} repository secrets` : 'gh could not list secrets. Run: gh auth status')
 
     inventory = { records, githubSecrets: ghSecrets, generatedFor: baseUrl }
-    const verdict = evaluateStores(inventory)
+    // This run DID measure exposure, on every scope and every pinned branch, so
+    // it asks to be held to that claim: any record that slipped through
+    // unmeasured is reported as a failure rather than quietly ignored.
+    const verdict = evaluateStores(inventory, { exposureAssessed: true })
     if (verdict.findings.length === 0) {
       record('every manifest expectation holds across the stores', true, `${records.length} records checked`)
     } else {

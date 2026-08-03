@@ -496,18 +496,23 @@ export const ENV_MANIFEST = [
   {
     name: 'PAYMENT_ALERT_EMAIL',
     describe: 'Where payment and health alerts are delivered',
-    // REQUIRED ON PRODUCTION. Two call sites read it, and both fall back to a
-    // personal address hardcoded in the source: src/lib/health/runner.ts and
-    // src/app/api/cron/webhook-sentinel/route.ts each resolve
-    // `process.env.PAYMENT_ALERT_EMAIL || 'lawaladams9@gmail.com'`. So an alert
-    // is not silently lost today, which is why this was never noticed, but the
-    // destination for every payment and health alert the platform raises is a
-    // literal in a file rather than a value anyone can see or change. It was
+    // REQUIRED ON PRODUCTION, AND SET THERE (2026-08-03). Two call sites read
+    // it, src/lib/health/runner.ts and src/app/api/cron/webhook-sentinel/route.ts,
+    // and both used to fall back to a PERSONAL address hardcoded separately in
+    // each file. Nothing was lost, which is why it survived, but the destination
+    // for every payment and health alert was a literal in source rather than a
+    // value anyone could see or change, in two places that could drift. It was
     // also set ONLY on preview branch scopes, and an alert that fires only on a
-    // dead preview branch is not an alert. Requiring it on production makes the
-    // destination deliberate, visible in the store, and changeable without a
-    // deploy. The in-code fallback deliberately STAYS: a required variable that
-    // someone later deletes must degrade to a real inbox, never to nothing.
+    // preview branch is not an alert.
+    //
+    // Both literals are gone (founder ruling R2). Both call sites now read
+    // src/lib/env/destinations.ts, whose fallback is the brand inbox and never a
+    // personal address. The fallback deliberately STAYS: a required variable
+    // that someone later deletes must degrade to a real inbox, never to nothing.
+    //
+    // NOT alerts@eventlinqs.com. That address was tested on 2026-08-03 and HARD
+    // BOUNCED (`550 5.4.1 Recipient address rejected`, Exchange Online): the
+    // mailbox does not exist. Do not point this at it until it does.
     requiredOn: ['production'],
     forbiddenOn: [],
     optionalOn: ['preview', 'development'],
@@ -521,14 +526,13 @@ export const ENV_MANIFEST = [
   {
     name: 'SUPPORT_INBOX_EMAIL',
     describe: 'Inbound support address surfaced in help content',
-    // REQUIRED ON PRODUCTION. One call site reads it, src/lib/ai/handoff.ts:
-    // `process.env.SUPPORT_INBOX_EMAIL || 'hello@eventlinqs.com'`. Support mail
-    // therefore does not vanish and does not throw when the variable is absent:
-    // it falls back to the apex address, which is a verified sender. The defect
-    // is not loss, it is that the address a customer's escalation reaches is a
-    // literal in a source file while the variable exists on no scope at all.
-    // Requiring it on production makes the support destination explicit and
-    // editable. The fallback STAYS for the same reason as PAYMENT_ALERT_EMAIL.
+    // REQUIRED ON PRODUCTION, AND SET THERE (2026-08-03). One call site reads
+    // it, src/lib/ai/handoff.ts. Support mail never vanished and never threw,
+    // because it fell back to the apex address; the defect was that the address
+    // a customer's escalation reaches was a literal in a source file while the
+    // variable existed on no scope at all. It now reads
+    // src/lib/env/destinations.ts, the one definition every destination shares,
+    // and the fallback STAYS for the same reason as PAYMENT_ALERT_EMAIL.
     requiredOn: ['production'],
     forbiddenOn: [],
     optionalOn: ['preview', 'development'],
@@ -1172,4 +1176,40 @@ export function policyFor(entry, scope) {
   if (entry.requiredOn?.includes(scope)) return 'required'
   if (entry.optionalOn?.includes(scope)) return 'optional'
   return 'unlisted'
+}
+
+/**
+ * What the VERCEL STORE may hold, which is a different question from what a
+ * running PROCESS needs.
+ *
+ * `policyFor` answers: when the code runs as this scope, must this variable be
+ * in its environment? A developer running the app locally genuinely needs
+ * SUPABASE_SERVICE_ROLE_KEY in their process, so that stays required.
+ *
+ * This answers: may the Vercel store keep a copy of it on that scope? For a
+ * SECRET on a scope the platform cannot mark sensitive, the answer is no.
+ *
+ * THE DEVELOPMENT SCOPE MUST NOT HOLD SECRETS AT ALL (founder ruling R3,
+ * 2026-08-03). Vercel refuses `--sensitive` on Development by design, because
+ * Development exists to be pulled to a laptop by `vercel env pull`. So every
+ * secret stored there is readable in plain text by anyone with project access,
+ * permanently, with no setting that can change it. The previous position was
+ * that this was tolerable because LIVE_CREDENTIAL_ISOLATION guarantees the
+ * value is a test credential. That argument is FALSE for any credential with no
+ * test mode: the audit found a live RESEND_API_KEY and a billable
+ * GOOGLE_MAPS_API_KEY sitting readable there, and no mode rule can protect
+ * either, because neither has a mode.
+ *
+ * The replacement is not a weaker store, it is a different store: a local
+ * `.env.local` file, which is what that file is for, is gitignored, and never
+ * leaves the machine. See docs/ENV-DOCTRINE.md.
+ *
+ * Returns 'forbidden' for a secret on a non-sensitive-capable Vercel scope,
+ * otherwise defers to `policyFor`.
+ */
+export function storePolicyFor(entry, scope) {
+  if (entry.mustBeSensitive && SCOPES.includes(scope) && !SENSITIVE_CAPABLE_SCOPES.includes(scope)) {
+    return 'forbidden'
+  }
+  return policyFor(entry, scope)
 }
