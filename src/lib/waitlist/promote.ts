@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { Resend } from 'resend'
+import { getNoReplyFrom } from '@/lib/email/sender'
 
 /**
  * Calls the promote_waitlist RPC, then sends Resend emails to everyone
@@ -121,7 +122,7 @@ export async function promoteWaitlist(
 
     try {
       await resend.emails.send({
-        from: 'EventLinqs <noreply@eventlinqs.com>',
+        from: getNoReplyFrom(),
         to: buyerEmail,
         subject: `A spot opened up. Claim it before ${expiresFormatted}`,
         html: buildPromotionEmailHtml({

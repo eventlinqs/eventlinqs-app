@@ -1,6 +1,7 @@
 import { Resend } from 'resend'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getAppUrl } from '@/lib/site-url'
+import { getNoReplyFrom } from '@/lib/email/sender'
 
 /**
  * M6 Phase 4 organiser payout notifications.
@@ -13,8 +14,8 @@ import { getAppUrl } from '@/lib/site-url'
  *   reserve_released   - reserve hold release worker (Phase 4-cron, not yet
  *                        wired here; helper exposed for the future caller)
  *
- * Sender: noreply@eventlinqs.com (matches existing buyer confirmation
- * sender in the Stripe webhook). No-ops when RESEND_API_KEY is unset, so
+ * Sender resolves through src/lib/email/sender.ts, the single definition every
+ * `from` in the codebase derives from. No-ops when RESEND_API_KEY is unset, so
  * local dev and CI never block on email delivery.
  *
  * Wiring note: the Stripe `payout.*` webhook handler that calls sendPayoutEmail
@@ -26,7 +27,7 @@ import { getAppUrl } from '@/lib/site-url'
 
 type AdminClient = SupabaseClient
 
-const FROM = 'EventLinqs <noreply@eventlinqs.com>'
+// Sender resolves through the single definition in src/lib/email/sender.ts.
 
 export type PayoutEmailKind =
   | 'payout_initiated'
@@ -59,7 +60,7 @@ export async function sendPayoutEmail(
   try {
     const resend = new Resend(apiKey)
     await resend.emails.send({
-      from: FROM,
+      from: getNoReplyFrom(),
       to: recipient.email,
       subject,
       html,

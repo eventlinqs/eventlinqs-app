@@ -5,6 +5,10 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { StripeAdapter } from '@/lib/payments/stripe-adapter'
 import { Resend } from 'resend'
 import { sendConfirmationEmail } from '@/lib/email/order-confirmation'
+// Sender identity only. The payment engine below is untouched: this import
+// replaces two hardcoded address literals so every sender in the codebase
+// derives from src/lib/email/sender.ts (founder ruling 2026-08-03).
+import { getNoReplyFrom, getReplyToAddress } from '@/lib/email/sender'
 import { refreshInventoryCache } from '@/lib/redis/inventory-cache'
 import { promoteWaitlist } from '@/lib/waitlist/promote'
 import { trackTicketPurchaseCompleteServer } from '@/lib/analytics/plausible'
@@ -1191,9 +1195,9 @@ async function sendRefundConfirmationEmail(
   const resend = new Resend(resendKey)
   try {
     await resend.emails.send({
-      from: 'EventLinqs <noreply@eventlinqs.com>',
+      from: getNoReplyFrom(),
       to: buyerEmail,
-      replyTo: 'hello@eventlinqs.com',
+      replyTo: getReplyToAddress(),
       subject: buildRefundConfirmationSubject(event.title),
       html: buildRefundConfirmationHtml({
         buyerName,
