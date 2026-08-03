@@ -8,9 +8,13 @@ import type {
 } from '@/types/database'
 import { jsonAsStringArray } from '@/lib/json-narrow'
 import { priceLabel } from '@/lib/events/price-label'
-import {
-  SeatSelector, type SeatData, type SectionData, type SeatAreaData, type SeatDecorData,
+// Types only: erased at compile time, so they never pull the seating engine
+// into this route's bundle. The component itself arrives via the client
+// boundary below.
+import type {
+  SeatData, SectionData, SeatAreaData, SeatDecorData,
 } from '@/components/checkout/seat-selector'
+import { SeatSelectorLazy } from '@/components/checkout/seat-selector-lazy'
 import { isFlagEnabled } from '@/lib/flags'
 import { SocialProofBadge } from '@/components/inventory/social-proof-badge'
 import { GoingProof } from '@/components/inventory/going-proof'
@@ -25,17 +29,16 @@ import { getFeaturedHeroBackground } from '@/lib/images/event-media'
 import { StickyActionBar } from '@/components/features/events/sticky-action-bar'
 import { Reveal } from '@/components/ui/reveal'
 import { buildEventMetaDescription } from '@/lib/events/event-meta'
-import nextDynamic from 'next/dynamic'
 import { EventTrustSignals } from '@/components/features/event/EventTrustSignals'
 import { fetchFixtureEvent } from '@/lib/dev/fixture-events'
 
-// VenueMap pulls in @googlemaps/js-api-loader (~290KB). Loading it statically
-// makes it part of the event-detail route chunk, which Next.js eagerly
-// prefetches from any page linking to /events/*. next/dynamic splits it into
-// its own chunk so the map code stays out of the initial bundle on every cell.
-const VenueMap = nextDynamic(
-  () => import('@/components/features/events/venue-map').then(m => m.VenueMap)
-)
+// VenueMap pulls in @googlemaps/js-api-loader (~290KB). The next/dynamic call
+// used to live HERE, which split nothing: this file is a Server Component, and
+// Next.js does not code-split a Client Component dynamically imported from one.
+// The dynamic import is now owned by a Client Component boundary
+// (venue-map-lazy.tsx), which is what actually keeps the map code out of the
+// initial chunk set.
+import { VenueMapLazy } from '@/components/features/events/venue-map-lazy'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { EventSoldOut } from '@/components/features/events/event-sold-out'
 import { TicketsNotOnSale } from '@/components/features/events/tickets-not-on-sale'
@@ -807,7 +810,7 @@ export default async function EventDetailPage({ params }: Props) {
                   <Reveal as="div" className="mt-10">
                     <SectionHeader eyebrow="Location" title="Venue" size="sm" />
                     <div className="mt-5">
-                      <VenueMap
+                      <VenueMapLazy
                         venueName={event.venue_name}
                         address={event.venue_address}
                         city={event.venue_city}
@@ -920,7 +923,7 @@ export default async function EventDetailPage({ params }: Props) {
                       ) : saleBlocked ? (
                         <TicketsNotOnSale embedded />
                       ) : (
-                        <SeatSelector
+                        <SeatSelectorLazy
                           eventId={event.id}
                           seats={eventSeats}
                           sections={eventSections}
