@@ -7,10 +7,14 @@ import type {
   Event, TicketTier, Organisation, EventCategory, EventAddon,
 } from '@/types/database'
 import { jsonAsStringArray } from '@/lib/json-narrow'
-import { priceLabel, lowestPaidCents } from '@/lib/events/price-label'
-import {
-  SeatSelector, type SeatData, type SectionData, type SeatAreaData,
+import { priceLabel } from '@/lib/events/price-label'
+// Types only: erased at compile time, so they never pull the seating engine
+// into this route's bundle. The component itself arrives via the client
+// boundary below.
+import type {
+  SeatData, SectionData, SeatAreaData, SeatDecorData,
 } from '@/components/checkout/seat-selector'
+import { SeatSelectorLazy } from '@/components/checkout/seat-selector-lazy'
 import { isFlagEnabled } from '@/lib/flags'
 import { SocialProofBadge } from '@/components/inventory/social-proof-badge'
 import { GoingProof } from '@/components/inventory/going-proof'
@@ -23,25 +27,20 @@ import { HeroMedia } from '@/components/media'
 import { HeroPresenceMarker } from '@/components/layout/hero-presence-marker'
 import { getFeaturedHeroBackground } from '@/lib/images/event-media'
 import { StickyActionBar } from '@/components/features/events/sticky-action-bar'
-import { RelatedEventsGrid } from '@/components/features/events/related-events-grid'
 import { Reveal } from '@/components/ui/reveal'
-import type { EventCardData } from '@/components/features/events/event-card'
-import { projectToCardData } from '@/lib/events/event-card-projection'
 import { buildEventMetaDescription } from '@/lib/events/event-meta'
-import type { PublicEventRow } from '@/lib/events/types'
-import nextDynamic from 'next/dynamic'
 import { EventTrustSignals } from '@/components/features/event/EventTrustSignals'
 import { fetchFixtureEvent } from '@/lib/dev/fixture-events'
 
-// VenueMap pulls in @googlemaps/js-api-loader (~290KB). Loading it statically
-// makes it part of the event-detail route chunk, which Next.js eagerly
-// prefetches from any page linking to /events/*. next/dynamic splits it into
-// its own chunk so the map code stays out of the initial bundle on every cell.
-const VenueMap = nextDynamic(
-  () => import('@/components/features/events/venue-map').then(m => m.VenueMap)
-)
+// VenueMap pulls in @googlemaps/js-api-loader (~290KB). The next/dynamic call
+// used to live HERE, which split nothing: this file is a Server Component, and
+// Next.js does not code-split a Client Component dynamically imported from one.
+// The dynamic import is now owned by a Client Component boundary
+// (venue-map-lazy.tsx), which is what actually keeps the map code out of the
+// initial chunk set.
+import { VenueMapLazy } from '@/components/features/events/venue-map-lazy'
 import { SectionHeader } from '@/components/ui/SectionHeader'
-import { EventSoldOut, type EventSoldOutRelated } from '@/components/features/events/event-sold-out'
+import { EventSoldOut } from '@/components/features/events/event-sold-out'
 import { TicketsNotOnSale } from '@/components/features/events/tickets-not-on-sale'
 import { eventIsPaid, isOrganiserSellable } from '@/lib/payments/sale-status'
 import { getEventFeeRates } from '@/lib/pricing/event-fee-config'
@@ -61,6 +60,7 @@ import { EventVideo } from '@/components/features/events/event-video'
 import { parseGallery } from '@/lib/media/event-media-model'
 import { isVideoProvider } from '@/lib/media/video-embed'
 
+import { getSiteUrl } from '@/lib/site-url'
 // Why ISR: every published event detail page is the same for all anonymous
 // visitors, so the shell ships as static HTML (revalidated every 5 minutes
 // from Postgres). Personalisation that previously made this dynamic
@@ -122,69 +122,6 @@ async function fetchEvent(slug: string): Promise<FullEvent | null> {
   return data
 }
 
-async function fetchRelatedEvents(
-  currentId: string,
-  categoryId: string | null,
-  organisationId: string,
-  city: string | null,
-): Promise<EventCardData[]> {
-  const supabase = createPublicClient()
-  const now = new Date().toISOString()
-
-  // Same organiser upcoming events
-  const orgPromise = supabase
-    .from('events')
-    .select('id, slug, title, cover_image_url, thumbnail_url, start_date, venue_name, venue_city, venue_country, created_at, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)')
-    .eq('status', 'published')
-    .eq('visibility', 'public')
-    .eq('organisation_id', organisationId)
-    .neq('id', currentId)
-    .gte('start_date', now)
-    .order('start_date', { ascending: true })
-    .limit(4)
-
-  const catPromise = categoryId
-    ? supabase
-        .from('events')
-        .select('id, slug, title, cover_image_url, thumbnail_url, start_date, venue_name, venue_city, venue_country, created_at, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)')
-        .eq('status', 'published')
-        .eq('visibility', 'public')
-        .eq('category_id', categoryId)
-        .neq('id', currentId)
-        .gte('start_date', now)
-        .order('start_date', { ascending: true })
-        .limit(4)
-    : Promise.resolve({ data: [] as unknown[] })
-
-  const cityPromise = city
-    ? supabase
-        .from('events')
-        .select('id, slug, title, cover_image_url, thumbnail_url, start_date, venue_name, venue_city, venue_country, created_at, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)')
-        .eq('status', 'published')
-        .eq('visibility', 'public')
-        .ilike('venue_city', `%${city}%`)
-        .neq('id', currentId)
-        .gte('start_date', now)
-        .order('start_date', { ascending: true })
-        .limit(4)
-    : Promise.resolve({ data: [] as unknown[] })
-
-  const [org, cat, cty] = await Promise.all([orgPromise, catPromise, cityPromise])
-
-  const seen = new Set<string>()
-  const merged: EventCardData[] = []
-  for (const bucket of [org.data ?? [], cat.data ?? [], cty.data ?? []]) {
-    for (const raw of bucket as unknown as EventCardData[]) {
-      if (seen.has(raw.id)) continue
-      seen.add(raw.id)
-      merged.push(raw)
-      if (merged.length >= 4) break
-    }
-    if (merged.length >= 4) break
-  }
-  return merged
-}
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const event = await fetchEvent(slug)
@@ -212,7 +149,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     categoryName: event.category?.name,
   })
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
+  const baseUrl = getSiteUrl()
 
   return {
     title,
@@ -428,7 +365,14 @@ export default async function EventDetailPage({ params }: Props) {
                 .maybeSingle()
             : Promise.resolve({ data: null, error: null }),
         ])
-        return { seatsResult, sectionsResult, mapResult }
+        // View-from-seat photographs, keyed by section name (item 9).
+        const viewsResult = event.seat_map_id
+          ? await seatSupabase
+              .from('seat_section_views')
+              .select('section_name, photo_url')
+              .eq('seat_map_id', event.seat_map_id)
+          : { data: null }
+        return { seatsResult, sectionsResult, mapResult, viewsResult }
       })()
     : Promise.resolve(null)
 
@@ -436,7 +380,6 @@ export default async function EventDetailPage({ params }: Props) {
     dynamicPriceMap,
     eventInventory,
     media,
-    related,
     seatsData,
     feeRates,
     seatedFlagEnabled,
@@ -452,12 +395,6 @@ export default async function EventDetailPage({ params }: Props) {
       gallery_urls: jsonAsStringArray(event.gallery_urls),
       category: event.category ? { slug: event.category.slug ?? null, name: event.category.name } : null,
     }),
-    fetchRelatedEvents(
-      event.id,
-      event.category_id,
-      event.organisation_id,
-      event.venue_city,
-    ),
     seatsPromise,
     // ACCC all-in: resolve this event's live fee VALUES (event > org > region
     // precedence, same rows the charge resolves) so the ticket selector can show
@@ -497,8 +434,10 @@ export default async function EventDetailPage({ params }: Props) {
   let eventSeats: SeatData[] = []
   let eventSections: SectionData[] = []
   let eventAreas: SeatAreaData[] = []
+  let eventDecor: SeatDecorData = {}
+  let sectionViews: Record<string, string> = {}
   if (seatsData) {
-    const { seatsResult, sectionsResult, mapResult } = seatsData
+    const { seatsResult, sectionsResult, mapResult, viewsResult } = seatsData
     if (seatsResult.error) {
       console.error('[event-detail] failed to load seats:', seatsResult.error)
     }
@@ -509,8 +448,32 @@ export default async function EventDetailPage({ params }: Props) {
       ticket_tier_id: s.ticket_tier_id ?? null,
     }))
     eventSections = (sectionsResult.data ?? []) as SectionData[]
-    const rawAreas = (mapResult?.data?.layout as { areas?: SeatAreaData[] } | null)?.areas
-    if (Array.isArray(rawAreas)) eventAreas = rawAreas
+    const rawLayout = mapResult?.data?.layout as {
+      areas?: SeatAreaData[]
+      stage?: SeatDecorData['stage']
+      objects?: SeatDecorData['objects']
+    } | null
+    // A standing/GA zone carries its PRICE on the plan, like every seated
+    // polygon. It has no seats, so the price cannot be derived from the chart:
+    // it is resolved here from the zone's bound tier by name, the same way
+    // materialize_seats binds a section to a tier. It must happen on the
+    // server because the client is handed SEAT-BOUND tiers only, and a zone's
+    // tier is by definition not seat-bound.
+    if (Array.isArray(rawLayout?.areas)) {
+      eventAreas = rawLayout.areas.map(a => {
+        const tier = a.tier_name
+          ? allTiers.find(t => t.name.toLowerCase() === a.tier_name!.toLowerCase())
+          : undefined
+        return tier ? { ...a, priceCents: resolvePrice(tier) } : a
+      })
+    }
+    eventDecor = {
+      stage: rawLayout?.stage ?? null,
+      objects: Array.isArray(rawLayout?.objects) ? rawLayout.objects : [],
+    }
+    sectionViews = Object.fromEntries(
+      (viewsResult?.data ?? []).map(v => [v.section_name.toLowerCase(), v.photo_url]),
+    )
   }
 
   // The seated experience runs only when the flag is on AND the event has a
@@ -547,15 +510,9 @@ export default async function EventDetailPage({ params }: Props) {
     .filter(Boolean)
     .join(', ')
 
-  const relatedTierIds = related
-    .map(e => e.ticket_tiers?.[0]?.id)
-    .filter((id): id is string => typeof id === 'string')
-
-  const [tierInventoryEntries, relatedCards, relatedPrices] = await Promise.all([
-    Promise.all(enrichedAllTiers.map(async t => [t.id, await getTierInventoryStatic(t.id)] as const)),
-    projectToCardData(related as unknown as PublicEventRow[]),
-    getDynamicPriceMap(relatedTierIds),
-  ])
+  const tierInventoryEntries = await Promise.all(
+    enrichedAllTiers.map(async t => [t.id, await getTierInventoryStatic(t.id)] as const),
+  )
   const tierInventory = Object.fromEntries(tierInventoryEntries)
 
   const isSoldOut =
@@ -572,26 +529,7 @@ export default async function EventDetailPage({ params }: Props) {
   const saleBlocked =
     eventIsPaid(allTiers) && !isOrganiserSellable(event.organisation)
 
-  const soldOutRelated: EventSoldOutRelated[] = related.slice(0, 3).map(e => {
-    const tiers = e.ticket_tiers ?? []
-    // Lowest PAID price (the shared price-label rule); 0 only when the event
-    // is genuinely free (every tier $0). The first tier is not the price.
-    const paid = lowestPaidCents(tiers)
-    return {
-      id: e.id,
-      slug: e.slug,
-      title: e.title,
-      start_date: e.start_date,
-      venue_city: e.venue_city,
-      venue_country: e.venue_country,
-      cover_image_url: e.cover_image_url,
-      category_name: e.category?.name ?? null,
-      from_price_cents: tiers.length === 0 ? null : paid ?? 0,
-      currency: tiers[0]?.currency ?? null,
-    }
-  })
-
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
+  const baseUrl = getSiteUrl()
   const eventStateForSchema =
     eventBannerState === 'cancelled' ? 'cancelled' as const :
     eventBannerState === 'postponed' ? 'postponed' as const :
@@ -872,7 +810,7 @@ export default async function EventDetailPage({ params }: Props) {
                   <Reveal as="div" className="mt-10">
                     <SectionHeader eyebrow="Location" title="Venue" size="sm" />
                     <div className="mt-5">
-                      <VenueMap
+                      <VenueMapLazy
                         venueName={event.venue_name}
                         address={event.venue_address}
                         city={event.venue_city}
@@ -985,15 +923,25 @@ export default async function EventDetailPage({ params }: Props) {
                       ) : saleBlocked ? (
                         <TicketsNotOnSale embedded />
                       ) : (
-                        <SeatSelector
+                        <SeatSelectorLazy
                           eventId={event.id}
                           seats={eventSeats}
                           sections={eventSections}
                           areas={eventAreas}
+                          decor={eventDecor}
+                          tiers={allTiers
+                            .filter(t => seatBoundTierIds.has(t.id))
+                            .map(t => ({
+                              id: t.id,
+                              name: t.name,
+                              price_cents: resolvePrice(t),
+                              min_per_order: t.min_per_order ?? 1,
+                            }))}
                           defaultPriceCents={defaultPriceCents}
                           currency={allTiers[0]?.currency ?? 'AUD'}
                           maxPerOrder={allTiers[0]?.max_per_order ?? 10}
                           tierPriceCentsMap={tierPriceCentsMap}
+                          sectionViews={sectionViews}
                         />
                       )}
                     </div>
@@ -1026,7 +974,7 @@ export default async function EventDetailPage({ params }: Props) {
                     <EventSoldOut
                       event={{ id: event.id, slug: event.slug, title: event.title }}
                       primaryTierId={allTiers[0]?.id ?? null}
-                      relatedEvents={soldOutRelated}
+                      relatedEvents={[]}
                     />
                   </div>
                 ) : (
@@ -1084,12 +1032,9 @@ export default async function EventDetailPage({ params }: Props) {
           </div>
         </section>
 
-        {/* Related events - fade-rise on scroll-in (below-fold). */}
-        {related.length > 0 && (
-          <Reveal>
-            <RelatedEventsGrid events={relatedCards} dynamicPrices={relatedPrices} />
-          </Reveal>
-        )}
+        {/* Founder ruling 2026-07-25: the event page sells THIS event alone.
+            No cross-promotion of any other event renders here; discovery
+            lives on the city and browse pages only. */}
       </main>
 
       <SiteFooter />

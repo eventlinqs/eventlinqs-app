@@ -5,16 +5,19 @@ import { estimateCostMicroUsd } from './config'
 import { checkMonthlyBudget, recordSpend } from './cost-guard'
 import { logAi } from './logging'
 import { enforceCopyLaws, asUntrustedBlock } from './sanitise'
+import { findCopyTells } from './copy-tells'
 
 /**
- * Magic Start uses a FAST model, not the chat default. Draft extraction is a
- * structured, low-reasoning task where a smaller model returns in a few
- * seconds (the whole flow targets under 60s to published) at a fraction of the
- * cost, so the same monthly guard covers far more calls. Override with
- * AI_MAGIC_START_MODEL.
+ * Two-pass models (founder ruling 2026-07-25). Field EXTRACTION is a
+ * structured, low-reasoning task pinned to Haiku 4.5 so the draft lands in
+ * seconds. The COPY pass (the title and description a buyer actually reads)
+ * runs on Sonnet 5, overridable with AI_MAGIC_START_MODEL, because the prose
+ * is the product. Both passes run under the same monthly cost guard.
  */
-function getMagicStartModel(): string {
-  return process.env.AI_MAGIC_START_MODEL || 'claude-haiku-4-5-20251001'
+const EXTRACTION_MODEL = 'claude-haiku-4-5-20251001'
+
+function getCopyModel(): string {
+  return process.env.AI_MAGIC_START_MODEL || 'claude-sonnet-5'
 }
 
 /**
@@ -128,6 +131,19 @@ function buildSystem(opts: { categoryNames: string[]; nowIso: string }): string 
     '- is_free is true only when the event is clearly free or no price is mentioned AND the organiser implies free entry. If any price is mentioned, is_free is false. When free, ticket_tiers is a single tier named "Free" with price 0. When paid, create one tier per stated price with its capacity when stated (else null).',
     '- The description you write must be genuinely useful and specific to what the organiser said, 2 to 4 short paragraphs, never a generic template.',
     '',
+    'Voice registers. You write as an experienced Australian event producer. Pick the register that matches the event type and hold it through the whole description:',
+    '- Music and nightlife: the lineup and set times lead. Name the acts, the room, and the door time. Short sentences with momentum; the facts carry the energy.',
+    '- Comedy: casual and communal, plain talk, no hype. Who is on, how long the sets run, where the bar is.',
+    '- Corporate and business: outcomes and numbers. Who attends, what they take away, the schedule, the venue specifics a professional needs.',
+    '- Family: practical reassurance leads. Times, prices, pram access, what the children actually do, where parents sit.',
+    '- Community and faith: the community\'s own words, dignity first, zero marketing froth. Who gathers, what is shared, who is welcome.',
+    '- Festivals: scale shown through logistics truths, stages, hours, food, transport, never through adjectives.',
+    '',
+    'Mandates for every register:',
+    '- Open with the single most concrete benefit the attendee gets, in one plain sentence.',
+    '- Every sentence states something true: a fact the organiser gave, or a production detail already known (date, venue, price, entry).',
+    '- No marketing filler, no stock phrases, no invented atmosphere. If the organiser gave little, write little and flag the gaps in "unresolved".',
+    '',
     'Allowed category names (choose one verbatim or empty):',
     opts.categoryNames.map(n => `- ${n}`).join('\n'),
   ].join('\n')
@@ -152,8 +168,196 @@ export async function extractEventDraft(opts: {
     return { ok: false, reason: 'budget_exhausted' }
   }
 
-  const model = getMagicStartModel()
+  const copyModel = getCopyModel()
   const system = buildSystem({ categoryNames, nowIso })
+
+  const baseMessages: Anthropic.MessageParam[] = [
+    {
+      role: 'user',
+      content: `Build an event draft from this description.\n\n${asUntrustedBlock('event_description', description)}`,
+    },
+  ]
+
+  // ── Pass 1: field extraction (Haiku, structured, fast) ───────────────────
+  const first = await callDraftModel({
+    model: EXTRACTION_MODEL,
+    system,
+    messages: baseMessages,
+    who,
+    schema: DRAFT_SCHEMA,
+  })
+  if (!first.ok) return { ok: false, reason: first.reason }
+
+  let parsed = safeParse(first.text, categoryNames)
+  if (!parsed) {
+    logAi({
+      evt: 'ai.error',
+      assistant: 'magic-start',
+      who,
+      errorType: 'UnparseableDraft',
+      model: EXTRACTION_MODEL,
+    })
+    return { ok: false, reason: 'upstream_error' }
+  }
+  let costMicroUsd = first.costMicroUsd
+
+  // ── Pass 2: the copy pass (Sonnet writes the prose the buyer reads) ──────
+  // Degrades gracefully: if this pass fails upstream the Haiku prose stands,
+  // and the anti-tell gate below still has the last word either way.
+  const copyMessages = buildCopyMessages(parsed, description)
+  const copy = await callDraftModel({
+    model: copyModel,
+    system,
+    messages: copyMessages,
+    who,
+    schema: COPY_SCHEMA,
+  })
+  let copyText: string | null = null
+  if (copy.ok) {
+    costMicroUsd += copy.costMicroUsd
+    copyText = copy.text
+    const prose = parseCopy(copy.text)
+    if (prose) parsed = { ...parsed, title: prose.title, description: prose.description }
+  }
+
+  // ── The anti-tell gate (C3, layer 2) ─────────────────────────────────────
+  // Prose carrying a banned pattern gets exactly ONE regeneration on the
+  // copy model with the violations named. Whatever comes back, a telling
+  // field is blanked and flagged rather than shipped: the gate never loses.
+  const tells = draftTells(parsed)
+  if (tells.length > 0) {
+    const retry = await callDraftModel({
+      model: copyModel,
+      system,
+      who,
+      schema: COPY_SCHEMA,
+      messages: [
+        ...copyMessages,
+        {
+          role: 'assistant',
+          content: copyText ?? JSON.stringify({ title: parsed.title, description: parsed.description }),
+        },
+        {
+          role: 'user',
+          content:
+            `The copy is rejected: it used banned phrasing (${tells.join(', ')}). ` +
+            'Rewrite the title and description with concrete, specific language about this exact event: ' +
+            'what happens, who performs, where, when. No marketing filler, no stock phrases. ' +
+            'Return the corrected JSON only.',
+        },
+      ],
+    })
+    if (retry.ok) {
+      costMicroUsd += retry.costMicroUsd
+      const prose = parseCopy(retry.text)
+      if (prose) parsed = { ...parsed, title: prose.title, description: prose.description }
+    }
+    parsed = blankTellingFields(parsed, who, copyModel)
+  }
+
+  return { ok: true, draft: parsed, costMicroUsd }
+}
+
+/** The copy-pass request: the extracted facts plus the organiser's own words. */
+function buildCopyMessages(
+  draft: MagicStartDraft,
+  description: string,
+): Anthropic.MessageParam[] {
+  const facts = [
+    draft.category && `Category: ${draft.category}`,
+    draft.start_date && `Starts: ${draft.start_date}`,
+    draft.venue_name && `Venue: ${draft.venue_name}`,
+    draft.venue_city && `City: ${draft.venue_city}`,
+    draft.is_free
+      ? 'Entry: free'
+      : draft.ticket_tiers.length > 0 &&
+        `Tickets: ${draft.ticket_tiers.map(t => `${t.name} ${t.currency} ${t.price}`).join(', ')}`,
+  ]
+    .filter(Boolean)
+    .join('\n')
+
+  return [
+    {
+      role: 'user',
+      content:
+        'Write the final event title and description. Use ONLY the extracted facts below and the ' +
+        'organiser\'s own words; follow the voice register for the event type and every hard rule. ' +
+        `\n\nExtracted facts:\n${facts || '(none)'}\n\n` +
+        asUntrustedBlock('event_description', description),
+    },
+  ]
+}
+
+const COPY_SCHEMA = {
+  type: 'object',
+  properties: {
+    title: { type: 'string', description: 'The final event title, concise and concrete.' },
+    description: {
+      type: 'string',
+      description:
+        'The final description, 2 to 4 short paragraphs in the matching voice register, Australian English.',
+    },
+  },
+  required: ['title', 'description'],
+  additionalProperties: false,
+} as const
+
+function parseCopy(text: string): { title: string; description: string } | null {
+  try {
+    const raw = JSON.parse(text) as Record<string, unknown>
+    const title = typeof raw.title === 'string' ? enforceCopyLaws(raw.title).slice(0, 200) : ''
+    const desc =
+      typeof raw.description === 'string' ? enforceCopyLaws(raw.description).slice(0, 5000) : ''
+    if (!title && !desc) return null
+    return { title, description: desc }
+  } catch {
+    return null
+  }
+}
+
+/** Tell names across the draft's generated prose (title + description). */
+function draftTells(draft: MagicStartDraft): string[] {
+  return Array.from(
+    new Set([...findCopyTells(draft.title), ...findCopyTells(draft.description)]),
+  )
+}
+
+/**
+ * The gate's last word: any prose field still carrying a tell after the one
+ * permitted regeneration is returned empty and named in `unresolved`, so the
+ * organiser writes that line themselves and a tell never reaches a surface.
+ */
+function blankTellingFields(draft: MagicStartDraft, who: string, model: string): MagicStartDraft {
+  const next = { ...draft, unresolved: [...draft.unresolved] }
+  const flag = (label: string) => {
+    if (!next.unresolved.includes(label)) next.unresolved.push(label)
+  }
+  if (findCopyTells(next.title).length > 0) {
+    next.title = ''
+    flag('Title')
+    logAi({ evt: 'ai.error', assistant: 'magic-start', who, errorType: 'TellBlankedTitle', model })
+  }
+  if (findCopyTells(next.description).length > 0) {
+    next.description = ''
+    flag('Description')
+    logAi({ evt: 'ai.error', assistant: 'magic-start', who, errorType: 'TellBlankedDescription', model })
+  }
+  return next
+}
+
+type DraftCall =
+  | { ok: true; text: string; costMicroUsd: number }
+  | { ok: false; reason: 'upstream_error' | 'refused' }
+
+/** One model call: request, spend recording, structured logging, refusal. */
+async function callDraftModel(opts: {
+  model: string
+  system: string
+  messages: Anthropic.MessageParam[]
+  who: string
+  schema: Record<string, unknown>
+}): Promise<DraftCall> {
+  const { model, system, messages, who, schema } = opts
   const started = Date.now()
 
   let response: Anthropic.Message
@@ -162,13 +366,8 @@ export async function extractEventDraft(opts: {
       model,
       max_tokens: 1500,
       system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
-      messages: [
-        {
-          role: 'user',
-          content: `Build an event draft from this description.\n\n${asUntrustedBlock('event_description', description)}`,
-        },
-      ],
-      output_config: { format: { type: 'json_schema', schema: DRAFT_SCHEMA } },
+      messages,
+      output_config: { format: { type: 'json_schema', schema } },
     })
   } catch (err) {
     logAi({
@@ -210,13 +409,8 @@ export async function extractEventDraft(opts: {
   const textBlock = response.content.find(
     (b): b is Anthropic.TextBlock => b.type === 'text',
   )
-  const parsed = textBlock ? safeParse(textBlock.text, categoryNames) : null
-  if (!parsed) {
-    logAi({ evt: 'ai.error', assistant: 'magic-start', who, errorType: 'UnparseableDraft', model })
-    return { ok: false, reason: 'upstream_error' }
-  }
-
-  return { ok: true, draft: parsed, costMicroUsd }
+  if (!textBlock) return { ok: false, reason: 'upstream_error' }
+  return { ok: true, text: textBlock.text, costMicroUsd }
 }
 
 function safeParse(text: string, allowedCategories: string[]): MagicStartDraft | null {

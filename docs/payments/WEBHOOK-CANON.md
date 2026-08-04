@@ -8,9 +8,10 @@ emails the founder the moment any of it stops holding.
 
 | Item | Value |
 |---|---|
-| Live endpoint | `we_1TsCg7GqHIQtgS8tACqBes6I` (created 2026-07-12, audit re-key) |
+| Live endpoint | `we_1TukSyGqHIQtgS8touv1HwMs` (created 2026-07-19, merged-main re-key: same URL + same 14 events) |
 | URL | `https://eventlinqs-staging.vercel.app/api/webhooks/stripe` |
-| Old endpoint | `we_1TpKq2GqHIQtgS8tIND6Iy23` - DISABLED 2026-07-12 (its secret had drifted from the app env; paid orders sat pending) |
+| Old endpoint | `we_1TsCg7GqHIQtgS8tACqBes6I` - DISABLED 2026-07-19 (its secret had drifted from the app env again; paid orders sat pending on the merged-main staging proof until re-keyed) |
+| Older endpoint | `we_1TpKq2GqHIQtgS8tIND6Iy23` - DISABLED 2026-07-12 (its secret had drifted from the app env; paid orders sat pending) |
 | Stripe account | the TEST sandbox `acct_1T8WBzGqHIQtgS8t` |
 
 ## Where the secret lives (all three must always match)
@@ -61,6 +62,20 @@ probe to prove the alert path end to end.
 
 The sentinel READS ONLY: it never mutates orders, seats, or money, and the
 funds-holding engine is untouched.
+
+## Crons run on PRODUCTION only (launch-day verification step)
+
+Vercel executes vercel.json crons on PRODUCTION deployments only, by
+platform design. On previews and staging this whole mission exercised the
+routes manually (Bearer CRON_SECRET). At go-live, verify in the Vercel
+dashboard that BOTH money-path crons are listed and firing:
+
+- `/api/cron/reservation-expire` (every minute) - releases abandoned GA and
+  seated holds; the sweeper's mixed-shape fix is migration 20260712000001.
+- `/api/cron/webhook-sentinel` (every 10 minutes) - the payment sentinel.
+
+First-hour proof on launch day: one green sentinel response in the cron
+logs and one abandoned test hold releasing inside two minutes.
 
 ## Go-live day (production)
 

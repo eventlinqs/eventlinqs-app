@@ -33,6 +33,11 @@ export function VenueMap({
   const [inView, setInView] = useState(false)
 
   const hasCoords = latitude !== null && longitude !== null
+  // Address string to geocode when the event has no stored coordinates. Most
+  // events never had their venue geocoded on save, so without this fallback the
+  // map would silently show the static card and never load Google at all.
+  const geocodeQuery = [venueName, address, city, state, country].filter(Boolean).join(', ')
+  const hasLocation = hasCoords || geocodeQuery.trim().length > 0
 
   // Defer Google Maps JS download (~290KB) until the venue section enters
   // the viewport. Map sits well below the fold; eager load wastes mobile
@@ -42,7 +47,7 @@ export function VenueMap({
   // venue section still triggers the IntersectionObserver, but the
   // headless bot never gets there within the PSI 6s measurement window.
   useEffect(() => {
-    if (!hasCoords) return
+    if (!hasLocation) return
     // Skip entirely in headless audit mode - matches smart-media's pattern.
     if (typeof document !== 'undefined' && document.body.dataset.headless === '1') {
       return
@@ -70,7 +75,7 @@ export function VenueMap({
     return () => {
       io.disconnect()
     }
-  }, [hasCoords])
+  }, [hasLocation])
   const mapsLinkQuery = [venueName, address, city, state, country].filter(Boolean).join(', ')
   const mapsLink = hasCoords
     ? `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`
@@ -78,7 +83,7 @@ export function VenueMap({
   const fullAddress = [address, city, state, country].filter(Boolean).join(', ')
 
   useEffect(() => {
-    if (!hasCoords) return
+    if (!hasLocation) return
     if (!inView) return
     const loader = getGoogleMapsLoader()
     if (!loader) return
@@ -91,7 +96,20 @@ export function VenueMap({
         const { Map } = (await loader.importLibrary('maps')) as google.maps.MapsLibrary
         if (cancelled || !containerRef.current) return
 
-        const center = { lat: latitude, lng: longitude }
+        // Center: stored coordinates when present, otherwise geocode the venue
+        // address in the browser (the referer-restricted key works client-side,
+        // where server-side geocoding cannot). If geocoding yields nothing, keep
+        // the static fallback rather than dropping a pin in the ocean.
+        let center: google.maps.LatLngLiteral
+        if (hasCoords) {
+          center = { lat: latitude, lng: longitude }
+        } else {
+          const { Geocoder } = (await loader.importLibrary('geocoding')) as google.maps.GeocodingLibrary
+          const { results } = await new Geocoder().geocode({ address: geocodeQuery })
+          if (cancelled || !containerRef.current || !results?.[0]) return
+          const loc = results[0].geometry.location
+          center = { lat: loc.lat(), lng: loc.lng() }
+        }
         const map = new Map(containerRef.current, {
           center,
           zoom: 15,
@@ -129,12 +147,12 @@ export function VenueMap({
       markerRef.current = null
       mapRef.current = null
     }
-  }, [hasCoords, inView, latitude, longitude, venueName])
+  }, [hasLocation, hasCoords, inView, latitude, longitude, venueName, geocodeQuery])
 
   return (
     <div className="overflow-hidden rounded-2xl border border-ink-200 bg-white">
       <div className="relative aspect-[2/1] bg-ink-100">
-        {hasCoords ? (
+        {hasLocation ? (
           <>
             <div ref={containerRef} className="absolute inset-0 h-full w-full" />
             {/* Native lazy-img sentinel - when the browser decides this

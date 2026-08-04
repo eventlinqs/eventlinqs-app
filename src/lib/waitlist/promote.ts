@@ -100,7 +100,8 @@ export async function promoteWaitlist(
     const buyerEmail = profile?.email
     if (!buyerEmail) continue
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://eventlinqs.com'
+    // Empty-safe (`||` not `??`) + canonical www; switches with NEXT_PUBLIC_APP_URL.
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() || 'https://www.eventlinqs.com'
     const checkoutUrl = `${appUrl}/events/${eventData.slug}?waitlist_token=${row.id}`
     const expiresAt = new Date(notification.expires_at)
     const expiresFormatted = expiresAt.toLocaleString('en-AU', {

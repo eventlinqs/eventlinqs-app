@@ -1,0 +1,14 @@
+{
+  "base": "http://localhost:3100",
+  "startedAt": "2026-07-26T13:56:59.040Z",
+  "steps": {
+    "setup": {
+      "sectionView": true
+    },
+    "assertions": {
+      "configurations": 11,
+      "failures": 9
+    }
+  },
+  "finishedAt": "2026-07-26T13:58:26.228Z"
+}

@@ -15,6 +15,9 @@ export type { EventCardMediaVariant } from './EventCardMedia'
 
 export { GalleryImage } from './GalleryImage'
 
+export { GuideCardImage } from './GuideCardImage'
+export { GuideShotImage } from './GuideShotImage'
+
 export { CityTileImage } from './CityTileImage'
 
 export { OrganiserAvatar } from './OrganiserAvatar'

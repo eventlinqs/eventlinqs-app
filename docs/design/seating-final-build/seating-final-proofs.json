@@ -1,0 +1,68 @@
+{
+  "base": "http://localhost:3131",
+  "ranSteps": [
+    "chair",
+    "rooms",
+    "lods",
+    "assert",
+    "probe"
+  ],
+  "steps": {
+    "chair": {
+      "written": true
+    },
+    "rooms": {
+      "rooms": 5,
+      "viewports": 2
+    },
+    "lods": {
+      "done": true
+    },
+    "assertions": {
+      "configurations": 16,
+      "failures": 0
+    },
+    "probe": {
+      "cleanBefore": {
+        "textText": 0,
+        "textInk": 0,
+        "verdict": "PASS"
+      },
+      "withProbe": {
+        "textText": 1,
+        "textInk": 0,
+        "pairs": [
+          "\"STAGE\" x \"PROBE\""
+        ],
+        "verdict": "FAIL (correct: the probe collides)"
+      },
+      "cleanAfter": {
+        "textText": 0,
+        "textInk": 0,
+        "verdict": "PASS"
+      }
+    },
+    "chairSymmetry": {
+      "silhouette": {
+        "maxDiff": 0,
+        "offPixels": 0,
+        "match": true
+      },
+      "back": {
+        "maxDiff": 0,
+        "offPixels": 0,
+        "match": true
+      },
+      "arms": {
+        "maxDiff": 0,
+        "offPixels": 0,
+        "match": true
+      },
+      "pan": {
+        "maxDiff": 0,
+        "offPixels": 0,
+        "match": true
+      }
+    }
+  }
+}

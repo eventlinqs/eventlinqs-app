@@ -1,0 +1,2762 @@
+[
+  {
+    "slug": "a-dolls-house-on-stage-at-albury-library-museum-albury",
+    "title": "A Doll’s House on Stage at Albury Library Museum",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "91.10",
+    "error": null
+  },
+  {
+    "slug": "a-dolls-house-on-stage-at-canberra-theatre-centre-canberra",
+    "title": "A Doll’s House on Stage at Canberra Theatre Centre",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "50.82",
+    "error": null
+  },
+  {
+    "slug": "a-dolls-house-on-stage-at-civic-theatre-newcastle",
+    "title": "A Doll’s House on Stage at Civic Theatre",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "60.35",
+    "error": null
+  },
+  {
+    "slug": "a-dolls-house-on-stage-at-civic-theatre-townsville",
+    "title": "A Doll’s House on Stage at Civic Theatre",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "53.99",
+    "error": null
+  },
+  {
+    "slug": "a-dolls-house-on-stage-at-costa-hall-geelong",
+    "title": "A Doll’s House on Stage at Costa Hall",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "104.87",
+    "error": null
+  },
+  {
+    "slug": "a-dolls-house-on-stage-at-empire-theatre-toowoomba",
+    "title": "A Doll’s House on Stage at Empire Theatre",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "66.71",
+    "error": null
+  },
+  {
+    "slug": "a-dolls-house-on-stage-at-fortitude-music-hall-brisbane",
+    "title": "A Doll’s House on Stage at Fortitude Music Hall",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "77.31",
+    "error": null
+  },
+  {
+    "slug": "a-dolls-house-on-stage-at-fremantle-arts-centre-perth",
+    "title": "A Doll’s House on Stage at Fremantle Arts Centre",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "39.15",
+    "error": null
+  },
+  {
+    "slug": "a-dolls-house-on-stage-at-hamer-hall-melbourne",
+    "title": "A Doll’s House on Stage at Hamer Hall",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "52.94",
+    "error": null
+  },
+  {
+    "slug": "a-dolls-house-on-stage-at-her-majestys-ballarat-ballarat",
+    "title": "A Doll’s House on Stage at Her Majesty’s Ballarat",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "39.15",
+    "error": null
+  },
+  {
+    "slug": "a-dolls-house-on-stage-at-hindley-street-music-hall-adelaide",
+    "title": "A Doll’s House on Stage at Hindley Street Music Hall",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "76.26",
+    "error": null
+  },
+  {
+    "slug": "a-dolls-house-on-stage-at-ipac-wollongong",
+    "title": "A Doll’s House on Stage at IPAC",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "82.62",
+    "error": null
+  },
+  {
+    "slug": "a-dolls-house-on-stage-at-jute-theatre-cairns",
+    "title": "A Doll’s House on Stage at JUTE Theatre",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "82.62",
+    "error": null
+  },
+  {
+    "slug": "a-dolls-house-on-stage-at-magnt-darwin",
+    "title": "A Doll’s House on Stage at MAGNT",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "94.27",
+    "error": null
+  },
+  {
+    "slug": "a-dolls-house-on-stage-at-metro-theatre-sydney",
+    "title": "A Doll’s House on Stage at Metro Theatre",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "65.66",
+    "error": null
+  },
+  {
+    "slug": "a-dolls-house-on-stage-at-mos-desert-clubhouse-gold-coast",
+    "title": "A Doll’s House on Stage at Mo’s Desert Clubhouse",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "a-dolls-house-on-stage-at-royal-on-george-launceston",
+    "title": "A Doll’s House on Stage at Royal on George",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "50.82",
+    "error": null
+  },
+  {
+    "slug": "a-dolls-house-on-stage-at-the-events-centre-caloundra-sunshine-coast",
+    "title": "A Doll’s House on Stage at The Events Centre Caloundra",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "59.30",
+    "error": null
+  },
+  {
+    "slug": "a-dolls-house-on-stage-at-theatre-royal-hobart",
+    "title": "A Doll’s House on Stage at Theatre Royal",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "56.11",
+    "error": null
+  },
+  {
+    "slug": "a-dolls-house-on-stage-at-ulumbarra-theatre-bendigo",
+    "title": "A Doll’s House on Stage at Ulumbarra Theatre",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "78.38",
+    "error": null
+  },
+  {
+    "slug": "adelaide-night-noodle-and-street-food-market-adelaide",
+    "title": "Adelaide Night Noodle and Street Food Market",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "52.94",
+    "error": null
+  },
+  {
+    "slug": "africultures-festival-sydney-2027",
+    "title": "Africultures Festival",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "48.01",
+    "error": null
+  },
+  {
+    "slug": "afrobeats-amapiano-day-party-at-magnet-house-perth",
+    "title": "Afrobeats Amapiano Day Party at Magnet House",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "42.34",
+    "error": null
+  },
+  {
+    "slug": "afrobeats-amapiano-live-at-scarborough-beach-perth",
+    "title": "Afrobeats Amapiano Live at Scarborough Beach",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "70.95",
+    "error": null
+  },
+  {
+    "slug": "afrobeats-amapiano-live-at-the-rosemount-perth",
+    "title": "Afrobeats Amapiano Live at The Rosemount",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "51.87",
+    "error": null
+  },
+  {
+    "slug": "afrobeats-amapiano-live-at-townsville-entertainment-centre-townsville",
+    "title": "Afrobeats Amapiano Live at Townsville Entertainment Centre",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "43.39",
+    "error": null
+  },
+  {
+    "slug": "afrobeats-amapiano-nights-at-the-pier-bar-cairns",
+    "title": "Afrobeats Amapiano Nights at The Pier Bar",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "48.70",
+    "error": null
+  },
+  {
+    "slug": "afrobeats-amapiano-nights-at-the-strand-townsville",
+    "title": "Afrobeats Amapiano Nights at The Strand",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "40.22",
+    "error": null
+  },
+  {
+    "slug": "afrobeats-amapiano-party-at-cairns-esplanade-cairns",
+    "title": "Afrobeats Amapiano Party at Cairns Esplanade",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "52.94",
+    "error": null
+  },
+  {
+    "slug": "afrobeats-amapiano-party-at-the-bird-perth",
+    "title": "Afrobeats Amapiano Party at The Bird",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "66.71",
+    "error": null
+  },
+  {
+    "slug": "afrobeats-and-amapiano-day-party-melbourne-melbourne",
+    "title": "Afrobeats and Amapiano Day Party, Melbourne",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "33.86",
+    "error": null
+  },
+  {
+    "slug": "afrobeats-and-brunch-sunday-sessions",
+    "title": "Afrobeats and Brunch: Sunday Sessions",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "91.10",
+    "error": null
+  },
+  {
+    "slug": "afrobeats-live-headline-concert",
+    "title": "Afrobeats Live: Headline Concert",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "101.70",
+    "error": null
+  },
+  {
+    "slug": "afrobeats-melbourne-summer-sessions",
+    "title": "Afrobeats Melbourne: Summer Sessions",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "59.30",
+    "error": null
+  },
+  {
+    "slug": "albury-night-noodle-and-street-food-market-albury",
+    "title": "Albury Night Noodle and Street Food Market",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "61.42",
+    "error": null
+  },
+  {
+    "slug": "amapiano-adelaide-log-drum-sessions",
+    "title": "Amapiano Adelaide: Log Drum Sessions",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "48.70",
+    "error": null
+  },
+  {
+    "slug": "amapiano-day-party-adelaide-hills",
+    "title": "Amapiano Day Party: Adelaide Hills",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "48.70",
+    "error": null
+  },
+  {
+    "slug": "anatolian-folk-and-dance-evening-melbourne-melbourne",
+    "title": "Anatolian Folk and Dance Evening, Melbourne",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "23.26",
+    "error": null
+  },
+  {
+    "slug": "arab-street-food-and-music-night-sydney-sydney",
+    "title": "Arab Street Food and Music Night, Sydney",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "25.38",
+    "error": null
+  },
+  {
+    "slug": "arabic-oud-and-tarab-evening-sydney-sydney",
+    "title": "Arabic Oud and Tarab Evening, Sydney",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "17.95",
+    "error": null
+  },
+  {
+    "slug": "arabic-oud-and-tarab-evening-sydney-sydney-2",
+    "title": "Arabic Oud and Tarab Evening, Sydney",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "32.79",
+    "error": null
+  },
+  {
+    "slug": "arena-sessions-large-room-performance-test",
+    "title": "Arena Sessions: Large Room Performance Test",
+    "type": "seated",
+    "reached": true,
+    "displayed": null,
+    "error": null
+  },
+  {
+    "slug": "artist-layer-launch-night-geelong",
+    "title": "Artist Layer Launch Night, Geelong",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "aso-ebi-affair-owambe-garden-party",
+    "title": "Aso Ebi Affair: Owambe Garden Party",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "48.70",
+    "error": null
+  },
+  {
+    "slug": "assign-mode-proof-night",
+    "title": "Assign Mode Proof Night",
+    "type": "seated",
+    "reached": false,
+    "displayed": null,
+    "error": "TimeoutError: page.waitForSelector: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - "
+  },
+  {
+    "slug": "ballarat-night-noodle-and-street-food-market-ballarat",
+    "title": "Ballarat Night Noodle and Street Food Market",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "bendigo-night-noodle-and-street-food-market-bendigo",
+    "title": "Bendigo Night Noodle and Street Food Market",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "53.99",
+    "error": null
+  },
+  {
+    "slug": "bhangra-and-garba-celebration-canberra-canberra",
+    "title": "Bhangra and Garba Celebration, Canberra",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "31.74",
+    "error": null
+  },
+  {
+    "slug": "bhangra-and-garba-celebration-sydney-sydney",
+    "title": "Bhangra and Garba Celebration, Sydney",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "35.98",
+    "error": null
+  },
+  {
+    "slug": "big-pop-night-at-mooloolaba-esplanade-sunshine-coast",
+    "title": "Big Pop Night at Mooloolaba Esplanade",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "78.38",
+    "error": null
+  },
+  {
+    "slug": "blak-music-and-dance-night-darwin-darwin",
+    "title": "Blak Music and Dance Night, Darwin",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "27.50",
+    "error": null
+  },
+  {
+    "slug": "blak-music-and-dance-night-melbourne-melbourne",
+    "title": "Blak Music and Dance Night, Melbourne",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "32.79",
+    "error": null
+  },
+  {
+    "slug": "blak-music-and-dance-night-toowoomba-toowoomba",
+    "title": "Blak Music and Dance Night, Toowoomba",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "blues-roots-live-at-albury-entertainment-centre-albury",
+    "title": "Blues Roots Live at Albury Entertainment Centre",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "63.54",
+    "error": null
+  },
+  {
+    "slug": "blues-roots-live-at-republic-bar-hobart",
+    "title": "Blues Roots Live at Republic Bar",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "43.39",
+    "error": null
+  },
+  {
+    "slug": "blues-roots-live-at-uc-hub-canberra",
+    "title": "Blues Roots Live at UC Hub",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "77.31",
+    "error": null
+  },
+  {
+    "slug": "blues-roots-session-at-princess-theatre-launceston",
+    "title": "Blues Roots Session at Princess Theatre",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "74.14",
+    "error": null
+  },
+  {
+    "slug": "bollywood-brunch-sangeet-sundays",
+    "title": "Bollywood Brunch: Sangeet Sundays",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "91.10",
+    "error": null
+  },
+  {
+    "slug": "bollywood-nights-sydney-dhol-and-dance",
+    "title": "Bollywood Nights Sydney: Dhol and Dance",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "48.70",
+    "error": null
+  },
+  {
+    "slug": "brisbane-gospel-choir-showcase",
+    "title": "Brisbane Gospel Choir Showcase",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "38.10",
+    "error": null
+  },
+  {
+    "slug": "brisbane-night-noodle-and-street-food-market-brisbane",
+    "title": "Brisbane Night Noodle and Street Food Market",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "52.94",
+    "error": null
+  },
+  {
+    "slug": "broadcast-gate-encore-session-geelong",
+    "title": "Broadcast Gate Encore Session, Geelong",
+    "type": "free-ga",
+    "reached": false,
+    "displayed": null,
+    "error": "no ticket stepper"
+  },
+  {
+    "slug": "broadcast-gate-proof-night-geelong",
+    "title": "Broadcast Gate Proof Night, Geelong",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "cairns-night-noodle-and-street-food-market-cairns",
+    "title": "Cairns Night Noodle and Street Food Market",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "56.11",
+    "error": null
+  },
+  {
+    "slug": "canberra-night-noodle-and-street-food-market-canberra",
+    "title": "Canberra Night Noodle and Street Food Market",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "38.10",
+    "error": null
+  },
+  {
+    "slug": "caribbean-carnival-and-soca-night-sydney-sydney",
+    "title": "Caribbean Carnival and Soca Night, Sydney",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "caribbean-carnival-melbourne-2027",
+    "title": "Caribbean Carnival Melbourne",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "59.30",
+    "error": null
+  },
+  {
+    "slug": "caribbean-carnival-melbourne-soca-saturday",
+    "title": "Caribbean Carnival Melbourne: Soca Saturday",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "48.70",
+    "error": null
+  },
+  {
+    "slug": "caribbean-dancehall-live-at-george-brown-botanic-gardens-darwin",
+    "title": "Caribbean Dancehall Live at George Brown Botanic Gardens",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "60.35",
+    "error": null
+  },
+  {
+    "slug": "caribbean-dancehall-night-at-adelaide-town-hall-adelaide",
+    "title": "Caribbean Dancehall Night at Adelaide Town Hall",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "53.99",
+    "error": null
+  },
+  {
+    "slug": "caribbean-dancehall-night-at-empire-theatre-toowoomba",
+    "title": "Caribbean Dancehall Night at Empire Theatre",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "49.75",
+    "error": null
+  },
+  {
+    "slug": "caribbean-dancehall-night-at-lion-arts-factory-adelaide",
+    "title": "Caribbean Dancehall Night at Lion Arts Factory",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "72.02",
+    "error": null
+  },
+  {
+    "slug": "caribbean-dancehall-party-at-the-gov-adelaide",
+    "title": "Caribbean Dancehall Party at The Gov",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "32.79",
+    "error": null
+  },
+  {
+    "slug": "caribbean-dancehall-vibes-at-queens-park-toowoomba",
+    "title": "Caribbean Dancehall Vibes at Queens Park",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "43.39",
+    "error": null
+  },
+  {
+    "slug": "caribbean-sunset-cruise-sydney-harbour",
+    "title": "Caribbean Sunset Cruise: Sydney Harbour",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "154.70",
+    "error": null
+  },
+  {
+    "slug": "cat-a-midsummer-night-dream-on-stage-melbourne",
+    "title": "A Midsummer Night Dream on Stage",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "63.54",
+    "error": null
+  },
+  {
+    "slug": "cat-ballet-gala-evening-melbourne",
+    "title": "Ballet Gala Evening",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "74.14",
+    "error": null
+  },
+  {
+    "slug": "cat-brisbane-coffee-and-roasters-expo-brisbane",
+    "title": "Brisbane Coffee and Roasters Expo",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "34.91",
+    "error": null
+  },
+  {
+    "slug": "cat-chocolate-and-dessert-fair-melbourne",
+    "title": "Chocolate and Dessert Fair",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "27.50",
+    "error": null
+  },
+  {
+    "slug": "cat-city-basketball-showcase-sydney",
+    "title": "City Basketball Showcase",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "38.10",
+    "error": null
+  },
+  {
+    "slug": "cat-combat-sports-fight-night-brisbane",
+    "title": "Combat Sports Fight Night",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "59.30",
+    "error": null
+  },
+  {
+    "slug": "cat-comedy-cellar-late-show-sydney",
+    "title": "Comedy Cellar Late Show",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "34.91",
+    "error": null
+  },
+  {
+    "slug": "cat-comedy-in-the-round-sydney",
+    "title": "Comedy in the Round",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "42.34",
+    "error": null
+  },
+  {
+    "slug": "cat-contemporary-art-after-hours-sydney",
+    "title": "Contemporary Art After Hours",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "27.50",
+    "error": null
+  },
+  {
+    "slug": "cat-contemporary-dance-double-bill-brisbane",
+    "title": "Contemporary Dance Double Bill",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "52.94",
+    "error": null
+  },
+  {
+    "slug": "cat-craft-beer-and-cider-garden-brisbane",
+    "title": "Craft Beer and Cider Garden",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "31.74",
+    "error": null
+  },
+  {
+    "slug": "cat-creative-industries-mixer-melbourne",
+    "title": "Creative Industries Mixer",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "38.10",
+    "error": null
+  },
+  {
+    "slug": "cat-disco-fever-throwback-sydney",
+    "title": "Disco Fever Throwback",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "31.74",
+    "error": null
+  },
+  {
+    "slug": "cat-dumpling-and-dim-sum-festival-sydney",
+    "title": "Dumpling and Dim Sum Festival",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "cat-electronic-live-showcase-sydney",
+    "title": "Electronic Live Showcase",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "80.50",
+    "error": null
+  },
+  {
+    "slug": "cat-esports-arena-finals-sydney",
+    "title": "Esports Arena Finals",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "42.34",
+    "error": null
+  },
+  {
+    "slug": "cat-family-fun-day-in-the-city-brisbane",
+    "title": "Family Fun Day in the City",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "cat-festival-of-ideas-weekend-brisbane",
+    "title": "Festival of Ideas Weekend",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "48.70",
+    "error": null
+  },
+  {
+    "slug": "cat-folk-and-roots-night-brisbane",
+    "title": "Folk and Roots Night",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "45.51",
+    "error": null
+  },
+  {
+    "slug": "cat-founders-and-investors-summit-sydney",
+    "title": "Founders and Investors Summit",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "158.94",
+    "error": null
+  },
+  {
+    "slug": "cat-harbour-city-wine-and-cheese-sydney",
+    "title": "Harbour City Wine and Cheese",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "74.14",
+    "error": null
+  },
+  {
+    "slug": "cat-improv-battle-night-brisbane",
+    "title": "Improv Battle Night",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "30.67",
+    "error": null
+  },
+  {
+    "slug": "cat-indie-sounds-live-at-the-enmore-sydney",
+    "title": "Indie Sounds Live at the Enmore",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "63.54",
+    "error": null
+  },
+  {
+    "slug": "cat-inner-west-arts-and-music-festival-sydney",
+    "title": "Inner West Arts and Music Festival",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "69.90",
+    "error": null
+  },
+  {
+    "slug": "cat-kids-theatre-the-big-adventure-sydney",
+    "title": "Kids Theatre: The Big Adventure",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "27.50",
+    "error": null
+  },
+  {
+    "slug": "cat-laneway-makers-festival-sydney",
+    "title": "Laneway Makers Festival",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "cat-late-night-jazz-at-the-metro-sydney",
+    "title": "Late Night Jazz at the Metro",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "56.11",
+    "error": null
+  },
+  {
+    "slug": "cat-live-band-karaoke-night-melbourne",
+    "title": "Live Band Karaoke Night",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "27.50",
+    "error": null
+  },
+  {
+    "slug": "cat-long-table-harvest-dinner-melbourne",
+    "title": "Long Table Harvest Dinner",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "117.59",
+    "error": null
+  },
+  {
+    "slug": "cat-lunar-new-year-street-festival-melbourne",
+    "title": "Lunar New Year Street Festival",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "cat-melbourne-night-noodle-market-melbourne",
+    "title": "Melbourne Night Noodle Market",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "cat-netball-grand-final-live-melbourne",
+    "title": "Netball Grand Final Live",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "48.70",
+    "error": null
+  },
+  {
+    "slug": "cat-new-music-friday-live-melbourne",
+    "title": "New Music Friday Live",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "38.10",
+    "error": null
+  },
+  {
+    "slug": "cat-outdoor-family-movie-night-melbourne",
+    "title": "Outdoor Family Movie Night",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "20.07",
+    "error": null
+  },
+  {
+    "slug": "cat-park-run-and-fitness-festival-brisbane",
+    "title": "Park Run and Fitness Festival",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "cat-photography-exhibition-opening-sydney",
+    "title": "Photography Exhibition Opening",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "cat-river-city-acoustic-evening-brisbane",
+    "title": "River City Acoustic Evening",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "48.70",
+    "error": null
+  },
+  {
+    "slug": "cat-riverfire-music-and-lights-brisbane",
+    "title": "Riverfire Music and Lights",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "cat-rooftop-sundowner-sessions-sydney",
+    "title": "Rooftop Sundowner Sessions",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "38.10",
+    "error": null
+  },
+  {
+    "slug": "cat-science-and-discovery-day-melbourne",
+    "title": "Science and Discovery Day",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "24.31",
+    "error": null
+  },
+  {
+    "slug": "cat-small-business-growth-day-brisbane",
+    "title": "Small Business Growth Day",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "74.14",
+    "error": null
+  },
+  {
+    "slug": "cat-solo-hour-new-show-preview-melbourne",
+    "title": "Solo Hour: New Show Preview",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "38.10",
+    "error": null
+  },
+  {
+    "slug": "cat-soul-and-funk-revue-melbourne",
+    "title": "Soul and Funk Revue",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "69.90",
+    "error": null
+  },
+  {
+    "slug": "cat-spoken-word-and-poetry-night-melbourne",
+    "title": "Spoken Word and Poetry Night",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "24.31",
+    "error": null
+  },
+  {
+    "slug": "cat-stand-up-showcase-gala-melbourne",
+    "title": "Stand-Up Showcase Gala",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "48.70",
+    "error": null
+  },
+  {
+    "slug": "cat-storytime-and-puppets-sydney",
+    "title": "Storytime and Puppets",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "16.90",
+    "error": null
+  },
+  {
+    "slug": "cat-summer-in-the-park-festival-melbourne",
+    "title": "Summer in the Park Festival",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "63.54",
+    "error": null
+  },
+  {
+    "slug": "cat-sunset-sessions-on-the-river-brisbane",
+    "title": "Sunset Sessions on the River",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "59.30",
+    "error": null
+  },
+  {
+    "slug": "cat-symphony-under-the-stars-melbourne",
+    "title": "Symphony Under the Stars",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "52.94",
+    "error": null
+  },
+  {
+    "slug": "cat-tech-and-product-meetup-sydney",
+    "title": "Tech and Product Meetup",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "cat-the-glass-menagerie-brisbane",
+    "title": "The Glass Menagerie",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "59.30",
+    "error": null
+  },
+  {
+    "slug": "cat-valley-after-dark-brisbane",
+    "title": "Valley After Dark",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "34.91",
+    "error": null
+  },
+  {
+    "slug": "cat-vinyl-only-listening-night-brisbane",
+    "title": "Vinyl Only Listening Night",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "24.31",
+    "error": null
+  },
+  {
+    "slug": "cat-warehouse-late-night-melbourne",
+    "title": "Warehouse Late Night",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "42.34",
+    "error": null
+  },
+  {
+    "slug": "cat-women-in-leadership-breakfast-melbourne",
+    "title": "Women in Leadership Breakfast",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "95.34",
+    "error": null
+  },
+  {
+    "slug": "cellar-comedy-night-seated-season-opener",
+    "title": "Cellar Comedy Night: Seated Season Opener",
+    "type": "seated",
+    "reached": true,
+    "displayed": null,
+    "error": null
+  },
+  {
+    "slug": "cellar-free-night-on-the-builder-chart",
+    "title": "Cellar Free Night on the Builder Chart",
+    "type": "seated",
+    "reached": true,
+    "displayed": null,
+    "error": null
+  },
+  {
+    "slug": "cellar-open-mic-free-seated-trial-night",
+    "title": "Cellar Open Mic: Free Seated Trial Night",
+    "type": "seated",
+    "reached": true,
+    "displayed": null,
+    "error": null
+  },
+  {
+    "slug": "chuseok-community-festival-sydney-sydney",
+    "title": "Chuseok Community Festival, Sydney",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "21.14",
+    "error": null
+  },
+  {
+    "slug": "comedy-lineup-live-at-brisbane-hotel-hobart",
+    "title": "Comedy Lineup Live at Brisbane Hotel",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "34.91",
+    "error": null
+  },
+  {
+    "slug": "comedy-lineup-live-at-browns-mart-darwin",
+    "title": "Comedy Lineup Live at Brown’s Mart",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "28.55",
+    "error": null
+  },
+  {
+    "slug": "comedy-lineup-live-at-carriageworks-sydney",
+    "title": "Comedy Lineup Live at Carriageworks",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "37.03",
+    "error": null
+  },
+  {
+    "slug": "comedy-lineup-live-at-civic-theatre-townsville",
+    "title": "Comedy Lineup Live at Civic Theatre",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "34.91",
+    "error": null
+  },
+  {
+    "slug": "comedy-lineup-live-at-commercial-club-albury",
+    "title": "Comedy Lineup Live at Commercial Club",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "28.55",
+    "error": null
+  },
+  {
+    "slug": "comedy-lineup-live-at-empire-theatre-toowoomba",
+    "title": "Comedy Lineup Live at Empire Theatre",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "38.10",
+    "error": null
+  },
+  {
+    "slug": "comedy-lineup-live-at-freo-social-perth",
+    "title": "Comedy Lineup Live at Freo Social",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "31.74",
+    "error": null
+  },
+  {
+    "slug": "comedy-lineup-live-at-jute-theatre-cairns",
+    "title": "Comedy Lineup Live at JUTE Theatre",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "41.27",
+    "error": null
+  },
+  {
+    "slug": "comedy-lineup-live-at-lake-weeroona-bendigo",
+    "title": "Comedy Lineup Live at Lake Weeroona",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "40.22",
+    "error": null
+  },
+  {
+    "slug": "comedy-lineup-live-at-lass-ogowrie-newcastle",
+    "title": "Comedy Lineup Live at Lass O’Gowrie",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "35.98",
+    "error": null
+  },
+  {
+    "slug": "comedy-lineup-live-at-mos-desert-clubhouse-gold-coast",
+    "title": "Comedy Lineup Live at Mo’s Desert Clubhouse",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "37.03",
+    "error": null
+  },
+  {
+    "slug": "comedy-lineup-live-at-riverstage-brisbane",
+    "title": "Comedy Lineup Live at Riverstage",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "40.22",
+    "error": null
+  },
+  {
+    "slug": "comedy-lineup-live-at-royal-oak-launceston",
+    "title": "Comedy Lineup Live at Royal Oak",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "33.86",
+    "error": null
+  },
+  {
+    "slug": "comedy-lineup-live-at-sideway-canberra",
+    "title": "Comedy Lineup Live at sideway",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "33.86",
+    "error": null
+  },
+  {
+    "slug": "comedy-lineup-live-at-sphinx-hotel-geelong",
+    "title": "Comedy Lineup Live at Sphinx Hotel",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "31.74",
+    "error": null
+  },
+  {
+    "slug": "comedy-lineup-live-at-the-comedy-theatre-melbourne",
+    "title": "Comedy Lineup Live at The Comedy Theatre",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "34.91",
+    "error": null
+  },
+  {
+    "slug": "comedy-lineup-live-at-the-events-centre-caloundra-sunshine-coast",
+    "title": "Comedy Lineup Live at The Events Centre Caloundra",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "35.98",
+    "error": null
+  },
+  {
+    "slug": "comedy-lineup-live-at-the-lab-adelaide",
+    "title": "Comedy Lineup Live at The Lab",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "40.22",
+    "error": null
+  },
+  {
+    "slug": "comedy-lineup-live-at-the-mining-exchange-ballarat",
+    "title": "Comedy Lineup Live at The Mining Exchange",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "31.74",
+    "error": null
+  },
+  {
+    "slug": "comedy-lineup-live-at-uow-unibar-wollongong",
+    "title": "Comedy Lineup Live at UOW UniBar",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "41.27",
+    "error": null
+  },
+  {
+    "slug": "community-open-mic-night-at-the-wool-exchange-ltbfsn",
+    "title": "Community Open Mic Night at The Wool Exchange",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "community-open-mic-night-at-the-wool-exchange-s4i5d2",
+    "title": "Community Open Mic Night at The Wool Exchange",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "community-open-mic-night-at-the-wool-exchange-w02t2x",
+    "title": "Community Open Mic Night at The Wool Exchange",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "community-open-mic-night-yx42da",
+    "title": "Community open mic night",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "country-live-at-her-majestys-ballarat-ballarat",
+    "title": "Country Live at Her Majesty’s Ballarat",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "66.71",
+    "error": null
+  },
+  {
+    "slug": "country-roots-night-at-hota-gold-coast",
+    "title": "Country Roots Night at HOTA",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "46.58",
+    "error": null
+  },
+  {
+    "slug": "country-roots-night-at-kurrawa-park-gold-coast",
+    "title": "Country Roots Night at Kurrawa Park",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "65.66",
+    "error": null
+  },
+  {
+    "slug": "country-roots-night-at-ulumbarra-theatre-bendigo",
+    "title": "Country Roots Night at Ulumbarra Theatre",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "57.18",
+    "error": null
+  },
+  {
+    "slug": "darwin-night-noodle-and-street-food-market-darwin",
+    "title": "Darwin Night Noodle and Street Food Market",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "disco-and-funk-all-nighter-at-brisbane-hotel-hobart",
+    "title": "Disco and Funk All-Nighter at Brisbane Hotel",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "40.22",
+    "error": null
+  },
+  {
+    "slug": "disco-and-funk-all-nighter-at-city-park-launceston",
+    "title": "Disco and Funk All-Nighter at City Park",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "39.15",
+    "error": null
+  },
+  {
+    "slug": "disco-and-funk-all-nighter-at-commercial-club-albury",
+    "title": "Disco and Funk All-Nighter at Commercial Club",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "51.87",
+    "error": null
+  },
+  {
+    "slug": "disco-and-funk-all-nighter-at-eumundi-markets-sunshine-coast",
+    "title": "Disco and Funk All-Nighter at Eumundi Markets",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "41.27",
+    "error": null
+  },
+  {
+    "slug": "disco-and-funk-all-nighter-at-karova-lounge-ballarat",
+    "title": "Disco and Funk All-Nighter at Karova Lounge",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "34.91",
+    "error": null
+  },
+  {
+    "slug": "disco-and-funk-all-nighter-at-miami-marketta-gold-coast",
+    "title": "Disco and Funk All-Nighter at Miami Marketta",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "49.75",
+    "error": null
+  },
+  {
+    "slug": "disco-and-funk-all-nighter-at-riverstage-brisbane",
+    "title": "Disco and Funk All-Nighter at Riverstage",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "32.79",
+    "error": null
+  },
+  {
+    "slug": "disco-and-funk-all-nighter-at-smiths-alternative-canberra",
+    "title": "Disco and Funk All-Nighter at Smith’s Alternative",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "39.15",
+    "error": null
+  },
+  {
+    "slug": "disco-and-funk-all-nighter-at-the-golden-vine-bendigo",
+    "title": "Disco and Funk All-Nighter at The Golden Vine",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "47.63",
+    "error": null
+  },
+  {
+    "slug": "disco-and-funk-all-nighter-at-the-rosemount-perth",
+    "title": "Disco and Funk All-Nighter at The Rosemount",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "34.91",
+    "error": null
+  },
+  {
+    "slug": "disco-and-funk-all-nighter-at-the-star-gold-coast-gold-coast",
+    "title": "Disco and Funk All-Nighter at The Star Gold Coast",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "43.39",
+    "error": null
+  },
+  {
+    "slug": "disco-and-funk-all-nighter-at-the-triffid-brisbane",
+    "title": "Disco and Funk All-Nighter at The Triffid",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "47.63",
+    "error": null
+  },
+  {
+    "slug": "disco-and-funk-all-nighter-at-the-vanguard-sydney",
+    "title": "Disco and Funk All-Nighter at The Vanguard",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "50.82",
+    "error": null
+  },
+  {
+    "slug": "disco-and-funk-all-nighter-at-the-wool-exchange-geelong",
+    "title": "Disco and Funk All-Nighter at The Wool Exchange",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "34.91",
+    "error": null
+  },
+  {
+    "slug": "disco-and-funk-all-nighter-at-uc-hub-canberra",
+    "title": "Disco and Funk All-Nighter at UC Hub",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "45.51",
+    "error": null
+  },
+  {
+    "slug": "diwali-festival-melbourne-festival-of-lights",
+    "title": "Diwali Festival Melbourne: Festival of Lights",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": null,
+    "error": null
+  },
+  {
+    "slug": "diwali-gala-dinner-an-evening-in-jaipur",
+    "title": "Diwali Gala Dinner: An Evening in Jaipur",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "154.70",
+    "error": null
+  },
+  {
+    "slug": "diwali-mela-and-street-food-sydney-sydney",
+    "title": "Diwali Mela and Street Food, Sydney",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "38.10",
+    "error": null
+  },
+  {
+    "slug": "diwali-mela-brisbane-2026",
+    "title": "Diwali Mela Brisbane",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "38.10",
+    "error": null
+  },
+  {
+    "slug": "electronic-dance-after-dark-at-170-russell-melbourne",
+    "title": "Electronic Dance After Dark at 170 Russell",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "39.15",
+    "error": null
+  },
+  {
+    "slug": "electronic-dance-after-dark-at-the-cambridge-hotel-newcastle",
+    "title": "Electronic Dance After Dark at The Cambridge Hotel",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "42.34",
+    "error": null
+  },
+  {
+    "slug": "electronic-dance-live-at-newcastle-entertainment-centre-newcastle",
+    "title": "Electronic Dance Live at Newcastle Entertainment Centre",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "46.58",
+    "error": null
+  },
+  {
+    "slug": "electronic-dance-live-at-republic-bar-hobart",
+    "title": "Electronic Dance Live at Republic Bar",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "42.34",
+    "error": null
+  },
+  {
+    "slug": "electronic-dance-live-at-the-espy-melbourne",
+    "title": "Electronic Dance Live at The Espy",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "79.43",
+    "error": null
+  },
+  {
+    "slug": "electronic-dance-live-at-the-forum-melbourne",
+    "title": "Electronic Dance Live at The Forum",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "42.34",
+    "error": null
+  },
+  {
+    "slug": "electronic-dance-warehouse-at-northcote-town-hall-melbourne",
+    "title": "Electronic Dance Warehouse at Northcote Town Hall",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "75.19",
+    "error": null
+  },
+  {
+    "slug": "electronic-dance-warehouse-at-the-foreshore-newcastle",
+    "title": "Electronic Dance Warehouse at The Foreshore",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "79.43",
+    "error": null
+  },
+  {
+    "slug": "electronic-dance-warehouse-late-at-170-russell-melbourne",
+    "title": "Electronic Dance Warehouse Late at 170 Russell",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "46.58",
+    "error": null
+  },
+  {
+    "slug": "electronic-dance-warehouse-late-at-salamanca-lawns-hobart",
+    "title": "Electronic Dance Warehouse Late at Salamanca Lawns",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "47.63",
+    "error": null
+  },
+  {
+    "slug": "fight-night-adelaide-at-adelaide-botanic-park-adelaide",
+    "title": "Fight Night: Adelaide at Adelaide Botanic Park",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "57.18",
+    "error": null
+  },
+  {
+    "slug": "fight-night-brisbane-at-the-tivoli-brisbane",
+    "title": "Fight Night: Brisbane at The Tivoli",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "57.18",
+    "error": null
+  },
+  {
+    "slug": "fight-night-gold-coast-at-broadbeach-mall-gold-coast",
+    "title": "Fight Night: Gold Coast at Broadbeach Mall",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "45.51",
+    "error": null
+  },
+  {
+    "slug": "fight-night-melbourne-at-brunswick-ballroom-melbourne",
+    "title": "Fight Night: Melbourne at Brunswick Ballroom",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "35.98",
+    "error": null
+  },
+  {
+    "slug": "fight-night-perth-at-scarborough-beach-perth",
+    "title": "Fight Night: Perth at Scarborough Beach",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "83.67",
+    "error": null
+  },
+  {
+    "slug": "fight-night-sydney-at-riverside-theatres-sydney",
+    "title": "Fight Night: Sydney at Riverside Theatres",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "46.58",
+    "error": null
+  },
+  {
+    "slug": "filipino-fiesta-and-opm-night-perth-perth",
+    "title": "Filipino Fiesta and OPM Night, Perth",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "28.55",
+    "error": null
+  },
+  {
+    "slug": "filipino-fiesta-and-opm-night-sydney-sydney",
+    "title": "Filipino Fiesta and OPM Night, Sydney",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "30.67",
+    "error": null
+  },
+  {
+    "slug": "filipino-fiesta-and-opm-night-townsville-townsville",
+    "title": "Filipino Fiesta and OPM Night, Townsville",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "filipino-fiesta-brisbane-sariwa-sunday",
+    "title": "Filipino Fiesta Brisbane: Sariwa Sunday",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": null,
+    "error": null
+  },
+  {
+    "slug": "folk-acoustic-evening-at-canberra-theatre-centre-canberra",
+    "title": "Folk Acoustic Evening at Canberra Theatre Centre",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "79.43",
+    "error": null
+  },
+  {
+    "slug": "folk-acoustic-evening-at-princess-theatre-launceston",
+    "title": "Folk Acoustic Evening at Princess Theatre",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "79.43",
+    "error": null
+  },
+  {
+    "slug": "folk-acoustic-sessions-at-sideway-canberra",
+    "title": "Folk Acoustic Sessions at sideway",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "74.14",
+    "error": null
+  },
+  {
+    "slug": "folk-acoustic-sessions-at-ulumbarra-theatre-bendigo",
+    "title": "Folk Acoustic Sessions at Ulumbarra Theatre",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "50.82",
+    "error": null
+  },
+  {
+    "slug": "free-community-afrobeats-sunset-party-yqyrcg",
+    "title": "Free Community Afrobeats Sunset Party",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "geelong-night-noodle-and-street-food-market-geelong",
+    "title": "Geelong Night Noodle and Street Food Market",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "69.90",
+    "error": null
+  },
+  {
+    "slug": "geelong-staging-sessions-944088-rv7yel",
+    "title": "Geelong Staging Sessions 944088",
+    "type": "seated",
+    "reached": true,
+    "displayed": null,
+    "error": null
+  },
+  {
+    "slug": "geelong-waterfront-sessions-73542-yjdzgo",
+    "title": "Geelong Waterfront Sessions 73542",
+    "type": "seated",
+    "reached": true,
+    "displayed": null,
+    "error": null
+  },
+  {
+    "slug": "gold-coast-night-noodle-and-street-food-market-gold-coast",
+    "title": "Gold Coast Night Noodle and Street Food Market",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "45.51",
+    "error": null
+  },
+  {
+    "slug": "gospel-on-the-river-brisbane-worship-night",
+    "title": "Gospel on the River: Brisbane Worship Night",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": null,
+    "error": null
+  },
+  {
+    "slug": "greek-glendi-and-bouzouki-night-darwin-darwin",
+    "title": "Greek Glendi and Bouzouki Night, Darwin",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "greek-glendi-and-bouzouki-night-melbourne-melbourne",
+    "title": "Greek Glendi and Bouzouki Night, Melbourne",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "27.50",
+    "error": null
+  },
+  {
+    "slug": "harbour-lights-charity-gala-dinner",
+    "title": "Harbour Lights Charity Gala Dinner",
+    "type": "seated",
+    "reached": true,
+    "displayed": null,
+    "error": null
+  },
+  {
+    "slug": "harbour-lights-live-geelong-waterfront-sessions-4muhm2",
+    "title": "Harbour Lights Live: Geelong Waterfront Sessions",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "27.50",
+    "error": null
+  },
+  {
+    "slug": "hip-hop-rnb-live-at-factory-theatre-sydney",
+    "title": "Hip Hop RnB Live at Factory Theatre",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "43.39",
+    "error": null
+  },
+  {
+    "slug": "hip-hop-rnb-live-at-yours-and-owls-wollongong",
+    "title": "Hip Hop RnB Live at Yours and Owls",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "52.94",
+    "error": null
+  },
+  {
+    "slug": "hip-hop-rnb-night-at-city-recital-hall-sydney",
+    "title": "Hip Hop RnB Night at City Recital Hall",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "47.63",
+    "error": null
+  },
+  {
+    "slug": "hip-hop-rnb-night-at-enmore-theatre-sydney",
+    "title": "Hip Hop RnB Night at Enmore Theatre",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "48.70",
+    "error": null
+  },
+  {
+    "slug": "hip-hop-rnb-night-at-ipac-wollongong",
+    "title": "Hip Hop RnB Night at IPAC",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "57.18",
+    "error": null
+  },
+  {
+    "slug": "hip-hop-rnb-night-at-the-cambridge-hotel-newcastle",
+    "title": "Hip Hop RnB Night at The Cambridge Hotel",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "45.51",
+    "error": null
+  },
+  {
+    "slug": "hip-hop-rnb-night-at-the-forum-melbourne",
+    "title": "Hip Hop RnB Night at The Forum",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "59.30",
+    "error": null
+  },
+  {
+    "slug": "hip-hop-rnb-night-at-win-entertainment-centre-wollongong",
+    "title": "Hip Hop RnB Night at WIN Entertainment Centre",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "59.30",
+    "error": null
+  },
+  {
+    "slug": "hip-hop-rnb-throwback-at-hordern-pavilion-sydney",
+    "title": "Hip Hop RnB Throwback at Hordern Pavilion",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "43.39",
+    "error": null
+  },
+  {
+    "slug": "hip-hop-rnb-throwback-at-la-la-las-wollongong",
+    "title": "Hip Hop RnB Throwback at La La La’s",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "48.70",
+    "error": null
+  },
+  {
+    "slug": "hobart-night-noodle-and-street-food-market-hobart",
+    "title": "Hobart Night Noodle and Street Food Market",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "41.27",
+    "error": null
+  },
+  {
+    "slug": "indie-rock-live-at-costa-hall-geelong",
+    "title": "Indie Rock Live at Costa Hall",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "69.90",
+    "error": null
+  },
+  {
+    "slug": "indie-rock-live-at-enmore-theatre-sydney",
+    "title": "Indie Rock Live at Enmore Theatre",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "65.66",
+    "error": null
+  },
+  {
+    "slug": "indie-rock-live-at-fortitude-music-hall-brisbane",
+    "title": "Indie Rock Live at Fortitude Music Hall",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "56.11",
+    "error": null
+  },
+  {
+    "slug": "indie-rock-live-at-gmhba-stadium-geelong",
+    "title": "Indie Rock Live at GMHBA Stadium",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "72.02",
+    "error": null
+  },
+  {
+    "slug": "indie-rock-live-at-solbar-sunshine-coast",
+    "title": "Indie Rock Live at Solbar",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "46.58",
+    "error": null
+  },
+  {
+    "slug": "indie-rock-sounds-at-sphinx-hotel-geelong",
+    "title": "Indie Rock Sounds at Sphinx Hotel",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "65.66",
+    "error": null
+  },
+  {
+    "slug": "indie-rock-sounds-at-the-brightside-brisbane",
+    "title": "Indie Rock Sounds at The Brightside",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "50.82",
+    "error": null
+  },
+  {
+    "slug": "indonesian-and-thai-night-market-sydney-sydney",
+    "title": "Indonesian and Thai Night Market, Sydney",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "29.62",
+    "error": null
+  },
+  {
+    "slug": "island-vibes-sydney-roots-and-culture-night",
+    "title": "Island Vibes Sydney: Roots and Culture Night",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "38.10",
+    "error": null
+  },
+  {
+    "slug": "italian-festa-and-long-lunch-albury-albury",
+    "title": "Italian Festa and Long Lunch, Albury",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "23.26",
+    "error": null
+  },
+  {
+    "slug": "italian-festa-and-long-lunch-melbourne-melbourne",
+    "title": "Italian Festa and Long Lunch, Melbourne",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "34.91",
+    "error": null
+  },
+  {
+    "slug": "jazz-soul-sessions-at-her-majestys-ballarat-ballarat",
+    "title": "Jazz Soul Sessions at Her Majesty’s Ballarat",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "72.02",
+    "error": null
+  },
+  {
+    "slug": "jazz-soul-sessions-at-hota-gold-coast",
+    "title": "Jazz Soul Sessions at HOTA",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "48.70",
+    "error": null
+  },
+  {
+    "slug": "k-pop-night-and-dance-showcase-sydney-sydney",
+    "title": "K-Pop Night and Dance Showcase, Sydney",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "k-pop-night-and-dance-showcase-wollongong-wollongong",
+    "title": "K-Pop Night and Dance Showcase, Wollongong",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "21.14",
+    "error": null
+  },
+  {
+    "slug": "lagos-comedy-tour-brisbane-closer",
+    "title": "Lagos Comedy Tour: Brisbane Closer",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "48.70",
+    "error": null
+  },
+  {
+    "slug": "lagos-comedy-tour-melbourne-night",
+    "title": "Lagos Comedy Tour: Melbourne Night",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "48.70",
+    "error": null
+  },
+  {
+    "slug": "lagos-comedy-tour-sydney-showcase",
+    "title": "Lagos Comedy Tour: Sydney Showcase",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "48.70",
+    "error": null
+  },
+  {
+    "slug": "late-night-jazz-soul-at-broadbeach-mall-gold-coast",
+    "title": "Late Night Jazz Soul at Broadbeach Mall",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "42.34",
+    "error": null
+  },
+  {
+    "slug": "late-night-jazz-soul-at-empire-theatre-toowoomba",
+    "title": "Late Night Jazz Soul at Empire Theatre",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "44.46",
+    "error": null
+  },
+  {
+    "slug": "latin-live-at-darwin-amphitheatre-darwin",
+    "title": "Latin Live at Darwin Amphitheatre",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "65.66",
+    "error": null
+  },
+  {
+    "slug": "latin-live-at-the-gov-adelaide",
+    "title": "Latin Live at The Gov",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "56.11",
+    "error": null
+  },
+  {
+    "slug": "latin-reggaeton-fridays-at-lion-arts-factory-adelaide",
+    "title": "Latin Reggaeton Fridays at Lion Arts Factory",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "46.58",
+    "error": null
+  },
+  {
+    "slug": "latin-reggaeton-fridays-at-lolas-pergola-darwin",
+    "title": "Latin Reggaeton Fridays at Lola’s Pergola",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "52.94",
+    "error": null
+  },
+  {
+    "slug": "latin-sabor-night-at-adelaide-botanic-park-adelaide",
+    "title": "Latin Sabor Night at Adelaide Botanic Park",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "49.75",
+    "error": null
+  },
+  {
+    "slug": "latin-sabor-night-at-civic-theatre-townsville",
+    "title": "Latin Sabor Night at Civic Theatre",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "75.19",
+    "error": null
+  },
+  {
+    "slug": "latin-sabor-sydney-salsa-saturdays",
+    "title": "Latin Sabor Sydney: Salsa Saturdays",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "launceston-night-noodle-and-street-food-market-launceston",
+    "title": "Launceston Night Noodle and Street Food Market",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "38.10",
+    "error": null
+  },
+  {
+    "slug": "lebanese-eid-festival-sydney-2027",
+    "title": "Lebanese Eid Festival",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "27.50",
+    "error": null
+  },
+  {
+    "slug": "lebanese-mahrajan-and-dabke-night-adelaide-adelaide",
+    "title": "Lebanese Mahrajan and Dabke Night, Adelaide",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "19.02",
+    "error": null
+  },
+  {
+    "slug": "lebanese-mahrajan-and-dabke-night-launceston-launceston",
+    "title": "Lebanese Mahrajan and Dabke Night, Launceston",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "31.74",
+    "error": null
+  },
+  {
+    "slug": "lebanese-mahrajan-and-dabke-night-sydney-sydney",
+    "title": "Lebanese Mahrajan and Dabke Night, Sydney",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "32.79",
+    "error": null
+  },
+  {
+    "slug": "lunar-banquet-eight-course-dinner-show",
+    "title": "Lunar Banquet: Eight Course Dinner Show",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "154.70",
+    "error": null
+  },
+  {
+    "slug": "lunar-new-year-lantern-festival-bendigo-bendigo",
+    "title": "Lunar New Year Lantern Festival, Bendigo",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "19.02",
+    "error": null
+  },
+  {
+    "slug": "lunar-new-year-lantern-festival-brisbane-brisbane",
+    "title": "Lunar New Year Lantern Festival, Brisbane",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "lunar-new-year-lantern-festival-sydney-sydney",
+    "title": "Lunar New Year Lantern Festival, Sydney",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "22.19",
+    "error": null
+  },
+  {
+    "slug": "lunar-nights-melbourne-year-of-the-horse",
+    "title": "Lunar Nights Melbourne: Year of the Horse",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": null,
+    "error": null
+  },
+  {
+    "slug": "maori-community-hangi-and-waiata-gold-coast-gold-coast",
+    "title": "Maori Community Hangi and Waiata, Gold Coast",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "26.43",
+    "error": null
+  },
+  {
+    "slug": "marketplace-gate-night-geelong",
+    "title": "Marketplace Gate Night, Geelong",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "marketplace-regression-comedy-3sf4h3",
+    "title": "Marketplace Regression Comedy",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "marketplace-regression-comedy-ews17s",
+    "title": "Marketplace Regression Comedy",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "marketplace-regression-comedy-n4ru7b",
+    "title": "Marketplace Regression Comedy",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "marketplace-regression-comedy-rgid5e",
+    "title": "Marketplace Regression Comedy",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "marketplace-regression-comedy-t01xp6",
+    "title": "Marketplace Regression Comedy",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "matariki-celebration-and-kapa-haka-geelong-geelong",
+    "title": "Matariki Celebration and Kapa Haka, Geelong",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "27.50",
+    "error": null
+  },
+  {
+    "slug": "matariki-celebration-and-kapa-haka-gold-coast-gold-coast",
+    "title": "Matariki Celebration and Kapa Haka, Gold Coast",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "33.86",
+    "error": null
+  },
+  {
+    "slug": "matsuri-japanese-summer-festival-cairns-cairns",
+    "title": "Matsuri: Japanese Summer Festival, Cairns",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "matsuri-japanese-summer-festival-sydney-sydney",
+    "title": "Matsuri: Japanese Summer Festival, Sydney",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "24.31",
+    "error": null
+  },
+  {
+    "slug": "melbourne-night-noodle-and-street-food-market-melbourne",
+    "title": "Melbourne Night Noodle and Street Food Market",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "39.15",
+    "error": null
+  },
+  {
+    "slug": "metal-hardcore-night-at-albury-entertainment-centre-albury",
+    "title": "Metal Hardcore Night at Albury Entertainment Centre",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "58.23",
+    "error": null
+  },
+  {
+    "slug": "metal-hardcore-night-at-salamanca-lawns-hobart",
+    "title": "Metal Hardcore Night at Salamanca Lawns",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "76.26",
+    "error": null
+  },
+  {
+    "slug": "metal-hardcore-night-at-the-rosemount-perth",
+    "title": "Metal Hardcore Night at The Rosemount",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "47.63",
+    "error": null
+  },
+  {
+    "slug": "naming-ceremony-showcase-yoruba-traditions-night",
+    "title": "Naming Ceremony Showcase: Yoruba Traditions Night",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "newcastle-night-noodle-and-street-food-market-newcastle",
+    "title": "Newcastle Night Noodle and Street Food Market",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "43.39",
+    "error": null
+  },
+  {
+    "slug": "notes-proof-event-43790-qx8ri3",
+    "title": "Notes Proof Event 43790",
+    "type": "seated",
+    "reached": true,
+    "displayed": null,
+    "error": null
+  },
+  {
+    "slug": "notes-proof-event-51181-qsj7uv",
+    "title": "Notes Proof Event 51181",
+    "type": "seated",
+    "reached": true,
+    "displayed": null,
+    "error": null
+  },
+  {
+    "slug": "notes-proof-event-99606-0ihxys",
+    "title": "Notes Proof Event 99606",
+    "type": "seated",
+    "reached": true,
+    "displayed": null,
+    "error": null
+  },
+  {
+    "slug": "nowruz-persian-new-year-festival-sydney-sydney",
+    "title": "Nowruz Persian New Year Festival, Sydney",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "nowruz-persian-new-year-festival-sydney-sydney-2",
+    "title": "Nowruz Persian New Year Festival, Sydney",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "oktoberfest-bier-and-brass-ballarat-ballarat",
+    "title": "Oktoberfest Bier and Brass, Ballarat",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "28.55",
+    "error": null
+  },
+  {
+    "slug": "oktoberfest-bier-and-brass-hobart-hobart",
+    "title": "Oktoberfest Bier and Brass, Hobart",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "33.86",
+    "error": null
+  },
+  {
+    "slug": "oktoberfest-bier-and-brass-melbourne-melbourne",
+    "title": "Oktoberfest Bier and Brass, Melbourne",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "24.31",
+    "error": null
+  },
+  {
+    "slug": "opm-night-filipino-live-music-showcase",
+    "title": "OPM Night: Filipino Live Music Showcase",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "48.70",
+    "error": null
+  },
+  {
+    "slug": "owambe-sydney-lagos-to-sydney-wedding-after-party",
+    "title": "Owambe Sydney: Lagos to Sydney Wedding After-Party",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "69.90",
+    "error": null
+  },
+  {
+    "slug": "panigiri-food-and-dance-festival-melbourne-melbourne",
+    "title": "Panigiri Food and Dance Festival, Melbourne",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "19.02",
+    "error": null
+  },
+  {
+    "slug": "pasifika-festival-island-beats-brisbane-brisbane",
+    "title": "Pasifika Festival: Island Beats, Brisbane",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "17.95",
+    "error": null
+  },
+  {
+    "slug": "pasifika-festival-island-beats-gold-coast-gold-coast",
+    "title": "Pasifika Festival: Island Beats, Gold Coast",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "35.98",
+    "error": null
+  },
+  {
+    "slug": "pasifika-festival-melbourne-2027",
+    "title": "Pasifika Festival 2027",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": null,
+    "error": null
+  },
+  {
+    "slug": "persona-c-comedy-gala-5wl7te",
+    "title": "Persona C Comedy Gala",
+    "type": "seated",
+    "reached": true,
+    "displayed": null,
+    "error": null
+  },
+  {
+    "slug": "persona-c-trivia-return-kgy3b1",
+    "title": "Persona C Trivia Return",
+    "type": "seated",
+    "reached": true,
+    "displayed": null,
+    "error": null
+  },
+  {
+    "slug": "perth-night-noodle-and-street-food-market-perth",
+    "title": "Perth Night Noodle and Street Food Market",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "70.95",
+    "error": null
+  },
+  {
+    "slug": "perth-wine-cheese-and-producers-fair-perth",
+    "title": "Perth Wine, Cheese and Producers Fair",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "73.07",
+    "error": null
+  },
+  {
+    "slug": "pop-live-at-black-bear-lodge-brisbane",
+    "title": "Pop Live at Black Bear Lodge",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "55.06",
+    "error": null
+  },
+  {
+    "slug": "pop-live-at-cairns-convention-centre-cairns",
+    "title": "Pop Live at Cairns Convention Centre",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "58.23",
+    "error": null
+  },
+  {
+    "slug": "pop-live-at-eumundi-markets-sunshine-coast",
+    "title": "Pop Live at Eumundi Markets",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "44.46",
+    "error": null
+  },
+  {
+    "slug": "pop-live-at-his-majestys-theatre-perth",
+    "title": "Pop Live at His Majesty’s Theatre",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "73.07",
+    "error": null
+  },
+  {
+    "slug": "qawwali-and-sufi-music-night-sydney-sydney",
+    "title": "Qawwali and Sufi Music Night, Sydney",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "qawwali-and-sufi-music-night-sydney-sydney-2",
+    "title": "Qawwali and Sufi Music Night, Sydney",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "35.98",
+    "error": null
+  },
+  {
+    "slug": "reggae-on-the-lawn-family-carnival-day",
+    "title": "Reggae on the Lawn: Family Carnival Day",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "reggaeton-and-bachata-latin-heat",
+    "title": "Reggaeton and Bachata: Latin Heat",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "48.70",
+    "error": null
+  },
+  {
+    "slug": "sagra-italian-street-food-festival-perth-perth",
+    "title": "Sagra: Italian Street Food Festival, Perth",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "samoan-and-tongan-community-day-brisbane-brisbane",
+    "title": "Samoan and Tongan Community Day, Brisbane",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "31.74",
+    "error": null
+  },
+  {
+    "slug": "science-and-discovery-day-at-adelaide-botanic-park-adelaide",
+    "title": "Science and Discovery Day at Adelaide Botanic Park",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "24.31",
+    "error": null
+  },
+  {
+    "slug": "science-and-discovery-day-at-brisbane-powerhouse-brisbane",
+    "title": "Science and Discovery Day at Brisbane Powerhouse",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "science-and-discovery-day-at-broadbeach-mall-gold-coast",
+    "title": "Science and Discovery Day at Broadbeach Mall",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "22.19",
+    "error": null
+  },
+  {
+    "slug": "science-and-discovery-day-at-commonwealth-park-canberra",
+    "title": "Science and Discovery Day at Commonwealth Park",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "science-and-discovery-day-at-crowbar-sydney",
+    "title": "Science and Discovery Day at Crowbar",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "science-and-discovery-day-at-prince-bandroom-melbourne",
+    "title": "Science and Discovery Day at Prince Bandroom",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "20.07",
+    "error": null
+  },
+  {
+    "slug": "science-and-discovery-day-at-salamanca-lawns-hobart",
+    "title": "Science and Discovery Day at Salamanca Lawns",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "21.14",
+    "error": null
+  },
+  {
+    "slug": "science-and-discovery-day-at-scarborough-beach-perth",
+    "title": "Science and Discovery Day at Scarborough Beach",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "17.95",
+    "error": null
+  },
+  {
+    "slug": "songkran-water-festival-sydney-sydney",
+    "title": "Songkran Water Festival, Sydney",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "22.19",
+    "error": null
+  },
+  {
+    "slug": "songkran-water-festival-sydney-sydney-2",
+    "title": "Songkran Water Festival, Sydney",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "38.10",
+    "error": null
+  },
+  {
+    "slug": "sri-lankan-and-nepali-food-festival-sydney-sydney",
+    "title": "Sri Lankan and Nepali Food Festival, Sydney",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "sunshine-coast-night-noodle-and-street-food-market-sunshine-coast",
+    "title": "Sunshine Coast Night Noodle and Street Food Market",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "sydney-night-noodle-and-street-food-market-sydney",
+    "title": "Sydney Night Noodle and Street Food Market",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "46.58",
+    "error": null
+  },
+  {
+    "slug": "taiko-drumming-and-anime-night-sydney-sydney",
+    "title": "Taiko Drumming and Anime Night, Sydney",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "tet-lunar-new-year-festival-melbourne-melbourne",
+    "title": "Tet Lunar New Year Festival, Melbourne",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "tet-lunar-new-year-festival-newcastle-newcastle",
+    "title": "Tet Lunar New Year Festival, Newcastle",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "toowoomba-night-noodle-and-street-food-market-toowoomba",
+    "title": "Toowoomba Night Noodle and Street Food Market",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "townsville-night-noodle-and-street-food-market-townsville",
+    "title": "Townsville Night Noodle and Street Food Market",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "turkish-food-and-saz-night-melbourne-melbourne",
+    "title": "Turkish Food and Saz Night, Melbourne",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "30.67",
+    "error": null
+  },
+  {
+    "slug": "turkish-food-and-saz-night-sunshine-coast-sunshine-coast",
+    "title": "Turkish Food and Saz Night, Sunshine Coast",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "34.91",
+    "error": null
+  },
+  {
+    "slug": "twilight-sessions-festival-at-adelaide-botanic-park-adelaide",
+    "title": "Twilight Sessions Festival at Adelaide Botanic Park",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "129.26",
+    "error": null
+  },
+  {
+    "slug": "twilight-sessions-festival-at-broadbeach-mall-gold-coast",
+    "title": "Twilight Sessions Festival at Broadbeach Mall",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "116.54",
+    "error": null
+  },
+  {
+    "slug": "twilight-sessions-festival-at-cotton-tree-park-sunshine-coast",
+    "title": "Twilight Sessions Festival at Cotton Tree Park",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "112.30",
+    "error": null
+  },
+  {
+    "slug": "twilight-sessions-festival-at-cunningham-pier-geelong",
+    "title": "Twilight Sessions Festival at Cunningham Pier",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "88.98",
+    "error": null
+  },
+  {
+    "slug": "twilight-sessions-festival-at-gio-stadium-canberra",
+    "title": "Twilight Sessions Festival at GIO Stadium",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "102.75",
+    "error": null
+  },
+  {
+    "slug": "twilight-sessions-festival-at-howler-melbourne",
+    "title": "Twilight Sessions Festival at Howler",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "twilight-sessions-festival-at-manning-bar-sydney",
+    "title": "Twilight Sessions Festival at Manning Bar",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "117.59",
+    "error": null
+  },
+  {
+    "slug": "twilight-sessions-festival-at-mystate-bank-arena-hobart",
+    "title": "Twilight Sessions Festival at MyState Bank Arena",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "108.06",
+    "error": null
+  },
+  {
+    "slug": "twilight-sessions-festival-at-north-beach-wollongong",
+    "title": "Twilight Sessions Festival at North Beach",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "twilight-sessions-festival-at-princess-theatre-brisbane",
+    "title": "Twilight Sessions Festival at Princess Theatre",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "130.31",
+    "error": null
+  },
+  {
+    "slug": "twilight-sessions-festival-at-scarborough-beach-perth",
+    "title": "Twilight Sessions Festival at Scarborough Beach",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "91.10",
+    "error": null
+  },
+  {
+    "slug": "twilight-sessions-festival-at-the-foreshore-newcastle",
+    "title": "Twilight Sessions Festival at The Foreshore",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "112.30",
+    "error": null
+  },
+  {
+    "slug": "vietnamese-street-food-night-market-melbourne-melbourne",
+    "title": "Vietnamese Street Food Night Market, Melbourne",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  },
+  {
+    "slug": "winter-gala-concert-at-the-regent",
+    "title": "Winter Gala Concert at the Regent",
+    "type": "seated",
+    "reached": true,
+    "displayed": null,
+    "error": null
+  },
+  {
+    "slug": "wollongong-night-noodle-and-street-food-market-wollongong",
+    "title": "Wollongong Night Noodle and Street Food Market",
+    "type": "paid-ga",
+    "reached": true,
+    "displayed": "56.11",
+    "error": null
+  },
+  {
+    "slug": "yalda-night-poetry-and-music-sydney-sydney",
+    "title": "Yalda Night: Poetry and Music, Sydney",
+    "type": "free-ga",
+    "reached": true,
+    "displayed": "free",
+    "error": null
+  }
+]

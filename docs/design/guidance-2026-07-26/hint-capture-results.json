@@ -1,0 +1,25 @@
+{
+  "event": "cellar-comedy-night-seated-season-opener",
+  "results": [
+    {
+      "hint": "seat-map-taken-seat",
+      "viewport": "1440",
+      "captured": true
+    },
+    {
+      "hint": "seat-map-filtered-out",
+      "viewport": "1440",
+      "captured": true
+    },
+    {
+      "hint": "seat-map-taken-seat",
+      "viewport": "390",
+      "captured": true
+    },
+    {
+      "hint": "seat-map-filtered-out",
+      "viewport": "390",
+      "captured": true
+    }
+  ]
+}

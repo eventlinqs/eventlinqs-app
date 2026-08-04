@@ -27,7 +27,10 @@ import { getRequestOrigin } from '@/lib/site-origin'
 import { HeroMedia, MarketingMedia } from '@/components/media'
 import { Reveal } from '@/components/ui/reveal'
 import { CopyLinkButton } from '@/components/launch-kit/copy-link-button'
+import { KitRenderedTracker } from '@/components/launch-kit/kit-rendered-tracker'
 import { LaunchShareRow } from '@/components/launch-kit/launch-share-row'
+import { LineupLoopPanel } from '@/components/broadcast/lineup-loop-panel'
+import { getLineupPanelData, type LineupPanelData } from '@/lib/broadcast/lineup-panel'
 import { SeatMapPreview } from '@/components/seating/seat-map-preview'
 import type { SeatData, SectionData, SeatAreaData } from '@/components/checkout/seat-selector'
 
@@ -160,6 +163,14 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
   // ── Kit assembly (all real, all tracked) ──────────────────────────────────
   const shareOn = await isFeatureEnabled('broadcast_share')
 
+  // The lineup loop: mint each tagged act's tracked link and read the sales it
+  // drove, so the kit can both prompt tagging and show the payoff.
+  const artistsOn = await isFeatureEnabled('broadcast_artists')
+  let lineupPanel: LineupPanelData = { acts: [], totals: { clicks: 0, orders: 0, tickets: 0 } }
+  if (artistsOn) {
+    lineupPanel = await getLineupPanelData(id, siteUrl, organiserEvent.userId)
+  }
+
   const kitLinks: Partial<Record<ShareChannel, string>> = {}
   let qrShortUrl: string | null = null
   if (shareOn) {
@@ -246,6 +257,7 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
 
   return (
     <div className="pb-4">
+      <KitRenderedTracker eventId={id} justPublished={justPublished} />
       {/* ── The delivery moment: the kit masthead ─────────────────────────── */}
       <section
         aria-labelledby="launch-kit-heading"
@@ -341,6 +353,18 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
           </div>
         </div>
       </Reveal>
+
+      {/* ── The lineup loop: tag the acts, hand them their tracked links ──── */}
+      {artistsOn && (
+        <Reveal as="section" aria-label="Your lineup" className="mt-6">
+          <LineupLoopPanel
+            eventId={id}
+            acts={lineupPanel.acts}
+            totals={lineupPanel.totals}
+            variant="kit"
+          />
+        </Reveal>
+      )}
 
       {/* ── The print + preview pair: QR poster and invitation card ───────── */}
       {/* grid-cols-1 base is load-bearing: without it the mobile track is

@@ -74,7 +74,9 @@ export function CityNewsletterCapture({ cityName, tone = 'dark' }: Props) {
           </label>
           <input
             id="city-newsletter-email"
+            name="email"
             type="email"
+            autoComplete="email"
             required
             value={email}
             onChange={e => setEmail(e.target.value)}

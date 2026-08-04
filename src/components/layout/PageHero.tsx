@@ -43,14 +43,14 @@ export function PageHero({ eyebrow, title, subtitle, align = 'left', variant = '
     >
       <div className={`relative mx-auto max-w-7xl px-4 md:px-6 lg:px-8 ${alignCls}`}>
         {eyebrow && (
-          <p className="mb-3 font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-accent-strong)]">
+          <p className="type-eyebrow mb-3 font-display text-[var(--brand-accent-strong)]">
             {eyebrow}
           </p>
         )}
 
         <h1
           id="page-hero-heading"
-          className={`font-display font-extrabold leading-[1.05] tracking-tight text-[var(--text-primary)] text-4xl sm:text-5xl lg:text-6xl ${align === 'center' ? 'mx-auto max-w-4xl' : 'max-w-3xl'}`}
+          className={`font-headline font-extrabold leading-[1.04] tracking-[-0.015em] text-[var(--text-primary)] text-4xl sm:text-5xl lg:text-6xl ${align === 'center' ? 'mx-auto max-w-4xl' : 'max-w-3xl'}`}
         >
           {title}
         </h1>

@@ -12,8 +12,26 @@ name: post-deploy smoke
 # runbook (what it catches, what to do when it fails, how to disable).
 #
 # Triggers:
-#   workflow_run        - after CI on main completes (push-driven)
+#   deployment_status   - when Vercel reports a PRODUCTION deploy succeeded.
+#                         This is the primary trigger: a POST-DEPLOY gate should
+#                         key off the DEPLOY, not off CI.
+#   workflow_run        - after CI on main completes (push-driven). Kept as a
+#                         belt-and-braces second path.
 #   workflow_dispatch   - manual re-run from the Actions UI
+#
+# WHY THE deployment_status TRIGGER EXISTS (2026-07-26). This gate was SKIPPED
+# on every run from 2026-07-12 to 2026-07-26 and nobody noticed. The chain: the
+# SUPABASE_ACCESS_TOKEN repository secret expired, so the `types-drift guard`
+# job failed ("failed to retrieve generated types: Unauthorized"), so the CI
+# run concluded `failure`, so the `workflow_run.conclusion == 'success'`
+# condition below was false, so the job was skipped. Production therefore had
+# no smoke gate for two weeks because an unrelated schema-introspection job
+# could not authenticate.
+#
+# The coupling was the defect. A schema-drift guard losing its token must never
+# silently disable the production smoke gate. Keying off the deploy removes the
+# dependency entirely, without weakening the drift guard, which stays blocking
+# on its own merits.
 #
 # Steps in order:
 #   1. Wait for the Vercel deploy id to differ from a captured starting
@@ -40,6 +58,7 @@ name: post-deploy smoke
 #   RESEND_API_KEY   alerts to hello@eventlinqs.com on failure
 
 on:
+  deployment_status:
   workflow_run:
     workflows: ['CI']
     types: [completed]
@@ -59,12 +78,25 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
-    # Only run when the upstream CI succeeded. Failed CI usually means
-    # the deploy itself was blocked; smoke would be noisy false-failure.
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    # Run when a PRODUCTION deploy succeeded (the primary path), when the
+    # upstream CI succeeded (the secondary path), or on a manual dispatch.
+    # The deployment_status arm is deliberately NOT conditioned on CI: a
+    # deployed production build must be smoked even if some other CI job is red,
+    # which is exactly the state that silenced this gate for two weeks.
+    # Preview deploy events are filtered out by the environment check.
+    if: >-
+      ${{ github.event_name == 'workflow_dispatch'
+       || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+       || (github.event_name == 'deployment_status'
+           && github.event.deployment_status.state == 'success'
+           && github.event.deployment.environment == 'Production') }}
 
     env:
-      PROD_URL: https://www.eventlinqs.com
+      # The CANONICAL host (founder ruling, docs/verification/blockers-round-2-2026-07-25.md).
+      # It was https://www.eventlinqs.com, which is one of the three hosts the
+      # canonical 301 redirects. Smoking a host that is about to become a
+      # redirect is a gate with a scheduled expiry date.
+      PROD_URL: https://www.eventlinqs.com.au
       NEXT_TELEMETRY_DISABLED: 1
 
     steps:
@@ -152,14 +184,61 @@ jobs:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           set -u
+          # A MISSING SECRET IS A FAILURE, NOT A SKIP. This step used to warn and
+          # exit 0, so from 2026-07-12 to 2026-07-30 production deployed with no
+          # sentinel probe at all and the gate reported green every time. A gate
+          # that quietly switches itself off when its input is absent is worse
+          # than no gate, because everyone reads the tick.
           if [ -z "${CRON_SECRET:-}" ]; then
-            echo "::warning::CRON_SECRET not configured as a GitHub secret; sentinel probe skipped. Add it at go-live (docs/payments/WEBHOOK-CANON.md)."
-            exit 0
+            echo "::error::CRON_SECRET is not configured as a GitHub Actions secret, so the payment sentinel cannot be probed."
+            echo "::error::Fix: gh secret set CRON_SECRET (the same value as the Vercel Production scope). See docs/payments/WEBHOOK-CANON.md."
+            exit 1
           fi
-          BODY=$(curl -sS -m 30 -H "Authorization: Bearer ${CRON_SECRET}" "https://www.eventlinqs.com/api/cron/webhook-sentinel")
+          # NO REDIRECTS. curl DROPS the Authorization header across a cross-host
+          # redirect, so probing a host that 301s to the canonical one arrives
+          # unauthenticated and 401s, which reads exactly like a wrong secret.
+          # Asserting zero redirects names the real fault instead.
+          REDIRECTS=$(curl -s -o /dev/null -w '%{num_redirects}' -m 30 "$PROD_URL/api/cron/webhook-sentinel")
+          if [ "$REDIRECTS" != "0" ]; then
+            echo "::error::$PROD_URL redirected ($REDIRECTS hop(s)). A bearer token is dropped across a cross-host redirect,"
+            echo "::error::so this probe can never authenticate. Point PROD_URL at the canonical host."
+            exit 1
+          fi
+          BODY=$(curl -sS -m 30 -H "Authorization: Bearer ${CRON_SECRET}" "$PROD_URL/api/cron/webhook-sentinel")
           echo "$BODY"
           echo "$BODY" | grep -q '"ok":true' || { echo "payment sentinel RED"; exit 1; }
           echo "payment sentinel GREEN"
+
+      - name: Platform health sentinel probe (post-deploy hook)
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -u
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo "::error::CRON_SECRET is not configured, so the platform health sentinel cannot be probed."
+            echo "::error::Fix: gh secret set CRON_SECRET. See docs/ops/HEALTH-ALERTS.md."
+            exit 1
+          fi
+          # Runs the full check battery after deploy. The sentinel itself emails
+          # the founder on any CRITICAL fault; here we fail the gate on critical
+          # (warnings like push/AI config are known soft gaps, not blockers).
+          # No -L, for the same bearer-dropping reason as the step above.
+          BODY=$(curl -sS -m 60 -H "Authorization: Bearer ${CRON_SECRET}" "$PROD_URL/api/cron/health-sentinel")
+          echo "$BODY"
+          if echo "$BODY" | grep -q '"status":"critical"'; then echo "platform health CRITICAL"; exit 1; fi
+          echo "platform health OK (green or warnings only)"
+
+      - name: Browser-level map guard (post-deploy)
+        # Opt-in blocking: enable the repo variable MAP_GUARD_ENABLED=true once
+        # production maps are confirmed live (env key baked, code deployed, event
+        # coordinates present). Until then it is skipped so it cannot red every
+        # deploy for a known-pending prod state. It loads real map surfaces in a
+        # browser and asserts a live Google canvas, not just a key string.
+        if: ${{ vars.MAP_GUARD_ENABLED == 'true' }}
+        run: |
+          set -u
+          npx playwright install chromium >/dev/null 2>&1 || true
+          node scripts/verify/map-guard.mjs "$PROD_URL" || { echo "::error::A map surface ships a dead (fallback) map"; exit 1; }
 
       - name: Email alert via Resend on failure
         if: failure()
@@ -182,7 +261,7 @@ jobs:
             <li><b>Commit:</b> <code>${COMMIT_SHA}</code></li>
             <li><b>Run:</b> <a href="${RUN_URL}">${RUN_URL}</a></li>
           </ul>
-          <p>What this means: at least one of the curl smokes or the Playwright @smoke checks failed against <code>https://www.eventlinqs.com</code>. Open the Actions run for the failing step output.</p>
+          <p>What this means: at least one of the curl smokes or the Playwright @smoke checks failed against <code>${PROD_URL}</code>. Open the Actions run for the failing step output.</p>
           <p>Runbook: <code>docs/observability/post-deploy-smoke.md</code></p>
           HTML_EOF
           )

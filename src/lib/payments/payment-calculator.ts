@@ -7,6 +7,8 @@ import {
   type ProcessingFeePassThrough,
 } from './pricing-rules'
 import { computeFeeLineCents, computeAllInTotalCents } from './fee-math'
+import { applyFoundingWaiver, getFoundingWaiver, type OrganisationReadClient } from './founding-waiver'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 /**
  * M6 Phase 3 (rework). PaymentCalculator now reads from the long-format
@@ -154,6 +156,34 @@ export class PaymentCalculator {
       getProcessingFeePassThrough(country, currency, orgId, evId),
     ])
 
+    // The FOUNDING ORGANISER WAIVER. Applied here, at the charge authority, so
+    // checkout, capture and payout all inherit it: the payout path composes the
+    // application fee from the fee amounts STORED on the order, so a waived
+    // charge is a waived payout without a second lookup.
+    //
+    // The platform fee goes to zero inside the window; the processing fee never
+    // does. On any lookup failure the waiver reads INACTIVE, so an error charges
+    // the standard rate rather than silently giving the fee away.
+    // The client is built ONLY when there is an organisation to look up. A
+    // null orgId needs no query, so the no-organisation path never constructs
+    // a service-role client at all. Building it unconditionally was wasteful
+    // in production (a second admin client per calculate(), on top of the one
+    // getPricingRule already makes) and it reached around the module boundary
+    // the unit tests mock, which is what turned 11 green tests red the moment
+    // the ambient env went away.
+    const waiver = orgId
+      ? await getFoundingWaiver(createAdminClient() as unknown as OrganisationReadClient, orgId)
+      : { feeFreeUntil: null, active: false }
+    const waivedRates = applyFoundingWaiver(
+      {
+        platformFeePercent,
+        platformFeeFixedCents,
+        processingFeePercent,
+        processingFeeFixedCents,
+      },
+      waiver.active,
+    )
+
     const ticketCount = tickets.reduce((sum, t) => sum + t.quantity, 0)
 
     // Single source of fee arithmetic (src/lib/payments/fee-math.ts): the SAME
@@ -162,12 +192,7 @@ export class PaymentCalculator {
     const { platform_fee_cents, payment_processing_fee_cents } = computeFeeLineCents(
       discounted_subtotal,
       ticketCount,
-      {
-        platformFeePercent,
-        platformFeeFixedCents,
-        processingFeePercent,
-        processingFeeFixedCents,
-      },
+      waivedRates,
     )
     // GST is inclusive in EventLinqs all-in pricing (all-in pricing shown from
     // the first click, no hidden fees). Funds-holding model + founder GST ruling

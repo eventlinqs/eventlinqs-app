@@ -1,0 +1,31 @@
+{
+  "base": "http://localhost:3000",
+  "startedAt": "2026-07-26T00:47:11.576Z",
+  "notes": {
+    "twoPriced": {
+      "slug": "seat-proof-two-prices-ts8nfy",
+      "id": "615bb4a3-d95b-442c-8738-9a87e47fb484",
+      "seat_map_id": "7e861af9-4b45-41f0-b7b4-5e517ad44cdd"
+    },
+    "viewSeed": {
+      "section": "Section 1",
+      "via": "service row (upload path proven in builder stage)"
+    },
+    "oneControl": {
+      "pickedBloomSeats": 4
+    },
+    "viewUpload": {
+      "section_name": "Stalls",
+      "photo_url": "https://vkapkibzokmfaxqogypq.supabase.co/storage/v1/object/public/section-views/57101100-eec8-4e72-a464-97e11e66bea1/44e9963c-5ca6-4814-a399-980a6bb21d9a/stalls-1785024863115.jpg"
+    },
+    "detect": {
+      "message": "Detected 12 seats along the line. Adjust the count, spacing or rows in the inspector; draw the next row to keep going."
+    },
+    "selfmove": {
+      "ticket": "8aba904f-81be-4633-9a9e-60896435b1c2",
+      "event": "768788e0-8358-490a-8bba-d9920e675b92"
+    },
+    "banded": "party 4 under $39: picks must land in rows K+ only"
+  },
+  "finishedAt": "2026-07-26T00:47:20.760Z"
+}

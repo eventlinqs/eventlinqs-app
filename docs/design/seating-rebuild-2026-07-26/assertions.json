@@ -1,0 +1,263 @@
+[
+  {
+    "room": "grand-hall-proof-the-full-house",
+    "viewport": "1440",
+    "lod": "overview",
+    "runs": 17,
+    "textText": 0,
+    "textInk": 4,
+    "clipped": 0,
+    "pairs": [],
+    "inkHits": [
+      "\"BOXES\" sd 27.5",
+      "\"AUD 179.00\" sd 26.9",
+      "\"AUD 129.00\" sd 38.2",
+      "\"Circle bar\" sd 28.4"
+    ],
+    "model": {
+      "labelSeat": 0,
+      "labelLabel": 0,
+      "labelObject": 0,
+      "labels": 10
+    }
+  },
+  {
+    "room": "grand-hall-proof-the-full-house",
+    "viewport": "1440",
+    "lod": "mid",
+    "runs": 10,
+    "textText": 0,
+    "textInk": 1,
+    "clipped": 0,
+    "pairs": [],
+    "inkHits": [
+      "\"Circle bar\" sd 20.3"
+    ],
+    "model": {
+      "labelSeat": 0,
+      "labelLabel": 0,
+      "labelObject": 0,
+      "labels": 9
+    }
+  },
+  {
+    "room": "grand-hall-proof-the-full-house",
+    "viewport": "1440",
+    "lod": "seat",
+    "runs": 67,
+    "textText": 0,
+    "textInk": 0,
+    "clipped": 0,
+    "pairs": [],
+    "inkHits": [],
+    "model": {
+      "labelSeat": 0,
+      "labelLabel": 0,
+      "labelObject": 0,
+      "labels": 67
+    }
+  },
+  {
+    "room": "grand-hall-proof-the-full-house",
+    "viewport": "1440",
+    "lod": "fit",
+    "runs": 10,
+    "textText": 0,
+    "textInk": 1,
+    "clipped": 0,
+    "pairs": [],
+    "inkHits": [
+      "\"Circle bar\" sd 20.1"
+    ],
+    "model": {
+      "labelSeat": 0,
+      "labelLabel": 0,
+      "labelObject": 0,
+      "labels": 9
+    }
+  },
+  {
+    "room": "play-house-proof-a-seated-evening",
+    "viewport": "1440",
+    "lod": "fit",
+    "runs": 40,
+    "textText": 0,
+    "textInk": 18,
+    "clipped": 0,
+    "pairs": [],
+    "inkHits": [
+      "\"STAGE\" sd 94.2",
+      "\"A\" sd 35.6",
+      "\"W\" sd 37.2",
+      "\"M\" sd 35.6",
+      "\"T\" sd 37.4",
+      "\"A\" sd 35.5",
+      "\"W\" sd 37.5",
+      "\"K\" sd 37.2",
+      "\"M\" sd 35.5",
+      "\"O\" sd 35.5",
+      "\"Long bar\" sd 41.3",
+      "\"Food stalls\" sd 46.3"
+    ],
+    "model": {
+      "labelSeat": 0,
+      "labelLabel": 0,
+      "labelObject": 0,
+      "labels": 38
+    }
+  },
+  {
+    "room": "grand-hall-proof-the-full-house",
+    "viewport": "390",
+    "lod": "overview",
+    "runs": 16,
+    "textText": 1,
+    "textInk": 9,
+    "clipped": 0,
+    "pairs": [
+      "\"STAGE\" x \"AUD 149.00\""
+    ],
+    "inkHits": [
+      "\"PREMIUM STALLS\" sd 68.2",
+      "\"AUD 149.00\" sd 53.4",
+      "\"BOXES\" sd 19.5",
+      "\"AUD 179.00\" sd 20.2",
+      "\"BOXES\" sd 24.0",
+      "\"AUD 179.00\" sd 28.2",
+      "\"Entrance\" sd 22.2",
+      "\"Stairs\" sd 27.2",
+      "\"Circle bar\" sd 46.6"
+    ],
+    "model": {
+      "labelSeat": 0,
+      "labelLabel": 0,
+      "labelObject": 0,
+      "labels": 9
+    }
+  },
+  {
+    "room": "grand-hall-proof-the-full-house",
+    "viewport": "390",
+    "lod": "mid",
+    "runs": 1,
+    "textText": 0,
+    "textInk": 0,
+    "clipped": 0,
+    "pairs": [],
+    "inkHits": [],
+    "model": {
+      "labelSeat": 0,
+      "labelLabel": 0,
+      "labelObject": 0,
+      "labels": 1
+    }
+  },
+  {
+    "room": "grand-hall-proof-the-full-house",
+    "viewport": "390",
+    "lod": "seat",
+    "runs": 13,
+    "textText": 0,
+    "textInk": 13,
+    "clipped": 0,
+    "pairs": [],
+    "inkHits": [
+      "\"13\" sd 19.4",
+      "\"14\" sd 17.1",
+      "\"15\" sd 33.4",
+      "\"16\" sd 38.5",
+      "\"17\" sd 32.7",
+      "\"18\" sd 46.0",
+      "\"19\" sd 52.2",
+      "\"20\" sd 50.9",
+      "\"21\" sd 40.8",
+      "\"22\" sd 35.4",
+      "\"23\" sd 37.1",
+      "\"24\" sd 24.8"
+    ],
+    "model": {
+      "labelSeat": 0,
+      "labelLabel": 0,
+      "labelObject": 0,
+      "labels": 0
+    }
+  },
+  {
+    "room": "grand-hall-proof-the-full-house",
+    "viewport": "390",
+    "lod": "fit",
+    "runs": 16,
+    "textText": 1,
+    "textInk": 9,
+    "clipped": 0,
+    "pairs": [
+      "\"STAGE\" x \"AUD 149.00\""
+    ],
+    "inkHits": [
+      "\"PREMIUM STALLS\" sd 68.2",
+      "\"AUD 149.00\" sd 53.4",
+      "\"BOXES\" sd 19.5",
+      "\"AUD 179.00\" sd 20.2",
+      "\"BOXES\" sd 24.0",
+      "\"AUD 179.00\" sd 28.2",
+      "\"Entrance\" sd 22.2",
+      "\"Stairs\" sd 27.2",
+      "\"Circle bar\" sd 46.6"
+    ],
+    "model": {
+      "labelSeat": 0,
+      "labelLabel": 0,
+      "labelObject": 0,
+      "labels": 9
+    }
+  },
+  {
+    "room": "play-house-proof-a-seated-evening",
+    "viewport": "390",
+    "lod": "fit",
+    "runs": 14,
+    "textText": 0,
+    "textInk": 7,
+    "clipped": 0,
+    "pairs": [],
+    "inkHits": [
+      "\"General admission\" sd 31.9",
+      "\"AUD 59.00\" sd 44.5",
+      "\"GROUP TERRACE\" sd 20.0",
+      "\"Exit\" sd 63.5",
+      "\"Stairs\" sd 19.0",
+      "\"Lift\" sd 25.0",
+      "\"Box\" sd 17.6"
+    ],
+    "model": {
+      "labelSeat": 0,
+      "labelLabel": 0,
+      "labelObject": 0,
+      "labels": 9
+    }
+  },
+  {
+    "room": "play-house-proof-a-seated-evening",
+    "viewport": "390",
+    "lod": "docked",
+    "runs": 7,
+    "textText": 1,
+    "textInk": 4,
+    "clipped": 0,
+    "pairs": [
+      "\"General admission\" x \"GROUP TERRACE\""
+    ],
+    "inkHits": [
+      "\"Long bar\" sd 43.2",
+      "\"Food stalls\" sd 49.1",
+      "\"Toilets\" sd 81.9",
+      "\"Entrance\" sd 49.0"
+    ],
+    "model": {
+      "labelSeat": 0,
+      "labelLabel": 0,
+      "labelObject": 0,
+      "labels": 6
+    }
+  }
+]

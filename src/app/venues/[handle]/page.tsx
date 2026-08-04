@@ -7,7 +7,7 @@ import { ContentSection } from '@/components/layout/ContentSection'
 import { SnapRailScroller } from '@/components/ui/snap-rail'
 import { CityTileImage } from '@/components/media/CityTileImage'
 import { OrganiserAvatar } from '@/components/media/OrganiserAvatar'
-import { CityMap } from '@/components/features/city/city-map'
+import { VenueMap } from '@/components/features/events/venue-map'
 import { EventCard, type EventCardData } from '@/components/features/events/event-card'
 import { CategoryHeroEmpty } from '@/components/ui/CategoryHeroEmpty'
 import { Zap, Heart, Wallet } from 'lucide-react'
@@ -18,6 +18,7 @@ import { VenueSchemaJsonLd } from '@/components/features/venues/venue-schema-jso
 import { VenueProfileHero } from '@/components/features/venues/venue-profile-hero'
 import { VenueAmenitiesGrid } from '@/components/features/venues/venue-amenities-grid'
 import { VenueMobileStickyBar } from '@/components/features/venues/venue-mobile-sticky-bar'
+import { getSiteUrl } from '@/lib/site-url'
 
 export const revalidate = 300
 
@@ -100,7 +101,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const venue = await resolveVenueProfile(handle)
   if (!venue) return { title: 'Venue not found | EventLinqs' }
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
+  const baseUrl = getSiteUrl()
   const cityPart = venue.city ? ` - ${venue.city}` : ''
   const title = `${venue.name} - Events & Info${cityPart} - EventLinqs`
 
@@ -172,7 +173,7 @@ export default async function VenueProfilePage({ params }: Props) {
     return null
   })()
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
+  const baseUrl = getSiteUrl()
   const upcomingForSchema = upcoming.slice(0, 12).map(e => ({
     slug: e.slug,
     title: e.title,
@@ -182,21 +183,6 @@ export default async function VenueProfilePage({ params }: Props) {
     organizerSlug: e.organisation?.slug ?? '',
     coverImageUrl: e.cover_image_url,
   }))
-
-  // Map pins: just the venue itself (single-pin map).
-  const mapPins = typeof venue.latitude === 'number' && typeof venue.longitude === 'number'
-    ? [{
-        id: 'venue',
-        slug: handle,
-        title: venue.name,
-        date: '',
-        suburb: venue.city,
-        price: null,
-        cover: venue.imageUrl,
-        latitude: venue.latitude,
-        longitude: venue.longitude,
-      }]
-    : []
 
   return (
     <>
@@ -220,8 +206,8 @@ export default async function VenueProfilePage({ params }: Props) {
           venueType={venue.venueType}
         />
 
-        {/* VP3 Map - only when we have coords AND a Mapbox token */}
-        {process.env.NEXT_PUBLIC_MAPBOX_TOKEN && typeof venue.latitude === 'number' && typeof venue.longitude === 'number' ? (
+        {/* VP3 Map - Google Maps venue location (one provider platform-wide) */}
+        {typeof venue.latitude === 'number' && typeof venue.longitude === 'number' ? (
           <ContentSection surface="alt" width="wide" topBorder>
             <div className="mb-6">
               <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
@@ -231,12 +217,14 @@ export default async function VenueProfilePage({ params }: Props) {
                 Where {venue.name} is
               </h2>
             </div>
-            <CityMap
-              centerLng={venue.longitude}
-              centerLat={venue.latitude}
-              zoom={15}
-              pins={mapPins}
-              accessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
+            <VenueMap
+              venueName={venue.name}
+              address={fullAddress}
+              city={null}
+              state={null}
+              country={null}
+              latitude={venue.latitude}
+              longitude={venue.longitude}
             />
           </ContentSection>
         ) : null}

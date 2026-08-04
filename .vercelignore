@@ -1,6 +1,17 @@
-# Deploy-only ignore (uncommitted, this worktree only).
-# Heavy non-build assets that the Next.js build/runtime never reads.
-docs
+# Deploy-only ignore. Heavy non-build assets the Next.js build never reads.
+#
+# `docs/*` not `docs`, with one exception re-included below. Excluding the
+# DIRECTORY makes it impossible to re-include anything inside it, which is a
+# gitignore rule Vercel inherits, and that is what broke every deployment from
+# this branch: `scripts/check-pricing-lock.mjs` runs in prebuild and parses
+# docs/PRICING.md as the authority for every fee figure, so with the whole
+# directory excluded the guard reported "docs/PRICING.md is missing" and blocked
+# the build every single time. A guard that can never pass is not a lock, it is
+# a wall, and it fails identically whether the pricing is right or wrong.
+#
+# Anything a BUILD-TIME guard reads must be listed here as an exception.
+docs/*
+!docs/PRICING.md
 design-captures
 research
 audit-v2

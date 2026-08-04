@@ -54,7 +54,7 @@ export function GetStartedChecklist({ status }: { status: ChecklistStatus }) {
   const nextStep = STEPS.find((s) => !status[s.key])
 
   return (
-    <section className="rounded-xl border border-ink-100 bg-white">
+    <section className="panel-elevated rounded-xl border border-ink-100 bg-white">
       <header className="border-b border-ink-100 px-5 py-4">
         <h2 className="text-base font-semibold text-ink-900">Set up your account</h2>
         <p className="mt-1 text-xs text-ink-600">

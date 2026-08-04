@@ -16,6 +16,7 @@ import { CommunityLandingPage } from '@/components/templates/CommunityLandingPag
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import { citySlugify } from '@/components/features/community/cities-rail'
 import type { EventCardData } from '@/components/features/events/event-card'
+import { getSiteUrl } from '@/lib/site-url'
 
 // ISR: 5-minute revalidate matches /events/[slug] and /categories/[slug].
 export const revalidate = 300
@@ -134,7 +135,7 @@ export default async function CommunityPage({ params }: Props) {
     relatedCommunityImages[slug] = relatedImageList[i] ?? null
   })
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
+  const baseUrl = getSiteUrl()
   const collectionLd = {
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',

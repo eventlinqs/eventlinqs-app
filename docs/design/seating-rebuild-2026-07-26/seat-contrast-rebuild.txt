@@ -1,0 +1,188 @@
+Rebuilt chair-glyph contrast proof, every palette set. Generated 2026-07-26T05:02:09.563Z.
+Text pairs 4.5:1 on the glyph's real grounds (dusk on white pan, night on gold);
+non-text 3:1 vs the Veil paper (1.4.11); colour-vision separation via Machado
+2009 severity-1.0 simulation, Lab deltaE.
+
+PASS         12.55  (needs 4.5:1)  [house] available numeral: dusk on the white pan
+PASS          7.63  (needs 4.5:1)  [house] selected numeral: night on gold
+PASS         10.98  (needs 4.5:1)  [house] row letters and ruler: dusk on veil paper
+PASS         15.86  (needs 4.5:1)  [house] polygon name: night on veil paper
+PASS         10.98  (needs 4.5:1)  [house] polygon price: dusk on veil paper
+PASS         10.98  (needs 4.5:1)  [house] stage word: dusk on veil (drafting hatch ground)
+PASS          6.97  (needs 3:1)  [house] chair back and mid mark: tone 1 #1F5673 vs veil
+PASS          7.96  (needs 3:1)  [house] pan keyline: tone 1 #1F5673 vs white pan
+PASS          8.79  (needs 3:1)  [house] chair back and mid mark: tone 2 #7A1F3D vs veil
+PASS         10.04  (needs 3:1)  [house] pan keyline: tone 2 #7A1F3D vs white pan
+PASS          6.96  (needs 3:1)  [house] chair back and mid mark: tone 3 #2D5A3D vs veil
+PASS          7.95  (needs 3:1)  [house] pan keyline: tone 3 #2D5A3D vs white pan
+PASS          5.97  (needs 3:1)  [house] chair back and mid mark: tone 4 #9A3E1C vs veil
+PASS          6.82  (needs 3:1)  [house] pan keyline: tone 4 #9A3E1C vs white pan
+PASS          9.48  (needs 3:1)  [house] chair back and mid mark: tone 5 #5B2A5E vs veil
+PASS         10.84  (needs 3:1)  [house] pan keyline: tone 5 #5B2A5E vs white pan
+PASS          6.50  (needs 3:1)  [house] chair back and mid mark: tone 6 #215E5E vs veil
+PASS          7.43  (needs 3:1)  [house] pan keyline: tone 6 #215E5E vs white pan
+PASS          6.61  (needs 3:1)  [house] chair back and mid mark: tone 7 #8C3B2E vs veil
+PASS          7.55  (needs 3:1)  [house] pan keyline: tone 7 #8C3B2E vs white pan
+PASS          7.94  (needs 3:1)  [house] chair back and mid mark: tone 8 #3A4675 vs veil
+PASS          9.08  (needs 3:1)  [house] pan keyline: tone 8 #3A4675 vs white pan
+PASS          6.64  (needs 3:1)  [house] chair back and mid mark: tone 9 #5C5518 vs veil
+PASS          7.59  (needs 3:1)  [house] pan keyline: tone 9 #5C5518 vs white pan
+PASS          8.66  (needs 3:1)  [house] chair back and mid mark: tone 10 #6E2B4F vs veil
+PASS          9.90  (needs 3:1)  [house] pan keyline: tone 10 #6E2B4F vs white pan
+RECORDED      2.08  (needs exempt)  [house] selected chair body: gold vs veil (boundary carried by keyline)
+PASS          7.63  (needs 3:1)  [house] selection keyline: night vs gold
+PASS         15.86  (needs 3:1)  [house] selection keyline: night vs veil
+PASS         15.86  (needs 3:1)  [house] keyboard cursor ring: night vs veil
+RECORDED      1.24  (needs exempt)  [house] taken chair: stone vs veil (receded by design)
+PASS         12.55  (needs 4.5:1)  [protan] available numeral: dusk on the white pan
+PASS          7.63  (needs 4.5:1)  [protan] selected numeral: night on gold
+PASS         10.98  (needs 4.5:1)  [protan] row letters and ruler: dusk on veil paper
+PASS         15.86  (needs 4.5:1)  [protan] polygon name: night on veil paper
+PASS         10.98  (needs 4.5:1)  [protan] polygon price: dusk on veil paper
+PASS         10.98  (needs 4.5:1)  [protan] stage word: dusk on veil (drafting hatch ground)
+PASS         12.82  (needs 3:1)  [protan] chair back and mid mark: tone 1 #0E2A44 vs veil
+PASS         14.65  (needs 3:1)  [protan] pan keyline: tone 1 #0E2A44 vs white pan
+PASS          6.40  (needs 3:1)  [protan] chair back and mid mark: tone 2 #6B5310 vs veil
+PASS          7.32  (needs 3:1)  [protan] pan keyline: tone 2 #6B5310 vs white pan
+PASS          6.97  (needs 3:1)  [protan] chair back and mid mark: tone 3 #1F5673 vs veil
+PASS          7.96  (needs 3:1)  [protan] pan keyline: tone 3 #1F5673 vs white pan
+PASS          9.35  (needs 3:1)  [protan] chair back and mid mark: tone 4 #4A3D0E vs veil
+PASS         10.69  (needs 3:1)  [protan] pan keyline: tone 4 #4A3D0E vs white pan
+PASS          4.61  (needs 3:1)  [protan] chair back and mid mark: tone 5 #45718A vs veil
+PASS          5.27  (needs 3:1)  [protan] pan keyline: tone 5 #45718A vs white pan
+PASS          4.30  (needs 3:1)  [protan] chair back and mid mark: tone 6 #8A6D12 vs veil
+PASS          4.91  (needs 3:1)  [protan] pan keyline: tone 6 #8A6D12 vs white pan
+RECORDED      2.08  (needs exempt)  [protan] selected chair body: gold vs veil (boundary carried by keyline)
+PASS          7.63  (needs 3:1)  [protan] selection keyline: night vs gold
+PASS         15.86  (needs 3:1)  [protan] selection keyline: night vs veil
+PASS         15.86  (needs 3:1)  [protan] keyboard cursor ring: night vs veil
+RECORDED      1.24  (needs exempt)  [protan] taken chair: stone vs veil (receded by design)
+PASS       dE 63.0  (needs dE 10)  [protan] simulated separation: tone 1 vs tone 2
+PASS       dE 18.7  (needs dE 10)  [protan] simulated separation: tone 1 vs tone 3
+PASS       dE 50.2  (needs dE 10)  [protan] simulated separation: tone 1 vs tone 4
+PASS       dE 29.7  (needs dE 10)  [protan] simulated separation: tone 1 vs tone 5
+PASS       dE 75.7  (needs dE 10)  [protan] simulated separation: tone 1 vs tone 6
+PASS       dE 99.9  (needs dE 15)  [protan] simulated: tone 1 vs gold (selected)
+PASS       dE 71.9  (needs dE 15)  [protan] simulated: tone 1 vs stone (unavailable)
+PASS       dE 61.9  (needs dE 10)  [protan] simulated separation: tone 2 vs tone 3
+PASS       dE 14.6  (needs dE 10)  [protan] simulated separation: tone 2 vs tone 4
+PASS       dE 59.9  (needs dE 10)  [protan] simulated separation: tone 2 vs tone 5
+PASS       dE 14.5  (needs dE 10)  [protan] simulated separation: tone 2 vs tone 6
+PASS       dE 41.0  (needs dE 15)  [protan] simulated: tone 2 vs gold (selected)
+PASS       dE 65.9  (needs dE 15)  [protan] simulated: tone 2 vs stone (unavailable)
+PASS       dE 52.1  (needs dE 10)  [protan] simulated separation: tone 3 vs tone 4
+PASS       dE 11.5  (needs dE 10)  [protan] simulated separation: tone 3 vs tone 5
+PASS       dE 72.2  (needs dE 10)  [protan] simulated separation: tone 3 vs tone 6
+PASS       dE 93.5  (needs dE 15)  [protan] simulated: tone 3 vs gold (selected)
+PASS       dE 54.7  (needs dE 15)  [protan] simulated: tone 3 vs stone (unavailable)
+PASS       dE 52.6  (needs dE 10)  [protan] simulated separation: tone 4 vs tone 5
+PASS       dE 29.0  (needs dE 10)  [protan] simulated separation: tone 4 vs tone 6
+PASS       dE 55.5  (needs dE 15)  [protan] simulated: tone 4 vs gold (selected)
+PASS       dE 68.3  (needs dE 15)  [protan] simulated: tone 4 vs stone (unavailable)
+PASS       dE 68.4  (needs dE 10)  [protan] simulated separation: tone 5 vs tone 6
+PASS       dE 87.5  (needs dE 15)  [protan] simulated: tone 5 vs gold (selected)
+PASS       dE 43.3  (needs dE 15)  [protan] simulated: tone 5 vs stone (unavailable)
+PASS       dE 26.5  (needs dE 15)  [protan] simulated: tone 6 vs gold (selected)
+PASS       dE 65.1  (needs dE 15)  [protan] simulated: tone 6 vs stone (unavailable)
+PASS         12.55  (needs 4.5:1)  [deutan] available numeral: dusk on the white pan
+PASS          7.63  (needs 4.5:1)  [deutan] selected numeral: night on gold
+PASS         10.98  (needs 4.5:1)  [deutan] row letters and ruler: dusk on veil paper
+PASS         15.86  (needs 4.5:1)  [deutan] polygon name: night on veil paper
+PASS         10.98  (needs 4.5:1)  [deutan] polygon price: dusk on veil paper
+PASS         10.98  (needs 4.5:1)  [deutan] stage word: dusk on veil (drafting hatch ground)
+PASS         12.82  (needs 3:1)  [deutan] chair back and mid mark: tone 1 #0E2A44 vs veil
+PASS         14.65  (needs 3:1)  [deutan] pan keyline: tone 1 #0E2A44 vs white pan
+PASS          5.88  (needs 3:1)  [deutan] chair back and mid mark: tone 2 #705910 vs veil
+PASS          6.72  (needs 3:1)  [deutan] pan keyline: tone 2 #705910 vs white pan
+PASS          6.97  (needs 3:1)  [deutan] chair back and mid mark: tone 3 #1F5673 vs veil
+PASS          7.96  (needs 3:1)  [deutan] pan keyline: tone 3 #1F5673 vs white pan
+PASS          9.35  (needs 3:1)  [deutan] chair back and mid mark: tone 4 #4A3D0E vs veil
+PASS         10.69  (needs 3:1)  [deutan] pan keyline: tone 4 #4A3D0E vs white pan
+PASS          4.61  (needs 3:1)  [deutan] chair back and mid mark: tone 5 #45718A vs veil
+PASS          5.27  (needs 3:1)  [deutan] pan keyline: tone 5 #45718A vs white pan
+PASS          4.30  (needs 3:1)  [deutan] chair back and mid mark: tone 6 #8A6D12 vs veil
+PASS          4.91  (needs 3:1)  [deutan] pan keyline: tone 6 #8A6D12 vs white pan
+RECORDED      2.08  (needs exempt)  [deutan] selected chair body: gold vs veil (boundary carried by keyline)
+PASS          7.63  (needs 3:1)  [deutan] selection keyline: night vs gold
+PASS         15.86  (needs 3:1)  [deutan] selection keyline: night vs veil
+PASS         15.86  (needs 3:1)  [deutan] keyboard cursor ring: night vs veil
+RECORDED      1.24  (needs exempt)  [deutan] taken chair: stone vs veil (receded by design)
+PASS       dE 66.2  (needs dE 10)  [deutan] simulated separation: tone 1 vs tone 2
+PASS       dE 18.0  (needs dE 10)  [deutan] simulated separation: tone 1 vs tone 3
+PASS       dE 50.9  (needs dE 10)  [deutan] simulated separation: tone 1 vs tone 4
+PASS       dE 28.9  (needs dE 10)  [deutan] simulated separation: tone 1 vs tone 5
+PASS       dE 77.0  (needs dE 10)  [deutan] simulated separation: tone 1 vs tone 6
+PASS      dE 104.1  (needs dE 15)  [deutan] simulated: tone 1 vs gold (selected)
+PASS       dE 74.7  (needs dE 15)  [deutan] simulated: tone 1 vs stone (unavailable)
+PASS       dE 65.4  (needs dE 10)  [deutan] simulated separation: tone 2 vs tone 3
+PASS       dE 17.5  (needs dE 10)  [deutan] simulated separation: tone 2 vs tone 4
+PASS       dE 61.6  (needs dE 10)  [deutan] simulated separation: tone 2 vs tone 5
+PASS       dE 11.9  (needs dE 10)  [deutan] simulated separation: tone 2 vs tone 6
+PASS       dE 40.9  (needs dE 15)  [deutan] simulated: tone 2 vs gold (selected)
+PASS       dE 61.2  (needs dE 15)  [deutan] simulated: tone 2 vs stone (unavailable)
+PASS       dE 53.4  (needs dE 10)  [deutan] simulated separation: tone 3 vs tone 4
+PASS       dE 11.8  (needs dE 10)  [deutan] simulated separation: tone 3 vs tone 5
+PASS       dE 74.7  (needs dE 10)  [deutan] simulated separation: tone 3 vs tone 6
+PASS       dE 99.2  (needs dE 15)  [deutan] simulated: tone 3 vs gold (selected)
+PASS       dE 59.6  (needs dE 15)  [deutan] simulated: tone 3 vs stone (unavailable)
+PASS       dE 52.4  (needs dE 10)  [deutan] simulated separation: tone 4 vs tone 5
+PASS       dE 29.4  (needs dE 10)  [deutan] simulated separation: tone 4 vs tone 6
+PASS       dE 58.4  (needs dE 15)  [deutan] simulated: tone 4 vs gold (selected)
+PASS       dE 65.7  (needs dE 15)  [deutan] simulated: tone 4 vs stone (unavailable)
+PASS       dE 69.5  (needs dE 10)  [deutan] simulated separation: tone 5 vs tone 6
+PASS       dE 92.0  (needs dE 15)  [deutan] simulated: tone 5 vs gold (selected)
+PASS       dE 47.9  (needs dE 15)  [deutan] simulated: tone 5 vs stone (unavailable)
+PASS       dE 29.0  (needs dE 15)  [deutan] simulated: tone 6 vs gold (selected)
+PASS       dE 60.6  (needs dE 15)  [deutan] simulated: tone 6 vs stone (unavailable)
+PASS         12.55  (needs 4.5:1)  [tritan] available numeral: dusk on the white pan
+PASS          7.63  (needs 4.5:1)  [tritan] selected numeral: night on gold
+PASS         10.98  (needs 4.5:1)  [tritan] row letters and ruler: dusk on veil paper
+PASS         15.86  (needs 4.5:1)  [tritan] polygon name: night on veil paper
+PASS         10.98  (needs 4.5:1)  [tritan] polygon price: dusk on veil paper
+PASS         10.98  (needs 4.5:1)  [tritan] stage word: dusk on veil (drafting hatch ground)
+PASS         12.92  (needs 3:1)  [tritan] chair back and mid mark: tone 1 #4C1226 vs veil
+PASS         14.77  (needs 3:1)  [tritan] pan keyline: tone 1 #4C1226 vs white pan
+PASS         10.83  (needs 3:1)  [tritan] chair back and mid mark: tone 2 #0B3B38 vs veil
+PASS         12.38  (needs 3:1)  [tritan] pan keyline: tone 2 #0B3B38 vs white pan
+PASS          8.79  (needs 3:1)  [tritan] chair back and mid mark: tone 3 #7A1F3D vs veil
+PASS         10.04  (needs 3:1)  [tritan] pan keyline: tone 3 #7A1F3D vs white pan
+PASS          6.65  (needs 3:1)  [tritan] chair back and mid mark: tone 4 #1B5E50 vs veil
+PASS          7.60  (needs 3:1)  [tritan] pan keyline: tone 4 #1B5E50 vs white pan
+PASS          4.99  (needs 3:1)  [tritan] chair back and mid mark: tone 5 #9C5147 vs veil
+PASS          5.70  (needs 3:1)  [tritan] pan keyline: tone 5 #9C5147 vs white pan
+PASS          4.14  (needs 3:1)  [tritan] chair back and mid mark: tone 6 #3F7E71 vs veil
+PASS          4.74  (needs 3:1)  [tritan] pan keyline: tone 6 #3F7E71 vs white pan
+RECORDED      2.08  (needs exempt)  [tritan] selected chair body: gold vs veil (boundary carried by keyline)
+PASS          7.63  (needs 3:1)  [tritan] selection keyline: night vs gold
+PASS         15.86  (needs 3:1)  [tritan] selection keyline: night vs veil
+PASS         15.86  (needs 3:1)  [tritan] keyboard cursor ring: night vs veil
+RECORDED      1.24  (needs exempt)  [tritan] taken chair: stone vs veil (receded by design)
+PASS       dE 54.3  (needs dE 10)  [tritan] simulated separation: tone 1 vs tone 2
+PASS       dE 19.8  (needs dE 10)  [tritan] simulated separation: tone 1 vs tone 3
+PASS       dE 63.7  (needs dE 10)  [tritan] simulated separation: tone 1 vs tone 4
+PASS       dE 29.0  (needs dE 10)  [tritan] simulated separation: tone 1 vs tone 5
+PASS       dE 71.1  (needs dE 10)  [tritan] simulated separation: tone 1 vs tone 6
+PASS       dE 53.0  (needs dE 15)  [tritan] simulated: tone 1 vs gold (selected)
+PASS       dE 78.9  (needs dE 15)  [tritan] simulated: tone 1 vs stone (unavailable)
+PASS       dE 69.9  (needs dE 10)  [tritan] simulated separation: tone 2 vs tone 3
+PASS       dE 15.0  (needs dE 10)  [tritan] simulated separation: tone 2 vs tone 4
+PASS       dE 66.9  (needs dE 10)  [tritan] simulated separation: tone 2 vs tone 5
+PASS       dE 27.7  (needs dE 10)  [tritan] simulated separation: tone 2 vs tone 6
+PASS       dE 71.5  (needs dE 15)  [tritan] simulated: tone 2 vs gold (selected)
+PASS       dE 67.0  (needs dE 15)  [tritan] simulated: tone 2 vs stone (unavailable)
+PASS       dE 76.6  (needs dE 10)  [tritan] simulated separation: tone 3 vs tone 4
+PASS       dE 16.4  (needs dE 10)  [tritan] simulated separation: tone 3 vs tone 5
+PASS       dE 81.6  (needs dE 10)  [tritan] simulated separation: tone 3 vs tone 6
+PASS       dE 43.6  (needs dE 15)  [tritan] simulated: tone 3 vs gold (selected)
+PASS       dE 77.6  (needs dE 15)  [tritan] simulated: tone 3 vs stone (unavailable)
+PASS       dE 70.5  (needs dE 10)  [tritan] simulated separation: tone 4 vs tone 5
+PASS       dE 13.0  (needs dE 10)  [tritan] simulated separation: tone 4 vs tone 6
+PASS       dE 69.3  (needs dE 15)  [tritan] simulated: tone 4 vs gold (selected)
+PASS       dE 57.0  (needs dE 15)  [tritan] simulated: tone 4 vs stone (unavailable)
+PASS       dE 73.0  (needs dE 10)  [tritan] simulated separation: tone 5 vs tone 6
+PASS       dE 27.3  (needs dE 15)  [tritan] simulated: tone 5 vs gold (selected)
+PASS       dE 62.3  (needs dE 15)  [tritan] simulated: tone 5 vs stone (unavailable)
+PASS       dE 66.9  (needs dE 15)  [tritan] simulated: tone 6 vs gold (selected)
+PASS       dE 47.6  (needs dE 15)  [tritan] simulated: tone 6 vs stone (unavailable)
+
+RESULT: all 173 required pairs pass in every palette set.

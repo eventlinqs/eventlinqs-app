@@ -1,0 +1,33 @@
+﻿┌─────────┬─────────────────────────────────────────────────────────────────────────────────────────┬─────────┬──────────┬────────────┐
+│ (index) │ pair                                                                                    │ ratio   │ needed   │ verdict    │
+├─────────┼─────────────────────────────────────────────────────────────────────────────────────────┼─────────┼──────────┼────────────┤
+│ 0       │ 'available numeral: white on harbour blue #1F5673'                                      │ '7.96'  │ '4.5:1'  │ 'PASS'     │
+│ 1       │ 'available numeral: white on garnet #7A1F3D'                                            │ '10.04' │ '4.5:1'  │ 'PASS'     │
+│ 2       │ 'available numeral: white on forest #2D5A3D'                                            │ '7.95'  │ '4.5:1'  │ 'PASS'     │
+│ 3       │ 'available numeral: white on terracotta #9A3E1C'                                        │ '6.82'  │ '4.5:1'  │ 'PASS'     │
+│ 4       │ 'available numeral: white on aubergine #5B2A5E'                                         │ '10.84' │ '4.5:1'  │ 'PASS'     │
+│ 5       │ 'available numeral: white on petrol #215E5E'                                            │ '7.43'  │ '4.5:1'  │ 'PASS'     │
+│ 6       │ 'available numeral: white on rust #8C3B2E'                                              │ '7.55'  │ '4.5:1'  │ 'PASS'     │
+│ 7       │ 'available numeral: white on indigo ink #3A4675'                                        │ '9.08'  │ '4.5:1'  │ 'PASS'     │
+│ 8       │ 'available numeral: white on olive #5C5518'                                             │ '7.59'  │ '4.5:1'  │ 'PASS'     │
+│ 9       │ 'available numeral: white on plum #6E2B4F'                                              │ '9.90'  │ '4.5:1'  │ 'PASS'     │
+│ 10      │ 'available seat vs white plan field (harbour blue)'                                     │ '7.96'  │ '3:1'    │ 'PASS'     │
+│ 11      │ 'available seat vs white plan field (garnet)'                                           │ '10.04' │ '3:1'    │ 'PASS'     │
+│ 12      │ 'available seat vs white plan field (forest)'                                           │ '7.95'  │ '3:1'    │ 'PASS'     │
+│ 13      │ 'available seat vs white plan field (terracotta)'                                       │ '6.82'  │ '3:1'    │ 'PASS'     │
+│ 14      │ 'available seat vs white plan field (aubergine)'                                        │ '10.84' │ '3:1'    │ 'PASS'     │
+│ 15      │ 'available seat vs white plan field (petrol)'                                           │ '7.43'  │ '3:1'    │ 'PASS'     │
+│ 16      │ 'available seat vs white plan field (rust)'                                             │ '7.55'  │ '3:1'    │ 'PASS'     │
+│ 17      │ 'available seat vs white plan field (indigo ink)'                                       │ '9.08'  │ '3:1'    │ 'PASS'     │
+│ 18      │ 'available seat vs white plan field (olive)'                                            │ '7.59'  │ '3:1'    │ 'PASS'     │
+│ 19      │ 'available seat vs white plan field (plum)'                                             │ '9.90'  │ '3:1'    │ 'PASS'     │
+│ 20      │ 'selected numeral: ink-900 on gold-500'                                                 │ '7.63'  │ '4.5:1'  │ 'PASS'     │
+│ 21      │ 'selected seat boundary: ink-900 keyline vs white field'                                │ '18.13' │ '3:1'    │ 'PASS'     │
+│ 22      │ 'selected seat fill context: gold-500 vs white (supplementary, keyline carries 1.4.11)' │ '2.38'  │ 'exempt' │ 'RECORDED' │
+│ 23      │ 'stage wordmark: white on ink-900'                                                      │ '18.13' │ '4.5:1'  │ 'PASS'     │
+│ 24      │ 'row labels: ink-400 on white'                                                          │ '4.83'  │ '4.5:1'  │ 'PASS'     │
+│ 25      │ 'legend text: ink-900 on veil #EDF0F4'                                                  │ '15.86' │ '4.5:1'  │ 'PASS'     │
+│ 26      │ 'sold/held numeral: ink-400 on ink-200 (non-interactive, receded by design)'            │ '3.42'  │ 'exempt' │ 'RECORDED' │
+│ 27      │ 'sold/held seat vs white (non-interactive, receded by design)'                          │ '1.41'  │ 'exempt' │ 'RECORDED' │
+└─────────┴─────────────────────────────────────────────────────────────────────────────────────────┴─────────┴──────────┴────────────┘
+All required seat-state contrast pairs pass WCAG.

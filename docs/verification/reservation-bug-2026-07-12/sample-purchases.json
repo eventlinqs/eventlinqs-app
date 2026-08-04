@@ -1,0 +1,25 @@
+{
+  "seated": {
+    "order": "EL-KGRXGBBQ",
+    "status": "confirmed",
+    "seatOnConfirmation": true
+  },
+  "free": {
+    "slug": "qawwali-and-sufi-music-night-sydney-sydney",
+    "order": "EL-FYYPQ38A",
+    "status": "confirmed",
+    "total": 0
+  },
+  "guestShareLink": "https://eventlinqs-staging.vercel.app/events/cat-soul-and-funk-revue-melbourne",
+  "guest": {
+    "order": "EL-XRLFPHBQ",
+    "status": "confirmed",
+    "user_id": null,
+    "guest_email": "guest-incognito@mailinator.com"
+  },
+  "declined": {
+    "stayedOnCheckout": true,
+    "cleanMessage": true,
+    "noConfirmedPhantom": true
+  }
+}

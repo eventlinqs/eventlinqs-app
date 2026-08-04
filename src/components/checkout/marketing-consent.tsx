@@ -40,6 +40,8 @@ export function MarketingConsent({
       <div className="mt-4 space-y-3">
         <label className="flex min-h-[44px] cursor-pointer items-start gap-3 py-1">
           <input
+            id="organiser-marketing-consent"
+            name="organiser-marketing-consent"
             type="checkbox"
             checked={organiserConsent}
             onChange={(e) => onOrganiserChange(e.target.checked)}
@@ -53,6 +55,8 @@ export function MarketingConsent({
         {showPlatform && (
           <label className="flex min-h-[44px] cursor-pointer items-start gap-3 py-1">
             <input
+              id="platform-marketing-consent"
+              name="platform-marketing-consent"
               type="checkbox"
               checked={platformConsent}
               onChange={(e) => onPlatformChange(e.target.checked)}

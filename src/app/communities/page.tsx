@@ -6,11 +6,12 @@ import { PhotographicCommunityHero } from '@/components/templates/PhotographicCo
 import { CategoryTileImage } from '@/components/media/CategoryTileImage'
 import { getCommunityHeroPhoto } from '@/lib/images/community-photo'
 import { getCommunityIndexEntries, type CommunityIndexEntry } from '@/lib/communities/index-page-data'
+import { getSiteUrl } from '@/lib/site-url'
 
 // ISR: 5-minute revalidate matches the rest of the public surface.
 export const revalidate = 300
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
+const SITE_URL = getSiteUrl()
 
 export const metadata: Metadata = {
   title: 'Browse by Community | EventLinqs',

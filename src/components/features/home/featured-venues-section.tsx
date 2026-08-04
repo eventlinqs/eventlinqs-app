@@ -1,8 +1,9 @@
 import { SnapRail } from '@/components/ui/snap-rail'
 import { Reveal } from '@/components/ui/reveal'
 import { CityTile } from '@/components/features/home/cards'
+import { InvitationCard, invitationFillCount } from '@/components/features/events/invitation-card'
 import { CONTAINER, SECTION_RAIL } from '@/lib/ui/spacing'
-import { RHYTHM_GAP } from '@/lib/ui/rhythm'
+import { RHYTHM_GAP, CITY_TILE_CELL } from '@/lib/ui/rhythm'
 import { getCategoryPhoto } from '@/lib/images/category-photo'
 import type { RawRow } from '@/lib/events/home-queries'
 
@@ -71,7 +72,7 @@ export async function FeaturedVenuesSection({ upcoming }: Props) {
           cardGap={RHYTHM_GAP}
         >
           {top.map(v => (
-            <div key={v.name} className="w-[240px] shrink-0 snap-start sm:w-[280px]">
+            <div key={v.name} className={CITY_TILE_CELL}>
               <CityTile
                 city={{
                   href: `/events?venue=${encodeURIComponent(v.name)}`,
@@ -82,6 +83,21 @@ export async function FeaturedVenuesSection({ upcoming }: Props) {
                     ? `${v.city} \u00B7 ${v.count} ${v.count === 1 ? 'event' : 'events'}`
                     : `${v.count} ${v.count === 1 ? 'event' : 'events'}`,
                 }}
+              />
+            </div>
+          ))}
+          {/* Sparse-rail discipline (same law as every event rail): a thin
+              venues rail tops up with invitation cards so it reads full and
+              balanced, never a near-empty track. They match the CityTile cell
+              width and fill its height (fitParent), and vanish once five or
+              more real venues fill the rail. */}
+          {Array.from({ length: invitationFillCount(top.length) }, (_, i) => (
+            <div key={`invite-${i}`} className={CITY_TILE_CELL}>
+              <InvitationCard
+                fitParent
+                variant="landscape"
+                angle={i === 1 ? 'performer' : 'organiser'}
+                subject="live"
               />
             </div>
           ))}

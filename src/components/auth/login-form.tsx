@@ -124,6 +124,7 @@ export function LoginForm() {
           </label>
           <input
             id="email"
+            name="email"
             type="email"
             autoComplete="email"
             value={email}
@@ -148,6 +149,7 @@ export function LoginForm() {
           </div>
           <input
             id="password"
+            name="password"
             type="password"
             autoComplete="current-password"
             value={password}

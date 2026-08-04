@@ -331,9 +331,12 @@ export function CheckoutForm({
                 <h3 className="text-base font-semibold text-ink-900 mb-4">Your Details</h3>
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-xs text-ink-600 mb-1">Full name</label>
+                    <label htmlFor="buyer-name" className="block text-xs text-ink-600 mb-1">Full name</label>
                     <input
+                      id="buyer-name"
+                      name="name"
                       type="text"
+                      autoComplete="name"
                       value={buyerName}
                       onChange={e => setBuyerName(e.target.value)}
                       required
@@ -342,9 +345,12 @@ export function CheckoutForm({
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-ink-600 mb-1">Email</label>
+                    <label htmlFor="buyer-email" className="block text-xs text-ink-600 mb-1">Email</label>
                     <input
+                      id="buyer-email"
+                      name="email"
                       type="email"
+                      autoComplete="email"
                       value={buyerEmail}
                       onChange={e => setBuyerEmail(e.target.value)}
                       required
@@ -427,6 +433,18 @@ export function CheckoutForm({
                     : `Continue to payment - ${currency.toUpperCase()} ${(fees.total_cents / 100).toFixed(2)}`}
                 </Button>
               )}
+
+              {/* The terms the buyer is accepting at the point of commitment.
+                  The all-in total is already shown above and on the event page
+                  before this step (ACCC all-in display). */}
+              <p className="mt-3 text-center text-xs text-ink-400">
+                By completing this order you agree to our{' '}
+                <a href="/legal/terms" className="underline hover:text-gold-600">Terms</a>
+                {', '}
+                <a href="/legal/refunds" className="underline hover:text-gold-600">Refund and Ticket Policy</a>
+                {' '}and{' '}
+                <a href="/legal/privacy" className="underline hover:text-gold-600">Privacy Policy</a>.
+              </p>
             </div>
 
             {/* Sidebar: order summary */}

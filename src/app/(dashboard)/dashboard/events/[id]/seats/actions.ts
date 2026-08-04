@@ -267,6 +267,58 @@ export async function assignTicketToSeat(
 }
 
 /**
+ * The read-only preview of a chart sync: exactly what the additive RPC
+ * will add, move, remove, and protect, computed BEFORE anything commits.
+ * The organiser reads this diff and then chooses; nothing here writes.
+ */
+export async function previewChartSync(
+  eventId: string
+): Promise<{ error?: string; diff?: import('@/lib/seating/diff').ChartDiff }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  const event = await getEventWithAuth(eventId, user.id)
+  if (!event) return { error: 'Event not found or access denied' }
+
+  const admin = createAdminClient()
+  const { data: eventRow } = await admin
+    .from('events')
+    .select('seat_map_id')
+    .eq('id', eventId)
+    .single()
+  if (!eventRow?.seat_map_id) return { error: 'This event has no seating chart attached.' }
+
+  const [{ data: map }, { data: liveSeats }] = await Promise.all([
+    admin.from('seat_maps').select('layout').eq('id', eventRow.seat_map_id).single(),
+    admin
+      .from('seats')
+      .select('row_label, seat_number, status, seat_type, x, y, section:seat_map_sections(name)')
+      .eq('event_id', eventId)
+      .range(0, 9999),
+  ])
+  if (!map?.layout) return { error: 'The seating chart could not be read.' }
+
+  const { diffChartAgainstLive } = await import('@/lib/seating/diff')
+  const diff = diffChartAgainstLive(
+    map.layout as Parameters<typeof diffChartAgainstLive>[0],
+    (liveSeats ?? []).map(s => {
+      const rel = s.section as unknown as { name: string } | { name: string }[] | null
+      return {
+      section_name: (Array.isArray(rel) ? rel[0]?.name : rel?.name) ?? null,
+      row_label: s.row_label as string,
+      seat_number: String(s.seat_number),
+      status: s.status as string,
+      seat_type: s.seat_type as string,
+      x: Number(s.x),
+      y: Number(s.y),
+      }
+    }),
+  )
+  return { diff }
+}
+
+/**
  * Sync a LIVE event with its edited seating chart, additively: new seats are
  * added, free seats repositioned, never-sold seats missing from the chart
  * removed. Reserved, sold, and held seats are provably untouched (the RPC

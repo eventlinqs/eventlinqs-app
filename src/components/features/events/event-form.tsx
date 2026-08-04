@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createEvent, updateEvent } from '@/app/(dashboard)/dashboard/events/actions'
 import { EventMediaStep, type MediaImage } from './event-media-step'
@@ -9,6 +9,7 @@ import { AssistantPanel, type PanelSuggestion } from '@/components/ai/assistant-
 import { MagicStart } from './magic-start'
 import type { MagicStartDraft } from '@/lib/ai/magic-start'
 import { getAllCommunities, type CommunitySlug } from '@/lib/communities/data'
+import { trackKitStarted } from '@/lib/analytics/plausible'
 import {
   communitiesFromTags,
   stripCanonicalCommunityTokens,
@@ -360,6 +361,8 @@ type Props = {
   existingStatus?: EventStatus
   /** Launch Kit flag (read server-side): publish delivers the kit screen. */
   launchKitEnabled?: boolean
+  /** Artists flag (read server-side): prompt the organiser to tag their lineup. */
+  lineupEnabled?: boolean
   /** Magic Start flag (read server-side): AI describe-your-event prefill. */
   magicStartEnabled?: boolean
 }
@@ -377,6 +380,7 @@ export function EventForm({
   existingTiers = [],
   existingStatus = 'draft',
   launchKitEnabled = false,
+  lineupEnabled = false,
   magicStartEnabled = false,
 }: Props) {
   const router = useRouter()
@@ -397,6 +401,18 @@ export function EventForm({
   const set = useCallback(<K extends keyof FormData>(key: K, value: FormData[K]) => {
     setFormData(d => ({ ...d, [key]: value }))
   }, [])
+
+  // Activation metric: kit_started fires once per create-mode session, on the
+  // first meaningful input (typing a title, or applying a Magic Start draft).
+  const kitStartedRef = useRef(false)
+  const markKitStarted = useCallback(
+    (mode: 'wizard' | 'magic_start') => {
+      if (editMode || kitStartedRef.current) return
+      kitStartedRef.current = true
+      trackKitStarted({ mode })
+    },
+    [editMode],
+  )
 
   // Auto-detect the browser timezone on mount (new events only). This must run
   // in an effect, not the state initializer: reading the browser timezone
@@ -588,6 +604,7 @@ export function EventForm({
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
   }
   const applyMagicDraft = (draft: MagicStartDraft) => {
+    markKitStarted('magic_start')
     const filled: string[] = []
     setFormData(d => {
       const next = { ...d }
@@ -716,7 +733,10 @@ export function EventForm({
         <input
           type="text"
           value={formData.title}
-          onChange={e => set('title', e.target.value)}
+          onChange={e => {
+            markKitStarted('wizard')
+            set('title', e.target.value)
+          }}
           placeholder="e.g. Summer Music Festival 2026"
           className="w-full rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
         />
@@ -1674,6 +1694,19 @@ export function EventForm({
             <span className="font-semibold">Publishing delivers your launch kit:</span>{' '}
             your live page link, a print-ready QR poster, your invitation card, one-tap
             tracked sharing, and live reach numbers, all on one screen.
+          </div>
+        )}
+
+        {/* The lineup loop prompt. The event row does not exist until this
+            submit, so tagging itself lives on the kit that publishing opens;
+            this sets the expectation and sells the benefit in the organiser's
+            own terms. */}
+        {lineupEnabled && (
+          <div className="rounded-lg border border-ink-200 bg-white px-4 py-3 text-sm text-ink-900">
+            <span className="font-semibold">Playing with other acts?</span>{' '}
+            Tag them on your lineup {editMode ? 'from your event dashboard' : 'on the next screen'}.
+            Each act gets their own tracked share link and their own spot on your event page, so
+            they sell to their following and you see exactly how many tickets each one brought.
           </div>
         )}
 

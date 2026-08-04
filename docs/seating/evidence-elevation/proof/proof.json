@@ -1,0 +1,48 @@
+{
+  "base": "https://eventlinqs-staging.vercel.app",
+  "startedAt": "2026-07-19T00:15:56.226Z",
+  "purchase": {
+    "orderId": "ccea131e-b004-4d4c-b35b-1baacd451143",
+    "order_number": "EL-QWK7P4JY",
+    "confirmed": true,
+    "buyerAttached": true,
+    "ticketCount": 1,
+    "seatOnTicket": true,
+    "seat": {
+      "section": "Main room",
+      "row": "A",
+      "number": "4"
+    },
+    "bearerPageShowsSeat": true
+  },
+  "concurrency": {
+    "rounds": [
+      {
+        "seat": "bd184bd6-d4bd-4f32-adc1-e03dad38929d",
+        "aWon": true,
+        "bWon": false,
+        "exactlyOneWinner": true
+      },
+      {
+        "seat": "1b1777e5-63e2-4833-9fc0-5a57f0a8cdb7",
+        "aWon": true,
+        "bWon": false,
+        "exactlyOneWinner": true
+      },
+      {
+        "seat": "a813eda9-1f5e-4d7a-8a33-485d5f5a1829",
+        "aWon": false,
+        "bWon": true,
+        "exactlyOneWinner": true
+      },
+      {
+        "seat": "77d080ce-650f-499e-b263-4aab641d7dbc",
+        "aWon": true,
+        "bWon": false,
+        "exactlyOneWinner": true
+      }
+    ],
+    "everyRoundExactlyOneWinner": true
+  },
+  "finishedAt": "2026-07-19T00:16:17.139Z"
+}

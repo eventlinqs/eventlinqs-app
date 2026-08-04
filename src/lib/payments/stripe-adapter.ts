@@ -16,6 +16,34 @@ function getStripeClient(): Stripe {
   return new Stripe(key, { apiVersion: '2026-03-25.dahlia' })
 }
 
+/**
+ * Every webhook signing secret this deployment will accept, most-preferred
+ * first.
+ *
+ * `STRIPE_WEBHOOK_SECRETS` is a comma-separated list, because Stripe mints one
+ * signing secret PER ENDPOINT and the platform runs two: the account endpoint
+ * and the connected-accounts endpoint. It also makes secret ROTATION safe -
+ * during a rotation both the old and the new secret are listed, so no delivery
+ * is dropped in the window between creating the new endpoint and retiring the
+ * old one.
+ *
+ * `STRIPE_WEBHOOK_SECRET` (singular) stays supported and is appended last, so
+ * every existing deployment, every branch env, and `.env.test` keep working
+ * untouched. Duplicates are collapsed so listing the same secret twice does not
+ * cost an extra verification attempt.
+ *
+ * Exported for the tests, which assert the parsing rules directly.
+ */
+export function resolveWebhookSecrets(): string[] {
+  const many = (process.env.STRIPE_WEBHOOK_SECRETS ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
+  const one = (process.env.STRIPE_WEBHOOK_SECRET ?? '').trim()
+  if (one.length > 0) many.push(one)
+  return [...new Set(many)]
+}
+
 export class StripeAdapter implements PaymentGateway, TransferGateway {
   name = 'stripe'
 
@@ -104,10 +132,30 @@ export class StripeAdapter implements PaymentGateway, TransferGateway {
   }
 
   async constructWebhookEvent(payload: string | Buffer, signature: string): Promise<unknown> {
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
-    if (!webhookSecret) throw new Error('STRIPE_WEBHOOK_SECRET is not set')
+    const secrets = resolveWebhookSecrets()
+    if (secrets.length === 0) {
+      throw new Error('No Stripe webhook secret is set (STRIPE_WEBHOOK_SECRETS or STRIPE_WEBHOOK_SECRET)')
+    }
     const stripe = getStripeClient()
-    return stripe.webhooks.constructEvent(payload, signature, webhookSecret)
+
+    // Try each configured secret. Stripe issues a DIFFERENT signing secret per
+    // endpoint, and the platform needs two live endpoints at once: the account
+    // endpoint (payment_intent, charge, checkout.session, transfer) and the
+    // connected-accounts endpoint (account.*, payout.*, charge.dispute.*). With
+    // a single-secret check the second endpoint's deliveries all failed
+    // signature verification and 400d, so Connect payouts and disputes silently
+    // never reached the handler.
+    let lastError: unknown
+    for (const secret of secrets) {
+      try {
+        return stripe.webhooks.constructEvent(payload, signature, secret)
+      } catch (err) {
+        lastError = err
+      }
+    }
+    // Every secret rejected it: the signature is genuinely invalid. Re-throw the
+    // last Stripe error so the route keeps returning 400 exactly as before.
+    throw lastError
   }
 
   // ── TransferGateway: platform -> connected organiser (funds-holding model) ──

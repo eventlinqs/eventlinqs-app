@@ -1,0 +1,10 @@
+{
+  "base": "https://eventlinqs-staging.vercel.app",
+  "startedAt": "2026-07-19T00:20:29.007Z",
+  "fileInputFound": true,
+  "msToBlobPreview": 53,
+  "immediateBlobPreview": true,
+  "blobPreviewCountDelta": 1,
+  "resolvedToStorage": true,
+  "PASS": true
+}

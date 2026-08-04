@@ -1976,6 +1976,7 @@ export type Database = {
           email: string | null
           founding_bonus_months: number
           founding_city: string | null
+          founding_fee_free_until: string | null
           founding_since: string | null
           hold_amount_cents: number
           id: string
@@ -2011,6 +2012,7 @@ export type Database = {
           email?: string | null
           founding_bonus_months?: number
           founding_city?: string | null
+          founding_fee_free_until?: string | null
           founding_since?: string | null
           hold_amount_cents?: number
           id?: string
@@ -2046,6 +2048,7 @@ export type Database = {
           email?: string | null
           founding_bonus_months?: number
           founding_city?: string | null
+          founding_fee_free_until?: string | null
           founding_since?: string | null
           hold_amount_cents?: number
           id?: string
@@ -2665,7 +2668,9 @@ export type Database = {
           requested_by: string | null
           status: Database["public"]["Enums"]["refund_status"]
           stripe_application_fee_refund_id: string | null
+          stripe_pending_reason: string | null
           stripe_refund_id: string | null
+          stripe_refund_status: string | null
           updated_at: string
         }
         Insert: {
@@ -2688,7 +2693,9 @@ export type Database = {
           requested_by?: string | null
           status?: Database["public"]["Enums"]["refund_status"]
           stripe_application_fee_refund_id?: string | null
+          stripe_pending_reason?: string | null
           stripe_refund_id?: string | null
+          stripe_refund_status?: string | null
           updated_at?: string
         }
         Update: {
@@ -2711,7 +2718,9 @@ export type Database = {
           requested_by?: string | null
           status?: Database["public"]["Enums"]["refund_status"]
           stripe_application_fee_refund_id?: string | null
+          stripe_pending_reason?: string | null
           stripe_refund_id?: string | null
+          stripe_refund_status?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -2988,6 +2997,44 @@ export type Database = {
             columns: ["venue_id"]
             isOneToOne: false
             referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seat_section_views: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          photo_url: string
+          seat_map_id: string
+          section_name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          photo_url: string
+          seat_map_id: string
+          section_name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          photo_url?: string
+          seat_map_id?: string
+          section_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seat_section_views_seat_map_id_fkey"
+            columns: ["seat_map_id"]
+            isOneToOne: false
+            referencedRelation: "seat_maps"
             referencedColumns: ["id"]
           },
         ]

@@ -30,12 +30,64 @@ async function gate(eventId: string): Promise<{ ok: false; error: string } | { o
 const AddSchema = z.object({
   eventId: z.string().uuid(),
   name: z.string().min(1).max(120),
+  /** Set when the organiser picked an existing performer from search, so we
+   *  attach that exact artist instead of re-matching loosely by name. */
+  artistId: z.string().uuid().optional(),
 })
 
-/** Tag a performer on the event by name (reuse-or-create), confirmed. */
+const SearchSchema = z.object({ query: z.string().min(1).max(80) })
+
+export type ArtistSearchHit = { id: string; name: string; slug: string; claimed: boolean }
+
+/**
+ * Search the shared performer directory so tagging is one step: the organiser
+ * types a name, picks an existing act if we already know them (no duplicate
+ * profiles), or adds a brand new one. Gated by the artists flag and a signed-in
+ * user; returns public profile fields only.
+ */
+export async function searchArtistsAction(
+  query: string,
+): Promise<{ ok: boolean; artists: ArtistSearchHit[]; error?: string }> {
+  const parsed = SearchSchema.safeParse({ query })
+  if (!parsed.success) return { ok: true, artists: [] }
+  if (!(await isFeatureEnabled('broadcast_artists'))) {
+    return { ok: false, artists: [], error: 'Performer tagging is not switched on yet.' }
+  }
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { ok: false, artists: [], error: 'Sign in to search performers.' }
+
+  const admin = createAdminClient()
+  // Escape LIKE wildcards so a name containing % or _ cannot widen the search.
+  const term = parsed.data.query.trim().replace(/[\\%_]/g, (m) => `\\${m}`)
+  const { data } = await admin
+    .from('artists')
+    .select('id, name, slug, owner_user_id')
+    .ilike('name', `%${term}%`)
+    .order('name', { ascending: true })
+    .limit(8)
+
+  const rows = (data ?? []) as { id: string; name: string; slug: string; owner_user_id: string | null }[]
+  return {
+    ok: true,
+    artists: rows.map((a) => ({ id: a.id, name: a.name, slug: a.slug, claimed: Boolean(a.owner_user_id) })),
+  }
+}
+
+/**
+ * Tag a performer on the event (reuse-or-create), confirmed.
+ *
+ * Every tagged act that is not already claimed gets a claim token minted on
+ * the tag row, so the organiser always has a claim link to send them. Claiming
+ * hands the act their profile and their proof of draw; the token is cleared on
+ * use (claimArtistInviteAction). An already-claimed act needs no token.
+ */
 export async function addArtistToLineupAction(input: {
   eventId: string
   name: string
+  artistId?: string
 }): Promise<LineupActionResult> {
   const parsed = AddSchema.safeParse(input)
   if (!parsed.success) return { ok: false, error: 'Enter the performer name.' }
@@ -45,14 +97,24 @@ export async function addArtistToLineupAction(input: {
   const admin = createAdminClient()
   const name = parsed.data.name.trim()
 
-  const { data: existing } = await admin
-    .from('artists')
-    .select('id')
-    .ilike('name', name)
-    .limit(1)
-    .maybeSingle()
-
-  let artistId = existing?.id ?? null
+  let artistId: string | null = null
+  if (parsed.data.artistId) {
+    const { data: picked } = await admin
+      .from('artists')
+      .select('id')
+      .eq('id', parsed.data.artistId)
+      .maybeSingle()
+    artistId = picked?.id ?? null
+  }
+  if (!artistId) {
+    const { data: existing } = await admin
+      .from('artists')
+      .select('id')
+      .ilike('name', name)
+      .limit(1)
+      .maybeSingle()
+    artistId = existing?.id ?? null
+  }
   if (!artistId) {
     const { data: created, error } = await admin
       .from('artists')
@@ -62,6 +124,13 @@ export async function addArtistToLineupAction(input: {
     if (error || !created) return { ok: false, error: 'Could not create the artist.' }
     artistId = created.id
   }
+
+  const { data: owner } = await admin
+    .from('artists')
+    .select('owner_user_id')
+    .eq('id', artistId)
+    .maybeSingle()
+  const claimToken = owner?.owner_user_id ? null : crypto.randomUUID()
 
   const { count } = await admin
     .from('event_artists')
@@ -73,13 +142,16 @@ export async function addArtistToLineupAction(input: {
     artist_id: artistId,
     billing_order: count ?? 0,
     status: 'confirmed',
+    invite_token: claimToken,
   })
   if (tagError && tagError.code !== '23505') {
     return { ok: false, error: 'Could not tag the performer.' }
   }
 
   revalidatePath(`/dashboard/events/${parsed.data.eventId}/lineup`)
-  return { ok: true }
+  revalidatePath(`/dashboard/events/${parsed.data.eventId}/launch-kit`)
+  revalidatePath(`/dashboard/events/${parsed.data.eventId}`)
+  return { ok: true, inviteUrl: claimToken ? `/artists/claim/${claimToken}` : undefined }
 }
 
 const RemoveSchema = z.object({

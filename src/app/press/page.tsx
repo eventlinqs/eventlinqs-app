@@ -60,7 +60,7 @@ const STORYLINES = [
   {
     title: 'Why Australian ticketing was overdue for rebuild',
     body:
-      'Booking fees as high as 18%, drip pricing, generic genre buckets, and checkout flows still optimised for desktop. The community events market was being served by infrastructure built for stadium tours.',
+      'Stacked booking fees, drip pricing, generic genre buckets, and checkout flows still optimised for desktop. The community events market was being served by infrastructure built for stadium tours.',
   },
   {
     title: 'Community-first discovery, by design',

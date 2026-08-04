@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { trackEventServer } from '@/lib/analytics/plausible'
+import { getSiteUrl } from '@/lib/site-url'
 
 /**
  * Email signup server action (Batch 9.2 stub, 9.2.1 persistence wired).
@@ -46,7 +47,7 @@ export async function submitEmailSignup(formData: FormData): Promise<EmailSubscr
     source: 'homepage',
   })
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
+  const siteUrl = getSiteUrl()
 
   if (error) {
     // 23505 = unique_violation. Duplicate email; silent success so we

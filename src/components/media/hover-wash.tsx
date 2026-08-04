@@ -21,5 +21,13 @@
  * "Motion" -> "Hover illumination law".
  */
 export function HoverWash() {
-  return <span aria-hidden className="card-hover-wash" />
+  return (
+    <>
+      {/* Design elevation 2026-07-12: the permanent house-grade veil sits
+          under the hover whisper - one colourist's base anchor on every
+          card photograph, identical for reduced-motion and audits. */}
+      <span aria-hidden className="media-grade-veil" />
+      <span aria-hidden className="card-hover-wash" />
+    </>
+  )
 }

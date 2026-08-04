@@ -46,10 +46,11 @@ export const COMMUNITIES = [
 ]
 
 export const FOR_ORGANISERS = [
-  { label: 'Sell tickets',     href: '/organisers/signup' },
-  { label: 'Pricing',          href: '/pricing' },
-  { label: 'Organiser guide',  href: '/organisers' },
-  { label: 'Help centre',      href: '/help/selling-tickets' },
+  { label: 'Sell tickets',        href: '/organisers/signup' },
+  { label: 'Pricing',             href: '/pricing' },
+  { label: 'Organiser guide',     href: '/organisers' },
+  { label: 'Step-by-step guides', href: '/guides' },
+  { label: 'Help centre',         href: '/help/selling-tickets' },
 ]
 
 export const COMPANY = [
@@ -60,11 +61,12 @@ export const COMPANY = [
 ]
 
 export const LEGAL = [
-  { label: 'Terms',          href: '/legal/terms' },
-  { label: 'Privacy',        href: '/legal/privacy' },
-  { label: 'Refund policy',  href: '/legal/refunds' },
-  { label: 'Cookie policy',  href: '/legal/cookies' },
-  { label: 'Accessibility',  href: '/legal/accessibility' },
+  { label: 'Terms',                href: '/legal/terms' },
+  { label: 'Privacy',              href: '/legal/privacy' },
+  { label: 'Refund policy',        href: '/legal/refunds' },
+  { label: 'Organiser agreement',  href: '/legal/organiser-terms' },
+  { label: 'Cookie policy',        href: '/legal/cookies' },
+  { label: 'Accessibility',        href: '/legal/accessibility' },
 ]
 
 function InstagramIcon() {
@@ -163,6 +165,8 @@ function LanguagePicker() {
         <path d="M12 2a15 15 0 010 20M12 2a15 15 0 000 20" />
       </svg>
       <select
+        id="footer-language"
+        name="language"
         defaultValue="en-AU"
         className="bg-transparent text-xs text-white/70 outline-none focus:text-white"
         aria-label="Language"

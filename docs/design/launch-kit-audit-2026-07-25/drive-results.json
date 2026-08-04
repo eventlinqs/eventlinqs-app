@@ -1,0 +1,18 @@
+{
+  "base": "https://eventlinqs-staging.vercel.app",
+  "timings": {
+    "coverUploadMs": 3951,
+    "wizardStartToPublishClickMs": 15662,
+    "publishToKitRenderedMs": 1915,
+    "totalStartToKitMs": 17577
+  },
+  "checks": {
+    "anonCreateLandsOn": "https://eventlinqs-staging.vercel.app/login?redirect=%2Fdashboard%2Fevents%2Fcreate",
+    "eventId": "7a391e37-3473-4b41-bcce-517daf76458d",
+    "liveEventUrl": "https://eventlinqs-staging.vercel.app/events/winter-warmers-geelong-comedy-gala-vkmxcg",
+    "posterStatus": 200,
+    "ogStatus": 200,
+    "eventPageMentionsOtherEvents": true,
+    "seatBuilderOpened": "no venue with seat-maps link"
+  }
+}

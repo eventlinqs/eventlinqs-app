@@ -2,6 +2,11 @@ import 'server-only'
 import { createPublicClient } from '@/lib/supabase/public-client'
 import { getPricingRule, type PricingReadClient } from '@/lib/payments/pricing-rules'
 import type { FeeRates } from '@/lib/payments/fee-math'
+import {
+  applyFoundingWaiver,
+  getFoundingWaiver,
+  type OrganisationReadClient,
+} from '@/lib/payments/founding-waiver'
 import { PUBLIC_PLATFORM_FEE, PUBLIC_PROCESSING_FEE } from './public-fee'
 
 /**
@@ -47,6 +52,28 @@ export async function getEventFeeRates(opts: EventFeeRatesOptions): Promise<FeeR
     platformFeeFixedCents = pf.value
     processingFeePercent = rp.value
     processingFeeFixedCents = rf.value
+
+    // The FOUNDING ORGANISER WAIVER, applied through the SAME shared function
+    // the charge authority uses. Without this the event page would show a
+    // platform fee the checkout is not going to charge, which is precisely the
+    // display-versus-charge divergence the one-source fee law forbids.
+    //
+    // Only meaningful when an organisation is in scope. The marketing and legal
+    // surfaces call getEventFeeRates({}) with no organisation, so they keep
+    // showing the standard public rates, which is correct: those pages describe
+    // the platform's rates, not one organiser's deal.
+    if (organisationId) {
+      const waiver = await getFoundingWaiver(
+        client as unknown as OrganisationReadClient,
+        organisationId,
+      )
+      const waived = applyFoundingWaiver(
+        { platformFeePercent, platformFeeFixedCents, processingFeePercent, processingFeeFixedCents },
+        waiver.active,
+      )
+      platformFeePercent = waived.platformFeePercent
+      platformFeeFixedCents = waived.platformFeeFixedCents
+    }
   } catch {
     // Fall back to the reviewed constants; the public page must never 500.
   }

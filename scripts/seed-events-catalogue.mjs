@@ -39,15 +39,36 @@ import { fileURLToPath } from 'node:url'
 // the top edge).
 const CURATED_COVERS = {
   'Late Night Jazz at the Metro':
-    'https://images.pexels.com/photos/9002893/pexels-photo-9002893.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=900&w=1600',
+    'https://images.pexels.com/photos/9002048/pexels-photo-9002048.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=1067&w=1600',
   'Chocolate and Dessert Fair':
-    'https://images.pexels.com/photos/33814449/pexels-photo-33814449.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=900&w=1600',
+    'https://images.pexels.com/photos/33814449/pexels-photo-33814449.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=1067&w=1600',
   'Ballet Gala Evening':
-    'https://images.pexels.com/photos/20471000/pexels-photo-20471000.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=900&w=1600',
+    'https://images.pexels.com/photos/20471000/pexels-photo-20471000.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=1067&w=1600',
   'New Music Friday Live':
-    'https://images.pexels.com/photos/8639383/pexels-photo-8639383.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=900&w=1600',
+    'https://images.pexels.com/photos/8639383/pexels-photo-8639383.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=1067&w=1600',
   'Folk and Roots Night':
-    'https://images.pexels.com/photos/24482580/pexels-photo-24482580.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=900&w=1600',
+    'https://images.pexels.com/photos/24482580/pexels-photo-24482580.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=1067&w=1600',
+}
+
+// Every published event needs a REAL cover (DB constraint
+// events_published_real_cover), and a launch-face homepage should never show
+// a placeholder tile. One licensed cover per category, applied to any event
+// without a bespoke curated cover. All verified 200 on the Pexels CDN.
+const px = (id) =>
+  `https://images.pexels.com/photos/${id}/pexels-photo-${id}.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=1067&w=1600`
+const CATEGORY_COVERS = {
+  music: px('30497160'),
+  'food-drink': px('6301776'),
+  festival: px('36675302'),
+  'arts-community': px('20471000'),
+  nightlife: px('8639383'),
+  comedy: px('9009620'),
+  sports: px('36201463'),
+  family: px('36201463'),
+  'business-networking': px('11773322'),
+}
+function coverFor(row) {
+  return CURATED_COVERS[row.title] ?? CATEGORY_COVERS[row.category.slug] ?? CATEGORY_COVERS.music
 }
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -203,8 +224,11 @@ const CATALOGUE = [
 
 // ── deterministic id from index ────────────────────────────────────────────
 function eventId(i) {
-  const n = String(i + 1).padStart(4, '0')
-  return `c0a70000-0000-4000-8000-0000000${n}`
+  // The last UUID segment MUST be exactly 12 hex chars. The prior form
+  // ('0000000' + padStart(4)) produced 11, an INVALID UUID that the
+  // reservation schema (z.string().uuid()) rightly rejected as
+  // 'Invalid reservation data' on checkout. padStart(12) is exact.
+  return `c0a70000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`
 }
 function tierId(i, t) {
   const n = String(i + 1).padStart(3, '0')
@@ -303,7 +327,7 @@ function writeFixture(rows) {
     title: r.title,
     summary: r.summary,
     description: r.description,
-    cover_image_url: CURATED_COVERS[r.title] ?? null,
+    cover_image_url: coverFor(r),
     thumbnail_url: CURATED_COVERS[r.title] ?? null,
     gallery_urls: null,
     start_date: r.start_date,
@@ -352,10 +376,26 @@ async function seedDb(env) {
   const s = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } })
   console.log(`[seed:db] target ${url}`)
 
-  // Resolve a real org + creator to satisfy FK + not-null columns.
-  const { data: org } = await s.from('organisations').select('id').order('created_at', { ascending: true }).limit(1).maybeSingle()
-  const { data: profile } = await s.from('profiles').select('id').order('created_at', { ascending: true }).limit(1).maybeSingle()
+  // Resolve a PAYMENTS-READY org + creator. A seeded PAID event must belong to
+  // an organiser that can actually accept payments, else the reservation
+  // sale-guard blocks checkout (the org's Stripe Connect must be onboarded).
+  // Prefer a Stripe-onboarded org; fall back to the oldest org only if none
+  // is onboarded (free-only events still work).
+  const forcedOrgId = process.env.SEED_ORG_ID
+  const { data: forcedOrg } = forcedOrgId
+    ? await s.from('organisations').select('id, owner_id').eq('id', forcedOrgId).maybeSingle()
+    : { data: null }
+  const { data: payOrg } = forcedOrg
+    ? { data: forcedOrg }
+    : await s.from('organisations').select('id, owner_id').eq('stripe_onboarding_complete', true).order('created_at', { ascending: true }).limit(1).maybeSingle()
+  const { data: anyOrg } = await s.from('organisations').select('id, owner_id').order('created_at', { ascending: true }).limit(1).maybeSingle()
+  const org = payOrg ?? anyOrg
+  const profileId = org?.owner_id
+  const { data: profile } = profileId
+    ? { data: { id: profileId } }
+    : await s.from('profiles').select('id').order('created_at', { ascending: true }).limit(1).maybeSingle()
   if (!org || !profile) { console.error('[seed:db] ABORT: need at least one organisation and profile (run migrations/base seed first).'); process.exit(1) }
+  console.log(`[seed:db] using org ${org.id}${payOrg ? ' (Stripe-ready)' : ' (WARNING: no Stripe-onboarded org; paid events will be sale-guarded)'}`)
 
   // Resolve category ids by slug at runtime (portable across projects).
   const { data: cats } = await s.from('event_categories').select('id,slug')
@@ -374,7 +414,7 @@ async function seedDb(env) {
       start_date: r.start_date, end_date: r.end_date, timezone: 'Australia/Sydney',
       event_type: 'in_person', venue_name: r.venue.name, venue_address: r.venue.address,
       venue_city: r.city, venue_state: r.venue.state, venue_country: 'Australia',
-      cover_image_url: null, thumbnail_url: null,
+      cover_image_url: coverFor(r), thumbnail_url: coverFor(r),
       status: 'published', visibility: 'public', published_at: '2026-06-06T00:00:00Z',
       is_age_restricted: false, max_capacity: r.tiers.reduce((a, t) => a + t.total_capacity, 0),
       tags: ['catalogue', r.category.slug], fee_pass_type: 'pass_to_buyer', is_free: r.is_free,

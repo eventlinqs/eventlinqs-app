@@ -40,6 +40,7 @@ const SEED_PATHS = [
   '/community/african',               // community landing (renders community-city tiles)
   '/city/sydney/inner-west',        // suburb (BLOCKER-2)
   '/community/african/sydney',        // community-city (BLOCKER-2)
+  '/guides',                        // organiser guide hub (renders every guide tile)
   '/legal/terms',
   '/legal/privacy',
   '/login',

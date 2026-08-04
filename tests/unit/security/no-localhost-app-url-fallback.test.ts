@@ -64,8 +64,21 @@ describe('HARD-07: no localhost fallback for NEXT_PUBLIC_APP_URL', () => {
       delete process.env.VERCEL_URL
       const url = getAppUrl()
       expect(url).not.toContain('localhost')
-      // HARD-01: canonical production host is www.
-      expect(url).toBe('https://www.eventlinqs.com')
+      // Founder ruling 2026-07-25: the canonical host is www.eventlinqs.com.au.
+      // The fallback has to BE the canonical host, otherwise every generated
+      // link starts life behind a 301.
+      expect(url).toBe('https://www.eventlinqs.com.au')
+    })
+
+    it('a preview deploy resolves its OWN url, not the production domain', () => {
+      // Without this, staging emitted production links for tickets and payouts
+      // that only exist in the TEST database.
+      delete process.env.NEXT_PUBLIC_APP_URL
+      delete process.env.NEXT_PUBLIC_SITE_URL
+      process.env.VERCEL_ENV = 'preview'
+      process.env.VERCEL_URL = 'eventlinqs-app-git-feat-x.vercel.app'
+      process.env.VERCEL_PROJECT_PRODUCTION_URL = 'www.eventlinqs.com.au'
+      expect(getAppUrl()).toBe('https://eventlinqs-app-git-feat-x.vercel.app')
     })
 
     it('honours an explicit production NEXT_PUBLIC_APP_URL', () => {

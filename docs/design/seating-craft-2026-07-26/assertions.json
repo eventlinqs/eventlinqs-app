@@ -1,0 +1,116 @@
+[
+  {
+    "room": "grand-hall-proof-the-full-house",
+    "viewport": "1440",
+    "lod": "overview",
+    "counts": {
+      "labelSeat": 0,
+      "labelLabel": 0,
+      "labelObject": 0,
+      "labels": 10
+    },
+    "labels": 10,
+    "labelsClipped": 0,
+    "objectsClipped": 0
+  },
+  {
+    "room": "grand-hall-proof-the-full-house",
+    "viewport": "1440",
+    "lod": "mid",
+    "counts": {
+      "labelSeat": 0,
+      "labelLabel": 0,
+      "labelObject": 0,
+      "labels": 9
+    },
+    "labels": 9,
+    "labelsClipped": 0,
+    "objectsClipped": 0
+  },
+  {
+    "room": "grand-hall-proof-the-full-house",
+    "viewport": "1440",
+    "lod": "seat",
+    "counts": {
+      "labelSeat": 0,
+      "labelLabel": 0,
+      "labelObject": 0,
+      "labels": 67
+    },
+    "labels": 67,
+    "labelsClipped": 0,
+    "objectsClipped": 4
+  },
+  {
+    "room": "play-house-proof-a-seated-evening",
+    "viewport": "1440",
+    "lod": "fit",
+    "counts": {
+      "labelSeat": 0,
+      "labelLabel": 0,
+      "labelObject": 0,
+      "labels": 38
+    },
+    "seats": 502,
+    "seatsClipped": 0,
+    "labelsClipped": 0,
+    "objectsClipped": 0
+  },
+  {
+    "room": "grand-hall-proof-the-full-house",
+    "viewport": "390",
+    "lod": "overview",
+    "counts": {
+      "labelSeat": 0,
+      "labelLabel": 0,
+      "labelObject": 0,
+      "labels": 9
+    },
+    "labels": 9,
+    "labelsClipped": 0,
+    "objectsClipped": 0
+  },
+  {
+    "room": "grand-hall-proof-the-full-house",
+    "viewport": "390",
+    "lod": "mid",
+    "counts": {
+      "labelSeat": 0,
+      "labelLabel": 0,
+      "labelObject": 0,
+      "labels": 1
+    },
+    "labels": 1,
+    "labelsClipped": 0,
+    "objectsClipped": 4
+  },
+  {
+    "room": "grand-hall-proof-the-full-house",
+    "viewport": "390",
+    "lod": "seat",
+    "counts": {
+      "labelSeat": 0,
+      "labelLabel": 0,
+      "labelObject": 0,
+      "labels": 0
+    },
+    "labels": 0,
+    "labelsClipped": 0,
+    "objectsClipped": 4
+  },
+  {
+    "room": "play-house-proof-a-seated-evening",
+    "viewport": "390",
+    "lod": "fit",
+    "counts": {
+      "labelSeat": 0,
+      "labelLabel": 0,
+      "labelObject": 0,
+      "labels": 9
+    },
+    "seats": 0,
+    "seatsClipped": 0,
+    "labelsClipped": 0,
+    "objectsClipped": 0
+  }
+]

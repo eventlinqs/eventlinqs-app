@@ -53,7 +53,7 @@ export async function createSeatReservation(
 
   if (error) {
     console.error('[seat-reservations] create_seat_reservation RPC failed:', error)
-    return { error: 'One or more seats are no longer available. Please reselect.' }
+    return { error: 'That seat was just taken by another buyer. The map has refreshed - pick another seat.' }
   }
 
   const result = data as {
@@ -64,7 +64,7 @@ export async function createSeatReservation(
   }
 
   if (!result.success) {
-    return { error: result.error ?? 'One or more seats are no longer available. Please reselect.' }
+    return { error: result.error ?? 'That seat was just taken by another buyer. The map has refreshed - pick another seat.' }
   }
 
   // Bust the public event page cache so other buyers see updated seat availability

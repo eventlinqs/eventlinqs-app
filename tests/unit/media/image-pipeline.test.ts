@@ -27,6 +27,21 @@ describe('processEventImage - acceptance', () => {
     }
   })
 
+  it('accepts a 1000px-wide image as a cover (the market minimum, exactly)', async () => {
+    const r = await processEventImage(await jpegBuffer(1000, 500), { role: 'cover' })
+    expect(r.ok).toBe(true)
+    if (r.ok) {
+      expect(r.image.width).toBe(1000)
+      expect(r.image.height).toBe(500)
+    }
+  })
+
+  it('rejects 999px as a cover (the floor is 1000, not lower)', async () => {
+    const r = await processEventImage(await jpegBuffer(999, 500), { role: 'cover' })
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.error).toMatch(/1000/)
+  })
+
   it('normalises PNG to JPEG on ingest', async () => {
     const r = await processEventImage(await pngBuffer(1600, 900), { role: 'gallery' })
     expect(r.ok && r.image.contentType).toBe('image/jpeg')

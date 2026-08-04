@@ -1,5 +1,6 @@
 import { Resend } from 'resend'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { getAppUrl } from '@/lib/site-url'
 
 /**
  * M6 Phase 4 organiser payout notifications.
@@ -190,7 +191,7 @@ function formatDate(iso: string): string {
 }
 
 function baseUrl(): string {
-  return process.env.NEXT_PUBLIC_APP_URL ?? 'https://eventlinqs.com'
+  return getAppUrl()
 }
 
 function escapeHtml(s: string): string {

@@ -14,7 +14,8 @@
         "pauseAfterLoadMs": 5000,
         "networkQuietThresholdMs": 5000,
         "cpuQuietThresholdMs": 3000
-      }
+      },
+      "_lighthouse_version_note": "PINNED TO @lhci/cli 0.14.x, which bundles Lighthouse 12.1.0. KNOWN LIMITATION: in 12.1.0 the TraceElements gatherer throws ('Dependency RootCauses failed: Cannot read properties of undefined (reading frame_sequence)'), so largest-contentful-paint-element and layout-shifts come back scoreDisplayMode=error with NO details in every report this gate produces, locally and in CI. The consequence is that this gate cannot tell you WHICH element is the LCP or WHERE a layout shift came from - it reports the numbers but not the cause, which is exactly what you need when a score drops. Verified fixed in Lighthouse 12.6.1 (shipped in @lhci/cli 0.15.1): both audits return real data, and on the event detail route 12.6.1 scored the pre-fix page 0.71 and the post-fix page 0.83 (versus 0.74 and 0.80 on 12.1.0). The upgrade is a one-line change in .github/workflows/lighthouse.yml, but it re-baselines ALL 11 gated URLs and only the event detail route has been measured on both versions, so it needs a validation run before it is trusted. RE-CHECK BY 2026-11-01, alongside the exemption expiries below."
     },
     "assert": {
       "assertMatrix": [
@@ -22,60 +23,277 @@
           "_pattern_note": "Negative lookahead excludes /login and /signup (SEO category - they are deliberately noindex), /culture/* (perf score - Issue #42 cold-start image-optimiser race; see the third assertMatrix entry below), AND the homepage / (same Issue #42 class per CLAUDE.md docs/perf/v2/closure-report.md flagging 'Mobile homepage and /events have known cold-cache measurement issue ... do not block on it'; see the fourth assertMatrix entry below). Each excluded path has its own dedicated assertMatrix entry that re-applies whichever assertions still need to fire at error-level for that path. assertMatrix entries are independent and additive (a URL matched by multiple entries has all matching assertions evaluated), so excluding here is the only way to suppress the default error-level threshold from also firing.",
           "matchingUrlPattern": "^(?!.*/(login|signup)$)(?!.*/culture/.+$)(?!https?://[^/]+/?$).*",
           "assertions": {
-            "categories:performance": ["error", { "minScore": 0.80 }],
-            "categories:accessibility": ["error", { "minScore": 1.0 }],
-            "categories:best-practices": ["error", { "minScore": 1.0 }],
-            "categories:seo": ["error", { "minScore": 1.0 }],
-            "largest-contentful-paint": ["warn", { "maxNumericValue": 4000 }],
-            "total-blocking-time": ["warn", { "maxNumericValue": 600 }],
-            "cumulative-layout-shift": ["error", { "maxNumericValue": 0.1 }],
-            "first-contentful-paint": ["warn", { "maxNumericValue": 2000 }],
-            "speed-index": ["warn", { "maxNumericValue": 4500 }]
+            "categories:performance": [
+              "error",
+              {
+                "minScore": 0.8
+              }
+            ],
+            "categories:accessibility": [
+              "error",
+              {
+                "minScore": 1
+              }
+            ],
+            "categories:best-practices": [
+              "error",
+              {
+                "minScore": 1
+              }
+            ],
+            "categories:seo": [
+              "error",
+              {
+                "minScore": 1
+              }
+            ],
+            "largest-contentful-paint": [
+              "warn",
+              {
+                "maxNumericValue": 4000
+              }
+            ],
+            "total-blocking-time": [
+              "warn",
+              {
+                "maxNumericValue": 600
+              }
+            ],
+            "cumulative-layout-shift": [
+              "error",
+              {
+                "maxNumericValue": 0.1
+              }
+            ],
+            "first-contentful-paint": [
+              "warn",
+              {
+                "maxNumericValue": 2000
+              }
+            ],
+            "speed-index": [
+              "warn",
+              {
+                "maxNumericValue": 4500
+              }
+            ]
+          }
+        },
+        {
+          "_note": "EVENT DETAIL CRITICAL-PATH BUDGET. An overall performance score hides WHICH thing regressed: this route sat at a 0.78 median for weeks while the cause (a 187KB chunk carrying rrweb, 1,047ms of evaluation, LCP render delay 3,071ms) was invisible behind a single number. These assertions name the individual costs so a regression says what broke. They are additive to the global entry above, which still applies its own error-level floors to this URL - nothing here relaxes anything. Values carry deliberate headroom over the measured warm-preview medians (TBT 402ms, LCP 3547ms, main thread 2054ms, script 433KB) so the budget catches real regressions without flaking on runner variance. total-blocking-time and largest-contentful-paint are RAISED from warn to error at their existing numeric values, never loosened. Script byte weight is capped where it is because the split that fixed the critical path also duplicated some shared runtime and pushed script bytes UP from 370KB to 433KB: sequencing improved, byte weight did not, and this budget stops that trend continuing unnoticed.",
+          "_aggregation_note": "Every assertion here pins aggregationMethod to median EXPLICITLY. Without it LHCI aggregates numeric assertions optimistically, taking the BEST of the three runs, which makes a budget look strict and behave loosely: the first CI run of this budget passed an error-level LCP cap of 4000ms while the uploaded report for that same run recorded 4,391ms. A budget that cannot fail is decoration. Median matches how the categories:performance floor is already judged, so the whole gate now speaks one language.",
+          "_lcp_value_note": "LCP is capped at 4500 rather than 4000 because 4000 was not honest against measured CI behaviour (4,391ms observed on a passing run). The number is set where it actually bites on a regression without flaking on runner variance, and it is ERROR-level on this route where the global entry only warns. Tighten it when the render-delay work below 3,000ms lands.",
+          "matchingUrlPattern": "/events/[^/]+$",
+          "assertions": {
+            "total-blocking-time": [
+              "error",
+              {
+                "maxNumericValue": 600,
+                "aggregationMethod": "median"
+              }
+            ],
+            "largest-contentful-paint": [
+              "error",
+              {
+                "maxNumericValue": 4500,
+                "aggregationMethod": "median"
+              }
+            ],
+            "mainthread-work-breakdown": [
+              "error",
+              {
+                "maxNumericValue": 3000,
+                "aggregationMethod": "median"
+              }
+            ],
+            "resource-summary:script:size": [
+              "error",
+              {
+                "maxNumericValue": 491520,
+                "aggregationMethod": "median"
+              }
+            ]
           }
         },
         {
           "_note": "Login and signup are intentionally noindex/nofollow per fan-protection: auth pages should not be indexed (signed-in users get redirected away, indexing dilutes brand SEO). is-crawlable and canonical audits would fail on these pages by design, so the SEO category assertion is downgraded to warn here while perf/a11y/bp stay error-level.",
           "matchingUrlPattern": "/(login|signup)$",
+          "_permanent": true,
+          "_expiryReason": "Auth pages are deliberately noindex/nofollow (signed-in users get redirected away, indexing dilutes brand SEO), so the is-crawlable and canonical audits can never pass by design. This is a settled design decision, not a deferred fix, so it carries no expiry date. scripts/ci/lighthouse-exemption-expiry.mjs reprints it on every run so it stays visible.",
           "assertions": {
-            "categories:performance": ["error", { "minScore": 0.80 }],
-            "categories:accessibility": ["error", { "minScore": 1.0 }],
-            "categories:best-practices": ["error", { "minScore": 1.0 }],
+            "categories:performance": [
+              "error",
+              {
+                "minScore": 0.8
+              }
+            ],
+            "categories:accessibility": [
+              "error",
+              {
+                "minScore": 1
+              }
+            ],
+            "categories:best-practices": [
+              "error",
+              {
+                "minScore": 1
+              }
+            ],
             "categories:seo": "off",
-            "largest-contentful-paint": ["warn", { "maxNumericValue": 4000 }],
-            "total-blocking-time": ["warn", { "maxNumericValue": 600 }],
-            "cumulative-layout-shift": ["error", { "maxNumericValue": 0.1 }],
-            "first-contentful-paint": ["warn", { "maxNumericValue": 2000 }],
-            "speed-index": ["warn", { "maxNumericValue": 4500 }]
+            "largest-contentful-paint": [
+              "warn",
+              {
+                "maxNumericValue": 4000
+              }
+            ],
+            "total-blocking-time": [
+              "warn",
+              {
+                "maxNumericValue": 600
+              }
+            ],
+            "cumulative-layout-shift": [
+              "error",
+              {
+                "maxNumericValue": 0.1
+              }
+            ],
+            "first-contentful-paint": [
+              "warn",
+              {
+                "maxNumericValue": 2000
+              }
+            ],
+            "speed-index": [
+              "warn",
+              {
+                "maxNumericValue": 4500
+              }
+            ]
           }
         },
         {
           "_note": "Culture landing pages (/culture/<slug>) hit a cold-start Vercel image optimiser race that drops mobile performance score below the global 0.80 floor on heavy hero rasters. Surfaced after PR #40 fixed the /events 500 that previously masked Lighthouse from reaching this URL's assertion phase at all. Issue #42 tracks the proper fix (image-optimiser pre-warm or static raster hero on culture pages). Until then, performance is gated at warn-level on this route only - the score is still measured and visible in CI, just non-blocking - while accessibility, best-practices, and SEO stay at the full error-level 1.0 floor. Restore performance to error-level when Issue #42 closes.",
           "matchingUrlPattern": "/culture/.+$",
+          "_expiresOn": "2026-11-01",
+          "_expiryReason": "Issue #42 image-optimiser cold-start. Performance is warn-level on this route only. scripts/ci/lighthouse-exemption-expiry.mjs FAILS the build once this date passes, so the waiver cannot outlive its justification unnoticed.",
           "assertions": {
-            "categories:performance": ["warn", { "minScore": 0.80 }],
-            "categories:accessibility": ["error", { "minScore": 1.0 }],
-            "categories:best-practices": ["error", { "minScore": 1.0 }],
-            "categories:seo": ["error", { "minScore": 1.0 }],
-            "largest-contentful-paint": ["warn", { "maxNumericValue": 4000 }],
-            "total-blocking-time": ["warn", { "maxNumericValue": 600 }],
-            "cumulative-layout-shift": ["error", { "maxNumericValue": 0.1 }],
-            "first-contentful-paint": ["warn", { "maxNumericValue": 2000 }],
-            "speed-index": ["warn", { "maxNumericValue": 4500 }]
+            "categories:performance": [
+              "warn",
+              {
+                "minScore": 0.8
+              }
+            ],
+            "categories:accessibility": [
+              "error",
+              {
+                "minScore": 1
+              }
+            ],
+            "categories:best-practices": [
+              "error",
+              {
+                "minScore": 1
+              }
+            ],
+            "categories:seo": [
+              "error",
+              {
+                "minScore": 1
+              }
+            ],
+            "largest-contentful-paint": [
+              "warn",
+              {
+                "maxNumericValue": 4000
+              }
+            ],
+            "total-blocking-time": [
+              "warn",
+              {
+                "maxNumericValue": 600
+              }
+            ],
+            "cumulative-layout-shift": [
+              "error",
+              {
+                "maxNumericValue": 0.1
+              }
+            ],
+            "first-contentful-paint": [
+              "warn",
+              {
+                "maxNumericValue": 2000
+              }
+            ],
+            "speed-index": [
+              "warn",
+              {
+                "maxNumericValue": 4500
+              }
+            ]
           }
         },
         {
           "_note": "Homepage / mobile cold-cache image-optimiser race - same class as /culture/* per Issue #42 and CLAUDE.md docs/perf/v2/closure-report.md ('Mobile homepage and /events have known cold-cache measurement issue to be revisited with production warm-cache data, do not block on it'). The homepage hero is a heavy priority-painted raster on mobile and trips the same Vercel image optimiser cold-start race already documented for /culture/*. Observed in this PR's run (median-of-3): perf 0.76 on /, while /culture/african produced null/NaN for perf/LCP/TBT in the same run - both routes are stuck below the 0.80 floor for the same documented reason. Performance is gated at warn-level so the score stays visible in CI without blocking deploys; accessibility, best-practices, SEO, and CLS remain at the full error-level. Restore performance to error-level when the underlying cold-cache fix lands (same fix horizon as Issue #42). /events is also flagged in CLAUDE.md as having the same issue but is left at error-level for now because the current run still measured it above 0.80 - relax it only when it actually fails.",
           "matchingUrlPattern": "^https?://[^/]+/?$",
+          "_expiresOn": "2026-11-01",
+          "_expiryReason": "Homepage cold-cache image-optimiser race, same class as Issue #42. Performance is warn-level here only. scripts/ci/lighthouse-exemption-expiry.mjs FAILS the build once this date passes.",
           "assertions": {
-            "categories:performance": ["warn", { "minScore": 0.80 }],
-            "categories:accessibility": ["error", { "minScore": 1.0 }],
-            "categories:best-practices": ["error", { "minScore": 1.0 }],
-            "categories:seo": ["error", { "minScore": 1.0 }],
-            "largest-contentful-paint": ["warn", { "maxNumericValue": 4000 }],
-            "total-blocking-time": ["warn", { "maxNumericValue": 600 }],
-            "cumulative-layout-shift": ["error", { "maxNumericValue": 0.1 }],
-            "first-contentful-paint": ["warn", { "maxNumericValue": 2000 }],
-            "speed-index": ["warn", { "maxNumericValue": 4500 }]
+            "categories:performance": [
+              "warn",
+              {
+                "minScore": 0.8
+              }
+            ],
+            "categories:accessibility": [
+              "error",
+              {
+                "minScore": 1
+              }
+            ],
+            "categories:best-practices": [
+              "error",
+              {
+                "minScore": 1
+              }
+            ],
+            "categories:seo": [
+              "error",
+              {
+                "minScore": 1
+              }
+            ],
+            "largest-contentful-paint": [
+              "warn",
+              {
+                "maxNumericValue": 4000
+              }
+            ],
+            "total-blocking-time": [
+              "warn",
+              {
+                "maxNumericValue": 600
+              }
+            ],
+            "cumulative-layout-shift": [
+              "error",
+              {
+                "maxNumericValue": 0.1
+              }
+            ],
+            "first-contentful-paint": [
+              "warn",
+              {
+                "maxNumericValue": 2000
+              }
+            ],
+            "speed-index": [
+              "warn",
+              {
+                "maxNumericValue": 4500
+              }
+            ]
           }
         }
       ]

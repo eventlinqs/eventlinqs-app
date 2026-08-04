@@ -25,6 +25,8 @@
  * by role; per-slot overrides where the subject sits off-centre.
  */
 
+import { getSupabaseUrl } from '@/lib/supabase/env'
+
 export type SpineRole = 'hero' | 'categories' | 'scenes' | 'cities'
 
 // Largest rendition guaranteed to exist for each role (= the ingest dimension
@@ -56,7 +58,9 @@ interface SpineSlot {
 }
 
 function publicBase(): string | null {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  // Resolver, not the raw base var, so a TEST-backed preview reads spine
+  // imagery from the TEST bucket instead of the production one.
+  const url = getSupabaseUrl()
   if (!url) return null
   return `${url.replace(/\/+$/, '')}/storage/v1/object/public/event-images/stock`
 }

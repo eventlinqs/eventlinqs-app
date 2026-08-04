@@ -1,0 +1,20 @@
+{
+  "cleanBefore": {
+    "textText": 0,
+    "textInk": 0,
+    "verdict": "PASS"
+  },
+  "withProbe": {
+    "textText": 1,
+    "textInk": 0,
+    "pairs": [
+      "\"STAGE\" x \"PROBE\""
+    ],
+    "verdict": "FAIL (correct: the probe collides)"
+  },
+  "cleanAfter": {
+    "textText": 0,
+    "textInk": 0,
+    "verdict": "PASS"
+  }
+}

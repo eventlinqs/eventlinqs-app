@@ -22,6 +22,7 @@ import { getCityPhoto } from '@/lib/images/city-photo'
 import { citySlugify } from '@/components/features/community/cities-rail'
 import { venueSlugify } from '@/lib/venues/resolver'
 import type { Organisation } from '@/types/database'
+import { getSiteUrl } from '@/lib/site-url'
 
 export const revalidate = 300
 
@@ -82,7 +83,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const organisation = await fetchOrganiser(handle)
   if (!organisation) return { title: 'Organiser not found | EventLinqs' }
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
+  const baseUrl = getSiteUrl()
   const title = `${organisation.name} - Events & Profile - EventLinqs`
   const description = (organisation.description
     ? organisation.description.slice(0, 155)
@@ -169,7 +170,7 @@ export default async function OrganiserProfilePage({ params }: Props) {
     .slice(0, 6)
     .map(v => ({ name: v.name, count: v.count, handle: venueSlugify(v.name) }))
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
+  const baseUrl = getSiteUrl()
   const upcomingForSchema = upcoming.slice(0, 12).map(e => ({
     slug: e.slug,
     title: e.title,

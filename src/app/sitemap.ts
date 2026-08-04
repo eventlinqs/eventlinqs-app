@@ -5,6 +5,7 @@ import { getAllCommunities } from '@/lib/communities/data'
 import { getAllFaiths } from '@/lib/faiths/data'
 import { getAllCities, getSuburbsForCity } from '@/lib/cities/data'
 import { getSiteUrl } from '@/lib/site-url'
+import { GUIDES } from '@/lib/guides'
 
 /**
  * Dynamic sitemap for EventLinqs.
@@ -58,6 +59,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'monthly',
       priority: 0.5,
     },
+    // The organiser guide hub and every guide: evergreen documentation, the
+    // quiet compounding SEO engine (Growth plan). Each guide carries its own
+    // reviewed date so a crawler sees real freshness, not a build timestamp.
+    {
+      url: `${baseUrl}/guides`,
+      lastModified: now,
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    },
+    ...GUIDES.map(guide => ({
+      url: `${baseUrl}/guides/${guide.slug}`,
+      lastModified: new Date(guide.updated),
+      changeFrequency: 'monthly' as const,
+      priority: 0.7,
+    })),
     {
       url: `${baseUrl}/legal/terms`,
       lastModified: now,

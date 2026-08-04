@@ -9,10 +9,11 @@ import { PhotographicCommunityHero } from '@/components/templates/PhotographicCo
 import { CityTileImage } from '@/components/media/CityTileImage'
 import { getCityHeroPhoto, getCityPhoto } from '@/lib/images/city-photo'
 import { getCityIndexEntries, type CityIndexEntry } from '@/lib/cities/index-page-data'
+import { getSiteUrl } from '@/lib/site-url'
 
 export const revalidate = 300
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
+const SITE_URL = getSiteUrl()
 
 export const metadata: Metadata = {
   title: 'Browse by City | EventLinqs',

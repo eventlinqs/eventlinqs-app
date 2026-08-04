@@ -24,6 +24,7 @@ import {
   CityRailSkeleton,
 } from '@/components/features/home/section-skeletons'
 
+import { getSiteUrl } from '@/lib/site-url'
 /**
  * Homepage - the visceral experience layer.
  *
@@ -166,7 +167,7 @@ export default async function HomePage() {
     .slice(0, 10)
     .map(toBentoEvent)
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
+  const baseUrl = getSiteUrl()
 
   return (
     <div className="min-h-screen bg-canvas">
@@ -310,6 +311,7 @@ export default async function HomePage() {
             title="On this weekend"
             ariaLabel="Events this weekend"
             railLabel="Events this weekend"
+            invitationSubject="weekend"
             events={thisWeekend}
             viewAllHref="/events?preset=weekend"
           />
@@ -397,6 +399,7 @@ export default async function HomePage() {
             title="Fresh on the platform"
             ariaLabel="Recently added events"
             railLabel="Recently added events"
+            invitationSubject="fresh"
             events={justAdded}
             viewAllHref="/events?sort=date_asc"
           />

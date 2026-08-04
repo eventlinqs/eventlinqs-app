@@ -1,0 +1,26 @@
+{
+  "base": "https://eventlinqs-staging.vercel.app",
+  "startedAt": "2026-07-25T12:01:01.514Z",
+  "guestEmail": "webhook-proof-1784980861513@mailinator.com",
+  "orderId": "bf1e215e-0748-46b0-bc33-6176b6ae767e",
+  "slug": "cat-a-midsummer-night-dream-on-stage-melbourne",
+  "secondsToConfirm": 3,
+  "order": {
+    "id": "bf1e215e-0748-46b0-bc33-6176b6ae767e",
+    "order_number": "EL-HFFMD4QF",
+    "status": "confirmed",
+    "total_cents": 6354,
+    "currency": "AUD",
+    "guest_email": "webhook-proof-1784980861513@mailinator.com"
+  },
+  "tickets": [
+    {
+      "ticket_code": "EL-VZ87-MXS9",
+      "status": "valid",
+      "holder_email": "webhook-proof-1784980861513@mailinator.com"
+    }
+  ],
+  "confirmed": true,
+  "ticketsIssued": true,
+  "finishedAt": "2026-07-25T12:01:20.066Z"
+}

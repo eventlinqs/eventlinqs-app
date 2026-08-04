@@ -16,7 +16,7 @@ export function getGoogleMapsLoader(): LoaderHandle | null {
   if (cached) return cached
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim()
   if (!apiKey) return null
-  setOptions({ key: apiKey, v: 'weekly', libraries: ['maps', 'marker'] })
+  setOptions({ key: apiKey, v: 'weekly', libraries: ['maps', 'marker', 'geocoding'] })
   cached = { importLibrary }
   return cached
 }

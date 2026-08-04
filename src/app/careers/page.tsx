@@ -24,7 +24,7 @@ const PILLARS = [
   {
     title: 'Real product impact',
     body:
-      'Small team, no committee design, no jira purgatory. Ship the work, watch the funnel respond, iterate the next morning.',
+      'Small team, no committee design, no jira purgatory. Ship the work, watch how people respond, iterate the next morning.',
   },
   {
     title: 'Outsized community reach',

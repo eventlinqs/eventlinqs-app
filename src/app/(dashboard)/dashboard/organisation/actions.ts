@@ -10,6 +10,7 @@ import { trackOrganiserSignupServer } from '@/lib/analytics/plausible'
 import { acceptFoundingInvite } from '@/lib/founding/invites'
 import { FOUNDING_INVITE_COOKIE } from '@/app/join/[code]/cookie'
 
+import { getAppUrl } from '@/lib/site-url'
 const CreateOrgSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(100),
   slug: z
@@ -121,7 +122,7 @@ export async function createOrganisation(formData: FormData) {
   }
 
   // Plausible: new-organiser conversion. Fire-and-forget before redirect.
-  const origin = process.env.NEXT_PUBLIC_APP_URL ?? 'https://eventlinqs.com'
+  const origin = getAppUrl()
   trackOrganiserSignupServer(`${origin}/dashboard/organisation`, {
     organisation_id: org.id,
     organisation_type: 'organiser',

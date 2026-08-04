@@ -1,0 +1,17 @@
+{
+  "at": "2026-07-12T03:21:08.243Z",
+  "seats": [
+    {
+      "id": "08edc1bd-9b37-4355-b79c-3021688468db",
+      "row_label": "C",
+      "seat_number": "2",
+      "status": "reserved"
+    },
+    {
+      "id": "6de7e2a7-80fd-4292-a5a1-e9de4b98e629",
+      "row_label": "E",
+      "seat_number": "4",
+      "status": "reserved"
+    }
+  ]
+}

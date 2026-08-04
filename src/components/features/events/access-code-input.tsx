@@ -37,10 +37,14 @@ export function AccessCodeInput({ eventId, onUnlocked }: Props) {
 
   return (
     <div className="mt-4 rounded-lg border border-dashed border-ink-200 p-4">
-      <p className="text-xs font-medium text-ink-600 mb-2">Have an access code?</p>
+      <p id="access-code-label" className="text-xs font-medium text-ink-600 mb-2">Have an access code?</p>
       <form onSubmit={handleSubmit} className="flex gap-2">
         <input
+          id="access-code"
+          name="access-code"
           type="text"
+          autoComplete="off"
+          aria-labelledby="access-code-label"
           value={code}
           onChange={e => setCode(e.target.value.toUpperCase())}
           placeholder="Enter code"

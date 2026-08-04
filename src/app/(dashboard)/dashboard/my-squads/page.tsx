@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getMySquads } from '@/app/actions/squads'
 import type { SquadStatus } from '@/types/database'
 import { CopyLinkButton } from './copy-link-button'
+import { getAppUrl } from '@/lib/site-url'
 
 function formatDate(iso: string, timezone: string) {
   return new Date(iso).toLocaleString('en-AU', {
@@ -164,7 +165,7 @@ export default async function MySquadsPage() {
                   )}
 
                   {squad.status === 'forming' && (
-                    <CopyLinkButton shareUrl={`${process.env.NEXT_PUBLIC_APP_URL ?? 'https://eventlinqs.com'}/squad/${squad.share_token}`} />
+                    <CopyLinkButton shareUrl={`${getAppUrl()}/squad/${squad.share_token}`} />
                   )}
 
                   {squad.status === 'completed' && (

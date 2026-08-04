@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { fetchArtistBySlug } from '@/lib/broadcast/artists'
 import { RedirectNow } from '@/components/broadcast/redirect-now'
 
+import { getSiteUrl } from '@/lib/site-url'
 export const revalidate = 300
 
 type Props = { params: Promise<{ slug: string; artist: string }> }
@@ -37,7 +38,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const pair = await loadPair(slug, artistSlug)
   if (!pair) return { title: 'Event not found | EventLinqs' }
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
+  const baseUrl = getSiteUrl()
   const title = `${pair.artist.name} live at ${pair.event.title} | EventLinqs`
   const description = `${pair.artist.name} plays ${pair.event.title}. Tickets on EventLinqs.`
   const ogImage = `${baseUrl}/api/og/event/${slug}?artist=${encodeURIComponent(artistSlug)}`

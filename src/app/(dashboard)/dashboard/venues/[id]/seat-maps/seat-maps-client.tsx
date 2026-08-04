@@ -20,6 +20,10 @@ interface Props {
   venueId: string
   venueName: string
   seatMaps: SeatMap[]
+  /** Per-chart live attachment: published events + protected seat count. */
+  liveUsage?: Record<string, { events: number; protectedSeats: number }>
+  /** Per-chart view-from-seat photos: chart id -> lowercased section -> url. */
+  sectionViews?: Record<string, Record<string, string>>
 }
 
 /**
@@ -29,7 +33,7 @@ interface Props {
  * inventory. Charts imported by the legacy CSV path (no builder blocks)
  * remain usable on events but reopen as a fresh canvas.
  */
-export function SeatMapsClient({ venueId, venueName, seatMaps }: Props) {
+export function SeatMapsClient({ venueId, venueName, seatMaps, liveUsage = {}, sectionViews = {} }: Props) {
   const router = useRouter()
   const [editing, setEditing] = useState<{ id: string | null; name: string; blocks: SeatBlock[] } | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
@@ -61,6 +65,8 @@ export function SeatMapsClient({ venueId, venueName, seatMaps }: Props) {
           seatMapId={editing.id}
           initialName={editing.name}
           initialBlocks={editing.blocks}
+          liveUsage={editing.id ? liveUsage[editing.id] : undefined}
+          initialSectionViews={editing.id ? sectionViews[editing.id] : undefined}
           onClose={() => setEditing(null)}
         />
       </div>
@@ -104,6 +110,17 @@ export function SeatMapsClient({ venueId, venueName, seatMaps }: Props) {
                 <p className="mt-0.5 text-xs text-ink-400">
                   {map.total_seats.toLocaleString()} seats {'·'}{' '}
                   {new Date(map.created_at).toLocaleDateString('en-AU')}
+                  {liveUsage[map.id] && liveUsage[map.id].events > 0 && (
+                    <>
+                      {' · '}
+                      <span className="text-ink-600">
+                        on {liveUsage[map.id].events} live{' '}
+                        {liveUsage[map.id].events === 1 ? 'event' : 'events'}
+                        {liveUsage[map.id].protectedSeats > 0 &&
+                          `, ${liveUsage[map.id].protectedSeats} seats protected`}
+                      </span>
+                    </>
+                  )}
                 </p>
               </div>
               <div className="flex items-center gap-2">

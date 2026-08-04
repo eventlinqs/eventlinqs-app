@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { EventForm } from '@/components/features/events/event-form'
 import { OrgCreateForm } from '../../organisation/create/org-create-form'
 import { isFlagEnabled } from '@/lib/flags'
+import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import type { EventCategory } from '@/types/database'
 
 export default async function CreateEventPage() {
@@ -75,6 +76,7 @@ export default async function CreateEventPage() {
         categories={categories ?? []}
         venues={venues}
         launchKitEnabled={await isFlagEnabled('launch_kit')}
+        lineupEnabled={await isFeatureEnabled('broadcast_artists')}
         magicStartEnabled={await isFlagEnabled('magic_start')}
       />
     </div>

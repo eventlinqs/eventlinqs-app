@@ -126,7 +126,9 @@ export function AttendeeForm({
                   <label htmlFor={`att-${i}-first`} className="block text-xs text-ink-400 mb-1">First name</label>
                   <input
                     id={`att-${i}-first`}
+                    name={`att-${i}-first`}
                     type="text"
+                    autoComplete="off"
                     value={attendee.first_name}
                     onChange={e => updateAttendee(i, 'first_name', e.target.value)}
                     required
@@ -137,7 +139,9 @@ export function AttendeeForm({
                   <label htmlFor={`att-${i}-last`} className="block text-xs text-ink-400 mb-1">Last name</label>
                   <input
                     id={`att-${i}-last`}
+                    name={`att-${i}-last`}
                     type="text"
+                    autoComplete="off"
                     value={attendee.last_name}
                     onChange={e => updateAttendee(i, 'last_name', e.target.value)}
                     required
@@ -148,7 +152,9 @@ export function AttendeeForm({
                   <label htmlFor={`att-${i}-email`} className="block text-xs text-ink-400 mb-1">Email</label>
                   <input
                     id={`att-${i}-email`}
+                    name={`att-${i}-email`}
                     type="email"
+                    autoComplete="off"
                     value={attendee.email}
                     onChange={e => updateAttendee(i, 'email', e.target.value)}
                     required

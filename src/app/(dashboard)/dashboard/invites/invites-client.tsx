@@ -9,15 +9,17 @@ type InviteRow = { code: string; url: string; cityName: string; status: string; 
 export function InvitesClient({
   initialInvites,
   allowance,
-  bonusMonths,
-  bonusPerReferral,
   acceptedCount,
+  feeFreeUntil,
+  waiverActive,
 }: {
   initialInvites: InviteRow[]
   allowance: number
-  bonusMonths: number
-  bonusPerReferral: number
   acceptedCount: number
+  /** organisations.founding_fee_free_until: the field the CHARGE reads. */
+  feeFreeUntil: string | null
+  /** Computed server-side with isWaiverActive(), the charge authority helper. */
+  waiverActive: boolean
 }) {
   const [invites, setInvites] = useState<InviteRow[]>(initialInvites)
   const [city, setCity] = useState<'geelong' | 'melbourne'>('geelong')
@@ -26,6 +28,25 @@ export function InvitesClient({
   const [isPending, startTransition] = useTransition()
 
   const remaining = allowance - invites.length
+
+  // This tile used to read "Fee-free months earned: +3" while NOTHING was
+  // waived: founding_bonus_months was displayed and no payment path ever read
+  // it. It now reads founding_fee_free_until, the same field the charge reads,
+  // so what this screen promises and what the invoice charges cannot disagree.
+  // `waiverActive` is computed on the SERVER with isWaiverActive(), the same
+  // function the charge authority uses, rather than from Date.now() here:
+  // reading the clock during render is impure, and more importantly the screen
+  // must answer "am I inside the window" exactly the way the charge does.
+  const waiverUntil = feeFreeUntil ? new Date(feeFreeUntil) : null
+  const waiverDate = waiverUntil
+    ? waiverUntil.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
+    : ''
+  const waiverLabel = waiverActive ? waiverDate : waiverUntil ? 'Ended' : 'Not active'
+  const waiverHint = waiverActive
+    ? 'Platform fee is zero until then. Processing fee still applies'
+    : waiverUntil
+      ? 'Ended ' + waiverDate + '. Standard platform fee applies'
+      : 'Claim a founding spot to start your six months'
 
   const generate = () => {
     setError(null)
@@ -57,7 +78,11 @@ export function InvitesClient({
       <div className="grid grid-cols-3 gap-3">
         <Stat label="Invites left" value={`${remaining} of ${allowance}`} />
         <Stat label="Organisers joined" value={String(acceptedCount)} />
-        <Stat label="Fee-free months earned" value={`+${bonusMonths}`} hint={`${bonusPerReferral} per referral`} />
+        <Stat
+          label={waiverActive ? 'Platform fee waived until' : 'Platform fee waiver'}
+          value={waiverLabel}
+          hint={waiverHint}
+        />
       </div>
 
       <div className="rounded-2xl border border-ink-200 bg-white p-6 shadow-sm">

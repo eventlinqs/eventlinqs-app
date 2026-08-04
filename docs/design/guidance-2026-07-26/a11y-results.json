@@ -1,0 +1,103 @@
+{
+  "base": "http://localhost:3117",
+  "axe": [
+    {
+      "surface": "guides-hub mobile-390",
+      "violations": 0,
+      "seriousOrCritical": 0,
+      "detail": []
+    },
+    {
+      "surface": "guides-hub-empty-search mobile-390",
+      "violations": 0,
+      "seriousOrCritical": 0,
+      "detail": []
+    },
+    {
+      "surface": "guide-page mobile-390",
+      "violations": 0,
+      "seriousOrCritical": 0,
+      "detail": []
+    },
+    {
+      "surface": "seat-map-coach-open mobile-390",
+      "violations": 0,
+      "seriousOrCritical": 0,
+      "detail": []
+    },
+    {
+      "surface": "seat-map-help-panel mobile-390",
+      "violations": 0,
+      "seriousOrCritical": 0,
+      "detail": []
+    },
+    {
+      "surface": "guides-hub desktop-1440",
+      "violations": 0,
+      "seriousOrCritical": 0,
+      "detail": []
+    },
+    {
+      "surface": "guides-hub-empty-search desktop-1440",
+      "violations": 0,
+      "seriousOrCritical": 0,
+      "detail": []
+    },
+    {
+      "surface": "guide-page desktop-1440",
+      "violations": 0,
+      "seriousOrCritical": 0,
+      "detail": []
+    },
+    {
+      "surface": "seat-map-coach-open desktop-1440",
+      "violations": 0,
+      "seriousOrCritical": 0,
+      "detail": []
+    },
+    {
+      "surface": "seat-map-help-panel desktop-1440",
+      "violations": 0,
+      "seriousOrCritical": 0,
+      "detail": []
+    }
+  ],
+  "keyboard": [
+    {
+      "name": "every coach control has an accessible name",
+      "pass": true,
+      "detail": "2 controls"
+    },
+    {
+      "name": "coach announces as a non-trapping dialog",
+      "pass": true,
+      "detail": "aria-modal=false"
+    },
+    {
+      "name": "Escape closes the coach",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "help launcher is reachable by Tab alone",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "opening with the keyboard moves focus into the panel",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "every help-panel control has an accessible name",
+      "pass": true,
+      "detail": "4 controls"
+    },
+    {
+      "name": "Escape returns focus to the launcher",
+      "pass": true,
+      "detail": ""
+    }
+  ],
+  "seriousOrCritical": 0
+}

@@ -29,6 +29,10 @@ export default defineConfig({
           include: ['tests/unit/**/*.test.ts'],
           environment: 'node',
           globals: false,
+          // Strips ambient Supabase/Stripe env before any test module loads, so
+          // the suite result is identical on a laptop with .env.test sourced,
+          // on a fresh clone, and in CI. See tests/setup-clean-env.ts.
+          setupFiles: ['./tests/setup-clean-env.ts'],
         },
       },
       {
@@ -37,7 +41,7 @@ export default defineConfig({
           name: 'component',
           include: ['tests/component/**/*.test.tsx'],
           environment: 'jsdom',
-          setupFiles: ['./tests/component/setup.ts'],
+          setupFiles: ['./tests/setup-clean-env.ts', './tests/component/setup.ts'],
           globals: true,
         },
       },

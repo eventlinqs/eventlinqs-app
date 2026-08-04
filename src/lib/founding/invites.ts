@@ -1,5 +1,12 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { recordAnonAuditEvent } from '@/lib/admin/audit'
+import {
+  extendWaiver,
+  initialWaiverUntil,
+  FOUNDING_INITIAL_MONTHS,
+  FOUNDING_WAIVER_CAP,
+} from '@/lib/payments/founding-waiver'
 
 /**
  * The founding-organiser network: spots, invite codes, and conversion.
@@ -161,18 +168,103 @@ export async function acceptFoundingInvite(input: {
   const spotNumber = typeof spot === 'number' ? spot : null
   const granted = spotNumber !== null
 
-  // Credit the inviter's referral bonus on a successful conversion.
+  // Grant the NEW organisation its six-month window. claim_founding_spot sets
+  // is_founding and allocates the numbered spot atomically (that RPC is what
+  // enforces the fifty-spot race); this writes the date the charge actually
+  // reads. The database trigger trg_founding_waiver_cap is the final backstop:
+  // if fifty organisations already hold a window this update is rejected and the
+  // failure is audit-logged rather than silently swallowed.
+  if (granted) {
+    // THE FIFTY CAP, IN CODE. It used to be copy only. Checked here so the
+    // refusal is readable and audit-logged; the database trigger
+    // trg_founding_waiver_cap is the backstop that a direct SQL grant or a
+    // future code path cannot get around.
+    const { count: holders } = await admin
+      .from('organisations')
+      .select('id', { count: 'exact', head: true })
+      .not('founding_fee_free_until', 'is', null)
+
+    if ((holders ?? 0) >= FOUNDING_WAIVER_CAP) {
+      await recordAnonAuditEvent({
+        action: 'founding.waiver.cap_reached',
+        metadata: {
+          organisation_id: input.orgId,
+          invite_code: input.code,
+          holders: holders ?? 0,
+          cap: FOUNDING_WAIVER_CAP,
+        },
+      })
+      // The founding SPOT is still granted (the RPC allocated it); only the fee
+      // waiver is withheld, and it is recorded so the founder can see it.
+      return { granted, spotNumber, alreadyFull: false }
+    }
+
+    const until = initialWaiverUntil()
+    const { error: grantError } = await admin
+      .from('organisations')
+      .update({ founding_fee_free_until: until })
+      .eq('id', input.orgId)
+      .is('founding_fee_free_until', null)
+
+    await recordAnonAuditEvent({
+      action: grantError ? 'founding.waiver.grant_failed' : 'founding.waiver.granted',
+      metadata: {
+        organisation_id: input.orgId,
+        reason: 'founding_spot_claimed',
+        spot_number: spotNumber,
+        invite_code: input.code,
+        months_granted: FOUNDING_INITIAL_MONTHS,
+        new_fee_free_until: grantError ? null : until,
+        cap: FOUNDING_WAIVER_CAP,
+        ...(grantError ? { error: grantError.message } : {}),
+      },
+    })
+  }
+
+  // Credit the inviter on a successful conversion.
+  //
+  // The DATE WINDOW is what the charge reads (src/lib/payments/founding-waiver.ts):
+  // three months are added to founding_fee_free_until FROM ITS CURRENT VALUE, not
+  // from today, so two referrals in the same week stack to six months instead of
+  // one overwriting the other. `founding_bonus_months` is still incremented as
+  // the historical record of how many referrals were earned, but nothing prices
+  // from it any more.
+  //
+  // Every extension is audit-logged with who, when and the resulting date, which
+  // is the audit trail the counter never had.
   if (granted && invite.inviter_org_id) {
     const { data: inviterOrg } = await admin
       .from('organisations')
-      .select('founding_bonus_months')
+      .select('founding_bonus_months, founding_fee_free_until, name')
       .eq('id', invite.inviter_org_id)
       .maybeSingle()
     if (inviterOrg) {
-      await admin
+      const previousUntil = inviterOrg.founding_fee_free_until ?? null
+      const nextUntil = extendWaiver(previousUntil, REFERRAL_BONUS_MONTHS)
+      const { error: updateError } = await admin
         .from('organisations')
-        .update({ founding_bonus_months: (inviterOrg.founding_bonus_months ?? 0) + REFERRAL_BONUS_MONTHS })
+        .update({
+          founding_bonus_months: (inviterOrg.founding_bonus_months ?? 0) + REFERRAL_BONUS_MONTHS,
+          founding_fee_free_until: nextUntil,
+        })
         .eq('id', invite.inviter_org_id)
+
+      await recordAnonAuditEvent({
+        action: updateError
+          ? 'founding.waiver.extension_failed'
+          : 'founding.waiver.extended',
+        metadata: {
+          organisation_id: invite.inviter_org_id,
+          organisation_name: inviterOrg.name ?? null,
+          reason: 'confirmed_referral',
+          referred_organisation_id: input.orgId,
+          invite_code: input.code,
+          months_added: REFERRAL_BONUS_MONTHS,
+          previous_fee_free_until: previousUntil,
+          new_fee_free_until: updateError ? null : nextUntil,
+          ...(updateError ? { error: updateError.message } : {}),
+        },
+      })
     }
   }
 

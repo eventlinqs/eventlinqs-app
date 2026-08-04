@@ -41,7 +41,7 @@ export async function CommunityValueBand() {
        *  without JS / under reduced motion / for headless audits. */}
       <Reveal className="mx-auto max-w-2xl text-center">
         <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
-          The community moat
+          Made for every community
         </p>
         <h2 className="font-display text-2xl font-extrabold tracking-tight text-[var(--text-primary)] sm:text-3xl lg:text-4xl">
           Every community. Every event. One platform.

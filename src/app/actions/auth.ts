@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { trackEventServer } from '@/lib/analytics/plausible'
+import { getSiteUrl } from '@/lib/site-url'
 
 /**
  * Sign out the current Supabase user and redirect to /.
@@ -19,7 +20,7 @@ import { trackEventServer } from '@/lib/analytics/plausible'
 export async function signOut(): Promise<never> {
   const supabase = await createClient()
   await supabase.auth.signOut()
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://eventlinqs.com'
+  const siteUrl = getSiteUrl()
   void trackEventServer('account_sign_out', `${siteUrl}/`)
   revalidatePath('/', 'layout')
   redirect('/')

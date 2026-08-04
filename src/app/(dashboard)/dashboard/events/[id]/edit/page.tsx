@@ -5,6 +5,7 @@ import { EventForm } from '@/components/features/events/event-form'
 import { RevenueSummary } from '@/components/orders/revenue-summary'
 import type { Event, TicketTier, EventCategory } from '@/types/database'
 import { jsonAsStringArray } from '@/lib/json-narrow'
+import { isFeatureEnabled } from '@/lib/flags/broadcast'
 
 type Props = {
   params: Promise<{ id: string }>
@@ -99,6 +100,7 @@ export default async function EditEventPage({ params }: Props) {
           existingEvent={eventData}
           existingTiers={ticket_tiers ?? []}
           existingStatus={event.status}
+          lineupEnabled={await isFeatureEnabled('broadcast_artists')}
         />
 
         <div className="space-y-4">

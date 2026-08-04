@@ -58,7 +58,6 @@ interface Props {
 
   /** Pre-built Mapbox pins (geocoded events filtered to this community+city). */
   mapPins: MapEventPin[]
-  mapboxToken: string
 }
 
 /**
@@ -99,7 +98,6 @@ export function CommunityCityLandingPage({
   relatedCities,
   relatedCommunities,
   mapPins,
-  mapboxToken,
 }: Props) {
   const subCommunities = community.subCommunities
   const showSubCommunitiesRail = community.tier === 1 && subCommunities.length > 0
@@ -247,8 +245,8 @@ export function CommunityCityLandingPage({
         </ContentSection>
       ) : null}
 
-      {/* S7 Map - only when we have city coords AND mapbox token */}
-      {mapboxToken && cityRecord ? (
+      {/* S7 Map - Google Maps (one provider platform-wide), when city coords + events */}
+      {cityRecord && mapPins.length > 0 ? (
         <ContentSection surface="alt" width="wide" topBorder reveal>
           <div className="mb-6">
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--brand-accent-strong)]">
@@ -263,7 +261,6 @@ export function CommunityCityLandingPage({
             centerLat={cityRecord.latitude}
             zoom={cityRecord.mapZoom}
             pins={mapPins}
-            accessToken={mapboxToken}
           />
         </ContentSection>
       ) : null}
