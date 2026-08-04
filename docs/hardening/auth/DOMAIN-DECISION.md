@@ -1,8 +1,46 @@
 # Sender and canonical domain: the decision and its consequences
 
 **Status:** sender domain RULED by the founder on 2026-08-03. Canonical host
-question is REPORTED ONLY and awaits a separate ruling.
+question ALSO RULED, on 2026-07-25, and already executed on `main`. See the
+2026-08-05 note below before reading sections 3.2 and 4.
 **Branch:** `feat/auth-hardening`
+
+---
+
+## Note added 2026-08-05, on rebasing this branch onto `main`
+
+This document was written on a branch cut from `main` at 414d801. Both open
+questions in it are now closed, and the second one was closed by work that was
+already on `main` while this branch was being written.
+
+**The canonical web host question in sections 3.2 and 4 is SETTLED, not open.**
+The founder ruled on 2026-07-25 that the canonical host is
+`www.eventlinqs.com.au`, and `main` executed it. Read those sections as the
+record of how this branch reached the same recommendation independently, never
+as a decision still waiting on the founder. Asking him to rule twice on one
+question is exactly the cost this document was meant to save him.
+
+Verified on the rebased tree, 2026-08-05:
+
+| Section 3.2 / 4 claim | State on the rebased tree |
+|---|---|
+| `src/lib/site-url.ts:36` fallback is `https://www.eventlinqs.com` | Now line 37, and it is `https://www.eventlinqs.com.au` |
+| `src/proxy.ts:89-90` `APEX_HOST` / `CANONICAL_HOST` on `.com` | `APEX_HOST` no longer exists; `CANONICAL_HOST` is `www.eventlinqs.com.au` at line 119 |
+| The double-redirect "live defect" on the bare apex | Fixed. Every branded host now 301s straight to the canonical host |
+| `canonical-host-redirect.test.ts` would need 4 assertions rewritten | Already rewritten and passing; it asserts all three other branded hosts 301 to `www.eventlinqs.com.au` |
+| `no-localhost-app-url-fallback.test.ts` would need its expectation updated | Already updated; it expects `https://www.eventlinqs.com.au` |
+| `.github/workflows/post-deploy-smoke.yml` `PROD_URL` on `.com` | Already `https://www.eventlinqs.com.au` |
+| "23 hardcoded `?? 'https://eventlinqs.com'` fallbacks" | One remains in `src/` |
+
+**The sender ruling is unaffected and still stands.** The sending domain is
+`eventlinqs.com`, the canonical web host is `www.eventlinqs.com.au`, and per
+`docs/ENV-DOCTRINE.md` section 4 that split is deliberate, not drift. Section 4
+below reached the same conclusion, which is why nothing in this branch had to
+change to accommodate the ruling.
+
+The only recommendation in this document still requiring founder action is the
+Supabase Auth Site URL, in section 4's closing paragraph and in FOUNDER-STEPS.
+That is dashboard configuration and cannot be set from code.
 
 ---
 
@@ -79,7 +117,11 @@ Guard: `scripts/guards/sender-single-source.mjs`, wired into `prebuild`.
 
 One definition: `src/lib/email/sender.ts`, `DEFAULT_SENDER_DOMAIN = 'eventlinqs.com'`.
 
-### 3.2 Canonical host constants (NOT CHANGED, needs a ruling)
+### 3.2 Canonical host constants (SUPERSEDED, ruled and executed on main)
+
+> Superseded 2026-08-05. See the note at the top. The values and line numbers in
+> the table below describe the tree as it stood at 414d801 and are no longer
+> accurate. Kept as the record of what this branch found.
 
 | Location | Value | Effect |
 |---|---|---|
@@ -159,7 +201,14 @@ would work once Google is on. Only the Site URL is wrong.
 
 ---
 
-## 4. Recommendation on the canonical host (DO NOT EXECUTE, founder rules)
+## 4. Recommendation on the canonical host (SUPERSEDED: already ruled and executed)
+
+> Superseded 2026-08-05. The founder ruled on 2026-07-25 in favour of
+> `www.eventlinqs.com.au` and `main` has executed every row of the consequences
+> table below. Nothing here is awaiting a decision, and the "DO NOT EXECUTE"
+> instruction no longer applies because there is nothing left to execute. Kept
+> because the reasoning is the record of how this branch arrived at the same
+> answer on its own evidence.
 
 The sender domain and the canonical WEB host are independent decisions, and the
 right answer differs for each.
