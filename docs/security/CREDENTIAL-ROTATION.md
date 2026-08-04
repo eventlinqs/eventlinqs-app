@@ -10,18 +10,32 @@ the authenticated CLI. Secret values are never printed in this document.
 
 ---
 
-## 0. Immediate actions (do these first)
+## 0. Immediate actions - STATUS 2026-08-03
 
-1. **ROTATE THE VERCEL CLI TOKEN NOW - treat it as compromised.** Its full value
-   was surfaced in an assistant terminal session (see section 2). Steps in
-   section 4.1.
-2. **Set the four variables missing from Production** (section 3), above all
-   `CRON_SECRET` - without it every scheduled job (payment sentinel, reservation
-   expiry, payout holds, event disbursement, health heartbeat) is rejected 401
-   and never runs.
-3. **Mark the high-value server secrets as "Sensitive" in Vercel** (section 5):
-   several currently decrypt on `vercel env pull`, meaning they are readable, not
-   write-only.
+The three actions this runbook opened with are DONE. Recorded here rather than
+deleted, because "the runbook still says do this" is how a resolved item gets
+re-litigated every session.
+
+1. ~~Rotate the Vercel CLI token.~~ **Done by expiry.** The stored `vca_` token
+   expired 2026-07-04 and the `vcr_` refresh token is rejected
+   (`invalid_grant`), so the exposed pair is dead. Section 4.1 still applies to
+   any FUTURE token. Note the side effect: no Vercel REST API token is currently
+   available, so the runtime sentinel's live-store half reports NOT CHECKED (see
+   the matrix row for `VERCEL_API_TOKEN`).
+2. ~~Set the four variables missing from Production.~~ **Done.** All four are
+   set, and `CRON_SECRET` is proven byte-identical across Vercel Production and
+   GitHub Actions on every CI run by the bearer handshake.
+3. ~~Mark the high-value server secrets Sensitive.~~ **Done, and the original
+   finding was partly wrong.** No Production secret was readable; the readable
+   ones were Preview records pinned to git branches, which a scope-wide pull
+   cannot see. See section 5.
+
+**The standing replacement for this checklist** is executable and cannot go
+stale:
+
+```bash
+node scripts/check-env-stores.mjs
+```
 
 ---
 
@@ -52,20 +66,32 @@ The only exposure found is the operational one below.
 
 ## 3. Variables MISSING from the Vercel PRODUCTION scope
 
-Confirmed via `vercel env ls production` (scope membership is reliable). These
-are genuinely absent from Production:
+> **SUPERSEDED as a live checklist, 2026-08-03. Kept as the historical record of
+> what this audit found.** Every row below has since been resolved, and this is
+> no longer the way to find out what is missing. The authority is now the
+> manifest and the store checker, which answer the same question against the
+> live stores and cannot go stale:
+>
+> ```bash
+> node scripts/check-env-stores.mjs
+> ```
+>
+> Resolutions: `CRON_SECRET` is set on Production and in GitHub Actions, and the
+> two copies are proven byte-identical on every CI run by the bearer handshake.
+> `PAYMENT_ALERT_EMAIL` and `SUPPORT_INBOX_EMAIL` were set on Production on
+> 2026-08-03. `WEBHOOK_CANONICAL_HOST` is set, and the value named below was
+> WRONG: the canonical host is `www.eventlinqs.com.au`, not `www.eventlinqs.com`,
+> which 301s to it. `QUEUE_SECRET` is set on Production.
 
 | Variable | Impact if left unset | Fix |
 |---|---|---|
-| **`CRON_SECRET`** | **Every cron 401s and never runs** (proven: `/api/cron/webhook-sentinel` etc. return 401 on production). | Add to Production: a strong random value (`openssl rand -hex 24`). Also add the identical value as a GitHub Actions secret so the post-deploy probe can call the crons. |
-| `PAYMENT_ALERT_EMAIL` | Sentinel alerts fall back to the hardcoded default `lawaladams9@gmail.com` (harmless, but set it explicitly). | Add to Production: the founder inbox. |
-| `WEBHOOK_CANONICAL_HOST` | The payment sentinel's endpoint-config check defaults to the deployment host; set it to the canonical production host to detect duplicate Stripe endpoints. | Add to Production: `www.eventlinqs.com`. |
-| `QUEUE_SECRET` | High-demand event queue token signing is unconfigured (only matters if the queue is used at launch). | Add to Production if the queue is in use: `openssl rand -hex 24`. |
+| **`CRON_SECRET`** | **Every cron 401s and never runs.** | Add to Production: `openssl rand -hex 24`. Also add the identical value as a GitHub Actions secret so the post-deploy probe can call the crons. |
+| `PAYMENT_ALERT_EMAIL` | Payment and health alerts fall back to the in-code default. | Add to Production. Use an address PROVEN to receive (see 4.11). |
+| `WEBHOOK_CANONICAL_HOST` | The payment sentinel's endpoint-config check defaults to the deployment host. | Add to Production: `www.eventlinqs.com.au`. |
+| `QUEUE_SECRET` | High-demand event queue token signing is unconfigured. | Add to Production: `openssl rand -hex 24`. |
 
-Note: `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, `ANTHROPIC_API_KEY`, and the three
-`VAPID_*` vars are now present in Production (set during earlier work / by the
-founder). `NEXT_PUBLIC_*` values are baked at build, so any change to them
-requires a rebuild, not just a redeploy.
+`NEXT_PUBLIC_*` values are baked into the bundle at BUILD time, so any change to
+one requires a REBUILD, not just a redeploy.
 
 ---
 
@@ -182,22 +208,50 @@ requires a rebuild, not just a redeploy.
 
 ---
 
-## 5. "Sensitive" flag - hardening gap
+## 5. "Sensitive" flag - RESOLVED 2026-08-03
 
-Vercel "Sensitive" env vars are write-only (never returned on read). Evidence:
-several high-value server secrets **decrypted on `vercel env pull --environment=production`**,
-which means they are stored as normal (readable) encrypted vars, not Sensitive:
+**The finding recorded here has been fixed, and part of it was wrong.**
 
-- **`STRIPE_SECRET_KEY`** - readable
-- **`SUPABASE_SERVICE_ROLE_KEY`** - readable
-- `STRIPE_WEBHOOK_SECRET`, `RESEND_API_KEY`, `GOOGLE_MAPS_API_KEY`, `PEXELS_API_KEY` - readable
+What was true: Vercel "Sensitive" variables are write-only and never returned on
+read, and several high-value secrets were readable.
 
-**Action:** in Vercel -> Project -> Settings -> Environment Variables, edit each
-server secret and enable **Sensitive** (this re-creates it write-only). Do this
-for every secret in section 4 except the `NEXT_PUBLIC_*` ones (which are
-client-visible by design and cannot be Sensitive). I could not confirm the flag
-programmatically because the stored CLI token is rejected by the REST API; verify
-in the dashboard.
+What was WRONG: this section named `STRIPE_SECRET_KEY` and
+`SUPABASE_SERVICE_ROLE_KEY` on **Production** as readable. Re-measured on
+2026-08-03 with a scoped `vercel env pull` per scope AND per pinned git branch,
+every Production secret is withheld. The readable records were on **Preview**,
+pinned to git branches, which the earlier scope-wide pull could not see at all.
+
+Measured state, 2026-08-03, after remediation:
+
+| Scope | Secrets readable back |
+|---|---|
+| Production | none |
+| Preview (scope-wide) | none |
+| Preview (all 22 branch-pinned records) | none |
+| Development | **no secrets stored at all** (founder ruling R3) |
+
+Four Preview branch-pinned records WERE readable and were removed and re-added
+with `--sensitive`, value preserved: `STRIPE_SECRET_KEY` and
+`STRIPE_WEBHOOK_SECRET` on `release/launch-line`, `STRIPE_WEBHOOK_SECRET` on
+`feat/event-media-standard`, and `STRIPE_WEBHOOK_SECRETS` on
+`feat/walkthrough-defects`.
+
+**`--force` does NOT change an existing record's sensitivity.** Removing and
+re-adding is the only way:
+
+```bash
+npx vercel@55 env rm  NAME preview <git-branch> --yes
+printf '%s' "$VALUE" | npx vercel@55 env add NAME preview <git-branch> --sensitive
+```
+
+**Do not use `vercel env ls` to judge this.** It prints `Encrypted` for a
+genuinely sensitive record AND for a merely encrypted one that `env pull` hands
+back in plain text. Only the read-back distinguishes them. See
+`docs/ENV-DOCTRINE.md` section 3.4.
+
+The standing check is `node scripts/check-env-stores.mjs`, which now measures
+every scope and every pinned branch, and FAILS on any record it could not
+measure rather than passing it over in silence.
 
 ---
 
@@ -214,3 +268,76 @@ in the dashboard.
       VAPID, `ADMIN_TOTP_ENC_KEY`, `SENTRY_AUTH_TOKEN` on the launch pass.
 - [ ] Re-run the health sentinel (`/api/cron/health-sentinel`) and confirm green.
 - [ ] Keep `.gitignore` `.env*` rule; never commit a real `.env` file.
+
+---
+
+## 7. The complete rotation matrix (authority, 2026-08-03)
+
+Every credential the manifest declares, plus the two that live outside the
+running application and were invisible to it for exactly that reason. For each:
+where it is issued, every store it must land in, and the exact verification
+command.
+
+**The order that avoids downtime, in one line:** for anything with more than one
+valid credential at a time (Stripe webhooks, Supabase keys, Resend, Anthropic),
+ADD the new one everywhere first, verify, then revoke the old one. For anything
+single-valued (`CRON_SECRET`, `QUEUE_SECRET`, `ADMIN_TOTP_ENC_KEY`), write BOTH
+stores before redeploying, because the window between the two writes is the
+outage.
+
+Legend for stores: **P** Vercel Production, **V** Vercel Preview, **G** GitHub
+Actions, **L** local `.env.local`. The Development scope holds no secrets at all
+(ruling R3), so it never appears.
+
+| Credential | Issued at | Stores | Order that avoids downtime | Verify with |
+|---|---|---|---|---|
+| `STRIPE_SECRET_KEY` | Stripe dashboard, Developers, API keys | P, V, L | Create the new restricted/secret key, write P and V, redeploy, confirm a live payment intent, THEN revoke the old key. | `node scripts/check-env-stores.mjs` then a real checkout; sentinel `payment` check green |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | same page, same account | P, V, L | Must come from the SAME account as the secret key. Write, then REBUILD (it is baked at build time). | `STRIPE_ACCOUNT_PAIR` cross rule; the payment element renders |
+| `STRIPE_WEBHOOK_SECRETS` | Stripe, Developers, Webhooks, per endpoint | P, V | Append the new `whsec_` to the comma list, deploy, confirm deliveries verify, THEN remove the old entry. Never replace in one step. | `docs/payments/WEBHOOK-CANON.md`; sentinel `payment` check |
+| `STRIPE_WEBHOOK_SECRET` | as above (legacy single value) | P, V | As above. Kept only as the appended fallback. | as above |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase, Project Settings, API | P, V (TEST project), L | Supabase rotation invalidates the old key immediately, so write every store, then redeploy at once. Expect a brief window. | `refFromJwt` matches the intended project; sentinel `database` check |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | same page | P, V, L | Write, then REBUILD (baked at build time). | homepage renders data |
+| `NEXT_PUBLIC_SUPABASE_URL` | same page | P, V, L | Configuration, not a secret. REBUILD after change. | `SUPABASE_PRODUCTION_REF_ISOLATION` cross rule |
+| `CRON_SECRET` | generated: `openssl rand -hex 24` | P, **G** | Write P and G BOTH before redeploying. Writing one and not the other is the exact failure that silenced the smoke gate for eighteen days. | `node scripts/check-env-stores.mjs --mode=handshake` must print HTTP 200 |
+| `QUEUE_SECRET` | generated: `openssl rand -hex 24` | P, V | Single-valued: write, redeploy. In-flight queue tokens are invalidated. | sentinel `pages` check; queue admission returns 200 |
+| `HEALTH_CHECK_TOKEN` | generated: `openssl rand -hex 24` | P, V | Write, redeploy. | `GET /api/health/sentry-error?token=...` returns 200 |
+| `RESEND_API_KEY` | Resend dashboard, API Keys | P, V, **G**, L | Create the new key, write all three stores, send one test, THEN delete the old key. **No test mode exists**, so treat every copy as live. | `GET https://api.resend.com/domains` returns 200; sentinel `email` check |
+| `EMAIL_FROM` | configuration, not a secret | P, V, L | Must be `@eventlinqs.com` (ruling R4). Anything else is rejected by the shape. | build guard; a delivered test send |
+| `ANTHROPIC_API_KEY` | console.anthropic.com, API keys | P, V, L | Add the new key, write, deploy, confirm, then revoke the old. | sentinel `ai` check green |
+| `UPSTASH_REDIS_REST_TOKEN` / `_URL` | Upstash console, database, REST API | P, V, L | Rotate token, write, redeploy. Rate limits fail CLOSED, so a wrong value locks users out of login: verify immediately. | `GET /api/health/redis` returns 200 |
+| `ADMIN_TOTP_ENC_KEY` | generated, 32 bytes | P | **Rotating it invalidates every stored admin TOTP enrolment**; admins must re-enrol. Schedule it, do not surprise yourself. | admin 2FA login succeeds |
+| `VAPID_PRIVATE_KEY` / `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_SUBJECT` | `npx web-push generate-vapid-keys` | P, V | The pair must rotate together, and **every existing push subscription is invalidated**. REBUILD for the public half. | a test push delivers |
+| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | Google Cloud console, Credentials | P, V | Referer-restricted, browser-visible by design. REBUILD after change. | `scripts/verify/map-guard.mjs`; sentinel `maps` check |
+| `GOOGLE_MAPS_API_KEY` | same console, separate key | P, V, L | Server-side, IP restricted. **No test mode and it is billable**: treat as live everywhere. | geocoding returns a result |
+| `SENTRY_AUTH_TOKEN` | Sentry, Settings, Auth Tokens | P, V | Build-time source-map upload only. Write, next build proves it. | build log shows a source-map upload |
+| `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` | Sentry project settings | P, V | Not secret. REBUILD for the public half. | `GET /api/health/sentry-error` |
+| `PEXELS_API_KEY` | Pexels dashboard | P, V, L | Low value. Write, redeploy. | image ingest script runs |
+| **`SUPABASE_ACCESS_TOKEN`** | supabase.com, Account, Access Tokens | **G only** | Lives in GitHub Actions and NOWHERE else: nothing in the running application uses it, and it is forbidden on every Vercel scope. **It has expired twice unnoticed.** | `gh workflow run ci.yml`; the `types-drift guard` job must not report `Unauthorized` |
+| **`VERCEL_API_TOKEN`** | vercel.com, Account Settings, Tokens | P (optional), local operator | Read-only is enough. Without it the runtime sentinel's live-store half reports NOT CHECKED, which is honest but blind to a dashboard edit made after deploy. | `GET https://api.vercel.com/v2/user` returns 200 |
+
+### 7.1 Why `SUPABASE_ACCESS_TOKEN` gets its own warning
+
+It is the credential most likely to be silently dead, because nothing user-facing
+breaks when it expires. When it did, the `types-drift guard` job failed, the CI
+run concluded `failure`, and the post-deploy smoke gate's
+`workflow_run.conclusion == 'success'` condition went false. **Production had no
+smoke gate for two weeks because an unrelated schema-introspection job could not
+authenticate.** The coupling is now removed (the smoke gate keys off the deploy),
+but the token still needs to be alive for the drift guard to mean anything.
+
+### 7.2 After ANY rotation
+
+```bash
+node scripts/check-env-stores.mjs          # both stores, every scope, every pinned branch
+node scripts/check-dead-branch-env.mjs     # no orphaned credential copies left behind
+node scripts/generate-env-state.mjs        # refresh the snapshot
+```
+
+Then confirm the production sentinel is green. It runs every five minutes and
+emails on any CRITICAL fault, so silence after a rotation is itself a signal, but
+do not rely on silence when you can ask:
+
+```bash
+curl -sS -H "Authorization: Bearer $CRON_SECRET" \
+  'https://www.eventlinqs.com.au/api/cron/health-sentinel?dry=1' | jq '.status'
+```

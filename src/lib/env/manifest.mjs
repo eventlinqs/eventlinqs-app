@@ -49,6 +49,37 @@
 export const SCOPES = ['production', 'preview', 'development']
 
 /**
+ * THE SCOPES THE PLATFORM CAN ACTUALLY HOLD A SECRET ON.
+ *
+ * Vercel refuses to store a sensitive value on the Development scope. This is
+ * not a setting and not an oversight: Development exists to be pulled to a
+ * developer's machine by `vercel env pull`, so a value that could not be read
+ * back would be useless there. Asked directly, the platform answers:
+ *
+ *   {
+ *     "status": "error",
+ *     "reason": "sensitive_not_allowed_on_development",
+ *     "message": "--sensitive is not allowed with the Development Environment.
+ *                 Sensitive Environment Variables are only supported on
+ *                 Production and Preview."
+ *   }
+ *
+ * WHY THIS CONSTANT EXISTS RATHER THAN A SILENT EXCEPTION. `mustBeSensitive`
+ * used to be evaluated on all three scopes, so four Development records failed
+ * the store checker permanently and the advice it printed, "re-add it with
+ * --sensitive", was an instruction the platform rejects. A guard that demands
+ * the impossible is a guard people learn to ignore, and an ignored guard is the
+ * same as no guard.
+ *
+ * The protection on Development is therefore a DIFFERENT and stronger one:
+ * LIVE_CREDENTIAL_ISOLATION below makes it a build failure for any
+ * non-production scope to hold a live-mode credential or the production
+ * database. A Development value stays readable, as the platform intends, and is
+ * guaranteed to be worthless against production.
+ */
+export const SENSITIVE_CAPABLE_SCOPES = ['production', 'preview']
+
+/**
  * The PRODUCTION Supabase project ref. Re-exported from the leaf module so
  * there is one literal in the repository, not two.
  */
@@ -276,7 +307,11 @@ export const ENV_MANIFEST = [
     name: 'NEXT_PUBLIC_SUPABASE_URL_PREVIEW',
     describe: 'Preview override steering non-production deployments at the TEST project',
     requiredOn: ['preview'],
-    forbiddenOn: ['production'],
+    forbiddenOn: ['production', 'development'],
+    // FORBIDDEN ON DEVELOPMENT TOO. The override is consulted only when
+    // VERCEL_ENV is 'preview', so on the development scope it is inert: nothing
+    // reads it, and a value nothing reads drifts unnoticed and misleads whoever
+    // finds it next.
     mustBeSensitive: false,
     previewBranchScoping: 'forbidden',
     shape: SHAPES.supabaseUrl,
@@ -288,7 +323,11 @@ export const ENV_MANIFEST = [
     name: 'NEXT_PUBLIC_SUPABASE_ANON_KEY_PREVIEW',
     describe: 'Preview override for the anon key',
     requiredOn: ['preview'],
-    forbiddenOn: ['production'],
+    forbiddenOn: ['production', 'development'],
+    // FORBIDDEN ON DEVELOPMENT TOO. The override is consulted only when
+    // VERCEL_ENV is 'preview', so on the development scope it is inert: nothing
+    // reads it, and a value nothing reads drifts unnoticed and misleads whoever
+    // finds it next.
     mustBeSensitive: false,
     previewBranchScoping: 'forbidden',
     shape: SHAPES.supabaseAnonKey,
@@ -300,7 +339,11 @@ export const ENV_MANIFEST = [
     name: 'SUPABASE_SERVICE_ROLE_KEY_PREVIEW',
     describe: 'Preview override for the service-role key',
     requiredOn: ['preview'],
-    forbiddenOn: ['production'],
+    forbiddenOn: ['production', 'development'],
+    // FORBIDDEN ON DEVELOPMENT TOO. The override is consulted only when
+    // VERCEL_ENV is 'preview', so on the development scope it is inert: nothing
+    // reads it, and a value nothing reads drifts unnoticed and misleads whoever
+    // finds it next.
     mustBeSensitive: true,
     previewBranchScoping: 'forbidden',
     shape: SHAPES.supabaseServiceKey,
@@ -351,6 +394,11 @@ export const ENV_MANIFEST = [
     // signature verification and 400s forever while payments keep succeeding.
     requiredOn: ['production', 'preview'],
     forbiddenOn: [],
+    optionalOn: ['development'],
+    optionalReason:
+      'a local `stripe listen` mints ONE secret and the singular STRIPE_WEBHOOK_SECRET carries it, so ' +
+      'the plural list has nothing to hold on a development machine; on both deployed scopes it stays ' +
+      'required',
     mustBeSensitive: true,
     previewBranchScoping: 'forbidden',
     shape: SHAPES.stripeWebhookSecret,
@@ -368,6 +416,10 @@ export const ENV_MANIFEST = [
     requiredOn: [],
     forbiddenOn: [],
     optionalOn: ['production', 'preview', 'development'],
+    optionalReason:
+      'a deliberate compatibility path and rotation holding slot: resolveWebhookSecrets() reads the ' +
+      'plural STRIPE_WEBHOOK_SECRETS first and appends this one deduplicated, so it is never the only ' +
+      'source, and requiring it would force a duplicate of a value the plural already carries',
     mustBeSensitive: true,
     previewBranchScoping: 'allowed',
     shape: SHAPES.stripeWebhookSecret,
@@ -444,9 +496,26 @@ export const ENV_MANIFEST = [
   {
     name: 'PAYMENT_ALERT_EMAIL',
     describe: 'Where payment and health alerts are delivered',
-    requiredOn: [],
+    // REQUIRED ON PRODUCTION, AND SET THERE (2026-08-03). Two call sites read
+    // it, src/lib/health/runner.ts and src/app/api/cron/webhook-sentinel/route.ts,
+    // and both used to fall back to a PERSONAL address hardcoded separately in
+    // each file. Nothing was lost, which is why it survived, but the destination
+    // for every payment and health alert was a literal in source rather than a
+    // value anyone could see or change, in two places that could drift. It was
+    // also set ONLY on preview branch scopes, and an alert that fires only on a
+    // preview branch is not an alert.
+    //
+    // Both literals are gone (founder ruling R2). Both call sites now read
+    // src/lib/env/destinations.ts, whose fallback is the brand inbox and never a
+    // personal address. The fallback deliberately STAYS: a required variable
+    // that someone later deletes must degrade to a real inbox, never to nothing.
+    //
+    // NOT alerts@eventlinqs.com. That address was tested on 2026-08-03 and HARD
+    // BOUNCED (`550 5.4.1 Recipient address rejected`, Exchange Online): the
+    // mailbox does not exist. Do not point this at it until it does.
+    requiredOn: ['production'],
     forbiddenOn: [],
-    optionalOn: ['production', 'preview', 'development'],
+    optionalOn: ['preview', 'development'],
     mustBeSensitive: false,
     previewBranchScoping: 'allowed',
     shape: SHAPES.anyNonEmpty,
@@ -457,9 +526,16 @@ export const ENV_MANIFEST = [
   {
     name: 'SUPPORT_INBOX_EMAIL',
     describe: 'Inbound support address surfaced in help content',
-    requiredOn: [],
+    // REQUIRED ON PRODUCTION, AND SET THERE (2026-08-03). One call site reads
+    // it, src/lib/ai/handoff.ts. Support mail never vanished and never threw,
+    // because it fell back to the apex address; the defect was that the address
+    // a customer's escalation reaches was a literal in a source file while the
+    // variable existed on no scope at all. It now reads
+    // src/lib/env/destinations.ts, the one definition every destination shares,
+    // and the fallback STAYS for the same reason as PAYMENT_ALERT_EMAIL.
+    requiredOn: ['production'],
     forbiddenOn: [],
-    optionalOn: ['production', 'preview', 'development'],
+    optionalOn: ['preview', 'development'],
     mustBeSensitive: false,
     previewBranchScoping: 'allowed',
     shape: SHAPES.anyNonEmpty,
@@ -542,9 +618,30 @@ export const ENV_MANIFEST = [
   // ── Canonical origin ──────────────────────────────────────────────────────
   {
     name: 'NEXT_PUBLIC_SITE_URL',
-    describe: 'Explicit canonical origin override for metadata, sitemap and links',
+    describe: 'THE canonical origin. Every other origin variable derives from this one',
+    // THE CANONICAL ORIGIN, chosen over NEXT_PUBLIC_APP_URL on three grounds,
+    // none of them taste:
+    //   1. BOTH resolvers already consult it. getSiteUrl() reads it first and
+    //      getAppUrl() falls back to it, so it is the only origin variable the
+    //      whole platform already agrees on. NEXT_PUBLIC_APP_URL is read by one
+    //      resolver only.
+    //   2. It feeds the compounding surface. metadataBase, canonical tags,
+    //      og:url, robots.txt and sitemap.xml all resolve through getSiteUrl(),
+    //      and those are the surfaces where a wrong origin is expensive for
+    //      years rather than minutes.
+    //   3. Its name says what it is. An origin named APP_URL invites a second
+    //      meaning ("the app, as opposed to the site"), and that ambiguity is
+    //      how two sources of truth are born in the first place.
+    // It stays OPTIONAL rather than required because getSiteUrl() has a
+    // deploy-safe fallback chain that can never reach localhost, so the platform
+    // is correct with it unset. When it IS set it must be a branded https origin,
+    // and it must agree with NEXT_PUBLIC_APP_URL: see ORIGIN_AGREEMENT.
     requiredOn: [],
     forbiddenOn: [],
+    optionalReason:
+      'getSiteUrl() resolves a correct branded origin with this unset, so requiring it would add a ' +
+      'value that can only be wrong; when present it is the canonical origin every other origin ' +
+      'variable derives from',
     // getSiteUrl() has a deploy-safe fallback chain that can never reach
     // localhost, so this is an override rather than a dependency. When it IS
     // set it must be a branded https origin, because a wrong value puts a 301
@@ -561,10 +658,28 @@ export const ENV_MANIFEST = [
   },
   {
     name: 'NEXT_PUBLIC_APP_URL',
-    describe: 'Absolute app origin for Stripe redirects, payout emails and share links',
+    describe: 'DERIVED ALIAS of the canonical origin, kept for local development',
+    // NOT A SECOND SOURCE OF TRUTH. NEXT_PUBLIC_SITE_URL is the canonical origin
+    // (see its entry above for the justification). This variable survives for
+    // exactly one reason: `getAppUrl()` in src/lib/site-url.ts reads it FIRST so
+    // a developer can point a local machine at http://localhost:3000 without
+    // touching the canonical variable, and .env.example documents that. On every
+    // deployed scope it is redundant, because getAppUrl() already falls through
+    // to NEXT_PUBLIC_SITE_URL and then to the same deploy-safe chain getSiteUrl()
+    // uses.
+    //
+    // Redundant is safe. DISAGREEING is not: getSiteUrl() feeds canonical tags,
+    // og:url, the sitemap and every tracked or QR-encoded link, while getAppUrl()
+    // feeds Stripe return URLs, payout emails and share cards. Two origins that
+    // differ split the platform in half, and Stripe does not follow redirects on
+    // a return URL. ORIGIN_AGREEMENT below makes that disagreement a build
+    // failure rather than a silent split.
     requiredOn: [],
     forbiddenOn: [],
     optionalOn: ['production', 'preview', 'development'],
+    optionalReason:
+      'a local-development override for getAppUrl(); on any deployed scope it is redundant with ' +
+      'NEXT_PUBLIC_SITE_URL and is held to agreement with it by ORIGIN_AGREEMENT',
     mustBeSensitive: false,
     previewBranchScoping: 'allowed',
     shape: SHAPES.originOrLocalhost,
@@ -578,9 +693,31 @@ export const ENV_MANIFEST = [
   {
     name: 'WEBHOOK_CANONICAL_HOST',
     describe: 'The host Stripe endpoints must point at, for the endpoint config check',
+    // DELIBERATELY OPTIONAL EVERYWHERE, AND KEPT. It has exactly one consumer,
+    // `endpointConfigCheck()` in src/lib/health/payment-checks.ts, which resolves
+    // `process.env.WEBHOOK_CANONICAL_HOST || new URL(origin).host` and then
+    // counts the enabled Stripe endpoints pointing at that host.
+    //
+    // NOT REQUIRED ON PRODUCTION, on the evidence: on production `origin` is
+    // getSiteUrl(), which resolves to the canonical https://www.eventlinqs.com.au,
+    // so the fallback already produces exactly the value the override would
+    // supply. Requiring it there would add a variable that can only ever restate
+    // what the code already computes, and a variable that can disagree with the
+    // truth is worse than one that cannot.
+    //
+    // NOT REMOVED EITHER, which the alternative reading of this decision would
+    // have done: on a PREVIEW deployment `origin` is the deployment's own
+    // vercel.app URL while the Stripe endpoints point at the canonical host, so
+    // without the override the check finds zero matching endpoints and reports a
+    // failure that is not real. That is why it exists on preview branch scopes
+    // and nowhere else, and that placement is correct.
     requiredOn: [],
     forbiddenOn: [],
     optionalOn: ['production', 'preview', 'development'],
+    optionalReason:
+      'on production the code already computes this exact host from getSiteUrl(), so requiring it ' +
+      'would only create a value that can disagree with the truth; on preview it is a genuine ' +
+      'override because the deployment host is not the endpoint host',
     mustBeSensitive: false,
     previewBranchScoping: 'allowed',
     shape: SHAPES.hostname,
@@ -652,6 +789,9 @@ export const ENV_MANIFEST = [
     requiredOn: [],
     forbiddenOn: [],
     optionalOn: ['production', 'preview', 'development'],
+    optionalReason:
+      'error reporting degrades to silence rather than breaking a request, so the platform must still ' +
+      'boot and serve on a scope with no Sentry project attached',
     mustBeSensitive: false,
     previewBranchScoping: 'allowed',
     shape: SHAPES.httpsUrl,
@@ -665,6 +805,9 @@ export const ENV_MANIFEST = [
     requiredOn: [],
     forbiddenOn: [],
     optionalOn: ['production', 'preview', 'development'],
+    optionalReason:
+      'browser error reporting degrades to silence rather than breaking a page, and requiring it would ' +
+      'fail a correct local build that has no Sentry project',
     mustBeSensitive: false,
     previewBranchScoping: 'allowed',
     shape: SHAPES.httpsUrl,
@@ -678,6 +821,10 @@ export const ENV_MANIFEST = [
     requiredOn: [],
     forbiddenOn: [],
     optionalOn: ['production', 'preview', 'development'],
+    optionalReason:
+      'source-map upload is a build-time convenience: without it the build still succeeds and stack ' +
+      'traces are merely unminified, so requiring it would fail a correct build over a diagnostic ' +
+      'nicety',
     mustBeSensitive: false,
     previewBranchScoping: 'allowed',
     shape: SHAPES.shortSlug,
@@ -691,6 +838,9 @@ export const ENV_MANIFEST = [
     requiredOn: [],
     forbiddenOn: [],
     optionalOn: ['production', 'preview', 'development'],
+    optionalReason:
+      'source-map upload only, as with SENTRY_ORG: its absence costs readable stack traces, never any ' +
+      'running behaviour',
     mustBeSensitive: false,
     previewBranchScoping: 'allowed',
     shape: SHAPES.shortSlug,
@@ -704,6 +854,9 @@ export const ENV_MANIFEST = [
     requiredOn: [],
     forbiddenOn: [],
     optionalOn: ['production', 'preview', 'development'],
+    optionalReason:
+      'source-map upload only, as with SENTRY_ORG. It stays declared mustBeSensitive so that IF it is ' +
+      'present it can still never be read back out of the store',
     mustBeSensitive: true,
     previewBranchScoping: 'allowed',
     shape: SHAPES.anyNonEmpty,
@@ -717,6 +870,10 @@ export const ENV_MANIFEST = [
     requiredOn: [],
     forbiddenOn: [],
     optionalOn: ['production', 'preview', 'development'],
+    optionalReason:
+      'the health endpoint fails CLOSED when it is unset, refusing the probe rather than exposing the ' +
+      'report, so absence is the SAFE state and requiring it would turn a safe default into a build ' +
+      'failure',
     mustBeSensitive: true,
     previewBranchScoping: 'allowed',
     shape: SHAPES.anyNonEmpty,
@@ -732,11 +889,41 @@ export const ENV_MANIFEST = [
     requiredOn: [],
     forbiddenOn: [],
     optionalOn: ['production', 'preview', 'development'],
+    optionalReason:
+      'used only by the seeding scripts under scripts/, never by any code path a request can reach, so ' +
+      'no deployment needs it and its absence cannot affect a user',
     mustBeSensitive: false,
     previewBranchScoping: 'allowed',
     shape: SHAPES.anyNonEmpty,
     paymentCritical: false,
     githubActions: false,
+    publicVar: false,
+  },
+
+  // ── CI-only credentials ───────────────────────────────────────────────────
+  {
+    name: 'SUPABASE_ACCESS_TOKEN',
+    describe: 'Supabase management API token used by the CI types-drift guard',
+    // DECLARED HERE BECAUSE IT WAS INVISIBLE. It lives in GitHub Actions and
+    // nowhere else, is read by .github/workflows/ci.yml for the types-drift
+    // guard, and was absent from this manifest entirely. A credential the
+    // manifest does not name is a credential the rotation runbook cannot list
+    // and the store checker cannot miss, which is exactly how it expired twice
+    // without anyone noticing until the guard went quiet.
+    //
+    // FORBIDDEN ON EVERY VERCEL SCOPE. It is a management-plane token: it can
+    // read and alter project configuration through the Supabase API. Nothing in
+    // the running application uses it, so a copy sitting in a deployment scope
+    // would be pure attack surface with no consumer, and it would be readable on
+    // Development where the platform cannot hold it sensitive.
+    requiredOn: [],
+    forbiddenOn: ['production', 'preview', 'development'],
+    optionalOn: [],
+    mustBeSensitive: true,
+    previewBranchScoping: 'forbidden',
+    shape: SHAPES.anyNonEmpty,
+    paymentCritical: false,
+    githubActions: true,
     publicVar: false,
   },
 
@@ -921,6 +1108,43 @@ export const CROSS_RULES = [
     appliesTo: ['production'],
     needs: 'store',
   },
+  {
+    id: 'ORIGIN_AGREEMENT',
+    kind: 'originAgreement',
+    describe:
+      'NEXT_PUBLIC_SITE_URL is the canonical origin and NEXT_PUBLIC_APP_URL is a derived alias. ' +
+      'When both are set they must resolve to the SAME origin. getSiteUrl() feeds canonical tags, ' +
+      'og:url, the sitemap and every tracked or QR-encoded poster link; getAppUrl() feeds Stripe ' +
+      'return URLs, payout emails and share cards. Two origins that disagree split the platform in ' +
+      'half along that line, every generated link becomes a 301 for one half, and Stripe does not ' +
+      'follow redirects on a return URL. Neither variable is wrong on its own, which is why nothing ' +
+      'downstream reports it.',
+    canonical: 'NEXT_PUBLIC_SITE_URL',
+    alias: 'NEXT_PUBLIC_APP_URL',
+    appliesTo: ['production', 'preview'],
+    needs: 'value',
+  },
+  {
+    id: 'LIVE_CREDENTIAL_ISOLATION',
+    kind: 'liveCredentialIsolation',
+    describe:
+      'No NON-PRODUCTION scope may hold a live-mode credential, and production may not hold a ' +
+      'test-mode one. STRIPE_MODE_FAMILY already holds production to live keys, but nothing held ' +
+      'the mirror image: a pk_live_ or sk_live_ key, or the production Supabase project ref, ' +
+      'sitting on preview or development. That direction matters more since the platform cannot ' +
+      'store a Development value as sensitive, so anyone with project access can read whatever is ' +
+      'there. This rule is what makes that readable Development value safe: it is guaranteed to be ' +
+      'a test credential, worthless against production.\n\n' +
+      'SCOPE OF THIS RULE: Stripe only, deliberately. The other keyed service, Supabase, is already ' +
+      'held by SUPABASE_PRODUCTION_REF_ISOLATION above, which covers the same three scopes and ' +
+      'compares project refs rather than key material. Restating it here would report one defect ' +
+      'twice and leave two rules to keep in step, so the pair is complete without the duplication. ' +
+      'Any FUTURE keyed service joins this rule by adding its variables to modeVars.',
+    modeVars: ['STRIPE_SECRET_KEY', 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY'],
+    forbiddenMode: 'live',
+    appliesTo: ['preview', 'development', 'local'],
+    needs: 'value',
+  },
 ]
 
 /** Look one entry up by name. Returns undefined when it is not declared. */
@@ -952,4 +1176,40 @@ export function policyFor(entry, scope) {
   if (entry.requiredOn?.includes(scope)) return 'required'
   if (entry.optionalOn?.includes(scope)) return 'optional'
   return 'unlisted'
+}
+
+/**
+ * What the VERCEL STORE may hold, which is a different question from what a
+ * running PROCESS needs.
+ *
+ * `policyFor` answers: when the code runs as this scope, must this variable be
+ * in its environment? A developer running the app locally genuinely needs
+ * SUPABASE_SERVICE_ROLE_KEY in their process, so that stays required.
+ *
+ * This answers: may the Vercel store keep a copy of it on that scope? For a
+ * SECRET on a scope the platform cannot mark sensitive, the answer is no.
+ *
+ * THE DEVELOPMENT SCOPE MUST NOT HOLD SECRETS AT ALL (founder ruling R3,
+ * 2026-08-03). Vercel refuses `--sensitive` on Development by design, because
+ * Development exists to be pulled to a laptop by `vercel env pull`. So every
+ * secret stored there is readable in plain text by anyone with project access,
+ * permanently, with no setting that can change it. The previous position was
+ * that this was tolerable because LIVE_CREDENTIAL_ISOLATION guarantees the
+ * value is a test credential. That argument is FALSE for any credential with no
+ * test mode: the audit found a live RESEND_API_KEY and a billable
+ * GOOGLE_MAPS_API_KEY sitting readable there, and no mode rule can protect
+ * either, because neither has a mode.
+ *
+ * The replacement is not a weaker store, it is a different store: a local
+ * `.env.local` file, which is what that file is for, is gitignored, and never
+ * leaves the machine. See docs/ENV-DOCTRINE.md.
+ *
+ * Returns 'forbidden' for a secret on a non-sensitive-capable Vercel scope,
+ * otherwise defers to `policyFor`.
+ */
+export function storePolicyFor(entry, scope) {
+  if (entry.mustBeSensitive && SCOPES.includes(scope) && !SENSITIVE_CAPABLE_SCOPES.includes(scope)) {
+    return 'forbidden'
+  }
+  return policyFor(entry, scope)
 }

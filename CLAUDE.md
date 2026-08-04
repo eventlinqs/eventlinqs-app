@@ -53,6 +53,7 @@ silently follow the stale doc.
 | Seed or demo data | `seed-events` skill, Law 3, Media architecture |
 | Links, routes, navigation | Law 5 (zero dead links) |
 | A migration or the database | Verification and gates (Migrations) |
+| An environment variable, a secret, a store scope, a sender or alert address | `docs/ENV-DOCTRINE.md`, `src/lib/env/manifest.mjs` (declare it there and the guards pick it up), Verification and gates |
 | A fee, pricing, checkout charge, or payout | Fee system (one source), `docs/FEE-SYSTEM.md` |
 | Venues, venue enrolment, venue revenue share, venue payout | Venue Revenue Sharing Program (REMOVED 2026-07-05; the section below records the decision), Fee system (one source) |
 | CI, gates, delivery | Verification and gates |
@@ -883,6 +884,13 @@ Revenue Sharing Program section above. Standard ticketing economics apply.
   "Locked fee structure" section above is its binding summary.
 - `docs/EventLinqs-Venue-Revenue-Program-SPEC.md`: the parked Venue Revenue
   Sharing Program (next major build after launch-readiness + the fee structure).
+- `docs/ENV-DOCTRINE.md`: AUTHORITY. The environment and secret contract: the
+  four locks, the store rules, sender and destination rules, the cross-store
+  handshake, and how to add or rotate a variable. `src/lib/env/manifest.mjs` and
+  the guards are the executable authority; `docs/verification/ENV-STATE.md` is a
+  GENERATED snapshot and is never hand-edited. Where a document and the manifest
+  disagree, the manifest wins. Rotation steps live in
+  `docs/security/CREDENTIAL-ROTATION.md` section 7.
 - `docs/EventLinqs_Scope_v5.md`: scope. Build nothing that contradicts it.
 - `docs/design/competitor-page-specs.md`: the per-page bar for the benchmark
   gate.

@@ -23,7 +23,7 @@
  */
 
 import { evaluateProcessEnv, evaluateStores } from '../../src/lib/env/manifest-checks.mjs'
-import { ENV_MANIFEST, policyFor } from '../../src/lib/env/manifest.mjs'
+import { ENV_MANIFEST, storePolicyFor } from '../../src/lib/env/manifest.mjs'
 
 const rep = (ch, n) => ch.repeat(n)
 const ACCOUNT = 'T8WBhGuiZ9cvxuu' // 15 characters, the shape of a Stripe account id
@@ -46,6 +46,14 @@ function goodProductionEnv() {
 
     RESEND_API_KEY: `re_${rep('r', 24)}`,
     EMAIL_FROM: 'EventLinqs <hello@eventlinqs.com>',
+    // BOTH ARE REQUIRED ON PRODUCTION and were missing from this baseline, so
+    // the "a complete, correct production environment passes" case reported two
+    // unexpected findings and this whole harness exited 1. The manifest was
+    // changed to require them without re-running the harness that proves the
+    // manifest can be satisfied. Adding a required variable means adding it here
+    // too, or the harness stops being able to demonstrate a clean pass.
+    PAYMENT_ALERT_EMAIL: 'hello@eventlinqs.com',
+    SUPPORT_INBOX_EMAIL: 'hello@eventlinqs.com',
 
     NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: `AIza${rep('G', 35)}`,
     GOOGLE_MAPS_API_KEY: `AIza${rep('g', 35)}`,
@@ -67,7 +75,9 @@ function goodInventory() {
   const records = []
   for (const entry of ENV_MANIFEST) {
     for (const scope of ['production', 'preview', 'development']) {
-      if (policyFor(entry, scope) !== 'required') continue
+      // storePolicyFor: a correct STORE never holds a secret on the Development
+      // scope, because Vercel cannot mark it sensitive there (ruling R3).
+      if (storePolicyFor(entry, scope) !== 'required') continue
       records.push({
         name: entry.name,
         scope,

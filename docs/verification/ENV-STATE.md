@@ -29,12 +29,12 @@
 > authenticated `gh`. If either is unavailable the file is left untouched rather
 > than rewritten from a partial read.
 
-Manifest: **40 variables**, **5 cross-variable rules**.
-Store records read: **121**.
+Manifest: **41 variables**, **7 cross-variable rules**.
+Store records read: **90**.
 
-- PRESENT AND CORRECT: **35**
+- PRESENT AND CORRECT: **41**
 - PRESENT BUT WRONG SCOPE: **0**
-- PRESENT BUT READABLE (must be sensitive, is not): **5**
+- PRESENT BUT READABLE (must be sensitive, is not): **0**
 - MISSING: **0**
 
 ## Every variable
@@ -50,22 +50,22 @@ build and a serving deployment can both see the real value.
 
 | Variable | State | Required on | Forbidden on | Scopes present | Read-back | Fingerprint | Real payment | GitHub Actions |
 |---|---|---|---|---|---|---|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | PRESENT AND CORRECT | production, preview, development | none | development, preview, preview (feat/design-elevation), preview (feat/design-elevation-r2), production | READABLE on preview, development, production | preview:eeb558cc development:eeb558cc production:db3ac258 | YES | not required |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | PRESENT AND CORRECT | production, preview, development | none | development, preview, preview (feat/design-elevation), preview (feat/design-elevation-r2), production | READABLE on preview, development, production | preview:ac96e992 development:ac96e992 production:c555ec59 | YES | not required |
-| `SUPABASE_SERVICE_ROLE_KEY` | PRESENT BUT READABLE | production, preview, development | none | development, preview, preview (feat/design-elevation), preview (feat/design-elevation-r2), production | READABLE on preview, development | preview:f41f0bef development:f41f0bef | YES | not required |
-| `NEXT_PUBLIC_SUPABASE_URL_PREVIEW` | PRESENT AND CORRECT | preview | production | preview, preview (feat/claude-api) | READABLE on preview | preview:eeb558cc | no | not required |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY_PREVIEW` | PRESENT AND CORRECT | preview | production | preview, preview (feat/claude-api) | READABLE on preview | preview:ac96e992 | no | not required |
-| `SUPABASE_SERVICE_ROLE_KEY_PREVIEW` | PRESENT BUT READABLE | preview | production | preview, preview (feat/claude-api) | READABLE on preview | preview:f41f0bef | no | not required |
-| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | PRESENT AND CORRECT | production, preview | none | preview, preview (feat/design-elevation), preview (feat/design-elevation-r2), preview (feat/event-media-standard), preview (feat/launch-kit), preview (release/launch-line), preview (staging/merged-main-final), production | READABLE on production | production:c87869cd | YES | not required |
-| `STRIPE_SECRET_KEY` | PRESENT BUT READABLE | production, preview | none | development, preview, preview (feat/design-elevation), preview (feat/design-elevation-r2), preview (feat/event-media-standard), preview (feat/launch-kit), preview (release/launch-line), preview (staging/merged-main-final), production | READABLE on preview, development | preview:dbaa63a3 development:dbaa63a3 | YES | not required |
+| `NEXT_PUBLIC_SUPABASE_URL` | PRESENT AND CORRECT | production, preview, development | none | development, preview, production | READABLE on preview, development, production | preview:eeb558cc development:eeb558cc production:db3ac258 | YES | not required |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | PRESENT AND CORRECT | production, preview, development | none | development, preview, production | READABLE on preview, development, production | preview:ac96e992 development:ac96e992 production:c555ec59 | YES | not required |
+| `SUPABASE_SERVICE_ROLE_KEY` | PRESENT AND CORRECT | production, preview, development | none | preview, production | withheld on read | - | YES | not required |
+| `NEXT_PUBLIC_SUPABASE_URL_PREVIEW` | PRESENT AND CORRECT | preview | production, development | preview | READABLE on preview | preview:eeb558cc | no | not required |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY_PREVIEW` | PRESENT AND CORRECT | preview | production, development | preview | READABLE on preview | preview:ac96e992 | no | not required |
+| `SUPABASE_SERVICE_ROLE_KEY_PREVIEW` | PRESENT AND CORRECT | preview | production, development | preview | withheld on read | - | no | not required |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | PRESENT AND CORRECT | production, preview | none | preview, preview (feat/event-media-standard), preview (feat/launch-kit), preview (release/launch-line), production | READABLE on preview, production | preview:5753e6fc production:c87869cd | YES | not required |
+| `STRIPE_SECRET_KEY` | PRESENT AND CORRECT | production, preview | none | preview, preview (feat/event-media-standard), preview (feat/launch-kit), preview (release/launch-line), production | withheld on read | - | YES | not required |
 | `STRIPE_WEBHOOK_SECRETS` | PRESENT AND CORRECT | production, preview | none | preview, preview (feat/walkthrough-defects), production | withheld on read | - | YES | not required |
-| `STRIPE_WEBHOOK_SECRET` | PRESENT BUT READABLE | none | none | development, preview, preview (feat/design-elevation), preview (feat/design-elevation-r2), preview (feat/event-media-standard), preview (feat/launch-kit), preview (release/launch-line), preview (staging/merged-main-final), production | READABLE on development | development:9a30e5dd | no | not required |
-| `CRON_SECRET` | PRESENT AND CORRECT | production | none | preview, preview (feat/broadcast-layer), preview (feat/design-elevation), preview (feat/design-elevation-r2), preview (feat/event-media-standard), preview (feat/launch-kit), preview (release/launch-line), preview (staging/merged-main-final), production | withheld on read | - | YES | required, present |
+| `STRIPE_WEBHOOK_SECRET` | PRESENT AND CORRECT | none | none | preview, preview (feat/event-media-standard), preview (feat/launch-kit), preview (release/launch-line), production | withheld on read | - | no | not required |
+| `CRON_SECRET` | PRESENT AND CORRECT | production | none | preview, preview (feat/broadcast-layer), preview (feat/event-media-standard), preview (feat/launch-kit), preview (release/launch-line), production | withheld on read | - | YES | required, present |
 | `QUEUE_SECRET` | PRESENT AND CORRECT | production | none | preview (release/launch-line), production | withheld on read | - | no | not required |
-| `RESEND_API_KEY` | PRESENT BUT READABLE | production, preview | none | development, preview, production | READABLE on development | development:d0daa182 | YES | required, present |
-| `EMAIL_FROM` | PRESENT AND CORRECT | production | none | development, preview, preview (feat/broadcast-layer), preview (feat/claude-api), preview (feat/design-elevation), preview (feat/design-elevation-r2), preview (feat/event-media-standard), preview (feat/launch-kit), preview (release/launch-line), production | READABLE on preview, development, production | preview:d6ba72dc development:d6ba72dc production:28217c69 | no | not required |
-| `PAYMENT_ALERT_EMAIL` | PRESENT AND CORRECT | none | none | preview (feat/design-elevation-r2), preview (feat/launch-kit), preview (staging/merged-main-final) | unknown | - | no | not required |
-| `SUPPORT_INBOX_EMAIL` | PRESENT AND CORRECT | none | none | none | unknown | - | no | not required |
+| `RESEND_API_KEY` | PRESENT AND CORRECT | production, preview | none | preview, production | withheld on read | - | YES | required, present |
+| `EMAIL_FROM` | PRESENT AND CORRECT | production | none | development, preview, preview (feat/broadcast-layer), preview (feat/event-media-standard), preview (feat/launch-kit), preview (release/launch-line), production | READABLE on preview, development, production | preview:d6ba72dc development:d6ba72dc production:28217c69 | no | not required |
+| `PAYMENT_ALERT_EMAIL` | PRESENT AND CORRECT | production | none | preview (feat/launch-kit), production | withheld on read | - | no | not required |
+| `SUPPORT_INBOX_EMAIL` | PRESENT AND CORRECT | production | none | production | withheld on read | - | no | not required |
 | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | PRESENT AND CORRECT | production, preview | none | preview, production | withheld on read | - | no | not required |
 | `GOOGLE_MAPS_API_KEY` | PRESENT AND CORRECT | production, preview | none | development, preview, production | READABLE on production, preview, development | production:3dcc7ad8 preview:3dcc7ad8 development:3dcc7ad8 | no | not required |
 | `UPSTASH_REDIS_REST_URL` | PRESENT AND CORRECT | production | none | preview, production | withheld on read | - | no | not required |
@@ -73,7 +73,7 @@ build and a serving deployment can both see the real value.
 | `ADMIN_TOTP_ENC_KEY` | PRESENT AND CORRECT | production | none | preview, production | withheld on read | - | no | not required |
 | `NEXT_PUBLIC_SITE_URL` | PRESENT AND CORRECT | none | none | production | withheld on read | - | no | not required |
 | `NEXT_PUBLIC_APP_URL` | PRESENT AND CORRECT | none | none | production | READABLE on production | production:9606bc2e | no | not required |
-| `WEBHOOK_CANONICAL_HOST` | PRESENT AND CORRECT | none | none | preview (feat/design-elevation-r2), preview (feat/launch-kit), preview (staging/merged-main-final) | unknown | - | no | not required |
+| `WEBHOOK_CANONICAL_HOST` | PRESENT AND CORRECT | none | none | preview (feat/launch-kit) | withheld on read | - | no | not required |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | PRESENT AND CORRECT | production | none | preview, production | withheld on read | - | no | not required |
 | `VAPID_PRIVATE_KEY` | PRESENT AND CORRECT | production | none | preview, production | withheld on read | - | no | not required |
 | `VAPID_SUBJECT` | PRESENT AND CORRECT | production | none | preview, production | withheld on read | - | no | not required |
@@ -85,6 +85,7 @@ build and a serving deployment can both see the real value.
 | `SENTRY_AUTH_TOKEN` | PRESENT AND CORRECT | none | none | preview, production | withheld on read | - | no | not required |
 | `HEALTH_CHECK_TOKEN` | PRESENT AND CORRECT | none | none | preview (release/launch-line), production | withheld on read | - | no | not required |
 | `PEXELS_API_KEY` | PRESENT AND CORRECT | none | none | development, preview, production | READABLE on development, preview, production | development:d78fb89b preview:d78fb89b production:d78fb89b | no | not required |
+| `SUPABASE_ACCESS_TOKEN` | PRESENT AND CORRECT | none | production, preview, development | none | unknown | - | no | required, present |
 | `HOMEPAGE_SEED_FIXTURE` | PRESENT AND CORRECT | none | production | preview | withheld on read | - | no | not required |
 | `ALLOW_EMPTY_PUBLIC_ENV` | PRESENT AND CORRECT | none | production, preview, development | none | unknown | - | no | not required |
 | `ALLOW_PRODUCTION_SUPABASE` | PRESENT AND CORRECT | none | production, preview, development | none | unknown | - | no | not required |
@@ -130,6 +131,7 @@ build and a serving deployment can both see the real value.
 | `SENTRY_AUTH_TOKEN` | any non-empty value with no leading or trailing whitespace |
 | `HEALTH_CHECK_TOKEN` | any non-empty value with no leading or trailing whitespace |
 | `PEXELS_API_KEY` | any non-empty value with no leading or trailing whitespace |
+| `SUPABASE_ACCESS_TOKEN` | any non-empty value with no leading or trailing whitespace |
 | `HOMEPAGE_SEED_FIXTURE` | any non-empty value with no leading or trailing whitespace |
 | `ALLOW_EMPTY_PUBLIC_ENV` | any non-empty value with no leading or trailing whitespace |
 | `ALLOW_PRODUCTION_SUPABASE` | any non-empty value with no leading or trailing whitespace |
@@ -138,13 +140,7 @@ build and a serving deployment can both see the real value.
 
 ## Open findings
 
-- **SUPABASE_SERVICE_ROLE_KEY** [preview]: must be stored as SENSITIVE but 1 record(s) on the preview scope can be read back in plain text by anyone with project access. Supabase service-role key: bypasses row level security. Fix: re-add it with --sensitive so the store will no longer reveal it.
-- **SUPABASE_SERVICE_ROLE_KEY** [development]: must be stored as SENSITIVE but 1 record(s) on the development scope can be read back in plain text by anyone with project access. Supabase service-role key: bypasses row level security. Fix: re-add it with --sensitive so the store will no longer reveal it.
-- **SUPABASE_SERVICE_ROLE_KEY_PREVIEW** [preview]: must be stored as SENSITIVE but 1 record(s) on the preview scope can be read back in plain text by anyone with project access. Preview override for the service-role key. Fix: re-add it with --sensitive so the store will no longer reveal it.
-- **STRIPE_SECRET_KEY** [preview]: must be stored as SENSITIVE but 1 record(s) on the preview scope can be read back in plain text by anyone with project access. Stripe secret key: creates payment intents, transfers and refunds. Fix: re-add it with --sensitive so the store will no longer reveal it.
-- **STRIPE_SECRET_KEY** [development]: must be stored as SENSITIVE but 1 record(s) on the development scope can be read back in plain text by anyone with project access. Stripe secret key: creates payment intents, transfers and refunds. Fix: re-add it with --sensitive so the store will no longer reveal it.
-- **STRIPE_WEBHOOK_SECRET** [development]: must be stored as SENSITIVE but 1 record(s) on the development scope can be read back in plain text by anyone with project access. Legacy single webhook signing secret, appended after the plural list. Fix: re-add it with --sensitive so the store will no longer reveal it.
-- **RESEND_API_KEY** [development]: must be stored as SENSITIVE but 1 record(s) on the development scope can be read back in plain text by anyone with project access. Resend API key: ticket emails, auth mail and every sentinel alert. Fix: re-add it with --sensitive so the store will no longer reveal it.
+_None. Every manifest expectation holds across both stores._
 
 ## GitHub Actions repository secrets
 
@@ -186,3 +182,17 @@ Applies to: production. Needs: the real values, so it runs in the build and in t
 CRON_SECRET must exist in BOTH Vercel Production and GitHub Actions, and the two copies must be the same secret. When they diverge the post-deploy smoke gate cannot authenticate and silently stops probing the payment and health sentinels, which is exactly what happened from 2026-07-12 to 2026-07-30.
 
 Applies to: production. Needs: both stores, so it runs in the store checker.
+
+### ORIGIN_AGREEMENT
+
+NEXT_PUBLIC_SITE_URL is the canonical origin and NEXT_PUBLIC_APP_URL is a derived alias. When both are set they must resolve to the SAME origin. getSiteUrl() feeds canonical tags, og:url, the sitemap and every tracked or QR-encoded poster link; getAppUrl() feeds Stripe return URLs, payout emails and share cards. Two origins that disagree split the platform in half along that line, every generated link becomes a 301 for one half, and Stripe does not follow redirects on a return URL. Neither variable is wrong on its own, which is why nothing downstream reports it.
+
+Applies to: production, preview. Needs: the real values, so it runs in the build and in the serving deployment.
+
+### LIVE_CREDENTIAL_ISOLATION
+
+No NON-PRODUCTION scope may hold a live-mode credential, and production may not hold a test-mode one. STRIPE_MODE_FAMILY already holds production to live keys, but nothing held the mirror image: a pk_live_ or sk_live_ key, or the production Supabase project ref, sitting on preview or development. That direction matters more since the platform cannot store a Development value as sensitive, so anyone with project access can read whatever is there. This rule is what makes that readable Development value safe: it is guaranteed to be a test credential, worthless against production.
+
+SCOPE OF THIS RULE: Stripe only, deliberately. The other keyed service, Supabase, is already held by SUPABASE_PRODUCTION_REF_ISOLATION above, which covers the same three scopes and compares project refs rather than key material. Restating it here would report one defect twice and leave two rules to keep in step, so the pair is complete without the duplication. Any FUTURE keyed service joins this rule by adding its variables to modeVars.
+
+Applies to: preview, development, local. Needs: the real values, so it runs in the build and in the serving deployment.

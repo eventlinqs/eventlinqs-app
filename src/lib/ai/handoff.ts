@@ -1,5 +1,6 @@
 import 'server-only'
 import { sendEmail } from '@/lib/email/send'
+import { supportDestination } from '@/lib/env/destinations'
 import { logAi } from './logging'
 import type { ChatMessage } from './sanitise'
 
@@ -11,7 +12,7 @@ import type { ChatMessage } from './sanitise'
  */
 
 function getSupportInbox(): string {
-  return process.env.SUPPORT_INBOX_EMAIL || 'hello@eventlinqs.com'
+  return supportDestination()
 }
 
 function escapeHtml(s: string): string {

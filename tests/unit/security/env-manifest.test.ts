@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { ENV_MANIFEST, CROSS_RULES, policyFor, shapeFor } from '@/lib/env/manifest.mjs'
+import { ENV_MANIFEST, CROSS_RULES, storePolicyFor, shapeFor } from '@/lib/env/manifest.mjs'
 import { evaluateProcessEnv, evaluateStores, checkShape } from '@/lib/env/manifest-checks.mjs'
 import { CRITICAL_ENV_RULES, ALWAYS_BLOCKING_RULES, evalEnvRule } from '@/lib/health/critical-env.mjs'
 
@@ -32,6 +32,18 @@ function goodProductionEnv(): Record<string, string> {
     QUEUE_SECRET: rep('q', 64),
     RESEND_API_KEY: `re_${rep('r', 24)}`,
     EMAIL_FROM: 'EventLinqs <hello@eventlinqs.com>',
+    // Both became REQUIRED on production when the manifest stopped leaving them
+    // with no opinion, and both were SET on production on 2026-08-03. Each has
+    // an in-code fallback, so nothing was ever lost, but the destination for a
+    // support escalation and for every payment and health alert was a literal
+    // in a source file rather than a value anyone could see or change.
+    //
+    // NOT alerts@eventlinqs.com, which this fixture used to carry: that address
+    // was tested on 2026-08-03 and HARD BOUNCED (550 5.4.1, Exchange Online).
+    // A fixture that models a bouncing address as the good case teaches the
+    // wrong thing to whoever copies it next.
+    PAYMENT_ALERT_EMAIL: 'hello@eventlinqs.com',
+    SUPPORT_INBOX_EMAIL: 'hello@eventlinqs.com',
     NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: `AIza${rep('G', 35)}`,
     GOOGLE_MAPS_API_KEY: `AIza${rep('g', 35)}`,
     UPSTASH_REDIS_REST_URL: 'https://apt-mudfish-12345.upstash.io',
@@ -48,7 +60,12 @@ function goodInventory() {
   const records: { name: string; scope: string; gitBranch: string | null; readable: boolean }[] = []
   for (const entry of ENV_MANIFEST) {
     for (const scope of ['production', 'preview', 'development']) {
-      if (policyFor(entry, scope) !== 'required') continue
+      // storePolicyFor, not policyFor: a correct STORE never holds a secret on
+      // the Development scope, because Vercel cannot mark it sensitive there
+      // (founder ruling R3). policyFor still says such a variable is required
+      // when the code RUNS as development, which is a different question and
+      // remains true - the value comes from a local .env file instead.
+      if (storePolicyFor(entry, scope) !== 'required') continue
       records.push({ name: entry.name, scope, gitBranch: null, readable: !entry.mustBeSensitive })
     }
   }
@@ -243,10 +260,28 @@ describe('LOCK 3: cross-store rules', () => {
     expect(hit?.state).toBe('readable-secret')
   })
 
-  test('unknown read-back exposure never fails, only a proven exposure does', () => {
+  // REPLACED 2026-08-03. This test used to assert that "unknown read-back
+  // exposure never fails, only a proven exposure does". That contract WAS the
+  // defect: it is precisely what let 22 branch-pinned records, STRIPE_SECRET_KEY
+  // and CRON_SECRET among them, go unmeasured while this suite and the store
+  // checker both reported green. Four of them turned out to be readable. An
+  // unmeasured secret is now a failure, and the checker pulls every pinned
+  // branch so there is nothing it cannot measure.
+  test('THE REGRESSION: unknown read-back exposure FAILS rather than passing silently', () => {
     const inv = goodInventory()
     for (const r of inv.records) if (r.name === 'SUPABASE_SERVICE_ROLE_KEY') (r as { readable: boolean | null }).readable = null
-    expect(names(evaluateStores(inv).findings)).not.toContain('SUPABASE_SERVICE_ROLE_KEY')
+    const hit = evaluateStores(inv).findings.find(f => f.name === 'SUPABASE_SERVICE_ROLE_KEY')
+    expect(hit?.state).toBe('exposure-unassessed')
+  })
+
+  test('a caller that declares it never measured exposure is not nagged about it', () => {
+    // The runtime sentinel reads the Vercel API without `decrypt` on purpose, so
+    // no secret can travel that path even in principle. It says so explicitly
+    // rather than passing `null` into a check that would call unknown safe.
+    const inv = goodInventory()
+    for (const r of inv.records) if (r.name === 'SUPABASE_SERVICE_ROLE_KEY') (r as { readable: boolean | null }).readable = null
+    const findings = evaluateStores(inv, { exposureAssessed: false }).findings
+    expect(findings.filter(f => f.state === 'exposure-unassessed')).toEqual([])
   })
 
   test('a scope-wide preview variable wrongly pinned to one git branch fails', () => {
