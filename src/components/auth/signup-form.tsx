@@ -184,11 +184,14 @@ export function SignupForm({ role = 'attendee', googleEnabled }: Props) {
 
         <label className="flex min-h-[44px] cursor-pointer items-start gap-3 py-1">
           <input
-            id="digest-opt-in"
-            name="digest-opt-in"
-            type="checkbox"
+            // Both branches independently gave this checkbox an id and a name
+            // (main as digest-opt-in, auth-hardening as digestOptIn) and the
+            // rebase kept both, which React resolves by silently taking the
+            // last. One pair, camelCase to match fullName above and the
+            // digestOptIn state and request field.
             id="digestOptIn"
             name="digestOptIn"
+            type="checkbox"
             checked={digestOptIn}
             onChange={(e) => setDigestOptIn(e.target.checked)}
             className="mt-0.5 h-5 w-5 shrink-0 rounded border-ink-200 text-gold-500 focus:ring-2 focus:ring-gold-400"
