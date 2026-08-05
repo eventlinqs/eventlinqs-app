@@ -86,6 +86,17 @@ if (typeof window !== 'undefined' && dsn && shouldInitSentry()) {
   window.addEventListener('error', onError)
   window.addEventListener('unhandledrejection', onRejection)
 
+  // Mark the exact moment capture becomes live. This is the boundary the whole
+  // safety argument rests on, and without a mark it can only be inferred from
+  // timing, which is a race. scripts/verify/sentry-pre-init-capture-proof.mjs
+  // waits for this mark before throwing, so the proof tests the shim rather
+  // than the network. Free, and carries no PII.
+  try {
+    performance.mark('el:sentry-shim-armed')
+  } catch {
+    // User Timing is not load-bearing. Never let telemetry break the page.
+  }
+
   // STEP 2. Load the SDK off the boot path.
   const boot = () => {
     import('@/lib/observability/sentry-client-boot')
