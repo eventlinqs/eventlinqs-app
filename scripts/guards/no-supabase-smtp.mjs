@@ -19,9 +19,8 @@
  *
  * Run by `npm run guards`, which `prebuild` invokes, so `npm run build` fails.
  */
-import { globSync } from 'node:fs'
 import { join } from 'node:path'
-import { readSource, lineAt } from './lib/source.mjs'
+import { readSource, lineAt, sourceFiles } from './lib/source.mjs'
 
 const ROOT = process.cwd()
 
@@ -51,8 +50,7 @@ const BANNED = [
 
 const failures = []
 
-for (const rel of globSync('src/**/*.{ts,tsx}', { cwd: ROOT })) {
-  const file = rel.replace(/\\/g, '/')
+for (const file of sourceFiles(ROOT)) {
   // `code` has comments AND string contents blanked, so this guard's own
   // explanations, and the comments in the fixed code recording which call was
   // removed and why, cannot trip it.

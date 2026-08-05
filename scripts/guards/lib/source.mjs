@@ -19,8 +19,16 @@
  *
  * Deliberately small scanners rather than a parser: guards run inside
  * `prebuild` and must not pull a TypeScript dependency onto the build path.
+ *
+ * Also the single source of the file LIST every guard scans. It used to be a
+ * `globSync` call copy-pasted into three guards, which crashed the CI build on
+ * 2026-08-05: `node:fs` only began exporting `globSync` in Node 22, and CI runs
+ * Node 20, so all three died at import with a SyntaxError while passing locally
+ * on Node 24. One walker, in one place, on an API that has existed since Node
+ * 10, removes both the duplication and the version exposure.
  */
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
+import { join, relative } from 'node:path'
 
 const blank = (ch) => (ch === '\n' ? '\n' : ' ')
 
@@ -88,4 +96,30 @@ export function readSource(path) {
 /** 1-indexed line number of a character offset. */
 export function lineAt(src, index) {
   return src.slice(0, index).split('\n').length
+}
+
+/**
+ * Every TypeScript source file under src/, as forward-slashed paths relative to
+ * `root`, sorted so guard output is stable run to run and machine to machine.
+ *
+ * `readdirSync(dir, { withFileTypes: true })` is the same walk the pre-existing
+ * scripts/ci/critical-path-guard.mjs has always used, and it is available in
+ * every Node the platform supports. Do NOT swap this back to fs.globSync or
+ * fs.promises.glob: both are Node 22+ and CI runs the version pinned in .nvmrc.
+ */
+export function sourceFiles(root, { extensions = ['.ts', '.tsx'] } = {}) {
+  const out = []
+
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      // Nothing under a dot-directory or node_modules is platform source.
+      if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue
+      const full = join(dir, entry.name)
+      if (entry.isDirectory()) walk(full)
+      else if (extensions.some((ext) => entry.name.endsWith(ext))) out.push(full)
+    }
+  }
+
+  walk(join(root, 'src'))
+  return out.map((f) => relative(root, f).replace(/\\/g, '/')).sort()
 }

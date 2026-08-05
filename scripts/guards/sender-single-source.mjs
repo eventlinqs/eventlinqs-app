@@ -21,8 +21,8 @@
  * Run by `npm run guards`, which `prebuild` invokes, so `npm run build` fails.
  */
 import { readFileSync } from 'node:fs'
-import { globSync } from 'node:fs'
 import { join } from 'node:path'
+import { sourceFiles } from './lib/source.mjs'
 
 const ROOT = process.cwd()
 
@@ -50,8 +50,7 @@ const PATTERNS = [
 
 const failures = []
 
-for (const rel of globSync('src/**/*.{ts,tsx}', { cwd: ROOT })) {
-  const file = rel.replace(/\\/g, '/')
+for (const file of sourceFiles(ROOT)) {
   if (file === SINGLE_SOURCE) continue
   const src = readFileSync(join(ROOT, file), 'utf8')
   for (const { re, what } of PATTERNS) {

@@ -18,9 +18,8 @@
  * Run by `npm run guards`, which `prebuild` invokes, so `npm run build` fails.
  */
 import { existsSync } from 'node:fs'
-import { globSync } from 'node:fs'
 import { join } from 'node:path'
-import { readSource, lineAt } from './lib/source.mjs'
+import { readSource, lineAt, sourceFiles } from './lib/source.mjs'
 
 const ROOT = process.cwd()
 
@@ -60,11 +59,7 @@ function read(rel) {
   return readSource(join(ROOT, rel)).code
 }
 
-function sourceFiles() {
-  return globSync('src/**/*.{ts,tsx}', { cwd: ROOT }).map((p) => p.replace(/\\/g, '/'))
-}
-
-const FILES = sourceFiles()
+const FILES = sourceFiles(ROOT)
 
 // ---------------------------------------------------------------------------
 // CHECK 1: every signInWithOAuth call site is a registered provider button.

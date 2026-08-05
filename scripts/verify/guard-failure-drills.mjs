@@ -82,12 +82,49 @@ const DRILLS = [
     expect: 'auth.signInWithOtp()',
   },
   {
+    name: 'verification resend back on Supabase SMTP',
+    guard: `${GUARDS}/no-supabase-smtp.mjs`,
+    file: 'src/components/auth/login-form.tsx',
+    find: "      const res = await fetch('/api/auth/magic-link', {",
+    replace:
+      "      await supabase.auth.resend({ type: 'signup', email })\n      const res = await fetch('/api/auth/magic-link', {",
+    expect: 'auth.resend()',
+  },
+  {
+    name: 'admin invite back on Supabase SMTP',
+    guard: `${GUARDS}/no-supabase-smtp.mjs`,
+    file: 'src/lib/auth/dispatch-auth-link.ts',
+    find: '      ? await admin.auth.admin.generateLink({',
+    replace:
+      '      ? await admin.auth.admin.inviteUserByEmail(email) ?? await admin.auth.admin.generateLink({',
+    expect: 'auth.admin.inviteUserByEmail()',
+  },
+  {
+    name: 'provider registries disagree (runtime knows a provider the guard does not)',
+    guard: `${GUARDS}/auth-provider-guard.mjs`,
+    file: 'src/lib/auth/providers.ts',
+    find: "export const RENDERABLE_PROVIDERS = ['google'] as const",
+    replace: "export const RENDERABLE_PROVIDERS = ['google', 'apple'] as const",
+    expect: 'provider registries disagree',
+  },
+  {
     name: 'sender address literal reintroduced',
     guard: `${GUARDS}/sender-single-source.mjs`,
     file: 'src/lib/waitlist/promote.ts',
     find: '        from: getNoReplyFrom(),',
     replace: "        from: 'EventLinqs <noreply@eventlinqs.com>',",
     expect: 'a literal sender address on a from/replyTo property',
+  },
+  {
+    name: 'sender address hidden in a FROM constant',
+    guard: `${GUARDS}/sender-single-source.mjs`,
+    file: 'src/lib/waitlist/promote.ts',
+    find: '        from: getNoReplyFrom(),',
+    // The guard is a text scanner, so the intermediate need not compile; the
+    // harness restores the file in a `finally` either way.
+    replace:
+      "        const MAIL_FROM = 'EventLinqs <noreply@eventlinqs.com>'\n        from: MAIL_FROM,",
+    expect: 'a literal sender address assigned to a FROM constant',
   },
   {
     name: 'sign-in email field reverted to autocomplete="email"',
@@ -112,6 +149,54 @@ const DRILLS = [
     find: '        id="username"',
     replace: '        id="username-removed-by-drill"',
     expect: 'no <input id="username"> found',
+  },
+
+  // -------------------------------------------------------------------------
+  // node-version-contract. Every check, because the FIRST draft of this guard
+  // could not fail at all: it scanned the string-blanked source view for a
+  // module specifier, which is itself a string, so the pattern never matched
+  // and it reported PASS on the very defect it was written for. These drills
+  // are what caught that, and they are why each check now has one.
+  // -------------------------------------------------------------------------
+  {
+    name: 'globSync imported from node:fs (the 2026-08-05 CI failure)',
+    guard: `${GUARDS}/node-version-contract.mjs`,
+    file: 'scripts/guards/no-supabase-smtp.mjs',
+    find: "import { join } from 'node:path'",
+    replace: "import { globSync } from 'node:fs'\nimport { join } from 'node:path'",
+    expect: "imports { globSync } from 'node:fs'",
+  },
+  {
+    name: 'a built-in module that does not exist in Node 20 (node:sqlite)',
+    guard: `${GUARDS}/node-version-contract.mjs`,
+    file: 'scripts/guards/no-supabase-smtp.mjs',
+    find: "import { join } from 'node:path'",
+    replace: "import { DatabaseSync } from 'node:sqlite'\nimport { join } from 'node:path'",
+    expect: "imports 'node:sqlite', which does not exist",
+  },
+  {
+    name: 'a global static added after Node 20 (Promise.withResolvers)',
+    guard: `${GUARDS}/node-version-contract.mjs`,
+    file: 'scripts/guards/no-supabase-smtp.mjs',
+    find: 'const failures = []',
+    replace: 'const failures = []\nconst deferred = Promise.withResolvers()',
+    expect: 'uses Promise.withResolvers',
+  },
+  {
+    name: 'a prototype method added after Node 20 (Set.isSubsetOf)',
+    guard: `${GUARDS}/node-version-contract.mjs`,
+    file: 'scripts/guards/no-supabase-smtp.mjs',
+    find: 'const failures = []',
+    replace: 'const failures = []\nconst nested = new Set().isSubsetOf(new Set())',
+    expect: 'uses .isSubsetOf(',
+  },
+  {
+    name: 'a workflow pinned BELOW the .nvmrc contract',
+    guard: `${GUARDS}/node-version-contract.mjs`,
+    file: '.github/workflows/lighthouse.yml',
+    find: 'node-version: 20',
+    replace: 'node-version: 18',
+    expect: 'below the .nvmrc contract',
   },
 ]
 

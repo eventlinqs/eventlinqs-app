@@ -15,7 +15,10 @@
     "admin:proof:setup": "playwright test --config playwright.admin.config.ts --project setup --headed",
     "admin:proof": "playwright test --config playwright.admin.config.ts --project desktop && playwright test --config playwright.admin.config.ts --project mobile",
     "admin:lighthouse": "node scripts/admin-lighthouse.mjs",
-    "guards": "node scripts/guards/run-guards.mjs"
+    "guards": "node scripts/guards/run-guards.mjs",
+    "guards:contract-node": "node scripts/guards/contract-node.mjs",
+    "guards:surface": "node scripts/guards/contract-node.mjs scripts/guards/lib/generate-node-surface.mjs",
+    "guards:drills": "node scripts/verify/guard-failure-drills.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",
