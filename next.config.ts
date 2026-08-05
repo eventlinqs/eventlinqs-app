@@ -167,11 +167,24 @@ const nextConfig: NextConfig = {
     // shared chunk on every route. Phase 1B Pre-Task 3 iter-2 measured
     // ~75 kB unused JS in shared chunks across all five page types;
     // lucide-react was the dominant offender (23 import sites).
+    //
+    // The @sentry/* entries were added 2026-08-05. @sentry/nextjs's browser
+    // entry is `export * from '@sentry/react'`, chaining to @sentry/browser and
+    // then @sentry/core, and @sentry/core carries integrations this platform
+    // never runs in a browser (Supabase, GraphQL, OpenAI, Anthropic, LangGraph,
+    // Statsig, Unleash). All four packages declare sideEffects:false with real
+    // ESM entries, so the chain is shakeable in principle. Whether it actually
+    // shakes under Turbopack is MEASURED, never assumed: the numbers and the
+    // verdict are in docs/perf/sentry-client-surface.md.
     optimizePackageImports: [
       'lucide-react',
       '@tanstack/react-query',
       '@supabase/ssr',
       '@supabase/supabase-js',
+      '@sentry/nextjs',
+      '@sentry/react',
+      '@sentry/browser',
+      '@sentry/core',
     ],
   },
   images: {
@@ -224,11 +237,16 @@ const nextConfig: NextConfig = {
   },
 };
 
-// Sentry webpack plugin options. Source map upload requires
-// SENTRY_AUTH_TOKEN; when the token is absent the plugin skips upload
-// silently (build still succeeds). The runtime SDK still captures
-// events on every deploy via NEXT_PUBLIC_SENTRY_DSN.
-const sentryWebpackPluginOptions = {
+// Sentry build options. Source map upload requires SENTRY_AUTH_TOKEN; when the
+// token is absent the plugin skips upload silently (build still succeeds). The
+// runtime SDK still captures events on every deploy via NEXT_PUBLIC_SENTRY_DSN.
+//
+// RENAMED from sentryWebpackPluginOptions. This project builds with TURBOPACK
+// (Next 16 default; the deployed chunks are named turbopack-*.js), and
+// @sentry/nextjs types the `webpack` key as "Options related to webpack builds,
+// has no effect if you are using Turbopack." The old name asserted a bundler
+// this project has not used for some time.
+const sentryBuildOptions = {
   org: process.env.SENTRY_ORG || "eventlinqs",
   project: process.env.SENTRY_PROJECT || "javascript-nextjs",
   authToken: process.env.SENTRY_AUTH_TOKEN,
@@ -240,9 +258,27 @@ const sentryWebpackPluginOptions = {
   // drop requests to sentry.io still let events through. Vercel
   // handles the rewrite automatically.
   tunnelRoute: "/api/monitoring",
-  // Webpack-bundled options (v10+ shape). Tree-shaking removes Sentry
-  // SDK debug logging from production bundles. automaticVercelMonitors
-  // synthesises Vercel monitors for the project on each deploy.
+  // BUNDLER-AGNOSTIC size options. These are the ones that actually fire on a
+  // Turbopack build. excludeDebugStatements defines __SENTRY_DEBUG__ false at
+  // build time so the SDK's own logger statements drop out. Measured before
+  // this landed: __SENTRY_DEBUG__ appeared 14 times and "Sentry Logger" 3 times
+  // in the shipped client chunk, because the webpack-only equivalent below was
+  // inert. It disables the SDK's `debug` option, which this project never sets.
+  //
+  // Deliberately NOT enabled, each for a stated reason, so nobody turns them on
+  // assuming they are free:
+  //   excludeTracing         - tracesSampleRate is 0.1, tracing is in use.
+  //   excludeReplayShadowDom - on-error Session Replay is in use and these
+  //   excludeReplayIframe      each remove real recording fidelity from it.
+  //   excludeReplayWorker
+  bundleSizeOptimizations: {
+    excludeDebugStatements: true,
+  },
+  // Webpack-only options. INERT on this project: @sentry/nextjs documents this
+  // key as "Options related to webpack builds, has no effect if you are using
+  // Turbopack", and this project builds with Turbopack. Kept, not deleted, so a
+  // future move back to webpack does not silently lose them. Nothing here is
+  // load-bearing today, and automaticVercelMonitors is not firing either.
   webpack: {
     treeshake: { removeDebugLogging: true },
     automaticVercelMonitors: true,
@@ -266,4 +302,4 @@ const sentryWebpackPluginOptions = {
 // just doesn't init Sentry at boot. No need to gate the wrap.
 const baseConfig = withBundleAnalyzer(nextConfig);
 
-export default withSentryConfig(baseConfig, sentryWebpackPluginOptions);
+export default withSentryConfig(baseConfig, sentryBuildOptions);
