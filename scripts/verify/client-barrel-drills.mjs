@@ -38,14 +38,25 @@ const DRILLS = [
     name: 'the client instrumentation entry',
     why: 'instrumentation-client.ts is in the browser bundle with no directive of its own.',
     file: 'instrumentation-client.ts',
-    anchor: "import { captureRouterTransitionStart } from '@sentry/nextjs'",
-    inject: "import * as Sentry from '@sentry/nextjs'",
+    // This file deliberately imports NO Sentry symbol any more: the SDK is
+    // reached only by dynamic import inside the load handler. So the anchor is
+    // the one static import it does keep.
+    anchor: "import { shouldInitSentry } from '@/lib/observability/sentry-env'",
+    inject:
+      "import * as Sentry from '@sentry/nextjs'\n" +
+      "import { shouldInitSentry } from '@/lib/observability/sentry-env'",
   },
   {
-    name: 'the Sentry client config',
-    why: 'sentry.client.config.ts is pulled in by the instrumentation entry.',
-    file: 'sentry.client.config.ts',
-    anchor: "import { init, addIntegration } from '@sentry/nextjs'",
+    name: 'the Sentry boot module, reached ONLY by dynamic import',
+    why:
+      'src/lib/observability/sentry-client-boot.ts carries the SDK and is reached ' +
+      'only by import(). A guard that walks static imports alone does not see it ' +
+      'at all: it appeared in the reachable set purely because ' +
+      'instrumentation-client.ts also has an `import type` line for one of its ' +
+      'types, and deleting that made the guard report PASS on a live barrel ' +
+      'import. This drill is the one that would have caught that.',
+    file: 'src/lib/observability/sentry-client-boot.ts',
+    anchor: "import { init, addIntegration, captureException } from '@sentry/nextjs'",
     inject: "import * as Sentry from '@sentry/nextjs'",
   },
   {
@@ -72,7 +83,21 @@ let failures = 0
 
 for (const drill of DRILLS) {
   const path = join(ROOT, drill.file)
-  const original = readFileSync(path, 'utf8')
+
+  // A drill whose target file has MOVED must report, not crash. The first
+  // version let readFileSync throw, so deleting sentry.client.config.ts turned
+  // the whole suite into an unhandled ENOENT stack trace instead of a legible
+  // "this drill is stale" line. A crash is a worse failure mode than a message,
+  // because it takes the other drills down with it and tells you nothing.
+  let original
+  try {
+    original = readFileSync(path, 'utf8')
+  } catch {
+    console.error(`[barrel-drill] SETUP FAILED (${drill.name}): ${drill.file} does not exist.`)
+    console.error(`               The file moved or was deleted. Repoint the drill; do not delete it.`)
+    failures += 1
+    continue
+  }
 
   if (!original.includes(drill.anchor)) {
     console.error(`[barrel-drill] SETUP FAILED (${drill.name}): anchor not found in ${drill.file}`)

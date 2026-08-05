@@ -18,6 +18,10 @@
       "_lighthouse_version_note": "PINNED TO @lhci/cli 0.14.x, which bundles Lighthouse 12.1.0. KNOWN LIMITATION: in 12.1.0 the TraceElements gatherer throws ('Dependency RootCauses failed: Cannot read properties of undefined (reading frame_sequence)'), so largest-contentful-paint-element and layout-shifts come back scoreDisplayMode=error with NO details in every report this gate produces, locally and in CI. The consequence is that this gate cannot tell you WHICH element is the LCP or WHERE a layout shift came from - it reports the numbers but not the cause, which is exactly what you need when a score drops. Verified fixed in Lighthouse 12.6.1 (shipped in @lhci/cli 0.15.1): both audits return real data, and on the event detail route 12.6.1 scored the pre-fix page 0.71 and the post-fix page 0.83 (versus 0.74 and 0.80 on 12.1.0). The upgrade is a one-line change in .github/workflows/lighthouse.yml, but it re-baselines ALL 11 gated URLs and only the event detail route has been measured on both versions, so it needs a validation run before it is trusted. RE-CHECK BY 2026-11-01, alongside the exemption expiries below."
     },
     "assert": {
+      "_aggregationContract": {
+        "categoryFloors": "optimistic",
+        "_note": "THE AGGREGATION CONTRACT. Read this before quoting any number from this gate. Every categories:* floor in this file aggregates with aggregationMethod 'optimistic'. For a minScore assertion, @lhci/utils resolves optimistic to Math.max(...values): THE BEST RUN, NOT THE MEDIAN. Source: @lhci/utils/src/assertions.js, `aggregationMethod = 'optimistic'` is the default at getAssertionOptions, and getValueForAggregationMethod returns Math.max for a 'min'-prefixed assertion under optimistic. This cost real hours on 2026-08-05: CI reported 'found 0.74' from values 0.72, 0.74, 0.71. The median of those is 0.72; 0.74 is the maximum. The single number was read as a median, a regression was chased that did not exist, and the branch under suspicion had changed zero bytes of runtime code on the failing route. NUMERIC ASSERTIONS DIFFER. Under optimistic, a maxNumericValue assertion resolves to Math.min, again the best run. That is why the event-detail budget below pins aggregationMethod 'median' explicitly on every numeric assertion: without it a budget looks strict and behaves loosely. The floors are pinned to 'optimistic' here to record what this gate has always done, NOT to change it. Tightening the category floors to median is a deliberate decision with its own evidence, and it has not been made. tests/unit/ci/lighthouse-aggregation-contract.test.ts fails the build if this declaration and the assertions below ever drift apart."
+      },
       "assertMatrix": [
         {
           "_pattern_note": "Negative lookahead excludes /login and /signup (SEO category - they are deliberately noindex), /culture/* (perf score - Issue #42 cold-start image-optimiser race; see the third assertMatrix entry below), AND the homepage / (same Issue #42 class per CLAUDE.md docs/perf/v2/closure-report.md flagging 'Mobile homepage and /events have known cold-cache measurement issue ... do not block on it'; see the fourth assertMatrix entry below). Each excluded path has its own dedicated assertMatrix entry that re-applies whichever assertions still need to fire at error-level for that path. assertMatrix entries are independent and additive (a URL matched by multiple entries has all matching assertions evaluated), so excluding here is the only way to suppress the default error-level threshold from also firing.",
@@ -26,25 +30,29 @@
             "categories:performance": [
               "error",
               {
-                "minScore": 0.8
+                "minScore": 0.8,
+                "aggregationMethod": "optimistic"
               }
             ],
             "categories:accessibility": [
               "error",
               {
-                "minScore": 1
+                "minScore": 1,
+                "aggregationMethod": "optimistic"
               }
             ],
             "categories:best-practices": [
               "error",
               {
-                "minScore": 1
+                "minScore": 1,
+                "aggregationMethod": "optimistic"
               }
             ],
             "categories:seo": [
               "error",
               {
-                "minScore": 1
+                "minScore": 1,
+                "aggregationMethod": "optimistic"
               }
             ],
             "largest-contentful-paint": [
@@ -124,19 +132,22 @@
             "categories:performance": [
               "error",
               {
-                "minScore": 0.8
+                "minScore": 0.8,
+                "aggregationMethod": "optimistic"
               }
             ],
             "categories:accessibility": [
               "error",
               {
-                "minScore": 1
+                "minScore": 1,
+                "aggregationMethod": "optimistic"
               }
             ],
             "categories:best-practices": [
               "error",
               {
-                "minScore": 1
+                "minScore": 1,
+                "aggregationMethod": "optimistic"
               }
             ],
             "categories:seo": "off",
@@ -181,25 +192,29 @@
             "categories:performance": [
               "warn",
               {
-                "minScore": 0.8
+                "minScore": 0.8,
+                "aggregationMethod": "optimistic"
               }
             ],
             "categories:accessibility": [
               "error",
               {
-                "minScore": 1
+                "minScore": 1,
+                "aggregationMethod": "optimistic"
               }
             ],
             "categories:best-practices": [
               "error",
               {
-                "minScore": 1
+                "minScore": 1,
+                "aggregationMethod": "optimistic"
               }
             ],
             "categories:seo": [
               "error",
               {
-                "minScore": 1
+                "minScore": 1,
+                "aggregationMethod": "optimistic"
               }
             ],
             "largest-contentful-paint": [
@@ -243,25 +258,29 @@
             "categories:performance": [
               "warn",
               {
-                "minScore": 0.8
+                "minScore": 0.8,
+                "aggregationMethod": "optimistic"
               }
             ],
             "categories:accessibility": [
               "error",
               {
-                "minScore": 1
+                "minScore": 1,
+                "aggregationMethod": "optimistic"
               }
             ],
             "categories:best-practices": [
               "error",
               {
-                "minScore": 1
+                "minScore": 1,
+                "aggregationMethod": "optimistic"
               }
             ],
             "categories:seo": [
               "error",
               {
-                "minScore": 1
+                "minScore": 1,
+                "aggregationMethod": "optimistic"
               }
             ],
             "largest-contentful-paint": [

@@ -135,7 +135,20 @@ function resolveLocal(specifier, fromFile) {
   return null
 }
 
-/** Every import/export specifier in a file, comments removed. */
+/**
+ * Every import/export specifier in a file, comments removed.
+ *
+ * DYNAMIC IMPORTS COUNT. They are how a module gets into the browser bundle just
+ * as surely as a static import; they only change WHEN it loads, not WHETHER. A
+ * version of this guard that walked static imports only had a hole big enough to
+ * drive the whole defect through: src/lib/observability/sentry-client-boot.ts is
+ * reached ONLY by `import('@/lib/observability/sentry-client-boot')`, so it sat
+ * outside the client-reachable set. It appeared inside it purely by accident,
+ * because instrumentation-client.ts also carries an `import type` line for one
+ * of its types. Deleting that one type import made the guard report PASS with a
+ * live `import * as Sentry from '@sentry/nextjs'` in the boot module. Proven by
+ * removing it and watching the guard go green on a real defect.
+ */
 function specifiersOf(source) {
   const out = []
   const re = /(?:^|[\s;}])(?:import|export)\s[^;]*?from\s*['"]([^'"]+)['"]/g
@@ -143,6 +156,10 @@ function specifiersOf(source) {
   while ((m = re.exec(source)) !== null) out.push(m[1])
   const bare = /(?:^|[\s;}])import\s*['"]([^'"]+)['"]/g
   while ((m = bare.exec(source)) !== null) out.push(m[1])
+  // import('specifier') and await import('specifier'), including whitespace and
+  // newlines between the parenthesis and the string.
+  const dynamic = /\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g
+  while ((m = dynamic.exec(source)) !== null) out.push(m[1])
   return out
 }
 
