@@ -2,7 +2,7 @@
 /**
  * Critical-path guard.
  *
- * Three classes of defect are cheap to reintroduce and expensive to notice,
+ * Four classes of defect are cheap to reintroduce and expensive to notice,
  * because all three LOOK correct in review. This guard fails the build on each.
  *
  * RULE 1 - next/dynamic called from a Server Component.
@@ -22,10 +22,15 @@
  *   these subsystems through a client boundary that owns the dynamic import.
  *
  * RULE 3 - Sentry Session Replay back in the init integrations array.
- *   rrweb is ~304KB unminified. Listing replayIntegration() in Sentry.init
- *   puts it in the main client chunk on EVERY route, where it was measured
- *   holding LCP "Render Delay" at 3,071ms. It must be armed after load
- *   instead (see sentry.client.config.ts).
+ *   rrweb is ~304KB unminified. Listing replayIntegration() in init() puts it
+ *   in the main client chunk on EVERY route, where it was measured holding LCP
+ *   "Render Delay" at 3,071ms. It must be armed after load instead (see
+ *   src/lib/observability/sentry-client-boot.ts).
+ *
+ * RULE 4 - the Sentry boot module statically imported.
+ *   sentry-client-boot.ts carries the @sentry/nextjs import and is meant to be
+ *   reached ONLY by dynamic import, off the boot critical path. One static
+ *   import puts ~202KB back on every route and looks ordinary in review.
  *
  * Run: node scripts/ci/critical-path-guard.mjs
  * Exit 0 clean, exit 1 with an explanation naming the file and the rule.
@@ -163,17 +168,36 @@ for (const rule of HOT_ROUTE_RULES) {
 // RULE 3: Session Replay must not be in the Sentry.init integrations array
 // ---------------------------------------------------------------------------
 
-const sentryConfig = path.join(ROOT, 'sentry.client.config.ts')
-if (fs.existsSync(sentryConfig)) {
-  const src = fs.readFileSync(sentryConfig, 'utf8')
-  const initMatch = src.match(/Sentry\.init\(\{([\s\S]*?)\n\s*\}\)/)
+// The client init moved out of the repo-root sentry.client.config.ts and into
+// this module on 2026-08-05, so the SDK could be dynamically imported off the
+// boot path. The old file was deleted, not emptied.
+//
+// NOTE the failure mode this rule now avoids. The previous version wrapped
+// everything in `if (fs.existsSync(sentryConfig))`, so deleting or renaming the
+// file made RULE 3 pass vacuously: the guard would have gone quiet at exactly
+// the moment the thing it protects moved. A missing target is now a FAILURE,
+// not a skip.
+const sentryBoot = path.join(ROOT, 'src/lib/observability/sentry-client-boot.ts')
+if (!fs.existsSync(sentryBoot)) {
+  failures.push(
+    `RULE 3  src/lib/observability/sentry-client-boot.ts not found.\n` +
+    `        The Sentry client init has moved. Update this rule to point at its\n` +
+    `        new home. Do NOT delete the rule: rrweb in the init integrations\n` +
+    `        array is a 304KB regression that looks correct in review.`,
+  )
+} else {
+  const src = fs.readFileSync(sentryBoot, 'utf8')
+  // Accept both the named-import form `init({` and the legacy namespace form
+  // `Sentry.init({`. The named form is what the barrel guard now requires, and
+  // matching only the namespace form is what silently broke this rule once.
+  const initMatch = src.match(/(?:Sentry\.)?\binit\(\{([\s\S]*?)\n\s*\}\)/)
   if (initMatch) {
     const initBody = initMatch[1]
     const integrationsMatch = initBody.match(/integrations\s*:\s*\[([\s\S]*?)\]/)
     if (integrationsMatch && /replayIntegration/.test(integrationsMatch[1])) {
       failures.push(
-        `RULE 3  sentry.client.config.ts\n` +
-        `        replayIntegration() is listed in the Sentry.init integrations array.\n` +
+        `RULE 3  src/lib/observability/sentry-client-boot.ts\n` +
+        `        replayIntegration() is listed in the init integrations array.\n` +
         `        That statically bundles rrweb (~304KB unminified) into the main\n` +
         `        client chunk on EVERY route. Measured cost when it was there:\n` +
         `        187KB transferred, 1,047ms evaluation, LCP render delay 3,071ms.\n` +
@@ -181,7 +205,76 @@ if (fs.existsSync(sentryConfig)) {
       )
     }
   } else {
-    failures.push('RULE 3  could not locate the Sentry.init({...}) call in sentry.client.config.ts.')
+    failures.push(
+      'RULE 3  could not locate the init({...}) call in ' +
+      'src/lib/observability/sentry-client-boot.ts.',
+    )
+  }
+}
+
+// ---------------------------------------------------------------------------
+// RULE 4: the Sentry boot module must only ever be imported dynamically
+// ---------------------------------------------------------------------------
+//
+// sentry-client-boot.ts carries the @sentry/nextjs import. Whatever imports it
+// STATICALLY pulls the entire SDK into that chunk, which is precisely the
+// 202KB-on-every-route problem the dynamic import was introduced to solve. The
+// surface itself cannot be tree-shaken away: @sentry/nextjs's browser entry is
+// `export * from '@sentry/react'` chaining to @sentry/core, and the SDK
+// documents that under Turbopack it "will no longer apply build-time
+// instrumentation", so its own tree-shaking options never run here. Moving the
+// module off the boot path is the whole win, and one static import undoes it
+// silently. Type-only imports are fine: they are erased and cost zero bytes.
+
+const BOOT_SPECIFIERS = [
+  '@/lib/observability/sentry-client-boot',
+  './sentry-client-boot',
+  '../observability/sentry-client-boot',
+]
+
+const rootTsFiles = fs
+  .readdirSync(ROOT, { withFileTypes: true })
+  .filter(e => e.isFile() && /\.tsx?$/.test(e.name))
+  .map(e => path.join(ROOT, e.name))
+
+for (const file of [...srcFiles, ...rootTsFiles]) {
+  if (path.resolve(file) === path.resolve(sentryBoot)) continue
+  const src = fs.readFileSync(file, 'utf8')
+
+  for (const spec of BOOT_SPECIFIERS) {
+    const escaped = spec.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    // A STATIC import statement only. `import(...)` as a call expression is
+    // what we want people to use, and it never matches this pattern because
+    // the call form has no `from` clause.
+    const staticRe = new RegExp(
+      `import\\s+((?:(?!\\bfrom\\b)[\\s\\S])*?)\\s+from\\s+['"]${escaped}['"]`,
+      'g',
+    )
+    let match
+    while ((match = staticRe.exec(src)) !== null) {
+      const clause = match[1]
+      const isTypeOnly = /^\s*type\s/.test(clause)
+      const braced = clause.match(/\{([\s\S]*)\}/)
+      const allSpecifiersTyped =
+        braced &&
+        braced[1]
+          .split(',')
+          .map(s => s.trim())
+          .filter(Boolean)
+          .every(s => /^type\s/.test(s))
+
+      if (!isTypeOnly && !allSpecifiersTyped) {
+        failures.push(
+          `RULE 4  ${rel(file)}\n` +
+          `        statically imports a VALUE from ${spec}.\n` +
+          `        That module carries the whole Sentry SDK, so a static import\n` +
+          `        puts ~202KB back on the boot critical path of every route and\n` +
+          `        silently undoes the deferral.\n` +
+          `        Fix: await import('@/lib/observability/sentry-client-boot')\n` +
+          `        inside a load/idle callback, as instrumentation-client.ts does.`,
+        )
+      }
+    }
   }
 }
 
@@ -197,4 +290,5 @@ if (failures.length) {
 console.log('critical-path guard: OK')
 console.log('  rule 1  no next/dynamic call from a Server Component')
 console.log('  rule 2  no heavy subsystem statically imported by a hot route')
-console.log('  rule 3  Session Replay is not in the Sentry.init integrations array')
+console.log('  rule 3  Session Replay is not in the init() integrations array')
+console.log('  rule 4  the Sentry boot module is only ever imported dynamically')

@@ -31,7 +31,21 @@
 // global-error.tsx, /api/health/sentry-error) do not move when the
 // shim swaps.
 
-import * as Sentry from '@sentry/nextjs'
+// NAMED IMPORTS, NEVER A NAMESPACE IMPORT. This shim is imported by four
+// CLIENT error boundaries (src/app/error.tsx, src/app/global-error.tsx,
+// src/app/checkout/error.tsx, src/app/(dashboard)/dashboard/error.tsx), and
+// the first two apply platform-wide, so whatever this file pulls in lands in
+// the browser bundle of every route. `import * as Sentry` cannot be
+// tree-shaken and dragged the entire @sentry/core integration surface with it.
+// See the note in instrumentation-client.ts for the full chain.
+// scripts/check-client-barrel-imports.mjs fails the build if this returns.
+import {
+  captureException as sentryCaptureException,
+  captureMessage as sentryCaptureMessage,
+  init,
+  isInitialized,
+  type Scope,
+} from '@sentry/nextjs'
 import { scrubValue } from './pii-scrub'
 import { shouldInitSentry, sentryEnvironment } from './sentry-env'
 
@@ -46,7 +60,7 @@ const isServer = typeof window === 'undefined'
 // repeat imports via Sentry.isInitialized().
 function ensureServerSentryInitialized(): void {
   if (!isServer) return
-  if (Sentry.isInitialized()) return
+  if (isInitialized()) return
 
   const sentryDsn = process.env.SENTRY_DSN
   const publicDsn = process.env.NEXT_PUBLIC_SENTRY_DSN
@@ -82,7 +96,7 @@ function ensureServerSentryInitialized(): void {
   }
 
   try {
-    Sentry.init({
+    init({
       dsn,
       tracesSampleRate: 0.1,
       profilesSampleRate: 0.1,
@@ -104,7 +118,7 @@ function ensureServerSentryInitialized(): void {
       },
     })
     diag.shimInitAt = new Date().toISOString()
-    diag.shimInitOk = Sentry.isInitialized()
+    diag.shimInitOk = isInitialized()
     console.log('[observability/sentry] shim Sentry.init returned', {
       isInitialized: diag.shimInitOk,
       dsnSource: diag.shimDsnSource,
@@ -123,9 +137,9 @@ function ensureServerSentryInitialized(): void {
 ensureServerSentryInitialized()
 
 function applyContext(
-  scope: Sentry.Scope,
+  scope: Scope,
   scrubbed: SentryContext | undefined,
-): Sentry.Scope {
+): Scope {
   if (!scrubbed) return scope
   // Tags get first-class treatment so Sentry's UI can filter on them.
   // Everything else lands in the "custom" context block.
@@ -145,8 +159,8 @@ function applyContext(
 
 export function captureException(error: unknown, context?: SentryContext): void {
   const scrubbed = context ? (scrubValue(context) as SentryContext) : undefined
-  if (Sentry.isInitialized()) {
-    Sentry.captureException(error, scope => applyContext(scope, scrubbed))
+  if (isInitialized()) {
+    sentryCaptureException(error, scope => applyContext(scope, scrubbed))
     return
   }
   if (isDev) {
@@ -157,8 +171,8 @@ export function captureException(error: unknown, context?: SentryContext): void 
 export function captureMessage(message: string, context?: SentryContext): void {
   const scrubbed = context ? (scrubValue(context) as SentryContext) : undefined
   const safeMessage = typeof message === 'string' ? message : String(message)
-  if (Sentry.isInitialized()) {
-    Sentry.captureMessage(safeMessage, scope => applyContext(scope, scrubbed))
+  if (isInitialized()) {
+    sentryCaptureMessage(safeMessage, scope => applyContext(scope, scrubbed))
     return
   }
   if (isDev) {
@@ -172,5 +186,5 @@ export function captureMessage(message: string, context?: SentryContext): void {
 // "DSN set + production" heuristic that could produce a false positive
 // before the SDK was installed.
 export function isSentryEnabled(): boolean {
-  return Sentry.isInitialized()
+  return isInitialized()
 }

@@ -139,6 +139,17 @@ jobs:
             args="$args --url=$u"
           done < gate-urls.txt
           npx --yes @lhci/cli@0.14.x collect --config=./lighthouserc.json $args
+
+          # Print every run value and the aggregation the floors actually use,
+          # BEFORE asserting. LHCI prints run values only on failure, so a
+          # passing gate shows a single number with no indication of how it was
+          # derived. On 2026-08-05 that cost hours: "found 0.74" from 0.72,
+          # 0.74, 0.71 was read as a median when it is the maximum, and a
+          # regression was chased on a branch that had changed zero bytes of
+          # runtime code on the failing route. This is a reporter and never
+          # fails the build; `lhci assert` below is the gate.
+          node scripts/ci/lighthouse-aggregation-report.mjs .lighthouseci
+
           npx --yes @lhci/cli@0.14.x assert --config=./lighthouserc.json
 
       - name: Upload Lighthouse reports

@@ -7,7 +7,10 @@
 // only, brand-aligned palette per docs/DESIGN-SYSTEM.md.
 
 import { useEffect } from 'react'
-import { captureException } from '@/lib/observability/sentry'
+// Reports through the Sentry-free seam on purpose. Importing the shim here
+// would statically pull @sentry/nextjs into this route's client bundle and
+// silently undo the SDK deferral in instrumentation-client.ts.
+import { reportClientError } from '@/lib/observability/client-error-report'
 
 interface GlobalErrorProps {
   error: Error & { digest?: string }
@@ -16,7 +19,7 @@ interface GlobalErrorProps {
 
 export default function GlobalError({ error, reset }: GlobalErrorProps) {
   useEffect(() => {
-    captureException(error, {
+    reportClientError(error, {
       tags: { boundary: 'app-router-global-error' },
       digest: error.digest,
     })

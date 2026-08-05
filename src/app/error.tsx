@@ -3,7 +3,10 @@
 import { useEffect } from 'react'
 import Link from 'next/link'
 import { AlertTriangle } from 'lucide-react'
-import { captureException } from '@/lib/observability/sentry'
+// Reports through the Sentry-free seam on purpose. Importing the shim here
+// would statically pull @sentry/nextjs into this route's client bundle and
+// silently undo the SDK deferral in instrumentation-client.ts.
+import { reportClientError } from '@/lib/observability/client-error-report'
 
 interface ErrorPageProps {
   error: Error & { digest?: string }
@@ -22,7 +25,7 @@ interface ErrorPageProps {
  */
 export default function ErrorBoundary({ error, reset }: ErrorPageProps) {
   useEffect(() => {
-    captureException(error, {
+    reportClientError(error, {
       tags: { boundary: 'app-router-error' },
       digest: error.digest,
     })
