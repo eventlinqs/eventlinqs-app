@@ -454,3 +454,160 @@ className or style touched.
 None of these is a code fault, and none was introduced by this rebase.
 
 ---
+
+## PHASE 4: adversarial self-audit, two rounds.
+
+Hostile brief: hunt work silently dropped from either side, any conflict
+resolved by deletion, anything now carrying two competing definitions, any
+guard that cannot fail, anything verified on the wrong runtime.
+
+### The requirement ledger
+
+| # | Requirement | Verdict | Evidence |
+|---|---|---|---|
+| C1 | Australian English | MET | `copy-tell-gate` clean, run under Node 20 |
+| C2 | No em or en dashes | MET | same gate, which checks dashes explicitly |
+| C3 | "community", never the banned word | MET | same gate, banned word check |
+| C4 | DESIGN LOCK, no visual change | MET | 0 differing pixels after the control; zero bytes of any auth surface differ |
+| C5 | No claim without pasted proof | MET | every claim in this record carries its command and output |
+| C6 | Address every item, no silent skipping | MET | this ledger; three items carried to UNFULFILLED rather than dropped |
+| C7 | Permanent root-cause fixes | MET | the conflict was resolved structurally, not with a longer chain; the registry was extracted rather than copied |
+| C8 | Never write to Production Supabase | MET | every run targeted `vkapkibzokmfaxqogypq` (TEST); the journey walk refuses to start otherwise and deletes the account it creates |
+| C9 | Funds-holding engine untouched | MET | the branch's only payment-path change is two sender literals; the rebase forced no further change. #111 did not touch the file |
+| C10 | ESLint 42 baseline, before and after | MET | 42 before at the pre-rebase tag, 42 after. One warning WAS introduced mid-session and removed |
+| C11 | Verify under Node 20 | MET | every gate; and `npm run build` re-run on a genuine Node 20 PATH |
+| 0.1 | Read the overlapping #109 and #111 work | MET | Phase 0 above, all files read in full before any edit |
+| 0.2 | Report expected conflicts before rebasing | MET | reported, and `git merge-tree` predicted exactly the one that occurred |
+| 1.1 | Rebase onto origin/main | MET | linear, `git merge-base --is-ancestor origin/main HEAD` passes |
+| 1.2 | Both sides survive, boundary in a code comment | MET | both guards run; boundary stated in `run-guards.mjs` |
+| 1.3 | The does-nothing trap; prove the SDK stays out | MET | real-browser probe on three auth routes, plus the SDK confirmed still shipped deferred |
+| 1.4 | Report every conflict and resolution | MET | one conflict, reported above |
+| 2.1 | The missing cited artefact | MET | created, 8 of 8 hold under Node 20 |
+| 2.2 | Cost guard, invalidation docs, fail-safe survives | MET | 4 checks, 4 drills, documented at the TTL |
+| 3.1 | Full test suite | MET | 1387 passed |
+| 3.2 | Lint before and after | MET | 42 and 42 |
+| 3.3 | Clean production build, Node 20, guards passing | MET | `npm run build` EXIT 0, banner CI-EQUIVALENT |
+| 3.4 | All guards and drills including #109's and #111's | MET | 7/7, 24/24, 6/6, 24/24 |
+| 3.5 | Auth journey end to end **on preview** | **PARTIAL** | walked locally, 9/9. NOT on preview, and the real harness needs a key I do not have. See UNFULFILLED |
+| 3.6 | The two sentinels do not duplicate or contradict | MET | proven by execution, not by reading the comment claiming it |
+| 3.7 | Screenshot before and after, 390 and 1440 | MET | 12 captures each side, 0 real differences |
+| 4 | Roast, two rounds, fix what it finds | MET | below |
+| 5.1 | Push | see Phase 5 |
+| 5.2 | Watch PR #110 checks to completion | see Phase 5 |
+
+### ROUND 1
+
+**The serious finding, and it was in my own conflict resolution.** I added a
+registered-but-missing check to the runner and called the deletion trap closed.
+It is not. That check catches a mistyped path. It does NOT catch someone
+deleting the registration line, which is the trap recurring in the exact place I
+claimed to have shut it. Drilled:
+
+```
+DRILL: deleted the barrel guard registration, exactly as the conflict invited
+--- does run-guards still pass? (the dangerous part) ---
+[guards] all 6 guards PASS.
+--- does the TEST catch it? ---
+FAIL  tests/unit/guards/guard-registry.test.ts > the external guard ... stays registered
+AssertionError: scripts/check-client-barrel-imports.mjs was dropped from the runner.
+It came from PR #111, the Sentry SDK deferral.
+```
+
+Closed by asserting the list from OUTSIDE the file a deleter would be editing.
+Four assertions, all drilled.
+
+**Silent drops, hunted mechanically in both directions.** Every file only #111
+touched, compared byte for byte against `origin/main`:
+
+```
+$ git diff --stat origin/main HEAD -- $(git diff --name-only 88c6683 origin/main | grep -v package.json)
+(empty)
+```
+
+Two apparent hits from my first script were FALSE POSITIVES of my own making:
+`git rev-parse` on a path deleted by #111 returns an error string rather than
+nothing, so `sentry.client.config.ts` and `lighthouse.yml` looked like drift.
+`git diff` is authoritative and says identical. One branch file genuinely shrank,
+`auth-provider-guard.mjs` from 207 to 186 lines, fully explained by the registry
+extraction; all seven entries verified present in the new file.
+
+**Two competing definitions.** One found and removed before it could drift: the
+cost guard needed the provider tables and the obvious move was to copy them,
+which would have left two answers to "which components are provider buttons".
+Extracted to `scripts/guards/lib/provider-registry.mjs` and imported twice.
+
+**A guard that cannot fail.** None remaining. All seven are drilled: 24 drills in
+this branch's harness plus #111's own 6.
+
+**Wrong runtime.** One found: `auth-provider-cache-cost.mjs` had only ever been
+run on Node 24. Re-run under Node 20.20.2, 8 of 8 hold.
+
+**Dead code reading as load-bearing.** `CONSTANT_ONLY_CONSUMERS` in the new cost
+guard was declared as an allowlist and referenced by nothing. Caught only because
+it moved the ESLint count off 42. Removed, with the reason it was unnecessary
+written where it stood.
+
+**Evidence visibility.** The visual comparison was a throwaway script: the
+founder could read the result but not re-run it. `auth-visual-diff.mjs` gained a
+strict two-set mode, and `docs/hardening/auth/VISUAL-REBASE-PROOF.txt` puts the
+evidence in the repository, matching the existing `GUARD-DRILL-OUTPUT.txt`
+convention. Captures stay untracked because no capture set has ever been tracked
+here and the pack is already 1.31 GiB.
+
+**Interpretation drift.** Three found, all in my own verification harness, all
+corrected, and all recorded in Phase 3.5 rather than quietly fixed. The worst was
+the reset link: I nearly reported "password reset is broken" when the truth was
+that the app never emails GoTrue's `action_link`.
+
+### ROUND 2
+
+Run after the round 1 fixes were committed.
+
+| Hunt | Result |
+|---|---|
+| Any remaining guard that cannot fail | None. The header-comment assertion added in round 2 is itself drilled |
+| Another unmaintained citation | ONE FOUND. The runner's header lists what each guard enforces and nothing kept that list true, which is Phase 2.1's defect in a new place. Now asserted and drilled |
+| Conflict markers anywhere | 0, across src, scripts, tests, docs, package.json, vercel.json |
+| Is the rebase genuine and linear | Yes, `origin/main` is an ancestor of HEAD |
+| #109's work intact | 4 test files, 196 tests, all passing |
+| #111's work intact | 2 test files, 12 tests, all passing |
+| Wrong runtime, second sweep | One gap closed: the gates had been run by invoking the Node 20 binary directly, never through npm as CI does. Re-run through npm on a genuine Node 20 PATH |
+| The PATH trap itself | REPRODUCED FIRST-HAND. A 34-byte NON-EXECUTABLE `node` file sits beside `node.exe` in the npx cache, so a PATH prefix silently resolves to system Node 24. `node --version` reported v24.14.0 with the directory prepended. This is why every gate invoked the executable directly and echoed its version |
+| Scope creep | One declared: `auth-visual-diff.mjs` gained a strict mode. It is a verification harness, not a shipped surface, both existing comparisons are untouched, and it exists to make a required proof reproducible |
+
+**Round 2 found one new defect**, the unmaintained header citation, and closed one
+verification gap, the npm-driven run. Neither is attributable to the rebase
+itself; both are attributable to me.
+
+### The unverifiable-claim hunt
+
+| Claim | What would falsify it | Tested |
+|---|---|---|
+| The SDK does not re-enter the client bundle | a Sentry marker in any script an auth route downloads | yes, real browser, 3 routes |
+| The SDK is still shipped, just deferred | zero chunks carrying the SDK | yes, checked in the same probe |
+| Both guard systems survive | the barrel guard absent from the runner | yes, drilled, and it did fail |
+| Zero visual change | any differing pixel not reproducible on the same build | yes, four-way control |
+| The sentinels cannot contradict | the two resolvers returning different domains | yes, both executed in one process |
+| ESLint baseline held | any count other than 42 | yes, measured on both trees |
+| Nothing dropped from either side | any of #111's files differing from main | yes, byte comparison of all 22 |
+
+### The generic test
+
+Not applicable in the usual sense: no user-facing surface was touched, and the
+design lock proves it. What makes this EventLinqs rather than any repository is
+the specific thing being protected, an auth surface whose provider button led
+real users to a raw GoTrue JSON page on 2026-08-02, and a browser bundle that
+shipped 141KB of never-executed SDK on every route.
+
+### The founder-cost test
+
+One item is routed to the founder by necessity, not laziness: `RESEND_API_KEY`
+and a Vercel login. Both are credentials I cannot mint, and both are named with
+the exact command that would use them.
+
+### AI-tell sweep
+
+`copy-tell-gate` clean under Node 20: dashes, banned word, phrase tells,
+competitor names. Zero.
+
+---
