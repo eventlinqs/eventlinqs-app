@@ -4,7 +4,7 @@ import { applyRateLimit } from '@/lib/rate-limit/middleware'
 import { hashIdentity, logAi } from '@/lib/ai/logging'
 import { getAllCommunities } from '@/lib/communities/data'
 import { sanitiseInboundText } from '@/lib/ai/sanitise'
-import { extractEventDraft } from '@/lib/ai/magic-start'
+import { buildDeterministicDraft, extractEventDraft } from '@/lib/ai/magic-start'
 import { isFlagEnabled } from '@/lib/flags'
 import { createAdminClient } from '@/lib/supabase/admin'
 
@@ -85,9 +85,26 @@ export async function POST(request: Request) {
   })
 
   if (!result.ok) {
-    const status = result.reason === 'unconfigured' ? 503 : result.reason === 'budget_exhausted' ? 429 : 502
-    return NextResponse.json({ ok: false, error: result.reason }, { status })
+    // THE FLOOR (R4, F3). The AI being unconfigured, over budget, blocked by an
+    // unreachable meter, or failing upstream must never mean the organiser gets
+    // nothing. Every one of those cases falls back to the deterministic draft,
+    // which fills every step 1 field from the organiser's own words at zero
+    // cost. A refusal is invisible to them: they get a complete draft either
+    // way, and the only difference is who wrote the prose.
+    //
+    // 'refused' is the one exception: the model declined the content itself, so
+    // composing a draft from that same text is not something to do quietly.
+    if (result.reason === 'refused') {
+      return NextResponse.json({ ok: false, error: 'refused' }, { status: 422 })
+    }
+    const draft = buildDeterministicDraft({
+      description,
+      categoryNames,
+      communitySlugs: communities.map(c => c.slug),
+    })
+    logAi({ evt: 'ai.blocked', assistant: 'magic-start', who, reason: result.reason })
+    return NextResponse.json({ ok: true, draft, source: 'deterministic' })
   }
 
-  return NextResponse.json({ ok: true, draft: result.draft })
+  return NextResponse.json({ ok: true, draft: result.draft, source: 'model' })
 }

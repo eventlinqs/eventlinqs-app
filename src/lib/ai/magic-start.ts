@@ -243,9 +243,19 @@ export async function extractEventDraft(opts: {
     return { ok: false, reason: 'unconfigured' }
   }
 
-  const budget = await checkMonthlyBudget()
+  // FAILS CLOSED (F3). Draft generation is the path an unauthenticated visitor
+  // will reach, so an unreachable meter must stop the spend rather than let it
+  // run uncapped for the length of an outage. Refusing costs the organiser
+  // nothing: every caller falls back to buildDeterministicDraft, which fills
+  // every field from their own words at zero cost.
+  const budget = await checkMonthlyBudget('closed')
   if (!budget.ok) {
-    logAi({ evt: 'ai.blocked', assistant: 'magic-start', who, reason: 'budget_exhausted' })
+    logAi({
+      evt: 'ai.blocked',
+      assistant: 'magic-start',
+      who,
+      reason: budget.unmetered ? 'meter_unreachable' : 'budget_exhausted',
+    })
     return { ok: false, reason: 'budget_exhausted' }
   }
 

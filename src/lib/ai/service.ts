@@ -107,7 +107,12 @@ export async function runAssistant(opts: {
     return { ok: false, reason: 'unconfigured' }
   }
 
-  const budget = await checkMonthlyBudget()
+  // FAILS OPEN, deliberately. Every caller here is authenticated and rate
+  // limited per user, so a Redis wobble has a small bounded blast radius, and
+  // taking support chat down during one would be the worse failure. The
+  // anonymous-reachable path (magic-start) fails closed instead; see the
+  // cost-guard module comment.
+  const budget = await checkMonthlyBudget('open')
   if (!budget.ok) {
     logAi({ evt: 'ai.blocked', assistant: assistant.id, who, reason: 'budget_exhausted' })
     return { ok: false, reason: 'budget_exhausted' }
