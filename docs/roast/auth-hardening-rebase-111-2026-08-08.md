@@ -733,3 +733,71 @@ delivered is the link that was clicked. Only the permanent harness proves that,
 and it needs `RESEND_API_KEY` in the shell to read the message back.
 
 ---
+
+### ADDENDUM: the Lighthouse gate is non-deterministic, and it is now proven, not asserted
+
+After the Phase 5 record above was committed, the docs-only commit `fc0e9b0`
+FAILED the Lighthouse gate that `42a6299` had just passed. The two commits differ
+by one file:
+
+```
+$ git diff --stat 42a6299 fc0e9b0
+ docs/roast/auth-hardening-rebase-111-2026-08-08.md | 122 +++++++++++++++++++++
+ 1 file changed, 122 insertions(+)
+
+$ git diff --name-only 42a6299 fc0e9b0 | grep -v '^docs/'
+(nothing: the only change is documentation)
+```
+
+122 lines of markdown ship no byte to any browser, so the failure could not have
+been caused by the change. Rather than assert that, the gate was re-run on the
+SAME commit. It passed. `/events` performance across three CI runs of byte-identical
+application code:
+
+| Commit | Gate | All three runs | Gate uses | Verdict |
+|---|---|---|---|---|
+| `42a6299` | run 1 | 0.71, 0.89, 0.91 | 0.91 | PASS |
+| `fc0e9b0` | run 1 | 0.78, 0.79, 0.79 | 0.79 | **FAIL** (floor 0.80) |
+| `fc0e9b0` | run 2 | 0.81, 0.94, 0.81 | 0.94 | PASS |
+
+A swing from 0.71 to 0.94 on identical code. Each run measured a freshly created
+preview deployment on a different host, so each paid a cold start. This is
+CLAUDE.md's already-named gate gap 1 together with Issue #42 (the next/image
+optimiser cold start), now with numbers.
+
+TWO THINGS FOLLOW, and the second is the uncomfortable one:
+
+1. The failure was not attributable to this branch, and `/events` is not a
+   surface this branch touches.
+2. The gate takes the BEST of three by its own printed admission. On the failing
+   run every one of the three was below the floor, which is why it failed; on the
+   passing runs a single good run carried it. A gate that passes on its best run
+   states less than it appears to, in both directions.
+
+The re-run is recorded here rather than being quietly used to go green. A green
+obtained by re-running is worth exactly as much as the evidence that the code did
+not change, which is why that evidence is pasted above.
+
+### FINAL STATE
+
+```
+Lighthouse mobile gate                        pass
+Resolve Vercel preview                        pass
+lint . typecheck . build                      pass
+test (vitest)                                 pass
+types-drift guard                             pass
+Vercel                                        pass
+Buyer purchase journey                        skipping
+Buyer purchase journey (local supabase)       skipping
+production homepage smoke                     skipping
+
+mergeable: MERGEABLE    mergeStateStatus: CLEAN    head: fc0e9b0
+```
+
+The env-locks checks (`every lock can still fire`, `CRON_SECRET agrees across
+both stores`) are absent from this run by design, not by omission: that workflow
+is path-filtered to `src/lib/env/**`, `src/lib/health/**` and its own guard
+scripts, none of which a documentation commit touches. Both ran and passed on
+`42a6299`, the commit that carries every code change in this branch.
+
+NOT MERGED, as instructed.
