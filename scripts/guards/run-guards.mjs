@@ -10,6 +10,7 @@
  *   no-supabase-smtp           no auth flow on Supabase's 2-per-hour built-in mailer
  *   sender-single-source       one definition of the sending identity
  *   auth-autocomplete          credential-manager attributes on every auth form
+ *   auth-provider-cost         no provider gate on a route with no provider button
  *   check-client-barrel-imports  no third-party namespace import in the browser bundle
  *
  * Runs them all rather than short-circuiting, so one pass reports every
@@ -65,6 +66,7 @@ const ROOT = join(HERE, '..', '..')
 const GUARDS = [
   'scripts/guards/node-version-contract.mjs',
   'scripts/guards/auth-provider-guard.mjs',
+  'scripts/guards/auth-provider-cost-guard.mjs',
   'scripts/guards/no-supabase-smtp.mjs',
   'scripts/guards/sender-single-source.mjs',
   'scripts/guards/auth-autocomplete-guard.mjs',

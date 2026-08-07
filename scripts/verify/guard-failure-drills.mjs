@@ -198,6 +198,70 @@ const DRILLS = [
     replace: 'node-version: 18',
     expect: 'below the .nvmrc contract',
   },
+
+  // -------------------------------------------------------------------------
+  // auth-provider-cost-guard. The reverse direction of auth-provider-guard:
+  // every gate call must be on a route that renders a button. Each of the four
+  // checks gets a drill, because a cost guard that cannot fail is worse than
+  // none: it reads as proof that the cost is contained while containing nothing.
+  // -------------------------------------------------------------------------
+  {
+    name: 'provider gate resolved on a page that renders no provider button',
+    guard: `${GUARDS}/auth-provider-cost-guard.mjs`,
+    file: 'src/app/(auth)/forgot-password/page.tsx',
+    find: 'export default function ForgotPasswordPage() {',
+    replace:
+      "import { isProviderEnabled } from '@/lib/auth/providers'\n" +
+      'export default async function ForgotPasswordPage() {\n' +
+      "  await isProviderEnabled('google')",
+    expect: 'renders no',
+  },
+  {
+    name: 'provider gate reached from the root layout (every route pays)',
+    guard: `${GUARDS}/auth-provider-cost-guard.mjs`,
+    file: 'src/app/layout.tsx',
+    find: "import { getSiteUrl } from '@/lib/site-url'",
+    replace:
+      "import { getSiteUrl } from '@/lib/site-url'\nimport { getEnabledProviders } from '@/lib/auth/providers'",
+    expect: 'reaches the provider resolver',
+  },
+  {
+    name: 'provider resolver pulled into a Client Component',
+    guard: `${GUARDS}/auth-provider-cost-guard.mjs`,
+    file: 'src/components/auth/login-form.tsx',
+    find: "import { GoogleButton } from './google-button'",
+    replace:
+      "import { GoogleButton } from './google-button'\n" +
+      "import { isProviderEnabled } from '@/lib/auth/providers'",
+    expect: 'is a Client Component and imports',
+  },
+  {
+    name: 'the gate hardcoded to true at the call site (fail-safe defeated)',
+    guard: `${GUARDS}/auth-provider-cost-guard.mjs`,
+    file: 'src/app/(auth)/login/page.tsx',
+    find: '<LoginForm googleEnabled={googleEnabled} />',
+    replace: '<LoginForm googleEnabled={true} />',
+    expect: 'hardcodes "googleEnabled" to true',
+  },
+
+  // -------------------------------------------------------------------------
+  // check-client-barrel-imports, from PR #111. Drilled HERE, through the same
+  // harness as every other guard, because the rebase that merged the two build
+  // chains is exactly when a guard goes quietly missing. It has its own drill
+  // harness (scripts/verify/client-barrel-drills.mjs) which is kept and still
+  // run; this single drill is the tripwire that proves the guard is still
+  // REGISTERED and still fires from the shared runner's list.
+  // -------------------------------------------------------------------------
+  {
+    name: 'a third-party namespace import back in client-reachable code (#111)',
+    guard: 'scripts/check-client-barrel-imports.mjs',
+    file: 'src/lib/observability/client-error-report.ts',
+    find: 'type ClientErrorReport = {',
+    replace: "import * as Sentry from '@sentry/nextjs'\ntype ClientErrorReport = {",
+    // The guard prints the KIND and the SPECIFIER, not the source line, so the
+    // expected text is its report format rather than the code that caused it.
+    expect: "import * as '@sentry/nextjs'",
+  },
 ]
 
 function run(guard) {

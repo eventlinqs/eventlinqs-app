@@ -27,6 +27,15 @@ import { getSupabaseAnonKey, getSupabaseUrl } from '@/lib/supabase/env'
  * env - resolves to "nothing is enabled". Hiding a working button costs a user
  * one extra click on email sign-in. Showing a broken one costs them the JSON
  * page. The asymmetry decides the default.
+ *
+ * WHERE THIS MAY BE CALLED FROM, enforced rather than requested.
+ * `scripts/guards/auth-provider-cost-guard.mjs` fails the build if a gate call
+ * appears in a file that renders no provider button, if the resolver becomes
+ * reachable from a root layout, template or middleware (which would put a
+ * settings fetch in front of every route on the platform), if it is imported
+ * into a Client Component, or if a call site hardcodes the gate to a literal
+ * true and steps around the fail-safe above. Every one of those four is drilled
+ * in `scripts/verify/guard-failure-drills.mjs`.
  */
 
 /**
@@ -48,9 +57,39 @@ const NONE_ENABLED: EnabledProviders = Object.freeze(
 
 /**
  * Cache TTL. Enabling a provider is a deliberate one-off dashboard action, so
- * five minutes of staleness is irrelevant to correctness and removes the fetch
- * from effectively every page render. The cost is measured in
- * `scripts/verify/auth-provider-cache-cost.mjs`.
+ * five minutes of staleness removes the fetch from effectively every page
+ * render at a cost that is measured, not assumed:
+ * `scripts/verify/auth-provider-cache-cost.mjs`, part A, records 1000 warm
+ * calls at 0.0004ms each against a single cold fetch, and part C records a 65ms
+ * median for that cold fetch against the TEST project.
+ *
+ * WHAT HAPPENS WHEN A PROVIDER IS TOGGLED IN THE SUPABASE DASHBOARD, and how
+ * long before the site reflects it. Stated in full because a cache with an
+ * undocumented invalidation rule is a cache nobody can reason about during an
+ * incident, and because the two directions are NOT symmetric.
+ *
+ *   TURNING A PROVIDER ON.  Worst case five minutes before the button appears,
+ *   per warm serverless instance. Each instance holds its own memo, so during
+ *   that window different users can legitimately see different pages. The cost
+ *   of the delay is that a user signs in by email instead. Harmless.
+ *
+ *   TURNING A PROVIDER OFF.  Worst case five minutes during which a warm
+ *   instance still renders a button for a provider that is now disabled, and a
+ *   click inside that window lands on GoTrue's raw JSON error. This is the one
+ *   direction that can hurt, and it is the honest cost of caching at all. Three
+ *   things bound it: the window is five minutes and not indefinite; the auth
+ *   sentinel (src/app/api/cron/auth-sentinel, every 10 minutes per vercel.json)
+ *   independently reads the same settings document and alerts on exactly this
+ *   disagreement; and a deploy discards every memo at once, which is the
+ *   instant invalidation lever if the founder needs one.
+ *
+ *   THE PROOF. `scripts/verify/auth-provider-cache-cost.mjs` part B drives the
+ *   expiry on the clock ALONE, without touching `__resetProviderCache`, because
+ *   a test that resets the memo proves the reset seam works rather than proving
+ *   the TTL expires. That distinction is the whole documented guarantee here.
+ *
+ * A FAILED resolution is cached for 30 seconds instead of five minutes, so a
+ * Supabase blip costs at most half a minute of hidden button. See below.
  */
 const CACHE_TTL_MS = 5 * 60 * 1000
 

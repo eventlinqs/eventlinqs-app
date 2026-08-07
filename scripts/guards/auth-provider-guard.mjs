@@ -20,32 +20,11 @@
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { readSource, lineAt, sourceFiles } from './lib/source.mjs'
+// The registry lives in one file because auth-provider-cost-guard.mjs asks the
+// opposite question of the same tables. See lib/provider-registry.mjs.
+import { PROVIDER_COMPONENTS, GATED_FORMS } from './lib/provider-registry.mjs'
 
 const ROOT = process.cwd()
-
-/**
- * The registry. A provider is renderable only if it appears BOTH in
- * src/lib/auth/providers.ts and here, with a component that exists.
- */
-const PROVIDER_COMPONENTS = {
-  google: {
-    component: 'GoogleButton',
-    file: 'src/components/auth/google-button.tsx',
-    /** The identifier that must gate every render of the component. */
-    gateToken: 'googleEnabled',
-  },
-}
-
-/**
- * Components that must be handed a resolved provider state by a server page,
- * keyed by the module they come from. The import path matters: the admin
- * console has its own unrelated `LoginForm` with no OAuth on it at all, and
- * matching on the bare component name flagged it as a false positive.
- */
-const GATED_FORMS = [
-  { component: 'LoginForm', module: '@/components/auth/login-form' },
-  { component: 'SignupForm', module: '@/components/auth/signup-form' },
-]
 
 const failures = []
 const fail = (msg) => failures.push(msg)
