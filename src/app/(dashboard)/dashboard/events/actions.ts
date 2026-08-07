@@ -10,6 +10,7 @@ import { parseVideoEmbed } from '@/lib/media/video-embed'
 import { serializeGallery, type GalleryImage } from '@/lib/media/event-media-model'
 import { moderateEventMedia } from '@/lib/media/moderation'
 import { cleanupEventMedia } from '@/lib/upload'
+import { resolveCitySlug } from '@/lib/cities/resolve'
 import { getSiteUrl } from '@/lib/site-url'
 import { trackEventPublishedServer } from '@/lib/analytics/plausible'
 import type { EventStatus, EventVisibility, EventType, TicketTierType, FeePassType, Json } from '@/types/database'
@@ -194,6 +195,11 @@ export async function createEvent(input: CreateEventInput): Promise<{ error?: st
       venue_name: input.venue_name || null,
       venue_address: input.venue_address || null,
       venue_city: input.venue_city || null,
+      // The canonical city claim. city_primary is the ONE column every
+      // city-scoped surface reads, including the weekly local digest, so an
+      // event with a recognised locality and a null city_primary is invisible
+      // to its own city. Resolved from the typed locality at write time.
+      city_primary: resolveCitySlug(input.venue_city),
       venue_state: input.venue_state || null,
       venue_country: input.venue_country || null,
       venue_postal_code: input.venue_postal_code || null,
@@ -377,6 +383,9 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
       venue_name: input.venue_name || null,
       venue_address: input.venue_address || null,
       venue_city: input.venue_city || null,
+      // Kept in step with venue_city on every edit, so moving an event to a
+      // new city moves its digest and city-page reach with it.
+      city_primary: resolveCitySlug(input.venue_city),
       venue_state: input.venue_state || null,
       venue_country: input.venue_country || null,
       venue_postal_code: input.venue_postal_code || null,
