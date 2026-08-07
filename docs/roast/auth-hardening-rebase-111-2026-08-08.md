@@ -611,3 +611,125 @@ the exact command that would use them.
 competitor names. Zero.
 
 ---
+
+## PHASE 5: delivery.
+
+### 5.1 Pushed
+
+```
+$ git push origin feat/auth-hardening --force-with-lease
+ + e0e07d5...42a6299 feat/auth-hardening -> feat/auth-hardening (forced update)
+```
+
+PR #110 went from `mergeable: CONFLICTING, mergeStateStatus: DIRTY` to
+`mergeable: MERGEABLE, mergeStateStatus: CLEAN`.
+
+### 5.2 Checks, watched to completion rather than inferred
+
+```
+CRON_SECRET agrees across both stores         pass
+Lighthouse mobile gate                        pass
+Resolve Vercel preview                        pass
+every lock can still fire                     pass
+lint . typecheck . build                      pass
+test (vitest)                                 pass
+types-drift guard                             pass
+Vercel                                        pass
+Buyer purchase journey                        skipping
+Buyer purchase journey (local supabase)       skipping
+production homepage smoke                     skipping
+```
+
+8 pass, 0 fail, 3 skipping. The three skips are conditional jobs that do not run
+on this branch, and `production homepage smoke` runs only after a merge to main.
+
+**One check needed a re-run, and the reason matters.** `CRON_SECRET agrees across
+both stores` first reported FAIL. It had not failed on its merits: the job was
+CANCELLED inside `actions/checkout`, having hit its own `timeout-minutes: 10`
+while still at 35 percent of the checkout.
+
+```
+started   2026-08-07T17:56:51Z
+completed 2026-08-07T18:06:53Z     exactly 10 minutes
+steps: Set up job success | actions/checkout CANCELLED | setup-node skipped |
+       the GitHub Actions copy authenticates against Vercel Production skipped
+```
+
+Its sibling job in the same run, `every lock can still fire`, passed. The cause is
+the size of this repository: the pack is 1.31 GiB and the checkout could not
+finish inside the job's timeout. Re-run, it passes. Reported here rather than
+quietly re-run, because a 10-minute checkout that is one slow runner away from
+failing again is a real operational fact, and raising `timeout-minutes` on that
+job is a one-line change the founder may want.
+
+### The Lighthouse gate, and what its own report says
+
+The gate PASSED, so nothing was blocked. It is still worth reading, because #111
+made the aggregation print itself and the printout is blunt:
+
+```
+Category floors aggregate with: OPTIMISTIC
+For a minScore assertion, optimistic means Math.max: THE BEST RUN.
+The median is printed beside it for contrast. They are NOT the same number.
+```
+
+All three values per URL, as required, for every URL where the gate value and the
+median disagree:
+
+| URL | gate uses | median | all three runs |
+|---|---|---|---|
+| `/` | 0.85 | 0.83 | **0.61**, 0.83, 0.85 |
+| `/events` | 0.91 | 0.89 | **0.71**, 0.89, 0.91 |
+| `/events/winter-warmers-geelong-comedy-gala-vkmxcg` | 0.88 | 0.86 | 0.88, **0.73**, 0.86 |
+| `/events/browse/melbourne` | 0.90 | 0.89 | 0.88, 0.90, 0.89 |
+| `/help` | 0.95 | 0.92 | 0.92, 0.92, 0.95 |
+| `/organisers` | 0.93 | 0.92 | 0.92, 0.93, 0.92 |
+
+THREE URLS HAD A RUN THAT WOULD HAVE FAILED THE 0.80 FLOOR, and the optimistic
+aggregation discarded it: 0.61 on the homepage, 0.71 on `/events`, 0.73 on the
+event detail page. The gate is green on the best of three, not on the typical
+case. That is CLAUDE.md's already-named gate gap 1 (Lighthouse versus the law),
+now with numbers attached. Nothing in this branch caused it and nothing here
+changes it, but a gate that passes on its best run is a weaker statement than it
+appears, and the founder should see the figures.
+
+The auth surfaces this branch owns are healthy: `/login` performance 0.89, 0.90,
+0.90. Its `seo 0.58` is the PERMANENT, documented exemption printed by
+`scripts/ci/lighthouse-exemption-expiry.mjs`: auth pages are deliberately
+noindex, so the is-crawlable and canonical audits cannot pass by design.
+
+### 3.5 upgraded from PARTIAL to MET after the preview existed
+
+The journey was re-walked against the Vercel preview, which carries a real
+`RESEND_API_KEY`, so the signup and reset emails genuinely sent. The preview was
+first confirmed to serve the same project the admin credentials address, so the
+assertions and the app could not be about different databases:
+
+```
+preview serves Supabase project: vkapkibzokmfaxqogypq
+admin credentials address:       vkapkibzokmfaxqogypq
+MATCH confirmed. Walking the journey.
+
+  [PASS] 1. signup on preview creates the account AND sends the confirmation email
+         POST /api/auth/signup -> 200 {"ok":true}; user created: true; confirmed yet: false
+  [PASS] 2. email confirmation confirms the account
+  [PASS] 3. sign in            left /login for /dashboard; auth cookie: true
+  [PASS] 4. sign out           /dashboard now lands on /login
+  [PASS] 5. password reset request accepted, with a real transport behind it
+  [PASS] 6. password reset completion   new password authenticates: true
+
+  cleaned up TEST user delivered+el1786126122101@resend.dev
+=== 6/6 steps passed on the PREVIEW ===
+```
+
+The recipient is Resend's official delivery simulator, so no real person was
+emailed, and the TEST account was deleted at the end. Deliberately NOT added as a
+second permanent harness: `scripts/verify/auth-journey-e2e.mjs` is the permanent
+one, and a second would be exactly the competing-definition defect this session
+spent its roast hunting.
+
+Still not proven, and it is a narrow gap: that the link inside the email Resend
+delivered is the link that was clicked. Only the permanent harness proves that,
+and it needs `RESEND_API_KEY` in the shell to read the message back.
+
+---
