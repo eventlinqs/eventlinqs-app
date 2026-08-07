@@ -18,7 +18,8 @@
     "guards": "node scripts/guards/run-guards.mjs",
     "guards:contract-node": "node scripts/guards/contract-node.mjs",
     "guards:surface": "node scripts/guards/contract-node.mjs scripts/guards/lib/generate-node-surface.mjs",
-    "guards:drills": "node scripts/verify/guard-failure-drills.mjs"
+    "guards:drills": "node scripts/verify/guard-failure-drills.mjs",
+    "verify:provider-cost": "node scripts/verify/auth-provider-cache-cost.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",
