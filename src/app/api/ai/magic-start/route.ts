@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { applyRateLimit } from '@/lib/rate-limit/middleware'
-import { clientIp } from '@/lib/redis/rate-limit'
 import { hashIdentity, logAi } from '@/lib/ai/logging'
+import { getAllCommunities } from '@/lib/communities/data'
 import { sanitiseInboundText } from '@/lib/ai/sanitise'
 import { extractEventDraft } from '@/lib/ai/magic-start'
 import { isFlagEnabled } from '@/lib/flags'
@@ -71,9 +71,15 @@ export async function POST(request: Request) {
     .order('sort_order')
   const categoryNames = (cats ?? []).map(c => c.name).filter((n): n is string => !!n)
 
+  // The heritage communities the wizard actually offers, server-derived for the
+  // same reason the categories are: the model may only ever choose from the
+  // live list, so an invented or stale slug can never reach the form.
+  const communities = getAllCommunities().map(c => ({ slug: c.slug, name: c.displayName }))
+
   const result = await extractEventDraft({
     description,
     categoryNames,
+    communities,
     nowIso: new Date().toISOString(),
     who,
   })

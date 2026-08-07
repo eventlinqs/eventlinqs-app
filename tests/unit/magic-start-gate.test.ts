@@ -65,6 +65,10 @@ function reply(json: unknown) {
 const OPTS = {
   description: 'Free winter gig at The Wool Store Geelong, 1 August, 7pm, 80 seats',
   categoryNames: ['Music', 'Comedy'],
+  communities: [
+    { slug: 'african', name: 'African' },
+    { slug: 'greek', name: 'Greek' },
+  ],
   nowIso: '2026-07-25T10:00:00+10:00',
   who: 'test-user',
 }
