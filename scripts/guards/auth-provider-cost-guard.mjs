@@ -58,11 +58,22 @@ const readWithStrings = (rel) => readSource(join(ROOT, rel)).withStrings
 const FILES = sourceFiles(ROOT)
 
 /**
- * Files permitted to import the resolver module WITHOUT calling a gate. The
- * auth sentinel imports `RENDERABLE_PROVIDERS` to check the live dashboard
- * state against the registry, which is the constant and costs no fetch.
+ * WHY THERE IS NO ALLOWLIST HERE, since the obvious design has one.
+ *
+ * The first draft of this guard carried a CONSTANT_ONLY_CONSUMERS set naming
+ * src/app/api/cron/auth-sentinel/route.ts, which imports RENDERABLE_PROVIDERS to
+ * compare the live dashboard state against the registry. It was never referenced
+ * by any check. It read like an exemption doing work and did nothing at all, and
+ * the only reason it was caught is that it moved the ESLint count off its
+ * baseline by one.
+ *
+ * It was unnecessary, not merely unused. Every check below keys on the CALL, not
+ * on the import, and a constant costs no fetch. So a consumer that imports
+ * RENDERABLE_PROVIDERS and calls nothing passes on the rule itself rather than
+ * on an exception to it, which is the stronger arrangement: a new constant-only
+ * consumer needs no edit here, and a new CALLING consumer is caught whether or
+ * not anyone remembered to maintain a list.
  */
-const CONSTANT_ONLY_CONSUMERS = new Set(['src/app/api/cron/auth-sentinel/route.ts'])
 
 /** Does this file render one of the forms that carries a provider button? */
 function rendersGatedForm(rel) {
