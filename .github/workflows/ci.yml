@@ -31,7 +31,11 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # .nvmrc is the single definition of the Node major this platform is
+          # tested on. Read it here rather than repeating the number, so the
+          # runtime CI installs and the runtime the guards check against cannot
+          # drift apart by editing one of them.
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Install
@@ -96,7 +100,11 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # .nvmrc is the single definition of the Node major this platform is
+          # tested on. Read it here rather than repeating the number, so the
+          # runtime CI installs and the runtime the guards check against cannot
+          # drift apart by editing one of them.
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Install
@@ -156,7 +164,11 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # .nvmrc is the single definition of the Node major this platform is
+          # tested on. Read it here rather than repeating the number, so the
+          # runtime CI installs and the runtime the guards check against cannot
+          # drift apart by editing one of them.
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Install

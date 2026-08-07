@@ -2,12 +2,11 @@ import { readFileSync } from 'node:fs'
 import { resolve as resolvePath } from 'node:path'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import {
-  DEFAULT_FROM,
-  TRANSACTIONAL_FROM,
   resolveFrom,
   senderDomain,
   senderDomainsInUse,
 } from '@/lib/email/send'
+import { getEmailFrom, getNoReplyFrom } from '@/lib/email/sender'
 
 /**
  * Proves the platform can name every domain it sends from, so the email health
@@ -20,6 +19,27 @@ import {
  * fault and then could not tell the founder. The email health check missed it
  * because it only asked whether the API key was valid, never whether the
  * addresses we actually send from would be accepted.
+ *
+ * WHAT CHANGED ON 2026-08-05, and why these assertions moved. This file used to
+ * import two sender CONSTANTS from send.ts, `DEFAULT_FROM` and
+ * `TRANSACTIONAL_FROM`. The second was documented as a deliberate MIRROR of a
+ * literal that lived in four other call sites, because the branch that added it
+ * would not touch the Stripe webhook to remove the original. The auth-hardening
+ * branch then made those call sites derive from one module,
+ * src/lib/email/sender.ts, and fails the build on any sender literal outside
+ * it, so there is no longer a literal for a mirror to mirror.
+ *
+ * Every property this file asserted is kept. Two are now asserted in a stronger
+ * form, and both are marked where they appear:
+ *
+ *   the drift guard      was "the four call sites hold a literal equal to the
+ *                        mirror". Now "the four call sites hold NO literal and
+ *                        read the single source", which is what the mirror was
+ *                        an approximation of.
+ *   the domain inventory was "report both the configured domain and the
+ *                        hardcoded one, expect 2". Divergence between those two
+ *                        is now structurally impossible, so the assertion is
+ *                        that they move TOGETHER and the inventory is 1.
  */
 
 let backup: string | undefined
@@ -52,12 +72,15 @@ describe('sender domain resolution', () => {
 
   test('falls back to the default sender when EMAIL_FROM is unset', () => {
     delete process.env.EMAIL_FROM
-    expect(resolveFrom()).toBe(DEFAULT_FROM)
+    // resolveFrom() no longer decides: it delegates to the one sender module.
+    expect(resolveFrom()).toBe(getEmailFrom())
+    expect(senderDomain(resolveFrom())).toBe('eventlinqs.com')
   })
 
   test('falls back when EMAIL_FROM is PRESENT BUT BLANK, the silent-failure class', () => {
     process.env.EMAIL_FROM = '   '
-    expect(resolveFrom()).toBe(DEFAULT_FROM)
+    expect(senderDomain(resolveFrom())).toBe('eventlinqs.com')
+    expect(resolveFrom()).toBe(getEmailFrom())
   })
 
   test('uses EMAIL_FROM when it is set', () => {
@@ -65,12 +88,20 @@ describe('sender domain resolution', () => {
     expect(resolveFrom()).toBe('EventLinqs <alerts@send.eventlinqs.com>')
   })
 
-  test('reports BOTH the configured sender domain and the hardcoded transactional one', () => {
+  /**
+   * STRONGER FORM of "reports BOTH the configured domain and the hardcoded
+   * transactional one". That test asserted the two could differ and demanded
+   * both be named, which was correct while the transactional sender was a
+   * literal that ignored EMAIL_FROM. Both roles now derive from one module, so
+   * a split is not something to inventory, it is something that cannot happen.
+   * Asserting it cannot happen is the same guarantee earlier in the chain.
+   */
+  test('the configured and transactional senders move together, so no split can exist', () => {
     process.env.EMAIL_FROM = 'EventLinqs <alerts@send.eventlinqs.com>'
-    const domains = senderDomainsInUse()
-    expect(domains).toContain('send.eventlinqs.com')          // sendEmail path
-    expect(domains).toContain('eventlinqs.com')               // ticket + refund + payout + waitlist
-    expect(domains).toHaveLength(2)
+    expect(senderDomain(getEmailFrom())).toBe('send.eventlinqs.com')
+    expect(senderDomain(getNoReplyFrom())).toBe('send.eventlinqs.com')
+    // Both roles are still READ, so a future second identity would show up here.
+    expect(senderDomainsInUse()).toEqual(['send.eventlinqs.com'])
   })
 
   test('deduplicates when both senders share one domain', () => {
@@ -97,13 +128,25 @@ describe('sender domain resolution', () => {
   })
 
   /**
-   * DRIFT GUARD. `TRANSACTIONAL_FROM` is a copy of a literal that lives in four
-   * other files, one of which is the Stripe webhook route whose money logic must
-   * not be disturbed. Asserting the constant against itself would prove nothing,
-   * so this reads the real call sites: if any of them changes sender, this fails
-   * and the health check stops silently asserting the wrong domain.
+   * DRIFT GUARD, stronger form.
+   *
+   * It used to assert that four call sites each held a literal sender EQUAL to
+   * the `TRANSACTIONAL_FROM` mirror, so the health check could not silently
+   * assert a domain the call sites had stopped using. The call sites no longer
+   * hold a literal, so the thing being mirrored is gone and the mirror with it.
+   *
+   * The guarantee is kept by asserting the property that replaced it: each site
+   * names NO address of its own and reads the single source. That closes the
+   * same gap at the root rather than by comparison, and it is the same shape as
+   * the R2 destination test in tests/unit/env-store-exposure.test.ts.
+   *
+   * This is not made redundant by scripts/guards/sender-single-source.mjs. That
+   * guard proves a literal is ABSENT across all of src. This proves these four
+   * specific money-and-ticket senders are PRESENT and wired to the one module:
+   * a call site that quietly stopped sending, or that built its sender from
+   * some third variable, would pass the guard and fail here.
    */
-  test('the transactional sender constant matches every hardcoded call site', () => {
+  test('every transactional call site reads the single source and names no address', () => {
     const sites = [
       'src/lib/email/order-confirmation.ts',
       'src/app/api/webhooks/stripe/route.ts',
@@ -112,13 +155,18 @@ describe('sender domain resolution', () => {
     ]
     for (const file of sites) {
       const src = readFileSync(resolvePath(process.cwd(), file), 'utf8')
-      const senders = [...src.matchAll(/from:\s*'([^']*@[^']*)'/g)].map(m => m[1])
-      const constants = [...src.matchAll(/const FROM = '([^']*@[^']*)'/g)].map(m => m[1])
-      const found = [...senders, ...constants]
-      expect(found.length, `${file} declares no literal sender`).toBeGreaterThan(0)
-      for (const f of found) {
-        expect(f, `${file} sends from ${f}, which TRANSACTIONAL_FROM no longer mirrors`).toBe(TRANSACTIONAL_FROM)
-      }
+
+      expect(src, `${file} no longer imports the single sender source`)
+        .toMatch(/from '@\/lib\/email\/sender'/)
+      expect(src, `${file} imports the sender module but never calls it`)
+        .toMatch(/getNoReplyFrom\(\)/)
+
+      const literals = [
+        ...[...src.matchAll(/\b(?:from|replyTo):\s*'([^']*@[^']*)'/g)].map(m => m[1]),
+        ...[...src.matchAll(/const\s+[A-Z_]*FROM[A-Z_]*\s*=\s*'([^']*@[^']*)'/g)].map(m => m[1]),
+      ]
+      expect(literals, `${file} has gone back to a literal sender: ${literals.join(', ')}`)
+        .toEqual([])
     }
   })
 })

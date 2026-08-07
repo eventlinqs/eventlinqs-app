@@ -1,0 +1,57 @@
+DESIGN LOCK PROOF: the rebase onto main carrying #109 and #111 moved no pixel.
+Generated 2026-08-07T17:45Z under Node v20.20.2, the .nvmrc contract.
+
+Capture sets are NOT committed: this repository's pack is already 1.31 GiB and no
+capture set has ever been tracked (git ls-files docs/hardening/auth/visual -> 0).
+This text record is the committed evidence, matching GUARD-DRILL-OUTPUT.txt.
+
+REPRODUCE:
+  next build && next start -p 3210          # on this branch
+  node scripts/verify/auth-visual-capture.mjs rebase-after http://127.0.0.1:3210
+  git worktree add /c/elb pre-rebase-111-2026-08-08 && npm ci  # the BEFORE tree
+  next build && next start -p 3211
+  node scripts/verify/auth-visual-capture.mjs rebase-before http://127.0.0.1:3211
+  node scripts/verify/auth-visual-diff.mjs rebase-before rebase-after
+
+================================================================
+
+=== rebase-before  vs  rebase-after : must be pixel-identical ===
+
+  IDENTICAL   forgot-password-1440.png  1440x1000, 0 of 1440000 differ
+  IDENTICAL   forgot-password-390.png  390x908, 0 of 354120 differ
+  IDENTICAL   login-1440.png  1440x1000, 0 of 1440000 differ
+  IDENTICAL   login-390.png  390x908, 0 of 354120 differ
+  IDENTICAL   reset-password-1440.png  1440x1000, 0 of 1440000 differ
+  IDENTICAL   reset-password-390.png  390x908, 0 of 354120 differ
+  IDENTICAL   signup-1440.png  1440x1000, 0 of 1440000 differ
+  IDENTICAL   signup-390.png  390x908, 0 of 354120 differ
+  DIFFERS     signup-organiser-1440.png  3 of 1440000 pixels
+                (890,452) rgba(251,251,251,255) -> rgba(252,252,251,255) maxDelta 1
+                (889,453) rgba(227,227,225,255) -> rgba(228,228,225,255) maxDelta 1
+                (889,454) rgba(235,235,234,255) -> rgba(236,236,234,255) maxDelta 1
+                a maxDelta of 1 on adjacent pixels is antialiasing jitter, not a
+                regression. Confirm by capturing the SAME build twice and diffing that.
+  IDENTICAL   signup-organiser-390.png  390x998, 0 of 389220 differ
+  IDENTICAL   verify-email-sent-1440.png  1440x1000, 0 of 1440000 differ
+  IDENTICAL   verify-email-sent-390.png  390x908, 0 of 354120 differ
+
+  12 captures compared, 3 differing pixels in total.
+  1 capture(s) differ.
+
+================================================================
+
+THE THREE PIXELS ARE CAPTURE JITTER, NOT A REGRESSION.
+Proven by control: the same build was captured three times.
+
+  rebase-after   vs rebase-after-control   SAME tree       -> 0 pixels differ
+  rebase-after   vs rebase-after-rerun      SAME tree       -> 3 pixels differ
+  rebase-before  vs rebase-after-rerun      DIFFERENT tree  -> 0 pixels differ
+  rebase-before  vs rebase-after-control    DIFFERENT tree  -> 3 pixels differ
+
+Every combination of (same tree / different tree) x (0 diff / 3 diff) is
+observed, so the three pixels carry no information about which tree produced
+them. All three sit on a glyph edge at a maximum channel delta of 1 in 255.
+
+CORROBORATION AT SOURCE (independent of any screenshot):
+  git diff --stat pre-rebase-111-2026-08-08 HEAD -- 'src/app/(auth)' src/components/auth src/app/globals.css
+  (empty: not one byte of any auth surface or the token sheet differs)

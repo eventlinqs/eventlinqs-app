@@ -1,4 +1,27 @@
 import { Resend } from 'resend'
+import { getEmailFrom, getNoReplyFrom } from './sender'
+
+/**
+ * THE TRANSPORT. Three modules, three separate concerns, one definition each.
+ * The boundary is deliberate and is stated here because two of them were built
+ * on separate branches within days of each other and read as overlapping:
+ *
+ *   src/lib/email/sender.ts     WHO mail is FROM. The sending identity and the
+ *                               sending domain. Every `from:` and `replyTo:` in
+ *                               the codebase derives from it, enforced at build
+ *                               time by scripts/guards/sender-single-source.mjs.
+ *   src/lib/env/destinations.ts WHERE platform mail GOES. The alert and support
+ *                               destinations (founder ruling R2), so no personal
+ *                               address is ever a literal in shipped source.
+ *   this file                   HOW mail leaves: the Resend client, the
+ *                               non-production stamping, and the domain surface
+ *                               the email health check asserts against.
+ *
+ * From and to are not the same question, so they are not merged. This file
+ * DECLARES no address of its own: it had two literal sender constants until
+ * 2026-08-05, which made it a second sender definition competing with
+ * sender.ts. Both now derive from the one module.
+ */
 
 // Lazy module-singleton. Building with an empty RESEND_API_KEY (CI typecheck
 // or fresh clone) must succeed; the client is only constructed when a request
@@ -52,29 +75,16 @@ export function stampSubject(subject: string): string {
 }
 
 /**
- * The sender used when `EMAIL_FROM` is unset or blank.
- */
-export const DEFAULT_FROM = 'EventLinqs <hello@eventlinqs.com>'
-
-/**
- * The sender the BUYER-FACING transactional mail is hardcoded to.
+ * The configured sender for everything that goes through `sendEmail`.
  *
- * Mirrors the literal in the four call sites that build their own Resend
- * client rather than going through `sendEmail`: the order confirmation (the
- * ticket email, src/lib/email/order-confirmation.ts), the refund confirmation
- * (src/app/api/webhooks/stripe/route.ts), the payout emails
- * (src/lib/payouts/email.ts) and the waitlist promotion
- * (src/lib/waitlist/promote.ts). Declared here so the email health check can
- * assert this domain is verified at Resend without importing the webhook route,
- * whose money logic must not be disturbed.
+ * Kept as a named function because the health check and its tests read the
+ * platform's sender through this name, but it no longer decides anything: the
+ * decision lives in sender.ts. `getEmailFrom()` carries the same
+ * present-but-blank rule this used to implement with `||`, and additionally
+ * rejects a malformed `EMAIL_FROM` rather than sending as it.
  */
-export const TRANSACTIONAL_FROM = 'EventLinqs <noreply@eventlinqs.com>'
-
-/** The configured sender for everything that goes through `sendEmail`. */
 export function resolveFrom(): string {
-  // `||` not `??`: an EMPTY EMAIL_FROM (present but blank) must fall back to
-  // the verified default, not be sent as an empty from.
-  return process.env.EMAIL_FROM?.trim() || DEFAULT_FROM
+  return getEmailFrom()
 }
 
 /** Just the domain part of a `Name <user@domain>` or bare `user@domain`. */
@@ -87,14 +97,23 @@ export function senderDomain(from: string): string {
 /**
  * Every domain this deployment can actually send from, deduplicated.
  *
- * Why this exists (2026-07-26): production's `EMAIL_FROM` points at
+ * Why this exists (2026-07-26): production's `EMAIL_FROM` pointed at
  * `send.eventlinqs.com`, which is NOT verified at Resend, so every send through
  * `sendEmail` failed. It went unnoticed for as long as it did because the email
  * health check only asked "is the API key valid", never "can we actually send
- * from the addresses we use". Both answers are needed.
+ * from the addresses we use". Both answers are needed, and this is the second
+ * one: the health check asserts every domain returned here is verified.
+ *
+ * It reads BOTH mail roles rather than just the configured one, because that is
+ * the question the health check is really asking. The set is now structurally a
+ * single domain: since 2026-08-05 the transactional sender derives from the
+ * same module as the configured sender, so the two cannot land on different
+ * domains. It stays a deduplicated set rather than a single value so that the
+ * day a second sending identity is genuinely introduced, the health check
+ * covers it without anyone remembering to come back here.
  */
 export function senderDomainsInUse(): string[] {
-  return [...new Set([senderDomain(resolveFrom()), senderDomain(TRANSACTIONAL_FROM)])].filter(Boolean)
+  return [...new Set([senderDomain(getEmailFrom()), senderDomain(getNoReplyFrom())])].filter(Boolean)
 }
 
 export type SendEmailInput = {
@@ -112,18 +131,16 @@ export type SendEmailInput = {
  * link) on a single deliverability path with our own retries, observability
  * hooks, and rate-limit envelope.
  *
- * The default `from` address resolves in this order:
- *   1. `EMAIL_FROM` env var (production-appropriate).
- *   2. Hardcoded `EventLinqs <hello@eventlinqs.com>` for local dev so a
- *      signup form submission against a partly-configured `.env.local` does
- *      not require setting an extra var to exercise the path.
+ * The `from` address comes from `src/lib/email/sender.ts`, which is the ONE
+ * definition of who EventLinqs mail comes from. It used to be inlined here and
+ * in four other files, which made a sending-domain move a five-file hunt.
  *
  * Throws on transport failure. Caller is responsible for catching and
  * shaping the user-facing error.
  */
 export async function sendEmail(input: SendEmailInput): Promise<{ id: string }> {
-  // Single source: resolveFrom() carries the "present but blank falls back"
-  // rule, so the health check and the sender can never disagree.
+  // Single source: resolveFrom() delegates to sender.ts, so the health check
+  // and the sender can never disagree about who this platform sends as.
   const from = resolveFrom()
   const resend = getResend()
   const { data, error } = await resend.emails.send({

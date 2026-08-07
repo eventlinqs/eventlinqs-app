@@ -35,6 +35,23 @@
  * The one brand-owned address every destination falls back to. Proven
  * deliverable. Never a personal address, and never an address that has not been
  * tested end to end.
+ *
+ * BOUNDARY WITH THE SENDER MODULE, stated because the two look mergeable and
+ * are not. src/lib/email/sender.ts is the single definition of who mail is
+ * FROM, and every address it produces follows the SENDING domain, so setting
+ * `EMAIL_FROM` moves all of them at once. This constant must NOT be wired into
+ * that, even though today both read `eventlinqs.com` and a shared definition
+ * would look tidier.
+ *
+ * The reason is the distinction ENV-DOCTRINE section 4 draws: sending is not
+ * receiving. Resend verification proves a domain can SEND. Whether an address
+ * can RECEIVE is configured somewhere else entirely, here Microsoft 365, and
+ * was established for this one address by sending to it and reading back the
+ * delivery event. Deriving it from the sending domain would mean that the day
+ * someone moves the sender, every alert silently redirects to an address on the
+ * new domain that nobody has ever proven receives anything. That is the failure
+ * this file exists to prevent, arriving by a different door: an alert
+ * destination is only ever changed by someone who has tested that it receives.
  */
 export const PLATFORM_INBOX = 'hello@eventlinqs.com'
 
