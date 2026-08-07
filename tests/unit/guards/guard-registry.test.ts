@@ -76,6 +76,26 @@ describe('the build-guard registry', () => {
     expect(absent, `registered but not on disk: ${absent.join(', ')}`).toEqual([])
   })
 
+  test('the header comment names every registered guard', () => {
+    // The runner opens by listing what each guard enforces. That list is a
+    // citation, and an unmaintained citation is the exact defect this branch
+    // spent Phase 2.1 fixing: src/lib/auth/providers.ts pointed at a script that
+    // did not exist, and nobody noticed because prose is not executed. Adding a
+    // guard without describing it, or deleting one and leaving the description,
+    // both turn this red.
+    const header = readFileSync(RUNNER, 'utf8').split('*/')[0]
+    const undescribed = registeredGuards()
+      .map((g) => g.split('/').pop()!.replace(/\.mjs$/, ''))
+      // The header uses the short name for the branch's own guards and the file
+      // name for the external one, so accept either.
+      .filter((name) => !header.includes(name) && !header.includes(name.replace(/-guard$/, '')))
+
+    expect(
+      undescribed,
+      `registered but not described in the runner's header comment: ${undescribed.join(', ')}`,
+    ).toEqual([])
+  })
+
   test('the runner actually invokes the registry rather than a hardcoded list', () => {
     // Guards against the list becoming decorative: the loop must iterate GUARDS.
     const src = readFileSync(RUNNER, 'utf8')
