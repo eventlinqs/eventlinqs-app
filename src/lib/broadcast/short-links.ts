@@ -52,6 +52,11 @@ export const CHANNEL_MARKERS: Record<ShareChannel, string> = {
   copy: 'cp',
   native: 'sh',
   qr: 'qr',
+  // The weekly city digest, added by the digest-audience work on the moat
+  // branch after this marker table was written. Without it the table no longer
+  // covers the ShareChannel union and the build fails, so a digest link would
+  // have had no readable marker at all.
+  digest: 'dg',
   other: 'ot',
 }
 

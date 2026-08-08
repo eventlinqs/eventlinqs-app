@@ -32,6 +32,9 @@ export type PolicyName =
   | 'gig-apply'
   | 'booking-request'
   | 'marketplace-report'
+  | 'launch-compose'
+  | 'launch-compose-daily'
+  | 'launch-artefact'
 
 export type Policy = {
   /** Stable prefix used to namespace the redis key. Keep short. */
@@ -222,5 +225,26 @@ export const POLICIES: Record<PolicyName, Policy> = {
     windowSec: 86400,
     rationale:
       'Abuse reports per user per day. Enough for genuine moderation help, low enough to stop report-bombing a performer or organiser.',
+  },
+  'launch-compose': {
+    keyPrefix: 'lnch-c',
+    limit: 20,
+    windowSec: 3600,
+    rationale:
+      'Anonymous composer draft builds per IP per hour. The compose path is DETERMINISTIC and spends no model tokens (founder ruling 9 Aug 2026), so this caps database writes and render CPU, not an API bill. Twenty covers an organiser rewriting their description repeatedly while bouncing a scripted flood. Deliberately fail-OPEN: a Redis blip must never stop a stranger building a kit, because there is no spend to protect and the whole point of the surface is that it always works.',
+  },
+  'launch-compose-daily': {
+    keyPrefix: 'lnch-cd',
+    limit: 60,
+    windowSec: 86400,
+    rationale:
+      'Daily anonymous composer builds per IP. Bounds a slow-drip flood that stays under the hourly cap. Sixty is far beyond any real organiser and still generous for a shared office or a carrier NAT range, which is the case a tighter number would break. Fail-open for the same reason as the hourly.',
+  },
+  'launch-artefact': {
+    keyPrefix: 'lnch-a',
+    limit: 60,
+    windowSec: 3600,
+    rationale:
+      'Anonymous artefact renders (cards and posters) per IP per hour. A full kit is one poster plus three cards, and an organiser legitimately re-renders after each edit, so sixty covers about a dozen honest passes. This is CPU and sharp memory, not model spend. Fail-open: a missing render degrades to the typographic composition, never to a broken kit.',
   },
 }
