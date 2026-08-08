@@ -101,12 +101,13 @@ const BANDS: FeatureBand[] = [
   {
     eyebrow: 'The launch kit',
     title: 'Publish, and your launch kit is in your hands.',
-    body: 'Build your event and map your room in minutes, no approval gate and no sales call. The moment you publish, your complete launch kit is delivered: your live event page, a print-ready QR poster, your designed invitation card, one-tap tracked share links for every channel, and live reach numbers showing exactly where your buyers come from.',
+    body: 'Build your event and map your room in minutes, no approval gate and no sales call. The moment you publish, your complete launch kit is delivered: your live event page, a print-ready QR poster, share cards and captions for every channel, and a reach panel that leads with tickets sold rather than views, so you can see which channel actually sold them.',
     points: [
       'Build your event in 5 to 15 minutes, seat map included',
-      'A4 QR poster and invitation card, generated for you',
+      'A4 QR poster, story, square and feed cards, generated for you',
       'Tracked share links for WhatsApp, Instagram, anywhere',
-      'Live reach: every click and sale, attributed by channel',
+      'Tickets sold, attributed to the exact channel that sold them',
+      'Two of those numbers are payments and two are estimates, and we tell you which is which',
       'Tag your lineup: each performer gets a profile, a place on your event page, and the exact tickets their sharing sold',
     ],
     image: ORGANISER_BANDS.selfServe,
@@ -455,9 +456,9 @@ export async function OrganisersLandingPage() {
                   headline + fee line + CTAs at 390; the supporting copy
                   re-enters immediately in the bands below. */}
               <p className="mt-2 hidden max-w-xl text-sm text-white/85 sm:block sm:text-base">
-                Then tools to expand your reach: tracked share links, a discovery
-                feed, and push alerts reach a local audience that is actually
-                looking, and your attendee list stays yours.
+                Then the tools that fill it: tracked share links, a discovery feed
+                and push alerts to a local audience already looking, measured in
+                tickets sold rather than views, and your attendee list stays yours.
               </p>
               {/* Cost in one glance, above the fold (exact fee from the pricing
                   source, never invented). */}

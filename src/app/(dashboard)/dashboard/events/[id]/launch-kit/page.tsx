@@ -34,6 +34,7 @@ import { buildCaptions, type CaptionPlatform } from '@/lib/broadcast/captions'
 import { loadArtefactContext, toCaptionInput } from '@/lib/broadcast/kit-artefacts'
 import type { SocialCardFormat } from '@/lib/broadcast/social-card-spec'
 import { LineupLoopPanel } from '@/components/broadcast/lineup-loop-panel'
+import { ReachEmptyState } from '@/components/broadcast/reach-empty-state'
 import { getLineupPanelData, type LineupPanelData } from '@/lib/broadcast/lineup-panel'
 import { SeatMapPreview } from '@/components/seating/seat-map-preview'
 import type { SeatData, SectionData, SeatAreaData } from '@/components/checkout/seat-selector'
@@ -154,8 +155,8 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
           </h1>
           <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-ink-600">
             Publish {organiserEvent.title} and this screen becomes your complete kit: the live
-            page link, your seat map, a print-ready QR poster, share cards for every channel,
-            and live reach numbers.
+            page link, your seat map, a print-ready QR poster, share cards and captions for
+            every channel, and the tickets each channel sold you.
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             <Link
@@ -289,6 +290,13 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
   const topChannels = [...summary.byChannel]
     .sort((a, b) => b.clicks + b.views - (a.clicks + a.views))
     .slice(0, 4)
+
+  // Four zeros in a row is not a report, it is a wall. At true zero the panel
+  // explains itself and offers the action that produces the first number; the
+  // moment ANY measure lands the real tiles come back, because a zero beside a
+  // number carries meaning that a zero beside three other zeros does not.
+  // Share tooling being off is a different state and keeps its own sentence.
+  const nothingHasTravelled = shareOn && reachStats.every(stat => stat.value === 0)
 
   const nextSteps = [
     { href: `/dashboard/events/${id}`, label: 'Manage event', icon: Pencil },
@@ -607,6 +615,13 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
               <ArrowUpRight className="h-4 w-4" aria-hidden />
             </Link>
           </div>
+          {nothingHasTravelled ? (
+            <ReachEmptyState
+              shareHref={`/dashboard/events/${id}/launch-kit#kit-share-heading`}
+              posterHref={`/api/organiser/events/${id}/poster`}
+            />
+          ) : (
+            <>
           <div className="grid grid-cols-1 gap-px bg-ink-100 sm:grid-cols-4">
             {reachStats.map(stat => (
               <div key={stat.label} className="bg-white px-6 py-5">
@@ -627,11 +642,17 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
             ))}
           </div>
           <div className="border-t border-ink-100 px-6 py-4">
-            {topChannels.length === 0 ? (
+            {!shareOn ? (
               <p className="text-sm text-ink-600">
-                {shareOn
-                  ? 'Numbers land here the moment your first shared link is opened. Tickets and orders come straight from real payments. Clicks and views are close estimates: link previews from Facebook, WhatsApp and the rest are filtered out and repeat taps are counted once an hour, but nothing can make a request count perfectly.'
-                  : 'Share tooling is off, so tracked reach is paused. Your event page and sales are unaffected.'}
+                Share tooling is off, so tracked reach is paused. Your event page and sales
+                are unaffected.
+              </p>
+            ) : topChannels.length === 0 ? (
+              <p className="text-sm text-ink-600">
+                Tickets and orders come straight from real payments. Clicks and views are
+                close estimates: link previews from Facebook, WhatsApp and the rest are
+                filtered out and repeat taps are counted once an hour, but nothing can make a
+                request count perfectly.
               </p>
             ) : (
               <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
@@ -647,6 +668,8 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
               </div>
             )}
           </div>
+            </>
+          )}
         </div>
       </Reveal>
 
