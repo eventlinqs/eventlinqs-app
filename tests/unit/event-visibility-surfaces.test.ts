@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
@@ -110,17 +110,44 @@ describe('the event page blocks the search index', () => {
 })
 
 describe('nothing in the codebase uses the leaky deny-list shape', () => {
+  /**
+   * This was written as a "sweep" over four hand-listed files and it was not a
+   * sweep at all. Two surfaces carrying the exact digest bug sat outside that
+   * list and shipped: `fetchArtistUpcomingShows` (broadcast/artists.ts) and
+   * `fetchArtistCredits` (marketplace/showcase.ts), both of which render on the
+   * PUBLIC artist profile at /artists/[slug]. A hand-listed guard only ever
+   * proves the files somebody already thought of.
+   *
+   * So it now walks the whole of src/. A new surface cannot reintroduce the
+   * bug without failing this test, whether or not anyone remembers to add it.
+   */
+  function walk(dir: string): string[] {
+    const out: string[] = []
+    for (const entry of readdirSync(join(root, dir), { withFileTypes: true })) {
+      const rel = `${dir}/${entry.name}`
+      if (entry.isDirectory()) out.push(...walk(rel))
+      else if (/\.tsx?$/.test(entry.name)) out.push(rel)
+    }
+    return out
+  }
+
+  const SOURCES = walk('src')
+
+  it('walks a real tree rather than a hand-listed handful', () => {
+    // Guards the guard: if this collapses to a few files the sweep is fake.
+    expect(SOURCES.length).toBeGreaterThan(300)
+  })
+
   it('no surface compares visibility against private alone', () => {
-    // A sweep, so a NEW surface cannot reintroduce the digest bug elsewhere.
-    const FILES = [
-      'src/lib/events/fetchers.ts',
-      'src/lib/events/home-queries.ts',
-      'src/lib/broadcast/digest.ts',
-      'src/app/sitemap.ts',
-    ]
-    const offenders = FILES.filter(f =>
+    const offenders = SOURCES.filter(f =>
       /visibility\s*!==\s*['"]private['"]/.test(code(read(f))),
     )
     expect(offenders).toEqual([])
+  })
+
+  it('the two public artist surfaces use the shared allow-list predicate', () => {
+    for (const f of ['src/lib/broadcast/artists.ts', 'src/lib/marketplace/showcase.ts']) {
+      expect(code(read(f))).toMatch(/isPubliclyDiscoverable\(\s*e\.visibility\s*\)/)
+    }
   })
 })

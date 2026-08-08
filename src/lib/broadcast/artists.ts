@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { isPubliclyDiscoverable } from '@/lib/events/visibility'
 
 /**
  * Broadcast Layer Stage 3 core: performer attribution (SPEC section 4).
@@ -121,7 +122,11 @@ export async function fetchArtistUpcomingShows(
     .map((r) => r.event)
     .filter(
       (e): e is NonNullable<Row['event']> =>
-        !!e && e.status === 'published' && e.visibility !== 'private' && e.start_date >= nowIso,
+        // Child-safety ruling, 9 August 2026. This list renders on the PUBLIC
+        // artist profile, so it is a discovery surface. It used to read
+        // `visibility !== 'private'`, a deny-list that passed UNLISTED events
+        // straight onto a public page. Allow-list only.
+        !!e && e.status === 'published' && isPubliclyDiscoverable(e.visibility) && e.start_date >= nowIso,
     )
     .sort((a, b) => a.start_date.localeCompare(b.start_date))
     .slice(0, limit)

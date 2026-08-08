@@ -4,6 +4,7 @@ import type { VideoProvider } from '@/lib/media/limits'
 import type { ArtistRow } from '@/lib/broadcast/artists'
 import type { PerformanceType } from './gigs'
 import { isPerformanceType } from './gigs'
+import { isPubliclyDiscoverable } from '@/lib/events/visibility'
 
 /**
  * Performer marketplace: showcase profile reads and validation (flag
@@ -231,9 +232,13 @@ export async function fetchArtistCredits(
     .map((r) => r.event)
     .filter(
       (e): e is NonNullable<Row['event']> =>
+        // Child-safety ruling, 9 August 2026. Credits render on the PUBLIC
+        // artist profile and the public gig page, so this is a discovery
+        // surface. It used to read `visibility !== 'private'`, a deny-list that
+        // passed UNLISTED events onto a public page. Allow-list only.
         !!e &&
         ['published', 'completed'].includes(e.status) &&
-        e.visibility !== 'private' &&
+        isPubliclyDiscoverable(e.visibility) &&
         e.start_date < nowIso,
     )
     .sort((a, b) => b.start_date.localeCompare(a.start_date))
