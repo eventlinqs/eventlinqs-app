@@ -116,20 +116,60 @@ The exposure is still real (a production service-role key loaded into every
 local process) but it is one `process.env.SERVICE_ROLE` away from being a live
 path, not a live path today. The guard says exactly that now.
 
-### The manifest is also wrong about Upstash
+### The manifest was also wrong about Upstash. RULED AND FIXED.
 
-`src/lib/env/manifest.mjs` declares:
+It declared:
 
 ```js
 describe: 'Upstash Redis REST URL: rate limits and the AI monthly budget guard',
 paymentCritical: false,
 ```
 
-It does not know the store also caches **the resolved fee**. `paymentCritical:
-false` is incorrect for a store that can serve the fee a buyer is charged.
-Flagged, not changed: the manifest is the executable authority for the env locks
-and re-classifying an entry changes which gates apply to it, which is a founder
-call.
+Founder ruling 2026-08-08: **paymentCritical TRUE. "It caches the resolved fee.
+A fee is money."** Applied to both Upstash entries, and both `describe` strings
+corrected to name the fee cache and the feature flags.
+
+**But the flag's own contract did not cover why**, and that mattered more than
+the value. It read:
+
+> true when production cannot take a real payment, or cannot complete one,
+> without it
+
+By that wording Upstash genuinely did not qualify: when Redis is absent
+`readCache` returns null and `getPricingRule` falls through to the database, so
+a payment still completes. The contract only modelled **absence**, never
+**corruption**. So the wording is now:
+
+> true when production cannot take a real payment, cannot complete one, **or
+> would take it FOR THE WRONG AMOUNT**, without it or with the wrong value
+
+Otherwise the next reader would find `paymentCritical: true` on a store whose
+absence breaks nothing, conclude it was a mistake, and set it back.
+
+### Which gates this newly applies: almost none, and that is the real finding
+
+Asked to say which gates the re-classification brings into force, the honest
+answer is **one, and it is a display column**:
+
+```
+scripts/generate-env-state.mjs:98:  payment: e.paymentCritical ? 'YES' : 'no',
+```
+
+`paymentCritical` has **no other consumer anywhere** in `src/`, `scripts/` or
+`.github/`. It is a label on a generated document. Ten variables now carry it and
+not one gate treats them differently from any other required variable.
+
+That is worth more attention than the Upstash entry itself: a classification
+that gates nothing gives the reassurance of a control without the control. It is
+the same shape as an UNDECLARED feature flag, and I am flagging it rather than
+inventing enforcement, because deciding what a payment-critical variable must
+additionally satisfy (stricter shape? cross-store parity? a rotation interval?)
+is a doctrine decision, not a code change.
+
+**No gate broke.** `env-locks-verify` and `generate-env-state` exit 0.
+`check-public-env` exits 0 with the TEST overlay exported, and its failure on a
+bare shell is the pre-existing production-Supabase-reach block, correctly
+firing, which is the same defect class this audit is about.
 
 ---
 
@@ -233,5 +273,82 @@ locally-uncommitted files carrying a version the remote already applied.
 ===== ALL GREEN =====
 ```
 
-Current state: **ALL GREEN**, local and `--remote` (82 versions, each claimed by
-exactly one file, every applied version corresponding to a committed file).
+### Cross-branch: asked directly, and the answer was NO
+
+**As first built, the guard could NOT detect a collision across branches.** It
+read the working tree, and the working tree only ever shows one branch. That
+limitation was not theoretical:
+
+```
+--- d. no version is claimed by different files on different branches ---
+  scanning 113 ref(s)
+  [FAIL] version 20260531000001 is claimed by 2 DIFFERENT files:
+         20260531000001_refund_reconcile.sql        on: 73 branches incl. main
+         20260531000001_checkin_scanner.sql         on: feat/door-checkin-scanner
+  [FAIL] version 20260808000001 is claimed by 2 DIFFERENT files:
+         20260808000001_share_codes_never_released.sql  on: feat/launch-kit-artefacts
+         20260808000001_city_primary_backfill.sql       on: feat/launch-kit-moat
+  [FAIL] version 20260808000004 is claimed by 2 DIFFERENT files:
+         20260808000004_category_taxonomy_r1.sql        on: feat/launch-kit-moat
+         20260808000004_category_taxonomy_repair.sql    on: fix/production-sweep
+```
+
+**Three live collisions, two of them created today by the parallel sessions**,
+and one dating to 31 May. The guard now reads every ref through
+`git ls-tree` rather than the filesystem. A version claimed by the SAME filename
+on many branches is normal (shared ancestor); a version claimed by DIFFERENT
+filenames is the collision.
+
+**All three are the severe shape**, because my versions are already applied on
+TEST. Renaming fixes the future and does not undo the record: the other
+branches' migrations are marked done on a database they never touched, so each
+must be re-issued under a fresh version and whatever it was going to alter has
+to be checked by hand first. `20260808000001_share_codes_never_released.sql` and
+`20260808000004_category_taxonomy_repair.sql` have **never run on TEST** and
+never will under those versions.
+
+Local checks pass (82 versions, one file each); the cross-branch check is
+correctly RED on the three above.
+
+---
+
+## 5. The flaky security tests, measured rather than asserted
+
+Founder: "Three consecutive clean runs is not proof against flakiness, it is
+absence of evidence." Correct. Here is evidence.
+
+**Ten full-suite runs under full parallel load: 10 of 10 passed, 1482 tests
+each, zero timeouts.** But the number that actually settles it is the duration
+of the two scan tests, measured with the verbose reporter across three further
+runs:
+
+| Run | `no-localhost-app-url-fallback` | `no-server-side-getsession` |
+|---|---|---|
+| 1 | 2997 ms | 3117 ms |
+| 2 | 3309 ms | 2505 ms |
+| 3 | 4083 ms | **5308 ms** |
+
+**The old budget was the vitest default of 5000 ms, and the worst observed run
+is 5308 ms.** So the previous configuration was not unlucky, it was
+mathematically guaranteed to flake: the tests genuinely take 2.5 to 5.3 seconds
+and were sitting on the boundary. They walk and read every file under `src/`, so
+their cost grows with the codebase while a default timeout does not.
+
+The new budget is 30 s, which is **5.7x headroom over the worst observed run**
+and roughly 10x over the median. That is the honest characterisation: not "it
+passes now" but "the slowest measurement is 18 percent of the old budget and
+6 percent of the new one".
+
+### A note on how this was measured, because the first attempt produced nothing
+
+The initial ten-run loop returned empty output. It had not measured anything:
+`node_modules` was **completely empty** by then, so every `vitest` invocation
+failed at startup and the greps matched nothing. Reporting "10 clean runs" from
+that would have been a fabricated pass.
+
+The cause was not this session. `scripts/reclaim-space.mjs` protects only the
+repo it is **run from** (`if (dir === REPO) continue`), so a parallel session
+running `npm run reclaim --deep` from another worktree deletes this one's
+`node_modules`. Restored with `npm ci` (1027 packages, deterministic from
+`package-lock.json`); the git tree was untouched throughout and no committed
+work was at risk. Worth knowing while five sessions share one machine.

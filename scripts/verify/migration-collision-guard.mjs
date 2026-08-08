@@ -104,6 +104,81 @@ if (twins.length) {
   console.log('  [PASS] every migration is distinct')
 }
 
+// --- 3. THE CROSS-BRANCH CHECK ----------------------------------------------
+//
+// The working tree only ever shows ONE branch. The collision this guard exists
+// for is created by two sessions on two branches, and neither can see the
+// other's file until a merge, which is the moment it is too late.
+//
+// So this reads every ref through git rather than the filesystem. A version
+// claimed by the SAME filename on many branches is normal: those branches share
+// an ancestor. A version claimed by DIFFERENT filenames is the collision.
+console.log('\n--- d. no version is claimed by different files on different branches ---')
+{
+  let refs = []
+  try {
+    refs = execFileSync('git', ['for-each-ref', '--format=%(refname:short)', 'refs/heads/', 'refs/remotes/'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+      .split('\n')
+      .map((r) => r.trim())
+      .filter(Boolean)
+      .filter((r) => !r.endsWith('/HEAD'))
+  } catch (err) {
+    console.log(`  [skip] git unavailable: ${String(err).slice(0, 100)}`)
+  }
+
+  if (refs.length) {
+    console.log(`  scanning ${refs.length} ref(s)`)
+    // version -> filename -> [refs]
+    const claims = new Map()
+    for (const ref of refs) {
+      let listed = ''
+      try {
+        listed = execFileSync('git', ['ls-tree', '-r', '--name-only', ref, '--', `${DIR}/`], {
+          encoding: 'utf8',
+          stdio: ['ignore', 'pipe', 'pipe'],
+        })
+      } catch {
+        continue
+      }
+      for (const path of listed.split('\n')) {
+        const file = path.trim().replace(`${DIR}/`, '')
+        if (!file.endsWith('.sql')) continue
+        const version = /^(\d{14})_/.exec(file)?.[1]
+        if (!version) continue
+        if (!claims.has(version)) claims.set(version, new Map())
+        const byFile = claims.get(version)
+        byFile.set(file, [...(byFile.get(file) ?? []), ref])
+      }
+    }
+
+    const crossBranch = [...claims].filter(([, byFile]) => byFile.size > 1)
+    if (crossBranch.length === 0) {
+      console.log(`  [PASS] ${claims.size} version(s) across all refs, each claimed by exactly one filename`)
+    } else {
+      for (const [version, byFile] of crossBranch) {
+        console.log(`  [FAIL] version ${version} is claimed by ${byFile.size} DIFFERENT files:`)
+        for (const [file, onRefs] of byFile) {
+          console.log(`         ${file}`)
+          console.log(`             on: ${onRefs.slice(0, 4).join(', ')}${onRefs.length > 4 ? ` (+${onRefs.length - 4} more)` : ''}`)
+        }
+      }
+      console.log('')
+      console.log('  A colliding version that is ALREADY APPLIED is the severe case. Renaming')
+      console.log('  the file fixes the future; it does not undo the record. The other branch\'s')
+      console.log('  migration has been marked done on a database it never touched, so its')
+      console.log('  change must be re-issued under a fresh version, and whatever it was going')
+      console.log('  to alter has to be checked by hand first.')
+      console.log('  Run with --remote to see which of these versions are already applied.')
+      failures.push(
+        `${crossBranch.length} version(s) are claimed by different files on different branches. Whichever lands first records the version as applied; every other file with that version is then treated as already done and NEVER RUNS`,
+      )
+    }
+  }
+}
+
 // --- 3. a local version already applied on the remote -----------------------
 console.log('\n--- c. no local file claims a version the remote has already applied ---')
 if (!REMOTE) {
