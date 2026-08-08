@@ -273,3 +273,65 @@ rotation, which is a production write. Recorded in the rotation runbook.
 Per founder ruling, the runbook now records that `CRON_SECRET` is deliberately
 ONE secret in two stores (the handshake authenticates rather than compares),
 and is therefore a single point of failure with no add-then-revoke window.
+
+---
+
+## 9. CLEAN STOP. The state of this branch at handover.
+
+**19 commits on `feat/launch-kit-moat`.** Nothing merged, nothing pushed,
+nothing applied to production. Gates at HEAD: tsc clean, eslint **47 warnings 0
+errors** (baseline 48), **1482 tests across 131 files**, copy-tell-gate clean.
+
+### Every guard on this branch, and its honest state
+
+| Guard | State | Whose move |
+|---|---|---|
+| `reach-integrity --code-only` | **10 pass, 0 FAIL** | done |
+| `reach-integrity` (TEST) | 15 pass, 1 FAIL | the flag flips |
+| `reach-integrity --production` | 12 pass, 2 FAIL | the flag flips + the migration |
+| `payment-critical-doctrine` | **ALL GREEN**, 1 clause deferred with reason | done |
+| `migration-collision-guard` (local) | **ALL GREEN** | done |
+| `migration-collision-guard` (cross-branch) | 3 collisions | **founder: coordinate renames** |
+| `env-store-isolation` | 6 SHARED | **founder: the remediation runbook** |
+| `reclaim-confinement-proof` | **10 of 10** | done |
+| `sparse-checkout-proof` | **9 of 9** | done |
+| `url-filters-e2e` | 17 of 17 | done |
+| `search-reach-e2e` | 29 of 29 | done |
+| `share-beacon-e2e` | 13 of 13 | done |
+| `share-conversion-e2e` | 9 of 9 | done |
+
+Nothing is suppressed. Every red is a founder action, named.
+
+### The founder queue, in the order I would run it
+
+1. **The security session's RLS fix.** Everything below waits on it.
+2. **Approval block items 5 and 6**, the two flag flips. `broadcast_follow`
+   first: it is a privacy defect, not a missing feature.
+3. **Approval block item 7**, the `CRON_SECRET` rotation. Two minutes, both
+   stores before any redeploy, handshake proves it.
+4. **`docs/roast/redis-isolation/REMEDIATION-RUNBOOK.md`**, the TEST Upstash
+   instance. Closes 4 of the 6 shared stores.
+5. **Sparse-checkout the seven linked worktrees**, 7.98 GB, one command each,
+   when that worktree is idle.
+6. **Rule on the image archive**, `IMAGE-RULING-RECOMMENDATION.md`.
+7. **Coordinate the three migration version collisions** with the other
+   sessions. Renaming MY files would be wrong: they are applied on TEST.
+
+### What this branch never touched
+
+Parts **A1, A3, C6, C7, D2, D4, E1, E3** (the artefact brief, owned by another
+session) and **A2, A4, B1, B2, E2** (taken by `feat/launch-kit-artefacts`). No
+RLS. No new migrations after the freeze. R5 and F6 remain blocked on an absent
+`ANTHROPIC_API_KEY`.
+
+### The three things worth carrying into any future session
+
+1. **A wrong answer that looks like a right one is the worst defect class.** Six
+   district pages were six copies of the city page; nothing was empty, nothing
+   errored. There is a standing gate for it now, negative-tested.
+2. **A guard that has never fired is not a guard.** Every guard added this
+   session was proven by injecting the failure it exists to catch.
+3. **Absence of failure is not evidence of success.** A ten-run flake
+   measurement came back blank because `node_modules` had been deleted and every
+   invocation failed at startup. Anything counting passes would have reported it
+   green.
