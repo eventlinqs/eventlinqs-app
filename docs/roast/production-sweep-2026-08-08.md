@@ -211,3 +211,94 @@ page. `/events?category=comedy` rendered only the 12 footer links.
   user can see links to them. Correct behaviour, not a dead link.
 - **O3. `/feed` redirects a signed-out visitor to `/login`.** Auth-gated by
   design; it does not explain why, which is a polish item, not a break.
+
+---
+
+# Journey B, the buyer, walked as a person
+
+`scripts/sweep/journey-buyer.mjs`, run at 1440 and 390 against the preview.
+Evidence: `docs/roast/sweep-evidence/journey-b-{1440,390}/`.
+
+| Step | Verdict | What the screen actually said |
+|---|---|---|
+| Sign up: open the form | PASS | Form renders, email field present |
+| Sign up: fill and submit | PASS | Lands on `/verify-email-sent?email=...` |
+| Sign up: the next step is explained | PASS | "Check your inbox. We sent a verification link to ... Open it to activate your account." |
+| Sign in: wrong password | PASS | "That email address and password combination did not match. Check them and try again." Field keeps what was typed |
+| Sign in: unverified account | PASS | "This account still needs its email confirmed. Open the verification link we sent you, or request a new one." |
+| Forgot password: submit | PASS | Confirmation shown |
+| Sign in with Google | PASS, and informative | No Google button is offered; the page says "Google sign-in is unavailable right now. You can sign in with your email address and password below, and Google will be back short(ly)." |
+| Buy: press the ticket control on a free event | PASS | Scrolls to `#tickets`, picker in view |
+| Buy: a picker is reachable | PASS | 3 quantity controls |
+| My tickets while signed out | PASS | Redirects to `/login?redirect=/tickets` |
+
+**No product defect was found in Journey B at either viewport.** Four failures
+this script reported were its own, and all four are recorded in the file:
+a 3.5s login wait that read the page before the message arrived, and three
+locator picks that grabbed a "Get tickets" copy inside sticky chrome
+(y = -53 in the header at 1440; y = 857 in the bottom bar at 390) instead of
+the one in the page body.
+
+# The checkout gate, and the 27 failures that were not failures
+
+`scripts/verify/checkout-integrity.mjs` drove all 362 published events.
+First run: **29 failed, 27 of them seated**, every one timing out on
+`svg[aria-label="Seat map"]`.
+
+None of the 27 is broken. Verified directly on
+`winter-gala-concert-at-the-regent`: zero page errors and a 970x654 **canvas**
+labelled "Seat map. Arrow keys move seat to seat, Enter selects, plus and minus
+zoom, Escape rests." The seating renderer moved to a Canvas scene graph on
+2026-07-26 and this selector has matched nothing since.
+
+Rebuilt to drive the keyboard interface the canvas advertises. Three previously
+"failing" events, by hand:
+
+```
+REACHED CHECKOUT  winter-gala-concert-at-the-regent
+REACHED CHECKOUT  play-house-proof-a-seated-evening
+REACHED CHECKOUT  seat-proof-fifty-nwltxi
+```
+
+The two genuine non-seated failures:
+
+- `lineup-loop-proof-night-3z7osn` **is a real dead end.** The page reads
+  "Get tickets. From AUD $25. Secure checkout" and renders **zero** quantity
+  controls. Both its tiers have `total_capacity = 0`, and one has an empty
+  name and a price of 0. Nothing says sold out. Screenshot:
+  `sweep-evidence/checkout-fail-lineup-loop-proof-night-.png`. NOT FIXED.
+- `cat-esports-arena-finals-sydney` starts 30 June 2026, which is in the past.
+  It does render a stepper. Refusing checkout on a finished event is correct.
+
+# Final instrument state, after the corrections
+
+Re-walk of all 62 surfaces at both viewports
+(`sweep-evidence/final/report.json`):
+
+```
+dead links                0
+dead-end tiles            0
+broken images             0
+inert anchors             0
+horizontal overflow       0
+page errors               0
+touch targets under 44px  8   (was 62 before the heuristic was corrected)
+banned word               38  (19 surfaces x 2 viewports, migration pending)
+HTTP 404                  16  (8 surfaces x 2: orphaned or flag-gated routes,
+                               plus the two deliberate not-found probes)
+```
+
+# Verification
+
+```
+vitest      131 files, 1427 tests, all passed
+eslint      43 problems, 0 errors   (baseline on main is 48)
+tsc         clean
+copy gate   clean (dashes, banned word, phrase tells, competitor names)
+guards      all 7 PASS
+CI          lint / typecheck / build  PASS
+            test (vitest)             PASS
+            types-drift guard         PASS
+            Vercel preview            PASS
+            Lighthouse mobile gate    the standing pre-existing failure
+```
