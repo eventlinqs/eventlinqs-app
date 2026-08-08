@@ -29,6 +29,10 @@ import { Reveal } from '@/components/ui/reveal'
 import { CopyLinkButton } from '@/components/launch-kit/copy-link-button'
 import { KitRenderedTracker } from '@/components/launch-kit/kit-rendered-tracker'
 import { LaunchShareRow } from '@/components/launch-kit/launch-share-row'
+import { PostPack } from '@/components/launch-kit/post-pack'
+import { buildCaptions, type CaptionPlatform } from '@/lib/broadcast/captions'
+import { loadArtefactContext, toCaptionInput } from '@/lib/broadcast/kit-artefacts'
+import type { SocialCardFormat } from '@/lib/broadcast/social-card-spec'
 import { LineupLoopPanel } from '@/components/broadcast/lineup-loop-panel'
 import { getLineupPanelData, type LineupPanelData } from '@/lib/broadcast/lineup-panel'
 import { SeatMapPreview } from '@/components/seating/seat-map-preview'
@@ -56,6 +60,19 @@ const KIT_CHANNELS: readonly ShareChannel[] = [
   'email',
   'copy',
 ]
+
+/**
+ * Which card shape leads for each channel, and why. Every reason is a
+ * published platform rule, cited in src/lib/broadcast/social-card-spec.ts.
+ */
+const LEAD_FORMAT: Record<CaptionPlatform, SocialCardFormat> = {
+  instagram: 'story',
+  facebook: 'feed',
+  whatsapp: 'story',
+  x: 'square',
+  linkedin: 'square',
+  email: 'square',
+}
 
 const CHANNEL_LABELS: Record<string, string> = {
   whatsapp: 'WhatsApp',
@@ -194,6 +211,18 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
     // nothing here is ever a dead control. Reach explains itself below.
     for (const channel of KIT_CHANNELS) kitLinks[channel] = eventUrl
   }
+
+  // The post pack: one artefact and one caption per channel, both carrying the
+  // same tracked link. Reads the event once, through the shared context the
+  // card route also uses, so an image and its caption can never disagree.
+  const artefacts = await loadArtefactContext(
+    id,
+    siteUrl,
+    organiserEvent.userId,
+    organiserEvent.organisationName,
+    shareOn,
+  )
+  const captions = artefacts ? buildCaptions(toCaptionInput(artefacts)) : []
 
   const qrSvg = qrShortUrl
     ? await QRCode.toString(qrShortUrl, {
@@ -353,6 +382,35 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
           </div>
         </div>
       </Reveal>
+
+      {/* ── The post pack: the image and the words, per channel ──────────── */}
+      {captions.length > 0 && (
+        <Reveal as="section" aria-labelledby="kit-pack-heading" className="mt-6">
+          <div className="rounded-2xl border border-ink-200 bg-white shadow-[var(--shadow-card)]">
+            <div className="border-b border-ink-100 px-6 py-5">
+              <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-gold-700">
+                In the kit · your post pack
+              </p>
+              <h2 id="kit-pack-heading" className="mt-1 font-display text-xl font-bold text-ink-900">
+                Ready to post, channel by channel
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm text-ink-600">
+                Every channel gets the image in the shape it actually takes and a caption written
+                in its own register, both carrying the tracked link for that channel. Download,
+                copy, post: the sales come back attributed to the exact place you posted.
+              </p>
+            </div>
+            <div className="px-6 py-5">
+              <PostPack
+                eventId={id}
+                captions={captions}
+                leadFormat={LEAD_FORMAT}
+                tracked={shareOn}
+              />
+            </div>
+          </div>
+        </Reveal>
+      )}
 
       {/* ── The lineup loop: tag the acts, hand them their tracked links ──── */}
       {artistsOn && (
