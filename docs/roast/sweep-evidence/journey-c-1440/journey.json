@@ -2,139 +2,242 @@
  "steps": [
   {
    "step": "sign in as an organiser",
-   "verdict": "FAIL",
+   "verdict": "PASS",
    "notes": [
-    "landed on /login?email=broadcast.gate.organiser%40eventlinqs.com&password=ArtistGate2026%21Drive",
-    "still on /login after submitting credentials"
+    "landed on /dashboard"
    ],
    "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\01-sign-in-as-an-organiser.png",
-   "url": "/login?email=broadcast.gate.organiser%40eventlinqs.com&password=ArtistGate2026%21Drive"
+   "url": "/dashboard"
   },
   {
    "step": "open dashboard",
-   "verdict": "FAIL",
+   "verdict": "PASS",
    "notes": [
     "HTTP 200",
-    "/dashboard bounced to login while signed in"
+    "1442 chars, offers a next step"
    ],
    "status": 200,
+   "emptyState": {
+    "chars": 1442,
+    "offersNext": true,
+    "apologetic": false,
+    "excerpt": "Good morning, Gate Here is what is happening across your events today. Create event TICKETS SOLD (30D) 12 +500.0% REVENUE (30D) $0 UPCOMING EVENTS 9 None scheduled yet TOTAL EVENTS 17 Create your first event Upcoming events View all Artist "
+   },
    "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\02-open-dashboard.png",
-   "url": "/login?redirect=%2Fdashboard"
+   "url": "/dashboard"
   },
   {
    "step": "open events list",
-   "verdict": "FAIL",
+   "verdict": "PASS",
    "notes": [
     "HTTP 200",
-    "/dashboard/events bounced to login while signed in"
+    "1971 chars, offers a next step"
    ],
    "status": 200,
+   "emptyState": {
+    "chars": 1971,
+    "offersNext": true,
+    "apologetic": false,
+    "excerpt": "My Events + Create Event All Draft Published Past Cancelled EVENT DATE STATUS SOLD ACTIONS Marketplace Regression Comedy: Free Night at Waterfront Pavilion Geelong 25 Sept 2026 Published 0 / 60 Edit View Launch Kit Duplicate Pause Cancel Se"
+   },
    "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\03-open-events-list.png",
-   "url": "/login?redirect=%2Fdashboard%2Fevents"
+   "url": "/dashboard/events"
   },
   {
    "step": "open payouts",
-   "verdict": "FAIL",
+   "verdict": "PASS",
    "notes": [
     "HTTP 200",
-    "/dashboard/payouts bounced to login while signed in"
+    "1350 chars, offers a next step"
    ],
    "status": 200,
+   "emptyState": {
+    "chars": 1350,
+    "offersNext": true,
+    "apologetic": false,
+    "excerpt": "Payouts Track every payout, reserve release, and refund for Broadcast Gate Presents. Open Stripe Dashboard AVAILABLE NOW $0.00 Claimable balance, net of holds PENDING PAYOUTS $0.00 Awaits Stripe schedule PAID THIS MONTH $0.00 Settled to you"
+   },
    "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\04-open-payouts.png",
-   "url": "/login?redirect=%2Fdashboard%2Fpayouts"
+   "url": "/dashboard/payouts"
   },
   {
    "step": "open venues",
-   "verdict": "FAIL",
+   "verdict": "PASS",
    "notes": [
     "HTTP 200",
-    "/dashboard/venues bounced to login while signed in"
+    "145 chars, NO next step offered, BARE"
    ],
    "status": 200,
+   "emptyState": {
+    "chars": 145,
+    "offersNext": false,
+    "apologetic": false,
+    "excerpt": "Venues Manage reusable venue definitions and seat maps for reserved seating events. + New Venue The Wool Store Geelong, VIC Seat Maps Edit Delete"
+   },
    "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\05-open-venues.png",
-   "url": "/login?redirect=%2Fdashboard%2Fvenues"
+   "url": "/dashboard/venues"
   },
   {
-   "step": "open squads",
-   "verdict": "FAIL",
+   "step": "open my squads",
+   "verdict": "PASS",
    "notes": [
     "HTTP 200",
-    "/dashboard/squads bounced to login while signed in"
+    "173 chars, offers a next step"
    ],
    "status": 200,
-   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\06-open-squads.png",
-   "url": "/login?redirect=%2Fdashboard%2Fsquads"
+   "emptyState": {
+    "chars": 173,
+    "offersNext": true,
+    "apologetic": false,
+    "excerpt": "My Squads Browse Events → No squads yet A squad lets you book tickets with friends so everyone pays their own share. Start one from any event page. Find an event to squad up"
+   },
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\06-open-my-squads.png",
+   "url": "/dashboard/my-squads"
   },
   {
-   "step": "open waitlists",
-   "verdict": "FAIL",
+   "step": "open my waitlists",
+   "verdict": "PASS",
    "notes": [
     "HTTP 200",
-    "/dashboard/waitlists bounced to login while signed in"
+    "188 chars, NO next step offered, BARE"
    ],
    "status": 200,
-   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\07-open-waitlists.png",
-   "url": "/login?redirect=%2Fdashboard%2Fwaitlists"
+   "emptyState": {
+    "chars": 188,
+    "offersNext": false,
+    "apologetic": false,
+    "excerpt": "My Waitlists Browse Events → You are not on any waitlists When an event sells out you can join its waitlist from the event page. We will notify you if spots open up. Browse sold-out events"
+   },
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\07-open-my-waitlists.png",
+   "url": "/dashboard/my-waitlists"
   },
   {
    "step": "open founding invites",
-   "verdict": "FAIL",
+   "verdict": "PASS",
    "notes": [
     "HTTP 200",
-    "/dashboard/invites bounced to login while signed in"
+    "483 chars, offers a next step"
    ],
    "status": 200,
+   "emptyState": {
+    "chars": 483,
+    "offersNext": true,
+    "apologetic": false,
+    "excerpt": "THE FOUNDING PROGRAMME Invite fellow organisers Every organiser you bring on earns you 3 more fee-free months, and gives them their own founding spot while any of the 50 remain. The founding programme is invite-only. Founding Organisers are"
+   },
    "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\08-open-founding-invites.png",
-   "url": "/login?redirect=%2Fdashboard%2Finvites"
+   "url": "/dashboard/invites"
   },
   {
-   "step": "open reach",
-   "verdict": "FAIL",
+   "step": "open organisation settings",
+   "verdict": "PASS",
    "notes": [
     "HTTP 200",
-    "/dashboard/reach bounced to login while signed in"
+    "271 chars, offers a next step"
    ],
    "status": 200,
-   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\09-open-reach.png",
-   "url": "/login?redirect=%2Fdashboard%2Freach"
+   "emptyState": {
+    "chars": 271,
+    "offersNext": true,
+    "apologetic": false,
+    "excerpt": "Broadcast Gate Presents eventlinqs.com/broadcast-gate-presents Active EVENTS 17 TEAM MEMBERS 0 PAYOUTS Enabled ABOUT Verification fixture organisation for the Broadcast Layer evidence gates on TEST. CONTACT broadcast.gate.organiser@eventlin"
+   },
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\09-open-organisation-settings.png",
+   "url": "/dashboard/organisation"
   },
   {
-   "step": "open settings",
-   "verdict": "FAIL",
+   "step": "open insights",
+   "verdict": "PASS",
    "notes": [
     "HTTP 200",
-    "/dashboard/settings bounced to login while signed in"
+    "200 chars, NO next step offered, BARE"
    ],
    "status": 200,
-   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\10-open-settings.png",
-   "url": "/login?redirect=%2Fdashboard%2Fsettings"
+   "emptyState": {
+    "chars": 200,
+    "offersNext": false,
+    "apologetic": false,
+    "excerpt": "Insights Insights are coming soon Real-time sales, cohort analysis and ticket-velocity charts for every event you run are being built. Your event pages already track sales in real time. View my events"
+   },
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\10-open-insights.png",
+   "url": "/dashboard/insights"
+  },
+  {
+   "step": "open tickets",
+   "verdict": "PASS",
+   "notes": [
+    "HTTP 200",
+    "172 chars, NO next step offered, BARE"
+   ],
+   "status": 200,
+   "emptyState": {
+    "chars": 172,
+    "offersNext": false,
+    "apologetic": false,
+    "excerpt": "My Tickets Open ticket wallet: QR, seat moves, transfers You have not bought any tickets yet Tickets you buy will appear here with QR codes and order details. Browse events"
+   },
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\11-open-tickets.png",
+   "url": "/dashboard/tickets"
   },
   {
    "step": "open a published event and its Launch Kit",
-   "verdict": "FAIL",
+   "verdict": "PASS",
    "notes": [
-    "no event rows in the organiser dashboard"
+    "launch kit HTTP 200",
+    "kit controls: Notifications / GOGate / Collapse / Copy link / InstagramInstagram / Copy link / Add to lineup / Download A4 poster (PDF)"
    ],
-   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\11-open-a-published-event-and-its-launch-kit.png",
-   "url": "/login?redirect=%2Fdashboard%2Fevents"
+   "eventId": "b865b222-9af7-4433-9d08-53562eab6cc3",
+   "kitControls": [
+    "Notifications",
+    "GOGate",
+    "Collapse",
+    "Copy link",
+    "InstagramInstagram",
+    "Copy link",
+    "Add to lineup",
+    "Download A4 poster (PDF)"
+   ],
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\12-open-a-published-event-and-its-launch-kit.png",
+   "url": "/dashboard/events/b865b222-9af7-4433-9d08-53562eab6cc3/launch-kit"
+  },
+  {
+   "step": "open the per-event reach panel",
+   "verdict": "PASS",
+   "notes": [
+    "HTTP 200",
+    "1430 chars, offers a next step"
+   ],
+   "emptyState": {
+    "chars": 1430,
+    "offersNext": true,
+    "apologetic": false,
+    "excerpt": "← Back to event Reach · Marketplace Regression Comedy: Free Night at Waterfront Pavilion LINK VIEWS 0 LINK CLICKS 0 ORDERS FROM LINKS 0 TICKETS FROM LINKS 0 Channel Views Clicks Orders Tickets No tracked activity yet. Share a link from the "
+   },
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\13-open-the-per-event-reach-panel.png",
+   "url": "/dashboard/events/b865b222-9af7-4433-9d08-53562eab6cc3/reach"
   },
   {
    "step": "artefact: actually download the poster",
-   "verdict": "FAIL",
+   "verdict": "PASS",
    "notes": [
-    "no download control on the Launch Kit"
+    "marketplace-regression-comedy-free-night-at-waterf-q5758z-poster.pdf, 84066 bytes"
    ],
-   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\12-artefact-actually-download-the-poster.png",
-   "url": "/login?redirect=%2Fdashboard%2Fevents"
+   "download": {
+    "file": "docs\\roast\\sweep-evidence\\journey-c-1440\\downloads\\marketplace-regression-comedy-free-night-at-waterf-q5758z-poster.pdf",
+    "bytes": 84066
+   },
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\14-artefact-actually-download-the-poster.png",
+   "url": "/dashboard/events/b865b222-9af7-4433-9d08-53562eab6cc3/reach"
   },
   {
    "step": "artefact: copy a caption or link to the clipboard",
-   "verdict": "FAIL",
+   "verdict": "PASS",
    "notes": [
-    "no Copy control on the Launch Kit"
+    "clipboard now holds 95 chars: \"https://eventlinqs-app-git-fix-producti-9ed7fe-lawals-projects-c20c0be8.vercel.app/s/D0rl0\"",
+    "the button confirms \"Copied\""
    ],
-   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\13-artefact-copy-a-caption-or-link-to-the-clipboard.png",
-   "url": "/login?redirect=%2Fdashboard%2Fevents"
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\15-artefact-copy-a-caption-or-link-to-the-clipboard.png",
+   "url": "/dashboard/events/b865b222-9af7-4433-9d08-53562eab6cc3/reach"
   },
   {
    "step": "artefact: the QR code resolves to a real destination",
@@ -143,18 +246,22 @@
     "QR elements on the page: 0",
     "no /s/ tracked link exposed on the kit to follow"
    ],
-   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\14-artefact-the-qr-code-resolves-to-a-real-destination.png",
-   "url": "/login?redirect=%2Fdashboard%2Fevents"
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\16-artefact-the-qr-code-resolves-to-a-real-destination.png",
+   "url": "/dashboard/events/b865b222-9af7-4433-9d08-53562eab6cc3/reach"
   },
   {
    "step": "edit the published event and save",
    "verdict": "FAIL",
    "notes": [
-    "no event id captured earlier"
+    "edit HTTP 200",
+    "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('button:has-text(\"Save\"), button:has-text(\"Update\"), button[type=\"submit\"]').first()\u001b[22m\n\u001b[2m    - locator resolved to <button disabled type=\"submit\" aria-label=\"Send message\" class=\"flex h-11 w-11 shrink-0 items-center "
    ],
-   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\15-edit-the-published-event-and-save.png",
-   "url": "/login?redirect=%2Fdashboard%2Fevents"
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\17-edit-the-published-event-and-save.png",
+   "url": "/dashboard/events/b865b222-9af7-4433-9d08-53562eab6cc3/edit"
   }
  ],
- "pageErrors": []
+ "pageErrors": [
+  "Minified React error #418; visit https://react.dev/errors/418?args[]=text&args[]= for the full message or use the non-minified dev environment for full errors and additional helpful warnings.",
+  "Minified React error #418; visit https://react.dev/errors/418?args[]=text&args[]= for the full message or use the non-minified dev environment for full errors and additional helpful warnings."
+ ]
 }

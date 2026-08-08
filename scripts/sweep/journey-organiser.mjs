@@ -90,31 +90,48 @@ page.on('pageerror', (e) => pageErrors.push(String(e.message).slice(0, 200)))
 
 await step('sign in as an organiser', async (rec) => {
   await page.goto(`${BASE}/login`, { waitUntil: 'domcontentloaded', timeout: 60000 })
-  // Wait for the submit control to be enabled. It is gated on hydration now,
-  // so this is the same wait a person's finger performs without noticing, and
-  // it is the difference between the handler running and a native GET putting
-  // the password in the URL.
-  await page.locator('button[type="submit"]:not([disabled])').first().waitFor({ timeout: 30000 })
+  // The Sign in control by its accessible name, not the first submit button
+  // on the page. `.first()` matched the header search submit, which is never
+  // disabled, so the wait resolved instantly and the click landed before
+  // hydration: the same locator mistake this sweep has now made four times.
+  const signIn = page.getByRole('button', { name: /^Sign in$/i })
+  await signIn.waitFor({ state: 'visible', timeout: 30000 })
+  // Gated on hydration, so waiting for it to enable IS waiting for the handler.
+  await page.waitForFunction(
+    () => {
+      const b = [...document.querySelectorAll('button[type="submit"]')].find(
+        (el) => /^\s*sign in\s*$/i.test(el.textContent || ''),
+      )
+      return Boolean(b && !b.hasAttribute('disabled'))
+    },
+    { timeout: 30000 },
+  )
   await page.locator('input[type="email"]').first().fill(EMAIL)
   await page.locator('input[type="password"]').first().fill(PASSWORD)
-  await page.locator('button[type="submit"]').first().click()
+  await signIn.click()
   await page.waitForURL(/dashboard|account/, { timeout: 40000 }).catch(() => {})
   await page.waitForTimeout(2000)
   rec.notes.push(`landed on ${page.url().replace(BASE, '')}`)
   if (/\/login/.test(page.url())) throw new Error('still on /login after submitting credentials')
 })
 
-// The six surfaces the first pass never opened, plus the dashboard itself.
+// The surfaces the first pass never opened, plus the dashboard itself.
+//
+// The first run of this list guessed four of these URLs and reported four 404s.
+// They were my errors, not defects: squads and waitlists are namespaced `my-`,
+// reach is PER EVENT rather than global, and organisation is the settings
+// surface. Checked against src/app/(dashboard) rather than assumed.
 const SURFACES = [
   ['dashboard', '/dashboard'],
   ['events list', '/dashboard/events'],
   ['payouts', '/dashboard/payouts'],
   ['venues', '/dashboard/venues'],
-  ['squads', '/dashboard/squads'],
-  ['waitlists', '/dashboard/waitlists'],
+  ['my squads', '/dashboard/my-squads'],
+  ['my waitlists', '/dashboard/my-waitlists'],
   ['founding invites', '/dashboard/invites'],
-  ['reach', '/dashboard/reach'],
-  ['settings', '/dashboard/settings'],
+  ['organisation settings', '/dashboard/organisation'],
+  ['insights', '/dashboard/insights'],
+  ['tickets', '/dashboard/tickets'],
 ]
 
 for (const [name, url] of SURFACES) {
@@ -134,11 +151,18 @@ for (const [name, url] of SURFACES) {
 await step('open a published event and its Launch Kit', async (rec) => {
   await page.goto(`${BASE}/dashboard/events`, { waitUntil: 'domcontentloaded', timeout: 60000 })
   await page.waitForTimeout(1500)
-  const link = page.locator('a[href*="/dashboard/events/"]').first()
-  if (!(await link.count())) throw new Error('no event rows in the organiser dashboard')
-  const href = await link.getAttribute('href')
-  const id = (href || '').split('/dashboard/events/')[1]?.split('/')[0]
-  if (!id) throw new Error(`could not read an event id from ${href}`)
+  // NOT `.first()`. The first /dashboard/events/ link on that page is
+  // "Create event", so the id came back as the literal string "create" and
+  // every artefact step then ran against /dashboard/events/create/launch-kit,
+  // which renders the 404 page. Three artefact failures and the edit failure
+  // were all that one wrong id.
+  const hrefs = await page.locator('a[href*="/dashboard/events/"]').evaluateAll((els) =>
+    els.map((e) => e.getAttribute('href') || ''),
+  )
+  const id = hrefs
+    .map((h) => h.split('/dashboard/events/')[1]?.split(/[/?#]/)[0])
+    .find((seg) => seg && seg !== 'create' && seg.length > 20)
+  if (!id) throw new Error(`no real event id among ${hrefs.length} dashboard links`)
   rec.eventId = id
   const res = await page.goto(`${BASE}/dashboard/events/${id}/launch-kit`, {
     waitUntil: 'domcontentloaded',
@@ -147,6 +171,30 @@ await step('open a published event and its Launch Kit', async (rec) => {
   await page.waitForLoadState('networkidle', { timeout: 25000 }).catch(() => {})
   rec.notes.push(`launch kit HTTP ${res ? res.status() : 0}`)
   if (res && res.status() >= 400) throw new Error(`launch kit returned ${res.status()}`)
+
+  // Record what the kit ACTUALLY offers, so a wrong locator cannot be reported
+  // as a missing control again.
+  const controls = await page.evaluate(() =>
+    [...document.querySelectorAll('button, a[download], a[href$=".pdf"], a[href*="poster"]')]
+      .map((el) => (el.textContent || el.getAttribute('aria-label') || '').trim())
+      .filter(Boolean)
+      .slice(0, 30),
+  )
+  rec.notes.push(`kit controls: ${controls.join(' / ').slice(0, 300)}`)
+  rec.kitControls = controls
+})
+
+await step('open the per-event reach panel', async (rec) => {
+  const id = steps.find((s) => s.eventId)?.eventId
+  if (!id) throw new Error('no event id captured')
+  const res = await page.goto(`${BASE}/dashboard/events/${id}/reach`, {
+    waitUntil: 'domcontentloaded',
+    timeout: 60000,
+  })
+  await page.waitForLoadState('networkidle', { timeout: 20000 }).catch(() => {})
+  rec.notes.push(`HTTP ${res ? res.status() : 0}`)
+  if (res && res.status() >= 400) throw new Error(`reach returned ${res.status()}`)
+  await describeEmptiness(rec)
 })
 
 await step('artefact: actually download the poster', async (rec) => {
