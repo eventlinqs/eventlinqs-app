@@ -1,0 +1,66 @@
+
+===== COMEDY NIGHT =====
+INPUT       : Comedy night at The Pier Geelong on Friday 21 August, doors 7pm, show starts 8pm. Stand-up from four local acts. General admission $20, 80 tickets.
+SUMMARY     : The Pier, Geelong, Friday 21 August at 8pm. Comedy night, doors 7pm. Tickets from $20.   [86 chars]
+CATEGORY    : Arts & Culture
+TAGS        : comedy, geelong, friday, standup, local
+COMMUNITIES : (none, correctly)
+START / END : 2026-08-21T20:00 / 2026-08-21T22:00
+VENUE       : The Pier | city: Geelong
+TIERS       : [{"name":"General Admission","price":20,"currency":"AUD","total_capacity":80}]
+STILL NEEDS : Venue street address
+
+===== CLUB NIGHT =====
+INPUT       : Warehouse techno party at Sub Club Melbourne on Saturday 15 August, 10pm till 4am. Four DJs across the night, presale $30 and $40 on the door, 400 capacity.
+SUMMARY     : Sub Club, Melbourne, Saturday 15 August at 10pm. Warehouse techno party, 10pm till 4am. Tickets from $30.   [105 chars]
+CATEGORY    : Nightlife
+TAGS        : techno, house, melbourne, saturday
+COMMUNITIES : (none, correctly)
+START / END : 2026-08-15T22:00 / 2026-08-16T00:00
+VENUE       : Sub Club | city: Melbourne
+TIERS       : [{"name":"General Admission","price":30,"currency":"AUD","total_capacity":400},{"name":"Tier 2","price":40,"currency":"AUD","total_capacity":null}]
+STILL NEEDS : Venue street address
+
+===== MARKET =====
+INPUT       : Geelong night market at Johnstone Park on Friday 5 September, 5pm to 10pm. Forty food trucks and makers stalls, live acoustic sets, free entry.
+SUMMARY     : Johnstone Park, Geelong, 5 September at 5pm. Geelong night market, 5pm to 10pm. Free entry.   [91 chars]
+CATEGORY    : Food & Drink
+TAGS        : acoustic, market, night market, food truck, geelong, saturday
+COMMUNITIES : (none, correctly)
+START / END : 2026-09-05T17:00 / 2026-09-05T19:00
+VENUE       : Johnstone Park | city: Geelong
+TIERS       : [{"name":"Free","price":0,"currency":"AUD","total_capacity":null}]
+STILL NEEDS : Venue street address, Check the date: the day you named does not fall on that date
+
+===== WORKSHOP =====
+INPUT       : Sourdough baking masterclass at The Mill Newtown on Saturday 12 September, 10am to 1pm. Twelve places only, $95 including a sourdough starter and lunch.
+SUMMARY     : The Mill Newtown, Saturday 12 September at 10am. Sourdough baking masterclass. Tickets from $95.   [96 chars]
+CATEGORY    : Education
+TAGS        : masterclass, saturday, sourdough, baking, newtown, twelve
+COMMUNITIES : (none, correctly)
+START / END : 2026-09-12T10:00 / 2026-09-12T12:00
+VENUE       : The Mill Newtown | city: (none)
+TIERS       : [{"name":"General Admission","price":95,"currency":"AUD","total_capacity":null}]
+STILL NEEDS : Venue street address
+
+===== FUNDRAISER =====
+INPUT       : Charity gala dinner for Geelong Animal Rescue at The Pier on Saturday 3 October, 6.30pm. Three course dinner and a silent auction, $150 a head, tables of ten.
+SUMMARY     : The Pier, Geelong, Saturday 3 October at 6pm. Charity gala dinner for Geelong Animal Rescue. Tickets from $150.   [111 chars]
+CATEGORY    : Charity
+TAGS        : charity, gala, auction, geelong, saturday
+COMMUNITIES : (none, correctly)
+START / END : 2026-10-03T18:00 / 2026-10-03T20:00
+VENUE       : The Pier | city: Geelong
+TIERS       : [{"name":"General Admission","price":150,"currency":"AUD","total_capacity":null}]
+STILL NEEDS : Venue street address
+
+===== KIDS BIRTHDAY =====
+INPUT       : Superhero sixth birthday party at Waurn Ponds Community Hall on Sunday 14 September, 10am to 12pm. Face painting, games and cake, $15 per child, 25 kids.
+SUMMARY     : Waurn Ponds Community Hall, 14 September at 10am. Superhero sixth birthday party, 10am to 12pm. Tickets from $15.   [113 chars]
+CATEGORY    : Family
+TAGS        : kids, birthday party, monday, superhero, sixth, birthday
+COMMUNITIES : (none, correctly)
+START / END : 2026-09-14T10:00 / 2026-09-14T12:00
+VENUE       : Waurn Ponds Community Hall | city: (none)
+TIERS       : [{"name":"General Admission","price":15,"currency":"AUD","total_capacity":25}]
+STILL NEEDS : Venue street address, Check the date: the day you named does not fall on that date

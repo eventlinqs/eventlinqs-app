@@ -1,0 +1,152 @@
+{
+  "base": "http://localhost:3000",
+  "at": "2026-08-08T02:40:28.940Z",
+  "results": [
+    {
+      "name": "Electronic & Dance",
+      "ok": true,
+      "detail": "5 results (5 eligible), every one answers \"electronic dance\""
+    },
+    {
+      "name": "Country",
+      "ok": true,
+      "detail": "3 results (3 eligible), every one answers \"country\""
+    },
+    {
+      "name": "Indie & Rock",
+      "ok": true,
+      "detail": "8 results (8 eligible), every one answers \"indie rock\""
+    },
+    {
+      "name": "Hip-Hop & RnB",
+      "ok": true,
+      "detail": "6 results (6 eligible), every one answers \"hip hop rnb\""
+    },
+    {
+      "name": "Pop",
+      "ok": true,
+      "detail": "8 results (8 eligible), every one answers \"pop\""
+    },
+    {
+      "name": "Folk & Acoustic",
+      "ok": true,
+      "detail": "4 results (4 eligible), every one answers \"folk acoustic\""
+    },
+    {
+      "name": "Blues & Roots",
+      "ok": true,
+      "detail": "3 results (3 eligible), every one answers \"blues roots\""
+    },
+    {
+      "name": "Afrobeats & Amapiano",
+      "ok": true,
+      "detail": "9 results (9 eligible), every one answers \"afrobeats amapiano\""
+    },
+    {
+      "name": "Latin",
+      "ok": true,
+      "detail": "3 results (3 eligible), every one answers \"latin\""
+    },
+    {
+      "name": "Caribbean & Dancehall",
+      "ok": true,
+      "detail": "8 results (8 eligible), every one answers \"caribbean dancehall\""
+    },
+    {
+      "name": "Jazz & Soul",
+      "ok": true,
+      "detail": "3 results (3 eligible), every one answers \"jazz soul\""
+    },
+    {
+      "name": "Metal & Hardcore",
+      "ok": true,
+      "detail": "3 results (3 eligible), every one answers \"metal hardcore\""
+    },
+    {
+      "name": "venue name \"The Forum Melbourne\" (no title contains it)",
+      "ok": true,
+      "detail": "3 results (4 eligible), every one answers \"The Forum Melbourne\""
+    },
+    {
+      "name": "city name \"Melbourne\"",
+      "ok": true,
+      "detail": "24 results (27 eligible), every one answers \"Melbourne\""
+    },
+    {
+      "name": "description-only word \"weekend\"",
+      "ok": true,
+      "detail": "1 results (1 eligible), every one answers \"weekend\""
+    },
+    {
+      "name": "a comma: rock, paper",
+      "ok": true,
+      "detail": "HTTP 200, 0 result(s), none of them unrelated: the term was treated as data"
+    },
+    {
+      "name": "a full stop: dr. jazz",
+      "ok": true,
+      "detail": "HTTP 200, 3 result(s), none of them unrelated: the term was treated as data"
+    },
+    {
+      "name": "brackets: live (acoustic)",
+      "ok": true,
+      "detail": "HTTP 200, 0 result(s), none of them unrelated: the term was treated as data"
+    },
+    {
+      "name": "a quote: rock\"n\"roll",
+      "ok": true,
+      "detail": "HTTP 200, 0 result(s), none of them unrelated: the term was treated as data"
+    },
+    {
+      "name": "a column-shaped injection: id.neq.00000000-0000-0000-0000-000000000000",
+      "ok": true,
+      "detail": "HTTP 200, 0 result(s), none of them unrelated: the term was treated as data"
+    },
+    {
+      "name": "tab=cities q=melbourne",
+      "ok": true,
+      "detail": "\"1 city matching &quot;melbourne&quot;\" linking to /city/melbourne"
+    },
+    {
+      "name": "  /city/melbourne",
+      "ok": true,
+      "detail": "HTTP 200"
+    },
+    {
+      "name": "tab=communities q=african",
+      "ok": true,
+      "detail": "\"1 community matching &quot;african&quot;\" linking to /community/african"
+    },
+    {
+      "name": "  /community/african",
+      "ok": true,
+      "detail": "HTTP 200"
+    },
+    {
+      "name": "tab=organisers q=harbour",
+      "ok": true,
+      "detail": "\"2 organisers matching &quot;harbour&quot;\" linking to /organisers/harbourline-live-sample, /organisers/harbour-lights-collective"
+    },
+    {
+      "name": "  /organisers/harbourline-live-sample",
+      "ok": true,
+      "detail": "HTTP 200"
+    },
+    {
+      "name": "  /organisers/harbour-lights-collective",
+      "ok": true,
+      "detail": "HTTP 200"
+    },
+    {
+      "name": "tab=cities with no match",
+      "ok": true,
+      "detail": "\"No cities matching &quot;zzzznothing&quot;\" with a route to /cities"
+    },
+    {
+      "name": "singular label is a real word",
+      "ok": true,
+      "detail": "\"1 city matching &quot;melbourne&quot;\""
+    }
+  ],
+  "gaps": []
+}

@@ -5,6 +5,11 @@
 **Owner:** Lawal Adams
 **Engineering partner:** Claude
 **Status:** ACTIVE - this document is the build contract
+**Amended 2026-08-08 (founder ruling):** every Midjourney / generated-imagery
+line in this plan is STRUCK. The platform never generates images or video for an
+organiser's event, and generated imagery does not go on public category, city or
+marketing surfaces either. CLAUDE.md Law 6 is the binding statement; where this
+document and Law 6 disagree, Law 6 wins.
 
 ---
 
@@ -39,10 +44,10 @@ These principles govern every decision during the 6-week build. When in doubt, r
 
 The three founder decisions made on 15 April 2026:
 
-**Image strategy: Hybrid (Decision 1D).**
-- Phase 1 (Week 5): AI-generated category cover photography using Midjourney v7. Budget: ~AUD $50 one-off for ~30-50 images. Commercial licence rights confirmed via Midjourney paid plan.
-- Phase 2 (Q3 2026, post-launch): Commission a Melbourne-based photographer for owned, culturally-authentic v2 imagery. Budget: ~AUD $500-2,000 one-off.
-- Until Phase 1 ships in Week 5, all category and marketing pages use the **premium-bare** treatment (gradient + pattern + typography), shipped in Week 1 Session 1.
+**Image strategy: STRUCK AND REPLACED (founder ruling 2026-08-08).**
+- ~~Phase 1 (Week 5): AI-generated category cover photography using Midjourney v7.~~ **STRUCK.** Generated imagery on public category surfaces is exactly the generic risk Law 1 exists to stop. See CLAUDE.md Law 6.
+- Phase 2 (Q3 2026, post-launch): Commission a Melbourne-based photographer for owned, culturally-authentic v2 imagery. Budget: ~AUD $500-2,000 one-off. **This is now the only imagery route for these surfaces.**
+- Until commissioned photography lands, category and marketing pages use the licensed platform photo library through the media components (`docs/MEDIA-ARCHITECTURE.md`), falling back to the **premium-bare** treatment (gradient + pattern + typography).
 
 **Video on day one (Decision 2A).**
 - Mux integration in Week 3.
@@ -272,10 +277,10 @@ Every session has a defined goal, a defined deliverable, and a defined verificat
 
 **Theme:** The platform looks gorgeous. Ready for non-AU audiences.
 
-**Session 13 - Imagery Production**
-- Generate 7 category cover images via Midjourney v7 (one per hero category, 16:9 cinematic, culturally-authentic prompts)
-- Generate 6 city hero images (Melbourne diaspora scene, Sydney, Brisbane, Perth, London, Toronto)
-- Generate 4 marketing imagery for homepage and About page
+**Session 13 - Imagery Production. STRUCK (founder ruling 2026-08-08).**
+- ~~Generate 7 category cover images via Midjourney v7~~ **STRUCK.** Category, city and marketing imagery comes from the licensed platform photo library and commissioned photography, wired through the media components. See CLAUDE.md Law 6.
+- ~~Generate 6 city hero images~~ **STRUCK**, same ruling.
+- ~~Generate 4 marketing imagery for homepage and About page~~ **STRUCK**, same ruling.
 - Generate 8 organiser avatar pattern variants (procedural-style)
 - Optimise all to WEBP at 1920×1080 hero / 1080×1080 avatar
 - Upload to Supabase Storage `brand-assets` bucket
@@ -373,7 +378,7 @@ What you're paying through the build, week by week.
 | 2 | None | None | ~AUD $42 |
 | 3 | Mux dev tier (~$10) | None | ~AUD $52 |
 | 4 | None | None | ~AUD $52 |
-| 5 | None | Midjourney generation ~AUD $50 | ~AUD $52 |
+| 5 | None | ~~Midjourney generation ~AUD $50~~ STRUCK 2026-08-08 | ~AUD $52 |
 | 6 | Supabase Pro $40, Resend Pro $30, Upstash Sydney $15, Sentry $40, Mux production ~$30 | None | ~AUD $207-$250 |
 
 **One-offs:**
@@ -479,12 +484,12 @@ What could go wrong and how we handle it.
 | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|
 | Mux integration takes longer than 1 session | Medium | Medium | Spillover to Session 8; if Session 8 is at risk, defer media library to Week 4 and slip Week 4 by one session |
-| Midjourney imagery doesn't feel culturally authentic | Medium | High | Generate in Week 5 not Week 6 to leave time to regenerate or pivot to commissioned photography for Week 6 |
+| ~~Midjourney imagery doesn't feel culturally authentic~~ RETIRED 2026-08-08 | - | - | Risk removed at source: generated category imagery is struck (CLAUDE.md Law 6). Commissioned photography is now the only route |
 | Lawal sick or work shifts spike | Medium | Medium | Each week has 1 buffer session built in by counting 3-4 sessions per 7 days |
 | Supabase Free tier hits limits before Week 6 | Low | High | Watch usage daily from Week 4; flip to Pro early if needed |
 | Stripe verification delay for live mode | Medium | High | Submit live mode application Week 4 not Week 6 - typical approval is 1-3 days but plan for 2 weeks |
 | Vercel hits Pro plan function limits | Low | Medium | Already on Pro; monitor usage, function concurrency, bandwidth |
-| AI image licence ambiguity | Low | Medium | Use Midjourney paid plan (commercial rights confirmed); document every image's prompt + date in `brand_assets` table |
+| ~~AI image licence ambiguity~~ RETIRED 2026-08-08 | - | - | Risk removed at source: no generated imagery on any public surface, and none anywhere in the product (CLAUDE.md Law 6). Licensing is the photo library's and the commissioned photographer's contract |
 | Footer / link regressions during refactors | Medium | Low | Add Playwright test that clicks every footer link and asserts each resolves to a 200 - runs in CI from Week 2 onward |
 | Founder burnout | Medium | High | Sessions are 1-3 hours, not marathons. End-of-week checkpoint asks "are you energised or drained?" Honest answer drives next week's pace. |
 

@@ -17,6 +17,9 @@ import { EventsFilterBar } from '@/components/features/events/m5-events-filter-b
 import { EventsMapLazy } from '@/components/features/events/m5-events-map-lazy'
 import { EventsPopularSection } from '@/components/features/events/m5-events-popular-section'
 import { EventsCount, EventsResults } from '@/components/features/events/events-results'
+import { BrowseNotice } from '@/components/features/events/browse-notice'
+import { SearchScopeResults } from '@/components/features/events/search-scope-results'
+import { resolveScopeResults } from '@/lib/events/search-scopes'
 import {
   EventsGridSkeleton,
   EventsCountSkeleton,
@@ -46,7 +49,7 @@ type Props = {
 
 export default async function EventsPage({ searchParams }: Props) {
   const raw = await searchParams
-  const { filters, page, view } = parseEventsSearchParams(raw)
+  const { filters, page, view, notice, tab } = parseEventsSearchParams(raw)
 
   // Server-side geo detection (headers() / IP lookup) was removed to keep
   // /events ISR-eligible on the no-filter case. Country falls through to
@@ -96,6 +99,9 @@ export default async function EventsPage({ searchParams }: Props) {
     <div className="flex min-h-screen flex-col bg-canvas">
       <SiteHeader />
       <main className="flex-1">
+        {/* Checkout bounced this buyer here. Tell them why, before anything
+            else, or their held seats simply disappeared. */}
+        {notice ? <BrowseNotice notice={notice} /> : null}
         <EventsHeroStrip
           params={raw}
           heading={searchQuery ? `Results for "${searchQuery}"` : undefined}
@@ -123,7 +129,13 @@ export default async function EventsPage({ searchParams }: Props) {
           <EventsPopularSection filterActive={filterActive} />
         ) : null}
 
-        {view === 'map' ? (
+        {/* The header search offers four tabs and three of them route here.
+            They are a SCOPE, not a filter on events: answering them with events
+            is what made searching "Melbourne" under Cities return event titles
+            and no cities. */}
+        {tab !== 'events' ? (
+          <SearchScopeResults tab={tab} query={searchQuery} results={await resolveScopeResults(tab, searchQuery)} />
+        ) : view === 'map' ? (
           <EventsMapLazy
             params={raw}
             initialCenter={MELBOURNE_FALLBACK}

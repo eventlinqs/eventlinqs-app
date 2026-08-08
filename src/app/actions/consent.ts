@@ -5,8 +5,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import {
   recordPlatformDigestConsent,
+  withdrawDigestByAnyToken,
   withdrawDigestConsentByEmail,
-  withdrawDigestConsentByToken,
   withdrawOrganiserConsentByToken,
 } from '@/lib/consent/record'
 
@@ -24,12 +24,15 @@ export async function unsubscribeFromOrganiserAction(token: string): Promise<voi
 /**
  * Withdraw the weekly-local-digest consent via its per-row token (Broadcast
  * Layer SPEC 3.2). No login required, one deliberate button press, idempotent.
- * The digest send path reads status='granted' only, so withdrawal excludes
- * the address from the next send by construction.
+ *
+ * Accepts EITHER token a digest recipient can be carrying: the
+ * `marketing_consents` token, or the city waitlist token for a recipient the
+ * bridge brought in. Both end at the same suppression record, so one click
+ * stops the digest for that address whichever list it arrived on.
  */
 export async function unsubscribeFromDigestAction(token: string): Promise<void> {
   const admin = createAdminClient()
-  await withdrawDigestConsentByToken(admin, token, new Date().toISOString())
+  await withdrawDigestByAnyToken(admin, token, new Date().toISOString())
   revalidatePath(`/unsubscribe/digest/${token}`)
 }
 

@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { applyRateLimit } from '@/lib/rate-limit/middleware'
-import { clientIp } from '@/lib/redis/rate-limit'
 import { hashIdentity, logAi } from '@/lib/ai/logging'
+import { getAllCommunities } from '@/lib/communities/data'
 import { sanitiseInboundText } from '@/lib/ai/sanitise'
-import { extractEventDraft } from '@/lib/ai/magic-start'
+import { buildDeterministicDraft, extractEventDraft } from '@/lib/ai/magic-start'
 import { isFlagEnabled } from '@/lib/flags'
 import { createAdminClient } from '@/lib/supabase/admin'
 
@@ -71,17 +71,40 @@ export async function POST(request: Request) {
     .order('sort_order')
   const categoryNames = (cats ?? []).map(c => c.name).filter((n): n is string => !!n)
 
+  // The heritage communities the wizard actually offers, server-derived for the
+  // same reason the categories are: the model may only ever choose from the
+  // live list, so an invented or stale slug can never reach the form.
+  const communities = getAllCommunities().map(c => ({ slug: c.slug, name: c.displayName }))
+
   const result = await extractEventDraft({
     description,
     categoryNames,
+    communities,
     nowIso: new Date().toISOString(),
     who,
   })
 
   if (!result.ok) {
-    const status = result.reason === 'unconfigured' ? 503 : result.reason === 'budget_exhausted' ? 429 : 502
-    return NextResponse.json({ ok: false, error: result.reason }, { status })
+    // THE FLOOR (R4, F3). The AI being unconfigured, over budget, blocked by an
+    // unreachable meter, or failing upstream must never mean the organiser gets
+    // nothing. Every one of those cases falls back to the deterministic draft,
+    // which fills every step 1 field from the organiser's own words at zero
+    // cost. A refusal is invisible to them: they get a complete draft either
+    // way, and the only difference is who wrote the prose.
+    //
+    // 'refused' is the one exception: the model declined the content itself, so
+    // composing a draft from that same text is not something to do quietly.
+    if (result.reason === 'refused') {
+      return NextResponse.json({ ok: false, error: 'refused' }, { status: 422 })
+    }
+    const draft = buildDeterministicDraft({
+      description,
+      categoryNames,
+      communitySlugs: communities.map(c => c.slug),
+    })
+    logAi({ evt: 'ai.blocked', assistant: 'magic-start', who, reason: result.reason })
+    return NextResponse.json({ ok: true, draft, source: 'deterministic' })
   }
 
-  return NextResponse.json({ ok: true, draft: result.draft })
+  return NextResponse.json({ ok: true, draft: result.draft, source: 'model' })
 }

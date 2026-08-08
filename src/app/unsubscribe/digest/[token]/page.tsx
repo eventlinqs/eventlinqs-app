@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { findDigestUnsubscribeTarget } from '@/lib/consent/record'
 import { unsubscribeFromDigestAction } from '@/app/actions/consent'
 
 export const metadata: Metadata = {
@@ -18,18 +19,20 @@ type Props = { params: Promise<{ token: string }> }
  * server action), never an on-load side effect, so an email scanner
  * prefetch cannot silently unsubscribe anyone. Scoped to the digest only:
  * organiser marketing consents are separate and untouched.
+ *
+ * Accepts either token a digest recipient can hold, the platform consent
+ * token or the city waitlist token, so nobody is ever sent an unsubscribe
+ * link that does nothing. A waitlist recipient is told plainly that their
+ * waitlist place is kept and how to leave that too.
  */
 export default async function DigestUnsubscribePage({ params }: Props) {
   const { token } = await params
   const admin = createAdminClient()
-  const { data } = await admin
-    .from('marketing_consents')
-    .select('status')
-    .eq('unsubscribe_token', token)
-    .maybeSingle()
+  const target = await findDigestUnsubscribeTarget(admin, token)
 
-  const valid = !!data
-  const withdrawn = data?.status === 'withdrawn'
+  const valid = !!target
+  const withdrawn = target?.alreadyWithdrawn === true
+  const fromWaitlist = target?.source === 'waitlist'
 
   return (
     <div className="min-h-screen bg-canvas">
@@ -56,6 +59,13 @@ export default async function DigestUnsubscribePage({ params }: Props) {
                 You will no longer receive the weekly local events digest. This does not affect
                 your tickets, receipts, or your EventLinqs account.
               </p>
+              {fromWaitlist && (
+                <p className="mt-3 text-sm text-ink-600">
+                  You are still on your city waitlist, so we will still email you the one time your
+                  city opens. To leave that as well, use the leave link in your waitlist
+                  confirmation email, or contact us at hello@eventlinqs.com.
+                </p>
+              )}
               <Link
                 href="/events"
                 className="mt-6 inline-block rounded-lg bg-ink-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-ink-800"
@@ -71,6 +81,12 @@ export default async function DigestUnsubscribePage({ params }: Props) {
                 EventLinqs account are not affected, and any organiser emails you asked for
                 continue separately.
               </p>
+              {fromWaitlist && (
+                <p className="mt-3 text-sm text-ink-600">
+                  Your city waitlist place is kept, so we will still email you the one time your
+                  city opens.
+                </p>
+              )}
               <form action={unsubscribeFromDigestAction.bind(null, token)} className="mt-6">
                 <button
                   type="submit"

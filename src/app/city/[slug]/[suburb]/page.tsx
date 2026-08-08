@@ -7,6 +7,7 @@ import {
   getSuburb,
   isCitySlug,
 } from '@/lib/cities/data'
+import { resolveSuburbSlug } from '@/lib/cities/resolve-suburb'
 import { getSuburbHeroPhoto } from '@/lib/images/suburb-photo'
 import { SuburbLandingPage } from '@/components/templates/SuburbLandingPage'
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
@@ -75,22 +76,53 @@ export default async function SuburbPage({ params }: Props) {
   const baseSelect =
     'id, slug, title, cover_image_url, thumbnail_url, start_date, end_date, venue_name, venue_city, venue_country, created_at, is_free, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
 
-  // Suburb-scoped query: broaden by city + suburb name ilike. Once
-  // suburb_primary FK is populated by organisers we can switch to a
-  // direct .eq() on suburb_primary; for v1 the bridge is venue_city
-  // matching city OR venue_name containing the suburb name.
+  // Suburb-scoped query.
+  //
+  // WHAT THIS USED TO DO, and why it was wrong. The comment here said the
+  // bridge was "venue_city matching city OR venue_name containing the suburb
+  // name", but the code only ever applied the first half: it selected every
+  // event in the CITY and rendered them under the suburb's name. So
+  // /city/melbourne/inner-melbourne and /city/melbourne/bayside showed the
+  // identical list, each claiming to be that district's events. Nothing errored
+  // and every page looked full, which is exactly why it survived: a wrong
+  // answer that looks like a right one.
+  //
+  // The district is now decided by the SAME rule the write path and the
+  // /events?suburb= filter use (lib/cities/resolve-suburb.ts): the event's own
+  // suburb_primary if it carries one, or its venue coordinates falling within
+  // the district radius. Both halves are needed for now because suburb_primary
+  // is only written going forward and backfilled by migration; the coordinate
+  // half covers everything either of those has not reached.
   const { data: rows } = await supabase
     .from('events')
-    .select(baseSelect)
+    .select(`${baseSelect}, suburb_primary, venue_latitude, venue_longitude`)
     .eq('status', 'published')
     .eq('visibility', 'public')
     .gte('start_date', new Date().toISOString())
     .ilike('venue_city', `%${city.name}%`)
     .order('start_date', { ascending: true })
-    .limit(60)
+    .limit(200)
 
-  const allRaw = (rows ?? []) as unknown as EventCardData[]
-  const events = allRaw
+  const allRaw = (rows ?? []) as unknown as (EventCardData & {
+    suburb_primary: string | null
+    venue_latitude: number | null
+    venue_longitude: number | null
+  })[]
+  // Assignment is EXCLUSIVE: an event belongs to the ONE nearest district, not
+  // to every district whose radius happens to reach it. That distinction is the
+  // whole difference between six district pages and six copies of the city
+  // page. Melbourne's districts all sit within 12 km of the CBD, and 43 of the
+  // 55 Melbourne events carry the CBD centroid as their venue coordinate, so an
+  // inclusive radius test hands those same 43 events to Bayside, Northern
+  // Suburbs and Western Suburbs alike, each page asserting they are its own.
+  const events = allRaw.filter(e =>
+    (e.suburb_primary ??
+      resolveSuburbSlug({
+        citySlug: city.slug,
+        latitude: e.venue_latitude,
+        longitude: e.venue_longitude,
+      })) === suburbContent.slug,
+  )
 
   const w = weekendWindow(new Date())
   const weekendEvents = events.filter(e => e.start_date >= w.weekendStartIso && e.start_date <= w.weekendEndIso)
