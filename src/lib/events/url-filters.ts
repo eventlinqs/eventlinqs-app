@@ -79,10 +79,11 @@ export const SORT_ALIASES: Record<string, string> = {
  * each one resolves to tags that exist on real events plus the category that
  * carries the same meaning.
  *
- * Tag counts measured on the 362 published events on TEST, 8 August 2026:
- *   comedy 28, community 61, arts-community 7, food-drink 28, food 2,
+ * Tag counts measured on the 363 published events on TEST, 8 August 2026, after
+ * the R1 taxonomy migration merged the legacy arts slug into arts-community:
+ *   comedy 28, community 64, arts-community 27, food-drink 28, food 2,
  *   sports 11, electronic 10, edm 10, techno 10, house 11, dance 12,
- *   electronic-dance 10, music 12, arts-culture 20, headline-concert 1.
+ *   electronic-dance 10, music 12, headline-concert 1.
  *
  * Two mappings are judgements rather than a literal tag match, and both are
  * grounded in the locked Scene taxonomy in CLAUDE.md:
@@ -98,7 +99,7 @@ export const EVENT_TYPE_MAP: Record<string, { tags: string[]; category: string |
     category: 'nightlife',
   },
   comedy: { tags: ['comedy', 'stand-up'], category: 'comedy' },
-  theatre: { tags: ['theatre', 'arts-culture', 'performance'], category: 'arts-culture' },
+  theatre: { tags: ['theatre', 'arts-community', 'performance'], category: 'arts-community' },
   workshop: { tags: ['workshop', 'masterclass', 'education'], category: 'education' },
   community: { tags: ['community', 'arts-community'], category: 'community' },
   'food-drink': { tags: ['food-drink', 'food', 'drink'], category: 'food-drink' },

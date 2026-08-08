@@ -1,0 +1,30 @@
+CATEGORY TAXONOMY (R1)
+target: TEST https://vkapkibzokmfaxqogypq.supabase.co
+
+--- a. every category the homepage merchandises exists (9) ---
+  arts-community         *** NO SUCH CATEGORY ***
+  business-networking    EXISTS    5 published event(s)
+  comedy                 *** NO SUCH CATEGORY ***
+  family                 EXISTS   13 published event(s)
+  festival               EXISTS   22 published event(s)
+  food-drink             EXISTS   33 published event(s)
+  music                  EXISTS  105 published event(s)
+  nightlife              EXISTS   44 published event(s)
+  sports                 EXISTS   11 published event(s)
+  [FAIL] 2 merchandised categor(ies) match no row: arts-community, comedy
+
+--- b. none of them is a tile that can never show anything ---
+  [PASS] every merchandised category has at least one published event
+
+--- c. the banned word is gone from category slugs, names and tags ---
+  [FAIL] 1 categor(ies) still carry it: arts-culture (Arts & Culture)
+  [FAIL] 24 published event(s) still carry it in tags
+
+--- d. comedy-tagged events can reach the comedy category ---
+  [FAIL] there is no comedy category
+
+===== 4 FAILED =====
+  2 merchandised categories do not exist: arts-community, comedy
+  the banned word survives in event_categories
+  24 events still carry the banned word in tags
+  no comedy category
