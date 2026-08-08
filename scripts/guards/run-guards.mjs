@@ -9,6 +9,7 @@
  *   auth-provider-guard        no provider button without a server-resolved gate
  *   no-supabase-smtp           no auth flow on Supabase's 2-per-hour built-in mailer
  *   sender-single-source       one definition of the sending identity
+ *   no-unguarded-credential-form  no password field submittable before hydration
  *   auth-autocomplete          credential-manager attributes on every auth form
  *   auth-provider-cost         no provider gate on a route with no provider button
  *   check-client-barrel-imports  no third-party namespace import in the browser bundle
@@ -69,6 +70,7 @@ const GUARDS = [
   'scripts/guards/auth-provider-cost-guard.mjs',
   'scripts/guards/no-supabase-smtp.mjs',
   'scripts/guards/sender-single-source.mjs',
+  'scripts/guards/no-unguarded-credential-form.mjs',
   'scripts/guards/auth-autocomplete-guard.mjs',
   // From PR #111. See THE BOUNDARY above: separate file, separate question,
   // shared runner. Absent from this list, `prebuild` stops checking the browser

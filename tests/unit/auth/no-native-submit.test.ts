@@ -24,7 +24,10 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
 
 const ROOT = path.resolve(__dirname, '../../..')
-const AUTH_DIR = path.join(ROOT, 'src/components/auth')
+// Not just src/components/auth. The build guard found two more credential
+// forms this test originally missed: the ADMIN login, and the design-system
+// preview. Scanning all of src is what caught them.
+const SRC_DIR = path.join(ROOT, 'src')
 
 function formFiles(): string[] {
   const walk = (dir: string, out: string[] = []): string[] => {
@@ -35,14 +38,17 @@ function formFiles(): string[] {
     }
     return out
   }
-  return walk(AUTH_DIR).filter((f) => readFileSync(f, 'utf8').includes('<form onSubmit'))
+  return walk(SRC_DIR).filter((f) => {
+    const src = readFileSync(f, 'utf8')
+    return /<form[^>]*onSubmit=/.test(src) && /type=["']password["']/.test(src) && !/<form[^>]*\saction=/.test(src)
+  })
 }
 
 describe('auth forms cannot submit before their handler exists', () => {
   const files = formFiles()
 
   it('finds the auth forms, so the suite cannot pass by checking nothing', () => {
-    expect(files.length).toBeGreaterThanOrEqual(4)
+    expect(files.length).toBeGreaterThanOrEqual(5)
   })
 
   it.each(files.map((f) => [path.relative(ROOT, f), f]))(
@@ -50,12 +56,11 @@ describe('auth forms cannot submit before their handler exists', () => {
     (_rel, file) => {
       const src = readFileSync(file, 'utf8')
       expect(src).toContain('useHydrated')
-      // Every disabled submit control must include the hydration term. A
-      // control still reading `disabled={loading}` alone is submittable in the
-      // pre-hydration window.
-      const bare = src.match(/disabled=\{loading\}/g)
-      expect(bare, 'a submit control is still gated on loading alone').toBeNull()
-      expect(src).toMatch(/disabled=\{loading \|\| !hydrated\}/)
+      // No submit control may be gated on a busy flag alone: that control is
+      // live in the pre-hydration window.
+      expect(src.match(/disabled=\{\s*loading\s*\}/g), 'gated on loading alone').toBeNull()
+      expect(src.match(/disabled=\{\s*pending\s*\}/g), 'gated on pending alone').toBeNull()
+      expect(src).toMatch(/disabled=\{[^}]*!hydrated\}/)
     },
   )
 
@@ -64,7 +69,7 @@ describe('auth forms cannot submit before their handler exists', () => {
     (_rel, file) => {
       // The hydration gate is the second line of defence, not a replacement
       // for preventDefault.
-      expect(readFileSync(file, 'utf8')).toContain('preventDefault()')
+      expect(readFileSync(file, 'utf8')).toMatch(/preventDefault\(\)/)
     },
   )
 })
