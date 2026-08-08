@@ -58,6 +58,18 @@ export function SignupForm({ role = 'attendee', googleEnabled }: Props) {
     setLoading(false)
   }
 
+  /**
+   * Clear a field's message the moment its input is edited.
+   *
+   * Caught by walking the deployed preview: a person told "enter your full name"
+   * typed one, and the field stayed outlined in red under the same message until
+   * they submitted again. An error that outlives the thing it describes teaches
+   * people to stop reading them.
+   */
+  const clearErrorFor = (field: 'fullName' | 'email' | 'password') => {
+    setError((current) => (current && current.field === field ? null : current))
+  }
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -204,7 +216,10 @@ export function SignupForm({ role = 'attendee', googleEnabled }: Props) {
             type="text"
             autoComplete="name"
             value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
+            onChange={(e) => {
+              setFullName(e.target.value)
+              clearErrorFor('fullName')
+            }}
             required
             aria-invalid={Boolean(fieldError('fullName'))}
             aria-describedby={fieldError('fullName') ? 'fullName-error' : undefined}
@@ -232,7 +247,10 @@ export function SignupForm({ role = 'attendee', googleEnabled }: Props) {
             type="email"
             autoComplete="username"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value)
+              clearErrorFor('email')
+            }}
             required
             aria-invalid={Boolean(fieldError('email'))}
             aria-describedby={fieldError('email') ? 'email-error' : undefined}
@@ -260,7 +278,10 @@ export function SignupForm({ role = 'attendee', googleEnabled }: Props) {
             type="password"
             autoComplete="new-password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value)
+              clearErrorFor('password')
+            }}
             required
             minLength={8}
             aria-invalid={Boolean(fieldError('password'))}
