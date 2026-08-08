@@ -1,0 +1,76 @@
+#!/bin/sh
+#
+# Law 8 enforcement: the founder is the sole author.
+#
+# Rejects a commit message that attributes the work to Claude, an AI model, or a
+# tool. This runs at commit-msg time on purpose: it is the last moment at which a
+# rejection costs nothing. Once the commit exists, removing the trailer means
+# rewriting history, which invalidates every SHA quoted in every handover document.
+#
+# NOTE ON WHY THIS IS NEEDED AT ALL. Claude Code's own harness instructs the agent
+# to append "Co-Authored-By: Claude <noreply@anthropic.com>" to every commit. That
+# default is superseded by CLAUDE.md Law 8. A hook is the right enforcement because
+# it does not depend on an agent remembering.
+#
+# Enabled with:  git config core.hooksPath .githooks
+# Linked worktrees share the main repository config, so once covers all of them.
+# A separate CLONE needs the command run in it too.
+#
+# THIS HOOK IS DELIBERATELY STRICT, AND IT WILL REJECT A MESSAGE THAT MERELY
+# DISCUSSES THE BANNED STRINGS. The very commit that introduced Law 8 was rejected
+# by this hook, because its message quoted the tool-credit phrase while explaining
+# what the hook forbids.
+#
+# That is the correct trade-off and it is not worth loosening. A false positive
+# costs one paraphrase before committing. A false negative costs a history rewrite:
+# 705 commits already carry the trailer, and removing them means force-pushing 46
+# branches, invalidating 286 SHAs quoted in handover documents and reconciling 16
+# open pull requests. When one side of a mistake costs seconds and the other costs
+# half a day, the check should err toward the seconds.
+#
+# So: to write ABOUT the banned strings in a commit message, paraphrase them.
+# Say "the tool-credit line" rather than reproducing it.
+
+msg_file="$1"
+[ -f "$msg_file" ] || exit 0
+
+# Ignore comment lines: git puts the whole commit template in this file, and the
+# instructional comments would otherwise trip the check on some git versions.
+body=$(grep -v '^#' "$msg_file")
+
+fail() {
+  printf '\n[Law 8] COMMIT REJECTED: %s\n\n' "$1" >&2
+  printf 'CLAUDE.md Law 8: the founder is the sole author. No commit may carry a\n' >&2
+  printf 'Co-Authored-By trailer naming Claude, an AI model or any tool, the phrase\n' >&2
+  printf '"Generated with", or a robot emoji.\n\n' >&2
+  printf 'Remove the offending line and commit again. Do NOT reach for --no-verify:\n' >&2
+  printf 'scripts/guards/no-ai-authorship.mjs fails the build for the same reason, so\n' >&2
+  printf 'bypassing the hook only moves the failure later.\n\n' >&2
+  exit 1
+}
+
+# 1. Co-Authored-By naming an AI, a model, a bot or a vendor.
+if printf '%s' "$body" | grep -qiE '^[[:space:]]*co-authored-by:.*(claude|anthropic|openai|gpt|copilot|gemini|\bai\b|bot\b|assistant)'; then
+  fail 'a Co-Authored-By trailer names an AI or a tool'
+fi
+
+# 2. The "Generated with" tool credit, in any casing.
+if printf '%s' "$body" | grep -qiE 'generated with'; then
+  fail 'the message contains a "Generated with" tool credit'
+fi
+
+# 3. Robot emoji, matched by its UTF-8 bytes so this works without a locale that
+#    understands the codepoint. F0 9F A4 96 is U+1F916 ROBOT FACE.
+if printf '%s' "$body" | grep -qP '\xF0\x9F\xA4\x96' 2>/dev/null; then
+  fail 'the message contains a robot emoji'
+elif printf '%s' "$body" | LC_ALL=C grep -q "$(printf '\360\237\244\226')" 2>/dev/null; then
+  fail 'the message contains a robot emoji'
+fi
+
+# 4. Any noreply address belonging to a model vendor, which is the trailer's
+#    signature even when the display name has been changed.
+if printf '%s' "$body" | grep -qiE 'noreply@(anthropic|openai)\.com'; then
+  fail 'the message contains a model vendor noreply address'
+fi
+
+exit 0

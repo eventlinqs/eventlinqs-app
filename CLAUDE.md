@@ -40,6 +40,8 @@ silently follow the stale doc.
 | Stating ANY specification, dimension, limit, price, format, register, or platform behaviour | Law 7 (research before recommending). Fetch the primary source FIRST and cite it, or mark it UNSOURCED |
 | A third-party platform spec (Instagram, Meta, X, TikTok, Stripe, Google, Apple) | Law 7. That platform's own published page, never a secondary guide |
 | A competitor claim (Eventbrite, Ticketmaster, DICE, Humanitix, TryBooking, Moshtix, Oztix) | Law 7 plus Law 2 (evidence-driven), `competitor-benchmark` skill |
+| Writing ANY commit message | Law 8 (authorship). No Co-Authored-By naming Claude or an AI, no "Generated with", no robot emoji. The founder is the sole author |
+| Setting up a new worktree or clone | Law 8. Run `git config core.hooksPath .githooks` before the first commit |
 | Reporting any feature or task done | Definition of Done (SHIP 100%, A to Z) |
 | Growth, sharing, invites, referral, attribution, the wedge, the levers | Growth plan, `event-demand-engine` skill |
 | Discovery, feed, follows, alerts, push, who's-going, recommendations | Growth plan (the demand engine), `docs/MOAT-DEMAND-ENGINE-PLAN.md`, `event-demand-engine` skill |
@@ -65,10 +67,11 @@ silently follow the stale doc.
 - Growth plan (the wedge, the two engines, the levers) - Law 1 (no generic) -
 Law 2 (evidence-driven) - Law 3 (Australia-smart) - Law 4 (marketing image-rich)
 - Law 5 (zero dead links) - Law 7 (research before recommending, no generic
-knowledge) - Scene layer - Design system - Motion - Copy and banned content - Fee
-system - Venue Revenue Sharing Program - Verification and gates - Tooling -
-Authority docs - Skills. (Law 6, render never generate, arrives from
-`feat/launch-kit-moat` and belongs between Law 5 and Law 7.)
+knowledge) - Law 8 (authorship, the founder is the sole author) - Scene layer -
+Design system - Motion - Copy and banned content - Fee system - Venue Revenue
+Sharing Program - Verification and gates - Tooling - Authority docs - Skills.
+(Law 6, render never generate, arrives from `feat/launch-kit-moat` and belongs
+between Law 5 and Law 7.)
 
 ## What EventLinqs is
 
@@ -437,6 +440,62 @@ came from, rather than to every numeral in the tree.
 The guard prints its reviewed baseline on every run, and reports baseline entries
 that no longer match anything, so the allowlist cannot rot into an unexamined
 list.
+
+## Law 8: authorship, the founder is the sole author (founder ruling 2026-08-09)
+
+**No commit on this project carries a `Co-Authored-By` trailer naming Claude, an
+AI model, or any tool.** No commit message contains "Generated with Claude Code",
+"Co-Authored-By: Claude", a robot emoji, or any similar attribution. Lawal Adams
+is the author of this work and the commit history must say so and only so.
+
+This is not a preference and it is not negotiable.
+
+**This law overrides the tooling default.** Claude Code's own harness instructs
+the agent to append `Co-Authored-By: Claude ...` to every commit message. That
+instruction is superseded here. Where the harness and this constitution conflict,
+this file wins, and an agent that appends the trailer has broken a law rather than
+followed a convention.
+
+**ENFORCEMENT, two layers, because one can be bypassed.**
+
+1. **`.githooks/commit-msg`** rejects the message before it becomes history,
+   which is the only point at which a rejection is free. It refuses any message
+   containing a `Co-Authored-By` line naming Claude, Anthropic, an AI or a bot,
+   the phrase "Generated with", or a robot emoji.
+
+   The hook lives in the repository, but `core.hooksPath` is LOCAL CONFIG and is
+   not committed, so it must be set once per repository:
+
+   ```
+   git config core.hooksPath .githooks
+   ```
+
+   This repository uses git worktrees, and linked worktrees share the main
+   repository's config, so setting it once covers all nine
+   (`git worktree list` to see them, and note one lives at `C:/elrel`, outside
+   the project folder). A separate CLONE does not share that config:
+   `eventlinqs-organiser-engine` is a separate clone and needs the command run in
+   it as well.
+
+2. **`scripts/guards/no-ai-authorship.mjs`**, registered in `run-guards.mjs` and
+   therefore blocking on `prebuild`, reads recent commit messages and fails the
+   build if any carries such a trailer. This catches a hook that was bypassed with
+   `--no-verify`, or a checkout where `core.hooksPath` was never set.
+
+   **The guard is bounded to commits from the effective date of this law**
+   (2026-08-09) rather than to all history, and the reason is recorded here so it
+   is not mistaken for laziness: 705 of the 1351 reachable commits already carry
+   the trailer, and the founder has explicitly NOT authorised the history rewrite
+   that would remove them. An unbounded guard would fail every build until that
+   rewrite ran, which would block the launch it is meant to protect, and a gate
+   that cannot go green is a gate somebody switches off. The boundary is a single
+   named constant in the guard and is deleted the day the rewrite lands.
+
+**The history is a separate job and is NOT authorised.** Rewriting it invalidates
+every SHA quoted in every handover document, forces a force-push, and requires
+every worktree to be reset. The runbook is written and waiting at
+`docs/roast/AUTHORSHIP-HISTORY-REWRITE.md`. The founder decides when it runs, and
+it will be after launch.
 
 ## Scene layer (locked, national) - V2, research-backed
 

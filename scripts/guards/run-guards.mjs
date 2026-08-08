@@ -18,6 +18,17 @@
  *   no-plaintext-credential    no tracked file contains a plaintext credential
  *   entrypoint-authz-audit     every request entry point declares an auth posture
  *   sourced-specifications     Law 7: a third-party spec carries a source or UNSOURCED
+ *   no-ai-authorship           Law 8: no commit attributes this work to an AI
+ *
+ * On no-ai-authorship: Law 8 makes the founder the sole author, which overrides
+ * this tooling default of appending a Co-Authored-By trailer. The commit-msg hook
+ * in .githooks/ is the cheap enforcement because it rejects a message before it
+ * becomes history. This guard is the second line, for the hook being bypassed with
+ * --no-verify or a checkout where core.hooksPath was never set, since that setting
+ * is local config and is not committed. It is bounded to commits after the law was
+ * enacted, because 705 of 1351 reachable commits already carry the trailer and the
+ * history rewrite is deliberately deferred until after launch. The deferred count
+ * prints on every run so it is not forgotten.
  *
  * On sourced-specifications: Law 7 forbids stating any specification, dimension,
  * limit, price, format or platform behaviour from memory. No static check can judge
@@ -154,6 +165,7 @@ const GUARDS = [
   'scripts/guards/no-plaintext-credential.mjs',
   'scripts/security/entrypoint-authz-audit.mjs',
   'scripts/guards/sourced-specifications.mjs',
+  'scripts/guards/no-ai-authorship.mjs',
 ]
 
 /**
