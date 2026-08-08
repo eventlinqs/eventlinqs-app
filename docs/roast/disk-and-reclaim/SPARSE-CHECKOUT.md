@@ -89,21 +89,53 @@ ignored:
   reclaimed nor protected, and they are the one category that is **not
   recoverable from git**. This worktree currently has 299 of them.
 
-### The order to run it in
+### The seven commands, in order
 
-Thin the linked worktrees, when nobody is working in that worktree:
+Run each **inside** its own worktree, **when nobody is working in it**. Ordered
+smallest-first so the first two are risk-free warm-ups on worktrees nobody is
+using, and the two live sessions come last.
+
+**The success criterion is identical for all seven**, so it is stated once:
+
+> The command prints `APPLIED. Kept: src, scripts, supabase, tests, public, ...`
+> followed by `docs/ N.NN GB -> 0.00 GB (reclaimed N.NN GB)`, and exits 0.
+> Afterwards `dir docs` shows the folder is gone or empty, and
+> `git -C . status --short` shows **no modifications**: sparse-checkout changes
+> the working tree, never the index.
+
+If it prints `REFUSING`, read which of the two refusals it is. Untracked files
+under `docs/` must be dealt with first; the primary must not be thinned at all.
+
+| # | Worktree | Command | Reclaims |
+|---|---|---|---|
+| 1 | `eventlinqs-app-backend` | `cd C:\Users\61416\OneDrive\Desktop\EventLinqs\eventlinqs-app-backend; node scripts\sparse-checkout-docs.mjs --apply` | 0.40 GB |
+| 2 | `eventlinqs-app-hardening` | `cd C:\Users\61416\OneDrive\Desktop\EventLinqs\eventlinqs-app-hardening; node scripts\sparse-checkout-docs.mjs --apply` | 0.40 GB |
+| 3 | `eventlinqs-app-tab-a` | `cd C:\Users\61416\OneDrive\Desktop\EventLinqs\eventlinqs-app-tab-a; node scripts\sparse-checkout-docs.mjs --apply` | 1.03 GB |
+| 4 | `el-env-integrity` | `cd C:\Users\61416\OneDrive\Desktop\EventLinqs\el-env-integrity; node scripts\sparse-checkout-docs.mjs --apply` | 1.47 GB |
+| 5 | `el-prod-sweep` | `cd C:\Users\61416\OneDrive\Desktop\EventLinqs\el-prod-sweep; node scripts\sparse-checkout-docs.mjs --apply` | 1.70 GB |
+| 6 | `el-auth-hardening` | `cd C:\Users\61416\OneDrive\Desktop\EventLinqs\el-auth-hardening; node scripts\sparse-checkout-docs.mjs --apply` | 1.51 GB |
+| 7 | `el-security` | `cd C:\Users\61416\OneDrive\Desktop\EventLinqs\el-security; node scripts\sparse-checkout-docs.mjs --apply` | 1.47 GB |
+
+**6 and 7 are the live sessions** (`feat/launch-kit-artefacts` and
+`fix/security-hardening`). Do those last, and only when that session has
+stopped. Nothing breaks if you thin a worktree mid-session, but the person in it
+will see `docs/` vanish and wonder what happened.
+
+**Total: 7.98 GB.** Check the result with:
 
 ```powershell
-cd C:\Users\61416\OneDrive\Desktop\EventLinqs\eventlinqs-app-backend
-node scripts\sparse-checkout-docs.mjs --apply      # 0.40 GB
-# then -hardening (0.40), -tab-a (1.03), el-env-integrity (1.47),
-# el-prod-sweep (1.70), el-auth-hardening (1.51), el-security (1.47)
+node scripts\sparse-checkout-docs.mjs        # report mode, in any worktree
 ```
 
-**I did not run it on any of them.** Four sessions are live and changing another
+Undo for any worktree, at any time:
+
+```powershell
+node scripts\sparse-checkout-docs.mjs --restore
+```
+
+**I did not run any of them.** Four sessions are live and changing another
 session's working tree is exactly the harm that emptied `node_modules` this
-morning. `el-security` and `el-auth-hardening` in particular are actively in
-use.
+morning.
 
 ---
 

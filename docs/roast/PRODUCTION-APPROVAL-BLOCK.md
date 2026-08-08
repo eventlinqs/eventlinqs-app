@@ -228,10 +228,16 @@ $new = -join ((1..24) | ForEach-Object { '{0:x2}' -f (Get-Random -Max 256) })
 $new.Length          # must print 48
 
 # 2. Write Vercel PRODUCTION. Do NOT redeploy yet.
-#    Dashboard: Project -> Settings -> Environment Variables -> CRON_SECRET
-#    -> Edit -> paste $new -> Production scope only -> Save.
-#    (The CLI cannot set values non-interactively on this account; the
-#     dashboard is the supported path.)
+#    CORRECTED 2026-08-08: an earlier draft of this block said the CLI cannot
+#    set values non-interactively and the dashboard was the only path. That is
+#    WRONG on CLI 55.0.0, which documents --value for exactly this. The repo
+#    note it came from ("VERCEL CLI CANNOT SET ENV VALUES, TTY-only",
+#    2026-07-19) is stale.
+vercel env rm CRON_SECRET production --yes
+vercel env add CRON_SECRET production --value $new --sensitive --yes
+
+#    rm-then-add rather than --force: --force overwrites the value but does
+#    NOT change the sensitivity flag, which is a separate known trap.
 
 # 3. Write the GitHub Actions secret with the SAME value, still no redeploy.
 gh secret set CRON_SECRET --body $new
@@ -261,6 +267,26 @@ Then confirm the shape violation is gone:
 ```powershell
 node scripts/verify/payment-critical-doctrine.mjs   # ALL GREEN
 ```
+
+### Will the env locks flag YOUR rotation as unauthorised drift?
+
+**No.** Asked directly because it is a fair worry: the four locks exist to catch
+exactly the kind of out-of-band edit a rotation looks like.
+
+The cross-store lock does **not** snapshot a historical value and compare
+against it. It performs a HANDSHAKE: it sends the bearer this process holds to a
+production cron route and requires HTTP 200, and the deployment validates it
+against its own copy. From `check-env-stores.mjs`:
+
+> `200 proves the two are byte-identical. 401 proves they differ or ...`
+
+So the locks flag a **MISMATCH between stores**, never a **CHANGE over time**. A
+rotation that writes both stores and then redeploys passes cleanly. A rotation
+that writes one store and stops fails, which is the entire reason the lock
+exists: that partial write is what silenced the smoke gate for eighteen days.
+
+The one thing to avoid is running the handshake BETWEEN step 2 and step 3. It
+will correctly report 401, and that is the lock working, not a fault.
 
 ### Timing
 
