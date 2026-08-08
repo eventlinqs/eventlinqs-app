@@ -103,8 +103,14 @@ describe('buildConnectBusinessProfile', () => {
 })
 
 describe('statementDescriptorSuffix', () => {
-  it('passes a short organiser name through unchanged', () => {
-    expect(statementDescriptorSuffix('Party Pty Ltd')).toBe('Party Pty Ltd')
+  /** What the buyer's bank actually receives, given the founder's "EL" prefix. */
+  const line = (title: string) => {
+    const suffix = statementDescriptorSuffix(title)
+    return suffix ? `EL* ${suffix}` : 'EL'
+  }
+
+  it('passes a short event title through unchanged', () => {
+    expect(statementDescriptorSuffix('Basement 45')).toBe('Basement 45')
   })
 
   it('strips the characters Stripe forbids in a descriptor', () => {
@@ -112,8 +118,6 @@ describe('statementDescriptorSuffix', () => {
   })
 
   it('strips the asterisk, which would forge a second prefix separator', () => {
-    // Stripe renders the complete descriptor as "PREFIX* suffix". An asterisk
-    // surviving from an organisation name would read as a second separator.
     expect(statementDescriptorSuffix('Star*Bar')).toBe('StarBar')
   })
 
@@ -121,12 +125,83 @@ describe('statementDescriptorSuffix', () => {
     expect(statementDescriptorSuffix('AC\\DC Tribute')).toBe('ACDC Tribute')
   })
 
+  // The whitelist cases. Each of these was verified against the live Stripe
+  // TEST API on 2026-08-09; the accented and curly-apostrophe forms are
+  // REJECTED by Stripe, which would throw inside paymentIntents.create.
+  it('transliterates accents rather than gutting the word', () => {
+    expect(statementDescriptorSuffix('Cafe Nino Fiesta')).toBe('Cafe Nino Fiesta')
+    expect(statementDescriptorSuffix('Café Niño Fiesta')).toBe('Cafe Nino Fiesta')
+  })
+
+  it('removes the curly apostrophe that Stripe rejects outright', () => {
+    // Real seeded title. Under a blacklist this reached Stripe and threw.
+    expect(statementDescriptorSuffix('A Doll’s House on Stage at The Events Centre')).toBe(
+      'A Dolls House'
+    )
+  })
+
+  it('removes emoji instead of letting Stripe mangle them to question marks', () => {
+    expect(statementDescriptorSuffix('Sunset 🎧 Rooftop')).toBe('Sunset Rooftop')
+  })
+
+  it('removes non-Latin scripts', () => {
+    expect(statementDescriptorSuffix('Ω Δ Σ Night')).toBe('Night')
+    expect(statementDescriptorSuffix('東京 Night Market')).toBe('Night Market')
+  })
+
   it('truncates at a word boundary rather than severing a word', () => {
-    expect(statementDescriptorSuffix('Harbour Lights Collective')).toBe('Harbour')
+    expect(statementDescriptorSuffix('Electronic Dance Live at Newcastle')).toBe(
+      'Electronic Dance'
+    )
+  })
+
+  it('drops a trailing joining word left behind by truncation', () => {
+    // "A Dolls House on" fits the budget but reads like a sentence that ran out
+    // of room, so the dangling "on" goes.
+    expect(statementDescriptorSuffix('A Dolls House on Stage at The Events Centre')).toBe(
+      'A Dolls House'
+    )
   })
 
   it('collapses runaway whitespace', () => {
-    expect(statementDescriptorSuffix('  Party   Pty  ')).toBe('Party Pty')
+    expect(statementDescriptorSuffix('  Basement   45  ')).toBe('Basement 45')
+  })
+
+  // Regression guards for the truncation rewrite. An earlier word-boundary
+  // implementation produced the commented values, none of which identify the
+  // event a buyer paid for. Eventbrite hard-clips ("EB *CORGI FESTIVAL 202"
+  // cuts 2026 mid-number) and so do we.
+  it('hard clips rather than collapsing to a single useless word', () => {
+    // was "Women"
+    expect(statementDescriptorSuffix('Women in Leadership Breakfast')).toBe('Women in Leadershi')
+    // was "Science"
+    expect(statementDescriptorSuffix('Science and Discovery Day at Adelaide Botanic Park')).toBe(
+      'Science and Discov'
+    )
+  })
+
+  it('keeps a word that fits the budget exactly', () => {
+    // was "Afrobeats": the clip lands exactly on the end of "Amapiano", and the
+    // old boundary rule threw the whole second word away.
+    expect(
+      statementDescriptorSuffix('Afrobeats Amapiano Live at Townsville Entertainment Centre')
+    ).toBe('Afrobeats Amapiano')
+  })
+
+  it('drops a one or two character fragment but keeps a longer one', () => {
+    // "A Dolls House on S" -> fragment "S" is debris, so it goes.
+    expect(statementDescriptorSuffix('A Dolls House on Stage at The Events Centre')).toBe(
+      'A Dolls House'
+    )
+    // "Gospel on the Rive" -> "Rive" still carries signal, so it stays.
+    expect(statementDescriptorSuffix('Gospel on the River: Brisbane Worship Night')).toBe(
+      'Gospel on the Rive'
+    )
+  })
+
+  it('never tidies a suffix down below the useful floor', () => {
+    const suffix = statementDescriptorSuffix('Women in Leadership Breakfast')
+    expect(suffix!.length).toBeGreaterThanOrEqual(12)
   })
 
   it('returns null when nothing printable survives, so the charge keeps the old behaviour', () => {
@@ -135,11 +210,33 @@ describe('statementDescriptorSuffix', () => {
     expect(statementDescriptorSuffix(undefined)).toBeNull()
     expect(statementDescriptorSuffix('2026')).toBeNull()
     expect(statementDescriptorSuffix('"\'<>')).toBeNull()
+    expect(statementDescriptorSuffix('🎧🎉🔥')).toBeNull()
   })
 
-  it('never exceeds the budget left by the platform prefix', () => {
-    const suffix = statementDescriptorSuffix('Extraordinarily Long Organisation Name')
-    expect(suffix!.length).toBeLessThanOrEqual(14)
+  it('handles a one word title', () => {
+    expect(line('Basement45')).toBe('EL* Basement45')
+  })
+
+  it('never lets the complete descriptor exceed the 22 characters Stripe allows', () => {
+    const titles = [
+      'Marketplace Regression Comedy: Free Night at Waterfront Pavilion',
+      'Afrobeats Amapiano Live at Townsville Entertainment Centre',
+      'Caribbean Dancehall Live at George Brown Botanic Gardens',
+      'A Doll’s House on Stage at The Events Centre Caloundra',
+      'Basement 45 Warehouse Sessions',
+      'Sunset 🎧 Rooftop Session with Café Niño',
+    ]
+    for (const title of titles) {
+      expect(line(title).length).toBeLessThanOrEqual(22)
+    }
+  })
+
+  it('gives two events from one organiser two different statement lines', () => {
+    // The failure the organiser-derived design had: both would have read
+    // "EL* Party Pty Ltd" and the buyer could not tell them apart.
+    const a = line('Basement 45 Warehouse')
+    const b = line('Rooftop Summer Opening')
+    expect(a).not.toBe(b)
   })
 })
 

@@ -83,7 +83,16 @@ export async function createPlatformCharge(
     input.eventId ?? null
   )
   const connectedAccountId = org.stripe_account_id!
-  const descriptorSuffix = statementDescriptorSuffix(org.name)
+
+  // The buyer's bank statement carries the EVENT, falling back to the organiser
+  // only when the event yields nothing printable. Loaded here rather than passed
+  // in because the three checkout call sites (general, seated, squad) hold three
+  // differently-shaped event objects and only one of them selects `title`;
+  // reading it from the id they all pass is one indexed lookup and cannot
+  // silently go missing at one call site.
+  const eventTitle = await loadEventTitle(input.eventId ?? null)
+  const descriptorSuffix =
+    statementDescriptorSuffix(eventTitle) ?? statementDescriptorSuffix(org.name)
 
   const intent = await input.gateway.createPaymentIntent({
     amount_cents: input.fees.total_cents,
@@ -94,9 +103,10 @@ export async function createPlatformCharge(
     // PLATFORM charge: funds held in the platform balance. transfer_group links
     // this charge to the later organiser transfer. No Connect charge fields.
     transfer_group: input.transferGroup,
-    // Put the organiser on the buyer's bank statement. Derived here, from the
-    // org row this function already loads, so all three checkout call sites
-    // (general, seated, squad) inherit it without changing a line.
+    // Put the EVENT on the buyer's bank statement, which is what they remember
+    // and what the published competition does (Eventbrite "EB *[event title]",
+    // Humanitix "Tickets-[first 16 of the event title]"). All three checkout
+    // call sites inherit it without changing a line.
     //
     // This is the ONLY route by which the organiser reaches a statement in this
     // architecture. Stripe: "The customer's statement uses the platform
@@ -112,6 +122,28 @@ export async function createPlatformCharge(
     organiserTransferCents,
     connectedAccountId,
     currency: input.fees.currency.toUpperCase(),
+  }
+}
+
+/**
+ * The event title for the statement descriptor. Best effort by design: a
+ * missing title costs the buyer a less specific statement line, and must never
+ * cost them their tickets, so any failure returns null and the caller falls
+ * back to the organiser name.
+ */
+async function loadEventTitle(eventId: string | null): Promise<string | null> {
+  if (!eventId) return null
+  try {
+    const admin = createAdminClient()
+    const { data, error } = await admin
+      .from('events')
+      .select('title')
+      .eq('id', eventId)
+      .maybeSingle()
+    if (error || !data) return null
+    return data.title ?? null
+  } catch {
+    return null
   }
 }
 

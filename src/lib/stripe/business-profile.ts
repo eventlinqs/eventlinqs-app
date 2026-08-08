@@ -127,49 +127,148 @@ const FORBIDDEN_DESCRIPTOR_CHARS = /["'<>\\*]/g
 /**
  * The longest suffix we will send.
  *
- * "Card networks receive only the first 22 characters (including the `*` symbol
- * and the space that concatenates the static prefix and dynamic suffix) of the
- * complete statement descriptor."
- * - https://docs.stripe.com/connect/statement-descriptors (fetched 2026-08-09)
+ * Stripe: "Make sure that the total length of the concatenated descriptor is no
+ * more than 22 characters, including the `*` symbol and the space."
+ * - https://docs.stripe.com/get-started/account/statement-descriptors
+ * (fetched 2026-08-09)
  *
- * The platform's prefix is 6 characters today ("ELINQS"), which leaves 14 after
- * "ELINQS* ". Capping here rather than letting Stripe truncate keeps the cut at
- * a word boundary where one is available, so a buyer reads "ELINQS* PARTY PTY"
- * and not a severed fragment. Stripe still truncates if the founder later
- * lengthens the prefix, so this cap is a quality floor, not a correctness
- * dependency.
+ * The platform prefix is "EL" (founder ruling, set in the Stripe Dashboard),
+ * and Stripe renders the line as `PREFIX* SUFFIX`. So "EL* " costs 4 of the 22
+ * and the suffix budget is 18.
+ *
+ * The two-character prefix follows the published competition rather than taste.
+ * Eventbrite's own help centre gives "EB *CORGI FESTIVAL 202", which is exactly
+ * 22 characters, spending 4 on the brand and 18 on the event. A ten-character
+ * prefix would spend nearly half the line before the buyer learns anything
+ * about what they bought.
+ *
+ * Capping here rather than letting Stripe truncate keeps the cut at a word
+ * boundary where one exists, so a buyer reads "EL* BASEMENT 45" and not a
+ * severed fragment.
  */
-const MAX_SUFFIX_LENGTH = 14
+const SUFFIX_BUDGET = 18
 
 /**
- * Derive the dynamic statement-descriptor suffix from an organiser's name.
- *
- * Returns `null` when nothing usable survives sanitising. Null means we send no
- * suffix at all, and the charge falls back to the platform's full static
- * descriptor - today's exact behaviour. Degrading to the status quo is the only
- * safe failure mode for a field that ends up on a stranger's bank statement.
+ * Typographic characters that appear in real event titles and must become plain
+ * ASCII before they reach Stripe. The curly apostrophe is not a nicety: the
+ * seeded title "A Doll's House on Stage at The Events Centre Caloundra" carries
+ * U+2019, and Stripe REJECTS a suffix containing it.
  */
-export function statementDescriptorSuffix(organisationName: string | null | undefined): string | null {
-  if (!organisationName) return null
+const TYPOGRAPHIC_REPLACEMENTS: [RegExp, string][] = [
+  [/[‘’‚‛]/g, ''], // curly single quotes: Stripe forbids the straight form too
+  [/[“”„‟]/g, ''], // curly double quotes: likewise
+  [/[–—−]/g, '-'], // en dash, em dash, minus sign
+  [/…/g, '...'], // ellipsis
+]
 
-  const cleaned = organisationName
-    .replace(FORBIDDEN_DESCRIPTOR_CHARS, '')
-    .replace(/\s+/g, ' ')
-    .trim()
+/** Trailing joining words that survive truncation and say nothing. Cutting
+ *  "A Dolls House on" back to "A Dolls House" costs no information and reads
+ *  like a title rather than a sentence that ran out of room. */
+const TRAILING_NOISE = /\s+(?:at|on|in|of|the|a|an|and|with|for|to|by|from|live)$/i
 
-  // Stripe requires the COMPLETE descriptor to hold at least 5 letters. The
-  // platform prefix already satisfies that on its own, but a suffix with no
-  // letters at all (say an organisation named "2026") reads as noise on a
-  // statement and is worse than no suffix.
+/** Trailing punctuation left dangling by a cut, e.g. "Fight Night:". */
+const TRAILING_PUNCTUATION = /[\s,:;.\-&+/(]+$/
+
+/**
+ * Below this many characters a suffix stops identifying anything, so tidying
+ * rules that would shorten it further are declined. "Women" tells a buyer
+ * nothing; "Women in Leadershi" tells them exactly which event it was.
+ */
+const MIN_USEFUL_LENGTH = 12
+
+/**
+ * Truncate to the budget the way the published competition does.
+ *
+ * Eventbrite's help centre gives "EB *CORGI FESTIVAL 202", which is a HARD clip
+ * that cuts "2026" mid-number rather than falling back to a word boundary. That
+ * is the right trade: an earlier word-boundary implementation turned "Women in
+ * Leadership Breakfast" into "Women" and "Afrobeats Amapiano Live at Townsville"
+ * into "Afrobeats", neither of which identifies the event a buyer paid for.
+ *
+ * Only two tidies are applied on top, and both are refused when they would drop
+ * the result below MIN_USEFUL_LENGTH: a dangling fragment of one or two
+ * characters is dropped, and a dangling joining word is dropped.
+ */
+function truncateToBudget(cleaned: string): string {
+  if (cleaned.length <= SUFFIX_BUDGET) {
+    const tidied = cleaned.replace(TRAILING_NOISE, '').replace(TRAILING_PUNCTUATION, '')
+    return tidied.length >= MIN_USEFUL_LENGTH || tidied.length === cleaned.length ? tidied : cleaned
+  }
+
+  let clipped = cleaned.slice(0, SUFFIX_BUDGET)
+
+  // A cut that lands mid-word leaves a fragment. One or two characters is
+  // debris ("Science and D"); anything longer still carries signal and stays.
+  const cutMidWord = cleaned[SUFFIX_BUDGET] !== ' '
+  if (cutMidWord) {
+    const lastSpace = clipped.lastIndexOf(' ')
+    const fragment = lastSpace >= 0 ? clipped.slice(lastSpace + 1) : ''
+    if (lastSpace > 0 && fragment.length > 0 && fragment.length <= 2) {
+      clipped = clipped.slice(0, lastSpace)
+    }
+  }
+
+  clipped = clipped.replace(TRAILING_PUNCTUATION, '')
+
+  // Drop a dangling joining word, repeatedly, but never below the useful floor.
+  let tidied = clipped
+  for (;;) {
+    const next = tidied.replace(TRAILING_NOISE, '').replace(TRAILING_PUNCTUATION, '')
+    if (next === tidied || next.length < MIN_USEFUL_LENGTH) break
+    tidied = next
+  }
+  return tidied.trim()
+}
+
+/**
+ * Derive the dynamic statement-descriptor suffix from an EVENT TITLE.
+ *
+ * The event title, not the organiser name, because that is what the buyer
+ * remembers and what the published competition uses. Eventbrite's help centre
+ * documents "EB *[event title] SAN FRANCISCO CA" and Humanitix's documents
+ * "Tickets-[first 16 characters of the event title] MCMAHONS POINT". Somebody
+ * who bought a ticket to Basement 45 remembers Basement 45, not the company
+ * that ran it. It also disambiguates: two events from one organiser produce two
+ * different statement lines, where an organiser-derived suffix produced two
+ * identical ones.
+ *
+ * SANITISING IS A WHITELIST, NOT A BLACKLIST, and that distinction is load
+ * bearing. Stripe publishes six forbidden characters, but stripping only those
+ * is not enough: verified against the live TEST API on 2026-08-09, a suffix of
+ * "Cafe Nino Fiesta" is accepted while "Cafe Nino Fiesta" with accents is
+ * REJECTED outright, and an emoji title is accepted but silently mangled to
+ * "Sunset ?? Rooftop". A rejected suffix makes `paymentIntents.create` throw,
+ * which would break checkout for that event. So anything outside printable
+ * ASCII is removed, after transliterating accents so "Cafe" survives as a word
+ * rather than being gutted.
+ *
+ * Returns `null` when nothing usable survives. Null means no suffix is sent and
+ * the charge falls back to the platform's static descriptor, which is the
+ * pre-existing behaviour. Degrading to the status quo is the only safe failure
+ * mode for a field that lands on a stranger's bank statement.
+ */
+export function statementDescriptorSuffix(eventTitle: string | null | undefined): string | null {
+  if (!eventTitle) return null
+
+  // Transliterate accents first, so "Café" becomes "Cafe" rather than "Caf".
+  let cleaned = eventTitle.normalize('NFD').replace(/[̀-ͯ]/g, '')
+  for (const [pattern, replacement] of TYPOGRAPHIC_REPLACEMENTS) {
+    cleaned = cleaned.replace(pattern, replacement)
+  }
+  // Everything still outside printable ASCII (emoji, Greek, CJK) becomes a
+  // space rather than being deleted, so words either side do not fuse.
+  cleaned = cleaned.replace(/[^\x20-\x7E]/g, ' ')
+  cleaned = cleaned.replace(FORBIDDEN_DESCRIPTOR_CHARS, '')
+  cleaned = cleaned.replace(/\s+/g, ' ').trim()
+
+  // Stripe requires the COMPLETE descriptor to contain at least one letter. The
+  // platform prefix satisfies that alone, but a suffix with no letters (an event
+  // titled "2026", or one that was pure emoji) reads as noise and is worse than
+  // no suffix at all.
   if (!/[A-Za-z]/.test(cleaned)) return null
 
-  if (cleaned.length <= MAX_SUFFIX_LENGTH) return cleaned
-
-  // Prefer a word boundary inside the budget; fall back to a hard cut.
-  const clipped = cleaned.slice(0, MAX_SUFFIX_LENGTH)
-  const lastSpace = clipped.lastIndexOf(' ')
-  const atBoundary = lastSpace > 0 ? clipped.slice(0, lastSpace) : clipped
-  return /[A-Za-z]/.test(atBoundary) ? atBoundary.trim() : clipped.trim()
+  const result = truncateToBudget(cleaned)
+  return /[A-Za-z]/.test(result) ? result : null
 }
 
 // ── Divergence between what we hold and what Stripe holds ───────────────────
