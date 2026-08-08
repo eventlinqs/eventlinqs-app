@@ -322,6 +322,63 @@ const CHECKS = [
     },
   },
   {
+    id: 'district-assignment-is-exclusive',
+    kind: 'code',
+    feature: 'Every /city/[slug]/[suburb] district page',
+    selectsOn: 'the rule that decides which district an event belongs to',
+    /**
+     * THE DEFECT THIS EXISTS FOR, because it had no symptom at all.
+     *
+     * The suburb page and the /events?suburb= filter both once asked "is this
+     * event within the district radius". That is INCLUSIVE, and an assignment
+     * that is inclusive is not an assignment. Every Melbourne district sits
+     * within 12 km of the CBD, and 43 of the 55 Melbourne events carry the CBD
+     * centroid as their venue coordinate, so all six district pages returned
+     * the same events. Nothing was empty, nothing was broken, nothing errored:
+     * six pages each gave a wrong answer that looked exactly like a right one.
+     *
+     * A regression here would look like a feature working. So the gate is
+     * structural: the three callers must resolve through resolveSuburbSlug, the
+     * one function whose contract is "the single nearest district", and none of
+     * them may reintroduce a bare radius comparison.
+     */
+    run() {
+      const resolver = code('src/lib/cities/resolve-suburb.ts')
+      if (!resolver) return FAIL('the district resolver is missing entirely')
+      // ORDER BY distance / LIMIT 1 in prose form: the resolver must pick one.
+      if (!/best\s*===?\s*null\s*\|\|\s*km\s*<\s*best\.km/.test(resolver)) {
+        return FAIL(
+          'resolveSuburbSlug no longer picks the single nearest district. If it now returns everything in range, every district page in a city returns the same events and each one is a wrong answer with no symptom',
+        )
+      }
+
+      const callers = [
+        ['the organiser write path', 'src/app/(dashboard)/dashboard/events/actions.ts'],
+        ['the /events?suburb= filter', 'src/lib/events/fetchers.ts'],
+        ['the district landing page', 'src/app/city/[slug]/[suburb]/page.tsx'],
+      ]
+      const missing = callers.filter(([, path]) => !/resolveSuburbSlug/.test(code(path) ?? ''))
+      if (missing.length) {
+        return FAIL(
+          `${missing.length} of the 3 callers no longer decide the district through resolveSuburbSlug, so the write and the read can disagree about which district an event is in: ${missing.map(([label]) => label).join(', ')}`,
+        )
+      }
+
+      // A bare radius comparison in the read paths is the exact shape of the
+      // regression. The resolver itself is allowed one, which is why it is not
+      // in this list.
+      const inclusive = callers
+        .filter(([label]) => label !== 'the organiser write path')
+        .filter(([, path]) => /<=\s*SUBURB_(MATCH_)?RADIUS_KM/.test(code(path) ?? ''))
+      if (inclusive.length) {
+        return FAIL(
+          `${inclusive.length} read path(s) compare against the district radius directly instead of resolving the nearest district: ${inclusive.map(([label]) => label).join(', ')}. That is the inclusive test that made every district page a copy of the city page`,
+        )
+      }
+      return PASS('all 3 callers resolve the single nearest district, and no read path tests the radius directly')
+    },
+  },
+  {
     id: 'category-landing-filters-in-query',
     kind: 'code',
     feature: 'Category landing pages, /categories/[slug]',

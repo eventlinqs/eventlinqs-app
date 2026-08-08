@@ -52,11 +52,22 @@
 -- project. NEVER the Dashboard SQL editor, NEVER the Supabase MCP, NEVER
 -- against Production without Lawal running it himself.
 
+-- A CORRELATED SCALAR SUBQUERY IN SET, not UPDATE ... FROM LATERAL.
+--
+-- The first version of this used `from lateral (... where s.city_slug =
+-- e.city_primary ...)` and PostgreSQL rejected it with "invalid reference to
+-- FROM-clause entry for table e" (SQLSTATE 42P10): the UPDATE target is not in
+-- scope for a LATERAL item in the FROM clause. A correlated subquery on the
+-- right-hand side of SET can see the target row, which is what this needs.
+--
+-- The subquery yields NULL when nothing is within range. Assigning NULL to a
+-- column the WHERE clause has already restricted to NULL is a no-op, so an
+-- event outside every district is left exactly as it was.
+
 begin;
 
 update public.events e
-   set suburb_primary = nearest.slug
-  from lateral (
+   set suburb_primary = (
         select s.slug
           from public.suburbs s
          where s.city_slug = e.city_primary
@@ -68,13 +79,17 @@ update public.events e
                  + cos(radians(e.venue_latitude)) * cos(radians(s.latitude))
                    * power(sin(radians(s.longitude - e.venue_longitude) / 2), 2)
                )) <= 12
+         -- ORDER BY distance + LIMIT 1 is what makes this an ASSIGNMENT rather
+         -- than a membership test. Every Melbourne district sits within 12 km
+         -- of the CBD, so "any district in range" would file the same event
+         -- under all six.
          order by 6371 * 2 * asin(sqrt(
                  power(sin(radians(s.latitude - e.venue_latitude) / 2), 2)
                  + cos(radians(e.venue_latitude)) * cos(radians(s.latitude))
                    * power(sin(radians(s.longitude - e.venue_longitude) / 2), 2)
                )) asc
          limit 1
-       ) nearest
+       )
  where e.suburb_primary is null
    and e.city_primary is not null
    and e.venue_latitude is not null

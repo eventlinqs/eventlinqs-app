@@ -162,10 +162,16 @@ export function resolveCitySlug(value: string): string | null {
  * suburb names, so matching them against `venue_name` or `venue_city` as text
  * would resolve to nothing. What they do carry is a real centroid: every row in
  * the `suburbs` table has a latitude and a longitude, and 346 of the 362
- * published events on TEST (95.6 percent) have venue coordinates. So a suburb
- * filter is a radius around that centroid, resolved through the
- * `events_within_distance` RPC the distance filter already uses, unioned with a
- * direct match on `events.suburb_primary` for events that carry one.
+ * published events on TEST (95.6 percent) have venue coordinates.
+ *
+ * The filter therefore resolves each candidate to its ONE NEAREST district
+ * (`resolveSuburbSlug`) and keeps the events whose answer is this district.
+ * NOT "every event within the radius": that is inclusive, and district
+ * assignment must be exclusive. Every Melbourne district sits within 12 km of
+ * the CBD and most Melbourne events carry the CBD centroid as their venue
+ * coordinate, so an inclusive test hands the same events to all six districts
+ * and every district page becomes a copy of the city page. There is a standing
+ * gate on this (`district-assignment-is-exclusive` in reach-integrity).
  *
  * 12 km is the district radius. These entries are metropolitan districts rather
  * than single suburbs (Inner West spans Newtown to Marrickville to Enmore), and
