@@ -3,7 +3,7 @@
  *
  * The defect it protects against reached production as a real URL:
  *
- *   /login?email=...&password=ArtistGate2026%21Drive
+ *   /login?email=...&password=<REDACTED>
  *
  * A form written `<form onSubmit={handler}>` with preventDefault and no `action`
  * is correct once React is live. Before React is live the markup is painted and

@@ -15,6 +15,17 @@
  *   rls-exposure-scan          no world-readable policy exposes a sensitive column
  *   no-native-submit           no form puts a credential in the URL pre-hydration
  *   revoked-column-reads       no untrusted-role query selects a revoked column
+ *   no-plaintext-credential    no tracked file contains a plaintext credential
+ *
+ * On no-plaintext-credential: GitGuardian reported a Company Email Password
+ * exposed in this repository on 2026-08-08. It was hardcoded in twenty committed
+ * automation scripts and reproduced into three security documents, one of them
+ * written by the hardening pass itself, which quoted the leaking URL from the
+ * brief and the URL contained the password. The person most alert to the defect
+ * still committed it, because quoting evidence feels like documentation rather
+ * than disclosure. A guard does not feel that difference. Note it protects the
+ * WORKING TREE only: a secret already in history is un-exposed by ROTATION, never
+ * by an edit.
  *
  * On revoked-column-reads: migration 20260808000010 narrows column privileges, and
  * a privilege failure is LOUD by design, which is right for security and is still
@@ -119,6 +130,7 @@ const GUARDS = [
   'scripts/security/rls-exposure-scan.mjs',
   'scripts/guards/no-native-submit-guard.mjs',
   'scripts/security/revoked-column-reads.mjs',
+  'scripts/guards/no-plaintext-credential.mjs',
 ]
 
 /**

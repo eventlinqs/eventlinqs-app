@@ -12,6 +12,20 @@ import fs from 'node:fs'
 import { createHash } from 'node:crypto'
 import { chromium, devices } from 'playwright'
 
+// CREDENTIALS COME FROM THE ENVIRONMENT, NEVER FROM THIS FILE.
+// GitGuardian flagged plaintext account passwords committed to this repository
+// on 2026-08-08. A drive script is committed, pushed and indexed, so it is not a
+// safe place for one. Fail closed rather than fall back to a literal.
+function requireEnv(name) {
+  const v = process.env[name]
+  if (!v) {
+    console.error(`[drive] ${name} is not set. Export it for this shell; it is deliberately not in the repo.`)
+    process.exit(2)
+  }
+  return v
+}
+
+
 const BASE = process.argv[2]
 if (!BASE) throw new Error('usage: node scripts/surpass-drive.mjs <baseUrl>')
 const OUT = 'docs/surpass/evidence'
@@ -36,7 +50,7 @@ function uuidFrom(str) {
 }
 
 const TEST_EMAIL = 'test-user@eventlinqs.com'
-const TEST_PASSWORD = 'TestUser2026!Secure'
+const TEST_PASSWORD = requireEnv('EL_TEST_PASSWORD')
 const PAID_SLUG = 'cellar-comedy-night-seated-season-opener'
 const FREE_SEATED_SLUG = 'cellar-free-night-on-the-builder-chart'
 const FREE_EVENT_ID = uuidFrom('drive:free-event')

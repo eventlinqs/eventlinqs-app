@@ -19,7 +19,7 @@ question. Every auth form was written as `<form onSubmit={handler}>` with
 before it is:
 
 ```
-/login?email=...&password=ArtistGate2026%21Drive
+/login?email=...&password=<REDACTED>
 ```
 
 Nobody asked "what does this surface do in the window before its own code

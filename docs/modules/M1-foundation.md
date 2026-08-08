@@ -21,7 +21,7 @@ Create `.env.local` in the project root with:
 ```env
 # Supabase
 NEXT_PUBLIC_SUPABASE_URL=https://cqwdlimwlnyaaowwcyzp.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxd2RsaW13bG55YWFvd3djeXpwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5MzMwNDQsImV4cCI6MjA4ODUwOTA0NH0.4JVQ0fqoMKs-5BfFs-oJc-VgUhQ9X9mv75XfglSrGlc
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ<REDACTED-ANON-KEY>
 
 # Stripe (placeholder - real keys added in Module 5)
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_placeholder

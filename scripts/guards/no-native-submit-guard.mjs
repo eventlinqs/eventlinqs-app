@@ -9,7 +9,7 @@
  * a NATIVE submit, and a native submit with no action and no method is a GET to
  * the current URL with every field in the query string:
  *
- *   /login?email=...&password=ArtistGate2026%21Drive
+ *   /login?email=...&password=<REDACTED>
  *
  * The credential is then in browser history, in every access log that records
  * URLs, and in the Referer header of the next request. The person also sees

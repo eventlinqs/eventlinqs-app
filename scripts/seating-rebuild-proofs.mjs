@@ -20,6 +20,20 @@ import { createHash } from 'node:crypto'
 import sharp from 'sharp'
 import { chromium, devices } from 'playwright'
 
+// CREDENTIALS COME FROM THE ENVIRONMENT, NEVER FROM THIS FILE.
+// GitGuardian flagged plaintext account passwords committed to this repository
+// on 2026-08-08. A drive script is committed, pushed and indexed, so it is not a
+// safe place for one. Fail closed rather than fall back to a literal.
+function requireEnv(name) {
+  const v = process.env[name]
+  if (!v) {
+    console.error(`[drive] ${name} is not set. Export it for this shell; it is deliberately not in the repo.`)
+    process.exit(2)
+  }
+  return v
+}
+
+
 const BASE = process.argv[2]
 if (!BASE) throw new Error('usage: node scripts/seating-rebuild-proofs.mjs <baseUrl> [steps]')
 const STEPS = new Set((process.argv[3] ?? 'buyer,extras,keyboard,builder,perf').split(','))
@@ -43,7 +57,7 @@ const SLUG_2000 = 'grand-hall-proof-the-full-house'
 const SLUG_5000 = 'endurance-hall-five-thousand-seats'
 const MAP_500 = '3633a391-3a0c-4fe2-8b8f-637c3ec46725'
 const TEST_EMAIL = 'test-user@eventlinqs.com'
-const TEST_PASSWORD = 'TestUser2026!Secure'
+const TEST_PASSWORD = requireEnv('EL_TEST_PASSWORD')
 const TEST_USER_ID = '57101100-eec8-4e72-a464-97e11e66bea1'
 
 function uuidFrom(str) {
