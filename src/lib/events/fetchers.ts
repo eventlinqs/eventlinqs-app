@@ -6,7 +6,6 @@ import { withBadge } from './badges'
 import { buildCommunityTagOrFilter } from '@/lib/communities/tag-bridge'
 import type { CommunitySlug } from '@/lib/communities/data'
 import {
-  SUBURB_RADIUS_KM,
   buildEventTypeTagOrFilter,
   buildFaithFilter,
   eventTypeCategory,
@@ -14,6 +13,7 @@ import {
   resolveSuburb,
   venueSearchTerm,
 } from './url-filters'
+import { resolveSuburbSlug } from '@/lib/cities/resolve-suburb'
 import {
   rankEventsByAffinity,
   hasAnyAffinitySignal,
@@ -170,18 +170,14 @@ function applyOps<Q extends FilterableQuery>(query: Q, ops: QueryOp[]): Q {
 }
 
 /** The lookups the resolver needs. Both Supabase clients satisfy it. */
+type LookupBuilder = {
+  eq(column: string, value: string): LookupBuilder
+  ilike(column: string, value: string): LookupBuilder
+  limit(count: number): PromiseLike<{ data: unknown[] | null }>
+  maybeSingle(): PromiseLike<{ data: { id: string } | null }>
+}
 type LookupClient = {
-  from(table: string): {
-    select(columns: string): {
-      eq(column: string, value: string): {
-        maybeSingle(): PromiseLike<{ data: { id: string } | null }>
-      }
-    }
-  }
-  rpc(
-    fn: string,
-    args: Record<string, number>,
-  ): PromiseLike<{ data: { id: string }[] | null }>
+  from(table: string): { select(columns: string): LookupBuilder }
 }
 
 async function lookupId(
@@ -191,6 +187,47 @@ async function lookupId(
 ): Promise<string | null> {
   const { data } = await supabase.from(table).select('id').eq('slug', slug).maybeSingle()
   return data?.id ?? null
+}
+
+/** The rows the district membership pass needs. */
+type DistrictCandidate = {
+  id: string
+  suburb_primary: string | null
+  venue_latitude: number | null
+  venue_longitude: number | null
+}
+
+/**
+ * The ids of published events whose ONE nearest district is `districtSlug`.
+ *
+ * Bounded by the district's own city, so this reads tens of rows, not the
+ * catalogue. Prefers the stored `suburb_primary` where the row carries one (the
+ * organiser path writes it, and migration 20260808000003 backfills it) and
+ * falls back to resolving the coordinates with the identical rule, so the
+ * filter is correct with or without that migration having been applied.
+ */
+async function eventIdsInDistrict(
+  supabase: LookupClient,
+  citySlug: string,
+  districtSlug: string,
+): Promise<string[]> {
+  const { data } = await supabase
+    .from('events')
+    .select('id, suburb_primary, venue_latitude, venue_longitude')
+    .eq('status', 'published')
+    .ilike('venue_city', `%${resolveCityName(citySlug)}%`)
+    .limit(500)
+  return ((data ?? []) as DistrictCandidate[])
+    .filter(
+      (e) =>
+        (e.suburb_primary ??
+          resolveSuburbSlug({
+            citySlug,
+            latitude: e.venue_latitude,
+            longitude: e.venue_longitude,
+          })) === districtSlug,
+    )
+    .map((e) => e.id)
 }
 
 /**
@@ -256,24 +293,29 @@ async function resolveEventFilterOps(
     ops.push(faithOr ? { kind: 'or', filter: faithOr } : { kind: 'eq', column: 'id', value: NO_MATCH })
   }
 
-  // suburb: a district, not a literal suburb name, so it is a radius around the
-  // district centroid unioned with a direct suburb_primary match.
+  // suburb: EXCLUSIVE district assignment.
+  //
+  // An earlier version of this unioned suburb_primary with "any event within
+  // the district radius". That is INCLUSIVE, and an assignment that is
+  // inclusive is not an assignment. Melbourne's six districts all sit within
+  // 12 km of the CBD, and 43 of the 55 Melbourne events carry the CBD centroid
+  // as their venue coordinate, so the radius union handed those same 43 events
+  // to all six districts and every district page was a copy of the city page.
+  //
+  // The rule is the ONE nearest district (resolveSuburbSlug), the same rule the
+  // organiser write path and the suburb landing page apply. It is evaluated
+  // here rather than delegated entirely to suburb_primary so the filter is
+  // correct BEFORE the backfill migration has been applied as well as after: a
+  // discovery surface that depends on a migration somebody has to remember to
+  // run is a silent break waiting to happen, which is the whole defect class
+  // this branch belongs to.
   if (filters.suburb) {
     const suburb = resolveSuburb(filters.city, filters.suburb)
     if (!suburb) {
       ops.push({ kind: 'eq', column: 'id', value: NO_MATCH })
     } else {
-      const { data: nearby } = await supabase.rpc('events_within_distance', {
-        p_lat: suburb.latitude,
-        p_lng: suburb.longitude,
-        p_radius_km: SUBURB_RADIUS_KM,
-      })
-      const ids = (nearby ?? []).map((e) => e.id)
-      ops.push(
-        ids.length
-          ? { kind: 'or', filter: `suburb_primary.eq.${suburb.slug},id.in.(${ids.join(',')})` }
-          : { kind: 'eq', column: 'suburb_primary', value: suburb.slug },
-      )
+      const ids = await eventIdsInDistrict(supabase, suburb.citySlug, suburb.slug)
+      ops.push(ids.length ? { kind: 'in', column: 'id', values: ids } : { kind: 'eq', column: 'id', value: NO_MATCH })
     }
   }
 

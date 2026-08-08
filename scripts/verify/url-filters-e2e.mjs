@@ -259,6 +259,44 @@ await check(
   'within the Inner West district',
 )
 
+// The assertion that actually protects the district fix. Melbourne's six
+// districts all sit within 12 km of the CBD, and 43 of the 55 Melbourne events
+// carry the CBD centroid as their venue coordinate. Under an inclusive radius
+// rule every district returned those same events, so six district pages were
+// six copies of the city page: nothing empty, nothing broken, every page a
+// wrong answer that looked like a right one. Assignment must be exclusive.
+console.log('\ndistrict assignment is EXCLUSIVE (each event on exactly one district page)')
+{
+  const MELBOURNE_DISTRICTS = [
+    'inner-melbourne',
+    'eastern-suburbs',
+    'western-suburbs',
+    'northern-suburbs',
+    'southern-suburbs',
+    'bayside',
+  ]
+  const owner = new Map()
+  let overlaps = 0
+  let total = 0
+  for (const district of MELBOURNE_DISTRICTS) {
+    const { slugs } = await browse(`?city=melbourne&suburb=${district}`)
+    total += slugs.length
+    for (const s of slugs) {
+      if (owner.has(s)) {
+        overlaps++
+        if (overlaps <= 3) console.log(`         ${s} is on BOTH ${owner.get(s)} and ${district}`)
+      } else owner.set(s, district)
+    }
+  }
+  record(
+    'melbourne districts are disjoint',
+    overlaps === 0,
+    overlaps === 0
+      ? `${total} event(s) across ${MELBOURNE_DISTRICTS.length} districts, each on exactly one`
+      : `${overlaps} event(s) appear on more than one district, so the assignment is inclusive rather than exclusive`,
+  )
+}
+
 console.log('\nsort=trending (the category highlight slide)')
 {
   const { status, slugs } = await browse('?sort=trending')

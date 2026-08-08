@@ -173,14 +173,26 @@ export function resolveCitySlug(value: string): string | null {
  * dissolves the distinction between neighbouring districts. It is a tuning
  * value, not a taxonomy, and the `city` filter always applies alongside it
  * because both parameters are emitted together.
+ *
+ * Re-exported from ONE source rather than declared twice. The organiser write
+ * path, this filter and the suburb landing page all have to agree on which
+ * district an event is in; two constants that happen to hold the same number
+ * are two constants that will eventually not.
  */
-export const SUBURB_RADIUS_KM = 12
+export { SUBURB_MATCH_RADIUS_KM as SUBURB_RADIUS_KM } from '@/lib/cities/resolve-suburb'
 
-/** Resolve a city-facing suburb slug to its full slug and centroid. */
+/** Resolve a city-facing suburb slug to its full slug, city and centroid. */
 export function resolveSuburb(
   citySlug: string | undefined,
   suburbValue: string,
-): { slug: string; name: string; latitude: number; longitude: number } | null {
+): {
+  slug: string
+  cityFacingSlug: string
+  citySlug: string
+  name: string
+  latitude: number
+  longitude: number
+} | null {
   const value = suburbValue.trim().toLowerCase()
   if (!value) return null
   // The emitted form is city-facing ("inner-melbourne"); the stored form is
@@ -191,6 +203,10 @@ export function resolveSuburb(
     if (suburb) {
       return {
         slug: suburb.slug,
+        // Derived from the record rather than from the URL, so it is right even
+        // when the caller passed the fully qualified form.
+        cityFacingSlug: suburb.slug.slice(suburb.citySlug.length + 1),
+        citySlug: suburb.citySlug,
         name: suburb.name,
         latitude: suburb.latitude,
         longitude: suburb.longitude,
