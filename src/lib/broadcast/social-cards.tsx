@@ -4,6 +4,7 @@
    src/app/events/[slug]/opengraph-image.tsx carries the same exemption. */
 import { ImageResponse } from 'next/og'
 import { BODY_FAMILY, DISPLAY_FAMILY, loadCardFonts } from '@/lib/broadcast/card-fonts'
+import { bodyTextMeasurer } from '@/lib/broadcast/card-metrics'
 import {
   SOCIAL_CARD_FORMATS,
   SOCIAL_CARD_MAX_BYTES,
@@ -277,6 +278,16 @@ function Strapline({ input, px }: { input: SocialCardInput; px: Px }) {
   )
 }
 
+/**
+ * The body-face width measurer, warmed by renderSocialCard before it builds the
+ * element tree, because satori's tree is built synchronously and the font has
+ * to be parsed to measure anything. Assigning the same idempotent function from
+ * concurrent renders on a warm instance is harmless; until the first warm-up it
+ * falls back to the old per-character estimate.
+ */
+let measureBody: (text: string, fontSize: number) => number = (text, fontSize) =>
+  text.length * fontSize * 0.52
+
 function TicketBar({
   input,
   px,
@@ -292,8 +303,18 @@ function TicketBar({
   const large = size === 'lg'
   const height = px(large ? 106 : 76)
   const padding = px(large ? 42 : 32)
-  const text = ticketBarText(input.priceLabel, input.shortUrl)
-  const fontSize = fitTicketBar(text, width - padding * 2, px(large ? 38 : 30), px(large ? 24 : 20))
+  const line = ticketBarText(input.priceLabel, input.shortUrl)
+  // Measured against the real face, and guaranteed to fit: `fit.text` is what
+  // gets drawn, which may be an ellipsised form of `line` on a host or a code
+  // long enough that no permitted size would hold it.
+  const fit = fitTicketBar(
+    line,
+    width - padding * 2,
+    px(large ? 38 : 30),
+    px(large ? 24 : 20),
+    measureBody,
+  )
+  const { text, fontSize } = fit
   return (
     <div
       style={{
@@ -672,6 +693,9 @@ export async function renderSocialCard(
 ): Promise<Uint8Array> {
   const spec = SOCIAL_CARD_FORMATS[format]
   const fonts = await loadCardFonts()
+  // Warm the measurer before the (synchronous) tree is built, so the ticket bar
+  // is fitted against real glyph widths rather than an average.
+  measureBody = await bodyTextMeasurer()
 
   const element = !input.cover
     ? TypographicCard({ input, format })

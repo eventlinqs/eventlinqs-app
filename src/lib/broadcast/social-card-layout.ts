@@ -49,9 +49,17 @@ export function fitTitle(title: string, format: SocialCardFormat): TitleFit {
 /**
  * The gold ticket bar carries the two things a promoter is actually posting
  * for: what it costs and where to buy. One line, never wrapped.
+ *
+ * "www." is dropped. Every browser has hidden it in the address bar for years,
+ * it carries no information a reader needs, and on the story bar those four
+ * characters are the difference between the line fitting and being drawn
+ * outside its own bar.
  */
 export function ticketBarText(priceLabel: string, shortUrl: string): string {
-  const url = shortUrl.replace(/^https?:\/\//, '').replace(/\/$/, '')
+  const url = shortUrl
+    .replace(/^https?:\/\//, '')
+    .replace(/^www\./, '')
+    .replace(/\/$/, '')
   const price = priceLabel.trim()
   return price ? `${price} · ${url}` : url
 }
@@ -99,24 +107,65 @@ export const STORY_PANEL_MAX_HEIGHT = 820
  */
 export const STORY_PANEL_MIN_HEIGHT = 760
 
+export type TicketBarFit = { text: string; fontSize: number }
+
 /**
  * Fit the ticket line to the bar rather than letting it wrap. The bar is one
  * line by design: a link broken across two lines reads as a broken link, not a
- * designed one. Hanken Grotesk at semibold averages close to 0.52 of the font
- * size per character across a mixed alphanumeric string like a price and a
- * host, which is the ratio used to step the size down.
+ * designed one.
+ *
+ * WHY THIS WAS REWRITTEN. The first version estimated the width as
+ * `characters * size * 0.52` and, when even the minimum size did not fit,
+ * RETURNED THE MINIMUM ANYWAY. Nothing truncated and nothing wrapped, so the
+ * line was simply drawn past the end of the gold bar: across the QR code and
+ * off the edge on the social cards, and in navy-on-navy past the bar's edge on
+ * the A4 poster, where it does not look broken at all, it just silently prints
+ * a shortened, wrong link. A browser walk found it; 1452 unit tests did not,
+ * because a function that returns a plausible number cannot fail an assertion
+ * about the number.
+ *
+ * Two things changed. The width is now MEASURED with the real font rather than
+ * estimated (the measured ratio for Hanken Grotesk SemiBold is nearer 0.46, so
+ * the old estimate was also shrinking type that did not need shrinking). And
+ * the fit is now GUARANTEED: if the line cannot be made to fit by stepping the
+ * size down, the URL is ellipsised until it does. The caller draws the returned
+ * text, never the input.
+ *
+ * @param measure returns the drawn width of a string at a font size, from the
+ *   real font the caller will draw with, so the guarantee is about the actual
+ *   glyphs rather than an average.
  */
 export function fitTicketBar(
   text: string,
   availableWidth: number,
   maxFontSize: number,
   minFontSize: number,
-): number {
-  const usable = availableWidth
-  for (let size = maxFontSize; size > minFontSize; size -= 1) {
-    if (text.length * size * 0.52 <= usable) return size
+  measure: (text: string, fontSize: number) => number,
+): TicketBarFit {
+  for (let size = maxFontSize; size >= minFontSize; size -= 1) {
+    if (measure(text, size) <= availableWidth) return { text, fontSize: size }
   }
-  return minFontSize
+
+  // Nothing fits even at the floor. Shorten from the middle of the line, which
+  // is the host, and keep both ends: the price a reader is deciding on and the
+  // code that makes the address unique. A visible ellipsis is honest; a line
+  // drawn outside its own bar is not.
+  let lo = 1
+  let hi = text.length
+  let best = '...'
+  while (lo <= hi) {
+    const keep = Math.floor((lo + hi) / 2)
+    const head = Math.ceil(keep / 2)
+    const tail = keep - head
+    const candidate = `${text.slice(0, head)}...${tail > 0 ? text.slice(text.length - tail) : ''}`
+    if (measure(candidate, minFontSize) <= availableWidth) {
+      best = candidate
+      lo = keep + 1
+    } else {
+      hi = keep - 1
+    }
+  }
+  return { text: best, fontSize: minFontSize }
 }
 
 /**

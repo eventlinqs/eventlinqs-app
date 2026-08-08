@@ -1,6 +1,7 @@
 import { PDFDocument, rgb, type PDFFont, type PDFImage, type PDFPage } from 'pdf-lib'
 import fontkit from '@pdf-lib/fontkit'
 import { loadCardFonts } from '@/lib/broadcast/card-fonts'
+import { fitTicketBar, ticketBarText } from '@/lib/broadcast/social-card-layout'
 
 /**
  * THE A4 QR POSTER.
@@ -193,16 +194,28 @@ export async function buildEventPosterPdf(input: PosterInput): Promise<Uint8Arra
 
   let y = bandH - 44
 
+  // Title metrics are needed BEFORE the mark is placed: pdf-lib draws text from
+  // its baseline, so the gap under the mark has to clear the title's ascender,
+  // not the baseline.
+  const titleSize = 29
+  const titleAscent = display.heightAtSize(titleSize, { descender: false })
+
   // The organiser identity leads the band. Their mark, their name.
   if (input.coverImage && logo) {
     const h = Math.min(34, (logo.height / logo.width) * 120)
     const w = (logo.width / logo.height) * h
+    // A dark mark gets a white readability tile, and the tile is TALLER than
+    // the mark by this padding on each side. Advancing by the mark's height
+    // alone drew the tile's lower edge straight through the top of the title:
+    // clean for a light mark, overlapping for every dark one, which is the
+    // case the settings panel explicitly tells organisers is fine.
+    const tilePad = onTile ? 6 : 0
     if (onTile) {
       page.drawRectangle({
-        x: MARGIN - 6,
-        y: y - h - 6,
-        width: w + 12,
-        height: h + 12,
+        x: MARGIN - tilePad,
+        y: y - h - tilePad,
+        width: w + tilePad * 2,
+        height: h + tilePad * 2,
         color: PDF_WHITE,
       })
     }
@@ -215,7 +228,9 @@ export async function buildEventPosterPdf(input: PosterInput): Promise<Uint8Arra
       color: PDF_WHITE_MUTED,
       tracking: 1.2,
     })
-    y -= h + 22
+    // 22pt of clear air between the mark's lowest drawn edge and the title's
+    // cap line, whichever placement the mark took.
+    y = y - h - tilePad - 22 - titleAscent
   } else if (input.coverImage) {
     drawTracked(page, input.organiserName.toUpperCase(), {
       x: MARGIN,
@@ -231,7 +246,6 @@ export async function buildEventPosterPdf(input: PosterInput): Promise<Uint8Arra
   }
 
   // Title, wrapped, at most three lines.
-  const titleSize = 29
   const titleLines = wrapText(input.title, display, titleSize, textMaxW).slice(0, 3)
   for (const line of titleLines) {
     page.drawText(line, { x: MARGIN, y, size: titleSize, font: display, color: PDF_WHITE })
@@ -250,9 +264,24 @@ export async function buildEventPosterPdf(input: PosterInput): Promise<Uint8Arra
 
   // The gold ticket bar: price and the tracked link, one call to action, the
   // same device the social cards use.
-  const barText = `${input.priceLabel}  ·  ${input.shortUrl.replace(/^https?:\/\//, '')}`
-  const barSize = 12
-  const barW = Math.min(bodyStrong.widthOfTextAtSize(barText, barSize) + 40, textMaxW)
+  // The bar is capped at textMaxW, so the LINE has to be fitted to that cap.
+  // Before this it was not: the rectangle stopped at the cap and the text kept
+  // going, drawn in navy on navy past the gold. That does not read as broken,
+  // which is what made it dangerous, because the poster then prints a silently
+  // shortened address that resolves to nothing.
+  const barPad = 20
+  const barSizeMax = 12
+  const barFit = fitTicketBar(
+    ticketBarText(input.priceLabel, input.shortUrl),
+    textMaxW - barPad * 2,
+    barSizeMax,
+    9,
+    (text, size) => bodyStrong.widthOfTextAtSize(text, size),
+  )
+  const barW = Math.min(
+    bodyStrong.widthOfTextAtSize(barFit.text, barFit.fontSize) + barPad * 2,
+    textMaxW,
+  )
   const barH = 30
   y -= 14
   page.drawRectangle({
@@ -262,10 +291,10 @@ export async function buildEventPosterPdf(input: PosterInput): Promise<Uint8Arra
     height: barH,
     color: PDF_GOLD,
   })
-  page.drawText(barText, {
-    x: MARGIN + 20,
+  page.drawText(barFit.text, {
+    x: MARGIN + barPad,
     y: y - barH + 19,
-    size: barSize,
+    size: barFit.fontSize,
     font: bodyStrong,
     color: PDF_NAVY,
   })

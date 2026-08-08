@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import sharp from 'sharp'
+import fontkit from '@pdf-lib/fontkit'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import {
   SOCIAL_CARD_FORMATS,
   SOCIAL_CARD_MAX_BYTES,
@@ -237,20 +240,97 @@ describe('the story strapline', () => {
   })
 })
 
-describe('the ticket bar never wraps', () => {
-  it('steps the type down until the line fits', () => {
-    const wide = fitTicketBar('From AUD $28 · www.eventlinqs.com.au/s/abc', 700, 38, 24)
-    const narrow = fitTicketBar(
-      'From AUD $28 · www.eventlinqs.com.au/events/a-very-long-event-slug-indeed?via=instagram',
-      700,
-      38,
-      24,
-    )
-    expect(wide).toBeGreaterThan(narrow)
-    expect(narrow).toBeGreaterThanOrEqual(24)
+describe('the ticket bar never wraps and never leaves its bar', () => {
+  // Measured with the SAME font file the cards and the poster draw with. The
+  // previous version of these tests asserted "never returns a size below the
+  // floor", which is exactly the behaviour that let a long line be drawn
+  // straight out of the bar, across the QR and off the edge of the card. A
+  // test that asserts the bug cannot catch the bug.
+  const font = fontkit.create(
+    readFileSync(join(process.cwd(), 'src/assets/fonts/HankenGrotesk-SemiBold.ttf')),
+  ) as unknown as { unitsPerEm: number; layout: (t: string) => { advanceWidth: number } }
+  const measure = (text: string, size: number) =>
+    (font.layout(text).advanceWidth / font.unitsPerEm) * size
+
+  // The real geometry of each bar, derived the way social-cards.tsx derives it.
+  const STORY_BAR = 1080 - 76 * 2 - (140 + 20 + 30) - 42 * 2
+  const SQUARE_BAR = 1080 - 60 * 2 - (126 + 20 + 30) - 32 * 2
+
+  const hosts = [
+    'www.eventlinqs.com.au',
+    'eventlinqs.com.au',
+    // A Vercel preview host. Every artefact minted from a preview carries one,
+    // and it is three times the length of the production host.
+    'eventlinqs-app-git-feat-launch-ef8ee0-lawals-projects-c20c0be8.vercel.app',
+  ]
+  const prices = ['', 'Free entry', 'From $35', 'From $189.50']
+  const codes = [
+    'abc',
+    'marketplace-gate-ig',
+    'twilight-sessions-fest-ig',
+    'basement-45-26sep-ig',
+    'a'.repeat(48), // the longest code isValidReadableCode permits
+  ]
+
+  it('fits inside the bar for every host, price and code the platform can mint', () => {
+    const bars: [string, number, number, number][] = [
+      ['story', STORY_BAR, 38, 24],
+      ['square', SQUARE_BAR, 30, 20],
+    ]
+    const failures: string[] = []
+    for (const [name, available, max, min] of bars) {
+      for (const host of hosts) {
+        for (const price of prices) {
+          for (const code of codes) {
+            const line = ticketBarText(price, `https://${host}/e/${code}`)
+            const fit = fitTicketBar(line, available, max, min, measure)
+            const drawn = measure(fit.text, fit.fontSize)
+            if (drawn > available) {
+              failures.push(
+                `${name}: "${fit.text}" at ${fit.fontSize}px is ${Math.round(drawn)}px in a ${available}px bar`,
+              )
+            }
+            expect(fit.fontSize).toBeLessThanOrEqual(max)
+            expect(fit.fontSize).toBeGreaterThanOrEqual(min)
+          }
+        }
+      }
+    }
+    expect(failures).toEqual([])
   })
 
-  it('never returns a size below the floor', () => {
-    expect(fitTicketBar('x'.repeat(400), 300, 38, 24)).toBe(24)
+  it('steps the type down before it shortens the line', () => {
+    const short = fitTicketBar(
+      ticketBarText('From $28', 'https://www.eventlinqs.com.au/e/abc'),
+      STORY_BAR,
+      38,
+      24,
+      measure,
+    )
+    const long = fitTicketBar(
+      ticketBarText('From $28', 'https://www.eventlinqs.com.au/e/twilight-sessions-fest-ig'),
+      STORY_BAR,
+      38,
+      24,
+      measure,
+    )
+    expect(short.fontSize).toBeGreaterThan(long.fontSize)
+    // Neither of these needs shortening: the type had somewhere to go.
+    expect(short.text).not.toContain('...')
+    expect(long.text).not.toContain('...')
+  })
+
+  it('shortens visibly, rather than drawing past the bar, when no size fits', () => {
+    const line = ticketBarText('From $189.50', `https://${hosts[2]}/e/${'a'.repeat(48)}`)
+    const fit = fitTicketBar(line, STORY_BAR, 38, 24, measure)
+    expect(fit.text).toContain('...')
+    expect(fit.text.length).toBeLessThan(line.length)
+    expect(measure(fit.text, fit.fontSize)).toBeLessThanOrEqual(STORY_BAR)
+  })
+
+  it('drops the www, because those four characters are the whole margin', () => {
+    expect(ticketBarText('Free entry', 'https://www.eventlinqs.com.au/e/abc')).toBe(
+      'Free entry · eventlinqs.com.au/e/abc',
+    )
   })
 })
