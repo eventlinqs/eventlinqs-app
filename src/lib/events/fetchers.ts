@@ -50,10 +50,67 @@ function resolveCommunityTagOrFilter(
 /** The impossible id used to force an empty result set deliberately. */
 const NO_MATCH = '00000000-0000-0000-0000-000000000000'
 
-/** The free-text search predicate. One source for both fetch paths. */
+/**
+ * Escape a value for use inside a PostgREST `or(...)` filter.
+ *
+ * Inside `or()` the characters `,` `.` `(` `)` are GRAMMAR, not data. An
+ * unescaped search term containing any of them does not merely fail to match:
+ * it is parsed as more filter clauses, so a query for "rock, paper" becomes two
+ * conditions and a query containing a bare `.` can name a column. Quoting makes
+ * the whole value literal, and a quote or backslash inside the value has to be
+ * escaped so it cannot close the quoting early.
+ */
+function escapeOrValue(value: string): string {
+  return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
+}
+
+/** Free-text columns a search reads. Ordered most to least specific. */
+const SEARCH_TEXT_COLUMNS = ['title', 'summary', 'description', 'venue_name', 'venue_city'] as const
+
+/**
+ * The free-text search predicate. ONE source for both fetch paths.
+ *
+ * WHAT WAS BROKEN. Search was `ilike('title', '%q%')` and nothing else, so it
+ * matched a substring of the event title and only that. Two consequences, both
+ * of which look like an empty catalogue rather than a broken search:
+ *
+ *   - the twelve homepage Sounds tiles link to `/events?q=`, and NINE of them
+ *     send a multi-word query ("afrobeats amapiano", "hip hop rnb", "folk
+ *     acoustic"). No event title contains those literal strings. The events
+ *     exist and are tagged `afrobeats-amapiano`, `hip-hop-rnb`, `folk-acoustic`;
+ *     the tiles simply could not reach them;
+ *   - an organiser who wrote the genre in the description, or a buyer searching
+ *     a venue or a suburb name, matched nothing.
+ *
+ * THE SHAPE OF THE FIX, and why it is not "match any token everywhere". Free
+ * text is matched on the WHOLE phrase across the five text columns. Individual
+ * tokens are matched ONLY against `tags`, which is a controlled vocabulary, so
+ * "hip hop rnb" reaches the `rnb` tag without "hop" also dragging in every
+ * event with "Hopscotch" in its title. Matching loose tokens against free text
+ * would trade one broken search for a noisy one.
+ *
+ * The hyphenated form of the phrase is matched against tags too, because that
+ * is exactly how the scene taxonomy is stored: the tile says "afrobeats
+ * amapiano" and the tag is `afrobeats-amapiano`.
+ */
 function buildSearchOp(q: string | undefined): QueryOp | null {
-  if (!q) return null
-  return { kind: 'ilike', column: 'title', value: `%${q}%` }
+  const phrase = q?.trim()
+  if (!phrase) return null
+
+  const clauses = SEARCH_TEXT_COLUMNS.map(
+    (column) => `${column}.ilike.${escapeOrValue(`%${phrase}%`)}`,
+  )
+
+  const tokens = phrase.toLowerCase().split(/\s+/).filter(Boolean)
+  // The scene taxonomy stores multi-word genres hyphenated.
+  const hyphenated = tokens.join('-')
+  const tagTokens = new Set(tokens.length > 1 ? [hyphenated, ...tokens] : tokens)
+  for (const token of tagTokens) {
+    // Tag containment is exact, so a token can only match a real tag.
+    clauses.push(`tags.cs.${escapeOrValue(`["${token}"]`)}`)
+  }
+
+  return { kind: 'or', filter: clauses.join(',') }
 }
 
 /**
