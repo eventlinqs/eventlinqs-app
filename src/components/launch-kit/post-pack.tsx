@@ -150,7 +150,15 @@ export function PostPack({ eventId, captions, leadFormat, tracked }: Props) {
                   <Download className="h-4 w-4" aria-hidden />
                   {spec.label}, {spec.width} x {spec.height}
                 </a>
-                <p className="mt-2 text-xs leading-relaxed text-ink-600">{spec.justification}</p>
+                {/* Where the asset belongs, shown rather than assumed. The spec
+                    has always carried `postedTo` and the UI never rendered it,
+                    so a promoter could download the 9:16 story card from beside
+                    an Instagram caption and post it to the feed, where
+                    Instagram crops anything taller than 3:4. */}
+                <p className="mt-2 text-xs font-semibold text-ink-700">
+                  Post to: {spec.postedTo}
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-ink-600">{spec.justification}</p>
 
                 <p className="mt-3 font-display text-[11px] font-bold uppercase tracking-[0.14em] text-ink-500">
                   Other shapes
@@ -160,6 +168,7 @@ export function PostPack({ eventId, captions, leadFormat, tracked }: Props) {
                     <a
                       key={format}
                       href={cardHref(eventId, format, caption.platform)}
+                      aria-label={`Download the ${SOCIAL_CARD_FORMATS[format].label.toLowerCase()}, ${SOCIAL_CARD_FORMATS[format].ratio}, for ${SOCIAL_CARD_FORMATS[format].postedTo}`}
                       className="inline-flex min-h-[44px] items-center gap-1.5 rounded-full border border-ink-200 px-3 py-1.5 text-xs font-semibold text-ink-900 transition-colors hover:border-[var(--brand-accent-strong)] hover:bg-ink-50"
                     >
                       <Download className="h-3.5 w-3.5" aria-hidden />
