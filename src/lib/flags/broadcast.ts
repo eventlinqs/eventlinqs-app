@@ -62,8 +62,34 @@ interface FlagRow {
   enabled: boolean
 }
 
+/**
+ * The Supabase project this process reads flags FROM, used to namespace the
+ * cache key.
+ *
+ * WHY. The key was `ff:v1:<flag>`, with no environment in it, while the Upstash
+ * credentials live in `.env.local` and the database credentials do not. Any
+ * process pointed at a different database, including a developer running
+ * locally against TEST, wrote ITS flag values into the SAME Redis that
+ * production reads. Measured on 8 August 2026: a local server reading TEST left
+ * `ff:v1:broadcast_artists = "true"` in the shared cache while the production
+ * row for that flag is `false`.
+ *
+ * The blast radius was bounded by the 30 second TTL, and no production
+ * behaviour change was observed, but "bounded" is not "impossible": for up to
+ * 30 seconds production could serve a stage it had never been told to enable.
+ * A feature flag is the one thing that must never be ambiguous about which
+ * environment it belongs to.
+ *
+ * Falls back to `unknown` rather than throwing, so a missing URL degrades to a
+ * shared-but-consistent namespace instead of breaking every flag read.
+ */
+function flagNamespace(): string {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
+  return /https?:\/\/([a-z0-9]+)\.supabase\./i.exec(url)?.[1] ?? 'unknown'
+}
+
 function cacheKey(flag: BroadcastFlag): string {
-  return `ff:v1:${flag}`
+  return `ff:v2:${flagNamespace()}:${flag}`
 }
 
 async function readCache(key: string): Promise<boolean | null> {
