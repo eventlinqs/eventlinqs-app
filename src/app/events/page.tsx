@@ -17,6 +17,7 @@ import { EventsFilterBar } from '@/components/features/events/m5-events-filter-b
 import { EventsMapLazy } from '@/components/features/events/m5-events-map-lazy'
 import { EventsPopularSection } from '@/components/features/events/m5-events-popular-section'
 import { EventsCount, EventsResults } from '@/components/features/events/events-results'
+import { BrowseNotice } from '@/components/features/events/browse-notice'
 import {
   EventsGridSkeleton,
   EventsCountSkeleton,
@@ -46,7 +47,7 @@ type Props = {
 
 export default async function EventsPage({ searchParams }: Props) {
   const raw = await searchParams
-  const { filters, page, view } = parseEventsSearchParams(raw)
+  const { filters, page, view, notice } = parseEventsSearchParams(raw)
 
   // Server-side geo detection (headers() / IP lookup) was removed to keep
   // /events ISR-eligible on the no-filter case. Country falls through to
@@ -96,6 +97,9 @@ export default async function EventsPage({ searchParams }: Props) {
     <div className="flex min-h-screen flex-col bg-canvas">
       <SiteHeader />
       <main className="flex-1">
+        {/* Checkout bounced this buyer here. Tell them why, before anything
+            else, or their held seats simply disappeared. */}
+        {notice ? <BrowseNotice notice={notice} /> : null}
         <EventsHeroStrip
           params={raw}
           heading={searchQuery ? `Results for "${searchQuery}"` : undefined}

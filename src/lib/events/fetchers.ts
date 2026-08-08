@@ -6,6 +6,15 @@ import { withBadge } from './badges'
 import { buildCommunityTagOrFilter } from '@/lib/communities/tag-bridge'
 import type { CommunitySlug } from '@/lib/communities/data'
 import {
+  SUBURB_RADIUS_KM,
+  buildEventTypeTagOrFilter,
+  buildFaithFilter,
+  eventTypeCategory,
+  resolveCityName,
+  resolveSuburb,
+  venueSearchTerm,
+} from './url-filters'
+import {
   rankEventsByAffinity,
   hasAnyAffinitySignal,
   type AffinitySignals,
@@ -36,6 +45,182 @@ function resolveCommunityTagOrFilter(
     filters.community as CommunitySlug,
     filters.sub_community,
   )
+}
+
+/** The impossible id used to force an empty result set deliberately. */
+const NO_MATCH = '00000000-0000-0000-0000-000000000000'
+
+/** The free-text search predicate. One source for both fetch paths. */
+function buildSearchOp(q: string | undefined): QueryOp | null {
+  if (!q) return null
+  return { kind: 'ilike', column: 'title', value: `%${q}%` }
+}
+
+/**
+ * One filter operation, resolved but not yet applied.
+ *
+ * WHY OPERATIONS RATHER THAN A SHARED QUERY BUILDER. There are two fetch paths
+ * (the request-scoped public client and the cached admin client) and their
+ * filter blocks were copies of each other. They had already drifted once: the
+ * public path carried a `distance_km` branch the cached path did not. Resolving
+ * the filters ONCE into a list of operations and applying that list in both
+ * places means a new filter cannot be added to one path and forgotten in the
+ * other, and it makes the decisions unit-testable without a database.
+ */
+type QueryOp =
+  | { kind: 'eq'; column: string; value: string | boolean }
+  | { kind: 'ilike'; column: string; value: string }
+  | { kind: 'or'; filter: string }
+  | { kind: 'in'; column: string; values: string[] }
+  | { kind: 'gte'; column: string; value: string }
+  | { kind: 'lte'; column: string; value: string }
+
+/** The subset of the PostgREST builder the operations need. */
+interface FilterableQuery {
+  eq(column: string, value: never): this
+  ilike(column: string, value: string): this
+  or(filter: string): this
+  in(column: string, values: never): this
+  gte(column: string, value: never): this
+  lte(column: string, value: never): this
+}
+
+function applyOps<Q extends FilterableQuery>(query: Q, ops: QueryOp[]): Q {
+  let q = query
+  for (const op of ops) {
+    switch (op.kind) {
+      case 'eq':
+        q = q.eq(op.column, op.value as never)
+        break
+      case 'ilike':
+        q = q.ilike(op.column, op.value)
+        break
+      case 'or':
+        q = q.or(op.filter)
+        break
+      case 'in':
+        q = q.in(op.column, op.values as never)
+        break
+      case 'gte':
+        q = q.gte(op.column, op.value as never)
+        break
+      case 'lte':
+        q = q.lte(op.column, op.value as never)
+        break
+    }
+  }
+  return q
+}
+
+/** The lookups the resolver needs. Both Supabase clients satisfy it. */
+type LookupClient = {
+  from(table: string): {
+    select(columns: string): {
+      eq(column: string, value: string): {
+        maybeSingle(): PromiseLike<{ data: { id: string } | null }>
+      }
+    }
+  }
+  rpc(
+    fn: string,
+    args: Record<string, number>,
+  ): PromiseLike<{ data: { id: string }[] | null }>
+}
+
+async function lookupId(
+  supabase: LookupClient,
+  table: string,
+  slug: string,
+): Promise<string | null> {
+  const { data } = await supabase.from(table).select('id').eq('slug', slug).maybeSingle()
+  return data?.id ?? null
+}
+
+/**
+ * Resolve every URL filter into query operations.
+ *
+ * Each unknown value forces an EMPTY result rather than being ignored. That is
+ * deliberate and it is the whole point of this change: silently dropping a
+ * filter is what made `/events?city=gold-coast` serve the national catalogue as
+ * though it were the Gold Coast answer. An empty result is a designed empty
+ * state the user can read; a full national list is a wrong answer they cannot
+ * tell apart from a right one.
+ */
+async function resolveEventFilterOps(
+  supabase: LookupClient,
+  filters: FetchPublicEventsFilters,
+): Promise<QueryOp[]> {
+  const ops: QueryOp[] = []
+
+  const searchOp = buildSearchOp(filters.q)
+  if (searchOp) ops.push(searchOp)
+
+  if (filters.category) {
+    const id = await lookupId(supabase, 'event_categories', filters.category)
+    ops.push({ kind: 'eq', column: 'category_id', value: id ?? NO_MATCH })
+  } else if (filters.community) {
+    const tagOr = resolveCommunityTagOrFilter(filters)
+    // Unknown community slug: force an empty result rather than leak the
+    // entire catalogue under a community URL.
+    ops.push(tagOr === null ? { kind: 'eq', column: 'id', value: NO_MATCH } : { kind: 'or', filter: tagOr })
+  }
+
+  // city: the parameter carries a SLUG and venue_city holds a display NAME, so
+  // every multi-word city (Gold Coast, Sunshine Coast) matched nothing before.
+  if (filters.city) {
+    ops.push({ kind: 'ilike', column: 'venue_city', value: `%${resolveCityName(filters.city)}%` })
+  }
+  if (filters.country) ops.push({ kind: 'eq', column: 'venue_country', value: filters.country })
+
+  // event_type: no such column exists, so it resolves to the tags that carry
+  // the meaning plus the category of the same name where one exists.
+  if (filters.event_type) {
+    const tagOr = buildEventTypeTagOrFilter(filters.event_type)
+    const categorySlug = eventTypeCategory(filters.event_type)
+    const categoryId = categorySlug ? await lookupId(supabase, 'event_categories', categorySlug) : null
+    const clauses = [tagOr, categoryId ? `category_id.eq.${categoryId}` : null]
+      .filter((c): c is string => Boolean(c))
+    ops.push(clauses.length ? { kind: 'or', filter: clauses.join(',') } : { kind: 'eq', column: 'id', value: NO_MATCH })
+  }
+
+  // venue: a handle from the venue profile, or an encoded name from the
+  // homepage rail. Both resolve to a venue_name match.
+  if (filters.venue) {
+    ops.push({ kind: 'ilike', column: 'venue_name', value: `%${venueSearchTerm(filters.venue)}%` })
+  }
+
+  if (filters.organiser) {
+    const id = await lookupId(supabase, 'organisations', filters.organiser)
+    ops.push({ kind: 'eq', column: 'organisation_id', value: id ?? NO_MATCH })
+  }
+
+  if (filters.faith) {
+    const faithOr = buildFaithFilter(filters.faith)
+    ops.push(faithOr ? { kind: 'or', filter: faithOr } : { kind: 'eq', column: 'id', value: NO_MATCH })
+  }
+
+  // suburb: a district, not a literal suburb name, so it is a radius around the
+  // district centroid unioned with a direct suburb_primary match.
+  if (filters.suburb) {
+    const suburb = resolveSuburb(filters.city, filters.suburb)
+    if (!suburb) {
+      ops.push({ kind: 'eq', column: 'id', value: NO_MATCH })
+    } else {
+      const { data: nearby } = await supabase.rpc('events_within_distance', {
+        p_lat: suburb.latitude,
+        p_lng: suburb.longitude,
+        p_radius_km: SUBURB_RADIUS_KM,
+      })
+      const ids = (nearby ?? []).map((e) => e.id)
+      ops.push(
+        ids.length
+          ? { kind: 'or', filter: `suburb_primary.eq.${suburb.slug},id.in.(${ids.join(',')})` }
+          : { kind: 'eq', column: 'suburb_primary', value: suburb.slug },
+      )
+    }
+  }
+
+  return ops
 }
 
 /**
@@ -230,36 +415,7 @@ export async function fetchPublicEvents(
     query = query.order('start_date', { ascending: true })
   }
 
-  if (filters.q) {
-    query = query.ilike('title', `%${filters.q}%`)
-  }
-  if (filters.category) {
-    const { data: cat } = await supabase
-      .from('event_categories')
-      .select('id')
-      .eq('slug', filters.category)
-      .maybeSingle()
-    if (cat) {
-      query = query.eq('category_id', cat.id)
-    } else {
-      query = query.eq('category_id', '00000000-0000-0000-0000-000000000000')
-    }
-  } else if (filters.community) {
-    const tagOr = resolveCommunityTagOrFilter(filters)
-    if (tagOr === null) {
-      // Unknown community slug: force an empty result rather than leak
-      // the entire catalogue under a community URL.
-      query = query.eq('id', '00000000-0000-0000-0000-000000000000')
-    } else {
-      query = query.or(tagOr)
-    }
-  }
-  if (filters.city) {
-    query = query.ilike('venue_city', `%${filters.city}%`)
-  }
-  if (filters.country) {
-    query = query.eq('venue_country', filters.country)
-  }
+  query = applyOps(query, await resolveEventFilterOps(supabase as unknown as LookupClient, filters))
 
   if (filters.preset === 'free') {
     query = query.eq('is_free', true)
@@ -362,6 +518,15 @@ export async function fetchPublicEventsCached(
     `to:${filters.to ?? ''}`,
     `pmin:${filters.price_min ?? ''}`,
     `pmax:${filters.price_max ?? ''}`,
+    // Every filter that narrows the query MUST appear in the key. A filter
+    // missing here makes two different questions share one cached answer, so
+    // whichever ran first is served to both.
+    `suburb:${filters.suburb ?? ''}`,
+    `etype:${filters.event_type ?? ''}`,
+    `venue:${filters.venue ?? ''}`,
+    `org:${filters.organiser ?? ''}`,
+    `faith:${filters.faith ?? ''}`,
+    `moment:${filters.moment ?? ''}`,
   ]
   const cacheKey = keyParts.join('|')
 
@@ -412,30 +577,7 @@ async function runFetchPublicEventsAdmin(
     query = query.order('start_date', { ascending: true })
   }
 
-  if (filters.q) query = query.ilike('title', `%${filters.q}%`)
-  if (filters.category) {
-    const { data: cat } = await supabase
-      .from('event_categories')
-      .select('id')
-      .eq('slug', filters.category)
-      .maybeSingle()
-    if (cat) {
-      query = query.eq('category_id', cat.id)
-    } else {
-      query = query.eq('category_id', '00000000-0000-0000-0000-000000000000')
-    }
-  } else if (filters.community) {
-    const tagOr = resolveCommunityTagOrFilter(filters)
-    if (tagOr === null) {
-      // Unknown community slug: force an empty result rather than leak
-      // the entire catalogue under a community URL.
-      query = query.eq('id', '00000000-0000-0000-0000-000000000000')
-    } else {
-      query = query.or(tagOr)
-    }
-  }
-  if (filters.city) query = query.ilike('venue_city', `%${filters.city}%`)
-  if (filters.country) query = query.eq('venue_country', filters.country)
+  query = applyOps(query, await resolveEventFilterOps(supabase as unknown as LookupClient, filters))
   if (filters.preset === 'free') query = query.eq('is_free', true)
 
   const window = presetWindow(filters.preset, now)

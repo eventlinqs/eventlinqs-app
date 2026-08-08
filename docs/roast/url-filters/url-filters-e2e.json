@@ -1,0 +1,97 @@
+{
+  "base": "http://localhost:3000",
+  "at": "2026-08-08T02:30:44.654Z",
+  "baseline": 24,
+  "results": [
+    {
+      "name": "city=melbourne",
+      "ok": true,
+      "detail": "24 events rendered (27 eligible in the catalogue), every one in Melbourne"
+    },
+    {
+      "name": "city=gold-coast",
+      "ok": true,
+      "detail": "10 events rendered (10 eligible in the catalogue), every one on the Gold Coast"
+    },
+    {
+      "name": "date=week",
+      "ok": true,
+      "detail": "12 events rendered (12 eligible in the catalogue), every one inside the next seven days"
+    },
+    {
+      "name": "date=today",
+      "ok": true,
+      "detail": "the filter is correct and the catalogue is empty: 0 upcoming events are starting before midnight tonight, so the page renders its designed empty state. This is a CONTENT GAP, not a defect"
+    },
+    {
+      "name": "free=1",
+      "ok": true,
+      "detail": "24 events rendered (33 eligible in the catalogue), every one free"
+    },
+    {
+      "name": "price=free",
+      "ok": true,
+      "detail": "24 events rendered (33 eligible in the catalogue), every one free"
+    },
+    {
+      "name": "event_type=comedy",
+      "ok": true,
+      "detail": "14 events rendered (14 eligible in the catalogue), every one tagged comedy or in the comedy category"
+    },
+    {
+      "name": "event_type=food-drink",
+      "ok": true,
+      "detail": "18 events rendered (18 eligible in the catalogue), every one tagged or categorised food and drink"
+    },
+    {
+      "name": "venue=factory-theatre (handle, from the venue profile)",
+      "ok": true,
+      "detail": "9 events rendered (9 eligible in the catalogue), every one at Factory Theatre"
+    },
+    {
+      "name": "venue=Factory Theatre (name, from the homepage rail)",
+      "ok": true,
+      "detail": "9 events rendered (9 eligible in the catalogue), every one at Factory Theatre"
+    },
+    {
+      "name": "organiser=harbour-lights-collective",
+      "ok": true,
+      "detail": "14 events rendered (14 eligible in the catalogue), every one run by Harbour Lights Collective"
+    },
+    {
+      "name": "faith=christian",
+      "ok": true,
+      "detail": "the filter is correct and the catalogue is empty: 0 upcoming events are carrying a Christian tag, so the page renders its designed empty state. This is a CONTENT GAP, not a defect"
+    },
+    {
+      "name": "city=sydney&suburb=inner-west",
+      "ok": true,
+      "detail": "24 events rendered (35 eligible in the catalogue), every one within the Inner West district"
+    },
+    {
+      "name": "sort=trending",
+      "ok": true,
+      "detail": "HTTP 200, 24 events. The value now maps to popularity instead of being discarded"
+    },
+    {
+      "name": "error=reservation_expired",
+      "ok": true,
+      "detail": "the buyer is told what happened (\"Your seat hold expired\") instead of landing on a generic browse page"
+    },
+    {
+      "name": "error=reservation_not_found",
+      "ok": true,
+      "detail": "the buyer is told what happened (\"no longer available\") instead of landing on a generic browse page"
+    }
+  ],
+  "contentGaps": [
+    {
+      "name": "date=today",
+      "queryString": "?date=today"
+    },
+    {
+      "name": "faith=christian",
+      "queryString": "?faith=christian"
+    }
+  ]
+}

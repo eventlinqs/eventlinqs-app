@@ -41,6 +41,12 @@ const ALLOWLIST = [
     reason: 'legacy licensed-photo library key arts-culture (renaming breaks the image spine)',
   },
   {
+    file: 'src/lib/events/url-filters.ts',
+    patterns: ['banned-word-community-law'],
+    reason:
+      'the live event_categories.slug is still arts-culture, and the event_type mapping has to match the value the column actually holds or the theatre tile returns nothing. R1, the taxonomy migration, renames the row; this entry comes out with it',
+  },
+  {
     file: 'src/lib/communities/intersection-editorial.ts',
     patterns: ['whether-youre-x-or-y'],
     reason:

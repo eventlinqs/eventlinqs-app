@@ -51,7 +51,7 @@
  * does not warn.
  */
 import { createClient } from '@supabase/supabase-js'
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync, existsSync, readdirSync } from 'node:fs'
 
 const ROOT = process.cwd()
 const args = process.argv.slice(2)
@@ -75,6 +75,41 @@ function code(relative) {
   return raw
     .replace(/\/\*[\s\S]*?\*\//g, ' ')
     .replace(/(^|[^:])\/\/.*$/gm, '$1 ')
+}
+
+/**
+ * Every query parameter that appears in a real, clickable link to the PUBLIC
+ * /events browse surface.
+ *
+ * Three things this has to get right, each learnt from getting it wrong:
+ *   - comments are stripped first, so a parameter mentioned only in a doc
+ *     comment (`sub`, in sub-communities-rail.tsx) is not reported as a live
+ *     defect. A check that cries wolf gets ignored;
+ *   - the path is anchored to a quote or backtick, so `/admin/events?q=` and
+ *     `/dashboard/events?tab=` are not mistaken for the public surface. They
+ *     are different routes with their own parsers;
+ *   - /events/browse/[city] shares the parser, so its links count too.
+ */
+function emittedEventsParams() {
+  const found = new Set()
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = `${dir}/${entry.name}`
+      if (entry.isDirectory()) walk(path)
+      else if (/\.tsx?$/.test(entry.name)) {
+        const text = code(path.slice(ROOT.length + 1))
+        if (!text) continue
+        for (const match of text.matchAll(/["'`]\/events(?:\/browse\/[^"'`\s?]*)?\?([^"'`\s)]+)/g)) {
+          for (const pair of match[1].split('&')) {
+            const key = pair.split('=')[0].replace(/[^a-zA-Z_]/g, '')
+            if (key) found.add(key)
+          }
+        }
+      }
+    }
+  }
+  walk(`${ROOT}/src`)
+  return found
 }
 
 // ---------------------------------------------------------------------------
@@ -262,20 +297,28 @@ const CHECKS = [
     run() {
       const parser = code('src/lib/events/search-params.ts')
       if (!parser) return FAIL('the search-param parser is missing')
-      // Params that appear in real hrefs the user can click. The parser reads
-      // each one as `raw.<param>`, so that is what proves it is handled.
-      // An earlier version matched the bare quoted name anywhere in the file
-      // and reported q, category and community as unparsed when they are
-      // parsed: a harness that cries wolf gets ignored, so the check has to be
-      // exact about what "handled" means.
-      const emitted = ['q', 'category', 'community', 'city', 'date', 'suburb', 'event_type', 'venue', 'tab']
-      const unparsed = emitted.filter((p) => !new RegExp(`raw\\.${p}\\b`).test(parser))
+
+      // WHY THIS SCANS INSTEAD OF LISTING. The first version of this check
+      // hardcoded nine parameter names. It was wrong in both directions: it
+      // MISSED free, price, organiser, faith, moment and the invalid
+      // sort=trending, and it COUNTED `sub`, which appears only in a comment.
+      // A hardcoded list is a snapshot of one person's reading of the codebase
+      // on one day, and this check exists precisely because that kind of drift
+      // is invisible. So the emitted set is derived from the source every run.
+      const emitted = emittedEventsParams()
+      if (emitted.size === 0) {
+        return FAIL('the scanner found no /events links at all, which means the scanner is broken, not the code')
+      }
+      // The parser reads each one as `raw.<param>`, so that is what proves it
+      // is handled. Being exact about "handled" matters: a check that cries
+      // wolf gets ignored inside a week.
+      const unparsed = [...emitted].filter((p) => !new RegExp(`raw\\.${p}\\b`).test(parser)).sort()
       if (unparsed.length) {
         return FAIL(
-          `${unparsed.length} filter(s) appear in links a user can click and are never parsed, so those links silently land on the unfiltered national list: ${unparsed.join(', ')}`,
+          `${unparsed.length} of ${emitted.size} parameter(s) appear in links a user can click and are never parsed, so those links silently land on the unfiltered national list: ${unparsed.join(', ')}`,
         )
       }
-      return PASS('every emitted filter is parsed')
+      return PASS(`all ${emitted.size} parameters emitted in /events links are parsed`)
     },
   },
   {
@@ -307,14 +350,27 @@ const CHECKS = [
     run() {
       const fetchers = code('src/lib/events/fetchers.ts')
       if (!fetchers) return FAIL('the event fetchers file is missing')
-      const titleOnly = /ilike\(\s*['"]title['"]/.test(fetchers)
-      const wider = /\.or\(\s*[`'"][^`'"]*(summary|description|venue_name|venue_city|tags)/.test(fetchers)
-      if (titleOnly && !wider) {
+
+      // WHY THIS READS ONE FUNCTION RATHER THAN THE WHOLE FILE. The first
+      // version asked whether the file contained `ilike('title'` and no wider
+      // `.or(...)`. A refactor that moved the same title-only predicate into a
+      // returned operation object stopped matching that pattern and the check
+      // went green while the defect was untouched: a false clean bill of health
+      // produced by a change that had nothing to do with search. So the check
+      // now locates the ONE function that builds the predicate and reads it.
+      const fn = fetchers.match(/function buildSearchOp[\s\S]*?\n}/)
+      if (!fn) {
+        return FAIL(
+          'cannot locate buildSearchOp, the single source of the search predicate. Either it was renamed (update this check with it) or search has been scattered across call sites again',
+        )
+      }
+      const wider = /(summary|description|venue_name|venue_city|tags)/.test(fn[0])
+      if (!wider) {
         return FAIL(
           'search is a substring match on the event title and nothing else, so a multi-word Sounds tile such as "afrobeats amapiano" matches only a title containing that literal string. Nine of twelve tiles and three of four search tabs are dead ends',
         )
       }
-      return PASS('search matches beyond the title')
+      return PASS('the search predicate matches beyond the title')
     },
   },
   {
