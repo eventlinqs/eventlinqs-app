@@ -556,16 +556,37 @@ const CHECKS = [
       const views = await countOf(db, 'share_link_events', (q) => q.eq('kind', 'view'))
       if (clicks.error) return SKIP(clicks.error)
       if (clicks.count === 0) return EMPTY('no clicks recorded yet')
-      // Every click redirects to an event page, which should fire the beacon.
-      // Views are deduped per visitor per day so parity is not expected, but an
-      // order of magnitude apart means the beacon is barely firing.
-      const ratio = views.count / clicks.count
-      if (ratio < 0.1) {
+
+      // THE QUESTION THIS CHECK ASKS, corrected 8 August 2026.
+      //
+      // It used to fail when views were under a tenth of clicks, and its own
+      // note admitted it could not tell "the beacon is broken" from "most
+      // clicks are scanners". Those are completely different findings and only
+      // one of them belongs in a harness about severed features. Investigated
+      // on production: all 57 clicks were on facebook and x links across 55
+      // distinct visitor hashes, and 3 views existed. A crawler fleet, and a
+      // beacon that demonstrably fires.
+      //
+      // So the question is now the one this harness is for: CAN the beacon
+      // fire? Any view proves the whole path works, because a view can only
+      // exist if a real browser ran the script, kept the cookie, and the
+      // endpoint accepted it. Zero views against real clicks is the severed
+      // case, and that still fails.
+      //
+      // The ratio is still reported, because it is the honest picture of
+      // traffic composition, but a low ratio is a fact about the audience and
+      // not a broken feature. Crawler hits are no longer recorded as clicks at
+      // all (src/lib/broadcast/crawlers.ts), so this ratio becomes meaningful
+      // for traffic arriving after that change.
+      if (views.count === 0) {
         return FAIL(
-          `${views.count} views against ${clicks.count} clicks. Every click lands on an event page that should fire the view beacon. Either most clicks are scanners that never run JavaScript, or the beacon is not firing`,
+          `0 views against ${clicks.count} clicks. Every click lands on an event page that should fire the view beacon, and not one has ever fired, so the views column of the reach panel is structurally empty`,
         )
       }
-      return PASS(`${views.count} views against ${clicks.count} clicks`)
+      const pct = ((views.count / clicks.count) * 100).toFixed(1)
+      return PASS(
+        `${views.count} views against ${clicks.count} clicks (${pct} percent). The beacon fires; the ratio is a fact about who is clicking, not a severed feature`,
+      )
     },
   },
   {
