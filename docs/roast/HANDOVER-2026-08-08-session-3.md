@@ -146,3 +146,61 @@ so in its own output rather than implying it exercised the model.
 - **`npx tsc --noEmit` fails on partially written `.next/dev/types`** while a dev
   server is running. Stop it and `rm -rf .next/dev` first.
 - Python is not available on this machine; use node for text patching.
+
+---
+
+## 7. SESSION 3 ADDENDUM: the store-isolation and collision work
+
+Four commits after the handover above: `eabfa3c`, `4287a29`, `bd13522`.
+
+### Flag rulings, recorded
+
+Both ON by founder ruling. In `FLAG_INTENT` with the ruling as the authority,
+and in the approval block as items **5** and **6** with exact commands, each
+stated as a behaviour change on a live platform. **Neither flag flipped by me.**
+The check now reports `3 is RULED ON and awaiting the founder's flip`, and zero
+needing a decision.
+
+### The three cross-branch migration collisions, which are NOT mine to fix
+
+| Version | This branch (applied on TEST) | The other branch (never ran) |
+|---|---|---|
+| `20260808000001` | `city_primary_backfill.sql` | `share_codes_never_released.sql` on `feat/launch-kit-artefacts` |
+| `20260808000004` | `category_taxonomy_r1.sql` | `category_taxonomy_repair.sql` on `fix/production-sweep` |
+| `20260531000001` | `refund_reconcile.sql` (73 branches) | `checkin_scanner.sql` on `feat/door-checkin-scanner` |
+
+**Renaming MY files would be wrong**: they are already applied on TEST, so a
+rename makes an applied migration look pending. The files that must move are on
+the other branches, and this session must not touch them. **This is a
+cross-session coordination item for the founder**, and it is now visible on
+every run of `scripts/verify/migration-collision-guard.mjs`.
+
+### What is red, and correctly so
+
+| Guard | State | Whose move |
+|---|---|---|
+| `env-store-isolation` | 6 SHARED | Founder: `docs/roast/redis-isolation/REMEDIATION-RUNBOOK.md` |
+| `migration-collision-guard` (cross-branch) | 3 collisions | Founder: coordinate the renames on the other branches |
+| `flags-off-by-oversight` | 3 ruled ON, not flipped | Founder: approval block items 4, 5, 6 |
+| `city-primary-coverage` (production only) | red | Queued behind the security fix, by ruling |
+
+None of these may be suppressed. Each is the honest state.
+
+### Also found, flagged, NOT actioned
+
+- **`CRON_SECRET` is the same secret across two stores**
+  (`node scripts/check-env-stores.mjs`), and `.env.test` holds a 4-character
+  value that fails its declared 32-character shape. Pre-existing. The first is a
+  production config change, held while production writes are frozen.
+- **`paymentCritical` gates nothing.** Its only consumer is a display column.
+  Ten variables carry it and no guard treats them differently. A classification
+  that gates nothing gives the reassurance of a control without the control.
+- **`reclaim-space.mjs` protects only the repo it is run FROM.** A parallel
+  session running `npm run reclaim --deep` from another worktree deleted this
+  one's `node_modules` mid-session. Restored with `npm ci`.
+
+### Still not done, unchanged from section 4
+
+Parts **A1, A3, C6, C7, D2, D4, E1, E3** remain untouched, roughly 95 to 138
+hours. R5 and F6 remain blocked on an absent `ANTHROPIC_API_KEY`. No RLS work
+and no new migrations, per the founder's freeze.
