@@ -236,10 +236,10 @@ export const POLICIES: Record<PolicyName, Policy> = {
   },
   'launch-compose-daily': {
     keyPrefix: 'lnch-cd',
-    limit: 60,
+    limit: 250,
     windowSec: 86400,
     rationale:
-      'Daily anonymous composer builds per IP. Bounds a slow-drip flood that stays under the hourly cap. Sixty is far beyond any real organiser and still generous for a shared office or a carrier NAT range, which is the case a tighter number would break. Fail-open for the same reason as the hourly.',
+      'Daily anonymous composer builds per IP. RAISED FROM 60 on 9 Aug 2026. The old rationale claimed sixty was "generous for a shared office or a carrier NAT range"; that was reasoning about one PERSON, not one address, and it is wrong for exactly the case it named. An Australian carrier NAT range fronts thousands of phones, so sixty a day across all of them is a handful each. It was reached in a single afternoon of verification from ONE machine, which is the cheapest possible demonstration that it would break a real shared address. The per-session cap (40 per browser per day) is what actually bounds an individual now, which is what lets this be sized for the address rather than the person. Fail-open for the same reason as the hourly.',
   },
   'launch-artefact': {
     keyPrefix: 'lnch-a',

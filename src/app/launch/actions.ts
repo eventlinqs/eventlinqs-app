@@ -92,9 +92,17 @@ export async function composeKit(text: string): Promise<ComposeState> {
     nowIso: new Date().toISOString(),
   })
 
-  // Over the cap, the kit still renders; it simply is not persisted. The
-  // visitor keeps everything on screen and loses only the bookmarkable link,
-  // which is the smallest possible penalty and needs no error message.
+  // Over the cap the kit still renders from the payload in this request: the
+  // title, the questions, the visibility decision, the event page preview and
+  // all six captions are all local computation and cannot fail.
+  //
+  // BE ACCURATE ABOUT WHAT IS LOST, because this comment used to say "only the
+  // bookmarkable link", and that was wrong. The cards and the poster are
+  // addressed by draft CODE, so with nothing persisted there is no code and
+  // those artefacts are not shown either. KitArtefacts states that plainly
+  // rather than drawing empty frames. It is still a designed state and still
+  // needs no error message, but it is a materially thinner kit and pretending
+  // otherwise is how a limit gets set too low and nobody notices.
   if (limited) {
     return {
       ok: true,
