@@ -26,6 +26,11 @@ const ROOT = path.resolve(__dirname, '../../..')
 const SCRATCH_DIR = path.join(ROOT, 'src/__copy_gate_scratch__')
 const SCRATCH = path.join(SCRATCH_DIR, 'scratch.tsx')
 
+// Each case spawns the real gate, which walks 787 files. Under full-suite
+// parallel load that is ~7s per run, well past vitest's 5s default, and the
+// first full run of this suite timed out on exactly that.
+const GATE_TIMEOUT_MS = 60_000
+
 /** Runs the real gate. Returns its combined output and whether it failed. */
 function runGate(): { failed: boolean; output: string } {
   try {
@@ -54,7 +59,7 @@ describe('the copy gate can see wrapped JSX copy', () => {
   it('is clean before anything is planted, so a hit below is attributable', () => {
     const { failed, output } = runGate()
     expect(failed, `the tree is not clean to begin with:\n${output}`).toBe(false)
-  })
+  }, GATE_TIMEOUT_MS)
 
   it('catches a banned placeholder wrapped onto its own line', () => {
     // EXACTLY the shape that was invisible: text alone between the tags.
@@ -74,7 +79,7 @@ describe('the copy gate can see wrapped JSX copy', () => {
     expect(failed, 'the gate did not fail on a wrapped placeholder').toBe(true)
     expect(output).toContain('__copy_gate_scratch__')
     expect(output).toContain('placeholder-copy')
-  })
+  }, GATE_TIMEOUT_MS)
 
   it('catches an em-dash wrapped onto its own line', () => {
     plant(
@@ -83,7 +88,7 @@ describe('the copy gate can see wrapped JSX copy', () => {
     const { failed, output } = runGate()
     expect(failed).toBe(true)
     expect(output).toContain('em-or-en-dash')
-  })
+  }, GATE_TIMEOUT_MS)
 
   it('catches copy that mixes text with an interpolation', () => {
     // The second blind spot: any line containing { or < was skipped whole.
@@ -102,7 +107,7 @@ describe('the copy gate can see wrapped JSX copy', () => {
     const { failed, output } = runGate()
     expect(failed, 'a line with an interpolation is still invisible').toBe(true)
     expect(output).toContain('placeholder-copy')
-  })
+  }, GATE_TIMEOUT_MS)
 
   it('does NOT flag the same words inside a block comment', () => {
     // A noisy gate gets ignored. Design provenance notes are documentation.
@@ -122,12 +127,12 @@ describe('the copy gate can see wrapped JSX copy', () => {
     )
     const { failed, output } = runGate()
     expect(failed, `a block comment was treated as copy:\n${output}`).toBe(false)
-  })
+  }, GATE_TIMEOUT_MS)
 
   it('is clean again once the scratch file is gone', () => {
     plant(['export function Scratch() {', '  return <p>Fine copy here.</p>', '}', ''].join('\n'))
     rmSync(SCRATCH_DIR, { recursive: true, force: true })
     const { failed } = runGate()
     expect(failed).toBe(false)
-  })
+  }, GATE_TIMEOUT_MS)
 })
