@@ -17,8 +17,25 @@
  */
 import fs from 'node:fs'
 import path from 'node:path'
+import { measureCoverage } from './lib/copy-coverage.mjs'
 
 const ROOT = process.cwd()
+
+/**
+ * The floor the gate's own eyesight must clear, MEASURED rather than guessed.
+ *
+ * Across .tsx the sighted chunker reads 37.2% of non-comment lines and the
+ * blind one read 33.1%. The floor sits midway. Raising it is welcome; lowering
+ * it to make a red run pass is precisely the failure it exists to catch.
+ *
+ * ITS LIMIT, STATED. 4 points of separation catches a WHOLESALE narrowing,
+ * which is the failure that actually happened. It would not catch someone
+ * quietly dropping one narrow case. The self test in
+ * tests/unit/ci/copy-gate-can-see.test.ts covers that by planting known
+ * violations in the shapes that were blind; the two checks are complementary
+ * and neither is sufficient alone.
+ */
+const COVERAGE_FLOOR = 0.351
 const LEXICON = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'src/lib/ai/copy-tells.json'), 'utf8'),
 )
@@ -226,4 +243,33 @@ if (violations.length > 0) {
   for (const v of violations) console.error('  ' + v)
   process.exit(1)
 }
-console.log('copy-tell-gate: clean (dashes, banned word, phrase tells, competitor names)')
+
+// LOCK 6: the gate must be able to SEE. A clean report from a gate that reads
+// nothing is the exact failure this suite spent months in, so eyesight is
+// asserted alongside the rules. See scripts/lib/copy-coverage.mjs.
+// .tsx only. Measured across all sources the ratio moved just 3.1 points
+// between the blind chunker and the sighted one, because .ts files are almost
+// entirely code and swamp the signal. Restricted to the files where copy
+// actually lives, a narrowing shows up as a real drop instead of noise.
+const coverage = measureCoverage(
+  [...walk(path.join(ROOT, 'src'))].filter(f => f.endsWith('.tsx')),
+  f => fs.readFileSync(f, 'utf8'),
+  copyChunks,
+)
+const pct = (coverage.ratio * 100).toFixed(1)
+if (coverage.ratio < COVERAGE_FLOOR) {
+  console.error(
+    `copy-tell-gate: COVERAGE REGRESSION. The gate can read ${pct}% of source lines, ` +
+      `below the committed floor of ${(COVERAGE_FLOOR * 100).toFixed(1)}%.\n` +
+      `  read ${coverage.numerator} of ${coverage.denominator} non-comment lines.\n` +
+      `  The chunker has narrowed. A gate that reads less reports fewer violations\n` +
+      `  and looks healthier, which is how the previous blind spot survived.\n` +
+      `  Fix the chunker. Do NOT lower the floor to make this pass.`,
+  )
+  process.exit(1)
+}
+
+console.log(
+  `copy-tell-gate: clean (dashes, banned word, phrase tells, competitor names) ` +
+    `| coverage ${pct}% of ${coverage.denominator} lines`,
+)
