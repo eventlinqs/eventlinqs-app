@@ -4,6 +4,7 @@ import { useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { respondToRequestAction } from '@/app/actions/gigs'
 import { PAY_TYPE_LABELS, type BookingRequestRow, type PayType } from '@/lib/marketplace/gigs'
+import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 
 type RequestView = Pick<
   BookingRequestRow,
@@ -65,8 +66,7 @@ export function RequestsPanel({ requests }: { requests: RequestView[] }) {
                       ? new Intl.DateTimeFormat('en-AU', {
                           weekday: 'short',
                           day: 'numeric',
-                          month: 'short',
-                        }).format(new Date(req.proposed_date))
+                          month: 'short', timeZone: PLATFORM_TIME_ZONE }).format(new Date(req.proposed_date))
                       : null,
                     req.event_id && req.kind === 'booking' ? 'Accepting adds you to the event lineup' : null,
                   ]

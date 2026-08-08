@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { filterAttendees, type AttendeeRow } from '@/lib/reporting/types'
+import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 
 interface AttendeeTableProps {
   attendees: AttendeeRow[]
@@ -12,7 +13,7 @@ const PAGE_SIZE = 50
 
 function formatPurchaseDate(iso: string): string {
   if (!iso) return ''
-  return new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
+  return new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', timeZone: PLATFORM_TIME_ZONE })
 }
 
 export function AttendeeTable({ attendees, ticketTypes }: AttendeeTableProps) {

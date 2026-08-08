@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { Check, Copy } from 'lucide-react'
 import { generateMyFoundingInvite } from './actions'
+import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 
 type InviteRow = { code: string; url: string; cityName: string; status: string; acceptedAt: string | null }
 
@@ -39,7 +40,7 @@ export function InvitesClient({
   // must answer "am I inside the window" exactly the way the charge does.
   const waiverUntil = feeFreeUntil ? new Date(feeFreeUntil) : null
   const waiverDate = waiverUntil
-    ? waiverUntil.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
+    ? waiverUntil.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', timeZone: PLATFORM_TIME_ZONE })
     : ''
   const waiverLabel = waiverActive ? waiverDate : waiverUntil ? 'Ended' : 'Not active'
   const waiverHint = waiverActive

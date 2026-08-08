@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { publishEvent, pauseEvent, cancelEvent, duplicateEvent, deleteEvent } from './actions'
 import type { Event, EventStatus } from '@/types/database'
+import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 
 type EventRow = Event & {
   ticket_tiers: { sold_count: number; total_capacity: number }[]
@@ -25,8 +26,7 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-AU', {
     day: 'numeric',
     month: 'short',
-    year: 'numeric',
-  })
+    year: 'numeric', timeZone: PLATFORM_TIME_ZONE })
 }
 
 function RowActions({ event, onDone }: { event: EventRow; onDone: () => void }) {

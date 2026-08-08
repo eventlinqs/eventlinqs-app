@@ -20,7 +20,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
 
 const ROOT = path.resolve(__dirname, '../../..')
-const SCAN_DIRS = ['src/components/dashboard', 'src/app/(dashboard)']
+const SCAN_DIRS = ['src']
 
 /**
  * Only the TIMEZONE-DEPENDENT forms. This distinction is the whole guard.
@@ -38,7 +38,15 @@ const SCAN_DIRS = ['src/components/dashboard', 'src/app/(dashboard)']
  */
 const LOCAL_ACCESSOR =
   /new Date\(\s*\)\s*\.\s*(getHours|getMinutes|getDay|getDate|getMonth|getFullYear)\b/
-const TO_LOCALE = /\.toLocale(String|DateString|TimeString)\(/
+/**
+ * BOTH formatting entry points. The first version of this guard matched only
+ * `.toLocaleString()` and therefore missed the worst instance on the platform:
+ * /tickets formats the event's start_date with `new Intl.DateTimeFormat` and no
+ * timeZone, so a buyer holding a ticket to a Perth event and reading it in
+ * Sydney can be shown the wrong DAY. A guard that covers one of two equivalent
+ * APIs is a guard that reports clean while the defect ships.
+ */
+const TO_LOCALE = /\.toLocale(String|DateString|TimeString)\(|new Intl\.DateTimeFormat\(/
 
 function clockReads(src: string): string[] {
   const lines = src.split(/\r?\n/)
@@ -92,6 +100,39 @@ function walk(dir: string, out: string[] = []): string[] {
 
 const files = SCAN_DIRS.flatMap((d) => walk(path.join(ROOT, d)))
 
+/**
+ * KNOWN AND NOT YET FIXED, dated 2026-08-08. A RATCHET, not an allowlist:
+ * anything NOT on this list fails, and every entry here is reported at the top
+ * of the sweep report with what a user experiences until it is fixed.
+ *
+ * All four render an EVENT's date and need `events.timezone` threaded through
+ * a component prop chain, which the surfaces already fixed did not. They are
+ * listed rather than silently skipped so the next session inherits the work
+ * instead of rediscovering it.
+ *
+ * What a user experiences meanwhile: an event within a few hours of midnight
+ * in a different state shows the WRONG DAY. A Perth event at 9pm reads as the
+ * next day to a reader in Sydney.
+ */
+const KNOWN_UNFIXED = new Map([
+  [
+    'src/components/features/home/trending-events-bento.tsx',
+    'homepage trending rail: event.start_date, needs timezone on the bento prop and the home query',
+  ],
+  [
+    'src/components/features/home/surprise-me-modal.tsx',
+    'surprise-me result: s.startDate, needs timezone on the suggestion payload',
+  ],
+  [
+    'src/app/artists/[slug]/page.tsx',
+    'artist credit dates: credit.startDate, needs timezone on the credits query',
+  ],
+  [
+    'src/components/checkout/ticket-selector.tsx',
+    'the "Sale opens" line on the ticket picker: tier.sale_start, needs the event timezone passed into the selector',
+  ],
+])
+
 describe('server-rendered dashboard components do not read a clock', () => {
   it('finds dashboard components to scan, so this cannot pass vacuously', () => {
     expect(files.length).toBeGreaterThan(5)
@@ -101,16 +142,46 @@ describe('server-rendered dashboard components do not read a clock', () => {
     const offenders: string[] = []
     for (const f of files) {
       const src = readFileSync(f, 'utf8')
-      if (/^['"]use client['"]/m.test(src)) continue
+      // NOT skipped for being a client component. Next.js server-renders a
+      // client component too and then hydrates it, so a runtime-zone format
+      // mismatches there exactly as it does in a server component. Exempting
+      // 'use client' was a hole that hid most of the platform.
+      //
+      // The only real exemption is the deliberate pattern: a file that gates
+      // its clock read on useHydrated has already agreed with the server on
+      // the first render, which is the whole point of that hook.
+      if (/useHydrated/.test(src)) continue
+      const rel = path.relative(ROOT, f).replace(/\\/g, '/')
+      if (KNOWN_UNFIXED.has(rel)) continue
       const hits = clockReads(src)
       if (hits.length > 0) {
-        offenders.push(`${path.relative(ROOT, f).replace(/\\/g, '/')}\n    ${hits.join('\n    ')}`)
+        offenders.push(`${rel}\n    ${hits.join('\n    ')}`)
       }
     }
     expect(
       offenders,
       `a clock read during server render causes a hydration mismatch:\n${offenders.join('\n')}`,
     ).toEqual([])
+  })
+
+  it('every ratcheted file still exists and still has the defect, so the list cannot go stale', () => {
+    // A ratchet entry for a file that is already fixed, or deleted, is a lie
+    // that makes the list look bigger than the debt. Both are failures.
+    const stale: string[] = []
+    for (const [rel, why] of KNOWN_UNFIXED) {
+      const full = path.join(ROOT, rel)
+      let src: string
+      try {
+        src = readFileSync(full, 'utf8')
+      } catch {
+        stale.push(`${rel} no longer exists; remove it from KNOWN_UNFIXED`)
+        continue
+      }
+      if (clockReads(src).length === 0) {
+        stale.push(`${rel} is FIXED; remove it from KNOWN_UNFIXED (${why})`)
+      }
+    }
+    expect(stale, stale.join('\n')).toEqual([])
   })
 
   it('the greeting itself is client-side and gated on hydration', () => {

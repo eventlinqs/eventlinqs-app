@@ -6,6 +6,7 @@ import { recordAuditEvent } from '@/lib/admin/audit'
 import { getUserDetail } from '@/lib/admin/users'
 import { AdminStatTile } from '@/components/admin/admin-stat-tile'
 import { RoleControl, SuspendControl } from './user-controls'
+import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -16,7 +17,7 @@ export const metadata = {
 }
 
 function date(iso: string | null): string {
-  return iso ? new Date(iso).toLocaleDateString('en-AU', { dateStyle: 'medium' }) : 'never'
+  return iso ? new Date(iso).toLocaleDateString('en-AU', { dateStyle: 'medium', timeZone: PLATFORM_TIME_ZONE }) : 'never'
 }
 
 const ROLE_BADGE: Record<string, string> = {

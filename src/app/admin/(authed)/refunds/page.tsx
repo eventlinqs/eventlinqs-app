@@ -4,6 +4,7 @@ import { requireAdminSession } from '@/lib/admin/auth'
 import { can } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { listRefundsForAdmin, REFUND_STATUS_FILTERS, type RefundStatusFilter } from '@/lib/admin/refunds'
+import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -20,7 +21,7 @@ function money(cents: number, currency: string): string {
 }
 
 function formatDate(iso: string): string {
-  return new Intl.DateTimeFormat('en-AU', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(iso))
+  return new Intl.DateTimeFormat('en-AU', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: PLATFORM_TIME_ZONE }).format(new Date(iso))
 }
 
 const STATUS_BADGE: Record<string, string> = {

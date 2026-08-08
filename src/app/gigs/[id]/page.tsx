@@ -17,6 +17,7 @@ import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { GigApplyForm } from '@/components/marketplace/gig-apply-form'
 import { ReportControl } from '@/components/marketplace/report-control'
+import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 
 export const dynamic = 'force-dynamic'
 
@@ -41,8 +42,7 @@ function formatDateTime(iso: string): string {
     day: 'numeric',
     month: 'long',
     hour: 'numeric',
-    minute: '2-digit',
-  }).format(new Date(iso))
+    minute: '2-digit', timeZone: PLATFORM_TIME_ZONE }).format(new Date(iso))
 }
 
 /**
