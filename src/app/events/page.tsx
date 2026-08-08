@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
+import { ReservationNotice } from '@/components/checkout/reservation-notice'
 import {
   fetchPublicEvents,
   fetchPublicEventsCached,
@@ -96,6 +97,13 @@ export default async function EventsPage({ searchParams }: Props) {
     <div className="flex min-h-screen flex-col bg-canvas">
       <SiteHeader />
       <main className="flex-1">
+        {/* Checkout sends a buyer here on reservation_not_found. Without this
+          * they arrive at the national list with no idea what happened. */}
+        <div className="mx-auto w-full max-w-7xl px-4 pt-6 sm:px-6">
+          <Suspense fallback={null}>
+            <ReservationNotice backHref="/events" backLabel="Browse events" />
+          </Suspense>
+        </div>
         <EventsHeroStrip
           params={raw}
           heading={searchQuery ? `Results for "${searchQuery}"` : undefined}
