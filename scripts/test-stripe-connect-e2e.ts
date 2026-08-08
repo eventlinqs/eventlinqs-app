@@ -35,6 +35,7 @@ import {
   isFullyOnboarded,
   retrieveAccount,
 } from '../src/lib/stripe/connect'
+import { buildConnectBusinessProfile } from '../src/lib/stripe/business-profile'
 import Stripe from 'stripe'
 
 const GREEN = '\x1b[32m'
@@ -117,6 +118,15 @@ async function main() {
       country: 'AU',
       email: 'phase2-e2e@example.test',
       payoutDelayDays: 3, // PAY-01: pricing_rules payout_schedule_days (AU launch default)
+      businessProfile: buildConnectBusinessProfile(
+        {
+          name: 'Phase 2 E2E Organiser',
+          slug: 'phase-2-e2e-organiser',
+          email: 'phase2-e2e@example.test',
+          phone: null,
+        },
+        null
+      ),
     })
     accountId = account.id
     pass('createExpressAccount', accountId)

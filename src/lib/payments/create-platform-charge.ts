@@ -6,6 +6,7 @@ import {
   computeOrganiserTransferCents,
   getCurrencyForCountry,
 } from './application-fee'
+import { statementDescriptorSuffix } from '@/lib/stripe/business-profile'
 import type { FeeBreakdown } from './payment-calculator'
 import type { CreatePaymentIntentParams, PaymentGateway, PaymentIntentResult } from './gateway'
 
@@ -22,6 +23,7 @@ import type { CreatePaymentIntentParams, PaymentGateway, PaymentIntentResult } f
 type OrgChargeFields = Pick<
   Organisation,
   | 'id'
+  | 'name'
   | 'stripe_account_id'
   | 'stripe_payouts_enabled'
   | 'stripe_account_country'
@@ -81,6 +83,7 @@ export async function createPlatformCharge(
     input.eventId ?? null
   )
   const connectedAccountId = org.stripe_account_id!
+  const descriptorSuffix = statementDescriptorSuffix(org.name)
 
   const intent = await input.gateway.createPaymentIntent({
     amount_cents: input.fees.total_cents,
@@ -91,6 +94,17 @@ export async function createPlatformCharge(
     // PLATFORM charge: funds held in the platform balance. transfer_group links
     // this charge to the later organiser transfer. No Connect charge fields.
     transfer_group: input.transferGroup,
+    // Put the organiser on the buyer's bank statement. Derived here, from the
+    // org row this function already loads, so all three checkout call sites
+    // (general, seated, squad) inherit it without changing a line.
+    //
+    // This is the ONLY route by which the organiser reaches a statement in this
+    // architecture. Stripe: "The customer's statement uses the platform
+    // account's static component for ... Separate charges and transfers without
+    // on_behalf_of" (https://docs.stripe.com/connect/statement-descriptors,
+    // fetched 2026-08-09), and this is exactly that charge type. The connected
+    // account's own business_profile.name never reaches the buyer.
+    ...(descriptorSuffix ? { statement_descriptor_suffix: descriptorSuffix } : {}),
   })
 
   return {
@@ -106,7 +120,7 @@ async function loadOrgChargeFields(organisationId: string): Promise<OrgChargeFie
   const { data, error } = await admin
     .from('organisations')
     .select(
-      'id, stripe_account_id, stripe_payouts_enabled, stripe_account_country, payout_status'
+      'id, name, stripe_account_id, stripe_payouts_enabled, stripe_account_country, payout_status'
     )
     .eq('id', organisationId)
     .maybeSingle()
