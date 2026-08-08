@@ -271,6 +271,97 @@ suite. Not yet walked at 390 and 1440 with screenshots.
 
 ---
 
-## C, D, E: NOT STARTED
+## C1. THE IMAGE LIMIT. FIXED.
 
-See the task list.
+The founder was refused with "Image is too large in pixels: 3625 x 4961. The
+maximum is 4000 x 4000." That is ordinary phone and camera output.
+
+**Research (primary sources only).**
+
+- **Humanitix help centre**, "How to style your event page": "**Event banner
+  specifications:** 2:1 Ratio. Recommended min **3200px by 1600px**. JPEG, PNG,
+  SVG, GIF (Static image). **Max size 10MB**." No pixel ceiling is published at
+  all, and note they RECOMMEND a 3200px minimum, so an organiser following
+  Humanitix's own advice could be refused by our old rule after a modest crop.
+- **Humanitix help centre**, ticket/package images: "Image aspect ratio = 2:1 ...
+  **Max size = 10mb**". Again a byte cap, no pixel cap.
+- **Eventbrite help centre**, "How to choose a great event image": "If your
+  image is not 2:1 (twice as wide as it is tall), your **focus point will be
+  used to crop your image** for your event listing." Eventbrite PROCESSES
+  server-side rather than refusing. (Their numeric requirements sit behind a JS
+  tab on that page and did not render in the scrape, so they are not quoted.)
+- **Eventbrite**, own blog, "Easily upload your main event image": "As of July
+  2015, we've increased the size limit to **10MB**."
+- Ticketmaster, DICE, TryBooking, Moshtix, Oztix: no published organiser image
+  specification found. **UNSOURCED.**
+
+The founder's expectation is confirmed by the evidence: the market caps by FILE
+SIZE and resizes, and EventLinqs was the outlier in refusing on pixels.
+
+**The fix.** `MAX_IMAGE_DIMENSION` (a hard reject) is replaced by
+`MAX_STORED_IMAGE_DIMENSION` (a downscale target, still 4000). The pipeline now
+resizes with `fit: 'inside', withoutEnlargement: true`, so aspect is preserved,
+a small image is passed through untouched, and nothing is refused for being big.
+The only pixel limit that still refuses is a new decompression-bomb guard,
+`MAX_SOURCE_IMAGE_PIXELS = 80_000_000`, enforced both as a friendly check and
+inside sharp via `limitInputPixels` so it cannot be talked past.
+
+`MAX_IMAGE_BYTES` stays at 10MB, which is exactly where both benchmarks sit.
+
+**A correctness bug fixed with it.** The pipeline returned the SOURCE width and
+height. Now that images are resized, that would have recorded a 4961px height
+for a 4000px file, and every consumer of those numbers (aspect ratios, srcset
+hints, the media components) would have been wrong. Dimensions are now read back
+off the encoder via `toBuffer({ resolveWithObject: true })`.
+
+**Why the client-side compressor did not save him.** `prepareImageForUpload`
+returns early when the file is already under the transport cap
+(`if (file.size <= TRANSPORT_SAFE_BYTES) return file`). A well-compressed 18MP
+photo is under that cap, so it was passed through at full dimensions and the
+server rejected it on pixels. That is exactly the shape of his report.
+
+**Cost, measured, at `scripts/verify/image-ceiling-proof.mjs`** (sharp 0.34.5 /
+libvips 8.17.3). Timings exclude generating the test source and use a NOISE
+raster, which is the worst case for the JPEG encoder; a real photograph is
+faster and compresses better.
+
+| Case | Source | Result | Time | RSS delta |
+|---|---|---|---|---|
+| **the founder's image** | 3625 x 4961, 18.0MP | **2923 x 4000** | 3414ms | +5MB |
+| typical 12MP phone | 4032 x 3024 | 4000 x 3000 | 3808ms | -13MB |
+| 48MP phone | 8000 x 6000 | 4000 x 3000 | 3299ms | -11MB |
+| **50MP camera** | 8660 x 5773 | 4000 x 2667 | 2822ms | -35MB |
+| already within bounds | 2160 x 1080 | unchanged | 803ms | -38MB |
+| decompression bomb | 12000 x 9000, 108MP | REFUSED | n/a | n/a |
+
+**What happens to a 50 megapixel upload on a slow mobile connection**, asked
+directly in the brief: the pixels are not the binding constraint, the bytes are.
+A 50MP photo is normally well over the 10MB cap, so it is refused at the client
+before a single byte is sent, which is the right place to refuse. If it IS under
+10MB, the upload takes as long as 10MB takes on that connection (roughly 80
+seconds at 1Mbps) and then about 2.8 seconds of server processing. RSS was flat
+or negative in every measured case because libvips streams rather than holding a
+full RGBA bitmap, so the 80MP guard is a ceiling on pathological input rather
+than a description of normal cost.
+
+**Tests: 14 passing against the REAL pipeline**, not a reimplementation. My
+first proof script mirrored the sharp chain rather than importing
+`processEventImage`, which would only have proven that sharp works; the vitest
+suite drives the actual exported function. The pre-existing test
+`rejects an over-size image (> 4000px)` asserted the DEFECT as if it were a
+requirement, so it was replaced rather than relaxed.
+
+Drilled in both directions: with `MAX_STORED_IMAGE_DIMENSION` raised so no
+downscale occurs, two tests fail with `expected 4961 to be 4000` and
+`expected 8000 to be 4000`.
+
+**NOT DONE on C1: the browser upload.** Proven end to end through the real
+server pipeline at the founder's exact dimensions, and by measurement. NOT yet
+uploaded through the organiser wizard in a browser, which is what the brief asks
+for. That is the first action in the handover below.
+
+---
+
+## C2, C3, C4, D, E: NOT STARTED
+
+See the handover at the end of this document.

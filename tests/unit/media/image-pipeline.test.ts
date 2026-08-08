@@ -61,11 +61,9 @@ describe('processEventImage - rejections', () => {
     expect(r.ok).toBe(false)
   })
 
-  it('rejects an over-size image (> 4000px)', async () => {
-    const r = await processEventImage(await jpegBuffer(4200, 1000), { role: 'gallery' })
-    expect(r.ok).toBe(false)
-    if (!r.ok) expect(r.error).toMatch(/4000/)
-  })
+  // The old test here asserted that > 4000px was REJECTED. That behaviour was
+  // the 2026-08-09 defect, not a requirement, so the test is replaced rather
+  // than relaxed. See "downscales instead of refusing" below.
 
   it('rejects an under-size cover but accepts the same image as gallery', async () => {
     const small = await jpegBuffer(800, 450)
@@ -73,6 +71,80 @@ describe('processEventImage - rejections', () => {
     expect(asCover.ok).toBe(false)
     const asGallery = await processEventImage(small, { role: 'gallery' })
     expect(asGallery.ok).toBe(true)
+  })
+})
+
+/**
+ * C1, 2026-08-09. The founder could not upload his own photos: a 3625 x 4961
+ * image, which is ordinary phone and camera output, was refused with "Image is
+ * too large in pixels: 3625 x 4961. The maximum is 4000 x 4000."
+ *
+ * Neither benchmark publishes a pixel ceiling; both cap by file size and
+ * process server-side (Humanitix: "Recommended min 3200px by 1600px ... Max
+ * size 10MB"; Eventbrite: "your focus point will be used to crop your image").
+ * So the platform downscales now, and refuses only a decompression bomb.
+ */
+describe('processEventImage - downscales instead of refusing', () => {
+  it("accepts the founder's exact image, 3625 x 4961, and bounds the long edge", async () => {
+    const r = await processEventImage(await jpegBuffer(3625, 4961), { role: 'cover' })
+    expect(r.ok).toBe(true)
+    if (r.ok) {
+      // Long edge bounded, aspect preserved.
+      expect(Math.max(r.image.width, r.image.height)).toBe(4000)
+      expect(r.image.width).toBe(2923)
+      expect(r.image.height).toBe(4000)
+    }
+  })
+
+  it('reports the STORED dimensions, not the source ones', async () => {
+    // Returning the source size would record a 4961px height for a 4000px
+    // file, and every consumer of these numbers would be wrong.
+    const r = await processEventImage(await jpegBuffer(8000, 6000), { role: 'cover' })
+    expect(r.ok).toBe(true)
+    if (r.ok) {
+      expect(r.image.width).toBe(4000)
+      expect(r.image.height).toBe(3000)
+    }
+  })
+
+  it('passes a within-bounds image through at its original size', async () => {
+    const r = await processEventImage(await jpegBuffer(2160, 1080), { role: 'cover' })
+    expect(r.ok).toBe(true)
+    if (r.ok) {
+      expect(r.image.width).toBe(2160)
+      expect(r.image.height).toBe(1080)
+    }
+  })
+
+  it('never enlarges a small image', async () => {
+    const r = await processEventImage(await jpegBuffer(1200, 800), { role: 'cover' })
+    expect(r.ok).toBe(true)
+    if (r.ok) {
+      expect(r.image.width).toBe(1200)
+      expect(r.image.height).toBe(800)
+    }
+  })
+
+  it('still refuses a decompression bomb, and says what to do about it', async () => {
+    // 12000 x 9000 = 108MP, past the 80MP guard. This is the ONLY pixel count
+    // that still refuses, and no consumer camera reaches it.
+    const r = await processEventImage(await jpegBuffer(12000, 9000), { role: 'gallery' })
+    expect(r.ok).toBe(false)
+    if (!r.ok) {
+      expect(r.error).toMatch(/megapixel/i)
+      // It must tell them what to do, not just that it failed.
+      expect(r.error).toMatch(/smaller size|JPEG/i)
+      // And it must never quote the old 4000 x 4000 rule.
+      expect(r.error).not.toMatch(/4000 x 4000/)
+    }
+  })
+
+  it('no longer produces the sentence the founder was shown', async () => {
+    const r = await processEventImage(await jpegBuffer(3625, 4961), { role: 'cover' })
+    expect(r.ok).toBe(true)
+    if (!r.ok) {
+      expect(r.error).not.toMatch(/too large in pixels/)
+    }
   })
 })
 
