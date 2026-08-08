@@ -362,6 +362,112 @@ for. That is the first action in the handover below.
 
 ---
 
-## C2, C3, C4, D, E: NOT STARTED
+## C4. THE MAP. DIAGNOSED, NOT FIXED, AND BLOCKED ON A FOUNDER ACTION.
 
-See the handover at the end of this document.
+**What it is.** The platform calls the deprecated `new google.maps.Marker(...)`
+in four places, one of which is the event page:
+
+| File | Line |
+|---|---|
+| `src/components/features/events/venue-map.tsx` (the event page) | 125 |
+| `src/components/features/city/city-map.tsx` | 116 |
+| `src/components/features/events/m5-events-map.tsx` | 121, 187 |
+
+**Why it appears.** Google, own documentation, "Advanced Markers migration":
+"As of February 21st, 2024 (v3.56), `google.maps.Marker` is deprecated. We
+encourage you to transition to the new `google.maps.marker.AdvancedMarkerElement`
+class." Our loader pins `v: 'weekly'`, so the deployment tracks Google's newest
+weekly release and sees deprecation surfacing soonest.
+
+**Honest limit on this diagnosis.** Google's migration page documents the
+deprecation but does NOT state that a notice is shown to end users, so I have
+confirmed the deprecated call and the deprecation, but I have NOT confirmed that
+this specific deprecation is the notice the founder saw. Confirming that needs
+the event page opened in a browser with the console read. The other candidates
+that render an on-map notice are a billing-disabled watermark ("For development
+purposes only") and an API-key error dialog ("This page can't load Google Maps
+correctly"), both of which are account configuration rather than code. The first
+action on this item is to look, not to assume.
+
+**Why it is not fixed in this pass: it is blocked on the founder.**
+`AdvancedMarkerElement` REQUIRES a Map ID ("you must include `mapId`"). There is
+no Google Maps Map ID anywhere in this repo. `src/lib/env/manifest.mjs` declares
+only `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` and `GOOGLE_MAPS_API_KEY`. So the
+migration needs, in order:
+
+1. Lawal creates a Map ID (vector, JS) in the Google Cloud console.
+2. It is declared in `src/lib/env/manifest.mjs` as
+   `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID` per `docs/ENV-DOCTRINE.md` and set in both
+   stores.
+3. Only then can the four call sites migrate, because a map without a Map ID
+   silently renders no advanced markers at all, which would be a worse defect
+   than the notice.
+
+Guessing a Map ID or hardcoding Google's `DEMO_MAP_ID` would ship a map whose
+pins vanish in production. Not done rather than done wrong.
+
+---
+
+## C2, C3, D1 to D7, E: NOT STARTED
+
+Nothing was begun on these. See the handover.
+
+---
+
+# HANDOVER, in order
+
+Context ran out with A, B and C1 landed and committed. Nothing below is
+half-finished: each item is either fully done and committed, or untouched.
+
+**Landed and committed on `fix/production-sweep`:**
+
+| Commit | Item |
+|---|---|
+| `5155f83` | A1 + A2, the signup blocker |
+| `e966654` | B, the four timezone sites + the third guard hole |
+| `80efdf9` | C1, the image ceiling |
+
+**The environment first, before any other work.** The worktree at
+`C:/Users/61416/OneDrive/Desktop/EventLinqs/el-prod-sweep` now has a real
+`node_modules` (664 packages, `npm ci` exit 0 verified directly). Do not junction
+it at the main repo's store: that store is missing four packages this branch
+needs and produces 16 phantom tsc errors. NEVER pipe a gate command to `tail` or
+`head`; redirect to a file and echo `$?`, because a pipe reports the exit code of
+the LAST command and this session had `npm ci` fail with ECONNRESET while
+reporting exit 0.
+
+**Next actions, in order:**
+
+1. **The browser walks owed on A, B and C1.** All three are proven by
+   reproduction, type system and unit suite, and NONE has been walked in a
+   browser at 390 and 1440 with screenshots, which this brief requires before
+   anything is called done. For A the cases to trigger are listed in the A2
+   table; the error box now carries `data-auth-error="<class>"`, so assert on
+   that attribute rather than matching the sentence (D7). For C1, upload a real
+   3625 x 4961 file through the organiser wizard.
+2. **C4, look before touching.** Open a live event page, read the console, and
+   identify the actual notice. Then either raise the Map ID request with Lawal
+   (if it is the marker deprecation) or fix billing/key (if it is the watermark
+   or the key dialog).
+3. **C2**, wizard validation on the step it lives on. Untouched.
+4. **C3**, ticket tier Name versus Type. Untouched.
+5. **D2 before D3**, since D3 is blocked on it. Note that `auth-login` is
+   `limit: 10, windowSec: 600, failClosed: true` in
+   `src/lib/rate-limit/policies.ts`; `applyRateLimit` in
+   `src/lib/rate-limit/middleware.ts` is the single choke point, so a
+   non-production bypass belongs there and nowhere else.
+6. **D1**, the four lifecycle dispatchers. Untouched and the largest remaining
+   item.
+7. **D4, D5, D6, D7.** D6 and D7 are pure documentation and cheap; do not let
+   them fall off the end again. This session produced fresh material for both:
+   two instruments lied within one hour (a dangling-junction `npx tsc` returning
+   exit 0 with no TypeScript installed, and `npm ci | tail` masking an
+   ECONNRESET failure as exit 0), and one of my own greps produced a false
+   positive about four email files by matching line-by-line against a
+   multi-line options object.
+8. **E**, gates, both roast rounds, PR.
+
+**A founder decision is waiting** in A2: registration now names an existing
+account, which is a deliberate departure from OWASP's stricter registration
+pattern. The reasoning, the cost and the one-line way to reverse it are recorded
+in `src/lib/auth/auth-errors.ts`.
