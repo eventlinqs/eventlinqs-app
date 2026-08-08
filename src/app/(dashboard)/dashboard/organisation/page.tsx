@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import type { Organisation } from '@/types/database'
@@ -8,9 +9,18 @@ export default async function OrganisationPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: org } = await supabase
+  // The owner reading their OWN organisation, including its contact email.
+  // That is legitimate: the email belongs to them. It is the same column being
+  // readable by everyone ELSE that was the defect.
+  //
+  // Identity is verified with the session client above, then the row is read
+  // with the service role filtered to owner_id = that verified user, because
+  // `email` is revoked from `authenticated` by column privilege (migration
+  // 20260808000010). Selecting explicit columns rather than (*) keeps this
+  // honest about what the page needs.
+  const { data: org } = await createAdminClient()
     .from('organisations')
-    .select('*')
+    .select('id, name, slug, description, website, email, status, stripe_onboarding_complete')
     .eq('owner_id', user.id)
     .single() as { data: Organisation | null }
 

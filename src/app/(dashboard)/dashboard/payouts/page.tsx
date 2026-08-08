@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { Wallet } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { ALLOWED_CONNECT_COUNTRIES } from '@/lib/stripe/connect'
 import {
   ConnectOnboardingCard,
@@ -58,9 +59,26 @@ export default async function PayoutsPage() {
   } = await supabase.auth.getUser()
   if (!user) redirect('/login?next=/dashboard/payouts')
 
-  const { data: org } = (await supabase
+  // Owner-scoped read of Stripe-posture columns.
+  //
+  // Identity is verified with the SESSION client above (getUser, never
+  // getSession), then the row is read with the service role scoped to
+  // owner_id = the verified user. That is the pattern resolveOrganiserScope()
+  // in src/lib/payouts/auth.ts already uses and which was reviewed and
+  // accepted.
+  //
+  // It has to be the service role now: the stripe_* columns are revoked from
+  // `authenticated` by column privilege (migration 20260808000010), because
+  // `authenticated` is one role serving both the owner AND any logged-in
+  // visitor, and column privileges cannot tell them apart. Leaving those
+  // columns granted to `authenticated` would have meant a free signup could
+  // read every organiser's payout posture. The ownership filter below is what
+  // makes the service-role read safe.
+  const { data: org } = (await createAdminClient()
     .from('organisations')
-    .select('*')
+    .select(
+      'id, name, stripe_account_id, stripe_account_country, stripe_charges_enabled, stripe_payouts_enabled, stripe_onboarding_complete, stripe_requirements',
+    )
     .eq('owner_id', user.id)
     .maybeSingle()) as { data: Organisation | null }
 

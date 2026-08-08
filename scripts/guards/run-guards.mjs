@@ -12,6 +12,19 @@
  *   auth-autocomplete          credential-manager attributes on every auth form
  *   auth-provider-cost         no provider gate on a route with no provider button
  *   check-client-barrel-imports  no third-party namespace import in the browser bundle
+ *   rls-exposure-scan          no world-readable policy exposes a sensitive column
+ *
+ * On rls-exposure-scan, because it is the newest and the least obvious: Row
+ * Level Security filters ROWS, never COLUMNS. A permissive SELECT policy with
+ * no TO clause reaches PUBLIC, which includes anon, and the anon key is
+ * NEXT_PUBLIC and readable in any page source. So one such policy publishes
+ * every column of every matching row to the whole internet. That shipped twice:
+ * 20260625000002 closed it on profiles (email, full_name, phone) and
+ * 20260808000010 closed it on organisations, on event_artists.invite_token (a
+ * credential that transfers profile ownership) and on venues. The first fix
+ * dropped a policy, which fixed the instance and left the class alive. This
+ * guard models both the policies and the column grants, so it fails the build
+ * when the shape reappears on any table, including one not yet written.
  *
  * Runs them all rather than short-circuiting, so one pass reports every
  * violation instead of making the founder play whack-a-mole.
@@ -74,6 +87,13 @@ const GUARDS = [
   // shared runner. Absent from this list, `prebuild` stops checking the browser
   // bundle for untree-shakeable namespace imports and nothing goes red.
   'scripts/check-client-barrel-imports.mjs',
+  // RLS column exposure. Deliberately written WITHOUT apostrophes: the registry
+  // test extracts single-quoted strings from this array, so an apostrophe in a
+  // comment here is parsed as the start of a registered path and turns
+  // tests/unit/guards/guard-registry.test.ts red for a reason that has nothing
+  // to do with guards. Full rationale lives in the header above and in
+  // docs/security/AUDIT-2026-08-08.md.
+  'scripts/security/rls-exposure-scan.mjs',
 ]
 
 /**

@@ -111,7 +111,15 @@ async function fetchEvent(slug: string): Promise<FullEvent | null> {
   const supabase = createPublicClient()
   const { data, error } = await supabase
     .from('events')
-    .select('*, ticket_tiers(*), organisation:organisations(*), category:event_categories(*), event_addons(*)')
+    // organisations is embedded with an EXPLICIT column list, never (*). This is
+    // a public page read as `anon`, and organisations carries email, phone,
+    // owner_id and the full Stripe Connect posture. Those columns are now
+    // revoked from anon by column privilege (migration 20260808000010), so a
+    // (*) embed would fail the whole query with "permission denied for column
+    // email" and blank the event page. See docs/security/AUDIT-2026-08-08.md.
+    .select(
+      '*, ticket_tiers(*), organisation:organisations(id, name, slug, description, logo_url, website), category:event_categories(*), event_addons(*)',
+    )
     .eq('slug', slug)
     .single() as { data: FullEvent | null; error: unknown }
 

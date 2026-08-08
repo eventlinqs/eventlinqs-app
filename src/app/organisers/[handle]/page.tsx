@@ -21,7 +21,6 @@ import { OrganiserMobileStickyBar } from '@/components/features/organisers/organ
 import { getCityPhoto } from '@/lib/images/city-photo'
 import { citySlugify } from '@/components/features/community/cities-rail'
 import { venueSlugify } from '@/lib/venues/resolver'
-import type { Organisation } from '@/types/database'
 import { getSiteUrl } from '@/lib/site-url'
 
 export const revalidate = 300
@@ -34,15 +33,36 @@ interface OrganiserEventRow extends EventCardData {
   end_date?: string
 }
 
-async function fetchOrganiser(slug: string): Promise<Organisation | null> {
+/**
+ * The organisation fields this PUBLIC page may read.
+ *
+ * Founder ruling 2026-08-08: id, name, slug, description, logo_url, website.
+ * Enforced in the database by column privilege (migration
+ * 20260808000010_rls_column_privilege_lockdown), so a `select('*')` here now
+ * fails loudly with "permission denied for column email" rather than quietly
+ * shipping every organiser's contact details and Stripe posture to the browser.
+ * The explicit list below is what keeps that from happening.
+ */
+export interface PublicOrganisation {
+  id: string
+  name: string
+  slug: string
+  description: string | null
+  logo_url: string | null
+  website: string | null
+}
+
+const PUBLIC_ORGANISATION_COLUMNS = 'id, name, slug, description, logo_url, website'
+
+async function fetchOrganiser(slug: string): Promise<PublicOrganisation | null> {
   const supabase = createPublicClient()
   const { data } = await supabase
     .from('organisations')
-    .select('*')
+    .select(PUBLIC_ORGANISATION_COLUMNS)
     .eq('slug', slug)
     .eq('status', 'active')
     .maybeSingle()
-  return (data as Organisation | null) ?? null
+  return (data as PublicOrganisation | null) ?? null
 }
 
 async function fetchOrganiserEvents(orgId: string) {
@@ -354,11 +374,18 @@ export default async function OrganiserProfilePage({ params }: Props) {
 
         {/* OP9 Contact / email capture */}
         <div id="stay-connected">
+          {/* email is intentionally null. Founder ruling 2026-08-08: the
+              organiser's contact email is NOT a public field, so it is neither
+              fetched nor rendered. The panel already treats email as optional
+              and omits the mailto row, keeping the website link and the
+              notify-me capture. Restoring a public contact channel is a
+              deliberate opt-in field, never the raw organisations.email
+              column. */}
           <OrganiserContactPanel
             organiserName={organisation.name}
             organiserSlug={organisation.slug}
             website={organisation.website}
-            email={organisation.email}
+            email={null}
           />
         </div>
 

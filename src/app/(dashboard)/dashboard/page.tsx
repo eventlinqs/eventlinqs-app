@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { DashboardHero } from '@/components/dashboard/dashboard-hero'
 import { KpiCard } from '@/components/dashboard/kpi-card'
@@ -67,9 +68,19 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  // The organisation read is owner-scoped and needs stripe_onboarding_complete,
+  // which is revoked from `authenticated` by column privilege (migration
+  // 20260808000010). Identity is verified with the session client above, then
+  // the row is read with the service role filtered to owner_id = that user,
+  // mirroring src/lib/payouts/auth.ts. Only the two columns this page renders
+  // are selected.
   const [{ data: profile }, { data: org }] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user.id).single(),
-    supabase.from('organisations').select('*').eq('owner_id', user.id).maybeSingle(),
+    createAdminClient()
+      .from('organisations')
+      .select('id, stripe_onboarding_complete')
+      .eq('owner_id', user.id)
+      .maybeSingle(),
   ])
 
   const firstName = profile?.full_name?.split(' ')[0] ?? 'there'
