@@ -335,3 +335,55 @@ RLS. No new migrations after the freeze. R5 and F6 remain blocked on an absent
    measurement came back blank because `node_modules` had been deleted and every
    invocation failed at startup. Anything counting passes would have reported it
    green.
+
+---
+
+## 10. FINAL STOP. Additions after the clean stop.
+
+Commits `254b4af` and the two before it. **21 commits total.** Gates: tsc clean,
+eslint 47/0, 1482 tests across 131 files, copy-tell-gate clean.
+
+### WebP q80 is the house capture format
+
+81 percent smaller (3733 KB to 691 KB measured), worst mean pixel difference
+1.92 of 255 on the hardest case. `scripts/lib/capture.mjs` is the one place a
+harness writes a capture. **One harness switched and verified; seven need a
+careful per-file edit** after a regex attempt broke all eight and was reverted.
+Pattern documented in `docs/roast/webp-legibility/FINDINGS.md`.
+
+### The 299 untracked files: 0.23 GB, not 1.23 GB
+
+Correction to my own figure. **240 files / 189 MB are cited by six committed
+reports** and exist only on this disk. `docs/roast/untracked-evidence/` holds a
+sha256 manifest of all 299 and the recommendation: one copy off the laptop,
+today. Nothing was copied (committing contradicts the image ruling, uploading
+means writing production Supabase, another local path is the same disk).
+
+**Check whether OneDrive already syncs `docs/` before buying a drive.** The tree
+sits inside OneDrive; I could not determine sync inclusion without changing
+OneDrive settings.
+
+### Corrections I made to my own earlier claims
+
+1. **"The Vercel CLI cannot set values non-interactively."** WRONG on CLI
+   55.0.0, which documents `--value` for exactly that. Approval block item 7 now
+   uses `vercel env rm` + `vercel env add --value --sensitive --yes`, with the
+   note that `--force` overwrites the value but not the sensitivity flag.
+2. **"1.23 GB untracked."** It is 0.23 GB. The larger figure was inferred from a
+   restore measurement taken while git may still have been writing.
+3. **Will the env locks flag the founder's own rotation as drift?** No. The
+   cross-store lock performs a HANDSHAKE (200 proves byte-identical) rather than
+   comparing against a stored historical value, so it flags a MISMATCH between
+   stores, never a CHANGE over time. Only running it between the two writes
+   gives a 401, and that is the lock working.
+
+### Founder queue, final
+
+1. The security session's RLS fix. Everything waits on it.
+2. Approval block 5 and 6, the flag flips. `broadcast_follow` first.
+3. Approval block 7, `CRON_SECRET` rotation. Not during Wednesday 22:00 UTC.
+4. `docs/roast/redis-isolation/REMEDIATION-RUNBOOK.md`, the TEST Upstash.
+5. **One copy of the untracked evidence off this laptop.**
+6. The seven sparse-checkout commands, 7.98 GB.
+7. The three cross-branch migration collisions, with the other sessions.
+8. The seven remaining harnesses to WebP.
