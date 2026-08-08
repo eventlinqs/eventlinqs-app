@@ -12,6 +12,11 @@ import {
   type KitDraftPayload,
 } from '@/lib/launch/draft-store'
 import { listCategoryNames, listCommunitySlugs } from '@/lib/launch/taxonomy'
+import { isPlausibleEmail, sendKitEmail } from '@/lib/launch/kit-email'
+import { getSiteUrl } from '@/lib/site-url'
+import { buildDraftContext } from '@/lib/launch/draft-artefacts'
+import { toCaptionInput } from '@/lib/broadcast/kit-artefacts'
+import { buildCaptions, type Caption } from '@/lib/broadcast/captions'
 
 /**
  * The public composer's server actions. No auth on any of them, by design.
@@ -32,6 +37,28 @@ export type ComposeState = {
   questions: string[]
   /** True when the draft store is unavailable, so persistence is degraded. */
   ephemeral: boolean
+  /**
+   * All six per-channel captions, rendered by the same deterministic engine the
+   * published kit uses. Ruling 0.2a says a stranger sees EVERY caption, so they
+   * travel with the state rather than sitting behind a control.
+   */
+  captions: Caption[]
+}
+
+/**
+ * The captions for a payload. Pure, deterministic, no model call, no network.
+ *
+ * The origin only ever reaches the caption text as the kit link, which is a
+ * real URL that resolves for thirty days.
+ */
+function captionsFor(payload: KitDraftPayload, code: string | null): Caption[] {
+  const context = buildDraftContext({
+    payload,
+    code: code ?? 'preview',
+    origin: getSiteUrl(),
+    organiserName: '',
+  })
+  return buildCaptions(toCaptionInput(context))
 }
 
 /**
@@ -76,6 +103,7 @@ export async function composeKit(text: string): Promise<ComposeState> {
       reachFraming: result.reachFraming,
       questions: result.questions,
       ephemeral: true,
+      captions: captionsFor(result.payload, null),
     }
   }
 
@@ -110,7 +138,60 @@ export async function composeKit(text: string): Promise<ComposeState> {
     reachFraming: result.reachFraming,
     questions: result.questions,
     ephemeral: !saved,
+    captions: captionsFor(result.payload, saved?.code ?? null),
   }
+}
+
+export type EmailKitState = { ok: boolean; message: string }
+
+/**
+ * "Send this kit to myself" (founder ruling 0.2c). Offered, never required.
+ *
+ * THE ONE ACTION ON THIS SURFACE THAT COSTS SOMETHING REAL, so it is the one
+ * that is strict. Three gates, in cheapest-first order:
+ *
+ *   1. A plausible address, or nothing happens.
+ *   2. A rate limit that FAILS CLOSED, unlike every other launch policy. The
+ *      others protect CPU; this one protects a sending domain, and a domain
+ *      burned by an open relay is not recoverable by tightening a limit later.
+ *   3. AN OWNED DRAFT. The kit is read from this browser's own cookie token,
+ *      never from a code in the request, so this cannot be pointed at somebody
+ *      else's kit or used to mail an arbitrary link from our domain.
+ */
+export async function emailKitToSelf(email: string): Promise<EmailKitState> {
+  if (!isPlausibleEmail(email)) {
+    return { ok: false, message: 'That address does not look right. Have another look.' }
+  }
+
+  const limit = await actionRateLimit('launch-email')
+  if (!limit.ok) {
+    return { ok: false, message: 'That has been sent a few times already. Try again a bit later.' }
+  }
+
+  const jar = await cookies()
+  const token = jar.get(KIT_DRAFT_COOKIE)?.value
+  if (!isKitDraftToken(token)) {
+    return { ok: false, message: 'Your kit is on this screen. Build it again to send yourself a link.' }
+  }
+
+  const draft = await readDraftByToken(token)
+  if (!draft) {
+    return { ok: false, message: 'Your kit is on this screen. Build it again to send yourself a link.' }
+  }
+
+  try {
+    await sendKitEmail({
+      to: email,
+      title: draft.payload.title,
+      url: `${getSiteUrl()}/launch/k/${draft.code}`,
+    })
+  } catch {
+    // A transport failure is not the visitor's problem and their kit is
+    // unaffected, so it is stated plainly and without an apology.
+    return { ok: false, message: 'That did not send. Your kit is still here on this link.' }
+  }
+
+  return { ok: true, message: 'Sent. Check your inbox.' }
 }
 
 /** Update the fields the organiser corrected. Ownership proved by the cookie. */
@@ -134,5 +215,6 @@ export async function updateKit(patch: Partial<KitDraftPayload>): Promise<Compos
       payload.isFree || payload.visibility !== 'public' ? 'attendance' : 'tickets',
     questions: [],
     ephemeral: !saved,
+    captions: captionsFor(payload, saved?.code ?? prior.code),
   }
 }

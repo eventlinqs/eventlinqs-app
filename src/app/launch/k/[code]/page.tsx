@@ -3,6 +3,12 @@ import Link from 'next/link'
 import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { readDraftByCode } from '@/lib/launch/draft-store'
+import { buildDraftContext } from '@/lib/launch/draft-artefacts'
+import { toCaptionInput } from '@/lib/broadcast/kit-artefacts'
+import { buildCaptions } from '@/lib/broadcast/captions'
+import { getSiteUrl } from '@/lib/site-url'
+import { DraftEventPreview } from '@/components/launch/draft-event-preview'
+import { KitArtefacts, KitCaptions } from '@/components/launch/kit-artefacts'
 
 /**
  * The bookmarkable kit link (founder ruling 0.2c: 30 days, no account).
@@ -53,6 +59,19 @@ export default async function KitPage({ params }: { params: Promise<{ code: stri
 
   const p = draft.payload
 
+  // Deterministic, no model call, no network: the same six captions the reveal
+  // showed when this kit was built.
+  const captions = buildCaptions(
+    toCaptionInput(
+      buildDraftContext({
+        payload: p,
+        code: draft.code,
+        origin: getSiteUrl(),
+        organiserName: '',
+      }),
+    ),
+  )
+
   return (
     <div className="min-h-screen bg-canvas">
       <SiteHeader staticSafe />
@@ -73,6 +92,21 @@ export default async function KitPage({ params }: { params: Promise<{ code: stri
         <div className="mt-8 rounded-xl border border-ink-200 bg-white p-5">
           <p className="text-sm text-ink-700">{p.visibilityReason}</p>
         </div>
+
+        {/* The same kit, from the same components the reveal uses. Coming back
+            to a bookmarked link and finding a summary instead of the kit would
+            make the link worthless, which is the whole point of ruling 0.2c. */}
+        <div className="mt-12">
+          <h2 className="font-headline text-lg font-semibold text-ink-900">
+            Your event page
+          </h2>
+          <div className="mt-5">
+            <DraftEventPreview payload={p} />
+          </div>
+        </div>
+
+        <KitArtefacts code={draft.code} />
+        <KitCaptions captions={captions} />
 
         {/* The universal spread vector: whoever this was sent to can make one. */}
         <div className="mt-10 rounded-xl border border-ink-200 bg-white p-6">

@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import type { ComposeState } from '@/app/launch/actions'
+import { DraftEventPreview } from './draft-event-preview'
+import { KitArtefacts, KitCaptions } from './kit-artefacts'
 import { Reveal } from '@/components/ui/reveal'
 import { KitLinkBar } from './kit-link-bar'
 import { TheBill } from './the-bill'
@@ -29,7 +31,7 @@ type Props = {
 }
 
 export function KitReveal({ state, onEditDescription }: Props) {
-  const { payload, questions, recurringNote, reachFraming, code, ephemeral } = state
+  const { payload, questions, recurringNote, reachFraming, code, ephemeral, captions } = state
   const [bill, setBill] = useState<string[]>(payload?.billNames ?? [])
 
   if (!payload) return null
@@ -103,23 +105,29 @@ export function KitReveal({ state, onEditDescription }: Props) {
         </Reveal>
       ) : null}
 
-      {/* The artefacts. Full fidelity, on screen, for anybody. */}
-      <Reveal stagger>
-        <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          <ArtefactCard
-            title="Your event page"
-            body="The real page, in the platform's own design. This is what a buyer lands on."
-          />
-          <ArtefactCard
-            title="Your A4 poster"
-            body="Print-ready, with a code that opens your page. Put it in the window."
-          />
-          <ArtefactCard
-            title="Three share cards"
-            body="A story, a square and a tall post, each built to the size that platform actually publishes."
-          />
+      {/* THE ARTEFACTS THEMSELVES, rendered, at full fidelity, for anybody.
+          This is the ruling: a stranger SEES the kit. Descriptions of the kit
+          are not the kit, and the first cut of this screen shipped three
+          bordered boxes of prose where the artefacts were supposed to be. */}
+      <Reveal>
+        <div className="mt-12">
+          <h3 className="font-headline text-lg font-semibold text-ink-900">
+            Your event page
+          </h3>
+          <p className="mt-2 text-sm text-ink-600">
+            The real page, in the platform&rsquo;s own design. This is what
+            somebody lands on.
+          </p>
+          <div className="mt-5">
+            <DraftEventPreview payload={payload} />
+          </div>
         </div>
       </Reveal>
+
+      <KitArtefacts code={code} />
+
+      {/* Every caption, in full, copyable. Also the ruling: "every caption". */}
+      <KitCaptions captions={captions} />
 
       {/* THE BILL. Typed by the organiser, never inferred from prose. */}
       <TheBill names={bill} onChange={setBill} />
@@ -159,14 +167,5 @@ export function KitReveal({ state, onEditDescription }: Props) {
         </div>
       </Reveal>
     </section>
-  )
-}
-
-function ArtefactCard({ title, body }: { title: string; body: string }) {
-  return (
-    <div className="rounded-xl border border-ink-200 bg-white p-5">
-      <h3 className="font-headline text-base font-semibold text-ink-900">{title}</h3>
-      <p className="mt-2 text-sm text-ink-600">{body}</p>
-    </div>
   )
 }
