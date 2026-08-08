@@ -267,11 +267,17 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
   }
   const openSeats = seats.filter(s => s.status === 'available').length
 
+  // Ordered hardest number first. A ticket and an order require a real payment
+  // against a real order row and cannot be forged. A click is a request, and a
+  // request is soft: preview crawlers are now filtered and repeat taps are
+  // de-duplicated per hour, but a user agent is a string the client chooses, so
+  // the click figure is an estimate and the panel says so rather than
+  // presenting it as fact.
   const reachStats = [
-    { label: 'Link views', value: summary.totals.views },
-    { label: 'Link clicks', value: summary.totals.clicks },
-    { label: 'Orders from links', value: summary.totals.conversions },
-    { label: 'Tickets from links', value: summary.totals.tickets },
+    { label: 'Tickets sold from links', value: summary.totals.tickets, hard: true },
+    { label: 'Orders from links', value: summary.totals.conversions, hard: true },
+    { label: 'Link clicks', value: summary.totals.clicks, hard: false },
+    { label: 'Link views', value: summary.totals.views, hard: false },
   ]
   const topChannels = [...summary.byChannel]
     .sort((a, b) => b.clicks + b.views - (a.clicks + a.views))
@@ -597,12 +603,19 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
           <div className="grid grid-cols-1 gap-px bg-ink-100 sm:grid-cols-4">
             {reachStats.map(stat => (
               <div key={stat.label} className="bg-white px-6 py-5">
-                <p className="font-display text-3xl font-extrabold leading-none tracking-tight text-[var(--brand-accent-strong)]">
+                <p
+                  className={`font-display text-3xl font-extrabold leading-none tracking-tight ${
+                    stat.hard ? 'text-[var(--brand-accent-strong)]' : 'text-ink-900'
+                  }`}
+                >
                   {stat.value}
                 </p>
                 <p className="mt-1 font-display text-xs font-bold uppercase tracking-[0.14em] text-ink-900">
                   {stat.label}
                 </p>
+                {!stat.hard && (
+                  <p className="mt-1 text-[11px] leading-snug text-ink-500">Close estimate</p>
+                )}
               </div>
             ))}
           </div>
@@ -610,7 +623,7 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
             {topChannels.length === 0 ? (
               <p className="text-sm text-ink-600">
                 {shareOn
-                  ? 'Numbers land here the moment your first shared link is opened. Only measured platform activity is counted, never estimates.'
+                  ? 'Numbers land here the moment your first shared link is opened. Tickets and orders come straight from real payments. Clicks and views are close estimates: link previews from Facebook, WhatsApp and the rest are filtered out and repeat taps are counted once an hour, but nothing can make a request count perfectly.'
                   : 'Share tooling is off, so tracked reach is paused. Your event page and sales are unaffected.'}
               </p>
             ) : (

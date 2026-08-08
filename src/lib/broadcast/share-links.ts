@@ -31,6 +31,7 @@ export {
 } from '@/lib/broadcast/share-codes'
 export type { ShareChannel } from '@/lib/broadcast/share-codes'
 
+import { CLICK_DEDUPE_WINDOW_SECONDS } from '@/lib/broadcast/crawler'
 import {
   SHARE_CODE_LENGTH as CODE_LENGTH,
   isValidShareCode as isValidCode,
@@ -171,6 +172,25 @@ export async function recordShareLinkEvent(
       .limit(1)
       .maybeSingle()
     if (dupe) return true
+  }
+
+  // Clicks de-duplicate on a shorter window than views. One person tapping the
+  // same link twice inside an hour, or one phone re-scanning the same poster,
+  // is one interested person. Views were already de-duplicated per day; clicks
+  // were not de-duplicated at all, which is half of why the click number ran
+  // so far ahead of the view number.
+  if (input.kind === 'click' && input.visitorHash) {
+    const since = new Date(Date.now() - CLICK_DEDUPE_WINDOW_SECONDS * 1000)
+    const { data: recent } = await client
+      .from('share_link_events')
+      .select('id')
+      .eq('link_id', input.linkId)
+      .eq('kind', 'click')
+      .eq('visitor_hash', input.visitorHash)
+      .gte('occurred_at', since.toISOString())
+      .limit(1)
+      .maybeSingle()
+    if (recent) return true
   }
 
   const { error } = await client.from('share_link_events').insert({

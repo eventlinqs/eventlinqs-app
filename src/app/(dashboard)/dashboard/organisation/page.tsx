@@ -1,3 +1,4 @@
+import { canonicalHost } from '@/lib/site-url'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
@@ -53,7 +54,7 @@ export default async function OrganisationPage() {
       <div className="mb-8 flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-ink-900">{org.name}</h1>
-          <p className="mt-1 text-sm text-ink-400">eventlinqs.com/{org.slug}</p>
+          <p className="mt-1 text-sm text-ink-400">{canonicalHost()}/{org.slug}</p>
         </div>
         <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium capitalize ${statusColour[org.status] ?? 'bg-ink-100 text-ink-400'}`}>
           {org.status}

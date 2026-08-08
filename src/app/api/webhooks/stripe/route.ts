@@ -15,6 +15,7 @@ import { trackTicketPurchaseCompleteServer } from '@/lib/analytics/plausible'
 import { handleConnectAccountUpdated } from '@/lib/stripe/connect-handlers'
 import { recordOrderConfirmedLedger } from '@/lib/payments/connect-ledger'
 import { voidPayoutById, getStripeClient } from '@/lib/payments/payout'
+import { getAppUrl } from '@/lib/site-url'
 import { reverseOrganiserTransferForRefund } from '@/lib/payments/event-transfer'
 import { getDefaultTransferGateway } from '@/lib/payments/gateway-factory'
 import {
@@ -484,7 +485,15 @@ async function handlePaymentSucceeded(
       ) as { item_name: string; quantity: number }[]
       const primaryTicket = ticketItems[0]
       const totalQty = ticketItems.reduce((sum, i) => sum + (i.quantity ?? 0), 0)
-      const origin = process.env.NEXT_PUBLIC_APP_URL ?? 'https://eventlinqs.com'
+      // PAYMENT PATH, READ THIS BEFORE CHANGING IT. `origin` is used on the
+      // next line and nowhere else in this file: it builds the page URL handed
+      // to the Plausible purchase event. No order, ticket, payment, payout or
+      // refund decision reads it. The line previously carried its own fallback
+      // with `??`, which meant an EMPTY NEXT_PUBLIC_APP_URL won and the
+      // analytics URL became "/orders/...", and the fallback host was the wrong
+      // domain besides. getAppUrl() is the single definition, uses `||` so an
+      // empty value falls through, and resolves to the canonical host.
+      const origin = getAppUrl()
       trackTicketPurchaseCompleteServer(
         `${origin}/orders/${orderForAnalytics.order_number}/confirmation`,
         {

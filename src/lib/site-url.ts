@@ -56,6 +56,24 @@ export function getSiteUrl(): string {
 }
 
 /**
+ * The canonical host with no scheme, for the places that DISPLAY an address
+ * rather than link to one: the slug hint under an organisation name, the
+ * "your page lives here" line on an event, and the footer line printed onto a
+ * share card.
+ *
+ * Every one of those was a hardcoded literal, and every one of them was wrong:
+ * they read eventlinqs.com, and the canonical host has been
+ * www.eventlinqs.com.au since the founder ruling of 25 July 2026. A wrong host
+ * drawn onto a share card is a wrong host in front of a stranger.
+ *
+ * Safe in a client component: with no server environment to read, the resolver
+ * falls through to the production constant, which is the canonical host.
+ */
+export function canonicalHost(): string {
+  return getSiteUrl().replace(/^https?:\/\//, '')
+}
+
+/**
  * Absolute application origin for server-side redirect + link construction
  * (Stripe Connect onboarding return/refresh, payout emails, share links).
  *
