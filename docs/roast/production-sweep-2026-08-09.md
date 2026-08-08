@@ -18,6 +18,13 @@ there was no local TypeScript for it to use. That green was withdrawn rather
 than reported. This is the D7 pattern exactly, caught on the instrument rather
 than the code, and it is why the checklist in D7 exists.
 
+**A second false green, from the same family, one hour later.** `npm ci` was run
+as `npm ci ... 2>&1 | tail -15`. It FAILED with `ECONNRESET` and the harness
+reported **exit code 0**, because a pipe reports the exit code of the LAST
+command, which was `tail`. Every `npm`/`tsc`/`vitest` invocation in this session
+now writes to a file and echoes `$?` directly. Two instruments lied inside one
+hour, neither about the code, both about whether a check had run at all.
+
 Second-order finding: junctioning the worktree at the main repo's `node_modules`
 gets vitest and tsc running, but that store is missing four packages this branch
 needs (`@anthropic-ai/sdk`, `@googlemaps/js-api-loader`,
@@ -193,6 +200,77 @@ to the standard of this brief.
 
 ---
 
-## B to E: NOT STARTED
+## B. THE FOUR RATCHETED TIMEZONE SITES. LIST CLEARED.
 
-See the task list. Nothing below A has been begun.
+`KNOWN_UNFIXED` is now empty. Each needed `events.timezone` threaded through a
+different chain, and each chain had a different missing link.
+
+| Site | What was wrong | The chain that now carries the zone |
+|---|---|---|
+| `ticket-selector.tsx` (done first) | "Sale opens" formatted with `toLocaleString` and no zone | `events/[slug]/page.tsx` -> `TicketPanelClient` -> `TicketSelector` (new `eventTimezone` prop) |
+| `trending-events-bento.tsx` | `formatDateBadge` bare `toLocaleDateString` | `EVENT_SELECT` (timezone added to the column list) -> `RawRow` -> `toBentoEvent` -> `BentoEvent` |
+| `surprise-me-modal.tsx` | `s.startDate` bare | `/api/home/surprise` select -> `Suggestion` payload -> modal (and `InitialSuggestion` on the button) |
+| `artists/[slug]/page.tsx` | `credit.startDate` bare | `fetchArtistCredits` select -> `ArtistCredit` |
+
+Two of those queries were explicit column lists that did not select `timezone`
+at all (`EVENT_SELECT`, `fetchArtistCredits`), so the prop could not have been
+threaded without touching the query. `/api/home/surprise` was a third.
+
+Formatting goes through `src/lib/dates/event-time.ts`, the module that already
+owns this. Two helpers were added to it rather than re-rolling options inline:
+`formatEventDateTimeCompact` (the ticket picker's medium/short pairing, kept to
+the character so the fix changes no layout) and `formatEventMonthYear` (the
+artist credit).
+
+Why the ticket picker was first, and it was the right call: the "Sale opens"
+line is the only one of the four where a wrong time costs a sale directly. A
+sale opening at 6pm Perth read as 8pm to a buyer in Sydney, so they came back
+after it had started.
+
+### The two guard holes: CONFIRMED CLOSED, and a THIRD one found
+
+Not taken on the comments' word. Three drill files were planted under `src`, the
+guard was run, and it caught all three; they were then deleted and the guard went
+green again.
+
+1. **The `use client` hole: CLOSED.** The guard no longer skips a file for the
+   directive. Only `useHydrated` exempts, which is the deliberate pattern.
+   Drilled with a `'use client'` file carrying a bare `toLocaleDateString`:
+   caught.
+2. **The `toLocaleString`-only hole: CLOSED.** `TO_LOCALE` now matches
+   `new Intl.DateTimeFormat(` as well. Drilled: caught.
+3. **NEW, THE THIRD HOLE: the walk collected only `.tsx`.** 345 of the 788
+   TypeScript files under `src` were never scanned, and the guard reported clean
+   over all of them. So the answer to "does the guard now walk all of src" was
+   NO until this pass. Now `/\.tsx?$/`. Drilled with a `.ts` file: caught.
+
+**What the third hole was actually hiding: two files, not the alarm I first
+raised.** Extending the walk surfaced `src/components/payouts/format.ts` (two
+formatters) and `src/lib/payouts/email.ts` (one). Payout dates are not an
+event's, so per the module's own rule they now take `PLATFORM_TIME_ZONE`. The
+harm was real: "when do I get paid" rendered in UTC on the server and in the
+organiser's zone in the browser, so it both mismatched on hydration and could
+read as the wrong day; the emailed version was simply UTC and could be a day off.
+
+**A correction to my own earlier claim in this document.** While probing the
+third hole I reported that the order confirmation email, the city digest, the
+poster route and the attendee export all formatted an event date with no
+`timeZone`. That was WRONG, and it was my own false positive: I grepped
+line-by-line and excluded lines containing `timeZone`, but these are multi-line
+option objects whose `timeZone` sits several lines below the call. All four
+pass one correctly. The instrument was mine and it lied in exactly the way D7
+describes, which is why it is written down here rather than quietly dropped.
+
+**Verification.** Guard green with the empty ratchet and `.ts` scanning. Full
+unit suite green: **136 files, 1479 tests, exit 0**, with the exit code captured
+directly rather than through a pipe (see the npm footgun below). `tsc --noEmit`
+exit 0, zero errors.
+
+**NOT DONE on B: the browser walk.** Proven by guard, type system and unit
+suite. Not yet walked at 390 and 1440 with screenshots.
+
+---
+
+## C, D, E: NOT STARTED
+
+See the task list.

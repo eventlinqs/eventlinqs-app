@@ -964,6 +964,7 @@ export default async function EventDetailPage({ params }: Props) {
                         <TicketPanelClient
                           eventId={event.id}
                           eventCreatedAt={event.created_at}
+                          eventTimezone={event.timezone ?? null}
                           allTiers={gaTiersAlongsideSeats}
                           addons={event.event_addons ?? []}
                           isTicketingSuspended={isTicketingSuspended}
@@ -1001,6 +1002,7 @@ export default async function EventDetailPage({ params }: Props) {
                       <TicketPanelClient
                         eventId={event.id}
                         eventCreatedAt={event.created_at}
+                        eventTimezone={event.timezone ?? null}
                         allTiers={enrichedAllTiers}
                         addons={event.event_addons ?? []}
                         isTicketingSuspended={isTicketingSuspended}

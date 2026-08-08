@@ -93,7 +93,15 @@ function walk(dir: string, out: string[] = []): string[] {
   for (const e of entries) {
     const full = path.join(dir, e)
     if (statSync(full).isDirectory()) walk(full, out)
-    else if (/\.tsx$/.test(e)) out.push(full)
+    // .ts AND .tsx. THE THIRD HOLE, found 2026-08-09. This walked only .tsx,
+    // so 345 of the 788 TypeScript files under src were never scanned at all,
+    // and the guard reported clean over them. That is not a narrower scope, it
+    // is a blind spot: the unscanned half included the ORDER CONFIRMATION
+    // email, the city digest email, the poster route and the attendee export,
+    // each formatting an event's start_date with no timeZone. Those render on
+    // the Vercel server in UTC, so a 9pm Perth event is emailed to the buyer
+    // as the next day. No hydration mismatch there, and the same wrong answer.
+    else if (/\.tsx?$/.test(e)) out.push(full)
   }
   return out
 }
@@ -114,23 +122,16 @@ const files = SCAN_DIRS.flatMap((d) => walk(path.join(ROOT, d)))
  * in a different state shows the WRONG DAY. A Perth event at 9pm reads as the
  * next day to a reader in Sydney.
  */
-const KNOWN_UNFIXED = new Map([
-  [
-    'src/components/features/home/trending-events-bento.tsx',
-    'homepage trending rail: event.start_date, needs timezone on the bento prop and the home query',
-  ],
-  [
-    'src/components/features/home/surprise-me-modal.tsx',
-    'surprise-me result: s.startDate, needs timezone on the suggestion payload',
-  ],
-  [
-    'src/app/artists/[slug]/page.tsx',
-    'artist credit dates: credit.startDate, needs timezone on the credits query',
-  ],
-  [
-    'src/components/checkout/ticket-selector.tsx',
-    'the "Sale opens" line on the ticket picker: tier.sale_start, needs the event timezone passed into the selector',
-  ],
+const KNOWN_UNFIXED = new Map<string, string>([
+  // EMPTY, and it stays empty. All four entries were cleared on 2026-08-09 by
+  // threading events.timezone through the prop chain each one needed:
+  //   ticket-selector      page -> TicketPanelClient -> TicketSelector
+  //   trending-events-bento  EVENT_SELECT -> RawRow -> toBentoEvent -> BentoEvent
+  //   surprise-me-modal      /api/home/surprise select -> Suggestion payload
+  //   artists/[slug]         fetchArtistCredits select -> ArtistCredit
+  // A new entry here is a debt, not a licence: it must carry what a user
+  // experiences until it is fixed, and the staleness test below fails the
+  // moment an entry is already fixed or deleted.
 ])
 
 describe('server-rendered dashboard components do not read a clock', () => {

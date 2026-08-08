@@ -18,6 +18,7 @@ import {
   type FeeRates,
   type FeePassType,
 } from '@/lib/payments/fee-math'
+import { formatEventDateTimeCompact } from '@/lib/dates/event-time'
 
 type TierWithDisplayPrice = TicketTier & { display_price_cents?: number }
 
@@ -27,6 +28,10 @@ interface TicketSelectorProps {
   addons: EventAddon[]
   isTicketingSuspended: boolean
   currency: string
+  // The EVENT's own zone for the "Sale opens" line. Optional only so the two
+  // existing call sites in ticket-panel-client stay the only ones that must
+  // supply it; resolveZone falls back to the platform zone, never the runtime's.
+  eventTimezone?: string | null
   waitlistEnabled?: boolean
   squadBookingEnabled?: boolean
   // Paid event whose organiser has not finished Stripe setup: render the
@@ -48,7 +53,7 @@ function formatPrice(priceCents: number, currency: string) {
   return `${currency.toUpperCase()} ${(priceCents / 100).toFixed(2)}`
 }
 
-export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, currency, waitlistEnabled = false, squadBookingEnabled = false, saleBlocked = false, feeRates, feePassType = 'pass_to_buyer' }: TicketSelectorProps) {
+export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, currency, eventTimezone = null, waitlistEnabled = false, squadBookingEnabled = false, saleBlocked = false, feeRates, feePassType = 'pass_to_buyer' }: TicketSelectorProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -254,7 +259,7 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
                     )}
                     {salePending && tier.sale_start && (
                       <p className="mt-1 text-xs font-medium text-gold-600">
-                        Sale opens {new Date(tier.sale_start).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' })}
+                        Sale opens {formatEventDateTimeCompact(tier.sale_start, eventTimezone)}
                       </p>
                     )}
                     {!soldOut && !salePending && available <= 20 && (
