@@ -125,9 +125,14 @@ export async function GET(
         ? `attachment; filename="${filename}"`
         : 'inline',
       'Content-Length': String(bytes.byteLength),
-      // A draft is somebody's unpublished event, often at a private address.
-      // It is never cached by a shared cache and never indexed.
-      'Cache-Control': 'private, no-store',
+      // A draft is somebody's unpublished event, often at a private address,
+      // so this is never held by a SHARED cache and never indexed. The
+      // visitor's OWN browser may hold it briefly, which matters: without it
+      // every scroll past the reveal re-rendered four artefacts and burned
+      // four rate-limit tokens, which is how the live walk tripped its own
+      // limit. Ten minutes is long enough to make re-viewing free and short
+      // enough that an edited draft corrects itself without a cache key.
+      'Cache-Control': 'private, max-age=600',
       'X-Robots-Tag': 'noindex, nofollow, noimageindex',
     },
   })

@@ -46,6 +46,49 @@ function DownloadControl({ href, label, canDownload }: { href: string; label: st
   )
 }
 
+/**
+ * One card image, with the failure the live walk actually produced designed
+ * for rather than left to the browser.
+ *
+ * When a render is refused (a rate limit) or fails, an <img> shows the
+ * browser's broken-image glyph, which reads as "this product is broken" at the
+ * single moment the product is trying to impress somebody. The policy comment
+ * claimed a failed render "degrades to the typographic composition, never to a
+ * broken kit"; that was aspiration, not behaviour. This makes it true.
+ */
+function CardImage({ code, format, label }: { code: string; format: string; label: string }) {
+  const [failed, setFailed] = useState(false)
+
+  if (failed) {
+    return (
+      <div className="flex aspect-[4/5] w-full flex-col justify-end rounded-xl border border-ink-200 bg-[#0A1628] p-5">
+        <p
+          className="type-micro font-display uppercase tracking-[0.18em] text-[var(--brand-accent)]"
+          style={{ fontWeight: 600 }}
+        >
+          {label}
+        </p>
+        <p className="mt-2 text-sm text-white/80">
+          This one is still rendering. Refresh in a moment and it will be here.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    // Deliberately a plain img, not next/image: this is a private, per-draft
+    // render that must never enter the shared image optimiser cache.
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={`/api/launch/${code}/card/${format}`}
+      alt={`Your ${label.toLowerCase()} card`}
+      loading="lazy"
+      onError={() => setFailed(true)}
+      className="w-full rounded-xl border border-ink-200 bg-ink-50"
+    />
+  )
+}
+
 export function KitArtefacts({ code, canDownload = false }: { code: string | null; canDownload?: boolean }) {
   if (!code) {
     return (
@@ -74,16 +117,7 @@ export function KitArtefacts({ code, canDownload = false }: { code: string | nul
           <div className="mt-5 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {CARDS.map(card => (
               <figure key={card.format} className="min-w-0">
-                {/* Deliberately a plain img, not next/image: this is a
-                    private, no-store, per-draft render that must never enter
-                    the shared image optimiser cache. */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={`/api/launch/${code}/card/${card.format}`}
-                  alt={`Your ${card.label.toLowerCase()} card`}
-                  loading="lazy"
-                  className="w-full rounded-xl border border-ink-200 bg-ink-50"
-                />
+                <CardImage code={code} format={card.format} label={card.label} />
                 <figcaption className="mt-3 flex flex-wrap items-center justify-between gap-2">
                   <span className="text-sm font-medium text-ink-900">{card.label}</span>
                   <span className="text-xs text-ink-500">{card.note}</span>

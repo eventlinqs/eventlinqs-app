@@ -111,7 +111,9 @@ export async function GET(
         ? `attachment; filename="${filename}"`
         : 'inline',
       'Content-Length': String(pdf.byteLength),
-      'Cache-Control': 'private, no-store',
+      // Private, never shared-cached, but the visitor's own browser may hold
+      // it for ten minutes. See the card route for why that matters.
+      'Cache-Control': 'private, max-age=600',
       'X-Robots-Tag': 'noindex, nofollow, noimageindex',
     },
   })

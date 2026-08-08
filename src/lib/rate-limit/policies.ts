@@ -243,10 +243,10 @@ export const POLICIES: Record<PolicyName, Policy> = {
   },
   'launch-artefact': {
     keyPrefix: 'lnch-a',
-    limit: 60,
+    limit: 400,
     windowSec: 3600,
     rationale:
-      'Anonymous artefact renders (cards and posters) per IP per hour. A full kit is one poster plus three cards, and an organiser legitimately re-renders after each edit, so sixty covers about a dozen honest passes. This is CPU and sharp memory, not model spend. Fail-open: a missing render degrades to the typographic composition, never to a broken kit.',
+      'Anonymous artefact renders (cards and posters) per IP per hour. RAISED FROM 60 on 9 Aug 2026 after the live walk tripped it: the old number was set by counting kits rather than REQUESTS, and one kit view costs four renders (three cards plus the poster), so sixty was only fifteen views an hour. A promoter showing their kit around, an office, or a carrier NAT range hits that in minutes, and Phase 0 named CGNAT as the specific reason a tight per-IP cap breaks real organisers before it troubles an abuser. Four hundred is a hundred kit views an hour, which no honest person reaches and which still bounds a scripted flood. Renders are also browser-cacheable now, so a re-view usually costs zero. This is CPU and sharp memory, never model spend.',
   },
   'launch-email': {
     keyPrefix: 'lnch-e',
