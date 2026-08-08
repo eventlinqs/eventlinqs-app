@@ -90,6 +90,11 @@ page.on('pageerror', (e) => pageErrors.push(String(e.message).slice(0, 200)))
 
 await step('sign in as an organiser', async (rec) => {
   await page.goto(`${BASE}/login`, { waitUntil: 'domcontentloaded', timeout: 60000 })
+  // Wait for the submit control to be enabled. It is gated on hydration now,
+  // so this is the same wait a person's finger performs without noticing, and
+  // it is the difference between the handler running and a native GET putting
+  // the password in the URL.
+  await page.locator('button[type="submit"]:not([disabled])').first().waitFor({ timeout: 30000 })
   await page.locator('input[type="email"]').first().fill(EMAIL)
   await page.locator('input[type="password"]').first().fill(PASSWORD)
   await page.locator('button[type="submit"]').first().click()
