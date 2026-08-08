@@ -1,10 +1,14 @@
 'use client'
 
 import { useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { authMessage, RECOVERY_GENERIC_RESPONSE } from '@/lib/auth/auth-errors'
 
 export function ForgotPasswordForm() {
-  const [email, setEmail] = useState('')
+  const searchParams = useSearchParams()
+  // Prefilled when the signup form sends someone here, for the same reason the
+  // login form prefills: a recovery link that empties the field is a detour.
+  const [email, setEmail] = useState(searchParams.get('email') ?? '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [sent, setSent] = useState(false)

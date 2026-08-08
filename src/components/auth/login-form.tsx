@@ -33,7 +33,10 @@ export function LoginForm({ googleEnabled }: Props) {
   const resetFlag = searchParams.get('reset') === 'success'
   const callbackError = searchParams.get('error')
 
-  const [email, setEmail] = useState('')
+  // Carried across from the signup form when someone is told their address
+  // already has an account. Sending them to a blank field to retype what they
+  // just typed is where a recovery link stops being a route out.
+  const [email, setEmail] = useState(searchParams.get('email') ?? '')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(

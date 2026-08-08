@@ -12,7 +12,13 @@ import {
 import { recordPlatformDigestConsent } from '@/lib/consent/record'
 import { KIT_DRAFT_COOKIE, isKitDraftToken } from '@/lib/growth/kit-draft'
 import { trackEmailCapturedAfterRenderServer } from '@/lib/analytics/plausible'
-import { authMessage } from '@/lib/auth/auth-errors'
+import {
+  authMessage,
+  classifySignupError,
+  rateLimitedMessage,
+  signupFieldFor,
+  type AuthFailureClass,
+} from '@/lib/auth/auth-errors'
 import { safeAuthOrigin } from '@/lib/auth/safe-origin'
 
 export const dynamic = 'force-dynamic'
@@ -40,6 +46,46 @@ const BodySchema = z.object({
   digestOptIn: z.boolean().optional(),
 })
 
+/**
+ * THE FAILURE CONTRACT. Every non-200 this endpoint returns has this shape, and
+ * the form renders from it rather than inventing copy of its own.
+ *
+ *   failure            the class, so the form can choose its recovery links
+ *   error              the sentence, straight from the copy deck
+ *   field              which input to attach it to, or null for the form alert
+ *   retryAfterSeconds  present only on a rate limit
+ *
+ * `error` keeps its name because the form and scripts/verify/auth-journey-e2e.mjs
+ * already read that key. `failure` is the addition: before it, the form could
+ * only ever print a string, which is why a 429 from the shared rate limiter put
+ * the literal token "rate_limited" in front of the user (the limiter answers
+ * `{ error: 'rate_limited', message: '...' }`, and the form printed `error`).
+ */
+type SignupFailureBody = {
+  ok: false
+  failure: AuthFailureClass
+  error: string
+  field: 'fullName' | 'email' | 'password' | null
+  retryAfterSeconds?: number
+}
+
+function fail(
+  failure: AuthFailureClass,
+  status: number,
+  extra?: { message?: string; retryAfterSeconds?: number; headers?: HeadersInit },
+): NextResponse<SignupFailureBody> {
+  const body: SignupFailureBody = {
+    ok: false,
+    failure,
+    error: extra?.message ?? authMessage(failure),
+    field: signupFieldFor(failure),
+  }
+  if (typeof extra?.retryAfterSeconds === 'number') {
+    body.retryAfterSeconds = extra.retryAfterSeconds
+  }
+  return NextResponse.json(body, { status, headers: extra?.headers })
+}
+
 /** Build the attribution record to persist, or null for an organic signup. */
 function capturedFromBody(body: z.infer<typeof BodySchema>): CapturedAttribution | null {
   const referredBy = decodeRefCode(body.ref ?? null)
@@ -57,18 +103,39 @@ function capturedFromBody(body: z.infer<typeof BodySchema>): CapturedAttribution
 // other endpoints that mint emailed links: src/lib/auth/safe-origin.ts.
 
 export async function POST(request: NextRequest) {
+  // The shared limiter answers in its own machine-token shape, which this
+  // endpoint must not pass through to a person. Re-emit it in the contract
+  // above, carrying the real wait from Retry-After instead of "a few minutes".
   const limited = await applyRateLimit('auth-signup', request)
-  if (limited) return limited
+  if (limited) {
+    const retryAfter = Number(limited.headers.get('Retry-After'))
+    const seconds = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : undefined
+    return fail('rate_limited', 429, {
+      message: rateLimitedMessage(seconds),
+      retryAfterSeconds: seconds,
+      headers: limited.headers,
+    })
+  }
 
+  // Field-level validation. "Please check your details and try again" told a
+  // person that one of four inputs was wrong without saying which; each branch
+  // now names its own input so the form can mark it.
   let body: z.infer<typeof BodySchema>
   try {
     const raw = await request.json()
-    body = BodySchema.parse(raw)
+    const parsed = BodySchema.safeParse(raw)
+    if (!parsed.success) {
+      const paths = new Set(parsed.error.issues.map((issue) => String(issue.path[0] ?? '')))
+      if (paths.has('email')) return fail('invalid_email', 400)
+      if (paths.has('password')) return fail('weak_password', 400)
+      if (paths.has('fullName')) return fail('missing_name', 400)
+      return fail('signup_rejected', 400)
+    }
+    body = parsed.data
   } catch {
-    return NextResponse.json(
-      { ok: false, error: 'Please check your details and try again.' },
-      { status: 400 },
-    )
+    // The body was not JSON at all. Not a field problem, and not something a
+    // person typing into the form can cause.
+    return fail('signup_rejected', 400)
   }
 
   const origin = safeAuthOrigin(request)
@@ -77,49 +144,81 @@ export async function POST(request: NextRequest) {
       ? `${origin}/auth/callback?role=organiser`
       : `${origin}/auth/callback`
 
-  const admin = createAdminClient()
+  // createClient throws when the service-role key is missing or blank. Uncaught,
+  // that became a Next 500 whose HTML body the form could not parse, so it fell
+  // back to the generic sentence: a deployment misconfiguration reading to the
+  // user as an unexplained failure. It is ours, and it now says so.
+  let admin: ReturnType<typeof createAdminClient>
+  try {
+    admin = createAdminClient()
+  } catch (configErr) {
+    console.error('[auth/signup] admin client unavailable', {
+      reason: configErr instanceof Error ? configErr.message : String(configErr),
+      at: new Date().toISOString(),
+    })
+    return fail('service_unavailable', 503)
+  }
 
   // generateLink with type 'signup' creates the user (email_confirmed=false)
   // and returns the action_link. We send that link via Resend rather than
-  // letting Supabase send via its configured SMTP. If the email is already
-  // registered, Supabase returns an error which we surface as a friendly
-  // "account exists" message - no email enumeration concern beyond what
-  // Supabase Auth's own UX already exposes via the public sign-up endpoint.
-  const { data, error } = await admin.auth.admin.generateLink({
-    type: 'signup',
-    email: body.email,
-    password: body.password,
-    options: {
-      data: { full_name: body.fullName, intended_role: body.role },
-      redirectTo,
-    },
-  })
+  // letting Supabase send via its configured SMTP.
+  //
+  // An address that already has an UNCONFIRMED account does not fail here:
+  // GoTrue re-mints a fresh link for the same user, which is what lets someone
+  // who never received the first email simply sign up again. Only a CONFIRMED
+  // account produces email_exists. Verified against the live TEST project.
+  let data: Awaited<ReturnType<typeof admin.auth.admin.generateLink>>['data'] | null = null
+  let error: { code?: string; status?: number; message?: string } | null = null
+  try {
+    const result = await admin.auth.admin.generateLink({
+      type: 'signup',
+      email: body.email,
+      password: body.password,
+      options: {
+        data: { full_name: body.fullName, intended_role: body.role },
+        redirectTo,
+      },
+    })
+    data = result.data
+    error = result.error
+  } catch (thrown) {
+    // supabase-js normally returns transport failures as `error`, but a throw
+    // here would otherwise become a Next 500 with an HTML body, which the form
+    // cannot parse and which therefore rendered as the generic sentence.
+    error = { message: thrown instanceof Error ? thrown.message : String(thrown) }
+  }
 
   if (error) {
-    const message = error.message ?? 'Could not create account.'
-    const lower = message.toLowerCase()
-    if (
-      lower.includes('already registered') ||
-      lower.includes('already exists') ||
-      lower.includes('user already')
-    ) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error:
-            'An account with that email already exists. Sign in or use forgot password.',
-        },
-        { status: 409 },
-      )
-    }
-    // Never return the provider's own string. It varies by GoTrue version,
-    // leaks implementation detail, and is the class of raw error this
-    // hardening pass exists to remove from every surface.
-    console.error('[auth/signup] generateLink failed', { reason: message })
-    return NextResponse.json(
-      { ok: false, error: authMessage('unknown') },
-      { status: 400 },
-    )
+    // KEYED ON code AND status, NEVER ON error.message. The substring test that
+    // stood here classified GoTrue's "A user with this email address has already
+    // been registered" as unrecognised, so the already-registered branch below
+    // was unreachable and every existing-account signup got the generic
+    // sentence. See classifySignupError for the full account.
+    const failure = classifySignupError({
+      code: error.code,
+      status: error.status,
+      message: error.message,
+    })
+    // Enough detail to diagnose stays server-side; the provider's own string
+    // never reaches the browser.
+    console.error('[auth/signup] generateLink failed', {
+      failure,
+      code: error.code ?? null,
+      status: error.status ?? null,
+      reason: error.message ?? 'no message',
+      at: new Date().toISOString(),
+    })
+    const status =
+      failure === 'email_exists'
+        ? 409
+        : failure === 'rate_limited'
+          ? 429
+          : failure === 'service_unavailable'
+            ? 503
+            : failure === 'mail_transport_failed'
+              ? 502
+              : 400
+    return fail(failure, status)
   }
 
   // Email a link to OUR /auth/confirm route built from the hashed token, never
@@ -137,10 +236,13 @@ export async function POST(request: NextRequest) {
     if (data?.user?.id) {
       await admin.auth.admin.deleteUser(data.user.id).catch(() => {})
     }
-    return NextResponse.json(
-      { ok: false, error: 'Could not generate confirmation link. Please try again.' },
-      { status: 500 },
-    )
+    console.error('[auth/signup] generateLink returned no hashed_token', {
+      at: new Date().toISOString(),
+    })
+    // Ours, and nothing about the details typed. Same sentence as any other
+    // failure of our account service, because to the person it is the same
+    // thing: try again shortly, nothing to change.
+    return fail('service_unavailable', 503)
   }
 
   const confirmationUrl =
@@ -166,10 +268,7 @@ export async function POST(request: NextRequest) {
       reason: message,
       at: new Date().toISOString(),
     })
-    return NextResponse.json(
-      { ok: false, error: authMessage('mail_transport_failed') },
-      { status: 502 },
-    )
+    return fail('mail_transport_failed', 502)
   }
 
   // Persist first-touch attribution onto the new profile (best-effort). The
