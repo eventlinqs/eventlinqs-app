@@ -301,10 +301,13 @@ export function EventMediaStep({ eventId, images, onImagesChange, video, onVideo
 
         <input
           ref={fileInputRef}
+          id="event-media-files"
+          name="event_media_files"
           type="file"
           accept={IMAGE_ACCEPT_ATTR}
           multiple
           className="hidden"
+          aria-label="Add event images"
           onChange={(e) => onPick(e.target.files)}
         />
 
@@ -313,26 +316,37 @@ export function EventMediaStep({ eventId, images, onImagesChange, video, onVideo
         )}
       </div>
 
-      {/* Video (one per event, embed by allowlisted provider link) */}
+      {/* Video (one per event, embed by allowlisted provider link).
+          The label carries htmlFor and the input carries a matching id and a
+          name. It had none of the three: the label sat beside the input rather
+          than owning it, so the field was programmatically unlabelled and a
+          screen reader announced an anonymous text box, while the browser had
+          nothing to key autofill or a restored session on. */}
       <div>
-        <label className="mb-1 block text-sm font-medium text-ink-600">
+        <label htmlFor="event-video-url" className="mb-1 block text-sm font-medium text-ink-600">
           Event video
           <span className="ml-2 text-xs text-ink-400">Optional. One link from YouTube, Vimeo, Instagram, or TikTok.</span>
         </label>
         <input
+          id="event-video-url"
+          name="video_url"
           type="url"
           value={video}
           onChange={(e) => onVideoChange(e.target.value)}
           placeholder="https://www.youtube.com/watch?v=..."
+          aria-describedby={videoState ? 'event-video-url-state' : undefined}
+          aria-invalid={videoState && !videoState.ok ? true : undefined}
           className="w-full rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
         />
         {videoState && videoState.ok && (
-          <p className="mt-1.5 text-xs text-emerald-700">
+          <p id="event-video-url-state" className="mt-1.5 text-xs text-emerald-700">
             {capitalise(videoState.video.provider)} video linked. It will show below the hero on your event page.
           </p>
         )}
         {videoState && !videoState.ok && (
-          <p className="mt-1.5 text-xs text-red-600">{videoState.error}</p>
+          <p id="event-video-url-state" role="alert" className="mt-1.5 text-xs text-red-600">
+            {videoState.error}
+          </p>
         )}
       </div>
 

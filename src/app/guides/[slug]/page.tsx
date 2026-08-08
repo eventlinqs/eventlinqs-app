@@ -8,6 +8,7 @@ import { GuideBody } from '@/components/guides/guide-body'
 import { GuideCard } from '@/components/guides/guide-card'
 import { buildGuideIndex } from '@/components/guides/guide-index'
 import { GuideShotImage } from '@/components/media'
+import { getSiteUrl } from '@/lib/site-url'
 import { GUIDES, getGuide, getGuideCategory } from '@/lib/guides'
 import { getGuideLiveValues } from '@/lib/guides/live-values'
 
@@ -54,7 +55,7 @@ export default async function GuidePage({ params }: Props) {
     dateModified: guide.updated,
     author: { '@type': 'Organization', name: 'EventLinqs' },
     publisher: { '@type': 'Organization', name: 'EventLinqs' },
-    mainEntityOfPage: `https://eventlinqs.com/guides/${guide.slug}`,
+    mainEntityOfPage: `${getSiteUrl()}/guides/${guide.slug}`,
   }
 
   const updatedLabel = new Date(guide.updated).toLocaleDateString('en-AU', {

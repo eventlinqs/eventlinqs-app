@@ -20,6 +20,9 @@ export { GuideShotImage } from './GuideShotImage'
 
 export { CityTileImage } from './CityTileImage'
 
+export { OrganiserLogoMark } from './OrganiserLogoMark'
+export type { OrganiserLogoMarkProps } from './OrganiserLogoMark'
+
 export { OrganiserAvatar } from './OrganiserAvatar'
 export type { OrganiserAvatarSize } from './OrganiserAvatar'
 

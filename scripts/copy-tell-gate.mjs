@@ -41,6 +41,18 @@ const ALLOWLIST = [
     reason: 'legacy licensed-photo library key arts-culture (renaming breaks the image spine)',
   },
   {
+    file: 'src/lib/broadcast/short-links.ts',
+    patterns: ['banned-word-community-law'],
+    reason:
+      'the RESERVED list has to hold back the two legacy paths that permanently 301 to the community routes. Not reserving them would let a share code be minted that shadows a live redirect, which is a broken link for a real person. The strings are route names being blocked, not copy',
+  },
+  {
+    file: 'src/lib/broadcast/captions.ts',
+    patterns: ['banned-word-community-law'],
+    reason:
+      'the live event_categories row still carries the slug arts-culture, so the caption register map has to match the string the database actually stores. The renaming of that row is a data migration (the Phase 2 taxonomy work), not a copy change, and inventing a different slug here would silently mis-register every arts event',
+  },
+  {
     file: 'src/lib/communities/intersection-editorial.ts',
     patterns: ['whether-youre-x-or-y'],
     reason:

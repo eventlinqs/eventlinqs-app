@@ -1,3 +1,4 @@
+import { getSiteUrl } from '@/lib/site-url'
 import type { WaitlistRole } from './city-waitlist'
 
 /**
@@ -23,7 +24,7 @@ export function buildWaitlistConfirmationEmail(input: {
   // Env-driven base: reuse the SAME origin as the (already env-driven)
   // unsubscribe link instead of a hardcoded apex domain, so this email always
   // carries the right domain (and switches to eventlinqs.com.au automatically).
-  let baseUrl = 'https://www.eventlinqs.com'
+  let baseUrl = getSiteUrl()
   try {
     baseUrl = new URL(unsubscribeUrl).origin
   } catch {

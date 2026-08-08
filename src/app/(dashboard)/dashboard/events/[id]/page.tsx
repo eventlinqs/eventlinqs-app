@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { canonicalHost } from '@/lib/site-url'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -381,7 +382,7 @@ export default async function EventViewPage({ params }: Props) {
               Copy the public URL for your audience once you are ready.
             </p>
             <div className="mt-3 rounded-lg border border-ink-100 bg-canvas px-3 py-2 text-xs text-ink-600">
-              <span className="block truncate">eventlinqs.com/events/{event.slug}</span>
+              <span className="block truncate">{canonicalHost()}/events/{event.slug}</span>
             </div>
             {isPublished ? (
               <a

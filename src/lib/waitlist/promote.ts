@@ -1,3 +1,4 @@
+import { getAppUrl } from '@/lib/site-url'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { Resend } from 'resend'
 import { getNoReplyFrom } from '@/lib/email/sender'
@@ -102,7 +103,9 @@ export async function promoteWaitlist(
     if (!buyerEmail) continue
 
     // Empty-safe (`||` not `??`) + canonical www; switches with NEXT_PUBLIC_APP_URL.
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() || 'https://www.eventlinqs.com'
+    // One definition, in site-url.ts. This line used to carry its own fallback
+    // host and that host was wrong: .com, not .com.au.
+    const appUrl = getAppUrl()
     const checkoutUrl = `${appUrl}/events/${eventData.slug}?waitlist_token=${row.id}`
     const expiresAt = new Date(notification.expires_at)
     const expiresFormatted = expiresAt.toLocaleString('en-AU', {

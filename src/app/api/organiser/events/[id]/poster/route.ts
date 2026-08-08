@@ -6,6 +6,8 @@ import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { buildShortUrl, getOrCreateShareLink } from '@/lib/broadcast/share-links'
 import { buildEventPosterPdf } from '@/lib/broadcast/poster'
 import { priceLabel } from '@/lib/events/price-label'
+import { fetchImageBytes } from '@/lib/media/fetch-image'
+import { resolveLogoPlacement } from '@/lib/media/logo-pipeline'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -17,28 +19,30 @@ export const dynamic = 'force-dynamic'
  * scans show up beside every other channel in the reach panel.
  */
 
-/** Convert a fetched cover to pdf-lib-embeddable bytes. webp/avif covers are
- * converted to JPEG through the same sharp used by the upload pipeline. */
-async function embeddableCover(
-  url: string | null,
+/**
+ * Convert stored bytes to something pdf-lib can embed. JPEG and PNG go in
+ * directly; webp and avif convert through the same sharp the upload pipeline
+ * uses. A logo keeps its alpha by converting to PNG rather than JPEG, because
+ * flattening a transparent mark onto white is exactly the defect this work
+ * exists to remove.
+ */
+async function embeddable(
+  bytes: Uint8Array | null,
+  opts: { keepAlpha?: boolean } = {},
 ): Promise<{ bytes: Uint8Array; format: 'jpg' | 'png' } | null> {
-  if (!url) return null
+  if (!bytes || bytes.length < 12) return null
   try {
-    const res = await fetch(url)
-    if (!res.ok) return null
-    const bytes = new Uint8Array(await res.arrayBuffer())
-    if (bytes.length < 12) return null
-
-    // Magic-byte sniff: JPEG and PNG embed directly.
-    if (bytes[0] === 0xff && bytes[1] === 0xd8) return { bytes, format: 'jpg' }
+    if (bytes[0] === 0xff && bytes[1] === 0xd8 && !opts.keepAlpha) return { bytes, format: 'jpg' }
     if (bytes[0] === 0x89 && bytes[1] === 0x50) return { bytes, format: 'png' }
-
-    // Everything else (webp, avif) converts to JPEG via sharp.
     const { default: sharp } = await import('sharp')
+    if (opts.keepAlpha) {
+      const png = await sharp(Buffer.from(bytes)).png().toBuffer()
+      return { bytes: new Uint8Array(png), format: 'png' }
+    }
     const jpeg = await sharp(Buffer.from(bytes)).jpeg({ quality: 85 }).toBuffer()
     return { bytes: new Uint8Array(jpeg), format: 'jpg' }
   } catch {
-    // No embeddable image: the poster renders its branded fallback.
+    // Unreadable: the poster draws its typographic composition instead.
     return null
   }
 }
@@ -60,7 +64,7 @@ export async function GET(
   const admin = createAdminClient()
   const { data: event } = await admin
     .from('events')
-    .select('cover_image_url, venue_name, venue_city, ticket_tiers(price, currency)')
+    .select('cover_image_url, venue_name, venue_city, ticket_tiers(price, currency), organisation:organisations(name, logo_url)')
     .eq('id', id)
     .maybeSingle()
 
@@ -68,6 +72,9 @@ export async function GET(
     eventId: organiserEvent.id,
     channel: 'qr',
     createdBy: organiserEvent.userId,
+    eventSlug: organiserEvent.slug,
+    eventStartDate: organiserEvent.startDate,
+    eventTimezone: organiserEvent.timezone,
   })
   if (!link) {
     return NextResponse.json({ ok: false, error: 'link_mint_failed' }, { status: 500 })
@@ -91,6 +98,25 @@ export async function GET(
   const tiers = (event?.ticket_tiers ?? []) as { price: number; currency: string | null }[]
   const price = priceLabel(tiers, 'Free entry')
 
+  // Both reads are deadlined, so a slow object store degrades the poster to a
+  // designed state rather than hanging the organiser's download.
+  const organisation = (event as { organisation?: { name: string | null; logo_url: string | null } | null } | null)
+    ?.organisation ?? null
+  const [coverFetch, logoFetch] = await Promise.all([
+    fetchImageBytes(event?.cover_image_url ?? null),
+    fetchImageBytes(organisation?.logo_url ?? null),
+  ])
+  const organiserLogo = await embeddable(logoFetch?.bytes ?? null, { keepAlpha: true })
+  let logoPlacement: 'on-navy' | 'on-tile' = 'on-tile'
+  if (logoFetch) {
+    try {
+      logoPlacement = (await resolveLogoPlacement(Buffer.from(logoFetch.bytes))).placement
+    } catch {
+      // A mark we cannot measure gets the tile, which is always readable.
+      logoPlacement = 'on-tile'
+    }
+  }
+
   const pdf = await buildEventPosterPdf({
     title: organiserEvent.title,
     dateLabel,
@@ -98,7 +124,10 @@ export async function GET(
     priceLabel: price ?? 'Free entry',
     shortUrl,
     qrPng: new Uint8Array(qrPng),
-    coverImage: await embeddableCover(event?.cover_image_url ?? null),
+    coverImage: await embeddable(coverFetch?.bytes ?? null),
+    organiserName: organisation?.name ?? organiserEvent.organisationName,
+    organiserLogo,
+    logoPlacement,
   })
 
   // Record the download as a real Launch Kit usage signal for the founder's

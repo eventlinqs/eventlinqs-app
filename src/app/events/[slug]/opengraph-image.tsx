@@ -1,4 +1,5 @@
 import { ImageResponse } from 'next/og'
+import { canonicalHost } from '@/lib/site-url'
 import { createPublicClient } from '@/lib/supabase/public-client'
 
 /**
@@ -198,7 +199,7 @@ export default async function OpengraphImage({ params }: { params: Promise<{ slu
                 fontWeight: 500,
               }}
             >
-              Tickets at eventlinqs.com
+              Tickets at {canonicalHost()}
             </div>
           </div>
         </div>

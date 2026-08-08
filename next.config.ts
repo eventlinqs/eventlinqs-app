@@ -70,6 +70,10 @@ const nextConfig: NextConfig = {
     // file too or a fixture card would 404 on the Preview. No-op when the file
     // is absent (normal/production builds).
     '/events/[slug]': ['./src/lib/dev/home-seed-fixture.json'],
+    // The social cards draw brand type. satori is handed real font buffers
+    // read from disk at render time, so the TTFs have to be traced into the
+    // card lambda or every card would silently fall back to a system face.
+    '/api/organiser/events/[id]/card/[format]': ['./src/assets/fonts/*.ttf'],
   },
   async redirects() {
     // Legacy /categories/[slug] -> the community taxonomy (Batch 5). The legacy

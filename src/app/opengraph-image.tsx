@@ -1,3 +1,4 @@
+import { canonicalHost } from '@/lib/site-url'
 import { ImageResponse } from 'next/og'
 
 export const alt = 'EventLinqs: Every community. Every event. One platform.'
@@ -83,7 +84,7 @@ export default function OpengraphImage() {
           }}
         >
           <span>Transparent pricing. Zero hidden fees.</span>
-          <span>eventlinqs.com</span>
+          <span>{canonicalHost()}</span>
         </div>
       </div>
     ),
