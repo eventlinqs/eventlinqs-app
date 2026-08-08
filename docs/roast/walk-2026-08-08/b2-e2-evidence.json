@@ -1,0 +1,72 @@
+{
+  "base": "https://eventlinqs-app-git-feat-launch-ef8ee0-lawals-projects-c20c0be8.vercel.app",
+  "log": [
+    {
+      "step": "B2 kit at true zero shows the empty state, not four zeros",
+      "verdict": "FAIL",
+      "detail": {
+        "emptyState": false,
+        "bigNumberTiles": []
+      }
+    },
+    {
+      "step": "B2 the empty state teaches which measures are hard",
+      "verdict": "FAIL",
+      "detail": {
+        "measured": false,
+        "estimate": false
+      }
+    },
+    {
+      "step": "B2 the empty state offers a next step",
+      "verdict": "PASS",
+      "detail": [
+        "Full reach panel",
+        "Send it everywhere",
+        "Download your QR poster"
+      ]
+    },
+    {
+      "step": "B2 full reach panel shows one empty state, not two",
+      "verdict": "FAIL",
+      "detail": {
+        "emptyState": false,
+        "oldTableEmptyRowGone": true
+      }
+    },
+    {
+      "step": "B2 empty state at 390, no sideways scroll",
+      "verdict": "PASS",
+      "detail": "overflow=0px"
+    },
+    {
+      "step": "E2 the organiser has a video field on the edit form",
+      "verdict": "FAIL",
+      "detail": "no video field found on the edit form"
+    },
+    {
+      "step": "E2 media state on this event",
+      "verdict": "INFO",
+      "detail": {
+        "cover": true,
+        "galleryCount": 0
+      }
+    }
+  ],
+  "results": {
+    "kitZero": {
+      "hasEmptyState": false,
+      "zeroTiles": [],
+      "teaches": false
+    },
+    "videoBefore": {
+      "video_url": null,
+      "video_provider": null
+    },
+    "videoFieldFound": false,
+    "media": {
+      "cover": true,
+      "galleryCount": 0
+    }
+  }
+}
