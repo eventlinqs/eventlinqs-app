@@ -119,16 +119,19 @@ function Identity({ input, px, size }: { input: SocialCardInput; px: Px; size: '
   const logo = input.organiserLogo
   // Fit to a height, not a box: a square badge and a landscape wordmark are
   // both legitimate marks and neither is squashed into the other's shape.
-  const maxHeight = px(large ? 78 : 50)
-  const maxWidth = px(large ? 300 : 200)
+  const tile = logo?.placement === 'on-tile'
+  const tilePad = px(large ? 12 : 9)
+  // The tile's padding is taken OUT of the mark, not added to the row. Adding
+  // it pushed the whole band down and clipped the wordmark off the bottom of
+  // the card, which is what the first render did.
+  const maxHeight = px(large ? 78 : 50) - (tile ? tilePad * 2 : 0)
+  const maxWidth = px(large ? 300 : 200) - (tile ? tilePad * 2 : 0)
   let logoHeight = maxHeight
   let logoWidth = Math.round(maxHeight * (logo?.aspect ?? 1))
   if (logoWidth > maxWidth) {
     logoWidth = maxWidth
     logoHeight = Math.round(maxWidth / (logo?.aspect ?? 1))
   }
-  const tile = logo?.placement === 'on-tile'
-  const tilePad = px(large ? 12 : 9)
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: px(large ? 22 : 16) }}>
@@ -148,12 +151,15 @@ function Identity({ input, px, size }: { input: SocialCardInput; px: Px; size: '
               : {}),
           }}
         >
+          {/* flexShrink on the image itself, not only the wrapper. Without it
+              the row squeezed the mark and the renderer CLIPPED rather than
+              scaled: the first render printed "BASEMEN1". */}
           <img
             src={logo.image}
             alt=""
             width={logoWidth}
             height={logoHeight}
-            style={{ width: logoWidth, height: logoHeight, objectFit: 'contain' }}
+            style={{ width: logoWidth, height: logoHeight, flexShrink: 0, objectFit: 'contain' }}
           />
         </div>
       ) : null}

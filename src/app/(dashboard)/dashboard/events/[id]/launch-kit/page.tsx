@@ -200,6 +200,8 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
           channel,
           createdBy: organiserEvent.userId,
           eventSlug: organiserEvent.slug,
+          eventStartDate: organiserEvent.startDate,
+          eventTimezone: organiserEvent.timezone,
         }).then(
           link => ({ channel, link }),
         ),

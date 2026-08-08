@@ -107,21 +107,67 @@ export function codeStem(eventSlug: string, maxLength = 20): string {
 }
 
 /**
+ * A short date token for a code: "26sep". Lower case, no punctuation, and in
+ * the event's own timezone so a Melbourne night reads as the night it is.
+ */
+export function codeDateToken(startDate: string | null, timezone: string | null): string | null {
+  if (!startDate) return null
+  try {
+    const parts = new Intl.DateTimeFormat('en-AU', {
+      day: 'numeric',
+      month: 'short',
+      timeZone: timezone ?? 'Australia/Melbourne',
+    }).formatToParts(new Date(startDate))
+    const day = parts.find(p => p.type === 'day')?.value
+    const month = parts.find(p => p.type === 'month')?.value
+    if (!day || !month) return null
+    // Three letters, always. en-AU renders September as "Sept", which would
+    // make one month's codes a character longer than every other month's for
+    // no reason a reader would ever notice or want.
+    const shortMonth = month.toLowerCase().replace(/[^a-z]/g, '').slice(0, 3)
+    return `${day}${shortMonth}`.replace(/[^a-z0-9]/g, '')
+  } catch {
+    return null
+  }
+}
+
+/**
  * The code for one event and one channel.
  *
- * @param disambiguator appended when the preferred code is already taken by a
- *   DIFFERENT event. Two events called "winter-market" get winter-market-ig and
- *   winter-market-ig-2, and the second one keeps that code for good.
+ * THE COLLISION LADDER, and why it is dated rather than numbered.
+ *
+ * events.slug is UNIQUE per (organisation_id, slug), NOT globally, so the slug
+ * alone cannot guarantee a free code. The first version answered a collision
+ * with a numeric suffix and, after twelve of them, fell back to an opaque
+ * random code. That fallback is not the rare event it looks like: a weekly
+ * club night is the most common shape in this market, and twelve occurrences
+ * of "Basement 45" is three months. The organiser would have watched their own
+ * links turn from basement-45-ig into Rk9dW2xa1B partway through a season,
+ * while every other event on the platform stayed readable.
+ *
+ * So a collision adds the DATE, not a number: basement-45-26sep-ig. That is
+ * unique per occurrence, and for a recurring night it is more useful than the
+ * undated form, because it tells the audience which night they are buying.
+ * The numeric suffix only appears if the same event name runs twice on the
+ * same day, and the opaque fallback is now effectively unreachable.
+ *
+ * @param opts.dateToken from codeDateToken, added on the first collision
+ * @param opts.disambiguator added only if the dated form also collides
  */
 export function buildReadableCode(
   eventSlug: string,
   channel: ShareChannel,
-  disambiguator?: number,
+  opts: { dateToken?: string | null; disambiguator?: number } = {},
 ): string {
-  const stem = codeStem(eventSlug) || 'event'
   const marker = CHANNEL_MARKERS[channel] ?? CHANNEL_MARKERS.other
-  const base = `${stem}-${marker}`
-  return disambiguator && disambiguator > 1 ? `${base}-${disambiguator}` : base
+  // The stem shortens when a date joins it, so the whole code still fits the
+  // ticket bar it has to be drawn into.
+  const stem = codeStem(eventSlug, opts.dateToken ? 14 : 20) || 'event'
+  const parts = [stem]
+  if (opts.dateToken) parts.push(opts.dateToken)
+  parts.push(marker)
+  if (opts.disambiguator && opts.disambiguator > 1) parts.push(String(opts.disambiguator))
+  return parts.join('-')
 }
 
 /**

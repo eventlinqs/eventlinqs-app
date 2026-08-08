@@ -3,6 +3,9 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import type { Organisation } from '@/types/database'
+import { LogoUploader } from '@/components/organisation/logo-uploader'
+import { fetchImageBytes } from '@/lib/media/fetch-image'
+import { resolveLogoPlacement } from '@/lib/media/logo-pipeline'
 
 export default async function OrganisationPage() {
   const supabase = await createClient()
@@ -35,6 +38,21 @@ export default async function OrganisationPage() {
         </Link>
       </div>
     )
+  }
+
+  // How the mark will actually sit on the navy, measured rather than guessed.
+  // The read is deadlined, and an unreachable object falls back to the tile,
+  // which is the placement that is always readable.
+  let logoPlacement: 'on-navy' | 'on-tile' = 'on-tile'
+  if (org.logo_url) {
+    const fetched = await fetchImageBytes(org.logo_url, 2500)
+    if (fetched) {
+      try {
+        logoPlacement = (await resolveLogoPlacement(Buffer.from(fetched.bytes))).placement
+      } catch {
+        logoPlacement = 'on-tile'
+      }
+    }
   }
 
   const [{ count: eventCount }, { count: memberCount }] = await Promise.all([
@@ -99,6 +117,19 @@ export default async function OrganisationPage() {
             <p className="text-sm text-ink-600">{org.email}</p>
           </div>
         )}
+      </div>
+
+      {/* The organiser's own mark. It goes onto their poster, their story card
+          and every post image the kit builds, at the top, where a promoter puts
+          their own name. Nothing collected it before this, so organisations
+          .logo_url was read in four places and written in none. */}
+      <div className="mt-6">
+        <LogoUploader
+          organisationId={org.id}
+          organisationName={org.name}
+          initialUrl={org.logo_url}
+          initialPlacement={logoPlacement}
+        />
       </div>
 
       <div className="mt-6 flex gap-4">

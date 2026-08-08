@@ -104,8 +104,29 @@ export async function resolveLogoPlacement(
     }
   }
 
-  const overNavy = await sharp(input).flatten({ background: NAVY }).greyscale().stats()
-  const luminance = Math.round(overNavy.channels[0]?.mean ?? 0)
+  // MEASURE THE INK, NOT THE CANVAS. The first version of this averaged the
+  // whole frame and got the answer backwards: a wordmark on a transparent
+  // canvas is mostly canvas, so a bright white mark measured 59 on a scale
+  // where the navy itself sits near 4, and was sent to a tile it did not need.
+  //
+  // The alpha channel says how much of the frame is actually the mark, so the
+  // background's contribution can be taken back out and the remainder is the
+  // ink. The navy baseline is measured rather than assumed, because sharp
+  // greyscales in linear light and the brand navy reads far darker there than
+  // the naive formula suggests.
+  const [overNavy, alpha, baseline] = await Promise.all([
+    sharp(input).flatten({ background: NAVY }).greyscale().stats(),
+    sharp(input).extractChannel('alpha').stats(),
+    sharp({ create: { width: 8, height: 8, channels: 3, background: NAVY } }).greyscale().stats(),
+  ])
+
+  const navyLuminance = baseline.channels[0]?.mean ?? 0
+  const coverage = (alpha.channels[0]?.mean ?? 255) / 255
+  const blended = overNavy.channels[0]?.mean ?? 0
+  const ink =
+    coverage > 0.02 ? (blended - (1 - coverage) * navyLuminance) / coverage : navyLuminance
+  const luminance = Math.round(Math.max(0, Math.min(255, ink)))
+
   return {
     placement: luminance >= NAVY_CONTRAST_FLOOR ? 'on-navy' : 'on-tile',
     hasAlpha: true,

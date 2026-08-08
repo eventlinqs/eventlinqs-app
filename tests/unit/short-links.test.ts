@@ -7,6 +7,7 @@ import {
   buildEventShortUrl,
   buildReadableCode,
   channelFromCode,
+  codeDateToken,
   codeStem,
   isValidReadableCode,
 } from '@/lib/broadcast/short-links'
@@ -72,8 +73,30 @@ describe('the address a stranger sees', () => {
     }
   })
 
-  it('reads the channel back even with a disambiguating suffix', () => {
-    expect(channelFromCode(buildReadableCode('winter-market', 'facebook', 2))).toBe('facebook')
+  it('answers a collision with the date, not an opaque code', () => {
+    // The event that collides with its own name is the weekly night, and a
+    // dated code serves that case better than an undated one: it tells the
+    // audience which night they are buying.
+    expect(
+      buildReadableCode('basement-45-warehouse-session', 'instagram', { dateToken: '26sep' }),
+    ).toBe('basement-45-26sep-ig')
+    expect(channelFromCode('basement-45-26sep-ig')).toBe('instagram')
+  })
+
+  it('still reads the channel back with a numeric suffix on top of the date', () => {
+    const code = buildReadableCode('winter-market', 'facebook', {
+      dateToken: '5oct',
+      disambiguator: 2,
+    })
+    expect(code).toBe('winter-market-5oct-fb-2')
+    expect(channelFromCode(code)).toBe('facebook')
+  })
+
+  it('builds the date token in the event own timezone', () => {
+    // 26 September 22:00 Melbourne is still 26 September to the people going.
+    expect(codeDateToken('2026-09-26T12:00:00Z', 'Australia/Melbourne')).toBe('26sep')
+    expect(codeDateToken(null, 'Australia/Melbourne')).toBeNull()
+    expect(codeDateToken('not-a-date', 'Australia/Melbourne')).toBeNull()
   })
 })
 
