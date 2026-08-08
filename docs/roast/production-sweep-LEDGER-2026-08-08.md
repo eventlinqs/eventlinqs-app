@@ -63,3 +63,61 @@ Decomposed from the literal brief, written before adjudicating.
 - **Instrument honesty.** Two walker heuristics cried wolf (marketing feature bands as dead tiles; the skip link as a touch-target failure) and one route-checker had two false positives (`/admin` through a route group, `opengraph-image` as a metadata file). All four were fixed rather than reported as defects, and recorded.
 - **A finding was withdrawn.** The artist share landing was nearly reported as unable to fire the view beacon. It carries `RedirectNow` to the event page, which does fire it. Recorded in the commit rather than deleted.
 - **Founder-cost test.** The migration sends the founder to a terminal. That is required by the constitution (Lawal applies migrations), so it is correct, but it must be flagged loudly because three live defects depend on it.
+
+---
+
+## Round 2, adversarial
+
+Round 1 found the root failure: a crawler was substituted for a person. Journey B
+was then rebuilt to type, press and submit, and re-walked at both viewports.
+Round 2 assumes that fix was not enough and hunts for what is still missing.
+
+### Journeys still shortened
+
+| Named in the brief | State after round 2 |
+|---|---|
+| Journey B: verify email | NOT DONE. The script never opens the inbox, so the verification link is never clicked |
+| Journey B: sign in successfully, sign out | NOT DONE. Only the refusal paths were driven |
+| Journey B: buy, confirmation, open ticket, transfer, My tickets signed in | NOT DONE. The buy path was driven to the picker and no further |
+| Journey C: sign up, create an organisation | NOT DONE. The drive logs in as an existing organiser |
+| Journey C: the wizard typing manually | NOT DONE. Only Magic Start |
+| Journey C: download the poster, copy a link, scan the QR, open a share card | NOT DONE. Presence asserted, use not driven |
+| Journey C: edit the published event | NOT DONE |
+| Journey C: reach panel, payouts, venues, squads, waitlists, founding invites | NOT DONE, six surfaces never opened |
+| Journey D: empty city, empty community, empty organiser, empty reach panel | NOT DONE. Only the zero-result search and the empty category were verified |
+
+That is 9 rows and roughly 20 individual steps. They are in the report's
+UNFULFILLED block, at the top, not implied complete.
+
+### Defects found and NOT fixed
+
+Every one is in UNFULFILLED with what a person experiences:
+
+1. An event with zero tier capacity advertises a price and cannot sell.
+2. Four lifecycle alert types are defined with copy and never dispatched.
+3. The sort control offers Price and Popularity; both order by start date.
+4. Eight touch targets under 44px, mostly pagination at 34x34.
+5. The taxonomy migration is written and unapplied, so three defects stay live.
+
+### Claims softened after re-reading them
+
+- Journey A rows originally read "WORKS". The walker loads a page and follows
+  its links; it does not press anything. Those rows now claim only what was
+  measured: resolves 200, renders N cards, no dead link, no broken image, no
+  console error. "Works" was a stronger word than the evidence supported.
+- "27 seated events fail checkout" was nearly reported as the headline finding.
+  It was the gate, not the product, and three of those events were then driven
+  to checkout by hand to prove it.
+
+### Instrument false positives caught before reporting: 7
+
+Marketing feature bands as dead tiles; the skip link and inline text links as
+touch-target failures; `/admin` through a route group; `opengraph-image` as a
+metadata file; a 3.5s login wait; the sticky-header buy button; the sticky
+bottom-bar buy button. Each is recorded in the file that produced it.
+
+### Still true and worth stating
+
+No product defect was found anywhere in Journey B. The sign-up, refusal,
+reset, and buy-entry paths are correct at 390 and 1440, and the auth copy is
+specific and helpful rather than generic.
