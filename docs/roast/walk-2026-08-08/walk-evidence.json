@@ -24,10 +24,10 @@
       "step": "W5 artefacts downloaded with the light mark",
       "verdict": "PASS",
       "detail": {
-        "poster": 125754,
-        "story": 322402,
-        "square": 237168,
-        "feed": 455536
+        "poster": 125490,
+        "story": 321327,
+        "square": 236267,
+        "feed": 454535
       }
     },
     {
@@ -68,10 +68,10 @@
       "step": "W5 artefacts downloaded with the dark mark",
       "verdict": "PASS",
       "detail": {
-        "poster": 125572,
-        "story": 320566,
-        "square": 236532,
-        "feed": 454514
+        "poster": 125313,
+        "story": 319580,
+        "square": 235654,
+        "feed": 453482
       }
     },
     {
@@ -142,13 +142,13 @@
     },
     {
       "step": "W2 a different real browser on a second link books a fresh click",
-      "verdict": "PASS",
+      "verdict": "FAIL",
       "detail": {
         "code": "marketplace-gate-fb",
         "status": 200,
         "redirectedFrom": null,
         "cookie": "marketplace-gate-fb",
-        "before": 0,
+        "before": 1,
         "after": 1
       }
     }
@@ -163,28 +163,28 @@
     "lightPanel": {
       "said": "Your mark reads clearly on the navy, so it sits straight on the artwork with nothing behind it.",
       "errored": null,
-      "storedUrl": "https://vkapkibzokmfaxqogypq.supabase.co/storage/v1/object/public/event-images/d11f5c1d-d18f-429f-a58c-67caafc29d1b/organisation/e875fa77-1e8a-46fe-8f9d-e82e58b5864b/1786169601175-logo.png"
+      "storedUrl": "https://vkapkibzokmfaxqogypq.supabase.co/storage/v1/object/public/event-images/d11f5c1d-d18f-429f-a58c-67caafc29d1b/organisation/e875fa77-1e8a-46fe-8f9d-e82e58b5864b/1786170839444-logo.png"
     },
     "lightArtefacts": {
       "poster": {
         "file": "C:\\Users\\61416\\OneDrive\\Desktop\\EventLinqs\\el-auth-hardening\\docs\\roast\\walk-2026-08-08\\artefacts\\light-poster.pdf",
         "suggested": "marketplace-gate-night-geelong-poster.pdf",
-        "bytes": 125754
+        "bytes": 125490
       },
       "story": {
         "file": "C:\\Users\\61416\\OneDrive\\Desktop\\EventLinqs\\el-auth-hardening\\docs\\roast\\walk-2026-08-08\\artefacts\\light-story.jpg",
         "suggested": "marketplace-gate-night-geelong-story.jpg",
-        "bytes": 322402
+        "bytes": 321327
       },
       "square": {
         "file": "C:\\Users\\61416\\OneDrive\\Desktop\\EventLinqs\\el-auth-hardening\\docs\\roast\\walk-2026-08-08\\artefacts\\light-square.jpg",
         "suggested": "marketplace-gate-night-geelong-square.jpg",
-        "bytes": 237168
+        "bytes": 236267
       },
       "feed": {
         "file": "C:\\Users\\61416\\OneDrive\\Desktop\\EventLinqs\\el-auth-hardening\\docs\\roast\\walk-2026-08-08\\artefacts\\light-feed.jpg",
         "suggested": "marketplace-gate-night-geelong-feed.jpg",
-        "bytes": 455536
+        "bytes": 454535
       }
     },
     "caption": {
@@ -261,28 +261,28 @@
     "darkPanel": {
       "said": "Your mark is dark, so on the navy it would disappear. We put it on a white tile on every artefact, which keeps it readable. A version with a transparent background and light lettering would sit straight on the artwork instead.",
       "errored": null,
-      "storedUrl": "https://vkapkibzokmfaxqogypq.supabase.co/storage/v1/object/public/event-images/d11f5c1d-d18f-429f-a58c-67caafc29d1b/organisation/e875fa77-1e8a-46fe-8f9d-e82e58b5864b/1786169616645-logo.png"
+      "storedUrl": "https://vkapkibzokmfaxqogypq.supabase.co/storage/v1/object/public/event-images/d11f5c1d-d18f-429f-a58c-67caafc29d1b/organisation/e875fa77-1e8a-46fe-8f9d-e82e58b5864b/1786170857243-logo.png"
     },
     "darkArtefacts": {
       "poster": {
         "file": "C:\\Users\\61416\\OneDrive\\Desktop\\EventLinqs\\el-auth-hardening\\docs\\roast\\walk-2026-08-08\\artefacts\\dark-poster.pdf",
         "suggested": "marketplace-gate-night-geelong-poster.pdf",
-        "bytes": 125572
+        "bytes": 125313
       },
       "story": {
         "file": "C:\\Users\\61416\\OneDrive\\Desktop\\EventLinqs\\el-auth-hardening\\docs\\roast\\walk-2026-08-08\\artefacts\\dark-story.jpg",
         "suggested": "marketplace-gate-night-geelong-story.jpg",
-        "bytes": 320566
+        "bytes": 319580
       },
       "square": {
         "file": "C:\\Users\\61416\\OneDrive\\Desktop\\EventLinqs\\el-auth-hardening\\docs\\roast\\walk-2026-08-08\\artefacts\\dark-square.jpg",
         "suggested": "marketplace-gate-night-geelong-square.jpg",
-        "bytes": 236532
+        "bytes": 235654
       },
       "feed": {
         "file": "C:\\Users\\61416\\OneDrive\\Desktop\\EventLinqs\\el-auth-hardening\\docs\\roast\\walk-2026-08-08\\artefacts\\dark-feed.jpg",
         "suggested": "marketplace-gate-night-geelong-feed.jpg",
-        "bytes": 454514
+        "bytes": 453482
       }
     },
     "crawler": {
@@ -315,14 +315,14 @@
         }
       ],
       "h1": "Marketplace Gate Night, Geelong",
-      "setCookie": "el_share_code=marketplace-gate-ig; Path=/; Expires=Mon, 07 Sep 2026 06:13:52 GMT; Max-Age=2592000; Secure; SameSite=lax"
+      "setCookie": "el_share_code=marketplace-gate-ig; Path=/; Expires=Mon, 07 Sep 2026 06:34:33 GMT; Max-Age=2592000; Secure; SameSite=lax"
     },
     "cookie": {
       "name": "el_share_code",
       "value": "marketplace-gate-ig",
       "domain": "eventlinqs-app-git-feat-launch-ef8ee0-lawals-projects-c20c0be8.vercel.app",
       "path": "/",
-      "expires": 1788761633.796856,
+      "expires": 1788762875.020893,
       "httpOnly": false,
       "secure": true,
       "sameSite": "Lax"
@@ -354,7 +354,7 @@
       "status": 200,
       "redirectedFrom": null,
       "cookie": "marketplace-gate-fb",
-      "before": 0,
+      "before": 1,
       "after": 1
     }
   }

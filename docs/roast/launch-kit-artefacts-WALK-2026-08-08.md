@@ -136,6 +136,41 @@ source. The predecessor's own logo proofs were validated against this fixture.
 
 ---
 
+## 3a. D1 AND D2 ARE FIXED, AND THE FIX WAS RE-WALKED
+
+Commit `e85a0f4`, redeployed, artefacts downloaded again and opened again.
+
+**D1.** The story bar now reads, inside its own bar and clear of the QR:
+
+```
+Free entry · eventlinqs-app-g...el.app/e/marketplace-gate-ig
+```
+
+Width is now MEASURED with the shipped Hanken Grotesk SemiBold file rather than
+estimated at `characters x 0.52`. The measured ratio is nearer 0.46, so the old
+estimate was also shrinking type that had room: the free case now sets at 27px
+where it used to set at 24. The fit is guaranteed, so where no permitted size
+holds the line it is ellipsised from the middle, keeping the price at one end
+and the whole code at the other. **On the production host the line fits with no
+ellipsis at all** for every realistic event.
+
+**D2.** `shots/w5-poster-band-AFTER-fix.png`. The white tile now sits clear
+above the title with air between them, and the A4 gold bar carries the whole
+line inside the gold: `Free entry · eventlinqs-app-git-fea...8.vercel.app/e/marketplace-gate-qr`.
+
+**The tests that missed it asserted the bug.** "never returns a size below the
+floor" is precisely the behaviour that let the line escape its bar. Replaced
+with the real invariant, measured against the shipped font across every host,
+price and code the platform can mint: 120 combinations, drawn width never
+exceeds the bar. Drilled against `origin/main`'s algorithm, where **61 of those
+120 are drawn outside their bar**, worst case 986px over. The test is not
+vacuous.
+
+Gates after the fix: tsc clean, eslint 42 problems 0 errors (baseline 48), 9
+guards pass, **1454 tests across 132 files**.
+
+---
+
 ## 4. STATE OF THE LEDGER AFTER THE WALK
 
 | Item | Was | Now |
@@ -143,8 +178,8 @@ source. The predecessor's own logo proofs were validated against this fixture.
 | Ruling 1, 2, 3b, 4, 5 | asserted in tests | **PROVEN IN A BROWSER** |
 | Ruling 3d attribution | MET in code, unproven | **PROVEN IN A BROWSER** |
 | Ruling 3c codes never released | BLOCKED | **still BLOCKED**, migration `20260808000006` unapplied by founder ruling R-C |
-| A2 cards and captions | built, unproven | **NOT DONE: D1** |
-| B1 organiser logo | built, unproven | **NOT DONE: D2**. Both placements otherwise correct and proven |
+| A2 cards and captions | built, unproven | **D1 FIXED AND RE-WALKED**. Proven in a browser |
+| B1 organiser logo | built, unproven | **D2 FIXED AND RE-WALKED**. Both placements proven, light and dark |
 | R-A our mark subordinate | awaiting ruling | **RULED SUBORDINATE, and it is what renders**: "Ticketing by EVENTLINQS." muted, organiser's mark dominant |
 | W6 phone-camera QR | not walked | **STILL NOT WALKED** |
 | B2, A4, E2 | not started | not started |
