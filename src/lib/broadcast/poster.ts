@@ -9,19 +9,41 @@ import { fitTicketBar, ticketBarText } from '@/lib/broadcast/social-card-layout'
  * One print-ready A4 poster per event: the organiser's cover photograph, their
  * own mark, the title, date, locality and price, and a large tracked QR, so a
  * poster on a community noticeboard is a measured acquisition channel like any
- * other. An event with no embeddable photograph gets a typographic composition
- * on the brand navy, never a broken poster and never a substitute picture.
+ * other.
  *
- * TWO THINGS CHANGED HERE AND BOTH WERE DEFECTS.
+ * TWO COMPOSITIONS, NOT ONE WITH A HOLE IN IT (founder ruling, 9 August 2026).
+ *
+ * The renderer used to reserve the top 55% of the page for a photograph
+ * whether or not a photograph existed. With artwork that is right. Without it,
+ * the organiser got half an A4 of empty navy carrying one small line of text,
+ * and a promoter reads that as a template with a gap rather than as a designed
+ * poster. It was the single worst thing anyone saw in the public composer,
+ * where EVERY poster is currently artwork-free.
+ *
+ * So there are now two genuinely different compositions behind one entry point:
+ *
+ *   drawCoverPoster       photograph on top, information band below. UNCHANGED,
+ *                         byte for byte, and there is a test that proves the
+ *                         drawing operators are identical to the previous
+ *                         renderer.
+ *   drawTypographicPoster the whole page is the composition. The title is the
+ *                         hero and is auto-fitted to fill the space it is
+ *                         given, so a three-word name prints huge and a long
+ *                         one prints smaller across more lines. That is what
+ *                         makes it read as deliberate rather than as a default.
+ *
+ * Law 6 holds and is the reason this exists: the platform never generates an
+ * image to fill the gap. It composes type.
+ *
+ * TWO EARLIER DEFECTS, both still fixed:
  *
  * 1. It carried the EventLinqs wordmark and no organiser logo. A promoter's
  *    poster is the one artefact that goes on a wall with their name on it, and
- *    ours was the only name on it. The organiser mark now leads the
- *    information band at full strength and ours is one small footer line.
+ *    ours was the only name on it. The organiser mark now leads and ours is one
+ *    small footer line.
  * 2. It was set in Helvetica, the PDF standard font, not the brand stack. A
  *    designer reads that instantly as a default. It is now set in Archivo and
- *    Hanken Grotesk, the same faces as the social cards, embedded and subset
- *    so the file stays small and prints correctly anywhere.
+ *    Hanken Grotesk, the same faces as the social cards, embedded and subset.
  */
 
 const PDF_NAVY = rgb(0.039, 0.086, 0.157) // ink-900 #0A1628
@@ -65,6 +87,13 @@ export interface PosterInput {
   showPlatformMark?: boolean
 }
 
+type Fonts = {
+  display: PDFFont
+  displayMid: PDFFont
+  body: PDFFont
+  bodyStrong: PDFFont
+}
+
 /** Wrap a line to a width using the font's real metrics. */
 function wrapText(
   text: string,
@@ -106,24 +135,58 @@ async function embed(doc: PDFDocument, image: PosterImage): Promise<PDFImage> {
   return image.format === 'png' ? doc.embedPng(image.bytes) : doc.embedJpg(image.bytes)
 }
 
-export async function buildEventPosterPdf(input: PosterInput): Promise<Uint8Array> {
-  const doc = await PDFDocument.create()
-  doc.setTitle(`${input.title} poster`)
-  doc.setAuthor(input.organiserName)
-  doc.setCreator('EventLinqs')
-  doc.registerFontkit(fontkit)
+/**
+ * The largest display size at which the title fills its box without
+ * overflowing it.
+ *
+ * This is the whole trick of the typographic poster. A fixed size makes a
+ * short title look lost and a long one overflow, which is exactly how a
+ * template announces itself. Fitting the type to the space is what a designer
+ * does by hand, and it is deterministic composition, not generation.
+ *
+ * Exported so the test can assert the fit rather than eyeball it.
+ */
+export function fitPosterTitle(
+  title: string,
+  font: { widthOfTextAtSize(t: string, s: number): number },
+  opts: { maxWidth: number; maxHeight: number; maxLines: number; max: number; min: number },
+): { size: number; lines: string[]; leading: number } {
+  for (let size = opts.max; size >= opts.min; size -= 1) {
+    const lines = wrapText(title, font, size, opts.maxWidth)
+    if (lines.length > opts.maxLines) continue
+    const leading = size * 1.08
+    if (lines.length * leading <= opts.maxHeight) return { size, lines, leading }
+  }
+  // Nothing fits: take the floor and clamp the line count, so a pathological
+  // title truncates cleanly rather than running off the page.
+  const size = opts.min
+  const leading = size * 1.08
+  return {
+    size,
+    lines: wrapText(title, font, size, opts.maxWidth).slice(0, opts.maxLines),
+    leading,
+  }
+}
 
-  // The brand stack, embedded and subset. The same four files the social cards
-  // draw with, so the printed poster and the posted story are one family.
-  const faces = await loadCardFonts()
-  const pick = (name: string, weight: number) =>
-    faces.find(face => face.name === name && face.weight === weight) ?? faces[0]
-  const display = await doc.embedFont(pick('Archivo', 800).data, { subset: true })
-  const displayMid = await doc.embedFont(pick('Archivo', 700).data, { subset: true })
-  const body = await doc.embedFont(pick('Hanken Grotesk', 500).data, { subset: true })
-  const bodyStrong = await doc.embedFont(pick('Hanken Grotesk', 600).data, { subset: true })
+/* ------------------------------------------------------------------ */
+/* Composition 1: with a photograph. UNCHANGED.                        */
+/* ------------------------------------------------------------------ */
 
-  const page = doc.addPage([PAGE_W, PAGE_H])
+/**
+ * The photograph composition, preserved exactly as it shipped.
+ *
+ * Every number, every draw order and every branch in here is the original. The
+ * founder's condition on this work was that the artwork path renders
+ * identically before and after, and the way to keep that promise is to not
+ * touch it, which is why this reads as a lift rather than a rewrite.
+ */
+async function drawCoverPoster(
+  doc: PDFDocument,
+  page: PDFPage,
+  input: PosterInput & { coverImage: PosterImage },
+  fonts: Fonts,
+): Promise<void> {
+  const { display, displayMid, body, bodyStrong } = fonts
 
   const bandH = PAGE_H * 0.45
   const imageRegionH = PAGE_H - bandH
@@ -134,54 +197,17 @@ export async function buildEventPosterPdf(input: PosterInput): Promise<Uint8Arra
   const logo = input.organiserLogo ? await embed(doc, input.organiserLogo) : null
   const onTile = input.logoPlacement !== 'on-navy'
 
-  if (input.coverImage) {
-    const embedded = await embed(doc, input.coverImage)
-    // Cover-fit into the top region, centred, overflow cropped by the band.
-    const scale = Math.max(PAGE_W / embedded.width, imageRegionH / embedded.height)
-    const w = embedded.width * scale
-    const h = embedded.height * scale
-    page.drawImage(embedded, {
-      x: (PAGE_W - w) / 2,
-      y: PAGE_H - h + (h - imageRegionH) / 2,
-      width: w,
-      height: h,
-    })
-  } else {
-    // No photograph: a typographic field, the same answer the social cards
-    // give, so the two artefacts still look like one set.
-    page.drawRectangle({
-      x: 0,
-      y: bandH,
-      width: PAGE_W,
-      height: imageRegionH,
-      color: PDF_NAVY_DEEP,
-    })
-    let y = PAGE_H - 120
-    if (logo) {
-      const h = Math.min(78, (logo.height / logo.width) * 200)
-      const w = (logo.width / logo.height) * h
-      if (onTile) {
-        page.drawRectangle({
-          x: MARGIN - 10,
-          y: y - h - 10,
-          width: w + 20,
-          height: h + 20,
-          color: PDF_WHITE,
-        })
-      }
-      page.drawImage(logo, { x: MARGIN, y: y - h, width: w, height: h })
-      y -= h + 34
-    }
-    const nameWidth = drawTracked(page, input.organiserName.toUpperCase(), {
-      x: MARGIN,
-      y,
-      size: 15,
-      font: displayMid,
-      color: PDF_WHITE,
-      tracking: 1.6,
-    })
-    page.drawRectangle({ x: MARGIN, y: y - 16, width: Math.min(nameWidth, 200), height: 3, color: PDF_GOLD })
-  }
+  const embedded = await embed(doc, input.coverImage)
+  // Cover-fit into the top region, centred, overflow cropped by the band.
+  const scale = Math.max(PAGE_W / embedded.width, imageRegionH / embedded.height)
+  const w = embedded.width * scale
+  const h = embedded.height * scale
+  page.drawImage(embedded, {
+    x: (PAGE_W - w) / 2,
+    y: PAGE_H - h + (h - imageRegionH) / 2,
+    width: w,
+    height: h,
+  })
 
   // The information band, drawn OVER the photograph so a cover-fit overflow is
   // cleanly cropped by its edge.
@@ -201,9 +227,9 @@ export async function buildEventPosterPdf(input: PosterInput): Promise<Uint8Arra
   const titleAscent = display.heightAtSize(titleSize, { descender: false })
 
   // The organiser identity leads the band. Their mark, their name.
-  if (input.coverImage && logo) {
-    const h = Math.min(34, (logo.height / logo.width) * 120)
-    const w = (logo.width / logo.height) * h
+  if (logo) {
+    const lh = Math.min(34, (logo.height / logo.width) * 120)
+    const lw = (logo.width / logo.height) * lh
     // A dark mark gets a white readability tile, and the tile is TALLER than
     // the mark by this padding on each side. Advancing by the mark's height
     // alone drew the tile's lower edge straight through the top of the title:
@@ -213,16 +239,16 @@ export async function buildEventPosterPdf(input: PosterInput): Promise<Uint8Arra
     if (onTile) {
       page.drawRectangle({
         x: MARGIN - tilePad,
-        y: y - h - tilePad,
-        width: w + tilePad * 2,
-        height: h + tilePad * 2,
+        y: y - lh - tilePad,
+        width: lw + tilePad * 2,
+        height: lh + tilePad * 2,
         color: PDF_WHITE,
       })
     }
-    page.drawImage(logo, { x: MARGIN, y: y - h, width: w, height: h })
+    page.drawImage(logo, { x: MARGIN, y: y - lh, width: lw, height: lh })
     drawTracked(page, input.organiserName.toUpperCase(), {
-      x: MARGIN + w + 16,
-      y: y - h / 2 - 3,
+      x: MARGIN + lw + 16,
+      y: y - lh / 2 - 3,
       size: 10,
       font: displayMid,
       color: PDF_WHITE_MUTED,
@@ -230,8 +256,8 @@ export async function buildEventPosterPdf(input: PosterInput): Promise<Uint8Arra
     })
     // 22pt of clear air between the mark's lowest drawn edge and the title's
     // cap line, whichever placement the mark took.
-    y = y - h - tilePad - 22 - titleAscent
-  } else if (input.coverImage) {
+    y = y - lh - tilePad - 22 - titleAscent
+  } else {
     drawTracked(page, input.organiserName.toUpperCase(), {
       x: MARGIN,
       y,
@@ -241,8 +267,6 @@ export async function buildEventPosterPdf(input: PosterInput): Promise<Uint8Arra
       tracking: 1.4,
     })
     y -= 26
-  } else {
-    y -= 4
   }
 
   // Title, wrapped, at most three lines.
@@ -318,24 +342,230 @@ export async function buildEventPosterPdf(input: PosterInput): Promise<Uint8Arra
     font: bodyStrong,
     color: PDF_GOLD,
   })
+}
 
-  // The footer: our mark, subordinate, one line.
+/* ------------------------------------------------------------------ */
+/* Composition 2: no photograph. The whole page is the composition.    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The typographic poster.
+ *
+ * It is one composition over the full page rather than a photograph region and
+ * a band, because there is no photograph and a reserved empty region is the
+ * defect this replaces.
+ *
+ * Reading order down the page:
+ *   the organiser's mark and name, small, at the top, because it is their
+ *   poster and the eye should land on whose night it is first;
+ *   a hairline gold rule, which is the only structural line on the page;
+ *   THE TITLE, auto-fitted to fill everything between that rule and the
+ *   details, which is what makes a short name print big and read as a poster
+ *   rather than as a form;
+ *   the date in gold, the locality under it;
+ *   the gold ticket bar and the tracked QR, side by side on the baseline.
+ */
+async function drawTypographicPoster(
+  doc: PDFDocument,
+  page: PDFPage,
+  input: PosterInput,
+  fonts: Fonts,
+): Promise<void> {
+  const { display, displayMid, body, bodyStrong } = fonts
+  const contentW = PAGE_W - MARGIN * 2
+
+  // A single deep-navy field. One flat colour over the whole page, so nothing
+  // on it reads as a region that was meant to hold something else.
+  page.drawRectangle({ x: 0, y: 0, width: PAGE_W, height: PAGE_H, color: PDF_NAVY_DEEP })
+
+  const logo = input.organiserLogo ? await embed(doc, input.organiserLogo) : null
+  const onTile = input.logoPlacement !== 'on-navy'
+
+  /* ---- the baseline block, measured first so the title knows its space ---- */
+
+  const qrSize = 132
+  const qrX = PAGE_W - MARGIN - qrSize
+  const qrY = MARGIN + 34
+
+  const qrImage = await doc.embedPng(input.qrPng)
+  page.drawRectangle({
+    x: qrX - 10,
+    y: qrY - 10,
+    width: qrSize + 20,
+    height: qrSize + 20,
+    color: PDF_WHITE,
+  })
+  page.drawImage(qrImage, { x: qrX, y: qrY, width: qrSize, height: qrSize })
+  const scanLabel = 'Scan for tickets'
+  page.drawText(scanLabel, {
+    x: qrX + (qrSize - bodyStrong.widthOfTextAtSize(scanLabel, 10.5)) / 2,
+    y: qrY - 24,
+    size: 10.5,
+    font: bodyStrong,
+    color: PDF_GOLD,
+  })
+
+  // The left column of the baseline block shares the row with the QR, so it is
+  // measured against the QR's left edge rather than the page.
+  const detailMaxW = qrX - MARGIN - 28
+
+  const barPad = 20
+  const barFit = fitTicketBar(
+    ticketBarText(input.priceLabel, input.shortUrl),
+    detailMaxW - barPad * 2,
+    12,
+    9,
+    (text, size) => bodyStrong.widthOfTextAtSize(text, size),
+  )
+  const barW = Math.min(
+    bodyStrong.widthOfTextAtSize(barFit.text, barFit.fontSize) + barPad * 2,
+    detailMaxW,
+  )
+  const barH = 32
+  const barY = qrY + 2
+  page.drawRectangle({ x: MARGIN, y: barY, width: barW, height: barH, color: PDF_GOLD })
+  page.drawText(barFit.text, {
+    x: MARGIN + barPad,
+    y: barY + 11,
+    size: barFit.fontSize,
+    font: bodyStrong,
+    color: PDF_NAVY,
+  })
+
+  // Locality sits above the bar, date above that, both in the left column.
+  let detailY = barY + barH + 26
+  const localityLines = input.locality
+    ? wrapText(input.locality, body, 13, detailMaxW).slice(0, 2)
+    : []
+  // Drawn bottom-up so the block grows upward from the bar.
+  for (let i = localityLines.length - 1; i >= 0; i -= 1) {
+    page.drawText(localityLines[i]!, {
+      x: MARGIN,
+      y: detailY,
+      size: 13,
+      font: body,
+      color: PDF_WHITE_MUTED,
+    })
+    detailY += 19
+  }
+
+  if (input.dateLabel) {
+    page.drawText(input.dateLabel, {
+      x: MARGIN,
+      y: detailY,
+      size: 17,
+      font: bodyStrong,
+      color: PDF_GOLD,
+    })
+    detailY += 30
+  }
+
+  /* ---- the identity block at the top ---- */
+
+  let topY = PAGE_H - MARGIN
+  if (logo) {
+    const lh = Math.min(52, (logo.height / logo.width) * 180)
+    const lw = (logo.width / logo.height) * lh
+    const tilePad = onTile ? 8 : 0
+    if (onTile) {
+      page.drawRectangle({
+        x: MARGIN - tilePad,
+        y: topY - lh - tilePad,
+        width: lw + tilePad * 2,
+        height: lh + tilePad * 2,
+        color: PDF_WHITE,
+      })
+    }
+    page.drawImage(logo, { x: MARGIN, y: topY - lh, width: lw, height: lh })
+    topY = topY - lh - tilePad - 26
+  } else {
+    topY -= 14
+  }
+
+  if (input.organiserName) {
+    drawTracked(page, input.organiserName.toUpperCase(), {
+      x: MARGIN,
+      y: topY,
+      size: 12,
+      font: displayMid,
+      color: PDF_WHITE_MUTED,
+      tracking: 1.6,
+    })
+    topY -= 22
+  }
+
+  // The one structural line on the page.
+  page.drawRectangle({ x: MARGIN, y: topY, width: contentW, height: 2, color: PDF_GOLD })
+
+  /* ---- THE TITLE, filling everything left between the two blocks ---- */
+
+  const titleTop = topY - 30
+  const titleBottom = detailY + 8
+  const available = Math.max(titleTop - titleBottom, 60)
+
+  const fit = fitPosterTitle(input.title, display, {
+    maxWidth: contentW,
+    maxHeight: available,
+    maxLines: 6,
+    max: 68,
+    min: 22,
+  })
+
+  // Optically centre the title in its box rather than hanging it from the top,
+  // so a two-line name on a tall box does not leave the page bottom-heavy.
+  const blockH = fit.lines.length * fit.leading
+  let ty = titleTop - (available - blockH) / 2 - display.heightAtSize(fit.size, { descender: false })
+
+  for (const line of fit.lines) {
+    page.drawText(line, { x: MARGIN, y: ty, size: fit.size, font: display, color: PDF_WHITE })
+    ty -= fit.leading
+  }
+}
+
+export async function buildEventPosterPdf(input: PosterInput): Promise<Uint8Array> {
+  const doc = await PDFDocument.create()
+  doc.setTitle(`${input.title} poster`)
+  doc.setAuthor(input.organiserName)
+  doc.setCreator('EventLinqs')
+  doc.registerFontkit(fontkit)
+
+  // The brand stack, embedded and subset. The same four files the social cards
+  // draw with, so the printed poster and the posted story are one family.
+  const faces = await loadCardFonts()
+  const pick = (name: string, weight: number) =>
+    faces.find(face => face.name === name && face.weight === weight) ?? faces[0]
+  const fonts: Fonts = {
+    display: await doc.embedFont(pick('Archivo', 800).data, { subset: true }),
+    displayMid: await doc.embedFont(pick('Archivo', 700).data, { subset: true }),
+    body: await doc.embedFont(pick('Hanken Grotesk', 500).data, { subset: true }),
+    bodyStrong: await doc.embedFont(pick('Hanken Grotesk', 600).data, { subset: true }),
+  }
+
+  const page = doc.addPage([PAGE_W, PAGE_H])
+
+  if (input.coverImage) {
+    await drawCoverPoster(doc, page, { ...input, coverImage: input.coverImage }, fonts)
+  } else {
+    await drawTypographicPoster(doc, page, input, fonts)
+  }
+
+  // The footer: our mark, subordinate, one line. Shared by both compositions.
   if (input.showPlatformMark !== false) {
     const mark = 'Ticketing by EVENTLINQS'
     const markSize = 8.5
-    const markW = displayMid.widthOfTextAtSize(mark, markSize)
+    const markW = fonts.displayMid.widthOfTextAtSize(mark, markSize)
     page.drawText(mark, {
       x: PAGE_W - MARGIN - markW - 3,
       y: 30,
       size: markSize,
-      font: displayMid,
+      font: fonts.displayMid,
       color: PDF_WHITE_FAINT,
     })
     page.drawText('.', {
       x: PAGE_W - MARGIN - 3,
       y: 30,
       size: markSize,
-      font: displayMid,
+      font: fonts.displayMid,
       color: PDF_GOLD_DEEP,
     })
   }
