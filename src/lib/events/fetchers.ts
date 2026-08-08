@@ -5,6 +5,9 @@ import { createPublicClient } from '@/lib/supabase/public-client'
 import { withBadge } from './badges'
 import { buildCommunityTagOrFilter } from '@/lib/communities/tag-bridge'
 import type { CommunitySlug } from '@/lib/communities/data'
+import { buildSearchOrGroups, tokenise, sanitiseToken } from './search-query'
+import { EVENT_TYPE_FILTER, buildEventTypeTagOr } from './event-type-filter'
+import { resolveSearchTab } from './search-tab'
 import {
   rankEventsByAffinity,
   hasAnyAffinitySignal,
@@ -36,6 +39,103 @@ function resolveCommunityTagOrFilter(
     filters.community as CommunitySlug,
     filters.sub_community,
   )
+}
+
+/**
+ * The subset of the Supabase client these search helpers touch, following the
+ * same `Pick<..., 'from'>` convention as BroadcastClient. Both the server and
+ * admin clients satisfy it, which is why the same helpers serve both fetch
+ * paths.
+ */
+type EventsQueryClient = Pick<ReturnType<typeof createAdminClient>, 'from'>
+
+/**
+ * A PostgREST filter builder, narrowed to the one method these helpers call.
+ * Generic so the builder's own chained type flows through untouched.
+ */
+type OrFilterable<T> = { or: (filter: string) => T }
+
+/**
+ * Which organisations does each search token name?
+ *
+ * An organiser's name lives on `organisations`, not on `events`, and PostgREST
+ * cannot filter a parent table from inside an `.or()` group on the child. So
+ * the names are resolved to ids in one round trip and the ids join the token's
+ * OR group as `organisation_id.in.(...)`. Without this, searching an
+ * organiser's own name returns nothing, which is what it did.
+ *
+ * One query total regardless of token count. A failure degrades to "no
+ * organiser matched", never to a broken search.
+ */
+async function resolveOrganisationIdsByToken(
+  supabase: EventsQueryClient,
+  q: string,
+): Promise<Map<string, string[]>> {
+  const tokens = tokenise(q)
+  const byToken = new Map<string, string[]>()
+  if (tokens.length === 0) return byToken
+
+  const { data, error } = await supabase
+    .from('organisations')
+    .select('id, name')
+    .or(tokens.map((t) => `name.ilike.*${t}*`).join(','))
+    .limit(200)
+  if (error || !data) return byToken
+
+  for (const token of tokens) {
+    const lower = token.toLowerCase()
+    const ids = (data as { id: string; name: string | null }[])
+      .filter((o) => (o.name ?? '').toLowerCase().includes(lower))
+      .map((o) => o.id)
+    if (ids.length > 0) byToken.set(token, ids)
+  }
+  return byToken
+}
+
+/**
+ * Narrow to one of the eight city event types. Unknown slugs are IGNORED
+ * rather than forced empty: an event type is a browse convenience, and a stale
+ * link should widen to the city rather than dead-end on nothing.
+ *
+ * Returns the OR clause, not a modified builder. A PostgrestFilterBuilder is
+ * itself thenable, so `await`ing a function that returns one unwraps it to the
+ * response type and the query is lost. Doing the async work here and applying
+ * the string at the call site keeps the builder's own chained type intact.
+ */
+async function buildEventTypeClause(
+  supabase: EventsQueryClient,
+  slug: string,
+): Promise<string | null> {
+  const def = EVENT_TYPE_FILTER[slug]
+  if (!def) return null
+
+  const parts: string[] = []
+  if (def.categories.length > 0) {
+    const { data: cats } = await supabase
+      .from('event_categories')
+      .select('id')
+      .in('slug', def.categories)
+    const ids = ((cats ?? []) as { id: string }[]).map((c) => c.id)
+    if (ids.length > 0) parts.push(`category_id.in.(${ids.join(',')})`)
+  }
+  const tagOr = buildEventTypeTagOr(slug)
+  if (tagOr) parts.push(tagOr)
+
+  return parts.length > 0 ? parts.join(',') : null
+}
+
+/**
+ * The venue link is emitted twice with two different values: a display name
+ * from a venue rail and a URL handle from a venue profile. Both are matched,
+ * with hyphens read as spaces, so "the-espy" and "The Espy" both find the
+ * venue instead of landing on the national list.
+ */
+function applyVenueFilter<T extends OrFilterable<T>>(query: T, venue: string): T {
+  const clean = sanitiseToken(venue)
+  if (!clean) return query
+  const spaced = sanitiseToken(venue.replace(/-/g, ' '))
+  const variants = [...new Set([clean, spaced])].filter(Boolean)
+  return query.or(variants.map((v) => `venue_name.ilike.*${v}*`).join(','))
 }
 
 /**
@@ -188,7 +288,7 @@ export async function fetchPublicEvents(
   const page = Math.max(1, input.page ?? 1)
   const pageSize = input.pageSize ?? DEFAULT_PAGE_SIZE
   const offset = (page - 1) * pageSize
-  const filters = input.filters ?? {}
+  let filters = input.filters ?? {}
   const now = new Date()
 
   const supabase = createPublicClient()
@@ -230,9 +330,34 @@ export async function fetchPublicEvents(
     query = query.order('start_date', { ascending: true })
   }
 
-  if (filters.q) {
-    query = query.ilike('title', `%${filters.q}%`)
+  // The header search tab scopes where the query is allowed to match.
+  const tab = resolveSearchTab(filters.tab, filters.q)
+  const effective = { ...filters, ...tab.overrides }
+
+  if (effective.q && tab.keepFreeText) {
+    const orgIds = await resolveOrganisationIdsByToken(supabase, effective.q)
+    if (tab.organisersOnly) {
+      // The Organisers tab means "show me this organiser's events", so an
+      // organiser that does not exist must return nothing rather than
+      // falling back to a title match that looks like a result.
+      const ids = [...new Set([...orgIds.values()].flat())]
+      query = query.in(
+        'organisation_id',
+        ids.length > 0 ? ids : ['00000000-0000-0000-0000-000000000000'],
+      )
+    } else {
+      // Separate .or() calls AND together, so every token must match somewhere.
+      for (const group of buildSearchOrGroups(effective.q, orgIds)) {
+        query = query.or(group)
+      }
+    }
   }
+  if (effective.venue) query = applyVenueFilter(query, effective.venue)
+  if (effective.event_type) {
+    const clause = await buildEventTypeClause(supabase, effective.event_type)
+    if (clause) query = query.or(clause)
+  }
+  filters = effective
   if (filters.category) {
     const { data: cat } = await supabase
       .from('event_categories')
@@ -362,6 +487,11 @@ export async function fetchPublicEventsCached(
     `to:${filters.to ?? ''}`,
     `pmin:${filters.price_min ?? ''}`,
     `pmax:${filters.price_max ?? ''}`,
+    // These three narrow the result set, so leaving them out of the key would
+    // serve one filter's page under another's URL.
+    `venue:${filters.venue ?? ''}`,
+    `etype:${filters.event_type ?? ''}`,
+    `tab:${filters.tab ?? ''}`,
   ]
   const cacheKey = keyParts.join('|')
 
@@ -392,7 +522,7 @@ async function runFetchPublicEventsAdmin(
   const page = Math.max(1, input.page ?? 1)
   const pageSize = input.pageSize ?? DEFAULT_PAGE_SIZE
   const offset = (page - 1) * pageSize
-  const filters = input.filters ?? {}
+  let filters = input.filters ?? {}
   const now = new Date()
 
   const supabase = createAdminClient()
@@ -412,7 +542,28 @@ async function runFetchPublicEventsAdmin(
     query = query.order('start_date', { ascending: true })
   }
 
-  if (filters.q) query = query.ilike('title', `%${filters.q}%`)
+  const tab = resolveSearchTab(filters.tab, filters.q)
+  filters = { ...filters, ...tab.overrides }
+
+  if (filters.q && tab.keepFreeText) {
+    const orgIds = await resolveOrganisationIdsByToken(supabase, filters.q)
+    if (tab.organisersOnly) {
+      const ids = [...new Set([...orgIds.values()].flat())]
+      query = query.in(
+        'organisation_id',
+        ids.length > 0 ? ids : ['00000000-0000-0000-0000-000000000000'],
+      )
+    } else {
+      for (const group of buildSearchOrGroups(filters.q, orgIds)) {
+        query = query.or(group)
+      }
+    }
+  }
+  if (filters.venue) query = applyVenueFilter(query, filters.venue)
+  if (filters.event_type) {
+    const clause = await buildEventTypeClause(supabase, filters.event_type)
+    if (clause) query = query.or(clause)
+  }
   if (filters.category) {
     const { data: cat } = await supabase
       .from('event_categories')

@@ -20,6 +20,22 @@ export type EventsSearchParams = {
   sort?: string
   view?: string
   page?: string
+  /**
+   * The six below all appear in hrefs a visitor can click and none of them
+   * was parsed, so every one of those links quietly landed on the unfiltered
+   * national list while looking like a filter. Emitted by:
+   *   city, date      - the city landing hero, This Week and This Weekend rails
+   *   suburb          - the suburb landing
+   *   event_type      - the city event-type rail
+   *   venue           - the "everything at this venue" link on a venue profile
+   *   tab             - the four header search tabs
+   */
+  city?: string
+  date?: string
+  suburb?: string
+  event_type?: string
+  venue?: string
+  tab?: string
 }
 
 const PRESETS = new Set([
@@ -34,6 +50,21 @@ const PRESETS = new Set([
 
 const SORTS = new Set(['relevance', 'date_asc', 'price_asc', 'popularity'])
 const VIEWS = new Set(['grid', 'map'])
+const TABS = new Set(['events', 'cities', 'communities', 'organisers'])
+
+/**
+ * `date` is the city page's name for the same window `preset` selects. The
+ * chips emit today, weekend, 7d and `week`; `week` is the only one that is not
+ * already a preset value, so it is mapped rather than dropped.
+ */
+const DATE_TO_PRESET: Record<string, string> = {
+  today: 'today',
+  tomorrow: 'tomorrow',
+  weekend: 'weekend',
+  week: '7d',
+  '7d': '7d',
+  month: 'month',
+}
 
 export type EventsView = 'grid' | 'map'
 
@@ -66,10 +97,15 @@ function isIsoish(value: string | undefined): string | undefined {
 export function parseEventsSearchParams(
   raw: EventsSearchParams,
 ): ParsedEventsParams {
-  const preset =
-    raw.preset && PRESETS.has(raw.preset)
-      ? (raw.preset as FetchPublicEventsFilters['preset'])
-      : undefined
+  // `preset` wins when both are present; `date` is the city page's alias for
+  // the same window and was previously discarded.
+  const presetFromDate =
+    raw.date && DATE_TO_PRESET[raw.date] ? DATE_TO_PRESET[raw.date] : undefined
+  const presetRaw =
+    raw.preset && PRESETS.has(raw.preset) ? raw.preset : presetFromDate
+  const preset = presetRaw
+    ? (presetRaw as FetchPublicEventsFilters['preset'])
+    : undefined
 
   const sort =
     raw.sort && SORTS.has(raw.sort)
@@ -91,6 +127,13 @@ export function parseEventsSearchParams(
     to: isIsoish(raw.to),
     distance_km: parseNonNegativeFloat(raw.distance_km),
     sort,
+    // A suburb link carries both city and suburb. The suburb is the more
+    // specific place name and `venue_city` on a real listing often carries it,
+    // so it takes precedence and the city stays as the fallback.
+    city: raw.suburb?.trim() || raw.city?.trim() || undefined,
+    venue: raw.venue?.trim() || undefined,
+    event_type: raw.event_type?.trim() || undefined,
+    tab: raw.tab && TABS.has(raw.tab) ? (raw.tab as FetchPublicEventsFilters['tab']) : undefined,
   }
 
   return {
@@ -127,6 +170,9 @@ export function hasActiveFilters(filters: FetchPublicEventsFilters): boolean {
       filters.price_max !== undefined ||
       filters.from ||
       filters.to ||
+      filters.city ||
+      filters.venue ||
+      filters.event_type ||
       (filters.distance_km !== undefined && filters.distance_km > 0),
   )
 }

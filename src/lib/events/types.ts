@@ -70,6 +70,24 @@ export type FetchPublicEventsFilters = {
   sort?: 'relevance' | 'date_asc' | 'price_asc' | 'popularity'
   city?: string
   country?: string
+  /**
+   * Venue name, matched loosely. Emitted by the "see everything at this
+   * venue" link on a venue profile, which previously landed on the
+   * unfiltered national list.
+   */
+  venue?: string
+  /**
+   * One of CITY_EVENT_TYPES (concert, dj-set, comedy, ...), emitted by the
+   * event-type rail on every city page. There is no column backing this
+   * taxonomy, so it resolves through EVENT_TYPE_FILTER onto the category and
+   * tag data that does exist.
+   */
+  event_type?: string
+  /**
+   * Which entity the header search was scoped to. Narrows where the query is
+   * allowed to match; without it all four search tabs behaved identically.
+   */
+  tab?: 'events' | 'cities' | 'communities' | 'organisers'
 }
 
 export type BboxFilter = {
