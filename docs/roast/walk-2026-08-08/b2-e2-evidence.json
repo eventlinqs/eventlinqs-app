@@ -3,18 +3,18 @@
   "log": [
     {
       "step": "B2 kit at true zero shows the empty state, not four zeros",
-      "verdict": "FAIL",
+      "verdict": "PASS",
       "detail": {
-        "emptyState": false,
+        "emptyState": true,
         "bigNumberTiles": []
       }
     },
     {
       "step": "B2 the empty state teaches which measures are hard",
-      "verdict": "FAIL",
+      "verdict": "PASS",
       "detail": {
-        "measured": false,
-        "estimate": false
+        "measured": true,
+        "estimate": true
       }
     },
     {
@@ -28,9 +28,9 @@
     },
     {
       "step": "B2 full reach panel shows one empty state, not two",
-      "verdict": "FAIL",
+      "verdict": "PASS",
       "detail": {
-        "emptyState": false,
+        "emptyState": true,
         "oldTableEmptyRowGone": true
       }
     },
@@ -40,9 +40,47 @@
       "detail": "overflow=0px"
     },
     {
+      "step": "E2 the video field is programmatically labelled",
+      "verdict": "PASS",
+      "detail": {
+        "id": "event-video-url",
+        "name": "video_url",
+        "labelledBy": "Event videoOptional. One link from YouTu"
+      }
+    },
+    {
       "step": "E2 the organiser has a video field on the edit form",
-      "verdict": "FAIL",
-      "detail": "no video field found on the edit form"
+      "verdict": "PASS",
+      "detail": "input[name=video_url] present"
+    },
+    {
+      "step": "E2 the form tells the organiser the link was understood",
+      "verdict": "PASS",
+      "detail": "Youtube video linked. It will show below the hero on your event page."
+    },
+    {
+      "step": "E2 a pasted provider link is parsed to a canonical embed and stored",
+      "verdict": "PASS",
+      "detail": {
+        "video_url": "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ",
+        "video_provider": "youtube"
+      }
+    },
+    {
+      "step": "E2 no provider iframe loads before the visitor asks for it",
+      "verdict": "PASS",
+      "detail": {
+        "iframesOnFirstPaint": 0
+      }
+    },
+    {
+      "step": "E2 clicking play loads the canonical, sandboxed provider embed",
+      "verdict": "PASS",
+      "detail": {
+        "src": "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1",
+        "sandbox": null,
+        "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+      }
     },
     {
       "step": "E2 media state on this event",
@@ -55,15 +93,33 @@
   ],
   "results": {
     "kitZero": {
-      "hasEmptyState": false,
+      "hasEmptyState": true,
       "zeroTiles": [],
-      "teaches": false
+      "teaches": true
     },
     "videoBefore": {
-      "video_url": null,
-      "video_provider": null
+      "video_url": "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ",
+      "video_provider": "youtube"
     },
-    "videoFieldFound": false,
+    "videoFieldWiring": {
+      "id": "event-video-url",
+      "name": "video_url",
+      "labelledBy": "Event videoOptional. One link from YouTu"
+    },
+    "videoFieldFound": true,
+    "videoParseNote": "Youtube video linked. It will show below the hero on your event page.",
+    "videoAfter": {
+      "video_url": "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ",
+      "video_provider": "youtube"
+    },
+    "videoFacadeFound": true,
+    "publicIframes": [
+      {
+        "src": "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1",
+        "sandbox": null,
+        "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+      }
+    ],
     "media": {
       "cover": true,
       "galleryCount": 0

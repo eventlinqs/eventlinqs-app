@@ -182,7 +182,71 @@ guards pass, **1454 tests across 132 files**.
 | B1 organiser logo | built, unproven | **D2 FIXED AND RE-WALKED**. Both placements proven, light and dark |
 | R-A our mark subordinate | awaiting ruling | **RULED SUBORDINATE, and it is what renders**: "Ticketing by EVENTLINQS." muted, organiser's mark dominant |
 | W6 phone-camera QR | not walked | **STILL NOT WALKED** |
-| B2, A4, E2 | not started | not started |
+| B2 the four zeros | not started | **BUILT AND WALKED**, 1440 and 390, both surfaces |
+| A4 positioning | not started | **SWEPT**: reach leads with tickets sold everywhere |
+| E2 images and video | not started | **WALKED**, one accessibility defect found and fixed, stale spec reconciled |
+
+---
+
+## 4a. B2, A4 AND E2, ALSO WALKED
+
+Evidence: `docs/roast/walk-2026-08-08/b2-e2-evidence.json`, shots `b2-*` and `e2-*`.
+Driven against a genuinely zero-reach event
+(`marketplace-regression-comedy-free-night-at-waterf-q5758z`).
+
+### B2, the four zeros. **ALL PASS**
+
+| Step | Verdict |
+|---|---|
+| Kit at true zero shows the empty state, not four zeros | **PASS** (`bigNumberTiles: []`) |
+| It teaches which measures are hard and which are estimates | **PASS** |
+| It offers a next step | **PASS** ("Send it everywhere", "Download your QR poster") |
+| Full reach panel shows ONE empty state, not two | **PASS** (the table's own empty row is gone) |
+| At 390, no sideways scroll | **PASS** (`overflow=0px`) |
+
+### A4, positioning to measurement. Shipped
+
+Reach now runs **tickets, orders, clicks, views**, hardest first, with the two
+estimates labelled and the two hard numbers set in gold, on the kit panel, the
+full reach panel and the per-channel table. `/organisers` sells "Tickets sold,
+attributed to the exact channel that sold them" instead of "every click and
+sale", and states the differentiator plainly: two of those numbers are payments
+and two are estimates, and we say which.
+
+### E2, images and video. **ALL PASS, and one defect found and fixed**
+
+| Step | Verdict |
+|---|---|
+| The video field is programmatically labelled | **PASS, after the fix below** |
+| The form confirms the link was understood | **PASS** ("Youtube video linked") |
+| A pasted link is parsed to a canonical embed and stored | **PASS** `youtube.com/watch?v=X` -> `youtube-nocookie.com/embed/X`, provider `youtube` |
+| No provider iframe before the visitor asks | **PASS** (`iframesOnFirstPaint: 0`) |
+| Clicking play loads the canonical embed | **PASS** |
+
+**The defect.** The Event video input carried **no `id` and no `name`**, and its
+label neither wrapped it nor pointed at it, so the field was programmatically
+unlabelled: a screen reader announced an anonymous text box. The multi-file
+image input had the same gap. Both fixed; the parse result is now wired as
+`aria-describedby` with `role="alert"` on the rejection.
+
+**One observation, not called a defect.** The provider iframe carries no
+`sandbox` attribute, though a comment in `video-embed.ts` describes the URL as
+"sandbox-able". Sandboxing a provider player needs `allow-scripts` plus
+`allow-same-origin`, which gives most of it back, and the real vector (raw HTML
+and iframes pasted by an organiser) is closed at the parser. Flagged for a
+founder view rather than changed unasked.
+
+**A stale document, reported under Law 0.** `docs/design/MEDIA-UPLOAD-SPEC.md`
+proposed self-hosted video at 50 MB through Mux or Cloudflare Stream. The code
+says the opposite and the code is the authority: "EventLinqs never self-hosts
+the file." The document now carries that correction at the top rather than
+being left to mislead the next reader.
+
+**My own walk did something it should not have.** The first pass matched "Save
+as Draft" as well as "Save Changes" and unpublished a published TEST event
+mid-walk. Restored to `published` in the same session, the selector narrowed so
+it cannot happen again, and the walk video cleared. TEST is left as it was
+found. Recorded rather than quietly corrected.
 
 ---
 

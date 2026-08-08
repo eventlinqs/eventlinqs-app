@@ -142,9 +142,30 @@ try {
 
   if (fieldFound) {
     await videoField.first().fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
-    const save = page.locator('button[type=submit]').filter({ hasText: /save|update|publish/i }).first()
+    // The parse feedback is client side and immediate: read it before saving,
+    // because that sentence is the organiser's only confirmation the link was
+    // understood.
+    await page.waitForTimeout(1200)
+    const parseNote = await page
+      .locator('#event-video-url-state')
+      .innerText()
+      .catch(() => null)
+    results.videoParseNote = parseNote
+    record('E2 the form tells the organiser the link was understood', /video linked/i.test(parseNote ?? '') ? 'PASS' : 'FAIL', parseNote)
+
+    // "Save Changes" ONLY. The first pass matched "Save as Draft" as well, and
+    // that control does what it says: it unpublished a published event mid
+    // walk. Recorded rather than quietly corrected, because a verification
+    // script that mutates the thing it is verifying is its own defect.
+    const save = page.locator('button', { hasText: /^Save Changes/i }).first()
+    for (let step = 0; step < 6 && (await save.count()) === 0; step += 1) {
+      const next = page.locator('button', { hasText: /^(Next|Continue)/i }).first()
+      if ((await next.count()) === 0) break
+      await next.click()
+      await page.waitForTimeout(1200)
+    }
     await save.click()
-    await page.waitForTimeout(6000)
+    await page.waitForTimeout(8000)
     const { data: after } = await admin
       .from('events').select('video_url, video_provider').eq('id', ZERO_EVENT).maybeSingle()
     results.videoAfter = after
@@ -152,16 +173,41 @@ try {
       after?.video_provider === 'youtube' && /youtube(-nocookie)?\.com\/embed\//.test(after?.video_url ?? '') ? 'PASS' : 'FAIL', after)
 
     // And it must actually render on the public page.
+    // The event page is ISR at revalidate=300, so a just-saved video may not be
+    // in the served HTML yet. Poll for it rather than declaring a defect.
     const pub = await browser.newContext({ viewport: { width: 1440, height: 900 } })
     const pubPage = await pub.newPage()
-    await pubPage.goto(`${BASE}/events/${ZERO_SLUG}`, { waitUntil: 'domcontentloaded' })
-    await pubPage.waitForTimeout(3000)
-    const iframes = await pubPage.locator('iframe').evaluateAll(els =>
-      els.map(e => ({ src: e.getAttribute('src'), sandbox: e.getAttribute('sandbox'), allow: e.getAttribute('allow') })))
-    results.publicIframes = iframes
-    const embed = iframes.find(f => /youtube/.test(f.src ?? ''))
-    await pubPage.screenshot({ path: join(SHOTS, 'e2-video-on-event-page.png'), fullPage: false })
-    record('E2 the video renders on the public event page', embed ? 'PASS' : 'FAIL', embed ?? iframes)
+    let facade = null
+    for (let attempt = 0; attempt < 12; attempt += 1) {
+      await pubPage.goto(`${BASE}/events/${ZERO_SLUG}?cb=${attempt}`, { waitUntil: 'domcontentloaded' })
+      await pubPage.waitForTimeout(2000)
+      const candidate = pubPage.locator('button', { has: pubPage.locator('img') }).filter({ hasText: /play|watch/i })
+      const anyPlay = (await candidate.count()) > 0 ? candidate : pubPage.locator('[aria-label*="Play" i], button[aria-label*="video" i]')
+      if ((await anyPlay.count()) > 0) { facade = anyPlay.first(); break }
+      await pubPage.waitForTimeout(28_000)
+    }
+    results.videoFacadeFound = !!facade
+
+    // THE POINT OF THE FACADE: no provider iframe and no provider script before
+    // the visitor asks for one. Assert that BEFORE clicking.
+    const iframesBefore = await pubPage.locator('iframe').count()
+    record('E2 no provider iframe loads before the visitor asks for it', iframesBefore === 0 ? 'PASS' : 'FAIL',
+      { iframesOnFirstPaint: iframesBefore })
+
+    if (facade) {
+      await facade.click()
+      await pubPage.waitForTimeout(2500)
+      const iframes = await pubPage.locator('iframe').evaluateAll(els =>
+        els.map(e => ({ src: e.getAttribute('src'), sandbox: e.getAttribute('sandbox'), allow: e.getAttribute('allow') })))
+      results.publicIframes = iframes
+      const embed = iframes.find(f => /youtube-nocookie\.com\/embed\//.test(f.src ?? ''))
+      await pubPage.screenshot({ path: join(SHOTS, 'e2-video-on-event-page.png'), fullPage: false })
+      record('E2 clicking play loads the canonical, sandboxed provider embed', embed ? 'PASS' : 'FAIL', embed ?? iframes)
+    } else {
+      await pubPage.screenshot({ path: join(SHOTS, 'e2-video-on-event-page.png'), fullPage: false })
+      record('E2 the video facade appears on the public event page', 'FAIL',
+        'no play control found within the ISR revalidate window')
+    }
     await pub.close()
   }
 
