@@ -181,6 +181,19 @@ describe('the password fails the policy', () => {
     expect(generateLink).not.toHaveBeenCalled()
   })
 
+  test('a password over the 128 ceiling is NOT told to choose a longer one', async () => {
+    // Found by walking the deployed preview. The ceiling used to answer with the
+    // floor's sentence, which is an instruction that makes the problem worse.
+    const { status, body } = await post({ password: 'a'.repeat(200) })
+
+    expect(status).toBe(400)
+    expect(body.failure).toBe('password_too_long')
+    expect(body.field).toBe('password')
+    expect(body.error).toContain('128 characters or fewer')
+    expect(body.error).not.toContain('longer')
+    expect(body.error).not.toBe(GENERIC)
+  })
+
   test("GoTrue's own policy rejection lands on the password, not the generic sentence", async () => {
     generateLink.mockResolvedValueOnce({ data: null, error: WEAK_PASSWORD })
     const { status, body } = await post()
@@ -321,6 +334,16 @@ describe('the details did not validate', () => {
     expect(status).toBe(400)
     expect(body.failure).toBe('missing_name')
     expect(body.field).toBe('fullName')
+    expect(body.error).not.toBe(GENERIC)
+  })
+
+  test('a name over the 120 ceiling is not told to enter one', async () => {
+    const { status, body } = await post({ fullName: 'a'.repeat(200) })
+
+    expect(status).toBe(400)
+    expect(body.failure).toBe('name_too_long')
+    expect(body.field).toBe('fullName')
+    expect(body.error).toContain('120 characters or fewer')
     expect(body.error).not.toBe(GENERIC)
   })
 })

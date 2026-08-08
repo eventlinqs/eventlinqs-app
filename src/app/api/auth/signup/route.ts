@@ -125,10 +125,17 @@ export async function POST(request: NextRequest) {
     const raw = await request.json()
     const parsed = BodySchema.safeParse(raw)
     if (!parsed.success) {
-      const paths = new Set(parsed.error.issues.map((issue) => String(issue.path[0] ?? '')))
-      if (paths.has('email')) return fail('invalid_email', 400)
-      if (paths.has('password')) return fail('weak_password', 400)
-      if (paths.has('fullName')) return fail('missing_name', 400)
+      // Both ends of each bound get their own sentence. Collapsing them onto the
+      // floor's message told someone who pasted a long passphrase to "choose a
+      // longer one", which is worse than saying nothing.
+      const issueFor = (field: string) =>
+        parsed.error.issues.find((issue) => issue.path[0] === field)
+      const email = issueFor('email')
+      if (email) return fail('invalid_email', 400)
+      const password = issueFor('password')
+      if (password) return fail(password.code === 'too_big' ? 'password_too_long' : 'weak_password', 400)
+      const name = issueFor('fullName')
+      if (name) return fail(name.code === 'too_big' ? 'name_too_long' : 'missing_name', 400)
       return fail('signup_rejected', 400)
     }
     body = parsed.data

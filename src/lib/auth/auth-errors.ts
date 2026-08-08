@@ -48,6 +48,8 @@ export type AuthFailureClass =
   | 'email_exists'
   | 'invalid_email'
   | 'missing_name'
+  | 'password_too_long'
+  | 'name_too_long'
   | 'signup_rejected'
   | 'service_unavailable'
   | 'unknown'
@@ -143,6 +145,15 @@ const MESSAGES: Record<AuthFailureClass, string> = {
   invalid_email: 'That email address does not look right. Check it and try again.',
 
   missing_name: 'Enter your full name so organisers and attendees know who you are.',
+
+  // Both bounds need their own sentence. Found by walking the deployed preview:
+  // the schema caps the password at 128 and the name at 120, and both ceilings
+  // were answered by the floor's message, so a person who pasted a long
+  // passphrase was told to "choose a longer one". A message that gives the
+  // wrong instruction is worse than one that gives none.
+  password_too_long: 'Password must be 128 characters or fewer. Shorten it and try again.',
+
+  name_too_long: 'That name is too long. Shorten it to 120 characters or fewer and try again.',
 
   // The honest answer when GoTrue declines and we cannot name the reason: no
   // cause is asserted, but all three routes out are offered. It replaces the
@@ -390,11 +401,13 @@ export function rateLimitedMessage(retryAfterSeconds?: number | null): string {
 export function signupFieldFor(failure: AuthFailureClass): 'fullName' | 'email' | 'password' | null {
   switch (failure) {
     case 'missing_name':
+    case 'name_too_long':
       return 'fullName'
     case 'email_exists':
     case 'invalid_email':
       return 'email'
     case 'weak_password':
+    case 'password_too_long':
       return 'password'
     default:
       return null
