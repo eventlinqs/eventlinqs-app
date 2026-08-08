@@ -13,6 +13,43 @@ import {
 } from '@/lib/consent/record'
 import type { FeePassType } from '@/types/database'
 
+/** The shape both squad actions need in order to authorise a caller. */
+export type SquadAccessRow = {
+  user_id: string | null
+  squad: { share_token?: string | null } | { share_token?: string | null }[] | null
+}
+
+/**
+ * May this caller act on this squad membership?
+ *
+ * ONE function for both actions, because they had the same bug twice and a shared
+ * gate cannot drift between them.
+ *
+ * Two legitimate callers:
+ *   - the SIGNED-IN member: `member.user_id === user.id`
+ *   - a GUEST member (`user_id IS NULL`) who presents the squad share token
+ *
+ * A constant-time compare is not warranted: the token is a high-entropy value
+ * fetched in one round trip, and the surrounding database call dominates timing.
+ */
+export function assertSquadAccess(
+  member: SquadAccessRow,
+  userId: string | undefined,
+  squadToken: string | undefined,
+): boolean {
+  const squad = Array.isArray(member.squad) ? member.squad[0] : member.squad
+  const shareToken = squad?.share_token ?? null
+
+  if (member.user_id) {
+    // Claimed membership: only its owner, and never on a token alone.
+    return !!userId && member.user_id === userId
+  }
+  // Guest membership: the share token IS the credential, so it must be present
+  // and must match. Absent or mismatched fails closed.
+  if (!squadToken || !shareToken) return false
+  return squadToken === shareToken
+}
+
 function generateOrderNumber(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
   let result = 'EL-'
@@ -34,7 +71,8 @@ export interface SquadMemberPaymentResult {
  * On payment success, the webhook marks the member as paid and completes the squad if full.
  */
 export async function createSquadMemberPaymentIntent(
-  memberId: string
+  memberId: string,
+  squadToken: string,
 ): Promise<SquadMemberPaymentResult> {
   const rl = await actionRateLimit('checkout-reserve')
   if (!rl.ok) return { error: 'Too many attempts. Please wait a moment and try again.' }
@@ -50,7 +88,7 @@ export async function createSquadMemberPaymentIntent(
       id, user_id, status, order_id,
       attendee_first_name, attendee_last_name, attendee_email, guest_email,
       squad:squads!squad_id (
-        id, status, expires_at, ticket_tier_id, event_id, total_spots,
+        id, status, expires_at, ticket_tier_id, event_id, total_spots, share_token,
         ticket_tier:ticket_tiers!ticket_tier_id ( id, name, price, currency ),
         event:events!event_id ( id, title, organisation_id, fee_pass_type )
       )
@@ -62,8 +100,20 @@ export async function createSquadMemberPaymentIntent(
     return { error: 'Squad membership not found' }
   }
 
-  // Ownership check: logged-in user must match, OR guest (user_id null) with email match
-  if (member.user_id && member.user_id !== user?.id) {
+  // Authorisation. Two callers are legitimate: the signed-in member, and a GUEST
+  // member who holds the squad share link.
+  //
+  // THE DEFECT THIS REPLACES was `if (member.user_id && member.user_id !== user?.id)`,
+  // whose comment claimed "OR guest (user_id null) with email match" while
+  // performing no email match at all. For a guest row, user_id IS NULL, so the
+  // condition short-circuited and the whole check passed for ANY caller, including
+  // an anonymous one.
+  //
+  // The page at /squad/[token]/pay/[member_id] does verify the token, but a server
+  // action is its own public HTTP endpoint: a check in the page does not gate the
+  // action. The token has to be re-verified HERE, against the member's own squad,
+  // which is why it is now a required argument.
+  if (!assertSquadAccess(member as SquadAccessRow, user?.id, squadToken)) {
     return { error: 'Unauthorised' }
   }
 
@@ -279,6 +329,7 @@ export async function recordSquadMemberMarketingConsent(
   memberId: string,
   organiserConsent: boolean,
   platformConsent: boolean,
+  squadToken: string,
 ): Promise<{ ok: boolean }> {
   if (!organiserConsent && !platformConsent) return { ok: true }
 
@@ -292,14 +343,20 @@ export async function recordSquadMemberMarketingConsent(
     const { data: member } = await adminClient
       .from('squad_members')
       .select(
-        'id, user_id, order_id, attendee_email, guest_email, squad:squads!squad_id ( event:events!event_id ( id, organisation_id ) )',
+        'id, user_id, order_id, attendee_email, guest_email, squad:squads!squad_id ( share_token, event:events!event_id ( id, organisation_id ) )',
       )
       .eq('id', memberId)
       .single()
     if (!member) return { ok: false }
 
-    // Ownership: a logged-in member must own this membership.
-    if (member.user_id && member.user_id !== user?.id) return { ok: false }
+    // Same gate as createSquadMemberPaymentIntent. This one matters for a reason
+    // the other does not: what it writes is a CONSENT RECORD. The old check passed
+    // for any caller on a guest row, so anyone holding a member id could fabricate
+    // proof that somebody else's email address opted in to organiser marketing.
+    // Manufacturing a consent record is the precise thing the Spam Act compliance
+    // work exists to prevent, so a no-op gate here is worse than on the payment
+    // action, where an attacker would only be paying for someone else's ticket.
+    if (!assertSquadAccess(member as SquadAccessRow, user?.id, squadToken)) return { ok: false }
 
     const squad = member.squad as unknown as {
       event: { id: string; organisation_id: string } | null

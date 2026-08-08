@@ -169,20 +169,49 @@ export async function getQueuePosition(input: {
 
 const LeaveQueueSchema = z.object({
   queueId: z.string().uuid(),
+  sessionId: z.string().min(8),
 })
 
+/**
+ * Abandon YOUR OWN place in the queue.
+ *
+ * IDOR-04. This used to accept `{ queueId }` alone and write with the SERVICE-ROLE
+ * client, so it filtered on nothing but the row id. A queue id is not a credential:
+ * anyone holding one could set another person's entry to 'abandoned' and take away
+ * their place in the queue for a high-demand event. That is a denial-of-purchase
+ * attack on the exact surface the queue exists to protect, and it was a write with
+ * no authorisation of any kind.
+ *
+ * `session_id` is what identifies a queue entry in this design: joinQueue takes it
+ * and virtual_queue stores it, so an anonymous buyer holding a place has one. The
+ * update is now scoped by it, which means an attacker needs the session id as well
+ * as the queue id, exactly the bar the rest of the queue already sets. When the
+ * caller is signed in, user_id must match too, so a leaked session id alone cannot
+ * remove a claimed entry.
+ */
 export async function leaveQueue(input: {
   queueId: string
+  sessionId: string
 }): Promise<{ success: boolean; error?: string }> {
   const parsed = LeaveQueueSchema.safeParse(input)
   if (!parsed.success) return { success: false, error: 'Invalid input.' }
 
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
   const admin = createAdminClient()
-  const { error } = await admin
+  let q = admin
     .from('virtual_queue')
     .update({ status: 'abandoned' })
     .eq('id', parsed.data.queueId)
+    .eq('session_id', parsed.data.sessionId)
     .eq('status', 'waiting')
+  // A signed-in caller may only abandon an entry that is theirs. An entry with a
+  // null user_id is an anonymous one and is identified by session_id alone.
+  if (user) q = q.or(`user_id.eq.${user.id},user_id.is.null`)
+  const { error } = await q
 
   if (error) return { success: false, error: 'Failed to leave queue.' }
   return { success: true }

@@ -71,7 +71,7 @@ function InnerPayForm({
       // Record consent before confirming payment. Best-effort: a failure here
       // must never block the payment.
       if (organiserConsent || platformConsent) {
-        await recordSquadMemberMarketingConsent(memberId, organiserConsent, platformConsent).catch(
+        await recordSquadMemberMarketingConsent(memberId, organiserConsent, platformConsent, squadToken).catch(
           () => {},
         )
       }
@@ -147,7 +147,7 @@ export function SquadPayForm({
   useEffect(() => {
     let cancelled = false
 
-    createSquadMemberPaymentIntent(memberId).then(result => {
+    createSquadMemberPaymentIntent(memberId, squadToken).then(result => {
       if (cancelled) return
       if (result.error) {
         setLoadError(result.error)

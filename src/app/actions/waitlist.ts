@@ -118,8 +118,27 @@ export async function getWaitlistPosition(waitlistId: string): Promise<number | 
 /**
  * Fetch all waitlist entries for the authenticated user.
  * Includes event and tier details for display.
+ *
+ * IDOR-03. This used to take `userId: string` as an argument and read with the
+ * SERVICE-ROLE client, which bypasses RLS. A server action is a public HTTP
+ * endpoint, so anyone could call it with anyone else's user id and read that
+ * person's waitlist: which events they are waiting for, how many tickets they
+ * asked for, and their position. The only correct caller,
+ * dashboard/my-waitlists/page.tsx, passed `user.id` and looked entirely innocent.
+ *
+ * A caller-supplied identity is not an identity. The user is now derived from the
+ * session inside the action, so the argument an attacker would tamper with no
+ * longer exists. Returning an empty array for an unauthenticated caller keeps this
+ * a read that reveals nothing rather than an error that reveals something.
  */
-export async function getMyWaitlists(userId: string): Promise<MyWaitlistRow[]> {
+export async function getMyWaitlists(): Promise<MyWaitlistRow[]> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return []
+  const userId = user.id
+
   const adminClient = createAdminClient()
 
   const { data, error } = await adminClient

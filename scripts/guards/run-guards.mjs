@@ -16,6 +16,17 @@
  *   no-native-submit           no form puts a credential in the URL pre-hydration
  *   revoked-column-reads       no untrusted-role query selects a revoked column
  *   no-plaintext-credential    no tracked file contains a plaintext credential
+ *   entrypoint-authz-audit     every request entry point declares an auth posture
+ *
+ * On entrypoint-authz-audit: there are 167 request entry points, 50 route handlers
+ * and 117 exported server actions. The security pass had read about twenty of them
+ * and reported the rest as unread, which is honest and useless, because an attacker
+ * does not care which files were sampled. This walks all of them and fails the build
+ * when one establishes no caller identity and is not declared public with a stated
+ * reason, so a route added next month cannot skip the question silently. The
+ * decisive distinction it encodes: a session-client path is governed by RLS, so the
+ * database scopes the rows, while a service-role path has no backstop and a missing
+ * ownership check IS the vulnerability.
  *
  * On no-plaintext-credential: GitGuardian reported a Company Email Password
  * exposed in this repository on 2026-08-08. It was hardcoded in twenty committed
@@ -131,6 +142,7 @@ const GUARDS = [
   'scripts/guards/no-native-submit-guard.mjs',
   'scripts/security/revoked-column-reads.mjs',
   'scripts/guards/no-plaintext-credential.mjs',
+  'scripts/security/entrypoint-authz-audit.mjs',
 ]
 
 /**
