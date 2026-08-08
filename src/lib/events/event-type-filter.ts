@@ -14,11 +14,12 @@
  * (`events.tags`). A type matches if EITHER hits, so a comedy night tagged
  * "comedy" is found even though `event_categories` has no comedy row at all.
  *
- * Category slugs used here are verified present in `event_categories`:
- *   arts-culture, business-networking, charity, community, education,
- *   european, family, fashion, festival, film, food-drink, health-wellness,
- *   middle-eastern, music, nightlife, other, pacific, pride, religion,
- *   sports, technology
+ * Category slugs used here are verified present in `event_categories`, with
+ * one deliberate exception: `arts-community` is the slug the homepage already
+ * asks for and the slug migration 20260808000001 renames the arts row to. It
+ * is referenced here by its correct post-migration name; until that migration
+ * is applied the category half simply matches nothing and the tag half
+ * carries the type, which is the same fallback comedy relies on.
  */
 
 export type EventTypeFilter = {
@@ -34,7 +35,7 @@ export const EVENT_TYPE_FILTER: Record<string, EventTypeFilter> = {
   // event_categories has no comedy row, so comedy is tag-only. This is why the
   // mapping is a union and not a single category lookup.
   comedy: { categories: [], tags: ['comedy'] },
-  theatre: { categories: ['arts-culture'], tags: ['theatre', 'arts-community', 'arts-culture'] },
+  theatre: { categories: ['arts-community'], tags: ['theatre', 'arts-community'] },
   workshop: { categories: ['education'], tags: ['workshop', 'education'] },
   community: { categories: ['community'], tags: ['community'] },
   'food-drink': { categories: ['food-drink'], tags: ['food-drink', 'food', 'drink'] },
