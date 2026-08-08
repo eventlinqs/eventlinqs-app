@@ -14,6 +14,17 @@
  *   check-client-barrel-imports  no third-party namespace import in the browser bundle
  *   rls-exposure-scan          no world-readable policy exposes a sensitive column
  *   no-native-submit           no form puts a credential in the URL pre-hydration
+ *   revoked-column-reads       no untrusted-role query selects a revoked column
+ *
+ * On revoked-column-reads: migration 20260808000010 narrows column privileges, and
+ * a privilege failure is LOUD by design, which is right for security and is still
+ * an outage in production. PostgREST returns "permission denied for column email"
+ * and fails the WHOLE query, not just the field. The first draft of that migration
+ * would have broken Stripe Connect onboarding, because onboard/route.ts reads
+ * organisations.email with the session client. Nothing in the type system or the
+ * test suite could catch it: the failure only exists once the grant changes. This
+ * guard resolves the client per query, so it knows which Postgres role each read
+ * runs as, and fails the build if any of them asks for a column it no longer has.
  *
  * On no-native-submit: a form written as onSubmit with preventDefault and no
  * action is correct once React is live and a credential leak before it, because
@@ -107,6 +118,7 @@ const GUARDS = [
   // docs/security/AUDIT-2026-08-08.md.
   'scripts/security/rls-exposure-scan.mjs',
   'scripts/guards/no-native-submit-guard.mjs',
+  'scripts/security/revoked-column-reads.mjs',
 ]
 
 /**

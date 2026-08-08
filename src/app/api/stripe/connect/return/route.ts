@@ -63,7 +63,11 @@ export async function GET(req: NextRequest) {
     )
   }
 
-  const { data: org } = await supabase
+  // Service role read, ownership enforced immediately below (owner_id !== user.id
+  // -> 403). owner_id and stripe_account_id are revoked from `authenticated` by
+  // column privilege (migration 20260808000010). Identity is already verified via
+  // getUser() above.
+  const { data: org } = await createAdminClient()
     .from('organisations')
     .select('id, owner_id, stripe_account_id')
     .eq('id', organisationId)

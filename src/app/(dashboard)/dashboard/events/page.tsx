@@ -42,9 +42,18 @@ export default async function MyEventsPage({ searchParams }: Props) {
     )
   }
 
+  // EXPLICIT COLUMNS, NOT (*). This result is passed to <EventsTable>, a CLIENT
+  // component, so every column crosses into the RSC payload and is readable with
+  // view-source. `events` has 64 columns; the table renders nine. ASVS 8.2.3.
+  //
+  // These are the organiser's own events, so this is not a cross-tenant leak. It
+  // is unnecessary width at a trust boundary, and the narrow list also documents
+  // what the table actually depends on.
   let query = supabase
     .from('events')
-    .select('*, ticket_tiers(sold_count, total_capacity)')
+    .select(
+      'id, slug, title, status, start_date, venue_city, has_reserved_seating, ticket_tiers(sold_count, total_capacity)',
+    )
     .eq('organisation_id', org.id)
     .order('created_at', { ascending: false })
 

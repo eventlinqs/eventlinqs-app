@@ -25,8 +25,16 @@ export async function generateMyFoundingInvite(citySlug: string): Promise<{ code
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
-  // The caller must own a FOUNDING organisation (session client, RLS applies).
-  const { data: org } = await supabase
+  // The caller must own a FOUNDING organisation.
+  //
+  // Identity comes from the session client above (getUser, never getSession);
+  // the row is then read with the service role scoped to owner_id = that verified
+  // user. `is_founding` is revoked from `authenticated` by column privilege
+  // (migration 20260808000010), because that role serves both the owner and any
+  // logged-in visitor and a grant cannot tell them apart. The ownership filter is
+  // what makes the service-role read safe, and it is the pattern
+  // src/lib/payouts/auth.ts already uses.
+  const { data: org } = await createAdminClient()
     .from('organisations')
     .select('id, name, is_founding')
     .eq('owner_id', user.id)

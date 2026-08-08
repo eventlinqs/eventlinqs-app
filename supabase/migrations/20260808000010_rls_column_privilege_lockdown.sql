@@ -264,12 +264,12 @@ REVOKE SELECT ON public.seats FROM authenticated;
 GRANT SELECT (
   id, event_id, seat_map_section_id, ticket_tier_id,
   row_label, seat_number, seat_type, status,
-  x, y, price_cents, held_reason, created_at, updated_at
+  x, y, price_cents, held_reason, note, created_at, updated_at
 ) ON public.seats TO anon;
 GRANT SELECT (
   id, event_id, seat_map_section_id, ticket_tier_id,
   row_label, seat_number, seat_type, status,
-  x, y, price_cents, held_reason, created_at, updated_at
+  x, y, price_cents, held_reason, note, created_at, updated_at
 ) ON public.seats TO authenticated;
 
 COMMENT ON COLUMN public.seats.held_by_user_id IS

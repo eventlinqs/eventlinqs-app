@@ -29,7 +29,11 @@ export default async function InvitesPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: org } = await supabase
+  // Service role scoped to the owner verified above. The founding_* columns are
+  // revoked from `authenticated` by column privilege (20260808000010); see the
+  // note in ./actions.ts for why the split is in the application rather than the
+  // grant.
+  const { data: org } = await createAdminClient()
     .from('organisations')
     .select('id, name, is_founding, founding_city, founding_bonus_months, founding_fee_free_until')
     .eq('owner_id', user.id)

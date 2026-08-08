@@ -87,7 +87,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
   }
 
-  const { data: org, error: orgError } = await supabase
+  // Service role read, ownership enforced immediately below. These columns
+  // (email, stripe_*) are revoked from `authenticated` by column privilege
+  // (migration 20260808000010): that role serves both the owner and any logged-in
+  // visitor, and a grant cannot tell them apart. Identity is already verified via
+  // getUser() above; the owner_id check below is what authorises this read.
+  const { data: org, error: orgError } = await createAdminClient()
     .from('organisations')
     .select(
       'id, owner_id, name, email, stripe_account_id, stripe_account_country, stripe_charges_enabled'
