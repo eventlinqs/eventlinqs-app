@@ -661,17 +661,35 @@ const CHECKS = [
       const off = (data ?? []).filter((f) => !f.enabled)
       if (off.length === 0) return PASS('every flag is on')
 
-      const oversight = off.filter((f) => (FLAG_INTENT[f.flag]?.intent ?? 'UNDECLARED') !== 'deliberate')
+      // THREE states, and conflating them is what made this check's own output
+      // misleading once the founder had ruled:
+      //   deliberate  - decided OFF. Nothing outstanding.
+      //   oversight   - decided ON and NOT YET FLIPPED. The decision exists; the
+      //                 production action does not. Still a severed feature, so
+      //                 still a FAIL, but "needs a decision" is now false and
+      //                 saying it invites the founder to re-rule something they
+      //                 have already ruled.
+      //   UNDECLARED  - nobody has recorded either way, which is the original
+      //                 defect this check was written for.
+      const undeclared = off.filter((f) => !FLAG_INTENT[f.flag])
+      const rulledOnNotFlipped = off.filter((f) => FLAG_INTENT[f.flag]?.intent === 'oversight')
       const lines = off.map((f) => {
         const i = FLAG_INTENT[f.flag]
-        return `    ${f.flag}: ${i ? `${i.intent.toUpperCase()} - ${i.why}` : 'UNDECLARED - nobody has recorded whether this is a decision or an oversight, which is itself the defect'}`
+        if (!i) return `    ${f.flag}: UNDECLARED - nobody has recorded whether this is a decision or an oversight, which is itself the defect`
+        if (i.intent === 'oversight') return `    ${f.flag}: RULED ON, NOT YET FLIPPED - ${i.why}`
+        return `    ${f.flag}: ${i.intent.toUpperCase()} - ${i.why}`
       })
       const body = `${off.length} flag(s) off. A feature that is built, wired and proven but sitting behind a flag nobody flipped is the same silent break as one with no audience: nothing errors, nothing goes red, it simply never runs.\n${lines.join('\n')}`
 
-      if (oversight.length) {
-        return FAIL(
-          `${body}\n  ${oversight.length} of these is NOT a deliberate decision and needs one.`,
-        )
+      if (undeclared.length || rulledOnNotFlipped.length) {
+        const parts = []
+        if (undeclared.length) parts.push(`${undeclared.length} still NEEDS A DECISION`)
+        if (rulledOnNotFlipped.length) {
+          parts.push(
+            `${rulledOnNotFlipped.length} is RULED ON and awaiting the founder's flip in production (see docs/roast/PRODUCTION-APPROVAL-BLOCK.md). No agent may flip it`,
+          )
+        }
+        return FAIL(`${body}\n  ${parts.join('. ')}.`)
       }
       return EMPTY(
         `${body}\n  All deliberate. The code behind each has still never run against real data, so a defect of this class inside them is undiscovered rather than absent.`,
