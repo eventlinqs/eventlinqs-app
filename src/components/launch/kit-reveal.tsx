@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import type { ComposeState } from '@/app/launch/actions'
+import { useState, useTransition } from 'react'
+import { updateKit, type ComposeState } from '@/app/launch/actions'
 import { DraftEventPreview } from './draft-event-preview'
 import { KitArtefacts, KitCaptions } from './kit-artefacts'
 import { Reveal } from '@/components/ui/reveal'
@@ -33,6 +33,7 @@ type Props = {
 export function KitReveal({ state, onEditDescription }: Props) {
   const { payload, questions, recurringNote, reachFraming, code, ephemeral, captions } = state
   const [bill, setBill] = useState<string[]>(payload?.billNames ?? [])
+  const [, startSaving] = useTransition()
 
   if (!payload) return null
 
@@ -129,8 +130,21 @@ export function KitReveal({ state, onEditDescription }: Props) {
       {/* Every caption, in full, copyable. Also the ruling: "every caption". */}
       <KitCaptions captions={captions} />
 
-      {/* THE BILL. Typed by the organiser, never inferred from prose. */}
-      <TheBill names={bill} onChange={setBill} />
+      {/* THE BILL. Typed by the organiser, never inferred from prose.
+          The names are PERSISTED, which they were not: updateKit existed and
+          was called from nowhere, so every typed name lived in React state and
+          vanished on reload. The act landing page is the structural half of
+          the spread mechanic (ruling 0.3) and a page nothing feeds is not a
+          mechanic. */}
+      <TheBill
+        names={bill}
+        onChange={next => {
+          setBill(next)
+          startSaving(async () => {
+            await updateKit({ billNames: next })
+          })
+        }}
+      />
 
       {/* The bookmarkable link (0.2c: 30 days, no account). */}
       <KitLinkBar code={code} ephemeral={ephemeral} />
