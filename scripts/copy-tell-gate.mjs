@@ -119,17 +119,35 @@ function copyChunks(line) {
   // the gate was passing while unable to see it. That is how a banned
   // "coming soon" reached a shipped organiser surface with the gate green.
   //
-  // A bare text line carries no angle brackets, no braces, no assignment and
-  // no statement punctuation, which is what separates it from code.
+  // Rejecting any line containing < { or ( was still too blunt: it hid the
+  // most common shapes of real copy, which mix text with an interpolation
+  // or an inline element.
+  //
+  //     {count} upcoming events
+  //     Book with <strong>care</strong> before Friday
+  //
+  // So the line is STRIPPED of expressions and inline tags rather than
+  // rejected, and what remains is judged as prose. Code is excluded by what
+  // code has and prose does not: an assignment, a terminator, a leading
+  // keyword, or a bare call.
   const bare = line.trim()
-  if (
-    bare.length > 0 &&
-    !/[<>{}=;()[\]]/.test(bare) &&
-    !/^["'`]/.test(bare) &&
-    !/^(import|export|const|let|var|return|type|interface|from|default)/.test(bare) &&
-    /[A-Za-z]{3,}\s+[A-Za-z]/.test(bare)
-  ) {
-    chunks.push(bare)
+  const looksLikeCode =
+    /[=;]/.test(bare) ||
+    /^["'`]/.test(bare) ||
+    /^(import|export|const|let|var|return|type|interface|from|default|function|class|if|for|while|switch|case|await|async)\b/.test(
+      bare,
+    ) ||
+    /^[A-Za-z$_][\w$.]*\(/.test(bare)
+
+  if (!looksLikeCode) {
+    const stripped = bare
+      .replace(/\{[^{}]*\}/g, ' ')
+      .replace(/<[^<>]*>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+    // Two words of real letters is the floor for prose. A lone identifier,
+    // a closing brace or an attribute name never clears it.
+    if (/[A-Za-z]{3,}\s+[A-Za-z]/.test(stripped)) chunks.push(stripped)
   }
   return chunks
 }
