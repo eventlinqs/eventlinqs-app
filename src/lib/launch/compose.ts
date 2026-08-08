@@ -113,33 +113,64 @@ export function tightenTitle(title: string): string {
  * what is directly above it is worse than no line at all, and the surfaces
  * that render this all treat an empty summary as "do not draw it".
  */
+/** Clauses the structured fields already carry, so the summary must not. */
+const DATE_CLAUSE =
+  /\b(mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun)\w*\b|\b\d{1,2}(st|nd|rd|th)\b|\b\d{1,2}\s*(am|pm)\b|\b(january|february|march|april|may|june|july|august|september|october|november|december)\b|\b(every|each|weekly|fortnightly|monthly|first|second|third|fourth|last)\b|\bdoors?\b/i
+const PRICE_CLAUSE = /\$\s?\d|\bfree\b|\bno charge\b|\bno cost\b|\ba head\b|\bpresale\b|\bon the door\b/i
+
 function additiveSummary(facts: {
   title: string
+  sourceText: string
   venueName: string
   venueCity: string
+  addressHeldBack: boolean
   isFree: boolean
   lowestPrice: number | null
 }): string {
   const titleLower = facts.title.toLowerCase()
 
-  // Only name the place when the title has not already named it.
-  const placeParts = [facts.venueName, facts.venueCity]
+  // Everything the caption engine and the event page already print on their
+  // own lines, so a clause matching any of it would be a stutter.
+  const known = [facts.venueName, facts.venueCity].filter(Boolean).map(s => s.toLowerCase())
+
+  const leftovers = facts.sourceText
+    .split(',')
+    .map(part => part.trim())
+    .filter(Boolean)
+    .filter(part => {
+      const lower = part.toLowerCase()
+      if (titleLower.includes(lower)) return false
+      if (lower.includes(titleLower) && titleLower.length > 3) return false
+      if (DATE_CLAUSE.test(part)) return false
+      if (PRICE_CLAUSE.test(part)) return false
+      if (known.some(k => lower.includes(k))) return false
+      // Privacy is absolute here: a clause naming a private residence never
+      // becomes copy, whatever else it might have carried (D3).
+      if (looksLikePrivateResidence(part)) return false
+      return true
+    })
+
+  if (leftovers.length > 0) {
+    const detail = leftovers.join(', ')
+    return `${detail.charAt(0).toUpperCase()}${detail.slice(1)}.`.slice(0, 200)
+  }
+
+  // Nothing extra was written, so fall back to a fact rather than a blank line
+  // (the arrivals suite refuses an empty listing line, correctly). Place first,
+  // because the caption prints the price on its own line but nothing else
+  // prints the venue.
+  const place = [facts.addressHeldBack ? '' : facts.venueName, facts.venueCity]
     .filter(Boolean)
     .filter(part => !titleLower.includes(part.toLowerCase()))
-  const place = placeParts.join(', ')
+    .join(', ')
+  if (place) return `${place}.`.slice(0, 200)
 
   // The SAME rule the cards (draft-artefacts priceLabelFor) and the event page
-  // preview already apply: no price found reads as free. Using a third rule
-  // here would let the listing line contradict the card sitting beside it, and
-  // it is also why the birthday produced an empty summary: "no charge" is not
-  // read as a price, so both branches fell through to nothing.
-  const price =
-    facts.isFree || facts.lowestPrice == null || facts.lowestPrice <= 0
-      ? 'Free entry'
-      : `Tickets from $${Math.round(facts.lowestPrice)}`
-
-  const out = [place, price].filter(Boolean).join('. ')
-  return out ? `${out}.`.slice(0, 200) : ''
+  // preview already apply: no price found reads as free. A third rule here
+  // would let the listing line contradict the card sitting beside it.
+  return facts.isFree || facts.lowestPrice == null || facts.lowestPrice <= 0
+    ? 'Free entry.'
+    : `Tickets from $${Math.round(facts.lowestPrice)}.`
 }
 
 /** A plain question per unresolved field. Never jargon, never an error. */
@@ -223,12 +254,14 @@ export function composeFromText(opts: {
   // carries the event's name, not the organiser's whole sentence.
   const summary = additiveSummary({
     title,
+    sourceText: text,
     // A held-back address hides the VENUE, never the suburb. That is the whole
     // shape of the rule (D3): a stranger sees Belmont, not the street. Blanking
     // the city as well left the birthday with nothing to say and produced an
     // empty listing line, which the arrivals suite correctly refused.
-    venueName: addressHeldBack ? '' : draft.venue_name,
+    venueName: draft.venue_name,
     venueCity: draft.venue_city,
+    addressHeldBack,
     isFree: draft.is_free,
     lowestPrice:
       draft.ticket_tiers.length > 0
