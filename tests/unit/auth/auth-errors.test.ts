@@ -1,8 +1,10 @@
 import { describe, expect, test } from 'vitest'
 import {
+  ALL_FAILURE_CLASSES,
   authErrorMessage,
   authMessage,
   classifyAuthError,
+  rateLimitedMessage,
   readAuthErrorFromUrl,
   MAGIC_LINK_GENERIC_RESPONSE,
   OAUTH_ACCOUNT_HINT,
@@ -17,20 +19,10 @@ import {
  * whether an account exists.
  */
 
-const ALL_CLASSES: AuthFailureClass[] = [
-  'provider_disabled',
-  'provider_declined',
-  'link_expired',
-  'invalid_credentials',
-  'email_not_confirmed',
-  'mail_transport_failed',
-  'rate_limited',
-  'weak_password',
-  'same_password',
-  'session_missing',
-  'network',
-  'unknown',
-]
+// Derived from the MESSAGES table, never hand-listed. A literal array here let
+// a newly added class skip every rule below while the suite stayed green; see
+// ALL_FAILURE_CLASSES in auth-errors.ts.
+const ALL_CLASSES: AuthFailureClass[] = ALL_FAILURE_CLASSES
 
 describe('classifyAuthError', () => {
   test('the live production JSON body classifies as a disabled provider', () => {
@@ -214,5 +206,136 @@ describe('authErrorMessage end to end', () => {
     // The provider's own words never survive.
     expect(message).not.toContain('Unsupported provider')
     expect(message).not.toContain('provider is not enabled')
+  })
+})
+
+/**
+ * The 2026-08-09 launch blocker: the founder could not create an organiser
+ * account and was shown the `unknown` sentence, which names no cause and
+ * offers no next step.
+ *
+ * Root cause, reproduced against the TEST project the same day:
+ * admin.generateLink({type:'signup'}) on an already-confirmed address answers
+ *
+ *   status 422   code 'email_exists'
+ *   message "A user with this email address has already been registered"
+ *
+ * and the route substring matched 'already registered', which that string does
+ * NOT contain, because of the word "been". Every duplicate signup fell through
+ * to `unknown`.
+ *
+ * These lock the fix in from both directions: the exact live payload must
+ * classify, and no case may collapse back into `unknown`.
+ */
+describe('signup failure classes (the 2026-08-09 blocker)', () => {
+  // The verbatim payload observed from GoTrue. If this ever stops classifying,
+  // the founder's bug is back.
+  const LIVE_DUPLICATE = {
+    errorCode: 'email_exists',
+    status: 422,
+    message: 'A user with this email address has already been registered',
+  }
+
+  test('the exact live duplicate payload classifies as email_exists', () => {
+    expect(classifyAuthError(LIVE_DUPLICATE)).toBe('email_exists')
+  })
+
+  test('the live duplicate never renders the generic sentence', () => {
+    expect(authErrorMessage(LIVE_DUPLICATE)).not.toBe(authMessage('unknown'))
+  })
+
+  test('the duplicate message names both ways out: sign in and reset', () => {
+    const m = authMessage('email_exists')
+    expect(m.toLowerCase()).toContain('sign in')
+    expect(m.toLowerCase()).toContain('reset your password')
+  })
+
+  test('the old substring test is exactly what failed, and is no longer relied on', () => {
+    // Documents the defect so nobody reintroduces the cheap check. The three
+    // substrings the route used to test for are all absent from the real
+    // string; only the word "been" separates them.
+    const real = LIVE_DUPLICATE.message.toLowerCase()
+    expect(real).not.toContain('already registered')
+    expect(real).not.toContain('already exists')
+    expect(real).not.toContain('user already')
+    // And yet it still classifies, because we read the code.
+    expect(classifyAuthError(LIVE_DUPLICATE)).toBe('email_exists')
+  })
+
+  test('a duplicate still classifies when GoTrue sends no code at all', () => {
+    // The message fallback is gap tolerant on purpose: one extra word is what
+    // broke the last one.
+    expect(classifyAuthError({ message: LIVE_DUPLICATE.message })).toBe('email_exists')
+    expect(classifyAuthError({ message: 'User already registered' })).toBe('email_exists')
+    expect(classifyAuthError({ message: 'That email address is already in use' })).toBe(
+      'email_exists',
+    )
+    expect(classifyAuthError({ message: 'This email is already taken' })).toBe('email_exists')
+  })
+
+  test('user_already_exists is the same class', () => {
+    expect(classifyAuthError({ errorCode: 'user_already_exists' })).toBe('email_exists')
+  })
+
+  test('an address GoTrue refuses is told to the person, not swallowed', () => {
+    expect(classifyAuthError({ errorCode: 'email_address_invalid' })).toBe('email_invalid')
+    expect(authMessage('email_invalid')).not.toBe(authMessage('unknown'))
+  })
+
+  test('every signup failure a person can reach has its own sentence', () => {
+    // No two of these may collapse into the same words, and none may be the
+    // generic one. This is the regression the brief asks for: one test per
+    // case so none falls back into "Something went wrong on our side".
+    const reachable: AuthFailureClass[] = [
+      'email_exists',
+      'email_invalid',
+      'weak_password',
+      'rate_limited',
+      'mail_transport_failed',
+      'network',
+    ]
+    const seen = new Map<string, AuthFailureClass>()
+    for (const c of reachable) {
+      const m = authMessage(c)
+      expect(m, `${c} fell back to the generic sentence`).not.toBe(authMessage('unknown'))
+      expect(seen.has(m), `${c} duplicates ${seen.get(m)}`).toBe(false)
+      seen.set(m, c)
+    }
+  })
+
+  test('the generic sentence still says nothing was created, and offers a way out', () => {
+    const m = authMessage('unknown').toLowerCase()
+    // The version this replaced ended at "contact us if it keeps happening"
+    // with no route and no statement of what happened to the account.
+    expect(m).toContain('no account was created')
+    expect(m).toContain('contact us')
+  })
+})
+
+describe('rateLimitedMessage', () => {
+  // Eventbrite's troubleshooting guide is the bar: "Wait six minutes to try
+  // again, or reset your password." A named wait, not "a few minutes".
+  test('names the wait in seconds under a minute', () => {
+    expect(rateLimitedMessage(45)).toContain('45 seconds')
+  })
+
+  test('names the wait in minutes above a minute, singular and plural', () => {
+    expect(rateLimitedMessage(60)).toContain('1 minute')
+    expect(rateLimitedMessage(60)).not.toContain('1 minutes')
+    expect(rateLimitedMessage(600)).toContain('10 minutes')
+  })
+
+  test('falls back to the table sentence when the server gave no wait', () => {
+    expect(rateLimitedMessage(undefined)).toBe(authMessage('rate_limited'))
+    expect(rateLimitedMessage(0)).toBe(authMessage('rate_limited'))
+    expect(rateLimitedMessage(null)).toBe(authMessage('rate_limited'))
+  })
+
+  test('never renders the raw class token a limiter body carries', () => {
+    // The signup form used to read `payload.error`, which the 429 body sets to
+    // the literal string 'rate_limited', and printed it into the red box.
+    for (const s of [undefined, 0, 30, 600]) {
+      expect(rateLimitedMessage(s)).not.toContain('rate_limited')
+    }
   })
 })

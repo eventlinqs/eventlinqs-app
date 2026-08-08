@@ -12,10 +12,28 @@ import {
 import { recordPlatformDigestConsent } from '@/lib/consent/record'
 import { KIT_DRAFT_COOKIE, isKitDraftToken } from '@/lib/growth/kit-draft'
 import { trackEmailCapturedAfterRenderServer } from '@/lib/analytics/plausible'
-import { authMessage } from '@/lib/auth/auth-errors'
+import {
+  authMessage,
+  classifyAuthError,
+  type AuthFailureClass,
+} from '@/lib/auth/auth-errors'
 import { safeAuthOrigin } from '@/lib/auth/safe-origin'
 
 export const dynamic = 'force-dynamic'
+
+/**
+ * The HTTP status each failure class answers with. 409 for a duplicate so the
+ * browser, our tests and any future client can tell "this address is taken"
+ * from "we broke", which a flat 400 could not.
+ */
+const STATUS_FOR: Partial<Record<AuthFailureClass, number>> = {
+  email_exists: 409,
+  email_invalid: 400,
+  weak_password: 400,
+  rate_limited: 429,
+  mail_transport_failed: 502,
+  network: 504,
+}
 
 // The signup endpoint replaces the previous client-side `supabase.auth.signUp`
 // path, which depended on Supabase Auth's outbound SMTP for the confirmation
@@ -64,9 +82,22 @@ export async function POST(request: NextRequest) {
   try {
     const raw = await request.json()
     body = BodySchema.parse(raw)
-  } catch {
+  } catch (parseErr) {
+    // Name the field that failed. "Please check your details and try again"
+    // across a four-field form is the same dead end as the generic error this
+    // pass exists to remove: it makes the person re-audit every field to find
+    // the one we already know about.
+    const issues = parseErr instanceof z.ZodError ? parseErr.issues : []
+    const failed = new Set(issues.map((i) => String(i.path[0] ?? '')))
+    const message = failed.has('password')
+      ? authMessage('weak_password')
+      : failed.has('email')
+        ? authMessage('email_invalid')
+        : failed.has('fullName')
+          ? 'Enter your full name.'
+          : 'Please check your details and try again.'
     return NextResponse.json(
-      { ok: false, error: 'Please check your details and try again.' },
+      { ok: false, error: 'validation_failed', message },
       { status: 400 },
     )
   }
@@ -96,29 +127,38 @@ export async function POST(request: NextRequest) {
   })
 
   if (error) {
-    const message = error.message ?? 'Could not create account.'
-    const lower = message.toLowerCase()
-    if (
-      lower.includes('already registered') ||
-      lower.includes('already exists') ||
-      lower.includes('user already')
-    ) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error:
-            'An account with that email already exists. Sign in or use forgot password.',
-        },
-        { status: 409 },
-      )
-    }
+    // Classify on the STRUCTURED code first, message only as a fallback.
+    //
+    // What this replaces, and why it was the launch blocker: the old branch
+    // substring matched `error.message` for 'already registered'. GoTrue
+    // actually answers a duplicate confirmed address with
+    //
+    //   status 422  code email_exists
+    //   "A user with this email address has already been registered"
+    //
+    // and "already BEEN registered" contains none of the three substrings that
+    // were tested. Every duplicate signup therefore fell past the helpful
+    // branch into `unknown`, which is the sentence the founder hit on
+    // production on 2026-08-09 with no way forward. Reproduced against TEST the
+    // same day. `classifyAuthError` reads error_code, so the wording no longer
+    // matters.
+    const failure = classifyAuthError({
+      errorCode: error.code ?? null,
+      message: error.message ?? null,
+      status: error.status ?? null,
+    })
     // Never return the provider's own string. It varies by GoTrue version,
     // leaks implementation detail, and is the class of raw error this
     // hardening pass exists to remove from every surface.
-    console.error('[auth/signup] generateLink failed', { reason: message })
+    console.error('[auth/signup] generateLink failed', {
+      failure,
+      code: error.code ?? null,
+      status: error.status ?? null,
+      reason: error.message ?? null,
+    })
     return NextResponse.json(
-      { ok: false, error: authMessage('unknown') },
-      { status: 400 },
+      { ok: false, error: failure, message: authMessage(failure) },
+      { status: STATUS_FOR[failure] ?? 400 },
     )
   }
 
@@ -138,7 +178,12 @@ export async function POST(request: NextRequest) {
       await admin.auth.admin.deleteUser(data.user.id).catch(() => {})
     }
     return NextResponse.json(
-      { ok: false, error: 'Could not generate confirmation link. Please try again.' },
+      {
+        ok: false,
+        error: 'no_confirmation_token',
+        message:
+          'We could not start the email confirmation for that account. Nothing was saved, so please try again in a moment.',
+      },
       { status: 500 },
     )
   }
@@ -167,7 +212,11 @@ export async function POST(request: NextRequest) {
       at: new Date().toISOString(),
     })
     return NextResponse.json(
-      { ok: false, error: authMessage('mail_transport_failed') },
+      {
+        ok: false,
+        error: 'mail_transport_failed',
+        message: authMessage('mail_transport_failed'),
+      },
       { status: 502 },
     )
   }

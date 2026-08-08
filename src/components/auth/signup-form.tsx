@@ -8,7 +8,11 @@ import { AuthDivider } from './auth-divider'
 import { AuthErrorFromUrl } from './auth-error-from-url'
 import { REF_COOKIE, REF_SOURCE_COOKIE, REF_EVENT_COOKIE } from '@/lib/growth/referrals'
 import { DIGEST_CONSENT_WORDING } from '@/lib/consent/wording'
-import { authMessage } from '@/lib/auth/auth-errors'
+import {
+  authMessage,
+  classifyAuthError,
+  rateLimitedMessage,
+} from '@/lib/auth/auth-errors'
 
 function readCookie(name: string): string | undefined {
   if (typeof document === 'undefined') return undefined
@@ -37,6 +41,10 @@ export function SignupForm({ role = 'attendee', googleEnabled }: Props) {
   // No native submit before the handler exists. See use-hydrated.ts.
   const hydrated = useHydrated()
   const [error, setError] = useState<string | null>(null)
+  // The failure CLASS, kept beside the sentence so the box can offer the way
+  // out as a link. Telling somebody to "sign in instead" without a sign-in
+  // link is most of the dead end we are here to remove.
+  const [errorClass, setErrorClass] = useState<string | null>(null)
   const router = useRouter()
 
   const isOrganiser = role === 'organiser'
@@ -45,9 +53,11 @@ export function SignupForm({ role = 'attendee', googleEnabled }: Props) {
     e.preventDefault()
     setLoading(true)
     setError(null)
+    setErrorClass(null)
 
     if (password.length < 8) {
       setError(authMessage('weak_password'))
+      setErrorClass('weak_password')
       setLoading(false)
       return
     }
@@ -77,12 +87,30 @@ export function SignupForm({ role = 'attendee', googleEnabled }: Props) {
       const payload = (await res.json().catch(() => ({}))) as {
         ok?: boolean
         error?: string
+        message?: string
+        retryAfterSeconds?: number
       }
 
       if (!res.ok || !payload.ok) {
-        // The endpoint speaks in copy-deck sentences; the fallback covers a
-        // proxy or platform error that never reached the handler.
-        setError(payload.error ?? authMessage('unknown'))
+        // Read `message`, the sentence, and never `error`, which is a class
+        // token. This form was the only one of the four reading `error`, and
+        // the rate limiter answers with `error: 'rate_limited'`, so a
+        // rate-limited signup used to print the literal word "rate_limited"
+        // into the red box. Its three siblings already read `message`.
+        //
+        // The 429 comes from our own limiter and carries the exact wait, so
+        // say it rather than "a few minutes".
+        const message =
+          res.status === 429
+            ? rateLimitedMessage(payload.retryAfterSeconds)
+            : (payload.message ??
+              // No parseable body at all: a platform 500, a proxy page or a
+              // gateway timeout that never reached the handler.
+              authMessage(
+                classifyAuthError({ status: res.status }),
+              ))
+        setError(message)
+        setErrorClass(res.status === 429 ? 'rate_limited' : (payload.error ?? 'unknown'))
         setLoading(false)
         return
       }
@@ -91,6 +119,7 @@ export function SignupForm({ role = 'attendee', googleEnabled }: Props) {
       router.push(`/verify-email-sent?email=${encodeURIComponent(email)}${nextParam}`)
     } catch {
       setError(authMessage('network'))
+      setErrorClass('network')
       setLoading(false)
     }
   }
@@ -111,8 +140,29 @@ export function SignupForm({ role = 'attendee', googleEnabled }: Props) {
       <AuthErrorFromUrl />
 
       {error && (
-        <div className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error" role="alert">
-          {error}
+        <div
+          className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error"
+          role="alert"
+          data-auth-error={errorClass ?? 'unknown'}
+        >
+          <p>{error}</p>
+          {errorClass === 'email_exists' && (
+            <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 font-semibold">
+              <a href="/login" className="underline underline-offset-2 hover:no-underline">
+                Sign in
+              </a>
+              <a href="/forgot-password" className="underline underline-offset-2 hover:no-underline">
+                Reset your password
+              </a>
+            </p>
+          )}
+          {errorClass === 'unknown' && (
+            <p className="mt-2 font-semibold">
+              <a href="/contact" className="underline underline-offset-2 hover:no-underline">
+                Contact us
+              </a>
+            </p>
+          )}
         </div>
       )}
 

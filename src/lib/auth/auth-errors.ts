@@ -15,13 +15,37 @@
  *    copy says the method is unavailable and points at the one that works. It
  *    never implies the details were wrong.
  *
- * 2. NEVER LEAK WHETHER AN ACCOUNT EXISTS. OWASP Authentication Cheat Sheet:
- *    "an application must respond with a generic error message regardless of
- *    whether: The user ID or password was incorrect. The account does not
- *    exist. The account is locked or disabled." Credential failure therefore
- *    has exactly one message, and it is the same one whether the address is
- *    registered, unregistered, or registered through Google with no password
- *    at all.
+ * 2. NEVER LEAK WHETHER AN ACCOUNT EXISTS, ON EVERY SURFACE THAT TAKES A
+ *    CREDENTIAL. OWASP Authentication Cheat Sheet: "an application must respond
+ *    with a generic error message regardless of whether: The user ID or
+ *    password was incorrect. The account does not exist. The account is locked
+ *    or disabled." Credential failure therefore has exactly one message, and it
+ *    is the same one whether the address is registered, unregistered, or
+ *    registered through Google with no password at all. Sign-in, password
+ *    recovery, magic link and verification resend all hold this line.
+ *
+ *    REGISTRATION IS THE ONE DELIBERATE EXCEPTION, and it is a founder-visible
+ *    product decision rather than an oversight, so it is recorded here.
+ *
+ *    OWASP's stricter registration pattern is to answer a duplicate and a fresh
+ *    address identically ("A link to activate your account has been emailed to
+ *    the address provided") and to disambiguate by email. We do not take it.
+ *    On 2026-08-09 the founder could not create an organiser account and was
+ *    shown a sentence that named no cause and offered no next step, at the top
+ *    of the acquisition funnel. Sending a stranger to their inbox to discover
+ *    they already have an account costs a signup at the most expensive moment
+ *    on the platform, and Eventbrite, the benchmark, discloses the same fact
+ *    (help centre, "Transfer Eventbrite account ownership": "If the email you
+ *    want to change to is already in use ...").
+ *
+ *    What that trade buys, and what it costs, stated plainly: an attacker gains
+ *    an email-existence oracle at the signup endpoint. It is bounded by the
+ *    auth-signup limiter (5 per IP per 10 minutes, policies.ts) and it reveals
+ *    existence only. It is NOT a credential oracle, because sign-in and
+ *    recovery still answer generically, so knowing an address is registered
+ *    yields nothing further. For a public ticketing platform, where an
+ *    organiser's contact address is routinely printed on their own event page,
+ *    that is a fact of low sensitivity and a stranded signup is not.
  *
  * Australian English. No em dashes, no en dashes, no exclamation marks.
  */
@@ -37,6 +61,8 @@ export type AuthFailureClass =
   | 'link_expired'
   | 'invalid_credentials'
   | 'email_not_confirmed'
+  | 'email_exists'
+  | 'email_invalid'
   | 'mail_transport_failed'
   | 'rate_limited'
   | 'weak_password'
@@ -97,6 +123,18 @@ const MESSAGES: Record<AuthFailureClass, string> = {
   email_not_confirmed:
     'This account still needs its email confirmed. Open the verification link we sent you, or request a new one.',
 
+  // Registration only, and the one place we name an existing account. See rule
+  // 2 above for why. Both onward routes are named because a person who has
+  // forgotten they signed up has also usually forgotten the password.
+  email_exists:
+    'An account already uses that email address. Sign in instead, or reset your password if you have forgotten it.',
+
+  // Zod accepts some addresses GoTrue refuses (blocked domains, addresses its
+  // stricter parser rejects). Their details, their fix, so say so plainly
+  // without implying the account is at fault.
+  email_invalid:
+    'That email address was not accepted. Check it for a typo, or try another address.',
+
   // Our fault. Honest that it is us, honest that it is temporary.
   mail_transport_failed:
     'We could not send that email just now. This is a problem on our side, not with your account. Please try again in a few minutes.',
@@ -115,14 +153,48 @@ const MESSAGES: Record<AuthFailureClass, string> = {
   network:
     'We could not reach EventLinqs. Check your connection and try again.',
 
+  // The last resort, and it must still leave somewhere to go. The version this
+  // replaced ended at "contact us" without saying how, which is where the
+  // founder's failed organiser signup dead-ended on 2026-08-09.
   unknown:
-    'Something went wrong on our side. Please try again, and contact us if it keeps happening.',
+    'Something went wrong on our side, and no account was created. Please try again in a moment. If it keeps happening, contact us and we will sort it out.',
+}
+
+/**
+ * The rate-limit sentence, with the actual wait when the endpoint gave us one.
+ *
+ * Eventbrite's own troubleshooting guide sets the bar: "your account is
+ * temporarily locked after 10 incorrect log in attempts. Wait six minutes to
+ * try again, or reset your password." A named wait and a named alternative, so
+ * the person knows whether to wait or to do something else. "A few minutes" is
+ * what we said before, and it is a guess the server did not need to make.
+ */
+export function rateLimitedMessage(retryAfterSeconds?: number | null): string {
+  if (!retryAfterSeconds || retryAfterSeconds <= 0) return MESSAGES.rate_limited
+  const mins = Math.ceil(retryAfterSeconds / 60)
+  const wait = retryAfterSeconds < 60
+    ? `${Math.ceil(retryAfterSeconds)} seconds`
+    : `${mins} ${mins === 1 ? 'minute' : 'minutes'}`
+  return `Too many attempts from this connection. Wait ${wait} and try again.`
 }
 
 /** The sentence for a class. The only way copy reaches a user. */
 export function authMessage(failure: AuthFailureClass): string {
   return MESSAGES[failure]
 }
+
+/**
+ * Every failure class, derived from the table rather than hand-listed.
+ *
+ * The copy gate in tests/unit/auth/auth-errors.test.ts used to iterate a
+ * literal array maintained by hand, so a new class with no entry in that array
+ * was exempt from every rule the gate enforces (length, banned punctuation, no
+ * leaked internals) while the suite still went green. MESSAGES is typed
+ * Record<AuthFailureClass, string>, so the compiler already forces an entry per
+ * class: reading the keys back makes the gate exhaustive by construction and
+ * removes the chance to forget.
+ */
+export const ALL_FAILURE_CLASSES = Object.keys(MESSAGES) as AuthFailureClass[]
 
 /**
  * Supabase / GoTrue `error_code` values, and the OAuth `error` parameter
@@ -149,6 +221,19 @@ const CODE_MAP: Record<string, AuthFailureClass> = {
   invalid_credentials: 'invalid_credentials',
   user_not_found: 'invalid_credentials',
   email_not_confirmed: 'email_not_confirmed',
+
+  // Registration duplicates. GoTrue answers admin.generateLink type 'signup'
+  // for an already-confirmed address with HTTP 422, code `email_exists`, and
+  // the message "A user with this email address has already been registered".
+  // That message is why this map exists: the signup route used to substring
+  // match 'already registered', which the real string ("already BEEN
+  // registered") does not contain, so every duplicate signup fell through to
+  // `unknown`. Reproduced against TEST on 2026-08-09. Match on the code.
+  email_exists: 'email_exists',
+  user_already_exists: 'email_exists',
+  phone_exists: 'email_exists',
+
+  email_address_invalid: 'email_invalid',
 
   over_email_send_rate_limit: 'mail_transport_failed',
   email_address_not_authorized: 'mail_transport_failed',
@@ -190,6 +275,14 @@ export function classifyAuthError(input: {
   }
   if (message.includes('invalid login credentials')) return 'invalid_credentials'
   if (message.includes('email not confirmed')) return 'email_not_confirmed'
+  // Belt and braces behind the `email_exists` code above, and deliberately a
+  // gap-tolerant pattern rather than three fixed substrings. The defect this
+  // replaces was a literal `includes('already registered')` defeated by one
+  // extra word, so anything of the shape "already ... registered / exists /
+  // in use / taken" now classifies, whatever GoTrue calls it next.
+  if (/already\b.{0,20}\b(registered|exists|in use|taken)/.test(message)) {
+    return 'email_exists'
+  }
   if (message.includes('expired') || message.includes('invalid or has expired')) return 'link_expired'
   if (message.includes('rate limit') || message.includes('too many')) {
     // The mailer cap and the request cap read differently to a user: one is our
