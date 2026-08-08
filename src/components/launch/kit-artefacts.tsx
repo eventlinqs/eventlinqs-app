@@ -75,17 +75,30 @@ function CardImage({ code, format, label }: { code: string; format: string; labe
     )
   }
 
+  // The image is card-shaped and sits in a grid, so the affordance law
+  // (no dead-end tiles) requires the whole tile to be a working target. It
+  // opens the card at full size, which is also the thing a promoter actually
+  // wants from a thumbnail: to see whether the type holds up before they post
+  // it anywhere.
   return (
-    // Deliberately a plain img, not next/image: this is a private, per-draft
-    // render that must never enter the shared image optimiser cache.
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={`/api/launch/${code}/card/${format}`}
-      alt={`Your ${label.toLowerCase()} card`}
-      loading="lazy"
-      onError={() => setFailed(true)}
-      className="w-full rounded-xl border border-ink-200 bg-ink-50"
-    />
+    <a
+      href={`/api/launch/${code}/card/${format}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="block rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-accent)]"
+      aria-label={`Open your ${label.toLowerCase()} card at full size`}
+    >
+      {/* Deliberately a plain img, not next/image: this is a private, per-draft
+          render that must never enter the shared image optimiser cache. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={`/api/launch/${code}/card/${format}`}
+        alt={`Your ${label.toLowerCase()} card`}
+        loading="lazy"
+        onError={() => setFailed(true)}
+        className="w-full rounded-xl border border-ink-200 bg-ink-50"
+      />
+    </a>
   )
 }
 
