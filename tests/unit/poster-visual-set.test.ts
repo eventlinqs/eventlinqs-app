@@ -1,5 +1,5 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import QRCode from 'qrcode'
 import { buildEventPosterPdf } from '@/lib/broadcast/poster'
 import { POSTER_SET } from '../../scripts/verify/poster-visual-set.mjs'
@@ -15,6 +15,20 @@ import { POSTER_SET } from '../../scripts/verify/poster-visual-set.mjs'
  */
 
 const OUT = 'docs/design/poster-composition/set'
+
+/**
+ * The clock is frozen so the committed PDFs are byte-stable. Without it every
+ * run rewrites six binaries with a new timestamp and they show up as modified
+ * in git forever, which trains everybody to ignore a real change to them.
+ */
+beforeAll(() => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'))
+})
+
+afterAll(() => {
+  vi.useRealTimers()
+})
 
 type Case = {
   slug: string
