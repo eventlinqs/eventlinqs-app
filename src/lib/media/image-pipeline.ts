@@ -50,6 +50,48 @@ function isAccepted(format: string | undefined): format is AcceptedImageFormat {
   return !!format && (ACCEPTED_IMAGE_FORMATS as readonly string[]).includes(format)
 }
 
+export type OutputEncoding = {
+  kind: 'jpeg' | 'webp' | 'avif'
+  contentType: string
+  ext: string
+}
+
+/**
+ * Which format a decoded upload should be stored as.
+ *
+ * Extracted as a PURE function so the decision can be tested exhaustively,
+ * including for HEIC, which cannot be encoded here (libvips ships no HEVC
+ * encoder) and therefore cannot be covered by a real-file test.
+ *
+ * WHY THIS IS NOT INLINE ANY MORE. sharp 0.34 reported an AVIF upload as
+ * `format: 'avif'`. sharp 0.35 removed 'avif' from FormatEnum entirely and
+ * reports AVIF as `format: 'heif'`, which is strictly more accurate (AVIF is a
+ * HEIF-family container that libvips decodes through the heif loader). The
+ * inline branch tested `format === 'avif'`, so after the bump it was dead code:
+ * AVIF fell through to the JPEG branch and every AVIF cover an organiser
+ * uploaded would have been silently transcoded to JPEG, on a platform that
+ * deliberately serves AVIF for LCP. npm audit cannot see that, a lockfile diff
+ * cannot see it, and no mock of sharp can see it, because the change was in what
+ * sharp actually reports.
+ *
+ * The discriminator inside the HEIF family is the CODEC, not the container:
+ *   heif + av1   -> AVIF, keep it, it is the efficient format we want
+ *   heif + hevc  -> HEIC from an iPhone, normalise to JPEG for compatibility
+ *   heif + none  -> unknown HEIF variant, normalise to JPEG (fail safe)
+ */
+export function decideOutputEncoding(
+  format: AcceptedImageFormat,
+  compression: 'av1' | 'hevc' | undefined,
+): OutputEncoding {
+  if (format === 'webp') return { kind: 'webp', contentType: 'image/webp', ext: 'webp' }
+  // 'avif' is retained for older sharp releases that still report it directly.
+  if (format === 'avif' || (format === 'heif' && compression === 'av1')) {
+    return { kind: 'avif', contentType: 'image/avif', ext: 'avif' }
+  }
+  // jpeg, png, and every non-AV1 HEIF variant are stored as JPEG.
+  return { kind: 'jpeg', contentType: 'image/jpeg', ext: 'jpg' }
+}
+
 /**
  * Validate and normalise one uploaded image.
  *
@@ -96,46 +138,20 @@ export async function processEventImage(
     }
   }
 
-  // HEIC/HEIF and PNG are normalised to JPEG; WebP/AVIF keep their efficient
-  // format. .rotate() bakes EXIF orientation into pixels; sharp drops ALL
-  // metadata by default (no .withMetadata()), so EXIF/GPS never reach storage.
-  //
-  // AVIF DETECTION CHANGED IN SHARP 0.35, and it is not merely a type change.
-  // 0.34 reported an AVIF upload as format 'avif'. 0.35 removed 'avif' from
-  // FormatEnum entirely and reports it as 'heif', which is strictly more
-  // accurate (AVIF is a HEIF-family container and libvips decodes it through the
-  // heif loader) and which silently broke the branch below: `format === 'avif'`
-  // became unreachable, `toJpeg` became TRUE for AVIF, and every AVIF cover an
-  // organiser uploaded would have been transcoded to JPEG. Bigger files, and a
-  // quiet regression on the format this platform deliberately serves for LCP.
-  //
-  // The discriminator within the HEIF family is the codec: 'av1' is AVIF,
-  // 'hevc' is HEIC (an iPhone photo), and only the latter should become JPEG.
-  const isAvif = format === 'heif' && meta.compression === 'av1'
-  const toJpeg = (format === 'heif' && !isAvif) || format === 'png'
+  // .rotate() bakes EXIF orientation into pixels; sharp drops ALL metadata by
+  // default (no .withMetadata()), so EXIF/GPS never reach storage.
+  const encoding = decideOutputEncoding(format, meta.compression)
   const pipeline = sharp(inputBuffer).rotate()
 
   let buffer: Buffer
-  let contentType: string
-  let ext: string
-  if (toJpeg) {
-    buffer = await pipeline.jpeg({ quality: 82, mozjpeg: true }).toBuffer()
-    contentType = 'image/jpeg'
-    ext = 'jpg'
-  } else if (format === 'webp') {
+  if (encoding.kind === 'webp') {
     buffer = await pipeline.webp({ quality: 82 }).toBuffer()
-    contentType = 'image/webp'
-    ext = 'webp'
-  } else if (isAvif) {
+  } else if (encoding.kind === 'avif') {
     buffer = await pipeline.avif({ quality: 60 }).toBuffer()
-    contentType = 'image/avif'
-    ext = 'avif'
   } else {
-    // jpeg
     buffer = await pipeline.jpeg({ quality: 82, mozjpeg: true }).toBuffer()
-    contentType = 'image/jpeg'
-    ext = 'jpg'
   }
+  const { contentType, ext } = encoding
 
   const blurDataURL = await makeBlurDataURL(inputBuffer)
 

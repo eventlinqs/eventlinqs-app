@@ -57,6 +57,11 @@ const SENSITIVE = [
   { re: /^(full_name|holder_name)$/i, why: 'person name (PII)' },
   { re: /_email$/i,                   why: 'email address (PII)' },
   { re: /^(dob|date_of_birth)$/i,     why: 'personal detail (PII)' },
+  // `address` is deliberately ABSENT from this list. A venue street address is
+  // where the event is and is printed on the ticket: business data, not personal
+  // data. Hiding it would break the thing users need most from a venue page. If
+  // a table ever stores a PERSON's address, add a narrower rule for that column
+  // rather than a blanket /address/ match, which would fire on every venue.
   { re: /token$/i,                    why: 'bearer token (credential)' },
   { re: /^secret$/i,                  why: 'bearer secret (credential)' },
   { re: /_secret$/i,                  why: 'secret (credential)' },
@@ -81,10 +86,6 @@ const SENSITIVE = [
  * Key format: `table.column`.
  */
 export const ACCEPTED = {
-  'venues.address':
-    'ACCEPTED. A venue street address is where the event is and is printed on the ' +
-    'ticket. Business data, not personal data. The PII match is a false positive.',
-
   // DEFERRED, with reasons. These are person foreign keys and free-form blobs on
   // otherwise-public tables. They de-anonymise "who created this" but leak no
   // contact detail and no credential, so they rank LOW. Fixing them means
@@ -94,8 +95,6 @@ export const ACCEPTED = {
   'events.created_by':            'DEFERRED (LOW): person FK on a public table. Needs events select(*) call sites narrowed first.',
   'events.metadata':              'DEFERRED (LOW): free-form JSONB on a public table. Audit contents before narrowing.',
   'ticket_tiers.metadata':        'DEFERRED (LOW): free-form JSONB, public tier data. Audit contents before narrowing.',
-  'seats.held_by_user_id':        'DEFERRED (LOW): person FK. Seat availability must stay public; needs a narrowed grant.',
-  'seats.metadata':               'DEFERRED (LOW): free-form JSONB on public seat data.',
   'artists.owner_user_id':        'DEFERRED (LOW): person FK on a public artist profile.',
   'gigs.created_by':              'DEFERRED (LOW): person FK on a public gig listing.',
   'pricing_rules.created_by':     'DEFERRED (LOW): person FK on public region-default pricing.',
@@ -365,10 +364,16 @@ export function scanMigrations(dir = DEFAULT_MIGRATIONS_DIR) {
     else live.push(f)
   }
 
+  // Entries in ACCEPTED that no longer match a real exposure. They are dead
+  // weight, and dead weight is how a reviewed baseline rots into an unexamined
+  // allowlist: the next reader cannot tell which lines still mean something.
+  // Surfaced so they get deleted when the underlying exposure is actually fixed.
+  const staleAcceptances = Object.keys(ACCEPTED).filter((k) => !byKey.has(k))
+
   live.sort((a, b) => a.table.localeCompare(b.table) || a.column.localeCompare(b.column))
   accepted.sort((a, b) => a.key.localeCompare(b.key))
 
-  return { live, accepted, policies, columns, grants, fileCount: files.length }
+  return { live, accepted, staleAcceptances, policies, columns, grants, fileCount: files.length }
 }
 
 // ── CLI ─────────────────────────────────────────────────────────────────────
@@ -421,6 +426,14 @@ if (invokedDirectly) {
         console.log(`  ${t} / ${role}: ${shown}`)
       }
     }
+    console.log('')
+  }
+
+  if (result.staleAcceptances.length) {
+    console.log(
+      `STALE BASELINE ENTRIES (${result.staleAcceptances.length}) - the exposure is gone, delete the line:`,
+    )
+    for (const k of result.staleAcceptances) console.log(`  ${k}`)
     console.log('')
   }
 

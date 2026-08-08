@@ -2,9 +2,41 @@
 -- Close the world-readable column exposure (CRITICAL-1, HIGH-1)
 -- Run by founder: supabase db push --linked
 -- Audit: docs/security/AUDIT-2026-08-08.md
--- Scanner/gate: scripts/security/rls-exposure-scan.mjs
+-- Live re-verification query: scripts/security/rls-live-audit.sql
+-- Build gate: scripts/security/rls-exposure-scan.mjs
 -- ASVS v5.0.0: 8.2.3 (field-level authorisation, BOPLA), 8.2.2, 8.3.1
 -- ============================================================================
+--
+-- PROVENANCE OF EVERY CLAIM BELOW, stated first because the first version of
+-- this migration got two tables wrong.
+--
+-- The first pass reasoned from 77 migration FILES. Checked against production
+-- pg_policies by the founder on 2026-08-08, it was right on two tables and wrong
+-- on two:
+--
+--   organisations  CONFIRMED EXPOSED against live pg_policies
+--                  "Organisations are viewable by everyone" {public}
+--                  USING (status = 'active'::org_status)
+--   seats          CONFIRMED EXPOSED against live pg_policies
+--                  "Seats are viewable by everyone" {public} USING (true)
+--   profiles       SAFE. The 20260625000002 lockdown DID reach production; the
+--                  only SELECT policy is USING (auth.uid() = id). There is no
+--                  CRITICAL-0. This migration does not touch profiles.
+--   squads         SAFE. The live policy is scoped to the leader or a member,
+--                  not USING (true). share_token is NOT world-readable. The
+--                  earlier claim that it was is withdrawn.
+--
+--   event_artists  NOT YET LIVE-VERIFIED. Derived from migration files only.
+--   venues         NOT YET LIVE-VERIFIED. Derived from migration files only.
+--
+-- The two unverified tables are still narrowed here, and that is deliberate: a
+-- column privilege is the correct end state whether or not a permissive policy
+-- happens to exist today. Withdrawing a privilege that was never exercised costs
+-- nothing; leaving it granted because the policy looked fine is how this class
+-- survives. Their POLICY state is unproven and this file does not assert it.
+--
+-- A migration is what somebody INTENDED. pg_policies is what the database DOES.
+-- Run scripts/security/rls-live-audit.sql before and after applying this.
 --
 -- THE DEFECT. Row Level Security filters ROWS. It has never filtered COLUMNS.
 -- A policy with no TO clause applies to PUBLIC, which includes `anon`, and the
@@ -200,5 +232,49 @@ COMMENT ON TABLE public.venues IS
   'by column privilege. address/city/state/postcode are intentionally public: '
   'a venue address is where the event is. '
   'See docs/security/AUDIT-2026-08-08.md.';
+
+-- ----------------------------------------------------------------------------
+-- 4. public.seats  (CONFIRMED EXPOSED against live pg_policies)
+--
+--   "Seats are viewable by everyone" | {public} | USING (true)
+--
+-- The whole table, every column, to anyone with the anon key. What that exposes
+-- is `held_by_user_id`, which maps a seat to a real auth.users id, so an
+-- anonymous caller can work out WHO is sitting WHERE at an event. Plus `metadata`
+-- (free-form), `note`, and the order/reservation foreign keys, which link a seat
+-- to an order.
+--
+-- Lower severity than organisations: it is de-anonymising rather than a bulk
+-- contact-detail harvest, and it carries no credential. It was originally
+-- deferred as LOW on that reasoning, and the founder was right to push back:
+-- "who is sitting where, for any event" is a privacy leak on its own and the fix
+-- costs one grant.
+--
+-- Seat AVAILABILITY must stay public: the seat map on every event page is an
+-- anonymous read (src/app/events/[slug]/page.tsx and
+-- src/app/actions/best-available.ts both go through createPublicClient). So the
+-- row policy stays and only the columns narrow. Verified anon-role reads need
+-- exactly geometry, status, pricing and the tier/section keys.
+-- ----------------------------------------------------------------------------
+
+REVOKE SELECT ON public.seats FROM anon;
+REVOKE SELECT ON public.seats FROM authenticated;
+
+-- Column list verified with: node scripts/security/rls-exposure-scan.mjs --columns seats
+GRANT SELECT (
+  id, event_id, seat_map_section_id, ticket_tier_id,
+  row_label, seat_number, seat_type, status,
+  x, y, price_cents, held_reason, created_at, updated_at
+) ON public.seats TO anon;
+GRANT SELECT (
+  id, event_id, seat_map_section_id, ticket_tier_id,
+  row_label, seat_number, seat_type, status,
+  x, y, price_cents, held_reason, created_at, updated_at
+) ON public.seats TO authenticated;
+
+COMMENT ON COLUMN public.seats.held_by_user_id IS
+  'Service role only by column privilege. Publishing this to anon let anyone '
+  'work out who is sitting where at any event. Never GRANT it to anon or '
+  'authenticated. See docs/security/AUDIT-2026-08-08.md.';
 
 COMMIT;

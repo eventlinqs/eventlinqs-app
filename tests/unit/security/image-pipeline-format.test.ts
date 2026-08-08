@@ -23,7 +23,8 @@
  */
 import { describe, it, expect } from 'vitest'
 import sharp from 'sharp'
-import { processEventImage } from '@/lib/media/image-pipeline'
+import { processEventImage, decideOutputEncoding } from '@/lib/media/image-pipeline'
+import { ACCEPTED_IMAGE_FORMATS } from '@/lib/media/limits'
 
 /** A plain coloured raster, encoded to the requested format. */
 async function makeImage(
@@ -39,6 +40,53 @@ async function makeImage(
   if (encode === 'png') return base.png().toBuffer()
   return base.jpeg({ quality: 85 }).toBuffer()
 }
+
+describe('the format-detection CONTRACT, exhaustively', () => {
+  // Every accepted format x every HEIF codec, so a future sharp release that
+  // changes the shape of format detection again fails HERE with a readable
+  // diff, rather than silently transcoding organiser uploads.
+  //
+  // HEIC is the case that makes this table necessary: libvips ships no HEVC
+  // encoder, so a real-file test for it is impossible and a pure function is the
+  // only way to pin it.
+  const matrix: Array<[string, 'av1' | 'hevc' | undefined, 'jpeg' | 'webp' | 'avif']> = [
+    ['jpeg', undefined, 'jpeg'],
+    ['png', undefined, 'jpeg'],
+    ['webp', undefined, 'webp'],
+    ['heif', 'av1', 'avif'], // AVIF, as sharp 0.35+ reports it
+    ['heif', 'hevc', 'jpeg'], // HEIC from an iPhone
+    ['heif', undefined, 'jpeg'], // unknown HEIF variant, fail safe
+    ['avif', undefined, 'avif'], // sharp <=0.34 reported AVIF directly
+  ]
+
+  it.each(matrix)('format=%s compression=%s -> %s', (format, compression, expected) => {
+    expect(
+      decideOutputEncoding(format as (typeof ACCEPTED_IMAGE_FORMATS)[number], compression).kind,
+    ).toBe(expected)
+  })
+
+  it('never invents a content type that disagrees with the extension', () => {
+    for (const [format, compression] of matrix) {
+      const e = decideOutputEncoding(
+        format as (typeof ACCEPTED_IMAGE_FORMATS)[number],
+        compression,
+      )
+      const expectedExt = { jpeg: 'jpg', webp: 'webp', avif: 'avif' }[e.kind]
+      expect(e.ext).toBe(expectedExt)
+      expect(e.contentType).toBe(`image/${e.kind}`)
+    }
+  })
+
+  it('covers every accepted input format, so the table cannot silently fall behind', () => {
+    // If ACCEPTED_IMAGE_FORMATS grows, this fails until the matrix above is
+    // extended, which is the point: a new accepted format must have a decided
+    // output rather than defaulting into JPEG unnoticed.
+    const covered = new Set(matrix.map(([f]) => f))
+    for (const f of ACCEPTED_IMAGE_FORMATS) {
+      expect(covered.has(f), `${f} is accepted but has no case in the matrix`).toBe(true)
+    }
+  })
+})
 
 describe('sharp reports what this pipeline now assumes', () => {
   it('reports a real AVIF as heif + av1, not as avif', async () => {

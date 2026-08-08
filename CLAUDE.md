@@ -760,6 +760,41 @@ the relevant surface section before reworking it.
   MCP. Verify applied migrations by a direct database query, not the cached
   client (its schema cache lags).
 
+**Dependency bumps on a user-content path (locked 2026-08-08)**
+
+A dependency that processes user-supplied bytes is verified against the
+**actually installed package, with a real file**, never against a lockfile diff,
+a changelog, `npm audit`, or a mock. This is law because all four of those passed
+while a real regression sat in the diff.
+
+The case that set it: `sharp` was bumped 0.34.5 to 0.35.3 to clear libvips CVEs
+reachable from organiser uploads (`src/lib/upload.ts` hands user `File` bytes
+straight to a native decoder). 0.35 removed `avif` from `FormatEnum` and reports
+AVIF as `heif`, because AVIF is a HEIF-family container. The pipeline branched on
+`format === 'avif'`, so that branch went dead, and **every AVIF cover an
+organiser uploaded would have been silently transcoded to JPEG** on a platform
+that deliberately serves AVIF for LCP. `npm audit` was green. The types only
+half-revealed it. No mock could reveal it, because the change was in what the
+library actually reports.
+
+So, for any bump to a package on a user-content path (image, video, document,
+archive, parser, codec):
+
+1. **Install it for real** and confirm the resolved version on disk. A lockfile
+   entry is an intention, the installed tree is the fact. Check for nested copies:
+   a framework can pin its own older copy that the top-level bump does not lift.
+2. **Round-trip a real artefact** of every format the surface accepts, through
+   the real code path, and assert the OUTPUT, not the call. Where a format cannot
+   be produced locally (HEIC has no encoder in libvips), pin the decision in a
+   pure function and test that exhaustively instead.
+3. **Assert the library's own reported shape**, so the next release that changes
+   it fails loudly here rather than quietly in production.
+4. **Prove the delivery path still delivers.** For imagery that means the
+   optimiser actually returns AVIF and WebP for the matching `Accept`, since that
+   path owns the LCP.
+
+The executable form of this law is `tests/unit/security/image-pipeline-format.test.ts`.
+
 **Delivery**
 
 - CI gates are the merge authority. No `--admin`, no skipping gates, never lower
@@ -917,3 +952,13 @@ Revenue Sharing Program section above. Standard ticketing economics apply.
 - `seed-events`: seed realistic Australian events across all categories and
   scenes from a local image library, optimised and wired through the media
   components.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

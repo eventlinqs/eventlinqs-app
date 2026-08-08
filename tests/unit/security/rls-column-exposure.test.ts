@@ -273,6 +273,17 @@ describe('the reviewed baseline stays reviewable', () => {
     }
   })
 
+  it('carries no stale entries whose exposure has already been fixed', () => {
+    // A baseline that keeps lines for exposures that no longer exist cannot be
+    // read: nobody can tell which lines still mean anything. seats.held_by_user_id
+    // and seats.metadata sat here until the migration actually narrowed them.
+    const { staleAcceptances } = scanMigrations()
+    expect(
+      staleAcceptances,
+      `these are fixed, delete them from ACCEPTED: ${staleAcceptances.join(', ')}`,
+    ).toEqual([])
+  })
+
   it('does not quietly accept a credential or a contact detail', () => {
     // Deferring a person FK is a judgement call. Deferring a password or a
     // token never is, so make that impossible to do by accident.
