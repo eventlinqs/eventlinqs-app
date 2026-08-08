@@ -46,6 +46,9 @@ function goodProductionEnv(): Record<string, string> {
     SUPPORT_INBOX_EMAIL: 'hello@eventlinqs.com',
     NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: `AIza${rep('G', 35)}`,
     GOOGLE_MAPS_API_KEY: `AIza${rep('g', 35)}`,
+    // Required since the AdvancedMarkerElement migration: a map built without
+    // a Map ID renders no advanced markers at all.
+    NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID: '8a97afecec3a7c6d7a3d4e35',
     UPSTASH_REDIS_REST_URL: 'https://apt-mudfish-12345.upstash.io',
     UPSTASH_REDIS_REST_TOKEN: rep('u', 40),
     ADMIN_TOTP_ENC_KEY: rep('k', 44),
@@ -136,6 +139,22 @@ describe('LOCK 2: the production build guard', () => {
     const env = goodProductionEnv()
     env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY = 'not-a-google-key'
     expect(names(evaluateProcessEnv(env).findings)).toContain('NEXT_PUBLIC_GOOGLE_MAPS_API_KEY')
+  })
+
+  test("Google's placeholder Map ID can never reach production", () => {
+    // DEMO_MAP_ID is what Google's own samples use. Shipping it renders a map
+    // whose advanced markers silently do not appear, which is worse than the
+    // deprecation notice the Map ID exists to remove. The 16-character floor
+    // on the shape rejects it, since DEMO_MAP_ID is 11.
+    const env = goodProductionEnv()
+    env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID = 'DEMO_MAP_ID'
+    expect(names(evaluateProcessEnv(env).findings)).toContain('NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID')
+  })
+
+  test('a missing Map ID fails production, because the pins would vanish', () => {
+    const env = goodProductionEnv()
+    delete env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID
+    expect(names(evaluateProcessEnv(env).findings)).toContain('NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID')
   })
 
   test('THE REGRESSION: the sender drifting to the unverified Resend domain fails', () => {
