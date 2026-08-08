@@ -40,6 +40,24 @@ import { CRITICAL_ENV_RULES } from '../../src/lib/health/critical-env.mjs'
 
 const ROTATION_DOC = 'docs/security/CREDENTIAL-ROTATION.md'
 
+/**
+ * Clauses DEFERRED by an explicit founder decision, with the reason on record.
+ *
+ * This is not a suppression list and it is not a way to make the guard quiet.
+ * It is the same distinction `FLAG_INTENT` draws in reach-integrity: an
+ * unresolved gap and a decided deferral look identical from outside, and only
+ * one of them needs somebody to do something. A deferral without a recorded
+ * reason is just an unresolved gap wearing a better name, so an entry here
+ * REQUIRES a reason and the reason is printed every run.
+ *
+ * Removing an entry is how a deferral is revisited: the clause goes red again.
+ */
+const DEFERRED = {
+  'UPSTASH_REDIS_REST_URL:b': {
+    why: 'founder ruling 2026-08-08: "leave it. Flipping mustBeSensitive forces the Vercel record to be recreated as Sensitive, and I am not making unrelated production store changes while a live exposure is being fixed." The value is an endpoint address rather than a credential (the TOKEN beside it is the secret and IS declared sensitive), so the exposure from leaving it readable is that an attacker learns WHICH Upstash instance, not how to reach it. Revisit when the security work lands and a production store change is cheap again',
+  },
+}
+
 const marked = ENV_MANIFEST.filter((e) => e.paymentCritical)
 
 /**
@@ -106,7 +124,7 @@ console.log('  variable                              (a)prod (b)sens (c)sentinel
 console.log('  ' + '-'.repeat(78))
 for (const r of rows) {
   console.log(
-    `  ${r.name.padEnd(36)}  ${F(r.a)}    ${F(r.b)}${r.bApplies ? '   ' : '*  '}  ${F(r.c)}       ${F(r.d)}`,
+    `  ${r.name.padEnd(36)}  ${F(r.a)}    ${DEFERRED[`${r.name}:b`] ? 'defr' : F(r.b)}${r.bApplies ? '   ' : '*  '}  ${F(r.c)}       ${F(r.d)}`,
   )
 }
 console.log('\n  * clause (b) does not apply: the variable is public by declaration, so the')
@@ -114,31 +132,44 @@ console.log('    platform cannot hold it sensitive. That is the ruling\'s own "w
 console.log('    platform allows it" clause.\n')
 
 const failures = []
+const deferred = []
+const raise = (name, clause, why) => {
+  const entry = DEFERRED[`${name}:${clause}`]
+  if (entry) deferred.push({ name, clause, why: entry.why })
+  else failures.push({ name, clause, why })
+}
 for (const r of rows) {
-  if (!r.a) failures.push({ name: r.name, clause: 'a', why: 'not required on production' })
+  if (!r.a) raise(r.name, 'a', 'not required on production')
   if (!r.b) {
-    failures.push({
-      name: r.name,
-      clause: 'b',
-      why: 'not declared mustBeSensitive, and it is not a public variable, so the platform WOULD allow it',
-    })
+    raise(r.name, 'b', 'not declared mustBeSensitive, and it is not a public variable, so the platform WOULD allow it')
   }
   if (!r.c) {
-    failures.push({
-      name: r.name,
-      clause: 'c',
-      why: 'absent from CRITICAL_ENV_RULES, so neither the build guard nor the runtime sentinel would notice it missing or malformed. Its absence alerts nobody',
-    })
+    raise(
+      r.name,
+      'c',
+      'absent from CRITICAL_ENV_RULES, so neither the build guard nor the runtime sentinel would notice it missing or malformed. Its absence alerts nobody',
+    )
   }
   if (!r.d) {
-    failures.push({
-      name: r.name,
-      clause: 'd',
-      why: r.rot.found
+    raise(
+      r.name,
+      'd',
+      r.rot.found
         ? 'has a rotation row but no verification command in it'
         : `has no row in the ${ROTATION_DOC} rotation matrix, so there is no recorded way to rotate it or to prove the rotation worked`,
-    })
+    )
   }
+}
+
+if (deferred.length) {
+  console.log(`${deferred.length} clause(s) DEFERRED by founder decision, with the reason on record:\n`)
+  for (const d of deferred) {
+    console.log(`  ${d.name} (${d.clause})`)
+    for (const line of d.why.match(/.{1,74}(\s|$)/g) ?? []) console.log(`    ${line.trim()}`)
+    console.log('')
+  }
+  console.log('  A deferral is a decision, so it does not fail this guard. Removing the entry')
+  console.log('  from DEFERRED is how it is revisited: the clause goes red again.\n')
 }
 
 if (failures.length) {

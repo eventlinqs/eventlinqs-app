@@ -200,6 +200,81 @@ update public.feature_flags set enabled = true where flag = 'broadcast_artists';
 production write: by the founder, from PowerShell, never the Dashboard SQL
 editor, never an agent.
 
+## 7. Rotate `CRON_SECRET` on production: 28 characters against a 32 minimum
+
+**This is a credential rotation, not a schema change, and it has NO
+add-then-revoke window.** `CRON_SECRET` is single-valued: there is exactly one
+correct value at a time, and the gap between writing the first store and the
+second IS an outage in which every cron route 401s.
+
+**The finding.** The manifest declares `CRON_SECRET` as `^\S{32,}$`, "a
+single-token secret of at least 32 characters". Production's value is **28
+characters** and fails its own declared shape. This is not an entropy emergency
+(28 characters of `openssl` output is still strong) but the manifest and the
+reality must agree, and today the platform enforces a rule on everyone that its
+own live environment breaks.
+
+The TEST copy had the same class of problem at **4 characters** and is already
+fixed on this branch (regenerated to 43). No check was passing because of the
+short value: every `CRON_SECRET`-touching check was run before and after and no
+verdict changed.
+
+### The sequence. BOTH stores before ANY redeploy.
+
+```powershell
+# 1. Generate ONE value and hold it. 48 hex characters, comfortably over the
+#    32-character minimum.
+$new = -join ((1..24) | ForEach-Object { '{0:x2}' -f (Get-Random -Max 256) })
+$new.Length          # must print 48
+
+# 2. Write Vercel PRODUCTION. Do NOT redeploy yet.
+#    Dashboard: Project -> Settings -> Environment Variables -> CRON_SECRET
+#    -> Edit -> paste $new -> Production scope only -> Save.
+#    (The CLI cannot set values non-interactively on this account; the
+#     dashboard is the supported path.)
+
+# 3. Write the GitHub Actions secret with the SAME value, still no redeploy.
+gh secret set CRON_SECRET --body $new
+
+# 4. Confirm both stores hold it BEFORE the redeploy.
+gh secret list | Select-String CRON_SECRET      # updated timestamp is today
+
+# 5. NOW redeploy production, so the running deployment picks up the new value.
+#    Vercel dashboard -> Deployments -> latest Production -> Redeploy.
+```
+
+### The handshake that proves they still match
+
+```powershell
+node scripts/check-env-stores.mjs --mode=handshake
+```
+
+**Success criterion: HTTP 200.** This is the whole proof and it is why the two
+stores holding the same secret is correct by design: CI sends
+`Authorization: Bearer $CRON_SECRET` to a production cron route and requires
+200. Two different secrets cannot both succeed, so a 200 is byte-equality proven
+without either store revealing its value. A 401 means the pair has diverged and
+step 5 was reached before step 3 finished.
+
+Then confirm the shape violation is gone:
+
+```powershell
+node scripts/verify/payment-critical-doctrine.mjs   # ALL GREEN
+```
+
+### Timing
+
+**Do not run this while a cron window is open.** Vercel crons that fire
+mid-rotation fail closed and are NOT retried. The schedule is in `vercel.json`;
+the weekly digest fires Wednesday 22:00 UTC. Any other time is fine, and the
+whole sequence is under two minutes.
+
+### If it goes wrong
+
+Re-run steps 2 and 3 with the same `$new` value, then redeploy again. There is
+nothing to roll back to: the old value is not recoverable and is not wanted.
+The only failure mode is the two stores disagreeing, and the handshake names it.
+
 ---
 
 ## What is NOT in this block, and why
