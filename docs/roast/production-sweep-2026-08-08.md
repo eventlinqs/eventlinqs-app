@@ -74,17 +74,21 @@ Two of its heuristics cried wolf and were corrected rather than reported:
 `docs/roast/sweep-evidence/report.json`, screenshots under
 `docs/roast/sweep-evidence/{desktop,mobile}/`.
 
+Verdicts state only what was measured. The walker loads a page and follows its
+links; it does not press anything, so "renders clean" is the strongest claim
+these rows can carry. Pressing is Journey B, below.
+
 | Step | Verdict | Evidence |
 |---|---|---|
-| Land on the homepage | WORKS, 45 cards, no errors | `desktop/home.png` |
-| Browse events | WORKS, 195 available | `desktop/events-browse.png` |
-| Open a city page | WORKS, 65 to 81 cards | `desktop/city-sydney.png` |
-| Open a community page | WORKS, 31 to 40 cards | `desktop/community-african.png` |
+| Land on the homepage | Renders clean: 200, 45 cards, 0 dead links, 0 broken images, 0 console errors | `desktop/home.png` |
+| Browse events | Renders clean: 195 available | `desktop/events-browse.png` |
+| Open a city page | Renders clean: 65 to 81 cards | `desktop/city-sydney.png` |
+| Open a community page | Renders clean: 31 to 40 cards | `desktop/community-african.png` |
 | Search, multi-word phrase | **BROKEN, fixed** | see D1 |
 | Search, Sounds tile | **BROKEN, fixed** | see D1 |
 | Header search tabs | **BROKEN, fixed** | see D2 |
 | Category page | orphaned route, see O1 | `desktop/categories-music.png` |
-| Open an event | WORKS | `desktop/event-paid.png` |
+| Open an event | Renders clean | `desktop/event-paid.png` |
 | Buy a free ticket | see Journey B | |
 | Buy a paid ticket | see Journey B | |
 
