@@ -81,6 +81,7 @@ const {
   KIT_DRAFT_TTL_SECONDS,
   countSessionCompose,
   KIT_SESSION_DAILY_CAP,
+  attachDraftCover,
 } = await import('@/lib/launch/draft-store')
 
 const payload = {
@@ -267,6 +268,76 @@ describe('the per-session cap', () => {
   it('fails OPEN with no Redis, because a blip must not stop a real organiser', async () => {
     redis = null
     expect((await countSessionCompose(mintKitToken())).ok).toBe(true)
+  })
+})
+
+/**
+ * The artwork upload writes to somebody's draft from an UNAUTHENTICATED
+ * endpoint, so the ownership rule is the whole security model and needs
+ * behavioural tests rather than a comment claiming it holds.
+ */
+describe('attachDraftCover: ownership, not the code in the URL', () => {
+  beforeEach(() => {
+    redis = new FakeRedis()
+  })
+
+  const cover = {
+    coverUrl: 'https://example.supabase.co/storage/v1/object/public/kit-draft-covers/x/cover.webp',
+    coverPath: 'x/cover.webp',
+  }
+
+  it('attaches artwork to the draft the token owns', async () => {
+    const token = mintKitToken()
+    const saved = (await saveDraft({ code: mintKitCode(), token, payload }))!
+    const updated = await attachDraftCover({ token, code: saved.code, ...cover })
+    expect(updated).not.toBeNull()
+    expect(updated!.payload.coverUrl).toBe(cover.coverUrl)
+
+    // And it is genuinely persisted, not just returned.
+    const reread = await readDraftByCode(saved.code)
+    expect(reread!.payload.coverUrl).toBe(cover.coverUrl)
+  })
+
+  it('REFUSES a token that owns a different draft, which is the whole point', async () => {
+    // Mallory has composed her own kit, so she holds a valid cookie token. She
+    // also has Ruby's code, because the code is designed to be shared. That
+    // must not be enough to write artwork onto Ruby's poster.
+    const ruby = mintKitToken()
+    const rubysDraft = (await saveDraft({ code: mintKitCode(), token: ruby, payload }))!
+    const mallory = mintKitToken()
+    await saveDraft({ code: mintKitCode(), token: mallory, payload })
+
+    const attempt = await attachDraftCover({ token: mallory, code: rubysDraft.code, ...cover })
+    expect(attempt).toBeNull()
+
+    const untouched = await readDraftByCode(rubysDraft.code)
+    expect(untouched!.payload.coverUrl).toBeNull()
+  })
+
+  it('refuses a token that owns nothing at all', async () => {
+    const draft = (await saveDraft({ code: mintKitCode(), token: mintKitToken(), payload }))!
+    expect(await attachDraftCover({ token: mintKitToken(), code: draft.code, ...cover })).toBeNull()
+  })
+
+  it('refuses a code that is not a kit code', async () => {
+    const token = mintKitToken()
+    await saveDraft({ code: mintKitCode(), token, payload })
+    expect(await attachDraftCover({ token, code: '../../etc/passwd', ...cover })).toBeNull()
+  })
+
+  it('PRESERVES the remaining life rather than resetting it', async () => {
+    // Uploading on day 29 must not quietly extend the draft to day 59, because
+    // the object sweep is sized against the draft's own life.
+    const token = mintKitToken()
+    const draft = (await saveDraft({ code: mintKitCode(), token, payload }))!
+    redis!.advanceDays(29)
+
+    const updated = await attachDraftCover({ token, code: draft.code, ...cover })
+    expect(updated).not.toBeNull()
+
+    const ttl = await redis!.ttl(`kit:d:${draft.code}`)
+    expect(ttl).toBeLessThanOrEqual(KIT_DRAFT_TTL_SECONDS - 29 * 24 * 60 * 60)
+    expect(ttl).toBeGreaterThan(0)
   })
 })
 
