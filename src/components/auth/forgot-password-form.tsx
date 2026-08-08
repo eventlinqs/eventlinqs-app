@@ -82,7 +82,7 @@ export function ForgotPasswordForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
-        <div className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error" role="alert">
+        <div className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error-strong" role="alert">
           {error}
         </div>
       )}

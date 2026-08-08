@@ -97,6 +97,45 @@ Every non-200 from `/api/auth/signup`:
 The provider's own error string never appears in it. Causes are logged
 server-side with `failure`, `code`, `status` and `reason`.
 
+## The proof
+
+`scripts/verify/signup-failure-walk.mjs <base-url>` drives the real form in
+Chromium at 1440 and 390, in a fresh context per case (the founder's clean
+incognito window), and writes screenshots plus a JSON record to
+`docs/auth/walk-2026-08-09/`. It exits non-zero if any case renders the generic
+sentence, renders no message at all, or is displaced by the rate limiter.
+
+Each case is labelled `live` or `stubbed`, and the distinction is never blurred:
+
+- **live** posts to the deployed endpoint and renders whatever comes back. This
+  covers the already-registered address, the malformed email, the blank name,
+  both password bounds, and the rate limiter.
+- **stubbed** fulfils the response with the exact payload the route returns for
+  that class, because the cause cannot be induced on a running preview: our mail
+  transport does not fail on request, Supabase does not go down on request, and
+  GoTrue does not invent an unmodelled error code on request. Those payloads are
+  pinned by `tests/unit/auth/signup-failures.test.ts`, so what the walk does not
+  prove, the test does. Only the rendering is being demonstrated.
+
+Run one viewport per invocation for the live set (`--viewport=1440`, then
+`--viewport=390` after the rate window rolls). Three live cases post, and
+`auth-signup` allows five attempts per IP per ten minutes, so both viewports in
+one run spends six and the last three come back 429.
+
+`scripts/verify/signup-error-axe.mjs <base-url>` runs axe-core over the form in
+two error states at both viewports. It found a contrast failure that predates
+this work: `--color-error` (#DC2626) on the `bg-error/10` wash (#FCE9E9)
+measures **4.13:1** at 14px, under the 4.5:1 AA floor, and that class string is
+shared by every auth alert (login, forgot-password, reset-password, the
+fragment-error banner, and signup). Fixed with `--color-error-strong` (#B91C1C,
+5.54:1 on the wash and 6.47:1 on white), which is the same pattern
+`--brand-accent-strong` already exists for on the gold side. `--color-error`
+remains the border, icon and on-dark value.
+
+Not swept beyond auth: `text-error` appears on roughly a dozen dashboard and
+ticket surfaces which were not walked here. Those are a known follow-up, not a
+silent fix.
+
 ## Account enumeration: the tension, and how it is resolved
 
 ### What the research says

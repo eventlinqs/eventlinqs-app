@@ -152,7 +152,7 @@ export function ResetPasswordForm() {
   if (linkFailed) {
     return (
       <div className="space-y-4">
-        <div className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error" role="alert">
+        <div className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error-strong" role="alert">
           {error ?? authMessage('link_expired')}
         </div>
         <a
@@ -199,7 +199,7 @@ export function ResetPasswordForm() {
       />
 
       {error && (
-        <div className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error" role="alert">
+        <div className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error-strong" role="alert">
           {error}
         </div>
       )}

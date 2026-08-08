@@ -190,7 +190,7 @@ export function SignupForm({ role = 'attendee', googleEnabled }: Props) {
           A field failure renders under its own input instead, which is where
           TryBooking puts its password message and where a person is looking. */}
       {error && error.field === null && (
-        <div className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error" role="alert">
+        <div className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error-strong" role="alert">
           <p>{error.message}</p>
           {recovery}
         </div>
@@ -227,7 +227,7 @@ export function SignupForm({ role = 'attendee', googleEnabled }: Props) {
             placeholder="Your full name"
           />
           {fieldError('fullName') && (
-            <p id="fullName-error" className="mt-1.5 text-sm text-error" role="alert">
+            <p id="fullName-error" className="mt-1.5 text-sm text-error-strong" role="alert">
               {error?.message}
             </p>
           )}
@@ -261,7 +261,7 @@ export function SignupForm({ role = 'attendee', googleEnabled }: Props) {
               This is the message the founder should have seen on production
               instead of "Something went wrong on our side". */}
           {fieldError('email') && (
-            <div id="email-error" className="mt-1.5 text-sm text-error" role="alert">
+            <div id="email-error" className="mt-1.5 text-sm text-error-strong" role="alert">
               <p>{error?.message}</p>
               {recovery}
             </div>
@@ -290,7 +290,7 @@ export function SignupForm({ role = 'attendee', googleEnabled }: Props) {
             placeholder="At least 8 characters"
           />
           {fieldError('password') ? (
-            <p id="password-error" className="mt-1.5 text-sm text-error" role="alert">
+            <p id="password-error" className="mt-1.5 text-sm text-error-strong" role="alert">
               {error?.message}
             </p>
           ) : (

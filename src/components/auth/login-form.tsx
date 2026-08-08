@@ -159,7 +159,7 @@ export function LoginForm({ googleEnabled }: Props) {
       <AuthErrorFromUrl />
 
       {error && (
-        <div className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error" role="alert">
+        <div className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error-strong" role="alert">
           {error}
           {showOAuthHint && googleEnabled && (
             <span className="mt-1 block">{OAUTH_ACCOUNT_HINT}</span>
