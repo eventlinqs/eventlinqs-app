@@ -244,12 +244,12 @@ export default async function OrderDetailPage({ params }: Props) {
           <div className="rounded-xl border border-ink-200 bg-white p-5 text-xs text-ink-400 space-y-1.5">
             <div className="flex justify-between">
               <span>Placed</span>
-              <span>{new Date(fullOrder.created_at).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+              <span>{new Date(fullOrder.created_at).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Australia/Sydney' })}</span>
             </div>
             {fullOrder.confirmed_at && (
               <div className="flex justify-between">
                 <span>Confirmed</span>
-                <span>{new Date(fullOrder.confirmed_at).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                <span>{new Date(fullOrder.confirmed_at).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Australia/Sydney' })}</span>
               </div>
             )}
             <div className="flex justify-between">
