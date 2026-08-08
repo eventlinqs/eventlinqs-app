@@ -137,6 +137,7 @@ export function KitReveal({ state, onEditDescription }: Props) {
           the spread mechanic (ruling 0.3) and a page nothing feeds is not a
           mechanic. */}
       <TheBill
+        code={code}
         names={bill}
         onChange={next => {
           setBill(next)

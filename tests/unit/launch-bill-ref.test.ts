@@ -99,3 +99,38 @@ describe('a tampered reference fails cleanly', () => {
     expect(isKitCode(ref!.kitCode)).toBe(true)
   })
 })
+
+describe('the encoder works in a browser, not only in Node', () => {
+  /**
+   * THE BILL renders each act's link as the organiser types the name, in a
+   * client component. The first encoder used Buffer alone, which does not
+   * exist in a browser, and that is why nothing could render the link and the
+   * act landing page had nothing pointing at it.
+   */
+  it('round-trips with btoa and no Buffer, the browser path', () => {
+    const realBuffer = globalThis.Buffer
+    try {
+      // @ts-expect-error deliberately removing it to force the browser branch
+      delete globalThis.Buffer
+      const ref = encodeBillRef('abcdefghjkmn', 'Marlo Reyes')
+      // Decoding happens on the server, so restore before asserting.
+      globalThis.Buffer = realBuffer
+      expect(decodeBillRef(ref)).toEqual({ kitCode: 'abcdefghjkmn', name: 'Marlo Reyes' })
+    } finally {
+      globalThis.Buffer = realBuffer
+    }
+  })
+
+  it('round-trips a non-ASCII name without Buffer', () => {
+    const realBuffer = globalThis.Buffer
+    try {
+      // @ts-expect-error deliberately removing it to force the browser branch
+      delete globalThis.Buffer
+      const ref = encodeBillRef('abcdefghjkmn', 'Renée Ngũgĩ')
+      globalThis.Buffer = realBuffer
+      expect(decodeBillRef(ref)?.name).toBe('Renée Ngũgĩ')
+    } finally {
+      globalThis.Buffer = realBuffer
+    }
+  })
+})

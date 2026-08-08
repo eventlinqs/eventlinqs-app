@@ -16,9 +16,24 @@ const MAX_NAME_LENGTH = 80
 
 export type BillRef = { kitCode: string; name: string }
 
+/**
+ * base64url of a UTF-8 string, in BOTH runtimes.
+ *
+ * This has to work in the browser: THE BILL renders the act's link as the
+ * organiser types each name, and a client component has no Buffer. Using
+ * Buffer alone is why nothing could render the link before.
+ */
+function toBase64Url(value: string): string {
+  const bytes = new TextEncoder().encode(value)
+  let binary = ''
+  for (const byte of bytes) binary += String.fromCharCode(byte)
+  const b64 = typeof btoa === 'function' ? btoa(binary) : Buffer.from(bytes).toString('base64')
+  return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
 export function encodeBillRef(kitCode: string, name: string): string {
   const clean = name.trim().replace(/\s+/g, ' ').slice(0, MAX_NAME_LENGTH)
-  return `${kitCode}${Buffer.from(clean, 'utf8').toString('base64url')}`
+  return `${kitCode}${toBase64Url(clean)}`
 }
 
 export function decodeBillRef(value: string | null | undefined): BillRef | null {

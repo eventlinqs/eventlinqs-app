@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { encodeBillRef } from '@/lib/launch/bill-ref'
 import { Reveal } from '@/components/ui/reveal'
 
 /**
@@ -30,9 +31,12 @@ const MAX_NAMES = 12
 export function TheBill({
   names,
   onChange,
+  code,
 }: {
   names: string[]
   onChange: (next: string[]) => void
+  /** The kit code. Null until the draft is persisted. */
+  code: string | null
 }) {
   const [draft, setDraft] = useState('')
 
@@ -88,19 +92,33 @@ export function TheBill({
         </div>
 
         {names.length > 0 ? (
-          <ul className="mt-4 flex flex-wrap gap-2">
+          <ul className="mt-4 space-y-3">
             {names.map(name => (
-              <li key={name}>
+              <li
+                key={name}
+                className="flex flex-wrap items-center gap-3 rounded-lg border border-ink-200 p-3"
+              >
+                <span className="text-sm font-medium text-ink-900">{name}</span>
+
+                {/* The link that makes the promise above true. Without this
+                    the act landing page had nothing pointing at it, so the
+                    structural half of the spread mechanic (ruling 0.3) was a
+                    destination with no route to it. */}
+                {code ? (
+                  <ActLink code={code} name={name} />
+                ) : (
+                  <span className="text-xs text-ink-500">
+                    Their link appears once your kit is saved.
+                  </span>
+                )}
+
                 <button
                   type="button"
                   onClick={() => onChange(names.filter(n => n !== name))}
-                  className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-ink-50 px-4 text-sm font-medium text-ink-800 transition hover:bg-ink-100"
+                  className="ml-auto inline-flex min-h-[44px] items-center rounded-full px-3 text-sm font-medium text-ink-500 transition hover:bg-ink-50 hover:text-ink-900"
                   aria-label={`Remove ${name}`}
                 >
-                  {name}
-                  <span aria-hidden className="text-ink-400">
-                    x
-                  </span>
+                  Remove
                 </button>
               </li>
             ))}
@@ -108,5 +126,39 @@ export function TheBill({
         ) : null}
       </div>
     </Reveal>
+  )
+}
+
+/** One act's own link, copyable in a tap. */
+function ActLink({ code, name }: { code: string; name: string }) {
+  const [copied, setCopied] = useState(false)
+  const path = `/launch/with/${encodeBillRef(code, name)}`
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}${path}`)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setCopied(false)
+    }
+  }
+
+  return (
+    <span className="flex flex-wrap items-center gap-2">
+      <a
+        href={path}
+        className="truncate rounded bg-ink-50 px-2 py-1 font-mono text-xs text-ink-700 underline-offset-2 hover:underline"
+      >
+        {path}
+      </a>
+      <button
+        type="button"
+        onClick={copy}
+        className="inline-flex min-h-[44px] items-center rounded-full border border-ink-300 px-4 text-xs font-semibold text-ink-900 transition hover:border-ink-400 hover:bg-ink-50"
+      >
+        {copied ? 'Copied' : 'Copy their link'}
+      </button>
+    </span>
   )
 }
