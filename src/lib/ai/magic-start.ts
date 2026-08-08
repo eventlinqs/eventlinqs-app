@@ -393,7 +393,20 @@ export function buildDeterministicDraft(opts: {
   const text = enforceCopyLaws(opts.description)
   // The title is the organiser's own opening clause, trimmed to a headline.
   const firstLine = text.split(/[.\n]/)[0]?.trim() ?? ''
-  const title = firstLine.length >= 3 ? firstLine.slice(0, 200) : ''
+  const candidate = firstLine.length >= 3 ? firstLine.slice(0, 200) : ''
+  // A tell in that clause means the tool would be PUBLISHING the marketing
+  // voice as the event's title. The tool did not write those words, but it did
+  // choose them, and a chosen line is the tool's copy.
+  //
+  // So it is left empty and named in `unresolved`, which is the same call the
+  // summary already makes on the same collision, and it loses the organiser
+  // nothing: their full text is still the description, and they are asked for a
+  // title instead of being handed one in a voice the platform rejects.
+  //
+  // The guard below the summary build already assumed this was happening ("the
+  // title is already blanked by the gate in that case"). It was not. Found by
+  // reading real output.
+  const title = findCopyTells(candidate).length > 0 ? '' : candidate
 
   const facts = extractFactsFallback(opts.description, opts.nowIso ?? new Date().toISOString())
   const tiers: MagicStartTier[] = facts.isFree
@@ -634,6 +647,17 @@ function recomputeUnresolved(draft: MagicStartDraft): string[] {
   if (!draft.venue_name) missing.push('Venue name')
   if (!draft.venue_address) missing.push('Venue street address')
   if (draft.ticket_tiers.length === 0) missing.push('Ticket type and price')
+  // Founder ruling C4 asks for four to eight tags. A thin description ("comedy
+  // night at the pub") simply does not contain four traceable tags, and the one
+  // thing the tool must never do is pad the gap with words the organiser did
+  // not write: a tag is public discovery metadata, and an invented one puts the
+  // event in front of the wrong people.
+  //
+  // So the shortfall is DECLARED rather than filled. Found by reading real
+  // output: it used to fall short silently, which reads to the organiser as a
+  // finished field and is exactly the "filled and missing at the same time"
+  // defect this function was written to end.
+  if (draft.tags.length < 4) missing.push('Discovery tags')
   return missing
 }
 

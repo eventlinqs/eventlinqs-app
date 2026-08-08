@@ -1,4 +1,5 @@
 import 'server-only'
+import { findCopyTells } from './copy-tells'
 
 /**
  * The deterministic draft layer: every step 1 field composed from real event
@@ -53,10 +54,14 @@ const CATEGORY_RULES: { match: RegExp; nameHints: string[] }[] = [
   { match: /\b(market|makers market|night market|farmers market|pop ?up shop|car boot|stalls)\b/, nameHints: ['food', 'community'] },
   { match: /\b(birthday party|kids|childrens|children s|toddler|face painting|school holiday|playgroup|storytime)\b/, nameHints: ['family'] },
 
-  // Performance and comedy. Comedy has no category of its own in the live
-  // taxonomy (recorded in docs/design/TAXONOMY-DIVERGENCE.md); the performing
-  // arts category is the honest best fit until that migration lands.
-  { match: /\b(stand ?up|standup|comedy|comedian|comic|improv|sketch|open mic)\b/, nameHints: ['art'] },
+  // Performance and comedy. Comedy DOES have its own category now: R1
+  // (migration 20260808000004) created it, because the homepage already
+  // merchandised a comedy tile and a comedy rail that could never match an
+  // event. This rule used to file every comedy night under the performing arts
+  // category as the honest best fit "until that migration lands"; it has
+  // landed. The arts hint stays as the fallback so this still behaves on a
+  // deployment where the migration has not been applied.
+  { match: /\b(stand ?up|standup|comedy|comedian|comic|improv|sketch|open mic)\b/, nameHints: ['comedy', 'art'] },
   { match: /\b(theatre|theater|play|musical|ballet|dance recital|cabaret|circus|spoken word|poetry)\b/, nameHints: ['art'] },
   { match: /\b(exhibition|gallery|art show|installation|sculpture)\b/, nameHints: ['art'] },
   { match: /\b(film|cinema|screening|movie|documentary|short film)\b/, nameHints: ['film'] },
@@ -393,6 +398,14 @@ export function deriveTagsFallback(facts: TagFacts): string[] {
   const push = (t: string) => {
     const clean = t.trim().toLowerCase()
     if (!clean || clean.length < 3 || TAG_STOPWORDS.has(clean)) return
+    // A tag is public, permanent discovery metadata, so it must never be one
+    // of the words the anti-tell gate exists to keep out of our copy. Found by
+    // reading real output: an organiser who wrote "Unlock an unforgettable
+    // evening" had the last-resort word pass produce
+    // ["unlock","unforgettable","evening","curated","journey","through"], which
+    // is both junk as discovery metadata and the exact marketing voice the
+    // platform rejects, published as though the platform had chosen it.
+    if (findCopyTells(clean).length > 0) return
     if (!tags.includes(clean)) tags.push(clean)
   }
 
