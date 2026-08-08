@@ -266,6 +266,55 @@ export async function claimDraft(token: string, userId: string): Promise<KitDraf
   }
 }
 
+/* ------------------------------------------------------------------ */
+/* The per-session cap                                                  */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Composes allowed per BROWSER per day, on top of the per-IP limits.
+ *
+ * The brief asks for "IP plus a per-session cap", and the pair does something
+ * neither half does alone. Phase 0's finding was that per-IP limits fail in
+ * both directions at once: too tight for real organisers, because Australian
+ * carriers put thousands of genuine phones behind one address, and too loose
+ * for an abuser, who rotates addresses by the gigabyte.
+ *
+ * A per-session cap is the opposite shape. It does not care how many people
+ * share an address, so it lets the IP limits be generous enough not to break a
+ * promoter on mobile data, while still bounding one browser hammering the
+ * endpoint.
+ *
+ * Its known evasion, stated rather than hidden: clearing the cookie resets it.
+ * That costs an abuser nothing and costs a real organiser their kit, which is
+ * exactly why it is a companion to the IP limits and never a replacement.
+ */
+export const KIT_SESSION_DAILY_CAP = 40
+
+/**
+ * Count one compose against this browser's cap. Returns whether it is allowed.
+ *
+ * Fails OPEN, matching every other control on this surface except the email
+ * send: the compose path spends no model tokens, so there is nothing here
+ * worth protecting at the price of refusing a real organiser during a Redis
+ * blip.
+ */
+export async function countSessionCompose(token: string): Promise<{ ok: boolean; used: number }> {
+  const redis = getRedisClient()
+  if (!redis) return { ok: true, used: 0 }
+
+  try {
+    const key = `kit:cap:${hashToken(token)}`
+    const used = await redis.incr(key)
+    // Set the window on first use only, so a busy session cannot keep pushing
+    // its own expiry out and evade the cap by staying active.
+    if (used === 1) await redis.expire(key, 24 * 60 * 60)
+    return { ok: used <= KIT_SESSION_DAILY_CAP, used }
+  } catch (err) {
+    warn('countSessionCompose', err)
+    return { ok: true, used: 0 }
+  }
+}
+
 /** True when a draft has been claimed, which is what unlocks downloads. */
 export function isClaimed(draft: KitDraft | null): boolean {
   return Boolean(draft?.claimedBy)

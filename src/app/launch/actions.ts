@@ -7,6 +7,7 @@ import { composeFromText } from '@/lib/launch/compose'
 import {
   mintKitCode,
   mintKitToken,
+  countSessionCompose,
   readDraftByToken,
   saveDraft,
   type KitDraftPayload,
@@ -110,6 +111,23 @@ export async function composeKit(text: string): Promise<ComposeState> {
   const jar = await cookies()
   const existing = jar.get(KIT_DRAFT_COOKIE)?.value
   const token = isKitDraftToken(existing) ? existing : mintKitToken()
+
+  // The per-session half of "IP plus a per-session cap". It bounds one browser
+  // without caring how many people share an address, which is what lets the IP
+  // limits stay generous enough not to break a promoter on carrier NAT.
+  const session = await countSessionCompose(token)
+  if (!session.ok) {
+    return {
+      ok: true,
+      code: null,
+      payload: result.payload,
+      recurringNote: result.recurringNote,
+      reachFraming: result.reachFraming,
+      questions: result.questions,
+      ephemeral: true,
+      captions: captionsFor(result.payload, null),
+    }
+  }
 
   // Reuse this browser's existing draft rather than minting a second one, so a
   // visitor who edits their description keeps one stable, shareable link.

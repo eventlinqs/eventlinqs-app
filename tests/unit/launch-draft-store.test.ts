@@ -43,6 +43,20 @@ class FakeRedis {
     return e ? Math.ceil(e.expiresAt - this.now) : -2
   }
 
+  async incr(key: string): Promise<number> {
+    const next = Number(this.live(key)?.value ?? 0) + 1
+    // A bare incr has no expiry until one is set, which is the real semantic.
+    this.store.set(key, { value: next, expiresAt: this.live(key)?.expiresAt ?? Infinity })
+    return next
+  }
+
+  async expire(key: string, seconds: number): Promise<number> {
+    const e = this.live(key)
+    if (!e) return 0
+    e.expiresAt = this.now + seconds
+    return 1
+  }
+
   /** Advance the clock, so expiry is tested rather than assumed. */
   advanceDays(days: number): void {
     this.now += days * 24 * 60 * 60
@@ -65,6 +79,8 @@ const {
   mintKitToken,
   isKitCode,
   KIT_DRAFT_TTL_SECONDS,
+  countSessionCompose,
+  KIT_SESSION_DAILY_CAP,
 } = await import('@/lib/launch/draft-store')
 
 const payload = {
@@ -202,6 +218,55 @@ describe('claiming a draft at signup', () => {
     // Claiming on day 25 must not buy another 30 days.
     redis!.advanceDays(6)
     expect(await readDraftByCode(code)).toBeNull()
+  })
+})
+
+describe('the per-session cap', () => {
+  it('allows a real organiser a generous number of rebuilds', async () => {
+    const token = mintKitToken()
+    for (let i = 1; i <= KIT_SESSION_DAILY_CAP; i += 1) {
+      const r = await countSessionCompose(token)
+      expect(r.ok).toBe(true)
+    }
+  })
+
+  it('bites on the very next compose past the cap', async () => {
+    const token = mintKitToken()
+    for (let i = 0; i < KIT_SESSION_DAILY_CAP; i += 1) await countSessionCompose(token)
+    expect((await countSessionCompose(token)).ok).toBe(false)
+  })
+
+  it('counts each browser separately, so one session cannot block another', async () => {
+    const a = mintKitToken()
+    const b = mintKitToken()
+    for (let i = 0; i <= KIT_SESSION_DAILY_CAP; i += 1) await countSessionCompose(a)
+
+    expect((await countSessionCompose(a)).ok).toBe(false)
+    expect((await countSessionCompose(b)).ok).toBe(true)
+  })
+
+  it('resets after a day rather than locking a browser out forever', async () => {
+    const token = mintKitToken()
+    for (let i = 0; i <= KIT_SESSION_DAILY_CAP; i += 1) await countSessionCompose(token)
+    expect((await countSessionCompose(token)).ok).toBe(false)
+
+    redis!.advanceDays(1)
+    expect((await countSessionCompose(token)).ok).toBe(true)
+  })
+
+  it('does not let a busy session push its own window out and evade the cap', async () => {
+    const token = mintKitToken()
+    // Use it steadily across the day; the window must still close on schedule.
+    for (let i = 0; i < 10; i += 1) await countSessionCompose(token)
+    const key = [...redis!.store.keys()].find(k => k.includes('kit:cap:'))!
+    const firstExpiry = redis!.store.get(key)!.expiresAt
+    for (let i = 0; i < 10; i += 1) await countSessionCompose(token)
+    expect(redis!.store.get(key)!.expiresAt).toBe(firstExpiry)
+  })
+
+  it('fails OPEN with no Redis, because a blip must not stop a real organiser', async () => {
+    redis = null
+    expect((await countSessionCompose(mintKitToken())).ok).toBe(true)
   })
 })
 
