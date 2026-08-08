@@ -1,0 +1,138 @@
+'use server'
+
+import { cookies } from 'next/headers'
+import { KIT_DRAFT_COOKIE, isKitDraftToken } from '@/lib/growth/kit-draft'
+import { actionRateLimit } from '@/lib/rate-limit/action'
+import { composeFromText } from '@/lib/launch/compose'
+import {
+  mintKitCode,
+  mintKitToken,
+  readDraftByToken,
+  saveDraft,
+  type KitDraftPayload,
+} from '@/lib/launch/draft-store'
+import { listCategoryNames, listCommunitySlugs } from '@/lib/launch/taxonomy'
+
+/**
+ * The public composer's server actions. No auth on any of them, by design.
+ *
+ * COST POSTURE (founder ruling 9 August 2026, 0.2b): this path is
+ * DETERMINISTIC. It spends no model tokens, so there is no volume at which an
+ * anonymous visitor becomes a bill, and the rate limits below exist to bound
+ * database writes and render CPU rather than an API spend. They therefore fail
+ * OPEN: a Redis blip must never stop a stranger building a kit.
+ */
+
+export type ComposeState = {
+  ok: boolean
+  code: string | null
+  payload: KitDraftPayload | null
+  recurringNote: string | null
+  reachFraming: 'tickets' | 'attendance'
+  questions: string[]
+  /** True when the draft store is unavailable, so persistence is degraded. */
+  ephemeral: boolean
+}
+
+/**
+ * Build a kit from one paragraph and persist it.
+ *
+ * Returns a complete kit in EVERY branch. There is no failure mode that hands
+ * the visitor an error instead of artefacts: a rate limit, a missing table, or
+ * an unparseable sentence all still produce a draft, because the composition
+ * itself is local and cannot fail on the network.
+ */
+export async function composeKit(text: string): Promise<ComposeState> {
+  // Bound the write and render volume. Fail-open by policy (see policies.ts):
+  // there is no model spend on this path, so a Redis blip must never stop a
+  // stranger building a kit.
+  const [hourly, daily] = await Promise.all([
+    actionRateLimit('launch-compose'),
+    actionRateLimit('launch-compose-daily'),
+  ])
+  const limited = !hourly.ok || !daily.ok
+
+  const [categoryNames, communitySlugs] = await Promise.all([
+    listCategoryNames(),
+    listCommunitySlugs(),
+  ])
+
+  const result = composeFromText({
+    text,
+    categoryNames,
+    communitySlugs,
+    nowIso: new Date().toISOString(),
+  })
+
+  // Over the cap, the kit still renders; it simply is not persisted. The
+  // visitor keeps everything on screen and loses only the bookmarkable link,
+  // which is the smallest possible penalty and needs no error message.
+  if (limited) {
+    return {
+      ok: true,
+      code: null,
+      payload: result.payload,
+      recurringNote: result.recurringNote,
+      reachFraming: result.reachFraming,
+      questions: result.questions,
+      ephemeral: true,
+    }
+  }
+
+  const jar = await cookies()
+  const existing = jar.get(KIT_DRAFT_COOKIE)?.value
+  const token = isKitDraftToken(existing) ? existing : mintKitToken()
+
+  // Reuse this browser's existing draft rather than minting a second one, so a
+  // visitor who edits their description keeps one stable, shareable link.
+  const prior = await readDraftByToken(token)
+  const code = prior?.code ?? mintKitCode()
+
+  const saved = await saveDraft({ code, token, payload: result.payload })
+
+  if (saved) {
+    // Set only AFTER a kit exists for this visitor, which is the contract the
+    // activation metric email_captured_after_render depends on.
+    jar.set(KIT_DRAFT_COOKIE, token, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 30,
+    })
+  }
+
+  return {
+    ok: true,
+    code: saved?.code ?? null,
+    payload: result.payload,
+    recurringNote: result.recurringNote,
+    reachFraming: result.reachFraming,
+    questions: result.questions,
+    ephemeral: !saved,
+  }
+}
+
+/** Update the fields the organiser corrected. Ownership proved by the cookie. */
+export async function updateKit(patch: Partial<KitDraftPayload>): Promise<ComposeState | null> {
+  const jar = await cookies()
+  const token = jar.get(KIT_DRAFT_COOKIE)?.value
+  if (!isKitDraftToken(token)) return null
+
+  const prior = await readDraftByToken(token)
+  if (!prior) return null
+
+  const payload: KitDraftPayload = { ...prior.payload, ...patch }
+  const saved = await saveDraft({ code: prior.code, token, payload })
+
+  return {
+    ok: true,
+    code: saved?.code ?? prior.code,
+    payload,
+    recurringNote: null,
+    reachFraming:
+      payload.isFree || payload.visibility !== 'public' ? 'attendance' : 'tickets',
+    questions: [],
+    ephemeral: !saved,
+  }
+}
