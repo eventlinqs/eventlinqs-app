@@ -142,11 +142,22 @@ export function SignupForm({ role = 'attendee', googleEnabled }: Props) {
   const emailParam = email ? `?email=${encodeURIComponent(email)}` : ''
   const recovery =
     error?.failure === 'email_exists' ? (
-      <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
-        <Link href={`/login${emailParam}`} className="font-semibold underline underline-offset-2">
+      // These two are the whole point of the fix: the way out of the failure
+      // that sent the founder away from his own platform. Measured at 20px high
+      // as ordinary inline links, which matches the rest of the auth chrome but
+      // is under the 44px touch target the constitution sets. Given away for a
+      // secondary link; not for the recovery action itself.
+      <p className="mt-1 flex flex-wrap items-center gap-x-4">
+        <Link
+          href={`/login${emailParam}`}
+          className="inline-flex min-h-[44px] items-center font-semibold underline underline-offset-2"
+        >
           Sign in
         </Link>
-        <Link href={`/forgot-password${emailParam}`} className="font-semibold underline underline-offset-2">
+        <Link
+          href={`/forgot-password${emailParam}`}
+          className="inline-flex min-h-[44px] items-center font-semibold underline underline-offset-2"
+        >
           Reset your password
         </Link>
       </p>

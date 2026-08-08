@@ -40,6 +40,16 @@ const MODE = FLAGS.find((f) => f === '--live-only' || f === '--stub-only') ?? '-
  * `--viewport=1440`, wait out the window, then `--viewport=390`.
  */
 const ONLY_VIEWPORT = FLAGS.find((f) => f.startsWith('--viewport='))?.split('=')[1] ?? null
+/**
+ * Re-run only the cases named, comma separated by id prefix. For when the
+ * limiter displaced one case and re-running the whole viewport would spend
+ * three more attempts to redo one.
+ */
+const ONLY_CASES = FLAGS.find((f) => f.startsWith('--cases='))
+  ?.split('=')[1]
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean) ?? null
 const OUT = path.join('docs', 'auth', 'walk-2026-08-09')
 
 const VIEWPORTS = [
@@ -206,6 +216,7 @@ async function run() {
     for (const testCase of CASES) {
       if (MODE === '--live-only' && testCase.kind !== 'live') continue
       if (MODE === '--stub-only' && testCase.kind !== 'stubbed') continue
+      if (ONLY_CASES && !ONLY_CASES.some((c) => testCase.id.startsWith(c))) continue
 
       // A fresh context per case: no session, no leaked state. This is the
       // "clean incognito window" the founder reported from.
