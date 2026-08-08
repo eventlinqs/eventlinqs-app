@@ -56,6 +56,43 @@ export function recurringNote(startDateLabel: string | null): string {
   return `You said this one repeats. This sets up the first date and you can copy it for the next one in a couple of taps.${when}`
 }
 
+/**
+ * Tighten a title that swallowed the whole sentence.
+ *
+ * FOUND BY THE LIVE WALK, not by a unit test. The deterministic title takes
+ * the organiser's opening clause by splitting on full stops, which is right
+ * for prose and wrong for the way people actually type an event: one line of
+ * comma-separated details and no full stop anywhere. So the birthday arrived
+ * titled "Ruby's 16th, Saturday 20th September, 6pm at our place in Belmont,
+ * about 40 kids, no charge", which is the entire input and is not a title a
+ * promoter would be pleased to see.
+ *
+ * The floor is the product for every anonymous visitor (founder ruling 0.2b),
+ * so a merely-competent title is a launch defect rather than a nicety.
+ *
+ * The rule: cut at the first comma that introduces a DETAIL - a date, a time,
+ * a price, a count, or a free-entry marker. A comma that merely continues the
+ * name ("Basement 45, Geelong") is left alone. Fixed here in the composer's
+ * own layer rather than in the shared extractor, which the organiser wizard
+ * also uses and which another session owns.
+ */
+const DETAIL_AFTER_COMMA =
+  /^\s*((mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun)\w*\b|\d{1,2}(st|nd|rd|th)?\b|\d{1,2}\s*(am|pm)\b|\$|free\b|from \$|doors\b|first\b|second\b|third\b|fourth\b|last\b|every\b|about \d|approx|around \d|\d+\s+(kids|places|stalls|comics|people|guests|seats|tickets))/i
+
+export function tightenTitle(title: string): string {
+  const parts = title.split(',')
+  if (parts.length < 2) return title.trim()
+
+  let kept = parts[0]!.trim()
+  for (let i = 1; i < parts.length; i += 1) {
+    if (DETAIL_AFTER_COMMA.test(parts[i]!)) break
+    // A comma that continues the name rather than starting the details.
+    kept = `${kept}, ${parts[i]!.trim()}`
+  }
+  const clean = kept.trim().replace(/[,;:\s]+$/, '')
+  return clean.length >= 3 ? clean : title.trim()
+}
+
 /** A plain question per unresolved field. Never jargon, never an error. */
 const QUESTION_FOR: Record<string, string> = {
   'Date and time': 'When does it start?',
@@ -120,7 +157,7 @@ export function composeFromText(opts: {
       : null
 
   const payload: KitDraftPayload = {
-    title: draft.title,
+    title: tightenTitle(draft.title),
     summary: draft.summary,
     description: draft.description,
     startDate: draft.start_date,

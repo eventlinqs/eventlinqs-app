@@ -1,0 +1,19 @@
+{
+  "userId": "d11f5c1d-d18f-429f-a58c-67caafc29d1b",
+  "organisationId": "e875fa77-1e8a-46fe-8f9d-e82e58b5864b",
+  "organisationName": "Broadcast Gate Presents",
+  "anyPublishedEventId": "7d3c6fd8-af57-4520-8f89-db35d7dbcb94",
+  "anyPublishedEventTitle": "Seat Proof Price Bands",
+  "seatedEventId": "7d3c6fd8-af57-4520-8f89-db35d7dbcb94",
+  "seatedEventSlug": "seat-proof-price-bands-vezwrk",
+  "orderTarget": {
+    "eventId": "7a2b9c4d-1e3f-4a5b-8c7d-9e0f1a2b3c4d",
+    "eventTitle": "Assign Mode Proof Night",
+    "orderId": "b21dd78b-1aec-47a7-b0da-3044a2b21f08"
+  },
+  "venueWithChart": {
+    "venueId": "f29ecbff-0502-4039-af7b-7e49a8d6bd01",
+    "venueName": "The Wool Store",
+    "seatMapId": "d82a6192-7bd9-406d-b603-1e3255c600be"
+  }
+}
