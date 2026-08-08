@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useSyncExternalStore } from 'react'
 
 /**
  * True once this component has hydrated on the client.
@@ -27,10 +27,16 @@ import { useEffect, useState } from 'react'
  * they never functioned without JavaScript and nothing is lost by refusing to
  * submit before it is ready.
  */
+// useSyncExternalStore rather than a setState in an effect: it returns the
+// server snapshot (false) while rendering and hydrating, and the client
+// snapshot (true) afterwards, which is exactly the signal needed, with no
+// cascading render. The store never changes, so subscribe is a no-op.
+const emptySubscribe = () => () => {}
+
 export function useHydrated(): boolean {
-  const [hydrated, setHydrated] = useState(false)
-  useEffect(() => {
-    setHydrated(true)
-  }, [])
-  return hydrated
+  return useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false,
+  )
 }
