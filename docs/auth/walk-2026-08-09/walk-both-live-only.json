@@ -1,0 +1,29 @@
+{
+  "base": "https://eventlinqs-app-git-feat-launch-ef8ee0-lawals-projects-c20c0be8.vercel.app",
+  "results": [
+    {
+      "case": "01-email-already-registered",
+      "title": "The email is already registered (the 2026-08-08 production failure)",
+      "kind": "live",
+      "viewport": "1440",
+      "httpStatus": 409,
+      "messages": [
+        "That email address already has an EventLinqs account. Sign in instead, or reset your password if you have forgotten it.Sign inReset your password"
+      ],
+      "showedGeneric": false,
+      "screenshot": "docs\\auth\\walk-2026-08-09\\01-email-already-registered-1440.png"
+    },
+    {
+      "case": "01-email-already-registered",
+      "title": "The email is already registered (the 2026-08-08 production failure)",
+      "kind": "live",
+      "viewport": "390",
+      "httpStatus": 409,
+      "messages": [
+        "That email address already has an EventLinqs account. Sign in instead, or reset your password if you have forgotten it.Sign inReset your password"
+      ],
+      "showedGeneric": false,
+      "screenshot": "docs\\auth\\walk-2026-08-09\\01-email-already-registered-390.png"
+    }
+  ]
+}
