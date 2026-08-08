@@ -1,0 +1,95 @@
+{
+ "email": "sweep.full.1786164118062@eventlinqs.com",
+ "userId": "8476689e-47e7-4a52-b1da-b4e6eb1ba47b",
+ "steps": [
+  {
+   "step": "create and confirm an account (admin API, NOT the email link)",
+   "verdict": "PASS",
+   "notes": [
+    "user 8476689e confirmed programmatically"
+   ],
+   "substituted": "the real verification link was not clicked; no inbox is reachable",
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-b-full-1440\\01-create-and-confirm-an-account-admin-api-not-the-email-link-.png",
+   "url": "about:blank"
+  },
+  {
+   "step": "sign in with email and password",
+   "verdict": "PASS",
+   "notes": [
+    "landed on /dashboard"
+   ],
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-b-full-1440\\02-sign-in-with-email-and-password.png",
+   "url": "/dashboard"
+  },
+  {
+   "step": "open a free event and reach the ticket picker",
+   "verdict": "PASS",
+   "notes": [
+    "stepper present"
+   ],
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-b-full-1440\\03-open-a-free-event-and-reach-the-ticket-picker.png",
+   "url": "/events/artist-layer-launch-night-geelong#tickets"
+  },
+  {
+   "step": "add one ticket and go to checkout",
+   "verdict": "PASS",
+   "notes": [
+    "at /orders/99d0b9e6-214b-415e-81a7-7b00d3df1fd6/confirmation"
+   ],
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-b-full-1440\\04-add-one-ticket-and-go-to-checkout.png",
+   "url": "/orders/99d0b9e6-214b-415e-81a7-7b00d3df1fd6/confirmation"
+  },
+  {
+   "step": "complete the free order",
+   "verdict": "PASS",
+   "notes": [
+    "free order completed straight to confirmation"
+   ],
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-b-full-1440\\05-complete-the-free-order.png",
+   "url": "/orders/99d0b9e6-214b-415e-81a7-7b00d3df1fd6/confirmation"
+  },
+  {
+   "step": "the confirmation names the event and the order",
+   "verdict": "PASS",
+   "notes": [
+    "order reference shown: EL-YLTA78PH",
+    "no blank-value tells"
+   ],
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-b-full-1440\\06-the-confirmation-names-the-event-and-the-order.png",
+   "url": "/orders/99d0b9e6-214b-415e-81a7-7b00d3df1fd6/confirmation"
+  },
+  {
+   "step": "open the ticket itself",
+   "verdict": "PASS",
+   "notes": [
+    "/tickets HTTP 200",
+    "197 chars",
+    "ticket page: /t/EL-MAV4-S72T?k=1e9245e8-1b0f-4b25-8498-9ccfa580787a",
+    "QR-ish elements: 0"
+   ],
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-b-full-1440\\07-open-the-ticket-itself.png",
+   "url": "/t/EL-MAV4-S72T?k=1e9245e8-1b0f-4b25-8498-9ccfa580787a"
+  },
+  {
+   "step": "the ticket offers a transfer",
+   "verdict": "FAIL",
+   "notes": [
+    "NO transfer control on the ticket",
+    "page reads: EVENTLINQS TICKET Artist Layer Launch Night, Geelong Fri 14 August 2026 at 7:30 pm AEST Waterfront Pavilion, Geelong Show this QR code at entry. Have your screen brightness up. Tic",
+    "the ticket offers no way to transfer it"
+   ],
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-b-full-1440\\08-the-ticket-offers-a-transfer.png",
+   "url": "/t/EL-MAV4-S72T?k=1e9245e8-1b0f-4b25-8498-9ccfa580787a"
+  },
+  {
+   "step": "find the ticket again in My tickets",
+   "verdict": "PASS",
+   "notes": [
+    "197 chars, the order is listed"
+   ],
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-b-full-1440\\09-find-the-ticket-again-in-my-tickets.png",
+   "url": "/tickets"
+  }
+ ],
+ "pageErrors": []
+}
