@@ -186,9 +186,9 @@ if (mode === 'all' || mode === 'stores') {
     // even when nothing is pinned there, because that is what covers the
     // ordinary records.
     const pairs = new Map()
-    for (const scope of SCOPES) pairs.set(`${scope} `, { scope, gitBranch: null })
+    for (const scope of SCOPES) pairs.set(`${scope}\u0000`, { scope, gitBranch: null })
     for (const r of parsed) {
-      if (r.gitBranch) pairs.set(`${r.scope} ${r.gitBranch}`, { scope: r.scope, gitBranch: r.gitBranch })
+      if (r.gitBranch) pairs.set(`${r.scope}\u0000${r.gitBranch}`, { scope: r.scope, gitBranch: r.gitBranch })
     }
 
     const pulled = new Map()
@@ -207,7 +207,7 @@ if (mode === 'all' || mode === 'stores') {
     )
 
     const records = parsed.map(r => {
-      const map = pulled.get(`${r.scope} ${r.gitBranch ?? ''}`)
+      const map = pulled.get(`${r.scope}\u0000${r.gitBranch ?? ''}`)
       if (!map) return { ...r, readable: 'unassessed', length: 0, fp: null }
       const value = map.get(r.name)
       const isReadable = typeof value === 'string' && !REDACTED.has(value)

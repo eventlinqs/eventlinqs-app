@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { createDiscountCode, updateDiscountCode, deleteDiscountCode } from '@/app/actions/discount-codes'
 import type { DiscountCode, TicketTier } from '@/types/database'
+import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 
 interface Props {
   eventId: string
@@ -297,7 +298,7 @@ export function DiscountCodesClient({ eventId, currency, initialCodes, tiers }: 
                   </td>
                   <td className="px-4 py-3 text-ink-400 text-xs">
                     {code.valid_until
-                      ? new Date(code.valid_until).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
+                      ? new Date(code.valid_until).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', timeZone: PLATFORM_TIME_ZONE })
                       : 'No expiry'}
                   </td>
                   <td className="px-4 py-3">

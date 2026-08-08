@@ -1142,7 +1142,7 @@ export function SeatMapBuilder({
           <span className="hidden sm:inline">Print plan</span>
         </button>
         <span className="ml-auto rounded-full border border-ink-200 bg-canvas px-3 py-1 text-xs font-semibold text-ink-900" style={{ fontVariantNumeric: 'tabular-nums' }}>
-          {layout.totalSeats.toLocaleString()} seats
+          {layout.totalSeats.toLocaleString('en-AU')} seats
           {layout.areas.length > 0 ? ` + ${layout.areas.length} standing ${layout.areas.length === 1 ? 'zone' : 'zones'}` : ''}
         </span>
       </div>

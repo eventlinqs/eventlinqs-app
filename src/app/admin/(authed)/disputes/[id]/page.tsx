@@ -6,6 +6,7 @@ import { recordAuditEvent } from '@/lib/admin/audit'
 import { getDispute } from '@/lib/admin/disputes'
 import { formatMoneyDisplay } from '@/lib/money/format'
 import { DisputeRespondForm } from './respond-form'
+import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -36,8 +37,7 @@ function formatDate(iso: string): string {
     month: 'short',
     year: 'numeric',
     hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(iso))
+    minute: '2-digit', timeZone: PLATFORM_TIME_ZONE }).format(new Date(iso))
 }
 
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {

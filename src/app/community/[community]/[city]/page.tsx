@@ -23,6 +23,7 @@ import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import type { EventCardData } from '@/components/features/events/event-card'
 import type { MapEventPin } from '@/components/features/city/city-map'
 import { getSiteUrl } from '@/lib/site-url'
+import { formatEventDateShort } from '@/lib/dates/event-time'
 
 export const revalidate = 300
 
@@ -134,7 +135,7 @@ export default async function CommunityByCityPage({ params }: Props) {
   // category-bridge resolved every community to zero on live
   // generic-category events.
   const baseSelect =
-    'id, slug, title, cover_image_url, thumbnail_url, start_date, venue_name, venue_city, venue_country, venue_latitude, venue_longitude, created_at, is_free, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
+    'id, slug, title, cover_image_url, thumbnail_url, start_date, timezone, venue_name, venue_city, venue_country, venue_latitude, venue_longitude, created_at, is_free, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
 
   let allEvents: EventCardData[] = []
   let mapPins: MapEventPin[] = []
@@ -153,6 +154,8 @@ export default async function CommunityByCityPage({ params }: Props) {
     const raw = (data ?? []) as unknown as (EventCardData & {
       venue_latitude?: number | null
       venue_longitude?: number | null
+      /** The event's own zone, so its date is not formatted in the reader's. */
+      timezone?: string | null
     })[]
 
     const filtered = raw
@@ -163,9 +166,9 @@ export default async function CommunityByCityPage({ params }: Props) {
       .slice(0, 100)
       .map(r => {
         const cheapest = r.ticket_tiers && r.ticket_tiers.length > 0 ? Math.min(...r.ticket_tiers.map(t => t.price)) : 0
-        const dateStr = new Date(r.start_date).toLocaleDateString('en-AU', {
-          weekday: 'short', day: 'numeric', month: 'short',
-        })
+        // The EVENT's zone, never the reader's: a 9pm Perth event reads as
+        // the next day to someone in Sydney.
+        const dateStr = formatEventDateShort(r.start_date, r.timezone)
         return {
           id: r.id, slug: r.slug, title: r.title,
           date: dateStr,

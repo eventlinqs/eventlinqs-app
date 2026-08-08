@@ -10,6 +10,7 @@ import { buildGuideIndex } from '@/components/guides/guide-index'
 import { GuideShotImage } from '@/components/media'
 import { GUIDES, getGuide, getGuideCategory } from '@/lib/guides'
 import { getGuideLiveValues } from '@/lib/guides/live-values'
+import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 
 type Props = { params: Promise<{ slug: string }> }
 
@@ -60,8 +61,7 @@ export default async function GuidePage({ params }: Props) {
   const updatedLabel = new Date(guide.updated).toLocaleDateString('en-AU', {
     day: 'numeric',
     month: 'long',
-    year: 'numeric',
-  })
+    year: 'numeric', timeZone: PLATFORM_TIME_ZONE })
 
   return (
     <PageShell>

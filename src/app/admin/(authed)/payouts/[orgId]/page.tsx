@@ -5,6 +5,7 @@ import { can } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { getOrgPayoutDetail, PAYOUT_CURRENCY } from '@/lib/admin/payouts'
 import { DisbursePanel, VoidPayoutButton } from './payout-actions'
+import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -18,7 +19,7 @@ function money(cents: number, currency = PAYOUT_CURRENCY): string {
   return new Intl.NumberFormat('en-AU', { style: 'currency', currency }).format(cents / 100)
 }
 function date(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-AU', { dateStyle: 'medium' })
+  return new Date(iso).toLocaleDateString('en-AU', { dateStyle: 'medium', timeZone: PLATFORM_TIME_ZONE })
 }
 
 const PAYOUT_BADGE: Record<string, string> = {

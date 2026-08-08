@@ -50,6 +50,11 @@ export function CityRailTile({ city, slug, eventCount, imageSrc }: Props) {
         </div>
       </div>
 
+      {/* A city with no events read "Coming soon", which Law 1 names as a
+        * defect by definition and which promises a date nobody has committed
+        * to. "Be the first" is the pattern the cities and communities indexes
+        * already use for exactly this state: an invitation, not an apology,
+        * and true either way. */}
       <div className="flex items-center justify-between gap-2 px-4 py-3">
         {typeof eventCount === 'number' && eventCount > 0 ? (
           <p className="text-xs text-[var(--text-secondary)]">
@@ -57,7 +62,7 @@ export function CityRailTile({ city, slug, eventCount, imageSrc }: Props) {
           </p>
         ) : (
           <p className="text-[11px] font-semibold uppercase tracking-widest text-[var(--brand-accent-strong)]">
-            Coming soon
+            Be the first
           </p>
         )}
         <span

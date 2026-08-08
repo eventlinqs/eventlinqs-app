@@ -4,6 +4,7 @@ import { requireAdminSession } from '@/lib/admin/auth'
 import { can } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -16,7 +17,7 @@ export const metadata = {
 const REVIEW_STATUSES = ['on_hold', 'restricted'] as const
 
 function formatDate(iso: string): string {
-  return new Intl.DateTimeFormat('en-AU', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(iso))
+  return new Intl.DateTimeFormat('en-AU', { day: '2-digit', month: 'short', year: 'numeric', timeZone: PLATFORM_TIME_ZONE }).format(new Date(iso))
 }
 
 interface KycRow {

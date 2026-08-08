@@ -19,6 +19,7 @@ import { CreateProfileForm } from '@/components/marketplace/create-profile-form'
 import { RequestsPanel } from '@/components/marketplace/requests-panel'
 import { ShowcaseEditor } from '@/components/marketplace/showcase-editor'
 import { getSiteUrl } from '@/lib/site-url'
+import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 
 export const metadata: Metadata = {
   title: 'Your artist dashboard | EventLinqs',
@@ -298,7 +299,7 @@ export default async function ArtistDashboardPage({
                         )}
                         <p className="mt-0.5 text-xs text-ink-600">
                           Applied{' '}
-                          {new Intl.DateTimeFormat('en-AU', { day: 'numeric', month: 'short' }).format(
+                          {new Intl.DateTimeFormat('en-AU', { day: 'numeric', month: 'short', timeZone: PLATFORM_TIME_ZONE }).format(
                             new Date(app.created_at),
                           )}
                         </p>
