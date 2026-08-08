@@ -73,6 +73,21 @@ function feeLiteralViolation(chunk) {
   return null
 }
 
+/**
+ * LOCK 5: no placeholder copy on a shipped surface.
+ *
+ * CLAUDE.md Law 1 is explicit that a "Coming soon" placeholder "is a defect by
+ * definition, not a stub to fix later", and Copy and banned content repeats it.
+ * Nothing checked for it, and one shipped: /dashboard/insights greeted an
+ * organiser with "Insights are coming soon ... are being built". The public
+ * sweep walker looked for this string but only walked PUBLIC pages, so an
+ * authed organiser surface was outside every net.
+ *
+ * Scanned in copy chunks only, so a code comment explaining the rule does not
+ * trip it.
+ */
+const PLACEHOLDER_RE = /\b(coming soon|lorem ipsum|sample event \d|placeholder text|to be announced)\b/i
+
 const DASH_RE = /[—–]/
 const BANNED_WORD_RE = new RegExp(
   LEXICON.hard.find(h => h.name === 'banned-word-community-law').source,
@@ -91,6 +106,31 @@ function copyChunks(line) {
   while ((m = stringRe.exec(line)) !== null) chunks.push(m[1] ?? m[2] ?? m[3] ?? '')
   const jsxRe = />([^<>{}]*[A-Za-z]{3,}[^<>{}]*)</g
   while ((m = jsxRe.exec(line)) !== null) chunks.push(m[1])
+
+  // JSX TEXT ON ITS OWN LINE. The matcher above needs `>` and `<` on the SAME
+  // line, and Prettier wraps any copy longer than the print width onto its own
+  // line:
+  //
+  //     <h2 className="...">
+  //       Insights are coming soon      <-- invisible to every rule here
+  //     </h2>
+  //
+  // Most user-facing copy in this codebase is formatted exactly that way, so
+  // the gate was passing while unable to see it. That is how a banned
+  // "coming soon" reached a shipped organiser surface with the gate green.
+  //
+  // A bare text line carries no angle brackets, no braces, no assignment and
+  // no statement punctuation, which is what separates it from code.
+  const bare = line.trim()
+  if (
+    bare.length > 0 &&
+    !/[<>{}=;()[\]]/.test(bare) &&
+    !/^["'`]/.test(bare) &&
+    !/^(import|export|const|let|var|return|type|interface|from|default)/.test(bare) &&
+    /[A-Za-z]{3,}\s+[A-Za-z]/.test(bare)
+  ) {
+    chunks.push(bare)
+  }
   return chunks
 }
 
@@ -117,7 +157,22 @@ for (const file of walk(path.join(ROOT, 'src'))) {
   const allowed = ALLOWLIST.find(a => a.file === rel)?.patterns ?? []
   const lines = fs.readFileSync(file, 'utf8').split(/\r?\n/)
 
+  // Track block-comment depth across lines. isCommentLine only recognises a
+  // line that STARTS a comment, so a continuation line inside a {/* ... */}
+  // block read as copy once wrapped JSX text became visible. That produced a
+  // false positive on auth-shell.tsx, where a competitor is named in a design
+  // provenance comment, which is documentation and not user-facing copy.
+  let inBlockComment = false
+
   lines.forEach((line, i) => {
+    const trimmedLine = line.trim()
+    const opens = trimmedLine.includes('/*')
+    const closes = trimmedLine.includes('*/')
+    const wasInComment = inBlockComment
+    if (opens && !closes) inBlockComment = true
+    else if (closes) inBlockComment = false
+    if (wasInComment || (opens && !closes)) return
+
     const where = `${rel}:${i + 1}`
     if (!allowed.includes('em-or-en-dash') && DASH_RE.test(line)) {
       violations.push(`${where} em-or-en-dash`)
@@ -128,6 +183,9 @@ for (const file of walk(path.join(ROOT, 'src'))) {
     if (isCommentLine(line.trim())) return
     const chunks = copyChunks(line)
     if (chunks.length === 0) return
+    if (!allowed.includes('placeholder-copy') && chunks.some(c => PLACEHOLDER_RE.test(c))) {
+      violations.push(`${where} placeholder-copy`)
+    }
     for (const tell of STRING_SCOPED) {
       if (allowed.includes(tell.name)) continue
       if (chunks.some(c => tell.re.test(c))) violations.push(`${where} ${tell.name}`)
