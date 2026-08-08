@@ -34,7 +34,13 @@ function walk(dir: string, out: string[]): void {
 }
 
 describe('HARD-07: no localhost fallback for NEXT_PUBLIC_APP_URL', () => {
-  it('src/ contains no NEXT_PUBLIC_APP_URL ?? localhost fallback', () => {
+  // 30s, not the 5s default. This walks every file under src/ and reads each
+  // one, so its cost grows with the codebase while the default timeout does
+  // not. It began failing intermittently at 131 test files purely from
+  // competing for I/O under the parallel runner, never from finding a real
+  // violation. A security gate that fails at random is a security gate people
+  // learn to re-run instead of read.
+  it('src/ contains no NEXT_PUBLIC_APP_URL ?? localhost fallback', { timeout: 30_000 }, () => {
     const files: string[] = []
     walk(join(ROOT, 'src'), files)
     const offenders: string[] = []

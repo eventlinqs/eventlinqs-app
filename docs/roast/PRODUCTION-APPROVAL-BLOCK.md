@@ -108,6 +108,98 @@ that way and by no other means: a missing time of day, a venue line repeating
 the city already in the heading, and a dangling separator in the plain text
 part. Tests passed on all three.
 
+## 5. broadcast_follow ON
+
+**This is a behaviour change on a live platform, not a schema change.** No
+column moves. What changes is what a signed-in person can see and control.
+
+Founder ruling 2026-08-08, session 3: **ON, and this is the priority.**
+"Collecting a follow graph a visitor can neither see nor withdraw is a privacy
+defect, not a missing feature."
+
+**What is broken while it stays off**, which is why it is a privacy item and not
+a feature request:
+
+- the Follow control on the event page is **UNGATED and already live**, so a
+  visitor can follow an organiser today;
+- the row **is written** to `saved_organisers`;
+- the just-announced cron **does read** it, so those follows already drive mail;
+- the "Following" section on `/account/notifications` **is gated**, so the
+  person can neither see who they follow nor unfollow from their account.
+
+**What flipping it changes:** `/account/notifications` gains a Following section
+listing followed organisers and artists, each with an unfollow control. Nothing
+else changes. The follow button is already there.
+
+**Precondition, already met on this branch:** the duplicate Follow control is
+removed (commit `6f69ad8`). Before that fix, turning this flag on rendered
+**two** Follow buttons for the same organiser in the same card. Measured: 1
+control with the flag off, 2 with it on. Do not flip this on a deployment that
+does not carry that commit.
+
+```powershell
+npx supabase projects list          # LINKED must be gndnldyfudbytbboxesk for PRODUCTION
+```
+
+```sql
+update public.feature_flags set enabled = true where flag = 'broadcast_follow';
+```
+
+**Success criterion:**
+
+```powershell
+node scripts/verify/reach-integrity.mjs --production
+```
+
+`flags-off-by-oversight` stops naming `broadcast_follow`. Then open
+`/account/notifications` as a signed-in user and confirm the Following section
+renders and its unfollow control works.
+
+The flag cache TTL is 30 seconds, so the switch lands within that window without
+a deploy. The admin flags surface calls `invalidateFeatureFlag` on write; a
+direct SQL update does not, so wait the TTL rather than concluding it failed.
+
+## 6. broadcast_artists ON
+
+**This is a behaviour change on a live platform, not a schema change.**
+
+Founder ruling 2026-08-08, session 3: **ON.** "Built, wired across 14 sites
+failing closed, proven with attribution splitting. I accept the consequence that
+it publishes a public page per tagged performer; that is the point of the lineup
+loop."
+
+**What flipping it changes:**
+
+1. Organisers get a Lineup step in event create and edit, and can tag performers.
+2. Tagging emails a claim invitation to an artist who has not claimed a profile.
+3. `/artists/[slug]` stops being a 404 and becomes a **public page per tagged
+   performer**, carrying their name and the events they are on. This is the
+   consequence explicitly accepted above.
+4. Artists get a dashboard at `/artist/dashboard` and per-artist tracked links.
+5. The just-announced cron begins including artist followers.
+6. Event pages show a confirmed lineup rail.
+
+Nothing here charges anyone or touches the payment engine.
+
+**The evidence behind the ruling:**
+`docs/broadcast/evidence/artist-switch-on-2026-07-11/gate.json`, from
+`scripts/verify/artist-layer-gate.mjs` driving the real flows: two artists
+tagged, two buyers through two different tracked links, `splitCorrect: true`
+across the database, the organiser's "who filled the room" table and the artist
+dashboard, plus the artist-variant share card rendering at 200.
+
+```sql
+update public.feature_flags set enabled = true where flag = 'broadcast_artists';
+```
+
+**Success criterion:** `reach-integrity --production` stops naming
+`broadcast_artists`, and one `/artists/[slug]` for a tagged performer returns
+200 rather than 404.
+
+**Both of items 5 and 6** run the way the constitution requires for any
+production write: by the founder, from PowerShell, never the Dashboard SQL
+editor, never an agent.
+
 ---
 
 ## What is NOT in this block, and why
@@ -124,8 +216,5 @@ before the `city_primary` fix deploys, the query to watch is
 `select count(*) from marketing_consents where status='granted' and
 city_slug is null`. The harness carries it permanently.
 
-**Three flags off with no recorded decision:** `broadcast_follow`,
-`broadcast_artists`, and `broadcast_digest` before the ruling above.
-`reach-integrity` FAILS on an UNDECLARED flag, because "off" and "off by
-oversight" are indistinguishable from outside and only one of them is a
-decision. The first two still need one.
+Nothing further. `broadcast_follow` and `broadcast_artists` were the two flags
+with no recorded decision; both are now ruled and appear as items 5 and 6 above.

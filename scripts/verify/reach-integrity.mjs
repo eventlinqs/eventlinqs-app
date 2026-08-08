@@ -692,8 +692,14 @@ const FLAG_INTENT = {
     intent: 'oversight',
     why: 'founder ruling 2026-08-08: "it should be ON. It is off because flags default to false and nobody flipped it once the digest was finished." Held until the newsletter capture is fixed and the waitlist bridge is merged, so the pipe is whole before the tap opens. In the production approval block, not to be flipped by an agent',
   },
-  broadcast_follow: { intent: 'UNDECLARED', why: '' },
-  broadcast_artists: { intent: 'UNDECLARED', why: '' },
+  broadcast_follow: {
+    intent: 'oversight',
+    why: 'founder ruling 2026-08-08, session 3: "ON, and this is the priority. Collecting a follow graph a visitor can neither see nor withdraw is a privacy defect, not a missing feature." The evidence that settled it: with the flag off the follow button on the event page is UNGATED and live, the row IS written to saved_organisers, and the just-announced cron DOES read it, while the Following section on /account/notifications is gated, so the person can neither see who they follow nor unfollow. In the production approval block, not to be flipped by an agent',
+  },
+  broadcast_artists: {
+    intent: 'oversight',
+    why: 'founder ruling 2026-08-08, session 3: "ON. Built, wired across 14 sites failing closed, proven with attribution splitting. I accept the consequence that it publishes a public page per tagged performer; that is the point of the lineup loop." Proof: docs/broadcast/evidence/artist-switch-on-2026-07-11/gate.json. In the production approval block, not to be flipped by an agent',
+  },
   artist_showcase: {
     intent: 'deliberate',
     why: 'performer marketplace, shipped behind a flag pending a launch decision',

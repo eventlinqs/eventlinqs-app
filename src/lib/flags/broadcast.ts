@@ -63,33 +63,23 @@ interface FlagRow {
 }
 
 /**
- * The Supabase project this process reads flags FROM, used to namespace the
- * cache key.
+ * The environment namespace is applied by the Redis client itself
+ * (`src/lib/redis/client.ts`), for EVERY key, not just this one.
  *
- * WHY. The key was `ff:v1:<flag>`, with no environment in it, while the Upstash
- * credentials live in `.env.local` and the database credentials do not. Any
- * process pointed at a different database, including a developer running
- * locally against TEST, wrote ITS flag values into the SAME Redis that
- * production reads. Measured on 8 August 2026: a local server reading TEST left
- * `ff:v1:broadcast_artists = "true"` in the shared cache while the production
- * row for that flag is `false`.
+ * The defect that produced it was found here: `ff:v1:<flag>` carried no
+ * environment, and a local server reading TEST left
+ * `ff:v1:broadcast_artists = "true"` in the Redis production reads, while the
+ * production row says `false`. Namespacing this one key would have fixed this
+ * one instance and left five more key families with the identical shape, two of
+ * them far worse than a feature flag (the resolved FEE and the AI budget
+ * counter). So it is done once, at the client, where a new call site inherits
+ * it by default.
  *
- * The blast radius was bounded by the 30 second TTL, and no production
- * behaviour change was observed, but "bounded" is not "impossible": for up to
- * 30 seconds production could serve a stage it had never been told to enable.
- * A feature flag is the one thing that must never be ambiguous about which
- * environment it belongs to.
- *
- * Falls back to `unknown` rather than throwing, so a missing URL degrades to a
- * shared-but-consistent namespace instead of breaking every flag read.
+ * v2 rather than v1 so nothing inherits a value written under the old shared
+ * key.
  */
-function flagNamespace(): string {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
-  return /https?:\/\/([a-z0-9]+)\.supabase\./i.exec(url)?.[1] ?? 'unknown'
-}
-
 function cacheKey(flag: BroadcastFlag): string {
-  return `ff:v2:${flagNamespace()}:${flag}`
+  return `ff:v2:${flag}`
 }
 
 async function readCache(key: string): Promise<boolean | null> {
