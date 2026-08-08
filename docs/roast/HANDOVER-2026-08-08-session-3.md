@@ -204,3 +204,72 @@ None of these may be suppressed. Each is the honest state.
 Parts **A1, A3, C6, C7, D2, D4, E1, E3** remain untouched, roughly 95 to 138
 hours. R5 and F6 remain blocked on an absent `ANTHROPIC_API_KEY`. No RLS work
 and no new migrations, per the founder's freeze.
+
+---
+
+## 8. SESSION 3 ADDENDUM 2: tooling, disk, and the doctrine guard
+
+Commits `c06690e`, `bc00582`.
+
+### reclaim-space can no longer reach sideways
+
+The sibling loop is gone; every deletion routes through one function that
+refuses any path outside the invoking worktree. It also refuses to run when
+another Claude session is active (a session dir under the temp root touched
+within 45 min) or a dev server is listening.
+
+`node scripts/verify/reclaim-confinement-proof.mjs` - **10 of 10**, using two
+throwaway worktrees so this repo is never a target. The caller loses its own
+`node_modules` (the script works) and the sibling loses nothing (it is
+confined). Both assertions pull in opposite directions.
+
+### What is actually eating the disk
+
+**Not build artefacts.** The tree is 16.60 GB:
+
+| 10.69 GB | `docs/` replicated across nine worktrees | reclaim can NEVER touch it |
+| 2.80 GB | `node_modules` across all worktrees | only its own, now |
+| 1.66 GB | shared `.git` | no |
+
+2790 images, single files to 26 MB. Ranked remedies in
+`docs/roast/disk-and-reclaim/FINDINGS.md`, led by sparse-checkout of `docs/`.
+
+**Free space fell 6.6 to 3.50 GB during the session** because multiple sessions
+were reinstalling `node_modules` simultaneously and repopulating an npm cache a
+previous reclaim run had emptied. One deletion costs about 0.9 GB per worktree,
+downloaded again.
+
+### paymentCritical now gates four things
+
+`node scripts/verify/payment-critical-doctrine.mjs`. **Eight of ten fully
+green.** Both Upstash entries failed, which is the promotion doing its job:
+
+- (c) and (d) FIXED: both added to `CRITICAL_ENV_RULES` so an absent or
+  malformed fee-cache store alerts instead of silently degrading to a database
+  fall-through, and both given rotation rows with verification commands.
+- (b) NOT FIXED and correctly red: `UPSTASH_REDIS_REST_URL` is not declared
+  `mustBeSensitive` and is not a public variable, so the platform WOULD allow
+  it. Flipping it makes `check-env-stores` demand the Vercel record be
+  re-created as Sensitive: a production store change, held while writes are
+  frozen. **Founder action.**
+
+The guard cried wolf on its first run and was fixed rather than trusted:
+`STRIPE_WEBHOOK_SECRETS` looked uncovered because the rule covering it is NAMED
+`STRIPE_WEBHOOK_SECRET` and reads the plural via `resolve()`. Coverage is now
+asked behaviourally.
+
+### CRON_SECRET
+
+`.env.test` held a **4-character** value against a declared 32-character shape.
+Fixed to 43 characters. **No check was passing because of it**: verified by
+running every CRON_SECRET-touching check before and after, and no verdict
+changed. `check-public-env` had been reporting it as a non-blocking local-scope
+warning all along, so it was visible and ignored rather than hidden.
+
+**Production's own value is 28 characters and also violates the shape.** Not
+fixed: it is single-valued, so correcting it is a simultaneous two-store
+rotation, which is a production write. Recorded in the rotation runbook.
+
+Per founder ruling, the runbook now records that `CRON_SECRET` is deliberately
+ONE secret in two stores (the handshake authenticates rather than compares),
+and is therefore a single point of failure with no add-then-revoke window.
