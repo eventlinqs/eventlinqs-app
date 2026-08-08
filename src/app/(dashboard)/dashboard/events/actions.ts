@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { checkSellable } from '@/lib/events/sellable-guard'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { revalidatePath, updateTag } from 'next/cache'
@@ -156,6 +157,13 @@ export async function createEvent(input: CreateEventInput): Promise<{ error?: st
       coverImageUrl: input.cover_image_url,
     })
     if (!gate.ok) return { error: gate.message }
+
+    // Nothing in the publish path asked whether there was anything to sell.
+    // See src/lib/events/sellable-guard.ts.
+    const sellable = checkSellable(input.ticket_tiers ?? [], {
+      hasReservedSeating: Boolean(input.has_reserved_seating),
+    })
+    if (!sellable.ok) return { error: sellable.message }
 
     // Pre-publish media safety gate: every image on-platform, video allowlisted.
     const mod = moderateEventMedia({
@@ -339,6 +347,13 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
     })
     if (!gate.ok) return { error: gate.message }
 
+    // The edit path publishes too, so a guard only on create would be
+    // bypassed by saving a draft and publishing from the edit screen.
+    const sellable = checkSellable(input.ticket_tiers ?? [], {
+      hasReservedSeating: Boolean(input.has_reserved_seating),
+    })
+    if (!sellable.ok) return { error: sellable.message }
+
     const mod = moderateEventMedia({
       coverImageUrl: media.columns.cover_image_url,
       galleryUrls: media.columns.gallery_urls.map((g) => g.url),
@@ -486,7 +501,7 @@ export async function publishEvent(eventId: string): Promise<{ error?: string }>
 
   const { data: event } = await supabase
     .from('events')
-    .select('status, organisation_id, cover_image_url, slug')
+    .select('status, organisation_id, cover_image_url, slug, has_reserved_seating')
     .eq('id', eventId)
     .single()
 
@@ -497,7 +512,7 @@ export async function publishEvent(eventId: string): Promise<{ error?: string }>
 
   const { data: tiers } = await supabase
     .from('ticket_tiers')
-    .select('price')
+    .select('price, name, total_capacity, is_active')
     .eq('event_id', eventId)
 
   const gate = await checkPublishGate(supabase, {
@@ -506,6 +521,11 @@ export async function publishEvent(eventId: string): Promise<{ error?: string }>
     coverImageUrl: event.cover_image_url,
   })
   if (!gate.ok) return { error: gate.message }
+
+  const sellable = checkSellable(tiers ?? [], {
+    hasReservedSeating: Boolean(event.has_reserved_seating),
+  })
+  if (!sellable.ok) return { error: sellable.message }
 
   const { error } = await supabase
     .from('events')
