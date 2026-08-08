@@ -1,5 +1,15 @@
 -- Category taxonomy repair.
 --
+-- RENUMBERED 20260808000001 -> 20260808000004 on 2026-08-08.
+-- feat/launch-kit-moat carries its own 20260808000001 (city_primary_backfill),
+-- plus ...000002 and ...000003, and is applying them to TEST now. Supabase
+-- records applied migrations by the version prefix, so once that session
+-- applied 20260808000001 this file would have been treated as already applied
+-- and SKIPPED SILENTLY on merge: no error, no output, and the banned word plus
+-- two dead homepage tiles would have stayed live with every gate green. That is
+-- the exact defect class this sweep exists to find, so it is recorded here
+-- rather than quietly renamed.
+--
 -- Three defects, one root: the code and the data disagree about the category
 -- taxonomy, and nothing checks that they agree.
 --
