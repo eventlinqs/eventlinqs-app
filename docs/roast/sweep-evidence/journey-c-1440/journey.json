@@ -1,0 +1,160 @@
+{
+ "steps": [
+  {
+   "step": "sign in as an organiser",
+   "verdict": "FAIL",
+   "notes": [
+    "landed on /login?email=broadcast.gate.organiser%40eventlinqs.com&password=ArtistGate2026%21Drive",
+    "still on /login after submitting credentials"
+   ],
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\01-sign-in-as-an-organiser.png",
+   "url": "/login?email=broadcast.gate.organiser%40eventlinqs.com&password=ArtistGate2026%21Drive"
+  },
+  {
+   "step": "open dashboard",
+   "verdict": "FAIL",
+   "notes": [
+    "HTTP 200",
+    "/dashboard bounced to login while signed in"
+   ],
+   "status": 200,
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\02-open-dashboard.png",
+   "url": "/login?redirect=%2Fdashboard"
+  },
+  {
+   "step": "open events list",
+   "verdict": "FAIL",
+   "notes": [
+    "HTTP 200",
+    "/dashboard/events bounced to login while signed in"
+   ],
+   "status": 200,
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\03-open-events-list.png",
+   "url": "/login?redirect=%2Fdashboard%2Fevents"
+  },
+  {
+   "step": "open payouts",
+   "verdict": "FAIL",
+   "notes": [
+    "HTTP 200",
+    "/dashboard/payouts bounced to login while signed in"
+   ],
+   "status": 200,
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\04-open-payouts.png",
+   "url": "/login?redirect=%2Fdashboard%2Fpayouts"
+  },
+  {
+   "step": "open venues",
+   "verdict": "FAIL",
+   "notes": [
+    "HTTP 200",
+    "/dashboard/venues bounced to login while signed in"
+   ],
+   "status": 200,
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\05-open-venues.png",
+   "url": "/login?redirect=%2Fdashboard%2Fvenues"
+  },
+  {
+   "step": "open squads",
+   "verdict": "FAIL",
+   "notes": [
+    "HTTP 200",
+    "/dashboard/squads bounced to login while signed in"
+   ],
+   "status": 200,
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\06-open-squads.png",
+   "url": "/login?redirect=%2Fdashboard%2Fsquads"
+  },
+  {
+   "step": "open waitlists",
+   "verdict": "FAIL",
+   "notes": [
+    "HTTP 200",
+    "/dashboard/waitlists bounced to login while signed in"
+   ],
+   "status": 200,
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\07-open-waitlists.png",
+   "url": "/login?redirect=%2Fdashboard%2Fwaitlists"
+  },
+  {
+   "step": "open founding invites",
+   "verdict": "FAIL",
+   "notes": [
+    "HTTP 200",
+    "/dashboard/invites bounced to login while signed in"
+   ],
+   "status": 200,
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\08-open-founding-invites.png",
+   "url": "/login?redirect=%2Fdashboard%2Finvites"
+  },
+  {
+   "step": "open reach",
+   "verdict": "FAIL",
+   "notes": [
+    "HTTP 200",
+    "/dashboard/reach bounced to login while signed in"
+   ],
+   "status": 200,
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\09-open-reach.png",
+   "url": "/login?redirect=%2Fdashboard%2Freach"
+  },
+  {
+   "step": "open settings",
+   "verdict": "FAIL",
+   "notes": [
+    "HTTP 200",
+    "/dashboard/settings bounced to login while signed in"
+   ],
+   "status": 200,
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\10-open-settings.png",
+   "url": "/login?redirect=%2Fdashboard%2Fsettings"
+  },
+  {
+   "step": "open a published event and its Launch Kit",
+   "verdict": "FAIL",
+   "notes": [
+    "no event rows in the organiser dashboard"
+   ],
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\11-open-a-published-event-and-its-launch-kit.png",
+   "url": "/login?redirect=%2Fdashboard%2Fevents"
+  },
+  {
+   "step": "artefact: actually download the poster",
+   "verdict": "FAIL",
+   "notes": [
+    "no download control on the Launch Kit"
+   ],
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\12-artefact-actually-download-the-poster.png",
+   "url": "/login?redirect=%2Fdashboard%2Fevents"
+  },
+  {
+   "step": "artefact: copy a caption or link to the clipboard",
+   "verdict": "FAIL",
+   "notes": [
+    "no Copy control on the Launch Kit"
+   ],
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\13-artefact-copy-a-caption-or-link-to-the-clipboard.png",
+   "url": "/login?redirect=%2Fdashboard%2Fevents"
+  },
+  {
+   "step": "artefact: the QR code resolves to a real destination",
+   "verdict": "PASS",
+   "notes": [
+    "QR elements on the page: 0",
+    "no /s/ tracked link exposed on the kit to follow"
+   ],
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\14-artefact-the-qr-code-resolves-to-a-real-destination.png",
+   "url": "/login?redirect=%2Fdashboard%2Fevents"
+  },
+  {
+   "step": "edit the published event and save",
+   "verdict": "FAIL",
+   "notes": [
+    "no event id captured earlier"
+   ],
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-1440\\15-edit-the-published-event-and-save.png",
+   "url": "/login?redirect=%2Fdashboard%2Fevents"
+  }
+ ],
+ "pageErrors": []
+}

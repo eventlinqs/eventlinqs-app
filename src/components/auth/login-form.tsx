@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useHydrated } from '@/lib/hooks/use-hydrated'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -36,6 +37,8 @@ export function LoginForm({ googleEnabled }: Props) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  // No native submit before the handler exists. See use-hydrated.ts.
+  const hydrated = useHydrated()
   const [error, setError] = useState<string | null>(
     callbackError === 'auth_callback_failed'
       ? 'We could not finish signing you in. Please try again, or sign in with your email address and password.'
@@ -232,7 +235,7 @@ export function LoginForm({ googleEnabled }: Props) {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || !hydrated}
           className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-gold-400 px-4 text-sm font-semibold text-ink-900 shadow-md transition-all hover:-translate-y-0.5 hover:bg-gold-500 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loading ? 'Signing in' : 'Sign in'}
@@ -242,7 +245,7 @@ export function LoginForm({ googleEnabled }: Props) {
       <button
         type="button"
         onClick={handleMagicLink}
-        disabled={loading}
+        disabled={loading || !hydrated}
         className="block w-full text-center text-sm font-medium text-ink-600 transition-colors hover:text-gold-600"
       >
         Send me a magic link instead

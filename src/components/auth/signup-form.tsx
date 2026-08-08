@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useHydrated } from '@/lib/hooks/use-hydrated'
 import { useRouter } from 'next/navigation'
 import { GoogleButton } from './google-button'
 import { AuthDivider } from './auth-divider'
@@ -33,6 +34,8 @@ export function SignupForm({ role = 'attendee', googleEnabled }: Props) {
   // signup condition.
   const [digestOptIn, setDigestOptIn] = useState(false)
   const [loading, setLoading] = useState(false)
+  // No native submit before the handler exists. See use-hydrated.ts.
+  const hydrated = useHydrated()
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
@@ -201,7 +204,7 @@ export function SignupForm({ role = 'attendee', googleEnabled }: Props) {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || !hydrated}
           className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-gold-400 px-4 text-sm font-semibold text-ink-900 shadow-md transition-all hover:-translate-y-0.5 hover:bg-gold-500 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loading
