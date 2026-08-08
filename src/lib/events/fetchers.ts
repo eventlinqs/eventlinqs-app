@@ -215,6 +215,11 @@ async function eventIdsInDistrict(
     .from('events')
     .select('id, suburb_primary, venue_latitude, venue_longitude')
     .eq('status', 'published')
+    // Defence in depth (child-safety ruling, 9 August 2026). The consumers of
+    // these ids filter visibility themselves, but this is a discovery path and
+    // an id list that includes a private gathering is one careless `.in()`
+    // away from surfacing it. Filtering here costs nothing.
+    .eq('visibility', 'public')
     .ilike('venue_city', `%${resolveCityName(citySlug)}%`)
     .limit(500)
   return ((data ?? []) as DistrictCandidate[])

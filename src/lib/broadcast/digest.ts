@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { priceLabel } from '@/lib/events/price-label'
+import { PUBLIC_VISIBILITY, isPubliclyDiscoverable } from '@/lib/events/visibility'
 import { consentVersionCoversDigest } from '@/lib/waitlist/city-waitlist'
 import { buildShortUrl, getOrCreateShareLink } from './share-links'
 import {
@@ -208,6 +209,12 @@ export async function fetchDigestEvents(
     )
     .eq('city_primary', citySlug)
     .eq('status', 'published')
+    // Child safety, founder ruling 9 August 2026. This filter used to sit
+    // downstream as `visibility !== 'private'`, which passed UNLISTED events
+    // into an email blast. It is now an allow-list at the query, so a private
+    // gathering cannot reach a stranger's inbox even if a later edit drops the
+    // in-memory guard below.
+    .eq('visibility', PUBLIC_VISIBILITY)
     .gte('start_date', `${period.start}T00:00:00Z`)
     .lte('start_date', `${period.end}T23:59:59Z`)
     .order('start_date', { ascending: true })
@@ -227,7 +234,10 @@ export async function fetchDigestEvents(
   }
 
   const events = ((data ?? []) as Row[])
-    .filter((e) => e.visibility !== 'private' && e.is_seed_data !== true)
+    // Defence in depth: the query already restricts to public, and this repeats
+    // it through the one shared predicate. Two independent guards, because a
+    // regression here emails a private address to a whole city.
+    .filter((e) => isPubliclyDiscoverable(e.visibility) && e.is_seed_data !== true)
     .slice(0, limit)
     .map((e) => ({
       id: e.id,

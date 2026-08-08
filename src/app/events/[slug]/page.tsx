@@ -29,6 +29,7 @@ import { getFeaturedHeroBackground } from '@/lib/images/event-media'
 import { StickyActionBar } from '@/components/features/events/sticky-action-bar'
 import { Reveal } from '@/components/ui/reveal'
 import { buildEventMetaDescription } from '@/lib/events/event-meta'
+import { eventRobotsDirective } from '@/lib/events/visibility'
 import { EventTrustSignals } from '@/components/features/event/EventTrustSignals'
 import { fetchFixtureEvent } from '@/lib/dev/fixture-events'
 
@@ -151,6 +152,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const baseUrl = getSiteUrl()
 
+  // CHILD SAFETY, founder ruling 9 August 2026. Until this line the page
+  // emitted no robots directive at all, so an UNLISTED event was fully
+  // indexable the moment a crawler found the URL, which it will, because the
+  // organiser shares that URL by design. A sixteenth birthday at a home
+  // address must never enter a search index. Anything not exactly 'public'
+  // gets index:false, follow:false and noimageindex.
+  const robots = eventRobotsDirective(event.visibility)
+
   return {
     title,
     description,
@@ -161,6 +170,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       'tickets',
       'events',
     ].filter(Boolean) as string[],
+    ...(robots ? { robots } : {}),
     alternates: { canonical: `/events/${slug}` },
     // og:image and twitter:image come from the designed per-event share card
     // (opengraph-image.tsx in this route folder): the branded invitation with
