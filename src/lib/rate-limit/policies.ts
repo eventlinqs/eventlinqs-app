@@ -35,6 +35,7 @@ export type PolicyName =
   | 'launch-compose'
   | 'launch-compose-daily'
   | 'launch-artefact'
+  | 'launch-email'
 
 export type Policy = {
   /** Stable prefix used to namespace the redis key. Keep short. */
@@ -246,5 +247,13 @@ export const POLICIES: Record<PolicyName, Policy> = {
     windowSec: 3600,
     rationale:
       'Anonymous artefact renders (cards and posters) per IP per hour. A full kit is one poster plus three cards, and an organiser legitimately re-renders after each edit, so sixty covers about a dozen honest passes. This is CPU and sharp memory, not model spend. Fail-open: a missing render degrades to the typographic composition, never to a broken kit.',
+  },
+  'launch-email': {
+    keyPrefix: 'lnch-e',
+    limit: 3,
+    windowSec: 3600,
+    rationale:
+      'Anonymous "send this kit to myself" per IP per hour. THE ONLY FAIL-CLOSED POLICY ON THIS SURFACE, and deliberately unlike its neighbours: every other launch action is local computation with no marginal cost, while this one sends real mail from our verified domain. The cost of getting it wrong is not a bill, it is deliverability, and a sending domain burned by an open relay cannot be un-burned by a rate limit added later. Three is enough to fix a typo twice and useless as a spam vector. The action also requires an owned draft, so a sender must first compose a kit.',
+    failClosed: true,
   },
 }

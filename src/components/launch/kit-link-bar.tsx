@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import { Reveal } from '@/components/ui/reveal'
+import { emailKitToSelf } from '@/app/launch/actions'
 
 /**
  * The bookmarkable kit link (founder ruling 0.2c, 9 August 2026: a link, 30
@@ -21,11 +22,14 @@ import { Reveal } from '@/components/ui/reveal'
 
 export function KitLinkBar({ code, ephemeral }: { code: string | null; ephemeral: boolean }) {
   const [copied, setCopied] = useState(false)
+  const [email, setEmail] = useState('')
+  const [sendState, setSendState] = useState<{ ok: boolean; message: string } | null>(null)
+  const [sending, startSending] = useTransition()
 
-  // No code means the draft store is unavailable (the migration has not been
-  // applied yet, or the hourly cap was reached). The kit on screen is complete
-  // and correct; only the shareable link is missing. That is the smallest
-  // possible penalty and it does not need an apology.
+  // No code means the draft store is unavailable (Redis is not configured in
+  // this environment, or the hourly cap was reached). The kit on screen is
+  // complete and correct; only the shareable link is missing. That is the
+  // smallest possible penalty and it does not need an apology.
   if (!code) {
     return (
       <Reveal>
@@ -77,6 +81,50 @@ export function KitLinkBar({ code, ephemeral }: { code: string | null; ephemeral
             {copied ? 'Link copied' : 'Copy link'}
           </button>
         </div>
+
+        {/*
+          Offered, never required (founder ruling 0.2c). It sits BELOW the link
+          that already works, so nothing here reads as a gate: the kit is
+          already theirs and this is one more way to keep it.
+        */}
+        <form
+          className="mt-5 border-t border-ink-200 pt-5"
+          onSubmit={e => {
+            e.preventDefault()
+            startSending(async () => setSendState(await emailKitToSelf(email)))
+          }}
+        >
+          <label htmlFor="kit-email" className="block text-sm font-medium text-ink-900">
+            Want it in your inbox as well?
+          </label>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <input
+              id="kit-email"
+              name="kit-email"
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              className="min-h-[44px] min-w-0 flex-1 rounded-lg border border-ink-300 px-3 text-sm text-ink-900 placeholder:text-ink-400 focus:border-ink-500 focus:outline-none focus:ring-2 focus:ring-brand-accent"
+            />
+            <button
+              type="submit"
+              disabled={sending || email.trim().length === 0}
+              className="inline-flex min-h-[44px] items-center justify-center rounded-full border border-ink-300 px-5 text-sm font-semibold text-ink-900 transition hover:border-ink-400 hover:bg-ink-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {sending ? 'Sending' : 'Send it to me'}
+            </button>
+          </div>
+          {sendState ? (
+            <p
+              role="status"
+              className={`mt-3 text-sm ${sendState.ok ? 'text-ink-700' : 'text-ink-600'}`}
+            >
+              {sendState.message}
+            </p>
+          ) : null}
+        </form>
       </div>
     </Reveal>
   )
