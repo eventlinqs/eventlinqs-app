@@ -69,7 +69,7 @@ because pdf-lib stamps the current time, so raw bytes differ between any two
 renders; everything else is verbatim.
 
 **Then open the PDFs and look at them.** `docs/design/poster-composition/no-artwork.pdf`.
-Real Chrome renders PDFs. **Headless Chromium does not** — a blank poster frame
+Real Chrome renders PDFs. **Headless Chromium does not**: a blank poster frame
 in a Playwright screenshot is a tooling artefact, not a defect, and an earlier
 session nearly reported it as one.
 
