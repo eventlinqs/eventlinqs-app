@@ -1,6 +1,6 @@
 import 'server-only'
 import { createHash, randomBytes } from 'node:crypto'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { getRedisClient } from '@/lib/redis/client'
 import type { EventVisibility } from '@/types/database'
 
 /**
@@ -14,19 +14,42 @@ import type { EventVisibility } from '@/types/database'
  *         READ access to the kit.
  *   TOKEN is meant to prove OWNERSHIP. It lives in the httpOnly el_kit_draft
  *         cookie, never appears in a URL, and is required to EDIT or CLAIM.
- *         Only its SHA-256 is stored, so a database reader cannot mint one.
+ *         Only its SHA-256 is stored, so a store reader cannot mint one.
  *
- * DEGRADES GRACEFULLY. Migration 20260809000001 is applied by the founder, not
- * by this code. Until it lands every function here fails soft: the composer
- * still renders a complete kit from the payload it already holds in the
- * request, and only cross-device persistence is unavailable. Nothing throws at
- * a visitor.
+ * ---------------------------------------------------------------------------
+ * WHY REDIS AND NOT A TABLE.
+ *
+ * The first cut of this file wrote to a `kit_drafts` table behind migration
+ * 20260809000001. That migration was never applied, so every persistence
+ * function returned null and the bookmarkable link the ruling asks for did not
+ * exist. The build brief also forbids writing a migration at all, so the table
+ * route cannot close the ruling by itself.
+ *
+ * Redis closes it with no schema change, and it is the better fit on the
+ * merits rather than merely the permitted one:
+ *
+ *   - A draft is inherently ephemeral. The 30-day life IS a TTL, so `setex`
+ *     expresses the requirement directly and there is no nightly sweep to
+ *     write, schedule, monitor, or get wrong. Phase 0 specified that sweep;
+ *     this removes the need for it.
+ *   - The store is already a production dependency (rate limits, the fee
+ *     cache, feature flags) and is declared in the env manifest.
+ *   - Keys are namespaced by Supabase project ref in `redis/client.ts`, so a
+ *     TEST draft can never be read by production.
+ *
+ * DEGRADES GRACEFULLY, unchanged. When Redis is not configured every function
+ * here returns null, the composer still renders a complete kit from the
+ * payload it holds in the request, and only cross-device persistence is
+ * unavailable. Nothing throws at a visitor.
  */
 
 export const KIT_CODE_LENGTH = 12
 
 /** Unambiguous alphabet: no 0/O, no 1/l/I, so a code survives being read aloud. */
 const CODE_ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789'
+
+/** The founder ruling, in seconds. */
+export const KIT_DRAFT_TTL_SECONDS = 30 * 24 * 60 * 60
 
 export type KitDraftPayload = {
   title: string
@@ -63,6 +86,16 @@ export type KitDraft = {
   expiresAt: string
 }
 
+/** What actually sits in Redis under the code key. */
+type StoredDraft = {
+  id: string
+  code: string
+  tokenHash: string
+  payload: KitDraftPayload
+  claimedBy: string | null
+  coverPath: string | null
+}
+
 /** A shareable code. Unguessable at 31^12, and readable. */
 export function mintKitCode(): string {
   const bytes = randomBytes(KIT_CODE_LENGTH)
@@ -86,26 +119,46 @@ export function isKitCode(value: string | null | undefined): value is string {
   return typeof value === 'string' && new RegExp(`^[${CODE_ALPHABET}]{${KIT_CODE_LENGTH}}$`).test(value)
 }
 
+/* ------------------------------------------------------------------ */
+/* Keys. Exported so tests assert the exact shape rather than guess it. */
+/* ------------------------------------------------------------------ */
+
+/** The draft itself, addressed by the code a person can share. */
+export function draftKey(code: string): string {
+  return `kit:d:${code}`
+}
+
 /**
- * True when the failure is "the table does not exist yet". Postgres 42P01.
- * Any other error is a real fault and is logged rather than swallowed.
+ * The ownership index: token hash to code. A separate key rather than a scan,
+ * because a scan over a shared store is both slow and a way to read other
+ * people's drafts by accident.
  */
-function isMissingTable(error: { code?: string; message?: string } | null): boolean {
-  if (!error) return false
-  return error.code === '42P01' || /relation .*kit_drafts.* does not exist/i.test(error.message ?? '')
+export function ownerKey(tokenHash: string): string {
+  return `kit:t:${tokenHash}`
 }
 
 function warn(scope: string, error: unknown): void {
-  if (isMissingTable(error as { code?: string })) {
-    // Expected before the founder applies the migration. Not an error.
-    return
-  }
   console.error(`[launch.draft-store] ${scope}:`, error)
 }
 
+function toKitDraft(stored: StoredDraft, ttlSeconds: number): KitDraft {
+  return {
+    id: stored.id,
+    code: stored.code,
+    payload: stored.payload,
+    claimedBy: stored.claimedBy,
+    expiresAt: new Date(Date.now() + Math.max(ttlSeconds, 0) * 1000).toISOString(),
+  }
+}
+
 /**
- * Persist a draft. Returns null when the store is unavailable, which the
- * caller treats as "no cross-device persistence", never as a failure.
+ * Persist a draft for 30 days. Returns null when the store is unavailable,
+ * which the caller treats as "no cross-device persistence", never as a
+ * failure.
+ *
+ * Re-saving with the SAME token overwrites the same draft rather than minting
+ * a second one, so a person editing their kit keeps one link. That is the
+ * upsert-on-token_hash behaviour the table version had.
  */
 export async function saveDraft(opts: {
   code: string
@@ -113,34 +166,32 @@ export async function saveDraft(opts: {
   payload: KitDraftPayload
   coverPath?: string | null
 }): Promise<KitDraft | null> {
-  try {
-    const admin = createAdminClient()
-    const { data, error } = await admin
-      .from('kit_drafts')
-      .upsert(
-        {
-          code: opts.code,
-          token_hash: hashToken(opts.token),
-          payload: opts.payload as unknown as Record<string, unknown>,
-          cover_path: opts.coverPath ?? null,
-        },
-        { onConflict: 'token_hash' },
-      )
-      .select('id, code, payload, claimed_by, expires_at')
-      .maybeSingle()
+  const redis = getRedisClient()
+  if (!redis) return null
 
-    if (error) {
-      warn('saveDraft', error)
-      return null
+  try {
+    const tokenHash = hashToken(opts.token)
+
+    // Editing an existing draft keeps its original code and identity.
+    const existingCode = await redis.get<string>(ownerKey(tokenHash))
+    const code = typeof existingCode === 'string' && isKitCode(existingCode) ? existingCode : opts.code
+    const existing = await redis.get<StoredDraft>(draftKey(code))
+
+    const stored: StoredDraft = {
+      id: existing?.id ?? randomBytes(16).toString('hex'),
+      code,
+      tokenHash,
+      payload: opts.payload,
+      claimedBy: existing?.claimedBy ?? null,
+      coverPath: opts.coverPath ?? existing?.coverPath ?? null,
     }
-    if (!data) return null
-    return {
-      id: data.id as string,
-      code: data.code as string,
-      payload: data.payload as unknown as KitDraftPayload,
-      claimedBy: (data.claimed_by as string | null) ?? null,
-      expiresAt: data.expires_at as string,
-    }
+
+    // Both keys carry the same life, so the index can never outlive the draft
+    // it points at and leave a token resolving to nothing.
+    await redis.setex(draftKey(code), KIT_DRAFT_TTL_SECONDS, stored)
+    await redis.setex(ownerKey(tokenHash), KIT_DRAFT_TTL_SECONDS, code)
+
+    return toKitDraft(stored, KIT_DRAFT_TTL_SECONDS)
   } catch (err) {
     warn('saveDraft', err)
     return null
@@ -150,26 +201,14 @@ export async function saveDraft(opts: {
 /** Read a draft by its shareable code. Read access only. */
 export async function readDraftByCode(code: string): Promise<KitDraft | null> {
   if (!isKitCode(code)) return null
+  const redis = getRedisClient()
+  if (!redis) return null
+
   try {
-    const admin = createAdminClient()
-    const { data, error } = await admin
-      .from('kit_drafts')
-      .select('id, code, payload, claimed_by, expires_at')
-      .eq('code', code)
-      .gt('expires_at', new Date().toISOString())
-      .maybeSingle()
-    if (error) {
-      warn('readDraftByCode', error)
-      return null
-    }
-    if (!data) return null
-    return {
-      id: data.id as string,
-      code: data.code as string,
-      payload: data.payload as unknown as KitDraftPayload,
-      claimedBy: (data.claimed_by as string | null) ?? null,
-      expiresAt: data.expires_at as string,
-    }
+    const stored = await redis.get<StoredDraft>(draftKey(code))
+    if (!stored) return null
+    const ttl = await redis.ttl(draftKey(code))
+    return toKitDraft(stored, typeof ttl === 'number' && ttl > 0 ? ttl : KIT_DRAFT_TTL_SECONDS)
   } catch (err) {
     warn('readDraftByCode', err)
     return null
@@ -178,26 +217,13 @@ export async function readDraftByCode(code: string): Promise<KitDraft | null> {
 
 /** Read the draft this browser OWNS, by cookie token. Required to edit. */
 export async function readDraftByToken(token: string): Promise<KitDraft | null> {
+  const redis = getRedisClient()
+  if (!redis) return null
+
   try {
-    const admin = createAdminClient()
-    const { data, error } = await admin
-      .from('kit_drafts')
-      .select('id, code, payload, claimed_by, expires_at')
-      .eq('token_hash', hashToken(token))
-      .gt('expires_at', new Date().toISOString())
-      .maybeSingle()
-    if (error) {
-      warn('readDraftByToken', error)
-      return null
-    }
-    if (!data) return null
-    return {
-      id: data.id as string,
-      code: data.code as string,
-      payload: data.payload as unknown as KitDraftPayload,
-      claimedBy: (data.claimed_by as string | null) ?? null,
-      expiresAt: data.expires_at as string,
-    }
+    const code = await redis.get<string>(ownerKey(hashToken(token)))
+    if (typeof code !== 'string' || !isKitCode(code)) return null
+    return await readDraftByCode(code)
   } catch (err) {
     warn('readDraftByToken', err)
     return null
@@ -208,29 +234,32 @@ export async function readDraftByToken(token: string): Promise<KitDraft | null> 
  * Attach a draft to an account at signup. Idempotent: claiming an
  * already-claimed draft by the same user is a no-op, and claiming one owned by
  * somebody else does nothing rather than stealing it.
+ *
+ * The remaining TTL is preserved rather than reset, so claiming a draft on day
+ * 29 does not quietly extend it to day 59.
  */
 export async function claimDraft(token: string, userId: string): Promise<KitDraft | null> {
+  const redis = getRedisClient()
+  if (!redis) return null
+
   try {
-    const admin = createAdminClient()
-    const { data, error } = await admin
-      .from('kit_drafts')
-      .update({ claimed_by: userId, claimed_at: new Date().toISOString() })
-      .eq('token_hash', hashToken(token))
-      .is('claimed_by', null)
-      .select('id, code, payload, claimed_by, expires_at')
-      .maybeSingle()
-    if (error) {
-      warn('claimDraft', error)
-      return null
-    }
-    if (!data) return null
-    return {
-      id: data.id as string,
-      code: data.code as string,
-      payload: data.payload as unknown as KitDraftPayload,
-      claimedBy: (data.claimed_by as string | null) ?? null,
-      expiresAt: data.expires_at as string,
-    }
+    const code = await redis.get<string>(ownerKey(hashToken(token)))
+    if (typeof code !== 'string' || !isKitCode(code)) return null
+
+    const stored = await redis.get<StoredDraft>(draftKey(code))
+    if (!stored) return null
+
+    // Already claimed by somebody else: do nothing rather than steal it.
+    if (stored.claimedBy && stored.claimedBy !== userId) return null
+
+    const ttlRaw = await redis.ttl(draftKey(code))
+    const ttl = typeof ttlRaw === 'number' && ttlRaw > 0 ? ttlRaw : KIT_DRAFT_TTL_SECONDS
+
+    const claimed: StoredDraft = { ...stored, claimedBy: userId }
+    await redis.setex(draftKey(code), ttl, claimed)
+    await redis.setex(ownerKey(stored.tokenHash), ttl, code)
+
+    return toKitDraft(claimed, ttl)
   } catch (err) {
     warn('claimDraft', err)
     return null
