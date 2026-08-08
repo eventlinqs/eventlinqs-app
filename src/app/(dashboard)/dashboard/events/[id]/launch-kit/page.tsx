@@ -195,7 +195,12 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
     const channels = [...KIT_CHANNELS, 'qr'] as ShareChannel[]
     const minted = await Promise.all(
       channels.map(channel =>
-        getOrCreateShareLink({ eventId: id, channel, createdBy: organiserEvent.userId }).then(
+        getOrCreateShareLink({
+          eventId: id,
+          channel,
+          createdBy: organiserEvent.userId,
+          eventSlug: organiserEvent.slug,
+        }).then(
           link => ({ channel, link }),
         ),
       ),

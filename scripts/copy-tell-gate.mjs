@@ -41,6 +41,12 @@ const ALLOWLIST = [
     reason: 'legacy licensed-photo library key arts-culture (renaming breaks the image spine)',
   },
   {
+    file: 'src/lib/broadcast/short-links.ts',
+    patterns: ['banned-word-community-law'],
+    reason:
+      'the RESERVED list has to hold back the two legacy paths that permanently 301 to the community routes. Not reserving them would let a share code be minted that shadows a live redirect, which is a broken link for a real person. The strings are route names being blocked, not copy',
+  },
+  {
     file: 'src/lib/broadcast/captions.ts',
     patterns: ['banned-word-community-law'],
     reason:

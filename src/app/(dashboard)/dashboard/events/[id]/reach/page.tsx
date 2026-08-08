@@ -74,6 +74,7 @@ export default async function ReachPage({ params }: Props) {
         eventId: id,
         channel,
         createdBy: event.userId,
+        eventSlug: event.slug,
       })
       if (link) kitLinks.push({ channel, url: buildShortUrl(origin, link.code) })
     }

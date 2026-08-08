@@ -32,6 +32,7 @@ export {
 export type { ShareChannel } from '@/lib/broadcast/share-codes'
 
 import { CLICK_DEDUPE_WINDOW_SECONDS } from '@/lib/broadcast/crawler'
+import { buildReadableCode, isValidReadableCode } from '@/lib/broadcast/short-links'
 import {
   SHARE_CODE_LENGTH as CODE_LENGTH,
   isValidShareCode as isValidCode,
@@ -87,7 +88,10 @@ export async function resolveShareLink(
   code: string,
   opts?: { client?: BroadcastClient },
 ): Promise<ShareLinkRow | null> {
-  if (!isValidCode(code)) return null
+  // BOTH formats. A readable code (basement-45-ig) is what is minted now; a
+  // legacy random code is what is printed on posters already hanging in venue
+  // windows, and those must resolve for as long as the paper lasts.
+  if (!isValidCode(code) && !isValidReadableCode(code)) return null
   const client = opts?.client ?? createAdminClient()
   const { data, error } = await client
     .from('share_links')
@@ -109,6 +113,13 @@ export async function getOrCreateShareLink(
     channel: ShareChannel
     artistId?: string | null
     createdBy?: string | null
+    /**
+     * The event slug, used to mint a READABLE code (basement-45-ig). Omit it
+     * and the link falls back to a random code, which still works everywhere;
+     * a code is only ever as readable as the information available when it was
+     * minted.
+     */
+    eventSlug?: string | null
   },
   opts?: { client?: BroadcastClient },
 ): Promise<ShareLinkRow | null> {
@@ -126,6 +137,8 @@ export async function getOrCreateShareLink(
   const { data: existing } = await lookup.limit(1).maybeSingle()
   if (existing) return existing as ShareLinkRow
 
+  const code = await mintCode(client, input.eventId, input.channel, input.eventSlug ?? null)
+
   const { data: created, error } = await client
     .from('share_links')
     .insert({
@@ -133,12 +146,51 @@ export async function getOrCreateShareLink(
       channel: input.channel,
       artist_id: artistId,
       created_by: createdBy,
-      code: generateShareCode(),
+      code,
     })
     .select('id, event_id, artist_id, channel, code, created_by, created_at')
     .single()
   if (error || !created) return null
   return created as ShareLinkRow
+}
+
+/**
+ * Choose the code for a new link.
+ *
+ * A readable code is preferred, because the address is the only thing a
+ * stranger judges before tapping and "Rk9dW2xa" tells them nothing. If the
+ * preferred code is already held by a DIFFERENT event it takes a numeric
+ * suffix, and if every attempt collides it falls back to a random code rather
+ * than failing to mint: a link that exists beats a link that reads well.
+ *
+ * A CODE IS NEVER REUSED. The unique index on share_links.code is what
+ * guarantees it, and this loop only ever asks for codes the index says are
+ * free. Luma publishes the opposite behaviour in their own help centre, where
+ * a released address can be claimed by a stranger and the old link then points
+ * at someone else's page. See docs/strategy/SHARE-LINK-SCHEME.md.
+ */
+async function mintCode(
+  client: BroadcastClient,
+  eventId: string,
+  channel: ShareChannel,
+  eventSlug: string | null,
+): Promise<string> {
+  if (!eventSlug) return generateShareCode()
+
+  for (let attempt = 1; attempt <= 12; attempt += 1) {
+    const candidate = buildReadableCode(eventSlug, channel, attempt)
+    if (!isValidReadableCode(candidate)) break
+    const { data: taken } = await client
+      .from('share_links')
+      .select('id, event_id')
+      .eq('code', candidate)
+      .maybeSingle()
+    if (!taken) return candidate
+    // Held by this same event under another creator: reuse is safe and keeps
+    // one readable address per event per channel.
+    if ((taken as { event_id: string }).event_id === eventId) return candidate
+  }
+  return generateShareCode()
 }
 
 export type ShareLinkEventKind = 'view' | 'click' | 'conversion'

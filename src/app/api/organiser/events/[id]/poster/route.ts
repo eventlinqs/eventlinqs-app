@@ -72,6 +72,7 @@ export async function GET(
     eventId: organiserEvent.id,
     channel: 'qr',
     createdBy: organiserEvent.userId,
+    eventSlug: organiserEvent.slug,
   })
   if (!link) {
     return NextResponse.json({ ok: false, error: 'link_mint_failed' }, { status: 500 })

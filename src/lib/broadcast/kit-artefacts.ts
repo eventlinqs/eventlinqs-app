@@ -138,7 +138,10 @@ export async function loadArtefactContext(
     // same code and the reach panel stays one row per channel.
     const minted = await Promise.all(
       channels.map(channel =>
-        getOrCreateShareLink({ eventId, channel, createdBy }).then(link => ({ channel, link })),
+        getOrCreateShareLink({ eventId, channel, createdBy, eventSlug: event.slug }).then(link => ({
+          channel,
+          link,
+        })),
       ),
     )
     for (const { channel, link } of minted) {

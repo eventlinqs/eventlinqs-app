@@ -30,7 +30,7 @@ type Fixture = {
   caption: CaptionInput
 }
 
-const SHORT = 'https://www.eventlinqs.com.au/s/'
+const SHORT = 'https://www.eventlinqs.com.au/e/'
 
 function fixtures(): Fixture[] {
   return [
@@ -43,7 +43,7 @@ function fixtures(): Fixture[] {
         timeLabel: '8:00 pm',
         placeLabel: 'The Piano Bar, Geelong',
         priceLabel: 'From $28',
-        shortUrl: `${SHORT}7fQ2mKp1`,
+        shortUrl: `${SHORT}sharp-tongue-ig`,
         eyebrow: 'Comedy · Geelong',
         organiserName: 'Barwon Comedy Club',
       },
@@ -59,7 +59,7 @@ function fixtures(): Fixture[] {
         priceLabel: 'From $28',
         organiserName: 'Barwon Comedy Club',
         categorySlug: 'arts-culture',
-        links: { fallback: `${SHORT}7fQ2mKp1` },
+        links: { fallback: `${SHORT}sharp-tongue-ig` },
       },
     },
     {
@@ -71,7 +71,7 @@ function fixtures(): Fixture[] {
         timeLabel: '10:00 pm',
         placeLabel: 'Sub Rosa, Melbourne',
         priceLabel: 'From $35',
-        shortUrl: `${SHORT}Rk9dW2xa`,
+        shortUrl: `${SHORT}basement-45-ig`,
         eyebrow: 'Nightlife · Melbourne',
         organiserName: 'Basement 45',
       },
@@ -87,7 +87,7 @@ function fixtures(): Fixture[] {
         priceLabel: 'From $35',
         organiserName: 'Basement 45',
         categorySlug: 'nightlife',
-        links: { fallback: `${SHORT}Rk9dW2xa` },
+        links: { fallback: `${SHORT}basement-45-ig` },
       },
     },
     {
@@ -99,7 +99,7 @@ function fixtures(): Fixture[] {
         timeLabel: '9:00 am',
         placeLabel: 'Johnstone Park, Geelong',
         priceLabel: 'Free entry',
-        shortUrl: `${SHORT}Lm4tYb8c`,
+        shortUrl: `${SHORT}pakington-street-ig`,
         eyebrow: 'Food and drink · Geelong',
         organiserName: 'Pako Traders',
       },
@@ -115,7 +115,7 @@ function fixtures(): Fixture[] {
         priceLabel: 'Free entry',
         organiserName: 'Pako Traders',
         categorySlug: 'food-drink',
-        links: { fallback: `${SHORT}Lm4tYb8c` },
+        links: { fallback: `${SHORT}pakington-street-ig` },
       },
     },
     {
@@ -127,7 +127,7 @@ function fixtures(): Fixture[] {
         timeLabel: '10:00 am',
         placeLabel: 'Little Creatures Studio, Geelong',
         priceLabel: 'From $95',
-        shortUrl: `${SHORT}Vp3sHn6d`,
+        shortUrl: `${SHORT}screen-printing-for-ig`,
         eyebrow: 'Education · Geelong',
         organiserName: 'Northern Press Studio',
       },
@@ -143,7 +143,7 @@ function fixtures(): Fixture[] {
         priceLabel: 'From $95',
         organiserName: 'Northern Press Studio',
         categorySlug: 'education',
-        links: { fallback: `${SHORT}Vp3sHn6d` },
+        links: { fallback: `${SHORT}screen-printing-for-ig` },
       },
     },
     {
@@ -155,7 +155,7 @@ function fixtures(): Fixture[] {
         timeLabel: '6:30 pm',
         placeLabel: 'The Wharf Shed, Geelong',
         priceLabel: 'From $65',
-        shortUrl: `${SHORT}Zc8kQr4e`,
+        shortUrl: `${SHORT}a-night-for-the-ig`,
         eyebrow: 'Charity · Geelong',
         organiserName: 'Friends of the Barwon',
       },
@@ -171,7 +171,7 @@ function fixtures(): Fixture[] {
         priceLabel: 'From $65',
         organiserName: 'Friends of the Barwon',
         categorySlug: 'charity',
-        links: { fallback: `${SHORT}Zc8kQr4e` },
+        links: { fallback: `${SHORT}a-night-for-the-ig` },
       },
     },
     {
@@ -183,7 +183,7 @@ function fixtures(): Fixture[] {
         timeLabel: '10:30 am',
         placeLabel: 'Eastern Gardens Rotunda, Geelong',
         priceLabel: 'Free entry',
-        shortUrl: `${SHORT}Hj6bTd2f`,
+        shortUrl: `${SHORT}ivy-turns-six-ig`,
         eyebrow: 'Family · Geelong',
         organiserName: 'The Whitfield Family',
       },
@@ -199,7 +199,7 @@ function fixtures(): Fixture[] {
         priceLabel: 'Free entry',
         organiserName: 'The Whitfield Family',
         categorySlug: 'family',
-        links: { fallback: `${SHORT}Hj6bTd2f` },
+        links: { fallback: `${SHORT}ivy-turns-six-ig` },
       },
     },
   ]
