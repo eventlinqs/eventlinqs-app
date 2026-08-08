@@ -97,6 +97,12 @@ export async function recordPlatformDigestConsent(
     citySlug?: string | null
     source?: string
     at: string
+    /** The wording actually shown, when the surface differs from the standard
+     * checkout opt-in. The city newsletter panel makes its own promise, and
+     * the evidence has to be the sentence the person read, not a generic one
+     * standing in for it. */
+    consentText?: string
+    consentVersion?: string
   },
 ): Promise<boolean> {
   try {
@@ -108,8 +114,8 @@ export async function recordPlatformDigestConsent(
         user_id: params.userId ?? null,
         city_slug: params.citySlug ?? null,
         status: 'granted',
-        consent_text: DIGEST_CONSENT_WORDING,
-        consent_version: DIGEST_CONSENT_WORDING_VERSION,
+        consent_text: params.consentText ?? DIGEST_CONSENT_WORDING,
+        consent_version: params.consentVersion ?? DIGEST_CONSENT_WORDING_VERSION,
         source: params.source ?? 'checkout',
         updated_at: params.at,
         revoked_at: null,
