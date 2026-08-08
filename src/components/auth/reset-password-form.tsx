@@ -181,7 +181,7 @@ export function ResetPasswordForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form method="post" onSubmit={handleSubmit} className="space-y-4">
       {/* Chromium: on a change-password form with no visible username field,
           "Chrome will autofill a username somewhere, but not always in the
           actual username field". The documented fix is a hidden input carrying

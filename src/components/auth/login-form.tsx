@@ -182,7 +182,7 @@ export function LoginForm({ googleEnabled }: Props) {
         </>
       )}
 
-      <form onSubmit={handleEmailLogin} className="space-y-4">
+      <form method="post" onSubmit={handleEmailLogin} className="space-y-4">
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-ink-900">
             Email

@@ -122,7 +122,7 @@ export function SignupForm({ role = 'attendee', googleEnabled }: Props) {
         </>
       )}
 
-      <form onSubmit={handleSignup} className="space-y-4">
+      <form method="post" onSubmit={handleSignup} className="space-y-4">
         <div>
           <label htmlFor="fullName" className="block text-sm font-medium text-ink-900">
             Full name

@@ -1,5 +1,11 @@
 import 'server-only'
-import sharp from 'sharp'
+// sharp 0.35 ships real ESM types (dist/index.d.mts) with NAMED type exports,
+// replacing the 0.34 `export = sharp` form where types were reached as
+// `sharp.Metadata`. That namespace no longer exists, so the qualified form is a
+// compile error on 0.35. Importing the type by name is the shape the package now
+// documents, and it is what the security bump to 0.35.3 required
+// (libvips CVE-2026-33327 and friends, reachable from organiser uploads).
+import sharp, { type Metadata } from 'sharp'
 import {
   ACCEPTED_IMAGE_FORMATS,
   MAX_IMAGE_DIMENSION,
@@ -56,7 +62,7 @@ export async function processEventImage(
 ): Promise<ImageProcessResult> {
   const inputBuffer = Buffer.isBuffer(input) ? input : Buffer.from(input as ArrayBuffer)
 
-  let meta: sharp.Metadata
+  let meta: Metadata
   try {
     meta = await sharp(inputBuffer, { failOn: 'error' }).metadata()
   } catch {
@@ -93,7 +99,20 @@ export async function processEventImage(
   // HEIC/HEIF and PNG are normalised to JPEG; WebP/AVIF keep their efficient
   // format. .rotate() bakes EXIF orientation into pixels; sharp drops ALL
   // metadata by default (no .withMetadata()), so EXIF/GPS never reach storage.
-  const toJpeg = format === 'heif' || format === 'png'
+  //
+  // AVIF DETECTION CHANGED IN SHARP 0.35, and it is not merely a type change.
+  // 0.34 reported an AVIF upload as format 'avif'. 0.35 removed 'avif' from
+  // FormatEnum entirely and reports it as 'heif', which is strictly more
+  // accurate (AVIF is a HEIF-family container and libvips decodes it through the
+  // heif loader) and which silently broke the branch below: `format === 'avif'`
+  // became unreachable, `toJpeg` became TRUE for AVIF, and every AVIF cover an
+  // organiser uploaded would have been transcoded to JPEG. Bigger files, and a
+  // quiet regression on the format this platform deliberately serves for LCP.
+  //
+  // The discriminator within the HEIF family is the codec: 'av1' is AVIF,
+  // 'hevc' is HEIC (an iPhone photo), and only the latter should become JPEG.
+  const isAvif = format === 'heif' && meta.compression === 'av1'
+  const toJpeg = (format === 'heif' && !isAvif) || format === 'png'
   const pipeline = sharp(inputBuffer).rotate()
 
   let buffer: Buffer
@@ -107,7 +126,7 @@ export async function processEventImage(
     buffer = await pipeline.webp({ quality: 82 }).toBuffer()
     contentType = 'image/webp'
     ext = 'webp'
-  } else if (format === 'avif') {
+  } else if (isAvif) {
     buffer = await pipeline.avif({ quality: 60 }).toBuffer()
     contentType = 'image/avif'
     ext = 'avif'

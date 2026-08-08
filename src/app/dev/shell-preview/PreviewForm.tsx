@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/Button'
 
 export function PreviewForm() {
   return (
-    <form
+    <form method="post"
       className="max-w-md space-y-5"
       onSubmit={e => e.preventDefault()}
       noValidate

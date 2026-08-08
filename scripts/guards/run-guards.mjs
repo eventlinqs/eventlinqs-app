@@ -13,6 +13,18 @@
  *   auth-provider-cost         no provider gate on a route with no provider button
  *   check-client-barrel-imports  no third-party namespace import in the browser bundle
  *   rls-exposure-scan          no world-readable policy exposes a sensitive column
+ *   no-native-submit           no form puts a credential in the URL pre-hydration
+ *
+ * On no-native-submit: a form written as onSubmit with preventDefault and no
+ * action is correct once React is live and a credential leak before it, because
+ * a native submit with no action and no method is a GET to the current URL with
+ * every named field in the query string. That is how a real password reached
+ * production in a URL. The first fix covered src/components/auth, which is four
+ * files; the class is not four files, and the same shape carried the ADMIN
+ * password, the admin TOTP code and the recovery code on /admin/login. This
+ * guard is repo-wide and risk-aware: it fails on forms carrying a credential or
+ * personal data, and merely lists the search boxes and filter panels, where a
+ * field in the query string is the entire point.
  *
  * On rls-exposure-scan, because it is the newest and the least obvious: Row
  * Level Security filters ROWS, never COLUMNS. A permissive SELECT policy with
@@ -94,6 +106,7 @@ const GUARDS = [
   // to do with guards. Full rationale lives in the header above and in
   // docs/security/AUDIT-2026-08-08.md.
   'scripts/security/rls-exposure-scan.mjs',
+  'scripts/guards/no-native-submit-guard.mjs',
 ]
 
 /**

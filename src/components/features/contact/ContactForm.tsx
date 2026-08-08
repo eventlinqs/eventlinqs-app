@@ -100,7 +100,7 @@ export function ContactForm({ initialSubject = '' }: ContactFormProps) {
             </button>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} noValidate className="mt-8 space-y-5">
+          <form method="post" onSubmit={handleSubmit} noValidate className="mt-8 space-y-5">
             <FormField
               id="contact-name"
               label="Full name"

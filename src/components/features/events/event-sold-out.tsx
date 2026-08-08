@@ -129,7 +129,7 @@ export function EventSoldOut({ event, primaryTierId, relatedEvents }: EventSoldO
               </p>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="w-full flex flex-col sm:flex-row gap-2 mt-2">
+            <form method="post" onSubmit={handleSubmit} className="w-full flex flex-col sm:flex-row gap-2 mt-2">
               <label htmlFor="sold-out-email" className="sr-only">Email</label>
               <input
                 id="sold-out-email"

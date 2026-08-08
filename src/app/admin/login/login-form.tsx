@@ -1,8 +1,28 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useSyncExternalStore, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { loginAdminAction } from '../actions'
+
+/**
+ * True once this component has hydrated on the client.
+ *
+ * WHY IT IS HERE AND NOT SHARED. An equivalent `useHydrated` hook is landing on
+ * `fix/production-sweep` at src/lib/hooks/use-hydrated.ts for the four forms in
+ * src/components/auth. Creating that same path here would collide with it for no
+ * benefit, and this form must not wait for another branch to merge: it carries
+ * the founder admin password, the TOTP code and the break-glass recovery code.
+ * The two should be unified into the shared hook once both branches have landed.
+ *
+ * useSyncExternalStore rather than setState-in-an-effect: it returns the server
+ * snapshot (false) while rendering and hydrating and the client snapshot (true)
+ * afterwards, which is exactly the signal needed, with no cascading render. The
+ * store never changes, so subscribe is a no-op.
+ */
+const noopSubscribe = () => () => {}
+function useHydrated(): boolean {
+  return useSyncExternalStore(noopSubscribe, () => true, () => false)
+}
 
 interface LoginFormProps {
   next?: string
@@ -19,6 +39,7 @@ export function LoginForm({ next, initialError }: LoginFormProps) {
   const [error, setError] = useState<string | null>(initialError ?? null)
   const [useRecovery, setUseRecovery] = useState(false)
   const [pending, startTransition] = useTransition()
+  const hydrated = useHydrated()
   const router = useRouter()
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -38,7 +59,25 @@ export function LoginForm({ next, initialError }: LoginFormProps) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
+    /* method="post" AND a hydration-gated submit, deliberately both.
+     *
+     * This form previously had neither, and it carries the founder admin
+     * password, the TOTP code and the break-glass recovery code. With no
+     * `action` and no `method`, a submit before React attaches is a native GET
+     * to the current URL, which is how /login?password=... reached production.
+     *
+     * method="post" means that even if the gate below is ever removed or
+     * defeated, the fields travel in the request body and never enter the URL,
+     * the browser history, or the Referer header. The disabled submit control
+     * means the native submit cannot fire at all, and because disabling the
+     * submit button also disables implicit submission, pressing Enter in the
+     * password field is covered too.
+     */
+    <form
+      method="post"
+      onSubmit={onSubmit}
+      className="space-y-4 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6"
+    >
       <div>
         <label htmlFor="email" className="mb-1.5 block text-xs uppercase tracking-[0.18em] text-white/60">
           Email
@@ -117,9 +156,12 @@ export function LoginForm({ next, initialError }: LoginFormProps) {
         </div>
       ) : null}
 
+      {/* Disabled until hydrated, so there is no window in which a submit is a
+          native GET carrying the password. This also disables implicit
+          submission, so Enter in the password field cannot fire it either. */}
       <button
         type="submit"
-        disabled={pending}
+        disabled={pending || !hydrated}
         className="w-full rounded-md bg-[var(--brand-accent)] px-4 py-2.5 text-sm font-semibold text-[var(--text-primary)] transition hover:opacity-90 disabled:opacity-60"
       >
         {pending ? 'Signing in...' : 'Sign in'}

@@ -240,7 +240,7 @@ export function AssistantPanel({
         )}
       </div>
 
-      <form
+      <form method="post"
         onSubmit={e => {
           e.preventDefault()
           send(input)
