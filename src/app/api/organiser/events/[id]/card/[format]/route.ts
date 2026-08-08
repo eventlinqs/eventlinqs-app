@@ -16,6 +16,7 @@ import {
 } from '@/lib/broadcast/social-card-spec'
 import { cardFilename } from '@/lib/broadcast/social-card-layout'
 import type { CaptionPlatform } from '@/lib/broadcast/captions'
+import { fetchImageBytes } from '@/lib/media/fetch-image'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -35,19 +36,6 @@ export const dynamic = 'force-dynamic'
  */
 
 const CHANNELS: readonly string[] = ['instagram', 'facebook', 'whatsapp', 'x', 'linkedin', 'email']
-
-/** Fetch the organiser's own image and hand back raw bytes, or nothing. */
-async function fetchBytes(url: string | null): Promise<Uint8Array | null> {
-  if (!url) return null
-  try {
-    const res = await fetch(url)
-    if (!res.ok) return null
-    const bytes = new Uint8Array(await res.arrayBuffer())
-    return bytes.byteLength > 12 ? bytes : null
-  } catch {
-    return null
-  }
-}
 
 export async function GET(
   request: NextRequest,
@@ -84,14 +72,16 @@ export async function GET(
   const cardInput = toCardInput(context, channel)
   const shortUrl = cardInput.shortUrl
 
-  const [coverBytes, logoBytes] = await Promise.all([
-    fetchBytes(context.coverImageUrl),
-    fetchBytes(context.organiserLogoUrl),
+  // Both reads are deadlined. A slow object store degrades the artefact to its
+  // designed fallback rather than hanging the organiser's download.
+  const [cover, logo] = await Promise.all([
+    fetchImageBytes(context.coverImageUrl),
+    fetchImageBytes(context.organiserLogoUrl),
   ])
 
-  let cover: PreparedCover | null = null
-  if (coverBytes) cover = await prepareCardCover(coverBytes, format)
-  const organiserLogo = logoBytes ? await prepareLogo(logoBytes) : null
+  let preparedCover: PreparedCover | null = null
+  if (cover) preparedCover = await prepareCardCover(cover.bytes, format)
+  const organiserLogo = logo ? await prepareLogo(logo.bytes) : null
 
   const qr = await QRCode.toDataURL(shortUrl, {
     errorCorrectionLevel: 'M',
@@ -104,7 +94,7 @@ export async function GET(
     ...cardInput,
     shortUrl,
     organiserLogo,
-    cover,
+    cover: preparedCover,
     qr,
   })
 

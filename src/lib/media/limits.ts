@@ -27,6 +27,40 @@ export const MIN_COVER_WIDTH = 1000
 export const RECOMMENDED_COVER_WIDTH = 2160
 
 /**
+ * ORGANISER LOGO. A different object from a photograph and it needs different
+ * rules, so it gets its own constants rather than borrowing the cover ones.
+ *
+ * The market, read from the platforms' own published help pages on 8 August
+ * 2026:
+ *
+ * - Eventbrite, "How to set up your organizer profile page" (help article
+ *   161196): "Organizer profile image: This will appear on your event listing
+ *   and organizer profile. Eventbrite recommends a 1:1 ratio for square images,
+ *   like 400x400."
+ * - Humanitix, "How to style your event page" (help article 8951375): the
+ *   organiser logo REPLACES the Humanitix logo in the top left of the event
+ *   page. "The logo image on the event page is dynamic and will accommodate
+ *   logos of all sizes. However we recommend a 'landscape' image. Max size
+ *   10MB." And, on legibility: "We recommend checking if your logo matches
+ *   both light and dark modes. Your logo's colours will not automatically
+ *   change based on the page settings."
+ *
+ * So: accept both shapes, because organisers really do have both a square mark
+ * and a landscape wordmark, and never squash one into the other. 400 pixels on
+ * the long edge is the floor, matching the square figure Eventbrite publishes,
+ * because a logo that is fine on a profile page at 64 pixels is a smear on a
+ * 1080 pixel story card.
+ *
+ * The legibility problem Humanitix hands back to the organiser is handled for
+ * them instead: see resolveLogoPlacement in the image pipeline.
+ */
+export const MIN_LOGO_LONG_EDGE = 400
+export const RECOMMENDED_LOGO_LONG_EDGE = 1000
+/** Widest and tallest a logo may be, as width over height. */
+export const MAX_LOGO_ASPECT = 4
+export const MIN_LOGO_ASPECT = 0.25
+
+/**
  * Accepted upload formats by their real (magic-byte) sharp format id. SVG and any
  * non-raster / active content is rejected (XSS). HEIC/HEIF (iPhone) is accepted
  * then converted to JPEG on ingest. GIF/TIFF/etc are not photographic event media

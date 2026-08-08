@@ -11,9 +11,12 @@ import {
 } from '@/lib/broadcast/social-card-spec'
 import {
   STORY_PANEL_MAX_HEIGHT,
+  STORY_PANEL_MIN_HEIGHT,
   STORY_PANEL_RATIO_THRESHOLD,
+  fitTicketBar,
   fitTitle,
   photoBox,
+  storyStrapline,
   ticketBarText,
 } from '@/lib/broadcast/social-card-layout'
 
@@ -61,7 +64,20 @@ const WHITE = '#FFFFFF'
 /** A prepared cover: either bleeding to the full frame, or a whole panel. */
 export type PreparedCover =
   | { kind: 'bleed'; image: string }
-  | { kind: 'panel'; image: string; panelHeight: number }
+  | { kind: 'panel'; image: string; backdrop: string; panelHeight: number }
+
+/**
+ * A prepared organiser logo. The placement is measured, not guessed: see
+ * resolveLogoPlacement in src/lib/media/logo-pipeline.ts. A mark with light in
+ * it sits straight on the navy; a dark mark gets a white tile so it does not
+ * disappear into the artwork.
+ */
+export type PreparedLogo = {
+  image: string
+  placement: 'on-navy' | 'on-tile'
+  /** Width over height, so a landscape wordmark is never squashed square. */
+  aspect: number
+}
 
 export type SocialCardInput = {
   /** Event title, unmodified; the layout fits it. */
@@ -80,12 +96,14 @@ export type SocialCardInput = {
   eyebrow: string
   /** The organiser's trading name. */
   organiserName: string
-  /** Data URI of the organiser's logo, when they have uploaded one. */
-  organiserLogo?: string | null
+  /** The organiser's own mark, when they have uploaded one. */
+  organiserLogo?: PreparedLogo | null
   /** The prepared cover photograph, or null for the typographic composition. */
   cover?: PreparedCover | null
   /** Data URI of the tracked QR code. */
   qr?: string | null
+  /** The organiser's own summary. One line of it rides the story card. */
+  summary?: string | null
 }
 
 /** One set of numbers, scaled to the format width. */
@@ -98,23 +116,46 @@ type Px = (n: number) => number
 
 function Identity({ input, px, size }: { input: SocialCardInput; px: Px; size: 'lg' | 'sm' }) {
   const large = size === 'lg'
-  const logoSize = px(large ? 84 : 54)
+  const logo = input.organiserLogo
+  // Fit to a height, not a box: a square badge and a landscape wordmark are
+  // both legitimate marks and neither is squashed into the other's shape.
+  const maxHeight = px(large ? 78 : 50)
+  const maxWidth = px(large ? 300 : 200)
+  let logoHeight = maxHeight
+  let logoWidth = Math.round(maxHeight * (logo?.aspect ?? 1))
+  if (logoWidth > maxWidth) {
+    logoWidth = maxWidth
+    logoHeight = Math.round(maxWidth / (logo?.aspect ?? 1))
+  }
+  const tile = logo?.placement === 'on-tile'
+  const tilePad = px(large ? 12 : 9)
+
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: px(large ? 22 : 16) }}>
-      {input.organiserLogo ? (
-        <img
-          src={input.organiserLogo}
-          alt=""
-          width={logoSize}
-          height={logoSize}
+      {logo ? (
+        <div
           style={{
-            width: logoSize,
-            height: logoSize,
-            borderRadius: px(large ? 18 : 12),
-            objectFit: 'cover',
-            background: WHITE,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            ...(tile
+              ? {
+                  background: WHITE,
+                  borderRadius: px(large ? 14 : 10),
+                  padding: tilePad,
+                }
+              : {}),
           }}
-        />
+        >
+          <img
+            src={logo.image}
+            alt=""
+            width={logoWidth}
+            height={logoHeight}
+            style={{ width: logoWidth, height: logoHeight, objectFit: 'contain' }}
+          />
+        </div>
       ) : null}
       <div
         style={{
@@ -209,25 +250,62 @@ function MetaLines({ input, px, size }: { input: SocialCardInput; px: Px; size: 
   )
 }
 
-function TicketBar({ input, px, size }: { input: SocialCardInput; px: Px; size: 'lg' | 'sm' }) {
+/** One line of the organiser's own words, story format only. */
+function Strapline({ input, px }: { input: SocialCardInput; px: Px }) {
+  const line = storyStrapline(input.summary)
+  if (!line) return null
+  return (
+    <div
+      style={{
+        display: 'flex',
+        color: 'rgba(255,255,255,0.72)',
+        fontFamily: BODY_FAMILY,
+        fontWeight: 500,
+        fontSize: px(31),
+        lineHeight: 1.32,
+        marginTop: px(6),
+      }}
+    >
+      {line}
+    </div>
+  )
+}
+
+function TicketBar({
+  input,
+  px,
+  size,
+  width,
+}: {
+  input: SocialCardInput
+  px: Px
+  size: 'lg' | 'sm'
+  /** Outer width the bar must fit inside, so the line never wraps. */
+  width: number
+}) {
   const large = size === 'lg'
   const height = px(large ? 106 : 76)
+  const padding = px(large ? 42 : 32)
+  const text = ticketBarText(input.priceLabel, input.shortUrl)
+  const fontSize = fitTicketBar(text, width - padding * 2, px(large ? 38 : 30), px(large ? 24 : 20))
   return (
     <div
       style={{
         display: 'flex',
         alignItems: 'center',
+        width,
         height,
         borderRadius: height / 2,
         background: GOLD,
-        padding: `0 ${px(large ? 42 : 32)}px`,
+        padding: `0 ${padding}px`,
         color: NAVY,
         fontFamily: BODY_FAMILY,
         fontWeight: 600,
-        fontSize: px(large ? 38 : 30),
+        fontSize,
+        whiteSpace: 'nowrap',
       }}
     >
-      {ticketBarText(input.priceLabel, input.shortUrl)}
+      {text}
     </div>
   )
 }
@@ -345,6 +423,7 @@ function TypographicCard({ input, format }: { input: SocialCardInput; format: So
           <div style={{ display: 'flex', width: px(140), height: px(8), background: GOLD }} />
           <Title input={input} px={px} format={format} scale={story ? 1.45 : 1.28} />
           <MetaLines input={input} px={px} size={size} />
+          {story ? <Strapline input={input} px={px} /> : null}
         </div>
 
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: px(30), marginTop: 'auto' }}>
@@ -356,7 +435,7 @@ function TypographicCard({ input, format }: { input: SocialCardInput; format: So
               gap: px(story ? 18 : 14),
             }}
           >
-            <TicketBar input={input} px={px} size={size} />
+            <TicketBar input={input} px={px} size={size} width={ctaTextWidth} />
             <Wordmark px={px} size={px(story ? 24 : 20)} />
           </div>
           {input.qr ? <QrTile qr={input.qr} px={px} size={px(story ? 140 : 126)} /> : null}
@@ -375,9 +454,10 @@ function StoryCard({ input }: { input: SocialCardInput }) {
   const qrSize = px(140)
   const ctaTextWidth = spec.width - px(76) * 2 - (input.qr ? qrSize + px(20) + px(30) : 0)
 
-  // PANEL MODE: the photograph is shown whole at the top of the frame and the
-  // type sits below it on solid navy, distributed to fill. No crop, and no
-  // type fighting a photograph for contrast.
+  // PANEL MODE: the photograph is shown whole at the top of the frame. Below it
+  // the same photograph, blurred and dimmed, carries the type region, so the
+  // lower half of a story is atmosphere rather than a flat navy hole. The
+  // first version of this left roughly a third of the frame visibly empty.
   if (panel) {
     return (
       <div
@@ -387,9 +467,16 @@ function StoryCard({ input }: { input: SocialCardInput }) {
           display: 'flex',
           flexDirection: 'column',
           position: 'relative',
-          background: GROUND,
+          background: NAVY,
         }}
       >
+        <img
+          src={panel.backdrop}
+          alt=""
+          width={spec.width}
+          height={spec.height}
+          style={{ position: 'absolute', inset: 0, width: spec.width, height: spec.height }}
+        />
         <img
           src={panel.image}
           alt=""
@@ -403,20 +490,21 @@ function StoryCard({ input }: { input: SocialCardInput }) {
             display: 'flex',
             flexDirection: 'column',
             flexGrow: 1,
-            padding: `${px(56)}px ${px(76)}px ${spec.safeBottom}px`,
+            padding: `${px(46)}px ${px(76)}px ${spec.safeBottom}px`,
           }}
         >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: px(22) }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: px(20) }}>
             <Identity input={input} px={px} size="lg" />
             <Eyebrow text={input.eyebrow} px={px} />
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: px(22), marginTop: 'auto' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: px(20), marginTop: 'auto' }}>
             <Title input={input} px={px} format="story" />
             <MetaLines input={input} px={px} size="lg" />
+            <Strapline input={input} px={px} />
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: px(30), marginTop: 'auto' }}>
             <div style={{ display: 'flex', flexDirection: 'column', width: ctaTextWidth, gap: px(18) }}>
-              <TicketBar input={input} px={px} size="lg" />
+              <TicketBar input={input} px={px} size="lg" width={ctaTextWidth} />
               <Wordmark px={px} size={px(24)} />
             </div>
             {input.qr ? <QrTile qr={input.qr} px={px} size={px(140)} /> : null}
@@ -469,9 +557,10 @@ function StoryCard({ input }: { input: SocialCardInput }) {
         <Eyebrow text={input.eyebrow} px={px} />
         <Title input={input} px={px} format="story" />
         <MetaLines input={input} px={px} size="lg" />
+        <Strapline input={input} px={px} />
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: px(30), marginTop: px(6) }}>
           <div style={{ display: 'flex', flexDirection: 'column', width: ctaTextWidth, gap: px(18) }}>
-            <TicketBar input={input} px={px} size="lg" />
+            <TicketBar input={input} px={px} size="lg" width={ctaTextWidth} />
             <Wordmark px={px} size={px(24)} />
           </div>
           {input.qr ? <QrTile qr={input.qr} px={px} size={px(140)} /> : null}
@@ -551,7 +640,7 @@ function BandedCard({ input, format }: { input: SocialCardInput; format: SocialC
             <MetaLines input={input} px={px} size="sm" />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: px(14) }}>
-            <TicketBar input={input} px={px} size="sm" />
+            <TicketBar input={input} px={px} size="sm" width={spec.width - pad * 2 - (input.qr ? qrReserve : 0)} />
             <Wordmark px={px} size={px(20)} />
           </div>
         </div>
@@ -609,6 +698,36 @@ export async function renderSocialCard(
 }
 
 /**
+ * Blur the photograph and lay the brand navy over it at a fixed opacity, so the
+ * lower half of a story card is one deliberate surface made from the
+ * organiser's own image rather than a flat void or a muddy wash.
+ */
+async function backdropTone(
+  pipeline: import('sharp').Sharp,
+  sharpLib: typeof import('sharp'),
+  width: number,
+  height: number,
+): Promise<Buffer> {
+  const blurred = await pipeline.blur(14).modulate({ saturation: 0.55 }).toBuffer()
+  return sharpLib(blurred)
+    .composite([
+      {
+        input: {
+          create: {
+            width,
+            height,
+            channels: 4,
+            background: { r: 10, g: 22, b: 40, alpha: 0.88 },
+          },
+        },
+        blend: 'over',
+      },
+    ])
+    .jpeg({ quality: 66 })
+    .toBuffer()
+}
+
+/**
  * Prepare a cover photograph for one card shape.
  *
  * Banded formats crop to a shallow region with sharp's attention strategy,
@@ -651,15 +770,40 @@ export async function prepareCardCover(
       return { kind: 'bleed', image: `data:image/jpeg;base64,${out.toString('base64')}` }
     }
 
-    const panelHeight = Math.min(STORY_PANEL_MAX_HEIGHT, Math.round(box.width / (ratio || 1)))
-    const panel = await source
-      .clone()
-      .resize(box.width, panelHeight, { fit: 'cover', position: sharp.strategy.attention })
-      .jpeg({ quality: 88 })
-      .toBuffer()
+    // Natural height first, then clamped into the band the composition needs.
+    // Below the floor the frame reads unfinished; above the cap the type stops
+    // fitting. Growing to the floor trims width, where a landscape photograph
+    // has slack, and the trim is attention-weighted.
+    const natural = Math.round(box.width / (ratio || 1))
+    const panelHeight = Math.min(
+      STORY_PANEL_MAX_HEIGHT,
+      Math.max(STORY_PANEL_MIN_HEIGHT, natural),
+    )
+    const [panel, backdrop] = await Promise.all([
+      source
+        .clone()
+        .resize(box.width, panelHeight, { fit: 'cover', position: sharp.strategy.attention })
+        .jpeg({ quality: 88 })
+        .toBuffer(),
+      // The backdrop is toned ENTIRELY in sharp. Two attempts at a CSS wash, a
+      // multi-stop gradient and then a flat rgba, both composited far weaker
+      // than the alpha they declared and left the photograph reading through
+      // the type. Compositing a navy layer here is deterministic and can be
+      // inspected as a file.
+      backdropTone(
+        source.clone().resize(Math.round(box.width / 3), Math.round(box.height / 3), {
+          fit: 'cover',
+          position: 'centre',
+        }),
+        sharp,
+        Math.round(box.width / 3),
+        Math.round(box.height / 3),
+      ),
+    ])
     return {
       kind: 'panel',
       image: `data:image/jpeg;base64,${panel.toString('base64')}`,
+      backdrop: `data:image/jpeg;base64,${backdrop.toString('base64')}`,
       panelHeight,
     }
   } catch {
@@ -669,21 +813,41 @@ export async function prepareCardCover(
   }
 }
 
-/** Square an organiser logo onto a white tile, ready to sit on the navy. */
-export async function prepareLogo(bytes: Uint8Array): Promise<string | null> {
+/**
+ * Prepare an organiser logo for an artefact.
+ *
+ * The shape is preserved. The placement is MEASURED by compositing the mark
+ * over the brand navy and reading the result, rather than asking the organiser
+ * to check it themselves, which is what the category currently does.
+ */
+export async function prepareLogo(bytes: Uint8Array): Promise<PreparedLogo | null> {
   try {
     const { default: sharp } = await import('sharp')
-    const out = await sharp(Buffer.from(bytes))
+    const source = Buffer.from(bytes)
+    const meta = await sharp(source).metadata()
+    const width = meta.width ?? 0
+    const height = meta.height ?? 0
+    if (width < 1 || height < 1) return null
+
+    const { resolveLogoPlacement } = await import('@/lib/media/logo-pipeline')
+    const measured = await resolveLogoPlacement(source)
+
+    // Rendered at a generous fixed height; the card scales it down from there,
+    // so one prepared object serves the story, the square and the tall post.
+    const out = await sharp(source)
       .rotate()
-      .resize(240, 240, {
-        fit: 'contain',
-        background: { r: 255, g: 255, b: 255, alpha: 1 },
-      })
-      .flatten({ background: { r: 255, g: 255, b: 255 } })
-      .png()
+      .resize(900, 300, { fit: 'inside', withoutEnlargement: true })
+      .png({ compressionLevel: 9 })
       .toBuffer()
-    return `data:image/png;base64,${out.toString('base64')}`
+
+    return {
+      image: `data:image/png;base64,${out.toString('base64')}`,
+      placement: measured.placement,
+      aspect: width / height,
+    }
   } catch {
+    // An unreadable mark is simply not drawn: the organiser's name in type is
+    // already on the card and carries the identity on its own.
     return null
   }
 }

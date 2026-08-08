@@ -30,7 +30,7 @@ type Fixture = {
   caption: CaptionInput
 }
 
-const SHORT = 'https://eventlinqs.com/s/'
+const SHORT = 'https://www.eventlinqs.com.au/s/'
 
 function fixtures(): Fixture[] {
   return [
@@ -226,6 +226,7 @@ describe('launch kit artefact proofs', () => {
         })
         const bytes = await renderSocialCard(format, {
           ...fixture.card,
+          summary: fixture.caption.summary,
           organiserLogo: logo,
           cover,
           qr,

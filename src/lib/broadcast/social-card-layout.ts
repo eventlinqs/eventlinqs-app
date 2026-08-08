@@ -88,6 +88,52 @@ export const STORY_PANEL_RATIO_THRESHOLD = 0.85
  */
 export const STORY_PANEL_MAX_HEIGHT = 820
 
+/**
+ * The SHORTEST the story panel may be. A 16:9 photograph placed whole at 1080
+ * wide is only 608 tall, which left the composition with a third of the frame
+ * as dead navy and read as unfinished beside the square card. The panel is
+ * therefore grown to this floor by trimming WIDTH, which is where a landscape
+ * photograph has slack, and never below the point where the type below it
+ * stops fitting. At the floor a 16:9 frame keeps 87 per cent of its width, so
+ * this is a trim, not the two-thirds loss the panel rule exists to prevent.
+ */
+export const STORY_PANEL_MIN_HEIGHT = 760
+
+/**
+ * Fit the ticket line to the bar rather than letting it wrap. The bar is one
+ * line by design: a link broken across two lines reads as a broken link, not a
+ * designed one. Hanken Grotesk at semibold averages close to 0.52 of the font
+ * size per character across a mixed alphanumeric string like a price and a
+ * host, which is the ratio used to step the size down.
+ */
+export function fitTicketBar(
+  text: string,
+  availableWidth: number,
+  maxFontSize: number,
+  minFontSize: number,
+): number {
+  const usable = availableWidth
+  for (let size = maxFontSize; size > minFontSize; size -= 1) {
+    if (text.length * size * 0.52 <= usable) return size
+  }
+  return minFontSize
+}
+
+/**
+ * The one line of the organiser's own summary the story card carries. The
+ * story is the only format with room for it, and a viewer scrolling past
+ * needs a reason to stop that a title and a date do not give them. Clamped
+ * hard: this is a line, not a paragraph.
+ */
+export function storyStrapline(summary: string | null | undefined): string | null {
+  if (!summary) return null
+  const clean = summary.trim().replace(/\s+/g, ' ')
+  if (clean.length < 12) return null
+  const stop = clean.search(/[.?](\s|$)/)
+  const sentence = stop > 0 ? clean.slice(0, stop) : clean
+  return clampWords(sentence, 92)
+}
+
 /** Photo crop box for a format: what sharp is asked to produce. */
 export function photoBox(format: SocialCardFormat): { width: number; height: number } {
   const spec = SOCIAL_CARD_FORMATS[format]

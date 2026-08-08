@@ -8,12 +8,15 @@ import {
 } from '@/lib/broadcast/social-card-spec'
 import {
   STORY_PANEL_MAX_HEIGHT,
+  STORY_PANEL_MIN_HEIGHT,
   STORY_PANEL_RATIO_THRESHOLD,
   cardFilename,
   clampWords,
   fitTitle,
   photoBox,
+  fitTicketBar,
   storySafeBand,
+  storyStrapline,
   ticketBarText,
 } from '@/lib/broadcast/social-card-layout'
 import { prepareCardCover } from '@/lib/broadcast/social-cards'
@@ -160,14 +163,23 @@ describe('the panel rule', () => {
     return new Uint8Array(buffer)
   }
 
-  it('shows a landscape photograph whole rather than cropping it to a story', async () => {
+  it('shows a landscape photograph as a panel rather than cropping it to a story', async () => {
     const cover = await prepareCardCover(await solid(1920, 1080), 'story')
     expect(cover?.kind).toBe('panel')
     if (cover?.kind === 'panel') {
-      // 1080 wide at 16:9 is 608 tall, which is under the cap, so it is
-      // reproduced at its own shape and nothing is thrown away.
-      expect(cover.panelHeight).toBe(608)
+      // 1080 wide at 16:9 is 608 tall. That left a third of the story frame
+      // visibly empty, so the panel is grown to the floor by trimming width,
+      // which keeps 87 per cent of a 16:9 frame rather than the 33 per cent a
+      // full 9:16 crop would keep.
+      expect(cover.panelHeight).toBe(STORY_PANEL_MIN_HEIGHT)
+      expect(cover.backdrop.startsWith('data:image/jpeg;base64,')).toBe(true)
     }
+  })
+
+  it('keeps most of a landscape frame even at the panel floor', () => {
+    // A 16:9 source scaled to 760 tall is 1351 wide; the panel keeps 1080 of it.
+    const widthAtFloor = Math.round((16 / 9) * STORY_PANEL_MIN_HEIGHT)
+    expect(1080 / widthAtFloor).toBeGreaterThan(0.79)
   })
 
   it('bleeds a photograph that is already close to the story shape', async () => {
@@ -190,5 +202,55 @@ describe('the panel rule', () => {
   it('returns nothing for an unreadable upload so the card falls back to type', async () => {
     const cover = await prepareCardCover(new Uint8Array([1, 2, 3, 4]), 'story')
     expect(cover).toBeNull()
+  })
+})
+
+describe('the story strapline', () => {
+  it('carries the organiser words through unchanged', () => {
+    // This exists because a mangled regex once replaced every lowercase s with
+    // a space, and shipped "Four hour of hou e and break acro two room" onto a
+    // rendered card. No test caught it; looking at the render did.
+    const summary =
+      'Four hours of house and breaks across two rooms, with a local B2B opening and a Naarm headliner from midnight.'
+    const line = storyStrapline(summary)
+    expect(line).toBe(
+      'Four hours of house and breaks across two rooms, with a local B2B opening and a Naarm...',
+    )
+    expect(line).toContain('hours')
+    expect(line).toContain('house')
+    expect(line).toContain('across')
+    expect(line).toContain('rooms')
+    // Every word it does keep is the organiser's, letter for letter.
+    expect(summary.startsWith(line!.replace(/\.\.\.$/, ''))).toBe(true)
+  })
+
+  it('stops at the first full stop rather than running on', () => {
+    expect(storyStrapline('Doors at seven. Support from eight. Headline at nine.')).toBe(
+      'Doors at seven',
+    )
+  })
+
+  it('says nothing when there is nothing to say', () => {
+    expect(storyStrapline(null)).toBeNull()
+    expect(storyStrapline('   ')).toBeNull()
+    expect(storyStrapline('Short')).toBeNull()
+  })
+})
+
+describe('the ticket bar never wraps', () => {
+  it('steps the type down until the line fits', () => {
+    const wide = fitTicketBar('From AUD $28 · www.eventlinqs.com.au/s/abc', 700, 38, 24)
+    const narrow = fitTicketBar(
+      'From AUD $28 · www.eventlinqs.com.au/events/a-very-long-event-slug-indeed?via=instagram',
+      700,
+      38,
+      24,
+    )
+    expect(wide).toBeGreaterThan(narrow)
+    expect(narrow).toBeGreaterThanOrEqual(24)
+  })
+
+  it('never returns a size below the floor', () => {
+    expect(fitTicketBar('x'.repeat(400), 300, 38, 24)).toBe(24)
   })
 })
