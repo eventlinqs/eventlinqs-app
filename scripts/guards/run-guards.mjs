@@ -17,6 +17,16 @@
  *   revoked-column-reads       no untrusted-role query selects a revoked column
  *   no-plaintext-credential    no tracked file contains a plaintext credential
  *   entrypoint-authz-audit     every request entry point declares an auth posture
+ *   sourced-specifications     Law 7: a third-party spec carries a source or UNSOURCED
+ *
+ * On sourced-specifications: Law 7 forbids stating any specification, dimension,
+ * limit, price, format or platform behaviour from memory. No static check can judge
+ * whether prose was researched, and a guard demanding a citation beside every
+ * numeral would fire thousands of times and be switched off within a day. So this
+ * narrows to the shape that actually caused harm: a claim about SOMEBODY ELSE'S
+ * platform. A line naming a third party and asserting a pixel pair or an aspect
+ * ratio must carry a URL or the word UNSOURCED. An honest gap outranks a confident
+ * guess, and both satisfy the gate.
  *
  * On entrypoint-authz-audit: there are 167 request entry points, 50 route handlers
  * and 117 exported server actions. The security pass had read about twenty of them
@@ -143,6 +153,7 @@ const GUARDS = [
   'scripts/security/revoked-column-reads.mjs',
   'scripts/guards/no-plaintext-credential.mjs',
   'scripts/security/entrypoint-authz-audit.mjs',
+  'scripts/guards/sourced-specifications.mjs',
 ]
 
 /**

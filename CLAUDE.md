@@ -36,7 +36,10 @@ silently follow the stale doc.
 
 | If you are touching... | The governing laws are... |
 |---|---|
-| Any surface at all | Law 0, Definition of Done, Law 1 (no generic), Verification and gates |
+| Any surface at all | Law 0, Definition of Done, Law 1 (no generic), Law 7 (research before recommending), Verification and gates |
+| Stating ANY specification, dimension, limit, price, format, register, or platform behaviour | Law 7 (research before recommending). Fetch the primary source FIRST and cite it, or mark it UNSOURCED |
+| A third-party platform spec (Instagram, Meta, X, TikTok, Stripe, Google, Apple) | Law 7. That platform's own published page, never a secondary guide |
+| A competitor claim (Eventbrite, Ticketmaster, DICE, Humanitix, TryBooking, Moshtix, Oztix) | Law 7 plus Law 2 (evidence-driven), `competitor-benchmark` skill |
 | Reporting any feature or task done | Definition of Done (SHIP 100%, A to Z) |
 | Growth, sharing, invites, referral, attribution, the wedge, the levers | Growth plan, `event-demand-engine` skill |
 | Discovery, feed, follows, alerts, push, who's-going, recommendations | Growth plan (the demand engine), `docs/MOAT-DEMAND-ENGINE-PLAN.md`, `event-demand-engine` skill |
@@ -61,9 +64,11 @@ silently follow the stale doc.
 **Index of laws:** Law 0 (read first) - Definition of Done (SHIP 100%, A to Z)
 - Growth plan (the wedge, the two engines, the levers) - Law 1 (no generic) -
 Law 2 (evidence-driven) - Law 3 (Australia-smart) - Law 4 (marketing image-rich)
-- Law 5 (zero dead links) - Scene layer - Design system - Motion - Copy and
-banned content - Fee system - Venue Revenue Sharing Program - Verification and
-gates - Tooling - Authority docs - Skills.
+- Law 5 (zero dead links) - Law 7 (research before recommending, no generic
+knowledge) - Scene layer - Design system - Motion - Copy and banned content - Fee
+system - Venue Revenue Sharing Program - Verification and gates - Tooling -
+Authority docs - Skills. (Law 6, render never generate, arrives from
+`feat/launch-kit-moat` and belongs between Law 5 and Law 7.)
 
 ## What EventLinqs is
 
@@ -356,6 +361,82 @@ tile-shaped image a finger lands on that does nothing is the same defect as a
   public page, finds tile/card-shaped `<img>` inside grids/rails and fails on any
   with no ancestor anchor/button). It runs beside the link-integrity crawler in
   the audit suite on every pass.
+
+## Law 7: research before recommending, no generic knowledge (founder ruling 2026-08-09)
+
+No recommendation, specification, dimension, limit, price, format, register, or
+platform behaviour may be stated on this project from memory. The first action on
+any such question is to fetch the current primary source and cite it beside the
+claim it supports.
+
+**The order is fixed: research, then verify, then recommend.** Never recommend
+and then research when challenged.
+
+Where a competitor's practice is relevant, and on a ticketing platform it usually
+is, the research must include what the market actually does: Eventbrite,
+Ticketmaster, DICE, Humanitix, TryBooking, Moshtix, Oztix. Their own published
+pages, never a blog about them.
+
+Where no primary source can be found, say so plainly and mark the claim
+**UNSOURCED**. An honest gap outranks a confident guess.
+
+Note on numbering: Law 6 (render, never generate) is authored on
+`feat/launch-kit-moat` and inserts at this same point in the file. Both laws are
+independent and both are kept, ordered 6 then 7, when those branches meet.
+
+**WHY THIS EXISTS.** The evidence is written into the law so it cannot be argued
+away later. Each of these cost the founder time on a project already behind
+schedule, and each was avoidable by a single fetch.
+
+- A 39 percent click-through figure was quoted from search results and traced
+  back to link-shortener vendors' own marketing, with no method, no sample and no
+  date. It was withdrawn.
+- The payment statement descriptor was designed twice from assumption and was
+  wrong both times. Eventbrite's own help centre publishes `EB *CORGI FESTIVAL
+  202`: a TWO character prefix, and the EVENT name as the suffix, not the
+  organiser name. Ninety seconds of research produced a materially better design
+  than the guess.
+- A CLI was said to be unable to set environment values non-interactively, from a
+  stale repo note. **The tool was the VERCEL CLI, not Stripe**, and the note is
+  still in the tree at `docs/roast/guidance-and-guides-2026-07-26.md:227` and
+  `docs/verification/launch-blockers-2026-07-25.md:44`. It is wrong: the
+  documented non-interactive path is piping the value on stdin,
+  `cat file | vercel env update NAME preview`
+  (https://vercel.com/docs/cli/env, fetched 2026-08-09). A `--value` flag was
+  also claimed for this; it does not appear on that page, so that specific detail
+  is **UNSOURCED** until someone produces the page that carries it.
+- The Vercel logs were assumed to record query strings. They do not, which was
+  only established by calibrating against a known positive. An assumption about
+  an observability tool is still an assumption.
+- Instagram's tall aspect bound and the minimum resolution for a 4:5 asset were
+  both taken from memory or from secondary guides. **This one shows the law is
+  not a formality, because two Meta surfaces publish different answers and a
+  citation is the only way to tell which one governs.** Meta's Instagram Graph
+  API publishing reference states a range of "4:5 to 1.91:1", a minimum width of
+  320, and a MAXIMUM width of 1440
+  (https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-user/media,
+  fetched 2026-08-09). The taller 3:4 feed post is an in-app Instagram behaviour
+  and belongs to a different surface, and the `1440x1800` minimum attributed to
+  Meta for a 4:5 asset does not appear on the page above. Both remain
+  **UNSOURCED** here until the page that publishes them is cited. Do not resolve
+  a conflict like this by choosing the answer that suits the build.
+
+**ENFORCEMENT**, because a law with no enforcement is a preference.
+
+A build-failing guard cannot judge prose, and pretending otherwise would produce
+a gate that fires on every number in the repository and gets switched off. What
+it CAN judge is whether a third-party specification carries its source. So:
+
+`scripts/guards/sourced-specifications.mjs` (registered in `run-guards.mjs`,
+therefore blocking on `prebuild`) fails the build when a line asserts an EXTERNAL
+platform specification, a pixel dimension pair or an aspect ratio within reach of
+a named third party, and carries neither a URL nor the word `UNSOURCED`. It is
+deliberately scoped to third-party claims, which is where every incident above
+came from, rather than to every numeral in the tree.
+
+The guard prints its reviewed baseline on every run, and reports baseline entries
+that no longer match anything, so the allowlist cannot rot into an unexamined
+list.
 
 ## Scene layer (locked, national) - V2, research-backed
 
