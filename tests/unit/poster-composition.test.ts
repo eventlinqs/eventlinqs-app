@@ -1,26 +1,23 @@
 import { createHash } from 'node:crypto'
-import { mkdirSync, writeFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import QRCode from 'qrcode'
 import { buildEventPosterPdf, fitPosterTitle } from '@/lib/broadcast/poster'
 
 /**
- * The two poster compositions.
+ * The two poster compositions, and the title fitter underneath them.
  *
- * The founder's condition on splitting them was that the ARTWORK path renders
- * identically before and after. A hash alone would not prove that, because
- * pdf-lib stamps a creation timestamp, so this normalises the two date strings
- * and hashes the rest. The hash is written to disk and compared across a
- * checkout of the previous renderer by scripts/verify/poster-parity.mjs.
- *
- * The rendered PDFs are written out too, because a poster is a visual artefact
- * and a passing assertion about its bytes is not the same as somebody having
- * looked at it.
+ * The byte-level parity proof against the pre-split renderer lives in
+ * poster-parity.test.ts and scripts/verify/poster-parity.mjs, not here. This
+ * file is about behaviour: that both compositions render, that they are
+ * genuinely different documents, and that the fitter returns the largest size
+ * that fits its box.
  */
 
-const OUT = 'docs/design/poster-composition'
-
-/** pdf-lib stamps the current time, so two identical renders differ by it. */
+/**
+ * Two renders on a live clock differ by the timestamp pdf-lib stamps into a
+ * compressed object stream, so this is only ever used to compare two documents
+ * rendered in the same second, never to assert stability over time.
+ */
 function normalise(bytes: Uint8Array): Buffer {
   const buf = Buffer.from(bytes)
   return Buffer.from(
@@ -57,8 +54,7 @@ const BASE = {
 }
 
 describe('the two poster compositions', () => {
-  it('renders both, writes them out, and records the parity hash', async () => {
-    mkdirSync(OUT, { recursive: true })
+  it('both render a real PDF', async () => {
     const qrPng = new Uint8Array(await QRCode.toBuffer(BASE.shortUrl, { margin: 1, width: 600 }))
 
     const withCover = await buildEventPosterPdf({
@@ -67,21 +63,6 @@ describe('the two poster compositions', () => {
       coverImage: { bytes: new Uint8Array(TINY_JPEG), format: 'jpg' },
     })
     const noCover = await buildEventPosterPdf({ ...BASE, qrPng, coverImage: null })
-
-    writeFileSync(`${OUT}/with-artwork.pdf`, Buffer.from(withCover))
-    writeFileSync(`${OUT}/no-artwork.pdf`, Buffer.from(noCover))
-    writeFileSync(
-      `${OUT}/parity.json`,
-      JSON.stringify(
-        {
-          note: 'CreationDate and ModDate are normalised before hashing; everything else is verbatim.',
-          withArtwork: { sha256: sha(withCover), bytes: withCover.byteLength },
-          noArtwork: { sha256: sha(noCover), bytes: noCover.byteLength },
-        },
-        null,
-        2,
-      ),
-    )
 
     expect(withCover.byteLength).toBeGreaterThan(1000)
     expect(noCover.byteLength).toBeGreaterThan(1000)
@@ -100,12 +81,11 @@ describe('the two poster compositions', () => {
     expect(sha(withCover)).not.toBe(sha(noCover))
   })
 
-  it('is deterministic: the same input renders the same bytes', async () => {
-    const qrPng = new Uint8Array(await QRCode.toBuffer(BASE.shortUrl, { margin: 1, width: 600 }))
-    const a = await buildEventPosterPdf({ ...BASE, qrPng, coverImage: null })
-    const b = await buildEventPosterPdf({ ...BASE, qrPng, coverImage: null })
-    expect(sha(a)).toBe(sha(b))
-  })
+  // Determinism, the parity hash and the written-out PDFs all live in
+  // poster-parity.test.ts, which freezes the clock. They cannot live here:
+  // pdf-lib stamps the current time into a compressed object stream, so on a
+  // live clock two renders differ whenever they straddle a second boundary,
+  // which made the determinism assertion here flaky rather than meaningful.
 })
 
 describe('the typographic title fills the page it is given', () => {
@@ -129,16 +109,40 @@ describe('the typographic title fills the page it is given', () => {
     expect(fit.lines.length).toBeLessThanOrEqual(2)
   })
 
+  /**
+   * A word-greedy wrap, written out here rather than imported, so the
+   * maximality assertion below is independent of the implementation it is
+   * checking. Safe for these cases because none of them contains a token wider
+   * than the line; character breaking is covered by its own test.
+   */
+  function wrapAt(text: string, size: number, maxWidth: number): string[] {
+    const lines: string[] = []
+    let current = ''
+    for (const word of text.split(/\s+/).filter(Boolean)) {
+      const candidate = current ? `${current} ${word}` : word
+      if (metrics.widthOfTextAtSize(candidate, size) <= maxWidth) {
+        current = candidate
+      } else {
+        if (current) lines.push(current)
+        current = word
+      }
+    }
+    if (current) lines.push(current)
+    return lines
+  }
+
+  function fitsAt(text: string, size: number, box: { maxWidth: number; maxHeight: number; maxLines: number }) {
+    const lines = wrapAt(text, size, box.maxWidth)
+    return lines.length <= box.maxLines && lines.length * size * 1.08 <= box.maxHeight
+  }
+
   it('a long name steps down and wraps rather than overflowing', () => {
     const long = 'Warehouse party at the Barwon Club with Marlo Reyes back to back with Kita all night long'
-    const fit = fitPosterTitle(long, metrics, {
-      maxWidth: 499,
-      maxHeight: 420,
-      maxLines: 6,
-      max: 68,
-      min: 22,
-    })
-    expect(fit.size).toBeLessThan(50)
+    const box = { maxWidth: 499, maxHeight: 420, maxLines: 6 }
+    const fit = fitPosterTitle(long, metrics, { ...box, max: 68, min: 22 })
+
+    // It stepped down from the ceiling rather than overflowing at full size.
+    expect(fit.size).toBeLessThan(68)
     expect(fit.lines.length).toBeLessThanOrEqual(6)
     // It must actually fit the box it was given.
     expect(fit.lines.length * fit.leading).toBeLessThanOrEqual(420)
@@ -146,6 +150,12 @@ describe('the typographic title fills the page it is given', () => {
     for (const line of fit.lines) {
       expect(metrics.widthOfTextAtSize(line, fit.size)).toBeLessThanOrEqual(499)
     }
+    // The fitter's actual contract: the LARGEST size that fits. Asserting a
+    // particular point size instead would encode a guess about the font metric
+    // rather than the fitter's behaviour, which is the very thing the stand-in
+    // metric above exists to avoid. One point larger must not fit.
+    expect(fitsAt(long, fit.size, box)).toBe(true)
+    expect(fitsAt(long, fit.size + 1, box)).toBe(false)
   })
 
   it('a pathological title clamps instead of running off the page', () => {
@@ -158,6 +168,23 @@ describe('the typographic title fills the page it is given', () => {
     })
     expect(fit.size).toBe(22)
     expect(fit.lines.length).toBeLessThanOrEqual(6)
+  })
+
+  it('breaks a token wider than the line instead of running it off the page', () => {
+    // A pasted URL is the realistic version of this: one token, no spaces, and
+    // wider than the column at any size the fitter will consider.
+    const url = 'https://eventlinqs.com/launch/k/abcdefghjkmn?utm_source=instagram&utm_campaign=launch'
+    const fit = fitPosterTitle(url, metrics, {
+      maxWidth: 499,
+      maxHeight: 420,
+      maxLines: 6,
+      max: 68,
+      min: 22,
+    })
+    expect(fit.lines.length).toBeGreaterThan(1)
+    for (const line of fit.lines) {
+      expect(metrics.widthOfTextAtSize(line, fit.size)).toBeLessThanOrEqual(499)
+    }
   })
 
   it('never returns a size below the floor', () => {

@@ -2,7 +2,7 @@ import 'server-only'
 import sharp from 'sharp'
 import {
   ACCEPTED_IMAGE_FORMATS,
-  MAX_IMAGE_DIMENSION,
+  MAX_IMAGE_PIXELS,
   MAX_LOGO_ASPECT,
   MIN_LOGO_ASPECT,
   MIN_LOGO_LONG_EDGE,
@@ -161,11 +161,11 @@ export async function processOrganisationLogo(
   const width = meta.width ?? 0
   const height = meta.height ?? 0
   if (width < 1 || height < 1) return { ok: false, error: REJECT_NOT_IMAGE }
-  if (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION) {
-    return {
-      ok: false,
-      error: `That logo is too large in pixels: ${width} x ${height}. The maximum is ${MAX_IMAGE_DIMENSION} x ${MAX_IMAGE_DIMENSION}.`,
-    }
+  // Only a decompression bomb is refused. The old 4000px reject was doubly
+  // pointless here: this pipeline already downscales to RECOMMENDED_LOGO_LONG_EDGE
+  // below, so it was refusing images it was about to shrink anyway.
+  if (width * height > MAX_IMAGE_PIXELS) {
+    return { ok: false, error: REJECT_NOT_IMAGE }
   }
 
   const longEdge = Math.max(width, height)

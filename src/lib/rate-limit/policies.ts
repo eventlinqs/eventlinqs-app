@@ -36,6 +36,7 @@ export type PolicyName =
   | 'launch-compose-daily'
   | 'launch-artefact'
   | 'launch-email'
+  | 'launch-upload'
 
 export type Policy = {
   /** Stable prefix used to namespace the redis key. Keep short. */
@@ -254,6 +255,14 @@ export const POLICIES: Record<PolicyName, Policy> = {
     windowSec: 3600,
     rationale:
       'Anonymous "send this kit to myself" per IP per hour. THE ONLY FAIL-CLOSED POLICY ON THIS SURFACE, and deliberately unlike its neighbours: every other launch action is local computation with no marginal cost, while this one sends real mail from our verified domain. The cost of getting it wrong is not a bill, it is deliverability, and a sending domain burned by an open relay cannot be un-burned by a rate limit added later. Three is enough to fix a typo twice and useless as a spam vector. The action also requires an owned draft, so a sender must first compose a kit.',
+    failClosed: true,
+  },
+  'launch-upload': {
+    keyPrefix: 'lnch-u',
+    limit: 10,
+    windowSec: 3600,
+    rationale:
+      'Anonymous cover artwork uploads per IP per hour. FAIL-CLOSED, taking the posture of launch-email rather than of its compose neighbours, because this is the SECOND action on this surface that costs real money: it writes bytes we then store and serve, and unlike a render it does not evaporate when the response ends. A Redis blip must not become an open write endpoint on our own storage domain. Ten is generous for the real behaviour, which is uploading one photo and possibly replacing it a few times after seeing it on the poster, and it is useless for filling a bucket. It is bounded further by three things a limit cannot express: the caller must already own a draft (so a cookie and a composed kit come first), the object path is the draft code so one draft can only ever hold ONE object no matter how often it is replaced, and every accepted byte is re-encoded rather than stored as supplied.',
     failClosed: true,
   },
 }

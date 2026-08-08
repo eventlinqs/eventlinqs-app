@@ -2,7 +2,8 @@ import 'server-only'
 import sharp from 'sharp'
 import {
   ACCEPTED_IMAGE_FORMATS,
-  MAX_IMAGE_DIMENSION,
+  IMAGE_DOWNSCALE_LONG_EDGE,
+  MAX_IMAGE_PIXELS,
   MIN_COVER_WIDTH,
   RECOMMENDED_COVER_WIDTH,
   type AcceptedImageFormat,
@@ -13,7 +14,8 @@ import {
 //   - magic-byte validation (sharp reads the real format from the bytes, not the
 //     extension or the client-declared MIME)
 //   - reject SVG and any non-raster / active content (XSS)
-//   - reject > 4000 x 4000
+//   - DOWNSCALE oversize photos to IMAGE_DOWNSCALE_LONG_EDGE, never reject them;
+//     refuse only a decompression bomb (MAX_IMAGE_PIXELS)
 //   - HEIC/HEIF (iPhone) converted to JPEG on ingest
 //   - strip EXIF + all metadata (privacy: removes GPS/device; also shrinks files)
 //   - generate a blur placeholder (blurDataURL) per image
@@ -77,11 +79,11 @@ export async function processEventImage(
   if (width < 1 || height < 1) {
     return { ok: false, error: REJECT_NOT_IMAGE }
   }
-  if (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION) {
-    return {
-      ok: false,
-      error: `Image is too large in pixels: ${width} x ${height}. The maximum is ${MAX_IMAGE_DIMENSION} x ${MAX_IMAGE_DIMENSION}.`,
-    }
+  // A decompression bomb is refused; an ordinary big photo is DOWNSCALED below,
+  // never refused. See IMAGE_DOWNSCALE_LONG_EDGE for why the old 4000px reject
+  // was the wrong verb.
+  if (width * height > MAX_IMAGE_PIXELS) {
+    return { ok: false, error: REJECT_NOT_IMAGE }
   }
   if (opts.role === 'cover' && width < MIN_COVER_WIDTH) {
     return {
@@ -93,27 +95,38 @@ export async function processEventImage(
   // HEIC/HEIF and PNG are normalised to JPEG; WebP/AVIF keep their efficient
   // format. .rotate() bakes EXIF orientation into pixels; sharp drops ALL
   // metadata by default (no .withMetadata()), so EXIF/GPS never reach storage.
+  //
+  // .resize(fit: 'inside', withoutEnlargement: true) is the downscale that
+  // replaced the old hard reject: an oversize photo is brought down to the long
+  // edge and a small one is left exactly as it is, never upscaled.
   const toJpeg = format === 'heif' || format === 'png'
-  const pipeline = sharp(inputBuffer).rotate()
+  const pipeline = sharp(inputBuffer)
+    .rotate()
+    .resize({
+      width: IMAGE_DOWNSCALE_LONG_EDGE,
+      height: IMAGE_DOWNSCALE_LONG_EDGE,
+      fit: 'inside',
+      withoutEnlargement: true,
+    })
 
-  let buffer: Buffer
+  let out: { data: Buffer; info: sharp.OutputInfo }
   let contentType: string
   let ext: string
   if (toJpeg) {
-    buffer = await pipeline.jpeg({ quality: 82, mozjpeg: true }).toBuffer()
+    out = await pipeline.jpeg({ quality: 82, mozjpeg: true }).toBuffer({ resolveWithObject: true })
     contentType = 'image/jpeg'
     ext = 'jpg'
   } else if (format === 'webp') {
-    buffer = await pipeline.webp({ quality: 82 }).toBuffer()
+    out = await pipeline.webp({ quality: 82 }).toBuffer({ resolveWithObject: true })
     contentType = 'image/webp'
     ext = 'webp'
   } else if (format === 'avif') {
-    buffer = await pipeline.avif({ quality: 60 }).toBuffer()
+    out = await pipeline.avif({ quality: 60 }).toBuffer({ resolveWithObject: true })
     contentType = 'image/avif'
     ext = 'avif'
   } else {
     // jpeg
-    buffer = await pipeline.jpeg({ quality: 82, mozjpeg: true }).toBuffer()
+    out = await pipeline.jpeg({ quality: 82, mozjpeg: true }).toBuffer({ resolveWithObject: true })
     contentType = 'image/jpeg'
     ext = 'jpg'
   }
@@ -122,7 +135,18 @@ export async function processEventImage(
 
   return {
     ok: true,
-    image: { buffer, contentType, ext, width, height, blurDataURL },
+    // The dimensions reported are the ones actually written, read back from
+    // sharp. Returning the metadata values instead would be wrong twice over
+    // now: they predate the downscale, and they predate .rotate(), so a photo
+    // shot in portrait on a phone reported its width and height swapped.
+    image: {
+      buffer: out.data,
+      contentType,
+      ext,
+      width: out.info.width,
+      height: out.info.height,
+      blurDataURL,
+    },
   }
 }
 

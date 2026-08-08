@@ -805,8 +805,13 @@ the relevant surface section before reworking it.
   a threshold or mark a check optional to go green.
 - Commit per unit with a clear message, push, hand back the Vercel preview URL
   with the benchmark verdict. Never merge without approval.
-- Disk guard: check free space before any build or deploy step. Under 1.5 GB
-  free, stop and report.
+- Disk guard: check free space before any build or deploy step. Under 5 GB
+  free, stop and report. The executable authority is `scripts/check-disk-space.mjs`
+  (`MIN_FREE_GB`), which runs before a local build; this line follows it. The
+  floor is 5 GB rather than something smaller because a Next.js build writes
+  gigabytes of `.next` output and fails MID-COMPILE on a near-full disk with
+  "os error 112", leaving broken routes that read as code bugs. Emergency
+  bypass is `ALLOW_LOW_DISK=1`, and it is a bypass, not a lower floor.
 
 **The gates: what is machine-checked (and the known gaps)**
 

@@ -101,17 +101,39 @@ function wrapText(
   size: number,
   maxWidth: number,
 ): string[] {
-  const words = text.split(/\s+/)
+  const words = text.split(/\s+/).filter(Boolean)
   const lines: string[] = []
   let current = ''
   for (const word of words) {
     const candidate = current ? `${current} ${word}` : word
     if (font.widthOfTextAtSize(candidate, size) <= maxWidth) {
       current = candidate
-    } else {
-      if (current) lines.push(current)
-      current = word
+      continue
     }
+    if (current) {
+      lines.push(current)
+      current = ''
+    }
+    if (font.widthOfTextAtSize(word, size) <= maxWidth) {
+      current = word
+      continue
+    }
+    // A token wider than the line has no break opportunity, so break it by
+    // character. Without this it becomes a single line that runs off the page,
+    // and fitPosterTitle accepts it because the fitter counts LINES, not width:
+    // a 4000-character title came back at full size on one line. Real triggers
+    // are a pasted URL and a long unspaced hashtag run, not just pathological
+    // input. Both compositions call this, so both had the overflow.
+    let chunk = ''
+    for (const char of word) {
+      if (chunk && font.widthOfTextAtSize(chunk + char, size) > maxWidth) {
+        lines.push(chunk)
+        chunk = char
+      } else {
+        chunk += char
+      }
+    }
+    current = chunk
   }
   if (current) lines.push(current)
   return lines
@@ -151,11 +173,37 @@ export function fitPosterTitle(
   font: { widthOfTextAtSize(t: string, s: number): number },
   opts: { maxWidth: number; maxHeight: number; maxLines: number; max: number; min: number },
 ): { size: number; lines: string[]; leading: number } {
-  for (let size = opts.max; size >= opts.min; size -= 1) {
+  /** Whether every word stands alone on a line at this size, unbroken. */
+  const wordsStayWhole = (size: number) =>
+    title
+      .split(/\s+/)
+      .filter(Boolean)
+      .every(word => font.widthOfTextAtSize(word, size) <= opts.maxWidth)
+
+  const tryFit = (size: number): { size: number; lines: string[]; leading: number } | null => {
     const lines = wrapText(title, font, size, opts.maxWidth)
-    if (lines.length > opts.maxLines) continue
+    if (lines.length > opts.maxLines) return null
     const leading = size * 1.08
-    if (lines.length * leading <= opts.maxHeight) return { size, lines, leading }
+    return lines.length * leading <= opts.maxHeight ? { size, lines, leading } : null
+  }
+
+  // Pass 1: the largest size at which NO word has to be broken. Preferred
+  // always, because a title split mid-word reads as a bug rather than as
+  // design. Letting the fitter grow until the box was full, without this pass,
+  // rendered "Ruby's 16th" as "Ruby'" / "s 16th".
+  for (let size = opts.max; size >= opts.min; size -= 1) {
+    if (!wordsStayWhole(size)) continue
+    const fit = tryFit(size)
+    if (fit) return fit
+  }
+
+  // Pass 2: some token is wider than the line at every size, so it has to be
+  // broken. A pasted URL is the realistic case. Still take the LARGEST size
+  // that fits rather than dropping to the floor, which would print a legible
+  // title tiny for no reason.
+  for (let size = opts.max; size >= opts.min; size -= 1) {
+    const fit = tryFit(size)
+    if (fit) return fit
   }
   // Nothing fits: take the floor and clamp the line count, so a pathological
   // title truncates cleanly rather than running off the page.
@@ -507,7 +555,19 @@ async function drawTypographicPoster(
     maxWidth: contentW,
     maxHeight: available,
     maxLines: 6,
-    max: 68,
+    // The ceiling is the BOX, not a fixed point size. A fixed 68pt ceiling was
+    // the reason a short name still left a hole: "Ruby's 16th" fits on one line
+    // at 68pt immediately, so the fitter stopped there and drew one small line
+    // optically centred in a 400pt space, with dead navy above and below it.
+    // That is the same defect the typographic composition was built to remove,
+    // just moved from half the page into two thirds of it.
+    //
+    // A single line can be at most available/leading tall and still fit, so
+    // that is the real upper bound. Everything narrower is bound by the width
+    // instead, which is what makes a short title grow until it spans the page
+    // and a long one step down and wrap. Width and height are the design; a
+    // point size chosen by hand is not.
+    max: Math.floor(available / 1.08),
     min: 22,
   })
 

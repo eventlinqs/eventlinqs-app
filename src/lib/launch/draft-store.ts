@@ -266,6 +266,59 @@ export async function claimDraft(token: string, userId: string): Promise<KitDraf
   }
 }
 
+/**
+ * Attach uploaded artwork to the draft this browser OWNS.
+ *
+ * Ownership, not auth: the caller must hold the httpOnly cookie token, exactly
+ * as editing does. A CODE alone must never be enough to write to somebody's
+ * draft, because the code is designed to be SHARED and a co-organiser holding a
+ * bookmark is not the owner.
+ *
+ * Returns null when the token owns nothing, when it owns a DIFFERENT draft from
+ * the code in the URL, or when the store is unavailable. The mismatch case is
+ * the one that matters: without it, anybody who had ever composed a kit could
+ * write artwork onto any code they could see.
+ *
+ * The remaining TTL is preserved rather than reset, so uploading on day 29 does
+ * not quietly extend the draft to day 59, and the object sweep can rely on the
+ * draft's own life.
+ */
+export async function attachDraftCover(opts: {
+  token: string
+  code: string
+  coverUrl: string
+  coverPath: string
+}): Promise<KitDraft | null> {
+  if (!isKitCode(opts.code)) return null
+  const redis = getRedisClient()
+  if (!redis) return null
+
+  try {
+    const ownedCode = await redis.get<string>(ownerKey(hashToken(opts.token)))
+    if (typeof ownedCode !== 'string' || ownedCode !== opts.code) return null
+
+    const stored = await redis.get<StoredDraft>(draftKey(opts.code))
+    if (!stored) return null
+
+    const ttlRaw = await redis.ttl(draftKey(opts.code))
+    const ttl = typeof ttlRaw === 'number' && ttlRaw > 0 ? ttlRaw : KIT_DRAFT_TTL_SECONDS
+
+    const next: StoredDraft = {
+      ...stored,
+      coverPath: opts.coverPath,
+      payload: { ...stored.payload, coverUrl: opts.coverUrl },
+    }
+
+    await redis.setex(draftKey(opts.code), ttl, next)
+    await redis.setex(ownerKey(stored.tokenHash), ttl, opts.code)
+
+    return toKitDraft(next, ttl)
+  } catch (err) {
+    warn('attachDraftCover', err)
+    return null
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* The per-session cap                                                  */
 /* ------------------------------------------------------------------ */

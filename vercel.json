@@ -54,6 +54,10 @@
     {
       "path": "/api/cron/auth-sentinel",
       "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/sweep-kit-covers",
+      "schedule": "30 3 * * *"
     }
   ]
 }
