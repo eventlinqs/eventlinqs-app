@@ -103,11 +103,31 @@ crops rather than refuses. Sources are quoted in the research doc.
 
 **The fix:**
 
-1. Replace the hard reject with a downscale. `sharp(...).resize({ width: 3000,
-   height: 3000, fit: 'inside', withoutEnlargement: true })`. 3000px on the long
-   edge covers every artefact we render: A4 at 300dpi is 2480 x 3508 (so keep
-   3508 in mind if you want true 300dpi print, see the open question below), the
-   tall card is 1440 x 1800, the story card 1080 x 1920.
+1. Replace the hard reject with a downscale. **The founder has ruled: true
+   300dpi print.** So the ceiling is `3508`, not 3000:
+
+   ```ts
+   sharp(...).resize({ width: 3508, height: 3508, fit: 'inside', withoutEnlargement: true })
+   ```
+
+   **The arithmetic, because the first number proposed was wrong and the next
+   person will check.** A4 is 210 x 297mm, so 300dpi is 2480 x 3508px. A 3000px
+   long edge is 3000 / 11.69in = **257dpi**, not 300.
+
+   It is slightly worse than that on the artwork poster, because the cover does
+   not fill the page: it is cover-fitted into the top region, 595.28 x 463.04pt,
+   which is 2480 x 1929px at 300dpi. For a PORTRAIT source the width binds, so
+   the founder's own 3625 x 4961 photo at a 3000 ceiling becomes 2192px across a
+   region that wants 2480. At 3508 it becomes 2563px, which clears it.
+
+   Every other artefact is far below this ceiling and does not drive it: the
+   tall card is 1440 x 1800, the story card 1080 x 1920, the square 1080 x 1080.
+   **Print is the only reason this number is not smaller.**
+
+   Known and accepted limit: a 9:16 phone photo would need about 4400px to hit
+   true 300dpi after the crop. 3508 gives true 300dpi for ordinary camera ratios
+   and slightly under for very tall phone shots. Chasing that case is not worth
+   the storage.
 2. Rename the constant so the name states the new behaviour, e.g.
    `IMAGE_DOWNSCALE_LONG_EDGE`. Leaving it called `MAX_IMAGE_DIMENSION` is how
    the next person reintroduces a reject.
@@ -120,10 +140,11 @@ crops rather than refuses. Sources are quoted in the research doc.
 5. **Test that a 3625 x 4961 input now succeeds** and comes back at or under the
    long edge. That is the founder's exact reported case; make it a named test.
 
-**Open question for the founder, worth asking:** 3000px long edge gives roughly
-260dpi on A4, which is fine for a noticeboard poster and slightly under a print
-shop's 300dpi. 3508px gives true 300dpi at a modest storage cost. Recommend
-3508 if print quality matters, 3000 if storage does. Do not guess; ask.
+**This question is CLOSED. Founder ruled 9 August 2026: true 300dpi print, so
+the ceiling is 3508.** The storage cost of 3508 over 3000 is about 37% more
+pixels, which on a WebP re-encode is roughly 300KB to 410KB per cover. That is
+small because the re-encode does the heavy lifting either way, and it is the
+reason the ruling was cheap to honour. Do not reopen it to save storage.
 
 ### 4b. The anonymous upload
 
