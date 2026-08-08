@@ -325,6 +325,51 @@ The Phase 0 exposure table (USD 690 to 2,247 a month at 1,000 a day) applied to 
 
 **4. I did not challenge the brief's premise, again.** Phase 0's own opening said production cannot currently sell a ticket, all sixteen organisations at `stripe_charges_enabled = false`. I did not re-verify that this session and it is not in my scope, but a composer that hands a stranger a finished kit whose checkout cannot take money is still the risk Phase 0 named, and nothing in this build changes it.
 
+### What round 2 found that round 1 had graded MET
+
+Two separate structural gaps in ruling 0.3, both behind a row I had already
+passed because "the act landing page exists".
+
+**1. `updateKit` was called from nowhere.** Every typed bill name lived in
+React state and vanished on reload. Fixed.
+
+**2. Nothing rendered a `/launch/with/` link.** `encodeBillRef` existed, the
+page existed, and no surface in the product ever produced the URL. THE BILL's
+own copy promised "their own card and their own link" and delivered neither.
+The reason it could not have worked: `encodeBillRef` used `Buffer`, which does
+not exist in a browser, and the link must render in a client component as the
+organiser types. Encoder made isomorphic, link now rendered per name, two
+tests that delete `globalThis.Buffer` to force the browser branch.
+
+**Lesson worth keeping:** "the file exists" is not evidence that a feature
+works. Both of these were one grep away and I graded the row before running
+it.
+
+### The act landing page, verified live rather than asserted
+
+`GET /launch/with/2wr3ryg5tu7aTWFybG8gUmV5ZXM` returns 200 and renders:
+
+```
+Marlo Reyes
+, you are on at
+Warehouse party at the Barwon Club, Marlo Reyes b2b Kita
+This link is yours. Anything that comes through it is counted as yours, so you
+can see what you brought in rather than guessing.
+What your link has brought in
+Nothing yet, because it has not been out there. The moment someone opens it,
+this starts counting.
+Putting on your own night?
+We have started one for you with the room you are already playing.
+Start mine
+```
+
+The reach panel is the designed empty state, not four zeros. The founder's own
+test holds: grep for "invite another organiser" returns **false**.
+
+**What is still missing, stated plainly:** there is no per-person CARD and no
+per-person tracked short code. The vehicle is the same three cards everyone
+gets, plus a per-person link.
+
 ### Round 2 gate
 
 Not met: 0 that are fixable within this brief's constraints.
