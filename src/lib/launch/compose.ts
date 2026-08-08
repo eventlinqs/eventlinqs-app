@@ -1,5 +1,6 @@
 import 'server-only'
 import { buildDeterministicDraft } from '@/lib/ai/magic-start'
+
 import { inferVisibility, looksLikePrivateResidence } from '@/lib/events/visibility'
 import type { KitDraftPayload } from './draft-store'
 
@@ -93,6 +94,54 @@ export function tightenTitle(title: string): string {
   return clean.length >= 3 ? clean : title.trim()
 }
 
+/**
+ * The composer's summary, which may only ever ADD to what is already on
+ * screen.
+ *
+ * Found by reading a rendered kit rather than by a test. The shared
+ * buildSummaryFallback leads with the date, which is right for a listing line
+ * standing on its own and wrong here, because every surface that shows this
+ * summary ALSO prints the date beside it: the event page hero, all three
+ * cards, and every caption. The result read as a stutter. The Instagram
+ * caption said the date twice and the Facebook one said it three times, which
+ * is the first thing a promoter notices and the first thing they delete.
+ *
+ * So this carries only what the title and the date lines do not: where it is,
+ * and what it costs, and each of those only when it genuinely adds something.
+ *
+ * An EMPTY summary is a correct and expected outcome. A line that repeats
+ * what is directly above it is worse than no line at all, and the surfaces
+ * that render this all treat an empty summary as "do not draw it".
+ */
+function additiveSummary(facts: {
+  title: string
+  venueName: string
+  venueCity: string
+  isFree: boolean
+  lowestPrice: number | null
+}): string {
+  const titleLower = facts.title.toLowerCase()
+
+  // Only name the place when the title has not already named it.
+  const placeParts = [facts.venueName, facts.venueCity]
+    .filter(Boolean)
+    .filter(part => !titleLower.includes(part.toLowerCase()))
+  const place = placeParts.join(', ')
+
+  // The SAME rule the cards (draft-artefacts priceLabelFor) and the event page
+  // preview already apply: no price found reads as free. Using a third rule
+  // here would let the listing line contradict the card sitting beside it, and
+  // it is also why the birthday produced an empty summary: "no charge" is not
+  // read as a price, so both branches fell through to nothing.
+  const price =
+    facts.isFree || facts.lowestPrice == null || facts.lowestPrice <= 0
+      ? 'Free entry'
+      : `Tickets from $${Math.round(facts.lowestPrice)}`
+
+  const out = [place, price].filter(Boolean).join('. ')
+  return out ? `${out}.`.slice(0, 200) : ''
+}
+
 /** A plain question per unresolved field. Never jargon, never an error. */
 const QUESTION_FOR: Record<string, string> = {
   'Date and time': 'When does it start?',
@@ -156,9 +205,40 @@ export function composeFromText(opts: {
       ? Math.min(...draft.ticket_tiers.map(t => t.price))
       : null
 
+  const title = tightenTitle(draft.title)
+
+  // THE REPETITION FIX, found by reading a rendered kit rather than a test.
+  //
+  // buildSummaryFallback is careful to strip the title out of its own anchor so
+  // the line never says the same thing twice. It was being handed the RAW
+  // title, though, which for the way people actually type ("Warehouse party at
+  // the Barwon Club, Marlo Reyes b2b Kita, Sat 20th, doors 10, $25 presale") is
+  // the entire sentence. So the summary re-stated the whole input, and then
+  // every caption printed the date and price again underneath it. The
+  // Instagram caption said the date twice and the Facebook one said it three
+  // times, which is the first thing a promoter would notice and the first
+  // thing they would delete.
+  //
+  // Recomposing from the TIGHTENED title fixes it at the source: the summary
+  // carries the event's name, not the organiser's whole sentence.
+  const summary = additiveSummary({
+    title,
+    // A held-back address hides the VENUE, never the suburb. That is the whole
+    // shape of the rule (D3): a stranger sees Belmont, not the street. Blanking
+    // the city as well left the birthday with nothing to say and produced an
+    // empty listing line, which the arrivals suite correctly refused.
+    venueName: addressHeldBack ? '' : draft.venue_name,
+    venueCity: draft.venue_city,
+    isFree: draft.is_free,
+    lowestPrice:
+      draft.ticket_tiers.length > 0
+        ? Math.min(...draft.ticket_tiers.map(t => t.price))
+        : null,
+  })
+
   const payload: KitDraftPayload = {
-    title: tightenTitle(draft.title),
-    summary: draft.summary,
+    title,
+    summary,
     description: draft.description,
     startDate: draft.start_date,
     endDate: draft.end_date,
