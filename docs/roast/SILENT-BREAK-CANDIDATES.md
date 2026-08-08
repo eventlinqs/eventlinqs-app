@@ -16,11 +16,56 @@ means the read side is real and the write side is unverified.
 
 ---
 
+## MEASURED ON PRODUCTION, 8 August 2026
+
+The founder measured production and corrected me. Read this before the list;
+several items below are less severe than they read, and one is worse.
+
+```
+published events         32      with city_primary  27 (84%)   without  5
+events status='scheduled'  0      stranded            0
+marketing_consents granted 0      granted, null city  0
+email_subscribers          0      newsletter_subscribers   0
+share_links              186      view 3    click 57    conversion 0
+orders                     1      paid 0    tickets 0
+organisations             17      able to charge      0
+city_waitlist_signups      0
+feature flags ON: broadcast_share, launch_kit, seated_events, surpass_edges
+feature flags OFF: broadcast_digest, broadcast_follow, broadcast_artists,
+                   artist_showcase, gig_board, community_giving
+```
+
+**What this changes.**
+
+- **The 91 percent `city_primary` figure is a TEST artefact.** Production is 84
+  percent healthy. The root defect in `createEvent` is real and the fix stands,
+  but the production blast radius is 5 events. I measured the wrong database and
+  let that number drive priority. Item 3 below is corrected accordingly.
+- **`broadcast_digest` is OFF on production.** The weekly digest has never run
+  there. That is the answer to "check it directly, /admin/flags 404s".
+- **Nobody is owed anything yet.** Zero consent rows, zero newsletter rows, zero
+  waitlist rows, zero stranded scheduled events. Every defect on this list is
+  currently harmless because there is no traffic. All of them become harmful the
+  moment there is.
+- **Zero conversions is NOT evidence the conversion leg is broken.** Production
+  has 1 order, 0 paid, 0 tickets, and 0 of 17 organisations can charge. There has
+  never been a paid order to attribute. **Production cannot settle this question
+  and it is dishonest to claim it either way from these numbers.** It has to be
+  settled by driving a real paid purchase through a tracked link on TEST.
+- **One genuine anomaly worth a check: 57 clicks produced 3 views.** A click
+  redirects to an event page, which should fire the view beacon, deduped per
+  visitor per day. A 19 to 1 gap is either link scanners that never run
+  JavaScript, or a view beacon that barely fires. Named, not concluded.
+
+---
+
 ## CONFIRMED. The write side is absent; I read it.
 
 ### 1. Scheduled events never publish
 
-**This is the worst one and it is not a reach defect, it is a product defect.**
+**Severity corrected: zero events are stranded on production, so nobody has been
+harmed yet. Still a certain defect: the FIRST organiser who schedules something
+is guaranteed to be harmed, and they find out when nobody turns up.**
 
 `createEvent` and `updateEvent` accept `status: 'scheduled'` and write
 `scheduled_publish_at`. The wizard offers it. Nothing anywhere flips a scheduled
@@ -61,15 +106,12 @@ was null for 91 percent of events, so a buyer who ticked the digest box got a
 `.eq('city_slug', citySlug)`. **Their consent is recorded and they are
 unreachable.** Consent captured, promise made, nothing delivered.
 
-The `city_primary` fix stops this happening to new orders and the backfill fixes
-the events, but **`marketing_consents` rows already written with a null city stay
-orphaned**, because nothing back-fills them. TEST has only two consent rows so it
-is invisible there. Production is the number that matters.
-
-**How to check it:** `select count(*) from marketing_consents where status =
-'granted' and city_slug is null`, on production. Every one of those is a person
-who asked and gets nothing. The repair is a second backfill deriving their city
-from the order's event, which is a migration I have not written.
+**MEASURED: production has ZERO granted consent rows, so zero are orphaned and
+nobody is owed anything.** The mechanism is real and the `city_primary` fix
+closes it for new orders, but there is no backfill to write because there is
+nothing to back-fill. If production ever accumulates rows before the fix ships,
+the query to watch is `select count(*) from marketing_consents where
+status='granted' and city_slug is null`. The harness carries it permanently.
 
 ### 4. `is_featured` is never written by the organiser path
 

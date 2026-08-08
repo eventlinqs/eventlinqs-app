@@ -15,7 +15,24 @@ three breaks in the same chain. All three are measured, not assumed.
 `marketing_consents`. The waitlist wrote `city_waitlist_signups`. Nothing joined
 them, so every waitlist signup was a person we could not contact.
 
-**Break 2 (found this session, and worse): almost no event could appear in a
+> **CORRECTION, 8 August 2026, after measuring PRODUCTION.** The 91 percent
+> figure below is TEST and TEST only. Production, measured directly:
+> **32 published events, 27 with a city claim (84 percent), 5 without.**
+> TEST carries 362 published events against production's 32 because TEST is
+> loaded with old seed data that predates whatever last wrote `city_primary`.
+>
+> **The root defect in `createEvent` is real and the fix stands: nothing in the
+> organiser path has ever written that column, so every event created from here
+> would have been unreachable.** But the blast radius on production is 5 events,
+> not 330, and the 91 percent figure must not appear in any statement about
+> production.
+>
+> I measured TEST, reported the number, and let it drive the priority
+> conversation. That is exactly the failure the reach-integrity harness exists
+> to prevent, and it is the reason the harness must take PRODUCTION as its
+> authoritative target rather than whichever database is convenient.
+
+**Break 2 (found this session): no organiser-created event could appear in a
 digest at all.** The digest selects events by `city_primary`. The organiser
 wizard never wrote that column: `createEvent` and `updateEvent` wrote
 `venue_city` free text and nothing else. Measured on the TEST database on
