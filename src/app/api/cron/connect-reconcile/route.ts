@@ -46,11 +46,25 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   // Only organisations with a connected account. A row with no account is repaired
   // by reconcile when its owner next loads the payouts page, and sweeping all of
   // them here would spend a Stripe call per organisation for nothing.
-  const { data: orgs, error } = await admin
+  //
+  // `?org=<uuid>` narrows the sweep to ONE organisation. Two reasons, both
+  // operational rather than decorative: the founder can repair a single named
+  // business on demand without waiting for the hour, and this route can be
+  // exercised against a shared database without rewriting every other row on it,
+  // which is otherwise a real hazard when the same TEST project backs several
+  // people's work.
+  const only = request.nextUrl.searchParams.get('org')
+  if (only && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(only)) {
+    return NextResponse.json({ ok: false, error: 'bad_org' }, { status: 400 })
+  }
+
+  let query = admin
     .from('organisations')
     .select('id, name')
     .not('stripe_account_id', 'is', null)
     .order('updated_at', { ascending: true })
+  if (only) query = query.eq('id', only)
+  const { data: orgs, error } = await query
 
   if (error) {
     console.error('[cron/connect-reconcile] org list failed', { error })

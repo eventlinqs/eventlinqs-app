@@ -50,6 +50,14 @@
     {
       "path": "/api/cron/auth-sentinel",
       "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/connect-reconcile",
+      "schedule": "17 * * * *"
+    },
+    {
+      "path": "/api/cron/connect-divergence",
+      "schedule": "47 */6 * * *"
     }
   ]
 }

@@ -2,7 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { resolveSeatingOrganisation } from '@/lib/organisations/access'
+import { requireVenueSeatingAccess } from '@/lib/organisations/access'
 import { SeatMapsClient } from './seat-maps-client'
 
 type Props = {
@@ -21,15 +21,15 @@ export default async function SeatMapsPage({ params }: Props) {
   // the session client (RLS applies); the venue/chart reads then run under
   // the admin client scoped to the resolved organisation, so a member is not
   // blocked by owner-scoped venue RLS.
-  const org = await resolveSeatingOrganisation(supabase, user.id)
-  if (!org) notFound()
+  const access = await requireVenueSeatingAccess(supabase, user.id, venueId)
+  if (!access.ok) notFound()
 
   const admin = createAdminClient()
   const { data: venue, error: venueError } = await admin
     .from('venues')
     .select('id, name')
     .eq('id', venueId)
-    .eq('organisation_id', org.id)
+    .eq('organisation_id', access.organisationId)
     .eq('is_active', true)
     .single()
 

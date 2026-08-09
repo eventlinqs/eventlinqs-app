@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { resolveSeatingOrganisation } from '@/lib/organisations/access'
+import { requireVenueSeatingAccess } from '@/lib/organisations/access'
 import { revalidatePath } from 'next/cache'
 import {
   generateLayout,
@@ -185,20 +185,13 @@ export async function saveSeatMap(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'Not authenticated' }
 
-  // Owner OR owner/admin/manager member (the door-scan trust level). The
-  // venue must belong to the resolved organisation; the venue read runs on
-  // the admin client so a member is not blocked by owner-scoped venue RLS.
-  const org = await resolveSeatingOrganisation(supabase, user.id)
-  if (!org) return { success: false, error: 'Organisation not found' }
-
-  const { data: venue } = await createAdminClient()
-    .from('venues')
-    .select('id')
-    .eq('id', venueId)
-    .eq('organisation_id', org.id)
-    .eq('is_active', true)
-    .single()
-  if (!venue) return { success: false, error: 'Venue not found or access denied' }
+  // Owner OR owner/admin/manager member (the door-scan trust level), of the
+  // organisation THIS VENUE belongs to. Resolving the caller's single organisation
+  // first and then requiring the venue to be in it could never work for a person
+  // with two businesses; it also returned null outright for one, because the
+  // resolver used maybeSingle. See src/lib/organisations/access.ts.
+  const access = await requireVenueSeatingAccess(supabase, user.id, venueId)
+  if (!access.ok) return { success: false, error: 'Venue not found or access denied' }
 
   if (!Array.isArray(blocks) || blocks.length === 0) {
     return { success: false, error: 'Add at least one seating block before saving.' }
@@ -280,18 +273,9 @@ export async function importSeatMapCsv(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'Not authenticated' }
 
-  // Verify venue belongs to an organisation the caller may manage seating for
-  const org = await resolveSeatingOrganisation(supabase, user.id)
-  if (!org) return { success: false, error: 'Organisation not found' }
-
-  const { data: venue } = await createAdminClient()
-    .from('venues')
-    .select('id')
-    .eq('id', venueId)
-    .eq('organisation_id', org.id)
-    .eq('is_active', true)
-    .single()
-  if (!venue) return { success: false, error: 'Venue not found or access denied' }
+  // Verify the venue belongs to an organisation the caller may manage seating for.
+  const access = await requireVenueSeatingAccess(supabase, user.id, venueId)
+  if (!access.ok) return { success: false, error: 'Venue not found or access denied' }
 
   // Parse CSV
   const { rows: parsedSeats, errors: parseErrors } = parseCsv(csvContent)
@@ -365,20 +349,13 @@ export async function deleteSeatMap(venueId: string, seatMapId: string): Promise
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
-  const org = await resolveSeatingOrganisation(supabase, user.id)
-  if (!org) return { error: 'Organisation not found' }
+  // The caller must be able to manage seating for the organisation THIS VENUE
+  // belongs to: without this check a caller could soft-delete another
+  // organisation's chart by guessing ids.
+  const access = await requireVenueSeatingAccess(supabase, user.id, venueId)
+  if (!access.ok) return { error: 'Venue not found or access denied' }
 
   const admin = createAdminClient()
-
-  // The venue must belong to the caller's organisation: without this check a
-  // caller could soft-delete another organisation's chart by guessing ids.
-  const { data: venue } = await admin
-    .from('venues')
-    .select('id')
-    .eq('id', venueId)
-    .eq('organisation_id', org.id)
-    .single()
-  if (!venue) return { error: 'Venue not found or access denied' }
 
   const { error } = await admin
     .from('seat_maps')

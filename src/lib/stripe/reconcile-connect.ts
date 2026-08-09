@@ -219,10 +219,32 @@ export async function reconcileConnectedAccount(
     // No account to reconcile against. This is a legitimate state, not an error:
     // the organisation has not connected Stripe, or has disconnected. Repair any
     // leftovers from a partial clear so the row cannot lie in the other direction.
-    const repaired = await repairDisconnectedRow(client, organisationId, org)
+    const repair = await repairDisconnectedRow(client, organisationId, org)
+
+    // NEVER REPORT A STATE THAT WAS NOT WRITTEN. This branch used to return
+    // payoutStatus 'unset' unconditionally, whether or not the repair had actually
+    // landed. That is not a hypothetical: `payout_status = 'unset'` is rejected by
+    // the CHECK constraint until migration 20260809000001 is applied, proven
+    // against TEST on 2026-08-09 with error 23514, "new row for relation
+    // organisations violates check constraint organisations_payout_status_check"
+    // (scripts/verify/payout-status-domain.mjs). Deploy the code before the
+    // migration and the write fails while the caller is told 'unset', so the
+    // payouts page would say "no Stripe account connected" while the publish gate
+    // kept refusing on the stale 'restricted' underneath. That is the founder's
+    // stranding rebuilt out of an optimistic return value, so it reports the
+    // failure instead.
+    if (!repair.ok) {
+      return {
+        ok: false,
+        reason: 'stripe_error',
+        message:
+          'Could not save the refreshed status for this organisation. Nothing was changed. Tell support: the payout status column may need migration 20260809000001.',
+      }
+    }
+
     return {
       ok: true,
-      changed: repaired,
+      changed: repair.changed,
       canSell: false,
       payoutStatus: 'unset',
       outstanding: [],
@@ -373,7 +395,7 @@ async function repairDisconnectedRow(
   client: SupabaseClient,
   organisationId: string,
   org: Record<string, unknown>,
-): Promise<boolean> {
+): Promise<{ ok: boolean; changed: boolean }> {
   const stale =
     org.stripe_onboarding_complete === true ||
     org.stripe_charges_enabled === true ||
@@ -384,7 +406,10 @@ async function repairDisconnectedRow(
     JSON.stringify(org.stripe_capabilities ?? {}) !== '{}' ||
     JSON.stringify(org.stripe_requirements ?? {}) !== '{}'
 
-  if (!stale) return false
+  // Nothing to repair is a success, not a failure. Distinguishing the two is the
+  // whole point: "there was nothing to do" and "I tried and could not" used to
+  // return the same `false`, and the caller reported both as a clean 'unset'.
+  if (!stale) return { ok: true, changed: false }
 
   const { error } = await client
     .from('organisations')
@@ -393,10 +418,11 @@ async function repairDisconnectedRow(
   if (error) {
     console.error('[reconcile-connect] repair of a half-cleared row failed', {
       organisationId,
+      code: (error as { code?: string }).code,
       error,
     })
-    return false
+    return { ok: false, changed: false }
   }
   console.warn('[reconcile-connect] repaired a half-cleared disconnected row', { organisationId })
-  return true
+  return { ok: true, changed: true }
 }

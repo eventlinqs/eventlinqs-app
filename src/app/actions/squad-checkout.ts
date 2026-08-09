@@ -11,44 +11,17 @@ import {
   recordOrganiserMarketingConsent,
   recordPlatformUpdateConsent,
 } from '@/lib/consent/record'
+import { assertSquadAccess, type SquadAccessRow } from '@/lib/squads/access'
 import type { FeePassType } from '@/types/database'
 
-/** The shape both squad actions need in order to authorise a caller. */
-export type SquadAccessRow = {
-  user_id: string | null
-  squad: { share_token?: string | null } | { share_token?: string | null }[] | null
-}
-
-/**
- * May this caller act on this squad membership?
- *
- * ONE function for both actions, because they had the same bug twice and a shared
- * gate cannot drift between them.
- *
- * Two legitimate callers:
- *   - the SIGNED-IN member: `member.user_id === user.id`
- *   - a GUEST member (`user_id IS NULL`) who presents the squad share token
- *
- * A constant-time compare is not warranted: the token is a high-entropy value
- * fetched in one round trip, and the surrounding database call dominates timing.
- */
-export function assertSquadAccess(
-  member: SquadAccessRow,
-  userId: string | undefined,
-  squadToken: string | undefined,
-): boolean {
-  const squad = Array.isArray(member.squad) ? member.squad[0] : member.squad
-  const shareToken = squad?.share_token ?? null
-
-  if (member.user_id) {
-    // Claimed membership: only its owner, and never on a token alone.
-    return !!userId && member.user_id === userId
-  }
-  // Guest membership: the share token IS the credential, so it must be present
-  // and must match. Absent or mismatched fails closed.
-  if (!squadToken || !shareToken) return false
-  return squadToken === shareToken
-}
+// THE GATE LIVES IN src/lib/squads/access.ts, NOT HERE, and that is a build
+// requirement rather than a preference. Every export of a `'use server'` module is
+// compiled into a publicly reachable HTTP endpoint, so the directive permits async
+// functions only, and a synchronous `export function assertSquadAccess` failed the
+// production build outright with "Server Actions must be async functions" while
+// typecheck, eslint and the unit tests were all green. Nothing about the check
+// itself changed in the move; it is byte-for-byte the same predicate, still called
+// by both actions below.
 
 function generateOrderNumber(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'

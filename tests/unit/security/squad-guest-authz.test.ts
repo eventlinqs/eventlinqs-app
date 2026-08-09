@@ -34,7 +34,12 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
-import { assertSquadAccess, type SquadAccessRow } from '@/app/actions/squad-checkout'
+// The gate moved OUT of the 'use server' module. It had to: every export of a
+// `'use server'` file becomes a public HTTP endpoint, so the directive permits
+// async functions only, and this synchronous predicate failed `next build` with
+// "Server Actions must be async functions" while typecheck, eslint and this very
+// test file were all green. The predicate itself is unchanged.
+import { assertSquadAccess, type SquadAccessRow } from '@/lib/squads/access'
 
 const ROOT = path.resolve(__dirname, '../../..')
 const SRC = readFileSync(path.join(ROOT, 'src/app/actions/squad-checkout.ts'), 'utf8')
@@ -125,8 +130,13 @@ describe('both actions are wired to the gate', () => {
 
   it('both call assertSquadAccess, and the old short-circuit is gone', () => {
     const calls = SRC.match(/assertSquadAccess\(/g) ?? []
-    // one definition plus two call sites
-    expect(calls.length).toBeGreaterThanOrEqual(3)
+    // Two call sites. The definition used to be in this file too and made three;
+    // it now lives in src/lib/squads/access.ts because a 'use server' module may
+    // only export async functions. What matters is unchanged: BOTH actions call it.
+    expect(calls.length).toBeGreaterThanOrEqual(2)
+    expect(SRC, 'the actions must import the shared gate, not re-implement it').toMatch(
+      /import \{ assertSquadAccess.*from '@\/lib\/squads\/access'/,
+    )
     expect(
       CODE,
       'the old check passed for every caller on a guest row',

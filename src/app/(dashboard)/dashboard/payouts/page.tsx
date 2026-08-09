@@ -21,8 +21,9 @@ import { ReserveReleaseTimeline } from '@/components/payouts/reserve-release-tim
 import { PayoutsHistoryTable } from '@/components/payouts/payouts-history-table'
 import { StripeDashboardButton } from '@/components/payouts/stripe-dashboard-button'
 import { RefreshStripeStatus } from '@/components/payouts/refresh-stripe-status'
-import { OrganisationSwitcher } from '@/components/payouts/organisation-switcher'
+import { OrganisationSwitcher } from '@/components/organisations/organisation-switcher'
 import { resolveOrganiserScope } from '@/lib/payouts/auth'
+import { organisationIdFromParams } from '@/lib/organisations/scope'
 import { outstandingFrom } from '@/lib/stripe/reconcile-connect'
 import { RefundsList } from '@/components/payouts/refunds-list'
 import type { Organisation } from '@/types/database'
@@ -91,9 +92,7 @@ export default async function PayoutsPage({
   //
   // resolveOrganiserScope now lists them, honours ?org=<id>, verifies ownership and
   // returns the full set so the switcher below can render.
-  const scope = await resolveOrganiserScope(
-    typeof searchParamsResolved.org === 'string' ? searchParamsResolved.org : undefined,
-  )
+  const scope = await resolveOrganiserScope(organisationIdFromParams(searchParamsResolved))
 
   const { data: org } = scope.ok
     ? ((await createAdminClient()
@@ -156,7 +155,13 @@ export default async function PayoutsPage({
           </div>
         </header>
 
-        {scope.ok ? <OrganisationSwitcher choices={scope.choices} /> : null}
+        {scope.ok ? (
+          <OrganisationSwitcher
+            organisations={scope.organisations}
+            activeId={org.id}
+            basePath="/dashboard/payouts"
+          />
+        ) : null}
 
         {/* The way out of a stranded state. Placed ABOVE the onboarding card on
             purpose: an organiser whose Stripe is already finished but whose row is
@@ -196,10 +201,19 @@ export default async function PayoutsPage({
             Track every payout, reserve release, and refund for {org.name}.
           </p>
         </div>
-        <StripeDashboardButton enabled={Boolean(org.stripe_account_id)} />
+        <StripeDashboardButton
+          enabled={Boolean(org.stripe_account_id)}
+          organisationId={org.id}
+        />
       </header>
 
-      {scope.ok ? <OrganisationSwitcher choices={scope.choices} /> : null}
+      {scope.ok ? (
+        <OrganisationSwitcher
+          organisations={scope.organisations}
+          activeId={org.id}
+          basePath="/dashboard/payouts"
+        />
+      ) : null}
 
       {/* Available on the healthy path too, not only when something looks wrong. An
           organiser whose row says onboarded can still be stranded by a stale
@@ -216,7 +230,7 @@ export default async function PayoutsPage({
         <RefundsList page={refunds} />
       </div>
 
-      <PayoutsHistoryTable initialPage={payouts} />
+      <PayoutsHistoryTable initialPage={payouts} organisationId={org.id} />
     </div>
   )
 }

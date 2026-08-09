@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
+import { organisationIdFromParams, resolveOrganisationScope } from '@/lib/organisations/scope'
+import { OrganisationSwitcher } from '@/components/organisations/organisation-switcher'
 import { DashboardHero } from '@/components/dashboard/dashboard-hero'
 import { KpiCard } from '@/components/dashboard/kpi-card'
 import {
@@ -63,25 +64,29 @@ function pctChange(current: number, previous: number): number | null {
   return ((current - previous) / previous) * 100
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
+}) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // The organisation read is owner-scoped and needs stripe_onboarding_complete,
-  // which is revoked from `authenticated` by column privilege (migration
-  // 20260808000010). Identity is verified with the session client above, then
-  // the row is read with the service role filtered to owner_id = that user,
-  // mirroring src/lib/payouts/auth.ts. Only the two columns this page renders
-  // are selected.
-  const [{ data: profile }, { data: org }] = await Promise.all([
+  // WHICH business this dashboard is reporting on. This was
+  // `.eq('owner_id', user.id).maybeSingle()`, which returns PGRST116 and
+  // `data: null` rather than a row when the caller owns more than one, so an owner
+  // of several saw the dashboard of somebody with no organisation at all: no
+  // upcoming events, no revenue, no orders.
+  //
+  // The organisation read needs stripe_onboarding_complete, which is revoked from
+  // `authenticated` by column privilege (migration 20260808000010), so the resolver
+  // does it with the service role after verifying ownership.
+  const [{ data: profile }, scope] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user.id).single(),
-    createAdminClient()
-      .from('organisations')
-      .select('id, stripe_onboarding_complete')
-      .eq('owner_id', user.id)
-      .maybeSingle(),
+    resolveOrganisationScope(organisationIdFromParams(await searchParams)),
   ])
+  const org = scope.ok ? { id: scope.active.id, stripe_onboarding_complete: scope.active.stripeOnboardingComplete } : null
 
   const firstName = profile?.full_name?.split(' ')[0] ?? 'there'
   const isOrganiser =
@@ -240,6 +245,16 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-8">
       <DashboardHero firstName={firstName} canCreateEvent={isOrganiser} />
+
+      {/* Every number below belongs to ONE business. An owner of several has to be
+          able to see which one, and change it, or the figures are unreadable. */}
+      {scope.ok && org ? (
+        <OrganisationSwitcher
+          organisations={scope.organisations}
+          activeId={org.id}
+          basePath="/dashboard"
+        />
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard

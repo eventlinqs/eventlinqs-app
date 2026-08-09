@@ -5,27 +5,36 @@ import Link from 'next/link'
 import { Building2 } from 'lucide-react'
 import { EventsTable } from './events-table'
 import { DashboardEmptyState } from '@/components/dashboard/empty-state'
+import { OrganisationSwitcher } from '@/components/organisations/organisation-switcher'
+import {
+  organisationIdFromParams,
+  resolveOrganisationScope,
+  withOrganisation,
+} from '@/lib/organisations/scope'
 import type { Event } from '@/types/database'
 
 type FilterTab = 'all' | 'draft' | 'published' | 'past' | 'cancelled'
 
 type Props = {
-  searchParams: Promise<{ tab?: string; saved?: string }>
+  searchParams: Promise<{ tab?: string; saved?: string; org?: string }>
 }
 
 export default async function MyEventsPage({ searchParams }: Props) {
-  const { tab, saved } = await searchParams
+  const params = await searchParams
+  const { tab, saved } = params
   const activeTab = (tab as FilterTab) ?? 'all'
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: org } = await supabase
-    .from('organisations')
-    .select('id')
-    .eq('owner_id', user.id)
-    .single()
+  // WHICH business's events. This was `.eq('owner_id', user.id).single()`, which
+  // returns PGRST116 and `data: null` rather than a row when the caller owns more
+  // than one, so an owner of several businesses was shown "Set up your organisation
+  // first" and could not reach a single one of their events.
+  const scope = await resolveOrganisationScope(organisationIdFromParams(params))
+  const org = scope.ok ? scope.active : null
+  const organisationCount = scope.ok ? scope.organisations.length : 0
 
   if (!org) {
     return (
@@ -108,19 +117,28 @@ export default async function MyEventsPage({ searchParams }: Props) {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-ink-900">My Events</h1>
         <Link
-          href="/dashboard/events/create"
+          href={withOrganisation('/dashboard/events/create', org.id, organisationCount)}
           className="rounded-lg bg-gold-500 px-4 py-2.5 text-sm font-medium text-ink-900 hover:bg-gold-600 transition-colors"
         >
           + Create Event
         </Link>
       </div>
 
-      {/* Filter tabs */}
+      {scope.ok ? (
+        <OrganisationSwitcher
+          organisations={scope.organisations}
+          activeId={org.id}
+          basePath="/dashboard/events"
+        />
+      ) : null}
+
+      {/* Filter tabs. They carry the business, so a tab click cannot silently move
+          an owner of several onto a different one. */}
       <div className="mb-6 flex gap-1 border-b border-ink-200">
         {tabs.map(t => (
           <Link
             key={t.key}
-            href={`/dashboard/events?tab=${t.key}`}
+            href={withOrganisation(`/dashboard/events?tab=${t.key}`, org.id, organisationCount)}
             className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
               activeTab === t.key
                 ? 'border-gold-500 text-gold-500'

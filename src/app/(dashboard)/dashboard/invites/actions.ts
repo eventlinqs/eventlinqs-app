@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { resolveOrganisationScope } from '@/lib/organisations/scope'
 import { isFlagEnabled } from '@/lib/flags'
 import {
   createFoundingInvite,
@@ -25,19 +26,26 @@ export async function generateMyFoundingInvite(citySlug: string): Promise<{ code
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
-  // The caller must own a FOUNDING organisation.
+  // The caller's ACTIVE business must be a FOUNDING organisation.
   //
-  // Identity comes from the session client above (getUser, never getSession);
-  // the row is then read with the service role scoped to owner_id = that verified
-  // user. `is_founding` is revoked from `authenticated` by column privilege
-  // (migration 20260808000010), because that role serves both the owner and any
-  // logged-in visitor and a grant cannot tell them apart. The ownership filter is
-  // what makes the service-role read safe, and it is the pattern
-  // src/lib/payouts/auth.ts already uses.
+  // This was `.eq('owner_id', user.id).maybeSingle()`, which returns PGRST116 and
+  // `data: null` when the caller owns more than one, so an owner of several was
+  // told "Organisation not found" and could never issue a founding invite. The
+  // allowance is counted per `inviter_org_id`, so the business has to be named
+  // rather than guessed, and it is the same business the invites page is showing.
+  //
+  // Identity comes from the session client above (getUser, never getSession); the
+  // row is then read with the service role scoped to owner_id = that verified user.
+  // `is_founding` is revoked from `authenticated` by column privilege (migration
+  // 20260808000010), because that role serves both the owner and any logged-in
+  // visitor and a grant cannot tell them apart. The ownership filter is what makes
+  // the service-role read safe.
+  const scope = await resolveOrganisationScope()
+  if (!scope.ok) return { error: 'Organisation not found.' }
   const { data: org } = await createAdminClient()
     .from('organisations')
     .select('id, name, is_founding')
-    .eq('owner_id', user.id)
+    .eq('id', scope.active.id)
     .maybeSingle()
   if (!org) return { error: 'Organisation not found.' }
   if (!org.is_founding) {

@@ -3,7 +3,6 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { checkRateLimit, clientIp } from '@/lib/redis/rate-limit'
-import { isFullyOnboarded, retrieveAccount } from '@/lib/stripe/connect'
 import { getAppUrl } from '@/lib/site-url'
 
 export const dynamic = 'force-dynamic'
@@ -75,11 +74,20 @@ export async function GET(req: NextRequest) {
   if (!org || org.owner_id !== user.id) {
     return NextResponse.redirect(`${appUrl()}/dashboard/payouts?status=not_found`, 303)
   }
+
+  // Every redirect from here on carries `&org=`, including the failure branches.
+  //
+  // WHY THAT MATTERS AND WHY IT IS NOT COSMETIC. A person may run several
+  // businesses, each with its own Stripe account. Somebody who has just finished
+  // onboarding business B and hits a failure branch would, without this, be dropped
+  // onto the payouts page for business A, be shown A's healthy state, and conclude
+  // that B was connected when it was not. The one branch above keeps no org because
+  // the organisation is not the caller's to name.
+  const payouts = (status: string) =>
+    `${appUrl()}/dashboard/payouts?status=${status}&org=${encodeURIComponent(org.id)}`
+
   if (!org.stripe_account_id) {
-    return NextResponse.redirect(
-      `${appUrl()}/dashboard/payouts?status=needs_onboarding`,
-      303
-    )
+    return NextResponse.redirect(payouts('needs_onboarding'), 303)
   }
 
   try {
@@ -102,21 +110,14 @@ export async function GET(req: NextRequest) {
       // Send them to payouts either way: the Refresh Stripe status control there is
       // the retry, so a failed reconcile is recoverable in the browser rather than a
       // dead end.
-      return NextResponse.redirect(`${appUrl()}/dashboard/payouts?status=pending`, 303)
+      return NextResponse.redirect(payouts('pending'), 303)
     }
 
     // `org` carries the id needed for the redirect, so the account is only fetched
     // for the status word shown in the query string.
-    const status = result.canSell ? 'complete' : 'pending'
-    return NextResponse.redirect(
-      `${appUrl()}/dashboard/payouts?status=${status}&org=${encodeURIComponent(org.id)}`,
-      303,
-    )
+    return NextResponse.redirect(payouts(result.canSell ? 'complete' : 'pending'), 303)
   } catch (err) {
-    console.error('[connect-return] retrieveAccount failed', err)
-    return NextResponse.redirect(
-      `${appUrl()}/dashboard/payouts?status=fetch_error`,
-      303
-    )
+    console.error('[connect-return] reconcile threw', err)
+    return NextResponse.redirect(payouts('fetch_error'), 303)
   }
 }

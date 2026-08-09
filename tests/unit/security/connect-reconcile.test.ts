@@ -295,3 +295,83 @@ describe('disconnect is atomic: a half-cleared row is unreachable', () => {
     expect(DISCONNECTED_STATE.payout_status).toBe('unset')
   })
 })
+
+describe('reconcile never reports a state it failed to write', () => {
+  /**
+   * THE DEPLOY-ORDER HAZARD THIS PINS. DISCONNECTED_STATE writes
+   * payout_status = 'unset', and the CHECK constraint on that column does not permit
+   * 'unset' until migration 20260809000001 is applied. Proven against the TEST
+   * database on 2026-08-09 with scripts/verify/payout-status-domain.mjs:
+   *
+   *     'active'      accepted
+   *     'on_hold'     accepted
+   *     'restricted'  accepted
+   *     'unset'       REJECTED  23514 new row for relation "organisations"
+   *                             violates check constraint
+   *                             "organisations_payout_status_check"
+   *
+   * So if the code ships before the migration is applied, the repair write fails.
+   * The branch used to return `ok: true, payoutStatus: 'unset'` regardless, so the
+   * payouts page would tell the organiser no Stripe account was connected while the
+   * publish gate kept refusing on the stale 'restricted' still in the database.
+   * That is the founder's stranding, rebuilt out of an optimistic return value.
+   */
+  function clientWhereUpdateFails(row: Record<string, unknown>) {
+    return {
+      from: () => ({
+        select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: row, error: null }) }) }),
+        update: () => ({
+          eq: async () => ({
+            error: {
+              code: '23514',
+              message:
+                'new row for relation "organisations" violates check constraint "organisations_payout_status_check"',
+            },
+          }),
+        }),
+      }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any
+  }
+
+  const halfClearedRow = {
+    id: 'org-half',
+    stripe_account_id: null,
+    stripe_onboarding_complete: true,
+    stripe_charges_enabled: true,
+    stripe_payouts_enabled: false,
+    stripe_account_country: 'AU',
+    stripe_capabilities: {},
+    stripe_requirements: {},
+    payout_destination: 'ba_123',
+    payout_status: 'restricted',
+  }
+
+  it('reports a failure when the repair of a half-cleared row cannot be written', async () => {
+    const { reconcileConnectedAccount } = await import('@/lib/stripe/reconcile-connect')
+    const result = await reconcileConnectedAccount(clientWhereUpdateFails(halfClearedRow), 'org-half')
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.message).toContain('Nothing was changed')
+    expect(result.message).toContain('20260809000001')
+  })
+
+  it('still succeeds, writing nothing, when a disconnected row is already clean', async () => {
+    // "There was nothing to do" and "I tried and could not" must not share a return
+    // value. They did, and the caller reported both as a clean 'unset'.
+    const cleanRow = {
+      ...halfClearedRow,
+      stripe_onboarding_complete: false,
+      stripe_charges_enabled: false,
+      stripe_account_country: null,
+      payout_destination: null,
+      payout_status: 'unset',
+    }
+    const { reconcileConnectedAccount } = await import('@/lib/stripe/reconcile-connect')
+    const result = await reconcileConnectedAccount(clientWhereUpdateFails(cleanRow), 'org-half')
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.changed).toBe(false)
+    expect(result.payoutStatus).toBe('unset')
+  })
+})
