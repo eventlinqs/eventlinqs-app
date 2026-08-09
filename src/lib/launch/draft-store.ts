@@ -43,10 +43,14 @@ import type { EventVisibility } from '@/types/database'
  * unavailable. Nothing throws at a visitor.
  */
 
-export const KIT_CODE_LENGTH = 12
-
-/** Unambiguous alphabet: no 0/O, no 1/l/I, so a code survives being read aloud. */
-const CODE_ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789'
+/**
+ * Re-exported from the isomorphic kit-code module so every existing server-side
+ * import of these keeps working unchanged. They live there rather than here
+ * because bill-ref.ts needs them in the CLIENT bundle, and importing them from
+ * this server-only module failed the build.
+ */
+export { CODE_ALPHABET, KIT_CODE_LENGTH, isKitCode } from './kit-code'
+import { CODE_ALPHABET, KIT_CODE_LENGTH, isKitCode } from './kit-code'
 
 /** The founder ruling, in seconds. */
 export const KIT_DRAFT_TTL_SECONDS = 30 * 24 * 60 * 60
@@ -115,9 +119,6 @@ export function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex')
 }
 
-export function isKitCode(value: string | null | undefined): value is string {
-  return typeof value === 'string' && new RegExp(`^[${CODE_ALPHABET}]{${KIT_CODE_LENGTH}}$`).test(value)
-}
 
 /* ------------------------------------------------------------------ */
 /* Keys. Exported so tests assert the exact shape rather than guess it. */

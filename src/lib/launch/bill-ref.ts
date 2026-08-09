@@ -1,4 +1,4 @@
-import { KIT_CODE_LENGTH, isKitCode } from './draft-store'
+import { KIT_CODE_LENGTH, isKitCode } from './kit-code'
 
 /**
  * The reference an act's link carries: which kit, and which name on it.
