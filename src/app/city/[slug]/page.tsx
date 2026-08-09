@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { createPublicClient } from '@/lib/supabase/public-client'
+import { formatEventDateShort } from '@/lib/dates/event-time'
 import { withBuildRetry } from '@/lib/supabase/build-retry'
 import {
   getCity,
@@ -77,7 +78,7 @@ export default async function CityPage({ params }: Props) {
   // ilike match (city_primary FK is the new path post-migration; until
   // organisers fill the column, venue_city ilike is the bridge).
   const baseSelect =
-    'id, slug, title, cover_image_url, thumbnail_url, start_date, end_date, venue_name, venue_city, venue_country, venue_latitude, venue_longitude, created_at, is_free, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
+    'id, slug, title, cover_image_url, thumbnail_url, start_date, end_date, timezone, venue_name, venue_city, venue_country, venue_latitude, venue_longitude, created_at, is_free, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
 
   const { data: rows } = await withBuildRetry(
     () =>
@@ -93,7 +94,13 @@ export default async function CityPage({ params }: Props) {
     { label: `city/${city.slug}` },
   )
 
-  const allRaw = (rows ?? []) as unknown as (EventCardData & { end_date?: string; venue_latitude?: number | null; venue_longitude?: number | null })[]
+  const allRaw = (rows ?? []) as unknown as (EventCardData & {
+    end_date?: string
+    venue_latitude?: number | null
+    venue_longitude?: number | null
+    /** The event's own zone, so its date is not formatted in the reader's. */
+    timezone?: string | null
+  })[]
 
   const allEvents: EventCardData[] = allRaw.map(r => ({
     id: r.id, slug: r.slug, title: r.title,
@@ -114,7 +121,9 @@ export default async function CityPage({ params }: Props) {
     .slice(0, 100)
     .map(r => {
       const cheapest = r.ticket_tiers && r.ticket_tiers.length > 0 ? Math.min(...r.ticket_tiers.map(t => t.price)) : 0
-      const dateStr = new Date(r.start_date).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' })
+      // The EVENT's zone, never the reader's: a 9pm Perth event reads as
+      // the next day in Sydney.
+      const dateStr = formatEventDateShort(r.start_date, r.timezone)
       return {
         id: r.id, slug: r.slug, title: r.title,
         date: dateStr,

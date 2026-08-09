@@ -236,14 +236,70 @@ async function drawCoverPoster(
 ): Promise<void> {
   const { display, displayMid, body, bodyStrong } = fonts
 
-  const bandH = PAGE_H * 0.45
+  const logo = input.organiserLogo ? await embed(doc, input.organiserLogo) : null
+  const onTile = input.logoPlacement !== 'on-navy'
+
+  const qrSize = 140
+  const qrX = PAGE_W - MARGIN - qrSize
+  const textMaxW = qrX - MARGIN - 24
+
+  // Title metrics are needed BEFORE the mark is placed: pdf-lib draws text from
+  // its baseline, so the gap under the mark has to clear the title's ascender,
+  // not the baseline.
+  const titleSize = 29
+  const titleAscent = display.heightAtSize(titleSize, { descender: false })
+  const titleLines = wrapText(input.title, display, titleSize, textMaxW).slice(0, 3)
+  const localityLines = input.locality
+    ? wrapText(input.locality, body, 12.5, textMaxW).slice(0, 2)
+    : []
+  const barH = 30
+
+  /* ---- THE BAND SIZES ITSELF TO ITS CONTENT (founder ruling, 9 Aug 2026) ----
+   *
+   * It used to be a flat 45% of the page whatever it held, so a short title
+   * left about a third of it as empty navy. That is the same defect the
+   * typographic composition was built to remove, and a promoter reads it as a
+   * template rather than as a poster.
+   *
+   * The band is now measured and the PHOTOGRAPH takes whatever it does not
+   * need, which is the stronger element on the page and the reason an organiser
+   * uploaded anything at all.
+   *
+   * The measurement below replays EXACTLY the advances the drawing further down
+   * makes, with the band top at zero, so the two can never drift apart. Every
+   * spacing constant is unchanged; only the height they add up to is new.
+   */
+  let measured = 44
+  if (logo) {
+    const lh = Math.min(34, (logo.height / logo.width) * 120)
+    measured += lh + (onTile ? 6 : 0) + 22 + titleAscent
+  } else {
+    measured += 26
+  }
+  measured += titleLines.length * (titleSize + 5)
+  measured += 10 + 22
+  measured += localityLines.length * 18
+  measured += 14
+  measured += barH - 8 // the ticket bar's lowest drawn edge
+
+  // The QR column is fixed height and often the taller of the two, so it sets
+  // the floor: 60 below the band top, 140 tall, its label 26 under that, plus
+  // air for the descender.
+  const qrColumnH = 60 + qrSize + 26 + 6
+
+  // Clear of the shared platform footer, which both compositions draw at an
+  // absolute y of 30.
+  const BAND_BOTTOM_PAD = 46
+  // Never TALLER than it used to be, so the photograph can only ever gain space
+  // by this change and never lose it. A title long enough to need more than
+  // this already overflowed before; that is untouched here.
+  const BAND_MAX = PAGE_H * 0.45
+
+  const bandH = Math.min(Math.max(measured, qrColumnH) + BAND_BOTTOM_PAD, BAND_MAX)
   const imageRegionH = PAGE_H - bandH
 
   // Canvas: full-page navy so any gap reads as brand, never as white.
   page.drawRectangle({ x: 0, y: 0, width: PAGE_W, height: PAGE_H, color: PDF_NAVY })
-
-  const logo = input.organiserLogo ? await embed(doc, input.organiserLogo) : null
-  const onTile = input.logoPlacement !== 'on-navy'
 
   const embedded = await embed(doc, input.coverImage)
   // Cover-fit into the top region, centred, overflow cropped by the band.
@@ -262,17 +318,7 @@ async function drawCoverPoster(
   page.drawRectangle({ x: 0, y: 0, width: PAGE_W, height: bandH, color: PDF_NAVY })
   page.drawRectangle({ x: 0, y: bandH - 3, width: PAGE_W, height: 3, color: PDF_GOLD })
 
-  const qrSize = 140
-  const qrX = PAGE_W - MARGIN - qrSize
-  const textMaxW = qrX - MARGIN - 24
-
   let y = bandH - 44
-
-  // Title metrics are needed BEFORE the mark is placed: pdf-lib draws text from
-  // its baseline, so the gap under the mark has to clear the title's ascender,
-  // not the baseline.
-  const titleSize = 29
-  const titleAscent = display.heightAtSize(titleSize, { descender: false })
 
   // The organiser identity leads the band. Their mark, their name.
   if (logo) {
@@ -317,8 +363,7 @@ async function drawCoverPoster(
     y -= 26
   }
 
-  // Title, wrapped, at most three lines.
-  const titleLines = wrapText(input.title, display, titleSize, textMaxW).slice(0, 3)
+  // Title, wrapped, at most three lines. Measured above, drawn here.
   for (const line of titleLines) {
     page.drawText(line, { x: MARGIN, y, size: titleSize, font: display, color: PDF_WHITE })
     y -= titleSize + 5
@@ -327,11 +372,9 @@ async function drawCoverPoster(
   y -= 10
   page.drawText(input.dateLabel, { x: MARGIN, y, size: 14, font: bodyStrong, color: PDF_GOLD })
   y -= 22
-  if (input.locality) {
-    for (const line of wrapText(input.locality, body, 12.5, textMaxW).slice(0, 2)) {
-      page.drawText(line, { x: MARGIN, y, size: 12.5, font: body, color: PDF_WHITE_MUTED })
-      y -= 18
-    }
+  for (const line of localityLines) {
+    page.drawText(line, { x: MARGIN, y, size: 12.5, font: body, color: PDF_WHITE_MUTED })
+    y -= 18
   }
 
   // The gold ticket bar: price and the tracked link, one call to action, the
@@ -354,7 +397,6 @@ async function drawCoverPoster(
     bodyStrong.widthOfTextAtSize(barFit.text, barFit.fontSize) + barPad * 2,
     textMaxW,
   )
-  const barH = 30
   y -= 14
   page.drawRectangle({
     x: MARGIN,

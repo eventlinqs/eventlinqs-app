@@ -1,94 +1,90 @@
 /**
- * poster-parity.mjs - proves the poster split did not move the artwork path.
+ * poster-parity.mjs - guards the poster renderer against ACCIDENTAL drift.
  *
- * src/lib/broadcast/poster.ts was split into drawCoverPoster (the previous
- * renderer, lifted) and drawTypographicPoster (new). The founder's condition
- * was that an event WITH artwork renders identically before and after, because
- * that surface is owned by another branch and a silent change to it would be a
- * regression nobody asked for.
+ * ---------------------------------------------------------------------------
+ * THE BASELINE MOVED ON 9 AUGUST 2026, ON A FOUNDER RULING. READ THIS BEFORE
+ * TREATING A CHANGED HASH AS A REGRESSION.
  *
- * Method: render on the working tree, check out the pre-split renderer, render
- * again, compare. The hash normalises /CreationDate and /ModDate because
- * pdf-lib stamps the current time, so two identical renders always differ by
- * those two strings and by nothing else.
+ * This proof originally compared the artwork poster against commit 96a5a22,
+ * the pre-split renderer, because the condition on splitting poster.ts into two
+ * compositions was that the artwork path must not move at all.
  *
- * The no-artwork hash MUST differ. That composition is the whole point of the
- * work; if it matched, nothing was built.
+ * The founder then ruled that the artwork path SHOULD move: its information
+ * band sat at a flat 45% of the page whatever it held, so a short title left
+ * about a third of it as empty navy, and that was the single thing standing
+ * between the poster and a promoter forwarding it. The band now sizes itself to
+ * its content and the photograph takes the space it does not need.
  *
- * Usage: node scripts/verify/poster-parity.mjs
- * Exit 0 only when the artwork hash is identical AND the no-artwork hash moved.
+ * So the artwork hashes below are DELIBERATELY different from 96a5a22. That was
+ * authorised, it was rendered before and after and looked at, and the
+ * no-artwork composition was proven not to move by a single byte in the same
+ * pass (scripts/verify/poster-band-before-after.mjs: 6 artwork posters changed,
+ * 0 no-artwork posters moved).
+ *
+ * What this proof does NOW is the job it was always meant to do afterwards:
+ * hold the renderer still between deliberate decisions. A changed hash here
+ * means somebody edited the renderer without intending to, which is exactly the
+ * failure the original proof existed to catch.
+ * ---------------------------------------------------------------------------
+ *
+ * Usage:
+ *   node scripts/verify/poster-parity.mjs               check against baseline
+ *   node scripts/verify/poster-parity.mjs --rebaseline  record a NEW baseline
+ *
+ * Re-baselining is a deliberate act and should accompany a deliberate change,
+ * with the reason in the commit message.
  */
 import { execFileSync } from 'node:child_process'
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 
-/** The commit holding the pre-split renderer. */
-const BEFORE_REF = process.env.POSTER_PARITY_REF || '96a5a22'
-const TARGET = 'src/lib/broadcast/poster.ts'
 const PARITY = 'docs/design/poster-composition/parity.json'
-const WORK = join(tmpdir(), 'poster-parity')
+const BASELINE = 'docs/design/poster-composition/parity-baseline.json'
+const REBASELINE = process.argv.includes('--rebaseline')
 
-function run(cmd, args) {
-  execFileSync(cmd, args, { stdio: 'inherit', shell: process.platform === 'win32' })
+execFileSync('npx', ['vitest', 'run', 'tests/unit/poster-parity.test.ts'], {
+  stdio: 'inherit',
+  shell: process.platform === 'win32',
+})
+
+const current = JSON.parse(readFileSync(PARITY, 'utf8'))
+
+if (REBASELINE || !existsSync(BASELINE)) {
+  writeFileSync(
+    BASELINE,
+    `${JSON.stringify(
+      {
+        note: 'Baseline for the poster renderer. Moved 9 August 2026 on a founder ruling: the artwork band now sizes itself to its content. See the header of scripts/verify/poster-parity.mjs.',
+        withArtwork: current.withArtwork,
+        noArtwork: current.noArtwork,
+      },
+      null,
+      2,
+    )}\n`,
+  )
+  console.log(`\n[parity] baseline written to ${BASELINE}`)
+  console.log(`  withArtwork ${current.withArtwork.sha256}`)
+  console.log(`  noArtwork   ${current.noArtwork.sha256}`)
+  process.exit(0)
 }
 
-function render(label) {
-  run('npx', ['vitest', 'run', 'tests/unit/poster-parity.test.ts'])
-  const parsed = JSON.parse(readFileSync(PARITY, 'utf8'))
-  writeFileSync(join(WORK, `${label}.json`), JSON.stringify(parsed, null, 2))
-  return parsed
-}
+const baseline = JSON.parse(readFileSync(BASELINE, 'utf8'))
 
-mkdirSync(WORK, { recursive: true })
-
-// Snapshot the working-tree file BEFORE swapping it, and restore from that
-// snapshot rather than from git. `git checkout -- <file>` would discard any
-// uncommitted edits, which is not a theoretical risk: an earlier version of
-// this script silently reverted a fix that had just been made and not yet
-// committed, and the only symptom was tests failing again for no visible
-// reason.
-const snapshot = readFileSync(TARGET, 'utf8')
-
-let after
-let before
-try {
-  console.log('\n[parity] 1/2 rendering on the working tree...')
-  after = render('after')
-
-  console.log(`\n[parity] 2/2 rendering against ${BEFORE_REF} (pre-split renderer)...`)
-  const old = execFileSync('git', ['show', `${BEFORE_REF}:${TARGET}`], { encoding: 'utf8' })
-  writeFileSync(TARGET, old)
-  before = render('before')
-} finally {
-  // Always restore, even on a thrown render, so a failed proof never leaves the
-  // old renderer sitting in the working tree.
-  writeFileSync(TARGET, snapshot)
-}
-
-// Re-render so the PDFs left on disk are the CURRENT renderer's, not the old
-// one's. They are opened and looked at by a human, so they must be the truth.
-console.log('\n[parity] restoring current-renderer artefacts...')
-render('after-restored')
-
-const artworkIdentical = before.withArtwork.sha256 === after.withArtwork.sha256
-const noArtworkChanged = before.noArtwork.sha256 !== after.noArtwork.sha256
+const artworkSame = baseline.withArtwork.sha256 === current.withArtwork.sha256
+const noArtworkSame = baseline.noArtwork.sha256 === current.noArtwork.sha256
 
 console.log('\n---------------------------------------------------------')
-console.log(`artwork identical: ${artworkIdentical}`)
-console.log(`  before ${before.withArtwork.sha256} (${before.withArtwork.bytes} bytes)`)
-console.log(`  after  ${after.withArtwork.sha256} (${after.withArtwork.bytes} bytes)`)
-console.log(`no-artwork changed: ${noArtworkChanged}`)
-console.log(`  before ${before.noArtwork.sha256} (${before.noArtwork.bytes} bytes)`)
-console.log(`  after  ${after.noArtwork.sha256} (${after.noArtwork.bytes} bytes)`)
+console.log(`artwork    ${artworkSame ? 'unchanged' : 'CHANGED'}`)
+console.log(`  baseline ${baseline.withArtwork.sha256}`)
+console.log(`  current  ${current.withArtwork.sha256}`)
+console.log(`no-artwork ${noArtworkSame ? 'unchanged' : 'CHANGED'}`)
+console.log(`  baseline ${baseline.noArtwork.sha256}`)
+console.log(`  current  ${current.noArtwork.sha256}`)
 console.log('---------------------------------------------------------\n')
 
-if (!artworkIdentical) {
-  console.error('[parity] FAILED: the artwork path moved. The lift was not verbatim.')
+if (!artworkSame || !noArtworkSame) {
+  console.error('[parity] FAILED: the poster renderer moved.')
+  console.error('  If this was DELIBERATE, render before and after, look at both,')
+  console.error('  then re-run with --rebaseline and say why in the commit message.')
   process.exit(1)
 }
-if (!noArtworkChanged) {
-  console.error('[parity] FAILED: the no-artwork path is unchanged, so nothing was built.')
-  process.exit(1)
-}
-console.log('[parity] PASS')
+console.log('[parity] PASS - the renderer is where it was left.')

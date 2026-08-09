@@ -91,6 +91,15 @@ export type FetchPublicEventsFilters = {
   faith?: string
   /** Community-moment slug; contributes a heritage and a date window. */
   moment?: string
+  /**
+   * Which entity the header search was scoped to. Narrows where the query is
+   * allowed to match; without it all four search tabs behaved identically.
+   *
+   * MERGE NOTE: added by origin/main's search-scope work while this branch
+   * added suburb, organiser, faith and moment. Both sides are kept, because
+   * dropping either loses a shipped filter.
+   */
+  tab?: 'events' | 'cities' | 'communities' | 'organisers'
 }
 
 export type BboxFilter = {

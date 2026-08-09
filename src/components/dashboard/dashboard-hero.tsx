@@ -1,12 +1,10 @@
 import Link from 'next/link'
 import { PlusCircle } from 'lucide-react'
+import { GreetingText } from './greeting-text'
 
-function greeting(now = new Date()): string {
-  const hour = now.getHours()
-  if (hour < 12) return 'Good morning'
-  if (hour < 18) return 'Good afternoon'
-  return 'Good evening'
-}
+// The greeting moved into a small client component. It reads a clock, and a
+// clock read during render disagrees between a UTC server and an Australian
+// browser. See greeting-text.tsx for the whole story.
 
 type Props = {
   firstName: string
@@ -18,7 +16,7 @@ export function DashboardHero({ firstName, canCreateEvent = true }: Props) {
     <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
       <div>
         <h1 className="font-display text-2xl font-bold text-ink-900 sm:text-3xl">
-          {greeting()}, {firstName}
+          <GreetingText firstName={firstName} />
         </h1>
         <p className="mt-1 text-sm text-ink-600">
           Here is what is happening across your events today.

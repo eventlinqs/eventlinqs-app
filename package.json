@@ -19,7 +19,9 @@
     "guards:contract-node": "node scripts/guards/contract-node.mjs",
     "guards:surface": "node scripts/guards/contract-node.mjs scripts/guards/lib/generate-node-surface.mjs",
     "guards:drills": "node scripts/verify/guard-failure-drills.mjs",
-    "verify:provider-cost": "node scripts/verify/auth-provider-cache-cost.mjs"
+    "verify:provider-cost": "node scripts/verify/auth-provider-cache-cost.mjs",
+    "gates": "node scripts/guards/run-guards.mjs && node scripts/guards/preview-deployment-state.mjs && tsc --noEmit && eslint && vitest run && npm run build",
+    "gates:preview-state": "node scripts/guards/preview-deployment-state.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",

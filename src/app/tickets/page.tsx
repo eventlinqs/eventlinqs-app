@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { formatEventDate } from '@/lib/dates/event-time'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
@@ -22,6 +23,8 @@ interface MyTicketRow {
   event: {
     title: string
     start_date: string
+    /** The EVENT's zone. Formatting in the reader's zone shows the wrong day. */
+    timezone: string | null
     venue_name: string | null
     venue_city: string | null
     allow_seat_self_service: boolean | null
@@ -37,18 +40,10 @@ interface MyTicketRow {
   } | null
 }
 
-function formatAuDate(iso: string): string {
-  try {
-    return new Intl.DateTimeFormat('en-AU', {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    }).format(new Date(iso))
-  } catch {
-    return iso
-  }
-}
+// This formatted the event's start_date with NO timeZone, so it used the
+// runtime's: UTC on the server, the reader's in the browser. A buyer holding a
+// ticket to a 9pm Perth event and reading it in Sydney was shown the NEXT DAY.
+// This is the page people open to check when to turn up.
 
 const STATUS_TONE: Record<string, string> = {
   valid: 'bg-success/15 text-success',
@@ -71,7 +66,7 @@ export default async function MyTicketsPage() {
   const { data } = await supabase
     .from('tickets')
     .select(
-      'id, ticket_code, secret, status, created_at, event:events(title, start_date, venue_name, venue_city, allow_seat_self_service, organiser_assigns_seats), order_item:order_items(item_name), seat:seats(row_label, seat_number, note, section:seat_map_sections(name))',
+      'id, ticket_code, secret, status, created_at, event:events(title, start_date, timezone, venue_name, venue_city, allow_seat_self_service, organiser_assigns_seats), order_item:order_items(item_name), seat:seats(row_label, seat_number, note, section:seat_map_sections(name))',
     )
     .order('created_at', { ascending: false })
 
@@ -131,7 +126,7 @@ export default async function MyTicketsPage() {
                       </p>
                       {t.event?.start_date && (
                         <p className="mt-0.5 text-sm text-ink-700">
-                          {formatAuDate(t.event.start_date)}
+                          {formatEventDate(t.event.start_date, t.event.timezone)}
                         </p>
                       )}
                       {(t.event?.venue_name || t.event?.venue_city) && (

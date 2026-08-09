@@ -80,6 +80,13 @@ const PRESETS = new Set([
 
 const SORTS = new Set(['relevance', 'date_asc', 'price_asc', 'popularity'])
 const VIEWS = new Set(['grid', 'map'])
+const TABS = new Set(['events', 'cities', 'communities', 'organisers'])
+
+/**
+ * `date` is the city page's name for the same window `preset` selects. The
+ * chips emit today, weekend, 7d and `week`; `week` is the only one that is not
+ * already a preset value, so it is mapped rather than dropped.
+ */
 
 export type EventsView = 'grid' | 'map'
 
@@ -202,6 +209,11 @@ export function parseEventsSearchParams(
     organiser: raw.organiser?.trim() || undefined,
     faith: faith && isKnownFaith(faith) ? faith : undefined,
     moment: moment ? raw.moment?.trim() : undefined,
+    // MERGE NOTE: origin/main collapsed suburb into city as a text match. This
+    // branch keeps suburb as its own filter, resolved to a district centroid
+    // and applied as a radius, which is what /city/[slug]/[suburb] needs. The
+    // tab scope below is main's and is additive, so both survive.
+    tab: raw.tab && TABS.has(raw.tab) ? (raw.tab as FetchPublicEventsFilters['tab']) : undefined,
   }
 
   const tab = raw.tab && isSearchTab(raw.tab) ? raw.tab : 'events'

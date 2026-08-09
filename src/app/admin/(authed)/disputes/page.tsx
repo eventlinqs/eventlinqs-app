@@ -5,6 +5,7 @@ import { can } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { listDisputes } from '@/lib/admin/disputes'
 import { formatMoneyDisplay } from '@/lib/money/format'
+import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -30,7 +31,7 @@ function statusBadgeClass(status: string): string {
 }
 
 function formatDueDate(iso: string): string {
-  return new Intl.DateTimeFormat('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(iso))
+  return new Intl.DateTimeFormat('en-AU', { day: 'numeric', month: 'short', year: 'numeric', timeZone: PLATFORM_TIME_ZONE }).format(new Date(iso))
 }
 
 

@@ -9,6 +9,8 @@
  *   auth-provider-guard        no provider button without a server-resolved gate
  *   no-supabase-smtp           no auth flow on Supabase's 2-per-hour built-in mailer
  *   sender-single-source       one definition of the sending identity
+ *   no-unguarded-credential-form  no password field submittable before hydration
+ *   no-control-characters      no heredoc-corrupted byte in any source file
  *   auth-autocomplete          credential-manager attributes on every auth form
  *   auth-provider-cost         no provider gate on a route with no provider button
  *   canonical-host             one definition of the canonical host, resolved everywhere
@@ -30,6 +32,14 @@
  * "keep my side" delete the other side's guard with nothing going red: the build
  * would have stayed green while an entire class of regression stopped being
  * checked. That is the failure mode this comment exists to prevent recurring.
+ *
+ * preview-deployment-state: fails when the newest deployment for the current
+ * branch is in ERROR. Added 9 August 2026 after feat/public-composer was found
+ * with SIX consecutive preview builds in ERROR while tsc, eslint, 1839 tests
+ * and nine guards all reported green, because none of them can see a bundler
+ * failure. Skips loudly without a VERCEL_TOKEN rather than failing on every
+ * machine without credentials, because a guard everyone disables protects
+ * nothing. A skip is the honest state, not a pass.
  *
  * The resolution is deliberately structural rather than a longer `&&` chain.
  * `prebuild` now names ONE runner, and the list below is the single place a
@@ -71,6 +81,8 @@ const GUARDS = [
   'scripts/guards/auth-provider-cost-guard.mjs',
   'scripts/guards/no-supabase-smtp.mjs',
   'scripts/guards/sender-single-source.mjs',
+  'scripts/guards/no-unguarded-credential-form.mjs',
+  'scripts/guards/no-control-characters.mjs',
   'scripts/guards/auth-autocomplete-guard.mjs',
   // One definition of the canonical host. The same wrong-domain defect had
   // landed in six places, including four share-card generators that printed it
@@ -79,6 +91,9 @@ const GUARDS = [
   // A share code is a readable slug, so it must never be mintable as something
   // that shadows a real route, and nothing else may take the /e/ segment.
   'scripts/guards/short-link-namespace.mjs',
+  // A branch whose preview has not built is a branch whose verification is
+  // fiction (founder ruling, 9 August 2026). Skips loudly without a token.
+  'scripts/guards/preview-deployment-state.mjs',
   // From PR #111. See THE BOUNDARY above: separate file, separate question,
   // shared runner. Absent from this list, `prebuild` stops checking the browser
   // bundle for untree-shakeable namespace imports and nothing goes red.

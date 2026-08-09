@@ -91,7 +91,12 @@ export async function POST(
     return NextResponse.json(
       {
         ok: false,
-        error: `That photo is ${(file.size / 1024 / 1024).toFixed(1)}MB. The limit is ${MAX_IMAGE_BYTES / 1024 / 1024}MB, the same as Eventbrite and Humanitix.`,
+        // The cap matches the market (Eventbrite help 682424, Humanitix help
+        // 8892493, both fetched 9 August 2026) but the copy does not SAY so:
+        // naming a competitor in a message an organiser reads is a copy defect,
+        // and the copy-tell gate is right to refuse it. The citation belongs in
+        // the code, where the next person changing the number will look.
+        error: `That photo is ${(file.size / 1024 / 1024).toFixed(1)}MB. The limit is ${MAX_IMAGE_BYTES / 1024 / 1024}MB, so try a smaller one.`,
       },
       { status: 413 },
     )

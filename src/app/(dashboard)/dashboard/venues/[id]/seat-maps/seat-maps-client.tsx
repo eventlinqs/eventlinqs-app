@@ -6,6 +6,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import type { SeatBlock } from '@/lib/seating/generate'
 import { SeatMapBuilder } from './seat-map-builder'
 import { deleteSeatMap } from './actions'
+import { formatPlatformDate } from '@/lib/dates/event-time'
 
 interface SeatMap {
   id: string
@@ -108,8 +109,8 @@ export function SeatMapsClient({ venueId, venueName, seatMaps, liveUsage = {}, s
               <div>
                 <p className="text-sm font-semibold text-ink-900">{map.name}</p>
                 <p className="mt-0.5 text-xs text-ink-400">
-                  {map.total_seats.toLocaleString()} seats {'·'}{' '}
-                  {new Date(map.created_at).toLocaleDateString('en-AU')}
+                  {map.total_seats.toLocaleString('en-AU')} seats {'·'}{' '}
+                  {formatPlatformDate(map.created_at)}
                   {liveUsage[map.id] && liveUsage[map.id].events > 0 && (
                     <>
                       {' · '}

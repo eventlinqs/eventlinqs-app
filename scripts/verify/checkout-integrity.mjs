@@ -72,17 +72,41 @@ for (const ev of events) {
     // the buyer picks a quantity and the organiser allocates seats later).
     const picksOwnSeat = ev.has_reserved_seating && !ev.organiser_assigns_seats
     if (picksOwnSeat) {
-      await page.waitForSelector('svg[aria-label="Seat map"]', { timeout: 20000 })
-      for (let a = 0; a < 6 && !reached; a++) {
-        const seats = page.locator('svg[aria-label="Seat map"] g[style*="pointer"]')
-        if ((await seats.count()) <= a) break
-        await seats.nth(a).click()
-        const rb = page.getByRole('button', { name: /Reserve 1 seat/ })
+      // THE SEAT MAP IS A CANVAS, NOT AN SVG.
+      //
+      // This block waited for svg[aria-label="Seat map"] and clicked
+      // g[style*="pointer"] children. The seating renderer was rebuilt onto a
+      // Canvas scene graph on 2026-07-26, so that selector has matched nothing
+      // since, and there are no per-seat DOM nodes left to click. The gate
+      // therefore timed out on EVERY seated event and reported RED regardless
+      // of whether checkout worked. Measured 2026-08-08 on the preview: 27 of
+      // 27 seated events "failed" this way, with zero page errors and a
+      // perfectly functional canvas.
+      //
+      // A gate that cannot pass is worse than no gate: this one was written
+      // because a green report coexisted with a broken checkout, and it had
+      // become a red report that coexists with a working one. Either way
+      // nobody can read it.
+      //
+      // Seats are selected through the keyboard interface the canvas already
+      // exposes and advertises in its own aria-label ("Arrow keys move seat to
+      // seat, Enter selects"). That drives the real selection path AND proves
+      // the accessible route works, which clicking pixels never did.
+      const canvas = page.locator('canvas[aria-label*="Seat map" i]').first()
+      await canvas.waitFor({ state: 'visible', timeout: 20000 })
+      await canvas.focus()
+      for (let a = 0; a < 8 && !reached; a++) {
+        await page.keyboard.press('ArrowRight')
+        await page.waitForTimeout(120)
+        await page.keyboard.press('Enter')
+        await page.waitForTimeout(400)
+        const rb = page.getByRole('button', { name: /Reserve \d+ seat/ })
         if (await rb.count()) {
           await rb.click()
-          try { await page.waitForURL(/checkout/, { timeout: 12000, waitUntil: 'commit' }); reached = true } catch { /* seat taken, retry */ }
+          try { await page.waitForURL(/checkout/, { timeout: 12000, waitUntil: 'commit' }); reached = true } catch { /* seat taken, step on */ }
         }
       }
+      if (!reached) throw new Error('seat map rendered but no seat could be reserved')
     } else {
       const inc = page.locator('button[aria-label^="Increase"]').first()
       if ((await inc.count()) === 0) throw new Error('no ticket stepper (tickets not on sale?)')

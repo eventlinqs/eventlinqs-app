@@ -1,4 +1,5 @@
 import { createPublicClient } from '@/lib/supabase/public-client'
+import { Suspense } from 'react'
 import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -48,6 +49,7 @@ import { getEventFeeRates } from '@/lib/pricing/event-fee-config'
 import type { FeePassType } from '@/lib/payments/fee-math'
 import { EventViewTracker } from '@/components/features/events/event-view-tracker'
 import { ShareViewBeacon } from '@/components/broadcast/share-view-beacon'
+import { ReservationNotice } from '@/components/checkout/reservation-notice'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { FollowButton } from '@/components/features/follow/follow-button'
 import { EventSchemaJsonLd } from '@/components/features/events/event-schema-jsonld'
@@ -576,6 +578,13 @@ export default async function EventDetailPage({ params }: Props) {
         priceRange={priceLabel ?? 'Free'}
       />
       <ShareViewBeacon />
+      {/* A buyer whose hold expired mid-payment is returned HERE now, to the
+        * event they were actually buying, with an explanation. */}
+      <div className="mx-auto w-full max-w-7xl px-4 pt-6 sm:px-6">
+        <Suspense fallback={null}>
+          <ReservationNotice backHref="#tickets" backLabel="Choose tickets again" />
+        </Suspense>
+      </div>
       <SiteHeader staticSafe />
 
       {eventBannerState ? (

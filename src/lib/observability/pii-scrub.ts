@@ -41,6 +41,20 @@ const CARD_RE = /\b(?:\d[ -]*?){13,19}\b/g
 // scrub: keep first 8 chars, redact the rest.
 const UUID_RE = /\b([0-9a-f]{8})-([0-9a-f]{4})-([0-9a-f]{4})-([0-9a-f]{4})-([0-9a-f]{12})\b/gi
 
+// A secret carried in a query parameter matches none of the shape patterns
+// above: a password is just a string. On 2026-08-08 the auth forms were found
+// to submit natively before hydration, producing
+// /login?email=...&password=<the real password>, and every one of those URLs
+// would have reached Sentry through request.url with the password intact,
+// because nothing here had a rule for it.
+//
+// The gate on the forms closes the source. This closes the sink, which matters
+// independently: any future link, redirect, or hand-typed URL carrying a
+// credential is redacted on the way out. The parameter NAME is preserved so an
+// investigation can still see that a secret was present.
+const QUERY_SECRET_RE =
+  /([?&](?:password|passwd|pwd|pass|token|secret|api[_-]?key|apikey|access[_-]?token|refresh[_-]?token|auth|code|otp|totp|recovery[_-]?code|session)=)[^&#\s"']+/gi
+
 const SCRUB = '[scrubbed]'
 
 export function scrubString(input: string): string {
@@ -49,6 +63,9 @@ export function scrubString(input: string): string {
   // run before greedy-numeric patterns (PHONE, CARD). Otherwise PHONE_RE
   // would chew the digit-heavy tail of a UUID before UUID_RE sees it.
   return input
+    // Query secrets first: the value may itself look like a JWT or a Stripe id,
+    // and redacting the whole value is stricter than redacting its shape.
+    .replace(QUERY_SECRET_RE, (_m, prefix) => `${prefix}${SCRUB}`)
     .replace(JWT_RE, SCRUB)
     .replace(BEARER_RE, `Bearer ${SCRUB}`)
     .replace(STRIPE_ID_RE, (m) => `${m.split('_')[0]}_${SCRUB}`)

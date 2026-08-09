@@ -226,10 +226,27 @@ async function mintCode(
 
 export type ShareLinkEventKind = 'view' | 'click' | 'conversion'
 
+/** Kinds de-duplicated per (link, visitor, day). */
+const DEDUPED_KINDS: ShareLinkEventKind[] = ['view', 'click']
+
 /**
- * Record one attribution event. For views the (link, visitor, day) is
- * de-duplicated so a refresh never inflates the panel; clicks are recorded
- * per hit; conversions are capped by the unique (link_id, order_id) index.
+ * Record one attribution event. Views AND clicks are de-duplicated per
+ * (link, visitor, day); conversions are capped by the unique
+ * (link_id, order_id) index.
+ *
+ * WHY CLICKS ARE NOW DE-DUPLICATED. They were not, and views were, so the
+ * reach panel put two numbers side by side that were counted by different
+ * rules. Production reads 57 clicks and 3 views, which an organiser reads as
+ * "my sharing did not work". Measured on TEST: 32 click rows came from only 24
+ * distinct (link, visitor) pairs, so a third of the click count was the same
+ * people arriving again. The 19-to-1 production gap is dominated by link
+ * scanners, which follow the redirect server side and never run the
+ * JavaScript that fires the view beacon: one scanner produces clicks
+ * indefinitely and views never.
+ *
+ * Counting both the same way makes the two figures comparable, which is the
+ * only way the panel can be read at all. It deliberately reports FEWER clicks
+ * than before; the previous number was not a count of people.
  */
 export async function recordShareLinkEvent(
   input: {
@@ -242,14 +259,14 @@ export async function recordShareLinkEvent(
 ): Promise<boolean> {
   const client = opts?.client ?? createAdminClient()
 
-  if (input.kind === 'view' && input.visitorHash) {
+  if (DEDUPED_KINDS.includes(input.kind) && input.visitorHash) {
     const dayStart = new Date()
     dayStart.setUTCHours(0, 0, 0, 0)
     const { data: dupe } = await client
       .from('share_link_events')
       .select('id')
       .eq('link_id', input.linkId)
-      .eq('kind', 'view')
+      .eq('kind', input.kind)
       .eq('visitor_hash', input.visitorHash)
       .gte('occurred_at', dayStart.toISOString())
       .limit(1)

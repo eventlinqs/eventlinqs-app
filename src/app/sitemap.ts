@@ -209,10 +209,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Batch 8.2 organiser profile pages.
   try {
     const admin = createAdminClient()
+    // The profile page resolves an organisation with `.eq('status','active')`
+    // and calls notFound() otherwise, so a sitemap without the same predicate
+    // advertises pages that 404. Measured on TEST: 8 of 42 organiser URLs
+    // (every 'pending' organisation) were listed for Google and returned 404.
+    // The two queries must agree; this is the one that was wrong.
     const { data: organisers } = await admin
       .from('organisations')
       .select('slug, updated_at')
       .not('slug', 'is', null)
+      .eq('status', 'active')
       .limit(5000)
     for (const o of organisers ?? []) {
       if (!o.slug) continue
