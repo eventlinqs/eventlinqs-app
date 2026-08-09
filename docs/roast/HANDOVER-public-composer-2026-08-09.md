@@ -160,15 +160,18 @@ free disk above 5 GB, then run the drill.**
 None run tonight. The four surfaces are existing ones and the changes are
 date strings, so regression risk is low, but they are owed and not claimed.
 
-### 3. The deployment for tonight's work
+### 3. The deployment (RESOLVED: READY)
 
-At handover `dpl_667XpaPtEBopgEZN6KMTUsCTJyKx` (commit `bc6f592`) was
-**BUILDING**. The previous deployment on this branch, `dpl_9inyJ15e...`
-(commit `67a1582`), is **READY**.
+`dpl_667XpaPtEBopgEZN6KMTUsCTJyKx`, commit `bc6f592`, state **READY**,
+`readyState: READY`, `aliasError: null`, region syd1, built in 135 seconds.
+Alias `eventlinqs-app-git-feat-public-b39b4c-lawals-projects-c20c0be8.vercel.app`.
 
-**Check the newest one before believing any preview claim about tonight's
-work.** The `preview-deployment-state` guard SKIPS locally with no
-`VERCEL_TOKEN`, and it says so loudly: a skip is not a pass.
+The handover commit `66c11e6` lands after it, so re-check that the newest
+deployment is READY before quoting the preview.
+
+The `preview-deployment-state` guard SKIPS locally with no `VERCEL_TOKEN`, and
+it says so loudly: a skip is not a pass. Setting that token in the environment
+is what makes it real.
 
 ---
 
