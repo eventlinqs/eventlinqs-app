@@ -2,6 +2,10 @@ import { PDFDocument, rgb, type PDFFont, type PDFImage, type PDFPage } from 'pdf
 import fontkit from '@pdf-lib/fontkit'
 import { loadCardFonts } from '@/lib/broadcast/card-fonts'
 import { fitTicketBar, ticketBarText } from '@/lib/broadcast/social-card-layout'
+import {
+  resolvePosterPalette,
+  type PosterPaletteName,
+} from '@/lib/broadcast/poster-palette'
 
 /**
  * THE A4 QR POSTER.
@@ -46,13 +50,15 @@ import { fitTicketBar, ticketBarText } from '@/lib/broadcast/social-card-layout'
  *    Hanken Grotesk, the same faces as the social cards, embedded and subset.
  */
 
+/**
+ * Every brand colour now comes from the resolved palette. The only two literals
+ * left are these, and they are not brand expression: a logo readability tile
+ * and the QR tile are white on EVERY scheme, because their job is contrast
+ * against whatever sits behind them. Putting them in the palette would invite
+ * somebody to tint them and break a scan.
+ */
 const PDF_NAVY = rgb(0.039, 0.086, 0.157) // ink-900 #0A1628
-const PDF_NAVY_DEEP = rgb(0.02, 0.051, 0.094)
-const PDF_GOLD = rgb(0.909, 0.718, 0.22) // gold-400 #E8B738
-const PDF_GOLD_DEEP = rgb(0.831, 0.627, 0.09) // #D4A017
 const PDF_WHITE = rgb(1, 1, 1)
-const PDF_WHITE_MUTED = rgb(0.85, 0.87, 0.9)
-const PDF_WHITE_FAINT = rgb(0.62, 0.66, 0.72)
 
 const PAGE_W = 595.28
 const PAGE_H = 841.89
@@ -85,6 +91,12 @@ export interface PosterInput {
    * docs/design/launch-kit-artefacts/README.md.
    */
   showPlatformMark?: boolean
+  /**
+   * A NAMED scheme, never a colour. Absent or unknown resolves to the default,
+   * which renders byte-identically to every poster made before this existed.
+   * See poster-palette.ts for why this is deliberately not a picker.
+   */
+  palette?: PosterPaletteName | null
 }
 
 type Fonts = {
@@ -235,6 +247,7 @@ async function drawCoverPoster(
   fonts: Fonts,
 ): Promise<void> {
   const { display, displayMid, body, bodyStrong } = fonts
+  const pal = resolvePosterPalette(input.palette)
 
   const logo = input.organiserLogo ? await embed(doc, input.organiserLogo) : null
   const onTile = input.logoPlacement !== 'on-navy'
@@ -299,7 +312,7 @@ async function drawCoverPoster(
   const imageRegionH = PAGE_H - bandH
 
   // Canvas: full-page navy so any gap reads as brand, never as white.
-  page.drawRectangle({ x: 0, y: 0, width: PAGE_W, height: PAGE_H, color: PDF_NAVY })
+  page.drawRectangle({ x: 0, y: 0, width: PAGE_W, height: PAGE_H, color: pal.field })
 
   const embedded = await embed(doc, input.coverImage)
   // Cover-fit into the top region, centred, overflow cropped by the band.
@@ -315,8 +328,8 @@ async function drawCoverPoster(
 
   // The information band, drawn OVER the photograph so a cover-fit overflow is
   // cleanly cropped by its edge.
-  page.drawRectangle({ x: 0, y: 0, width: PAGE_W, height: bandH, color: PDF_NAVY })
-  page.drawRectangle({ x: 0, y: bandH - 3, width: PAGE_W, height: 3, color: PDF_GOLD })
+  page.drawRectangle({ x: 0, y: 0, width: PAGE_W, height: bandH, color: pal.field })
+  page.drawRectangle({ x: 0, y: bandH - 3, width: PAGE_W, height: 3, color: pal.accent })
 
   let y = bandH - 44
 
@@ -345,7 +358,7 @@ async function drawCoverPoster(
       y: y - lh / 2 - 3,
       size: 10,
       font: displayMid,
-      color: PDF_WHITE_MUTED,
+      color: pal.textMuted,
       tracking: 1.2,
     })
     // 22pt of clear air between the mark's lowest drawn edge and the title's
@@ -357,7 +370,7 @@ async function drawCoverPoster(
       y,
       size: 11,
       font: displayMid,
-      color: PDF_WHITE_MUTED,
+      color: pal.textMuted,
       tracking: 1.4,
     })
     y -= 26
@@ -365,15 +378,15 @@ async function drawCoverPoster(
 
   // Title, wrapped, at most three lines. Measured above, drawn here.
   for (const line of titleLines) {
-    page.drawText(line, { x: MARGIN, y, size: titleSize, font: display, color: PDF_WHITE })
+    page.drawText(line, { x: MARGIN, y, size: titleSize, font: display, color: pal.text })
     y -= titleSize + 5
   }
 
   y -= 10
-  page.drawText(input.dateLabel, { x: MARGIN, y, size: 14, font: bodyStrong, color: PDF_GOLD })
+  page.drawText(input.dateLabel, { x: MARGIN, y, size: 14, font: bodyStrong, color: pal.accent })
   y -= 22
   for (const line of localityLines) {
-    page.drawText(line, { x: MARGIN, y, size: 12.5, font: body, color: PDF_WHITE_MUTED })
+    page.drawText(line, { x: MARGIN, y, size: 12.5, font: body, color: pal.textMuted })
     y -= 18
   }
 
@@ -403,14 +416,14 @@ async function drawCoverPoster(
     y: y - barH + 8,
     width: barW,
     height: barH,
-    color: PDF_GOLD,
+    color: pal.accent,
   })
   page.drawText(barFit.text, {
     x: MARGIN + barPad,
     y: y - barH + 19,
     size: barFit.fontSize,
     font: bodyStrong,
-    color: PDF_NAVY,
+    color: pal.onAccent,
   })
 
   // The tracked QR block.
@@ -430,7 +443,7 @@ async function drawCoverPoster(
     y: qrY - 26,
     size: 11,
     font: bodyStrong,
-    color: PDF_GOLD,
+    color: pal.accent,
   })
 }
 
@@ -462,11 +475,12 @@ async function drawTypographicPoster(
   fonts: Fonts,
 ): Promise<void> {
   const { display, displayMid, body, bodyStrong } = fonts
+  const pal = resolvePosterPalette(input.palette)
   const contentW = PAGE_W - MARGIN * 2
 
   // A single deep-navy field. One flat colour over the whole page, so nothing
   // on it reads as a region that was meant to hold something else.
-  page.drawRectangle({ x: 0, y: 0, width: PAGE_W, height: PAGE_H, color: PDF_NAVY_DEEP })
+  page.drawRectangle({ x: 0, y: 0, width: PAGE_W, height: PAGE_H, color: pal.fieldDeep })
 
   const logo = input.organiserLogo ? await embed(doc, input.organiserLogo) : null
   const onTile = input.logoPlacement !== 'on-navy'
@@ -483,7 +497,7 @@ async function drawTypographicPoster(
     y: qrY - 10,
     width: qrSize + 20,
     height: qrSize + 20,
-    color: PDF_WHITE,
+    color: pal.text,
   })
   page.drawImage(qrImage, { x: qrX, y: qrY, width: qrSize, height: qrSize })
   const scanLabel = 'Scan for tickets'
@@ -492,7 +506,7 @@ async function drawTypographicPoster(
     y: qrY - 24,
     size: 10.5,
     font: bodyStrong,
-    color: PDF_GOLD,
+    color: pal.accent,
   })
 
   // The left column of the baseline block shares the row with the QR, so it is
@@ -513,13 +527,13 @@ async function drawTypographicPoster(
   )
   const barH = 32
   const barY = qrY + 2
-  page.drawRectangle({ x: MARGIN, y: barY, width: barW, height: barH, color: PDF_GOLD })
+  page.drawRectangle({ x: MARGIN, y: barY, width: barW, height: barH, color: pal.accent })
   page.drawText(barFit.text, {
     x: MARGIN + barPad,
     y: barY + 11,
     size: barFit.fontSize,
     font: bodyStrong,
-    color: PDF_NAVY,
+    color: pal.onAccent,
   })
 
   // Locality sits above the bar, date above that, both in the left column.
@@ -534,7 +548,7 @@ async function drawTypographicPoster(
       y: detailY,
       size: 13,
       font: body,
-      color: PDF_WHITE_MUTED,
+      color: pal.textMuted,
     })
     detailY += 19
   }
@@ -545,7 +559,7 @@ async function drawTypographicPoster(
       y: detailY,
       size: 17,
       font: bodyStrong,
-      color: PDF_GOLD,
+      color: pal.accent,
     })
     detailY += 30
   }
@@ -563,7 +577,7 @@ async function drawTypographicPoster(
         y: topY - lh - tilePad,
         width: lw + tilePad * 2,
         height: lh + tilePad * 2,
-        color: PDF_WHITE,
+        color: pal.text,
       })
     }
     page.drawImage(logo, { x: MARGIN, y: topY - lh, width: lw, height: lh })
@@ -578,14 +592,14 @@ async function drawTypographicPoster(
       y: topY,
       size: 12,
       font: displayMid,
-      color: PDF_WHITE_MUTED,
+      color: pal.textMuted,
       tracking: 1.6,
     })
     topY -= 22
   }
 
   // The one structural line on the page.
-  page.drawRectangle({ x: MARGIN, y: topY, width: contentW, height: 2, color: PDF_GOLD })
+  page.drawRectangle({ x: MARGIN, y: topY, width: contentW, height: 2, color: pal.accent })
 
   /* ---- THE TITLE, filling everything left between the two blocks ---- */
 
@@ -619,12 +633,15 @@ async function drawTypographicPoster(
   let ty = titleTop - (available - blockH) / 2 - display.heightAtSize(fit.size, { descender: false })
 
   for (const line of fit.lines) {
-    page.drawText(line, { x: MARGIN, y: ty, size: fit.size, font: display, color: PDF_WHITE })
+    page.drawText(line, { x: MARGIN, y: ty, size: fit.size, font: display, color: pal.text })
     ty -= fit.leading
   }
 }
 
 export async function buildEventPosterPdf(input: PosterInput): Promise<Uint8Array> {
+  // The footer below is shared by both compositions, so it resolves the palette
+  // itself rather than depending on whichever branch drew the page.
+  const pal = resolvePosterPalette(input.palette)
   const doc = await PDFDocument.create()
   doc.setTitle(`${input.title} poster`)
   doc.setAuthor(input.organiserName)
@@ -661,14 +678,14 @@ export async function buildEventPosterPdf(input: PosterInput): Promise<Uint8Arra
       y: 30,
       size: markSize,
       font: fonts.displayMid,
-      color: PDF_WHITE_FAINT,
+      color: pal.textFaint,
     })
     page.drawText('.', {
       x: PAGE_W - MARGIN - 3,
       y: 30,
       size: markSize,
       font: fonts.displayMid,
-      color: PDF_GOLD_DEEP,
+      color: pal.accentDeep,
     })
   }
 
