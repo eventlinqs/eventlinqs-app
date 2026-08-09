@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import sharp from 'sharp'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { KIT_DRAFT_COOKIE, isKitDraftToken } from '@/lib/growth/kit-draft'
-import { attachDraftCover, isKitCode } from '@/lib/launch/draft-store'
+import { attachDraftCover, isKitCode, readDraftByToken } from '@/lib/launch/draft-store'
  import { sniffImage } from '@/lib/launch/sniff-image'
 import { applyRateLimit } from '@/lib/rate-limit/middleware'
 import { IMAGE_DOWNSCALE_LONG_EDGE, MAX_IMAGE_BYTES, MAX_IMAGE_PIXELS } from '@/lib/media/limits'
@@ -55,6 +55,20 @@ export async function POST(
   const jar = await cookies()
   const token = jar.get(KIT_DRAFT_COOKIE)?.value
   if (!isKitDraftToken(token)) {
+    return NextResponse.json({ ok: false, error: 'not_your_draft' }, { status: 403 })
+  }
+
+  // OWNERSHIP IS CHECKED BEFORE ANY WRITE, not just before the pointer moves.
+  //
+  // The object path is <code>/cover.webp, derived from the code, which is
+  // SHAREABLE by design, and the upload is an upsert. Checking ownership only
+  // after the write (which is what this route did first) let anybody holding a
+  // shared code REPLACE the owner's artwork: the response still said 403 and
+  // the draft pointer never moved, so it looked refused, but the bytes behind
+  // the owner's poster were the attacker's. attachDraftCover still re-checks
+  // below; this is the check that has to happen first.
+  const owned = await readDraftByToken(token)
+  if (!owned || owned.code !== code) {
     return NextResponse.json({ ok: false, error: 'not_your_draft' }, { status: 403 })
   }
 

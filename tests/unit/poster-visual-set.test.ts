@@ -65,5 +65,10 @@ describe('the poster visual proof set', () => {
 
     writeFileSync(`${OUT}/INDEX.txt`, `${index.join('\n')}\n`)
     expect(index.length).toBe(POSTER_SET.length)
-  })
+    // Six PDFs, two of them embedding real multi-hundred-kilobyte photographs
+    // and all six embedding and subsetting four font faces. That is about 2.8s
+    // alone and comfortably over vitest's 5s default when the suite runs it
+    // alongside everything else, so the budget is explicit rather than left to
+    // whatever else happens to be scheduled at the same time.
+  }, 30_000)
 })

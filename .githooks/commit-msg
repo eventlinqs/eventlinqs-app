@@ -1,0 +1,42 @@
+#!/bin/sh
+#
+# Law 8: no commit carries a trailer naming an AI or a tool as an author.
+#
+# core.hooksPath was already pointed at .githooks, but the directory did not
+# exist, so the law was enforced by memory alone and three commits carrying a
+# Co-Authored-By trailer reached the remote before anybody noticed. A law worth
+# stating is worth a gate; this is the gate.
+#
+# Refuses:
+#   - Co-Authored-By naming Claude, an AI, a bot or a tool
+#   - "Generated with" attribution lines
+#   - the robot emoji
+#
+# A HUMAN co-author is still allowed, because pair-programming trailers are
+# legitimate and this law is about not crediting a tool as a person.
+
+MSG_FILE="$1"
+[ -f "$MSG_FILE" ] || exit 0
+
+fail() {
+  echo "COMMIT REFUSED (Law 8): $1" >&2
+  echo "  Offending line: $2" >&2
+  echo "" >&2
+  echo "  Remove the attribution line and commit again." >&2
+  exit 1
+}
+
+# Strip comment lines before scanning, so the template's own guidance never
+# trips the hook.
+BODY=$(grep -v '^#' "$MSG_FILE")
+
+HIT=$(printf '%s\n' "$BODY" | grep -iE '^[[:space:]]*co-authored-by:.*(claude|anthropic|openai|copilot|cursor|chatgpt|gpt-|\bai\b|bot\b|assistant)' | head -1)
+[ -n "$HIT" ] && fail "a Co-Authored-By trailer names an AI or a tool." "$HIT"
+
+HIT=$(printf '%s\n' "$BODY" | grep -iE 'generated with|created with \[?(claude|chatgpt|copilot)|written by (claude|an ai)' | head -1)
+[ -n "$HIT" ] && fail "an AI attribution line." "$HIT"
+
+HIT=$(printf '%s\n' "$BODY" | grep -F '🤖' | head -1)
+[ -n "$HIT" ] && fail "the robot emoji." "$HIT"
+
+exit 0
