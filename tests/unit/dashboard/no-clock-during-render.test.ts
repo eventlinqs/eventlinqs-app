@@ -83,6 +83,26 @@ function clockReads(src: string): string[] {
   return out
 }
 
+/**
+ * The ONLY reason a file is skipped, as a named function so the coverage
+ * assertion can test it directly.
+ *
+ * This exists because the first version of the coverage assertion checked the
+ * WALK and not the SWEEP. Restoring the `use client` skip inside the loop left
+ * every coverage test green, which was the same blindness the assertion was
+ * written to prevent, one level down. Drilled and confirmed before this
+ * refactor: with `use client` back in here, the sweep silently stopped
+ * examining most of the platform and nothing went red.
+ *
+ * A file gating its clock read on useHydrated has already agreed with the
+ * server on the first render, which is the whole point of that hook. Nothing
+ * else is exempt: Next.js server-renders a client component too, so a
+ * runtime-zone format mismatches there exactly as in a server component.
+ */
+function isExempt(src: string): boolean {
+  return /useHydrated/.test(src)
+}
+
 function walk(dir: string, out: string[] = []): string[] {
   let entries: string[]
   try {
@@ -115,22 +135,6 @@ const files = SCAN_DIRS.flatMap((d) => walk(path.join(ROOT, d)))
  * next day to a reader in Sydney.
  */
 const KNOWN_UNFIXED = new Map([
-  [
-    'src/components/features/home/trending-events-bento.tsx',
-    'homepage trending rail: event.start_date, needs timezone on the bento prop and the home query',
-  ],
-  [
-    'src/components/features/home/surprise-me-modal.tsx',
-    'surprise-me result: s.startDate, needs timezone on the suggestion payload',
-  ],
-  [
-    'src/app/artists/[slug]/page.tsx',
-    'artist credit dates: credit.startDate, needs timezone on the credits query',
-  ],
-  [
-    'src/components/checkout/ticket-selector.tsx',
-    'the "Sale opens" line on the ticket picker: tier.sale_start, needs the event timezone passed into the selector',
-  ],
 ])
 
 describe('server-rendered dashboard components do not read a clock', () => {
@@ -150,7 +154,7 @@ describe('server-rendered dashboard components do not read a clock', () => {
       // The only real exemption is the deliberate pattern: a file that gates
       // its clock read on useHydrated has already agreed with the server on
       // the first render, which is the whole point of that hook.
-      if (/useHydrated/.test(src)) continue
+      if (isExempt(src)) continue
       const rel = path.relative(ROOT, f).replace(/\\/g, '/')
       if (KNOWN_UNFIXED.has(rel)) continue
       const hits = clockReads(src)
@@ -182,6 +186,117 @@ describe('server-rendered dashboard components do not read a clock', () => {
       }
     }
     expect(stale, stale.join('\n')).toEqual([])
+  })
+
+  /**
+   * THE COVERAGE ASSERTION. This is the part that stops the guard going blind.
+   *
+   * This guard has already narrowed TWICE without anybody noticing, and both
+   * times it reported FEWER violations and therefore looked HEALTHIER:
+   *
+   *   1. It skipped every file marked 'use client', which is most of the
+   *      platform. Next.js server-renders a client component too, so those
+   *      files mismatch exactly like a server component.
+   *   2. It matched `.toLocaleString()` and not `new Intl.DateTimeFormat()`,
+   *      so it missed /tickets, the worst instance on the platform.
+   *
+   * That is the same shape as the copy gate that went blind to 3,134 lines
+   * while reporting clean: a scanner whose SCOPE shrinks looks like a codebase
+   * whose QUALITY improved, and nothing tells them apart from the outside.
+   *
+   * So the scope is now asserted, not assumed. These fixtures are planted
+   * strings the matcher MUST catch. If someone narrows the regexes, restores
+   * the 'use client' skip, or points the walk at a smaller tree, this goes red
+   * with a message naming what stopped being covered, instead of the sweep
+   * quietly reporting zero.
+   */
+  describe('the guard cannot narrow without going red', () => {
+    const MUST_CATCH: [string, string][] = [
+      [
+        'toLocaleString with no timeZone',
+        `const x = new Date(iso).toLocaleString('en-AU', { dateStyle: 'medium' })`,
+      ],
+      [
+        'toLocaleDateString with no timeZone',
+        `const x = new Date(iso).toLocaleDateString('en-AU', { weekday: 'short' })`,
+      ],
+      [
+        'toLocaleTimeString with no timeZone',
+        `const x = new Date(iso).toLocaleTimeString('en-AU', { hour: 'numeric' })`,
+      ],
+      [
+        'new Intl.DateTimeFormat with no timeZone (the /tickets miss)',
+        `const x = new Intl.DateTimeFormat('en-AU', { day: 'numeric', month: 'short' }).format(d)`,
+      ],
+      ['a local accessor on a clock read', `const h = new Date().getHours()`],
+      ['a bare toLocaleString on a number', `const n = count.toLocaleString()`],
+    ]
+
+    it.each(MUST_CATCH)('still catches: %s', (_name, fixture) => {
+      expect(clockReads(fixture)).not.toEqual([])
+    })
+
+    const MUST_NOT_CATCH: [string, string][] = [
+      [
+        'a correctly pinned date',
+        `const x = new Date(iso).toLocaleString('en-AU', { dateStyle: 'medium', timeZone: 'Australia/Perth' })`,
+      ],
+      [
+        'a pinned Intl.DateTimeFormat',
+        `const x = new Intl.DateTimeFormat('en-AU', { month: 'short', timeZone: zone }).format(d)`,
+      ],
+      ['an epoch read, identical in every zone', `const t = Date.now()`],
+      ['toISOString, always UTC', `const s = new Date().toISOString()`],
+      ['a number with an explicit locale', `const n = count.toLocaleString('en-AU')`],
+    ]
+
+    it.each(MUST_NOT_CATCH)('still allows: %s', (_name, fixture) => {
+      expect(clockReads(fixture)).toEqual([])
+    })
+
+    /**
+     * The scope itself. A walk pointed at a narrower tree reports fewer
+     * violations and looks better, so the size of the swept set is asserted
+     * rather than trusted. The floor is deliberately well below the current
+     * count so ordinary deletions do not trip it, and well above zero so a
+     * broken walk does.
+     */
+    it('sweeps the whole component tree, not a corner of it', () => {
+      expect(files.length).toBeGreaterThan(300)
+    })
+
+    it('sweeps client components, which is the hole that hid most of the platform', () => {
+      const clientFiles = files.filter((f) => /^['"]use client['"]/m.test(readFileSync(f, 'utf8')))
+      expect(clientFiles.length).toBeGreaterThan(100)
+    })
+
+    /**
+     * The assertion above only proves the WALK lists client files. The skip
+     * that caused the original hole lived INSIDE the sweep, so it left every
+     * coverage test green when this block was first written. This is the one
+     * that actually bites: it tests the exemption decision itself.
+     */
+    it('does not exempt a file merely for being a client component', () => {
+      const clientWithDefect = [
+        `'use client'`,
+        '',
+        `const when = new Date(iso).toLocaleDateString('en-AU', { weekday: 'short' })`,
+      ].join('\n')
+      expect(isExempt(clientWithDefect)).toBe(false)
+      expect(clockReads(clientWithDefect)).not.toEqual([])
+    })
+
+    it('exempts only the deliberate useHydrated pattern', () => {
+      expect(isExempt('const hydrated = useHydrated()')).toBe(true)
+      expect(isExempt('const x = 1')).toBe(false)
+      expect(isExempt(`'use client'`)).toBe(false)
+    })
+
+    it('scans the whole of src, not only the dashboard', () => {
+      expect(SCAN_DIRS).toEqual(['src'])
+      const outsideDashboard = files.filter((f) => !f.includes('dashboard'))
+      expect(outsideDashboard.length).toBeGreaterThan(200)
+    })
   })
 
   it('the greeting itself is client-side and gated on hydration', () => {

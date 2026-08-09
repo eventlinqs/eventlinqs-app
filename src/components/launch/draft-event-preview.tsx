@@ -16,19 +16,39 @@ import type { KitDraftPayload } from '@/lib/launch/draft-store'
  * blank frame.
  */
 
+/**
+ * A draft's startDate is a NAIVE local wall-clock string ("YYYY-MM-DDTHH:mm",
+ * no zone), because the organiser typed a time and has not yet chosen a venue
+ * or a zone for it. There is no event row and so no `events.timezone` to pin.
+ *
+ * The previous version built the Date with the local constructor and formatted
+ * with no timeZone. Those two runtime-zone reads happened to CANCEL, so the
+ * rendered string was in fact stable, but it is indistinguishable from the
+ * defect the clock guard exists to catch and one refactor away from becoming
+ * it. Both reads are now explicit: the parts are assembled as UTC and
+ * formatted as UTC, so the wall-clock the organiser typed is the wall-clock
+ * every reader sees, on every machine, for a reason a reader can check.
+ */
+const DRAFT_ZONE = 'UTC'
+
 function formatDate(local: string): { date: string; time: string } {
   const m = local?.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/)
   if (!m) return { date: '', time: '' }
   const [, y, mo, d, hh, mm] = m
-  const dt = new Date(Number(y), Number(mo) - 1, Number(d), Number(hh), Number(mm))
+  const dt = new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d), Number(hh), Number(mm)))
   if (Number.isNaN(dt.getTime())) return { date: '', time: '' }
   return {
     date: new Intl.DateTimeFormat('en-AU', {
       weekday: 'long',
       day: 'numeric',
       month: 'long',
+      timeZone: DRAFT_ZONE,
     }).format(dt),
-    time: new Intl.DateTimeFormat('en-AU', { hour: 'numeric', minute: '2-digit' })
+    time: new Intl.DateTimeFormat('en-AU', {
+      hour: 'numeric',
+      minute: '2-digit',
+      timeZone: DRAFT_ZONE,
+    })
       .format(dt)
       .toLowerCase(),
   }

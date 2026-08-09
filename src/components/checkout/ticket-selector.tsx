@@ -18,6 +18,7 @@ import {
   type FeeRates,
   type FeePassType,
 } from '@/lib/payments/fee-math'
+import { formatEventDateTime } from '@/lib/dates/event-time'
 
 type TierWithDisplayPrice = TicketTier & { display_price_cents?: number }
 
@@ -41,6 +42,20 @@ interface TicketSelectorProps {
   // back to a plain subtotal.
   feeRates?: FeeRates
   feePassType?: FeePassType
+  /**
+   * The EVENT's IANA zone, for the "Sale opens" line.
+   *
+   * REQUIRED, not optional, and that is the point. This line told a buyer in
+   * another state the wrong time: the sale opening 7pm Perth read as 9pm to a
+   * reader in Sydney, so they came back after it had opened. That is a lost
+   * sale, not a cosmetic date, and an optional prop is how it stayed wrong.
+   * Making it required means a caller that forgets it does not compile.
+   *
+   * Null is accepted for a row with no stored zone; resolveZone falls back to
+   * the platform zone, which is at least identical on the server and in every
+   * browser, unlike the runtime zone.
+   */
+  eventTimezone: string | null
 }
 
 function formatPrice(priceCents: number, currency: string) {
@@ -48,7 +63,7 @@ function formatPrice(priceCents: number, currency: string) {
   return `${currency.toUpperCase()} ${(priceCents / 100).toFixed(2)}`
 }
 
-export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, currency, waitlistEnabled = false, squadBookingEnabled = false, saleBlocked = false, feeRates, feePassType = 'pass_to_buyer' }: TicketSelectorProps) {
+export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, currency, waitlistEnabled = false, squadBookingEnabled = false, saleBlocked = false, feeRates, feePassType = 'pass_to_buyer', eventTimezone }: TicketSelectorProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -254,7 +269,7 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
                     )}
                     {salePending && tier.sale_start && (
                       <p className="mt-1 text-xs font-medium text-gold-600">
-                        Sale opens {new Date(tier.sale_start).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' })}
+                        Sale opens {formatEventDateTime(tier.sale_start, eventTimezone)}
                       </p>
                     )}
                     {!soldOut && !salePending && available <= 20 && (

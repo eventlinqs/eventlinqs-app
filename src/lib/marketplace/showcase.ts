@@ -199,6 +199,8 @@ export interface ArtistCredit {
   slug: string
   title: string
   startDate: string
+  /** The EVENT's IANA zone, so a credit shows the night it was, not the reader's. */
+  timezone: string | null
   venueLabel: string
 }
 
@@ -210,7 +212,7 @@ export async function fetchArtistCredits(
 ): Promise<ArtistCredit[]> {
   const { data } = await admin
     .from('event_artists')
-    .select('status, event:events(id, slug, title, start_date, venue_name, venue_city, status, visibility)')
+    .select('status, event:events(id, slug, title, start_date, timezone, venue_name, venue_city, status, visibility)')
     .eq('artist_id', artistId)
     .eq('status', 'confirmed')
 
@@ -221,6 +223,7 @@ export async function fetchArtistCredits(
       slug: string
       title: string
       start_date: string
+      timezone: string | null
       venue_name: string | null
       venue_city: string | null
       status: string
@@ -248,6 +251,7 @@ export async function fetchArtistCredits(
       slug: e.slug,
       title: e.title,
       startDate: e.start_date,
+      timezone: e.timezone,
       venueLabel: [e.venue_name, e.venue_city].filter(Boolean).join(', '),
     }))
 }
