@@ -13,7 +13,7 @@
 //
 // Usage: node scripts/verify/launch-kit-walk.mjs https://<preview-host>
 import { chromium } from 'playwright'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 
 const BASE = process.argv[2]
 if (!BASE) {
@@ -32,6 +32,27 @@ const ARRIVALS = [
   ['charity', 'Trivia night for Geelong Animal Rescue, Sat 12th September, $30 a head, tables of 8, at the RSL'],
   ['birthday', "Ruby's 16th, Saturday 20th September, 6pm at our place in Belmont, about 40 kids, no charge"],
 ]
+
+/**
+ * Half the arrivals upload artwork. The photograph is generated rather than
+ * committed: it is 3625 x 4961, the founder's own reported camera size, and it
+ * carries EXIF including a GPS IFD so the walk also exercises the stripping.
+ */
+const WITH_ARTWORK = new Set(['dj', 'market', 'birthday'])
+const PHOTO = process.env.WALK_PHOTO ?? 'docs/roast/launch-walk-preview-2026-08-09/walk-photo.jpg'
+
+if (!existsSync(PHOTO)) {
+  const sharp = (await import('sharp')).default
+  await sharp('public/images/hero/afrobeats.jpg')
+    .resize({ width: 3625, height: 4961, fit: 'cover' })
+    .jpeg({ quality: 80 })
+    .withExif({
+      IFD0: { Copyright: 'A Real Person', Make: 'Apple', Model: 'iPhone 15 Pro' },
+      IFD3: { GPSLatitudeRef: 'S', GPSLongitudeRef: 'E' },
+    })
+    .toFile(PHOTO)
+  console.log(`[walk] generated ${PHOTO} (3625x4961, with GPS EXIF)`)
+}
 
 const results = []
 const browser = await chromium.launch()
@@ -56,6 +77,30 @@ for (const [name, text] of ARRIVALS) {
   await page.waitForSelector('#kit-reveal-heading', { timeout: 45000 })
 
   const body = await page.innerText('main')
+
+  // ARTWORK ON HALF THE ARRIVALS.
+  //
+  // A poster with no photograph in it will never match what a promoter could
+  // make themselves, so half the walk exercises the composition an organiser
+  // actually gets after uploading, and half keeps proving the typographic one.
+  // Split by index rather than by kind, so neither composition only ever sees
+  // the flattering inputs.
+  let uploadStatus = null
+  if (WITH_ARTWORK.has(name)) {
+    const input = page.locator('input[type="file"][name="cover"]')
+    await input.waitFor({ state: 'attached', timeout: 30000 })
+    await input.setInputFiles(PHOTO)
+    // The control reports its own outcome; waiting on that rather than on a
+    // timeout means a silent failure fails the walk instead of passing it.
+    await page
+      .waitForSelector('text=Your artwork is on the poster', { timeout: 45000 })
+      .then(() => {
+        uploadStatus = 'ok'
+      })
+      .catch(async () => {
+        uploadStatus = (await page.locator('[role="alert"]').first().innerText().catch(() => null)) ?? 'failed'
+      })
+  }
 
   // Give the card renders time to come back. They are sharp renders behind a
   // cold lambda, so this is generous on purpose.
@@ -127,6 +172,8 @@ for (const [name, text] of ARRIVALS) {
     downloadGateVisible: /needs an account/i.test(body),
     consoleErrors: consoleErrors.length,
     consoleErrorSample: consoleErrors.slice(0, 3),
+    withArtwork: WITH_ARTWORK.has(name),
+    uploadStatus,
   }
 
   await page.screenshot({ path: `${OUT}/shots/${name}-1440.png`, fullPage: true })
@@ -139,7 +186,7 @@ for (const [name, text] of ARRIVALS) {
   await page.screenshot({ path: `${OUT}/shots/${name}-390.png`, fullPage: true })
 
   results.push(row)
-  console.log(`${name}: cards ${row.cardsDecoded}/${row.cardsFound}, captions ${row.captionCount}, poster ${row.posterStatus} ${row.posterBytes}b pdf=${row.posterIsPdf}, dlGate=${row.downloadStatus}, overflow=${row.overflow390}`)
+  console.log(`${name}[${row.withArtwork?"artwork:"+row.uploadStatus:"no-artwork"}]: cards ${row.cardsDecoded}/${row.cardsFound}, captions ${row.captionCount}, poster ${row.posterStatus} ${row.posterBytes}b pdf=${row.posterIsPdf}, dlGate=${row.downloadStatus}, overflow=${row.overflow390}`)
 
   await ctx.close()
 }

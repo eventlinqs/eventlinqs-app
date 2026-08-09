@@ -11,7 +11,7 @@
       "ticketsFraming": true,
       "attendanceFraming": false,
       "hasKitLink": true,
-      "kitCode": "pk3xa9254qak",
+      "kitCode": "udqb3n7c6z2e",
       "cardsFound": 3,
       "cardsDecoded": 3,
       "cardDims": [
@@ -20,9 +20,9 @@
         "1440x1800"
       ],
       "cardStatus": 200,
-      "cardBytes": 180173,
+      "cardBytes": 468316,
       "posterStatus": 200,
-      "posterBytes": 26002,
+      "posterBytes": 694107,
       "posterIsPdf": true,
       "downloadRefusedWhenSignedOut": true,
       "downloadStatus": 401,
@@ -39,6 +39,8 @@
       "downloadGateVisible": true,
       "consoleErrors": 0,
       "consoleErrorSample": [],
+      "withArtwork": true,
+      "uploadStatus": "ok",
       "overflow390": 0
     },
     {
@@ -51,7 +53,7 @@
       "ticketsFraming": true,
       "attendanceFraming": false,
       "hasKitLink": true,
-      "kitCode": "5da22z3antch",
+      "kitCode": "sjtk4hjhd4w7",
       "cardsFound": 3,
       "cardsDecoded": 3,
       "cardDims": [
@@ -60,9 +62,9 @@
         "1440x1800"
       ],
       "cardStatus": 200,
-      "cardBytes": 140387,
+      "cardBytes": 140616,
       "posterStatus": 200,
-      "posterBytes": 24539,
+      "posterBytes": 24963,
       "posterIsPdf": true,
       "downloadRefusedWhenSignedOut": true,
       "downloadStatus": 401,
@@ -79,6 +81,8 @@
       "downloadGateVisible": true,
       "consoleErrors": 0,
       "consoleErrorSample": [],
+      "withArtwork": false,
+      "uploadStatus": null,
       "overflow390": 0
     },
     {
@@ -91,7 +95,7 @@
       "ticketsFraming": false,
       "attendanceFraming": true,
       "hasKitLink": true,
-      "kitCode": "qzptce347ded",
+      "kitCode": "az27mc6qm5bj",
       "cardsFound": 3,
       "cardsDecoded": 3,
       "cardDims": [
@@ -100,9 +104,9 @@
         "1440x1800"
       ],
       "cardStatus": 200,
-      "cardBytes": 151049,
+      "cardBytes": 458603,
       "posterStatus": 200,
-      "posterBytes": 25679,
+      "posterBytes": 693889,
       "posterIsPdf": true,
       "downloadRefusedWhenSignedOut": true,
       "downloadStatus": 401,
@@ -119,6 +123,8 @@
       "downloadGateVisible": true,
       "consoleErrors": 0,
       "consoleErrorSample": [],
+      "withArtwork": true,
+      "uploadStatus": "ok",
       "overflow390": 0
     },
     {
@@ -131,7 +137,7 @@
       "ticketsFraming": false,
       "attendanceFraming": true,
       "hasKitLink": true,
-      "kitCode": "n38r9hdjqv88",
+      "kitCode": "6ku66m73fueb",
       "cardsFound": 3,
       "cardsDecoded": 3,
       "cardDims": [
@@ -140,9 +146,9 @@
         "1440x1800"
       ],
       "cardStatus": 200,
-      "cardBytes": 137439,
+      "cardBytes": 137365,
       "posterStatus": 200,
-      "posterBytes": 24705,
+      "posterBytes": 24727,
       "posterIsPdf": true,
       "downloadRefusedWhenSignedOut": true,
       "downloadStatus": 401,
@@ -159,6 +165,8 @@
       "downloadGateVisible": true,
       "consoleErrors": 0,
       "consoleErrorSample": [],
+      "withArtwork": false,
+      "uploadStatus": null,
       "overflow390": 0
     },
     {
@@ -171,7 +179,7 @@
       "ticketsFraming": true,
       "attendanceFraming": false,
       "hasKitLink": true,
-      "kitCode": "c4pkh8q5q742",
+      "kitCode": "yujqhd4vgvcm",
       "cardsFound": 3,
       "cardsDecoded": 3,
       "cardDims": [
@@ -180,9 +188,9 @@
         "1440x1800"
       ],
       "cardStatus": 200,
-      "cardBytes": 168230,
+      "cardBytes": 167953,
       "posterStatus": 200,
-      "posterBytes": 26445,
+      "posterBytes": 26175,
       "posterIsPdf": true,
       "downloadRefusedWhenSignedOut": true,
       "downloadStatus": 401,
@@ -199,6 +207,8 @@
       "downloadGateVisible": true,
       "consoleErrors": 0,
       "consoleErrorSample": [],
+      "withArtwork": false,
+      "uploadStatus": null,
       "overflow390": 0
     },
     {
@@ -211,7 +221,7 @@
       "ticketsFraming": false,
       "attendanceFraming": true,
       "hasKitLink": true,
-      "kitCode": "urkmuj89v4zq",
+      "kitCode": "k7uw37jea9uk",
       "cardsFound": 3,
       "cardsDecoded": 3,
       "cardDims": [
@@ -220,9 +230,9 @@
         "1440x1800"
       ],
       "cardStatus": 200,
-      "cardBytes": 124208,
+      "cardBytes": 442904,
       "posterStatus": 200,
-      "posterBytes": 24067,
+      "posterBytes": 692655,
       "posterIsPdf": true,
       "downloadRefusedWhenSignedOut": true,
       "downloadStatus": 401,
@@ -239,6 +249,8 @@
       "downloadGateVisible": true,
       "consoleErrors": 0,
       "consoleErrorSample": [],
+      "withArtwork": true,
+      "uploadStatus": "ok",
       "overflow390": 0
     }
   ]

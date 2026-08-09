@@ -252,3 +252,66 @@ What it does NOT bound, stated plainly:
   reachable by URL until the sweep or a report removes it. There is no takedown
   path on this surface yet, and that is a real gap rather than an accepted one.
 
+---
+
+## ROUND 2, after the migration was applied
+
+### A vulnerability found by asserting the wrong thing first
+
+The Mallory test passed while checking only that her upload never moved Ruby's
+draft POINTER. It did not check storage, and storage was where the damage was.
+
+The object path is `<code>/cover.webp`, derived from the code that is shareable
+BY DESIGN, and the upload is an upsert. Ownership was verified AFTER the write.
+So anybody holding a shared code could overwrite the owner's artwork: the
+response said 403, the pointer never moved, and it looked refused, while the
+bytes behind the owner's poster were the attacker's.
+
+Reproduced before fixing:
+
+```
+× REFUSES Mallory: her own valid token, plus Ruby's shareable code
+× refuses Mallory even when Ruby already has artwork, without replacing it
+AssertionError: expected { …(3) } to be null
+```
+
+Ownership now resolves before any write. `attachDraftCover` still re-checks.
+This is the second time in this session that the lesson was the same: the test
+that passes for the wrong reason is more dangerous than no test.
+
+### EVERY PREVIEW BUILD ON THIS BRANCH HAD BEEN FAILING
+
+Found while trying to do exactly what the founder asked, prove the upload on the
+deployed preview. Six consecutive `feat/public-composer` deployments were in
+ERROR state, going back to the act-link commit `d529390`. The branch alias was
+serving an old build, and the other branch built fine so nothing surfaced it.
+
+```
+Error: Command "npm run build" exited with 1
+  ./src/lib/launch/draft-store.ts [Client Component Browser]
+  ./src/lib/launch/bill-ref.ts [Client Component Browser]
+  ./src/components/launch/the-bill.tsx [Client Component Browser]
+```
+
+`bill-ref.ts` imported `KIT_CODE_LENGTH` and `isKitCode` from the `server-only`
+`draft-store.ts`, and `bill-ref` is imported by a client component. Nothing
+about those two needs a server: an alphabet, a length and a regular expression.
+They moved to an isomorphic `kit-code.ts`; `draft-store` re-exports them so
+every existing server-side import is unchanged.
+
+`npm run build` now exits 0 with both new routes present:
+
+```
+BUILD_EXIT=0
+├ ƒ /api/cron/sweep-kit-covers
+├ ƒ /api/launch/[code]/cover
+```
+
+**This is why "green tests" is not the gate.** 1839 unit tests, tsc, lint and
+nine guards were all green against a branch that had not produced a deployable
+build in six commits. `npm run build` was the one gate not being run.
+
+Also recorded: the local build was blocked a second time, by the env isolation
+guard, because `.env.local` points at the PRODUCTION project. The guard did its
+job and the build was run against `.env.test` instead.
+
