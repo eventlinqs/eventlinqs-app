@@ -83,26 +83,35 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const account = await retrieveAccount(org.stripe_account_id)
-    const fullyOnboarded = isFullyOnboarded(account)
+    // RECONCILE, rather than a partial write of its own.
+    //
+    // This block used to update five columns and, like the account.updated handler,
+    // it omitted payout_status. It also omitted stripe_account_country and
+    // payout_destination. So returning from Stripe onboarding could leave a row that
+    // disagreed with Stripe in exactly the way that stranded the founder, and it was
+    // a THIRD place where the definition of "what Stripe says" could drift.
+    //
+    // reconcileConnectedAccount is now the only definition. The return path is a
+    // trigger, not a writer.
+    const { reconcileConnectedAccount } = await import('@/lib/stripe/reconcile-connect')
     const admin = createAdminClient()
-    const update: Record<string, unknown> = {
-      stripe_charges_enabled: Boolean(account.charges_enabled),
-      stripe_payouts_enabled: Boolean(account.payouts_enabled),
-      stripe_capabilities: account.capabilities ?? {},
-      stripe_requirements: account.requirements ?? {},
-      stripe_onboarding_complete: fullyOnboarded,
-    }
-    const { error: updateError } = await admin
-      .from('organisations')
-      .update(update)
-      .eq('id', org.id)
-    if (updateError) {
-      console.error('[connect-return] DB update failed', updateError)
+    const result = await reconcileConnectedAccount(admin, org.id)
+
+    if (!result.ok) {
+      console.error('[connect-return] reconcile failed', { orgId: org.id, reason: result.reason })
+      // Send them to payouts either way: the Refresh Stripe status control there is
+      // the retry, so a failed reconcile is recoverable in the browser rather than a
+      // dead end.
+      return NextResponse.redirect(`${appUrl()}/dashboard/payouts?status=pending`, 303)
     }
 
-    const status = fullyOnboarded ? 'complete' : 'pending'
-    return NextResponse.redirect(`${appUrl()}/dashboard/payouts?status=${status}`, 303)
+    // `org` carries the id needed for the redirect, so the account is only fetched
+    // for the status word shown in the query string.
+    const status = result.canSell ? 'complete' : 'pending'
+    return NextResponse.redirect(
+      `${appUrl()}/dashboard/payouts?status=${status}&org=${encodeURIComponent(org.id)}`,
+      303,
+    )
   } catch (err) {
     console.error('[connect-return] retrieveAccount failed', err)
     return NextResponse.redirect(

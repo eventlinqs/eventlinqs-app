@@ -20,6 +20,10 @@ import { PayoutTermsCard } from '@/components/payouts/payout-terms-card'
 import { ReserveReleaseTimeline } from '@/components/payouts/reserve-release-timeline'
 import { PayoutsHistoryTable } from '@/components/payouts/payouts-history-table'
 import { StripeDashboardButton } from '@/components/payouts/stripe-dashboard-button'
+import { RefreshStripeStatus } from '@/components/payouts/refresh-stripe-status'
+import { OrganisationSwitcher } from '@/components/payouts/organisation-switcher'
+import { resolveOrganiserScope } from '@/lib/payouts/auth'
+import { outstandingFrom } from '@/lib/stripe/reconcile-connect'
 import { RefundsList } from '@/components/payouts/refunds-list'
 import type { Organisation } from '@/types/database'
 import { jsonAsRecord } from '@/lib/json-narrow'
@@ -52,12 +56,18 @@ function readRequirements(value: Record<string, unknown> | null | undefined): st
   return []
 }
 
-export default async function PayoutsPage() {
+export default async function PayoutsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
+}) {
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) redirect('/login?next=/dashboard/payouts')
+
+  const searchParamsResolved = (await searchParams) ?? {}
 
   // Owner-scoped read of Stripe-posture columns.
   //
@@ -74,13 +84,26 @@ export default async function PayoutsPage() {
   // columns granted to `authenticated` would have meant a free signup could
   // read every organiser's payout posture. The ownership filter below is what
   // makes the service-role read safe.
-  const { data: org } = (await createAdminClient()
-    .from('organisations')
-    .select(
-      'id, name, stripe_account_id, stripe_account_country, stripe_charges_enabled, stripe_payouts_enabled, stripe_onboarding_complete, stripe_requirements',
-    )
-    .eq('owner_id', user.id)
-    .maybeSingle()) as { data: Organisation | null }
+  // WHICH organisation. This used to be `.eq('owner_id', user.id).maybeSingle()`,
+  // and maybeSingle returns a PGRST116 error rather than the first row when several
+  // match. One owner_id on production holds SIXTEEN organisations, so this page
+  // showed "Create your organisation first" to the person who owns all sixteen.
+  //
+  // resolveOrganiserScope now lists them, honours ?org=<id>, verifies ownership and
+  // returns the full set so the switcher below can render.
+  const scope = await resolveOrganiserScope(
+    typeof searchParamsResolved.org === 'string' ? searchParamsResolved.org : undefined,
+  )
+
+  const { data: org } = scope.ok
+    ? ((await createAdminClient()
+        .from('organisations')
+        .select(
+          'id, name, stripe_account_id, stripe_account_country, stripe_charges_enabled, stripe_payouts_enabled, stripe_onboarding_complete, stripe_requirements',
+        )
+        .eq('id', scope.org.organisationId)
+        .maybeSingle()) as { data: Organisation | null })
+    : { data: null }
 
   if (!org) {
     return (
@@ -114,6 +137,13 @@ export default async function PayoutsPage() {
   const requirements = readRequirements(jsonAsRecord(org.stripe_requirements))
   const isOnboarded = state === 'complete'
 
+  // What Stripe last told us is outstanding, so the control is not blank before it
+  // is pressed. Derived from the stored requirements payload via the same pure
+  // function the reconciler uses, so the page and a fresh reconcile agree.
+  const storedOutstanding = outstandingFrom({
+    requirements: jsonAsRecord(org.stripe_requirements),
+  } as never)
+
   if (!isOnboarded) {
     return (
       <div className="max-w-3xl">
@@ -125,6 +155,16 @@ export default async function PayoutsPage() {
             </p>
           </div>
         </header>
+
+        {scope.ok ? <OrganisationSwitcher choices={scope.choices} /> : null}
+
+        {/* The way out of a stranded state. Placed ABOVE the onboarding card on
+            purpose: an organiser whose Stripe is already finished but whose row is
+            stale must meet the control that fixes it before the card that tells
+            them to go and finish onboarding they have already done. */}
+        <div className="mb-6">
+          <RefreshStripeStatus organisationId={org.id} initialOutstanding={storedOutstanding} />
+        </div>
 
         <ConnectOnboardingCard
           organisationId={org.id}
@@ -158,6 +198,14 @@ export default async function PayoutsPage() {
         </div>
         <StripeDashboardButton enabled={Boolean(org.stripe_account_id)} />
       </header>
+
+      {scope.ok ? <OrganisationSwitcher choices={scope.choices} /> : null}
+
+      {/* Available on the healthy path too, not only when something looks wrong. An
+          organiser whose row says onboarded can still be stranded by a stale
+          payout_status, which is exactly the state the founder was in, and it does
+          not announce itself on this screen. */}
+      <RefreshStripeStatus organisationId={org.id} initialOutstanding={storedOutstanding} />
 
       <SummaryCards summary={summary} />
 

@@ -19,7 +19,13 @@ export async function GET(request: Request): Promise<NextResponse> {
   const blocked = await applyRateLimit('payouts-read', request)
   if (blocked) return blocked
 
-  const scope = await resolveOrganiserScope()
+  // ?org=<id> names WHICH of the caller's businesses this is about. Without it the
+  // caller's first organisation is used. resolveOrganiserScope verifies ownership
+  // and returns 403 for an id belonging to somebody else, so this parameter cannot
+  // be used to read another owner's payouts.
+  const scope = await resolveOrganiserScope(
+    new URL(request.url).searchParams.get('org') ?? undefined,
+  )
   if (!scope.ok) {
     return NextResponse.json(
       { ok: false, error: scope.reason },
