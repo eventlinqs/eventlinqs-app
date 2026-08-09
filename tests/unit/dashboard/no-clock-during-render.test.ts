@@ -134,7 +134,19 @@ const files = SCAN_DIRS.flatMap((d) => walk(path.join(ROOT, d)))
  * in a different state shows the WRONG DAY. A Perth event at 9pm reads as the
  * next day to a reader in Sydney.
  */
-const KNOWN_UNFIXED = new Map([
+/**
+ * EMPTY, as of 9 August 2026. All four entries were fixed and removed one at a
+ * time, each with its ratchet entry deleted in the same change.
+ *
+ * The type parameters are explicit BECAUSE it is empty: `new Map([])` infers
+ * Map<unknown, unknown>, which makes `rel` unknown and breaks the staleness
+ * loop below at compile time. The next person to add an entry should get a
+ * type error if they pass the wrong shape, not a silently untyped map.
+ *
+ * The contract for anyone adding one back: key is the repo-relative path, value
+ * is what a USER experiences until it is fixed, not what the code does.
+ */
+const KNOWN_UNFIXED = new Map<string, string>([
 ])
 
 describe('server-rendered dashboard components do not read a clock', () => {
