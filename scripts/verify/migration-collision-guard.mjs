@@ -45,6 +45,33 @@ import { execFileSync } from 'node:child_process'
 const DIR = 'supabase/migrations'
 const REMOTE = process.argv.includes('--remote')
 
+/**
+ * Refs excluded from the CROSS-BRANCH scan, with the reason on record.
+ *
+ * The scan reads every ref in the repository, which is right for live work and
+ * wrong for abandoned work: a branch that will never merge cannot collide with
+ * anything, because its migration will never be applied. Leaving such a ref in
+ * makes the guard permanently red, and a permanently red guard gets unregistered
+ * and then protects nothing. That is the failure this whole file exists to
+ * prevent, so the exclusions are narrow, named, and reasoned rather than a
+ * blanket "ignore old branches" rule.
+ *
+ * A ref belongs here ONLY when its migration can never run: the work shipped
+ * elsewhere under a different version, or the branch is abandoned. If in doubt,
+ * leave it in and renumber instead.
+ */
+const SUPERSEDED_REFS = new Map([
+  [
+    'feat/door-checkin-scanner',
+    'abandoned 2026-05-31 and never merged. It carries ' +
+      '20260531000001_checkin_scanner.sql, but that feature SHIPPED on main as ' +
+      '20260625000001_door_checkin_scan.sql, so the file on this branch will ' +
+      'never be applied and its claim on 20260531000001 cannot collide with ' +
+      "anything that runs. main's 20260531000001 is refund_reconcile.",
+  ],
+])
+const isSuperseded = (ref) => SUPERSEDED_REFS.has(ref.replace(/^origin\//, ''))
+
 if (!existsSync(DIR)) {
   console.log(`no ${DIR} directory, nothing to check`)
   process.exit(0)
@@ -129,6 +156,13 @@ console.log('\n--- d. no version is claimed by different files on different bran
     console.log(`  [skip] git unavailable: ${String(err).slice(0, 100)}`)
   }
 
+  // Named, reasoned exclusions, printed so they are visible rather than silent.
+  const excluded = refs.filter(isSuperseded)
+  refs = refs.filter((r) => !isSuperseded(r))
+  for (const ref of [...new Set(excluded.map((r) => r.replace(/^origin\//, '')))]) {
+    console.log(`  [excluded] ${ref}: ${SUPERSEDED_REFS.get(ref)}`)
+  }
+
   if (refs.length) {
     console.log(`  scanning ${refs.length} ref(s)`)
     // version -> filename -> [refs]
@@ -154,9 +188,61 @@ console.log('\n--- d. no version is claimed by different files on different bran
       }
     }
 
-    const crossBranch = [...claims].filter(([, byFile]) => byFile.size > 1)
-    if (crossBranch.length === 0) {
-      console.log(`  [PASS] ${claims.size} version(s) across all refs, each claimed by exactly one filename`)
+    // A RENUMBER THAT THIS BRANCH HAS ALREADY MADE IS NOT AN UNRESOLVED COLLISION.
+    //
+    // Without this, the gate is unsatisfiable by construction. The fix for a
+    // cross-branch collision is to renumber the file, but the other refs keep the
+    // OLD name until they merge, and one of those refs is always origin/main.
+    // So the branch carrying the fix would fail the gate BECAUSE it carries the
+    // fix, and the only way to go green would be to merge the very PR the gate
+    // is blocking. A gate that cannot be satisfied is a gate somebody removes.
+    //
+    // The test is concrete rather than a heuristic: strip the 14-digit version
+    // and compare the remainder. If the working tree holds the same migration at
+    // a DIFFERENT version, this branch has already moved it, and the foreign
+    // claim is pending a merge rather than pending a decision. Reported, never
+    // silent, and never counted as a failure.
+    const suffixOf = (file) => file.replace(/^\d{14}_/, '')
+    const localByVersion = new Map(files.map((f) => [f, /^(\d{14})_/.exec(f)?.[1]]))
+    const renumberedHere = (file, version) => {
+      const suffix = suffixOf(file)
+      for (const [localFile, localVersion] of localByVersion) {
+        if (suffixOf(localFile) === suffix && localVersion !== version) return localVersion
+      }
+      return null
+    }
+
+    const crossBranchAll = [...claims].filter(([, byFile]) => byFile.size > 1)
+    const crossBranch = []
+    for (const [version, byFile] of crossBranchAll) {
+      const stale = [...byFile.keys()].filter((f) => renumberedHere(f, version))
+      if (stale.length && stale.length >= byFile.size - 1) {
+        for (const f of stale) {
+          console.log(
+            `  [pending merge] ${version} ${f} was renumbered to ${renumberedHere(f, version)} on this branch.`,
+          )
+          console.log(`             Still at the old version on: ${byFile.get(f).slice(0, 4).join(', ')}`)
+          console.log('             Clears as each of those refs merges this branch. Not a defect here.')
+        }
+        continue
+      }
+      crossBranch.push([version, byFile])
+    }
+
+    if (refs.length < 2) {
+      // NEVER claim a cross-branch pass on one ref. actions/checkout defaults to
+      // fetch-depth 1, which leaves a single ref in the clone, and this check
+      // would then report PASS having compared a branch with itself. That is
+      // entry 4 of docs/roast/FALSE-POSITIVE-CHECKLIST.md, a gate reporting
+      // SUCCESS because it was given nothing to inspect, and this guard is not
+      // going to become an instance of the thing it was written to catch.
+      console.log(`  [skip] only ${refs.length} ref(s) visible, so there is nothing to compare across.`)
+      console.log('         This is a shallow clone. Set fetch-depth: 0 on the job to enable this check.')
+      console.log('         NOT a pass: the cross-branch question is unanswered here.')
+    } else if (crossBranch.length === 0) {
+      console.log(
+        `  [PASS] ${claims.size} version(s) across ${refs.length} refs, each claimed by exactly one filename`,
+      )
     } else {
       for (const [version, byFile] of crossBranch) {
         console.log(`  [FAIL] version ${version} is claimed by ${byFile.size} DIFFERENT files:`)

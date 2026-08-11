@@ -131,16 +131,32 @@ recorded as done and the other never runs. The payout one does not move, because
 a silently skipped payout release strands every restricted organiser for ever.
 
 TEST still holds `20260809000001` as applied, and `payout_status_unset` would
-inherit that record and never run. Correct it in this order:
+inherit that record and never run.
+
+**There are now TWO repairs, not one** (the taxonomy renumber of 2026-08-12 added
+the second). Both are `--status reverted`, which only deletes a ledger row; it
+runs no SQL and touches no table. Run them together, then push once:
 
 ```
 npx supabase migration repair --status reverted 20260809000001 --linked
-npx supabase migration list --linked        # 20260809000001 no longer applied
+npx supabase migration repair --status reverted 20260808000004 --linked
+npx supabase migration list --linked     # neither version applied any more
 npx supabase db push --linked
 ```
 
-Re-running this file is safe: the bucket insert is `on conflict do nothing` and
-the policy is dropped before it is created.
+**What that push then applies on TEST**, and why each is safe to re-run:
+
+| version | file | effect on TEST |
+|---|---|---|
+| `20260809000001` | `payout_status_unset` | runs for the FIRST time. This is the whole point of the repair |
+| `20260812000001` | `kit_draft_covers` | re-runs. `on conflict do nothing` on the bucket, policy dropped before created |
+| `20260812000002` | `category_taxonomy_repair` | runs for the first time. Every statement is guarded, so on TEST it only settles the category NAME to "Arts and Theatre"; `_r1` already did the rename, the comedy row and the comedy backfill |
+| `20260808000004` | `category_taxonomy_r1` | re-runs, because the repair cleared its row too. Guarded the same way, so it is a no-op on a database it has already run against |
+
+The last row is the one to understand before running: reverting `20260808000004`
+un-records the file that DID run (`_r1`), so it becomes pending again and
+re-executes. That is intended and safe because `_r1` is idempotent, and it is the
+only way to clear the version for the file that did not run.
 
 **Apply with:** `supabase db push --linked`
 

@@ -16,6 +16,7 @@
  *   canonical-host             one definition of the canonical host, resolved everywhere
  *   short-link-namespace       /e/ and /s/ own their segments; no code can shadow a route
  *   check-client-barrel-imports  no third-party namespace import in the browser bundle
+ *   migration-collision-guard  no two migrations claiming one version, on any branch
  *
  * Runs them all rather than short-circuiting, so one pass reports every
  * violation instead of making the founder play whack-a-mole.
@@ -98,6 +99,18 @@ const GUARDS = [
   // shared runner. Absent from this list, `prebuild` stops checking the browser
   // bundle for untree-shakeable namespace imports and nothing goes red.
   'scripts/check-client-barrel-imports.mjs',
+  // Founder ruling 2026-08-12 (R-MIGRATION-GUARD). This guard was written for
+  // exactly the failure it needed to catch, was correct, had a working
+  // cross-branch check, and was WIRED TO NOTHING. It lived in scripts/verify/
+  // and no gate, script or workflow invoked it, so it reported nothing and the
+  // silence read as health. Three real collisions accumulated behind it, one of
+  // which reached TEST and skipped a migration permanently.
+  //
+  // Registered here it runs in `prebuild` and blocks the build, which is the
+  // only place it can act before a colliding version is pushed. It stays in
+  // scripts/verify/ because it is also run by hand with --remote against the
+  // linked project; the path below is the one thing that makes it a gate.
+  'scripts/verify/migration-collision-guard.mjs',
 ]
 
 /**

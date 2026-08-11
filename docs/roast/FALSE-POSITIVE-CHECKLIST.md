@@ -288,6 +288,76 @@ production build hosts are usually the third, and they are usually the poorest.
 
 ---
 
+## 6. A CORRECT GUARD THAT NOTHING INVOKES
+
+**Founder ruling, 12 August 2026: this belongs here as its own entry, and it is
+the fourth instance of the class.**
+
+**What happened.** `scripts/verify/migration-collision-guard.mjs` was written to
+catch exactly one failure: two branches minting the same migration version, so
+`db push` records one as applied and the other never runs and never appears
+pending again. It is a good guard. It has a local-tree check, a duplicate-content
+check, a cross-branch check that reads every ref, and a `--remote` mode that
+compares against the linked project. Its header explains the failure mode better
+than this entry does.
+
+It was invoked by nothing. Not `run-guards.mjs`, not `package.json`, not a
+workflow. It sat in `scripts/verify/` and every gate around it went green.
+
+**What accumulated behind the silence.** Three live collisions:
+
+| version | claimed by | state |
+|---|---|---|
+| `20260809000001` | `kit_draft_covers` vs `payout_status_unset` | caught before either was skipped |
+| `20260808000004` | `category_taxonomy_r1` vs `category_taxonomy_repair` | **already fired on TEST**: `_r1` ran, `_repair` was recorded as applied and never executed |
+| `20260531000001` | `refund_reconcile` vs `checkin_scanner` | superseded branch, no live risk |
+
+The middle row is the guard's own predicted failure, in production data, while
+the guard that predicts it sat in the repository. And `_repair`'s header records
+that it had ALREADY been renumbered once to escape a different collision. Twice
+moved by hand, twice landed on one, because the version was a hand-picked number
+and nothing checked the choice.
+
+**Why this shape is distinct from 4 and 5.** Entry 4 is a gate given nothing to
+inspect; it ran and reported. Entry 5 is a gate that crashed what it protected;
+it ran and screamed. This one **never ran at all**. There was no output to be
+wrong, no red to investigate, no line in a log to disbelieve. The other two can
+be caught by reading a gate's output sceptically. This one cannot, because there
+is no output. It is invisible to every technique in this file.
+
+**The fix.** Registered in `scripts/guards/run-guards.mjs`, so it runs in
+`prebuild` and blocks the build, which is the only moment it can act before a
+colliding version is pushed. Drilled: collision planted, `run-guards` exit 1,
+`[guards] 1 of 13 guard(s) FAILED. Build blocked.`; planted file removed, exit 0,
+`all 13 guards PASS`.
+
+Two things had to be fixed for it to be registerable, and both are worth knowing:
+
+- **It could not have been satisfied.** The fix for a cross-branch collision is a
+  renumber, but every other ref keeps the old name until it merges, and one of
+  those refs is always `origin/main`. The branch carrying the fix would fail
+  because it carried the fix. It now recognises a renumber the working tree has
+  already made and reports `[pending merge]` instead of failing. A gate that
+  cannot be satisfied is a gate somebody removes, which is how this file starts.
+- **It could have become entry 4.** Its cross-branch check reads refs, and a
+  `fetch-depth: 1` clone has one. It now refuses to print PASS when it can see
+  fewer than two refs, and says the question is unanswered instead.
+
+**The rule, and it is a sweep rather than a habit.** Every check must be
+reachable from something that runs on its own: a gate, a script in
+`package.json`, or a workflow step. Existing is not enforcing. Ask of any guard
+you are relying on: *what would invoke this?* If the answer is "someone
+remembering", it is documentation, not a gate.
+
+**The sweep this produced.** 78 checks in `scripts/guards/` and
+`scripts/verify/`; 27 reachable, 51 invoked by nothing. Most of the 51 are
+correctly manual, needing a browser, a running server or credentials. Twelve are
+source-only and deterministic and could be gates today, listed in the handover.
+`scripts/verify/payment-critical-doctrine.mjs` is the one that most deserves the
+next look, because of what it guards.
+
+---
+
 ## THE SHAPE THESE SHARE
 
 Cases where the evidence looked stronger than it was:
@@ -299,6 +369,12 @@ Cases where the evidence looked stronger than it was:
 | 3 | the guard cannot narrow | the anti-narrowing assertion measured the wrong layer |
 | 4 | 200 commits are clean | one commit was clean, and it was never said which |
 | 5 | the guard is enforcing | the guard was crashing, and about to stop every deploy |
+| 6 | the collision guard has us covered | it had never once been invoked |
+
+Entries 4, 5 and 6 are the same organ failing three ways: a gate that reported on
+nothing, a gate that died on the thing it protected, and a gate that was never
+called. Only the first two produce output at all, which is why the third needs a
+sweep rather than a reading habit.
 
 The general rule, and the reason this file exists: **when a gate goes green, ask
 what it would look like if the thing were broken.** If the answer is "the same",

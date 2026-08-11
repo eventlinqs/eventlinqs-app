@@ -1,5 +1,30 @@
 -- Category taxonomy repair.
 --
+-- RENUMBERED A SECOND TIME, 20260808000004 -> 20260812000002 on 2026-08-12, by
+-- founder ruling (R-TAXONOMY-COLLISION). The first renumber below dodged one
+-- collision and landed on another: 20260808000004 was already claimed by
+-- 20260808000004_category_taxonomy_r1.sql on feat/public-composer and
+-- feat/launch-kit-moat. Twice moved, twice collided, because the version was
+-- chosen by hand each time and nothing checked the choice. That is now fixed at
+-- the root rather than by a third careful guess: the cross-branch collision
+-- guard is registered in scripts/guards/run-guards.mjs and blocks the build.
+-- 20260812000002 was verified clear of every version on all 143 refs.
+--
+-- WHAT ACTUALLY HAPPENED ON TEST, measured 2026-08-12 rather than assumed. _r1
+-- is the file that ran; this one was recorded as applied and never executed.
+-- The damage is far smaller than that sounds, because _r1 is a SUPERSET of this
+-- file: same rename, same comedy row, same comedy backfill, plus a tag rewrite
+-- this file does not perform. The ONLY effect lost was the category NAME. TEST
+-- reads 'Arts & Community' (from _r1); this file would have set
+-- 'Arts and Theatre'. TEST has comedy live with 28 published events behind it.
+--
+-- RUNNING THIS NOW IS STILL SAFE AND STILL CORRECT. Every statement is guarded
+-- (WHERE NOT EXISTS / WHERE slug = ...), so on TEST it renames nothing that has
+-- already moved, inserts no duplicate comedy row, and simply settles the name.
+-- On PRODUCTION, where measurement shows arts-culture still present and neither
+-- arts-community nor comedy existing, it does the whole job.
+--
+-- THE ORIGINAL RENUMBER NOTE, kept because it is the evidence for the ruling:
 -- RENUMBERED 20260808000001 -> 20260808000004 on 2026-08-08.
 -- feat/launch-kit-moat carries its own 20260808000001 (city_primary_backfill),
 -- plus ...000002 and ...000003, and is applying them to TEST now. Supabase
