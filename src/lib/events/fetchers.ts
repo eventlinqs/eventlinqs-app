@@ -629,7 +629,7 @@ export async function fetchPublicEvents(
   const page = Math.max(1, input.page ?? 1)
   const pageSize = input.pageSize ?? DEFAULT_PAGE_SIZE
   const offset = (page - 1) * pageSize
-  let filters = input.filters ?? {}
+  const filters = input.filters ?? {}
   const now = new Date()
 
   const supabase = createPublicClient()
@@ -848,7 +848,7 @@ async function runFetchPublicEventsAdmin(
   const page = Math.max(1, input.page ?? 1)
   const pageSize = input.pageSize ?? DEFAULT_PAGE_SIZE
   const offset = (page - 1) * pageSize
-  let filters = input.filters ?? {}
+  const filters = input.filters ?? {}
   const now = new Date()
 
   const supabase = createAdminClient()
