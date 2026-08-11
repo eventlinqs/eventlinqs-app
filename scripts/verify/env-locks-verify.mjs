@@ -24,51 +24,11 @@
 
 import { evaluateProcessEnv, evaluateStores } from '../../src/lib/env/manifest-checks.mjs'
 import { ENV_MANIFEST, storePolicyFor } from '../../src/lib/env/manifest.mjs'
-
-const rep = (ch, n) => ch.repeat(n)
-const ACCOUNT = 'T8WBhGuiZ9cvxuu' // 15 characters, the shape of a Stripe account id
-
-/** A synthetic PRODUCTION environment that satisfies the whole manifest. */
-function goodProductionEnv() {
-  return {
-    VERCEL_ENV: 'production',
-
-    NEXT_PUBLIC_SUPABASE_URL: 'https://gndnldyfudbytbboxesk.supabase.co',
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: `eyJ${rep('a', 60)}`,
-    SUPABASE_SERVICE_ROLE_KEY: `eyJ${rep('b', 60)}`,
-
-    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: `pk_live_51${ACCOUNT}${rep('P', 30)}`,
-    STRIPE_SECRET_KEY: `sk_live_51${ACCOUNT}${rep('S', 30)}`,
-    STRIPE_WEBHOOK_SECRETS: `whsec_${rep('w', 32)},whsec_${rep('x', 32)}`,
-
-    CRON_SECRET: rep('c', 64),
-    QUEUE_SECRET: rep('q', 64),
-
-    RESEND_API_KEY: `re_${rep('r', 24)}`,
-    EMAIL_FROM: 'EventLinqs <hello@eventlinqs.com>',
-    // BOTH ARE REQUIRED ON PRODUCTION and were missing from this baseline, so
-    // the "a complete, correct production environment passes" case reported two
-    // unexpected findings and this whole harness exited 1. The manifest was
-    // changed to require them without re-running the harness that proves the
-    // manifest can be satisfied. Adding a required variable means adding it here
-    // too, or the harness stops being able to demonstrate a clean pass.
-    PAYMENT_ALERT_EMAIL: 'hello@eventlinqs.com',
-    SUPPORT_INBOX_EMAIL: 'hello@eventlinqs.com',
-
-    NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: `AIza${rep('G', 35)}`,
-    GOOGLE_MAPS_API_KEY: `AIza${rep('g', 35)}`,
-
-    UPSTASH_REDIS_REST_URL: 'https://apt-mudfish-12345.upstash.io',
-    UPSTASH_REDIS_REST_TOKEN: rep('u', 40),
-    ADMIN_TOTP_ENC_KEY: rep('k', 44),
-
-    NEXT_PUBLIC_VAPID_PUBLIC_KEY: rep('V', 87),
-    VAPID_PRIVATE_KEY: rep('v', 43),
-    VAPID_SUBJECT: 'mailto:hello@eventlinqs.com',
-
-    ANTHROPIC_API_KEY: `sk-ant-${rep('A', 40)}`,
-  }
-}
+// ONE known-good production environment, shared with the CI-blocking half in
+// tests/unit/security/env-manifest.test.ts. It used to be a second copy living
+// in this file, and a variable added to the manifest reached only one of the
+// two. See the header of the fixture for the whole story.
+import { rep, ACCOUNT, goodProductionEnv } from '../../tests/fixtures/env/good-production-env.mjs'
 
 /** A synthetic STORE inventory that satisfies the whole manifest. */
 function goodInventory() {
