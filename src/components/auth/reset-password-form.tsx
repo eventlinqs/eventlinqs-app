@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useHydrated } from '@/lib/hooks/use-hydrated'
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 import { authErrorMessage, authMessage, readAuthErrorFromUrl } from '@/lib/auth/auth-errors'
@@ -11,6 +12,8 @@ export function ResetPasswordForm() {
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
+  // No native submit before the handler exists. See use-hydrated.ts.
+  const hydrated = useHydrated()
   const [error, setError] = useState<string | null>(null)
   const [sessionReady, setSessionReady] = useState(false)
   // Set once the link is known to be dead, so the page stops claiming it is
@@ -242,7 +245,7 @@ export function ResetPasswordForm() {
 
       <button
         type="submit"
-        disabled={loading}
+        disabled={loading || !hydrated}
         className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-gold-400 px-4 text-sm font-semibold text-ink-900 shadow-md transition-all hover:-translate-y-0.5 hover:bg-gold-500 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {loading ? 'Updating password' : 'Update password'}

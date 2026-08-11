@@ -341,7 +341,7 @@ export function QueueRoom({
                 aria-live="polite"
                 aria-label={`Position ${position ?? ':'} in queue`}
               >
-                {position !== null ? `#${position.toLocaleString()}` : ':'}
+                {position !== null ? `#${position.toLocaleString('en-AU')}` : ':'}
               </p>
               {position !== null && (
                 <p className={`text-sm ${t.faint}`}>

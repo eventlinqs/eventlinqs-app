@@ -354,7 +354,7 @@ export function EventsFilterStrip({
             className="w-full rounded-lg bg-gold-500 py-3 text-sm font-semibold text-ink-900 hover:bg-gold-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2"
           >
             {resultsCount !== undefined
-              ? `Show ${resultsCount.toLocaleString()} result${resultsCount !== 1 ? 's' : ''}`
+              ? `Show ${resultsCount.toLocaleString('en-AU')} result${resultsCount !== 1 ? 's' : ''}`
               : 'Show results'}
           </button>
         </div>

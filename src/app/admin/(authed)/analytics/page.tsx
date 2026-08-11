@@ -6,6 +6,7 @@ import { recordAuditEvent } from '@/lib/admin/audit'
 import { AdminStatTile } from '@/components/admin/admin-stat-tile'
 import { getAnalyticsDashboard, ANALYTICS_CURRENCY } from '@/lib/admin/analytics'
 import { formatMoneyDisplay } from '@/lib/money/format'
+import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -22,7 +23,7 @@ function money(cents: number): string {
 function monthLabel(ym: string): string {
   const [y, m] = ym.split('-')
   const d = new Date(Number(y), Number(m) - 1, 1)
-  return d.toLocaleDateString('en-AU', { month: 'short', year: '2-digit' })
+  return d.toLocaleDateString('en-AU', { month: 'short', year: '2-digit', timeZone: PLATFORM_TIME_ZONE })
 }
 
 export default async function AdminAnalyticsPage() {

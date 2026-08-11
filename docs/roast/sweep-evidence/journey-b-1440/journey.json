@@ -1,0 +1,89 @@
+{
+ "email": "sweep.buyer.1786157693830@eventlinqs.com",
+ "steps": [
+  {
+   "step": "sign up: open the form",
+   "verdict": "PASS",
+   "notes": [],
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-b-1440\\01-sign-up-open-the-form.png",
+   "url": "/signup"
+  },
+  {
+   "step": "sign up: fill and submit",
+   "verdict": "PASS",
+   "notes": [
+    "landed on /verify-email-sent?email=sweep.buyer.1786157693830%40eventlinqs.com",
+    "Check your inbox We sent a verification link to sweep.buyer.1786157693830@eventlinqs.com. Open it to activate your account. Open the email from EventLinqs. Click the verification link. You will be s"
+   ],
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-b-1440\\02-sign-up-fill-and-submit.png",
+   "url": "/verify-email-sent?email=sweep.buyer.1786157693830%40eventlinqs.com"
+  },
+  {
+   "step": "sign up: the next step is explained",
+   "verdict": "PASS",
+   "notes": [
+    "the screen says what happens next"
+   ],
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-b-1440\\03-sign-up-the-next-step-is-explained.png",
+   "url": "/verify-email-sent?email=sweep.buyer.1786157693830%40eventlinqs.com"
+  },
+  {
+   "step": "sign in: wrong password is refused clearly",
+   "verdict": "PASS",
+   "notes": [
+    "says: \"Google sign-in is unavailable right now. You can sign in with your email address and password below, and Google will be back short\"",
+    "the form was cleared, so the person retypes"
+   ],
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-b-1440\\04-sign-in-wrong-password-is-refused-clearly.png",
+   "url": "/login"
+  },
+  {
+   "step": "forgot password: the form submits and confirms",
+   "verdict": "PASS",
+   "notes": [
+    "a confirmation is shown"
+   ],
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-b-1440\\05-forgot-password-the-form-submits-and-confirms.png",
+   "url": "/forgot-password"
+  },
+  {
+   "step": "sign in with Google: the button exists and goes to Google",
+   "verdict": "PASS",
+   "notes": [
+    "no Google button is offered on this deployment"
+   ],
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-b-1440\\06-sign-in-with-google-the-button-exists-and-goes-to-google.png",
+   "url": "/login"
+  },
+  {
+   "step": "buy: open a free event and press the ticket control",
+   "verdict": "PASS",
+   "notes": [
+    "title: Artist Layer Launch Night, Geelong",
+    "the page says Free",
+    "after pressing: /events/artist-layer-launch-night-geelong#tickets"
+   ],
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-b-1440\\07-buy-open-a-free-event-and-press-the-ticket-control.png",
+   "url": "/events/artist-layer-launch-night-geelong#tickets"
+  },
+  {
+   "step": "buy: a ticket picker is actually reachable",
+   "verdict": "PASS",
+   "notes": [
+    "quantity controls found: 3"
+   ],
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-b-1440\\08-buy-a-ticket-picker-is-actually-reachable.png",
+   "url": "/events/artist-layer-launch-night-geelong#tickets"
+  },
+  {
+   "step": "signed-out guard: My tickets asks the person to sign in",
+   "verdict": "PASS",
+   "notes": [
+    "landed on /login?redirect=/tickets"
+   ],
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-b-1440\\09-signed-out-guard-my-tickets-asks-the-person-to-sign-in.png",
+   "url": "/login?redirect=/tickets"
+  }
+ ],
+ "consoleErrors": []
+}

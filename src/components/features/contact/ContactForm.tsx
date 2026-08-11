@@ -193,7 +193,7 @@ export function ContactForm({ initialSubject = '' }: ContactFormProps) {
                 aria-label="EventLinqs on X (Twitter)"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                className="inline-flex h-11 w-11 items-center justify-center -m-3 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
               >
                 <TwitterIcon />
               </a>
@@ -202,7 +202,7 @@ export function ContactForm({ initialSubject = '' }: ContactFormProps) {
                 aria-label="EventLinqs on Instagram"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                className="inline-flex h-11 w-11 items-center justify-center -m-3 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
               >
                 <InstagramIcon />
               </a>
@@ -211,7 +211,7 @@ export function ContactForm({ initialSubject = '' }: ContactFormProps) {
                 aria-label="EventLinqs on TikTok"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                className="inline-flex h-11 w-11 items-center justify-center -m-3 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
               >
                 <TikTokIcon />
               </a>

@@ -7,6 +7,7 @@ import { getOrganiserDetail } from '@/lib/admin/organisers'
 import { AdminStatTile } from '@/components/admin/admin-stat-tile'
 import { OrganiserControls } from './organiser-controls'
 import { PayoutHoldControl } from './payout-hold-control'
+import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -20,7 +21,7 @@ function money(cents: number): string {
   return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(cents / 100)
 }
 function date(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-AU', { dateStyle: 'medium' })
+  return new Date(iso).toLocaleDateString('en-AU', { dateStyle: 'medium', timeZone: PLATFORM_TIME_ZONE })
 }
 
 const STATUS_BADGE: Record<string, string> = {

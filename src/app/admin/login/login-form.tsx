@@ -1,28 +1,26 @@
 'use client'
 
-import { useState, useSyncExternalStore, useTransition } from 'react'
+import { useState, useTransition } from 'react'
+import { useHydrated } from '@/lib/hooks/use-hydrated'
 import { useRouter } from 'next/navigation'
 import { loginAdminAction } from '../actions'
 
-/**
- * True once this component has hydrated on the client.
+/*
+ * MERGE NOTE, main into fix/security-hardening.
  *
- * WHY IT IS HERE AND NOT SHARED. An equivalent `useHydrated` hook is landing on
- * `fix/production-sweep` at src/lib/hooks/use-hydrated.ts for the four forms in
- * src/components/auth. Creating that same path here would collide with it for no
- * benefit, and this form must not wait for another branch to merge: it carries
- * the founder admin password, the TOTP code and the break-glass recovery code.
- * The two should be unified into the shared hook once both branches have landed.
+ * This file carried its OWN `useHydrated`, written here only because the shared
+ * hook did not exist yet. Its comment said so and named the exit condition:
+ * "The two should be unified into the shared hook once both branches have
+ * landed." The shared hook is now in main at src/lib/hooks/use-hydrated.ts and
+ * its implementation is the same useSyncExternalStore snapshot pair, so the
+ * local copy is retired in favour of the import above. That is the original
+ * instruction being carried out rather than a side being picked, and it is a
+ * no-op at runtime.
  *
- * useSyncExternalStore rather than setState-in-an-effect: it returns the server
- * snapshot (false) while rendering and hydrating and the client snapshot (true)
- * afterwards, which is exactly the signal needed, with no cascading render. The
- * store never changes, so subscribe is a no-op.
+ * What did NOT come from main: `method="post"` on the form below, and the two
+ * comments explaining the gate. Main's version of this file has neither. They
+ * are this branch's reason for existing and they survive the merge unchanged.
  */
-const noopSubscribe = () => () => {}
-function useHydrated(): boolean {
-  return useSyncExternalStore(noopSubscribe, () => true, () => false)
-}
 
 interface LoginFormProps {
   next?: string
@@ -38,8 +36,9 @@ interface LoginFormProps {
 export function LoginForm({ next, initialError }: LoginFormProps) {
   const [error, setError] = useState<string | null>(initialError ?? null)
   const [useRecovery, setUseRecovery] = useState(false)
-  const [pending, startTransition] = useTransition()
+  // No native submit before the handler exists. See use-hydrated.ts.
   const hydrated = useHydrated()
+  const [pending, startTransition] = useTransition()
   const router = useRouter()
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {

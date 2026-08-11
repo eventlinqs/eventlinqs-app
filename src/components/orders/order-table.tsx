@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import type { Order } from '@/types/database'
+import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 
 interface OrderTableProps {
   orders: (Order & { buyer_name: string; buyer_email: string; ticket_count: number })[]
@@ -93,7 +94,7 @@ export function OrderTable({ orders, eventId }: OrderTableProps) {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-ink-400 text-xs whitespace-nowrap">
-                      {new Date(order.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      {new Date(order.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', timeZone: PLATFORM_TIME_ZONE })}
                     </td>
                     <td className="px-4 py-3">
                       <Link

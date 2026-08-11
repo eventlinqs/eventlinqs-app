@@ -6,6 +6,7 @@ import {
   type GigWithOrg,
 } from '@/lib/marketplace/gigs'
 import { formatMoney } from '@/lib/money/format'
+import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 
 function payLine(gig: GigWithOrg): string {
   if (gig.pay_type === 'fixed_fee' && gig.pay_amount_cents) {
@@ -18,8 +19,7 @@ function formatDate(iso: string): string {
   return new Intl.DateTimeFormat('en-AU', {
     weekday: 'short',
     day: 'numeric',
-    month: 'short',
-  }).format(new Date(iso))
+    month: 'short', timeZone: PLATFORM_TIME_ZONE }).format(new Date(iso))
 }
 
 /**
