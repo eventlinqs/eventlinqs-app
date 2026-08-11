@@ -1,8 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import type { AuthChangeEvent } from '@supabase/supabase-js'
+import { useHydrated } from '@/lib/hooks/use-hydrated'
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
+import { authErrorMessage, authMessage, readAuthErrorFromUrl } from '@/lib/auth/auth-errors'
 
 export function ResetPasswordForm() {
   const supabase = createClient()
@@ -10,26 +12,66 @@ export function ResetPasswordForm() {
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
+  // No native submit before the handler exists. See use-hydrated.ts.
+  const hydrated = useHydrated()
   const [error, setError] = useState<string | null>(null)
   const [sessionReady, setSessionReady] = useState(false)
+  // Set once the link is known to be dead, so the page stops claiming it is
+  // still validating and shows a way forward instead.
+  const [linkFailed, setLinkFailed] = useState(false)
+  // The account's address, read from the recovery session. Chromium's password
+  // form parser cannot associate a new credential with an account unless the
+  // change-password form carries a username field, and this form has no
+  // visible one. See the hidden input below.
+  const [accountEmail, setAccountEmail] = useState('')
 
   useEffect(() => {
     let active = true
+
+    // FIRST, before waiting on any session: a dead link arrives as
+    // `#error=access_denied&error_code=otp_expired`. The fragment never reaches
+    // the server, and the old code only ever read getSession(), so an expired
+    // link parked the user on "Validating your reset link" forever.
+    const urlError = readAuthErrorFromUrl({
+      search: window.location.search,
+      hash: window.location.hash,
+    })
+    if (urlError) {
+      setError(authMessage(urlError.failure))
+      setLinkFailed(true)
+      return
+    }
 
     const checkSession = async () => {
       const { data } = await supabase.auth.getSession()
       if (!active) return
       if (data.session) {
+        setAccountEmail(data.session.user.email ?? '')
         setSessionReady(true)
         return
       }
+      // No session, no URL error: the link was never valid, or it was opened
+      // in a different browser from the one that requested it. Both dead-end
+      // silently without this timeout.
+      setTimeout(() => {
+        if (!active) return
+        setSessionReady((ready) => {
+          if (!ready) {
+            setError(authMessage('session_missing'))
+            setLinkFailed(true)
+          }
+          return ready
+        })
+      }, 4000)
     }
 
     checkSession()
 
-    const { data: sub } = supabase.auth.onAuthStateChange((event: AuthChangeEvent) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
       if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
+        setAccountEmail(session?.user.email ?? '')
         setSessionReady(true)
+        setLinkFailed(false)
       }
     })
 
@@ -44,7 +86,7 @@ export function ResetPasswordForm() {
     setError(null)
 
     if (password.length < 8) {
-      setError('Password must be at least 8 characters.')
+      setError(authMessage('weak_password'))
       return
     }
     if (password !== confirm) {
@@ -68,7 +110,12 @@ export function ResetPasswordForm() {
       const result = (await Promise.race([update, timeout])) as Awaited<typeof update>
 
       if (result.error) {
-        setError(result.error.message)
+        setError(
+          authErrorMessage({
+            errorCode: (result.error as { code?: string }).code,
+            message: result.error.message,
+          }),
+        )
         return
       }
 
@@ -82,8 +129,14 @@ export function ResetPasswordForm() {
       const signOutTimeout = new Promise<void>((resolve) => setTimeout(resolve, 3000))
       await Promise.race([signOut, signOutTimeout]).catch(() => {})
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not update password. Please try again.'
-      setError(message)
+      // The 15-second timeout below throws a message written by us, so it is
+      // safe to show. Anything else is classified rather than rendered raw.
+      const raw = err instanceof Error ? err.message : ''
+      setError(
+        raw.startsWith('Password update timed out')
+          ? raw
+          : authErrorMessage({ message: raw }),
+      )
     } finally {
       setLoading(false)
     }
@@ -94,6 +147,25 @@ export function ResetPasswordForm() {
       // re-read fresh on /login.
       window.location.assign('/login?reset=success')
     }
+  }
+
+  // A dead link now says so, in a rendered EventLinqs page with a plain
+  // sentence and the way forward. It used to sit on "Validating your reset
+  // link" indefinitely, which is the blank-page class of failure.
+  if (linkFailed) {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error" role="alert">
+          {error ?? authMessage('link_expired')}
+        </div>
+        <a
+          href="/forgot-password"
+          className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-gold-400 px-4 text-sm font-semibold text-ink-900 shadow-md transition-all hover:-translate-y-0.5 hover:bg-gold-500 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 active:translate-y-0"
+        >
+          Request a new reset link
+        </a>
+      </div>
+    )
   }
 
   if (!sessionReady) {
@@ -113,6 +185,22 @@ export function ResetPasswordForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Chromium: on a change-password form with no visible username field,
+          "Chrome will autofill a username somewhere, but not always in the
+          actual username field". The documented fix is a hidden input carrying
+          the account address with autocomplete="username", which is what lets
+          the credential manager update the RIGHT saved credential instead of
+          creating an orphan. type="hidden" renders nothing, so this changes no
+          pixel. */}
+      <input
+        type="hidden"
+        id="username"
+        name="username"
+        autoComplete="username"
+        value={accountEmail}
+        readOnly
+      />
+
       {error && (
         <div className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error" role="alert">
           {error}
@@ -125,6 +213,7 @@ export function ResetPasswordForm() {
         </label>
         <input
           id="password"
+          name="new-password"
           type="password"
           autoComplete="new-password"
           value={password}
@@ -142,6 +231,7 @@ export function ResetPasswordForm() {
         </label>
         <input
           id="confirm"
+          name="confirm-new-password"
           type="password"
           autoComplete="new-password"
           value={confirm}
@@ -155,7 +245,7 @@ export function ResetPasswordForm() {
 
       <button
         type="submit"
-        disabled={loading}
+        disabled={loading || !hydrated}
         className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-gold-400 px-4 text-sm font-semibold text-ink-900 shadow-md transition-all hover:-translate-y-0.5 hover:bg-gold-500 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {loading ? 'Updating password' : 'Update password'}

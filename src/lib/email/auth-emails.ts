@@ -1,26 +1,69 @@
 import { sendEmail } from './send'
+import { getReplyToAddress } from './sender'
 
-// The HTML body below mirrors src/lib/email/templates/auth/confirm-signup.html
-// with the `{{ .ConfirmationURL }}` Supabase placeholder replaced by a runtime
-// substitution. The .html file remains the single design source for the
-// Supabase Dashboard paste-target; this string is the bundled runtime form
-// because Next.js does not natively load .html as a module string and reading
-// from `process.cwd()` is not reliable in serverless Lambda packaging.
-//
-// When the template changes, update both files. They are short and the
-// duplication is contained to this helper, so the maintenance cost is small
-// versus the deploy reliability gained.
-//
-// Emails need literal hexes: #0A1628 is brand navy (--color-ink-900) for body
-// text, headings, links, and the button; #6B7280 is --color-ink-400 muted text.
-function confirmSignupHtml(confirmationUrl: string): string {
-  const safeUrl = escapeHtmlAttribute(confirmationUrl)
+/**
+ * Every auth email EventLinqs sends, on ONE transport.
+ *
+ * All four auth mails (confirm signup, password reset, magic link, resend
+ * verification) are built here and dispatched through the Resend SDK. None of
+ * them touch Supabase Auth's outbound mailer.
+ *
+ * Why that matters, and why the other three were moved here on 2026-08-03:
+ * Supabase's built-in mailer is capped at TWO emails per hour, project-wide
+ * (supabase.com/docs/guides/auth/rate-limits). Signup was lifted off it in May
+ * 2026, but password reset, magic link and resend-verification were parked as
+ * follow-ups and left behind. The founder hit the cap on 2026-08-02 and the
+ * forgot-password form answered "Error sending recovery email".
+ *
+ * Configuring custom SMTP in the Supabase dashboard would raise the cap, but it
+ * would leave the platform's mail depending on a toggle no code can enforce and
+ * no gate can see. Owning the transport outright is the permanent fix:
+ * `scripts/guards/no-supabase-smtp.mjs` now fails the build if any auth flow
+ * reaches for Supabase's mailer again.
+ *
+ * The HTML mirrors src/lib/email/templates/auth/confirm-signup.html. Emails
+ * need literal hexes: #0A1628 is brand navy (--color-ink-900) for body text,
+ * headings, links and the button; #6B7280 is --color-ink-400 muted text.
+ */
+
+type AuthEmailContent = {
+  /** Browser tab / preview title. */
+  title: string
+  /** The h1 inside the card. */
+  heading: string
+  /** Lead paragraph above the button. */
+  lead: string
+  /** Button label. */
+  cta: string
+  /** Closing reassurance for someone who did not ask for this email. */
+  disclaimer: string
+}
+
+/**
+ * Belt-and-braces escape for URLs interpolated into href attributes. Supabase
+ * returns trustworthy URLs, but rendering user-influenced data into HTML
+ * without escaping is the kind of habit that turns a future template tweak
+ * into an XSS hole. Exported for direct testing.
+ */
+export function escapeHtmlAttribute(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
+/** The shared branded shell. One design, four messages. */
+function authEmailHtml(content: AuthEmailContent, actionUrl: string): string {
+  const safeUrl = escapeHtmlAttribute(actionUrl)
+  const contact = getReplyToAddress()
   return `<!doctype html>
 <html lang="en-AU">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Confirm your EventLinqs email</title>
+    <title>${content.title}</title>
   </head>
   <body style="margin:0;padding:0;background-color:#FAFAFA;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0A1628;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#FAFAFA;padding:32px 16px;">
@@ -34,16 +77,16 @@ function confirmSignupHtml(confirmationUrl: string): string {
             </tr>
             <tr>
               <td style="padding:32px 40px 24px;">
-                <h1 style="margin:0 0 16px;font-size:22px;line-height:1.3;font-weight:600;color:#0A1628;">Confirm your email</h1>
+                <h1 style="margin:0 0 16px;font-size:22px;line-height:1.3;font-weight:600;color:#0A1628;">${content.heading}</h1>
                 <p style="margin:0 0 20px;font-size:16px;line-height:1.55;color:#0A1628;">
-                  Welcome to EventLinqs. Tap the button below to confirm your email and finish setting up your account.
+                  ${content.lead}
                 </p>
                 <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
                   <tr>
                     <td>
                       <a href="${safeUrl}"
                          style="display:inline-block;padding:14px 28px;background-color:#0A1628;color:#FFFFFF;text-decoration:none;border-radius:8px;font-size:16px;font-weight:600;">
-                        Confirm email
+                        ${content.cta}
                       </a>
                     </td>
                   </tr>
@@ -55,7 +98,7 @@ function confirmSignupHtml(confirmationUrl: string): string {
                   <a href="${safeUrl}" style="color:#0A1628;text-decoration:underline;">${safeUrl}</a>
                 </p>
                 <p style="margin:0;font-size:13px;line-height:1.55;color:#6B7280;">
-                  If you did not create an EventLinqs account, you can safely ignore this email.
+                  ${content.disclaimer}
                 </p>
               </td>
             </tr>
@@ -65,7 +108,7 @@ function confirmSignupHtml(confirmationUrl: string): string {
                   Every community. Every event. One platform.
                 </p>
                 <p style="margin:0;font-size:12px;line-height:1.55;color:#6B7280;">
-                  EventLinqs, Geelong, Australia. Need help? Email <a href="mailto:hello@eventlinqs.com" style="color:#0A1628;text-decoration:underline;">hello@eventlinqs.com</a>.
+                  EventLinqs, Geelong, Australia. Need help? Email <a href="mailto:${contact}" style="color:#0A1628;text-decoration:underline;">${contact}</a>.
                 </p>
               </td>
             </tr>
@@ -77,31 +120,44 @@ function confirmSignupHtml(confirmationUrl: string): string {
 </html>`
 }
 
-function confirmSignupText(confirmationUrl: string): string {
+/** Plain-text alternative. Hand-tuned rather than derived: it lifts deliverability. */
+function authEmailText(content: AuthEmailContent, actionUrl: string): string {
   return [
-    'Confirm your EventLinqs email',
+    content.title,
     '',
-    'Welcome to EventLinqs. Open this link to confirm your email and finish setting up your account:',
-    confirmationUrl,
+    `${content.lead.replace(/\s+/g, ' ').trim()}`,
+    actionUrl,
     '',
-    'If you did not create an EventLinqs account, you can safely ignore this email.',
+    content.disclaimer,
     '',
     'EventLinqs, Geelong, Australia',
-    'hello@eventlinqs.com',
+    getReplyToAddress(),
   ].join('\n')
 }
 
-// Belt-and-braces escape for URLs interpolated into href attributes. Supabase
-// returns trustworthy URLs, but rendering user-influenced data into HTML
-// without escaping is the kind of habit that turns a future template tweak
-// into an XSS hole. Exported for direct testing.
-export function escapeHtmlAttribute(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
+const CONFIRM_SIGNUP: AuthEmailContent = {
+  title: 'Confirm your EventLinqs email',
+  heading: 'Confirm your email',
+  lead: 'Welcome to EventLinqs. Tap the button below to confirm your email and finish setting up your account.',
+  cta: 'Confirm email',
+  disclaimer: 'If you did not create an EventLinqs account, you can safely ignore this email.',
+}
+
+const RESET_PASSWORD: AuthEmailContent = {
+  title: 'Reset your EventLinqs password',
+  heading: 'Reset your password',
+  lead: 'We received a request to reset the password on your EventLinqs account. Tap the button below to choose a new one. The link works once and expires in 24 hours.',
+  cta: 'Choose a new password',
+  disclaimer:
+    'If you did not ask to reset your password, you can safely ignore this email. Your current password stays active.',
+}
+
+const MAGIC_LINK: AuthEmailContent = {
+  title: 'Your EventLinqs sign-in link',
+  heading: 'Sign in to EventLinqs',
+  lead: 'Tap the button below to sign in. No password needed. The link works once and expires in 24 hours.',
+  cta: 'Sign in to EventLinqs',
+  disclaimer: 'If you did not ask to sign in, you can safely ignore this email.',
 }
 
 export async function sendSignupConfirmation(input: {
@@ -110,8 +166,41 @@ export async function sendSignupConfirmation(input: {
 }): Promise<{ id: string }> {
   return sendEmail({
     to: input.to,
-    subject: 'Confirm your EventLinqs email',
-    html: confirmSignupHtml(input.confirmationUrl),
-    text: confirmSignupText(input.confirmationUrl),
+    subject: CONFIRM_SIGNUP.title,
+    html: authEmailHtml(CONFIRM_SIGNUP, input.confirmationUrl),
+    text: authEmailText(CONFIRM_SIGNUP, input.confirmationUrl),
   })
+}
+
+export async function sendPasswordReset(input: {
+  to: string
+  resetUrl: string
+}): Promise<{ id: string }> {
+  return sendEmail({
+    to: input.to,
+    subject: RESET_PASSWORD.title,
+    html: authEmailHtml(RESET_PASSWORD, input.resetUrl),
+    text: authEmailText(RESET_PASSWORD, input.resetUrl),
+  })
+}
+
+export async function sendMagicLink(input: {
+  to: string
+  signInUrl: string
+}): Promise<{ id: string }> {
+  return sendEmail({
+    to: input.to,
+    subject: MAGIC_LINK.title,
+    html: authEmailHtml(MAGIC_LINK, input.signInUrl),
+    text: authEmailText(MAGIC_LINK, input.signInUrl),
+  })
+}
+
+/** Exposed so tests can assert the shell without going through a transport. */
+export const __authEmailTemplates = {
+  CONFIRM_SIGNUP,
+  RESET_PASSWORD,
+  MAGIC_LINK,
+  authEmailHtml,
+  authEmailText,
 }

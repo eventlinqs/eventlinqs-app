@@ -16,6 +16,7 @@ import {
   stripCanonicalCommunityTokens,
   canonicalTokensForCommunities,
 } from '@/lib/communities/tag-bridge'
+import { formatPlatformDateTime } from '@/lib/dates/event-time'
 import type {
   EventCategory,
   EventType,
@@ -1595,8 +1596,8 @@ export function EventForm({
           <div className="px-5 py-4">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">Date & Time</h3>
             <p className="text-sm text-ink-600">
-              {formData.start_date ? new Date(formData.start_date).toLocaleString() : ':'} →{' '}
-              {formData.end_date ? new Date(formData.end_date).toLocaleString() : ':'}
+              {formData.start_date ? formatPlatformDateTime(formData.start_date) : ':'} →{' '}
+              {formData.end_date ? formatPlatformDateTime(formData.end_date) : ':'}
             </p>
             <p className="text-xs text-ink-400">{formData.timezone}</p>
           </div>
@@ -1615,7 +1616,7 @@ export function EventForm({
           <div className="px-5 py-4">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-2">Tickets</h3>
             <p className="text-sm text-ink-600">
-              {formData.ticket_tiers.length} tier{formData.ticket_tiers.length !== 1 ? 's' : ''} · {totalCapacity.toLocaleString()} total capacity
+              {formData.ticket_tiers.length} tier{formData.ticket_tiers.length !== 1 ? 's' : ''} · {totalCapacity.toLocaleString('en-AU')} total capacity
             </p>
             <p className="text-xs text-ink-400">
               {isFree ? 'Free event' : `From ${formData.ticket_tiers[0]?.currency} ${minPaidPrice.toFixed(2)}`}

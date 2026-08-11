@@ -1,14 +1,32 @@
 'use client'
 
 import { useState } from 'react'
+import { useHydrated } from '@/lib/hooks/use-hydrated'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { assertLoginRateLimit } from '@/app/actions/auth-rate-limit'
 import { GoogleButton } from './google-button'
 import { AuthDivider } from './auth-divider'
+import { AuthErrorFromUrl } from './auth-error-from-url'
+import {
+  authErrorMessage,
+  authMessage,
+  MAGIC_LINK_GENERIC_RESPONSE,
+  OAUTH_ACCOUNT_HINT,
+} from '@/lib/auth/auth-errors'
 
-export function LoginForm() {
+type Props = {
+  /**
+   * Whether the Google provider is genuinely enabled on the Supabase project
+   * this deployment resolves to. Resolved server-side in the page and passed
+   * down, so the button either exists or does not: there is no window in which
+   * a user can click one that leads to a raw JSON error page.
+   */
+  googleEnabled: boolean
+}
+
+export function LoginForm({ googleEnabled }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createClient()
@@ -19,23 +37,31 @@ export function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  // No native submit before the handler exists. See use-hydrated.ts.
+  const hydrated = useHydrated()
   const [error, setError] = useState<string | null>(
     callbackError === 'auth_callback_failed'
-      ? 'We could not finish signing you in. Please try again.'
+      ? 'We could not finish signing you in. Please try again, or sign in with your email address and password.'
       : callbackError === 'verification_failed'
-        ? 'Verification link is invalid or expired. Please sign in again.'
+        ? authMessage('link_expired')
         : null,
   )
+  // A credential failure is the moment a Google-only account looks broken to
+  // its owner: there is no password to get right. The hint is shown on EVERY
+  // credential failure, never conditionally, so it cannot reveal whether the
+  // address typed in belongs to an account (brief 1.4 and 3.4 together).
+  const [showOAuthHint, setShowOAuthHint] = useState(false)
   const [magicSent, setMagicSent] = useState(false)
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
+    setShowOAuthHint(false)
 
     const gate = await assertLoginRateLimit()
     if (!gate.ok) {
-      setError('Too many attempts. Please wait a few minutes and try again.')
+      setError(authMessage('rate_limited'))
       setLoading(false)
       return
     }
@@ -43,7 +69,17 @@ export function LoginForm() {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
 
     if (error) {
-      setError(error.message)
+      // Never render `error.message`. Supabase's raw strings vary by version,
+      // leak implementation detail, and in the credential case would let the
+      // wording differ between "no such user" and "wrong password", which is
+      // exactly the discrepancy OWASP tells us to remove.
+      const failure = authErrorMessage({
+        errorCode: (error as { code?: string }).code,
+        message: error.message,
+        status: error.status,
+      })
+      setError(failure)
+      setShowOAuthHint(true)
       setLoading(false)
       return
     }
@@ -63,34 +99,50 @@ export function LoginForm() {
     router.refresh()
   }
 
+  // Posts to our own endpoint instead of `supabase.auth.signInWithOtp()`. That
+  // call sent through Supabase Auth's built-in mailer and its 2-per-hour
+  // project-wide cap, the same ceiling that broke password reset.
   const handleMagicLink = async () => {
     if (!email) {
-      setError('Enter your email to receive a magic link.')
+      setError('Enter your email address to receive a sign-in link.')
       return
     }
     setLoading(true)
     setError(null)
+    setShowOAuthHint(false)
 
     const gate = await assertLoginRateLimit()
     if (!gate.ok) {
-      setError('Too many attempts. Please wait a few minutes and try again.')
+      setError(authMessage('rate_limited'))
       setLoading(false)
       return
     }
 
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
-    })
+    const redirectParam = searchParams.get('redirect')
 
-    if (error) {
-      setError(error.message)
+    try {
+      const res = await fetch('/api/auth/magic-link', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email, next: redirectParam ?? undefined }),
+      })
+      const payload = (await res.json().catch(() => ({}))) as {
+        ok?: boolean
+        message?: string
+      }
+
+      if (!res.ok || !payload.ok) {
+        setError(payload.message ?? authMessage('unknown'))
+        setLoading(false)
+        return
+      }
+
+      setMagicSent(true)
       setLoading(false)
-      return
+    } catch {
+      setError(authMessage('network'))
+      setLoading(false)
     }
-
-    setMagicSent(true)
-    setLoading(false)
   }
 
   return (
@@ -101,32 +153,53 @@ export function LoginForm() {
         </div>
       )}
 
+      {/* Catches provider errors that arrive in the URL FRAGMENT. GoTrue
+          answers an expired or refused link with `#error=...&error_code=...`,
+          which never reaches the server, so a route handler cannot see it. */}
+      <AuthErrorFromUrl />
+
       {error && (
         <div className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error" role="alert">
           {error}
+          {showOAuthHint && googleEnabled && (
+            <span className="mt-1 block">{OAUTH_ACCOUNT_HINT}</span>
+          )}
         </div>
       )}
 
       {magicSent && (
         <div className="rounded-lg border border-ink-200 bg-ink-100 px-4 py-3 text-sm text-ink-900">
-          Check your inbox. We sent a magic link to <strong>{email}</strong>.
+          {MAGIC_LINK_GENERIC_RESPONSE}
         </div>
       )}
 
-      <GoogleButton label="Continue with Google" />
-
-      <AuthDivider label="or" />
+      {/* The button renders ONLY when the provider is genuinely enabled on the
+          Supabase project this deployment resolves to. Rendering it
+          unconditionally is what sent the founder to a raw JSON error page on
+          2026-08-02: signInWithOAuth resolves with error null and then hands
+          the tab to Supabase, so no client-side check can rescue it. */}
+      {googleEnabled && (
+        <>
+          <GoogleButton label="Continue with Google" />
+          <AuthDivider label="or" />
+        </>
+      )}
 
       <form onSubmit={handleEmailLogin} className="space-y-4">
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-ink-900">
             Email
           </label>
+          {/* WHATWG autofill defines current-password as "the current password
+              for the account identified by THE USERNAME FIELD". Without a
+              `username` token there is no such field, so Chromium's password
+              parser had nothing to pair the password with and offered no saved
+              credential. `name` must be present and stable for the same reason. */}
           <input
             id="email"
             name="email"
             type="email"
-            autoComplete="email"
+            autoComplete="username"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -162,7 +235,7 @@ export function LoginForm() {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || !hydrated}
           className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-gold-400 px-4 text-sm font-semibold text-ink-900 shadow-md transition-all hover:-translate-y-0.5 hover:bg-gold-500 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loading ? 'Signing in' : 'Sign in'}
@@ -172,7 +245,7 @@ export function LoginForm() {
       <button
         type="button"
         onClick={handleMagicLink}
-        disabled={loading}
+        disabled={loading || !hydrated}
         className="block w-full text-center text-sm font-medium text-ink-600 transition-colors hover:text-gold-600"
       >
         Send me a magic link instead

@@ -335,7 +335,7 @@ export function VenuesClient({ venues: initialVenues }: Props) {
                     <h3 className="text-base font-semibold text-ink-900 truncate">{venue.name}</h3>
                     <p className="text-sm text-ink-400 mt-0.5">
                       {[venue.city, venue.state, venue.country].filter(Boolean).join(', ')}
-                      {venue.capacity ? ` · Capacity: ${venue.capacity.toLocaleString()}` : ''}
+                      {venue.capacity ? ` · Capacity: ${venue.capacity.toLocaleString('en-AU')}` : ''}
                     </p>
                     {venue.description && (
                       <p className="text-sm text-ink-400 mt-1 line-clamp-2">{venue.description}</p>

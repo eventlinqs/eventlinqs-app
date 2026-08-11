@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { AuthShell } from '@/components/auth/auth-shell'
 import { SignupForm } from '@/components/auth/signup-form'
+import { isProviderEnabled } from '@/lib/auth/providers'
 
 export const metadata = {
   title: 'Create account | EventLinqs',
@@ -14,6 +15,8 @@ type Props = {
 export default async function SignupPage({ searchParams }: Props) {
   const { role } = await searchParams
   const isOrganiser = role === 'organiser'
+  // Server-resolved, fail-safe. See src/lib/auth/providers.ts.
+  const googleEnabled = await isProviderEnabled('google')
 
   return (
     <AuthShell
@@ -32,7 +35,7 @@ export default async function SignupPage({ searchParams }: Props) {
         </>
       }
     >
-      <SignupForm role={isOrganiser ? 'organiser' : 'attendee'} />
+      <SignupForm role={isOrganiser ? 'organiser' : 'attendee'} googleEnabled={googleEnabled} />
     </AuthShell>
   )
 }

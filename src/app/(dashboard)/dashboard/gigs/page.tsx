@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { fetchOrganisationGigs, PERFORMANCE_TYPE_LABELS } from '@/lib/marketplace/gigs'
 import { PostGigForm } from '@/components/marketplace/post-gig-form'
+import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 
 export const dynamic = 'force-dynamic'
 
@@ -121,7 +122,7 @@ export default async function OrganiserGigsPage() {
                         </Link>
                         <p className="mt-0.5 text-xs text-ink-600">
                           {PERFORMANCE_TYPE_LABELS[gig.performance_type]} ·{' '}
-                          {new Intl.DateTimeFormat('en-AU', { day: 'numeric', month: 'short' }).format(
+                          {new Intl.DateTimeFormat('en-AU', { day: 'numeric', month: 'short', timeZone: PLATFORM_TIME_ZONE }).format(
                             new Date(gig.event_date),
                           )}{' '}
                           · {gig.status}

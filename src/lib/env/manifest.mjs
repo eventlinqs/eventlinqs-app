@@ -179,9 +179,13 @@ export const SHAPES = {
   },
   /**
    * The sender address. The domain is pinned to the apex `eventlinqs.com`
-   * because that is the ONLY domain the code's own hardcoded senders use
-   * (`DEFAULT_FROM` and `TRANSACTIONAL_FROM` in src/lib/email/send.ts) and the
-   * only one verified at Resend. Production once pointed EMAIL_FROM at the
+   * because that is the ONLY domain the code's own sender identity resolves to
+   * (`DEFAULT_SENDER_DOMAIN` in src/lib/email/sender.ts, the single definition
+   * every `from:` derives from) and the only one verified at Resend. Note that
+   * this shape is now the load-bearing guard rather than a second opinion:
+   * since every sender role follows EMAIL_FROM, a bad value here moves ALL
+   * platform mail, not just the `sendEmail` path.
+   * Production once pointed EMAIL_FROM at the
    * unverified `send.eventlinqs.com`, so every send through `sendEmail` threw
    * "domain is not verified" - including the sentinel's own alert email, which
    * is precisely how a detected fault stayed silent. Pinning the shape here

@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { Resend } from 'resend'
 import QRCode from 'qrcode'
 import { getSiteUrl } from '@/lib/site-url'
+import { getNoReplyFrom, getReplyToAddress } from '@/lib/email/sender'
 import { formatMoney } from '@/lib/money/format'
 import { formatSeatLabel } from '@/lib/seating/format'
 
@@ -196,9 +197,9 @@ export async function sendConfirmationEmail(
 
   try {
     await resend.emails.send({
-      from: 'EventLinqs <noreply@eventlinqs.com>',
+      from: getNoReplyFrom(),
       to: buyerEmail,
-      replyTo: 'hello@eventlinqs.com',
+      replyTo: getReplyToAddress(),
       subject: `Your tickets for ${event.title}`,
       html: buildConfirmationEmailHtml(order, event, tickets, receipt_url, firstName),
       text: buildConfirmationEmailText(order, event, tickets, receipt_url, firstName),

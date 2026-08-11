@@ -5,6 +5,9 @@ import { createPublicClient } from '@/lib/supabase/public-client'
 import { withBadge } from './badges'
 import { buildCommunityTagOrFilter } from '@/lib/communities/tag-bridge'
 import type { CommunitySlug } from '@/lib/communities/data'
+import { buildSearchOrGroups, tokenise, sanitiseToken } from './search-query'
+import { EVENT_TYPE_FILTER, buildEventTypeTagOr } from './event-type-filter'
+import { resolveSearchTab } from './search-tab'
 import {
   buildEventTypeTagOrFilter,
   buildFaithFilter,
@@ -323,6 +326,155 @@ async function resolveEventFilterOps(
 }
 
 /**
+ * The subset of the Supabase client these search helpers touch, following the
+ * same `Pick<..., 'from'>` convention as BroadcastClient. Both the server and
+ * admin clients satisfy it, which is why the same helpers serve both fetch
+ * paths.
+ */
+type EventsQueryClient = Pick<ReturnType<typeof createAdminClient>, 'from'>
+
+/**
+ * A PostgREST filter builder, narrowed to the one method these helpers call.
+ * Generic so the builder's own chained type flows through untouched.
+ */
+type OrFilterable<T> = { or: (filter: string) => T }
+
+/**
+ * Which organisations does each search token name?
+ *
+ * An organiser's name lives on `organisations`, not on `events`, and PostgREST
+ * cannot filter a parent table from inside an `.or()` group on the child. So
+ * the names are resolved to ids in one round trip and the ids join the token's
+ * OR group as `organisation_id.in.(...)`. Without this, searching an
+ * organiser's own name returns nothing, which is what it did.
+ *
+ * One query total regardless of token count. A failure degrades to "no
+ * organiser matched", never to a broken search.
+ */
+async function resolveOrganisationIdsByToken(
+  supabase: EventsQueryClient,
+  q: string,
+): Promise<Map<string, string[]>> {
+  const tokens = tokenise(q)
+  const byToken = new Map<string, string[]>()
+  if (tokens.length === 0) return byToken
+
+  const { data, error } = await supabase
+    .from('organisations')
+    .select('id, name')
+    .or(tokens.map((t) => `name.ilike.*${t}*`).join(','))
+    .limit(200)
+  if (error || !data) return byToken
+
+  for (const token of tokens) {
+    const lower = token.toLowerCase()
+    const ids = (data as { id: string; name: string | null }[])
+      .filter((o) => (o.name ?? '').toLowerCase().includes(lower))
+      .map((o) => o.id)
+    if (ids.length > 0) byToken.set(token, ids)
+  }
+  return byToken
+}
+
+/**
+ * Narrow to one of the eight city event types. Unknown slugs are IGNORED
+ * rather than forced empty: an event type is a browse convenience, and a stale
+ * link should widen to the city rather than dead-end on nothing.
+ *
+ * Returns the OR clause, not a modified builder. A PostgrestFilterBuilder is
+ * itself thenable, so `await`ing a function that returns one unwraps it to the
+ * response type and the query is lost. Doing the async work here and applying
+ * the string at the call site keeps the builder's own chained type intact.
+ */
+async function buildEventTypeClause(
+  supabase: EventsQueryClient,
+  slug: string,
+): Promise<string | null> {
+  const def = EVENT_TYPE_FILTER[slug]
+  if (!def) return null
+
+  const parts: string[] = []
+  if (def.categories.length > 0) {
+    const { data: cats } = await supabase
+      .from('event_categories')
+      .select('id')
+      .in('slug', def.categories)
+    const ids = ((cats ?? []) as { id: string }[]).map((c) => c.id)
+    if (ids.length > 0) parts.push(`category_id.in.(${ids.join(',')})`)
+  }
+  const tagOr = buildEventTypeTagOr(slug)
+  if (tagOr) parts.push(tagOr)
+
+  return parts.length > 0 ? parts.join(',') : null
+}
+
+/**
+ * The venue link is emitted twice with two different values: a display name
+ * from a venue rail and a URL handle from a venue profile. Both are matched,
+ * with hyphens read as spaces, so "the-espy" and "The Espy" both find the
+ * venue instead of landing on the national list.
+ */
+function applyVenueFilter<T extends OrFilterable<T>>(query: T, venue: string): T {
+  const clean = sanitiseToken(venue)
+  if (!clean) return query
+  const spaced = sanitiseToken(venue.replace(/-/g, ' '))
+  const variants = [...new Set([clean, spaced])].filter(Boolean)
+  return query.or(variants.map((v) => `venue_name.ilike.*${v}*`).join(','))
+}
+
+/**
+ * Sorts that cannot be expressed in the query, because what they order by is
+ * not a column on `events`.
+ *
+ * `price_asc` reads the cheapest tier and `popularity` reads total tickets
+ * sold, both of which live on the child `ticket_tiers` rows. PostgREST cannot
+ * order a parent by a child aggregate, so these are computed after the fetch.
+ *
+ * THE DEFECT THAT MADE THIS NECESSARY. Both were applied AFTER `.range()` had
+ * already paginated, so `price_asc` reordered only the 24 rows on the current
+ * page: page one of 195 results showed the 24 SOONEST events arranged by
+ * price, never the 24 cheapest. `popularity` had no sort at all and simply
+ * left the date order in place, so choosing it changed nothing whatsoever.
+ *
+ * When one of these is chosen the query fetches a bounded superset instead of
+ * one page, sorts it whole, and then slices the page out. The cap keeps a
+ * pathological query bounded; beyond it the sort is still correct for the rows
+ * considered, which is the same contract the price filter already has.
+ */
+const IN_MEMORY_SORTS = new Set(['price_asc', 'popularity'])
+const MAX_SORT_ROWS = 500
+
+function sortsInMemory(sort: string | undefined): boolean {
+  return Boolean(sort && IN_MEMORY_SORTS.has(sort))
+}
+
+/** Total tickets sold across an event's tiers. */
+function soldTotal(e: PublicEventRow): number {
+  return e.ticket_tiers.reduce((sum, t) => sum + (t.sold_count ?? 0), 0)
+}
+
+function cheapest(e: PublicEventRow): number {
+  if (e.ticket_tiers.length === 0) return 0
+  return Math.min(...e.ticket_tiers.map(t => t.price))
+}
+
+/** Apply the post-fetch sort and slice the requested page out of the result. */
+function applyInMemorySort(
+  events: PublicEventRow[],
+  sort: string | undefined,
+  page: number,
+  pageSize: number,
+): PublicEventRow[] {
+  if (!sortsInMemory(sort)) return events
+  const sorted = [...events]
+  if (sort === 'price_asc') sorted.sort((a, b) => cheapest(a) - cheapest(b))
+  // Most sold first; ties keep the earlier date, which is the default order.
+  else if (sort === 'popularity') sorted.sort((a, b) => soldTotal(b) - soldTotal(a))
+  const start = (page - 1) * pageSize
+  return sorted.slice(start, start + pageSize)
+}
+
+/**
  * Raw row shape as it comes back from the Supabase query.
  * Nested selects return single-item arrays or objects depending on FK type;
  * we normalise both in toPublicEventRow.
@@ -502,7 +654,10 @@ export async function fetchPublicEvents(
     .select(BASE_SELECT, { count: 'exact' })
     .eq('status', 'published')
     .eq('visibility', 'public')
-    .range(offset, offset + pageSize - 1)
+    .range(
+      sortsInMemory(filters.sort) ? 0 : offset,
+      sortsInMemory(filters.sort) ? MAX_SORT_ROWS - 1 : offset + pageSize - 1,
+    )
 
   if (distanceIds) query = query.in('id', distanceIds)
 
@@ -514,7 +669,39 @@ export async function fetchPublicEvents(
     query = query.order('start_date', { ascending: true })
   }
 
-  query = applyOps(query, await resolveEventFilterOps(supabase as unknown as LookupClient, filters))
+  // TAB SCOPING (origin/main) THEN THE OPS RESOLVER (this branch).
+  //
+  // MERGE NOTE, resolution 7 of the nine in
+  // docs/roast/HANDOVER-public-composer-2026-08-09.md section 2. Both branches
+  // changed this block. They are not alternatives: the tab decides WHERE the
+  // free text may match, and the resolver decides HOW each filter becomes a
+  // PostgREST op. Composing them keeps the header search tabs and the
+  // suburb/organiser/faith/moment filters, and dropping either side would
+  // silently un-ship a working surface.
+  //
+  // main's inline category, community, city and country blocks are not repeated
+  // here because resolveEventFilterOps already emits exactly those ops, along
+  // with venue, event_type, organiser, faith and suburb. Keeping both would
+  // apply each filter twice.
+  const tab = resolveSearchTab(filters.tab, filters.q)
+  const effective = { ...filters, ...tab.overrides }
+
+  // On the Organisers tab the query names an ORGANISER, so a title match would
+  // be a wrong answer that looks like a result. The free text is consumed here
+  // and withheld from the resolver so it cannot also run as a text search.
+  if (effective.q && tab.keepFreeText && tab.organisersOnly) {
+    const orgIds = await resolveOrganisationIdsByToken(supabase, effective.q)
+    const ids = [...new Set([...orgIds.values()].flat())]
+    query = query.in('organisation_id', ids.length > 0 ? ids : [NO_MATCH])
+  }
+
+  const forResolver = tab.organisersOnly
+    ? { ...effective, q: undefined }
+    : tab.keepFreeText
+      ? effective
+      : { ...effective, q: undefined }
+
+  query = applyOps(query, await resolveEventFilterOps(supabase as unknown as LookupClient, forResolver))
 
   if (filters.preset === 'free') {
     query = query.eq('is_free', true)
@@ -564,9 +751,11 @@ export async function fetchPublicEvents(
     })
   }
 
-  if (filters.sort === 'price_asc') {
-    events.sort((a, b) => cheapest(a) - cheapest(b))
-  }
+  const sortedWhole = sortsInMemory(filters.sort)
+  // Captured BEFORE the sort slices a page out, so pagination still reflects
+  // how many events actually matched rather than how many are on this page.
+  const matchedBeforeSlice = events.length
+  if (sortedWhole) events = applyInMemorySort(events, filters.sort, page, pageSize)
 
   // When price filtering strips rows post-query, the Supabase `count`
   // reflects the pre-filter total and disagrees with the rendered grid.
@@ -574,16 +763,16 @@ export async function fetchPublicEvents(
   // and pagination match what the user sees.
   // TODO(m5-perf): move price filter into SQL to avoid over-fetching
   //   when query pages are large - tracked against Step 8.
-  const total = priceFiltered ? events.length : count ?? events.length
+  const total = sortedWhole
+    ? (priceFiltered ? matchedBeforeSlice : count ?? matchedBeforeSlice)
+    : priceFiltered
+      ? events.length
+      : count ?? events.length
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
 
   return { events, total, page, pageSize, totalPages }
 }
 
-function cheapest(e: PublicEventRow): number {
-  if (e.ticket_tiers.length === 0) return 0
-  return Math.min(...e.ticket_tiers.map(t => t.price))
-}
 
 /**
  * Cached variant for anonymous default-case browsing. Uses the admin client
@@ -620,12 +809,19 @@ export async function fetchPublicEventsCached(
     // Every filter that narrows the query MUST appear in the key. A filter
     // missing here makes two different questions share one cached answer, so
     // whichever ran first is served to both.
+    //
+    // MERGE NOTE, resolution 8 of the nine in
+    // docs/roast/HANDOVER-public-composer-2026-08-09.md section 2: the UNION of
+    // both key sets. main added `tab`; this branch added suburb, organiser,
+    // faith and moment. Omitting any one of them serves a filtered page under
+    // another filter's URL.
     `suburb:${filters.suburb ?? ''}`,
     `etype:${filters.event_type ?? ''}`,
     `venue:${filters.venue ?? ''}`,
     `org:${filters.organiser ?? ''}`,
     `faith:${filters.faith ?? ''}`,
     `moment:${filters.moment ?? ''}`,
+    `tab:${filters.tab ?? ''}`,
   ]
   const cacheKey = keyParts.join('|')
 
@@ -666,7 +862,10 @@ async function runFetchPublicEventsAdmin(
     .select(BASE_SELECT, { count: 'exact' })
     .eq('status', 'published')
     .eq('visibility', 'public')
-    .range(offset, offset + pageSize - 1)
+    .range(
+      sortsInMemory(filters.sort) ? 0 : offset,
+      sortsInMemory(filters.sort) ? MAX_SORT_ROWS - 1 : offset + pageSize - 1,
+    )
 
   if (filters.sort === 'date_asc' || !filters.sort || filters.sort === 'relevance') {
     query = query.order('start_date', { ascending: true })
@@ -676,7 +875,31 @@ async function runFetchPublicEventsAdmin(
     query = query.order('start_date', { ascending: true })
   }
 
-  query = applyOps(query, await resolveEventFilterOps(supabase as unknown as LookupClient, filters))
+  // TAB SCOPING (origin/main) THEN THE OPS RESOLVER (this branch).
+  //
+  // MERGE NOTE, resolution 9 of the nine in
+  // docs/roast/HANDOVER-public-composer-2026-08-09.md section 2: the same
+  // composition as the public path above, on the cached admin path. The two
+  // paths must stay identical in what they filter, or the cached page and the
+  // live page answer the same URL differently.
+  const tab = resolveSearchTab(filters.tab, filters.q)
+  const effective = { ...filters, ...tab.overrides }
+
+  // The free text is consumed by the organiser lookup and withheld from the
+  // resolver, so it cannot also run as a title match. See the public path.
+  if (effective.q && tab.keepFreeText && tab.organisersOnly) {
+    const orgIds = await resolveOrganisationIdsByToken(supabase, effective.q)
+    const ids = [...new Set([...orgIds.values()].flat())]
+    query = query.in('organisation_id', ids.length > 0 ? ids : [NO_MATCH])
+  }
+
+  const forResolver = tab.organisersOnly
+    ? { ...effective, q: undefined }
+    : tab.keepFreeText
+      ? effective
+      : { ...effective, q: undefined }
+
+  query = applyOps(query, await resolveEventFilterOps(supabase as unknown as LookupClient, forResolver))
   if (filters.preset === 'free') query = query.eq('is_free', true)
 
   const window = presetWindow(filters.preset, now)
@@ -712,11 +935,17 @@ async function runFetchPublicEventsAdmin(
     })
   }
 
-  if (filters.sort === 'price_asc') {
-    events.sort((a, b) => cheapest(a) - cheapest(b))
-  }
+  const sortedWhole = sortsInMemory(filters.sort)
+  // Captured BEFORE the sort slices a page out, so pagination still reflects
+  // how many events actually matched rather than how many are on this page.
+  const matchedBeforeSlice = events.length
+  if (sortedWhole) events = applyInMemorySort(events, filters.sort, page, pageSize)
 
-  const total = priceFiltered ? events.length : count ?? events.length
+  const total = sortedWhole
+    ? (priceFiltered ? matchedBeforeSlice : count ?? matchedBeforeSlice)
+    : priceFiltered
+      ? events.length
+      : count ?? events.length
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
   return { events, total, page, pageSize, totalPages }
 }

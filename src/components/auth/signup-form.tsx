@@ -1,11 +1,14 @@
 'use client'
 
 import { useState } from 'react'
+import { useHydrated } from '@/lib/hooks/use-hydrated'
 import { useRouter } from 'next/navigation'
 import { GoogleButton } from './google-button'
 import { AuthDivider } from './auth-divider'
+import { AuthErrorFromUrl } from './auth-error-from-url'
 import { REF_COOKIE, REF_SOURCE_COOKIE, REF_EVENT_COOKIE } from '@/lib/growth/referrals'
 import { DIGEST_CONSENT_WORDING } from '@/lib/consent/wording'
+import { authMessage } from '@/lib/auth/auth-errors'
 
 function readCookie(name: string): string | undefined {
   if (typeof document === 'undefined') return undefined
@@ -15,9 +18,15 @@ function readCookie(name: string): string | undefined {
 
 type Props = {
   role?: 'attendee' | 'organiser'
+  /**
+   * Whether Google is genuinely enabled on the Supabase project this
+   * deployment resolves to. Resolved server-side in the page. See
+   * src/lib/auth/providers.ts for why this cannot be a client-side check.
+   */
+  googleEnabled: boolean
 }
 
-export function SignupForm({ role = 'attendee' }: Props) {
+export function SignupForm({ role = 'attendee', googleEnabled }: Props) {
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -25,6 +34,8 @@ export function SignupForm({ role = 'attendee' }: Props) {
   // signup condition.
   const [digestOptIn, setDigestOptIn] = useState(false)
   const [loading, setLoading] = useState(false)
+  // No native submit before the handler exists. See use-hydrated.ts.
+  const hydrated = useHydrated()
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
@@ -36,7 +47,7 @@ export function SignupForm({ role = 'attendee' }: Props) {
     setError(null)
 
     if (password.length < 8) {
-      setError('Password must be at least 8 characters.')
+      setError(authMessage('weak_password'))
       setLoading(false)
       return
     }
@@ -69,7 +80,9 @@ export function SignupForm({ role = 'attendee' }: Props) {
       }
 
       if (!res.ok || !payload.ok) {
-        setError(payload.error ?? 'Could not create account. Please try again.')
+        // The endpoint speaks in copy-deck sentences; the fallback covers a
+        // proxy or platform error that never reached the handler.
+        setError(payload.error ?? authMessage('unknown'))
         setLoading(false)
         return
       }
@@ -77,7 +90,7 @@ export function SignupForm({ role = 'attendee' }: Props) {
       const nextParam = isOrganiser ? '&next=/dashboard' : ''
       router.push(`/verify-email-sent?email=${encodeURIComponent(email)}${nextParam}`)
     } catch {
-      setError('Could not reach the server. Check your connection and try again.')
+      setError(authMessage('network'))
       setLoading(false)
     }
   }
@@ -93,15 +106,24 @@ export function SignupForm({ role = 'attendee' }: Props) {
         </div>
       )}
 
+      {/* Catches provider errors delivered in the URL fragment, which never
+          reach the server. */}
+      <AuthErrorFromUrl />
+
       {error && (
         <div className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error" role="alert">
           {error}
         </div>
       )}
 
-      <GoogleButton label="Continue with Google" />
-
-      <AuthDivider label="or" />
+      {/* Gated for the same reason as the login form: an ungated button leads
+          to a raw JSON page when the provider is disabled. */}
+      {googleEnabled && (
+        <>
+          <GoogleButton label="Continue with Google" />
+          <AuthDivider label="or" />
+        </>
+      )}
 
       <form onSubmit={handleSignup} className="space-y-4">
         <div>
@@ -110,6 +132,7 @@ export function SignupForm({ role = 'attendee' }: Props) {
           </label>
           <input
             id="fullName"
+            name="fullName"
             type="text"
             autoComplete="name"
             value={fullName}
@@ -124,10 +147,15 @@ export function SignupForm({ role = 'attendee' }: Props) {
           <label htmlFor="email" className="block text-sm font-medium text-ink-900">
             Email
           </label>
+          {/* `username`, not `email`: it is the credential-group token that
+              pairs with new-password below, so the credential manager offers to
+              SAVE the pair on submit. With autocomplete="email" Chromium saw a
+              contact field and a lone password, and offered nothing. */}
           <input
             id="email"
+            name="email"
             type="email"
-            autoComplete="email"
+            autoComplete="username"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -142,6 +170,7 @@ export function SignupForm({ role = 'attendee' }: Props) {
           </label>
           <input
             id="password"
+            name="new-password"
             type="password"
             autoComplete="new-password"
             value={password}
@@ -158,8 +187,13 @@ export function SignupForm({ role = 'attendee' }: Props) {
 
         <label className="flex min-h-[44px] cursor-pointer items-start gap-3 py-1">
           <input
-            id="digest-opt-in"
-            name="digest-opt-in"
+            // Both branches independently gave this checkbox an id and a name
+            // (main as digest-opt-in, auth-hardening as digestOptIn) and the
+            // rebase kept both, which React resolves by silently taking the
+            // last. One pair, camelCase to match fullName above and the
+            // digestOptIn state and request field.
+            id="digestOptIn"
+            name="digestOptIn"
             type="checkbox"
             checked={digestOptIn}
             onChange={(e) => setDigestOptIn(e.target.checked)}
@@ -170,7 +204,7 @@ export function SignupForm({ role = 'attendee' }: Props) {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || !hydrated}
           className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-gold-400 px-4 text-sm font-semibold text-ink-900 shadow-md transition-all hover:-translate-y-0.5 hover:bg-gold-500 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loading

@@ -12,6 +12,8 @@ import {
 import { recordPlatformDigestConsent } from '@/lib/consent/record'
 import { KIT_DRAFT_COOKIE, isKitDraftToken } from '@/lib/growth/kit-draft'
 import { trackEmailCapturedAfterRenderServer } from '@/lib/analytics/plausible'
+import { authMessage } from '@/lib/auth/auth-errors'
+import { safeAuthOrigin } from '@/lib/auth/safe-origin'
 
 export const dynamic = 'force-dynamic'
 
@@ -51,19 +53,8 @@ function capturedFromBody(body: z.infer<typeof BodySchema>): CapturedAttribution
   }
 }
 
-function safeOrigin(request: NextRequest): string {
-  // Prefer a configured public site URL so the confirmation link cannot be
-  // smuggled to an attacker-controlled host via a forged Host/Origin header
-  // when the client posts to /api/auth/signup directly. Fall back to the
-  // request origin only for local dev where NEXT_PUBLIC_SITE_URL is unset.
-  const configured = process.env.NEXT_PUBLIC_SITE_URL
-  if (configured) return configured.replace(/\/$/, '')
-  const origin = request.headers.get('origin')
-  if (origin) return origin
-  const host = request.headers.get('host')
-  const proto = request.headers.get('x-forwarded-proto') ?? 'https'
-  return host ? `${proto}://${host}` : 'http://localhost:3000'
-}
+// The open-redirect guard that used to live here is now shared with the three
+// other endpoints that mint emailed links: src/lib/auth/safe-origin.ts.
 
 export async function POST(request: NextRequest) {
   const limited = await applyRateLimit('auth-signup', request)
@@ -80,7 +71,7 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const origin = safeOrigin(request)
+  const origin = safeAuthOrigin(request)
   const redirectTo =
     body.role === 'organiser'
       ? `${origin}/auth/callback?role=organiser`
@@ -121,7 +112,14 @@ export async function POST(request: NextRequest) {
         { status: 409 },
       )
     }
-    return NextResponse.json({ ok: false, error: message }, { status: 400 })
+    // Never return the provider's own string. It varies by GoTrue version,
+    // leaks implementation detail, and is the class of raw error this
+    // hardening pass exists to remove from every surface.
+    console.error('[auth/signup] generateLink failed', { reason: message })
+    return NextResponse.json(
+      { ok: false, error: authMessage('unknown') },
+      { status: 400 },
+    )
   }
 
   // Email a link to OUR /auth/confirm route built from the hashed token, never
@@ -160,8 +158,16 @@ export async function POST(request: NextRequest) {
       await admin.auth.admin.deleteUser(data.user.id).catch(() => {})
     }
     const message = sendErr instanceof Error ? sendErr.message : 'Could not send confirmation email.'
+    // Cause logged server-side with enough detail to diagnose (brief 1.5); the
+    // response carries only the copy-deck sentence. `detail` used to echo the
+    // transport's own error back to the browser.
+    console.error('[auth/signup] transport failure', {
+      email: body.email,
+      reason: message,
+      at: new Date().toISOString(),
+    })
     return NextResponse.json(
-      { ok: false, error: 'Could not send confirmation email. Please try again.', detail: message },
+      { ok: false, error: authMessage('mail_transport_failed') },
       { status: 502 },
     )
   }

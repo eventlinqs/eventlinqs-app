@@ -50,6 +50,10 @@
     {
       "path": "/api/cron/health-heartbeat",
       "schedule": "0 21 * * *"
+    },
+    {
+      "path": "/api/cron/auth-sentinel",
+      "schedule": "*/10 * * * *"
     }
   ]
 }

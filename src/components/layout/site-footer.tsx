@@ -1,6 +1,7 @@
 import { EventlinqsLogo } from '@/components/ui/eventlinqs-logo'
 import { FirstNationsFlags } from '@/components/features/home/first-nations-flags'
 import { FooterAccordion } from '@/components/layout/footer-accordion'
+import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 
 /**
  * SiteFooter v4 (Batch 5.5) - 4-column desktop, 2-column mobile, ~50%
@@ -178,7 +179,13 @@ function LanguagePicker() {
 }
 
 export function SiteFooter() {
-  const year = new Date().getFullYear()
+  // getFullYear() reads the RUNTIME zone, so for a few hours either side of
+  // New Year the server and the browser disagreed on the year in the footer of
+  // every page on the platform.
+  const year = new Intl.DateTimeFormat('en-AU', {
+    year: 'numeric',
+    timeZone: PLATFORM_TIME_ZONE,
+  }).format(new Date())
 
   return (
     <footer className="bg-[var(--color-ink-900)] text-white" aria-label="Site footer">

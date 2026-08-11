@@ -2,12 +2,31 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { authErrorMessage } from '@/lib/auth/auth-errors'
 
 type Props = {
   label?: string
   redirectTo?: string
 }
 
+/**
+ * PROVIDER GATING IS THE CALLER'S JOB, AND IT IS NOT OPTIONAL.
+ *
+ * This component must only ever be rendered behind a server-resolved
+ * enabled-provider check (see src/lib/auth/providers.ts). It cannot defend
+ * itself: `signInWithOAuth` resolves with `error: null` and then navigates the
+ * browser to Supabase, so a disabled provider fails on an origin we no longer
+ * control, and the `catch` below never runs. That is exactly how production
+ * showed a user
+ *
+ *   {"code":400,"error_code":"validation_failed",
+ *    "msg":"Unsupported provider: provider is not enabled"}
+ *
+ * as a bare JSON page on 2026-08-02.
+ *
+ * `scripts/guards/auth-provider-guard.mjs` fails the build if this component is
+ * rendered without a gate, so the rule cannot quietly rot.
+ */
 export function GoogleButton({ label = 'Continue with Google', redirectTo }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -21,8 +40,17 @@ export function GoogleButton({ label = 'Continue with Google', redirectTo }: Pro
       provider: 'google',
       options: { redirectTo: target },
     })
+    // Only reachable for failures that happen BEFORE the redirect, such as a
+    // network drop. Classified rather than rendered raw, like every other auth
+    // failure on the platform.
     if (error) {
-      setError(error.message)
+      setError(
+        authErrorMessage({
+          errorCode: (error as { code?: string }).code,
+          message: error.message,
+          status: error.status,
+        }),
+      )
       setLoading(false)
     }
   }

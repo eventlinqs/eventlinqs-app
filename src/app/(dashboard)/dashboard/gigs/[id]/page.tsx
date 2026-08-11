@@ -13,6 +13,7 @@ import {
 import { fetchShowcaseArtistBySlug } from '@/lib/marketplace/showcase'
 import { OrganiserAvatar } from '@/components/media/OrganiserAvatar'
 import { ApplicantActions } from '@/components/marketplace/applicant-actions'
+import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 
 export const dynamic = 'force-dynamic'
 
@@ -109,7 +110,7 @@ export default async function GigApplicantsPage({ params }: Props) {
                     </Link>
                     <p className="text-xs text-ink-600">
                       Applied{' '}
-                      {new Intl.DateTimeFormat('en-AU', { day: 'numeric', month: 'short' }).format(
+                      {new Intl.DateTimeFormat('en-AU', { day: 'numeric', month: 'short', timeZone: PLATFORM_TIME_ZONE }).format(
                         new Date(app.created_at),
                       )}
                     </p>
