@@ -53,7 +53,11 @@ function isClientComponent(source: string): boolean {
 }
 
 describe('no server-side supabase.auth.getSession()', () => {
-  it('every getSession() call lives in a client component', () => {
+  // 30s, not the 5s default: this walks and reads every file in SCAN_DIRS, so
+  // its cost grows with the codebase while the default timeout does not. It
+  // began failing intermittently at 131 test files purely from competing for
+  // I/O under the parallel runner, never from finding a real violation.
+  it('every getSession() call lives in a client component', { timeout: 30_000 }, () => {
     const files: string[] = []
     for (const d of SCAN_DIRS) walk(join(ROOT, d), files)
     for (const f of EXTRA_FILES) {

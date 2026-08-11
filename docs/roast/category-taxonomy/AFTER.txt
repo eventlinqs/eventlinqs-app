@@ -1,0 +1,31 @@
+CATEGORY TAXONOMY (R1)
+target: TEST https://vkapkibzokmfaxqogypq.supabase.co
+
+--- a. every category the homepage merchandises exists (9) ---
+  arts-community         EXISTS   21 published event(s)
+  business-networking    EXISTS    5 published event(s)
+  comedy                 EXISTS   28 published event(s)
+  family                 EXISTS   13 published event(s)
+  festival               EXISTS   22 published event(s)
+  food-drink             EXISTS   33 published event(s)
+  music                  EXISTS  105 published event(s)
+  nightlife              EXISTS   44 published event(s)
+  sports                 EXISTS   11 published event(s)
+  [PASS] every tile and every rail resolves to a real category
+
+--- b. none of them is a tile that can never show anything ---
+  [PASS] every merchandised category has at least one published event
+
+--- c. the banned word is gone from category slugs, names and tags ---
+  [PASS] 0 of 22 categories carry it
+  [PASS] 0 of 363 published events carry it in tags we control
+  1 event(s) carry it inside a PROPER NOUN, deliberately left alone:
+      africultures: the registered name of the Africultures Festival, a real Sydney event, not our taxonomy
+      Overrule by removing the entry from PROPER_NOUNS in this file.
+
+--- d. comedy-tagged events can reach the comedy category ---
+  events tagged comedy      : 28
+  now in the comedy category: 28
+  [PASS] the comedy tile and the comedy rail can render
+
+===== ALL GREEN =====

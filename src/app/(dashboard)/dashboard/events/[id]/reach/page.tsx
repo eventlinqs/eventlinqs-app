@@ -44,6 +44,7 @@ const CHANNEL_LABELS: Record<string, string> = {
   copy: 'Copied links',
   native: 'Share sheet',
   qr: 'Poster QR',
+  digest: 'Weekly city email',
   other: 'Other',
 }
 

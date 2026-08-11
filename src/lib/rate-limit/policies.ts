@@ -25,6 +25,7 @@ export type PolicyName =
   | 'share-link-mint'
   | 'share-track'
   | 'waitlist-join'
+  | 'newsletter-subscribe'
   | 'ai-chat'
   | 'ai-chat-daily'
   | 'gig-post'
@@ -160,6 +161,13 @@ export const POLICIES: Record<PolicyName, Policy> = {
     windowSec: 60,
     rationale:
       'Broadcast view beacon per IP. Views are deduped per link per visitor per day server-side, so this cap only bounds junk traffic. Fail-open; losing a view beacon never breaks a page.',
+  },
+  'newsletter-subscribe': {
+    keyPrefix: 'nl-sub',
+    limit: 5,
+    windowSec: 600,
+    rationale:
+      'City newsletter capture per IP per 10 min. It is public, unauthenticated and now writes a consent row, so it is an email-harvesting and list-poisoning target. Five covers a household signing up for two or three cities; a scripted flood is bounced. Fail-open: losing a legitimate signup to a Redis blip is worse than the bounded abuse, and the row carries its own unsubscribe token either way.',
   },
   'waitlist-join': {
     keyPrefix: 'wl-join',

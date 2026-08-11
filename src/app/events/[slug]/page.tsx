@@ -243,10 +243,10 @@ export default async function EventDetailPage({ params }: Props) {
   // 500'd on the chrome + Sentry render-time cookie read.
   await headers()
 
-  // Broadcast Layer Stage 2 (SPEC 3.3): the organiser follow prompt on the
-  // event page, gated on broadcast_follow. ISR means a flag flip lands
-  // within the revalidate window.
-  const followOn = await isFeatureEnabled('broadcast_follow')
+  // broadcast_follow is deliberately NOT read here any more. The organiser
+  // follow control on this page is ungated and live (see the "Organised by"
+  // card below); the flag governs the account-level Following surface. Reading
+  // it here gated a duplicate of a control that was already showing.
 
   // Broadcast Layer Stage 3 (SPEC 4.2): confirmed lineup tags appear on the
   // event page, gated on broadcast_artists. Public-read RLS on both tables.
@@ -866,14 +866,19 @@ export default async function EventDetailPage({ params }: Props) {
                         {event.organisation.description && (
                           <p className="text-sm text-ink-600 line-clamp-3">{event.organisation.description}</p>
                         )}
-                        {followOn && (
-                          <div className="mt-3">
-                            <FollowButton type="organiser" id={event.organisation.id} variant="outline" />
-                          </div>
-                        )}
                       </div>
                       {/* Demand-graph follow: their next event lands in the
-                          follower's feed and alerts the moment it goes live. */}
+                          follower's feed and alerts the moment it goes live.
+                          ONE control, deliberately ungated.
+                          There used to be a second FollowButton here for the
+                          same organiser, gated on broadcast_follow, from an
+                          earlier stage. Two features landed on one card and
+                          neither noticed the other, so turning broadcast_follow
+                          on rendered TWO Follow buttons side by side for the
+                          same organiser: measured, 1 control with the flag off
+                          and 2 with it on. Invisible until the day somebody
+                          flips the flag, which is the point at which nobody
+                          would be looking for it. */}
                       <FollowButton type="organiser" id={event.organisation.id} className="shrink-0" />
                     </div>
                   </div>

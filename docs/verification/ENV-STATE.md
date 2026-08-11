@@ -68,8 +68,8 @@ build and a serving deployment can both see the real value.
 | `SUPPORT_INBOX_EMAIL` | PRESENT AND CORRECT | production | none | production | withheld on read | - | no | not required |
 | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | PRESENT AND CORRECT | production, preview | none | preview, production | withheld on read | - | no | not required |
 | `GOOGLE_MAPS_API_KEY` | PRESENT AND CORRECT | production, preview | none | development, preview, production | READABLE on production, preview, development | production:3dcc7ad8 preview:3dcc7ad8 development:3dcc7ad8 | no | not required |
-| `UPSTASH_REDIS_REST_URL` | PRESENT AND CORRECT | production | none | preview, production | withheld on read | - | no | not required |
-| `UPSTASH_REDIS_REST_TOKEN` | PRESENT AND CORRECT | production | none | preview, production | withheld on read | - | no | not required |
+| `UPSTASH_REDIS_REST_URL` | PRESENT AND CORRECT | production | none | preview, production | withheld on read | - | YES | not required |
+| `UPSTASH_REDIS_REST_TOKEN` | PRESENT AND CORRECT | production | none | preview, production | withheld on read | - | YES | not required |
 | `ADMIN_TOTP_ENC_KEY` | PRESENT AND CORRECT | production | none | preview, production | withheld on read | - | no | not required |
 | `NEXT_PUBLIC_SITE_URL` | PRESENT AND CORRECT | none | none | production | withheld on read | - | no | not required |
 | `NEXT_PUBLIC_APP_URL` | PRESENT AND CORRECT | none | none | production | READABLE on production | production:9606bc2e | no | not required |

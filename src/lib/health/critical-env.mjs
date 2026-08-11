@@ -121,6 +121,35 @@ export const CRITICAL_ENV_RULES = [
     validate: v => (v.length >= 16 ? { ok: true } : { ok: false, reason: 'expected a strong secret (>= 16 chars)' }),
   },
   {
+    // The Upstash store is PAYMENT-CRITICAL (founder ruling 2026-08-08) because
+    // it caches the RESOLVED FEE: getPricingRule returns the cached entry
+    // BEFORE consulting the database, so a wrong or unreachable value here is a
+    // wrong fee charged for up to PRICING_RULES_CACHE_TTL_SECONDS. It also
+    // holds the feature flags, the rate limits and the AI monthly budget
+    // counter, which fails CLOSED.
+    //
+    // Health-checked here so its absence or malformation ALERTS rather than
+    // degrading silently: with Redis unreachable every fee resolution falls
+    // through to the database, which is correct but slower and unmonitored, and
+    // nothing anywhere said so. buildCritical is false on purpose: a build
+    // without it is fine, a running production without it is not.
+    name: 'UPSTASH_REDIS_REST_URL',
+    buildCritical: false,
+    publicVar: false,
+    describe: 'Upstash REST URL (fee cache, feature flags, rate limits, AI budget)',
+    validate: v =>
+      /^https:\/\/[a-z0-9-]+\.upstash\.io\/?$/i.test(v)
+        ? { ok: true }
+        : { ok: false, reason: 'expected https://<instance>.upstash.io' },
+  },
+  {
+    name: 'UPSTASH_REDIS_REST_TOKEN',
+    buildCritical: false,
+    publicVar: false,
+    describe: 'Upstash REST token (write access to the fee cache and the flags)',
+    validate: v => (v.length >= 16 ? { ok: true } : { ok: false, reason: 'expected a strong token (>= 16 chars)' }),
+  },
+  {
     // Signs queue position + admission tokens (src/lib/queue/tokens.ts). If it
     // is missing, token issuance and validation fail CLOSED (everyone queues)
     // rather than falling back to the public dev constant, which would let

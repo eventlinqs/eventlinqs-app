@@ -7,10 +7,22 @@ import { getMonthlyBudgetUsd } from './config'
  * records its estimated cost in micro-USD against a month-scoped counter;
  * before each call we check the counter against the founder-set budget.
  *
- * Fail-open by design: if Redis is unreachable the assistants keep working
- * (a Redis blip must not take down support chat), but every spend is still
- * logged so the Anthropic Console remains the authoritative meter. This is
- * a runaway-cost circuit breaker, not a billing system.
+ * THE FAIL MODE IS THE CALLER'S CHOICE, and it must be, because the two
+ * callers have opposite risks (F3).
+ *
+ * - `open` (the chat assistants): a Redis blip must not take down support
+ *   chat. Those callers are authenticated and separately rate limited per
+ *   user, so the blast radius of a wobble is small and bounded.
+ * - `closed` (draft generation, and anything an unauthenticated visitor can
+ *   reach): a Redis outage would otherwise mean an UNCAPPED bill for as long
+ *   as the outage lasts, because the counter is the only thing standing
+ *   between anonymous traffic and the API. Callers that fail closed have a
+ *   deterministic, zero-cost path to fall back to, so the visitor still gets
+ *   a complete result and only the model call is skipped.
+ *
+ * There is no safe global default here, so the parameter is REQUIRED: a new
+ * call site cannot inherit the wrong risk posture by forgetting to think
+ * about it.
  */
 
 const KEY_PREFIX = 'ai:spend:'
@@ -27,19 +39,39 @@ export type BudgetStatus = {
   ok: boolean
   spentMicroUsd: number
   budgetMicroUsd: number
+  /** True when the verdict came from an unreachable meter, not a real count. */
+  unmetered?: boolean
 }
 
-export async function checkMonthlyBudget(): Promise<BudgetStatus> {
+/**
+ * `open` keeps working when the meter is unreachable. `closed` refuses, so an
+ * outage can never become an uncapped bill. See the module comment.
+ */
+export type BudgetFailMode = 'open' | 'closed'
+
+export async function checkMonthlyBudget(failMode: BudgetFailMode): Promise<BudgetStatus> {
   const budgetMicroUsd = Math.round(getMonthlyBudgetUsd() * 1_000_000)
+  const openWhenBlind = failMode === 'open'
+
   const redis = getRedisClient()
-  if (!redis) return { ok: true, spentMicroUsd: 0, budgetMicroUsd }
+  if (!redis) {
+    // No Redis configured at all. Same reasoning as an outage: a caller that
+    // spends on behalf of strangers must not run unmetered.
+    if (!openWhenBlind) {
+      console.error('[ai.cost-guard] no redis configured, failing closed')
+    }
+    return { ok: openWhenBlind, spentMicroUsd: 0, budgetMicroUsd, unmetered: true }
+  }
   try {
     const raw = await redis.get<number>(currentMonthKey())
     const spentMicroUsd = typeof raw === 'number' ? raw : Number(raw ?? 0)
     return { ok: spentMicroUsd < budgetMicroUsd, spentMicroUsd, budgetMicroUsd }
   } catch (err) {
-    console.error('[ai.cost-guard] redis read failed, failing open:', err)
-    return { ok: true, spentMicroUsd: 0, budgetMicroUsd }
+    console.error(
+      `[ai.cost-guard] redis read failed, failing ${failMode}:`,
+      err,
+    )
+    return { ok: openWhenBlind, spentMicroUsd: 0, budgetMicroUsd, unmetered: true }
   }
 }
 

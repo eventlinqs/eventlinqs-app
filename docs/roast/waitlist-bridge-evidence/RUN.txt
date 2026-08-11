@@ -1,0 +1,226 @@
+
+===== 0. Preconditions =====
+  broadcast_digest was true
+  cleared digest_sends for geelong 2026-08-07
+
+===== 1. A stranger joins the city waitlist at /waitlist =====
+  consent wording shown on screen:
+    "Join the Geelong waitlist: EventLinqs will email you when Geelong opens, send you a weekly email of what is on in Geelong, and, if you registered as an organiser, contact you about Founding Organiser invitations. Nothing else, and one click unsubscribes you."
+  [PASS] the wording on screen names the weekly email
+  joined as bridge-proof-msjbnn7t@mailinator.com
+
+===== 2. The stored consent is the v2 wording, recorded verbatim =====
+  row: {
+  "email": "bridge-proof-msjbnn7t@mailinator.com",
+  "city_slug": "geelong",
+  "consent_version": "v2",
+  "consent_text": "Join the Geelong waitlist: EventLinqs will email you when Geelong opens, send you a weekly email of what is on in Geelong, and, if you registered as an organiser, contact you about Founding Organiser invitations. Nothing else, and one click unsubscribes you.",
+  "unsubscribe_token": "ac6956b9-f41b-477b-a66a-c2ef678d6856",
+  "unsubscribed_at": null
+}
+  [PASS] the signup reached city_waitlist_signups
+  [PASS] consent_version is v2 -> v2
+  [PASS] the stored wording is EXACTLY the wording shown on screen
+  [PASS] the signup is live
+
+===== 3. An organiser publishes an event in that city, through the wizard =====
+  organiser signed in
+  draft built
+  typed the locality "Geelong" on the location step
+  cover uploaded
+  clicked publish
+  [PASS] the event was published through the wizard
+
+===== 4. The published event carries city_primary (the root fix) =====
+  row: {
+  "id": "2807cead-891a-4981-b91f-e3808f50b434",
+  "slug": "bridge-proof-night-msjbnn7t-0lkzz3",
+  "title": "Bridge Proof Night MSJBNN7T",
+  "status": "published",
+  "venue_city": "Geelong",
+  "city_primary": "geelong",
+  "start_date": "2026-08-12T08:00:00+00:00",
+  "visibility": "public",
+  "is_seed_data": false
+}
+  [PASS] the event exists
+  [PASS] it is published -> published
+  [PASS] city_primary was written by the real create path -> geelong
+
+===== 5. The digest resolves the waitlist signup and carries the event =====
+  dry run: {
+  "ok": true,
+  "period": {
+    "start": "2026-08-07",
+    "end": "2026-08-14"
+  },
+  "sentTotal": 0,
+  "cities": [
+    {
+      "city": "geelong",
+      "dryRun": true,
+      "recipients": 2,
+      "recipientEmails": [
+        "lawaladams9@gmail.com (consent)",
+        "bridge-proof-msjbnn7t@mailinator.com (waitlist)"
+      ],
+      "events": 1,
+      "eventTitles": [
+        "Bridge Proof Night MSJBNN7T"
+      ],
+      "eventUrls": [
+        "https://www.eventlinqs.com.au/events/bridge-proof-night-msjbnn7t-0lkzz3"
+      ],
+      "period": {
+        "start": "2026-08-07",
+        "end": "2026-08-14"
+      }
+    }
+  ]
+}
+  [PASS] the waitlist signup is a recipient, sourced from the waitlist -> ["lawaladams9@gmail.com (consent)","bridge-proof-msjbnn7t@mailinator.com (waitlist)"]
+  [PASS] the new event is carried by the digest -> ["Bridge Proof Night MSJBNN7T"]
+
+===== 6. A real digest email goes out with that person the unsubscribe link =====
+  send: {
+  "ok": true,
+  "period": {
+    "start": "2026-08-07",
+    "end": "2026-08-14"
+  },
+  "sentTotal": 0,
+  "cities": [
+    {
+      "city": "geelong",
+      "testSentTo": "bridge-proof-msjbnn7t@mailinator.com",
+      "events": 1
+    }
+  ]
+}
+  [PASS] the send returned 200 -> 200
+  [PASS] the email was addressed to the waitlist signup
+  ---- the email, as the recipient receives it (plain text) ----
+This week in Geelong
+
+Wed 12 Aug, 6pm: Bridge Proof Night MSJBNN7T - Free entry
+https://www.eventlinqs.com.au/events/bridge-proof-night-msjbnn7t-0lkzz3
+
+Unsubscribe: https://www.eventlinqs.com.au/unsubscribe/digest/ac6956b9-f41b-477b-a66a-c2ef678d6856
+EventLinqs, hello@eventlinqs.com
+  ---- subject ----
+  This week in Geelong: 1 event worth a look
+  [PASS] the text part carries an unsubscribe link the recipient can act on
+  [PASS] the sender is identified, as the Spam Act requires
+
+===== 7. A click on a tracked link is attributed back to the event =====
+  share links minted for this event: [
+  {
+    "id": "675d742a-dc9f-412d-9560-fe477c97ac1f",
+    "code": "CpNu9aJ2hn",
+    "channel": "whatsapp"
+  },
+  {
+    "id": "d88eee84-5c41-401b-975f-1ad1c23ef110",
+    "code": "WagaeM6RGJ",
+    "channel": "qr"
+  },
+  {
+    "id": "02451756-371f-4962-a968-525e2f9e22fe",
+    "code": "YsZGEoqpMz",
+    "channel": "whatsapp"
+  },
+  {
+    "id": "7dff0d82-bd79-4570-83c3-880e2c06d3ec",
+    "code": "7wDR61L08Q",
+    "channel": "instagram"
+  },
+  {
+    "id": "6c9a6fa1-7c08-4c9a-8fc9-ecc20512811a",
+    "code": "ZQOlBW39AY",
+    "channel": "instagram"
+  },
+  {
+    "id": "d7033ab6-f58e-4c79-9542-7f96bd65dab5",
+    "code": "vgpvKiENKP",
+    "channel": "linkedin"
+  },
+  {
+    "id": "cd5349b1-3581-408a-967f-1910cd290942",
+    "code": "8C1T1KNv7Y",
+    "channel": "linkedin"
+  },
+  {
+    "id": "efd00e9d-fb97-4f83-8352-40c238e652e7",
+    "code": "wBGOVF4V75",
+    "channel": "copy"
+  },
+  {
+    "id": "f58c73dc-22ac-43e0-9115-4014d156d4d6",
+    "code": "YBucwvRHvu",
+    "channel": "email"
+  },
+  {
+    "id": "95b0470c-9e12-40c6-9c67-bc4c1b5d7289",
+    "code": "V5A63b5w7l",
+    "channel": "copy"
+  },
+  {
+    "id": "5aaff887-d9d5-4fa4-9bd0-a57d81f5b610",
+    "code": "JinpzBgjo2",
+    "channel": "facebook"
+  },
+  {
+    "id": "0d902228-0e48-4459-9fa0-07e7cd3856ce",
+    "code": "DfCmwyhBjO",
+    "channel": "qr"
+  },
+  {
+    "id": "766371b8-d090-4551-a61d-e62020b8638d",
+    "code": "T2o2ukfE3U",
+    "channel": "x"
+  },
+  {
+    "id": "d8b83f1c-ac38-42d1-a6ee-3353c270294e",
+    "code": "UwGEmyZdtl",
+    "channel": "facebook"
+  },
+  {
+    "id": "a506f89b-4111-466f-9a62-0ee41f6b510a",
+    "code": "XQ2n46AQLy",
+    "channel": "email"
+  },
+  {
+    "id": "5b4884f6-1fff-4d3f-943c-1df57f2db5ca",
+    "code": "YS24L3FwxM",
+    "channel": "x"
+  }
+]
+  GET /s/CpNu9aJ2hn -> 302 http://localhost:3100/events/bridge-proof-night-msjbnn7t-0lkzz3
+  [PASS] a click on the whatsapp link was recorded -> 0 -> 1
+  [FAIL] the click is attributed to the digest channel (needs migration 20260808000002) -> whatsapp
+
+===== 8. Unsubscribe works from the waitlist token, and the next send excludes them =====
+  page heading: "Unsubscribe from the weekly digest"
+  [PASS] the waitlist token opens a working unsubscribe page
+  suppression record: {
+  "email": "bridge-proof-msjbnn7t@mailinator.com",
+  "status": "withdrawn",
+  "consent_text": "Join the Geelong waitlist: EventLinqs will email you when Geelong opens, send you a weekly email of what is on in Geelong, and, if you registered as an organiser, contact you about Founding Organiser invitations. Nothing else, and one click unsubscribes you.",
+  "consent_version": "v2",
+  "source": "city-waitlist",
+  "granted_at": "2026-08-07T19:12:34.338052+00:00",
+  "revoked_at": "2026-08-07T19:13:14.146+00:00"
+}
+  [PASS] the withdrawal is recorded
+  [PASS] the withdrawal carries the exact wording the person consented to
+  [PASS] their waitlist place is kept, exactly as the page says
+  recipients after unsubscribe: [
+  "lawaladams9@gmail.com (consent)"
+]
+  [PASS] the next send excludes them -> ["lawaladams9@gmail.com (consent)"]
+
+===== 9. Clean up, so the proof never reaches a real inbox =====
+  [PASS] no proof event is left behind to reach a real subscriber -> 0 left
+
+===== VERDICT: 1 FAILED =====
+  FAILED: the click is attributed to the digest channel (needs migration 20260808000002)
