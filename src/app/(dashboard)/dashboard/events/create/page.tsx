@@ -5,19 +5,30 @@ import { EventForm } from '@/components/features/events/event-form'
 import { OrgCreateForm } from '../../organisation/create/org-create-form'
 import { isFlagEnabled } from '@/lib/flags'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
+import { OrganisationSwitcher } from '@/components/organisations/organisation-switcher'
+import { organisationIdFromParams, resolveOrganisationScope } from '@/lib/organisations/scope'
 import type { EventCategory } from '@/types/database'
 
-export default async function CreateEventPage() {
+export default async function CreateEventPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
+}) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Must have an organisation to create events
-  const { data: org } = await supabase
-    .from('organisations')
-    .select('id')
-    .eq('owner_id', user.id)
-    .single()
+  // WHICH business this event will belong to.
+  //
+  // This was `.eq('owner_id', user.id).single()`, which returns PGRST116 and
+  // `data: null` when the caller owns more than one. So an owner of several
+  // businesses was shown the CREATE AN ORGANISATION form on the create-event page,
+  // every time, and could not create an event under any of the businesses they
+  // already had. The switcher below is what makes "both organisations sell
+  // independently" reachable: the event is written with the active organisation's
+  // id, so the money follows that business's Stripe account.
+  const scope = await resolveOrganisationScope(organisationIdFromParams(await searchParams))
+  const org = scope.ok ? scope.active : null
 
   if (!org) {
     return (
@@ -70,6 +81,18 @@ export default async function CreateEventPage() {
         </Link>
         <h1 className="text-2xl font-bold text-ink-900">Create Event</h1>
       </div>
+
+      {/* Which business this event will be published and paid under. An owner of
+          several must be able to see and change that BEFORE filling the form in,
+          not discover it afterwards on the payouts page. */}
+      {scope.ok ? (
+        <OrganisationSwitcher
+          organisations={scope.organisations}
+          activeId={org.id}
+          basePath="/dashboard/events/create"
+        />
+      ) : null}
+
       <EventForm
         userId={user.id}
         organisationId={org.id}

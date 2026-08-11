@@ -99,14 +99,16 @@ export default async function ArtistProfilePage({ params }: Props) {
   } = await supabase.auth.getUser()
   let viewerHasActiveOrg = false
   if (user && showcaseOn) {
-    const { data: viewerOrg } = await admin
+    // A COUNT. The question is only "does this viewer run any active business", so
+    // counting says exactly that. The previous `.limit(1).maybeSingle()` gave the
+    // same answer, but it is the same shape as the call sites that broke for an
+    // owner of several, and a reader copying it from here would inherit the trap.
+    const { count } = await admin
       .from('organisations')
-      .select('id')
+      .select('id', { count: 'exact', head: true })
       .eq('owner_id', user.id)
       .eq('status', 'active')
-      .limit(1)
-      .maybeSingle()
-    viewerHasActiveOrg = Boolean(viewerOrg)
+    viewerHasActiveOrg = (count ?? 0) > 0
   }
   const isOwnProfile = Boolean(user && artist.owner_user_id === user.id)
 

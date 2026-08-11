@@ -1,0 +1,67 @@
+Project: vkapkibzokmfaxqogypq
+postgrest-js: 2.101.1
+
+Owners on TEST: 19
+  with exactly one organisation: 18
+  with two or more:              1
+  largest holding:               26 organisations
+
+OWNER WITH 26 ORGANISATIONS: 00000000-0000-4000-8000-000000000001
+    - Bollywood Nights Sydney (a1000000-0000-4000-8000-000000000008)
+    - Owambe Sydney (a1000000-0000-4000-8000-000000000001)
+    - Afrobeats Melbourne (a1000000-0000-4000-8000-000000000002)
+    - Gospel Brisbane (a1000000-0000-4000-8000-000000000003)
+    - Amapiano Adelaide (a1000000-0000-4000-8000-000000000004)
+    - Lagos Comedy Tour (a1000000-0000-4000-8000-000000000005)
+    - Caribbean Carnival Melbourne (a1000000-0000-4000-8000-000000000006)
+    - Island Vibes Sydney (a1000000-0000-4000-8000-000000000007)
+    - Diwali Festival Melbourne (a1000000-0000-4000-8000-000000000009)
+    - Filipino Fiesta Brisbane (a1000000-0000-4000-8000-000000000010)
+    - Lunar Nights Melbourne (a1000000-0000-4000-8000-000000000011)
+    - Latin Sabor Sydney (a1000000-0000-4000-8000-000000000012)
+    - Mahrajan Sydney (a2000000-0000-4000-8000-000000000003)
+    - Pasifika Collective (a2000000-0000-4000-8000-000000000004)
+    - Polonia Australia Events (a2000000-0000-4000-8000-000000000002)
+    - Sydney Pride Collective (a2000000-0000-4000-8000-000000000001)
+    - EventLinqs Sample Catalogue (5eed63b9-96c2-4f49-8c0d-56e3f4b76f61)
+    - Harbourline Live (5eedf725-99f1-4b66-8a98-ec2a8812a305)
+    - Sunset Sounds Co (5eed3dba-2a5b-442a-85af-990e0b2673fc)
+    - Open Air Australia (5eedf996-e931-4e05-8979-a6f1248f4513)
+    - Stage Door Presents (5eed4b73-c697-4bb8-8898-aa58e947a60f)
+    - Plate and Pour (5eed1c77-16b4-4781-8d51-09533e5c97fa)
+    - Common Ground Community (5eedcfa3-7964-454e-86bd-b03a8e9118cc)
+    - Northside Comedy Collective (5eed0f14-6b26-43ec-8495-4c8629788587)
+    - First Light Festivals (5eed8d1e-6d8e-4c7e-896a-4d50e96b0335)
+    - Courtside Sports AU (5eed6c27-bb1e-4fdc-8b8b-ff79a68ff48f)
+
+  The three shapes the codebase uses, against that owner:
+  .maybeSingle()  <- the shape resolveOrganiserScope used
+    status : 406 Not Acceptable
+    data   : null
+    error  : PGRST116 "JSON object requested, multiple (or no) rows returned"
+    details: Results contain 26 rows, application/vnd.pgrst.object+json requires 1 row
+  .single()       <- the shape the events and venues pages use
+    status : 406 Not Acceptable
+    data   : null
+    error  : PGRST116 "Cannot coerce the result to a single JSON object"
+    details: The result contains 26 rows
+  .limit(1).maybeSingle()
+    status : 200 OK
+    data   : {"id":"a2000000-0000-4000-8000-000000000001","name":"Sydney Pride Collective"}
+    error  : null
+  plain list      <- the shape the fix uses
+    status : 200 OK
+    data   : [{"id":"a2000000-0000-4000-8000-000000000001","name":"Sydney Pride Collective"},{"id":"a2000000-0000-4000-8000-000000000002","name":"Polonia Australia Events"},{"id":"a2000000-0000-4000-8000-000000000003","name":"Mahrajan Sydney"},{"id":"a2000000-0000-4000-8000-000000000004","name":"Pasifika Collective"},{"id":"a1000000-0000-4000-8000-000000000001","name":"Owambe Sydney"},{"id":"5eed63b9-96c2-4f49-8c0d-56e3f4b76f61","name":"EventLinqs Sample Catalogue"},{"id":"5eedf725-99f1-4b66-8a98-ec2a8812a305","name":"Harbourline Live"},{"id":"5eed3dba-2a5b-442a-85af-990e0b2673fc","name":"Sunset Sounds Co"},{"id":"a1000000-0000-4000-8000-000000000002","name":"Afrobeats Melbourne"},{"id":"a1000000-0000-4000-8000-000000000003","name":"Gospel Brisbane"},{"id":"a1000000-0000-4000-8000-000000000004","name":"Amapiano Adelaide"},{"id":"a1000000-0000-4000-8000-000000000005","name":"Lagos Comedy Tour"},{"id":"a1000000-0000-4000-8000-000000000006","name":"Caribbean Carnival Melbourne"},{"id":"a1000000-0000-4000-8000-000000000007","name":"Island Vibes Sydney"},{"id":"a1000000-0000-4000-8000-000000000009","name":"Diwali Festival Melbourne"},{"id":"a1000000-0000-4000-8000-000000000010","name":"Filipino Fiesta Brisbane"},{"id":"a1000000-0000-4000-8000-000000000011","name":"Lunar Nights Melbourne"},{"id":"5eedf996-e931-4e05-8979-a6f1248f4513","name":"Open Air Australia"},{"id":"5eed4b73-c697-4bb8-8898-aa58e947a60f","name":"Stage Door Presents"},{"id":"5eed1c77-16b4-4781-8d51-09533e5c97fa","name":"Plate and Pour"},{"id":"5eedcfa3-7964-454e-86bd-b03a8e9118cc","name":"Common Ground Community"},{"id":"5eed0f14-6b26-43ec-8495-4c8629788587","name":"Northside Comedy Collective"},{"id":"5eed8d1e-6d8e-4c7e-896a-4d50e96b0335","name":"First Light Festivals"},{"id":"5eed6c27-bb1e-4fdc-8b8b-ff79a68ff48f","name":"Courtside Sports AU"},{"id":"a1000000-0000-4000-8000-000000000008","name":"Bollywood Nights Sydney"},{"id":"a1000000-0000-4000-8000-000000000012","name":"Latin Sabor Sydney"}]
+    error  : null
+
+OWNER WITH 1 ORGANISATION (the control): 42c2dd5e-95ab-41dd-9aaf-2adbeaa25289
+    - Test Org (859af159-e179-40bc-b0cc-7d81f6570ac2)
+
+  .maybeSingle()
+    status : 200 OK
+    data   : {"id":"859af159-e179-40bc-b0cc-7d81f6570ac2","name":"Test Org"}
+    error  : null
+  .single()
+    status : 200 OK
+    data   : {"id":"859af159-e179-40bc-b0cc-7d81f6570ac2","name":"Test Org"}
+    error  : null

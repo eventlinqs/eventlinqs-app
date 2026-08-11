@@ -14,6 +14,85 @@
  *   auth-autocomplete          credential-manager attributes on every auth form
  *   auth-provider-cost         no provider gate on a route with no provider button
  *   check-client-barrel-imports  no third-party namespace import in the browser bundle
+ *   rls-exposure-scan          no world-readable policy exposes a sensitive column
+ *   no-native-submit           no form puts a credential in the URL pre-hydration
+ *   revoked-column-reads       no untrusted-role query selects a revoked column
+ *   no-plaintext-credential    no tracked file contains a plaintext credential
+ *   entrypoint-authz-audit     every request entry point declares an auth posture
+ *   sourced-specifications     Law 7: a third-party spec carries a source or UNSOURCED
+ *   no-ai-authorship           Law 8: no commit attributes this work to an AI
+ *
+ * On no-ai-authorship: Law 8 makes the founder the sole author, which overrides
+ * this tooling default of appending a Co-Authored-By trailer. The commit-msg hook
+ * in .githooks/ is the cheap enforcement because it rejects a message before it
+ * becomes history. This guard is the second line, for the hook being bypassed with
+ * --no-verify or a checkout where core.hooksPath was never set, since that setting
+ * is local config and is not committed. It is bounded to commits after the law was
+ * enacted, because 705 of 1351 reachable commits already carry the trailer and the
+ * history rewrite is deliberately deferred until after launch. The deferred count
+ * prints on every run so it is not forgotten.
+ *
+ * On sourced-specifications: Law 7 forbids stating any specification, dimension,
+ * limit, price, format or platform behaviour from memory. No static check can judge
+ * whether prose was researched, and a guard demanding a citation beside every
+ * numeral would fire thousands of times and be switched off within a day. So this
+ * narrows to the shape that actually caused harm: a claim about SOMEBODY ELSE'S
+ * platform. A line naming a third party and asserting a pixel pair or an aspect
+ * ratio must carry a URL or the word UNSOURCED. An honest gap outranks a confident
+ * guess, and both satisfy the gate.
+ *
+ * On entrypoint-authz-audit: there are 167 request entry points, 50 route handlers
+ * and 117 exported server actions. The security pass had read about twenty of them
+ * and reported the rest as unread, which is honest and useless, because an attacker
+ * does not care which files were sampled. This walks all of them and fails the build
+ * when one establishes no caller identity and is not declared public with a stated
+ * reason, so a route added next month cannot skip the question silently. The
+ * decisive distinction it encodes: a session-client path is governed by RLS, so the
+ * database scopes the rows, while a service-role path has no backstop and a missing
+ * ownership check IS the vulnerability.
+ *
+ * On no-plaintext-credential: GitGuardian reported a Company Email Password
+ * exposed in this repository on 2026-08-08. It was hardcoded in twenty committed
+ * automation scripts and reproduced into three security documents, one of them
+ * written by the hardening pass itself, which quoted the leaking URL from the
+ * brief and the URL contained the password. The person most alert to the defect
+ * still committed it, because quoting evidence feels like documentation rather
+ * than disclosure. A guard does not feel that difference. Note it protects the
+ * WORKING TREE only: a secret already in history is un-exposed by ROTATION, never
+ * by an edit.
+ *
+ * On revoked-column-reads: migration 20260808000010 narrows column privileges, and
+ * a privilege failure is LOUD by design, which is right for security and is still
+ * an outage in production. PostgREST returns "permission denied for column email"
+ * and fails the WHOLE query, not just the field. The first draft of that migration
+ * would have broken Stripe Connect onboarding, because onboard/route.ts reads
+ * organisations.email with the session client. Nothing in the type system or the
+ * test suite could catch it: the failure only exists once the grant changes. This
+ * guard resolves the client per query, so it knows which Postgres role each read
+ * runs as, and fails the build if any of them asks for a column it no longer has.
+ *
+ * On no-native-submit: a form written as onSubmit with preventDefault and no
+ * action is correct once React is live and a credential leak before it, because
+ * a native submit with no action and no method is a GET to the current URL with
+ * every named field in the query string. That is how a real password reached
+ * production in a URL. The first fix covered src/components/auth, which is four
+ * files; the class is not four files, and the same shape carried the ADMIN
+ * password, the admin TOTP code and the recovery code on /admin/login. This
+ * guard is repo-wide and risk-aware: it fails on forms carrying a credential or
+ * personal data, and merely lists the search boxes and filter panels, where a
+ * field in the query string is the entire point.
+ *
+ * On rls-exposure-scan, because it is the newest and the least obvious: Row
+ * Level Security filters ROWS, never COLUMNS. A permissive SELECT policy with
+ * no TO clause reaches PUBLIC, which includes anon, and the anon key is
+ * NEXT_PUBLIC and readable in any page source. So one such policy publishes
+ * every column of every matching row to the whole internet. That shipped twice:
+ * 20260625000002 closed it on profiles (email, full_name, phone) and
+ * 20260808000010 closed it on organisations, on event_artists.invite_token (a
+ * credential that transfers profile ownership) and on venues. The first fix
+ * dropped a policy, which fixed the instance and left the class alive. This
+ * guard models both the policies and the column grants, so it fails the build
+ * when the shape reappears on any table, including one not yet written.
  *
  * Runs them all rather than short-circuiting, so one pass reports every
  * violation instead of making the founder play whack-a-mole.
@@ -78,6 +157,19 @@ const GUARDS = [
   // shared runner. Absent from this list, `prebuild` stops checking the browser
   // bundle for untree-shakeable namespace imports and nothing goes red.
   'scripts/check-client-barrel-imports.mjs',
+  // RLS column exposure. Deliberately written WITHOUT apostrophes: the registry
+  // test extracts single-quoted strings from this array, so an apostrophe in a
+  // comment here is parsed as the start of a registered path and turns
+  // tests/unit/guards/guard-registry.test.ts red for a reason that has nothing
+  // to do with guards. Full rationale lives in the header above and in
+  // docs/security/AUDIT-2026-08-08.md.
+  'scripts/security/rls-exposure-scan.mjs',
+  'scripts/guards/no-native-submit-guard.mjs',
+  'scripts/security/revoked-column-reads.mjs',
+  'scripts/guards/no-plaintext-credential.mjs',
+  'scripts/security/entrypoint-authz-audit.mjs',
+  'scripts/guards/sourced-specifications.mjs',
+  'scripts/guards/no-ai-authorship.mjs',
 ]
 
 /**

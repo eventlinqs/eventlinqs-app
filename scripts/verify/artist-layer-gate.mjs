@@ -18,6 +18,23 @@
 import fs from 'node:fs'
 import { chromium, devices } from 'playwright'
 
+// CREDENTIALS COME FROM THE ENVIRONMENT, NEVER FROM THIS FILE.
+// GitGuardian flagged a plaintext account password committed to this
+// repository on 2026-08-08. It was hardcoded in 11 committed automation
+// scripts and reproduced into 3 security documents. A drive script is not a
+// safe place for a credential: it is committed, it is pushed, and it is
+// indexed. Fail closed rather than fall back to a literal.
+function requireEnv(name) {
+  const v = process.env[name]
+  if (!v) {
+    console.error(`[drive] ${name} is not set. Export it for this shell; it is deliberately not in the repo.`)
+    process.exit(2)
+  }
+  return v
+}
+
+
+
 const BASE = process.argv[2]
 if (!BASE) throw new Error('usage: node scripts/verify/artist-layer-gate.mjs <baseUrl>')
 const OUT = 'docs/broadcast/evidence/artist-switch-on-2026-07-11'
@@ -36,10 +53,10 @@ if (!URL_.includes('vkapkibzokmfaxqogypq')) throw new Error('SAFETY STOP: not TE
 const svcH = { apikey: SVC, authorization: `Bearer ${SVC}`, 'content-type': 'application/json' }
 
 // Gate fixtures (docs/broadcast/evidence/fixtures.json lineage).
-const ORGANISER = { id: 'd11f5c1d-d18f-429f-a58c-67caafc29d1b', email: 'broadcast.gate.organiser@eventlinqs.com' }
+const ORGANISER = { id: 'd11f5c1d-d18f-429f-a58c-67caafc29d1b', email: requireEnv('EL_DRIVE_EMAIL') }
 const BUYER_ONE = { id: '0b3e58a0-46d8-42e8-8276-1dd8d6ab3849', email: 'broadcast.gate.buyer.one@eventlinqs.com' }
 const BUYER_TWO = { id: '2ba9c4de-be40-4e94-8efb-51033c83942f', email: 'broadcast.gate.buyer.two@eventlinqs.com' }
-const GATE_PASSWORD = 'ArtistGate2026!Drive'
+const GATE_PASSWORD = requireEnv('EL_DRIVE_PASSWORD')
 const ORG_ID = 'e875fa77-1e8a-46fe-8f9d-e82e58b5864b'
 const ARTIST_A = { id: 'af36e0f7-2b8f-4d49-a786-9da4ccd81b51', name: 'Sienna Vale', slug: 'sienna-vale-x8ge95' }
 const ARTIST_B = { id: '907bf08a-d3de-4255-b0b6-2596c360f6b6', name: 'Marlo Reyes', slug: 'marlo-reyes-lojdor' }

@@ -37,9 +37,24 @@ export default async function EventOrdersPage({ params }: Props) {
   if (!org) notFound()
 
   // Fetch all orders for this event - admin client bypasses RLS (organiser is not the buyer)
+  //
+  // EXPLICIT COLUMNS, NOT (*). The result of this query is passed to <OrderTable>,
+  // a CLIENT component, so every column selected here is serialised into the RSC
+  // payload and readable in the browser with view-source. `select('*')` shipped
+  // all 25 columns of every order for a table that renders 8 of them, including
+  // user_id, metadata, reservation_id, discount_code_id and the full fee
+  // breakdown. The organiser is entitled to their own event's order data, so this
+  // is not a cross-tenant leak; it is unnecessary width at a trust boundary, and
+  // width at that boundary is what an XSS on this page, or a Session Replay
+  // recording of it, would carry away. ASVS 8.2.3 (field-level authorisation).
+  //
+  // user_id IS still needed: the buyer name/email join below resolves it against
+  // profiles. It is used and then dropped, never rendered.
   const { data: orders } = await adminClient
     .from('orders')
-    .select('*, order_items(id, item_type, quantity)')
+    .select(
+      'id, order_number, status, currency, total_cents, created_at, user_id, guest_email, guest_name, order_items(id, item_type, quantity)',
+    )
     .eq('event_id', eventId)
     .order('created_at', { ascending: false })
 

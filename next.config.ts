@@ -26,16 +26,60 @@ const CSP_REPORT_ONLY = [
   "worker-src 'self' blob:",
 ].join('; ')
 
+// ENFORCED Content-Security-Policy, deliberately narrow.
+//
+// THE PROBLEM WITH THE POLICY ABOVE. It ships as
+// Content-Security-Policy-Report-Only, which means it currently blocks NOTHING.
+// It reports. A report-only CSP is a measurement instrument, not a control, and
+// this one has been mistaken for a control (the header list below described it as
+// "frame and referrer protection ... and the CSP above", as though it were
+// enforcing). It also carries script-src 'unsafe-inline' 'unsafe-eval', so even
+// once enforced it would not stop injected script.
+//
+// WHY NOT JUST FLIP IT. The comment above says to enforce "once the report run is
+// clean", and whether it is clean is unknown. Flipping the full policy blind on a
+// live platform can break payment (the Stripe iframe), maps, or analytics, and a
+// broken checkout is a worse outcome than a missing header.
+//
+// SO: enforce only the directives that cost nothing and block real attacks. Each
+// one below is already satisfied by the application, carries no allowlist to get
+// wrong, and needs no nonce work:
+//
+//   object-src 'none'      no <object>/<embed>/<applet>, a classic injection sink
+//   base-uri 'self'        an injected <base> cannot re-point every relative URL
+//                          on the page at an attacker's host
+//   frame-ancestors 'self' real clickjacking protection. ASVS 3.4.6 notes
+//                          X-Frame-Options is obsolete and must not be relied on,
+//                          so the header below is the belt and this is the braces
+//   form-action 'self'     a form cannot be made to POST to another origin. That
+//                          matters directly in this pass: it is the last line of
+//                          defence if a form's destination is ever tampered with
+//
+// Crucially this policy declares NO default-src, so it does not restrain scripts,
+// styles, images, fonts or connections at all. It cannot break what works today.
+//
+// The full policy stays in report-only alongside it, which is the standard
+// migration shape: enforce what is safe now, keep measuring the rest. Removing
+// 'unsafe-inline'/'unsafe-eval' needs per-response nonces and is the follow-up
+// that turns this into actual XSS mitigation (ASVS 3.4.3).
+const CSP_ENFORCED = [
+  "object-src 'none'",
+  "base-uri 'self'",
+  "frame-ancestors 'self'",
+  "form-action 'self'",
+].join('; ')
+
 // Security response headers, applied to every route. HSTS, nosniff, frame and
 // referrer protection, a tight permissions policy that still allows the
-// features the app uses (Stripe payment, geolocation city detection), and the
-// CSP above in report-only mode.
+// features the app uses (Stripe payment, geolocation city detection), the
+// narrow ENFORCED CSP above, and the wider policy in report-only beside it.
 const SECURITY_HEADERS = [
   { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   { key: 'Permissions-Policy', value: 'camera=(), microphone=(), browsing-topics=()' },
+  { key: 'Content-Security-Policy', value: CSP_ENFORCED },
   { key: 'Content-Security-Policy-Report-Only', value: CSP_REPORT_ONLY },
 ]
 

@@ -84,7 +84,7 @@ function PaymentForm({
   }
 
   return (
-    <form onSubmit={handlePay} className="rounded-xl border border-ink-200 bg-white p-6">
+    <form method="post" onSubmit={handlePay} className="rounded-xl border border-ink-200 bg-white p-6">
       <h3 className="text-base font-semibold text-ink-900 mb-4">Payment</h3>
       <PaymentElement options={{ layout: 'tabs' }} />
 
@@ -323,7 +323,7 @@ export function CheckoutForm({
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
+        <form method="post" onSubmit={handleSubmit}>
           <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
             <div className="space-y-6">
               {/* Buyer info */}

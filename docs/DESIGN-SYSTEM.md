@@ -311,7 +311,7 @@ xl:  1280px  (desktop)
 ### 6.2 Event Cards - THE MOST IMPORTANT COMPONENT
 
 **Desktop (1024px+):**
-- Image aspect: **4:3 landscape** (cinematic, like Ticketmaster)
+- Image aspect: **4:3 landscape** (cinematic, like Ticketmaster)  <!-- UNSOURCED: Law 7, third-party spec with no primary source cited -->
 - Image overlay: category pill top-left, heart icon bottom-right
 - Below image: title (Manrope 700, 20px, 2 lines max), date (Inter 500, 14px, `--gold-600`), venue (Inter 400, 14px, `--ink-600`), price (Manrope 700, 16px) - left-aligned, `--space-4` padding
 - Background: `--white`
@@ -323,7 +323,7 @@ xl:  1280px  (desktop)
 
 **Mobile (<1024px) - confirmed against TM mobile pattern:**
 - Image aspect: **16:9 landscape, edge-to-edge** (TM mobile pattern - cards dominate viewport, single-column scroll)
-- For homepage carousels: square 1:1 with horizontal scroll + peek (DICE pattern)
+- For homepage carousels: square 1:1 with horizontal scroll + peek (DICE pattern)  <!-- UNSOURCED: Law 7, third-party spec with no primary source cited -->
 - Padding `--space-4`
 - Same component spec otherwise
 

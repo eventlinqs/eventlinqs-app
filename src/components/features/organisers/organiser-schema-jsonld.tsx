@@ -13,8 +13,6 @@
  * picking a wrong sub-type per organiser.
  */
 
-import type { Organisation } from '@/types/database'
-
 interface UpcomingEventLite {
   slug: string
   title: string
@@ -24,8 +22,31 @@ interface UpcomingEventLite {
   coverImageUrl: string | null
 }
 
+/**
+ * The publicly publishable organisation fields, and ONLY those.
+ *
+ * Deliberately NOT `Organisation` from @/types/database. This component
+ * serialises its input into JSON-LD in the page HTML, where it is read by
+ * anyone viewing source AND actively harvested and republished by search
+ * engines. Accepting the full row made it trivially easy to emit a column that
+ * was never meant to be public, which is exactly what happened: this file used
+ * to emit `email: organisation.email` and `telephone: organisation.phone`,
+ * putting every organiser's contact details into structured data on a public,
+ * indexable page (docs/security/AUDIT-2026-08-08.md CRITICAL-1, second vector).
+ *
+ * Narrowing the prop type is the control. A future edit cannot reach for
+ * `organisation.email` here, because the type does not carry it.
+ */
+interface PublicOrganisationSchemaFields {
+  name: string
+  slug: string
+  description: string | null
+  logo_url: string | null
+  website: string | null
+}
+
 interface Props {
-  organisation: Organisation
+  organisation: PublicOrganisationSchemaFields
   upcomingEvents: UpcomingEventLite[]
   baseUrl: string
 }
@@ -67,8 +88,10 @@ export function OrganiserSchemaJsonLd({ organisation, upcomingEvents, baseUrl }:
     description: organisation.description ?? undefined,
     logo: organisation.logo_url ?? undefined,
     image: organisation.logo_url ?? undefined,
-    email: organisation.email ?? undefined,
-    telephone: organisation.phone ?? undefined,
+    // email and telephone are deliberately absent. Founder ruling 2026-08-08:
+    // the public organisation fields are name, slug, description, logo and
+    // website. Publishing contact details here put them in the page source and
+    // in Google's structured-data index.
     sameAs: sameAs.length > 0 ? sameAs : undefined,
     event: events.length > 0 ? events : undefined,
   }

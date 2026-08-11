@@ -296,7 +296,7 @@ Every session has a defined goal, a defined deliverable, and a defined verificat
 - Open Graph image generation per event using `@vercel/og` - dynamic OG images with event title, date, cover image
 - WhatsApp share generates clean preview card
 - X / Twitter share with hashtags pre-filled
-- Instagram-optimised share format (story-ready 1080×1920)
+- Instagram-optimised share format (story-ready 1080×1920)  <!-- UNSOURCED: Law 7, third-party spec with no primary source cited -->
 - Schema.org Event markup on every event detail page
 - Sitemap.xml auto-generated from events + categories + cities + static pages
 - robots.txt with `/dev/*` and `/_next/*` excluded

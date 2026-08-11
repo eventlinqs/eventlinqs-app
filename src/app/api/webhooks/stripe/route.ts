@@ -1260,23 +1260,38 @@ async function handleConnectAccountDeauthorized(accountId: string | null, eventI
     .eq('stripe_account_id', accountId)
     .maybeSingle()
 
-  const { error } = await adminClient
-    .from('organisations')
-    .update({
-      stripe_account_id: null,
-      stripe_onboarding_complete: false,
-      stripe_charges_enabled: false,
-      stripe_payouts_enabled: false,
-      stripe_capabilities: {},
-      stripe_requirements: {},
-      payout_destination: null,
-      payout_status: 'restricted',
-      updated_at: new Date().toISOString(),
+  // ONE OWNER FOR DISCONNECT. This used to write its own column set inline, and it
+  // set payout_status to 'restricted', which is a lie about an organisation that has
+  // no Stripe account at all and is exactly what the publish gate later read back
+  // and refused on. It also meant a second disconnect path could drift from this
+  // one and leave a half-cleared row, which is the state the founder found: a null
+  // stripe_account_id with the payout status, capabilities, requirements and bank
+  // account id all still present.
+  //
+  // disconnectConnectedAccount writes every derived column in DISCONNECTED_STATE in
+  // one update, so the row moves from connected to disconnected atomically and a
+  // half-cleared row is unreachable. payout_status becomes 'unset', not
+  // 'restricted' (migration 20260809000001).
+  if (!prevOrg?.id) {
+    console.warn('[m6] account.application.deauthorized: no organisation for account', {
+      eventId,
+      accountId,
     })
-    .eq('stripe_account_id', accountId)
+    return
+  }
 
-  if (error) {
-    console.error('[m6] account.application.deauthorized update failed', { eventId, accountId, error })
+  const { disconnectConnectedAccount } = await import('@/lib/stripe/reconcile-connect')
+  const disconnected = await disconnectConnectedAccount(
+    adminClient,
+    prevOrg.id,
+    'account.application.deauthorized',
+  )
+  if (!disconnected.ok) {
+    console.error('[m6] account.application.deauthorized update failed', {
+      eventId,
+      accountId,
+      error: disconnected.error,
+    })
     return
   }
 

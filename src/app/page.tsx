@@ -60,7 +60,7 @@ void cheapestPriceMarker
 export const revalidate = 120
 
 // Batch 9 V2 SEO contract: title format from the brief, full Open Graph
-// and Twitter Card with 1200x630 hero image, and canonical URL.
+// and Twitter Card with 1200x630 hero image, and canonical URL. UNSOURCED (Law 7)
 export const metadata: Metadata = {
   title: 'EventLinqs - Every community. Every event. One platform.',
   description:

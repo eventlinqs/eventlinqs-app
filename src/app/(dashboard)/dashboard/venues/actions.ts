@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
+import { resolveOrganisationScope } from '@/lib/organisations/scope'
 
 export interface VenueInput {
   name: string
@@ -27,15 +28,21 @@ export interface VenueRow {
   description: string | null
 }
 
-async function getOrgId(userId: string): Promise<string | null> {
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('organisations')
-    .select('id')
-    .eq('owner_id', userId)
-    .single()
-  if (error || !data) return null
-  return data.id
+/**
+ * WHICH business a venue belongs to.
+ *
+ * This was `.eq('owner_id', userId).single()`, which returns PGRST116 and
+ * `data: null` rather than a row when the caller owns more than one, so an owner of
+ * several businesses could not create, edit or delete a single venue: every action
+ * returned "Organisation not found".
+ *
+ * The resolver honours the same remembered business the venues page renders, so the
+ * venue is created under the business the organiser is looking at rather than under
+ * an arbitrary one.
+ */
+async function getOrgId(): Promise<string | null> {
+  const scope = await resolveOrganisationScope()
+  return scope.ok ? scope.active.id : null
 }
 
 export async function createVenue(input: VenueInput): Promise<{ error?: string; venue?: VenueRow }> {
@@ -43,7 +50,7 @@ export async function createVenue(input: VenueInput): Promise<{ error?: string; 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
-  const orgId = await getOrgId(user.id)
+  const orgId = await getOrgId()
   if (!orgId) return { error: 'Organisation not found' }
 
   const admin = createAdminClient()
@@ -77,7 +84,7 @@ export async function updateVenue(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
-  const orgId = await getOrgId(user.id)
+  const orgId = await getOrgId()
   if (!orgId) return { error: 'Organisation not found' }
 
   const admin = createAdminClient()
@@ -110,7 +117,7 @@ export async function deleteVenue(venueId: string): Promise<{ error?: string }> 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
-  const orgId = await getOrgId(user.id)
+  const orgId = await getOrgId()
   if (!orgId) return { error: 'Organisation not found' }
 
   const admin = createAdminClient()

@@ -154,8 +154,36 @@ function armSessionReplay() {
       .then(({ replayIntegration }) => {
         addIntegration(
           replayIntegration({
-            maskAllText: false,
-            blockAllMedia: false,
+            // MASKING RESTORED TO SENTRY'S DEFAULTS (both default to true; this
+            // call previously set both to false, which disabled them).
+            //
+            // WHY. beforeSend does NOT apply to Session Replay. Sentry documents
+            // a separate hook for that, beforeAddRecordingEvent, and there was
+            // none here, so the scrubValue discipline that protects every error
+            // event did not cover replays at all. With replaysOnErrorSampleRate
+            // at 1.0, every error uploaded a recording of the preceding ~60s of
+            // DOM, with text unmasked.
+            //
+            // What that DOM contains on this platform is other people's personal
+            // data: the organiser attendee list and orders table render buyer
+            // names and email addresses, the ticket page renders a ticket code,
+            // and checkout renders a name and email. So an error on any of those
+            // screens shipped buyer PII to a third party as readable text.
+            // Sentry's own guidance for maskAllText: false is to use it "only if
+            // your site has no sensitive data". This site is almost entirely
+            // other people's data.
+            //
+            // ASVS 14.2.3 (sensitive data must not be sent to untrusted parties)
+            // and 16.2.5 (logging enforced by the data's protection level).
+            //
+            // COST, stated honestly: replays now show masked text, so a replay
+            // localises a fault to an element rather than showing the exact
+            // value. Recovering fidelity is a matter of adding `unmask`/`unblock`
+            // selectors for regions PROVEN to hold no personal data, which is
+            // safe because it is opt-in per element. Turning masking off
+            // wholesale is not, because it is opt-out for the entire product.
+            maskAllText: true,
+            blockAllMedia: true,
           }),
         )
         markReplayArmed()

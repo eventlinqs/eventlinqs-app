@@ -10,7 +10,7 @@ export function PreviewForm() {
   // the next real form quietly goes to hide.
   const hydrated = useHydrated()
   return (
-    <form
+    <form method="post"
       className="max-w-md space-y-5"
       onSubmit={e => e.preventDefault()}
       noValidate

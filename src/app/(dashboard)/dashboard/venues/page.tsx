@@ -2,18 +2,24 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Building2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
+import { OrganisationSwitcher } from '@/components/organisations/organisation-switcher'
+import { organisationIdFromParams, resolveOrganisationScope } from '@/lib/organisations/scope'
 import { VenuesClient } from './venues-client'
 
-export default async function VenuesPage() {
+export default async function VenuesPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
+}) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: org } = await supabase
-    .from('organisations')
-    .select('id')
-    .eq('owner_id', user.id)
-    .single()
+  // WHICH business's venues. This was `.eq('owner_id', user.id).single()`, which
+  // returns PGRST116 and `data: null` when the caller owns more than one, so an
+  // owner of several was told to create the organisation they already had.
+  const scope = await resolveOrganisationScope(organisationIdFromParams(await searchParams))
+  const org = scope.ok ? scope.active : null
 
   if (!org) {
     // A brand-new organiser must never dead-end here: same designed empty
@@ -54,5 +60,16 @@ export default async function VenuesPage() {
     console.error('[venues/page] failed to load venues:', error)
   }
 
-  return <VenuesClient venues={venues ?? []} />
+  return (
+    <>
+      {scope.ok ? (
+        <OrganisationSwitcher
+          organisations={scope.organisations}
+          activeId={org.id}
+          basePath="/dashboard/venues"
+        />
+      ) : null}
+      <VenuesClient venues={venues ?? []} />
+    </>
+  )
 }

@@ -83,7 +83,7 @@ DICE is music-first and city-first. Their listing page is more curated than Even
 - No grid of all events — discovery is algorithmic, not alphabetical
 
 **Card design:**
-- Square images (1:1 aspect ratio) — feels more Instagram-native
+- Square images (1:1 aspect ratio) — feels more Instagram-native  <!-- UNSOURCED: Law 7, third-party spec with no primary source cited -->
 - Artist name prominent, event name secondary
 - Date and venue below
 - Price pill in bottom-left of image: "£15" (not "From £15")

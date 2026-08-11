@@ -9,7 +9,7 @@ export default async function MyWaitlistsPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const waitlists = await getMyWaitlists(user.id)
+  const waitlists = await getMyWaitlists()
 
   return (
     <div>

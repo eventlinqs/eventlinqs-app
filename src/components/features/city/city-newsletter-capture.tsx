@@ -68,7 +68,7 @@ export function CityNewsletterCapture({ cityName, tone = 'dark' }: Props) {
           Subscribed. We&apos;ll be in your inbox by next Friday.
         </p>
       ) : (
-        <form onSubmit={onSubmit} className="mt-4 flex flex-col gap-2 sm:flex-row">
+        <form method="post" onSubmit={onSubmit} className="mt-4 flex flex-col gap-2 sm:flex-row">
           <label htmlFor="city-newsletter-email" className="sr-only">
             Email address
           </label>

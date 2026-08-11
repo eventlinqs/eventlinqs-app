@@ -169,11 +169,11 @@ content reflows (causes CLS penalty on Lighthouse).
 ### Image aspect ratios
 
 ```
-Event card image:    1:1 square              (matches DICE; works for cultural events)
-Event hero image:    16:9 landscape          (cinematic; matches Ticketmaster hero)
+Event card image:    1:1 square              (matches DICE; works for cultural events)  <!-- UNSOURCED: Law 7, third-party spec with no primary source cited -->
+Event hero image:    16:9 landscape          (cinematic; matches Ticketmaster hero)  <!-- UNSOURCED: Law 7, third-party spec with no primary source cited -->
 Organiser avatar:    1:1 circular            (industry standard)
 City tile:           3:2 landscape           (differentiates from event cards visually)
-Featured banner:     2:1 landscape           (matches Eventbrite's "Hand-picked Happenings" format)
+Featured banner:     2:1 landscape           (matches Eventbrite's "Hand-picked Happenings" format)  <!-- UNSOURCED: Law 7, third-party spec with no primary source cited -->
 Cultural calendar:   1:1 square              (consistent with event cards)
 ```
 
@@ -195,7 +195,7 @@ Above the fold:
 
 2. **"Tonight in [city]"** row
    - 4 events visible at desktop, horizontal scroll
-   - Each card uses 1:1 image, title at `--type-h4`, meta at `--type-small`
+   - Each card uses 1:1 image, title at `--type-h4`, meta at `--type-small`  <!-- UNSOURCED: Law 7, third-party spec with no primary source cited -->
    - Date/venue meta uses tight gap (`--space-tight-gap: 8px`)
 
 First scroll:

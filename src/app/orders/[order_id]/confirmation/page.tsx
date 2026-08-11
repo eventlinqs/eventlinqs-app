@@ -91,15 +91,21 @@ export default async function OrderConfirmationPage({ params, searchParams }: Pr
   const { data: { user } } = await supabase.auth.getUser()
   const isGuest = !user
 
-  // Determine smart logo link: organisers go to their dashboard, everyone else browses events
+  // Determine smart logo link: organisers go to their dashboard, everyone else
+  // browses events.
+  //
+  // A COUNT, not maybeSingle. This asked "is this person an organiser" with
+  // `.eq('owner_id', user.id).maybeSingle()`, which returns PGRST116 and
+  // `data: null` when they own more than one, so the platform's own most prolific
+  // organisers were the ones sent to the public events list instead of their
+  // dashboard.
   let logoHref = '/events'
   if (user) {
-    const { data: org } = await adminClient
+    const { count } = await adminClient
       .from('organisations')
-      .select('id')
+      .select('id', { count: 'exact', head: true })
       .eq('owner_id', user.id)
-      .maybeSingle()
-    if (org) logoHref = '/dashboard/events'
+    if ((count ?? 0) > 0) logoHref = '/dashboard/events'
   }
 
   const eventDate = new Date(event.start_date).toLocaleString('en-AU', {
