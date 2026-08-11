@@ -157,7 +157,13 @@ const SUFFIX_BUDGET = 18
 const TYPOGRAPHIC_REPLACEMENTS: [RegExp, string][] = [
   [/[‘’‚‛]/g, ''], // curly single quotes: Stripe forbids the straight form too
   [/[“”„‟]/g, ''], // curly double quotes: likewise
-  [/[–—−]/g, '-'], // en dash, em dash, minus sign
+  // U+2013 en dash, U+2014 em dash, U+2212 minus sign. This line necessarily
+  // CONTAINS the characters the copy law bans, because it is the line that
+  // strips them. The copy gate cannot tell a dash being banned from a dash being
+  // used, so this file is on its ALLOWLIST in scripts/copy-tell-gate.mjs for
+  // em-or-en-dash, with the reason recorded there, exactly as src/lib/ai/
+  // sanitise.ts already is for the same reason.
+  [/[–—−]/g, '-'],
   [/…/g, '...'], // ellipsis
 ]
 

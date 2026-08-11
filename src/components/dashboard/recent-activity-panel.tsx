@@ -19,7 +19,18 @@ function relative(iso: string): string {
   if (hours < 24) return `${hours}h ago`
   const days = Math.round(hours / 24)
   if (days < 7) return `${days}d ago`
-  return new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })
+  // An explicit timeZone, because toLocaleDateString without one formats in
+  // the RUNTIME's zone: UTC on the server, the reader's zone in the browser.
+  // For anything within ten hours of midnight those are different DAYS, so the
+  // server and the client rendered different text and React reported a #418
+  // hydration mismatch. Australia/Sydney is the platform default (see
+  // DEFAULT_PREFS in lib/notifications/policy.ts) and, unlike the runtime
+  // zone, it is the same on both sides.
+  return new Date(iso).toLocaleDateString('en-AU', {
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'Australia/Sydney',
+  })
 }
 
 function iconFor(type: ActivityItem['type']) {

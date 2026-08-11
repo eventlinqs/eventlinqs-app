@@ -5,6 +5,7 @@ import { can } from '@/lib/admin/rbac'
 import { recordAuditEvent } from '@/lib/admin/audit'
 import { AdminStatTile } from '@/components/admin/admin-stat-tile'
 import { listOrgsForPayouts, getPayoutSummary, PAYOUT_CURRENCY } from '@/lib/admin/payouts'
+import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -122,7 +123,7 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
                   <td className="px-4 py-3 text-right text-white/60">{o.pendingCount || '-'}</td>
                   <td className="px-4 py-3 text-white/60">
                     {o.lastPayoutAt
-                      ? `${new Date(o.lastPayoutAt).toLocaleDateString('en-AU', { dateStyle: 'medium' })} (${o.lastPayoutStatus})`
+                      ? `${new Date(o.lastPayoutAt).toLocaleDateString('en-AU', { dateStyle: 'medium', timeZone: PLATFORM_TIME_ZONE })} (${o.lastPayoutStatus})`
                       : '-'}
                   </td>
                 </tr>

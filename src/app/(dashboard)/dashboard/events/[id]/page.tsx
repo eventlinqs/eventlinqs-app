@@ -262,8 +262,8 @@ export default async function EventViewPage({ params }: Props) {
         <KpiCard
           icon={<Ticket className="h-4 w-4" aria-hidden="true" />}
           label="Tickets sold"
-          value={ticketsSold.toLocaleString()}
-          hint={totalCapacity > 0 ? `of ${totalCapacity.toLocaleString()} (${sellThrough}%)` : 'No capacity set'}
+          value={ticketsSold.toLocaleString('en-AU')}
+          hint={totalCapacity > 0 ? `of ${totalCapacity.toLocaleString('en-AU')} (${sellThrough}%)` : 'No capacity set'}
         />
         <KpiCard
           icon={<Wallet className="h-4 w-4" aria-hidden="true" />}
@@ -279,8 +279,8 @@ export default async function EventViewPage({ params }: Props) {
         <KpiCard
           icon={<Eye className="h-4 w-4" aria-hidden="true" />}
           label="Capacity"
-          value={totalCapacity > 0 ? totalCapacity.toLocaleString() : 'Open'}
-          hint={totalCapacity > 0 ? `${Math.max(totalCapacity - ticketsSold, 0).toLocaleString()} still available` : 'No capacity cap set'}
+          value={totalCapacity > 0 ? totalCapacity.toLocaleString('en-AU') : 'Open'}
+          hint={totalCapacity > 0 ? `${Math.max(totalCapacity - ticketsSold, 0).toLocaleString('en-AU')} still available` : 'No capacity cap set'}
         />
         <KpiCard
           icon={<TrendingUp className="h-4 w-4" aria-hidden="true" />}

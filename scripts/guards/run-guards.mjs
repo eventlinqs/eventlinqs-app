@@ -9,6 +9,8 @@
  *   auth-provider-guard        no provider button without a server-resolved gate
  *   no-supabase-smtp           no auth flow on Supabase's 2-per-hour built-in mailer
  *   sender-single-source       one definition of the sending identity
+ *   no-unguarded-credential-form  no password field submittable before hydration
+ *   no-control-characters      no heredoc-corrupted byte in any source file
  *   auth-autocomplete          credential-manager attributes on every auth form
  *   auth-provider-cost         no provider gate on a route with no provider button
  *   canonical-host             one definition of the canonical host, resolved everywhere
@@ -71,6 +73,8 @@ const GUARDS = [
   'scripts/guards/auth-provider-cost-guard.mjs',
   'scripts/guards/no-supabase-smtp.mjs',
   'scripts/guards/sender-single-source.mjs',
+  'scripts/guards/no-unguarded-credential-form.mjs',
+  'scripts/guards/no-control-characters.mjs',
   'scripts/guards/auth-autocomplete-guard.mjs',
   // One definition of the canonical host. The same wrong-domain defect had
   // landed in six places, including four share-card generators that printed it

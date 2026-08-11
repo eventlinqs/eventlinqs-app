@@ -1,0 +1,252 @@
+[
+ {
+  "id": "home",
+  "path": "/"
+ },
+ {
+  "id": "events-browse",
+  "path": "/events"
+ },
+ {
+  "id": "events-q-multiword",
+  "path": "/events?q=electronic%20dance"
+ },
+ {
+  "id": "events-q-singleword",
+  "path": "/events?q=pop"
+ },
+ {
+  "id": "events-q-phrase",
+  "path": "/events?q=jazz%20soul"
+ },
+ {
+  "id": "events-tab-organisers",
+  "path": "/events?tab=organisers&q=sydney"
+ },
+ {
+  "id": "events-tab-cities",
+  "path": "/events?tab=cities&q=melbourne"
+ },
+ {
+  "id": "events-filter-city",
+  "path": "/events?city=sydney"
+ },
+ {
+  "id": "events-filter-city-date",
+  "path": "/events?city=sydney&date=weekend"
+ },
+ {
+  "id": "events-filter-eventtype",
+  "path": "/events?city=sydney&event_type=concert"
+ },
+ {
+  "id": "events-category-music",
+  "path": "/events?category=music"
+ },
+ {
+  "id": "events-category-comedy",
+  "path": "/events?category=comedy"
+ },
+ {
+  "id": "cities-index",
+  "path": "/cities"
+ },
+ {
+  "id": "city-sydney",
+  "path": "/city/sydney"
+ },
+ {
+  "id": "city-melbourne",
+  "path": "/city/melbourne"
+ },
+ {
+  "id": "city-geelong",
+  "path": "/city/geelong"
+ },
+ {
+  "id": "city-brisbane",
+  "path": "/city/brisbane"
+ },
+ {
+  "id": "city-empty-darwin",
+  "path": "/city/darwin"
+ },
+ {
+  "id": "city-empty-launceston",
+  "path": "/city/launceston"
+ },
+ {
+  "id": "city-empty-toowoomba",
+  "path": "/city/toowoomba"
+ },
+ {
+  "id": "city-suburb",
+  "path": "/city/sydney/bondi"
+ },
+ {
+  "id": "communities-index",
+  "path": "/communities"
+ },
+ {
+  "id": "community-african",
+  "path": "/community/african"
+ },
+ {
+  "id": "community-aboriginal-torres-strait-islander",
+  "path": "/community/aboriginal-torres-strait-islander"
+ },
+ {
+  "id": "community-indian",
+  "path": "/community/indian"
+ },
+ {
+  "id": "community-greek",
+  "path": "/community/greek"
+ },
+ {
+  "id": "community-empty-persian-iranian",
+  "path": "/community/persian-iranian"
+ },
+ {
+  "id": "community-empty-other-european",
+  "path": "/community/other-european"
+ },
+ {
+  "id": "community-city",
+  "path": "/community/african/sydney"
+ },
+ {
+  "id": "community-city-empty",
+  "path": "/community/persian-iranian/darwin"
+ },
+ {
+  "id": "categories-music",
+  "path": "/categories/music"
+ },
+ {
+  "id": "categories-comedy",
+  "path": "/categories/comedy"
+ },
+ {
+  "id": "categories-nightlife",
+  "path": "/categories/nightlife"
+ },
+ {
+  "id": "browse-city",
+  "path": "/events/browse/sydney"
+ },
+ {
+  "id": "feed",
+  "path": "/feed"
+ },
+ {
+  "id": "guides",
+  "path": "/guides"
+ },
+ {
+  "id": "help",
+  "path": "/help"
+ },
+ {
+  "id": "pricing",
+  "path": "/pricing"
+ },
+ {
+  "id": "organisers-marketing",
+  "path": "/organisers"
+ },
+ {
+  "id": "for-organisers",
+  "path": "/for-organisers"
+ },
+ {
+  "id": "about",
+  "path": "/about"
+ },
+ {
+  "id": "contact",
+  "path": "/contact"
+ },
+ {
+  "id": "careers",
+  "path": "/careers"
+ },
+ {
+  "id": "press",
+  "path": "/press"
+ },
+ {
+  "id": "waitlist",
+  "path": "/waitlist"
+ },
+ {
+  "id": "artists",
+  "path": "/artists"
+ },
+ {
+  "id": "gigs",
+  "path": "/gigs"
+ },
+ {
+  "id": "legal-privacy",
+  "path": "/legal/privacy"
+ },
+ {
+  "id": "legal-terms",
+  "path": "/legal/terms"
+ },
+ {
+  "id": "legal-refunds",
+  "path": "/legal/refunds"
+ },
+ {
+  "id": "login",
+  "path": "/login"
+ },
+ {
+  "id": "signup",
+  "path": "/signup"
+ },
+ {
+  "id": "forgot-password",
+  "path": "/forgot-password"
+ },
+ {
+  "id": "organisers-signup",
+  "path": "/organisers/signup"
+ },
+ {
+  "id": "account-signed-out",
+  "path": "/account"
+ },
+ {
+  "id": "tickets-signed-out",
+  "path": "/tickets"
+ },
+ {
+  "id": "event-free",
+  "path": "/events/artist-layer-launch-night-geelong"
+ },
+ {
+  "id": "event-paid",
+  "path": "/events/comedy-lineup-live-at-brisbane-hotel-hobart"
+ },
+ {
+  "id": "event-paid-2",
+  "path": "/events/afrobeats-and-brunch-sunday-sessions"
+ },
+ {
+  "id": "organiser-profile",
+  "path": "/organisers/sydney-pride-collective"
+ },
+ {
+  "id": "event-missing",
+  "path": "/events/this-event-does-not-exist",
+  "fullPage": false
+ },
+ {
+  "id": "city-missing",
+  "path": "/city/not-a-city",
+  "fullPage": false
+ }
+]

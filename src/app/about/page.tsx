@@ -261,9 +261,8 @@ export default function AboutPage() {
               Every community. Every event. One platform.
             </h2>
             <p className="mt-5 max-w-xl text-base leading-relaxed text-ink-600 md:text-lg">
-              Whether you are putting on your first event or running a
-              community calendar that fills venues every weekend, the
-              platform is built to work for you. Free for free events.
+              Your first event and your fiftieth run on the same platform, with
+              the same tools and the same terms. Free for free events.
               Transparent for paid ones.
             </p>
           </div>

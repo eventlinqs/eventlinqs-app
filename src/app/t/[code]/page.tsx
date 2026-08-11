@@ -135,7 +135,15 @@ export default async function TicketBearerPage({ params, searchParams }: Props) 
           </div>
         ) : (
           <>
+            {/* The QR is a bare inline <svg> with no accessible name, so a
+              * screen reader announced nothing at all for the one element on
+              * this page that gets the holder through the door. role="img"
+              * plus a label makes it announce as a ticket code; the code is
+              * also written out below in text, because a QR a person cannot
+              * see is useless without a readable fallback for the door staff. */}
             <div
+              role="img"
+              aria-label={`Entry QR code for ticket ${ticket.ticket_code}`}
               className="mt-6 flex items-center justify-center rounded-xl bg-white p-4 [&>svg]:h-auto [&>svg]:w-full [&>svg]:max-w-[280px]"
               // Our own server-generated SVG QR (no third-party HTML, no raw
               // <img> so the media/ESLint rules are satisfied).

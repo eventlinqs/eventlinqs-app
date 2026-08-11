@@ -96,6 +96,30 @@ const ALLOWLIST = [
     file: 'scripts/guards/canonical-host.mjs',
     reason: 'this guard has to name the host it is guarding',
   },
+  // The three sweep journeys below build a throwaway EMAIL ADDRESS, not a URL:
+  // `sweep.buyer.${stamp}@eventlinqs.com`. The guard matches the bare domain
+  // wherever it appears, so an address in a template literal reads to it as a
+  // host in a URL position. Resolving these through getSiteUrl() would be
+  // wrong twice over: the recipient domain is not the web host, and it must
+  // not follow a deployment environment or the sweep would post to a real
+  // inbox.
+  //
+  // REPRODUCED FROM feat/public-composer, which hit this first and resolved it
+  // the same way. The scripts live on origin/main and this guard lives here, so
+  // the collision only exists once the two are merged, and every branch that
+  // carries this guard meets it on merging main.
+  {
+    file: 'scripts/sweep/journey-buyer-full.mjs',
+    reason: 'builds a throwaway test EMAIL address, not a URL; the recipient domain must not follow the deployment host',
+  },
+  {
+    file: 'scripts/sweep/journey-buyer.mjs',
+    reason: 'builds a throwaway test EMAIL address, not a URL; the recipient domain must not follow the deployment host',
+  },
+  {
+    file: 'scripts/sweep/journey-organiser-signup.mjs',
+    reason: 'builds a throwaway test EMAIL address, not a URL; the recipient domain must not follow the deployment host',
+  },
   {
     file: 'scripts/batch-11.1-d3-3-link-audit.mjs',
     reason:

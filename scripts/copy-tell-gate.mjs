@@ -17,8 +17,25 @@
  */
 import fs from 'node:fs'
 import path from 'node:path'
+import { measureCoverage } from './lib/copy-coverage.mjs'
 
 const ROOT = process.cwd()
+
+/**
+ * The floor the gate's own eyesight must clear, MEASURED rather than guessed.
+ *
+ * Across .tsx the sighted chunker reads 37.2% of non-comment lines and the
+ * blind one read 33.1%. The floor sits midway. Raising it is welcome; lowering
+ * it to make a red run pass is precisely the failure it exists to catch.
+ *
+ * ITS LIMIT, STATED. 4 points of separation catches a WHOLESALE narrowing,
+ * which is the failure that actually happened. It would not catch someone
+ * quietly dropping one narrow case. The self test in
+ * tests/unit/ci/copy-gate-can-see.test.ts covers that by planting known
+ * violations in the shapes that were blind; the two checks are complementary
+ * and neither is sufficient alone.
+ */
+const COVERAGE_FLOOR = 0.351
 const LEXICON = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'src/lib/ai/copy-tells.json'), 'utf8'),
 )
@@ -29,6 +46,12 @@ const ALLOWLIST = [
     file: 'src/lib/ai/sanitise.ts',
     patterns: ['em-or-en-dash'],
     reason: 'the strip regexes must name the characters they strip',
+  },
+  {
+    file: 'src/lib/stripe/business-profile.ts',
+    patterns: ['em-or-en-dash'],
+    reason:
+      'same case as sanitise.ts above: TYPOGRAPHIC_REPLACEMENTS strips en dash, em dash and minus from an event title before it reaches Stripe, so the character class has to name them. Surfaced when origin/main merged in, because main added the test that runs this gate over the whole tree and this branch added the file',
   },
   {
     file: 'src/lib/ai/magic-start.ts',
@@ -85,6 +108,21 @@ function feeLiteralViolation(chunk) {
   return null
 }
 
+/**
+ * LOCK 5: no placeholder copy on a shipped surface.
+ *
+ * CLAUDE.md Law 1 is explicit that a "Coming soon" placeholder "is a defect by
+ * definition, not a stub to fix later", and Copy and banned content repeats it.
+ * Nothing checked for it, and one shipped: /dashboard/insights greeted an
+ * organiser with "Insights are coming soon ... are being built". The public
+ * sweep walker looked for this string but only walked PUBLIC pages, so an
+ * authed organiser surface was outside every net.
+ *
+ * Scanned in copy chunks only, so a code comment explaining the rule does not
+ * trip it.
+ */
+const PLACEHOLDER_RE = /\b(coming soon|lorem ipsum|sample event \d|placeholder text|to be announced)\b/i
+
 const DASH_RE = /[—–]/
 const BANNED_WORD_RE = new RegExp(
   LEXICON.hard.find(h => h.name === 'banned-word-community-law').source,
@@ -103,6 +141,49 @@ function copyChunks(line) {
   while ((m = stringRe.exec(line)) !== null) chunks.push(m[1] ?? m[2] ?? m[3] ?? '')
   const jsxRe = />([^<>{}]*[A-Za-z]{3,}[^<>{}]*)</g
   while ((m = jsxRe.exec(line)) !== null) chunks.push(m[1])
+
+  // JSX TEXT ON ITS OWN LINE. The matcher above needs `>` and `<` on the SAME
+  // line, and Prettier wraps any copy longer than the print width onto its own
+  // line:
+  //
+  //     <h2 className="...">
+  //       Insights are coming soon      <-- invisible to every rule here
+  //     </h2>
+  //
+  // Most user-facing copy in this codebase is formatted exactly that way, so
+  // the gate was passing while unable to see it. That is how a banned
+  // "coming soon" reached a shipped organiser surface with the gate green.
+  //
+  // Rejecting any line containing < { or ( was still too blunt: it hid the
+  // most common shapes of real copy, which mix text with an interpolation
+  // or an inline element.
+  //
+  //     {count} upcoming events
+  //     Book with <strong>care</strong> before Friday
+  //
+  // So the line is STRIPPED of expressions and inline tags rather than
+  // rejected, and what remains is judged as prose. Code is excluded by what
+  // code has and prose does not: an assignment, a terminator, a leading
+  // keyword, or a bare call.
+  const bare = line.trim()
+  const looksLikeCode =
+    /[=;]/.test(bare) ||
+    /^["'`]/.test(bare) ||
+    /^(import|export|const|let|var|return|type|interface|from|default|function|class|if|for|while|switch|case|await|async)\b/.test(
+      bare,
+    ) ||
+    /^[A-Za-z$_][\w$.]*\(/.test(bare)
+
+  if (!looksLikeCode) {
+    const stripped = bare
+      .replace(/\{[^{}]*\}/g, ' ')
+      .replace(/<[^<>]*>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+    // Two words of real letters is the floor for prose. A lone identifier,
+    // a closing brace or an attribute name never clears it.
+    if (/[A-Za-z]{3,}\s+[A-Za-z]/.test(stripped)) chunks.push(stripped)
+  }
   return chunks
 }
 
@@ -129,7 +210,22 @@ for (const file of walk(path.join(ROOT, 'src'))) {
   const allowed = ALLOWLIST.find(a => a.file === rel)?.patterns ?? []
   const lines = fs.readFileSync(file, 'utf8').split(/\r?\n/)
 
+  // Track block-comment depth across lines. isCommentLine only recognises a
+  // line that STARTS a comment, so a continuation line inside a {/* ... */}
+  // block read as copy once wrapped JSX text became visible. That produced a
+  // false positive on auth-shell.tsx, where a competitor is named in a design
+  // provenance comment, which is documentation and not user-facing copy.
+  let inBlockComment = false
+
   lines.forEach((line, i) => {
+    const trimmedLine = line.trim()
+    const opens = trimmedLine.includes('/*')
+    const closes = trimmedLine.includes('*/')
+    const wasInComment = inBlockComment
+    if (opens && !closes) inBlockComment = true
+    else if (closes) inBlockComment = false
+    if (wasInComment || (opens && !closes)) return
+
     const where = `${rel}:${i + 1}`
     if (!allowed.includes('em-or-en-dash') && DASH_RE.test(line)) {
       violations.push(`${where} em-or-en-dash`)
@@ -140,6 +236,9 @@ for (const file of walk(path.join(ROOT, 'src'))) {
     if (isCommentLine(line.trim())) return
     const chunks = copyChunks(line)
     if (chunks.length === 0) return
+    if (!allowed.includes('placeholder-copy') && chunks.some(c => PLACEHOLDER_RE.test(c))) {
+      violations.push(`${where} placeholder-copy`)
+    }
     for (const tell of STRING_SCOPED) {
       if (allowed.includes(tell.name)) continue
       if (chunks.some(c => tell.re.test(c))) violations.push(`${where} ${tell.name}`)
@@ -162,4 +261,33 @@ if (violations.length > 0) {
   for (const v of violations) console.error('  ' + v)
   process.exit(1)
 }
-console.log('copy-tell-gate: clean (dashes, banned word, phrase tells, competitor names)')
+
+// LOCK 6: the gate must be able to SEE. A clean report from a gate that reads
+// nothing is the exact failure this suite spent months in, so eyesight is
+// asserted alongside the rules. See scripts/lib/copy-coverage.mjs.
+// .tsx only. Measured across all sources the ratio moved just 3.1 points
+// between the blind chunker and the sighted one, because .ts files are almost
+// entirely code and swamp the signal. Restricted to the files where copy
+// actually lives, a narrowing shows up as a real drop instead of noise.
+const coverage = measureCoverage(
+  [...walk(path.join(ROOT, 'src'))].filter(f => f.endsWith('.tsx')),
+  f => fs.readFileSync(f, 'utf8'),
+  copyChunks,
+)
+const pct = (coverage.ratio * 100).toFixed(1)
+if (coverage.ratio < COVERAGE_FLOOR) {
+  console.error(
+    `copy-tell-gate: COVERAGE REGRESSION. The gate can read ${pct}% of source lines, ` +
+      `below the committed floor of ${(COVERAGE_FLOOR * 100).toFixed(1)}%.\n` +
+      `  read ${coverage.numerator} of ${coverage.denominator} non-comment lines.\n` +
+      `  The chunker has narrowed. A gate that reads less reports fewer violations\n` +
+      `  and looks healthier, which is how the previous blind spot survived.\n` +
+      `  Fix the chunker. Do NOT lower the floor to make this pass.`,
+  )
+  process.exit(1)
+}
+
+console.log(
+  `copy-tell-gate: clean (dashes, banned word, phrase tells, competitor names) ` +
+    `| coverage ${pct}% of ${coverage.denominator} lines`,
+)

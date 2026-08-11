@@ -46,8 +46,23 @@ export default async function CheckoutPage({ params }: Props) {
   }
 
   // Expired?
+  //
+  // This used to send the buyer to the national browse list with
+  // ?error=reservation_expired, which nothing on that page ever read: a person
+  // mid-payment lost their seats and landed on a generic list with no message.
+  // The reservation still knows its event, so they go back to the event they
+  // were actually buying, and ReservationNotice explains why.
   if (new Date(reservation.expires_at) < new Date()) {
-    redirect('/events?error=reservation_expired')
+    const { data: expiredEvent } = await admin
+      .from('events')
+      .select('slug')
+      .eq('id', reservation.event_id)
+      .maybeSingle()
+    redirect(
+      expiredEvent?.slug
+        ? `/events/${expiredEvent.slug}?notice=reservation_expired`
+        : '/events?notice=reservation_expired',
+    )
   }
 
   // Load event - must use admin client to bypass RLS for guest users

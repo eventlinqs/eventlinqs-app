@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useHydrated } from '@/lib/hooks/use-hydrated'
 import { useRouter } from 'next/navigation'
 import { loginAdminAction } from '../actions'
 
@@ -18,6 +19,8 @@ interface LoginFormProps {
 export function LoginForm({ next, initialError }: LoginFormProps) {
   const [error, setError] = useState<string | null>(initialError ?? null)
   const [useRecovery, setUseRecovery] = useState(false)
+  // No native submit before the handler exists. See use-hydrated.ts.
+  const hydrated = useHydrated()
   const [pending, startTransition] = useTransition()
   const router = useRouter()
 
@@ -119,7 +122,7 @@ export function LoginForm({ next, initialError }: LoginFormProps) {
 
       <button
         type="submit"
-        disabled={pending}
+        disabled={pending || !hydrated}
         className="w-full rounded-md bg-[var(--brand-accent)] px-4 py-2.5 text-sm font-semibold text-[var(--text-primary)] transition hover:opacity-90 disabled:opacity-60"
       >
         {pending ? 'Signing in...' : 'Sign in'}

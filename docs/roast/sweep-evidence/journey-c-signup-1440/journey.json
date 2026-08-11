@@ -1,0 +1,73 @@
+{
+ "email": "sweep.organiser.1786171569479@eventlinqs.com",
+ "steps": [
+  {
+   "step": "organiser signs up from the organiser page",
+   "verdict": "PASS",
+   "notes": [
+    "HTTP 200",
+    "signup form renders; account confirmed via the TEST admin API"
+   ],
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-signup-1440\\01-organiser-signs-up-from-the-organiser-page.png",
+   "url": "/signup?role=organiser"
+  },
+  {
+   "step": "sign in as the brand new organiser",
+   "verdict": "PASS",
+   "notes": [
+    "landed on /dashboard"
+   ],
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-signup-1440\\02-sign-in-as-the-brand-new-organiser.png",
+   "url": "/dashboard"
+  },
+  {
+   "step": "a brand new organiser is asked to create an organisation",
+   "verdict": "PASS",
+   "notes": [
+    "HTTP 200",
+    "after submit: /dashboard/organisation"
+   ],
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-signup-1440\\03-a-brand-new-organiser-is-asked-to-create-an-organisation.png",
+   "url": "/dashboard/organisation"
+  },
+  {
+   "step": "open the create wizard WITHOUT Magic Start",
+   "verdict": "FAIL",
+   "notes": [
+    "HTTP 200",
+    "Magic Start is offered and is being skipped",
+    "no title field on step one"
+   ],
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-signup-1440\\04-open-the-create-wizard-without-magic-start.png",
+   "url": "/dashboard/events/create"
+  },
+  {
+   "step": "walk the wizard by typing, step by step",
+   "verdict": "PASS",
+   "notes": [
+    "steps reached: Create Event > Create Event > Create Event > Create Event > Create Event > Create Event > Create Event"
+   ],
+   "visited": [
+    "Create Event",
+    "Create Event",
+    "Create Event",
+    "Create Event",
+    "Create Event",
+    "Create Event",
+    "Create Event"
+   ],
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-signup-1440\\05-walk-the-wizard-by-typing-step-by-step.png",
+   "url": "/dashboard/events/create"
+  },
+  {
+   "step": "edit a published event and save",
+   "verdict": "FAIL",
+   "notes": [
+    "page.waitForURL: Timeout 40000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"load\"\n============================================================"
+   ],
+   "screenshot": "docs\\roast\\sweep-evidence\\journey-c-signup-1440\\06-edit-a-published-event-and-save.png",
+   "url": "/login"
+  }
+ ],
+ "pageErrors": []
+}

@@ -2,8 +2,13 @@
 
 import { FormField } from '@/components/ui/FormField'
 import { Button } from '@/components/ui/Button'
+import { useHydrated } from '@/lib/hooks/use-hydrated'
 
 export function PreviewForm() {
+  // A design-system preview with no real credential behind it, gated anyway.
+  // The alternative was an allowlist in the guard, and an allowlist is where
+  // the next real form quietly goes to hide.
+  const hydrated = useHydrated()
   return (
     <form
       className="max-w-md space-y-5"
@@ -47,7 +52,7 @@ export function PreviewForm() {
         autoComplete="tel"
       />
 
-      <Button type="submit" variant="primary" size="lg" className="w-full">
+      <Button type="submit" variant="primary" size="lg" className="w-full" disabled={!hydrated}>
         Submit form
       </Button>
     </form>

@@ -242,7 +242,13 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-ink-900">{tier.name}</p>
+                    {/* A tier saved without a name rendered as an empty line, so
+                      * the row showed a price and a control attached to nothing.
+                      * Observed on lineup-loop-proof-night-3z7osn, whose second
+                      * tier has an empty name and a price of 0. */}
+                    <p className="text-sm font-semibold text-ink-900">
+                      {tier.name?.trim() || 'Ticket'}
+                    </p>
                     {tier.description && (
                       <p className="mt-0.5 text-xs text-ink-600">{tier.description}</p>
                     )}
@@ -261,20 +267,27 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
                   </div>
 
                   {soldOut ? (
-                    waitlistEnabled ? (
-                      <div className="shrink-0 w-28">
-                        <JoinWaitlistButton
-                          eventId={eventId}
-                          tierId={tier.id}
-                          tierName={tier.name}
-                          maxPerOrder={tier.max_per_order}
-                        />
-                      </div>
-                    ) : (
-                      <span className="inline-flex items-center rounded-md bg-ink-900 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-gold-500 shrink-0">
+                    /* The Sold out badge used to be REPLACED by the waitlist
+                     * button whenever a waitlist was enabled, so a person saw a
+                     * price and "Join Waitlist" and was never told the tier was
+                     * gone. They cannot tell sold out from not yet on sale.
+                     * The badge is now always shown and the waitlist sits
+                     * beside it as the next step, not instead of the reason. */
+                    <div className="flex shrink-0 flex-col items-end gap-2">
+                      <span className="inline-flex items-center rounded-md bg-ink-900 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-gold-500">
                         Sold out
                       </span>
-                    )
+                      {waitlistEnabled && (
+                        <div className="w-28">
+                          <JoinWaitlistButton
+                            eventId={eventId}
+                            tierId={tier.id}
+                            tierName={tier.name?.trim() || 'Ticket'}
+                            maxPerOrder={tier.max_per_order}
+                          />
+                        </div>
+                      )}
+                    </div>
                   ) : salePending ? (
                     <span className="inline-flex items-center rounded-md bg-gold-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-gold-600 shrink-0">
                       Starts soon

@@ -1,0 +1,14 @@
+[
+ {"id":"v-baseline","path":"/events","fullPage":false},
+ {"id":"v-q-geelong","path":"/events?q=Geelong","fullPage":false},
+ {"id":"v-q-melbourne","path":"/events?q=Melbourne","fullPage":false},
+ {"id":"v-q-organiser","path":"/events?q=Harbourline%20Live","fullPage":false},
+ {"id":"v-q-jazzsoul","path":"/events?q=jazz%20soul","fullPage":false},
+ {"id":"v-q-nonsense","path":"/events?q=zzzzqqq","fullPage":false},
+ {"id":"v-city-sydney","path":"/events?city=sydney","fullPage":false},
+ {"id":"v-city-date","path":"/events?city=sydney&date=weekend","fullPage":false},
+ {"id":"v-city-etype","path":"/events?city=sydney&event_type=concert","fullPage":false},
+ {"id":"v-tab-cities","path":"/events?tab=cities&q=melbourne","fullPage":false},
+ {"id":"v-tab-orgs","path":"/events?tab=organisers&q=harbourline","fullPage":false},
+ {"id":"v-venue","path":"/events?venue=the-espy","fullPage":false}
+]

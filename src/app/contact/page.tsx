@@ -14,15 +14,26 @@ export const metadata: Metadata = {
 }
 
 interface Props {
-  searchParams: Promise<{ topic?: string; interest?: string }>
+  searchParams: Promise<{ topic?: string; interest?: string; organiser?: string }>
 }
+
+/** Longest organiser name that can sensibly sit in a subject line. */
+const MAX_ORGANISER_SUBJECT_LENGTH = 80
 
 /**
  * Build the pre-filled subject line from ?topic= and ?interest= URL params.
  * Used by category landing pages and footer organiser links to pre-fill the
  * contact form so the user does not have to type boilerplate context.
  */
-function buildInitialSubject(topic?: string, interest?: string): string {
+function buildInitialSubject(topic?: string, interest?: string, organiser?: string): string {
+  // "Send a message" on an organiser profile used to point at
+  // /organisers/[handle]/contact, a route that has never existed, so the
+  // button 404d on every organiser profile on the platform. It now arrives
+  // here carrying who the message is for.
+  if (topic === 'organiser-message' && organiser) {
+    return `Message for ${organiser.slice(0, MAX_ORGANISER_SUBJECT_LENGTH)}`
+  }
+
   if (topic !== 'organiser') return ''
 
   if (!interest) return 'Organiser enquiry'
@@ -41,8 +52,8 @@ function buildInitialSubject(topic?: string, interest?: string): string {
 }
 
 export default async function ContactPage({ searchParams }: Props) {
-  const { topic, interest } = await searchParams
-  const initialSubject = buildInitialSubject(topic, interest)
+  const { topic, interest, organiser } = await searchParams
+  const initialSubject = buildInitialSubject(topic, interest, organiser)
 
   return (
     <PageShell>

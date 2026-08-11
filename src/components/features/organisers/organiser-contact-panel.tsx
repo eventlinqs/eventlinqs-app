@@ -4,7 +4,8 @@ import { ExternalLink, Globe, Mail } from 'lucide-react'
 
 interface Props {
   organiserName: string
-  organiserSlug: string
+  /** Retained for callers; the contact CTA now routes by name, not slug. */
+  organiserSlug?: string
   website: string | null
   email: string | null
 }
@@ -18,7 +19,7 @@ interface Props {
  * have in the schema today; Instagram + TikTok come later when the M7
  * admin panel surfaces a typed social-links schema).
  */
-export function OrganiserContactPanel({ organiserName, organiserSlug, website, email }: Props) {
+export function OrganiserContactPanel({ organiserName, website, email }: Props) {
   return (
     <section
       aria-labelledby="organiser-contact-heading"
@@ -86,7 +87,11 @@ export function OrganiserContactPanel({ organiserName, organiserSlug, website, e
 
             <div className="mt-8">
               <Link
-                href={`/organisers/${organiserSlug}/contact`}
+                /* /organisers/[handle]/contact has never existed, so this
+                 * button 404d on every organiser profile. The shared contact
+                 * form is the surface that does exist; it arrives pre-filled
+                 * with who the message is for. */
+                href={`/contact?topic=organiser-message&organiser=${encodeURIComponent(organiserName)}#contact-form`}
                 className="inline-flex h-11 min-w-[44px] items-center justify-center rounded-full border border-ink-300 bg-transparent px-6 text-sm font-semibold text-ink-900 transition hover:bg-ink-100"
               >
                 Send a message

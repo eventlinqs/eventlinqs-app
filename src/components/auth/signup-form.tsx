@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useHydrated } from '@/lib/hooks/use-hydrated'
 import { useRouter } from 'next/navigation'
 import { GoogleButton } from './google-button'
 import { AuthDivider } from './auth-divider'
@@ -47,6 +48,15 @@ export function SignupForm({ role = 'attendee', googleEnabled }: Props) {
   // signup condition.
   const [digestOptIn, setDigestOptIn] = useState(false)
   const [loading, setLoading] = useState(false)
+  // No native submit before the handler exists. See use-hydrated.ts.
+  const hydrated = useHydrated()
+  // MERGE NOTE. main widened this to the hydration gate; this branch narrowed the
+  // error from a string to a CLASS plus the field it belongs to. They are
+  // orthogonal: one decides whether a submit can fire at all, the other decides
+  // what the person is told when it does and which input the message hangs on.
+  // Taking main's `useState<string | null>` would have compiled away the whole
+  // signup failure contract, because every read below is error.failure /
+  // error.field / error.message.
   const [error, setError] = useState<SignupError | null>(null)
   const router = useRouter()
 
@@ -330,7 +340,7 @@ export function SignupForm({ role = 'attendee', googleEnabled }: Props) {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || !hydrated}
           className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-gold-400 px-4 text-sm font-semibold text-ink-900 shadow-md transition-all hover:-translate-y-0.5 hover:bg-gold-500 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-400 focus-visible:ring-offset-2 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loading

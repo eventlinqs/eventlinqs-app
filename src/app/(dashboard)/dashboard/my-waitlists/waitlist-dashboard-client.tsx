@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { leaveWaitlist } from '@/app/actions/waitlist'
 import type { MyWaitlistRow } from '@/app/actions/waitlist'
+import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 
 interface Props {
   initialWaitlists: MyWaitlistRow[]
@@ -23,8 +24,7 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-AU', {
     day: 'numeric',
     month: 'short',
-    year: 'numeric',
-  })
+    year: 'numeric', timeZone: PLATFORM_TIME_ZONE })
 }
 
 export function WaitlistDashboardClient({ initialWaitlists }: Props) {
