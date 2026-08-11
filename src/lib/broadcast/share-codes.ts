@@ -43,5 +43,5 @@ export function isValidShareCode(code: unknown): code is string {
 
 /** The absolute short URL for a code. */
 export function buildShortUrl(origin: string, code: string): string {
-  return `${origin.replace(/\/$/, '')}/s/${code}`
+  return `${origin.replace(/\/$/, '')}/e/${code}`
 }

@@ -6,6 +6,7 @@ import {
   computeOrganiserTransferCents,
   getCurrencyForCountry,
 } from './application-fee'
+import { statementDescriptorSuffix } from '@/lib/stripe/business-profile'
 import type { FeeBreakdown } from './payment-calculator'
 import type { CreatePaymentIntentParams, PaymentGateway, PaymentIntentResult } from './gateway'
 
@@ -22,6 +23,7 @@ import type { CreatePaymentIntentParams, PaymentGateway, PaymentIntentResult } f
 type OrgChargeFields = Pick<
   Organisation,
   | 'id'
+  | 'name'
   | 'stripe_account_id'
   | 'stripe_payouts_enabled'
   | 'stripe_account_country'
@@ -82,6 +84,16 @@ export async function createPlatformCharge(
   )
   const connectedAccountId = org.stripe_account_id!
 
+  // The buyer's bank statement carries the EVENT, falling back to the organiser
+  // only when the event yields nothing printable. Loaded here rather than passed
+  // in because the three checkout call sites (general, seated, squad) hold three
+  // differently-shaped event objects and only one of them selects `title`;
+  // reading it from the id they all pass is one indexed lookup and cannot
+  // silently go missing at one call site.
+  const eventTitle = await loadEventTitle(input.eventId ?? null)
+  const descriptorSuffix =
+    statementDescriptorSuffix(eventTitle) ?? statementDescriptorSuffix(org.name)
+
   const intent = await input.gateway.createPaymentIntent({
     amount_cents: input.fees.total_cents,
     currency: input.fees.currency,
@@ -91,6 +103,18 @@ export async function createPlatformCharge(
     // PLATFORM charge: funds held in the platform balance. transfer_group links
     // this charge to the later organiser transfer. No Connect charge fields.
     transfer_group: input.transferGroup,
+    // Put the EVENT on the buyer's bank statement, which is what they remember
+    // and what the published competition does (Eventbrite "EB *[event title]",
+    // Humanitix "Tickets-[first 16 of the event title]"). All three checkout
+    // call sites inherit it without changing a line.
+    //
+    // This is the ONLY route by which the organiser reaches a statement in this
+    // architecture. Stripe: "The customer's statement uses the platform
+    // account's static component for ... Separate charges and transfers without
+    // on_behalf_of" (https://docs.stripe.com/connect/statement-descriptors,
+    // fetched 2026-08-09), and this is exactly that charge type. The connected
+    // account's own business_profile.name never reaches the buyer.
+    ...(descriptorSuffix ? { statement_descriptor_suffix: descriptorSuffix } : {}),
   })
 
   return {
@@ -101,12 +125,34 @@ export async function createPlatformCharge(
   }
 }
 
+/**
+ * The event title for the statement descriptor. Best effort by design: a
+ * missing title costs the buyer a less specific statement line, and must never
+ * cost them their tickets, so any failure returns null and the caller falls
+ * back to the organiser name.
+ */
+async function loadEventTitle(eventId: string | null): Promise<string | null> {
+  if (!eventId) return null
+  try {
+    const admin = createAdminClient()
+    const { data, error } = await admin
+      .from('events')
+      .select('title')
+      .eq('id', eventId)
+      .maybeSingle()
+    if (error || !data) return null
+    return data.title ?? null
+  } catch {
+    return null
+  }
+}
+
 async function loadOrgChargeFields(organisationId: string): Promise<OrgChargeFields> {
   const admin = createAdminClient()
   const { data, error } = await admin
     .from('organisations')
     .select(
-      'id, stripe_account_id, stripe_payouts_enabled, stripe_account_country, payout_status'
+      'id, name, stripe_account_id, stripe_payouts_enabled, stripe_account_country, payout_status'
     )
     .eq('id', organisationId)
     .maybeSingle()

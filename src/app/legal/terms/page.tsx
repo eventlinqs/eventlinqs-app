@@ -1,3 +1,4 @@
+import { canonicalHost, getSiteUrl } from '@/lib/site-url'
 import type { Metadata } from 'next'
 import { LegalPageShell } from '@/components/ui/LegalPageShell'
 import { getEventFeeRates } from '@/lib/pricing/event-fee-config'
@@ -56,7 +57,7 @@ export default async function TermsOfServicePage() {
       <h2 id="about">About These Terms</h2>
       <p>
         These Terms of Service govern your use of EventLinqs, including the
-        website at <a href="https://eventlinqs.com">eventlinqs.com</a>, any
+        website at <a href={getSiteUrl()}>{canonicalHost()}</a>, any
         associated mobile experience, and every related service. By creating an
         account, buying a ticket, or listing an event, you agree to these terms.
         If you do not agree, please do not use the platform.
@@ -452,7 +453,7 @@ export default async function TermsOfServicePage() {
         If you do not accept a change, you may close your account before it takes
         effect. The version in force when you bought a ticket continues to govern
         that purchase. The current version always sits at{' '}
-        <a href="/legal/terms">eventlinqs.com/legal/terms</a>.
+        <a href="/legal/terms">{canonicalHost()}/legal/terms</a>.
       </p>
 
       <h2 id="contact">Contact</h2>

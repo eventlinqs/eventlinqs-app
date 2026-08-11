@@ -9,6 +9,7 @@ import {
   createExpressAccount,
   isAllowedConnectCountry,
 } from '@/lib/stripe/connect'
+import { buildConnectBusinessProfile } from '@/lib/stripe/business-profile'
 import { getPayoutScheduleDays } from '@/lib/payments/pricing-rules'
 import { getAppUrl } from '@/lib/site-url'
 
@@ -90,7 +91,7 @@ export async function POST(req: NextRequest) {
   const { data: org, error: orgError } = await supabase
     .from('organisations')
     .select(
-      'id, owner_id, name, email, stripe_account_id, stripe_account_country, stripe_charges_enabled'
+      'id, owner_id, name, slug, email, phone, stripe_account_id, stripe_account_country, stripe_charges_enabled'
     )
     .eq('id', organisationId)
     .single()
@@ -121,6 +122,12 @@ export async function POST(req: NextRequest) {
         country,
         email: org.email ?? user.email ?? '',
         payoutDelayDays,
+        // Hand Stripe everything we already hold, so its hosted form opens with
+        // the business name filled in instead of blank. A blank field is how
+        // "Party Pty Ltd" became "Eventlinqs" on the production account
+        // acct_1U2Df1GThKJm4ih9: the organiser was asked to retype a name the
+        // platform had in this very row and got it wrong.
+        businessProfile: buildConnectBusinessProfile(org, user.email ?? null),
       })
       accountId = account.id
       const { error: updateError } = await admin

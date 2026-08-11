@@ -1,0 +1,2 @@
+light-on-navy: measured placement on-navy, luminance over navy 222, alpha true
+dark-on-tile: measured placement on-tile, luminance over navy 10, alpha true

@@ -1,4 +1,5 @@
 import Stripe from 'stripe'
+import type { ConnectBusinessProfile } from './business-profile'
 
 /**
  * Centralised Stripe Connect helpers.
@@ -79,6 +80,13 @@ export type CreateExpressAccountInput = {
    * buffer. Single-sourced from `payout_schedule_days` (pricing_rules).
    */
   payoutDelayDays: number
+  /**
+   * What the platform already knows about this organiser, prefilled into
+   * Stripe's hosted onboarding so the organiser never retypes it. Built by
+   * `buildConnectBusinessProfile`. See business-profile.ts for the field-by-field
+   * citation and for why the merchant category code is deliberately absent.
+   */
+  businessProfile: ConnectBusinessProfile
 }
 
 export type CreateAccountLinkInput = {
@@ -126,6 +134,30 @@ export function isAllowedConnectCountry(value: string): value is AllowedConnectC
  * - Stamps `metadata.organisation_id` so webhook handlers can correlate
  *   the Stripe account back to an EventLinqs organisation without a DB
  *   round-trip when needed for diagnostics.
+ * - PREFILLS `business_profile` from the organisation record. Stripe:
+ *   "If you've already collected information for your connected accounts, you
+ *   can prefill that information when creating the account. Connect Onboarding
+ *   won't ask for the prefilled information during account onboarding."
+ *   (https://docs.stripe.com/api/accounts/create, fetched 2026-08-09.)
+ *
+ *   The prefill happens HERE, at creation, because that is the only moment it
+ *   can save the organiser any typing: Stripe stops asking for a field once it
+ *   is prefilled, and by the time the AccountLink opens the form the question
+ *   has either been skipped or asked. Stripe also narrows what a platform may
+ *   write after that point: "For accounts where
+ *   controller.requirement_collection is `stripe`, which includes Standard and
+ *   Express accounts, you can update all information until you create an
+ *   Account Link or Account Session to start Connect onboarding, after which
+ *   some properties can no longer be updated."
+ *   (https://docs.stripe.com/api/accounts/update, fetched 2026-08-09.)
+ *
+ *   `business_profile.name` is NOT one of the properties that locks. Verified
+ *   2026-08-09 against a fully-onboarded Express account on TEST
+ *   (acct_1TcWaWGtNOwOpaL9, details_submitted and charges_enabled): a platform
+ *   POST of business_profile[name] was accepted, and Stripe then reset that
+ *   account's statement_descriptor to match. So an already-damaged account can
+ *   still be repaired through the API; prefilling here is what stops it being
+ *   damaged in the first place.
  *
  * @throws when the country is outside the v1 whitelist. Caller surfaces
  * a 400 with a clear message.
@@ -145,6 +177,7 @@ export async function createExpressAccount(
     type: 'express',
     country: input.country,
     email: input.email,
+    business_profile: input.businessProfile,
     capabilities: {
       card_payments: { requested: true },
       transfers: { requested: true },
@@ -220,6 +253,20 @@ export async function createAccountLink(
 export async function retrieveAccount(accountId: string): Promise<Stripe.Account> {
   const stripe = getStripe()
   return stripe.accounts.retrieve(accountId)
+}
+
+/**
+ * The customer-facing business name currently on a connected account, or null
+ * when Stripe holds none yet.
+ *
+ * Used by the divergence check that compares this against `organisations.name`.
+ * Kept as its own thin helper so the payouts page and the health sentinel read
+ * the value the same way, and so a Stripe outage degrades to "unknown" at one
+ * call site rather than throwing into a page render.
+ */
+export async function getConnectedBusinessName(accountId: string): Promise<string | null> {
+  const account = await retrieveAccount(accountId)
+  return account.business_profile?.name ?? null
 }
 
 /**

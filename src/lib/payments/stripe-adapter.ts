@@ -83,6 +83,19 @@ export class StripeAdapter implements PaymentGateway, TransferGateway {
       // Funds-holding model: the platform is the merchant of record on this
       // charge. transfer_group links it to the later organiser transfer.
       ...(params.transfer_group ? { transfer_group: params.transfer_group } : {}),
+      // Dynamic half of the statement descriptor. Stripe: "Dynamic suffixes are
+      // supported only for card charges by using the PaymentIntents
+      // statement_descriptor_suffix parameter"
+      // (https://docs.stripe.com/connect/statement-descriptors, fetched
+      // 2026-08-09). Verified against the live TEST API with this integration's
+      // exact shape (automatic_payment_methods enabled, platform charge, no
+      // on_behalf_of): the parameter is accepted and the resulting charge's
+      // calculated_statement_descriptor reads "ELINQS* PARTY PTY LTD"
+      // (ch_3U2EHEGqHIQtgS8t1ank5Pom), against "EVENTLINQS" without it
+      // (ch_3U2EHBGqHIQtgS8t0ryL61JI).
+      ...(params.statement_descriptor_suffix
+        ? { statement_descriptor_suffix: params.statement_descriptor_suffix }
+        : {}),
       ...(isDestinationCharge
         ? {
             application_fee_amount: params.application_fee_cents!,

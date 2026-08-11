@@ -13,6 +13,8 @@
  *   no-control-characters      no heredoc-corrupted byte in any source file
  *   auth-autocomplete          credential-manager attributes on every auth form
  *   auth-provider-cost         no provider gate on a route with no provider button
+ *   canonical-host             one definition of the canonical host, resolved everywhere
+ *   short-link-namespace       /e/ and /s/ own their segments; no code can shadow a route
  *   check-client-barrel-imports  no third-party namespace import in the browser bundle
  *
  * Runs them all rather than short-circuiting, so one pass reports every
@@ -74,6 +76,13 @@ const GUARDS = [
   'scripts/guards/no-unguarded-credential-form.mjs',
   'scripts/guards/no-control-characters.mjs',
   'scripts/guards/auth-autocomplete-guard.mjs',
+  // One definition of the canonical host. The same wrong-domain defect had
+  // landed in six places, including four share-card generators that printed it
+  // onto an artefact a stranger sees, and every one was found by accident.
+  'scripts/guards/canonical-host.mjs',
+  // A share code is a readable slug, so it must never be mintable as something
+  // that shadows a real route, and nothing else may take the /e/ segment.
+  'scripts/guards/short-link-namespace.mjs',
   // From PR #111. See THE BOUNDARY above: separate file, separate question,
   // shared runner. Absent from this list, `prebuild` stops checking the browser
   // bundle for untree-shakeable namespace imports and nothing goes red.

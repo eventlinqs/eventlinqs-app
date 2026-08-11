@@ -1,6 +1,7 @@
 import { ImageResponse } from 'next/og'
 import type { NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { canonicalHost } from '@/lib/site-url'
 import { OG_THEME as T } from '@/lib/broadcast/og-theme'
 
 export const runtime = 'nodejs'
@@ -256,7 +257,7 @@ export async function GET(
               <span style={{ color: T.gold }}>.</span>
             </div>
             <div style={{ display: 'flex', color: T.textFaint, fontSize: 22, fontWeight: 500 }}>
-              eventlinqs.com
+              {canonicalHost()}
             </div>
           </div>
         </div>

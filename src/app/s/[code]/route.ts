@@ -9,6 +9,7 @@ import {
   resolveShareLink,
   visitorHash,
 } from '@/lib/broadcast/share-links'
+import { isPreviewCrawler } from '@/lib/broadcast/crawler'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -66,6 +67,12 @@ export async function GET(
 
   if (!(await isFeatureEnabled('broadcast_share'))) return destination
 
+  // A link-preview fetch is SERVED in full, because a crawler that cannot
+  // follow the link produces no preview card, but it is never COUNTED. Before
+  // this line every share booked at least one click that no person made.
+  const userAgent = request.headers.get('user-agent')
+  if (isPreviewCrawler(userAgent)) return destination
+
   const ip =
     request.headers.get('x-real-ip') ??
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
@@ -73,7 +80,7 @@ export async function GET(
   await recordShareLinkEvent({
     linkId: link.id,
     kind: 'click',
-    visitorHash: visitorHash(ip, request.headers.get('user-agent')),
+    visitorHash: visitorHash(ip, userAgent),
   }).catch(() => {})
 
   // Last-touch share attribution: the most recent tracked link the browser

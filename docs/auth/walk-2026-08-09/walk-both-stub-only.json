@@ -1,0 +1,101 @@
+{
+  "base": "https://eventlinqs-app-git-feat-launch-ef8ee0-lawals-projects-c20c0be8.vercel.app",
+  "results": [
+    {
+      "case": "06-rate-limited",
+      "title": "The rate limiter fired",
+      "kind": "stubbed",
+      "viewport": "1440",
+      "httpStatus": 429,
+      "messages": [
+        "Too many attempts from this connection. Please wait about 8 minutes and try again."
+      ],
+      "showedGeneric": false,
+      "screenshot": "docs\\auth\\walk-2026-08-09\\06-rate-limited-1440.png"
+    },
+    {
+      "case": "07-mail-transport-failed",
+      "title": "The verification email could not be sent",
+      "kind": "stubbed",
+      "viewport": "1440",
+      "httpStatus": 502,
+      "messages": [
+        "We could not send that email just now. This is a problem on our side, not with your account. Please try again in a few minutes.Contact us if it keeps happening."
+      ],
+      "showedGeneric": false,
+      "screenshot": "docs\\auth\\walk-2026-08-09\\07-mail-transport-failed-1440.png"
+    },
+    {
+      "case": "08-service-unavailable",
+      "title": "Supabase was unreachable",
+      "kind": "stubbed",
+      "viewport": "1440",
+      "httpStatus": 503,
+      "messages": [
+        "We could not reach our account service just now. This is a problem on our side, not with your details. Please try again in a moment.Contact us if it keeps happening."
+      ],
+      "showedGeneric": false,
+      "screenshot": "docs\\auth\\walk-2026-08-09\\08-service-unavailable-1440.png"
+    },
+    {
+      "case": "09-signup-rejected",
+      "title": "Anything else GoTrue declines",
+      "kind": "stubbed",
+      "viewport": "1440",
+      "httpStatus": 400,
+      "messages": [
+        "We could not create an account with those details. Check your email address and password, or sign in if you already have an account."
+      ],
+      "showedGeneric": false,
+      "screenshot": "docs\\auth\\walk-2026-08-09\\09-signup-rejected-1440.png"
+    },
+    {
+      "case": "06-rate-limited",
+      "title": "The rate limiter fired",
+      "kind": "stubbed",
+      "viewport": "390",
+      "httpStatus": 429,
+      "messages": [
+        "Too many attempts from this connection. Please wait about 8 minutes and try again."
+      ],
+      "showedGeneric": false,
+      "screenshot": "docs\\auth\\walk-2026-08-09\\06-rate-limited-390.png"
+    },
+    {
+      "case": "07-mail-transport-failed",
+      "title": "The verification email could not be sent",
+      "kind": "stubbed",
+      "viewport": "390",
+      "httpStatus": 502,
+      "messages": [
+        "We could not send that email just now. This is a problem on our side, not with your account. Please try again in a few minutes.Contact us if it keeps happening."
+      ],
+      "showedGeneric": false,
+      "screenshot": "docs\\auth\\walk-2026-08-09\\07-mail-transport-failed-390.png"
+    },
+    {
+      "case": "08-service-unavailable",
+      "title": "Supabase was unreachable",
+      "kind": "stubbed",
+      "viewport": "390",
+      "httpStatus": 503,
+      "messages": [
+        "We could not reach our account service just now. This is a problem on our side, not with your details. Please try again in a moment.Contact us if it keeps happening."
+      ],
+      "showedGeneric": false,
+      "screenshot": "docs\\auth\\walk-2026-08-09\\08-service-unavailable-390.png"
+    },
+    {
+      "case": "09-signup-rejected",
+      "title": "Anything else GoTrue declines",
+      "kind": "stubbed",
+      "viewport": "390",
+      "httpStatus": 400,
+      "messages": [
+        "We could not create an account with those details. Check your email address and password, or sign in if you already have an account."
+      ],
+      "showedGeneric": false,
+      "screenshot": "docs\\auth\\walk-2026-08-09\\09-signup-rejected-390.png"
+    }
+  ]
+}

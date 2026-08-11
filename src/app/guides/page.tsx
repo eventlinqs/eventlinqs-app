@@ -6,6 +6,7 @@ import { PageHero } from '@/components/layout/PageHero'
 import { ContentSection } from '@/components/layout/ContentSection'
 import { GuidesBrowser } from '@/components/guides/guides-browser'
 import { buildGuideIndex } from '@/components/guides/guide-index'
+import { getSiteUrl } from '@/lib/site-url'
 import { GUIDES, GUIDE_CATEGORIES } from '@/lib/guides'
 
 export const metadata: Metadata = {
@@ -42,7 +43,7 @@ export default async function GuidesHubPage({
     itemListElement: GUIDES.map((guide, i) => ({
       '@type': 'ListItem',
       position: i + 1,
-      url: `https://eventlinqs.com/guides/${guide.slug}`,
+      url: `${getSiteUrl()}/guides/${guide.slug}`,
       name: guide.title,
     })),
   }

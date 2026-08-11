@@ -48,6 +48,12 @@ const ALLOWLIST = [
     reason: 'the strip regexes must name the characters they strip',
   },
   {
+    file: 'src/lib/stripe/business-profile.ts',
+    patterns: ['em-or-en-dash'],
+    reason:
+      'same case as sanitise.ts above: TYPOGRAPHIC_REPLACEMENTS strips en dash, em dash and minus from an event title before it reaches Stripe, so the character class has to name them. Surfaced when origin/main merged in, because main added the test that runs this gate over the whole tree and this branch added the file',
+  },
+  {
     file: 'src/lib/ai/magic-start.ts',
     patterns: ['banned-word-community-law'],
     reason: 'the system prompt must name the banned word to prohibit it',
@@ -56,6 +62,18 @@ const ALLOWLIST = [
     file: 'src/lib/images/spine.ts',
     patterns: ['banned-word-community-law'],
     reason: 'legacy licensed-photo library key arts-culture (renaming breaks the image spine)',
+  },
+  {
+    file: 'src/lib/broadcast/short-links.ts',
+    patterns: ['banned-word-community-law'],
+    reason:
+      'the RESERVED list has to hold back the two legacy paths that permanently 301 to the community routes. Not reserving them would let a share code be minted that shadows a live redirect, which is a broken link for a real person. The strings are route names being blocked, not copy',
+  },
+  {
+    file: 'src/lib/broadcast/captions.ts',
+    patterns: ['banned-word-community-law'],
+    reason:
+      'the live event_categories row still carries the slug arts-culture, so the caption register map has to match the string the database actually stores. The renaming of that row is a data migration (the Phase 2 taxonomy work), not a copy change, and inventing a different slug here would silently mis-register every arts event',
   },
   {
     file: 'src/lib/communities/intersection-editorial.ts',

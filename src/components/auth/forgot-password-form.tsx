@@ -1,11 +1,15 @@
 'use client'
 
 import { useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useHydrated } from '@/lib/hooks/use-hydrated'
 import { authMessage, RECOVERY_GENERIC_RESPONSE } from '@/lib/auth/auth-errors'
 
 export function ForgotPasswordForm() {
-  const [email, setEmail] = useState('')
+  const searchParams = useSearchParams()
+  // Prefilled when the signup form sends someone here, for the same reason the
+  // login form prefills: a recovery link that empties the field is a detour.
+  const [email, setEmail] = useState(searchParams.get('email') ?? '')
   const [loading, setLoading] = useState(false)
   // No native submit before the handler exists. See use-hydrated.ts.
   const hydrated = useHydrated()
@@ -81,7 +85,7 @@ export function ForgotPasswordForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
-        <div className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error" role="alert">
+        <div className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error-strong" role="alert">
           {error}
         </div>
       )}

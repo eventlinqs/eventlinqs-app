@@ -34,7 +34,10 @@ export function LoginForm({ googleEnabled }: Props) {
   const resetFlag = searchParams.get('reset') === 'success'
   const callbackError = searchParams.get('error')
 
-  const [email, setEmail] = useState('')
+  // Carried across from the signup form when someone is told their address
+  // already has an account. Sending them to a blank field to retype what they
+  // just typed is where a recovery link stops being a route out.
+  const [email, setEmail] = useState(searchParams.get('email') ?? '')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   // No native submit before the handler exists. See use-hydrated.ts.
@@ -159,7 +162,7 @@ export function LoginForm({ googleEnabled }: Props) {
       <AuthErrorFromUrl />
 
       {error && (
-        <div className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error" role="alert">
+        <div className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error-strong" role="alert">
           {error}
           {showOAuthHint && googleEnabled && (
             <span className="mt-1 block">{OAUTH_ACCOUNT_HINT}</span>

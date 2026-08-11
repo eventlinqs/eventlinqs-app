@@ -1,7 +1,11 @@
+import { canonicalHost } from '@/lib/site-url'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import type { Organisation } from '@/types/database'
+import { LogoUploader } from '@/components/organisation/logo-uploader'
+import { fetchImageBytes } from '@/lib/media/fetch-image'
+import { resolveLogoPlacement } from '@/lib/media/logo-pipeline'
 
 export default async function OrganisationPage() {
   const supabase = await createClient()
@@ -36,6 +40,21 @@ export default async function OrganisationPage() {
     )
   }
 
+  // How the mark will actually sit on the navy, measured rather than guessed.
+  // The read is deadlined, and an unreachable object falls back to the tile,
+  // which is the placement that is always readable.
+  let logoPlacement: 'on-navy' | 'on-tile' = 'on-tile'
+  if (org.logo_url) {
+    const fetched = await fetchImageBytes(org.logo_url, 2500)
+    if (fetched) {
+      try {
+        logoPlacement = (await resolveLogoPlacement(Buffer.from(fetched.bytes))).placement
+      } catch {
+        logoPlacement = 'on-tile'
+      }
+    }
+  }
+
   const [{ count: eventCount }, { count: memberCount }] = await Promise.all([
     supabase.from('events').select('*', { count: 'exact', head: true }).eq('organisation_id', org.id),
     supabase.from('organisation_members').select('*', { count: 'exact', head: true }).eq('organisation_id', org.id),
@@ -53,7 +72,7 @@ export default async function OrganisationPage() {
       <div className="mb-8 flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-ink-900">{org.name}</h1>
-          <p className="mt-1 text-sm text-ink-400">eventlinqs.com/{org.slug}</p>
+          <p className="mt-1 text-sm text-ink-400">{canonicalHost()}/{org.slug}</p>
         </div>
         <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium capitalize ${statusColour[org.status] ?? 'bg-ink-100 text-ink-400'}`}>
           {org.status}
@@ -98,6 +117,19 @@ export default async function OrganisationPage() {
             <p className="text-sm text-ink-600">{org.email}</p>
           </div>
         )}
+      </div>
+
+      {/* The organiser's own mark. It goes onto their poster, their story card
+          and every post image the kit builds, at the top, where a promoter puts
+          their own name. Nothing collected it before this, so organisations
+          .logo_url was read in four places and written in none. */}
+      <div className="mt-6">
+        <LogoUploader
+          organisationId={org.id}
+          organisationName={org.name}
+          initialUrl={org.logo_url}
+          initialPlacement={logoPlacement}
+        />
       </div>
 
       <div className="mt-6 flex gap-4">

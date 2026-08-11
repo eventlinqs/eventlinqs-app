@@ -1693,8 +1693,8 @@ export function EventForm({
         {launchKitEnabled && !editMode && (
           <div className="rounded-lg border border-gold-500/40 bg-gold-500/10 px-4 py-3 text-sm text-ink-900">
             <span className="font-semibold">Publishing delivers your launch kit:</span>{' '}
-            your live page link, a print-ready QR poster, your invitation card, one-tap
-            tracked sharing, and live reach numbers, all on one screen.
+            your live page link, a print-ready QR poster, share cards and captions for every
+            channel, and the tickets each channel sold you, all on one screen.
           </div>
         )}
 
