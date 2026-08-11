@@ -57,6 +57,48 @@ function git(args) {
   return execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
 }
 
+/**
+ * Whether this process can see git history at all.
+ *
+ * WHY THIS EXISTS. Vercel builds from an uploaded source tarball with no `.git`
+ * directory, so every git call exits 128 "not a git repository". Before this
+ * check the guard threw that error straight out of `commits()`, `prebuild`
+ * failed, and the deployment was blocked with a stack trace. That is precisely
+ * the failure this file's own header warns about: a gate that cannot go green
+ * is a gate somebody switches off, and then the law has no enforcement at all.
+ *
+ * SKIPPING HERE IS NOT A WEAKENING, because the guard is not the only line of
+ * defence and this environment is the one place it can assert nothing. With no
+ * history there are no commit messages to inspect: the guard cannot pass or
+ * fail, it can only crash or stand aside. Law 8 is still enforced at both
+ * places that DO have history:
+ *
+ *   .githooks/commit-msg   rejects the trailer before it becomes history
+ *   this guard in CI       actions/checkout gives a real repository, and the
+ *                          build job runs it on every pull request
+ *
+ * A commit only reaches a Vercel build after CI has run this guard over it, so
+ * nothing gets in through the gap left open here.
+ */
+function hasGitHistory() {
+  try {
+    git(['rev-parse', '--git-dir'])
+    return true
+  } catch {
+    return false
+  }
+}
+
+if (!hasGitHistory()) {
+  console.log(
+    '[no-ai-authorship] SKIP - no git history in this environment (a Vercel build\n' +
+      '                  unpacks a source tarball with no .git). Nothing to assert.\n' +
+      '                  Law 8 still gated by .githooks/commit-msg at commit time and\n' +
+      '                  by this guard in CI, where the checkout is a real repository.',
+  )
+  process.exit(0)
+}
+
 /** Commit list as [sha, subject] pairs, newest first. */
 function commits(range) {
   const out = git(['log', ...range, `-${WINDOW}`, '--format=%H%x1f%s%x1e'])
