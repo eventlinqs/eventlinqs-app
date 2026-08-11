@@ -111,7 +111,7 @@ branch touching the same select list conflicts on the column list:
 
 **One, and only one.**
 
-`supabase/migrations/20260809000001_kit_draft_covers.sql` creates the storage
+`supabase/migrations/20260812000001_kit_draft_covers.sql` creates the storage
 bucket for anonymous composer cover artwork. Public read, and deliberately **no
 anonymous insert policy at all**: the only writer is
 `POST /api/launch/[code]/cover` under the service role, after a fail-closed
@@ -121,6 +121,26 @@ magic-byte sniffing, a decompression-bomb guard and a full sharp re-encode.
 **Until it is applied:** a stranger can build a kit and see everything, but
 uploading their own artwork fails, so every poster falls back to the
 typographic composition. No crash, no dead end.
+
+**RENUMBERED, and TEST needs a repair before the next push.** This file was
+`20260809000001` and was applied on TEST under that version. It moved to
+`20260812000001` by founder ruling on 2026-08-12, because
+`fix/security-hardening` claims `20260809000001` for `payout_status_unset` and
+`db push` keys on the version prefix alone: with both at that version, one is
+recorded as done and the other never runs. The payout one does not move, because
+a silently skipped payout release strands every restricted organiser for ever.
+
+TEST still holds `20260809000001` as applied, and `payout_status_unset` would
+inherit that record and never run. Correct it in this order:
+
+```
+npx supabase migration repair --status reverted 20260809000001 --linked
+npx supabase migration list --linked        # 20260809000001 no longer applied
+npx supabase db push --linked
+```
+
+Re-running this file is safe: the bucket insert is `on conflict do nothing` and
+the policy is dropped before it is created.
 
 **Apply with:** `supabase db push --linked`
 
@@ -241,7 +261,8 @@ Worth a decision about where binary evidence lives.
    re-walk, confirm the walk catches it, restore.
 3. **Run Lighthouse**, median of 3 minimum against the warmed preview, never
    localhost and never a single run.
-4. **Apply `20260809000001_kit_draft_covers.sql`** so anonymous cover upload
+4. **Repair the TEST record, then apply `20260812000001_kit_draft_covers.sql`**
+   (see section 4 for the exact commands) so anonymous cover upload
    works.
 5. **Merge order suggestion:** this branch already contains `origin/main`, so
    merging it first means the other four branches conflict against a tree that

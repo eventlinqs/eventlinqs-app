@@ -195,7 +195,10 @@ including SVG disguised as a photo.
 
 ### THE MIGRATION: written, NOT applied. Founder runs this.
 
-File: `supabase/migrations/20260809000001_kit_draft_covers.sql`
+File: `supabase/migrations/20260812000001_kit_draft_covers.sql`
+(renumbered from `20260809000001` on 2026-08-12; TEST needs
+`supabase migration repair --status reverted 20260809000001 --linked` first.
+See HANDOVER-public-composer-2026-08-09.md section 4.)
 
 ```
 supabase db push --linked

@@ -182,15 +182,123 @@ still could not see the hole. Sincerity is not coverage.
 
 ---
 
+## 4. A GATE THAT REPORTS SUCCESS BECAUSE IT WAS GIVEN NOTHING TO INSPECT
+
+**Founder ruling, 12 August 2026: this belongs here as its own entry.**
+
+*(Numbering note: two entries above are both headed `3`. Left as they are rather
+than renumbered, because the prose in them cross-references by number.)*
+
+**What happened.** `scripts/guards/no-ai-authorship.mjs` enforces Law 8 by
+reading commit MESSAGES. It was registered in the guard registry, it ran on
+every pull request inside `npm run build`, and it reported:
+
+```
+[no-ai-authorship] PASS - no commit in scope attributes this work to an AI.
+```
+
+It was reading ONE commit. `actions/checkout@v4` defaults to `fetch-depth: 1`,
+so CI handed the guard a single-commit clone. The guard asked for the last 200
+commits, git returned one, and every one of that one was clean.
+
+**How it was found.** Not by the gate. By merging `origin/main` into the branch
+and running the guard LOCALLY, where the clone is complete: it immediately
+failed on `86bb285`, main's tip, which carries 27 trailers. CI was green on the
+identical commit at the identical moment. The two disagreed because one of them
+had been given nothing to look at.
+
+**Why it is the worst kind of green.** A missing gate is a known hole. This gate
+was present, registered, running, and printing a sentence asserting a property of
+200 commits it had never read. Everyone downstream is entitled to believe it.
+
+**The fix, in two parts, because either alone is insufficient.**
+
+1. `fetch-depth: 0` on the `verify` job, the only job that runs the guards.
+2. The guard now PRINTS ITS DENOMINATOR:
+
+```
+[no-ai-authorship] scanned 9 commit(s), scope: commits after 7fd2f4e ...
+```
+
+Part 2 is the one that matters long term. Part 1 can be reverted by anyone
+tidying CI runtimes, and the gate would go quietly back to lying. With the count
+in the log, `scanned 1 commit(s)` is visible from the CI output alone, without
+knowing anything about the checkout configuration.
+
+**Drilled.** Before: CI scanned 1. After: CI scanned 9, run `31524888333`.
+
+**The rule.** Any gate that samples a POPULATION must report the size of the
+population it sampled. A gate that reports only its verdict cannot be
+distinguished from a gate that was handed an empty set. Ask of every green gate:
+*how many things did it look at, and does it say so?*
+
+---
+
+## 5. A GUARD THAT CRASHES THE BUILD IT EXISTS TO PROTECT
+
+**Founder ruling, 12 August 2026: this belongs in the permanent record.**
+
+The inverse shape to everything above. Entries 1 to 4 are gates that were falsely
+GREEN. This is a gate that was catastrophically RED, and the damage is the same
+kind: the gate stops being trusted, and then it stops being enforced.
+
+**What happened.** The same Law 8 guard shells out to `git log`. A Vercel build
+unpacks a source tarball and has no `.git` directory at all, so the first call
+threw:
+
+```
+fatal: not a git repository (or any parent up to mount point /vercel)
+  at git (file:///vercel/path0/scripts/guards/no-ai-authorship.mjs:57:10)
+[guards] 1 of 16 guard(s) FAILED. Build blocked.
+```
+
+Every deployment on the branch had been failing since the guard landed. The
+guard exists only on `fix/security-hardening`, so **the day it merged to main,
+every branch on the platform would have stopped deploying**, with a stack trace
+pointing at an authorship check.
+
+**It is the failure the guard's own header warns about.** That header already
+argues, about scope: *"A gate that cannot go green is a gate somebody switches
+off, and then the law has no enforcement at all."* The author reasoned it through
+for scope and did not apply it to environment.
+
+**The fix.** Detect the absence of history and SKIP, loudly, naming what is still
+enforcing (the commit-msg hook, and this guard in CI where the checkout is real).
+A commit only reaches a Vercel build after CI has already run the guard over it,
+so the skip opens no gap.
+
+**The proof shape, which is the transferable part.** A guard with an environment
+branch needs drilling in EVERY environment it claims to handle, and one of those
+runs must be the failure case, or the drill only proves it can say yes:
+
+| condition | expected | got |
+|---|---|---|
+| real repository | runs and passes | PASS, exit 0, scanned 7 |
+| deferral entry broken | RED, naming the commit | FAIL, exit 1, named it |
+| `--all-history` | RED on known offenders | FAIL, exit 1, 17 offenders |
+| no `.git` (the Vercel condition) | SKIP, not crash | SKIP, exit 0 |
+
+Row 2 is the load-bearing one. Without it, rows 1 and 4 are equally consistent
+with a guard that has been quietly defanged.
+
+**The rule.** If a guard reads anything outside the source tree (git history, a
+network service, an env var, a token), enumerate the environments it runs in and
+drill it in each. "It passes on my machine and in CI" is two environments;
+production build hosts are usually the third, and they are usually the poorest.
+
+---
+
 ## THE SHAPE THESE SHARE
 
-Both are cases where the evidence looked stronger than it was:
+Cases where the evidence looked stronger than it was:
 
 | | looked like | actually was |
 |---|---|---|
 | 1 | the attack is refused | the attack half-succeeded, silently |
 | 2 | the branch is verified | the branch had not built in six commits |
 | 3 | the guard cannot narrow | the anti-narrowing assertion measured the wrong layer |
+| 4 | 200 commits are clean | one commit was clean, and it was never said which |
+| 5 | the guard is enforcing | the guard was crashing, and about to stop every deploy |
 
 The general rule, and the reason this file exists: **when a gate goes green, ask
 what it would look like if the thing were broken.** If the answer is "the same",

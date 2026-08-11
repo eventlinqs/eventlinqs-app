@@ -1,5 +1,30 @@
 -- Anonymous composer cover artwork.
 --
+-- RENUMBERED 20260809000001 -> 20260812000001 on 2026-08-12, by founder ruling
+-- (R-MIGRATION-COLLISION). fix/security-hardening carries its own
+-- 20260809000001, payout_status_unset, which releases an organiser from the
+-- one-way payout_status door. Supabase keys applied migrations on the VERSION
+-- PREFIX alone, so with both files at 20260809000001 whichever landed first
+-- would record the version as done and the other would be treated as already
+-- applied and NEVER RUN, silently.
+--
+-- THIS file moved rather than that one because the cost is not symmetric. This
+-- creates a storage bucket and nothing depends on its ordering; if it were the
+-- one skipped, cover upload falls back to the typographic poster and someone
+-- notices. If payout_status_unset were skipped, every restricted organiser
+-- would stay restricted for ever with no error anywhere.
+--
+-- 20260812000001 is clear of every version claimed on all 143 refs, not merely
+-- clear of that one file.
+--
+-- ALREADY APPLIED ON TEST UNDER THE OLD VERSION. TEST records 20260809000001 as
+-- applied, from this file. That record now belongs to no file on this branch,
+-- and payout_status_unset would inherit it. Correcting it needs
+-- `supabase migration repair --status reverted 20260809000001 --linked` before
+-- the next push; the runbook is in the delivery notes. Re-running this file is
+-- safe: the bucket insert is `on conflict do nothing` and the policy is dropped
+-- before it is created.
+--
 -- The public composer has no account by design, so an organiser can build a
 -- launch kit as a stranger. Uploading their own photograph is the one thing
 -- that makes the poster theirs rather than ours, so the bytes have to land
