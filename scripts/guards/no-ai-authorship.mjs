@@ -43,6 +43,34 @@ const EFFECTIVE_FROM = '7fd2f4e'
 /** How many commits back to inspect, per the founder's instruction. */
 const WINDOW = 200
 
+/**
+ * Commits that carry a trailer, were INHERITED from another branch rather than
+ * written here, and are deferred by founder ruling instead of rewritten.
+ *
+ * Keyed by FULL sha, deliberately. An abbreviation can become ambiguous as the
+ * repository grows and could later resolve to a different object; a full sha
+ * names one commit for ever. It also means this list cannot quietly widen into a
+ * blanket exemption, which is the way a scoped guard turns into a disabled one.
+ * Every entry carries its reason, because an allowlist without reasons is
+ * indistinguishable from someone silencing a failure.
+ *
+ * Nothing here is hidden. A deferred commit is still matched by the same
+ * patterns and is still PRINTED on every run, next to the pre-boundary debt, so
+ * the ledger stays visible until the authorised rewrite clears it.
+ */
+const INHERITED_DEFERRED = new Map([
+  [
+    '86bb285b660a806c8fc03bbc4a9308cb7fe25410',
+    'origin/main tip: "Production defect sweep before launch (#112)", squash-merged\n' +
+      '      carrying 27 trailers. It entered this branch by merging main, so it is\n' +
+      "      main's history rather than work done here. Founder ruling 2026-08-12\n" +
+      '      (R-LAW8-DEBT): defer it exactly as the pre-boundary trailers are deferred.\n' +
+      '      Rewriting it would rewrite main and break every branch based on it, and\n' +
+      '      that rewrite is still not authorised. Clears with the rewrite in\n' +
+      '      docs/roast/AUTHORSHIP-HISTORY-REWRITE.md.',
+  ],
+])
+
 const PATTERNS = [
   {
     re: /^[ \t]*co-authored-by:.*(claude|anthropic|openai|gpt|copilot|gemini|\bai\b|bot\b|assistant)/im,
@@ -133,17 +161,40 @@ const scope = allHistory
     : `the last ${WINDOW} commits on HEAD (boundary commit not present in this checkout)`
 
 const offenders = []
-for (const c of commits(range)) {
+const deferredHits = []
+const scanned = commits(range)
+for (const c of scanned) {
   const msg = messageOf(c.sha)
   for (const p of PATTERNS) {
     if (p.re.test(msg)) {
-      offenders.push({ ...c, why: p.why })
+      // A deferred commit is still MATCHED here by the same pattern. It is routed
+      // to the ledger rather than skipped before testing, so "deferred" can never
+      // quietly become "not looked at".
+      if (INHERITED_DEFERRED.has(c.sha)) deferredHits.push({ ...c, why: p.why })
+      else offenders.push({ ...c, why: p.why })
       break
     }
   }
 }
 
-// The deferred debt, printed every run so it stays visible rather than forgotten.
+// HOW MANY COMMITS WERE ACTUALLY READ. Printed unconditionally, because it is the
+// only thing in this output that separates a real PASS from a vacuous one.
+// actions/checkout defaults to fetch-depth 1, and against a one-commit clone this
+// guard reports PASS having inspected a single message: enforcement that is not
+// happening, reported as enforcement that is. A reader of the CI log can now see
+// the difference without knowing the checkout configuration.
+console.log(`[no-ai-authorship] scanned ${scanned.length} commit(s), scope: ${scope}.`)
+
+// The ledgers, printed every run so the debt stays visible rather than forgotten.
+if (deferredHits.length) {
+  console.log(`[no-ai-authorship] DEFERRED (inherited, founder-ruled): ${deferredHits.length}`)
+  for (const d of deferredHits) {
+    console.log(`  ${d.sha.slice(0, 9)}  ${d.subject}`)
+    console.log(`      ${d.why}`)
+    console.log(`      ${INHERITED_DEFERRED.get(d.sha)}`)
+  }
+}
+
 if (!allHistory && boundaryKnown) {
   let pre = 0
   try {
@@ -154,8 +205,8 @@ if (!allHistory && boundaryKnown) {
     /* informational only */
   }
   console.log(
-    `[no-ai-authorship] scope: ${scope}.\n` +
-      `                  DEFERRED: ${pre} of the last ${WINDOW} commits up to ${EFFECTIVE_FROM} carry an AI trailer.\n` +
+    `[no-ai-authorship] DEFERRED (pre-boundary): ${pre} of the last ${WINDOW} commits\n` +
+      `                  up to ${EFFECTIVE_FROM} carry an AI trailer.\n` +
       `                  The history rewrite is NOT authorised. Runbook: docs/roast/AUTHORSHIP-HISTORY-REWRITE.md`,
   )
 }
