@@ -68,10 +68,17 @@
  * (unless --force) so photo day fails loudly and the founder fixes the file.
  */
 
+import { assertNotProduction } from './lib/production-write-preflight.mjs'
 import sharp from 'sharp'
 import { createClient } from '@supabase/supabase-js'
 import { readFileSync, readdirSync, statSync, mkdirSync, writeFileSync, existsSync } from 'node:fs'
 import { join, extname, basename, dirname } from 'node:path'
+
+// Storage is still production data. The .storage-only wrapper below stops this
+// reaching a table; it does not stop it uploading into the live bucket, so the
+// target is checked here as well. Run against TEST with
+// `node --env-file=.env.test scripts/ingest-imagery.mjs`.
+assertNotProduction()
 
 // ── CLI ───────────────────────────────────────────────────────────────────
 function parseArgs(argv) {

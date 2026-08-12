@@ -5,14 +5,27 @@
 // drafts (Pacific and Middle Eastern community slots respectively).
 // Marking them published makes them resolvable at /events/[slug] so
 // the homepage hero stops 404ing on those two slots.
-import { readFileSync } from 'node:fs'
-const env = Object.fromEntries(
-  readFileSync('.env.local','utf8').split('\n').filter(l => l && !l.startsWith('#')).map(l => {
-    const i = l.indexOf('='); return [l.slice(0,i), l.slice(i+1)]
-  })
-)
-const URL = env.NEXT_PUBLIC_SUPABASE_URL
-const KEY = env.SUPABASE_SERVICE_ROLE_KEY
+//
+// This reads .env.local, which points at PRODUCTION. The preflight refuses that
+// target without explicit founder approval. To run it against TEST:
+//   node --env-file=.env.test scripts/batch-11-publish-hero-events.mjs
+import { assertNotProduction } from './lib/production-write-preflight.mjs'
+import { existsSync, readFileSync } from 'node:fs'
+
+assertNotProduction()
+
+const env = existsSync('.env.local')
+  ? Object.fromEntries(
+      readFileSync('.env.local','utf8').split('\n').filter(l => l && !l.startsWith('#')).map(l => {
+        const i = l.indexOf('='); return [l.slice(0,i), l.slice(i+1)]
+      })
+    )
+  : {}
+// The real environment wins over the file, the same precedence Node's --env-file,
+// Next's loader and the preflight all use. Without this the preflight could judge
+// a TEST process environment while these two lines still read PRODUCTION.
+const URL = process.env.NEXT_PUBLIC_SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL
+const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_ROLE_KEY
 
 const slugs = ['pasifika-festival-sydney', 'lebanese-mahrajan-sydney']
 

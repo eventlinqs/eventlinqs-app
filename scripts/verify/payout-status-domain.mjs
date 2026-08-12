@@ -17,6 +17,12 @@
  * Usage: node --env-file=.env.test scripts/verify/payout-status-domain.mjs
  */
 import { createClient } from '@supabase/supabase-js'
+import { assertNotProduction } from '../lib/production-write-preflight.mjs'
+
+// The inline refusal below catches the one known production ref. The shared
+// preflight also refuses when it CANNOT TELL which project it has, which the
+// inline check passes silently, so both stay.
+assertNotProduction()
 
 const PRODUCTION_PROJECT = 'gndnldyfudbytbboxesk'
 

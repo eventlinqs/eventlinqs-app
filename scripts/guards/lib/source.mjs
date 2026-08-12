@@ -99,15 +99,19 @@ export function lineAt(src, index) {
 }
 
 /**
- * Every TypeScript source file under src/, as forward-slashed paths relative to
- * `root`, sorted so guard output is stable run to run and machine to machine.
+ * Every source file under `subdir` (default src/), as forward-slashed paths
+ * relative to `root`, sorted so guard output is stable run to run and machine to
+ * machine.
  *
  * `readdirSync(dir, { withFileTypes: true })` is the same walk the pre-existing
  * scripts/ci/critical-path-guard.mjs has always used, and it is available in
  * every Node the platform supports. Do NOT swap this back to fs.globSync or
  * fs.promises.glob: both are Node 22+ and CI runs the version pinned in .nvmrc.
+ *
+ * `subdir` exists so a guard can scan scripts/ rather than src/ without a second
+ * copy of this walker, which is the duplication this module was written to end.
  */
-export function sourceFiles(root, { extensions = ['.ts', '.tsx'] } = {}) {
+export function sourceFiles(root, { extensions = ['.ts', '.tsx'], subdir = 'src' } = {}) {
   const out = []
 
   const walk = (dir) => {
@@ -120,6 +124,6 @@ export function sourceFiles(root, { extensions = ['.ts', '.tsx'] } = {}) {
     }
   }
 
-  walk(join(root, 'src'))
+  walk(join(root, subdir))
   return out.map((f) => relative(root, f).replace(/\\/g, '/')).sort()
 }

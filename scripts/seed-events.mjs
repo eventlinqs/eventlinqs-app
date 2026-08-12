@@ -1,29 +1,37 @@
 /**
  * One-shot seed script: 8 community-relevant sample events + ticket tiers
- * Run: node scripts/seed-events.mjs
- * Uses service role key - bypasses RLS. Delete this file after seeding.
+ * Run against TEST: node --env-file=.env.test scripts/seed-events.mjs
+ * Uses service role key - bypasses RLS. It falls back to .env.local, which
+ * points at PRODUCTION, and the preflight refuses that target without explicit
+ * founder approval.
  */
 
+import { assertNotProduction } from './lib/production-write-preflight.mjs'
 import { createClient } from '@supabase/supabase-js'
-import { readFileSync } from 'fs'
+import { existsSync, readFileSync } from 'fs'
 import { resolve, dirname } from 'path'
 import { fileURLToPath } from 'url'
+
+assertNotProduction()
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
 // Load .env.local manually
 const envPath = resolve(__dirname, '../.env.local')
-const env = Object.fromEntries(
-  readFileSync(envPath, 'utf8')
-    .split('\n')
-    .filter(l => l.includes('=') && !l.startsWith('#'))
-    .map(l => l.split('=').map(s => s.trim()))
-    .map(([k, ...v]) => [k, v.join('=')])
-)
+const env = existsSync(envPath)
+  ? Object.fromEntries(
+      readFileSync(envPath, 'utf8')
+        .split('\n')
+        .filter(l => l.includes('=') && !l.startsWith('#'))
+        .map(l => l.split('=').map(s => s.trim()))
+        .map(([k, ...v]) => [k, v.join('=')])
+    )
+  : {}
 
+// The real environment wins over the file, matching the preflight's precedence.
 const supabase = createClient(
-  env.NEXT_PUBLIC_SUPABASE_URL,
-  env.SUPABASE_SERVICE_ROLE_KEY,
+  process.env.NEXT_PUBLIC_SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_ROLE_KEY,
   { auth: { autoRefreshToken: false, persistSession: false } }
 )
 

@@ -3,19 +3,28 @@
 // Idempotent: each insert UPSERTs on a known UUID; re-running this
 // matches what supabase db push --linked will do.
 //
-// Run this with `node scripts/batch-11-validate-hero-migration.mjs`
-// after editing .env.local to make sure NEXT_PUBLIC_SUPABASE_URL and
-// SUPABASE_SERVICE_ROLE_KEY are set. The script reports per-row
-// success / failure so any check constraint or schema issue surfaces
-// immediately.
-import { readFileSync } from 'node:fs'
-const env = Object.fromEntries(
-  readFileSync('.env.local','utf8').split('\n').filter(l => l && !l.startsWith('#')).map(l => {
-    const i = l.indexOf('='); return [l.slice(0,i), l.slice(i+1)]
-  })
-)
-const URL = env.NEXT_PUBLIC_SUPABASE_URL
-const KEY = env.SUPABASE_SERVICE_ROLE_KEY
+// Run this against TEST:
+//   node --env-file=.env.test scripts/batch-11-validate-hero-migration.mjs
+// The script reports per-row success / failure so any check constraint or
+// schema issue surfaces immediately. It falls back to .env.local, which points
+// at PRODUCTION, and the preflight refuses that target without explicit founder
+// approval. Do not "edit .env.local first": that was the old instruction and it
+// pointed this script straight at the live database.
+import { assertNotProduction } from './lib/production-write-preflight.mjs'
+import { existsSync, readFileSync } from 'node:fs'
+
+assertNotProduction()
+
+const env = existsSync('.env.local')
+  ? Object.fromEntries(
+      readFileSync('.env.local','utf8').split('\n').filter(l => l && !l.startsWith('#')).map(l => {
+        const i = l.indexOf('='); return [l.slice(0,i), l.slice(i+1)]
+      })
+    )
+  : {}
+// The real environment wins over the file, matching the preflight's precedence.
+const URL = process.env.NEXT_PUBLIC_SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL
+const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_ROLE_KEY
 
 const events = [
   {

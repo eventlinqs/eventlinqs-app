@@ -25,6 +25,7 @@
  *   entrypoint-authz-audit     every request entry point declares an auth posture
  *   sourced-specifications     Law 7: a third-party spec carries a source or UNSOURCED
  *   no-ai-authorship           Law 8: no commit attributes this work to an AI
+ *   no-unguarded-production-write  no script writes to a database without checking which one
  *
  * On no-ai-authorship: Law 8 makes the founder the sole author, which overrides
  * this tooling default of appending a Co-Authored-By trailer. The commit-msg hook
@@ -215,6 +216,15 @@ const GUARDS = [
   'scripts/security/entrypoint-authz-audit.mjs',
   'scripts/guards/sourced-specifications.mjs',
   'scripts/guards/no-ai-authorship.mjs',
+  // Founder ruling 2026-08-13. `.env.local` in this repo points at the
+  // PRODUCTION project, deliberately, because the app is run against production
+  // from here. An audit that day found ten write-capable scripts with a
+  // service-role credential and no check on which project they were about to
+  // write to, four of which documented `node --env-file=.env.local <script>` in
+  // their own header. The ten were fixed and given the preflight; this guard is
+  // what stops the eleventh. Without it the fix is a written procedure, and a
+  // written procedure is not a control.
+  'scripts/guards/no-unguarded-production-write.mjs',
 ]
 
 /**

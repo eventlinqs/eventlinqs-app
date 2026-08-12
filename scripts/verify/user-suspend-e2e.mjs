@@ -5,9 +5,18 @@
  * create -> ban -> assert -> unban -> assert -> DELETE cycle on a throwaway
  * user, with guaranteed deletion in finally (delete cascades the profile).
  *
- * Run: node scripts/verify/user-suspend-e2e.mjs
+ * Run against TEST: node --env-file=.env.test scripts/verify/user-suspend-e2e.mjs
+ * It falls back to .env.local, which points at PRODUCTION, and the preflight
+ * refuses that target without explicit founder approval. This creates, bans and
+ * DELETES a real auth user, so the target matters.
  */
+import { assertNotProduction } from '../lib/production-write-preflight.mjs'
 import { config } from 'dotenv'
+
+assertNotProduction()
+
+// Does not overwrite anything already in the real environment, so
+// --env-file=.env.test wins over this fallback.
 config({ path: '.env.local' })
 import { createClient } from '@supabase/supabase-js'
 

@@ -22,6 +22,12 @@ import path from 'node:path'
 import { chromium } from 'playwright'
 import { createClient } from '@supabase/supabase-js'
 import Stripe from 'stripe'
+import { assertNotProduction } from '../lib/production-write-preflight.mjs'
+
+// The inline refusal below catches the one known production ref. The shared
+// preflight also refuses when it CANNOT TELL which project it has, which the
+// inline check passes silently, so both stay.
+assertNotProduction()
 
 const PRODUCTION_PROJECT = 'gndnldyfudbytbboxesk'
 const BASE = process.env.BASE_URL ?? 'http://localhost:3111'

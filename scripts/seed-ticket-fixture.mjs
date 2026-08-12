@@ -2,10 +2,14 @@
 // spine spec. Writes tests/e2e/.ticket-fixture.json with the bearer code +
 // secret, the buyer login, and ids for cleanup.
 //
-//   node --env-file=.env.local scripts/seed-ticket-fixture.mjs         # seed
-//   node --env-file=.env.local scripts/seed-ticket-fixture.mjs clean   # remove
+//   node --env-file=.env.test scripts/seed-ticket-fixture.mjs         # seed
+//   node --env-file=.env.test scripts/seed-ticket-fixture.mjs clean   # remove
+//
+// TEST is the documented target. .env.local points at PRODUCTION and the
+// preflight refuses it without explicit founder approval.
 //
 // Writes DATA only (no schema change, no migration). Self-cleaning.
+import { assertNotProduction } from './lib/production-write-preflight.mjs'
 import { createClient } from '@supabase/supabase-js'
 import { writeFileSync, rmSync, existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -26,7 +30,10 @@ function requireEnv(name) {
   return v
 }
 
-
+// The two guards answer different questions and both are needed: requireEnv asks
+// whether a credential was supplied, assertNotProduction asks which database it
+// opens. A script can pass the first and still be pointed at production.
+assertNotProduction()
 
 const here = dirname(fileURLToPath(import.meta.url))
 const FIXTURE = join(here, '..', 'tests', 'e2e', '.ticket-fixture.json')
@@ -34,7 +41,7 @@ const FIXTURE = join(here, '..', 'tests', 'e2e', '.ticket-fixture.json')
 const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY
 if (!SB_URL || !SERVICE) {
-  console.error('Missing env. Run: node --env-file=.env.local scripts/seed-ticket-fixture.mjs')
+  console.error('Missing env. Run: node --env-file=.env.test scripts/seed-ticket-fixture.mjs')
   process.exit(1)
 }
 const svc = createClient(SB_URL, SERVICE, { auth: { autoRefreshToken: false, persistSession: false } })
