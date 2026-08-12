@@ -14,17 +14,38 @@
  * who never read this, and there is nothing to notice it. This guard is that
  * something.
  *
- * WHAT COUNTS AS WRITE-CAPABLE. Both halves must appear on non-comment lines of
- * the same file:
+ * WHAT COUNTS AS WRITE-CAPABLE. Either of two independent transports:
  *
- *   1. AN ADMIN CREDENTIAL is named:  SUPABASE_SERVICE_ROLE_KEY,
- *      SUPABASE_SERVICE_ROLE_KEY_PREVIEW, SUPABASE_SECRET_KEY, or the
- *      `service_role` Postgres role.
- *   2. A MUTATION is performed:  a PostgREST client call (.insert(, .upsert(,
- *      .update(, .delete(, .rpc(), a storage write (.upload(, .remove(), an
- *      auth admin mutation (createUser, deleteUser, updateUserById,
- *      inviteUserByEmail), or a raw request declaring a mutating method
- *      (method: 'POST' | 'PUT' | 'PATCH' | 'DELETE').
+ *   TRANSPORT A, the Supabase client. Both halves must appear on non-comment
+ *   lines of the same file:
+ *
+ *     1. AN ADMIN CREDENTIAL is named:  SUPABASE_SERVICE_ROLE_KEY,
+ *        SUPABASE_SERVICE_ROLE_KEY_PREVIEW, SUPABASE_SECRET_KEY, or the
+ *        `service_role` Postgres role.
+ *     2. A MUTATION is performed:  a PostgREST client call (.insert(, .upsert(,
+ *        .update(, .delete(, .rpc(), a storage write (.upload(, .remove(), an
+ *        auth admin mutation (createUser, deleteUser, updateUserById,
+ *        inviteUserByEmail), or a raw request declaring a mutating method
+ *        (method: 'POST' | 'PUT' | 'PATCH' | 'DELETE').
+ *
+ *   TRANSPORT B, a direct Postgres connection. ANY ONE signal is enough, with
+ *   no credential clause at all:
+ *
+ *     a `pg` or `postgres` import, a Client or Pool construction, a
+ *     `.query(` call, a connection string (SUPABASE_DB_URL, connectionString,
+ *     a postgres:// or postgresql:// literal), or a Supabase database host
+ *     (db.<ref>.supabase.co or a *.pooler.supabase.com host).
+ *
+ *   Transport B needs no credential clause because it IS the wider power. It
+ *   authenticates as `postgres`, the schema owner, not as service_role: DROP,
+ *   ALTER and TRUNCATE are in scope, so an accident there is not a bad row, it
+ *   is a missing table. One signal is therefore enough to demand a guard.
+ *
+ *   ADDED 2026-08-13, after this guard reported PASS while four scripts under
+ *   scripts/verify/ held exactly this shape with the production host written in
+ *   as a string literal. The blind spot was documented in this header from the
+ *   first version, which is how it was found rather than discovered the hard
+ *   way, but a documented hole is still a hole.
  *
  * WHAT COUNTS AS GUARDED. Any one of three, because two already existed in the
  * codebase and rewriting 27 working scripts to a new idiom would be churn that
@@ -61,10 +82,10 @@
  *     (the credential and the mutation then live in different files),
  *   - a method or table name assembled at runtime, `fetch(url, opts)` where
  *     `opts` is built elsewhere, or a mutation behind a dynamic import,
- *   - any write through a transport this list does not name, including a direct
- *     Postgres connection via SUPABASE_DB_URL or a database password, and the
- *     Supabase management API via SUPABASE_ACCESS_TOKEN. Those are different
- *     paths to the same database and this guard does not see them.
+ *   - any write through a transport this list does not name. The Supabase
+ *     management API via SUPABASE_ACCESS_TOKEN is the known remaining one: it
+ *     can alter the project itself and no script under scripts/ uses it today,
+ *     which is the only reason it is not covered here.
  *
  * It can also OVER-count, which is the safe direction: a `.delete(` on a Map in
  * a file that happens to name the service-role key reads as a write here. The
@@ -87,16 +108,42 @@ const ROOT = join(HERE, '..', '..')
 const TEST_SUPABASE_REF = 'vkapkibzokmfaxqogypq'
 
 /**
- * This guard's own source names every pattern it bans, so it would flag itself.
- * Excluded by exact path rather than by a cleverer pattern, because the honest
- * version of "the scanner cannot scan itself" is a one-line exclusion.
+ * Two files name every pattern this guard looks for, so both would flag
+ * themselves. Excluded by exact path rather than by a cleverer pattern, because
+ * the honest version of "the scanner cannot scan itself" is a short list.
+ *
+ *   the guard itself   its regexes ARE the banned shapes
+ *   the preflight      it is the guard implementation, not a script. It parses
+ *                      connection strings and names both refs by design.
  */
-const SELF = 'scripts/guards/no-unguarded-production-write.mjs'
+const EXCLUDED = new Set([
+  'scripts/guards/no-unguarded-production-write.mjs',
+  'scripts/lib/production-write-preflight.mjs',
+])
 
 const CREDENTIAL = /SUPABASE_SERVICE_ROLE_KEY|SUPABASE_SERVICE_ROLE_KEY_PREVIEW|SUPABASE_SECRET_KEY|service_role/
 const MUTATION = /\.insert\(|\.upsert\(|\.update\(|\.delete\(|\.rpc\(|\.upload\(|\.remove\(|createUser\(|deleteUser\(|updateUserById\(|inviteUserByEmail\(|method\s*:\s*['"`](POST|PUT|PATCH|DELETE)['"`]/
+
+/**
+ * TRANSPORT B: a direct Postgres connection, any one signal. No credential
+ * clause, because this transport authenticates as the schema owner.
+ */
+const DIRECT_POSTGRES = new RegExp(
+  [
+    /from\s+['"`](pg|postgres)['"`]/.source, // import pg from 'pg'
+    /require\(\s*['"`](pg|postgres)['"`]\s*\)/.source,
+    /new\s+(pg\.)?(Client|Pool)\s*\(/.source, // new pg.Client({...})
+    /\.query\s*\(/.source, // client.query('INSERT ...')
+    /connectionString/.source,
+    /SUPABASE_DB_URL/.source,
+    /postgres(ql)?:\/\//.source, // a connection string literal
+    /db\.[a-z0-9]+\.supabase\.co/.source, // direct database host
+    /pooler\.supabase\.com/.source, // shared pooler host
+  ].join('|'),
+)
 const REFUSAL = /throw\s+new\s+Error|process\.exit\s*\(\s*1\s*\)|\bdie\s*\(/
-const PREFLIGHT = /assertNotProduction\s*\(/
+/** Both entry points: the Supabase-client one and the Postgres one. */
+const PREFLIGHT = /assertNotProduction(Database)?\s*\(/
 /** Either ref written out, or the constant names the existing 27 guards use. */
 const REF_TOKEN = new RegExp(`${PRODUCTION_SUPABASE_REF}|${TEST_SUPABASE_REF}|\\bPROD_REF\\b|\\bTEST_REF\\b|\\bPRODUCTION_SUPABASE_REF\\b`)
 
@@ -150,48 +197,80 @@ const files = sourceFiles(ROOT, { extensions: ['.mjs', '.js', '.cjs', '.ts', '.m
 const offenders = []
 let writeCapable = 0
 
+let viaClient = 0
+let viaPostgres = 0
+
 for (const rel of files) {
-  if (rel === SELF) continue
+  if (EXCLUDED.has(rel)) continue
 
   const lines = codeLines(readFileSync(join(ROOT, rel), 'utf8'))
   const body = lines.join('\n')
 
-  if (!CREDENTIAL.test(body)) continue
-  if (!MUTATION.test(body)) continue
+  const clientWrite = CREDENTIAL.test(body) && MUTATION.test(body)
+  const postgresWrite = DIRECT_POSTGRES.test(body)
+  if (!clientWrite && !postgresWrite) continue
 
   writeCapable += 1
+  if (clientWrite) viaClient += 1
+  if (postgresWrite) viaPostgres += 1
 
   if (PREFLIGHT.test(body)) continue
   if (hasRefCheck(lines)) continue
 
-  offenders.push(rel)
+  // The remedy differs by transport, so the verdict carries which one it is.
+  offenders.push({ rel, postgres: postgresWrite })
 }
 
 if (offenders.length > 0) {
+  const pgOffenders = offenders.filter((o) => o.postgres)
+  const clientOffenders = offenders.filter((o) => !o.postgres)
+
   console.error('')
   console.error('[no-unguarded-production-write] FAILED. Build blocked.')
   console.error('')
-  console.error(`  ${offenders.length} write-capable script(s) under scripts/ can reach a Supabase`)
-  console.error('  project with a service-role credential and nothing checks which project:')
-  console.error('')
-  for (const o of offenders) console.error(`    ${o}`)
-  console.error('')
-  console.error('  Add the preflight as the first executable statement of each:')
-  console.error('')
-  console.error("    import { assertNotProduction } from './lib/production-write-preflight.mjs'")
-  console.error('    assertNotProduction()')
+  console.error(`  ${offenders.length} write-capable script(s) under scripts/ can reach a database`)
+  console.error('  and nothing in them checks which one.')
+
+  if (clientOffenders.length > 0) {
+    console.error('')
+    console.error('  VIA THE SUPABASE CLIENT (a service-role credential plus a mutation):')
+    console.error('')
+    for (const o of clientOffenders) console.error(`    ${o.rel}`)
+    console.error('')
+    console.error('  Add the preflight as the first executable statement of each:')
+    console.error('')
+    console.error("    import { assertNotProduction } from './lib/production-write-preflight.mjs'")
+    console.error('    assertNotProduction()')
+  }
+
+  if (pgOffenders.length > 0) {
+    console.error('')
+    console.error('  VIA A DIRECT POSTGRES CONNECTION (authenticates as the schema OWNER,')
+    console.error('  so DROP, ALTER and TRUNCATE are in scope):')
+    console.error('')
+    for (const o of pgOffenders) console.error(`    ${o.rel}`)
+    console.error('')
+    console.error('  Resolve the target from the environment and check it before building')
+    console.error('  the client. Never write a database host into the source:')
+    console.error('')
+    console.error("    import { assertNotProductionDatabase } from './lib/production-write-preflight.mjs'")
+    console.error('    const target = assertNotProductionDatabase()')
+    console.error('    const client = new pg.Client(target.clientConfig)')
+  }
+
   console.error('')
   console.error('  (from scripts/verify/ the path is ../lib/production-write-preflight.mjs)')
   console.error('')
-  console.error('  It resolves the project this process will actually use, refuses PRODUCTION')
-  console.error('  unless ALLOW_PRODUCTION_SUPABASE=1 is explicitly set, and refuses outright')
-  console.error('  when it cannot tell. A script that already refuses a production ref itself')
-  console.error('  satisfies this guard as it stands.')
+  console.error('  Either entry point resolves the project this process will actually use,')
+  console.error('  refuses PRODUCTION unless ALLOW_PRODUCTION_SUPABASE=1 is explicitly set,')
+  console.error('  and refuses outright when it cannot tell. A script that already refuses a')
+  console.error('  production ref itself satisfies this guard as it stands.')
   console.error('')
   process.exit(1)
 }
 
 console.log(
-  `[no-unguarded-production-write] PASS. ${writeCapable} write-capable script(s) under scripts/, ` +
+  `[no-unguarded-production-write] PASS. ${writeCapable} write-capable script(s) under scripts/ ` +
+    `(${viaClient} via the Supabase client, ${viaPostgres} via a direct Postgres connection), ` +
     'every one guarded (preflight, TEST allowlist, or PROD denylist).',
 )

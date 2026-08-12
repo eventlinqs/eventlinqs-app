@@ -284,4 +284,218 @@ export function assertNotProduction(opts = {}) {
   return { ref: target.ref, override: false }
 }
 
+// ── the direct Postgres path ────────────────────────────────────────────────
+//
+// A second transport to the same database, and a worse one. The Supabase client
+// above authenticates as `service_role`, which bypasses RLS. A direct Postgres
+// connection authenticates as `postgres`, which OWNS THE SCHEMA: it can DROP,
+// ALTER and TRUNCATE, so an accident there is not a bad row, it is a missing
+// table. Four scripts under scripts/verify/ used this transport with the
+// production host written into the source as a string literal, which meant no
+// environment variable could point them anywhere else. They are the reason this
+// section exists.
+
+/**
+ * The project ref a Postgres connection target identifies.
+ *
+ * TWO SHAPES, and the second is exactly why reading the HOST alone is not
+ * enough:
+ *
+ *   db.<ref>.supabase.co           direct connection. The ref is in the host.
+ *   <region>.pooler.supabase.com   the shared pooler. The host identifies NO
+ *                                  project at all: every project in the region
+ *                                  answers on it. The ref is in the USERNAME,
+ *                                  as `postgres.<ref>`.
+ *
+ * .env.test in this repo is the pooler shape, so a check that read only the
+ * host would have resolved "no ref" for every real TEST connection and, worse,
+ * would wave through a pooler URL whose username pointed at production. Both
+ * positions are read, and the host wins when both are present.
+ */
+export function refFromDatabaseTarget({ host = '', user = '' } = {}) {
+  const direct = /^db\.([a-z0-9]+)\.supabase\.co$/i.exec(String(host).trim())
+  if (direct) return direct[1].toLowerCase()
+  const pooled = /^postgres\.([a-z0-9]+)$/i.exec(String(user).trim())
+  if (pooled) return pooled[1].toLowerCase()
+  return ''
+}
+
+/**
+ * Split a Postgres connection string into the two identifying parts.
+ *
+ * Deliberately hand-rolled rather than `new URL()`: a Supabase database
+ * password routinely contains characters that make the whole string
+ * unparseable as a WHATWG URL, and the real .env.test value is one of them.
+ * Returns the user and host ONLY. The password is never extracted, never
+ * returned and never logged.
+ */
+function splitConnectionString(raw) {
+  const s = String(raw ?? '').trim()
+  const schemeEnd = s.indexOf('://')
+  const at = s.lastIndexOf('@')
+  if (schemeEnd === -1 || at === -1 || at < schemeEnd) return null
+  const hostPort = s.slice(at + 1).split(/[/?]/)[0]
+  return {
+    user: s.slice(schemeEnd + 3, at).split(':')[0],
+    host: hostPort.startsWith('[') ? hostPort.slice(0, hostPort.indexOf(']') + 1) : hostPort.split(':')[0],
+  }
+}
+
+/**
+ * The Postgres target this process is configured for, from the environment.
+ *
+ * DEFAULTS TO NOTHING. There is deliberately no fallback that reconstructs a
+ * host from NEXT_PUBLIC_SUPABASE_URL: .env.local holds the production project,
+ * so such a fallback would quietly rebuild `db.<production>.supabase.co` and
+ * restore the exact default this change exists to remove. No configuration
+ * means no target, and no target means refuse.
+ */
+export function resolveDatabaseTarget() {
+  const conn = process.env.SUPABASE_DB_URL
+  if (nonEmpty(conn)) {
+    const parts = splitConnectionString(conn) ?? { user: '', host: '' }
+    return {
+      clientConfig: { connectionString: conn.trim(), ssl: { rejectUnauthorized: false } },
+      ...parts,
+      source: 'SUPABASE_DB_URL',
+    }
+  }
+
+  const host = process.env.SUPABASE_DB_HOST
+  if (nonEmpty(host)) {
+    const user = (process.env.SUPABASE_DB_USER ?? '').trim()
+    return {
+      clientConfig: {
+        host: host.trim(),
+        port: Number(process.env.SUPABASE_DB_PORT ?? 5432),
+        user,
+        password: process.env.SUPABASE_DB_PASSWORD,
+        database: process.env.SUPABASE_DB_NAME ?? 'postgres',
+        ssl: { rejectUnauthorized: false },
+      },
+      host: host.trim(),
+      user,
+      source: 'SUPABASE_DB_HOST',
+    }
+  }
+
+  return { clientConfig: null, host: '', user: '', source: '' }
+}
+
+/**
+ * Refuse to continue when the Postgres target this process is configured for is
+ * the PRODUCTION project. Call it BEFORE constructing the client, so a refused
+ * run never builds one and never opens a socket.
+ *
+ * The verdict comes from the same SUPABASE_ENV_ISOLATION rule the rest of this
+ * module uses: the resolved ref is rendered back into the project URL shape the
+ * rule reads, so there is one definition of "this is production" and one
+ * override, not a second rule that can drift away from the first.
+ *
+ * @returns {{ clientConfig: object, ref: string, host: string, user: string, source: string }}
+ */
+export function assertNotProductionDatabase() {
+  const script = scriptName()
+  const rule = CRITICAL_ENV_RULES.find(r => r.name === 'SUPABASE_ENV_ISOLATION')
+
+  if (!rule) {
+    refuse([
+      `Script          : ${script}`,
+      '',
+      'SUPABASE_ENV_ISOLATION was not found in CRITICAL_ENV_RULES',
+      '(src/lib/health/critical-env.mjs). This preflight evaluates that rule and',
+      'cannot judge the target without it, so it refuses rather than pass a check',
+      'it did not actually perform.',
+    ])
+  }
+
+  const target = resolveDatabaseTarget()
+
+  // FAIL CLOSED, part one: nothing configured.
+  if (!target.clientConfig) {
+    refuse([
+      `Script          : ${script}`,
+      'Resolved project: NONE CONFIGURED',
+      '',
+      'This script opens a DIRECT Postgres connection as the database owner, and',
+      'no target is configured for this process. Set SUPABASE_DB_URL (or',
+      'SUPABASE_DB_HOST) to the project you intend to work against.',
+      '',
+      'There is no default. The production host used to be written into this',
+      'script as a literal, so running it with no configuration at all connected',
+      'to the live database as the schema owner. It now connects to nothing.',
+      '',
+      'To run against TEST:',
+      `  node --env-file=.env.test ${script}`,
+    ])
+  }
+
+  // FAIL CLOSED, part two: configured, but not identifiable.
+  const ref = refFromDatabaseTarget(target)
+  if (!ref) {
+    refuse([
+      `Script          : ${script}`,
+      'Resolved project: UNKNOWN',
+      `Resolved from   : ${target.source}`,
+      '',
+      'A Postgres target is configured but no Supabase project ref could be read',
+      'from it. Neither the host (db.<ref>.supabase.co) nor the username',
+      '(postgres.<ref>, the pooler shape) identified a project.',
+      '',
+      'An unknown target is refused, not allowed. This connection would hold the',
+      'rights to DROP and TRUNCATE, so "probably not production" is not good',
+      'enough. ALLOW_PRODUCTION_SUPABASE does not cover this case: it approves a',
+      'KNOWN production target, and there is nothing here to approve.',
+    ])
+  }
+
+  const judged = { NEXT_PUBLIC_SUPABASE_URL: `https://${ref}.supabase.co` }
+  if (nonEmpty(process.env.ALLOW_PRODUCTION_SUPABASE)) {
+    judged.ALLOW_PRODUCTION_SUPABASE = process.env.ALLOW_PRODUCTION_SUPABASE
+  }
+
+  const verdict = evalEnvRule(rule, judged)
+
+  if (!verdict.ok) {
+    refuse([
+      `Script          : ${script}`,
+      `Resolved project: ${ref}  (PRODUCTION)`,
+      `Resolved from   : ${target.source}`,
+      '',
+      'Nothing has been written. This ran before the Postgres client was',
+      'constructed and before any socket was opened.',
+      '',
+      'This connection authenticates as the database OWNER, not as service_role.',
+      'It can DROP, ALTER and TRUNCATE, so this is a wider power than the',
+      'Supabase client path and is refused on the same terms.',
+      '',
+      'Writing to the production project requires Lawal Adams\' explicit approval,',
+      'given for that run.',
+      '',
+      'To run this against TEST instead:',
+      `  node --env-file=.env.test ${script}`,
+      '',
+      'If this run IS an approved production write, state that explicitly:',
+      `  PowerShell : $env:ALLOW_PRODUCTION_SUPABASE="1"; node ${script}`,
+      `  bash       : ALLOW_PRODUCTION_SUPABASE=1 node ${script}`,
+    ])
+  }
+
+  if (process.env.ALLOW_PRODUCTION_SUPABASE === '1') {
+    const bar = '!'.repeat(72)
+    console.warn('')
+    console.warn(bar)
+    console.warn('PRODUCTION DATABASE WRITE APPROVED BY OVERRIDE  (ALLOW_PRODUCTION_SUPABASE=1)')
+    console.warn(`  script : ${script}`)
+    console.warn(`  project: ${ref}`)
+    console.warn('  This connects as the database OWNER. DROP, ALTER and TRUNCATE are in scope.')
+    console.warn(bar)
+    console.warn('')
+    return { ...target, ref }
+  }
+
+  console.log(`[preflight] ${script}: Postgres target ${ref} (not production), from ${target.source}. Proceeding.`)
+  return { ...target, ref }
+}
+
 export default assertNotProduction

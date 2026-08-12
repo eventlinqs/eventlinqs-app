@@ -9,18 +9,18 @@
  * (createPayout) is the external boundary and is unit-tested separately; these
  * RPCs are the ledger/claim authority and never touch Stripe.
  *
- * Run: npm install pg --no-save ; node scripts/verify/payout-e2e.mjs
+ * Connects as the database OWNER, so the target is checked before the client is
+ * built. The target comes from SUPABASE_DB_URL and there is no default: with
+ * nothing set this connects to nothing rather than to production.
+ *
+ * Run: npm install pg --no-save ; node --env-file=.env.test scripts/verify/payout-e2e.mjs
  */
-import { config } from 'dotenv'
-config({ path: '.env.local' })
+import { assertNotProductionDatabase } from '../lib/production-write-preflight.mjs'
 import pg from 'pg'
 import { randomUUID } from 'node:crypto'
 
-const client = new pg.Client({
-  host: 'db.gndnldyfudbytbboxesk.supabase.co',
-  port: 5432, user: 'postgres', password: process.env.SUPABASE_DB_PASSWORD_SYDNEY,
-  database: 'postgres', ssl: { rejectUnauthorized: false },
-})
+const target = assertNotProductionDatabase()
+const client = new pg.Client(target.clientConfig)
 
 const fails = []
 function assert(cond, msg, detail) {
