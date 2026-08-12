@@ -11,6 +11,8 @@ import { parseVideoEmbed } from '@/lib/media/video-embed'
 import { serializeGallery, type GalleryImage } from '@/lib/media/event-media-model'
 import { moderateEventMedia } from '@/lib/media/moderation'
 import { cleanupEventMedia } from '@/lib/upload'
+import { resolveCitySlug } from '@/lib/cities/resolve'
+import { resolveSuburbSlug } from '@/lib/cities/resolve-suburb'
 import { getSiteUrl } from '@/lib/site-url'
 import { trackEventPublishedServer } from '@/lib/analytics/plausible'
 import type { EventStatus, EventVisibility, EventType, TicketTierType, FeePassType, Json } from '@/types/database'
@@ -202,6 +204,21 @@ export async function createEvent(input: CreateEventInput): Promise<{ error?: st
       venue_name: input.venue_name || null,
       venue_address: input.venue_address || null,
       venue_city: input.venue_city || null,
+      // The canonical city claim. city_primary is the ONE column every
+      // city-scoped surface reads, including the weekly local digest, so an
+      // event with a recognised locality and a null city_primary is invisible
+      // to its own city. Resolved from the typed locality at write time.
+      city_primary: resolveCitySlug(input.venue_city),
+      // The district claim, and NOT the same move as the city one: a suburb
+      // cannot be derived from a city name, so this reads the venue's real
+      // coordinates and takes the nearest district centroid inside the same
+      // city, or null. Without it every suburb page is permanently empty of
+      // organiser events.
+      suburb_primary: resolveSuburbSlug({
+        citySlug: resolveCitySlug(input.venue_city),
+        latitude: input.venue_latitude,
+        longitude: input.venue_longitude,
+      }),
       venue_state: input.venue_state || null,
       venue_country: input.venue_country || null,
       venue_postal_code: input.venue_postal_code || null,
@@ -392,6 +409,17 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
       venue_name: input.venue_name || null,
       venue_address: input.venue_address || null,
       venue_city: input.venue_city || null,
+      // Kept in step with venue_city on every edit, so moving an event to a
+      // new city moves its digest and city-page reach with it.
+      city_primary: resolveCitySlug(input.venue_city),
+      // Re-resolved on every edit for the same reason: moving the venue moves
+      // the district, and a stale district is a wrong answer rather than a
+      // missing one.
+      suburb_primary: resolveSuburbSlug({
+        citySlug: resolveCitySlug(input.venue_city),
+        latitude: input.venue_latitude,
+        longitude: input.venue_longitude,
+      }),
       venue_state: input.venue_state || null,
       venue_country: input.venue_country || null,
       venue_postal_code: input.venue_postal_code || null,

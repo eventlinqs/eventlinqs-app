@@ -30,6 +30,7 @@ import { getFeaturedHeroBackground } from '@/lib/images/event-media'
 import { StickyActionBar } from '@/components/features/events/sticky-action-bar'
 import { Reveal } from '@/components/ui/reveal'
 import { buildEventMetaDescription } from '@/lib/events/event-meta'
+import { eventRobotsDirective } from '@/lib/events/visibility'
 import { EventTrustSignals } from '@/components/features/event/EventTrustSignals'
 import { fetchFixtureEvent } from '@/lib/dev/fixture-events'
 
@@ -153,6 +154,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const baseUrl = getSiteUrl()
 
+  // CHILD SAFETY, founder ruling 9 August 2026. Until this line the page
+  // emitted no robots directive at all, so an UNLISTED event was fully
+  // indexable the moment a crawler found the URL, which it will, because the
+  // organiser shares that URL by design. A sixteenth birthday at a home
+  // address must never enter a search index. Anything not exactly 'public'
+  // gets index:false, follow:false and noimageindex.
+  const robots = eventRobotsDirective(event.visibility)
+
   return {
     title,
     description,
@@ -163,6 +172,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       'tickets',
       'events',
     ].filter(Boolean) as string[],
+    ...(robots ? { robots } : {}),
     alternates: { canonical: `/events/${slug}` },
     // og:image and twitter:image come from the designed per-event share card
     // (opengraph-image.tsx in this route folder): the branded invitation with
@@ -243,10 +253,10 @@ export default async function EventDetailPage({ params }: Props) {
   // 500'd on the chrome + Sentry render-time cookie read.
   await headers()
 
-  // Broadcast Layer Stage 2 (SPEC 3.3): the organiser follow prompt on the
-  // event page, gated on broadcast_follow. ISR means a flag flip lands
-  // within the revalidate window.
-  const followOn = await isFeatureEnabled('broadcast_follow')
+  // broadcast_follow is deliberately NOT read here any more. The organiser
+  // follow control on this page is ungated and live (see the "Organised by"
+  // card below); the flag governs the account-level Following surface. Reading
+  // it here gated a duplicate of a control that was already showing.
 
   // Broadcast Layer Stage 3 (SPEC 4.2): confirmed lineup tags appear on the
   // event page, gated on broadcast_artists. Public-read RLS on both tables.
@@ -866,14 +876,19 @@ export default async function EventDetailPage({ params }: Props) {
                         {event.organisation.description && (
                           <p className="text-sm text-ink-600 line-clamp-3">{event.organisation.description}</p>
                         )}
-                        {followOn && (
-                          <div className="mt-3">
-                            <FollowButton type="organiser" id={event.organisation.id} variant="outline" />
-                          </div>
-                        )}
                       </div>
                       {/* Demand-graph follow: their next event lands in the
-                          follower's feed and alerts the moment it goes live. */}
+                          follower's feed and alerts the moment it goes live.
+                          ONE control, deliberately ungated.
+                          There used to be a second FollowButton here for the
+                          same organiser, gated on broadcast_follow, from an
+                          earlier stage. Two features landed on one card and
+                          neither noticed the other, so turning broadcast_follow
+                          on rendered TWO Follow buttons side by side for the
+                          same organiser: measured, 1 control with the flag off
+                          and 2 with it on. Invisible until the day somebody
+                          flips the flag, which is the point at which nobody
+                          would be looking for it. */}
                       <FollowButton type="organiser" id={event.organisation.id} className="shrink-0" />
                     </div>
                   </div>
@@ -962,6 +977,7 @@ export default async function EventDetailPage({ params }: Props) {
                       <div className="rounded-2xl border border-ink-200 bg-white p-6 shadow-sm lg:max-w-md">
                         <SectionHeader eyebrow="No seat needed" title="General admission" size="sm" className="mb-5" />
                         <TicketPanelClient
+                          eventTimezone={event.timezone}
                           eventId={event.id}
                           eventCreatedAt={event.created_at}
                           allTiers={gaTiersAlongsideSeats}
@@ -999,6 +1015,7 @@ export default async function EventDetailPage({ params }: Props) {
                       )}
 
                       <TicketPanelClient
+                          eventTimezone={event.timezone}
                         eventId={event.id}
                         eventCreatedAt={event.created_at}
                         allTiers={enrichedAllTiers}

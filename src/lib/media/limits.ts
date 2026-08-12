@@ -12,8 +12,46 @@ export const MAX_TOTAL_IMAGES = 10
 /** Maximum upload size per image. Matches the long-standing client cap. */
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024 // 10MB
 
-/** Maximum pixel dimension on either edge. Server-side hard reject. */
-export const MAX_IMAGE_DIMENSION = 4000
+/**
+ * The long edge every uploaded image is DOWNSCALED to. Not a reject.
+ *
+ * This used to be MAX_IMAGE_DIMENSION = 4000 and a hard server-side reject, and
+ * it refused a 3625 x 4961 photo, which is ordinary camera output. The defect
+ * was the VERB, not the number: the market resizes where we refused. Neither
+ * Eventbrite nor Humanitix publishes a maximum pixel dimension at all. Both
+ * publish a 10MB byte cap (kept, as MAX_IMAGE_BYTES) and a recommended MINIMUM
+ * resolution, and Humanitix's answer to an image that does not fit its ratio is
+ * "Images outside of this ratio will be cropped", not a refusal.
+ *   - Eventbrite, help article 682424, fetched 9 August 2026: recommended
+ *     2160 x 1080, max 10MB, JPEG or PNG.
+ *   - Humanitix, help article 8892493, fetched 9 August 2026: "Images must be
+ *     less than 10mb", "minimum of 3200px by 1600px" recommended.
+ *
+ * WHY 3000 (founder ruling, 9 August 2026). The binding case is print: the A4
+ * poster is the only artefact anywhere near this size. Every other artefact is
+ * far below it and does not drive the number (tall card 1440 x 1800, story card
+ * 1080 x 1920, square 1080 x 1080).
+ *
+ * The arithmetic, stated because a wrong comment beside a right constant is how
+ * somebody later changes it in the wrong direction: A4 is 210 x 297mm, so its
+ * long edge is 11.69in and 3000px across it is about 257dpi. That is NOT true
+ * 300dpi, which would need 3508px. 3000 is deliberate anyway: these posters go
+ * in venue windows and on pub noticeboards, read from a metre away, where the
+ * difference is invisible, and 3508 costs roughly 35% more storage on every
+ * image forever for quality this market will never see. Reversible upward if a
+ * promoter ever reports a print shop refusing their file; storage already paid
+ * for is not reclaimable.
+ */
+export const IMAGE_DOWNSCALE_LONG_EDGE = 3000
+
+/**
+ * A real safety guard, which the 4000px reject never was: it was protecting
+ * against nothing and refusing real photos. This refuses a decompression bomb,
+ * an image whose declared dimensions are small on disk but enormous in memory.
+ * 100 megapixels is far above any camera an organiser owns and far below what
+ * would exhaust the function.
+ */
+export const MAX_IMAGE_PIXELS = 100_000_000
 
 /**
  * Minimum width for a COVER image. The cover is the hero + card + LCP raster, so
@@ -25,6 +63,40 @@ export const MAX_IMAGE_DIMENSION = 4000
  */
 export const MIN_COVER_WIDTH = 1000
 export const RECOMMENDED_COVER_WIDTH = 2160
+
+/**
+ * ORGANISER LOGO. A different object from a photograph and it needs different
+ * rules, so it gets its own constants rather than borrowing the cover ones.
+ *
+ * The market, read from the platforms' own published help pages on 8 August
+ * 2026:
+ *
+ * - Eventbrite, "How to set up your organizer profile page" (help article
+ *   161196): "Organizer profile image: This will appear on your event listing
+ *   and organizer profile. Eventbrite recommends a 1:1 ratio for square images,
+ *   like 400x400."
+ * - Humanitix, "How to style your event page" (help article 8951375): the
+ *   organiser logo REPLACES the Humanitix logo in the top left of the event
+ *   page. "The logo image on the event page is dynamic and will accommodate
+ *   logos of all sizes. However we recommend a 'landscape' image. Max size
+ *   10MB." And, on legibility: "We recommend checking if your logo matches
+ *   both light and dark modes. Your logo's colours will not automatically
+ *   change based on the page settings."
+ *
+ * So: accept both shapes, because organisers really do have both a square mark
+ * and a landscape wordmark, and never squash one into the other. 400 pixels on
+ * the long edge is the floor, matching the square figure Eventbrite publishes,
+ * because a logo that is fine on a profile page at 64 pixels is a smear on a
+ * 1080 pixel story card.
+ *
+ * The legibility problem Humanitix hands back to the organiser is handled for
+ * them instead: see resolveLogoPlacement in the image pipeline.
+ */
+export const MIN_LOGO_LONG_EDGE = 400
+export const RECOMMENDED_LOGO_LONG_EDGE = 1000
+/** Widest and tallest a logo may be, as width over height. */
+export const MAX_LOGO_ASPECT = 4
+export const MIN_LOGO_ASPECT = 0.25
 
 /**
  * Accepted upload formats by their real (magic-byte) sharp format id. SVG and any

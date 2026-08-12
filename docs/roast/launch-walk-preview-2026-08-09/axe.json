@@ -1,0 +1,41 @@
+{
+  "base": "https://eventlinqs-app-git-feat-public-b39b4c-lawals-projects-c20c0be8.vercel.app",
+  "summary": [
+    {
+      "surface": "composer@1440",
+      "violations": 0,
+      "seriousOrCritical": 0,
+      "detail": []
+    },
+    {
+      "surface": "reveal@1440",
+      "violations": 0,
+      "seriousOrCritical": 0,
+      "detail": []
+    },
+    {
+      "surface": "kitpage@1440",
+      "violations": 0,
+      "seriousOrCritical": 0,
+      "detail": []
+    },
+    {
+      "surface": "composer@390",
+      "violations": 0,
+      "seriousOrCritical": 0,
+      "detail": []
+    },
+    {
+      "surface": "reveal@390",
+      "violations": 0,
+      "seriousOrCritical": 0,
+      "detail": []
+    },
+    {
+      "surface": "kitpage@390",
+      "violations": 0,
+      "seriousOrCritical": 0,
+      "detail": []
+    }
+  ]
+}

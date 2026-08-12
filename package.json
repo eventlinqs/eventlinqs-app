@@ -19,12 +19,15 @@
     "guards:contract-node": "node scripts/guards/contract-node.mjs",
     "guards:surface": "node scripts/guards/contract-node.mjs scripts/guards/lib/generate-node-surface.mjs",
     "guards:drills": "node scripts/verify/guard-failure-drills.mjs",
-    "verify:provider-cost": "node scripts/verify/auth-provider-cache-cost.mjs"
+    "verify:provider-cost": "node scripts/verify/auth-provider-cache-cost.mjs",
+    "gates": "node scripts/guards/run-guards.mjs && node scripts/guards/preview-deployment-state.mjs && tsc --noEmit && eslint && vitest run && npm run build",
+    "gates:preview-state": "node scripts/guards/preview-deployment-state.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",
     "@googlemaps/js-api-loader": "^2.0.2",
     "@googlemaps/markerclusterer": "^2.6.2",
+    "@pdf-lib/fontkit": "^1.1.1",
     "@react-email/components": "^1.0.11",
     "@sentry/nextjs": "^10.53.1",
     "@stripe/react-stripe-js": "^6.1.0",

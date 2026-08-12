@@ -49,6 +49,8 @@ silently follow the stale doc.
 | The header or footer | Design system (Chrome consistency) |
 | Animation, reveal, hover, glide, loading | Motion |
 | A marketing or landing surface | Law 4 (image-rich), Design system, Media architecture |
+| Posters, share cards, any organiser-facing artefact carrying an image | Law 6 (render, never generate), Media architecture |
+| Anything that would call an image or video model | Law 6 (banned in the product; permitted only for EventLinqs' own marketing) |
 | Scenes, categories, taxonomy | Scene layer, Law 3, the `seed-events` skill |
 | Seed or demo data | `seed-events` skill, Law 3, Media architecture |
 | Links, routes, navigation | Law 5 (zero dead links) |
@@ -61,9 +63,9 @@ silently follow the stale doc.
 **Index of laws:** Law 0 (read first) - Definition of Done (SHIP 100%, A to Z)
 - Growth plan (the wedge, the two engines, the levers) - Law 1 (no generic) -
 Law 2 (evidence-driven) - Law 3 (Australia-smart) - Law 4 (marketing image-rich)
-- Law 5 (zero dead links) - Scene layer - Design system - Motion - Copy and
-banned content - Fee system - Venue Revenue Sharing Program - Verification and
-gates - Tooling - Authority docs - Skills.
+- Law 5 (zero dead links) - Law 6 (render, never generate) - Scene layer -
+Design system - Motion - Copy and banned content - Fee system - Venue Revenue
+Sharing Program - Verification and gates - Tooling - Authority docs - Skills.
 
 ## What EventLinqs is
 
@@ -356,6 +358,43 @@ tile-shaped image a finger lands on that does nothing is the same defect as a
   public page, finds tile/card-shaped `<img>` inside grids/rails and fails on any
   with no ancestor anchor/button). It runs beside the link-integrity crawler in
   the audit suite on every pass.
+
+## Law 6: render, never generate (founder ruling 2026-08-08)
+
+**The platform never generates images or video for an organiser's event. Not
+now, not ever.** EventLinqs is not a design tool and does not compete with one.
+The organiser supplies their artwork, made wherever they like, and our job is to
+RENDER what they give us.
+
+- **Upload once, get every size.** One supplied image is composed into every
+  format a promoter needs, with their event details, their QR code and their
+  tracked link laid over it correctly: a print-ready A4 poster, a 1080x1920
+  story card, a 1080x1080 square, a 1200x630 link preview, each cropped and
+  composed to that surface's current published specification.
+- **No supplied image means a typographic composition** built from the
+  organiser's own event details, in the brand system. Never invented imagery,
+  never a stock photo standing in for their night.
+- **Banned inside the product, in every form:** text-to-image, text-to-video,
+  generative fill, outpainting, style transfer, upscaling that hallucinates
+  detail, and any third-party generation service called on an organiser's
+  behalf. Deterministic composition, cropping, scaling, colour and format
+  conversion are RENDERING and are fine.
+- **TEXT generation is untouched by this law.** Descriptions, summaries and
+  captions are governed by Copy and banned content and the anti-tell gate. Law 6
+  is about pixels.
+
+**The boundary, stated so it can never be read as permission.** EventLinqs
+generating imagery for its OWN marketing (the platform's hero rasters, launch
+videos, social content, the parked Higgsfield creative skill set) is a separate
+question and is NOT banned. That is EventLinqs making EventLinqs' own artwork.
+It never touches an organiser's event, never renders into a Launch Kit artefact,
+and never becomes a product feature. Anything on that side of the line goes
+through the licensed platform photo library and the media components
+(`docs/MEDIA-ARCHITECTURE.md`), never into the organiser path.
+
+Struck by the same ruling: the Midjourney category cover photography planned in
+`docs/MASTER-PLAN-V1.md` (Phase 1, Week 5). Generated imagery on public category
+surfaces is exactly the generic risk Law 1 exists to stop.
 
 ## Scene layer (locked, national) - V2, research-backed
 
@@ -766,8 +805,13 @@ the relevant surface section before reworking it.
   a threshold or mark a check optional to go green.
 - Commit per unit with a clear message, push, hand back the Vercel preview URL
   with the benchmark verdict. Never merge without approval.
-- Disk guard: check free space before any build or deploy step. Under 1.5 GB
-  free, stop and report.
+- Disk guard: check free space before any build or deploy step. Under 5 GB
+  free, stop and report. The executable authority is `scripts/check-disk-space.mjs`
+  (`MIN_FREE_GB`), which runs before a local build; this line follows it. The
+  floor is 5 GB rather than something smaller because a Next.js build writes
+  gigabytes of `.next` output and fails MID-COMPILE on a near-full disk with
+  "os error 112", leaving broken routes that read as code bugs. Emergency
+  bypass is `ALLOW_LOW_DISK=1`, and it is a bypass, not a lower floor.
 
 **The gates: what is machine-checked (and the known gaps)**
 
@@ -869,6 +913,13 @@ images, launch videos, and social/YouTube content. Built AFTER launch, on top of
 live, earning platform with real traffic and data, never before: building
 automations to capture a market for a platform that is not yet live and earning is
 the wrong order. Strong yes to the vision, firm not-yet on timing.
+
+**The Higgsfield boundary (founder ruling 2026-08-08), so this is never read as
+permission.** That creative skill set is for EventLinqs' OWN marketing only:
+the platform's hero rasters, its launch videos, its social content. It never
+generates for an organiser's event, never renders into a Launch Kit artefact,
+and never becomes a product feature. Law 6 governs the product side and is
+absolute there.
 
 **REMOVED (founder decision 2026-07-05): the Venue Revenue Sharing
 Program.** Built, then removed entirely; the record lives in the Venue

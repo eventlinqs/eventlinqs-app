@@ -1,0 +1,149 @@
+{
+  "base": "http://localhost:3200",
+  "label": "auckland",
+  "readerZone": "Pacific/Auckland",
+  "results": [
+    {
+      "surface": "ticket-selector",
+      "width": 1440,
+      "readerZone": "auckland",
+      "readerZoneId": "Pacific/Auckland",
+      "saleOpens": "Sale opens Tue 1 December 2026 at 11:30 pm AWST\n\nAUD 48.00\n\nSTARTS SOON\n\nBRING YOUR PEOPLE\n\nNights out are better booked together. Send this to the group chat.\n\nShare\nWhatsApp\nFacebook\nX\nEmail\nCopy link\nEVENTLINQS\n.\n\nThe ticketing platform built for every community.\n\nLanguage\nEnglish (AU)\n\nDISCOVER\n\nBrowse all events\nBy city\nBy community\nThis week\nThis weekend\nFree events\n\nCOMMUNITIES\n\nFirst Nations\nAfrican\nCaribbean\nIndian\nLatin American\nItalian\nAll communities\n\nFOR ORGANISERS\n\nSell tickets\nPricing\nOrganiser guide\nStep-by-step guides\nHelp centre\n\nCOMPANY\n\nAbout\nCareers\nPress\nContact\n\nEventLinqs acknowledges the Traditional Custodians of Country throughout Australia and recognises their continuing connection to land, waters, and community. We pay our respects to Elders past and present.\n\nTerms\nPrivacy\nRefund policy\nOrganiser agreement\nCookie policy\nAccessibility\nABN 30 837 447 587\n·\nGeelong VIC, Australia\n·\nhello@eventlinqs.com\n·\n© 2026 EventLinqs",
+      "dates": [
+        "18 July 2026",
+        "18 July 2026",
+        "18 July 2026",
+        "18 July 2026",
+        "1 December 2026"
+      ],
+      "shortDates": [],
+      "consoleErrors": 1,
+      "overflow": 0
+    },
+    {
+      "surface": "ticket-selector",
+      "width": 390,
+      "readerZone": "auckland",
+      "readerZoneId": "Pacific/Auckland",
+      "saleOpens": "Sale opens Tue 1 December 2026 at 11:30 pm AWST\n\nAUD 48.00\n\nSTARTS SOON\nEVENTLINQS\n.\nDiscover\nBrowse all events\nBy city\nBy community\nThis week\nThis weekend\nFree events\nCommunities\nFirst Nations\nAfrican\nCaribbean\nIndian\nLatin American\nItalian\nAll communities\nFor organisers\nSell tickets\nPricing\nOrganiser guide\nStep-by-step guides\nHelp centre\nCompany\nAbout\nCareers\nPress\nContact\nLanguage\nEnglish (AU)\n\nEventLinqs acknowledges the Traditional Custodians of Country throughout Australia and recognises their continuing connection to land, waters, and community. We pay our respects to Elders past and present.\n\nTerms\nPrivacy\nRefund policy\nOrganiser agreement\nCookie policy\nAccessibility\nABN 30 837 447 587\nGeelong VIC, Australia\nhello@eventlinqs.com\n© 2026 EventLinqs\nHome\nBrowse\nSearch\nSaved\nAccount",
+      "dates": [
+        "18 July 2026",
+        "18 July 2026",
+        "18 July 2026",
+        "18 July 2026",
+        "1 December 2026"
+      ],
+      "shortDates": [],
+      "consoleErrors": 1,
+      "overflow": 0
+    },
+    {
+      "surface": "trending-bento",
+      "width": 1440,
+      "readerZone": "auckland",
+      "readerZoneId": "Pacific/Auckland",
+      "saleOpens": null,
+      "dates": [
+        "9 Aug 2026"
+      ],
+      "shortDates": [],
+      "consoleErrors": 3,
+      "overflow": 0
+    },
+    {
+      "surface": "trending-bento",
+      "width": 390,
+      "readerZone": "auckland",
+      "readerZoneId": "Pacific/Auckland",
+      "saleOpens": null,
+      "dates": [
+        "9 Aug 2026"
+      ],
+      "shortDates": [],
+      "consoleErrors": 3,
+      "overflow": 0
+    },
+    {
+      "surface": "surprise-me",
+      "width": 1440,
+      "readerZone": "auckland",
+      "readerZoneId": "Pacific/Auckland",
+      "saleOpens": null,
+      "dates": [
+        "9 Aug 2026"
+      ],
+      "shortDates": [],
+      "consoleErrors": 3,
+      "overflow": 0
+    },
+    {
+      "surface": "surprise-me",
+      "width": 390,
+      "readerZone": "auckland",
+      "readerZoneId": "Pacific/Auckland",
+      "saleOpens": null,
+      "dates": [
+        "9 Aug 2026"
+      ],
+      "shortDates": [],
+      "consoleErrors": 1,
+      "overflow": 0
+    },
+    {
+      "surface": "artist-credits",
+      "width": 1440,
+      "readerZone": "auckland",
+      "readerZoneId": "Pacific/Auckland",
+      "saleOpens": null,
+      "dates": [],
+      "shortDates": [],
+      "consoleErrors": 4,
+      "overflow": 0
+    },
+    {
+      "surface": "artist-credits",
+      "width": 390,
+      "readerZone": "auckland",
+      "readerZoneId": "Pacific/Auckland",
+      "saleOpens": null,
+      "dates": [],
+      "shortDates": [],
+      "consoleErrors": 2,
+      "overflow": 0
+    },
+    {
+      "surface": "straddle-event",
+      "width": 1440,
+      "readerZone": "auckland",
+      "readerZoneId": "Pacific/Auckland",
+      "saleOpens": null,
+      "dates": [
+        "24 September 2026",
+        "25 September 2026",
+        "24 September 2026",
+        "25 September 2026",
+        "24 September 2026"
+      ],
+      "shortDates": [],
+      "consoleErrors": 1,
+      "overflow": 0
+    },
+    {
+      "surface": "straddle-event",
+      "width": 390,
+      "readerZone": "auckland",
+      "readerZoneId": "Pacific/Auckland",
+      "saleOpens": null,
+      "dates": [
+        "24 September 2026",
+        "25 September 2026",
+        "24 September 2026",
+        "25 September 2026",
+        "24 September 2026"
+      ],
+      "shortDates": [],
+      "consoleErrors": 1,
+      "overflow": 0
+    }
+  ]
+}

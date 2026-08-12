@@ -6,7 +6,7 @@ import type {
 import { fixtureEnabled, loadFixtureRows } from '@/lib/dev/fixture-events'
 
 export const EVENT_SELECT =
-  'id, slug, title, summary, cover_image_url, thumbnail_url, gallery_urls, start_date, venue_name, venue_city, venue_state, venue_country, is_free, created_at, category:event_categories(name, slug), organisation:organisations(name), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
+  'id, slug, title, summary, cover_image_url, thumbnail_url, gallery_urls, start_date, timezone, venue_name, venue_city, venue_state, venue_country, is_free, created_at, category:event_categories(name, slug), organisation:organisations(name), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
 
 export type RawRow = {
   id: string
@@ -17,6 +17,8 @@ export type RawRow = {
   thumbnail_url: string | null
   gallery_urls: string[] | null
   start_date: string
+  /** The EVENT's IANA zone. Every rail date is formatted in it, never the reader's. */
+  timezone: string | null
   venue_name: string | null
   venue_city: string | null
   venue_state: string | null
@@ -42,6 +44,7 @@ export function toBentoEvent(r: RawRow): BentoEvent {
     thumbnail_url: r.thumbnail_url,
     gallery_urls: r.gallery_urls,
     start_date: r.start_date,
+    timezone: r.timezone,
     venue_name: r.venue_name,
     venue_city: r.venue_city,
     is_free: r.is_free,

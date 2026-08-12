@@ -1,5 +1,6 @@
 'use client'
 
+import { canonicalHost } from '@/lib/site-url'
 import { useState, useTransition } from 'react'
 import { createOrganisation } from '../actions'
 
@@ -61,7 +62,7 @@ export function OrgCreateForm({
           URL Slug <span className="text-red-500">*</span>
         </label>
         <div className="flex items-center rounded-lg border border-ink-200 focus-within:border-gold-400 focus-within:ring-1 focus-within:ring-gold-400">
-          <span className="pl-4 pr-1 text-sm text-ink-400 select-none">eventlinqs.com/</span>
+          <span className="pl-4 pr-1 text-sm text-ink-400 select-none">{canonicalHost()}/</span>
           <input
             id="slug"
             name="slug"

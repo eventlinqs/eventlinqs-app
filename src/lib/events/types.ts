@@ -71,21 +71,33 @@ export type FetchPublicEventsFilters = {
   city?: string
   country?: string
   /**
-   * Venue name, matched loosely. Emitted by the "see everything at this
-   * venue" link on a venue profile, which previously landed on the
-   * unfiltered national list.
+   * City-facing suburb slug from /city/[slug]/[suburb] ("inner-melbourne").
+   * Resolved to a district centroid and applied as a radius, because these are
+   * broad districts with no text form that matches any venue column. See
+   * lib/events/url-filters.ts.
    */
-  venue?: string
+  suburb?: string
   /**
-   * One of CITY_EVENT_TYPES (concert, dj-set, comedy, ...), emitted by the
-   * event-type rail on every city page. There is no column backing this
-   * taxonomy, so it resolves through EVENT_TYPE_FILTER onto the category and
-   * tag data that does exist.
+   * One of the eight city-page format tiles (concert, dj-set, comedy, theatre,
+   * workshop, community, food-drink, sport). There is no event_type column, so
+   * each resolves to real tags plus the category carrying the same meaning.
    */
   event_type?: string
+  /** Venue handle or venue name; both resolve to a venue_name match. */
+  venue?: string
+  /** Organisation slug, from the organiser profile "View all". */
+  organiser?: string
+  /** Faith slug, reusing the tag bridge the /faith landing selects on. */
+  faith?: string
+  /** Community-moment slug; contributes a heritage and a date window. */
+  moment?: string
   /**
    * Which entity the header search was scoped to. Narrows where the query is
    * allowed to match; without it all four search tabs behaved identically.
+   *
+   * MERGE NOTE: added by origin/main's search-scope work while this branch
+   * added suburb, organiser, faith and moment. Both sides are kept, because
+   * dropping either loses a shipped filter.
    */
   tab?: 'events' | 'cities' | 'communities' | 'organisers'
 }

@@ -62,8 +62,24 @@ interface FlagRow {
   enabled: boolean
 }
 
+/**
+ * The environment namespace is applied by the Redis client itself
+ * (`src/lib/redis/client.ts`), for EVERY key, not just this one.
+ *
+ * The defect that produced it was found here: `ff:v1:<flag>` carried no
+ * environment, and a local server reading TEST left
+ * `ff:v1:broadcast_artists = "true"` in the Redis production reads, while the
+ * production row says `false`. Namespacing this one key would have fixed this
+ * one instance and left five more key families with the identical shape, two of
+ * them far worse than a feature flag (the resolved FEE and the AI budget
+ * counter). So it is done once, at the client, where a new call site inherits
+ * it by default.
+ *
+ * v2 rather than v1 so nothing inherits a value written under the old shared
+ * key.
+ */
 function cacheKey(flag: BroadcastFlag): string {
-  return `ff:v1:${flag}`
+  return `ff:v2:${flag}`
 }
 
 async function readCache(key: string): Promise<boolean | null> {

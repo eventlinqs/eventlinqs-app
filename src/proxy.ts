@@ -1,6 +1,7 @@
 import { updateSession } from '@/lib/supabase/middleware'
 import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { SHARE_COOKIE, SHARE_COOKIE_MAX_AGE_SECONDS } from '@/lib/broadcast/share-codes'
 import { validateAdmissionToken } from '@/lib/queue/tokens'
 import { getSupabaseAnonKey, getSupabaseUrl } from '@/lib/supabase/env'
 
@@ -134,6 +135,42 @@ function canonicaliseHost(request: NextRequest): NextResponse | null {
   return NextResponse.redirect(url, 301)
 }
 
+/**
+ * The last-touch share cookie, set for /e/[code] and /s/[code].
+ *
+ * It has to happen here and not in the page. A Next.js Server Component cannot
+ * write a cookie during render; only a Route Handler, a Server Action or the
+ * middleware can. /e/[code] RENDERS the event page rather than redirecting to
+ * it, which is the whole point of the format, so the cookie is set on the way
+ * past instead.
+ *
+ * No database call is needed: the cookie value IS the code, and the code is
+ * already in the path. Format is gated with a cheap regex so a junk path never
+ * writes a cookie, and the value is length-capped so a long path cannot be used
+ * to stuff a header.
+ *
+ * Not httpOnly, unchanged from the previous behaviour: the value is a public
+ * code already visible in the address bar, and the view beacon on the event
+ * page reads it client side.
+ */
+const SHARE_PATH_RE = /^\/(?:e|s)\/([A-Za-z0-9][A-Za-z0-9-]{1,47})\/?$/
+
+function attachShareCookie(request: NextRequest, response: NextResponse): NextResponse {
+  const match = SHARE_PATH_RE.exec(request.nextUrl.pathname)
+  if (!match) return response
+  // Name and lifetime come from share-codes.ts, the one definition. A second
+  // copy here is how the cookie the middleware writes and the cookie the
+  // checkout reads drift apart without anything going red.
+  response.cookies.set(SHARE_COOKIE, match[1], {
+    maxAge: SHARE_COOKIE_MAX_AGE_SECONDS,
+    path: '/',
+    sameSite: 'lax',
+    httpOnly: false,
+    secure: process.env.NODE_ENV === 'production',
+  })
+  return response
+}
+
 export async function proxy(request: NextRequest) {
   // Host canonicalisation runs first - synchronous, before any cookie is read.
   const hostRedirect = canonicaliseHost(request)
@@ -146,7 +183,7 @@ export async function proxy(request: NextRequest) {
 
   const queueRedirect = await gateHighDemandEvent(request)
   if (queueRedirect) return queueRedirect
-  return await updateSession(request)
+  return attachShareCookie(request, await updateSession(request))
 }
 
 export const config = {

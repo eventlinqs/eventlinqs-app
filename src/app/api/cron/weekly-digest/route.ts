@@ -27,6 +27,11 @@ export const dynamic = 'force-dynamic'
  *                     nothing: the evidence-gate probe
  *   ?test_to=email    send one real digest for ?city to this address only,
  *                     without writing digest_sends (a rehearsal send)
+ *   ?preview_to=email render exactly what that address would receive and
+ *                     return it, sending nothing and writing nothing. This
+ *                     exists so a human READS the mail before it goes to real
+ *                     people: tests prove the code path, only reading proves
+ *                     the copy.
  */
 
 const MAX_RECIPIENTS_PER_RUN = 500
@@ -46,6 +51,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const onlyCity = request.nextUrl.searchParams.get('city')
   const dryRun = request.nextUrl.searchParams.get('dry_run') === '1'
   const testTo = request.nextUrl.searchParams.get('test_to')
+  const previewTo = request.nextUrl.searchParams.get('preview_to')
 
   const cities = onlyCity ? [onlyCity] : await fetchDigestCities(admin)
   const results: Record<string, unknown>[] = []
@@ -70,14 +76,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       .eq('city_slug', citySlug)
       .eq('period_start', period.start)
       .maybeSingle()
-    if (already && !dryRun && !testTo) {
+    if (already && !dryRun && !testTo && !previewTo) {
       results.push({ city: citySlug, skipped: 'already_sent_this_period' })
       continue
     }
 
     const [recipients, events] = await Promise.all([
       fetchDigestRecipients(admin, citySlug),
-      fetchDigestEvents(admin, citySlug, period),
+      // The origin is what turns each event row into a tracked short link, so
+      // the clicks this send produces reach the organiser's reach panel.
+      fetchDigestEvents(admin, citySlug, period, 10, origin, city.name),
     ])
 
     if (events.length === 0) {
@@ -90,10 +98,38 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         city: citySlug,
         dryRun: true,
         recipients: recipients.length,
-        recipientEmails: recipients.map((r) => r.email),
+        // Source is named per address so the bridge is legible in the probe:
+        // 'waitlist' is a person the digest could not reach before.
+        recipientEmails: recipients.map((r) => `${r.email} (${r.source})`),
         events: events.length,
         eventTitles: events.map((e) => e.title),
+        eventUrls: events.map((e) => e.url),
         period,
+      })
+      continue
+    }
+
+    if (previewTo) {
+      // Render only. Nothing is sent and nothing is written, so this is safe
+      // to run against a live audience at any time.
+      const own = recipients.find((r) => r.email === previewTo.toLowerCase())
+      const built = buildDigestEmailHtml({
+        cityName: city.name,
+        events,
+        origin,
+        unsubscribeUrl: own
+          ? `${origin}/unsubscribe/digest/${own.unsubscribeToken}`
+          : `${origin}/account/notifications`,
+      })
+      results.push({
+        city: citySlug,
+        preview: {
+          to: previewTo,
+          recipientSource: own?.source ?? 'not-a-recipient',
+          subject: built.subject,
+          html: built.html,
+          text: built.text,
+        },
       })
       continue
     }

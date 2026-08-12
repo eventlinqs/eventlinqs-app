@@ -7,8 +7,11 @@ const redisMock = {
   incrby: vi.fn(),
   expire: vi.fn(),
 }
+// Hoisted so the fail-closed tests can make the client itself unavailable,
+// which is the "no Redis configured" case the guard must refuse on.
+const getRedisClientMock = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/redis/client', () => ({
-  getRedisClient: vi.fn(() => redisMock),
+  getRedisClient: getRedisClientMock,
 }))
 
 const messagesCreate = vi.fn()
@@ -46,6 +49,7 @@ function modelReply(json: unknown, overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  getRedisClientMock.mockReturnValue(redisMock)
   redisMock.get.mockResolvedValue(0)
   redisMock.incrby.mockResolvedValue(1)
   redisMock.expire.mockResolvedValue(1)
@@ -158,15 +162,42 @@ describe('monthly budget', () => {
   it('blocks when month-to-date spend reaches the budget', async () => {
     process.env.AI_MONTHLY_BUDGET_USD = '10'
     redisMock.get.mockResolvedValue(10_000_000)
-    const status = await checkMonthlyBudget()
-    expect(status.ok).toBe(false)
+    expect((await checkMonthlyBudget('open')).ok).toBe(false)
+    expect((await checkMonthlyBudget('closed')).ok).toBe(false)
   })
 
-  it('allows when under budget and fails open on redis errors', async () => {
+  it('allows either mode when the meter is readable and under budget', async () => {
     redisMock.get.mockResolvedValue(1_000)
-    expect((await checkMonthlyBudget()).ok).toBe(true)
+    expect((await checkMonthlyBudget('open')).ok).toBe(true)
+    expect((await checkMonthlyBudget('closed')).ok).toBe(true)
+  })
+
+  // F3: the fail mode is the whole point of the guard on an anonymous path.
+  it('fails OPEN on a redis error for the chat callers', async () => {
     redisMock.get.mockRejectedValue(new Error('boom'))
-    expect((await checkMonthlyBudget()).ok).toBe(true)
+    const status = await checkMonthlyBudget('open')
+    expect(status.ok).toBe(true)
+    expect(status.unmetered).toBe(true)
+  })
+
+  it('fails CLOSED on a redis error for draft generation', async () => {
+    redisMock.get.mockRejectedValue(new Error('boom'))
+    const status = await checkMonthlyBudget('closed')
+    expect(status.ok).toBe(false)
+    expect(status.unmetered).toBe(true)
+  })
+
+  it('fails CLOSED when redis is not configured at all', async () => {
+    redisMock.get.mockResolvedValue(1_000)
+    getRedisClientMock.mockReturnValueOnce(null)
+    const status = await checkMonthlyBudget('closed')
+    expect(status.ok).toBe(false)
+    expect(status.unmetered).toBe(true)
+  })
+
+  it('still allows the chat callers when redis is not configured', async () => {
+    getRedisClientMock.mockReturnValueOnce(null)
+    expect((await checkMonthlyBudget('open')).ok).toBe(true)
   })
 
   it('records spend with incrby and sets expiry on first write', async () => {

@@ -1,0 +1,6 @@
+01-short-title-no-artwork.pdf  The case the composition exists for. Must print LARGE.
+02-medium-title-no-artwork.pdf  The ordinary case.
+03-long-title-no-artwork.pdf  Forces the fitter to step down and wrap.
+04-unspaced-token-no-artwork.pdf  Used to run off the page. Must wrap mid-token.
+05-short-title-with-artwork.pdf  The artwork composition, unchanged, with a real photograph.
+06-long-title-with-artwork.pdf  The artwork composition with a title that must wrap.

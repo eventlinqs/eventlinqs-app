@@ -1,0 +1,47 @@
+{
+  "base": "http://localhost:3300",
+  "results": [
+    {
+      "surface": "home (trending bento + surprise me)",
+      "path": "/",
+      "width": 1440,
+      "violations": [],
+      "seriousOrCritical": 0
+    },
+    {
+      "surface": "home (trending bento + surprise me)",
+      "path": "/",
+      "width": 390,
+      "violations": [],
+      "seriousOrCritical": 0
+    },
+    {
+      "surface": "event detail (ticket selector)",
+      "path": "/events/afrobeats-amapiano-live-at-the-rosemount-perth",
+      "width": 1440,
+      "violations": [],
+      "seriousOrCritical": 0
+    },
+    {
+      "surface": "event detail (ticket selector)",
+      "path": "/events/afrobeats-amapiano-live-at-the-rosemount-perth",
+      "width": 390,
+      "violations": [],
+      "seriousOrCritical": 0
+    },
+    {
+      "surface": "artist profile (credits)",
+      "path": "/artists/marlo-reyes-lojdor",
+      "width": 1440,
+      "violations": [],
+      "seriousOrCritical": 0
+    },
+    {
+      "surface": "artist profile (credits)",
+      "path": "/artists/marlo-reyes-lojdor",
+      "width": 390,
+      "violations": [],
+      "seriousOrCritical": 0
+    }
+  ]
+}

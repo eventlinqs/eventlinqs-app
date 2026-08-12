@@ -70,7 +70,7 @@ const CAT_VENUE_TYPES = {
   festival: ['outdoor', 'arena'],
   family: ['outdoor', 'gallery'],
   sports: ['arena', 'outdoor'],
-  'arts-culture': ['theatre', 'gallery'],
+  'arts-community': ['theatre', 'gallery'],
   community: ['outdoor', 'club', 'theatre'],
 }
 function pickVenue(city, cat, idx) {
@@ -179,19 +179,19 @@ const CAT = {
   community:    { slug: 'community',    free: 0.5, base: [1500, 3500], premium: 0.0 },
   'food-drink': { slug: 'food-drink',   free: 0.35, base: [3200, 6900], premium: 0.0 },
   comedy:       { slug: 'comedy',       free: 0.0, base: [2500, 3900], premium: 0.2 },
-  'arts-culture': { slug: 'arts-culture', free: 0.1, base: [3500, 9900], premium: 0.4 },
+  'arts-community': { slug: 'arts-community', free: 0.1, base: [3500, 9900], premium: 0.4 },
   festival:     { slug: 'festival',     free: 0.25, base: [5900, 12500], premium: 0.5 },
   family:       { slug: 'family',       free: 0.5, base: [1500, 2500], premium: 0.0 },
   sports:       { slug: 'sports',       free: 0.0, base: [2900, 8500], premium: 0.4 },
 }
 // per-city category sequence (weighted to realistic AU demand), cycled
-const CAT_SEQ = ['music','nightlife','community','food-drink','comedy','music','arts-culture','festival','music','family','nightlife','sports','music','community','food-drink','arts-culture','comedy','music','nightlife','community','food-drink','music','arts-culture','family','sports','community']
+const CAT_SEQ = ['music','nightlife','community','food-drink','comedy','music','arts-community','festival','music','family','nightlife','sports','music','community','food-drink','arts-community','comedy','music','nightlife','community','food-drink','music','arts-community','family','sports','community']
 
 // title/description archetypes per non-music category (varied; venue+city woven in)
 const ARCH = {
   comedy: [ ['Comedy Lineup Live at {v}','A stacked bill of touring and local stand-ups takes the stage at {v} in {c}. Expect sharp new hours, surprise drop-ins and a late show that runs loose.'], ['Stand-Up Saturday at {v}','{c}’s best stand-ups and a touring headliner share one room at {v}. A fast, packed night of new material and old favourites.'] ],
   'food-drink': [ ['{c} Night Noodle and Street Food Market','Dozens of hawker-style vendors bring street food, dumplings and late-night eats to {v}. Live music between stalls and a licensed bar all evening.'], ['Harvest Long Lunch at {v}','A shared seasonal menu from a guest chef with matched local wines at {v} in {c}. One long table, one unforgettable afternoon.'], ['{c} Wine, Cheese and Producers Fair','A walk-around tasting of regional wineries and cheesemakers at {v}, with growers and sommeliers pouring all afternoon.'] ],
-  'arts-culture': [ ['{title} on Stage at {v}','A bold new staging in a strictly limited season at {v} in {c}. Contemporary direction, a standout cast and a night made for the theatre.'], ['Contemporary Art After Hours at {v}','Galleries open late at {v} with artist talks, live performance and a bar. {c}’s creative community out in force.'], ['{c} Dance: A Double Bill at {v}','Two new contemporary dance works from a national touring company at {v}. Movement, light and live score.'] ],
+  'arts-community': [ ['{title} on Stage at {v}','A bold new staging in a strictly limited season at {v} in {c}. Contemporary direction, a standout cast and a night made for the theatre.'], ['Contemporary Art After Hours at {v}','Galleries open late at {v} with artist talks, live performance and a bar. {c}’s creative community out in force.'], ['{c} Dance: A Double Bill at {v}','Two new contemporary dance works from a national touring company at {v}. Movement, light and live score.'] ],
   family: [ ['{c} Family Fun Day at {v}','A free-spirited day of rides, craft tables, a petting zoo and a small stage program at {v}. Built for kids and the grown-ups with them.'], ['Science and Discovery Day at {v}','Hands-on experiments, live demonstrations and a planetarium dome at {v} in {c}. A big day out for curious young minds.'] ],
   sports: [ ['{c} Basketball Showcase at {v}','A double-header of national league basketball with a half-time community shoot-out at {v}. Courtside and general admission.'], ['Fight Night: {c} at {v}','A full card of amateur and pro boxing and MMA bouts at {v}. Table seating and general admission, doors from early evening.'] ],
   festival: [ ['{c} Arts and Music Festival at {v}','Multiple stages, makers markets and street performers fill {v} and the surrounding precinct for one big {c} day.'], ['Twilight Sessions Festival at {v}','A rolling line-up of bands plays {v} from late afternoon into the night, food trucks and a bar on site.'] ],
@@ -314,7 +314,7 @@ async function main() {
       commCount[community.slug]++
     } else {
       const a = pick(ARCH[cat], idx)
-      const themed = cat === 'arts-culture' ? ['A Midsummer Night’s Dream','The Glass Menagerie','A Doll’s House','Così'][idx % 4] : ''
+      const themed = cat === 'arts-community' ? ['A Midsummer Night’s Dream','The Glass Menagerie','A Doll’s House','Così'][idx % 4] : ''
       title = a[0].replace('{title}', themed).replace('{v}', venue).replace('{c}', city.name)
       desc = a[1].replace('{v}', venue).replace('{c}', city.name)
       tags.push(cat)
@@ -370,7 +370,7 @@ async function main() {
     if (ex) { skipped++; continue }
     const { error: evErr } = await s.from('events').insert({
       id: r.id, title: r.title, slug: r.slug, summary: r.summary, description: r.description,
-      organisation_id: r.organisation_id, created_by: r.created_by, category_id: catId[r.category_slug] ?? catId['arts-culture'] ?? catId['other'] ?? null,
+      organisation_id: r.organisation_id, created_by: r.created_by, category_id: catId[r.category_slug] ?? catId['arts-community'] ?? catId['other'] ?? null,
       genre_slug: r.genre_slug, start_date: r.start, end_date: r.end, timezone: r.tz, event_type: 'in_person',
       venue_name: r.venue, venue_city: r.city, venue_state: r.state, venue_country: 'Australia',
       cover_image_url: r.cover, thumbnail_url: r.cover,

@@ -252,7 +252,17 @@ export const SHAPES = {
  *                                    a stricter shape for one scope (production
  *                                    must be LIVE where a preview may be test)
  * @property {boolean}  paymentCritical  true when production cannot take a real
- *                                    payment, or cannot complete one, without it
+ *                                    payment, cannot complete one, or would take
+ *                                    it FOR THE WRONG AMOUNT, without it or with
+ *                                    the wrong value.
+ *                                    The third clause was added 8 August 2026 by
+ *                                    founder ruling. The wording only covered
+ *                                    absence, so a variable whose CORRUPTION
+ *                                    changes the amount charged did not qualify,
+ *                                    which is how the Upstash store, holding the
+ *                                    resolved-fee cache, was classified false.
+ *                                    A fee is money whether it is missing or
+ *                                    wrong.
  * @property {boolean}  githubActions true when it must ALSO exist as a GitHub
  *                                    Actions repository secret
  * @property {boolean}  publicVar     true when it is baked into the browser
@@ -576,30 +586,34 @@ export const ENV_MANIFEST = [
     publicVar: false,
   },
 
-  // ── Rate limiting and the AI cost guard ───────────────────────────────────
+  // ── The shared Redis store: rate limits, the AI budget guard, the feature
+  //    flags, AND the resolved-fee cache. paymentCritical by founder ruling
+  //    2026-08-08: getPricingRule returns the cached entry BEFORE consulting
+  //    the database, so a wrong value here is a wrong fee charged, for up to
+  //    PRICING_RULES_CACHE_TTL_SECONDS. A fee is money.
   {
     name: 'UPSTASH_REDIS_REST_URL',
-    describe: 'Upstash Redis REST URL: rate limits and the AI monthly budget guard',
+    describe: 'Upstash Redis REST URL: the resolved-fee cache, feature flags, rate limits and the AI monthly budget guard',
     requiredOn: ['production'],
     forbiddenOn: [],
     optionalOn: ['preview', 'development'],
     mustBeSensitive: false,
     previewBranchScoping: 'allowed',
     shape: SHAPES.upstashUrl,
-    paymentCritical: false,
+    paymentCritical: true,
     githubActions: false,
     publicVar: false,
   },
   {
     name: 'UPSTASH_REDIS_REST_TOKEN',
-    describe: 'Upstash Redis REST token',
+    describe: 'Upstash Redis REST token: write access to the resolved-fee cache and the feature flags',
     requiredOn: ['production'],
     forbiddenOn: [],
     optionalOn: ['preview', 'development'],
     mustBeSensitive: true,
     previewBranchScoping: 'allowed',
     shape: SHAPES.anyNonEmpty,
-    paymentCritical: false,
+    paymentCritical: true,
     githubActions: false,
     publicVar: false,
   },

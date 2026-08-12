@@ -10,8 +10,33 @@
 # a wall, and it fails identically whether the pricing is right or wrong.
 #
 # Anything a BUILD-TIME guard reads must be listed here as an exception.
+#
+# It happened a SECOND time on 2026-08-12, the same way, and the line above is
+# the reason it was quick to diagnose. `payment-critical-doctrine.mjs` was
+# registered as a build guard and reads docs/security/CREDENTIAL-ROTATION.md to
+# check clause (d), that every payment-critical variable has a recorded rotation
+# procedure. Locally it passed. On Vercel the file was not there, so it reported
+# all TEN variables as having no rotation row and blocked the deploy. The guard
+# was right about what it could see and wrong about the world.
+#
+# The lesson is already written in docs/roast/FALSE-POSITIVE-CHECKLIST.md entry
+# 5: a guard that reads anything outside the source tree must be drilled in
+# EVERY environment it runs in, and a production build host is the one most
+# likely to differ. Local green is not evidence for Vercel.
+#
+# AND THE RE-INCLUSION HAS TO WALK THE DIRECTORY DOWN. `!docs/security/CREDENTIAL-
+# ROTATION.md` on its own does NOTHING, which cost a second failed deploy to see:
+# `docs/*` excludes the `docs/security` DIRECTORY, and the gitignore rule at the
+# top of this file applies at every level, so a file inside an excluded directory
+# can never be re-included. docs/PRICING.md works only because it sits directly
+# under docs/ and is therefore excluded as a FILE.
+#
+# So each level is re-included, then re-excluded, then the one file is named.
 docs/*
 !docs/PRICING.md
+!docs/security/
+docs/security/*
+!docs/security/CREDENTIAL-ROTATION.md
 design-captures
 research
 audit-v2

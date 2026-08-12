@@ -8,6 +8,10 @@
       "schedule": "* * * * *"
     },
     {
+      "path": "/api/cron/publish-scheduled",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/cron/waitlist-expire",
       "schedule": "*/5 * * * *"
     },
@@ -50,6 +54,10 @@
     {
       "path": "/api/cron/auth-sentinel",
       "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/sweep-kit-covers",
+      "schedule": "30 3 * * *"
     }
   ]
 }

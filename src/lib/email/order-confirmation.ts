@@ -1,3 +1,4 @@
+import { canonicalHost } from '@/lib/site-url'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { Resend } from 'resend'
 import QRCode from 'qrcode'
@@ -326,14 +327,14 @@ export function buildConfirmationEmailHtml(
   ${hr}
 
   <p style="margin:0 0 10px;color:#374151;font-size:14px;">Any questions, just reply to this email and a real person will help you.</p>
-  <p style="margin:0;color:#6B7280;font-size:13px;">Lost this email? Your tickets are always at <a href="${siteUrl}/tickets" style="color:#0A1628;">eventlinqs.com/tickets</a> when you are signed in, or use a ticket link above.</p>
+  <p style="margin:0;color:#6B7280;font-size:13px;">Lost this email? Your tickets are always at <a href="${siteUrl}/tickets" style="color:#0A1628;">${canonicalHost()}/tickets</a> when you are signed in, or use a ticket link above.</p>
 
   ${hr}
 
   <p style="margin:0 0 12px;color:#6B7280;font-size:13px;">This email is your receipt.</p>
 
   <p style="margin:0 0 4px;color:#9CA3AF;font-size:12px;">The EventLinqs team. The ticketing platform built for every community.</p>
-  <p style="margin:0 0 4px;color:#9CA3AF;font-size:12px;">Refunds are handled under our refund policy: <a href="${siteUrl}/legal/refunds" style="color:#9CA3AF;">eventlinqs.com/legal/refunds</a></p>
+  <p style="margin:0 0 4px;color:#9CA3AF;font-size:12px;">Refunds are handled under our refund policy: <a href="${siteUrl}/legal/refunds" style="color:#9CA3AF;">${canonicalHost()}/legal/refunds</a></p>
   <p style="margin:0 0 4px;color:#9CA3AF;font-size:12px;">EventLinqs (Lawal Adams), ABN 30 837 447 587, Geelong VIC, Australia.</p>
   <p style="margin:0;color:#9CA3AF;font-size:12px;">You received this because you bought tickets on EventLinqs.</p>
 

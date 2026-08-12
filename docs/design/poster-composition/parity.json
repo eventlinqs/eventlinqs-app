@@ -1,0 +1,11 @@
+{
+  "note": "Raw SHA-256 of the whole file. The clock is frozen, so nothing is normalised away.",
+  "withArtwork": {
+    "sha256": "eada45853df52494ebc33231194c27c3f9b1f5cede65ebc5af425093a8476b9d",
+    "bytes": 28916
+  },
+  "noArtwork": {
+    "sha256": "170c3c08a2455ba892df07b17b97b899396d6946b3345207e41f6b819716780f",
+    "bytes": 28451
+  }
+}

@@ -25,12 +25,18 @@ export type PolicyName =
   | 'share-link-mint'
   | 'share-track'
   | 'waitlist-join'
+  | 'newsletter-subscribe'
   | 'ai-chat'
   | 'ai-chat-daily'
   | 'gig-post'
   | 'gig-apply'
   | 'booking-request'
   | 'marketplace-report'
+  | 'launch-compose'
+  | 'launch-compose-daily'
+  | 'launch-artefact'
+  | 'launch-email'
+  | 'launch-upload'
 
 export type Policy = {
   /** Stable prefix used to namespace the redis key. Keep short. */
@@ -161,6 +167,13 @@ export const POLICIES: Record<PolicyName, Policy> = {
     rationale:
       'Broadcast view beacon per IP. Views are deduped per link per visitor per day server-side, so this cap only bounds junk traffic. Fail-open; losing a view beacon never breaks a page.',
   },
+  'newsletter-subscribe': {
+    keyPrefix: 'nl-sub',
+    limit: 5,
+    windowSec: 600,
+    rationale:
+      'City newsletter capture per IP per 10 min. It is public, unauthenticated and now writes a consent row, so it is an email-harvesting and list-poisoning target. Five covers a household signing up for two or three cities; a scripted flood is bounced. Fail-open: losing a legitimate signup to a Redis blip is worse than the bounded abuse, and the row carries its own unsubscribe token either way.',
+  },
   'waitlist-join': {
     keyPrefix: 'wl-join',
     limit: 5,
@@ -214,5 +227,42 @@ export const POLICIES: Record<PolicyName, Policy> = {
     windowSec: 86400,
     rationale:
       'Abuse reports per user per day. Enough for genuine moderation help, low enough to stop report-bombing a performer or organiser.',
+  },
+  'launch-compose': {
+    keyPrefix: 'lnch-c',
+    limit: 20,
+    windowSec: 3600,
+    rationale:
+      'Anonymous composer draft builds per IP per hour. The compose path is DETERMINISTIC and spends no model tokens (founder ruling 9 Aug 2026), so this caps database writes and render CPU, not an API bill. Twenty covers an organiser rewriting their description repeatedly while bouncing a scripted flood. Deliberately fail-OPEN: a Redis blip must never stop a stranger building a kit, because there is no spend to protect and the whole point of the surface is that it always works.',
+  },
+  'launch-compose-daily': {
+    keyPrefix: 'lnch-cd',
+    limit: 250,
+    windowSec: 86400,
+    rationale:
+      'Daily anonymous composer builds per IP. RAISED FROM 60 on 9 Aug 2026. The old rationale claimed sixty was "generous for a shared office or a carrier NAT range"; that was reasoning about one PERSON, not one address, and it is wrong for exactly the case it named. An Australian carrier NAT range fronts thousands of phones, so sixty a day across all of them is a handful each. It was reached in a single afternoon of verification from ONE machine, which is the cheapest possible demonstration that it would break a real shared address. The per-session cap (40 per browser per day) is what actually bounds an individual now, which is what lets this be sized for the address rather than the person. Fail-open for the same reason as the hourly.',
+  },
+  'launch-artefact': {
+    keyPrefix: 'lnch-a',
+    limit: 400,
+    windowSec: 3600,
+    rationale:
+      'Anonymous artefact renders (cards and posters) per IP per hour. RAISED FROM 60 on 9 Aug 2026 after the live walk tripped it: the old number was set by counting kits rather than REQUESTS, and one kit view costs four renders (three cards plus the poster), so sixty was only fifteen views an hour. A promoter showing their kit around, an office, or a carrier NAT range hits that in minutes, and Phase 0 named CGNAT as the specific reason a tight per-IP cap breaks real organisers before it troubles an abuser. Four hundred is a hundred kit views an hour, which no honest person reaches and which still bounds a scripted flood. Renders are also browser-cacheable now, so a re-view usually costs zero. This is CPU and sharp memory, never model spend.',
+  },
+  'launch-email': {
+    keyPrefix: 'lnch-e',
+    limit: 3,
+    windowSec: 3600,
+    rationale:
+      'Anonymous "send this kit to myself" per IP per hour. THE ONLY FAIL-CLOSED POLICY ON THIS SURFACE, and deliberately unlike its neighbours: every other launch action is local computation with no marginal cost, while this one sends real mail from our verified domain. The cost of getting it wrong is not a bill, it is deliverability, and a sending domain burned by an open relay cannot be un-burned by a rate limit added later. Three is enough to fix a typo twice and useless as a spam vector. The action also requires an owned draft, so a sender must first compose a kit.',
+    failClosed: true,
+  },
+  'launch-upload': {
+    keyPrefix: 'lnch-u',
+    limit: 10,
+    windowSec: 3600,
+    rationale:
+      'Anonymous cover artwork uploads per IP per hour. FAIL-CLOSED, taking the posture of launch-email rather than of its compose neighbours, because this is the SECOND action on this surface that costs real money: it writes bytes we then store and serve, and unlike a render it does not evaporate when the response ends. A Redis blip must not become an open write endpoint on our own storage domain. Ten is generous for the real behaviour, which is uploading one photo and possibly replacing it a few times after seeing it on the poster, and it is useless for filling a bucket. It is bounded further by three things a limit cannot express: the caller must already own a draft (so a cookie and a composed kit come first), the object path is the draft code so one draft can only ever hold ONE object no matter how often it is replaced, and every accepted byte is re-encoded rather than stored as supplied.',
+    failClosed: true,
   },
 }

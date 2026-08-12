@@ -1,0 +1,116 @@
+REACH INTEGRITY
+target: PRODUCTION https://gndnldyfudbytbboxesk.supabase.co
+PRODUCTION is the authoritative target. Read only, enforced by proxy.
+
+[FAIL ] newsletter-persists  (code)
+         feature   : The "get {City} events weekly" capture on 20 city landings, 420 community-by-city pages and every organiser profile
+         selects on: whatever /api/newsletter/subscribe writes
+         the endpoint validates, logs, and returns ok WITHOUT storing the address, while the
+         component tells the person "Subscribed". Every address typed into it is discarded
+[FAIL ] scheduled-events-publish  (code)
+         feature   : Scheduling an event for a future date
+         selects on: events.scheduled_publish_at
+         nothing anywhere transitions a scheduled event to published. The wizard writes
+         scheduled_publish_at and no cron, job or trigger ever reads it. The organiser finds out
+         when nobody turns up
+[PASS ] city-primary-written  (code)
+         written on both create and update (2 sites)
+[FAIL ] suburb-primary-written  (code)
+         feature   : Suburb landing pages, /city/[slug]/[suburb]
+         selects on: events.suburb_primary
+         suburb_primary is never written by the organiser path, so every suburb page is
+         permanently empty of organiser events. Note the fix is NOT the city fix: a suburb cannot
+         be derived from a city name
+[FAIL ] url-filters-parsed  (code)
+         feature   : Every "View all" and "Open in browse view" link on city, community and home surfaces
+         selects on: parseEventsSearchParams
+         6 filter(s) appear in links a user can click and are never parsed, so those links
+         silently land on the unfiltered national list: city, date, suburb, event_type, venue,
+         tab
+[FAIL ] category-landing-filters-in-query  (code)
+         feature   : Category landing pages, /categories/[slug]
+         selects on: the category filter position in the query
+         the query takes the soonest events platform-wide and only then filters by category in
+         JavaScript, so a category page shows an event only when it happens to be among the
+         soonest on the entire platform. Structurally almost always empty
+[FAIL ] search-matches-more-than-title  (code)
+         feature   : The header search box, its four tabs, and all 12 homepage Sounds tiles
+         selects on: the search predicate in fetchers.ts
+         search is a substring match on the event title and nothing else, so a multi-word Sounds
+         tile such as "afrobeats amapiano" matches only a title containing that literal string.
+         Nine of twelve tiles and three of four search tabs are dead ends
+[PASS ] follow-write-matches-alert-read  (code)
+         the follow button writes the table the alert cron reads
+[PASS ] digest-links-are-tracked  (code)
+         the digest carries tracked links
+[FAIL ] city-primary-coverage  (data)
+         feature   : Published events that can reach their own city
+         selects on: events.city_primary
+         27 of 32 addressable (84.4 percent). each unaddressable event carries a locality we DO
+         have a city page for and still cannot appear in that city digest
+[empty] digest-audience-reachable  (data)
+         feature   : People who consented to the weekly digest and can actually receive it
+         selects on: marketing_consents.city_slug
+         nothing to measure yet (universe 0). a granted consent with a null city can never be
+         selected by any city digest: consent captured, person unreachable
+[empty] share-conversions-fire  (data)
+         feature   : The reach panel showing tickets sold per channel, the Launch Kit's central claim
+         selects on: share_link_events.kind = 'conversion'
+         no paid order has ever existed here (57 clicks recorded), so a zero conversion count
+         proves nothing either way. This must be settled by driving a real paid purchase through
+         a tracked link, not by reading this number
+[FAIL ] share-view-beacon-fires  (data)
+         feature   : The views column of the reach panel
+         selects on: share_link_events.kind = 'view'
+         3 views against 57 clicks. Every click lands on an event page that should fire the view
+         beacon. Either most clicks are scanners that never run JavaScript, or the beacon is not
+         firing
+[PASS ] community-tag-coverage  (data)
+         32 of 32 addressable (100.0 percent)
+[empty] push-subscribers-exist  (data)
+         feature   : Web push alerts, stated as the primary alert channel at about 5x email
+         selects on: push_subscriptions
+         no push subscribers. Not a failure with no traffic, but if this stays zero once people
+         visit, the browser permission prompt is never being surfaced and every push alert is
+         silently an email
+[empty] featured-events-exist  (data)
+         feature   : Any surface selecting on is_featured
+         selects on: events.is_featured
+         nothing is flagged featured, and the organiser path never writes the column. Whatever
+         reads it renders nothing
+[FAIL ] flags-off-by-oversight  (data)
+         feature   : Every feature that is built, wired and proven but sitting behind a flag nobody flipped
+         selects on: feature_flags.enabled
+         6 flag(s) off. A feature that is built, wired and proven but sitting behind a flag
+         nobody flipped is the same silent break as one with no audience: nothing errors, nothing
+         goes red, it simply never runs.
+             artist_showcase: DELIBERATE - performer marketplace, shipped behind a flag pending a
+             launch decision
+             broadcast_artists: UNDECLARED -
+             broadcast_digest: OVERSIGHT - founder ruling 2026-08-08: "it should be ON. It is off
+             because flags default to false and nobody flipped it once the digest was finished." Held
+             until the newsletter capture is fixed and the waitlist bridge is merged, so the pipe is
+             whole before the tap opens. In the production approval block, not to be flipped by an
+             agent
+             broadcast_follow: UNDECLARED -
+             community_giving: DELIBERATE - parked by the constitution: the community-support
+             statement is built only after a real audited donation programme exists
+             gig_board: DELIBERATE - performer marketplace, shipped behind a flag pending a launch
+             decision
+           3 of these is NOT a deliberate decision and needs one.
+
+4 pass, 9 FAIL, 4 empty, 0 skipped
+
+"empty" is not a pass and not a failure: there is nothing to measure yet. Each one becomes a real
+measurement the moment traffic arrives, and none of them should be read as a clean bill of health.
+
+SEVERED. Each of these is a feature that cannot fire:
+  newsletter-persists: The "get {City} events weekly" capture on 20 city landings, 420 community-by-city pages and every organiser profile
+  scheduled-events-publish: Scheduling an event for a future date
+  suburb-primary-written: Suburb landing pages, /city/[slug]/[suburb]
+  url-filters-parsed: Every "View all" and "Open in browse view" link on city, community and home surfaces
+  category-landing-filters-in-query: Category landing pages, /categories/[slug]
+  search-matches-more-than-title: The header search box, its four tabs, and all 12 homepage Sounds tiles
+  city-primary-coverage: Published events that can reach their own city
+  share-view-beacon-fires: The views column of the reach panel
+  flags-off-by-oversight: Every feature that is built, wired and proven but sitting behind a flag nobody flipped

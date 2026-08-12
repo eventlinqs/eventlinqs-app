@@ -13,7 +13,12 @@
  *   no-control-characters      no heredoc-corrupted byte in any source file
  *   auth-autocomplete          credential-manager attributes on every auth form
  *   auth-provider-cost         no provider gate on a route with no provider button
+ *   canonical-host             one definition of the canonical host, resolved everywhere
+ *   short-link-namespace       /e/ and /s/ own their segments; no code can shadow a route
  *   check-client-barrel-imports  no third-party namespace import in the browser bundle
+ *   migration-collision-guard  no two migrations claiming one version, on any branch
+ *   payment-critical-doctrine  every paymentCritical variable is actually protected
+ *   no-unguarded-production-write  no script writes to a database without checking which one
  *
  * Runs them all rather than short-circuiting, so one pass reports every
  * violation instead of making the founder play whack-a-mole.
@@ -30,6 +35,14 @@
  * "keep my side" delete the other side's guard with nothing going red: the build
  * would have stayed green while an entire class of regression stopped being
  * checked. That is the failure mode this comment exists to prevent recurring.
+ *
+ * preview-deployment-state: fails when the newest deployment for the current
+ * branch is in ERROR. Added 9 August 2026 after feat/public-composer was found
+ * with SIX consecutive preview builds in ERROR while tsc, eslint, 1839 tests
+ * and nine guards all reported green, because none of them can see a bundler
+ * failure. Skips loudly without a VERCEL_TOKEN rather than failing on every
+ * machine without credentials, because a guard everyone disables protects
+ * nothing. A skip is the honest state, not a pass.
  *
  * The resolution is deliberately structural rather than a longer `&&` chain.
  * `prebuild` now names ONE runner, and the list below is the single place a
@@ -74,10 +87,52 @@ const GUARDS = [
   'scripts/guards/no-unguarded-credential-form.mjs',
   'scripts/guards/no-control-characters.mjs',
   'scripts/guards/auth-autocomplete-guard.mjs',
+  // One definition of the canonical host. The same wrong-domain defect had
+  // landed in six places, including four share-card generators that printed it
+  // onto an artefact a stranger sees, and every one was found by accident.
+  'scripts/guards/canonical-host.mjs',
+  // A share code is a readable slug, so it must never be mintable as something
+  // that shadows a real route, and nothing else may take the /e/ segment.
+  'scripts/guards/short-link-namespace.mjs',
+  // A branch whose preview has not built is a branch whose verification is
+  // fiction (founder ruling, 9 August 2026). Skips loudly without a token.
+  'scripts/guards/preview-deployment-state.mjs',
   // From PR #111. See THE BOUNDARY above: separate file, separate question,
   // shared runner. Absent from this list, `prebuild` stops checking the browser
   // bundle for untree-shakeable namespace imports and nothing goes red.
   'scripts/check-client-barrel-imports.mjs',
+  // Founder ruling 2026-08-12 (R-MIGRATION-GUARD). This guard was written for
+  // exactly the failure it needed to catch, was correct, had a working
+  // cross-branch check, and was WIRED TO NOTHING. It lived in scripts/verify/
+  // and no gate, script or workflow invoked it, so it reported nothing and the
+  // silence read as health. Three real collisions accumulated behind it, one of
+  // which reached TEST and skipped a migration permanently.
+  //
+  // Registered here it runs in `prebuild` and blocks the build, which is the
+  // only place it can act before a colliding version is pushed. It stays in
+  // scripts/verify/ because it is also run by hand with --remote against the
+  // linked project; the path below is the one thing that makes it a gate.
+  'scripts/verify/migration-collision-guard.mjs',
+  // Founder ruling 2026-08-12: of the twelve unwired source-only checks found by
+  // the sweep, wire THIS one and leave the other eleven listed and unwired,
+  // because it guards money. It asserts the paymentCritical doctrine: every
+  // variable carrying that flag exists on production, is sensitive where the
+  // platform allows it, is covered by the runtime sentinel, and has a rotation
+  // procedure with a verification command.
+  //
+  // It was itself written because a classification had one display consumer and
+  // no guard, which is the same shape as a guard with no caller: something that
+  // reads as a control and controls nothing.
+  'scripts/verify/payment-critical-doctrine.mjs',
+  // Founder ruling 2026-08-13. `.env.local` in this repo points at the
+  // PRODUCTION project, deliberately, because the app is run against production
+  // from here. An audit that day found ten write-capable scripts with a
+  // service-role credential and no check on which project they were about to
+  // write to, four of which documented `node --env-file=.env.local <script>` in
+  // their own header. The ten were fixed and given the preflight; this guard is
+  // what stops the eleventh. Without it the fix is a written procedure, and a
+  // written procedure is not a control.
+  'scripts/guards/no-unguarded-production-write.mjs',
 ]
 
 /**

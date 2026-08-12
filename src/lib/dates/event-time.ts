@@ -86,6 +86,17 @@ export function formatEventDateShort(iso: string, timezone: EventTimeZone): stri
   return format(iso, timezone, { weekday: 'short', day: 'numeric', month: 'short' })
 }
 
+/**
+ * "Sep 2026" in the event's own zone. The credit-list form: a past show is
+ * placed by month, not by weekday, so the day itself carries no meaning and
+ * showing it would be noise. Still zone-pinned, because a show on the first or
+ * last night of a month lands in the WRONG MONTH when formatted in the
+ * reader's zone.
+ */
+export function formatEventMonthYear(iso: string, timezone: EventTimeZone): string {
+  return format(iso, timezone, { month: 'short', year: 'numeric' })
+}
+
 /** A date with no event behind it: a guide's reviewed date, an audit row. */
 export function formatPlatformDate(iso: string): string {
   return format(iso, PLATFORM_TIME_ZONE, { day: 'numeric', month: 'short', year: 'numeric' })

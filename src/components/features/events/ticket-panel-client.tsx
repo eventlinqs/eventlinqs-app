@@ -37,6 +37,12 @@ interface Props {
   // the selector shows the true total (incl. fees) before checkout.
   feeRates?: FeeRates
   feePassType?: FeePassType
+  /**
+   * The EVENT's IANA zone, threaded to the selector's "Sale opens" line so a
+   * buyer in another state is told the sale time in the event's zone rather
+   * than their own. Required, so omitting it does not compile.
+   */
+  eventTimezone: string | null
 }
 
 function isTierVisible(tier: EnrichedTier, now: Date, unlockedIds: string[]): boolean {
@@ -76,6 +82,7 @@ export function TicketPanelClient(props: Props) {
   if (props.saleBlocked) {
     return (
       <TicketSelector
+        eventTimezone={props.eventTimezone}
         eventId={props.eventId}
         tiers={[]}
         addons={[]}
@@ -104,6 +111,7 @@ export function TicketPanelClient(props: Props) {
       )}
 
       <TicketSelector
+        eventTimezone={props.eventTimezone}
         eventId={props.eventId}
         tiers={visibleTiers}
         addons={props.addons.filter(a => a.is_active)}

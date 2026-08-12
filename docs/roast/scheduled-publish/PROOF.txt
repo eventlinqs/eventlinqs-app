@@ -1,0 +1,10 @@
+seeded sched-proof-msjppe45  status=scheduled  scheduled_publish_at=2026-08-08T01:35:47.953Z (10 min ago)
+BEFORE: {"status":"scheduled","published_at":null}
+DRY RUN: ["sched-proof-msjppe45"]
+CRON: {"status":200,"considered":1,"published":1,"blocked":0,"errored":0}
+OUTCOME for ours: {"eventId":"7728761d-ebce-45f0-a176-089c3d4c2318","slug":"sched-proof-msjppe45","title":"Sched Proof MSJPPE45","result":"published"}
+AFTER: {"status":"published","published_at":"2026-08-08T01:45:48.506+00:00"}
+UNAUTHENTICATED: 401 (must be 401)
+
+===== ALL GREEN: a scheduled event went live =====
+cleaned up

@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
+import { isLinkPreviewCrawler } from '@/lib/broadcast/crawlers'
 import {
   SHARE_COOKIE,
   SHARE_COOKIE_MAX_AGE_SECONDS,
@@ -9,6 +10,7 @@ import {
   resolveShareLink,
   visitorHash,
 } from '@/lib/broadcast/share-links'
+import { isPreviewCrawler } from '@/lib/broadcast/crawler'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -66,6 +68,30 @@ export async function GET(
 
   if (!(await isFeatureEnabled('broadcast_share'))) return destination
 
+  const userAgent = request.headers.get('user-agent')
+
+  // A link-preview crawler is not a click, and counting it as one tells the
+  // organiser something false. Measured on production 8 August 2026: 57 clicks,
+  // 3 views, 0 conversions, ALL 57 on facebook and x links across 55 distinct
+  // visitor hashes, with only 1 of those 55 ever running the view beacon. That
+  // is a crawler fleet building preview cards, not an audience. The panel would
+  // have shown that organiser "57 clicks, 0 sales", which reads as "they
+  // clicked and did not buy" when the truth is that nobody clicked.
+  //
+  // The fetch is SERVED in full, because a crawler that cannot follow the link
+  // produces no preview card. It is simply never COUNTED, and the cookie is not
+  // set: a shared link must never break, and a crawler has no conversion to
+  // attribute anyway.
+  //
+  // BOTH lists are consulted deliberately. Two branches built this
+  // independently against different evidence: `crawlers.ts` carries the wider
+  // social set (snapchat, tiktok, mastodon, viber, the google variants),
+  // `crawler.ts` carries the meta-external agents, embedly, and the generic
+  // headless and spider catches. Their union is strictly safer than either
+  // alone, and a false positive costs one uncounted click while a false
+  // negative corrupts an organiser's attribution.
+  if (isLinkPreviewCrawler(userAgent) || isPreviewCrawler(userAgent)) return destination
+
   const ip =
     request.headers.get('x-real-ip') ??
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
@@ -73,7 +99,7 @@ export async function GET(
   await recordShareLinkEvent({
     linkId: link.id,
     kind: 'click',
-    visitorHash: visitorHash(ip, request.headers.get('user-agent')),
+    visitorHash: visitorHash(ip, userAgent),
   }).catch(() => {})
 
   // Last-touch share attribution: the most recent tracked link the browser
