@@ -27,7 +27,7 @@ export async function handleConnectAccountUpdated(
 
   const { data: prevOrg, error: selectError } = await adminClient
     .from('organisations')
-    .select('id, stripe_onboarding_complete, payout_tier, payout_destination')
+    .select('id, stripe_onboarding_complete, payout_tier, payout_destination, payout_status')
     .eq('stripe_account_id', account.id)
     .maybeSingle()
   if (selectError) {
@@ -42,6 +42,25 @@ export async function handleConnectAccountUpdated(
   const payoutDestination =
     externalAccount && 'id' in externalAccount ? externalAccount.id : null
 
+  // THE BUG THIS LINE FIXES, and it locked the founder out of his own platform.
+  //
+  // This payload wrote six columns and NEVER payout_status. The deauthorize handler
+  // DOES write it, setting 'restricted'. So payout_status was a one-way door:
+  // anything could restrict an organisation and no incoming Stripe event could ever
+  // release it. Stripe reported the account fully enabled while the platform held
+  // payout_status 'restricted', the publish gate refused with "Resolve the Stripe
+  // issue", and it took an UPDATE against production to clear.
+  //
+  // payout_status now mirrors Stripe's payouts_enabled like every other column
+  // here, EXCEPT that an admin 'on_hold' is preserved: that is an EventLinqs
+  // decision Stripe knows nothing about, and overwriting it with Stripe's opinion
+  // would silently release a deliberately withheld organisation.
+  //
+  // The reconciler (src/lib/stripe/reconcile-connect.ts) is the authority and can
+  // rebuild this state from Stripe at any time, so a missed account.updated is now
+  // recoverable rather than permanent.
+  const adminHold = prevOrg?.payout_status === 'on_hold'
+
   const updatePayload: Record<string, unknown> = {
     stripe_charges_enabled: account.charges_enabled ?? false,
     stripe_payouts_enabled: account.payouts_enabled ?? false,
@@ -52,6 +71,7 @@ export async function handleConnectAccountUpdated(
       unknown
     >,
     stripe_onboarding_complete: fullyOnboarded,
+    payout_status: adminHold ? 'on_hold' : account.payouts_enabled ? 'active' : 'restricted',
     updated_at: new Date().toISOString(),
   }
   if (payoutDestination) {

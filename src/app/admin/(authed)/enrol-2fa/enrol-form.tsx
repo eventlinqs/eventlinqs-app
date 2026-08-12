@@ -64,7 +64,7 @@ export function EnrolForm({ enrolToken }: EnrolFormProps) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
+    <form method="post" onSubmit={onSubmit} className="rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
       <h2 className="font-display text-sm uppercase tracking-widest text-white/60">2. Verify the first code</h2>
       <p className="mt-2 text-sm text-white/70">
         Type the 6-digit code your authenticator is currently showing.

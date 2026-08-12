@@ -1,0 +1,77 @@
+[
+  {
+    "name": "the create-a-business page no longer redirects an existing organiser away",
+    "ok": true,
+    "detail": "http://localhost:3111/dashboard/organisation/create"
+  },
+  {
+    "name": "it frames itself honestly as adding another business",
+    "ok": true,
+    "detail": "\"Add another business\""
+  },
+  {
+    "name": "the contact email defaults to the person's own address but stays editable",
+    "ok": true,
+    "detail": "value=multi-business-proof@eventlinqs.test"
+  },
+  {
+    "name": "a third business is created by one person, through the browser",
+    "ok": true,
+    "detail": "2 -> 3 businesses"
+  },
+  {
+    "name": "and it carries the SAME contact email as the others, with no constraint fired",
+    "ok": true,
+    "detail": "3 businesses share multi-business-proof@eventlinqs.test"
+  },
+  {
+    "name": "each business holds its OWN Stripe connected account",
+    "ok": true,
+    "detail": "Harbour Nights Presents -> acct_1U2NOpGTgPP2EN9E\n        Northside Comedy Room -> acct_1U2NOwKH9wJ7una3"
+  },
+  {
+    "name": "each business pays out to its OWN bank account, not a shared one",
+    "ok": true,
+    "detail": "Harbour Nights Presents -> ba_1U2NOtGTgPP2EN9EfqXjERXy (bank_account)\n        Northside Comedy Room -> ba_1U2NOzKH9wJ7una3c0UoBkR7 (bank_account)"
+  },
+  {
+    "name": "the money path resolves the destination from the EVENT, never from the person",
+    "ok": null,
+    "detail": "src/lib/payments/create-platform-charge.ts:103 loads the connected account by organisation_id, and src/lib/payments/event-transfer.ts:389 selects the payout destination through events -> organisations!inner(stripe_account_id). Neither reads owner_id or any email, so two businesses under one person cannot share a destination."
+  },
+  {
+    "name": "the business being reconnected actually HAS a history to lose",
+    "ok": true,
+    "detail": "1 event(s), 0 order(s) attributed to Northside Comedy Room"
+  },
+  {
+    "name": "reconnecting a business to a DIFFERENT Stripe account keeps its history",
+    "ok": true,
+    "detail": "events 1 -> 1, orders 0 -> 0, account acct_1U2NOwKH9wJ7una3 -> acct_1U2NlgGtVvzh7ZDx"
+  },
+  {
+    "name": "why history cannot detach",
+    "ok": null,
+    "detail": "events.organisation_id and orders.organisation_id are the attribution keys. stripe_account_id is a property OF the organisation, never the join, so swapping the bank changes where new money lands and nothing about what already happened."
+  },
+  {
+    "name": "the other business kept its own account through that change",
+    "ok": true,
+    "detail": "Harbour Nights Presents -> acct_1U2NOpGTgPP2EN9E"
+  },
+  {
+    "name": "DISCONNECT IS BLOCKED until migration 20260809000001 is applied",
+    "ok": true,
+    "detail": "23514 new row for relation \"organisations\" violates check constraint \"organisations_payout_status_check\""
+  },
+  {
+    "name": "scenario 4 is UNPROVEN and cannot be proven from here",
+    "ok": null,
+    "detail": "disconnectConnectedAccount writes payout_status = unset in one atomic update scoped to .eq(id, organisationId), so it cannot touch a second business by construction. But the CHECK constraint refuses unset until the migration is applied, and applying a migration is the founder's call, never this session's. Re-run this script after supabase db push --linked to complete it."
+  },
+  {
+    "name": "the failed disconnect left the other business completely untouched",
+    "ok": true,
+    "detail": "Northside Comedy Room unchanged"
+  }
+]

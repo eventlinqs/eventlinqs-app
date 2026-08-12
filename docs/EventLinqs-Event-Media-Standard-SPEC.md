@@ -19,7 +19,7 @@ engine is untouched. Never write to Production. Writes only to TEST
 **Evidence base:** competitor specs from the Eventbrite and Humanitix help centres,
 captured 2026-06. Eventbrite allows up to 10 images per event plus video linked
 from YouTube or Vimeo, main image recommended 2160x1080, max 10MB, JPEG or PNG.
-Humanitix uses one banner image (2:1, recommended min 3200x1600, max 10MB) plus a
+Humanitix uses one banner image (2:1, recommended min 3200x1600, max 10MB) plus a  <!-- UNSOURCED: Law 7, third-party spec with no primary source cited -->
 gallery, and requires video to be embedded from YouTube or Vimeo, not uploaded as a
 file. Both converge on the same shape, and neither hosts organiser video itself.
 

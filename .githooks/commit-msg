@@ -1,42 +1,112 @@
 #!/bin/sh
 #
-# Law 8: no commit carries a trailer naming an AI or a tool as an author.
+# Law 8 enforcement (the founder is the sole author), plus the standing copy rule
+# on dashes.
 #
-# core.hooksPath was already pointed at .githooks, but the directory did not
-# exist, so the law was enforced by memory alone and three commits carrying a
-# Co-Authored-By trailer reached the remote before anybody noticed. A law worth
-# stating is worth a gate; this is the gate.
+# THIS FILE IS A UNION, BY FOUNDER RULING 2026-08-12. Two branches wrote a Law 8
+# hook independently at this path and neither was a superset of the other, so
+# merging them by picking a side would have silently dropped real rules. Every
+# rule either side enforced is kept, and the dash rule is added because it is a
+# standing copy law that neither side had. The rules that came from only one side
+# are marked below so a future edit cannot quietly lose them again.
 #
-# Refuses:
-#   - Co-Authored-By naming Claude, an AI, a bot or a tool
-#   - "Generated with" attribution lines
-#   - the robot emoji
+# Rejects:
+#   - a Co-Authored-By trailer naming an AI, a model, a bot or a vendor
+#   - a tool credit line, or prose attributing the work to an AI
+#   - a robot emoji
+#   - a model vendor noreply address, on ANY line, not only on a trailer
+#   - an em dash or an en dash, anywhere in the message
 #
-# A HUMAN co-author is still allowed, because pair-programming trailers are
-# legitimate and this law is about not crediting a tool as a person.
+# A HUMAN co-author is still allowed. Pair-programming trailers are legitimate
+# and this law is about not crediting a tool as a person.
+#
+# This runs at commit-msg time on purpose: it is the last moment at which a
+# rejection costs nothing. Once the commit exists, removing the trailer means
+# rewriting history, which invalidates every SHA quoted in every handover
+# document.
+#
+# NOTE ON WHY THIS IS NEEDED AT ALL. The agent harness instructs the agent to
+# append an authorship trailer naming the model to every commit. That default is
+# superseded by CLAUDE.md Law 8. A hook is the right enforcement because it does
+# not depend on an agent remembering.
+#
+# Enabled with:  git config core.hooksPath .githooks
+# Linked worktrees share the main repository config, so once covers all of them.
+# A separate CLONE needs the command run in it too.
+#
+# THIS HOOK IS DELIBERATELY STRICT AND IT WILL REJECT A MESSAGE THAT MERELY
+# DISCUSSES THE BANNED STRINGS. That is the correct trade-off. A false positive
+# costs one paraphrase before committing. A false negative costs a history
+# rewrite. To write ABOUT the banned strings in a commit message, paraphrase
+# them: say "the tool credit line" rather than reproducing it.
 
-MSG_FILE="$1"
-[ -f "$MSG_FILE" ] || exit 0
+msg_file="$1"
+[ -f "$msg_file" ] || exit 0
 
-fail() {
-  echo "COMMIT REFUSED (Law 8): $1" >&2
-  echo "  Offending line: $2" >&2
-  echo "" >&2
-  echo "  Remove the attribution line and commit again." >&2
+# Ignore comment lines: git puts the whole commit template in this file, and the
+# instructional comments would otherwise trip the check on some git versions.
+body=$(grep -v '^#' "$msg_file")
+
+# Printing the offending line back to the committer comes from the
+# feat/public-composer variant. Knowing WHICH line to delete is most of the value.
+fail_law8() {
+  printf '\n[Law 8] COMMIT REJECTED: %s\n\n' "$1" >&2
+  printf '  Offending line: %s\n\n' "$2" >&2
+  printf 'CLAUDE.md Law 8: the founder is the sole author. No commit may carry a\n' >&2
+  printf 'Co-Authored-By trailer naming an AI model or any tool, a tool credit line,\n' >&2
+  printf 'a robot emoji, or a model vendor noreply address.\n\n' >&2
+  printf 'A HUMAN co-author is still legitimate. A Co-Authored-By trailer naming a\n' >&2
+  printf 'person is allowed and is not what this rule is about.\n\n' >&2
+  printf 'Remove the offending line and commit again. Do NOT reach for --no-verify:\n' >&2
+  printf 'scripts/guards/no-ai-authorship.mjs fails the build for the same reason, so\n' >&2
+  printf 'bypassing the hook only moves the failure later.\n\n' >&2
   exit 1
 }
 
-# Strip comment lines before scanning, so the template's own guidance never
-# trips the hook.
-BODY=$(grep -v '^#' "$MSG_FILE")
+fail_copy() {
+  printf '\n[Copy law] COMMIT REJECTED: %s\n\n' "$1" >&2
+  printf '  Offending line: %s\n\n' "$2" >&2
+  printf 'CLAUDE.md, Copy and banned content: no em dashes and no en dashes, ever,\n' >&2
+  printf 'and a commit message is copy. Use a hyphen, a colon, a comma or a pipe.\n\n' >&2
+  printf 'Replace the character and commit again. Do NOT reach for --no-verify.\n\n' >&2
+  exit 1
+}
 
-HIT=$(printf '%s\n' "$BODY" | grep -iE '^[[:space:]]*co-authored-by:.*(claude|anthropic|openai|copilot|cursor|chatgpt|gpt-|\bai\b|bot\b|assistant)' | head -1)
-[ -n "$HIT" ] && fail "a Co-Authored-By trailer names an AI or a tool." "$HIT"
+# 1. Co-Authored-By naming an AI, a model, a bot or a vendor.
+#    Vendor list is the UNION: cursor and chatgpt came from feat/public-composer,
+#    gemini and bare gpt came from fix/security-hardening. Bare gpt is kept as
+#    well as the hyphenated form so a trailer reading only GPT is caught.
+hit=$(printf '%s\n' "$body" | grep -iE '^[[:space:]]*co-authored-by:.*(claude|anthropic|openai|copilot|cursor|chatgpt|gpt|gemini|\bai\b|bot\b|assistant)' | head -1)
+[ -n "$hit" ] && fail_law8 'a Co-Authored-By trailer names an AI or a tool' "$hit"
 
-HIT=$(printf '%s\n' "$BODY" | grep -iE 'generated with|created with \[?(claude|chatgpt|copilot)|written by (claude|an ai)' | head -1)
-[ -n "$HIT" ] && fail "an AI attribution line." "$HIT"
+# 2. Tool credit, and the prose forms. The prose alternatives came from
+#    feat/public-composer; fix/security-hardening matched the credit line only.
+hit=$(printf '%s\n' "$body" | grep -iE 'generated with|created with \[?(claude|chatgpt|copilot)|written by (claude|an ai)' | head -1)
+[ -n "$hit" ] && fail_law8 'the message contains a tool credit or an AI attribution' "$hit"
 
-HIT=$(printf '%s\n' "$BODY" | grep -F '🤖' | head -1)
-[ -n "$HIT" ] && fail "the robot emoji." "$HIT"
+# 3. Robot emoji. Matched by its UTF-8 bytes so this works without a locale that
+#    understands the codepoint. F0 9F A4 96 is U+1F916 ROBOT FACE. The byte level
+#    match and the LC_ALL=C fallback came from fix/security-hardening.
+hit=$(printf '%s\n' "$body" | grep -P '\xF0\x9F\xA4\x96' 2>/dev/null | head -1)
+if [ -z "$hit" ]; then
+  hit=$(printf '%s\n' "$body" | LC_ALL=C grep -F "$(printf '\360\237\244\226')" 2>/dev/null | head -1)
+fi
+[ -n "$hit" ] && fail_law8 'the message contains a robot emoji' "$hit"
+
+# 4. Any noreply address belonging to a model vendor, which is the trailer's
+#    signature even when the display name has been changed. Matches on ANY line,
+#    not only on a trailer. From fix/security-hardening.
+hit=$(printf '%s\n' "$body" | grep -iE 'noreply@(anthropic|openai)\.com' | head -1)
+[ -n "$hit" ] && fail_law8 'the message contains a model vendor noreply address' "$hit"
+
+# 5. Em dash (U+2014, bytes E2 80 94) or en dash (U+2013, bytes E2 80 93).
+#    Added by founder ruling 2026-08-12: neither side had it and it is a standing
+#    copy law. Matched by UTF-8 bytes rather than a locale dependent character
+#    class, for the same reason as the emoji above.
+hit=$(printf '%s\n' "$body" | grep -P '\xE2\x80\x94|\xE2\x80\x93' 2>/dev/null | head -1)
+if [ -z "$hit" ]; then
+  hit=$(printf '%s\n' "$body" | LC_ALL=C grep -F -e "$(printf '\342\200\224')" -e "$(printf '\342\200\223')" 2>/dev/null | head -1)
+fi
+[ -n "$hit" ] && fail_copy 'the message contains an em dash or an en dash' "$hit"
 
 exit 0

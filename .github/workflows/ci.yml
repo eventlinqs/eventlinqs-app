@@ -27,6 +27,23 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # FULL HISTORY, and only on this job.
+          #
+          # `npm run build` runs prebuild, which runs the guard registry, which
+          # runs scripts/guards/no-ai-authorship.mjs. That guard reads commit
+          # MESSAGES. actions/checkout defaults to fetch-depth 1, so it was being
+          # handed a one-commit clone and reporting PASS having inspected a single
+          # message: a gate announcing enforcement it was not performing, which is
+          # worse than no gate, because it is believed.
+          #
+          # The guard now prints how many commits it scanned, so this setting is
+          # verifiable from the CI log rather than taken on trust. A line reading
+          # "scanned 1 commit(s)" means this block has been lost.
+          #
+          # The other two jobs (types-drift-guard, test) never run the guard and
+          # keep the fast shallow clone.
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4

@@ -57,7 +57,7 @@ export function TransferTicketForm({ ticketId, eventTitle }: { ticketId: string;
       )}
 
       {open && (
-        <form onSubmit={onSubmit} className="mt-2 space-y-2 rounded-xl border border-ink-200 bg-white p-4">
+        <form method="post" onSubmit={onSubmit} className="mt-2 space-y-2 rounded-xl border border-ink-200 bg-white p-4">
           <p className="text-sm font-semibold text-ink-900">Transfer {eventTitle}</p>
           <p className="text-xs text-ink-600">
             The new holder receives a fresh ticket by email. Your current code stops working.

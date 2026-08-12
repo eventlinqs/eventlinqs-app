@@ -36,7 +36,12 @@ silently follow the stale doc.
 
 | If you are touching... | The governing laws are... |
 |---|---|
-| Any surface at all | Law 0, Definition of Done, Law 1 (no generic), Verification and gates |
+| Any surface at all | Law 0, Definition of Done, Law 1 (no generic), Law 7 (research before recommending), Verification and gates |
+| Stating ANY specification, dimension, limit, price, format, register, or platform behaviour | Law 7 (research before recommending). Fetch the primary source FIRST and cite it, or mark it UNSOURCED |
+| A third-party platform spec (Instagram, Meta, X, TikTok, Stripe, Google, Apple) | Law 7. That platform's own published page, never a secondary guide |
+| A competitor claim (Eventbrite, Ticketmaster, DICE, Humanitix, TryBooking, Moshtix, Oztix) | Law 7 plus Law 2 (evidence-driven), `competitor-benchmark` skill |
+| Writing ANY commit message | Law 8 (authorship). No Co-Authored-By naming Claude or an AI, no "Generated with", no robot emoji. The founder is the sole author |
+| Setting up a new worktree or clone | Law 8. Run `git config core.hooksPath .githooks` before the first commit |
 | Reporting any feature or task done | Definition of Done (SHIP 100%, A to Z) |
 | Growth, sharing, invites, referral, attribution, the wedge, the levers | Growth plan, `event-demand-engine` skill |
 | Discovery, feed, follows, alerts, push, who's-going, recommendations | Growth plan (the demand engine), `docs/MOAT-DEMAND-ENGINE-PLAN.md`, `event-demand-engine` skill |
@@ -63,9 +68,11 @@ silently follow the stale doc.
 **Index of laws:** Law 0 (read first) - Definition of Done (SHIP 100%, A to Z)
 - Growth plan (the wedge, the two engines, the levers) - Law 1 (no generic) -
 Law 2 (evidence-driven) - Law 3 (Australia-smart) - Law 4 (marketing image-rich)
-- Law 5 (zero dead links) - Law 6 (render, never generate) - Scene layer -
-Design system - Motion - Copy and banned content - Fee system - Venue Revenue
-Sharing Program - Verification and gates - Tooling - Authority docs - Skills.
+- Law 5 (zero dead links) - Law 6 (render, never generate) - Law 7 (research
+before recommending, no generic knowledge) - Law 8 (authorship, the founder is
+the sole author) - Scene layer - Design system - Motion - Copy and banned
+content - Fee system - Venue Revenue Sharing Program - Verification and gates -
+Tooling - Authority docs - Skills.
 
 ## What EventLinqs is
 
@@ -395,6 +402,134 @@ through the licensed platform photo library and the media components
 Struck by the same ruling: the Midjourney category cover photography planned in
 `docs/MASTER-PLAN-V1.md` (Phase 1, Week 5). Generated imagery on public category
 surfaces is exactly the generic risk Law 1 exists to stop.
+
+## Law 7: research before recommending, no generic knowledge (founder ruling 2026-08-09)
+
+No recommendation, specification, dimension, limit, price, format, register, or
+platform behaviour may be stated on this project from memory. The first action on
+any such question is to fetch the current primary source and cite it beside the
+claim it supports.
+
+**The order is fixed: research, then verify, then recommend.** Never recommend
+and then research when challenged.
+
+Where a competitor's practice is relevant, and on a ticketing platform it usually
+is, the research must include what the market actually does: Eventbrite,
+Ticketmaster, DICE, Humanitix, TryBooking, Moshtix, Oztix. Their own published
+pages, never a blog about them.
+
+Where no primary source can be found, say so plainly and mark the claim
+**UNSOURCED**. An honest gap outranks a confident guess.
+
+**WHY THIS EXISTS.** The evidence is written into the law so it cannot be argued
+away later. Each of these cost the founder time on a project already behind
+schedule, and each was avoidable by a single fetch.
+
+- A 39 percent click-through figure was quoted from search results and traced
+  back to link-shortener vendors' own marketing, with no method, no sample and no
+  date. It was withdrawn.
+- The payment statement descriptor was designed twice from assumption and was
+  wrong both times. Eventbrite's own help centre publishes `EB *CORGI FESTIVAL
+  202`: a TWO character prefix, and the EVENT name as the suffix, not the
+  organiser name. Ninety seconds of research produced a materially better design
+  than the guess.
+- A CLI was said to be unable to set environment values non-interactively, from a
+  stale repo note. **The tool was the VERCEL CLI, not Stripe**, and the note is
+  still in the tree at `docs/roast/guidance-and-guides-2026-07-26.md:227` and
+  `docs/verification/launch-blockers-2026-07-25.md:44`. It is wrong: the
+  documented non-interactive path is piping the value on stdin,
+  `cat file | vercel env update NAME preview`
+  (https://vercel.com/docs/cli/env, fetched 2026-08-09). A `--value` flag was
+  also claimed for this; it does not appear on that page, so that specific detail
+  is **UNSOURCED** until someone produces the page that carries it.
+- The Vercel logs were assumed to record query strings. They do not, which was
+  only established by calibrating against a known positive. An assumption about
+  an observability tool is still an assumption.
+- Instagram's tall aspect bound and the minimum resolution for a 4:5 asset were
+  both taken from memory or from secondary guides. **This one shows the law is
+  not a formality, because two Meta surfaces publish different answers and a
+  citation is the only way to tell which one governs.** Meta's Instagram Graph
+  API publishing reference states a range of "4:5 to 1.91:1", a minimum width of
+  320, and a MAXIMUM width of 1440
+  (https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-user/media,
+  fetched 2026-08-09). The taller 3:4 feed post is an in-app Instagram behaviour
+  and belongs to a different surface, and the `1440x1800` minimum attributed to
+  Meta for a 4:5 asset does not appear on the page above. Both remain
+  **UNSOURCED** here until the page that publishes them is cited. Do not resolve
+  a conflict like this by choosing the answer that suits the build.
+
+**ENFORCEMENT**, because a law with no enforcement is a preference.
+
+A build-failing guard cannot judge prose, and pretending otherwise would produce
+a gate that fires on every number in the repository and gets switched off. What
+it CAN judge is whether a third-party specification carries its source. So:
+
+`scripts/guards/sourced-specifications.mjs` (registered in `run-guards.mjs`,
+therefore blocking on `prebuild`) fails the build when a line asserts an EXTERNAL
+platform specification, a pixel dimension pair or an aspect ratio within reach of
+a named third party, and carries neither a URL nor the word `UNSOURCED`. It is
+deliberately scoped to third-party claims, which is where every incident above
+came from, rather than to every numeral in the tree.
+
+The guard prints its reviewed baseline on every run, and reports baseline entries
+that no longer match anything, so the allowlist cannot rot into an unexamined
+list.
+
+## Law 8: authorship, the founder is the sole author (founder ruling 2026-08-09)
+
+**No commit on this project carries a `Co-Authored-By` trailer naming Claude, an
+AI model, or any tool.** No commit message contains "Generated with Claude Code",
+"Co-Authored-By: Claude", a robot emoji, or any similar attribution. Lawal Adams
+is the author of this work and the commit history must say so and only so.
+
+This is not a preference and it is not negotiable.
+
+**This law overrides the tooling default.** Claude Code's own harness instructs
+the agent to append `Co-Authored-By: Claude ...` to every commit message. That
+instruction is superseded here. Where the harness and this constitution conflict,
+this file wins, and an agent that appends the trailer has broken a law rather than
+followed a convention.
+
+**ENFORCEMENT, two layers, because one can be bypassed.**
+
+1. **`.githooks/commit-msg`** rejects the message before it becomes history,
+   which is the only point at which a rejection is free. It refuses any message
+   containing a `Co-Authored-By` line naming Claude, Anthropic, an AI or a bot,
+   the phrase "Generated with", or a robot emoji.
+
+   The hook lives in the repository, but `core.hooksPath` is LOCAL CONFIG and is
+   not committed, so it must be set once per repository:
+
+   ```
+   git config core.hooksPath .githooks
+   ```
+
+   This repository uses git worktrees, and linked worktrees share the main
+   repository's config, so setting it once covers all nine
+   (`git worktree list` to see them, and note one lives at `C:/elrel`, outside
+   the project folder). A separate CLONE does not share that config:
+   `eventlinqs-organiser-engine` is a separate clone and needs the command run in
+   it as well.
+
+2. **`scripts/guards/no-ai-authorship.mjs`**, registered in `run-guards.mjs` and
+   therefore blocking on `prebuild`, reads recent commit messages and fails the
+   build if any carries such a trailer. This catches a hook that was bypassed with
+   `--no-verify`, or a checkout where `core.hooksPath` was never set.
+
+   **The guard is bounded to commits from the effective date of this law**
+   (2026-08-09) rather than to all history, and the reason is recorded here so it
+   is not mistaken for laziness: 705 of the 1351 reachable commits already carry
+   the trailer, and the founder has explicitly NOT authorised the history rewrite
+   that would remove them. An unbounded guard would fail every build until that
+   rewrite ran, which would block the launch it is meant to protect, and a gate
+   that cannot go green is a gate somebody switches off. The boundary is a single
+   named constant in the guard and is deleted the day the rewrite lands.
+
+**The history is a separate job and is NOT authorised.** Rewriting it invalidates
+every SHA quoted in every handover document, forces a force-push, and requires
+every worktree to be reset. The runbook is written and waiting at
+`docs/roast/AUTHORSHIP-HISTORY-REWRITE.md`. The founder decides when it runs, and
+it will be after launch.
 
 ## Scene layer (locked, national) - V2, research-backed
 
@@ -799,6 +934,41 @@ the relevant surface section before reworking it.
   MCP. Verify applied migrations by a direct database query, not the cached
   client (its schema cache lags).
 
+**Dependency bumps on a user-content path (locked 2026-08-08)**
+
+A dependency that processes user-supplied bytes is verified against the
+**actually installed package, with a real file**, never against a lockfile diff,
+a changelog, `npm audit`, or a mock. This is law because all four of those passed
+while a real regression sat in the diff.
+
+The case that set it: `sharp` was bumped 0.34.5 to 0.35.3 to clear libvips CVEs
+reachable from organiser uploads (`src/lib/upload.ts` hands user `File` bytes
+straight to a native decoder). 0.35 removed `avif` from `FormatEnum` and reports
+AVIF as `heif`, because AVIF is a HEIF-family container. The pipeline branched on
+`format === 'avif'`, so that branch went dead, and **every AVIF cover an
+organiser uploaded would have been silently transcoded to JPEG** on a platform
+that deliberately serves AVIF for LCP. `npm audit` was green. The types only
+half-revealed it. No mock could reveal it, because the change was in what the
+library actually reports.
+
+So, for any bump to a package on a user-content path (image, video, document,
+archive, parser, codec):
+
+1. **Install it for real** and confirm the resolved version on disk. A lockfile
+   entry is an intention, the installed tree is the fact. Check for nested copies:
+   a framework can pin its own older copy that the top-level bump does not lift.
+2. **Round-trip a real artefact** of every format the surface accepts, through
+   the real code path, and assert the OUTPUT, not the call. Where a format cannot
+   be produced locally (HEIC has no encoder in libvips), pin the decision in a
+   pure function and test that exhaustively instead.
+3. **Assert the library's own reported shape**, so the next release that changes
+   it fails loudly here rather than quietly in production.
+4. **Prove the delivery path still delivers.** For imagery that means the
+   optimiser actually returns AVIF and WebP for the matching `Accept`, since that
+   path owns the LCP.
+
+The executable form of this law is `tests/unit/security/image-pipeline-format.test.ts`.
+
 **Delivery**
 
 - CI gates are the merge authority. No `--admin`, no skipping gates, never lower
@@ -968,3 +1138,13 @@ Revenue Sharing Program section above. Standard ticketing economics apply.
 - `seed-events`: seed realistic Australian events across all categories and
   scenes from a local image library, optimised and wired through the media
   components.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

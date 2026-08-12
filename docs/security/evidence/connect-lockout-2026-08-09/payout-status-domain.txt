@@ -1,0 +1,8 @@
+Probe row ba98eab5-c906-4402-ad11-29469c6a9669, payout_status defaults to 'active'.
+
+  'active'  accepted
+  'on_hold'  accepted
+  'restricted'  accepted
+  'unset'  REJECTED  23514 new row for relation "organisations" violates check constraint "organisations_payout_status_check"
+
+Probe row removed.

@@ -104,17 +104,24 @@ export async function POST(request: Request) {
   }
 
   if (user && assistant.id === 'organiser-onboarding') {
-    const { data: org } = await supabase
+    // A LIST, not maybeSingle. This asked "does this person have an organisation"
+    // with `.eq('owner_id', user.id).maybeSingle()`, which returns PGRST116 and
+    // `data: null` when they own more than one. So the onboarding assistant told an
+    // owner of several businesses that they had none, and walked them through
+    // creating their first.
+    const { data: orgs } = await supabase
       .from('organisations')
       .select('id')
       .eq('owner_id', user.id)
-      .maybeSingle()
-    context.hasOrganisation = Boolean(org)
-    if (org) {
+    const orgIds = (orgs ?? []).map((o) => o.id)
+    context.hasOrganisation = orgIds.length > 0
+    if (orgIds.length > 0) {
+      // Every business the person runs, because the assistant is talking to the
+      // PERSON rather than to one of their businesses.
       const { count } = await supabase
         .from('events')
         .select('id', { count: 'exact', head: true })
-        .eq('organisation_id', org.id)
+        .in('organisation_id', orgIds)
       context.eventCount = count ?? 0
     }
   }

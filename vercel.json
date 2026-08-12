@@ -58,6 +58,14 @@
     {
       "path": "/api/cron/sweep-kit-covers",
       "schedule": "30 3 * * *"
+    },
+    {
+      "path": "/api/cron/connect-reconcile",
+      "schedule": "17 * * * *"
+    },
+    {
+      "path": "/api/cron/connect-divergence",
+      "schedule": "47 */6 * * *"
     }
   ]
 }

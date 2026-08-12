@@ -5,6 +5,23 @@ import { useHydrated } from '@/lib/hooks/use-hydrated'
 import { useRouter } from 'next/navigation'
 import { loginAdminAction } from '../actions'
 
+/*
+ * MERGE NOTE, main into fix/security-hardening.
+ *
+ * This file carried its OWN `useHydrated`, written here only because the shared
+ * hook did not exist yet. Its comment said so and named the exit condition:
+ * "The two should be unified into the shared hook once both branches have
+ * landed." The shared hook is now in main at src/lib/hooks/use-hydrated.ts and
+ * its implementation is the same useSyncExternalStore snapshot pair, so the
+ * local copy is retired in favour of the import above. That is the original
+ * instruction being carried out rather than a side being picked, and it is a
+ * no-op at runtime.
+ *
+ * What did NOT come from main: `method="post"` on the form below, and the two
+ * comments explaining the gate. Main's version of this file has neither. They
+ * are this branch's reason for existing and they survive the merge unchanged.
+ */
+
 interface LoginFormProps {
   next?: string
   initialError?: string
@@ -41,7 +58,25 @@ export function LoginForm({ next, initialError }: LoginFormProps) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6">
+    /* method="post" AND a hydration-gated submit, deliberately both.
+     *
+     * This form previously had neither, and it carries the founder admin
+     * password, the TOTP code and the break-glass recovery code. With no
+     * `action` and no `method`, a submit before React attaches is a native GET
+     * to the current URL, which is how /login?password=... reached production.
+     *
+     * method="post" means that even if the gate below is ever removed or
+     * defeated, the fields travel in the request body and never enter the URL,
+     * the browser history, or the Referer header. The disabled submit control
+     * means the native submit cannot fire at all, and because disabling the
+     * submit button also disables implicit submission, pressing Enter in the
+     * password field is covered too.
+     */
+    <form
+      method="post"
+      onSubmit={onSubmit}
+      className="space-y-4 rounded-xl border border-white/[0.08] bg-[#131A2A] p-6"
+    >
       <div>
         <label htmlFor="email" className="mb-1.5 block text-xs uppercase tracking-[0.18em] text-white/60">
           Email
@@ -120,6 +155,9 @@ export function LoginForm({ next, initialError }: LoginFormProps) {
         </div>
       ) : null}
 
+      {/* Disabled until hydrated, so there is no window in which a submit is a
+          native GET carrying the password. This also disables implicit
+          submission, so Enter in the password field cannot fire it either. */}
       <button
         type="submit"
         disabled={pending || !hydrated}

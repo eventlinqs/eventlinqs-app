@@ -7,6 +7,8 @@ import { isFlagEnabled } from '@/lib/flags'
 import { getRequestOrigin } from '@/lib/site-origin'
 import { INVITES_PER_FOUNDING_ORGANISER, REFERRAL_BONUS_MONTHS } from '@/lib/founding/invites'
 import { getCity } from '@/lib/cities/data'
+import { OrganisationSwitcher } from '@/components/organisations/organisation-switcher'
+import { organisationIdFromParams, resolveOrganisationScope } from '@/lib/organisations/scope'
 import { InvitesClient } from './invites-client'
 
 export const dynamic = 'force-dynamic'
@@ -22,18 +24,34 @@ export const metadata = {
  * Non-founding organisers see the page but are told the programme is
  * invite-only, never a broken control.
  */
-export default async function InvitesPage() {
+export default async function InvitesPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
+}) {
   if (!(await isFlagEnabled('launch_kit'))) notFound()
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: org } = await supabase
-    .from('organisations')
-    .select('id, name, is_founding, founding_city, founding_bonus_months, founding_fee_free_until')
-    .eq('owner_id', user.id)
-    .maybeSingle()
+  // WHICH business's invites. This was `.eq('owner_id', user.id).maybeSingle()`,
+  // which returns PGRST116 and `data: null` when the caller owns more than one, so
+  // an owner of several was told to create the organisation they already had. The
+  // allowance is counted per `inviter_org_id`, so the business has to be named.
+  //
+  // Service role scoped to the organisation the resolver verified. The founding_*
+  // columns are revoked from `authenticated` by column privilege (20260808000010);
+  // see the note in ./actions.ts for why the split is in the application rather
+  // than the grant.
+  const scope = await resolveOrganisationScope(organisationIdFromParams(await searchParams))
+  const { data: org } = scope.ok
+    ? await createAdminClient()
+        .from('organisations')
+        .select('id, name, is_founding, founding_city, founding_bonus_months, founding_fee_free_until')
+        .eq('id', scope.active.id)
+        .maybeSingle()
+    : { data: null }
 
   if (!org) {
     return (
@@ -68,6 +86,14 @@ export default async function InvitesPage() {
 
   return (
     <div className="mx-auto max-w-3xl">
+      {scope.ok ? (
+        <OrganisationSwitcher
+          organisations={scope.organisations}
+          activeId={org.id}
+          basePath="/dashboard/invites"
+        />
+      ) : null}
+
       <div className="mb-6">
         <p className="font-display text-xs font-semibold uppercase tracking-widest text-gold-700">
           The founding programme
