@@ -9,15 +9,21 @@
 //   - deletes everything it created (order cascade + both throwaway users)
 //
 // Self-cleaning and idempotent. Writes only DATA (no schema change, no
-// migration, no db push). Run:
-//   node --env-file=.env.local scripts/verify-tickets-rls.mjs
+// migration, no db push). It creates and deletes real auth users, so it runs
+// against TEST:
+//   node --env-file=.env.test scripts/verify-tickets-rls.mjs
+// .env.local points at PRODUCTION and the preflight refuses that target without
+// explicit founder approval.
+import { assertNotProduction } from './lib/production-write-preflight.mjs'
 import { createClient } from '@supabase/supabase-js'
+
+assertNotProduction()
 
 const URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 const ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY
 if (!URL || !ANON || !SERVICE) {
-  console.error('Missing env. Run: node --env-file=.env.local scripts/verify-tickets-rls.mjs')
+  console.error('Missing env. Run: node --env-file=.env.test scripts/verify-tickets-rls.mjs')
   process.exit(1)
 }
 

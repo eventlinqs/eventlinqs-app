@@ -10,15 +10,20 @@
 // Production hardening lives in 20260504000001_event_photo_required.sql
 // (CHECK constraint disallows picsum.photos for published events).
 //
-// Usage:
-//   node scripts/batch-4-seed-real-covers.mjs
+// Usage (TEST is the documented target; the .env.local fallback points at
+// PRODUCTION and the preflight refuses it without explicit founder approval):
+//   node --env-file=.env.test scripts/batch-4-seed-real-covers.mjs
 
+import { assertNotProduction } from './lib/production-write-preflight.mjs'
 import { createClient } from '@supabase/supabase-js'
 import path from 'node:path'
 import fs from 'node:fs/promises'
 
-// Minimal .env.local loader so we don't take a runtime dep on dotenv.
-const envText = await fs.readFile('.env.local', 'utf8')
+assertNotProduction()
+
+// Minimal .env.local loader so we don't take a runtime dep on dotenv. Anything
+// already in the real environment wins, so --env-file=.env.test is honoured.
+const envText = await fs.readFile('.env.local', 'utf8').catch(() => '')
 for (const line of envText.split(/\r?\n/)) {
   const m = /^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/.exec(line)
   if (!m) continue

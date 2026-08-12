@@ -18,6 +18,7 @@
  *   check-client-barrel-imports  no third-party namespace import in the browser bundle
  *   migration-collision-guard  no two migrations claiming one version, on any branch
  *   payment-critical-doctrine  every paymentCritical variable is actually protected
+ *   no-unguarded-production-write  no script writes to a database without checking which one
  *
  * Runs them all rather than short-circuiting, so one pass reports every
  * violation instead of making the founder play whack-a-mole.
@@ -123,6 +124,15 @@ const GUARDS = [
   // no guard, which is the same shape as a guard with no caller: something that
   // reads as a control and controls nothing.
   'scripts/verify/payment-critical-doctrine.mjs',
+  // Founder ruling 2026-08-13. `.env.local` in this repo points at the
+  // PRODUCTION project, deliberately, because the app is run against production
+  // from here. An audit that day found ten write-capable scripts with a
+  // service-role credential and no check on which project they were about to
+  // write to, four of which documented `node --env-file=.env.local <script>` in
+  // their own header. The ten were fixed and given the preflight; this guard is
+  // what stops the eleventh. Without it the fix is a written procedure, and a
+  // written procedure is not a control.
+  'scripts/guards/no-unguarded-production-write.mjs',
 ]
 
 /**
