@@ -4,6 +4,7 @@ import {
   authErrorMessage,
   authMessage,
   classifyAuthError,
+  classifySignupError,
   rateLimitedMessage,
   readAuthErrorFromUrl,
   MAGIC_LINK_GENERIC_RESPONSE,
@@ -236,12 +237,27 @@ describe('signup failure classes (the 2026-08-09 blocker)', () => {
     message: 'A user with this email address has already been registered',
   }
 
+  /*
+   * RE-POINTED, founder ruling 2026-08-12 (keep feat/launch-kit-artefacts'
+   * classifier). These cases moved from classifyAuthError to
+   * classifySignupError, because that is the function the signup route now
+   * calls. Registration is deliberately NOT routed through the general
+   * classifier any more: it has its own code map, it cannot return `unknown`
+   * (the return type excludes it), and an unrecognised 4xx lands on
+   * signup_rejected rather than the generic sentence.
+   *
+   * The defect these pin is unchanged and so is the payload. Only the entry
+   * point moved.
+   */
+  const asSignup = (p: typeof LIVE_DUPLICATE) =>
+    classifySignupError({ code: p.errorCode, status: p.status, message: p.message })
+
   test('the exact live duplicate payload classifies as email_exists', () => {
-    expect(classifyAuthError(LIVE_DUPLICATE)).toBe('email_exists')
+    expect(asSignup(LIVE_DUPLICATE)).toBe('email_exists')
   })
 
   test('the live duplicate never renders the generic sentence', () => {
-    expect(authErrorMessage(LIVE_DUPLICATE)).not.toBe(authMessage('unknown'))
+    expect(authMessage(asSignup(LIVE_DUPLICATE))).not.toBe(authMessage('unknown'))
   })
 
   test('the duplicate message names both ways out: sign in and reset', () => {
@@ -259,27 +275,43 @@ describe('signup failure classes (the 2026-08-09 blocker)', () => {
     expect(real).not.toContain('already exists')
     expect(real).not.toContain('user already')
     // And yet it still classifies, because we read the code.
-    expect(classifyAuthError(LIVE_DUPLICATE)).toBe('email_exists')
+    expect(asSignup(LIVE_DUPLICATE)).toBe('email_exists')
   })
 
-  test('a duplicate still classifies when GoTrue sends no code at all', () => {
-    // The message fallback is gap tolerant on purpose: one extra word is what
-    // broke the last one.
-    expect(classifyAuthError({ message: LIVE_DUPLICATE.message })).toBe('email_exists')
-    expect(classifyAuthError({ message: 'User already registered' })).toBe('email_exists')
-    expect(classifyAuthError({ message: 'That email address is already in use' })).toBe(
-      'email_exists',
-    )
-    expect(classifyAuthError({ message: 'This email is already taken' })).toBe('email_exists')
+  /*
+   * THE ONE BEHAVIOURAL CONSEQUENCE OF THE RULING, asserted rather than left to
+   * be discovered. This branch's classifier ALSO caught a codeless duplicate by
+   * matching the message prose. The kept classifier does not, deliberately:
+   * "Prose is not an API" is the lesson it was built on, after prose matching
+   * caused this defect and, on 2026-08-03, an enumeration oracle in
+   * dispatch-auth-link.ts.
+   *
+   * So a duplicate arriving with NO code is now signup_rejected, not
+   * email_exists. What the person reads changes from "you already have an
+   * account" to "We could not create an account with those details. Check your
+   * email address and password, or sign in if you already have an account."
+   * Less specific, still names a cause and still offers both ways out, and it
+   * is never the generic sentence. GoTrue sends the code on this path (verified
+   * against the live payload above), so this is the fallback, not the path.
+   */
+  test('a codeless duplicate lands on signup_rejected, never the generic sentence', () => {
+    const codeless = classifySignupError({ code: null, status: 422, message: LIVE_DUPLICATE.message })
+    expect(codeless).toBe('signup_rejected')
+    expect(authMessage(codeless)).not.toBe(authMessage('unknown'))
+    expect(authMessage(codeless).toLowerCase()).toContain('sign in')
   })
 
   test('user_already_exists is the same class', () => {
-    expect(classifyAuthError({ errorCode: 'user_already_exists' })).toBe('email_exists')
+    expect(classifySignupError({ code: 'user_already_exists' })).toBe('email_exists')
   })
 
   test('an address GoTrue refuses is told to the person, not swallowed', () => {
-    expect(classifyAuthError({ errorCode: 'email_address_invalid' })).toBe('email_invalid')
-    expect(authMessage('email_invalid')).not.toBe(authMessage('unknown'))
+    // The class is named invalid_email, not email_invalid: the kept classifier
+    // (founder ruling 2026-08-12) is feat/launch-kit-artefacts', which spells it
+    // that way. Same code in, same sentence out, so this is a rename and not a
+    // behaviour change.
+    expect(classifySignupError({ code: 'email_address_invalid' })).toBe('invalid_email')
+    expect(authMessage('invalid_email')).not.toBe(authMessage('unknown'))
   })
 
   test('every signup failure a person can reach has its own sentence', () => {
@@ -288,7 +320,7 @@ describe('signup failure classes (the 2026-08-09 blocker)', () => {
     // case so none falls back into "Something went wrong on our side".
     const reachable: AuthFailureClass[] = [
       'email_exists',
-      'email_invalid',
+      'invalid_email',
       'weak_password',
       'rate_limited',
       'mail_transport_failed',
@@ -303,20 +335,48 @@ describe('signup failure classes (the 2026-08-09 blocker)', () => {
     }
   })
 
-  test('the generic sentence still says nothing was created, and offers a way out', () => {
+  /*
+   * RE-POINTED, founder ruling 2026-08-12. This asserted a signup-specific
+   * phrase, "no account was created", inside authMessage('unknown'), which is
+   * the SHARED fallback for every auth surface. On a sign-in or recovery
+   * failure that sentence would be telling the person about an account they
+   * were not creating, so the kept classifier keeps `unknown` neutral.
+   *
+   * The property the test was defending is better served where it belongs: on
+   * signup, the fallback is signup_rejected, not unknown, and THAT sentence
+   * both names what happened and offers the way out. Asserted here instead.
+   */
+  test('the signup fallback names a cause and offers a way out, and is not the generic one', () => {
+    const m = authMessage('signup_rejected').toLowerCase()
+    expect(m).toContain('could not create an account')
+    expect(m).toContain('sign in')
+    expect(m).not.toBe(authMessage('unknown').toLowerCase())
+  })
+
+  test('the shared generic sentence stays neutral, because every surface uses it', () => {
     const m = authMessage('unknown').toLowerCase()
-    // The version this replaced ended at "contact us if it keeps happening"
-    // with no route and no statement of what happened to the account.
-    expect(m).toContain('no account was created')
     expect(m).toContain('contact us')
+    // No signup-specific wording on a class that a login failure also renders.
+    expect(m).not.toContain('account was created')
   })
 })
 
 describe('rateLimitedMessage', () => {
   // Eventbrite's troubleshooting guide is the bar: "Wait six minutes to try
   // again, or reset your password." A named wait, not "a few minutes".
-  test('names the wait in seconds under a minute', () => {
-    expect(rateLimitedMessage(45)).toContain('45 seconds')
+  /*
+   * RE-POINTED, founder ruling 2026-08-12. This branch named the exact seconds;
+   * the kept implementation rounds a sub-minute wait up to "about a minute",
+   * deliberately, so a person is never asked to do arithmetic on a number like
+   * 437. Both name a real wait taken from Retry-After rather than guessing "a
+   * few minutes", which is the property this test exists for, so the assertion
+   * follows the kept behaviour rather than the kept behaviour following it.
+   */
+  test('names a real wait under a minute rather than guessing', () => {
+    const m = rateLimitedMessage(45)
+    expect(m).toContain('about a minute')
+    expect(m).not.toContain('a few minutes')
+    expect(m).not.toBe(authMessage('rate_limited'))
   })
 
   test('names the wait in minutes above a minute, singular and plural', () => {
