@@ -58,6 +58,12 @@ const ALLOWLIST = [
     reason: 'legacy licensed-photo library key arts-culture (renaming breaks the image spine)',
   },
   {
+    file: 'src/lib/events/search-params.ts',
+    patterns: ['banned-word-community-law'],
+    reason:
+      'CATEGORY_SLUG_ALIASES has to spell the RETIRED slug arts-culture, because that is the string arriving in a URL somebody already shared. The alias is what stops migration 20260812000002 turning those links into a 200 with zero events. The banned word is being retired here, not used: it appears once, as a map key, and its value is the community-first slug that replaces it',
+  },
+  {
     file: 'src/lib/broadcast/short-links.ts',
     patterns: ['banned-word-community-law'],
     reason:

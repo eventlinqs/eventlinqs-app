@@ -358,6 +358,88 @@ next look, because of what it guards.
 
 ---
 
+## 7. A GUARD DRILLED IN ONE ENVIRONMENT AND SHIPPED TO ANOTHER
+
+**Founder ruling, 12 August 2026: this belongs here as its own entry. It is the
+sharpest one in the file, because entry 5 already says exactly how to prevent it
+and it happened anyway, two entries later, to the person who wrote entry 5.**
+
+**What happened.** `scripts/verify/payment-critical-doctrine.mjs` was registered
+as a build guard on the founder's ruling. Before registering it, it was drilled:
+
+```
+mustBeSensitive: false on STRIPE_SECRET_KEY  ->  1 of 14 FAILED. Build blocked.  exit 1
+restored                                     ->  all 14 guards PASS.             exit 0
+```
+
+Red on a real defect, green when fixed, manifest byte-identical afterwards. A
+good drill. **It was run only on the development machine.** The guard was pushed,
+and every deployment on the branch died:
+
+```
+===== 10 CLAUSE(S) UNMET =====
+  STRIPE_SECRET_KEY
+    (d) has no row in the docs/security/CREDENTIAL-ROTATION.md rotation matrix
+[guards] 1 of 14 guard(s) FAILED. Build blocked.
+```
+
+Clause (d) reads `docs/security/CREDENTIAL-ROTATION.md`. `.vercelignore`
+excludes `docs/*`, so on the build host that file does not exist and all ten
+payment-critical variables looked uncovered. The guard was right about what it
+could see and wrong about the world.
+
+**Entry 5 of this file, written two turns earlier, says:** *"If a guard reads
+anything outside the source tree (git history, a network service, an env var, a
+token), enumerate the environments it runs in and drill it in each. 'It passes
+on my machine and in CI' is two environments; production build hosts are usually
+the third, and they are usually the poorest."* The rule was written, published,
+and then not applied by its own author. Knowing the failure mode is not the same
+as running the check.
+
+**It was also the SECOND time on this exact host for this exact reason.** The
+header of `.vercelignore` already recorded `check-pricing-lock.mjs` parsing
+`docs/PRICING.md` and blocking every deploy until that file was re-included.
+The precedent was in the file being edited.
+
+**THE DIRECTORY-EXCLUSION DETAIL, which cost a second failed deploy.** The
+obvious fix is wrong:
+
+```
+docs/*
+!docs/PRICING.md
+!docs/security/CREDENTIAL-ROTATION.md      # <- does nothing
+```
+
+`docs/*` excludes the `docs/security` DIRECTORY, and gitignore semantics (which
+Vercel inherits) say a file inside an excluded directory can never be
+re-included. `docs/PRICING.md` works only because it sits directly under `docs/`
+and is therefore excluded as a FILE. The re-inclusion has to open the path at
+every level:
+
+```
+docs/*
+!docs/PRICING.md
+!docs/security/
+docs/security/*
+!docs/security/CREDENTIAL-ROTATION.md
+```
+
+**Why skipping would have been the wrong fix here**, and this is the difference
+from entry 5. There, the guard had nothing to read and standing aside cost
+nothing, because the law was still enforced by the commit hook and by CI. Here,
+clause (d) would have gone unenforced on the one host that builds production.
+The file is carried into the deploy instead, so the clause keeps working
+everywhere.
+
+**The rule.** A guard is not registered until it has gone red and green in every
+environment that will run it. For this repository that is three: the development
+machine, CI, and the Vercel build host, and the third is the one that differs,
+because it is the only one that strips files the other two have. Registering
+after drilling in one is shipping an untested control into the path of every
+deploy.
+
+---
+
 ## THE SHAPE THESE SHARE
 
 Cases where the evidence looked stronger than it was:
@@ -370,6 +452,7 @@ Cases where the evidence looked stronger than it was:
 | 4 | 200 commits are clean | one commit was clean, and it was never said which |
 | 5 | the guard is enforcing | the guard was crashing, and about to stop every deploy |
 | 6 | the collision guard has us covered | it had never once been invoked |
+| 7 | the guard was drilled red and green | drilled on one host, shipped to another, blocked every deploy |
 
 Entries 4, 5 and 6 are the same organ failing three ways: a gate that reported on
 nothing, a gate that died on the thing it protected, and a gate that was never

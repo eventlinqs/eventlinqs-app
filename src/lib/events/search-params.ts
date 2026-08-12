@@ -88,6 +88,48 @@ const TABS = new Set(['events', 'cities', 'communities', 'organisers'])
  * already a preset value, so it is mapped rather than dropped.
  */
 
+/**
+ * Category slugs that were RENAMED in the database and must keep resolving from
+ * their old spelling, because the old spelling is in the wild.
+ *
+ * WHY THIS EXISTS. Migration 20260812002_category_taxonomy_repair renames
+ * `arts-culture` to `arts-community` (the banned word leaves the data, and the
+ * slug the homepage already asks for starts existing). Events move with it by
+ * UUID, so no event changes category. But `?category=arts-culture` is a URL a
+ * real person can be holding: the browse filter chips are rendered from the
+ * database, so anyone who filtered by that category has it in their address bar,
+ * their history, a bookmark, a message they sent, or Google's index.
+ *
+ * Without this map that URL does not 404, which would at least be honest. It
+ * returns HTTP 200 with ZERO events, because the fetcher looks the slug up,
+ * finds no row, and forces `NO_MATCH` (fetchers.ts, resolveEventFilterOps). A
+ * control that looks like it works and returns nothing is the exact failure the
+ * suburb ruling rejected, and a dead shared link is worse than the banned word
+ * the rename removes.
+ *
+ * Founder ruling 2026-08-12: ship the rename WITH the alias, in one change.
+ *
+ * This is an alias, not a redirect: the URL keeps its old spelling in the bar
+ * and the results are correct. A 301 would be the tidier web answer for a PATH,
+ * and that is how /cultures and /culture/[slug] are handled in next.config.ts.
+ * It cannot be used here because this is a QUERY PARAMETER on a shared route,
+ * and rewriting one parameter of /events would mean owning the whole query
+ * string in middleware for one legacy value.
+ *
+ * An entry here is permanent. Removing one silently breaks every link that
+ * still carries it.
+ */
+const CATEGORY_SLUG_ALIASES: Record<string, string> = {
+  'arts-culture': 'arts-community',
+}
+
+/** The live slug for a category, following a rename if the URL predates it. */
+export function resolveCategorySlug(raw: string | undefined): string | undefined {
+  const slug = raw?.trim().toLowerCase()
+  if (!slug) return undefined
+  return CATEGORY_SLUG_ALIASES[slug] ?? slug
+}
+
 export type EventsView = 'grid' | 'map'
 
 export type ParsedEventsParams = {
@@ -185,11 +227,12 @@ export function parseEventsSearchParams(
 
   const eventType = raw.event_type?.trim().toLowerCase()
   const faith = raw.faith?.trim().toLowerCase()
+  const category = resolveCategorySlug(raw.category)
 
   const filters: FetchPublicEventsFilters = {
     q: raw.q?.trim() || undefined,
     preset,
-    category: raw.category?.trim() || undefined,
+    category,
     community: raw.community?.trim() || moment?.community || undefined,
     sub_community: raw.sub_community?.trim() || undefined,
     country: raw.country?.trim() || undefined,
