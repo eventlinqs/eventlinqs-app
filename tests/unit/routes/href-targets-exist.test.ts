@@ -133,10 +133,21 @@ function collectHrefs(): { file: string; href: string }[] {
     for (const re of patterns) {
       for (const m of src.matchAll(re)) {
         let raw = m[1]
-        // Template holes become a dynamic segment.
-        raw = raw.replace(/\$\{[^}]*\}/g, 'x')
+        // A hole that FOLLOWS A SLASH is a dynamic segment, so it stands in as
+        // one: /events/${slug} is checkable as /events/x.
+        raw = raw.replace(/\/\$\{[^}]*\}/g, '/x')
+        // A hole that does not follow a slash is a SUFFIX on the segment before
+        // it, and only the static prefix is checkable. Substituting there
+        // invents a route: `/login${emailParam}` became "/loginx" and was
+        // reported as a dead link, when emailParam is `?email=...` and the real
+        // targets are /login and /login?email=... Truncating at the hole checks
+        // what can actually be checked, and a literal typo like href="/loginx"
+        // is still caught because no template is involved.
+        const hole = raw.indexOf('${')
+        if (hole !== -1) raw = raw.slice(0, hole)
         // Drop a trailing partial segment left by a query or hash split.
         raw = raw.split('?')[0].split('#')[0]
+        raw = raw.replace(/\/$/, '')
         if (!raw.startsWith('/') || raw.startsWith('//')) continue
         if (raw === '/') continue
         found.push({ file: path.relative(ROOT, file), href: raw })

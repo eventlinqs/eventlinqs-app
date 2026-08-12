@@ -27,6 +27,18 @@ export interface CreatePaymentIntentParams {
    */
   transfer_group?: string
 
+  /**
+   * DISPLAY ONLY. The dynamic half of the buyer's bank statement line, so a
+   * statement reads "ELINQS* PARTY PTY LTD" rather than a bare "EVENTLINQS"
+   * that says nothing about what was bought.
+   *
+   * Carries no money: it never touches amount, currency, fee or destination.
+   * Omitting it reproduces the previous behaviour exactly (the charge falls back
+   * to the platform's full static descriptor), which is the deliberate failure
+   * mode when an organisation name yields nothing printable.
+   */
+  statement_descriptor_suffix?: string
+
   // DEPRECATED (old destination-charge model). Retained so the adapter still
   // compiles and any legacy caller is rejected unless all three are set
   // together. New checkout omits all three -> a platform charge. See the

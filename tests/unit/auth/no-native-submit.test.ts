@@ -39,7 +39,23 @@ function formFiles(): string[] {
     return out
   }
   return walk(SRC_DIR).filter((f) => {
-    const src = readFileSync(f, 'utf8')
+    // A file listed by the walk can be gone by the time it is read. Vitest runs
+    // test FILES in parallel workers, and tests/unit/ci/copy-gate-can-see.test.ts
+    // plants and then deletes src/__copy_gate_scratch__/scratch.tsx to prove the
+    // copy gate can see a new file. When the two overlap, this walk lists the
+    // scratch file and the read then throws ENOENT, failing this suite for a
+    // reason that has nothing to do with auth forms.
+    //
+    // Skipping a vanished file is correct independently of that race: a file
+    // that no longer exists cannot contain an ungated form. Any OTHER read error
+    // still throws, so this does not turn a real problem into a silent pass.
+    let src: string
+    try {
+      src = readFileSync(f, 'utf8')
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return false
+      throw err
+    }
     return /<form[^>]*onSubmit=/.test(src) && /type=["']password["']/.test(src) && !/<form[^>]*\saction=/.test(src)
   })
 }

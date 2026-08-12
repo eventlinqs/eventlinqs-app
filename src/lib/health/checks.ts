@@ -4,7 +4,7 @@ import { getRedisClient } from '@/lib/redis/client'
 import { getSiteUrl } from '@/lib/site-url'
 import { isAiConfigured } from '@/lib/ai/client'
 import { isPushConfigured } from '@/lib/notifications/web-push'
-import { selfProbe, driftWatchdog, endpointConfigCheck } from '@/lib/health/payment-checks'
+import { selfProbe, driftWatchdog, endpointConfigCheck, connectNameDivergenceCheck } from '@/lib/health/payment-checks'
 import { senderDomainsInUse } from '@/lib/email/send'
 import { CRITICAL_ENV_RULES, evalEnvRule } from '@/lib/health/critical-env.mjs'
 import { evaluateProcessEnv, evaluateStores } from '@/lib/env/manifest-checks.mjs'
@@ -97,6 +97,29 @@ async function checkPayment(origin: string): Promise<HealthResult> {
     detail: failed.map(f => `${f.name}: ${f.detail}`).join(' | '),
     probableCause: failed[0].probableCause,
     action: 'Open docs/payments/WEBHOOK-CANON.md. Usually: the Stripe webhook signing secret in Vercel differs from the enabled Stripe endpoint. Re-key per the runbook, then redeploy.',
+  }
+}
+
+/**
+ * Connected-account business names still agree with the organisation records.
+ *
+ * WARNING, not critical, and deliberately its own check rather than folded into
+ * checkPayment: a name mismatch means a buyer may not recognise who charged
+ * them, which invites a chargeback, but nothing is down. Rolling it into the
+ * critical payment check would both wake the founder for a non-outage and, far
+ * worse, report the money path as broken when it is working.
+ */
+async function checkConnectProfile(): Promise<HealthResult> {
+  const r = await connectNameDivergenceCheck()
+  return {
+    id: 'connect_profile',
+    label: 'Organiser names match Stripe',
+    severity: 'warning',
+    ok: r.ok,
+    detail: r.detail,
+    probableCause: r.probableCause,
+    action:
+      'Confirm which name is correct first, because the organiser may be trading under a name we have not recorded. To correct Stripe: POST /v1/accounts/{id} with business_profile[name]. Verified against a fully-onboarded Express account: the platform key is accepted, and Stripe then resets that account\'s statement descriptor to match the new name. To correct EventLinqs instead, edit the organisation name in /admin. This check never auto-corrects either side, because overwriting a deliberate trading name would be worse than reporting the difference.',
   }
 }
 
@@ -478,7 +501,7 @@ async function checkManifestAgainstStore(): Promise<{ mode: string; findings: st
   }
 }
 
-export const CHECK_IDS = ['payment', 'database', 'email', 'storage', 'maps', 'ai', 'push', 'pages', 'ssl', 'env', 'manifest'] as const
+export const CHECK_IDS = ['payment', 'connect_profile', 'database', 'email', 'storage', 'maps', 'ai', 'push', 'pages', 'ssl', 'env', 'manifest'] as const
 export type CheckId = (typeof CHECK_IDS)[number]
 
 /**
@@ -492,6 +515,7 @@ export async function runAllChecks(opts?: { drill?: string }): Promise<HealthRes
 
   const results = await Promise.all([
     timed('payment', () => checkPayment(origin)),
+    timed('connect_profile', () => checkConnectProfile()),
     timed('database', () => checkDatabase()),
     timed('email', () => checkEmail()),
     timed('storage', () => checkStorage()),

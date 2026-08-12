@@ -52,6 +52,11 @@ describe('PAY-01: explicit payout schedule on connected accounts', () => {
       country: 'AU',
       email: 'org@example.com',
       payoutDelayDays: 3,
+      businessProfile: {
+        name: 'Org One',
+        url: 'https://www.eventlinqs.com.au/organisers/org-one',
+        product_description: 'Event ticket sales through the EventLinqs marketplace',
+      },
     })
 
     expect(h.createArgs).toHaveLength(1)

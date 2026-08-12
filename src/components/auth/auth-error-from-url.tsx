@@ -81,7 +81,7 @@ export function AuthErrorFromUrl() {
   if (!isClient || !detected) return null
 
   return (
-    <div className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error" role="alert">
+    <div className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error-strong" role="alert">
       {authMessage(detected.failure)}
     </div>
   )

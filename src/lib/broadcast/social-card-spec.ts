@@ -8,16 +8,43 @@
  *
  * PRIMARY SOURCES
  *
- * [IG-RES] Instagram Help Centre, "Image resolution of photos you share on
- *   Instagram" (help.instagram.com/1631821640426723):
+ * TWO INSTAGRAM SURFACES, TWO DIFFERENT BOUNDS. This is the single most
+ * misread thing in this file, so it is stated before the citations. Instagram
+ * publishes one set of limits for a human uploading IN THE APP and a different,
+ * TIGHTER set for publishing THROUGH THE GRAPH API. The tall bound is 3:4
+ * in-app and 4:5 via the API. Both were re-verified on 9 August 2026 and both
+ * are quoted below. Our promoters post by hand, so [IG-RES] governs what they
+ * do today; we build to the API bound anyway because it is the intersection of
+ * the two, so one asset is correct on both surfaces and stays correct if the
+ * platform ever publishes on their behalf. An asset built to the LOOSER in-app
+ * bound (3:4) would be rejected by the API; an asset built to the TIGHTER API
+ * bound (4:5) is safe everywhere. Tighter wins.
+ *
+ * [IG-RES] IN-APP. Instagram Help Centre, "Image resolution of photos you share
+ *   on Instagram" (help.instagram.com/1631821640426723), re-verified 2026-08-09.
+ *   Scoped to the app: "regardless of whether you're using Instagram for iPhone
+ *   or Android".
  *   "When you share a photo that has a width between 320 and 1080 pixels, we
  *   keep that photo at its original resolution as long as the photo's aspect
  *   ratio is between 1.91:1 and 3:4 (a width of 1080 pixels with a height
  *   between 566 and 1440 pixels). If the aspect ratio of your photo isn't
  *   supported, it will be cropped to fit a supported ratio ... If you share a
  *   photo at a higher resolution, we size it down to a width of 1080 pixels."
- *   NOTE the tall bound is 3:4 (1080x1440), NOT the 4:5 that circulates in
- *   secondary guides. 1:1, 4:5 and 9:16 all sit inside the supported band.
+ *   The tall bound here IS 3:4, and it IS first-party. It was challenged as
+ *   unsourced and the challenge did not hold: the page is Instagram's own and
+ *   the quote above is verbatim.
+ *
+ * [IG-API] API PUBLISHING. Meta for Developers, "IG User Media"
+ *   (developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-user/media/),
+ *   fetched 2026-08-09, verbatim:
+ *     "Format: JPEG"
+ *     "File size: 8 MB maximum."
+ *     "Aspect ratio: Must be within a 4:5 to 1.91:1 range"
+ *     "Minimum width: 320 (will be scaled up to the minimum if necessary)"
+ *     "Maximum width: 1440 (will be scaled down to the maximum if necessary)"
+ *     "Color Space: sRGB."
+ *   The 1440 ceiling is inclusive and degrades gracefully ("will be scaled down
+ *   ... if necessary"), so a 1440-wide asset is at the limit, not over it.
  *
  * [META-RATIO] Meta Business Help Centre, "Best practices for aspect ratios"
  *   (facebook.com/business/help/103816146375741):
@@ -131,8 +158,21 @@ export const SOCIAL_CARD_FORMATS: Record<SocialCardFormat, SocialCardSpec> = {
     safeTop: 0,
     safeBottom: 0,
     photoHeight: 1150,
+    // 4:5 is chosen because it is the INTERSECTION of Instagram's two surfaces,
+    // not because it is the Facebook recommendation. In-app accepts down to 3:4
+    // [IG-RES]; the Graph API accepts only down to 4:5 [IG-API]. A 4:5 asset is
+    // therefore correct on both, while a 3:4 asset would be outside the API
+    // range. The earlier justification cited the Facebook ADS minimum for this
+    // ratio, which is guidance for paid placements and not a bound on an
+    // organic post, and reached the right number for the wrong reason.
+    //
+    // On the 1440 width: it sits exactly at the API ceiling [IG-API], which is
+    // inclusive and scales down rather than rejecting. Instagram in-app will
+    // size it to 1080 x 1350 [IG-RES], so the extra pixels buy nothing there;
+    // they are kept because this same asset goes to the Facebook feed, where
+    // [META-PIXELS] gives 1440 x 1800 as the recommended minimum for 4:5.
     justification:
-      '4:5 is the ratio Meta recommends for the Facebook feed, and 1440 x 1800 is the published recommended minimum for that exact ratio. It sits inside the Instagram supported band, which runs to 3:4.',
+      '4:5 is the tightest bound Instagram publishes across both the app and the publishing API, so this one asset is correct wherever it is posted. Instagram will show it at 1080 x 1350; Facebook uses the full 1440 x 1800.',
   },
 }
 

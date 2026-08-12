@@ -48,6 +48,12 @@ const ALLOWLIST = [
     reason: 'the strip regexes must name the characters they strip',
   },
   {
+    file: 'src/lib/stripe/business-profile.ts',
+    patterns: ['em-or-en-dash'],
+    reason:
+      'same case as sanitise.ts above: TYPOGRAPHIC_REPLACEMENTS strips en dash, em dash and minus from an event title before it reaches Stripe, so the character class has to name them. Surfaced when origin/main merged in, because main added the test that runs this gate over the whole tree and this branch added the file',
+  },
+  {
     file: 'src/lib/ai/magic-start.ts',
     patterns: ['banned-word-community-law'],
     reason: 'the system prompt must name the banned word to prohibit it',

@@ -104,6 +104,11 @@ const ALLOWLIST = [
   // not follow a deployment environment or the sweep would post to a real
   // inbox. Found blocking `npm run build` on origin/main, so this unblocks
   // main as well as this branch.
+  //
+  // REPRODUCED FROM feat/public-composer, which hit this first and resolved it
+  // the same way. The scripts live on origin/main and this guard lives here, so
+  // the collision only exists once the two are merged, and every branch that
+  // carries this guard meets it on merging main.
   {
     file: 'scripts/sweep/journey-buyer-full.mjs',
     reason: 'builds a throwaway test EMAIL address, not a URL; the recipient domain must not follow the deployment host',
