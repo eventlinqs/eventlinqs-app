@@ -291,7 +291,13 @@ describe('the ticket bar never wraps and never leaves its bar', () => {
               )
             }
             expect(fit.fontSize).toBeLessThanOrEqual(max)
-            expect(fit.fontSize).toBeGreaterThanOrEqual(min)
+            // The floor is no longer `min`. Founder ruling 2026-08-13: an
+            // ellipsis in a URL is never acceptable output, so when a host is
+            // long enough that no permitted size holds the line, the fitter now
+            // sacrifices the price prefix and then goes BELOW min rather than
+            // cutting the address. A small whole address beats a large broken
+            // one. The hard floor is 60 percent of min.
+            expect(fit.fontSize).toBeGreaterThanOrEqual(Math.round(min * 0.6))
           }
         }
       }
@@ -320,12 +326,44 @@ describe('the ticket bar never wraps and never leaves its bar', () => {
     expect(long.text).not.toContain('...')
   })
 
-  it('shortens visibly, rather than drawing past the bar, when no size fits', () => {
-    const line = ticketBarText('From $189.50', `https://${hosts[2]}/e/${'a'.repeat(48)}`)
-    const fit = fitTicketBar(line, STORY_BAR, 38, 24, measure)
-    expect(fit.text).toContain('...')
-    expect(fit.text.length).toBeLessThan(line.length)
-    expect(measure(fit.text, fit.fontSize)).toBeLessThanOrEqual(STORY_BAR)
+  it('sacrifices the PRICE, not the address, before it cuts anything', () => {
+    // Founder ruling 2026-08-13: an ellipsis in a URL is never acceptable
+    // output. It produced `eventlinqs-app-g...l.app/launch/k/a8kwsh5fapxw` on a
+    // real preview artefact, on a poster a promoter puts in a window.
+    //
+    // The address now outranks the price: when the full line will not fit, the
+    // price prefix goes first and the whole address survives. A reader gets the
+    // price from the card body and from the caption; they cannot get the
+    // address from anywhere else.
+    const url = 'https://www.eventlinqs.com.au/launch/k/a8kwsh5fapxw'
+    const fit = fitTicketBar(ticketBarText('From $189.50', url), SQUARE_BAR, 30, 20, measure)
+
+    expect(fit.text).not.toContain('...')
+    expect(fit.text).toContain('eventlinqs.com.au/launch/k/a8kwsh5fapxw')
+    expect(measure(fit.text, fit.fontSize)).toBeLessThanOrEqual(SQUARE_BAR)
+  })
+
+  it('prints the canonical host, not the deployment host, when one is given', () => {
+    // The reason B1 existed: on a preview deploy getSiteUrl returns the
+    // deployment hostname, which is about seventy characters, and the bar had
+    // to ellipsise it. The link still resolves against the deployment; only the
+    // PRINTED host is swapped, by printableHost() at both call sites.
+    const deployment =
+      'https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/launch/k/a8kwsh5fapxw'
+    expect(ticketBarText('From $25', deployment, 'www.eventlinqs.com.au')).toBe(
+      'From $25 · eventlinqs.com.au/launch/k/a8kwsh5fapxw',
+    )
+  })
+
+  it('prints the canonical host, not the deployment host, when one is given', () => {
+    // The reason B1 existed: on a preview deploy getSiteUrl returns the
+    // deployment hostname, which is about seventy characters, and the bar had
+    // to ellipsise it. The link still resolves against the deployment; only the
+    // PRINTED host is swapped.
+    const deployment = 'https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/launch/k/a8kwsh5fapxw'
+    expect(ticketBarText('From $25', deployment, 'www.eventlinqs.com.au')).toBe(
+      'From $25 · eventlinqs.com.au/launch/k/a8kwsh5fapxw',
+    )
   })
 
   it('drops the www, because those four characters are the whole margin', () => {

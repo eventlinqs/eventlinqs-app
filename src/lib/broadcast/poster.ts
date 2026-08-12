@@ -2,6 +2,18 @@ import { PDFDocument, rgb, type PDFFont, type PDFImage, type PDFPage } from 'pdf
 import fontkit from '@pdf-lib/fontkit'
 import { loadCardFonts } from '@/lib/broadcast/card-fonts'
 import { fitTicketBar, ticketBarText } from '@/lib/broadcast/social-card-layout'
+import { printableHost } from '@/lib/site-url'
+
+/**
+ * The one "when" line the poster prints: date and start time together.
+ *
+ * Joined the same way the social cards and every caption join them, so the four
+ * artefacts of one kit cannot disagree about when the event starts. Both halves
+ * arrive already formatted in the event's own timezone.
+ */
+function posterWhenLine(input: { dateLabel: string; timeLabel?: string | null }): string {
+  return [input.dateLabel, input.timeLabel].filter(Boolean).join(', ')
+}
 import {
   resolvePosterPalette,
   type PosterPaletteName,
@@ -69,6 +81,17 @@ export type PosterImage = { bytes: Uint8Array; format: 'jpg' | 'png' }
 export interface PosterInput {
   title: string
   dateLabel: string
+  /**
+   * Start time on its own, for example "8:00 pm", already formatted in the
+   * EVENT's own timezone by the caller (kit-artefacts formatParts), never the
+   * runtime's.
+   *
+   * The poster printed the date and dropped the time, while all three social
+   * cards printed both. The poster is the artefact that goes in a pub window,
+   * so it is the one that needs the time most: a reader standing in front of it
+   * cannot tap through to find out when doors are.
+   */
+  timeLabel?: string | null
   locality: string
   priceLabel: string
   shortUrl: string
@@ -383,7 +406,7 @@ async function drawCoverPoster(
   }
 
   y -= 10
-  page.drawText(input.dateLabel, { x: MARGIN, y, size: 14, font: bodyStrong, color: pal.accent })
+  page.drawText(posterWhenLine(input), { x: MARGIN, y, size: 14, font: bodyStrong, color: pal.accent })
   y -= 22
   for (const line of localityLines) {
     page.drawText(line, { x: MARGIN, y, size: 12.5, font: body, color: pal.textMuted })
@@ -400,7 +423,8 @@ async function drawCoverPoster(
   const barPad = 20
   const barSizeMax = 12
   const barFit = fitTicketBar(
-    ticketBarText(input.priceLabel, input.shortUrl),
+    // printableHost, not the deployment host: this line goes on a pub wall.
+    ticketBarText(input.priceLabel, input.shortUrl, printableHost()),
     textMaxW - barPad * 2,
     barSizeMax,
     9,
@@ -515,7 +539,8 @@ async function drawTypographicPoster(
 
   const barPad = 20
   const barFit = fitTicketBar(
-    ticketBarText(input.priceLabel, input.shortUrl),
+    // printableHost, not the deployment host: this line goes on a pub wall.
+    ticketBarText(input.priceLabel, input.shortUrl, printableHost()),
     detailMaxW - barPad * 2,
     12,
     9,
@@ -554,7 +579,7 @@ async function drawTypographicPoster(
   }
 
   if (input.dateLabel) {
-    page.drawText(input.dateLabel, {
+    page.drawText(posterWhenLine(input), {
       x: MARGIN,
       y: detailY,
       size: 17,

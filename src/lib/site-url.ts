@@ -74,6 +74,35 @@ export function canonicalHost(): string {
 }
 
 /**
+ * The host to PRINT onto an artefact, which is not always the host the artefact
+ * links to.
+ *
+ * WHY THIS IS SEPARATE FROM canonicalHost(). That one follows getSiteUrl(), so
+ * on a preview deployment it returns the deployment's own hostname. That is
+ * correct for LINKS, deliberately so, because a preview's links must resolve
+ * against the preview's own database. It is wrong for PRINT: the hostname is
+ * about seventy characters, and a promoter's poster and story card were
+ * rendering it with an ellipsis through the middle, which is not an address
+ * anybody can type or trust (founder ruling 2026-08-13).
+ *
+ * So this resolver deliberately skips VERCEL_URL, the per-deployment host, and
+ * prefers the stable production domain. The QR code and the caption links are
+ * unaffected and still carry the working url.
+ */
+export function printableHost(): string {
+  const candidate =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.VERCEL_PROJECT_PRODUCTION_URL ||
+    PRODUCTION_FALLBACK
+
+  try {
+    return new URL(withScheme(candidate)).host
+  } catch {
+    return new URL(PRODUCTION_FALLBACK).host
+  }
+}
+
+/**
  * Absolute application origin for server-side redirect + link construction
  * (Stripe Connect onboarding return/refresh, payout emails, share links).
  *

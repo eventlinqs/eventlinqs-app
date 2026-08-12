@@ -91,6 +91,7 @@ export async function GET(
   const pdf = await buildEventPosterPdf({
     title: context.title,
     dateLabel: context.dateLabel,
+    timeLabel: context.timeLabel,
     locality: context.placeLabel,
     priceLabel: context.priceLabel,
     shortUrl,

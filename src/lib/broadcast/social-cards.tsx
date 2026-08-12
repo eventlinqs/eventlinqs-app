@@ -5,6 +5,7 @@
 import { ImageResponse } from 'next/og'
 import { BODY_FAMILY, DISPLAY_FAMILY, loadCardFonts } from '@/lib/broadcast/card-fonts'
 import { bodyTextMeasurer } from '@/lib/broadcast/card-metrics'
+import { printableHost } from '@/lib/site-url'
 import {
   SOCIAL_CARD_FORMATS,
   SOCIAL_CARD_MAX_BYTES,
@@ -303,7 +304,8 @@ function TicketBar({
   const large = size === 'lg'
   const height = px(large ? 106 : 76)
   const padding = px(large ? 42 : 32)
-  const line = ticketBarText(input.priceLabel, input.shortUrl)
+  // printableHost, not the deployment host: a story card is posted publicly.
+  const line = ticketBarText(input.priceLabel, input.shortUrl, printableHost())
   // Measured against the real face, and guaranteed to fit: `fit.text` is what
   // gets drawn, which may be an ellipsised form of `line` on a host or a code
   // long enough that no permitted size would hold it.

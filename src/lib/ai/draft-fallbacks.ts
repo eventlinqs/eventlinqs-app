@@ -67,8 +67,30 @@ const CATEGORY_RULES: { match: RegExp; nameHints: string[] }[] = [
   { match: /\b(film|cinema|screening|movie|documentary|short film)\b/, nameHints: ['film'] },
 
   // Music and nightlife.
-  { match: /\b(club night|nightclub|dj|rave|warehouse|after ?party|late set|techno|house music)\b/, nameHints: ['night'] },
-  { match: /\b(gig|band|live music|concert|acoustic|orchestra|choir|album launch|ep launch|singer|songwriter)\b/, nameHints: ['music'] },
+  //
+  // WHY THE GENRE WORDS ARE HERE. This rule used to read `\bdj\b`, which does
+  // not match "DJs", and carried no genre vocabulary at all. So "Amapiano and
+  // Afrobeats night ... three DJs" matched NOTHING and fell through to the
+  // `other` bucket at the bottom of this function, and the card, the poster and
+  // the event page all printed OTHER in gold on the founder's own wedge: the
+  // Geelong and Melbourne dance and community scene. A DJ night filed as Other
+  // is invisible to every music surface on the platform.
+  //
+  // The dance and club genres resolve to Nightlife, the live ones to Music.
+  // Both categories exist: `nightlife` and `music` are live rows.
+  //
+  // Bare `house`, `rock` and `pop` are deliberately absent: house party, rock
+  // climbing and pop up shop are all common and none of them is a gig.
+  {
+    match:
+      /\b(club night|nightclub|djs?|dj set|b2b|rave|warehouse|after ?party|late set|techno|house music|tech house|deep house|afro ?house|amapiano|afrobeats?|garage|dnb|drum and bass|jungle|trance|hardstyle|disco|dancehall|soca|reggaeton|bashment)\b/,
+    nameHints: ['night', 'music'],
+  },
+  {
+    match:
+      /\b(gig|band|live music|concert|acoustic|orchestra|choir|album launch|ep launch|singer|songwriter|hip ?hop|rap|rnb|r&b|soul|funk|reggae|jazz|blues|country music|folk|indie|metal|punk|classical|opera|open decks)\b/,
+    nameHints: ['music'],
+  },
 
   // Gatherings.
   { match: /\b(festival|fete|carnival|street party|multi ?day)\b/, nameHints: ['festival'] },

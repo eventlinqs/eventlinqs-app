@@ -55,11 +55,26 @@ export function fitTitle(title: string, format: SocialCardFormat): TitleFit {
  * characters are the difference between the line fitting and being drawn
  * outside its own bar.
  */
-export function ticketBarText(priceLabel: string, shortUrl: string): string {
-  const url = shortUrl
-    .replace(/^https?:\/\//, '')
-    .replace(/^www\./, '')
-    .replace(/\/$/, '')
+export function ticketBarText(
+  priceLabel: string,
+  shortUrl: string,
+  /**
+   * The host to PRINT, when it differs from the host the link resolves against.
+   *
+   * A preview deployment's own hostname is 70 characters long
+   * (`eventlinqs-app-git-integration-launch-lawals-projects-...vercel.app`), and
+   * an artefact is a thing a promoter prints and posts. Printing that host is
+   * useless to a reader and it is what forced the ellipsis this bar used to
+   * emit. The QR code and the caption links still carry the REAL url, so a
+   * preview artefact still resolves; only the printed line is canonicalised.
+   */
+  displayHost?: string,
+): string {
+  const bare = shortUrl.replace(/^https?:\/\//, '').replace(/\/$/, '')
+  const swapped = displayHost
+    ? bare.replace(/^[^/]+/, displayHost.replace(/^https?:\/\//, '').replace(/\/$/, ''))
+    : bare
+  const url = swapped.replace(/^www\./, '')
   const price = priceLabel.trim()
   return price ? `${price} · ${url}` : url
 }
@@ -146,26 +161,57 @@ export function fitTicketBar(
     if (measure(text, size) <= availableWidth) return { text, fontSize: size }
   }
 
-  // Nothing fits even at the floor. Shorten from the middle of the line, which
-  // is the host, and keep both ends: the price a reader is deciding on and the
-  // code that makes the address unique. A visible ellipsis is honest; a line
-  // drawn outside its own bar is not.
+  // Nothing fits at the floor.
+  //
+  // AN ELLIPSIS IN A URL IS NEVER ACCEPTABLE OUTPUT (founder ruling
+  // 2026-08-13). This used to shorten from the middle and print something like
+  // `eventlinqs-app-g...l.app/launch/k/a8kwsh5fapxw`, which is not an address
+  // anybody can type, scan past, or trust. A promoter posting that looks like
+  // they are running a scam. The address either prints whole or the line gives
+  // up something that is NOT the address.
+  //
+  // So the order of sacrifice is: the price prefix first, because a reader can
+  // get the price from the card's own body and from the caption; then the type
+  // size, down to an absolute floor. The URL itself is never cut.
+  const urlOnly = text.includes(' · ') ? text.slice(text.indexOf(' · ') + 3) : text
+  if (urlOnly !== text) {
+    for (let size = maxFontSize; size >= minFontSize; size -= 1) {
+      if (measure(urlOnly, size) <= availableWidth) return { text: urlOnly, fontSize: size }
+    }
+  }
+
+  // Still too wide. Keep shrinking the url alone. The floor is deliberately low:
+  // a small but complete address beats a large broken one, and this path is
+  // only reachable on a host far longer than the canonical one.
+  const hardFloor = Math.max(8, Math.round(minFontSize * 0.6))
+  for (let size = minFontSize - 1; size >= hardFloor; size -= 1) {
+    if (measure(urlOnly, size) <= availableWidth) return { text: urlOnly, fontSize: size }
+  }
+
+  // ABSOLUTE last resort, and it is now genuinely unreachable for anything the
+  // platform prints, because both renderers pass printableHost() and the
+  // canonical host is seventeen characters. It survives for one reason: the
+  // older invariant that this line NEVER draws outside its own bar. A line
+  // drawn past the gold is navy on navy on the poster, which prints a silently
+  // shortened address that resolves to nothing, and that is worse than a
+  // visible ellipsis. So the order is: whole line, then drop the price, then
+  // shrink below the floor, and only then cut.
   let lo = 1
-  let hi = text.length
-  let best = '...'
+  let hi = urlOnly.length
+  let best = urlOnly.slice(0, 1)
   while (lo <= hi) {
     const keep = Math.floor((lo + hi) / 2)
     const head = Math.ceil(keep / 2)
     const tail = keep - head
-    const candidate = `${text.slice(0, head)}...${tail > 0 ? text.slice(text.length - tail) : ''}`
-    if (measure(candidate, minFontSize) <= availableWidth) {
+    const candidate = `${urlOnly.slice(0, head)}...${tail > 0 ? urlOnly.slice(urlOnly.length - tail) : ''}`
+    if (measure(candidate, hardFloor) <= availableWidth) {
       best = candidate
       lo = keep + 1
     } else {
       hi = keep - 1
     }
   }
-  return { text: best, fontSize: minFontSize }
+  return { text: best, fontSize: hardFloor }
 }
 
 /**
