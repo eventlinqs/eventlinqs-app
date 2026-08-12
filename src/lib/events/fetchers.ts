@@ -676,11 +676,18 @@ export async function fetchPublicEvents(
 
   // TAB SCOPING (origin/main) THEN THE OPS RESOLVER (this branch).
   //
-  // MERGE NOTE. Both branches changed this block. They are not alternatives:
-  // the tab decides WHERE the free text may match, and the resolver decides
-  // HOW each filter becomes a PostgREST op. Composing them keeps the header
-  // search tabs and the suburb/organiser/faith/moment filters, and dropping
-  // either side would silently un-ship a working surface.
+  // MERGE NOTE, resolution 7 of the nine in
+  // docs/roast/HANDOVER-public-composer-2026-08-09.md section 2. Both branches
+  // changed this block. They are not alternatives: the tab decides WHERE the
+  // free text may match, and the resolver decides HOW each filter becomes a
+  // PostgREST op. Composing them keeps the header search tabs and the
+  // suburb/organiser/faith/moment filters, and dropping either side would
+  // silently un-ship a working surface.
+  //
+  // main's inline category, community, city and country blocks are not repeated
+  // here because resolveEventFilterOps already emits exactly those ops, along
+  // with venue, event_type, organiser, faith and suburb. Keeping both would
+  // apply each filter twice.
   const tab = resolveSearchTab(filters.tab, filters.q)
   const effective = { ...filters, ...tab.overrides }
 
@@ -808,9 +815,11 @@ export async function fetchPublicEventsCached(
     // missing here makes two different questions share one cached answer, so
     // whichever ran first is served to both.
     //
-    // MERGE NOTE: the union of both branches' key parts. origin/main added
-    // `tab`; this branch added suburb, organiser, faith and moment. Omitting
-    // any one of them serves a filtered page under another filter's URL.
+    // MERGE NOTE, resolution 8 of the nine in
+    // docs/roast/HANDOVER-public-composer-2026-08-09.md section 2: the UNION of
+    // both key sets. main added `tab`; this branch added suburb, organiser,
+    // faith and moment. Omitting any one of them serves a filtered page under
+    // another filter's URL.
     `suburb:${filters.suburb ?? ''}`,
     `etype:${filters.event_type ?? ''}`,
     `venue:${filters.venue ?? ''}`,
@@ -873,17 +882,18 @@ async function runFetchPublicEventsAdmin(
 
   // TAB SCOPING (origin/main) THEN THE OPS RESOLVER (this branch).
   //
-  // MERGE NOTE. Both branches changed this block. They are not alternatives:
-  // the tab decides WHERE the free text may match, and the resolver decides
-  // HOW each filter becomes a PostgREST op. Composing them keeps the header
-  // search tabs and the suburb/organiser/faith/moment filters, and dropping
-  // either side would silently un-ship a working surface.
+  // MERGE NOTE, resolution 9 of the nine in
+  // docs/roast/HANDOVER-public-composer-2026-08-09.md section 2: the same
+  // composition as the public path above, on the cached admin path. The two
+  // paths must stay identical in what they filter, or the cached page and the
+  // live page answer the same URL differently.
   const tab = resolveSearchTab(filters.tab, filters.q)
   const effective = { ...filters, ...tab.overrides }
 
   // On the Organisers tab the query names an ORGANISER, so a title match would
-  // be a wrong answer that looks like a result. The free text is consumed here
-  // and withheld from the resolver so it cannot also run as a text search.
+  // be a wrong answer that looks like a result. The free text is consumed by
+  // the organiser lookup and withheld from the resolver, so it cannot also run
+  // as a title match. See the public path.
   if (effective.q && tab.keepFreeText && tab.organisersOnly) {
     const orgIds = await resolveOrganisationIdsByToken(supabase, effective.q)
     const ids = [...new Set([...orgIds.values()].flat())]

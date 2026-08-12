@@ -36,6 +36,16 @@ export type EventsSearchParams = {
   sort?: string
   view?: string
   page?: string
+  /*
+   * MERGE NOTE, resolution 3 of the nine in
+   * docs/roast/HANDOVER-public-composer-2026-08-09.md section 2. main listed
+   * city, date, suburb, event_type, venue and tab here. Every one of those is
+   * already below, and this side also parses free=1, price=free, focus and
+   * error, so this is a strict superset and main's list adds nothing. main's
+   * reason for adding them is worth keeping though: each appears in an href a
+   * visitor can click, and an unparsed one lands on the unfiltered national
+   * list while looking like a filter.
+   */
   /** City slug, from every city and community-by-city "View all". */
   city?: string
   /** Preset alias: today, tonight, tomorrow, weekend, week, 7d, month, free. */
@@ -87,6 +97,13 @@ const TABS = new Set(['events', 'cities', 'communities', 'organisers'])
  * chips emit today, weekend, 7d and `week`; `week` is the only one that is not
  * already a preset value, so it is mapped rather than dropped.
  */
+// MERGE NOTE, resolution 6 of the nine in
+// docs/roast/HANDOVER-public-composer-2026-08-09.md section 2. main's LOCAL
+// copy of DATE_TO_PRESET stood here and is removed. It is imported from
+// ./url-filters at the top of this file, which is its canonical home after this
+// line of work's refactor, and two definitions of one alias table is how the
+// city chips and the browse view start disagreeing about what `week` means.
+// Auto-merge kept both, which would not have compiled.
 
 /**
  * Category slugs that were RENAMED in the database and must keep resolving from
@@ -195,6 +212,12 @@ function isTruthyFlag(value: string | undefined): boolean {
 export function parseEventsSearchParams(
   raw: EventsSearchParams,
 ): ParsedEventsParams {
+  // MERGE NOTE, resolution 4 of the nine in
+  // docs/roast/HANDOVER-public-composer-2026-08-09.md section 2. main resolved
+  // preset-versus-date the same way and stopped there. This is that behaviour
+  // plus the two other spellings of the free-events intent, and it trims and
+  // lowercases the alias before the lookup, so it is a strict superset.
+  //
   // `preset` is the canonical parameter. `date` is its alias (the homepage,
   // the header overlay and both city landings emit `date`), and `free=1` and
   // `price=free` are two more spellings of the same free-events intent. An
@@ -242,6 +265,22 @@ export function parseEventsSearchParams(
     to: isIsoish(raw.to) ?? moment?.to,
     distance_km: parseNonNegativeFloat(raw.distance_km),
     sort,
+    // MERGE NOTE, resolution 5 of the nine in
+    // docs/roast/HANDOVER-public-composer-2026-08-09.md section 2, and it is
+    // the SUBURB DECISION. Founder ruling, 9 August 2026, restated 12 August:
+    // keep the precise behaviour.
+    //
+    // main wrote `city: raw.suburb?.trim() || raw.city?.trim()`, collapsing
+    // suburb INTO city so ?city=sydney&suburb=newtown became an ilike on
+    // venue_city for "Newtown". Most Sydney events store venue_city as
+    // "Sydney", so that renders as a working filter and returns almost nothing.
+    // A control that looks like it works and returns nothing is worse than no
+    // control. So suburb stays its OWN filter, resolved through resolveSuburb
+    // to a district and then to the ids of the events inside it.
+    //
+    // Everything of main's that was not the collapse is kept: its `tab` line is
+    // below verbatim. Its venue and event_type lines are dropped only because
+    // the versions here already do the same job with validation.
     city: raw.city?.trim() || undefined,
     suburb: raw.suburb?.trim() || undefined,
     // An unknown event_type or faith is dropped rather than passed through:
@@ -252,10 +291,10 @@ export function parseEventsSearchParams(
     organiser: raw.organiser?.trim() || undefined,
     faith: faith && isKnownFaith(faith) ? faith : undefined,
     moment: moment ? raw.moment?.trim() : undefined,
-    // MERGE NOTE: origin/main collapsed suburb into city as a text match. This
-    // branch keeps suburb as its own filter, resolved to a district centroid
-    // and applied as a radius, which is what /city/[slug]/[suburb] needs. The
-    // tab scope below is main's and is additive, so both survive.
+    // MERGE NOTE: main collapsed suburb into city as a text match. This branch
+    // keeps suburb as its own filter, resolved to a district centroid and
+    // applied as a radius, which is what /city/[slug]/[suburb] needs. The tab
+    // scope below is main's and is additive, so both survive.
     tab: raw.tab && TABS.has(raw.tab) ? (raw.tab as FetchPublicEventsFilters['tab']) : undefined,
   }
 
@@ -310,6 +349,9 @@ export function hasActiveFilters(filters: FetchPublicEventsFilters): boolean {
       filters.venue ||
       filters.organiser ||
       filters.faith ||
+      // main listed city, venue, event_type and distance_km here. All four are
+      // already in this predicate, alongside suburb, organiser, faith and
+      // moment, so this side is a strict superset.
       filters.moment,
   )
 }

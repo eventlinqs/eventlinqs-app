@@ -102,12 +102,14 @@ export default async function EventsPage({ searchParams }: Props) {
         {/* Checkout bounced this buyer here. Tell them why, before anything
             else, or their held seats simply disappeared.
 
-            MERGE NOTE: origin/main solved the same defect with
-            ReservationNotice, which covers reservation_not_found only.
-            BrowseNotice is kept because it is driven by the parsed search
-            params and covers reservation_expired as well, which is the more
-            common bounce. Two banners for one event would be worse than
-            either. */}
+            MERGE NOTE, resolution 2 of the nine in
+            docs/roast/HANDOVER-public-composer-2026-08-09.md section 2. main
+            solved the same defect with ReservationNotice, which handles
+            reservation_not_found alone. BrowseNotice is kept because it is
+            driven by the parsed search params and also covers
+            reservation_expired, which is the more common bounce. Two banners
+            for one event would be worse than either, so main's now-unused
+            import is removed below rather than left dangling. */}
         {notice ? <BrowseNotice notice={notice} /> : null}
         <EventsHeroStrip
           params={raw}

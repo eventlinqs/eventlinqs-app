@@ -81,9 +81,17 @@ export type FetchPublicEventsFilters = {
    * One of the eight city-page format tiles (concert, dj-set, comedy, theatre,
    * workshop, community, food-drink, sport). There is no event_type column, so
    * each resolves to real tags plus the category carrying the same meaning.
+   *
+   * main described the same field as CITY_EVENT_TYPES resolving through
+   * EVENT_TYPE_FILTER. Same field, same type, same intent, so one definition
+   * is kept rather than two descriptions of one thing.
    */
   event_type?: string
-  /** Venue handle or venue name; both resolve to a venue_name match. */
+  /**
+   * Venue handle or venue name; both resolve to a venue_name match. Emitted by
+   * the "see everything at this venue" link on a venue profile, which
+   * previously landed on the unfiltered national list.
+   */
   venue?: string
   /** Organisation slug, from the organiser profile "View all". */
   organiser?: string
@@ -95,9 +103,11 @@ export type FetchPublicEventsFilters = {
    * Which entity the header search was scoped to. Narrows where the query is
    * allowed to match; without it all four search tabs behaved identically.
    *
-   * MERGE NOTE: added by origin/main's search-scope work while this branch
-   * added suburb, organiser, faith and moment. Both sides are kept, because
-   * dropping either loses a shipped filter.
+   * MERGE NOTE, resolution 1 of the nine in
+   * docs/roast/HANDOVER-public-composer-2026-08-09.md section 2: UNION. main
+   * added `tab` through its search-scope work, this line of work added suburb,
+   * organiser, faith and moment. Dropping either side loses a shipped filter,
+   * so both sides are here.
    */
   tab?: 'events' | 'cities' | 'communities' | 'organisers'
 }
