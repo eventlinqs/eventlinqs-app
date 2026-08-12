@@ -23,6 +23,10 @@ export type EnrichedTier = TicketTier & {
 interface Props {
   eventId: string
   eventCreatedAt: string
+  // The EVENT's zone, for the "Sale opens" line in the selector. Without it
+  // that line formats in the runtime zone, so a sale opening at 6pm Perth
+  // reads as 8pm to a buyer in Sydney and they come back after it started.
+  eventTimezone: string | null
   allTiers: EnrichedTier[]
   addons: EventAddon[]
   isTicketingSuspended: boolean
@@ -88,6 +92,7 @@ export function TicketPanelClient(props: Props) {
         addons={[]}
         isTicketingSuspended={props.isTicketingSuspended}
         currency={props.defaultCurrency}
+        eventTimezone={props.eventTimezone}
         saleBlocked
       />
     )
@@ -117,6 +122,7 @@ export function TicketPanelClient(props: Props) {
         addons={props.addons.filter(a => a.is_active)}
         isTicketingSuspended={props.isTicketingSuspended}
         currency={visibleTiers[0]?.currency ?? props.defaultCurrency}
+        eventTimezone={props.eventTimezone}
         waitlistEnabled={props.waitlistEnabled}
         squadBookingEnabled={props.squadBookingEnabled}
         feeRates={props.feeRates}

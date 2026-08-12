@@ -9,7 +9,14 @@
 export const MAX_GALLERY_IMAGES = 9
 export const MAX_TOTAL_IMAGES = 10
 
-/** Maximum upload size per image. Matches the long-standing client cap. */
+/**
+ * Maximum upload size per image. 10MB, which is exactly where both benchmarks
+ * sit, so we are neither stricter nor looser than the market:
+ *   - Humanitix help, "add or edit an event banner image": "Max size 10MB".
+ *   - Eventbrite, own blog, "Easily upload your main event image": "As of July
+ *     2015, we've increased the size limit to 10MB, so go ahead and add that
+ *     high-resolution photo".
+ */
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024 // 10MB
 
 /**
@@ -52,6 +59,27 @@ export const IMAGE_DOWNSCALE_LONG_EDGE = 3000
  * would exhaust the function.
  */
 export const MAX_IMAGE_PIXELS = 100_000_000
+
+/*
+ * MERGE NOTE, fix/production-sweep meeting this line. Both branches fixed the
+ * SAME defect independently: the 4000px hard reject that turned away an
+ * ordinary 3625 x 4961 camera photo. Both replaced the reject with a downscale,
+ * so neither fix is lost. Only the NUMBERS differed. production-sweep chose a
+ * 4000px stored edge with an 80 megapixel bomb guard; this line chose 3000 and
+ * 100 megapixels under the founder ruling of 9 August 2026 recorded above,
+ * which carries the A4 print arithmetic. The ruling stands, so the two
+ * constants above are the ones kept, and production-sweep's two constants are
+ * dropped because nothing outside this file imported them.
+ *
+ * Its EVIDENCE is not lost, because it is the same evidence reached twice:
+ * neither Eventbrite nor Humanitix publishes a pixel ceiling, both cap by file
+ * size and process server-side, and Eventbrite crops rather than refusing.
+ *
+ * Its two BEHAVIOURS are kept in image-pipeline.ts, because they are additive
+ * rather than alternative: limitInputPixels bounds the decode inside sharp
+ * itself, and the refusal names the megapixels and the dimensions instead of
+ * the generic not-an-image line.
+ */
 
 /**
  * Minimum width for a COVER image. The cover is the hero + card + LCP raster, so

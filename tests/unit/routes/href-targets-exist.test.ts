@@ -143,6 +143,10 @@ function collectHrefs(): { file: string; href: string }[] {
         // targets are /login and /login?email=... Truncating at the hole checks
         // what can actually be checked, and a literal typo like href="/loginx"
         // is still caught because no template is involved.
+        //
+        // Same fix as on feat/launch-kit-artefacts, which hit this first when
+        // main's collector met that branch's signup form. It arrives here for
+        // the same reason: this branch now carries that form.
         const hole = raw.indexOf('${')
         if (hole !== -1) raw = raw.slice(0, hole)
         // Drop a trailing partial segment left by a query or hash split.

@@ -22,6 +22,7 @@ import { OrganiserProfileHero } from '@/components/features/organisers/organiser
 import { EventVideo } from '@/components/features/events/event-video'
 import { StructuredRequestButton } from '@/components/marketplace/structured-request-button'
 import { getCityPhoto } from '@/lib/images/city-photo'
+import { formatEventMonthYear } from '@/lib/dates/event-time'
 
 export const revalidate = 300
 

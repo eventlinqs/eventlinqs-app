@@ -21,7 +21,8 @@ import {
 //     extension or the client-declared MIME)
 //   - reject SVG and any non-raster / active content (XSS)
 //   - DOWNSCALE oversize photos to IMAGE_DOWNSCALE_LONG_EDGE, never reject them;
-//     refuse only a decompression bomb (MAX_IMAGE_PIXELS)
+//     refuse only a decompression bomb (MAX_IMAGE_PIXELS). Ordinary phone and
+//     camera output is accepted and resized, never turned away.
 //   - HEIC/HEIF (iPhone) converted to JPEG on ingest
 //   - strip EXIF + all metadata (privacy: removes GPS/device; also shrinks files)
 //   - generate a blur placeholder (blurDataURL) per image
@@ -127,12 +128,24 @@ export async function processEventImage(
   if (width < 1 || height < 1) {
     return { ok: false, error: REJECT_NOT_IMAGE }
   }
-  // A decompression bomb is refused; an ordinary big photo is DOWNSCALED below,
-  // never refused. See IMAGE_DOWNSCALE_LONG_EDGE for why the old 4000px reject
-  // was the wrong verb.
+  // A big photo is DOWNSCALED below, never refused. The only pixel count that
+  // still refuses is the decompression-bomb guard, which no camera reaches. See
+  // IMAGE_DOWNSCALE_LONG_EDGE for why the old 4000px reject was the wrong verb.
+  //
+  // The message is fix/production-sweep's: it names the megapixels and the
+  // dimensions, because the generic not-an-image line told an organiser nothing
+  // about what to do next.
   if (width * height > MAX_IMAGE_PIXELS) {
-    return { ok: false, error: REJECT_NOT_IMAGE }
+    const mp = Math.round((width * height) / 1_000_000)
+    return {
+      ok: false,
+      error: `That image is ${mp} megapixels (${width} x ${height}), which is larger than we can process. Export it at a smaller size, or save it as a JPEG from your photo app, and upload it again.`,
+    }
   }
+  // Checked against the SOURCE width on purpose. Downscaling only ever shrinks
+  // the long edge, so for any normal cover aspect the stored width stays above
+  // this floor, and checking the source keeps the message about the photo the
+  // organiser actually chose.
   if (opts.role === 'cover' && width < MIN_COVER_WIDTH) {
     return {
       ok: false,
@@ -143,21 +156,32 @@ export async function processEventImage(
   // .rotate() bakes EXIF orientation into pixels; sharp drops ALL metadata by
   // default (no .withMetadata()), so EXIF/GPS never reach storage.
   //
-  // MERGE NOTE, feat/public-composer meeting fix/security-hardening. Both
-  // branches rewrote this block and they are ORTHOGONAL, so both survive:
+  // MERGE NOTE. THREE branches rewrote this block and all three survive here,
+  // because they answer three different questions:
   //
   //   .resize(fit: 'inside', withoutEnlargement: true)  decides HOW BIG. The
   //     downscale that replaced the old hard reject: an oversize photo comes
   //     down to the long edge, a small one is left exactly as it is.
   //   decideOutputEncoding(format, meta.compression)    decides WHICH FORMAT.
-  //     Replaces the hand-rolled toJpeg boolean and carries contentType/ext.
+  //     Replaces the hand-rolled toJpeg boolean, which became dead code when
+  //     sharp 0.35 began reporting an AVIF upload as heif.
+  //   limitInputPixels                                  decides WHAT DECODES.
+  //     From fix/production-sweep. It enforces the bomb guard inside sharp
+  //     itself, so the check above is the friendly message and this is the one
+  //     that cannot be talked past. sharp's own default is 268MP, too generous
+  //     for a serverless function.
   //
-  // Taking either side alone drops the other silently: without the resize an
-  // oversize upload is stored at full size, and without the encoder the
-  // decompression-bomb compression signal never reaches the format choice.
+  // Taking any one alone drops the others silently: without the resize an
+  // oversize upload is stored at full size, without the encoder every AVIF
+  // cover is transcoded to JPEG, and without limitInputPixels the decode is
+  // bounded only by a check that reads the declared dimensions.
   const encoding = decideOutputEncoding(format, meta.compression)
-  const pipeline = sharp(inputBuffer)
+  const pipeline = sharp(inputBuffer, { limitInputPixels: MAX_IMAGE_PIXELS })
     .rotate()
+    // `fit: 'inside'` preserves aspect and bounds the LONG edge;
+    // `withoutEnlargement` means a small image is passed through untouched
+    // rather than blown up. This is what turns the founder's 3625 x 4961 from
+    // a rejection into a downscaled cover.
     .resize({
       width: IMAGE_DOWNSCALE_LONG_EDGE,
       height: IMAGE_DOWNSCALE_LONG_EDGE,
@@ -167,6 +191,10 @@ export async function processEventImage(
 
   // resolveWithObject so the dimensions recorded are read back from sharp, and
   // therefore postdate BOTH the resize and the rotate.
+  //
+  // fix/production-sweep's branch here still tested `format === 'avif'`, which
+  // sharp 0.35 made dead code. It is NOT carried across: keeping it would
+  // re-break the transcode defect that decideOutputEncoding exists to fix.
   let out: { data: Buffer; info: sharp.OutputInfo }
   if (encoding.kind === 'webp') {
     out = await pipeline.webp({ quality: 82 }).toBuffer({ resolveWithObject: true })
@@ -189,6 +217,10 @@ export async function processEventImage(
       buffer: out.data,
       contentType,
       ext,
+      // The dimensions we actually STORED, read back off the encoder rather
+      // than the source metadata. Returning the source size here would record a
+      // 4961px height for a downscaled file and every consumer of these numbers
+      // (aspect ratios, srcset hints, the media components) would be wrong.
       width: out.info.width,
       height: out.info.height,
       blurDataURL,

@@ -37,11 +37,12 @@ interface Props {
 const CARD_BASE = 'group relative block overflow-hidden rounded-2xl bg-ink-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2'
 
 /**
- * The rail badge, in the EVENT's zone.
+ * The rail badge, in the EVENT's zone, not the runtime's.
  *
- * This is the highest-traffic surface on the platform, and it formatted in the
- * RUNTIME zone: UTC on the server, the reader's in the browser. A Perth event
- * at 9pm therefore showed the NEXT DAY to a reader in Sydney, on the homepage,
+ * This is the highest-traffic surface on the platform, and the bare
+ * toLocaleDateString this replaces formatted in the RUNTIME zone: UTC on the
+ * server, the reader's in the browser. A Perth event at 9pm therefore showed
+ * the NEXT DAY to a reader in Sydney, on the homepage's most prominent rail,
  * before anybody had clicked anything.
  */
 function formatDateBadge(iso: string, timezone: string | null | undefined): string {

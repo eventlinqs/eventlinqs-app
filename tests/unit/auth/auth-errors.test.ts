@@ -1,8 +1,11 @@
 import { describe, expect, test } from 'vitest'
 import {
+  ALL_FAILURE_CLASSES,
   authErrorMessage,
   authMessage,
   classifyAuthError,
+  classifySignupError,
+  rateLimitedMessage,
   readAuthErrorFromUrl,
   MAGIC_LINK_GENERIC_RESPONSE,
   OAUTH_ACCOUNT_HINT,
@@ -17,20 +20,10 @@ import {
  * whether an account exists.
  */
 
-const ALL_CLASSES: AuthFailureClass[] = [
-  'provider_disabled',
-  'provider_declined',
-  'link_expired',
-  'invalid_credentials',
-  'email_not_confirmed',
-  'mail_transport_failed',
-  'rate_limited',
-  'weak_password',
-  'same_password',
-  'session_missing',
-  'network',
-  'unknown',
-]
+// Derived from the MESSAGES table, never hand-listed. A literal array here let
+// a newly added class skip every rule below while the suite stayed green; see
+// ALL_FAILURE_CLASSES in auth-errors.ts.
+const ALL_CLASSES: AuthFailureClass[] = ALL_FAILURE_CLASSES
 
 describe('classifyAuthError', () => {
   test('the live production JSON body classifies as a disabled provider', () => {
@@ -214,5 +207,195 @@ describe('authErrorMessage end to end', () => {
     // The provider's own words never survive.
     expect(message).not.toContain('Unsupported provider')
     expect(message).not.toContain('provider is not enabled')
+  })
+})
+
+/**
+ * The 2026-08-09 launch blocker: the founder could not create an organiser
+ * account and was shown the `unknown` sentence, which names no cause and
+ * offers no next step.
+ *
+ * Root cause, reproduced against the TEST project the same day:
+ * admin.generateLink({type:'signup'}) on an already-confirmed address answers
+ *
+ *   status 422   code 'email_exists'
+ *   message "A user with this email address has already been registered"
+ *
+ * and the route substring matched 'already registered', which that string does
+ * NOT contain, because of the word "been". Every duplicate signup fell through
+ * to `unknown`.
+ *
+ * These lock the fix in from both directions: the exact live payload must
+ * classify, and no case may collapse back into `unknown`.
+ */
+describe('signup failure classes (the 2026-08-09 blocker)', () => {
+  // The verbatim payload observed from GoTrue. If this ever stops classifying,
+  // the founder's bug is back.
+  const LIVE_DUPLICATE = {
+    errorCode: 'email_exists',
+    status: 422,
+    message: 'A user with this email address has already been registered',
+  }
+
+  /*
+   * RE-POINTED, founder ruling 2026-08-12 (keep feat/launch-kit-artefacts'
+   * classifier). These cases moved from classifyAuthError to
+   * classifySignupError, because that is the function the signup route now
+   * calls. Registration is deliberately NOT routed through the general
+   * classifier any more: it has its own code map, it cannot return `unknown`
+   * (the return type excludes it), and an unrecognised 4xx lands on
+   * signup_rejected rather than the generic sentence.
+   *
+   * The defect these pin is unchanged and so is the payload. Only the entry
+   * point moved.
+   */
+  const asSignup = (p: typeof LIVE_DUPLICATE) =>
+    classifySignupError({ code: p.errorCode, status: p.status, message: p.message })
+
+  test('the exact live duplicate payload classifies as email_exists', () => {
+    expect(asSignup(LIVE_DUPLICATE)).toBe('email_exists')
+  })
+
+  test('the live duplicate never renders the generic sentence', () => {
+    expect(authMessage(asSignup(LIVE_DUPLICATE))).not.toBe(authMessage('unknown'))
+  })
+
+  test('the duplicate message names both ways out: sign in and reset', () => {
+    const m = authMessage('email_exists')
+    expect(m.toLowerCase()).toContain('sign in')
+    expect(m.toLowerCase()).toContain('reset your password')
+  })
+
+  test('the old substring test is exactly what failed, and is no longer relied on', () => {
+    // Documents the defect so nobody reintroduces the cheap check. The three
+    // substrings the route used to test for are all absent from the real
+    // string; only the word "been" separates them.
+    const real = LIVE_DUPLICATE.message.toLowerCase()
+    expect(real).not.toContain('already registered')
+    expect(real).not.toContain('already exists')
+    expect(real).not.toContain('user already')
+    // And yet it still classifies, because we read the code.
+    expect(asSignup(LIVE_DUPLICATE)).toBe('email_exists')
+  })
+
+  /*
+   * THE ONE BEHAVIOURAL CONSEQUENCE OF THE RULING, asserted rather than left to
+   * be discovered. This branch's classifier ALSO caught a codeless duplicate by
+   * matching the message prose. The kept classifier does not, deliberately:
+   * "Prose is not an API" is the lesson it was built on, after prose matching
+   * caused this defect and, on 2026-08-03, an enumeration oracle in
+   * dispatch-auth-link.ts.
+   *
+   * So a duplicate arriving with NO code is now signup_rejected, not
+   * email_exists. What the person reads changes from "you already have an
+   * account" to "We could not create an account with those details. Check your
+   * email address and password, or sign in if you already have an account."
+   * Less specific, still names a cause and still offers both ways out, and it
+   * is never the generic sentence. GoTrue sends the code on this path (verified
+   * against the live payload above), so this is the fallback, not the path.
+   */
+  test('a codeless duplicate lands on signup_rejected, never the generic sentence', () => {
+    const codeless = classifySignupError({ code: null, status: 422, message: LIVE_DUPLICATE.message })
+    expect(codeless).toBe('signup_rejected')
+    expect(authMessage(codeless)).not.toBe(authMessage('unknown'))
+    expect(authMessage(codeless).toLowerCase()).toContain('sign in')
+  })
+
+  test('user_already_exists is the same class', () => {
+    expect(classifySignupError({ code: 'user_already_exists' })).toBe('email_exists')
+  })
+
+  test('an address GoTrue refuses is told to the person, not swallowed', () => {
+    // The class is named invalid_email, not email_invalid: the kept classifier
+    // (founder ruling 2026-08-12) is feat/launch-kit-artefacts', which spells it
+    // that way. Same code in, same sentence out, so this is a rename and not a
+    // behaviour change.
+    expect(classifySignupError({ code: 'email_address_invalid' })).toBe('invalid_email')
+    expect(authMessage('invalid_email')).not.toBe(authMessage('unknown'))
+  })
+
+  test('every signup failure a person can reach has its own sentence', () => {
+    // No two of these may collapse into the same words, and none may be the
+    // generic one. This is the regression the brief asks for: one test per
+    // case so none falls back into "Something went wrong on our side".
+    const reachable: AuthFailureClass[] = [
+      'email_exists',
+      'invalid_email',
+      'weak_password',
+      'rate_limited',
+      'mail_transport_failed',
+      'network',
+    ]
+    const seen = new Map<string, AuthFailureClass>()
+    for (const c of reachable) {
+      const m = authMessage(c)
+      expect(m, `${c} fell back to the generic sentence`).not.toBe(authMessage('unknown'))
+      expect(seen.has(m), `${c} duplicates ${seen.get(m)}`).toBe(false)
+      seen.set(m, c)
+    }
+  })
+
+  /*
+   * RE-POINTED, founder ruling 2026-08-12. This asserted a signup-specific
+   * phrase, "no account was created", inside authMessage('unknown'), which is
+   * the SHARED fallback for every auth surface. On a sign-in or recovery
+   * failure that sentence would be telling the person about an account they
+   * were not creating, so the kept classifier keeps `unknown` neutral.
+   *
+   * The property the test was defending is better served where it belongs: on
+   * signup, the fallback is signup_rejected, not unknown, and THAT sentence
+   * both names what happened and offers the way out. Asserted here instead.
+   */
+  test('the signup fallback names a cause and offers a way out, and is not the generic one', () => {
+    const m = authMessage('signup_rejected').toLowerCase()
+    expect(m).toContain('could not create an account')
+    expect(m).toContain('sign in')
+    expect(m).not.toBe(authMessage('unknown').toLowerCase())
+  })
+
+  test('the shared generic sentence stays neutral, because every surface uses it', () => {
+    const m = authMessage('unknown').toLowerCase()
+    expect(m).toContain('contact us')
+    // No signup-specific wording on a class that a login failure also renders.
+    expect(m).not.toContain('account was created')
+  })
+})
+
+describe('rateLimitedMessage', () => {
+  // Eventbrite's troubleshooting guide is the bar: "Wait six minutes to try
+  // again, or reset your password." A named wait, not "a few minutes".
+  /*
+   * RE-POINTED, founder ruling 2026-08-12. This branch named the exact seconds;
+   * the kept implementation rounds a sub-minute wait up to "about a minute",
+   * deliberately, so a person is never asked to do arithmetic on a number like
+   * 437. Both name a real wait taken from Retry-After rather than guessing "a
+   * few minutes", which is the property this test exists for, so the assertion
+   * follows the kept behaviour rather than the kept behaviour following it.
+   */
+  test('names a real wait under a minute rather than guessing', () => {
+    const m = rateLimitedMessage(45)
+    expect(m).toContain('about a minute')
+    expect(m).not.toContain('a few minutes')
+    expect(m).not.toBe(authMessage('rate_limited'))
+  })
+
+  test('names the wait in minutes above a minute, singular and plural', () => {
+    expect(rateLimitedMessage(60)).toContain('1 minute')
+    expect(rateLimitedMessage(60)).not.toContain('1 minutes')
+    expect(rateLimitedMessage(600)).toContain('10 minutes')
+  })
+
+  test('falls back to the table sentence when the server gave no wait', () => {
+    expect(rateLimitedMessage(undefined)).toBe(authMessage('rate_limited'))
+    expect(rateLimitedMessage(0)).toBe(authMessage('rate_limited'))
+    expect(rateLimitedMessage(null)).toBe(authMessage('rate_limited'))
+  })
+
+  test('never renders the raw class token a limiter body carries', () => {
+    // The signup form used to read `payload.error`, which the 429 body sets to
+    // the literal string 'rate_limited', and printed it into the red box.
+    for (const s of [undefined, 0, 30, 600]) {
+      expect(rateLimitedMessage(s)).not.toContain('rate_limited')
+    }
   })
 })

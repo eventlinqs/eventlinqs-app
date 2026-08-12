@@ -67,6 +67,9 @@ export async function GET(request: Request) {
   const { data, error } = await supabase
     .from('events')
     .select(
+      // `timezone` travels with start_date so the modal formats in the EVENT's
+      // zone rather than the reader's, which showed the wrong day for an event
+      // in another state.
       'id, slug, title, cover_image_url, start_date, timezone, venue_city, category:event_categories(name, slug)',
     )
     .eq('status', 'published')

@@ -20,11 +20,11 @@ export interface BentoEvent extends EventMediaInput {
   slug: string
   start_date: string
   /**
-   * The EVENT's IANA zone. Every date rendered from this shape is formatted
-   * in it, so a rail card near midnight shows the event's day rather than the
-   * reader's. Nullable because a legacy row may carry none; resolveZone then
-   * falls back to the platform zone, which is at least the same on the server
-   * and in every browser.
+   * The EVENT's IANA zone. Any card printing a date formats in it, never the
+   * runtime's, so a rail card near midnight shows the event's day rather than
+   * the reader's. Nullable because a legacy row may carry none; resolveZone
+   * then falls back to the platform zone, which is at least the same on the
+   * server and in every browser.
    */
   timezone?: string | null
   venue_name?: string | null

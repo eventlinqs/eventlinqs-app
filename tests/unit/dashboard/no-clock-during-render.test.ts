@@ -84,15 +84,23 @@ function clockReads(src: string): string[] {
 }
 
 /**
- * The ONLY reason a file is skipped, as a named function so the coverage
- * assertion can test it directly.
+ * The ONE deliberate exemption, as a named function so it can be asserted
+ * directly rather than by proxy.
  *
- * This exists because the first version of the coverage assertion checked the
- * WALK and not the SWEEP. Restoring the `use client` skip inside the loop left
- * every coverage test green, which was the same blindness the assertion was
- * written to prevent, one level down. Drilled and confirmed before this
+ * MERGE NOTE. fix/production-sweep had the identical rule INLINE in the sweep,
+ * as `if (/useHydrated/.test(src)) continue`. feat/public-composer extracted it
+ * and added the assertions below, for a reason recorded as entry 3 of
+ * docs/roast/FALSE-POSITIVE-CHECKLIST.md: the first coverage assertion checked
+ * the WALK and not the SWEEP, so restoring a `use client` skip INSIDE the loop
+ * left every coverage test green. That was the same blindness the assertion was
+ * written to prevent, one level down. Drilled and confirmed before that
  * refactor: with `use client` back in here, the sweep silently stopped
- * examining most of the platform and nothing went red.
+ * examining most of the platform and nothing went red. An exemption that is not
+ * a named function cannot be tested, only described.
+ *
+ * Behaviour is unchanged: same regex, same decision, same place in the loop.
+ * The two branches fixed this guard in complementary ways and both fixes are
+ * kept: the broader .ts AND .tsx walk from one, and isExempt from the other.
  *
  * A file gating its clock read on useHydrated has already agreed with the
  * server on the first render, which is the whole point of that hook. Nothing
@@ -113,7 +121,20 @@ function walk(dir: string, out: string[] = []): string[] {
   for (const e of entries) {
     const full = path.join(dir, e)
     if (statSync(full).isDirectory()) walk(full, out)
-    else if (/\.tsx$/.test(e)) out.push(full)
+    // MERGE NOTE. main still walks only .tsx here. Taking main's line would
+    // re-open the hole below, which is the third time this guard has been
+    // narrowed in a way that made it report HEALTHIER. Narrowing a guard is not
+    // a smaller scope, it is a blind spot, so the broader walk is kept.
+    //
+    // .ts AND .tsx. THE THIRD HOLE, found 2026-08-09. This walked only .tsx,
+    // so 345 of the 788 TypeScript files under src were never scanned at all,
+    // and the guard reported clean over them. That is not a narrower scope, it
+    // is a blind spot: the unscanned half included the ORDER CONFIRMATION
+    // email, the city digest email, the poster route and the attendee export,
+    // each formatting an event's start_date with no timeZone. Those render on
+    // the Vercel server in UTC, so a 9pm Perth event is emailed to the buyer
+    // as the next day. No hydration mismatch there, and the same wrong answer.
+    else if (/\.tsx?$/.test(e)) out.push(full)
   }
   return out
 }
@@ -145,8 +166,23 @@ const files = SCAN_DIRS.flatMap((d) => walk(path.join(ROOT, d)))
  *
  * The contract for anyone adding one back: key is the repo-relative path, value
  * is what a USER experiences until it is fixed, not what the code does.
+ *
+ * MERGE NOTE. main still lists all four entries here. They are NOT re-added,
+ * and this is not a preference: every one of them was fixed on these lines of
+ * work, and the staleness test below fails an entry that is listed but already
+ * fixed. Re-adding main's list would go red naming the files, and if that test
+ * were also lost it would quietly re-declare four working surfaces as broken.
  */
 const KNOWN_UNFIXED = new Map<string, string>([
+  // EMPTY, and it stays empty. All four entries were cleared on 2026-08-09 by
+  // threading events.timezone through the prop chain each one needed:
+  //   ticket-selector      page -> TicketPanelClient -> TicketSelector
+  //   trending-events-bento  EVENT_SELECT -> RawRow -> toBentoEvent -> BentoEvent
+  //   surprise-me-modal      /api/home/surprise select -> Suggestion payload
+  //   artists/[slug]         fetchArtistCredits select -> ArtistCredit
+  // A new entry here is a debt, not a licence: it must carry what a user
+  // experiences until it is fixed, and the staleness test below fails the
+  // moment an entry is already fixed or deleted.
 ])
 
 describe('server-rendered dashboard components do not read a clock', () => {
@@ -165,7 +201,8 @@ describe('server-rendered dashboard components do not read a clock', () => {
       //
       // The only real exemption is the deliberate pattern: a file that gates
       // its clock read on useHydrated has already agreed with the server on
-      // the first render, which is the whole point of that hook.
+      // the first render, which is the whole point of that hook. Named rather
+      // than inline so the coverage tests can assert the DECISION.
       if (isExempt(src)) continue
       const rel = path.relative(ROOT, f).replace(/\\/g, '/')
       if (KNOWN_UNFIXED.has(rel)) continue
@@ -317,5 +354,43 @@ describe('server-rendered dashboard components do not read a clock', () => {
     expect(src).toContain('useHydrated')
     // The clock must sit behind the hydration check, never beside it.
     expect(src).toMatch(/hydrated \? timeOfDay\(new Date\(\)/)
+  })
+
+  /*
+   * THE EXEMPTION IS ASSERTED, NOT DESCRIBED. Brought over from
+   * feat/public-composer with isExempt, because an exemption nothing tests can
+   * widen to swallow the platform and every other test here stays green while
+   * it happens. That is precisely how this guard was blinded before: see
+   * docs/roast/FALSE-POSITIVE-CHECKLIST.md entry 3.
+   */
+  describe('the exemption cannot quietly widen', () => {
+    it('does not exempt a file merely for being a client component', () => {
+      const clientWithDefect = [
+        `'use client'`,
+        '',
+        `const when = new Date(iso).toLocaleDateString('en-AU', { weekday: 'short' })`,
+      ].join('\n')
+      expect(isExempt(clientWithDefect)).toBe(false)
+      expect(clockReads(clientWithDefect)).not.toEqual([])
+    })
+
+    it('exempts only the deliberate useHydrated pattern', () => {
+      expect(isExempt('const hydrated = useHydrated()')).toBe(true)
+      expect(isExempt('const x = 1')).toBe(false)
+      expect(isExempt(`'use client'`)).toBe(false)
+    })
+
+    it('scans the whole of src, not only the dashboard', () => {
+      expect(SCAN_DIRS).toEqual(['src'])
+      const outsideDashboard = files.filter((f) => !f.includes('dashboard'))
+      expect(outsideDashboard.length).toBeGreaterThan(200)
+    })
+
+    it('scans .ts as well as .tsx, which is where the third hole was', () => {
+      // 345 of 788 TypeScript files under src were never scanned while this
+      // walked .tsx alone, and the guard reported clean over all of them.
+      expect(files.some((f) => f.endsWith('.ts'))).toBe(true)
+      expect(files.some((f) => f.endsWith('.tsx'))).toBe(true)
+    })
   })
 })

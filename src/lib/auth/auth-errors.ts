@@ -171,6 +171,24 @@ const MESSAGES: Record<AuthFailureClass, string> = {
     'Something went wrong on our side. Please try again, and contact us if it keeps happening.',
 }
 
+/**
+ * Every failure class, read back from the table rather than listed by hand.
+ *
+ * MERGE NOTE, founder ruling 2026-08-12. The signup classifier here is
+ * feat/launch-kit-artefacts', which is the one that was kept. The TEST file is
+ * this branch's, which is the richer of the two (37 cases against 24, including
+ * the regression that pins the exact live duplicate payload). That test walks
+ * every class and asserts each has its own sentence and none collapses into the
+ * generic one, so it needs the list, and the list has to be DERIVED.
+ *
+ * A hand-written array was the original defect: a class missing from it was
+ * exempt from every rule the gate enforces while the suite stayed green.
+ * MESSAGES is typed Record<AuthFailureClass, string>, so the compiler already
+ * forces an entry per class, and reading the keys back makes the check
+ * exhaustive by construction rather than by memory.
+ */
+export const ALL_FAILURE_CLASSES = Object.keys(MESSAGES) as AuthFailureClass[]
+
 /** The sentence for a class. The only way copy reaches a user. */
 export function authMessage(failure: AuthFailureClass): string {
   return MESSAGES[failure]

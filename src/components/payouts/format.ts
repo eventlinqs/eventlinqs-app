@@ -1,3 +1,5 @@
+import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
+
 export function formatCents(cents: number, currency: string): string {
   const c = (currency ?? 'aud').toUpperCase()
   const value = (cents ?? 0) / 100
@@ -22,6 +24,11 @@ export function formatDate(iso: string | null): string {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
+    // A payout date is not an event's, so it takes the PLATFORM zone. Without
+    // one this formatted in the runtime zone: UTC on the server, the
+    // organiser's in the browser, so "when do I get paid" both mismatched on
+    // hydration and read as the wrong day either side of midnight.
+    timeZone: PLATFORM_TIME_ZONE,
   }).format(d)
 }
 
@@ -35,5 +42,6 @@ export function formatDateTime(iso: string | null): string {
     year: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
+    timeZone: PLATFORM_TIME_ZONE,
   }).format(d)
 }

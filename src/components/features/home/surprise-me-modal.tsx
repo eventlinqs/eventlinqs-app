@@ -5,6 +5,7 @@ import { formatEventDateShort } from '@/lib/dates/event-time'
 import Link from 'next/link'
 import { Sparkles, X, RefreshCw } from 'lucide-react'
 import { trackEvent } from '@/lib/analytics/plausible'
+import { formatEventDateShort } from '@/lib/dates/event-time'
 
 interface Suggestion {
   id: string
@@ -12,7 +13,8 @@ interface Suggestion {
   title: string
   city: string | null
   startDate: string
-  timezone?: string | null
+  /** The EVENT's zone, so the date reads correctly from any state. */
+  timezone: string | null
   coverImage: string | null
   reason: string
 }

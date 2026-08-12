@@ -2,8 +2,8 @@
 
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
-import { getGoogleMapsLoader } from '@/lib/maps/google-maps-loader'
-import { EVENTLINQS_MAP_STYLE } from '@/lib/maps/google-maps-style'
+import { getGoogleMapsLoader, GOOGLE_MAPS_MAP_ID } from '@/lib/maps/google-maps-loader'
+import { createBrandPin } from '@/lib/maps/brand-pin'
 
 interface Props {
   venueName: string | null
@@ -15,7 +15,6 @@ interface Props {
   longitude: number | null
 }
 
-const BRAND_GOLD = '#D4A017' // --color-gold-500 (JS map config cannot read CSS vars)
 
 export function VenueMap({
   venueName,
@@ -28,7 +27,7 @@ export function VenueMap({
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<google.maps.Map | null>(null)
-  const markerRef = useRef<google.maps.Marker | null>(null)
+  const markerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null)
   const [interactive, setInteractive] = useState(false)
   const [inView, setInView] = useState(false)
 
@@ -110,10 +109,20 @@ export function VenueMap({
           const loc = results[0].geometry.location
           center = { lat: loc.lat(), lng: loc.lng() }
         }
+        const { AdvancedMarkerElement } = (await loader.importLibrary(
+          'marker',
+        )) as google.maps.MarkerLibrary
+        if (cancelled || !containerRef.current) return
+
         const map = new Map(containerRef.current, {
           center,
           zoom: 15,
-          styles: EVENTLINQS_MAP_STYLE,
+          // `mapId` and `styles` are mutually exclusive. Google, MapOptions
+          // reference: "This feature is not available when using a map ID".
+          // The brand style therefore lives on the Map ID as a cloud style;
+          // passing EVENTLINQS_MAP_STYLE here would be silently ignored, which
+          // is worse than not passing it, because it would read as applied.
+          mapId: GOOGLE_MAPS_MAP_ID,
           disableDefaultUI: true,
           clickableIcons: false,
           zoomControl: true,
@@ -122,18 +131,13 @@ export function VenueMap({
         })
         mapRef.current = map
 
-        markerRef.current = new google.maps.Marker({
+        // AdvancedMarkerElement replaces the deprecated google.maps.Marker.
+        // The pin is the shared brand dot, so all four maps stay identical.
+        markerRef.current = new AdvancedMarkerElement({
           position: center,
           map,
           title: venueName ?? undefined,
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 10,
-            fillColor: BRAND_GOLD,
-            fillOpacity: 1,
-            strokeColor: '#ffffff',
-            strokeWeight: 3,
-          },
+          content: createBrandPin({ title: venueName }),
         })
         setInteractive(true)
       } catch (err) {
@@ -143,7 +147,8 @@ export function VenueMap({
 
     return () => {
       cancelled = true
-      markerRef.current?.setMap(null)
+      // An advanced marker is detached by clearing `map`, not setMap(null).
+      if (markerRef.current) markerRef.current.map = null
       markerRef.current = null
       mapRef.current = null
     }

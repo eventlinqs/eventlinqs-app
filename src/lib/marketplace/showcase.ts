@@ -199,7 +199,9 @@ export interface ArtistCredit {
   slug: string
   title: string
   startDate: string
-  /** The EVENT's IANA zone, so a credit shows the night it was, not the reader's. */
+  /** The EVENT's IANA zone, so a credit shows the night it was, not the
+   *  reader's. A credit reading "Aug 2026" can slip a month at a month
+   *  boundary when formatted in the reader's zone instead. */
   timezone: string | null
   venueLabel: string
 }

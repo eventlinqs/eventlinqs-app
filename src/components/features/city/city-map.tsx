@@ -2,8 +2,8 @@
 
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
-import { getGoogleMapsLoader } from '@/lib/maps/google-maps-loader'
-import { EVENTLINQS_MAP_STYLE } from '@/lib/maps/google-maps-style'
+import { getGoogleMapsLoader, GOOGLE_MAPS_MAP_ID } from '@/lib/maps/google-maps-loader'
+import { createBrandPin } from '@/lib/maps/brand-pin'
 
 export interface MapEventPin {
   id: string
@@ -41,7 +41,6 @@ interface Props {
   accessToken?: string
 }
 
-const BRAND_GOLD = '#D4A017' // --color-gold-500 (JS map config cannot read CSS vars)
 
 /**
  * CityMap - Google Maps event map for /city/[slug], /community/[community]/[city].
@@ -58,7 +57,7 @@ const BRAND_GOLD = '#D4A017' // --color-gold-500 (JS map config cannot read CSS 
 export function CityMap({ centerLng, centerLat, zoom, pins }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<google.maps.Map | null>(null)
-  const markersRef = useRef<google.maps.Marker[]>([])
+  const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([])
   const [status, setStatus] = useState<'idle' | 'ready' | 'error'>('idle')
   const [inView, setInView] = useState(false)
 
@@ -97,11 +96,14 @@ export function CityMap({ centerLng, centerLat, zoom, pins }: Props) {
     ;(async () => {
       try {
         const { Map, InfoWindow } = (await loader.importLibrary('maps')) as google.maps.MapsLibrary
+        const { AdvancedMarkerElement } = (await loader.importLibrary(
+          'marker',
+        )) as google.maps.MarkerLibrary
         if (cancelled || !containerRef.current) return
         const map = new Map(containerRef.current, {
           center: { lat: centerLat, lng: centerLng },
           zoom,
-          styles: EVENTLINQS_MAP_STYLE,
+          mapId: GOOGLE_MAPS_MAP_ID,
           disableDefaultUI: true,
           clickableIcons: false,
           zoomControl: true,
@@ -113,18 +115,12 @@ export function CityMap({ centerLng, centerLat, zoom, pins }: Props) {
 
         for (const p of pins) {
           if (typeof p.latitude !== 'number' || typeof p.longitude !== 'number') continue
-          const marker = new google.maps.Marker({
+          // scale 8 was a 16px circle; the shared pin keeps that geometry.
+          const marker = new AdvancedMarkerElement({
             position: { lat: p.latitude, lng: p.longitude },
             map,
             title: p.title,
-            icon: {
-              path: google.maps.SymbolPath.CIRCLE,
-              scale: 8,
-              fillColor: BRAND_GOLD,
-              fillOpacity: 1,
-              strokeColor: '#ffffff',
-              strokeWeight: 2.5,
-            },
+            content: createBrandPin({ title: p.title, size: 16 }),
           })
           marker.addListener('click', () => {
             const meta = [p.suburb, p.date, p.price].filter(Boolean).join(' · ')
@@ -148,7 +144,7 @@ export function CityMap({ centerLng, centerLat, zoom, pins }: Props) {
 
     return () => {
       cancelled = true
-      for (const m of markersRef.current) m.setMap(null)
+      for (const m of markersRef.current) m.map = null
       markersRef.current = []
       mapRef.current = null
     }
