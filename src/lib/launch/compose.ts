@@ -173,18 +173,44 @@ function additiveSummary(facts: {
     : `Tickets from $${Math.round(facts.lowestPrice)}.`
 }
 
-/** A plain question per unresolved field. Never jargon, never an error. */
+/**
+ * A plain question per unresolved item. Never jargon, never an error.
+ *
+ * EVERY item recomputeUnresolved can emit is mapped here, plus the one notice
+ * pushed separately beside it (magic-start.ts, the weekday mismatch). The map
+ * used to cover six labels, two of which are never emitted, and the fallback
+ * wrapped everything else in "What is the ...?". That produced, on the first
+ * screen a stranger sees:
+ *
+ *   "What is the check the date: the day you named does not fall on that date?"
+ *
+ * because the weekday notice is a SENTENCE, not a field name. It also produced
+ * "What is the discovery tags?", which does not agree in number.
+ */
 const QUESTION_FOR: Record<string, string> = {
+  Title: 'What do you want to call it?',
+  'Short summary': 'How would you sum it up in one line?',
+  Description: 'What else should people know before they come?',
   'Date and time': 'When does it start?',
-  'Venue': 'Where is it on?',
+  Venue: 'Where is it on?',
   'Venue name': 'Where is it on?',
-  'Title': 'What do you want to call it?',
+  'Venue street address': 'What is the street address?',
   'Ticket type and price': 'What does it cost to get in?',
-  'Capacity': 'How many people can come?',
+  Capacity: 'How many people can come?',
+  'Discovery tags': 'What words would someone search for to find this?',
+  'Check the date: the day you named does not fall on that date':
+    'Can you check the date? The day you named does not fall on that date.',
 }
 
 function plainQuestion(field: string): string {
-  return QUESTION_FOR[field] ?? `What is the ${field.toLowerCase()}?`
+  const mapped = QUESTION_FOR[field]
+  if (mapped) return mapped
+  // An item that already reads as a sentence is passed through rather than
+  // wrapped, so a future notice added beside a field name cannot come out
+  // garbled the way the weekday one did.
+  const alreadyASentence = /[.:?]/.test(field) || field.trim().split(/\s+/).length > 4
+  if (alreadyASentence) return field.trim().replace(/[.\s]*$/, '.')
+  return `What is the ${field.toLowerCase()}?`
 }
 
 /**

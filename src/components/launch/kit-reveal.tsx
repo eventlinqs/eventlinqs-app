@@ -157,11 +157,16 @@ export function KitReveal({ state, onEditDescription }: Props) {
             {isUnlisted ? 'Ready to send it out?' : 'Ready to sell tickets?'}
           </h3>
           <p className="mt-2 max-w-2xl text-base text-ink-600">
+            {/* Founder wording, 2026-08-13. The artefacts are stated as ALREADY
+                DONE, because they are: a stranger has them on this screen. Only
+                the counting is placed behind saving the kit, because the tracked
+                links and the reach panel genuinely live there. Nothing here
+                promises an audience. */}
             {isUnlisted
-              ? 'Add your details and you can download everything, and your link starts counting who is coming.'
+              ? 'Your poster, your cards and your captions, ready now. Save your kit and your link starts counting who is coming.'
               : reachFraming === 'tickets'
-                ? 'Add your details and you can download everything, and every share starts counting the tickets it sells.'
-                : 'Add your details and you can download everything, and every share starts counting who turns up.'}{' '}
+                ? 'Your poster, your cards and your captions, ready now. Save your kit and every share starts counting the tickets it sells.'
+                : 'Your poster, your cards and your captions, ready now. Save your kit and every share starts counting who turns up.'}{' '}
             Free events stay free.
           </p>
           <div className="mt-5 flex flex-wrap gap-4">

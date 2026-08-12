@@ -337,10 +337,18 @@ function linkedinCaption(input: CaptionInput): Caption {
   const url = linkFor(input, 'linkedin')
   const place = placeClause(input)
   const lines: string[] = []
+  // An anonymous composer has no organiser name, so the old templates opened
+  // with a dangling verb: "has opened ticket sales for ...". The event becomes
+  // the subject when there is nobody to name.
+  const org = (input.organiserName ?? '').trim()
   lines.push(
     isFree(input.priceLabel)
-      ? `${input.organiserName} has announced ${input.title}.`
-      : `${input.organiserName} has opened ticket sales for ${input.title}.`,
+      ? org
+        ? `${org} has announced ${input.title}.`
+        : `${input.title} has been announced.`
+      : org
+        ? `${org} has opened ticket sales for ${input.title}.`
+        : `Tickets are now on sale for ${input.title}.`,
   )
   lines.push('')
   lines.push(
@@ -396,10 +404,17 @@ function emailCaption(input: CaptionInput): Caption {
   const lines: string[] = []
   lines.push('Hello,')
   lines.push('')
+  // Same dangling-verb fix as LinkedIn: with no organiser to name, the event
+  // becomes the subject rather than the sentence starting mid-clause.
+  const org = (input.organiserName ?? '').trim()
   lines.push(
-    place
-      ? `${input.organiserName} is putting on ${input.title} at ${place} on ${whenClause(input)}.`
-      : `${input.organiserName} is putting on ${input.title} on ${whenClause(input)}.`,
+    org
+      ? place
+        ? `${org} is putting on ${input.title} at ${place} on ${whenClause(input)}.`
+        : `${org} is putting on ${input.title} on ${whenClause(input)}.`
+      : place
+        ? `${input.title} is on at ${place} on ${whenClause(input)}.`
+        : `${input.title} is on ${whenClause(input)}.`,
   )
   if (input.summary) {
     lines.push('')
@@ -407,8 +422,12 @@ function emailCaption(input: CaptionInput): Caption {
   }
   lines.push('')
   lines.push(ticketLine(family, input.priceLabel, url))
-  lines.push('')
-  lines.push(input.organiserName)
+  // The sign-off is omitted rather than left blank when there is no organiser
+  // name: a trailing empty line reads as an unfinished email.
+  if (org) {
+    lines.push('')
+    lines.push(org)
+  }
   const text = tidy(lines.join('\n'))
   return {
     platform: 'email',
