@@ -73,6 +73,23 @@ const NOT_A_RATIO = [
   /contrast|wcag|\bAA+\b|luminance/i,
   /\b\d{4}-\d{2}-\d{2}\b|AEST|AEDT|UTC|GMT|\b[ap]\.?m\.?\b/i,
   /localhost|:\d{4}\b\/|port\s/i,
+  // A CLOCK TIME is not a ratio. Added 12 August 2026 after `daily at 03:30`,
+  // a cron schedule on a line that also said `vercel.json`, was reported as an
+  // unsourced third-party aspect ratio.
+  //
+  // DELIBERATELY NARROW, because the lazy fix here is a blanket skip of
+  // anything containing a colon, which would stop this guard seeing 4:5, 9:16
+  // and 1.91:1 and would quietly end its usefulness.
+  //
+  // Rule one: a LEADING-ZERO 24-hour time. `03:30` cannot be an aspect ratio,
+  // because nobody writes `09:16` for 9:16. Ratios that look time-shaped
+  // WITHOUT the leading zero, notably 16:10 and 21:9, are real and are left
+  // alone by this pattern.
+  /\b0\d:[0-5]\d\b/,
+  // Rule two: a time without the leading zero, but only when a scheduling word
+  // sits within a couple of dozen characters of it, which is what separates
+  // "runs daily at 3:30" from a bare ratio.
+  /\b(?:daily|nightly|hourly|weekly|midnight|noon|cron)\b[^\n]{0,24}\b(?:[01]?\d|2[0-3]):[0-5]\d\b/i,
 ]
 
 const SCAN_DIRS = ['docs', 'src', 'scripts']

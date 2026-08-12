@@ -7,9 +7,16 @@
  * NATIVE submit, which with no action is a GET to the current URL carrying
  * every field in the query string.
  *
- * Observed on the deployed preview from a real submit on /login:
+ * Observed on the deployed preview from a real submit on /login. The address bar
+ * came back carrying the form, shaped like this, with the real account and the
+ * real password where the placeholders are:
  *
- *   /login?email=broadcast.gate.organiser%40eventlinqs.com&password=ArtistGate2026%21Drive
+ *   /login?email=<the account address>&password=<the account password>
+ *
+ * The value itself is NOT reproduced here. It sat in this comment in clear text
+ * until 12 August 2026, which is the same disclosure the test exists to prevent,
+ * written into the test that prevents it. The account is a TEST-project drive
+ * login and is on the go-live rotation list at docs/roast/ROTATE-AT-GOLIVE.md.
  *
  * The password lands in browser history, in any URL logging, and in the
  * Referer header of the next request. The person also sees the form cleared

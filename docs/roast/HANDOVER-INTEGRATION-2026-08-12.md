@@ -3,7 +3,41 @@
 The five launch branches merged into one tree for the first time. Written so a
 fresh session resumes without re-deriving anything.
 
-**Read this before touching the branch.** It is UNCOMMITTED and MID-MERGE.
+**Read this before touching the branch.**
+
+## 0. REQUIRED FIRST STEP: the runtime, every session
+
+`.nvmrc` pins Node **20**, CI resolves that to **20.20.2**, and the guard surface
+was recorded from 20.20.2. This machine's only system Node is **24**, and it has
+no version manager. A session that skips this step runs 24 and every result it
+produces, guards, typecheck and build alike, is not CI-equivalent and cannot be
+quoted as proof of anything.
+
+Run this FIRST, in every shell, before any node, npm, npx or build command:
+
+```powershell
+$env:PATH="C:\node20\node-v20.20.2-win-x64;$env:PATH"; node --version
+```
+
+It must print `v20.20.2`. The shell does not keep this between tool calls, so it
+belongs at the start of every command, not once at the start of a session.
+
+If `C:\node20` is absent, recreate it from the official zip, which needs a SHORT
+destination path because extracting under the long scratchpad path trips the
+Windows MAX_PATH limit:
+
+```powershell
+Invoke-WebRequest -Uri "https://nodejs.org/dist/v20.20.2/node-v20.20.2-win-x64.zip" -OutFile "$env:TEMP\node20.zip" -UseBasicParsing
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+[System.IO.Compression.ZipFile]::ExtractToDirectory("$env:TEMP\node20.zip", "C:\node20")
+```
+
+**What enforces this today: nothing that blocks.** `package.json` has no `engines`
+field and no `preinstall` check, and there is no `.npmrc`, so `engine-strict` is
+not in play. `scripts/guards/run-guards.mjs` LABELS a wrong-major run
+`NOT CI-EQUIVALENT` in its own output and still exits on the guard results alone.
+That labelling is deliberate, so a green local run cannot be quoted as a green CI
+run, but it is a warning and not a gate. Read the label on every run.
 
 ---
 

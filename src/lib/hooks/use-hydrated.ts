@@ -12,9 +12,17 @@ import { useSyncExternalStore } from 'react'
  * submit in that window is a NATIVE submit. A native submit with no action is
  * a GET to the current URL with every field in the query string.
  *
- * Observed on the deployed preview, from a real submit on /login:
+ * Observed on the deployed preview, from a real submit on /login. The address
+ * bar came back carrying the form, shaped like this, with the real account and
+ * the real password where the placeholders are:
  *
- *   /login?email=broadcast.gate.organiser%40eventlinqs.com&password=ArtistGate2026%21Drive
+ *   /login?email=<the account address>&password=<the account password>
+ *
+ * The value itself is NOT reproduced here. It was in this comment in clear text
+ * until 12 August 2026, which put the credential in the repository a second
+ * time, in the very file explaining why putting it in a URL was a defect. The
+ * account is a TEST-project drive login and is on the go-live rotation list at
+ * docs/roast/ROTATE-AT-GOLIVE.md.
  *
  * The password is now in the URL: browser history, any URL logging, and the
  * Referer header on the next request. The person also sees their form cleared

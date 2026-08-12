@@ -4,6 +4,25 @@ Non-blocking observations found while merging the five launch branches and
 clearing the guard failures, 12 August 2026. One line each, by founder
 instruction. Nothing here is fixed; nothing here blocks. Fix only on a ruling.
 
+## STANDING RISK, not an observation
+
+**The main repository defaults to PRODUCTION.** In
+`C:\Users\61416\OneDrive\Desktop\EventLinqs\eventlinqs-app`, `.env.local` sets
+`NEXT_PUBLIC_SUPABASE_URL` to the PRODUCTION project `gndnldyfudbytbboxesk`, and
+`.env.local.bak.20260627145347` carries production values as well. `.env.local`
+is the file Next.js and most scripts load by default, so **any script run in that
+worktree reads production unless it explicitly overrides the environment**.
+
+That sits directly against the standing rule that production is never written to
+and TEST `vkapkibzokmfaxqogypq` is the only writable database. The protection
+today is that individual scripts refuse when the URL is not the TEST ref, which is
+a per-script courtesy rather than a property of the environment, so it holds only
+for the scripts that remembered to check.
+
+Recorded 12 August 2026 from `integration/launch`. **Nothing in that repository
+was changed**, per founder ruling. It is listed here because it is a live hazard
+awaiting a decision, not a defect to be quietly patched.
+
 | # | Finding |
 |---|---|
 | 1 | `CLAUDE.md:1150` and `:1152` carry two em dashes, inherited by automatic merge from `fix/security-hardening`, inside a block the file itself says `next dev` regenerates, so deleting them re-creates them. |
