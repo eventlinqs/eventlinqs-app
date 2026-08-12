@@ -189,6 +189,23 @@ const PUBLIC_BY_DESIGN = {
   'waitlist/actions.ts::joinCityWaitlist': 'public city waitlist opt-in, rate limited',
   'waitlist/actions.ts::leaveCityWaitlistAction': 'per-row token IS the credential',
   'actions/lineup.ts::searchArtistsAction': 'searches the public artists table by name; returns no private field',
+  // THE PUBLIC COMPOSER, /launch. Anonymous by founder ruling 0.2b: a stranger
+  // builds an event kit with no account, so a session check would remove the
+  // feature rather than protect it. Each was READ on 2026-08-12 before being
+  // declared here, and the reason is recorded because "it has no auth check" is
+  // a fact while "that is correct" is a judgement someone must own.
+  //
+  // The posture is BEARER, not open. Two secrets exist and they do different
+  // jobs: the kit CODE is shareable and addresses a draft (randomBytes over a
+  // 31-character alphabet at 12 characters, about 2^59); the ownership TOKEN is
+  // 256 bits of randomBytes, httpOnly, and stored only as a SHA-256 hash. Every
+  // mutating path resolves the draft from the cookie TOKEN, never from a code in
+  // the request, so holding a shared link does not confer the ability to change
+  // what it points at.
+  'launch/actions.ts::composeKit': 'the public composer itself; deterministic, no model spend, hourly + daily + per-session rate limits, reaches nobody else data',
+  'launch/actions.ts::updateKit': 'edits the draft resolved from this browser cookie ownership token, never from a code in the request',
+  'launch/actions.ts::emailKitToSelf': 'sends this browser own draft to a supplied address; draft read from the cookie token, and a dedicated send limit protects the sending domain from becoming an open relay',
+  'api/launch/[code]/cover/POST': 'BEARER: the cookie ownership token is the credential, and ownership is verified against the code BEFORE any write, so a shared code cannot replace the owner artwork',
 }
 
 function match(list, body) {

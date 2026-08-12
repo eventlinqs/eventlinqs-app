@@ -87,7 +87,17 @@ export function KitLinkBar({ code, ephemeral }: { code: string | null; ephemeral
           that already works, so nothing here reads as a gate: the kit is
           already theirs and this is one more way to keep it.
         */}
+        {/*
+          method="post" is not decoration. This handler runs only once React is
+          live; before that a native submit on a form with no action and no
+          method is a GET to the current URL, which would put the organiser's
+          email address in the query string of /launch/k/[code] and from there
+          into server logs and the referrer header. POST puts the field in the
+          body instead. Hydrated behaviour is unchanged, because preventDefault
+          still runs. See scripts/guards/no-native-submit-guard.mjs.
+        */}
         <form
+          method="post"
           className="mt-5 border-t border-ink-200 pt-5"
           onSubmit={e => {
             e.preventDefault()

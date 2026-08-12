@@ -17,6 +17,18 @@
 // Required env: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 import { createClient } from '@supabase/supabase-js'
 
+// Fail closed rather than fall back to a literal. A fixture script is committed,
+// pushed and indexed, so a password written here is a password published, even
+// when the account it opens only exists on TEST.
+function requireEnv(name) {
+  const v = process.env[name]
+  if (!v) {
+    console.error(`[fixture] ${name} is not set. Export it for this shell; it is deliberately not in the repo.`)
+    process.exit(2)
+  }
+  return v
+}
+
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 
@@ -30,7 +42,7 @@ if (!SUPABASE_URL.includes('vkapkibzokmfaxqogypq')) {
 }
 
 export const PROOF_EMAIL = 'connect-prefill-proof@eventlinqs.com'
-export const PROOF_PASSWORD = 'ConnectPrefill2026!Proof'
+export const PROOF_PASSWORD = requireEnv('EL_CONNECT_PROOF_PASSWORD')
 export const PROOF_ORG_NAME = 'Thunderbird Freight Sessions'
 export const PROOF_ORG_SLUG = 'thunderbird-freight-sessions'
 export const PROOF_ORG_EMAIL = 'payouts@thunderbirdfreight.com.au'

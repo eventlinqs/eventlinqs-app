@@ -41,7 +41,9 @@ IS the commitment, and it is charged before any value is delivered. The public
 `/launch` composer that fixes this is specified in `PHASE-C.md` part 4 and
 marked "DO NOT BUILD YET"; `src/app/launch` does not exist.
 
-**2. The one social card cannot be posted where it matters.** The kit ships one
+**2. The one social card cannot be posted where it matters.** The 1200x630 Open
+Graph figure below is **UNSOURCED**: it is the widely used convention and no
+primary page stating it was fetched for this document. The kit ships one
 designed social artefact, a 1200x630 Open Graph link preview. Instagram renders
 Open Graph previews only in direct messages and the Story link sticker, never in
 a feed post, by deliberate design
@@ -83,10 +85,15 @@ Nobody who cannot sell tickets buys a better dashboard.
 **The five moves that would change the answer**, ranked by impact against
 effort. Hours are the repository's own estimates where they exist.
 
+The Instagram pixel pairs in the table below are **UNSOURCED**: they are the
+in-app sizes as observed, and Meta publishes no page carrying them. The bound it
+does publish is the API range, 4:5 to 1.91:1 with a 1440 maximum width, at
+https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-user/media
+
 | # | Move | Cost | What it buys |
 |---|---|---|---|
 | 1 | Render the kit on a DRAFT, not only on publish | 6 to 10 h | Removes the publish-before-value inversion for signed-up users. The cheap half of finding 1 |
-| 2 | Instagram-shaped assets (1080x1350, 1080x1920, 1080x1080) | 16 to 20 h | Makes the output postable on the channel that matters. Finding 2 |
+| 2 | Instagram-shaped assets (1080x1350, 1080x1920, 1080x1080; these pixel pairs are **UNSOURCED**, observed in-app) | 16 to 20 h | Makes the output postable on the channel that matters. Finding 2 |
 | 3 | Caption engine, deterministic base plus the AI register pass | 14 to 18 h | The other half of "pleased to post". Deterministic base works with no AI key |
 | 4 | The plain-English reach sentence | 3 to 5 h | "WhatsApp sold 9 of your 34 tickets" closes the knowing pain in one line |
 | 5 | The public `/launch` composer and reveal | 20 to 30 h | Removes the auth wall entirely. The full fix for finding 1 |
@@ -884,10 +891,15 @@ Ranked by impact against effort. Hours are the repository's own estimates from
 `docs/design/LAUNCH-KIT-AUDIT.md` B5 and `docs/design/LAUNCH-KIT-PLAN.md`
 section 8 where those exist, and are marked as mine where they do not.
 
+The Instagram pixel pairs in this table are **UNSOURCED**, as above: observed
+in-app sizes, with the published API bound being 4:5 to 1.91:1 and a 1440 maximum
+width at
+https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-user/media
+
 | # | Missing thing | Cost | What it buys | Source of estimate |
 |---|---|---|---|---|
 | 1 | **The kit renders on a DRAFT, not only on publish.** Change the `isLive` gate to render the full kit for a draft, with the QR pointing at the draft preview and captioned "goes live the moment you publish", exactly as the `/launch` spec already describes for anonymous users | 6 to 10 h | Removes the publish-before-value inversion for anyone who has signed up. This is the cheap 70 percent of finding 1 and it needs no new route, no new table and no anonymous-abuse posture | **Mine.** The reveal semantics are already specified in PHASE-C 4.3 |
-| 2 | **Instagram-shaped assets: 1080x1350, 1080x1920, 1080x1080**, through the same `ImageResponse` pipeline as the existing card, with sharp attention smart-crop for the photo region and the branded fallback when there is no cover | 16 to 20 h | Makes the output usable on the channel the wedge segment actually promotes on. Turns "one link preview" into "a set" | LAUNCH-KIT-PLAN section 8 step 1 |
+| 2 | **Instagram-shaped assets: 1080x1350, 1080x1920, 1080x1080** (**UNSOURCED**, observed in-app sizes), through the same `ImageResponse` pipeline as the existing card, with sharp attention smart-crop for the photo region and the branded fallback when there is no cover | 16 to 20 h | Makes the output usable on the channel the wedge segment actually promotes on. Turns "one link preview" into "a set" | LAUNCH-KIT-PLAN section 8 step 1 |
 | 3 | **The caption engine.** Deterministic per-platform composition from real event fields as the base layer so it works with no AI key, the register pass on top when configured, run through the existing tell gate plus per-platform length, hashtag and emoji validators | 14 to 18 h | The other half of "pleased to post". Without it the organiser still writes every word. With it the twenty-second promise is actually true end to end | LAUNCH-KIT-PLAN section 8 step 2 |
 | 4 | **The plain-English reach sentence.** "WhatsApp has sold 9 of your 34 tickets. Your poster sold 4." Built from `fetchReachSummary`, unit-tested, on the kit and the reach panel | 3 to 5 h | Closes pain number 2 in a form a person repeats out loud. The highest virality-per-hour item in the product | LAUNCH-KIT-AUDIT B5 item 2 |
 | 5 | **Event-type theming.** Use the category the kit already has to vary the poster accent treatment, the eyebrow language and the card line, inside the existing tokens. No new colours | 4 to 6 h | Kills "every EventLinqs poster is identical", which is the specific defect that makes the poster merely acceptable | LAUNCH-KIT-AUDIT B5 item 3 |

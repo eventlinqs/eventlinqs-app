@@ -99,10 +99,11 @@ export const RECOMMENDED_COVER_WIDTH = 2160
  * The market, read from the platforms' own published help pages on 8 August
  * 2026:
  *
- * - Eventbrite, "How to set up your organizer profile page" (help article
- *   161196): "Organizer profile image: This will appear on your event listing
- *   and organizer profile. Eventbrite recommends a 1:1 ratio for square images,
- *   like 400x400."
+ * - Eventbrite, "How to set up your organizer profile page" (help article 161196,
+ *   https://www.eventbrite.com/help/en-us/articles/161196/, re-fetched and the
+ *   quote confirmed 12 August 2026): "Organizer profile image: This will appear
+ *   on your event listing and organizer profile. Eventbrite recommends a 1:1
+ *   ratio for square images, like 400x400."
  * - Humanitix, "How to style your event page" (help article 8951375): the
  *   organiser logo REPLACES the Humanitix logo in the top left of the event
  *   page. "The logo image on the event page is dynamic and will accommodate

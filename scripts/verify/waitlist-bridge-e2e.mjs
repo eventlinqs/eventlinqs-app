@@ -55,7 +55,17 @@ const CITY_NAME = 'Geelong'
 const STAMP = Date.now().toString(36)
 const WAITLIST_EMAIL = `bridge-proof-${STAMP}@mailinator.com`
 const ORGANISER_EMAIL = 'broadcast.gate.organiser@eventlinqs.com'
-const ORGANISER_PASSWORD = 'ArtistGate2026!Drive'
+// Fail closed rather than fall back to a literal. This is the same drive account
+// the gate scripts use, so it reads the same variable they do, and a drive script
+// is committed, pushed and indexed.
+const ORGANISER_PASSWORD = (() => {
+  const v = process.env.EL_DRIVE_PASSWORD
+  if (!v) {
+    console.error('[bridge] EL_DRIVE_PASSWORD is not set. Export it for this shell; it is deliberately not in the repo.')
+    process.exit(2)
+  }
+  return v
+})()
 const EVENT_TITLE = `Bridge Proof Night ${STAMP.toUpperCase()}`
 
 const log = []

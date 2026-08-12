@@ -153,7 +153,12 @@ export function PostPack({ eventId, captions, leadFormat, tracked }: Props) {
                 {/* Where the asset belongs, shown rather than assumed. The spec
                     has always carried `postedTo` and the UI never rendered it,
                     so a promoter could download the 9:16 story card from beside
-                    an Instagram caption and post it to the feed, where
+                    an Instagram caption and post it to the feed.
+
+                    The next figure is UNSOURCED: it is observed in-app behaviour
+                    and Meta publishes no page stating it. The bound that IS
+                    published is the API range, 4:5 to 1.91:1, at
+                    https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-user/media
                     Instagram crops anything taller than 3:4. */}
                 <p className="mt-2 text-xs font-semibold text-ink-700">
                   Post to: {spec.postedTo}

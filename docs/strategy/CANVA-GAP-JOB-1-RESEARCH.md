@@ -86,7 +86,7 @@ All fetched 9 August 2026.
 | Platform | Design controls for the organiser | Source |
 |---|---|---|
 | **Humanitix** | The fullest by far. A "page design" panel with: banner image (upload **or** design on Canva), logo upload with light or dark treatment, **light / dark / adaptive** page mode, **primary colour** via colour picker or hex (recolours buttons and links), ticket button text, reusable styling templates, desktop and mobile preview. | `help.humanitix.com/.../8951375-how-to-style-your-event-page` |
-| **Eventbrite** | Image upload only. Recommended 2160 x 1080, max 10MB, JPEG or PNG, 2:1. | `eventbrite.com/help/en-us/articles/682424/` |
+| **Eventbrite** | Image upload only. Recommended 2160 x 1080, max 10MB, JPEG or PNG, 2:1. | https://www.eventbrite.com/help/en-us/articles/682424/ (re-fetched 12 August 2026: the page states the 2:1 ratio. The 2160 x 1080, the 10MB cap and the format list are **UNSOURCED** against that page, which no longer shows them.) |
 | **Luma** | A Share Event Poster generator with **no customisation described at all**. Verbatim: "Luma generates a poster image for your event. You can post it straight to Instagram Stories, save it to your camera roll, or send it through any app." | `help.luma.com/p/promote-your-event` |
 | **TryBooking** | Generic TryBooking buttons and logos only. Nothing event-specific. | `learn.trybooking.com/en/articles/41814` |
 | **Moshtix** | None. The promoter supplies artwork to a specification sheet, one week ahead. | `moshtix.com.au/v2/pages/marketing-artwork-specs` |
@@ -155,6 +155,9 @@ maximum pixel dimension at all. Both publish a **10MB file size** cap and a
 **recommended minimum** resolution:
 
 - Eventbrite: recommended 2160 x 1080, max 10MB.
+  Source https://www.eventbrite.com/help/en-us/articles/682424/ confirms the 2:1
+  ratio only. The pixel pair and the 10MB cap are **UNSOURCED** against it as of
+  12 August 2026.
 - Humanitix: "We recommend that event banner images be a minimum of 3200px by
   1600px", "Images must be less than **10mb**", "Accepted formats are **JPEG**,
   **PNG**, or **SVG**."

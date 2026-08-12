@@ -47,7 +47,7 @@
  *   ... if necessary"), so a 1440-wide asset is at the limit, not over it.
  *
  * [META-RATIO] Meta Business Help Centre, "Best practices for aspect ratios"
- *   (facebook.com/business/help/103816146375741):
+ *   (https://www.facebook.com/business/help/103816146375741):
  *   "For Feed placements: Both 1:1 and 4:5 aspect ratios are supported ...
  *   Vertical 4:5 is recommended for single-image ads to be delivered to the ad
  *   placement Facebook Feed. 1:1 is recommended for single-image ads to be
@@ -57,7 +57,7 @@
  *
  * [META-PIXELS] Meta Business Help Centre, "Recommended minimum image pixel
  *   requirements across placements in Meta Ads Manager"
- *   (facebook.com/business/help/469767027114079):
+ *   (https://www.facebook.com/business/help/469767027114079):
  *   Instagram Feed 1080 x 1080, Instagram Stories 1080 x 1080, Facebook
  *   Stories 1080 x 1080, Facebook Feed "For 1:1 ratio: 1080 x 1080 pixels /
  *   For 4:5 ratio: 1440 x 1800 pixels", WhatsApp Status 500 x 320. The page
@@ -65,7 +65,7 @@
  *   resolution images available."
  *
  * [META-SAFE] Meta Business Help Centre, "About carousel ads in Facebook
- *   Stories" (facebook.com/business/help/201503794673956):
+ *   Stories" (https://www.facebook.com/business/help/201503794673956):
  *   "Recommended ratio: 9:16 ... Recommended resolution: At least 1080 x 1080
  *   pixels ... To avoid covering these key elements with the call-to-action
  *   button, consider leaving roughly 14% (250 pixels) of the top and bottom of
@@ -134,6 +134,11 @@ export const SOCIAL_CARD_FORMATS: Record<SocialCardFormat, SocialCardSpec> = {
     safeTop: 250,
     safeBottom: 250,
     photoHeight: 0,
+    // Sources for the ratio and the safe area, restated here because a reference
+    // key at the top of the file is not a citation a reader can follow from here:
+    // https://www.facebook.com/business/help/103816146375741 (9:16 for Stories,
+    // Status and Reels) and https://www.facebook.com/business/help/201503794673956
+    // (the 250px top and bottom safe area).
     justification:
       '9:16 is the ratio Meta recommends for stories, status and reels, and the top and bottom 250 pixels are left clear of type, which is the safe area Meta publishes.',
   },
@@ -146,6 +151,11 @@ export const SOCIAL_CARD_FORMATS: Record<SocialCardFormat, SocialCardSpec> = {
     safeTop: 0,
     safeBottom: 0,
     photoHeight: 600,
+    // https://www.facebook.com/business/help/103816146375741 (1:1 recommended for
+    // Instagram Feed) and https://www.facebook.com/business/help/469767027114079
+    // (1080 x 1080 minimum for that placement).
+    // The LinkedIn 360 to 4320 range is UNSOURCED: no LinkedIn page carrying it
+    // was fetched, so it is marked rather than guessed at.
     justification:
       '1:1 is the ratio Meta recommends for the Instagram feed, and 1080 x 1080 is its recommended minimum resolution for that placement. LinkedIn accepts 1:1 from 360 to 4320 pixels square.',
   },
@@ -158,9 +168,15 @@ export const SOCIAL_CARD_FORMATS: Record<SocialCardFormat, SocialCardSpec> = {
     safeTop: 0,
     safeBottom: 0,
     photoHeight: 1150,
+    // The publishing API range, fetched 12 August 2026 and quoted verbatim, "Must
+    // be within a 4:5 to 1.91:1 range", minimum width 320, maximum width 1440:
+    // https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-user/media
+    //
     // 4:5 is chosen because it is the INTERSECTION of Instagram's two surfaces,
     // not because it is the Facebook recommendation. In-app accepts down to 3:4
-    // [IG-RES]; the Graph API accepts only down to 4:5 [IG-API]. A 4:5 asset is
+    // [IG-RES], which is an in-app behaviour with no primary page fetched for it
+    // and is therefore UNSOURCED; the Graph API accepts only down to 4:5 at the
+    // URL above. A 4:5 asset is
     // therefore correct on both, while a 3:4 asset would be outside the API
     // range. The earlier justification cited the Facebook ADS minimum for this
     // ratio, which is guidance for paid placements and not a bound on an
@@ -170,7 +186,10 @@ export const SOCIAL_CARD_FORMATS: Record<SocialCardFormat, SocialCardSpec> = {
     // inclusive and scales down rather than rejecting. Instagram in-app will
     // size it to 1080 x 1350 [IG-RES], so the extra pixels buy nothing there;
     // they are kept because this same asset goes to the Facebook feed, where
-    // [META-PIXELS] gives 1440 x 1800 as the recommended minimum for 4:5.
+    // 1440 x 1800 is the recommended minimum for 4:5, confirmed 12 August 2026 at
+    // https://www.facebook.com/business/ads-guide/image which gives ratio 4:5,
+    // resolution 1440 x 1800 and a 600 x 750 minimum. The Instagram bound is
+    // https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-user/media
     justification:
       '4:5 is the tightest bound Instagram publishes across both the app and the publishing API, so this one asset is correct wherever it is posted. Instagram will show it at 1080 x 1350; Facebook uses the full 1440 x 1800.',
   },
