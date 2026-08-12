@@ -1,5 +1,8 @@
 import 'server-only'
-import sharp from 'sharp'
+// Named type import, not the `sharp.Metadata` namespace form: sharp 0.35 replaced
+// the 0.34 `export =` shape with real ESM named exports, so the qualified form is
+// a compile error. See the same note in image-pipeline.ts.
+import sharp, { type Metadata } from 'sharp'
 import {
   ACCEPTED_IMAGE_FORMATS,
   MAX_IMAGE_PIXELS,
@@ -146,7 +149,7 @@ export async function processOrganisationLogo(
 ): Promise<LogoProcessResult> {
   const inputBuffer = Buffer.isBuffer(input) ? input : Buffer.from(input as ArrayBuffer)
 
-  let meta: sharp.Metadata
+  let meta: Metadata
   try {
     meta = await sharp(inputBuffer, { failOn: 'error' }).metadata()
   } catch {

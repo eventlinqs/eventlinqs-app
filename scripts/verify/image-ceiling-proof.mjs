@@ -10,11 +10,18 @@
  */
 import sharp from 'sharp'
 
-// The pipeline is TypeScript and server-only, so this reimplements nothing:
-// it imports the real limits and mirrors the exact sharp chain the pipeline
-// runs, then asserts the outcome the pipeline must produce.
-const MAX_STORED_IMAGE_DIMENSION = 4000
-const MAX_SOURCE_IMAGE_PIXELS = 80_000_000
+// This is a plain .mjs script and the limits are TypeScript and server-only, so
+// it CANNOT import them, whatever the previous wording here claimed. The two
+// values below are MIRRORED from src/lib/media/limits.ts and must be kept in
+// step by hand. They are named identically to the exports so that a grep for
+// either name finds both places at once.
+//
+// They read 4000 and 80_000_000 until 12 August 2026, which is what
+// fix/production-sweep chose. The merged tree carries the founder ruling of
+// 9 August instead (3000, and a 100 megapixel bomb guard), so leaving the old
+// pair here would have failed this proof against correct code.
+const IMAGE_DOWNSCALE_LONG_EDGE = 3000
+const MAX_IMAGE_PIXELS = 100_000_000
 
 /** A photographic-ish test raster, so the JPEG encoder does real work. */
 async function makeSource(width, height) {
@@ -34,7 +41,7 @@ async function run(label, width, height) {
   const source = await makeSource(width, height)
   const megapixels = (width * height) / 1_000_000
 
-  if (width * height > MAX_SOURCE_IMAGE_PIXELS) {
+  if (width * height > MAX_IMAGE_PIXELS) {
     console.log(`${label.padEnd(26)} ${width}x${height}  ${megapixels.toFixed(1)}MP  REFUSED (bomb guard)`)
     return
   }
@@ -43,11 +50,11 @@ async function run(label, width, height) {
   const before = process.memoryUsage()
   const t0 = process.hrtime.bigint()
 
-  const out = await sharp(source, { limitInputPixels: MAX_SOURCE_IMAGE_PIXELS })
+  const out = await sharp(source, { limitInputPixels: MAX_IMAGE_PIXELS })
     .rotate()
     .resize({
-      width: MAX_STORED_IMAGE_DIMENSION,
-      height: MAX_STORED_IMAGE_DIMENSION,
+      width: IMAGE_DOWNSCALE_LONG_EDGE,
+      height: IMAGE_DOWNSCALE_LONG_EDGE,
       fit: 'inside',
       withoutEnlargement: true,
     })
@@ -67,15 +74,15 @@ async function run(label, width, height) {
 
   // The contract: the long edge is bounded, aspect is preserved, nothing is enlarged.
   const longEdge = Math.max(out.info.width, out.info.height)
-  if (longEdge > MAX_STORED_IMAGE_DIMENSION) {
-    throw new Error(`FAIL ${label}: long edge ${longEdge} exceeds ${MAX_STORED_IMAGE_DIMENSION}`)
+  if (longEdge > IMAGE_DOWNSCALE_LONG_EDGE) {
+    throw new Error(`FAIL ${label}: long edge ${longEdge} exceeds ${IMAGE_DOWNSCALE_LONG_EDGE}`)
   }
   const srcAspect = width / height
   const outAspect = out.info.width / out.info.height
   if (Math.abs(srcAspect - outAspect) > 0.01) {
     throw new Error(`FAIL ${label}: aspect drifted ${srcAspect.toFixed(3)} -> ${outAspect.toFixed(3)}`)
   }
-  if (width <= MAX_STORED_IMAGE_DIMENSION && height <= MAX_STORED_IMAGE_DIMENSION) {
+  if (width <= IMAGE_DOWNSCALE_LONG_EDGE && height <= IMAGE_DOWNSCALE_LONG_EDGE) {
     if (out.info.width !== width || out.info.height !== height) {
       throw new Error(`FAIL ${label}: a within-bounds image was resized`)
     }

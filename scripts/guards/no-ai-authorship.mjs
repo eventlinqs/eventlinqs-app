@@ -35,12 +35,35 @@
 import { execFileSync } from 'node:child_process'
 
 /**
- * The last commit made before Law 8 existed: 'Law 7: research before recommending'.
- * Everything after this must be clean.
+ * The boundary. Every commit descending from this must be clean.
+ *
+ * MOVED 12 August 2026 by founder ruling, from `7fd2f4e` (the commit before Law 8
+ * was written) to the integration tip, the merge of the fifth and last launch
+ * branch. The reason is recorded rather than left to be guessed: bringing five
+ * branches together carried 113 commits with a trailer into this line, none of
+ * them written here, and an unbounded guard would fail every build until the
+ * history rewrite runs. That rewrite is written and NOT authorised
+ * (docs/roast/AUTHORSHIP-HISTORY-REWRITE.md).
+ *
+ * The move does NOT hide the debt. Every deferred commit is listed with its sha
+ * and subject in docs/roast/LAW8-DEBT.md, and the count prints on every run.
+ *
+ * Full sha rather than an abbreviation, for the same reason the allowlist below
+ * uses full shas: an abbreviation can become ambiguous as the repository grows.
+ *
+ * Delete this boundary and the `--all-history` branch the day the rewrite lands.
  */
-const EFFECTIVE_FROM = '7fd2f4e'
+const EFFECTIVE_FROM = '579e3a6011f5cb27ccaa9da37f7134959b2dca83'
 
-/** How many commits back to inspect, per the founder's instruction. */
+/**
+ * How many commits back to inspect.
+ *
+ * This is a BOUND, not a filter. If the scope holds more than this the guard now
+ * FAILS rather than inspecting only the newest 200 and reporting PASS, because
+ * `git log -N` keeps the N most recent and a scope that outgrows the window
+ * silently stops examining its own oldest commits. That is enforcement which is
+ * not happening, reported as enforcement which is.
+ */
 const WINDOW = 200
 
 /**
@@ -160,6 +183,28 @@ const scope = allHistory
     ? `commits after ${EFFECTIVE_FROM} (Law 8 effective boundary)`
     : `the last ${WINDOW} commits on HEAD (boundary commit not present in this checkout)`
 
+// THE FAIL-OPEN THIS CLOSES. `commits()` passes -WINDOW to git log, which keeps
+// the NEWEST WINDOW commits. Before this check, a scope larger than the window
+// quietly stopped examining its oldest commits and still printed PASS. Skipped in
+// --all-history mode, where scanning a bounded tail is the stated intent.
+if (!allHistory) {
+  let inScope = null
+  try {
+    inScope = Number(git(['rev-list', '--count', ...range]).trim())
+  } catch {
+    inScope = null
+  }
+  if (inScope !== null && Number.isFinite(inScope) && inScope > WINDOW) {
+    console.error(
+      `\n[no-ai-authorship] FAIL - the scope holds ${inScope} commits but WINDOW is ${WINDOW}.\n` +
+        `Only the newest ${WINDOW} would be inspected, so a PASS here would be false.\n\n` +
+        `Move EFFECTIVE_FROM forward and record the newly deferred commits in\n` +
+        `docs/roast/LAW8-DEBT.md, or raise WINDOW deliberately. Do not ignore this.\n`,
+    )
+    process.exit(1)
+  }
+}
+
 const offenders = []
 const deferredHits = []
 const scanned = commits(range)
@@ -206,7 +251,9 @@ if (!allHistory && boundaryKnown) {
   }
   console.log(
     `[no-ai-authorship] DEFERRED (pre-boundary): ${pre} of the last ${WINDOW} commits\n` +
-      `                  up to ${EFFECTIVE_FROM} carry an AI trailer.\n` +
+      `                  up to ${EFFECTIVE_FROM.slice(0, 9)} carry an AI trailer.\n` +
+      `                  Every deferred commit is listed with its sha and subject in\n` +
+      `                  docs/roast/LAW8-DEBT.md, so the debt stays visible.\n` +
       `                  The history rewrite is NOT authorised. Runbook: docs/roast/AUTHORSHIP-HISTORY-REWRITE.md`,
   )
 }

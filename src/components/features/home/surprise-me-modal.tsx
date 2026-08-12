@@ -5,7 +5,6 @@ import { formatEventDateShort } from '@/lib/dates/event-time'
 import Link from 'next/link'
 import { Sparkles, X, RefreshCw } from 'lucide-react'
 import { trackEvent } from '@/lib/analytics/plausible'
-import { formatEventDateShort } from '@/lib/dates/event-time'
 
 interface Suggestion {
   id: string

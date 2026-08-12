@@ -198,6 +198,7 @@ export default async function PayoutsPage({
             <BusinessNameMismatch
               platformName={nameCheck.platformName}
               stripeName={nameCheck.stripeName}
+              organisationId={org.id}
             />
           </div>
         )}
@@ -256,6 +257,7 @@ export default async function PayoutsPage({
         <BusinessNameMismatch
           platformName={nameCheck.platformName}
           stripeName={nameCheck.stripeName}
+          organisationId={org.id}
         />
       )}
 

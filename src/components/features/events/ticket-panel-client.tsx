@@ -23,9 +23,10 @@ export type EnrichedTier = TicketTier & {
 interface Props {
   eventId: string
   eventCreatedAt: string
-  // The EVENT's zone, for the "Sale opens" line in the selector. Without it
+  // The EVENT's zone, threaded to the selector's "Sale opens" line. Without it
   // that line formats in the runtime zone, so a sale opening at 6pm Perth
   // reads as 8pm to a buyer in Sydney and they come back after it started.
+  // Required, so omitting it does not compile.
   eventTimezone: string | null
   allTiers: EnrichedTier[]
   addons: EventAddon[]
@@ -41,12 +42,6 @@ interface Props {
   // the selector shows the true total (incl. fees) before checkout.
   feeRates?: FeeRates
   feePassType?: FeePassType
-  /**
-   * The EVENT's IANA zone, threaded to the selector's "Sale opens" line so a
-   * buyer in another state is told the sale time in the event's zone rather
-   * than their own. Required, so omitting it does not compile.
-   */
-  eventTimezone: string | null
 }
 
 function isTierVisible(tier: EnrichedTier, now: Date, unlockedIds: string[]): boolean {
@@ -92,7 +87,6 @@ export function TicketPanelClient(props: Props) {
         addons={[]}
         isTicketingSuspended={props.isTicketingSuspended}
         currency={props.defaultCurrency}
-        eventTimezone={props.eventTimezone}
         saleBlocked
       />
     )
@@ -122,7 +116,6 @@ export function TicketPanelClient(props: Props) {
         addons={props.addons.filter(a => a.is_active)}
         isTicketingSuspended={props.isTicketingSuspended}
         currency={visibleTiers[0]?.currency ?? props.defaultCurrency}
-        eventTimezone={props.eventTimezone}
         waitlistEnabled={props.waitlistEnabled}
         squadBookingEnabled={props.squadBookingEnabled}
         feeRates={props.feeRates}

@@ -985,7 +985,6 @@ export default async function EventDetailPage({ params }: Props) {
                       <div className="rounded-2xl border border-ink-200 bg-white p-6 shadow-sm lg:max-w-md">
                         <SectionHeader eyebrow="No seat needed" title="General admission" size="sm" className="mb-5" />
                         <TicketPanelClient
-                          eventTimezone={event.timezone}
                           eventId={event.id}
                           eventCreatedAt={event.created_at}
                           eventTimezone={event.timezone ?? null}
@@ -1024,7 +1023,6 @@ export default async function EventDetailPage({ params }: Props) {
                       )}
 
                       <TicketPanelClient
-                          eventTimezone={event.timezone}
                         eventId={event.id}
                         eventCreatedAt={event.created_at}
                         eventTimezone={event.timezone ?? null}

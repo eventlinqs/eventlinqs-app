@@ -28,10 +28,6 @@ interface TicketSelectorProps {
   addons: EventAddon[]
   isTicketingSuspended: boolean
   currency: string
-  // The EVENT's own zone for the "Sale opens" line. Optional only so the two
-  // existing call sites in ticket-panel-client stay the only ones that must
-  // supply it; resolveZone falls back to the platform zone, never the runtime's.
-  eventTimezone?: string | null
   waitlistEnabled?: boolean
   squadBookingEnabled?: boolean
   // Paid event whose organiser has not finished Stripe setup: render the

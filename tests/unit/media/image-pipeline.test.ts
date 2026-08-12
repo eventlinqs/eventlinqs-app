@@ -167,10 +167,13 @@ describe('processEventImage - downscales instead of refusing', () => {
     const r = await processEventImage(await jpegBuffer(3625, 4961), { role: 'cover' })
     expect(r.ok).toBe(true)
     if (r.ok) {
-      // Long edge bounded, aspect preserved.
-      expect(Math.max(r.image.width, r.image.height)).toBe(4000)
-      expect(r.image.width).toBe(2923)
-      expect(r.image.height).toBe(4000)
+      // Long edge bounded, aspect preserved. Asserted against the CONSTANT and
+      // not a literal: the ceiling is a founder-ruled number, and hardcoding it
+      // is exactly how this block came to assert 4000 against a pipeline that
+      // downscales to 3000.
+      expect(Math.max(r.image.width, r.image.height)).toBe(IMAGE_DOWNSCALE_LONG_EDGE)
+      expect(r.image.height).toBe(IMAGE_DOWNSCALE_LONG_EDGE)
+      expect(r.image.width / r.image.height).toBeCloseTo(3625 / 4961, 2)
     }
   })
 
@@ -180,8 +183,8 @@ describe('processEventImage - downscales instead of refusing', () => {
     const r = await processEventImage(await jpegBuffer(8000, 6000), { role: 'cover' })
     expect(r.ok).toBe(true)
     if (r.ok) {
-      expect(r.image.width).toBe(4000)
-      expect(r.image.height).toBe(3000)
+      expect(r.image.width).toBe(IMAGE_DOWNSCALE_LONG_EDGE)
+      expect(r.image.height).toBe(Math.round((6000 / 8000) * IMAGE_DOWNSCALE_LONG_EDGE))
     }
   })
 
@@ -204,8 +207,8 @@ describe('processEventImage - downscales instead of refusing', () => {
   })
 
   it('still refuses a decompression bomb, and says what to do about it', async () => {
-    // 12000 x 9000 = 108MP, past the 80MP guard. This is the ONLY pixel count
-    // that still refuses, and no consumer camera reaches it.
+    // 12000 x 9000 = 108MP, past the 100MP guard (MAX_IMAGE_PIXELS). This is the
+    // ONLY pixel count that still refuses, and no consumer camera reaches it.
     const r = await processEventImage(await jpegBuffer(12000, 9000), { role: 'gallery' })
     expect(r.ok).toBe(false)
     if (!r.ok) {

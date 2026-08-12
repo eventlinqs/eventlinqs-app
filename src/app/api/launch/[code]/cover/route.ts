@@ -1,6 +1,9 @@
 import { cookies } from 'next/headers'
 import { NextResponse, type NextRequest } from 'next/server'
-import sharp from 'sharp'
+// Named type imports, not the `sharp.Metadata` namespace form: sharp 0.35 replaced
+// the 0.34 `export =` shape with real ESM named exports, so the qualified form is
+// a compile error. See the same note in image-pipeline.ts.
+import sharp, { type Metadata, type OutputInfo } from 'sharp'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { KIT_DRAFT_COOKIE, isKitDraftToken } from '@/lib/growth/kit-draft'
 import { attachDraftCover, isKitCode, readDraftByToken } from '@/lib/launch/draft-store'
@@ -114,7 +117,7 @@ export async function POST(
   }
 
   // 3. Metadata, then the decompression-bomb guard, both before any decode.
-  let meta: sharp.Metadata
+  let meta: Metadata
   try {
     meta = await sharp(input, { failOn: 'error' }).metadata()
   } catch {
@@ -139,7 +142,7 @@ export async function POST(
   //    WebP at the long-edge ceiling is also the real storage lever: it takes a
   //    typical phone photo from roughly 2MB to 200-400KB, which matters far
   //    more than the sweep does.
-  let output: { data: Buffer; info: sharp.OutputInfo }
+  let output: { data: Buffer; info: OutputInfo }
   try {
     output = await sharp(input)
       .rotate()

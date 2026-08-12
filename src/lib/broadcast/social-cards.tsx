@@ -734,7 +734,11 @@ export async function renderSocialCard(
  */
 async function backdropTone(
   pipeline: import('sharp').Sharp,
-  sharpLib: typeof import('sharp'),
+  // The CONSTRUCTOR, not the module namespace. Under sharp 0.34's `export =` the
+  // two were the same object, so `typeof import('sharp')` was callable. 0.35 ships
+  // real ESM named exports, so the namespace is `{ default, ... }` and calling it
+  // is a type error; the callers all pass the default export, which this names.
+  sharpLib: typeof import('sharp').default,
   width: number,
   height: number,
 ): Promise<Buffer> {

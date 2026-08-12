@@ -19,9 +19,20 @@ import { StripeDashboardButton } from '@/components/payouts/stripe-dashboard-but
 export function BusinessNameMismatch({
   platformName,
   stripeName,
+  organisationId,
 }: {
   platformName: string
   stripeName: string
+  /**
+   * WHICH business's Stripe dashboard the button below opens.
+   *
+   * Threaded rather than defaulted. StripeDashboardButton made this required
+   * for a reason recorded in its own file: posting with no organisation named
+   * let the route fall back to the caller's FIRST business, minting a login
+   * link into the wrong company's Stripe account. This band is rendered per
+   * organisation, so it must name the one it is reporting on.
+   */
+  organisationId: string
 }) {
   return (
     <section
@@ -51,7 +62,7 @@ export function BusinessNameMismatch({
             </p>
           </div>
         </div>
-        <StripeDashboardButton enabled />
+        <StripeDashboardButton enabled organisationId={organisationId} />
       </div>
     </section>
   )

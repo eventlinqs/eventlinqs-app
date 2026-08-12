@@ -5,7 +5,7 @@ import 'server-only'
 // compile error on 0.35. Importing the type by name is the shape the package now
 // documents, and it is what the security bump to 0.35.3 required
 // (libvips CVE-2026-33327 and friends, reachable from organiser uploads).
-import sharp, { type Metadata } from 'sharp'
+import sharp, { type Metadata, type OutputInfo } from 'sharp'
 import {
   ACCEPTED_IMAGE_FORMATS,
   IMAGE_DOWNSCALE_LONG_EDGE,
@@ -195,7 +195,7 @@ export async function processEventImage(
   // fix/production-sweep's branch here still tested `format === 'avif'`, which
   // sharp 0.35 made dead code. It is NOT carried across: keeping it would
   // re-break the transcode defect that decideOutputEncoding exists to fix.
-  let out: { data: Buffer; info: sharp.OutputInfo }
+  let out: { data: Buffer; info: OutputInfo }
   if (encoding.kind === 'webp') {
     out = await pipeline.webp({ quality: 82 }).toBuffer({ resolveWithObject: true })
   } else if (encoding.kind === 'avif') {
