@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { EventCardMedia } from '@/components/media'
 import type { BentoEvent } from '@/components/features/events/event-bento-tile'
+import { formatEventDateShort } from '@/lib/dates/event-time'
 
 /**
  * TrendingEventsBento (Batch 9.2) - asymmetric 6-card bento for the
@@ -35,9 +36,12 @@ interface Props {
 
 const CARD_BASE = 'group relative block overflow-hidden rounded-2xl bg-ink-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-accent)] focus-visible:ring-offset-2'
 
-function formatDateBadge(iso: string): string {
-  const d = new Date(iso)
-  return d.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' })
+// Formats in the EVENT's zone, not the runtime's. The bare toLocaleDateString
+// this replaces rendered in UTC on the server and in the reader's zone in the
+// browser, so a late-evening event in another state showed the wrong DAY on the
+// homepage's most prominent rail.
+function formatDateBadge(iso: string, timezone: string | null | undefined): string {
+  return formatEventDateShort(iso, timezone)
 }
 
 function priceLabel(event: BentoEvent): string {
@@ -89,7 +93,7 @@ function CardContent({ event, sizeRole }: { event: BentoEvent; sizeRole: 'featur
       <span
         className="absolute left-3 top-3 inline-flex items-center rounded-full bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-900"
       >
-        {formatDateBadge(event.start_date)}
+        {formatDateBadge(event.start_date, event.timezone)}
       </span>
 
       {/* Bottom content */}

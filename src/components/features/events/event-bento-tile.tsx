@@ -19,6 +19,8 @@ export interface BentoEvent extends EventMediaInput {
   id: string
   slug: string
   start_date: string
+  /** The EVENT's zone. Any card printing a date formats in it, never the runtime's. */
+  timezone?: string | null
   venue_name?: string | null
   venue_city?: string | null
   ticket_tiers?: { price: number; currency: string }[] | null

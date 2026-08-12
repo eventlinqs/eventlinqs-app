@@ -21,6 +21,7 @@ import { OrganiserProfileHero } from '@/components/features/organisers/organiser
 import { EventVideo } from '@/components/features/events/event-video'
 import { StructuredRequestButton } from '@/components/marketplace/structured-request-button'
 import { getCityPhoto } from '@/lib/images/city-photo'
+import { formatEventMonthYear } from '@/lib/dates/event-time'
 
 export const revalidate = 300
 
@@ -295,10 +296,7 @@ export default async function ArtistProfilePage({ params }: Props) {
                     <span className="block text-xs text-ink-600">{credit.venueLabel}</span>
                   </span>
                   <span className="text-sm font-medium text-gold-800">
-                    {new Date(credit.startDate).toLocaleDateString('en-AU', {
-                      month: 'short',
-                      year: 'numeric',
-                    })}
+                    {formatEventMonthYear(credit.startDate, credit.timezone)}
                   </span>
                 </Link>
               </li>

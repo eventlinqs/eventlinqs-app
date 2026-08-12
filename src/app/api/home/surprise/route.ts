@@ -30,6 +30,7 @@ interface Suggestion {
   title: string
   city: string | null
   startDate: string
+  timezone: string | null
   coverImage: string | null
   reason: string
 }
@@ -65,7 +66,10 @@ export async function GET(request: Request) {
   const { data, error } = await supabase
     .from('events')
     .select(
-      'id, slug, title, cover_image_url, start_date, venue_city, category:event_categories(name, slug)',
+      // `timezone` travels with start_date so the modal formats in the EVENT's
+      // zone rather than the reader's, which showed the wrong day for an event
+      // in another state.
+      'id, slug, title, cover_image_url, start_date, timezone, venue_city, category:event_categories(name, slug)',
     )
     .eq('status', 'published')
     .eq('visibility', 'public')
@@ -89,6 +93,7 @@ export async function GET(request: Request) {
     title: e.title,
     city: e.venue_city,
     startDate: e.start_date,
+    timezone: e.timezone,
     coverImage: e.cover_image_url,
     reason,
   }))

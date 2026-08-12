@@ -2,6 +2,11 @@ import { describe, expect, test } from 'vitest'
 import { ENV_MANIFEST, CROSS_RULES, storePolicyFor, shapeFor } from '@/lib/env/manifest.mjs'
 import { evaluateProcessEnv, evaluateStores, checkShape } from '@/lib/env/manifest-checks.mjs'
 import { CRITICAL_ENV_RULES, ALWAYS_BLOCKING_RULES, evalEnvRule } from '@/lib/health/critical-env.mjs'
+// ONE known-good production environment, shared with the by-hand half in
+// scripts/verify/env-locks-verify.mjs. It used to be a second copy living in
+// this file, and a variable added to the manifest reached only one of the two.
+// See the header of the fixture for the whole story.
+import { rep, ACCOUNT, goodProductionEnv } from '../../fixtures/env/good-production-env.mjs'
 
 /**
  * THE LOCKS MUST BE ABLE TO FAIL, AND CI MUST BE THE ONE THAT PROVES IT.
@@ -15,46 +20,6 @@ import { CRITICAL_ENV_RULES, ALWAYS_BLOCKING_RULES, evalEnvRule } from '@/lib/he
  * Every value here is synthetic, built from repeated characters. Nothing in this
  * file is or resembles a real credential.
  */
-
-const rep = (ch: string, n: number) => ch.repeat(n)
-const ACCOUNT = 'T8WBhGuiZ9cvxuu' // 15 characters, the shape of a Stripe account id
-
-function goodProductionEnv(): Record<string, string> {
-  return {
-    VERCEL_ENV: 'production',
-    NEXT_PUBLIC_SUPABASE_URL: 'https://gndnldyfudbytbboxesk.supabase.co',
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: `eyJ${rep('a', 60)}`,
-    SUPABASE_SERVICE_ROLE_KEY: `eyJ${rep('b', 60)}`,
-    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: `pk_live_51${ACCOUNT}${rep('P', 30)}`,
-    STRIPE_SECRET_KEY: `sk_live_51${ACCOUNT}${rep('S', 30)}`,
-    STRIPE_WEBHOOK_SECRETS: `whsec_${rep('w', 32)},whsec_${rep('x', 32)}`,
-    CRON_SECRET: rep('c', 64),
-    QUEUE_SECRET: rep('q', 64),
-    RESEND_API_KEY: `re_${rep('r', 24)}`,
-    EMAIL_FROM: 'EventLinqs <hello@eventlinqs.com>',
-    // Both became REQUIRED on production when the manifest stopped leaving them
-    // with no opinion, and both were SET on production on 2026-08-03. Each has
-    // an in-code fallback, so nothing was ever lost, but the destination for a
-    // support escalation and for every payment and health alert was a literal
-    // in a source file rather than a value anyone could see or change.
-    //
-    // NOT alerts@eventlinqs.com, which this fixture used to carry: that address
-    // was tested on 2026-08-03 and HARD BOUNCED (550 5.4.1, Exchange Online).
-    // A fixture that models a bouncing address as the good case teaches the
-    // wrong thing to whoever copies it next.
-    PAYMENT_ALERT_EMAIL: 'hello@eventlinqs.com',
-    SUPPORT_INBOX_EMAIL: 'hello@eventlinqs.com',
-    NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: `AIza${rep('G', 35)}`,
-    GOOGLE_MAPS_API_KEY: `AIza${rep('g', 35)}`,
-    UPSTASH_REDIS_REST_URL: 'https://apt-mudfish-12345.upstash.io',
-    UPSTASH_REDIS_REST_TOKEN: rep('u', 40),
-    ADMIN_TOTP_ENC_KEY: rep('k', 44),
-    NEXT_PUBLIC_VAPID_PUBLIC_KEY: rep('V', 87),
-    VAPID_PRIVATE_KEY: rep('v', 43),
-    VAPID_SUBJECT: 'mailto:hello@eventlinqs.com',
-    ANTHROPIC_API_KEY: `sk-ant-${rep('A', 40)}`,
-  }
-}
 
 function goodInventory() {
   const records: { name: string; scope: string; gitBranch: string | null; readable: boolean }[] = []
@@ -136,6 +101,22 @@ describe('LOCK 2: the production build guard', () => {
     const env = goodProductionEnv()
     env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY = 'not-a-google-key'
     expect(names(evaluateProcessEnv(env).findings)).toContain('NEXT_PUBLIC_GOOGLE_MAPS_API_KEY')
+  })
+
+  test("Google's placeholder Map ID can never reach production", () => {
+    // DEMO_MAP_ID is what Google's own samples use. Shipping it renders a map
+    // whose advanced markers silently do not appear, which is worse than the
+    // deprecation notice the Map ID exists to remove. The 16-character floor
+    // on the shape rejects it, since DEMO_MAP_ID is 11.
+    const env = goodProductionEnv()
+    env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID = 'DEMO_MAP_ID'
+    expect(names(evaluateProcessEnv(env).findings)).toContain('NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID')
+  })
+
+  test('a missing Map ID fails production, because the pins would vanish', () => {
+    const env = goodProductionEnv()
+    delete env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID
+    expect(names(evaluateProcessEnv(env).findings)).toContain('NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID')
   })
 
   test('THE REGRESSION: the sender drifting to the unverified Resend domain fails', () => {

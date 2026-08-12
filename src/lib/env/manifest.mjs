@@ -109,6 +109,16 @@ export const SHAPES = {
     minLength: 40,
     describe: 'a legacy eyJ JWT or an sb_secret_ key',
   },
+  googleMapId: {
+    // A Google Cloud Map ID. The 16-character floor is deliberate: Google's
+    // own placeholder, DEMO_MAP_ID, is 11 characters, so a real ID passes and
+    // the demo value cannot be shipped by accident. Shipping DEMO_MAP_ID would
+    // render a map whose advanced markers silently do not appear, which is a
+    // worse defect than the deprecation notice this variable exists to remove.
+    pattern: '^[A-Za-z0-9_-]{16,64}$',
+    minLength: 16,
+    describe: 'a Google Cloud Map ID, never the literal DEMO_MAP_ID',
+  },
   stripePublishableAny: {
     pattern: '^pk_(test|live)_[A-Za-z0-9]{20,}$',
     minLength: 40,
@@ -558,6 +568,26 @@ export const ENV_MANIFEST = [
     mustBeSensitive: false,
     previewBranchScoping: 'forbidden',
     shape: SHAPES.googleApiKey,
+    paymentCritical: false,
+    githubActions: false,
+    publicVar: true,
+  },
+  {
+    name: 'NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID',
+    describe: 'Google Maps Map ID (vector): required by AdvancedMarkerElement on every map',
+    // Required wherever a map renders. AdvancedMarkerElement REQUIRES a Map ID
+    // (Google, "Advanced markers migration"): a map built without one shows no
+    // advanced markers at all, so an absent value here is a blank-pin defect
+    // rather than a degraded one. Optional in development so a local checkout
+    // without the ID still boots; the map falls back to the legacy marker path.
+    requiredOn: ['production', 'preview'],
+    forbiddenOn: [],
+    optionalOn: ['development'],
+    // Not a secret. A Map ID is embedded in the page by design, exactly like
+    // the browser key beside it, and is scoped in the Cloud console.
+    mustBeSensitive: false,
+    previewBranchScoping: 'forbidden',
+    shape: SHAPES.googleMapId,
     paymentCritical: false,
     githubActions: false,
     publicVar: true,

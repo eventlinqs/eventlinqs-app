@@ -29,6 +29,9 @@ on:
       - 'scripts/check-env-stores.mjs'
       - 'scripts/check-public-env.mjs'
       - 'scripts/verify/env-locks-verify.mjs'
+      # The known-good production environment both halves of the proof read.
+      # It is an input to this gate, so a change to it must re-run this gate.
+      - 'tests/fixtures/env/**'
       - '.github/workflows/env-locks.yml'
   schedule:
     # Every six hours. Configuration drift is not urgent to the minute, but a
