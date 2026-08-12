@@ -17,6 +17,7 @@
  *   short-link-namespace       /e/ and /s/ own their segments; no code can shadow a route
  *   check-client-barrel-imports  no third-party namespace import in the browser bundle
  *   migration-collision-guard  no two migrations claiming one version, on any branch
+ *   payment-critical-doctrine  every paymentCritical variable is actually protected
  *
  * Runs them all rather than short-circuiting, so one pass reports every
  * violation instead of making the founder play whack-a-mole.
@@ -111,6 +112,17 @@ const GUARDS = [
   // scripts/verify/ because it is also run by hand with --remote against the
   // linked project; the path below is the one thing that makes it a gate.
   'scripts/verify/migration-collision-guard.mjs',
+  // Founder ruling 2026-08-12: of the twelve unwired source-only checks found by
+  // the sweep, wire THIS one and leave the other eleven listed and unwired,
+  // because it guards money. It asserts the paymentCritical doctrine: every
+  // variable carrying that flag exists on production, is sensitive where the
+  // platform allows it, is covered by the runtime sentinel, and has a rotation
+  // procedure with a verification command.
+  //
+  // It was itself written because a classification had one display consumer and
+  // no guard, which is the same shape as a guard with no caller: something that
+  // reads as a control and controls nothing.
+  'scripts/verify/payment-critical-doctrine.mjs',
 ]
 
 /**

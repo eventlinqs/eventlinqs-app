@@ -133,6 +133,28 @@ a silently skipped payout release strands every restricted organiser for ever.
 TEST still holds `20260809000001` as applied, and `payout_status_unset` would
 inherit that record and never run.
 
+**THE METHOD, not just the outcome, because the outcome depended on it.** Before
+renumbering either colliding file, find out WHICH ONE ACTUALLY RAN, and find out
+from the database rather than from the filenames or the ledger. The ledger cannot
+tell you: both files claim one version, so `migration list` shows the version
+applied and one local file unmatched, and it does not say which. The database
+can, because the two files write different values.
+
+Here `_r1` and `_repair` both rename `arts-culture` and both create `comedy`,
+but `_r1` sets the name `Arts & Community` and `_repair` sets `Arts and Theatre`.
+TEST reads `Arts & Community`, so `_r1` ran and `_repair` was the skipped one.
+
+That single query changed the whole recovery. The assumption was that the skipped
+file was the empty Comedy tile, which would have made this urgent and would have
+meant re-running a migration against live data. The measurement showed `_r1` is a
+SUPERSET of `_repair` (same rename, same comedy row, same comedy backfill, plus a
+tag rewrite `_repair` lacks), so the only lost effect was a category NAME, and
+TEST already had comedy live with 28 published events behind it. Renumbering the
+wrong file would have re-run the superset and skipped the subset for ever.
+
+**Check the data before you renumber. The filenames tell you there is a
+collision; only the rows tell you which side of it you are on.**
+
 **There are now TWO repairs, not one** (the taxonomy renumber of 2026-08-12 added
 the second). Both are `--status reverted`, which only deletes a ledger row; it
 runs no SQL and touches no table. Run them together, then push once:
