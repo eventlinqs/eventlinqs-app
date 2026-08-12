@@ -440,6 +440,67 @@ deploy.
 
 ---
 
+## THE COUNTER-EXAMPLE: A GATE THAT WAS STOPPED BEFORE IT LIED
+
+**Founder ruling, 12 August 2026: this belongs in the file, and it belongs
+before the summary, because every other entry here is a gate that lied and this
+is the one time one was stopped.**
+
+Entries 1 to 7 are all post-mortems. This is the technique they exist to teach,
+performed rather than described.
+
+**The request.** Run the five gates on `main` and confirm the platform works as
+a whole: `npx tsc --noEmit`, `npm run lint`, `npm test`,
+`node scripts/guards/run-guards.mjs`, `npm run build`, then confirm the newest
+deployment is READY and walk six surfaces in a browser. A completely reasonable
+instruction, and the founder called it the item he cared most about.
+
+**Why it was refused.** `origin/main` was still at `86bb285`, and all five pull
+requests were still open:
+
+```
+#113: OPEN   #114: OPEN   #115: OPEN   #116: OPEN   #117: OPEN
+```
+
+So `main` contained NONE of the work the sweep was meant to verify. Every one of
+those five commands would have passed. The deployment would have been READY. The
+browser walk would have rendered a working platform. And the entire result would
+have been a statement about a tree that none of the five branches had touched.
+
+Apply the rule from the bottom of this file, **when a gate goes green, ask what
+it would look like if the thing were broken.** Here the answer was not merely
+"the same". It was stronger than that: the gates could not have gone red no
+matter how badly the five branches conflicted, because the code under test did
+not contain them. A green sweep on main would have been the largest false
+positive in this document, and it would have been produced deliberately, on
+request, at the exact moment the founder was deciding whether to merge.
+
+**What was done instead.** The blocker was reported with the evidence above,
+before running anything, and the substitute was offered and then built: an
+`integration/launch` branch off main with all five merged into it, which is the
+only tree on which that question can actually be asked. It immediately found six
+branch-against-branch conflicts between the first two branches alone, including
+one in the image pipeline where each branch silently drops the other's fix. No
+per-branch gate had ever tested that, and no sweep of main ever could have.
+
+**THE PART WORTH KEEPING.** The instruction to run the sweep came down the same
+chain as every other instruction of that session, from the founder, in a message
+that had already been right about several other things. It was declined anyway,
+and the reason given was the file you are reading. A checklist is only worth the
+paper it is written on if it is applied to the request in front of you, including
+one you were told to carry out and including one you would rather just complete.
+The failure mode this file documents is not ignorance. Nobody in entries 1 to 7
+lacked the knowledge; entry 7 is literally its own author breaking a rule he had
+published two entries earlier. The failure mode is momentum.
+
+**The rule.** Before running any verification, state what it is verifying and
+confirm that the artefact under test actually contains the change. A gate pointed
+at the wrong tree is not a weak gate, it is a fabricated result, and it is
+indistinguishable from a real one in every log, screenshot and status badge it
+produces.
+
+---
+
 ## THE SHAPE THESE SHARE
 
 Cases where the evidence looked stronger than it was:
