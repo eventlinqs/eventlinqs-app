@@ -135,7 +135,8 @@ async function defaultReconcile(organisationId: string): Promise<ReconcileOutcom
 export async function checkPublishGate(
   client: SupabaseClient,
   input: { organisationId: string; tiersHavePaid: boolean; coverImageUrl?: string | null },
-  reconcile: ReconcileFn = defaultReconcile,
+  /** `null` opts out of the Stripe re-read; see the branch below for when that is right. */
+  reconcile: ReconcileFn | null = defaultReconcile,
 ): Promise<PublishGateResult> {
   // Photo-required gate fires for both free and paid events.
   if ('coverImageUrl' in input && !hasRealCover(input.coverImageUrl)) {
@@ -169,6 +170,36 @@ export async function checkPublishGate(
   // tightening it would regress a working surface.
   if (org.stripe_charges_enabled && org.payout_status !== 'restricted') {
     return { ok: true }
+  }
+
+  // NO RECONCILER. A caller may pass `null` to decide on the row it has just
+  // read, without consulting Stripe.
+  //
+  // WHY THIS EXISTS (merge finding, 13 August 2026). The reconcile below was
+  // built for the ORGANISER-FACING publish action, where a person clicks
+  // Publish and must never be refused because of a column that drifted while
+  // they were looking at the page. The scheduled-publish CRON is a different
+  // caller with a different problem: it reads the organisation row seconds
+  // before it decides, so it is not working from stale data, and a Stripe call
+  // per blocked event puts a network failure mode inside a fail-closed job.
+  //
+  // It was measured, not assumed: running the reconciler from the cron against
+  // an organisation with charges enabled and payouts restricted returned
+  // `paid_event_charges_disabled`, which is the WRONG reason to show an
+  // organiser. Opting out explicitly is therefore not a weakening, it is the
+  // correct answer for this caller, and it is expressed as its own branch so
+  // nobody has to fake a Stripe outage to get it.
+  if (reconcile === null) {
+    return {
+      ok: false,
+      reason: org.stripe_charges_enabled ? 'organisation_payouts_restricted' : 'paid_event_charges_disabled',
+      message: org.stripe_charges_enabled
+        ? 'Payouts are restricted on this organisation, so this paid event stays scheduled rather than going live. Open payouts to see what Stripe needs.'
+        : 'This organisation cannot take payment yet, so this paid event stays scheduled rather than going live. Connect Stripe and finish identity verification.',
+      outstanding: [],
+      disabledReason: null,
+      nextAction: { label: 'Open payouts', href: '/dashboard/payouts' },
+    }
   }
 
   // SLOW PATH. We are about to refuse. Before doing that, find out what Stripe

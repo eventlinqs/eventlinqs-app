@@ -1,4 +1,19 @@
-#!/usr/bin/env node
+/*
+ * NO SHEBANG ON THIS FILE, DELIBERATELY. Do not put one back.
+ *
+ * `tests/unit/security/rls-column-exposure.test.ts` IMPORTS `scanMigrations`
+ * from here, and Vite does not strip a `#!` line when it serves a module to the
+ * test runner. The whole suite then died at collection with
+ * `SyntaxError: Invalid or unexpected token` and no line number, so the test
+ * that guards the world-readable-column class reported "no tests" and passed
+ * vacuously for the entire life of this branch.
+ *
+ * The shebang bought nothing: every caller invokes this file as
+ * `node scripts/security/rls-exposure-scan.mjs`, and the guard runner spawns it
+ * with `process.execPath`. Twenty-nine other scripts under scripts/ still carry
+ * one, which is fine while nothing imports them, and is the same trap the day
+ * something does.
+ */
 /**
  * RLS column-exposure scanner and CI gate.
  *

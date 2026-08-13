@@ -42,6 +42,8 @@ silently follow the stale doc.
 | A competitor claim (Eventbrite, Ticketmaster, DICE, Humanitix, TryBooking, Moshtix, Oztix) | Law 7 plus Law 2 (evidence-driven), `competitor-benchmark` skill |
 | Writing ANY commit message | Law 8 (authorship). No Co-Authored-By naming Claude or an AI, no "Generated with", no robot emoji. The founder is the sole author |
 | Setting up a new worktree or clone | Law 8. Run `git config core.hooksPath .githooks` before the first commit |
+| Pinning or changing ANY version: a runtime, a dependency, a platform setting, an API version, a framework target | Law 9 (current by default, never backwards). Fetch the vendor's support schedule FIRST and cite it; never resolve a mismatch by downgrading |
+| A version disagreement between two environments (`.nvmrc`, `engines.node`, a workflow pin, a dashboard setting) | Law 9. Bring the OLDER one forward, never the newer one back |
 | Reporting any feature or task done | Definition of Done (SHIP 100%, A to Z) |
 | Growth, sharing, invites, referral, attribution, the wedge, the levers | Growth plan, `event-demand-engine` skill |
 | Discovery, feed, follows, alerts, push, who's-going, recommendations | Growth plan (the demand engine), `docs/MOAT-DEMAND-ENGINE-PLAN.md`, `event-demand-engine` skill |
@@ -70,7 +72,8 @@ silently follow the stale doc.
 Law 2 (evidence-driven) - Law 3 (Australia-smart) - Law 4 (marketing image-rich)
 - Law 5 (zero dead links) - Law 6 (render, never generate) - Law 7 (research
 before recommending, no generic knowledge) - Law 8 (authorship, the founder is
-the sole author) - Scene layer - Design system - Motion - Copy and banned
+the sole author) - Law 9 (current by default, never backwards) - Scene layer -
+Design system - Motion - Copy and banned
 content - Fee system - Venue Revenue Sharing Program - Verification and gates -
 Tooling - Authority docs - Skills.
 
@@ -530,6 +533,61 @@ every SHA quoted in every handover document, forces a force-push, and requires
 every worktree to be reset. The runbook is written and waiting at
 `docs/roast/AUTHORSHIP-HISTORY-REWRITE.md`. The founder decides when it runs, and
 it will be after launch.
+
+## Law 9: current by default, never backwards (founder ruling 2026-08-13)
+
+**No runtime, dependency, platform setting, API version or framework target is
+ever pinned to, left on, or moved to a version that is deprecated, end of life,
+or superseded, unless the founder rules otherwise in writing for a named
+reason.** The platform moves forward.
+
+1. **VERIFY SUPPORT STATUS FROM THE PRIMARY SOURCE BEFORE PINNING ANYTHING.** A
+   version number in this repository is a CLAIM about what is currently
+   supported, and it goes stale silently: nothing about the file changes on the
+   day the claim stops being true. Fetch the vendor's own release schedule or
+   deprecation notice and cite it beside the pin. This is Law 7 applied to
+   versions, and it binds identically.
+2. **NEVER RESOLVE A VERSION MISMATCH BY DOWNGRADING.** When two environments
+   disagree, bring the OLDER one forward. Aligning downwards is a regression
+   wearing discipline's clothes: it produces a tidy, consistent, uniformly
+   obsolete platform and reads in a report as though something was fixed.
+3. **THE VERSION CONTRACT LIVES IN VERSION CONTROL, NOT IN A DASHBOARD.** A
+   setting nobody can diff is a setting nobody can review, and it cannot
+   disagree with the repository loudly enough to be noticed.
+4. **A STALE PIN IS A DEFECT, NOT A NEUTRAL FACT.** Finding one and following it
+   obediently is the defect propagating through one more session. Report it.
+
+**WHY THIS EXISTS.** The evidence is written into the law so it cannot be argued
+away later. Every one of these signals was visible for months and none was acted
+on, because each looked like somebody else's decision already made.
+
+- `.nvmrc` pinned Node **20** while Vercel built this project on **24.x** from a
+  dashboard setting, and **Vercel never reads `.nvmrc`**. The two disagreed for
+  months with nothing anywhere able to notice, because they are read by different
+  systems and neither can see the other.
+- A THIRD disagreement existed, unreported: `.github/workflows/env-locks.yml` was
+  already pinned to `node-version: 24` while `.nvmrc` said 20, so two CI
+  workflows in the same repository ran different Node majors from each other.
+  Pinning ABOVE the contract was legal, so nothing complained.
+- `lighthouse@13.1.0` declares `node >=22.19` and emitted `EBADENGINE` on the
+  pinned runtime, on every install, in plain view.
+- When the move was finally made, Node 24 turned out to be **strictly better**:
+  5 test failures against 6 on Node 20, on the same tree, with one test passing
+  on 24 that failed on 20. The fear that a newer runtime would cost stability was
+  exactly backwards.
+- **The near miss, which is the reason this is a law rather than a note:** the
+  proposal on the table was to align Vercel DOWN to 20 to resolve the mismatch.
+  That would have been executed as a tidy fix, would have passed every gate, and
+  would have moved the whole platform onto a runtime heading out of support.
+
+**ENFORCEMENT.** `scripts/guards/no-deprecated-runtime.mjs`, registered in
+`run-guards.mjs` and therefore blocking on `prebuild`, fails the build when the
+pinned Node major is not a currently supported release. It carries the support
+horizon as a named constant with its source URL and the date the claim was last
+checked, so a reader can see how fresh the claim is instead of trusting it, and
+it says in its own header what it cannot see: the runtime only, never every
+dependency's support status. That remainder is enforced by clause 1 and by
+reading `npm install` output rather than scrolling past it.
 
 ## Scene layer (locked, national) - V2, research-backed
 

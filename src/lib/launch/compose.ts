@@ -198,8 +198,15 @@ const QUESTION_FOR: Record<string, string> = {
   'Ticket type and price': 'What does it cost to get in?',
   Capacity: 'How many people can come?',
   'Discovery tags': 'What words would someone search for to find this?',
+  // ENDS ON THE ASK, not on the explanation. Every item in this list is shown
+  // to an organiser under "A couple of things to fill in", so every one of them
+  // has to read as a question. The plain-English rewrite of 13 August 2026 put
+  // the question first and the explanation second, which reads well in
+  // isolation and left the line ending in a full stop; the composer then
+  // displayed one statement among three questions. Stating the problem and then
+  // asking keeps the plain English and restores the shape.
   'Check the date: the day you named does not fall on that date':
-    'Can you check the date? The day you named does not fall on that date.',
+    'The day you named does not fall on that date. Can you check it?',
 }
 
 function plainQuestion(field: string): string {
@@ -209,7 +216,14 @@ function plainQuestion(field: string): string {
   // wrapped, so a future notice added beside a field name cannot come out
   // garbled the way the weekday one did.
   const alreadyASentence = /[.:?]/.test(field) || field.trim().split(/\s+/).length > 4
-  if (alreadyASentence) return field.trim().replace(/[.\s]*$/, '.')
+  if (alreadyASentence) {
+    // Still has to END AS A QUESTION, for the same reason as the mapped entries
+    // above: these are all shown together as things to fill in. Closing the
+    // class here rather than only fixing the one entry that exposed it, because
+    // the next unmapped notice would otherwise arrive with the same defect.
+    const sentence = field.trim().replace(/[.\s]*$/, '')
+    return sentence.endsWith('?') ? sentence : `${sentence}. Could you fill this in?`
+  }
   return `What is the ${field.toLowerCase()}?`
 }
 

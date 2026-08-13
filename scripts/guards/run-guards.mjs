@@ -6,6 +6,7 @@
  * by a non-zero exit code:
  *
  *   node-version-contract      no script may use an API newer than CI's Node
+ *   no-deprecated-runtime      Law 9: the pinned runtime is still supported
  *   auth-provider-guard        no provider button without a server-resolved gate
  *   no-supabase-smtp           no auth flow on Supabase's 2-per-hour built-in mailer
  *   sender-single-source       one definition of the sending identity
@@ -168,6 +169,12 @@ const ROOT = join(HERE, '..', '..')
  */
 const GUARDS = [
   'scripts/guards/node-version-contract.mjs',
+  // Law 9 (founder ruling 2026-08-13). node-version-contract asks whether the
+  // scripts match the pinned runtime; this asks whether the PIN ITSELF is still
+  // a supported release, which nothing did. `.nvmrc` said 20 until 13 August
+  // 2026 and Node 20 went end of life on 2026-04-30, so the platform sat three
+  // and a half months on an unsupported runtime with every gate green.
+  'scripts/guards/no-deprecated-runtime.mjs',
   'scripts/guards/auth-provider-guard.mjs',
   'scripts/guards/auth-provider-cost-guard.mjs',
   'scripts/guards/no-supabase-smtp.mjs',

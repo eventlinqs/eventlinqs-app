@@ -109,7 +109,41 @@ if (onVercel && !bypass) {
   process.exit(1)
 }
 
+/*
+ * "NOT BLOCKING" HAD TO STOP BEING A LIE (founder ruling 2026-08-13).
+ *
+ * This printed `WARNING (not blocking - local build)` for a missing
+ * NEXT_PUBLIC_SUPABASE_URL and exited 0. About a minute later `next build` died
+ * anyway, because next.config.ts interpolates that variable into a rewrite and
+ * Next rejects `destination: "undefined/storage/v1/object/public/:path*"` with
+ * `Error: Invalid rewrite found`. So the gate said the build would continue, the
+ * build did not continue, and the error named a REWRITE rather than the missing
+ * variable, which sends the reader to the wrong file entirely.
+ *
+ * A gate that says "not blocking" about something that blocks is worse than a
+ * gate that says nothing: it actively redirects the person reading it. The
+ * variables that genuinely stop `next build` are therefore named here and told
+ * the truth about, wherever the build is running.
+ */
+const BUILD_STOPPING_LOCALLY = new Set(['NEXT_PUBLIC_SUPABASE_URL'])
+const stopping = failures.filter(f => BUILD_STOPPING_LOCALLY.has(f.name))
+
+if (stopping.length > 0) {
+  console.error(
+    `\n[public-env] THIS WILL STOP THE BUILD, here and everywhere:\n` +
+      stopping.map(f => `  ! ${f.name}: ${f.reason}`).join('\n') +
+      `\n\n  next.config.ts builds the /cdn rewrite from NEXT_PUBLIC_SUPABASE_URL.\n` +
+      `  Unset, the destination becomes "undefined/storage/..." and Next refuses\n` +
+      `  it with "Invalid rewrite found", naming the rewrite and not the variable.\n` +
+      `  Load the environment before building, for example:\n` +
+      `    the values in .env.test for a TEST build.\n`,
+  )
+  process.exit(1)
+}
+
 console.warn(
-  `\n[public-env] WARNING (not blocking - ${onVercel ? 'bypass set' : 'local build'}): ${failures.length} critical public var(s) empty/malformed:\n${summary}\n`,
+  `\n[public-env] WARNING (not blocking - ${onVercel ? 'bypass set' : 'local build'}): ${failures.length} critical public var(s) empty/malformed:\n${summary}\n` +
+    `  These do not stop the build. They ship a broken FEATURE with no runtime\n` +
+    `  error, which is the class this guard exists for.\n`,
 )
 process.exit(0)

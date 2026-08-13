@@ -179,10 +179,30 @@ const nextConfig: NextConfig = {
     // Batch 10 Track 2 - Vercel rewrites for branded storage URLs.
     // /cdn/* proxies to Supabase storage so users see eventlinqs.com URLs.
     // Parity vs Eventbrite img.evbuc.com, Ticketmaster s1.ticketm.net, DICE dice-media.imgix.net.
+    // THE ERROR HAS TO NAME THE VARIABLE, not the rewrite.
+    //
+    // Unguarded, this template produced
+    // `destination: "undefined/storage/v1/object/public/:path*"` and Next
+    // rejected it with `Error: Invalid rewrite found`. That message is true and
+    // useless: it points at a rewrite the reader did not write, one minute after
+    // a prebuild guard said the missing variable was "not blocking". Two
+    // separate people would go and read next.config.ts before either looked at
+    // the environment.
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    if (!supabaseUrl) {
+      throw new Error(
+        'NEXT_PUBLIC_SUPABASE_URL is not set, so the /cdn rewrite has no destination. ' +
+          'This stops the build. Load the environment first: the TEST values live in .env.test, ' +
+          'and every deployed scope has it set in Vercel. ' +
+          '(Next would otherwise report this as "Invalid rewrite found", which names the rewrite ' +
+          'rather than the missing variable.)',
+      )
+    }
+
     return [
       {
         source: '/cdn/:path*',
-        destination: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/:path*`,
+        destination: `${supabaseUrl}/storage/v1/object/public/:path*`,
       },
     ]
   },

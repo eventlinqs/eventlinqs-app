@@ -73,7 +73,45 @@ function clockReads(src: string): string[] {
     const isDate = /new Date\(/.test(l) || /(weekday|dateStyle|timeStyle|month|hour)\s*:/.test(window)
 
     if (isDate) {
-      if (!/timeZone\s*:/.test(window)) out.push(`${i + 1}: ${l.slice(0, 90)}  (date, no timeZone)`)
+      /*
+       * A DATE BUILT FROM EXPLICIT LOCAL COMPONENTS NEEDS NO timeZone, and
+       * demanding one there was a false positive that failed this suite on
+       * origin/main and on every branch that carried the pattern.
+       *
+       * `new Date(y, m, d, hh, mm)` does not read a clock and does not name an
+       * instant. It builds a Date whose LOCAL components ARE those numbers.
+       * Formatting it with no `timeZone` reads those same local components back
+       * out, so the printed label is identical in every zone: the construction
+       * and the format cancel. Pinning a zone would in fact be WRONG here,
+       * because it would shift a wall-clock time the organiser typed.
+       *
+       * The two sites this cleared are `formatParts` in
+       * src/lib/launch/draft-artefacts.ts and `dayAndTime` in
+       * src/lib/ai/draft-fallbacks.ts, both of which parse "YYYY-MM-DDTHH:mm"
+       * into parts and hand those parts to the constructor.
+       *
+       * The teeth are intact. A Date made from an INSTANT still needs a zone,
+       * and every one of those forms has no comma in its arguments:
+       * `new Date()`, `new Date(Date.now())`, `new Date(isoString)`,
+       * `new Date(row.starts_at)`. Three or more comma-separated arguments is
+       * the components constructor and nothing else. The "still catches" cases
+       * below prove the guard did not go blind.
+       */
+      // The arguments themselves contain parentheses in real code
+      // (`new Date(Number(y), Number(mo) - 1, ...)`), so the commas are counted
+      // rather than matched with a paren-free character class, which was the
+      // first attempt and matched nothing.
+      const fromLocalComponents = lines
+        .slice(Math.max(0, i - 12), i + 1)
+        .some((back) => {
+          const at = back.indexOf('new Date(')
+          if (at === -1) return false
+          const args = back.slice(at + 'new Date('.length)
+          return (args.match(/,/g) ?? []).length >= 2
+        })
+      if (!fromLocalComponents && !/timeZone\s*:/.test(window)) {
+        out.push(`${i + 1}: ${l.slice(0, 90)}  (date, no timeZone)`)
+      }
       return
     }
     if (/\.toLocale(String|DateString|TimeString)\(\s*\)/.test(l)) {

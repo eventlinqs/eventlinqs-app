@@ -206,6 +206,29 @@ export const SHAPES = {
     minLength: 12,
     describe: 'an address at eventlinqs.com, the apex domain verified at Resend, optionally with a display name',
   },
+  /**
+   * THE CANONICAL ORIGIN, and only it. Used as the PRODUCTION scope shape for
+   * both origin variables.
+   *
+   * It used to be `^https://([a-z0-9-]+\.)*eventlinqs\.com(\.au)?/?$`, which
+   * accepted `https://eventlinqs.com` and `https://www.eventlinqs.com`. So the
+   * declared CONTRACT permitted exactly the value that caused the 13 August
+   * canonical-host defect, while the code had already been changed to refuse it.
+   * A contract looser than the code is a contract that will eventually be taken
+   * literally by somebody setting a variable in a dashboard at speed.
+   *
+   * Law 9 clause 3: the version contract lives in version control. The same
+   * applies to the origin contract, and this is where it is written down.
+   *
+   * Preview and development keep `originOrLocalhost` below, deliberately: a
+   * preview must resolve against its own deployment, and a developer must be
+   * able to point at localhost.
+   */
+  canonicalHttpsOrigin: {
+    pattern: '^https://www\\.eventlinqs\\.com\\.au/?$',
+    minLength: 24,
+    describe: 'the canonical production origin, https://www.eventlinqs.com.au, and nothing else',
+  },
   brandedHttpsOrigin: {
     pattern: '^https://([a-z0-9-]+\\.)*eventlinqs\\.com(\\.au)?/?$',
     minLength: 20,
@@ -699,7 +722,7 @@ export const ENV_MANIFEST = [
     mustBeSensitive: false,
     previewBranchScoping: 'allowed',
     shape: SHAPES.originOrLocalhost,
-    scopeShape: { production: SHAPES.brandedHttpsOrigin },
+    scopeShape: { production: SHAPES.canonicalHttpsOrigin },
     paymentCritical: false,
     githubActions: false,
     publicVar: true,
@@ -733,7 +756,7 @@ export const ENV_MANIFEST = [
     shape: SHAPES.originOrLocalhost,
     // On production a wrong value puts a 301 in front of every link the platform
     // generates, and Stripe does not follow redirects on a return URL.
-    scopeShape: { production: SHAPES.brandedHttpsOrigin },
+    scopeShape: { production: SHAPES.canonicalHttpsOrigin },
     paymentCritical: false,
     githubActions: false,
     publicVar: true,

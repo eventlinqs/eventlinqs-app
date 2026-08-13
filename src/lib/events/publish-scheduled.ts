@@ -102,11 +102,34 @@ export async function publishScheduledEvents(
   summary.considered = rows.length
 
   for (const event of rows) {
-    const gate = await checkPublishGate(admin, {
-      organisationId: event.organisation_id,
-      tiersHavePaid: hasPaidTier(event.ticket_tiers ?? []),
-      coverImageUrl: event.cover_image_url,
-    })
+    const gate = await checkPublishGate(
+      admin,
+      {
+        organisationId: event.organisation_id,
+        tiersHavePaid: hasPaidTier(event.ticket_tiers ?? []),
+        coverImageUrl: event.cover_image_url,
+      },
+      // NO STRIPE RE-READ FROM THE CRON. Deliberate, and this is a
+      // MERGE-INDUCED defect being closed rather than a feature being declined.
+      //
+      // Nothing was dropped by the merge: two additions collided. This
+      // scheduled-publish path arrived on feat/launch-kit-moat and
+      // feat/public-composer, where checkPublishGate had no reconciler at all
+      // and this call took two arguments. The reconciler arrived separately on
+      // fix/production-sweep, for the organiser-facing Publish button, where a
+      // stale column must never produce a false refusal. Merged, this cron
+      // silently inherited it: it built a second privileged client per event,
+      // inside a module whose header promises it never imports one, and it made
+      // a live Stripe call inside a fail-closed job.
+      //
+      // It was also WRONG, measured not assumed: for an organisation with
+      // charges enabled and payouts restricted, the reconciled path returned
+      // `paid_event_charges_disabled`, which is the wrong thing to tell an
+      // organiser. This cron re-reads the organisation row seconds before it
+      // decides, so the staleness the reconciler exists to defeat does not
+      // arise here.
+      null,
+    )
 
     if (!gate.ok) {
       summary.blocked += 1
