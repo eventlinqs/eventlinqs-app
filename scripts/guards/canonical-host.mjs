@@ -96,6 +96,13 @@ const ALLOWLIST = [
     file: 'scripts/guards/canonical-host.mjs',
     reason: 'this guard has to name the host it is guarding',
   },
+  {
+    file: 'scripts/guards/canonical-host-runtime.mjs',
+    reason:
+      'the runtime half of this guard. It PROVES the resolvers refuse the secondary host, so every ' +
+      'scenario it runs has to name the wrong value it is feeding in. Same shape as ' +
+      'env-locks-verify.mjs below: a proof that something is rejected must be allowed to name it',
+  },
   // The three sweep journeys below build a throwaway EMAIL ADDRESS, not a URL:
   // `sweep.buyer.${stamp}@eventlinqs.com`. The guard matches the bare domain
   // wherever it appears, so an address in a template literal reads to it as a

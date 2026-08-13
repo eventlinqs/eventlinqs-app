@@ -431,24 +431,48 @@ async function drawCoverPoster(
     (text, size) => bodyStrong.widthOfTextAtSize(text, size),
   )
   const barW = Math.min(
-    bodyStrong.widthOfTextAtSize(barFit.text, barFit.fontSize) + barPad * 2,
+    Math.max(...barFit.lines.map(line => bodyStrong.widthOfTextAtSize(line, barFit.fontSize))) +
+      barPad * 2,
     textMaxW,
   )
   y -= 14
-  page.drawRectangle({
-    x: MARGIN,
-    y: y - barH + 8,
-    width: barW,
-    height: barH,
-    color: pal.accent,
-  })
-  page.drawText(barFit.text, {
-    x: MARGIN + barPad,
-    y: y - barH + 19,
-    size: barFit.fontSize,
-    font: bodyStrong,
-    color: pal.onAccent,
-  })
+  if (barFit.lines.length === 1) {
+    // THE ONE-LINE CASE IS THE ORIGINAL, statement for statement. This
+    // composition is required to render identically before and after, and
+    // poster-parity proves it by comparing drawing operators, so an equivalent
+    // rewrite is not good enough here even when the arithmetic agrees.
+    page.drawRectangle({
+      x: MARGIN,
+      y: y - barH + 8,
+      width: barW,
+      height: barH,
+      color: pal.accent,
+    })
+    page.drawText(barFit.lines[0]!, {
+      x: MARGIN + barPad,
+      y: y - barH + 19,
+      size: barFit.fontSize,
+      font: bodyStrong,
+      color: pal.onAccent,
+    })
+  } else {
+    // Two rows, only reachable on an address no permitted size holds on one
+    // line. The bar grows UPWARD from the same lower edge, so everything below
+    // it, the QR label and the platform footer, keeps its position.
+    const rowH = barFit.fontSize * 1.35
+    const tallH = rowH * barFit.lines.length + 12
+    const bottom = y - barH + 8
+    page.drawRectangle({ x: MARGIN, y: bottom, width: barW, height: tallH, color: pal.accent })
+    barFit.lines.forEach((line, index) => {
+      page.drawText(line, {
+        x: MARGIN + barPad,
+        y: bottom + tallH - 6 - rowH * index - barFit.fontSize,
+        size: barFit.fontSize,
+        font: bodyStrong,
+        color: pal.onAccent,
+      })
+    })
+  }
 
   // The tracked QR block.
   const qrImage = await doc.embedPng(input.qrPng)
@@ -547,19 +571,37 @@ async function drawTypographicPoster(
     (text, size) => bodyStrong.widthOfTextAtSize(text, size),
   )
   const barW = Math.min(
-    bodyStrong.widthOfTextAtSize(barFit.text, barFit.fontSize) + barPad * 2,
+    Math.max(...barFit.lines.map(line => bodyStrong.widthOfTextAtSize(line, barFit.fontSize))) +
+      barPad * 2,
     detailMaxW,
   )
-  const barH = 32
+  // One row keeps the original height exactly. A second row is only reached by
+  // an address no permitted size holds on one line, and the bar grows upward
+  // from the same baseline, which is why the details above it are measured from
+  // `barH` rather than from a constant.
+  const barRowH = barFit.fontSize * 1.35
+  const barH = barFit.lines.length === 1 ? 32 : Math.round(barRowH * barFit.lines.length + 13)
   const barY = qrY + 2
   page.drawRectangle({ x: MARGIN, y: barY, width: barW, height: barH, color: pal.accent })
-  page.drawText(barFit.text, {
-    x: MARGIN + barPad,
-    y: barY + 11,
-    size: barFit.fontSize,
-    font: bodyStrong,
-    color: pal.onAccent,
-  })
+  if (barFit.lines.length === 1) {
+    page.drawText(barFit.lines[0]!, {
+      x: MARGIN + barPad,
+      y: barY + 11,
+      size: barFit.fontSize,
+      font: bodyStrong,
+      color: pal.onAccent,
+    })
+  } else {
+    barFit.lines.forEach((line, index) => {
+      page.drawText(line, {
+        x: MARGIN + barPad,
+        y: barY + barH - 7 - barRowH * index - barFit.fontSize,
+        size: barFit.fontSize,
+        font: bodyStrong,
+        color: pal.onAccent,
+      })
+    })
+  }
 
   // Locality sits above the bar, date above that, both in the left column.
   let detailY = barY + barH + 26
@@ -629,7 +671,27 @@ async function drawTypographicPoster(
   /* ---- THE TITLE, filling everything left between the two blocks ---- */
 
   const titleTop = topY - 30
-  const titleBottom = detailY + 8
+
+  /*
+   * THE HEADLINE HAS TO CLEAR THE QR, NOT JUST THE LEFT COLUMN (founder walk,
+   * 13 August 2026).
+   *
+   * The floor used to be `detailY + 8`, which is eight points above the DATE
+   * line. That measures the left column only, and the title is set across the
+   * FULL content width. The QR block sits to the right and its white tile
+   * reaches to qrY + qrSize + 10, which is about twenty five points ABOVE that
+   * floor. So the bottom of the title box overlapped the QR: a six line title
+   * already sat flush against it and a longer one would have printed the last
+   * line straight through the code, which is a poster on a wall with an
+   * unscannable QR on it.
+   *
+   * The floor is now the higher of the two blocks the headline shares the page
+   * with, plus real clear air. Eight points was never clearance; it was the
+   * rounding left over from measuring the wrong thing.
+   */
+  const TITLE_GUTTER = 26
+  const qrBlockTop = qrY + qrSize + 10
+  const titleBottom = Math.max(detailY, qrBlockTop) + TITLE_GUTTER
   const available = Math.max(titleTop - titleBottom, 60)
 
   const fit = fitPosterTitle(input.title, display, {

@@ -7,37 +7,103 @@ fresh session resumes without re-deriving anything.
 
 ## 0. REQUIRED FIRST STEP: the runtime, every session
 
-`.nvmrc` pins Node **20**, CI resolves that to **20.20.2**, and the guard surface
-was recorded from 20.20.2. This machine's only system Node is **24**, and it has
-no version manager. A session that skips this step runs 24 and every result it
-produces, guards, typecheck and build alike, is not CI-equivalent and cannot be
-quoted as proof of anything.
+**The platform runs on Node 24. Founder ruling, 13 August 2026.** Node 20 is
+deprecated by Vercel on 1 October 2026 and this platform does not run on a
+deprecated runtime. Every environment was brought forward in one pass: `.nvmrc`,
+`package.json` `engines`, every workflow, and the recorded guard surface.
 
-Run this FIRST, in every shell, before any node, npm, npx or build command:
+`.nvmrc` pins Node **24** and the newest 24.x LTS at the time of the move was
+**24.19.0** with npm **11.17.0** (source: `https://nodejs.org/dist/index.json`,
+fetched 13 August 2026). The guard surface in
+`scripts/guards/lib/node-surface.json` was re-recorded from 24.19.0.
+
+This machine has no version manager. Its system Node is 24.14.0, five patches
+behind the contract, so a portable extract of the exact version lives at
+`C:\node24`. Run this FIRST, in every shell, before any node, npm, npx or build
+command:
 
 ```powershell
-$env:PATH="C:\node20\node-v20.20.2-win-x64;$env:PATH"; node --version
+$env:PATH="C:\node24\node-v24.19.0-win-x64;$env:PATH"; node --version
 ```
 
-It must print `v20.20.2`. The shell does not keep this between tool calls, so it
+It must print `v24.19.0`. The shell does not keep this between tool calls, so it
 belongs at the start of every command, not once at the start of a session.
 
-If `C:\node20` is absent, recreate it from the official zip, which needs a SHORT
-destination path because extracting under the long scratchpad path trips the
-Windows MAX_PATH limit:
+If `C:\node24` is absent, recreate it from the official zip. The destination must
+be a SHORT path, because extracting under the long scratchpad path trips the
+Windows MAX_PATH limit, and the zip itself cannot be written to the root of
+`C:\` on this machine, so stage it inside the destination directory:
 
 ```powershell
-Invoke-WebRequest -Uri "https://nodejs.org/dist/v20.20.2/node-v20.20.2-win-x64.zip" -OutFile "$env:TEMP\node20.zip" -UseBasicParsing
-Add-Type -AssemblyName System.IO.Compression.FileSystem
-[System.IO.Compression.ZipFile]::ExtractToDirectory("$env:TEMP\node20.zip", "C:\node20")
+New-Item -ItemType Directory -Force "C:\node24" | Out-Null
+$zip = "C:\node24\node-v24.19.0-win-x64.zip"
+Invoke-WebRequest -Uri "https://nodejs.org/dist/v24.19.0/node-v24.19.0-win-x64.zip" -OutFile $zip -UseBasicParsing
+Expand-Archive -Path $zip -DestinationPath "C:\node24" -Force
+Remove-Item $zip -Force
 ```
 
-**What enforces this today: nothing that blocks.** `package.json` has no `engines`
-field and no `preinstall` check, and there is no `.npmrc`, so `engine-strict` is
-not in play. `scripts/guards/run-guards.mjs` LABELS a wrong-major run
-`NOT CI-EQUIVALENT` in its own output and still exits on the guard results alone.
-That labelling is deliberate, so a green local run cannot be quoted as a green CI
-run, but it is a warning and not a gate. Read the label on every run.
+`C:\node20` was the previous portable extract and is no longer used by anything.
+It can be deleted.
+
+### VERCEL SELECTS THE RUNTIME FROM `engines.node`
+
+This is the line that stops the two silently disagreeing again, so it is stated
+plainly rather than left to be rediscovered, and it is cited rather than
+asserted.
+
+Vercel publishes exactly two mechanisms for choosing the Node.js version, at
+`https://vercel.com/docs/functions/runtimes/node-js/node-js-versions` (fetched
+13 August 2026): the **Node.js Version** dropdown in Project Settings, and the
+`engines.node` field in `package.json`. Of the two, the file wins. Verbatim:
+
+> "You can define the major Node.js version in the `engines#node` section of the
+> `package.json` to override the one you have selected in the Project Settings"
+
+and, on the mapping:
+
+> "when you set the Node.js version to 20.x in the Project Settings and you
+> specify a valid semver range for Node.js 24 (e.g. 24.x) in package.json, your
+> project will be deployed with the latest 24.x version of Node.js"
+
+The page lists **24.x (default), 22.x and 20.x** as the available versions, and
+`24.x` maps to "latest 24.x version". So the deployed runtime now lives in
+version control beside the code it runs, rather than in a dashboard nobody
+remembers to check.
+
+**Precisely: that page documents those two mechanisms and does not mention
+`.nvmrc` anywhere.** That is an absence, not a published denial, so the honest
+statement is that `.nvmrc` is not one of Vercel's documented selection inputs and
+must not be relied on to set the deployed runtime. `.nvmrc` remains load-bearing
+for CI and for the local guard contract, which is why both files exist.
+
+**UNSOURCED:** the 1 October 2026 Vercel deprecation date for Node 20 comes from
+the founder ruling of 13 August 2026. It does not appear on the versions page
+above, which still lists 20.x as available. The move to 24 stands on its own
+merits either way; the date is recorded here as unverified rather than quoted as
+Vercel's.
+
+`package.json` therefore carries:
+
+```json
+"engines": { "node": "24.x" }
+```
+
+The two files serve different readers and must be changed together:
+
+| File | Read by | Pins |
+|---|---|---|
+| `package.json` `engines.node` | **Vercel**, npm | `24.x` |
+| `.nvmrc` | `actions/setup-node` in CI, `scripts/guards/contract-node.mjs`, `node-version-contract` | `24` |
+
+**What enforces this: one blocking gate and one label.**
+`scripts/guards/node-version-contract.mjs` runs in `prebuild` and fails the build
+when any script uses an API absent from the recorded surface, in either
+direction: an API too NEW for the contract, and, since the 24 move, one that the
+contract has REMOVED. `scripts/guards/run-guards.mjs` LABELS a wrong-major run
+`NOT CI-EQUIVALENT` and still exits on the guard results alone. That label is
+derived from `.nvmrc`, never hardcoded, so it inverted by itself when the
+contract moved: a Node 24 run now reads CI-EQUIVALENT and a Node 20 run reads
+NOT CI-EQUIVALENT. It is a warning, not a gate. Read it on every run.
 
 ---
 

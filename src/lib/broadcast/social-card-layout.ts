@@ -48,7 +48,7 @@ export function fitTitle(title: string, format: SocialCardFormat): TitleFit {
 
 /**
  * The gold ticket bar carries the two things a promoter is actually posting
- * for: what it costs and where to buy. One line, never wrapped.
+ * for: what it costs and where to buy.
  *
  * "www." is dropped. Every browser has hidden it in the address bar for years,
  * it carries no information a reader needs, and on the story bar those four
@@ -122,12 +122,118 @@ export const STORY_PANEL_MAX_HEIGHT = 820
  */
 export const STORY_PANEL_MIN_HEIGHT = 760
 
-export type TicketBarFit = { text: string; fontSize: number }
+/**
+ * Break a string into lines that each fit a width, using a real measurer.
+ *
+ * A near-twin of `wrapText` in poster.ts lives here rather than being shared,
+ * and the duplication is deliberate: that one takes a pdf-lib font object and
+ * serves the PDF, this one takes a measure function and serves satori. Merging
+ * them would put the poster's artwork composition, which the founder required to
+ * render identically before and after, on the same code path as a card change.
+ * Two small functions beat one shared one that nobody dares touch.
+ */
+function wrapToWidth(
+  text: string,
+  maxWidth: number,
+  fontSize: number,
+  measure: (text: string, fontSize: number) => number,
+): string[] {
+  const words = text.split(/\s+/).filter(Boolean)
+  const lines: string[] = []
+  let current = ''
+  for (const word of words) {
+    const candidate = current ? `${current} ${word}` : word
+    if (measure(candidate, fontSize) <= maxWidth) {
+      current = candidate
+      continue
+    }
+    if (current) lines.push(current)
+    current = word
+  }
+  if (current) lines.push(current)
+  return lines
+}
+
+export type DisplayTitleFit = { fontSize: number; lines: string[]; leading: number }
 
 /**
- * Fit the ticket line to the bar rather than letting it wrap. The bar is one
- * line by design: a link broken across two lines reads as a broken link, not a
- * designed one.
+ * THE HEADLINE OF THE ARTWORK-FREE CARD, FITTED TO ITS BOX.
+ *
+ * WHY THIS EXISTS. With no photograph the card fell back to the same small
+ * headline it uses under artwork, and the frame then had nothing in it. On the
+ * 1440 x 1800 tall post that left roughly a third of the card as empty navy
+ * between the venue line and the call to action, with a second void above the
+ * headline; the square and the story carried smaller versions of it. A promoter
+ * reads that as a template with a gap, not as a poster.
+ *
+ * The A4 poster already solved this exact problem and its reasoning is the
+ * reasoning here (see fitPosterTitle in poster.ts): the ceiling is the BOX, not
+ * a hand-picked point size. A short name grows until it spans the width, which
+ * is what makes the type itself the artwork; a long one steps down and wraps
+ * across more lines. Fitting type to a space is what a designer does by hand,
+ * and it is deterministic composition, so Law 6 is untouched. Nothing is
+ * generated: the words are the organiser's own.
+ *
+ * Returns the LINES as well as the size, because the caller draws each one as
+ * its own element. That keeps the renderer from wrapping differently to the
+ * measurement and quietly overflowing the box.
+ */
+export function fitDisplayTitle(
+  title: string,
+  opts: { maxWidth: number; maxHeight: number; maxLines: number; max: number; min: number },
+  measure: (text: string, fontSize: number) => number,
+): DisplayTitleFit {
+  const clean = title.trim().replace(/\s+/g, ' ')
+  const leadingFor = (size: number) => size * 1.06
+
+  /** Whether every word stands alone on a line at this size, unbroken. */
+  const wordsStayWhole = (size: number) =>
+    clean
+      .split(' ')
+      .filter(Boolean)
+      .every(word => measure(word, size) <= opts.maxWidth)
+
+  const tryFit = (size: number): DisplayTitleFit | null => {
+    const lines = wrapToWidth(clean, opts.maxWidth, size, measure)
+    if (lines.length > opts.maxLines) return null
+    const leading = leadingFor(size)
+    return lines.length * leading <= opts.maxHeight ? { fontSize: size, lines, leading } : null
+  }
+
+  // Pass 1: the largest size at which NO word has to be broken. Preferred
+  // always, because a title split mid-word reads as a bug rather than as
+  // design. This is the pass that stopped the poster rendering "Ruby's 16th" as
+  // "Ruby'" / "s 16th".
+  for (let size = Math.floor(opts.max); size >= opts.min; size -= 1) {
+    if (!wordsStayWhole(size)) continue
+    const fit = tryFit(size)
+    if (fit) return fit
+  }
+
+  // Pass 2: some token is wider than the line at every size, a pasted URL being
+  // the realistic case, so it has to break. Still take the LARGEST size that
+  // fits rather than dropping to the floor.
+  for (let size = Math.floor(opts.max); size >= opts.min; size -= 1) {
+    const fit = tryFit(size)
+    if (fit) return fit
+  }
+
+  // Nothing fits. Take the floor and clamp the line count so a pathological
+  // title stops cleanly instead of running out of the frame.
+  const fontSize = opts.min
+  return {
+    fontSize,
+    lines: wrapToWidth(clean, opts.maxWidth, fontSize, measure).slice(0, opts.maxLines),
+    leading: leadingFor(fontSize),
+  }
+}
+
+export type TicketBarFit = { lines: string[]; fontSize: number }
+
+/**
+ * Fit the ticket line to the bar. One line wherever one line will do, which is
+ * every address the platform prints today; a second line only where the
+ * alternative would be cutting the address.
  *
  * WHY THIS WAS REWRITTEN. The first version estimated the width as
  * `characters * size * 0.52` and, when even the minimum size did not fit,
@@ -142,9 +248,35 @@ export type TicketBarFit = { text: string; fontSize: number }
  * Two things changed. The width is now MEASURED with the real font rather than
  * estimated (the measured ratio for Hanken Grotesk SemiBold is nearer 0.46, so
  * the old estimate was also shrinking type that did not need shrinking). And
- * the fit is now GUARANTEED: if the line cannot be made to fit by stepping the
- * size down, the URL is ellipsised until it does. The caller draws the returned
- * text, never the input.
+ * the fit is now GUARANTEED. The caller draws the returned lines, never the
+ * input.
+ *
+ * THE BAR MAY NOW TAKE A SECOND LINE (founder ruling 2026-08-13), and that is
+ * what finally removes the cut. The ellipsis path that used to sit at the bottom
+ * of this function printed things like
+ * `eventlinqs-app-g...l.app/launch/k/a8kwsh5fapxw`, which is not an address
+ * anybody can type, scan past or trust: a promoter posting that looks like they
+ * are running a scam. It only existed to protect an older invariant, that the
+ * line never draws outside its own bar, because a line drawn past the gold is
+ * navy on navy on the poster and prints a silently shortened address that
+ * resolves to nothing. A second line keeps that invariant AND keeps the address
+ * whole, so the cut has nothing left to protect and is gone.
+ *
+ * THE ORDER OF SACRIFICE, unchanged above the last step so that nothing which
+ * fits today renders differently tomorrow:
+ *
+ *   1. the whole line, one row, stepping the size down to the floor
+ *   2. the price prefix dropped, one row, from the top again: a reader gets the
+ *      price from the card body and the caption, and cannot get the address
+ *      from anywhere else
+ *   3. the address alone, below the floor, to an absolute hard floor
+ *   4. the address across TWO rows, broken at a path boundary where there is
+ *      one. Never an ellipsis, at any size, ever.
+ *
+ * Steps 2 to 4 are unreachable for anything the platform prints today, because
+ * both renderers pass printableHost() and the canonical host is seventeen
+ * characters. They exist for the preview hosts and the long codes that made this
+ * function necessary in the first place.
  *
  * @param measure returns the drawn width of a string at a font size, from the
  *   real font the caller will draw with, so the guarantee is about the actual
@@ -158,60 +290,54 @@ export function fitTicketBar(
   measure: (text: string, fontSize: number) => number,
 ): TicketBarFit {
   for (let size = maxFontSize; size >= minFontSize; size -= 1) {
-    if (measure(text, size) <= availableWidth) return { text, fontSize: size }
+    if (measure(text, size) <= availableWidth) return { lines: [text], fontSize: size }
   }
 
-  // Nothing fits at the floor.
-  //
-  // AN ELLIPSIS IN A URL IS NEVER ACCEPTABLE OUTPUT (founder ruling
-  // 2026-08-13). This used to shorten from the middle and print something like
-  // `eventlinqs-app-g...l.app/launch/k/a8kwsh5fapxw`, which is not an address
-  // anybody can type, scan past, or trust. A promoter posting that looks like
-  // they are running a scam. The address either prints whole or the line gives
-  // up something that is NOT the address.
-  //
-  // So the order of sacrifice is: the price prefix first, because a reader can
-  // get the price from the card's own body and from the caption; then the type
-  // size, down to an absolute floor. The URL itself is never cut.
   const urlOnly = text.includes(' · ') ? text.slice(text.indexOf(' · ') + 3) : text
   if (urlOnly !== text) {
     for (let size = maxFontSize; size >= minFontSize; size -= 1) {
-      if (measure(urlOnly, size) <= availableWidth) return { text: urlOnly, fontSize: size }
+      if (measure(urlOnly, size) <= availableWidth) return { lines: [urlOnly], fontSize: size }
     }
   }
 
-  // Still too wide. Keep shrinking the url alone. The floor is deliberately low:
-  // a small but complete address beats a large broken one, and this path is
-  // only reachable on a host far longer than the canonical one.
+  // Still too wide. Keep shrinking the address alone. The floor is deliberately
+  // low: a small but complete address beats a large broken one.
   const hardFloor = Math.max(8, Math.round(minFontSize * 0.6))
   for (let size = minFontSize - 1; size >= hardFloor; size -= 1) {
-    if (measure(urlOnly, size) <= availableWidth) return { text: urlOnly, fontSize: size }
+    if (measure(urlOnly, size) <= availableWidth) return { lines: [urlOnly], fontSize: size }
   }
 
-  // ABSOLUTE last resort, and it is now genuinely unreachable for anything the
-  // platform prints, because both renderers pass printableHost() and the
-  // canonical host is seventeen characters. It survives for one reason: the
-  // older invariant that this line NEVER draws outside its own bar. A line
-  // drawn past the gold is navy on navy on the poster, which prints a silently
-  // shortened address that resolves to nothing, and that is worse than a
-  // visible ellipsis. So the order is: whole line, then drop the price, then
-  // shrink below the floor, and only then cut.
-  let lo = 1
-  let hi = urlOnly.length
-  let best = urlOnly.slice(0, 1)
-  while (lo <= hi) {
-    const keep = Math.floor((lo + hi) / 2)
-    const head = Math.ceil(keep / 2)
-    const tail = keep - head
-    const candidate = `${urlOnly.slice(0, head)}...${tail > 0 ? urlOnly.slice(urlOnly.length - tail) : ''}`
-    if (measure(candidate, hardFloor) <= availableWidth) {
-      best = candidate
-      lo = keep + 1
-    } else {
-      hi = keep - 1
+  // TWO ROWS. Broken after a slash where there is one, because a reader
+  // re-joining `eventlinqs.com.au/` and `launch/k/a8kwsh5fapxw` across a line
+  // break can see where the join goes; a break in the middle of a word cannot be
+  // read back at all. Falls back to the midpoint when the address has no usable
+  // boundary, which a bare host does not.
+  const splitPoints: number[] = []
+  for (let i = 0; i < urlOnly.length; i += 1) {
+    if (urlOnly[i] === '/') splitPoints.push(i + 1)
+  }
+  if (splitPoints.length === 0) splitPoints.push(Math.ceil(urlOnly.length / 2))
+
+  for (let size = maxFontSize; size >= 4; size -= 1) {
+    // The break nearest the middle keeps the two rows closest in length, which
+    // is what stops the second row reading as an afterthought.
+    const target = urlOnly.length / 2
+    const ordered = [...splitPoints].sort((a, b) => Math.abs(a - target) - Math.abs(b - target))
+    for (const at of ordered) {
+      const head = urlOnly.slice(0, at)
+      const tail = urlOnly.slice(at)
+      if (!head || !tail) continue
+      if (measure(head, size) <= availableWidth && measure(tail, size) <= availableWidth) {
+        return { lines: [head, tail], fontSize: size }
+      }
     }
   }
-  return { text: best, fontSize: hardFloor }
+
+  // Genuinely nothing fits, which needs a bar narrower than a few characters.
+  // Return the address whole at the smallest size rather than inventing a cut:
+  // the invariant this protects is about not printing a WRONG address, and a
+  // bar this size is a layout fault to be fixed, not a link to be mangled.
+  return { lines: [urlOnly], fontSize: 4 }
 }
 
 /**

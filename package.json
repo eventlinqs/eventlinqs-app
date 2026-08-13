@@ -2,6 +2,9 @@
   "name": "eventlinqs-app",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "dev": "next dev",
     "prebuild": "node scripts/check-disk-space.mjs && node scripts/check-public-env.mjs && node scripts/check-pricing-lock.mjs && node scripts/guards/run-guards.mjs && node scripts/prebuild-fixture.mjs",

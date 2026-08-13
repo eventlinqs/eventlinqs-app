@@ -4,7 +4,7 @@
    src/app/events/[slug]/opengraph-image.tsx carries the same exemption. */
 import { ImageResponse } from 'next/og'
 import { BODY_FAMILY, DISPLAY_FAMILY, loadCardFonts } from '@/lib/broadcast/card-fonts'
-import { bodyTextMeasurer } from '@/lib/broadcast/card-metrics'
+import { bodyTextMeasurer, displayTextMeasurer } from '@/lib/broadcast/card-metrics'
 import { printableHost } from '@/lib/site-url'
 import {
   SOCIAL_CARD_FORMATS,
@@ -15,11 +15,13 @@ import {
   STORY_PANEL_MAX_HEIGHT,
   STORY_PANEL_MIN_HEIGHT,
   STORY_PANEL_RATIO_THRESHOLD,
+  fitDisplayTitle,
   fitTicketBar,
   fitTitle,
   photoBox,
   storyStrapline,
   ticketBarText,
+  type DisplayTitleFit,
 } from '@/lib/broadcast/social-card-layout'
 
 /**
@@ -223,6 +225,44 @@ function Title({ input, px, format, scale = 1 }: { input: SocialCardInput; px: P
   )
 }
 
+/**
+ * The fitted headline of the artwork-free composition.
+ *
+ * SEPARATE FROM `Title` ON PURPOSE. `Title` is what the photograph
+ * compositions draw, and those were required to render identically before and
+ * after this change, so they keep their component and their ladder untouched.
+ * This one draws a pre-fitted result instead.
+ *
+ * Each line is its own element with `whiteSpace: nowrap`, so the renderer is
+ * never asked to wrap. The line breaks are the ones the fitter measured, which
+ * is what stops the drawn block being a different height from the box it was
+ * fitted to.
+ */
+function DisplayTitle({ fit, px }: { fit: DisplayTitleFit; px: Px }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      {fit.lines.map((line, index) => (
+        <div
+          key={index}
+          style={{
+            display: 'flex',
+            height: fit.leading,
+            alignItems: 'center',
+            color: WHITE,
+            fontFamily: DISPLAY_FAMILY,
+            fontWeight: 800,
+            fontSize: fit.fontSize,
+            letterSpacing: px(-1.5),
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {line}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function MetaLines({ input, px, size }: { input: SocialCardInput; px: Px; size: 'lg' | 'sm' }) {
   const large = size === 'lg'
   const dateLine = [input.dateLabel, input.timeLabel].filter(Boolean).join(', ')
@@ -302,13 +342,12 @@ function TicketBar({
   width: number
 }) {
   const large = size === 'lg'
-  const height = px(large ? 106 : 76)
+  const oneLineHeight = px(large ? 106 : 76)
   const padding = px(large ? 42 : 32)
   // printableHost, not the deployment host: a story card is posted publicly.
   const line = ticketBarText(input.priceLabel, input.shortUrl, printableHost())
-  // Measured against the real face, and guaranteed to fit: `fit.text` is what
-  // gets drawn, which may be an ellipsised form of `line` on a host or a code
-  // long enough that no permitted size would hold it.
+  // Measured against the real face, and guaranteed to fit. `fit.lines` is what
+  // gets drawn, never the input.
   const fit = fitTicketBar(
     line,
     width - padding * 2,
@@ -316,25 +355,65 @@ function TicketBar({
     px(large ? 24 : 20),
     measureBody,
   )
-  const { text, fontSize } = fit
+  const { lines, fontSize } = fit
+
+  // THE ONE-LINE CASE IS THE ORIGINAL ELEMENT, unchanged. Not an equivalent
+  // rewrite that ought to render the same: the same tree, so every card the
+  // platform prints today is untouched by this change. Every address the
+  // canonical host produces takes this branch.
+  if (lines.length === 1) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          width,
+          height: oneLineHeight,
+          borderRadius: oneLineHeight / 2,
+          background: GOLD,
+          padding: `0 ${padding}px`,
+          color: NAVY,
+          fontFamily: BODY_FAMILY,
+          fontWeight: 600,
+          fontSize,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {lines[0]}
+      </div>
+    )
+  }
+
+  // TWO ROWS. Only reachable on an address no permitted size holds on one line,
+  // where the alternative used to be cutting it. The bar grows to hold the
+  // address rather than the address shrinking to fit the bar.
+  const rowHeight = Math.round(fontSize * 1.24)
+  const height = rowHeight * lines.length + px(large ? 34 : 26)
   return (
     <div
       style={{
         display: 'flex',
-        alignItems: 'center',
+        flexDirection: 'column',
+        justifyContent: 'center',
         width,
         height,
-        borderRadius: height / 2,
+        borderRadius: px(large ? 32 : 24),
         background: GOLD,
         padding: `0 ${padding}px`,
         color: NAVY,
         fontFamily: BODY_FAMILY,
         fontWeight: 600,
         fontSize,
-        whiteSpace: 'nowrap',
       }}
     >
-      {text}
+      {lines.map((row, index) => (
+        <div
+          key={index}
+          style={{ display: 'flex', height: rowHeight, alignItems: 'center', whiteSpace: 'nowrap' }}
+        >
+          {row}
+        </div>
+      ))}
     </div>
   )
 }
@@ -399,11 +478,56 @@ function Wordmark({ px, size }: { px: Px; size: number }) {
 const GROUND = `radial-gradient(ellipse 90% 34% at 100% 0%, rgba(232,183,56,0.55) 0%, rgba(232,183,56,0.14) 42%, rgba(10,22,40,0) 72%), radial-gradient(ellipse 80% 26% at 0% 100%, rgba(232,183,56,0.20) 0%, rgba(10,22,40,0) 60%), linear-gradient(160deg, ${NAVY} 0%, ${NAVY_DEEP} 100%)`
 
 /**
- * No photograph: a full-frame typographic composition from the organiser's own
- * details. One layout, every format, distributed top to bottom so the frame is
- * never half empty.
+ * The clear air between the ticket bar and the QR tile, in design units.
+ *
+ * Was 30, which at card scale put the pill about thirty pixels off the QR on the
+ * square and read as a collision rather than as a pair (founder walk,
+ * 13 August 2026). One constant, so the three shapes cannot drift apart again:
+ * the story, the square and the tall post all reserve the same air and the
+ * scaler turns it into the right number of pixels for each.
+ *
+ * The photograph composition below keeps its own reserve untouched. That path
+ * renders identically before and after this change by instruction.
  */
-function TypographicCard({ input, format }: { input: SocialCardInput; format: SocialCardFormat }) {
+const CTA_QR_GUTTER = 40
+
+/**
+ * No photograph: a full-frame typographic composition from the organiser's own
+ * details. One layout, every format.
+ *
+ * THE DEAD VOID, AND WHY IT WAS THERE (founder walk, 13 August 2026). This laid
+ * out three blocks with two `marginTop: 'auto'` margins, which does split the
+ * spare height evenly, and that was the whole problem: on the 1440 x 1800 tall
+ * post the type only came to about six hundred pixels, so "evenly" meant two
+ * voids of five hundred pixels each. A third of the card was empty navy between
+ * the venue line and the call to action, with a second hole above the headline.
+ * The square and the story carried smaller versions of the same thing. Nothing
+ * was broken; there was simply not enough composition to fill the frame.
+ *
+ * The fix is not more spacing rules, it is more composition: the headline is
+ * fitted to the box it is given, so with no artwork the TYPE becomes the
+ * artwork. That is what the A4 poster already does, and it is why the poster
+ * reads as designed while this read as a template with a gap. A short name now
+ * grows until it spans the card; a long one steps down and takes more lines.
+ *
+ * Law 6 is untouched and is the reason this is the fix: nothing is generated to
+ * fill the hole. The words are the organiser's own and the composition is
+ * deterministic.
+ *
+ * The design language is unchanged, deliberately: same navy ground, same gold
+ * eyebrow chip, same Archivo headline, same QR bottom right, same Ticketing by
+ * EVENTLINQS lockup, same dimensions. Only the scale of the type and the
+ * distribution of the air are different.
+ */
+function TypographicCard({
+  input,
+  format,
+  measureDisplay,
+}: {
+  input: SocialCardInput
+  format: SocialCardFormat
+  measureDisplay: (text: string, fontSize: number) => number
+}) {
   const spec = SOCIAL_CARD_FORMATS[format]
   const px = scaler(format)
   const story = format === 'story'
@@ -411,7 +535,70 @@ function TypographicCard({ input, format }: { input: SocialCardInput; format: So
   const size = story ? 'lg' : 'sm'
   const qrSize = px(story ? 140 : 126)
   const ctaTextWidth =
-    spec.width - pad * 2 - (input.qr ? qrSize + px(20) + px(30) : 0)
+    spec.width - pad * 2 - (input.qr ? qrSize + px(20) + px(CTA_QR_GUTTER) : 0)
+
+  const contentWidth = spec.width - pad * 2
+  const contentHeight =
+    spec.height - Math.max(spec.safeTop, pad) - Math.max(spec.safeBottom, pad)
+
+  /*
+   * The headline's box, measured from the blocks that surround it rather than
+   * guessed. These are the heights the components below actually draw, so the
+   * headline can be given everything that is left and the frame fills without
+   * anything overlapping.
+   */
+  const identityHeight = px(story ? 78 : 50) + px(story ? 24 : 18) + px(story ? 58 : 52)
+  const metaHeight = px(story ? 38 : 30) + px(story ? 34 : 27) + px(story ? 9 : 5)
+  const straplineHeight = story && storyStrapline(input.summary) ? px(31 * 1.32 + 6) : 0
+  const ctaHeight = input.qr
+    ? px(story ? 140 : 126) + px(20) + px(story ? 9 : 9) + px(story ? 17 : 17) + px(20)
+    : px(story ? 106 : 76) + px(story ? 18 : 14) + px(story ? 24 : 20)
+  const ruleHeight = px(8)
+  const gaps = px(story ? 28 : 20) * 2
+
+  /*
+   * THE HEADLINE IS CAPPED, and the cap is the difference between a poster and
+   * a wall of type.
+   *
+   * Handed the whole of the leftover height, the fitter does exactly what it is
+   * asked and fills it: the first render of this fix set "Screen Printing for
+   * Beginners" at about 250 pixels across four lines and used ninety per cent of
+   * a 1440 x 1800 card, which trades one defect for its opposite. A headline
+   * needs air around it to read as a headline.
+   *
+   * So the box is the SMALLER of what is left and a share of the frame. The
+   * story takes a smaller share because it also carries a line of the
+   * organiser's own words underneath and its frame is the tallest.
+   */
+  const titleShare = story ? 0.38 : 0.46
+  // A floor, so a pathological set of inputs can only ever make the headline
+  // small rather than negative.
+  const titleBox = Math.max(
+    Math.min(
+      contentHeight - identityHeight - metaHeight - straplineHeight - ctaHeight - ruleHeight - gaps,
+      contentHeight * titleShare,
+    ),
+    px(120),
+  )
+
+  const fit = fitDisplayTitle(
+    input.title,
+    {
+      maxWidth: contentWidth,
+      maxHeight: titleBox,
+      // Four lines. The A4 poster allows six because a page is taller than it is
+      // wide and carries less around the headline; on a card a fifth line stops
+      // being a headline whatever size it is set at.
+      maxLines: 4,
+      // The ceiling is the BOX, not a hand-picked point size: a single line can
+      // be at most the box height and still fit, and anything narrower is bound
+      // by the WIDTH instead. That bound is what makes a short name grow until
+      // it spans the card, which is the whole point of the composition.
+      max: titleBox / 1.06,
+      min: px(story ? 44 : 34),
+    },
+    measureDisplay,
+  )
 
   return (
     <div
@@ -439,23 +626,25 @@ function TypographicCard({ input, format }: { input: SocialCardInput; format: So
           <Eyebrow text={input.eyebrow} px={px} />
         </div>
 
+        {/* The headline block takes the room, and centres in whatever is left
+            over, so any residual air sits above AND below it rather than
+            pooling into one hole under the venue line. */}
         <div
           style={{
             display: 'flex',
             flexDirection: 'column',
+            flexGrow: 1,
+            justifyContent: 'center',
             gap: px(story ? 28 : 20),
-            // Two auto margins split the spare height evenly, so the frame
-            // reads as a set poster rather than pooling all the air in one gap.
-            marginTop: 'auto',
           }}
         >
-          <div style={{ display: 'flex', width: px(140), height: px(8), background: GOLD }} />
-          <Title input={input} px={px} format={format} scale={story ? 1.45 : 1.28} />
+          <div style={{ display: 'flex', width: px(140), height: ruleHeight, background: GOLD }} />
+          <DisplayTitle fit={fit} px={px} />
           <MetaLines input={input} px={px} size={size} />
           {story ? <Strapline input={input} px={px} /> : null}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: px(30), marginTop: 'auto' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: px(CTA_QR_GUTTER) }}>
           <div
             style={{
               display: 'flex',
@@ -695,12 +884,15 @@ export async function renderSocialCard(
 ): Promise<Uint8Array> {
   const spec = SOCIAL_CARD_FORMATS[format]
   const fonts = await loadCardFonts()
-  // Warm the measurer before the (synchronous) tree is built, so the ticket bar
-  // is fitted against real glyph widths rather than an average.
-  measureBody = await bodyTextMeasurer()
+  // Warm both measurers before the (synchronous) tree is built, so the ticket
+  // bar and the fitted headline are measured against real glyph widths rather
+  // than an average. The display face is only needed by the artwork-free
+  // composition, but it is resolved here because the tree cannot await.
+  const [body, display] = await Promise.all([bodyTextMeasurer(), displayTextMeasurer()])
+  measureBody = body
 
   const element = !input.cover
-    ? TypographicCard({ input, format })
+    ? TypographicCard({ input, format, measureDisplay: display })
     : format === 'story'
       ? StoryCard({ input })
       : BandedCard({ input, format })

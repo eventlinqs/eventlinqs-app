@@ -2,5 +2,6 @@
 02-medium-title-no-artwork.pdf  The ordinary case.
 03-long-title-no-artwork.pdf  Forces the fitter to step down and wrap.
 04-unspaced-token-no-artwork.pdf  Used to run off the page. Must wrap mid-token.
+04b-six-line-title-no-artwork.pdf  H2. Must keep real clear air above the QR block, not sit flush against it.
 05-short-title-with-artwork.pdf  The artwork composition, unchanged, with a real photograph.
 06-long-title-with-artwork.pdf  The artwork composition with a title that must wrap.

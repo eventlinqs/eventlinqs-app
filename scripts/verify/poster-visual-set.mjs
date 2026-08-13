@@ -67,6 +67,23 @@ export const POSTER_SET = [
     },
   },
   {
+    slug: '04b-six-line-title-no-artwork',
+    note: 'H2. Must keep real clear air above the QR block, not sit flush against it.',
+    input: {
+      // Deliberately long enough to take the fitter to its six line ceiling,
+      // which is the case that used to print the last line straight through the
+      // QR code. The headline is set across the FULL content width while the
+      // date and locality are only in the left column, so the left column alone
+      // was never the thing the headline had to clear.
+      title:
+        'The Barwon Club presents a very long winter warehouse session with Marlo Reyes back to back with Kita and friends across two rooms until sunrise',
+      dateLabel: 'Saturday 20 September 2026',
+      locality: 'The Barwon Club, 509 Moorabool Street, South Geelong',
+      priceLabel: 'From $25',
+      organiserName: 'Barwon Club Presents',
+    },
+  },
+  {
     slug: '05-short-title-with-artwork',
     note: 'The artwork composition, unchanged, with a real photograph.',
     photo: 'public/images/hero/afrobeats.jpg',

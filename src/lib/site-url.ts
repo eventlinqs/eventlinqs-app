@@ -46,6 +46,65 @@ function withScheme(value: string): string {
 }
 
 /**
+ * One warning per misconfigured variable, not one per request.
+ *
+ * The resolvers run on every server render and every route handler, so an
+ * unbounded warning would bury the build and runtime logs it exists to make
+ * legible. Keyed by variable AND value so a second, differently-wrong value is
+ * still announced.
+ */
+const announced = new Set<string>()
+
+/**
+ * A non-canonical explicit host on PRODUCTION is ignored, loudly.
+ *
+ * WHY THIS EXISTS, and it is the gap the 2026-08-13 fix left open. Fixing the
+ * Vercel-nominated host below did nothing about the variable that sits ABOVE it.
+ * `NEXT_PUBLIC_SITE_URL` is already set on the Vercel Production environment,
+ * and whatever it holds is what `getSiteUrl()` and `getAppUrl()` returned. If it
+ * held `eventlinqs.com`, every Stripe Connect return url, every email link,
+ * every share link, every sitemap entry and every canonical tag on production
+ * was still built on a host that 301s, and the fix would have read as complete
+ * while changing nothing.
+ *
+ * `printableHost()` below already closed this for the PRINTED host by accepting
+ * the variable only when it already resolves to the canonical host. This is the
+ * same rule for the LINKED host, and for the same reason: there is no legitimate
+ * production configuration in which we link to a redirecting host.
+ *
+ * It is announced rather than swallowed, because a silent fallback is precisely
+ * how the original defect survived: everything looked correct, and the wrong
+ * host was only ever visible in the artefact.
+ *
+ * PREVIEW IS UNTOUCHED. On a preview the explicit value is honoured exactly as
+ * before, because a preview kit's draft exists only in the preview database and
+ * a link to production would 404.
+ */
+function acceptableExplicit(value: string | undefined, variable: string): string | undefined {
+  if (!value) return undefined
+  if (process.env.VERCEL_ENV !== 'production') return value
+
+  let host: string | null = null
+  try {
+    host = new URL(withScheme(value)).host
+  } catch {
+    host = null
+  }
+  if (host === CANONICAL_HOST) return value
+
+  const key = `${variable}=${value}`
+  if (!announced.has(key)) {
+    announced.add(key)
+    console.warn(
+      `[site-url] IGNORING ${variable} on production: it resolves to ${host ?? 'an unparseable host'}, ` +
+        `not the canonical ${CANONICAL_HOST}. Using ${PRODUCTION_FALLBACK}. ` +
+        `Fix the variable in the Vercel Production environment.`,
+    )
+  }
+  return undefined
+}
+
+/**
  * PRODUCTION RESOLVES TO THE CANONICAL HOST, ALWAYS. Founder ruling 2026-08-13.
  *
  * `VERCEL_PROJECT_PRODUCTION_URL` used to sit above the fallback here, and on
@@ -61,9 +120,9 @@ function withScheme(value: string): string {
  * resolve against the preview's own deployment, because a preview kit's draft
  * exists only in the preview database and a link to production would 404.
  */
-function resolveOrigin(explicitFirst: string | undefined): string {
+function resolveOrigin(explicitFirst: string | undefined, variable: string): string {
   const candidate =
-    explicitFirst ||
+    acceptableExplicit(explicitFirst, variable) ||
     (process.env.VERCEL_ENV === 'preview' ? process.env.VERCEL_URL : undefined) ||
     (process.env.VERCEL_ENV === 'production' ? PRODUCTION_FALLBACK : undefined) ||
     process.env.VERCEL_PROJECT_PRODUCTION_URL ||
@@ -78,7 +137,7 @@ function resolveOrigin(explicitFirst: string | undefined): string {
 }
 
 export function getSiteUrl(): string {
-  return resolveOrigin(process.env.NEXT_PUBLIC_SITE_URL)
+  return resolveOrigin(process.env.NEXT_PUBLIC_SITE_URL, 'NEXT_PUBLIC_SITE_URL')
 }
 
 /**
@@ -159,5 +218,12 @@ export function getAppUrl(): string {
   // resolver behind Stripe Connect return and refresh urls, so a redirecting
   // host here is the most expensive version of the defect: Stripe does not
   // follow redirects on a return url.
-  return resolveOrigin(process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL)
+  //
+  // The variable NAME is threaded through so the production warning can name the
+  // one an operator has to go and fix. Both are subject to the canonical rule:
+  // NEXT_PUBLIC_APP_URL feeds the Stripe return url directly, so a redirecting
+  // host there is worse than in NEXT_PUBLIC_SITE_URL, not better.
+  return process.env.NEXT_PUBLIC_APP_URL
+    ? resolveOrigin(process.env.NEXT_PUBLIC_APP_URL, 'NEXT_PUBLIC_APP_URL')
+    : resolveOrigin(process.env.NEXT_PUBLIC_SITE_URL, 'NEXT_PUBLIC_SITE_URL')
 }

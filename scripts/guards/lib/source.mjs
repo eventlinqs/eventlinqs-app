@@ -22,10 +22,16 @@
  *
  * Also the single source of the file LIST every guard scans. It used to be a
  * `globSync` call copy-pasted into three guards, which crashed the CI build on
- * 2026-08-05: `node:fs` only began exporting `globSync` in Node 22, and CI runs
- * Node 20, so all three died at import with a SyntaxError while passing locally
- * on Node 24. One walker, in one place, on an API that has existed since Node
- * 10, removes both the duplication and the version exposure.
+ * 2026-08-05: `node:fs` only began exporting `globSync` in Node 22, and CI ran
+ * Node 20 at the time, so all three died at import with a SyntaxError while
+ * passing locally on Node 24. One walker, in one place, on an API that has
+ * existed since Node 10, removes both the duplication and the version exposure.
+ *
+ * The contract moved to Node 24 on 13 August 2026, so `globSync` is now
+ * available. This walker stays anyway. It is not here because the newer API was
+ * unavailable; it is here because ONE definition of the scanned file list is
+ * worth having, and because an API that has existed since Node 10 cannot be the
+ * thing that breaks the next runtime move.
  */
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
@@ -105,8 +111,8 @@ export function lineAt(src, index) {
  *
  * `readdirSync(dir, { withFileTypes: true })` is the same walk the pre-existing
  * scripts/ci/critical-path-guard.mjs has always used, and it is available in
- * every Node the platform supports. Do NOT swap this back to fs.globSync or
- * fs.promises.glob: both are Node 22+ and CI runs the version pinned in .nvmrc.
+ * every Node the platform supports, which is what keeps it working across a
+ * runtime move rather than only on the runtime of the day.
  *
  * `subdir` exists so a guard can scan scripts/ rather than src/ without a second
  * copy of this walker, which is the duplication this module was written to end.

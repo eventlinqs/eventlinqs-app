@@ -14,6 +14,7 @@
  *   auth-autocomplete          credential-manager attributes on every auth form
  *   auth-provider-cost         no provider gate on a route with no provider button
  *   canonical-host             one definition of the canonical host, resolved everywhere
+ *   canonical-host-runtime     the resolvers, executed, actually return it on production
  *   short-link-namespace       /e/ and /s/ own their segments; no code can shadow a route
  *   check-client-barrel-imports  no third-party namespace import in the browser bundle
  *   migration-collision-guard  no two migrations claiming one version, on any branch
@@ -140,6 +141,14 @@
  * uses, and nothing said so. It says so now: any run whose Node major is not the
  * `.nvmrc` contract is labelled NOT CI-EQUIVALENT in its own output, so a green
  * local run cannot be quoted as proof of a green CI run.
+ *
+ * The banner is DERIVED from `.nvmrc`, never hardcoded, which is why the founder
+ * ruling of 13 August 2026 moving the platform to Node 24 needed no edit here.
+ * The polarity simply inverted with the contract: a Node 24 run now reads
+ * CI-EQUIVALENT and a Node 20 run reads NOT CI-EQUIVALENT, the reverse of what
+ * this file printed the day before. That is the property worth having. A banner
+ * with the number written into it would have gone on confidently reporting the
+ * old answer, which is the failure it exists to prevent.
  */
 import { spawnSync } from 'node:child_process'
 import { readFileSync, existsSync } from 'node:fs'
@@ -170,6 +179,14 @@ const GUARDS = [
   // landed in six places, including four share-card generators that printed it
   // onto an artefact a stranger sees, and every one was found by accident.
   'scripts/guards/canonical-host.mjs',
+  // The RUNTIME half of the same law, and the one that could have caught the
+  // 13 August defect. The scanner above reads files; the wrong host was never in
+  // a file. It came out of VERCEL_PROJECT_PRODUCTION_URL at runtime, so a clean
+  // grep and a wrong artefact were true at the same time. This one executes the
+  // real resolvers in a fresh process under a simulated production and a
+  // simulated preview, which is the only way to see a value that lives in an
+  // environment variable.
+  'scripts/guards/canonical-host-runtime.mjs',
   // A share code is a readable slug, so it must never be mintable as something
   // that shadows a real route, and nothing else may take the /e/ segment.
   'scripts/guards/short-link-namespace.mjs',

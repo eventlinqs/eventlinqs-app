@@ -1,6 +1,6 @@
-01-comedy-night story: 372 KB
-01-comedy-night square: 279 KB
-01-comedy-night feed: 489 KB
+01-comedy-night story: 373 KB
+01-comedy-night square: 280 KB
+01-comedy-night feed: 488 KB
 
 ### 01-comedy-night
 
@@ -54,9 +54,9 @@ From $28. Tickets: https://www.eventlinqs.com.au/e/sharp-tongue-ig
 
 Barwon Comedy Club
 
-02-club-night story: 363 KB
+02-club-night story: 364 KB
 02-club-night square: 255 KB
-02-club-night feed: 504 KB
+02-club-night feed: 503 KB
 
 ### 02-club-night
 
@@ -110,9 +110,9 @@ From $35. Tickets: https://www.eventlinqs.com.au/e/basement-45-ig
 
 Basement 45
 
-03-market story: 393 KB
-03-market square: 285 KB
-03-market feed: 522 KB
+03-market story: 394 KB
+03-market square: 291 KB
+03-market feed: 524 KB
 
 ### 03-market
 
@@ -166,9 +166,9 @@ Free entry. Details: https://www.eventlinqs.com.au/e/pakington-street-ig
 
 Pako Traders
 
-04-workshop story: 173 KB
-04-workshop square: 118 KB
-04-workshop feed: 179 KB
+04-workshop story: 182 KB
+04-workshop square: 144 KB
+04-workshop feed: 230 KB
 
 ### 04-workshop
 
@@ -222,9 +222,9 @@ From $95. Places: https://www.eventlinqs.com.au/e/screen-printing-for-ig
 
 Northern Press Studio
 
-05-fundraiser story: 290 KB
-05-fundraiser square: 210 KB
-05-fundraiser feed: 362 KB
+05-fundraiser story: 291 KB
+05-fundraiser square: 212 KB
+05-fundraiser feed: 363 KB
 
 ### 05-fundraiser
 
@@ -278,9 +278,9 @@ From $65. Tickets: https://www.eventlinqs.com.au/e/a-night-for-the-ig
 
 Friends of the Barwon
 
-06-kids-birthday story: 173 KB
-06-kids-birthday square: 113 KB
-06-kids-birthday feed: 175 KB
+06-kids-birthday story: 175 KB
+06-kids-birthday square: 134 KB
+06-kids-birthday feed: 208 KB
 
 ### 06-kids-birthday
 

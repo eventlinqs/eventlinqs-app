@@ -240,7 +240,7 @@ describe('the story strapline', () => {
   })
 })
 
-describe('the ticket bar never wraps and never leaves its bar', () => {
+describe('the ticket bar never leaves its bar and never cuts the address', () => {
   // Measured with the SAME font file the cards and the poster draw with. The
   // previous version of these tests asserted "never returns a size below the
   // floor", which is exactly the behaviour that let a long line be drawn
@@ -284,20 +284,34 @@ describe('the ticket bar never wraps and never leaves its bar', () => {
           for (const code of codes) {
             const line = ticketBarText(price, `https://${host}/e/${code}`)
             const fit = fitTicketBar(line, available, max, min, measure)
-            const drawn = measure(fit.text, fit.fontSize)
-            if (drawn > available) {
-              failures.push(
-                `${name}: "${fit.text}" at ${fit.fontSize}px is ${Math.round(drawn)}px in a ${available}px bar`,
-              )
+            // THE INVARIANT, unchanged, now asserted per ROW: no line the fitter
+            // returns may be wider than the bar it is drawn in. A line drawn
+            // past the gold is navy on navy on the poster, which prints a
+            // silently shortened address that resolves to nothing.
+            for (const row of fit.lines) {
+              const drawn = measure(row, fit.fontSize)
+              if (drawn > available) {
+                failures.push(
+                  `${name}: "${row}" at ${fit.fontSize}px is ${Math.round(drawn)}px in a ${available}px bar`,
+                )
+              }
             }
+            // At most two rows, ever. A third would stop being a ticket bar.
+            expect(fit.lines.length).toBeLessThanOrEqual(2)
             expect(fit.fontSize).toBeLessThanOrEqual(max)
             // The floor is no longer `min`. Founder ruling 2026-08-13: an
             // ellipsis in a URL is never acceptable output, so when a host is
-            // long enough that no permitted size holds the line, the fitter now
+            // long enough that no permitted size holds the line, the fitter
             // sacrifices the price prefix and then goes BELOW min rather than
             // cutting the address. A small whole address beats a large broken
             // one. The hard floor is 60 percent of min.
             expect(fit.fontSize).toBeGreaterThanOrEqual(Math.round(min * 0.6))
+            // THE ADDRESS SURVIVES WHOLE. Re-joining the rows must give back
+            // exactly what went in, so nothing in the fitter can quietly drop a
+            // character on any path.
+            const printed = fit.lines.join('')
+            expect(printed).not.toContain('...')
+            expect(printed.endsWith(`/e/${code}`)).toBe(true)
           }
         }
       }
@@ -321,9 +335,27 @@ describe('the ticket bar never wraps and never leaves its bar', () => {
       measure,
     )
     expect(short.fontSize).toBeGreaterThan(long.fontSize)
-    // Neither of these needs shortening: the type had somewhere to go.
-    expect(short.text).not.toContain('...')
-    expect(long.text).not.toContain('...')
+    // Neither of these needs a second row: the type had somewhere to go.
+    expect(short.lines).toHaveLength(1)
+    expect(long.lines).toHaveLength(1)
+  })
+
+  it('takes a SECOND ROW rather than cutting an address that will not fit', () => {
+    // Founder ruling 2026-08-13, the replacement for the ellipsis. The bar is
+    // squeezed to a width no single row can hold at any permitted size, which
+    // used to be the one path that produced
+    // `eventlinqs-app-g...l.app/launch/k/a8kwsh5fapxw`. It now wraps instead,
+    // and the address comes back whole.
+    const url = 'https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/launch/k/a8kwsh5fapxw'
+    const fit = fitTicketBar(ticketBarText('From $25', url), 200, 30, 20, measure)
+
+    expect(fit.lines.length).toBe(2)
+    expect(fit.lines.join('')).toBe(
+      'eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/launch/k/a8kwsh5fapxw',
+    )
+    for (const row of fit.lines) expect(measure(row, fit.fontSize)).toBeLessThanOrEqual(200)
+    // Broken after a slash, so a reader can see where the two rows rejoin.
+    expect(fit.lines[0]!.endsWith('/')).toBe(true)
   })
 
   it('sacrifices the PRICE, not the address, before it cuts anything', () => {
@@ -338,9 +370,11 @@ describe('the ticket bar never wraps and never leaves its bar', () => {
     const url = 'https://www.eventlinqs.com.au/launch/k/a8kwsh5fapxw'
     const fit = fitTicketBar(ticketBarText('From $189.50', url), SQUARE_BAR, 30, 20, measure)
 
-    expect(fit.text).not.toContain('...')
-    expect(fit.text).toContain('eventlinqs.com.au/launch/k/a8kwsh5fapxw')
-    expect(measure(fit.text, fit.fontSize)).toBeLessThanOrEqual(SQUARE_BAR)
+    expect(fit.lines.join('')).not.toContain('...')
+    expect(fit.lines.join('')).toContain('eventlinqs.com.au/launch/k/a8kwsh5fapxw')
+    for (const row of fit.lines) {
+      expect(measure(row, fit.fontSize)).toBeLessThanOrEqual(SQUARE_BAR)
+    }
   })
 
   it('prints the canonical host, not the deployment host, when one is given', () => {
