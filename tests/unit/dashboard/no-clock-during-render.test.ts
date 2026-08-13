@@ -97,18 +97,46 @@ function clockReads(src: string): string[] {
        * the components constructor and nothing else. The "still catches" cases
        * below prove the guard did not go blind.
        */
-      // The arguments themselves contain parentheses in real code
-      // (`new Date(Number(y), Number(mo) - 1, ...)`), so the commas are counted
-      // rather than matched with a paren-free character class, which was the
-      // first attempt and matched nothing.
-      const fromLocalComponents = lines
-        .slice(Math.max(0, i - 12), i + 1)
-        .some((back) => {
-          const at = back.indexOf('new Date(')
-          if (at === -1) return false
-          const args = back.slice(at + 'new Date('.length)
-          return (args.match(/,/g) ?? []).length >= 2
-        })
+      /*
+       * RESOLVE THE VALUE BEING FORMATTED, not merely "is there a components
+       * constructor somewhere nearby".
+       *
+       * The first version of this narrowing asked whether ANY line in a
+       * twelve-line lookback built a Date from components. A drill showed that
+       * is blind at close range: an instant-derived
+       * `.format(new Date())` placed on the line immediately after
+       * `const date = new Date(y, m, d, hh, mm)` was cleared, while the same
+       * call thirteen lines later was caught. A guard whose verdict depends on
+       * how far apart two lines happen to sit is not a guard.
+       *
+       * So the receiver is identified first, and only a declaration of THAT
+       * identifier counts. An expression rather than an identifier, which is
+       * exactly what `.format(new Date())` is, resolves to nothing and is
+       * therefore flagged, which is the correct answer.
+       */
+      let formatted: string | null = null
+      const formatCall = /\.format\(\s*([^)]*)\)/.exec(window)
+      if (formatCall) {
+        const arg = formatCall[1].trim()
+        formatted = /^[A-Za-z_$][\w$]*$/.test(arg) ? arg : null
+      } else {
+        const receiver = /([A-Za-z_$][\w$]*)\s*\.toLocale(?:String|DateString|TimeString)\(/.exec(l)
+        if (receiver) formatted = receiver[1]
+      }
+
+      let fromLocalComponents = false
+      if (formatted) {
+        // The arguments contain parentheses in real code
+        // (`new Date(Number(y), Number(mo) - 1, ...)`), so the commas are
+        // counted rather than matched with a paren-free character class.
+        const declares = new RegExp(`(?:const|let|var)\\s+${formatted}\\s*=\\s*new Date\\(`)
+        for (const back of lines.slice(Math.max(0, i - 12), i + 1)) {
+          if (!declares.test(back)) continue
+          const args = back.slice(back.indexOf('new Date(') + 'new Date('.length)
+          fromLocalComponents = (args.match(/,/g) ?? []).length >= 2
+          break
+        }
+      }
       if (!fromLocalComponents && !/timeZone\s*:/.test(window)) {
         out.push(`${i + 1}: ${l.slice(0, 90)}  (date, no timeZone)`)
       }

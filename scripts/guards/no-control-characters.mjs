@@ -120,6 +120,53 @@ if (scanned === 0) {
   process.exit(1)
 }
 
+/*
+ * NO SHEBANG ON ANY .mjs UNDER scripts/, and it lives here because this guard
+ * already walks every source file looking for a byte that breaks a parser
+ * silently. A shebang is exactly that byte sequence.
+ *
+ * WHAT IT COSTS WHEN IT HAPPENS. Vite does not strip `#!` when a TEST imports
+ * the module. The importing suite dies at collection with
+ * `SyntaxError: Invalid or unexpected token` and NO line number, vitest reports
+ * "no tests", and the file passes vacuously. That is not hypothetical:
+ * `tests/unit/security/rls-column-exposure.test.ts` did precisely this for the
+ * entire life of the integration branch, so the guard for the
+ * world-readable-column class was not running while every gate stayed green.
+ * Seventeen tests were restored by deleting one line.
+ *
+ * WHY ALL OF THEM AND NOT JUST THE IMPORTED ONE. Twenty-nine other scripts
+ * carried one. Each is harmless until somebody writes a test that imports it,
+ * and at that moment the failure is silent and looks like the test file's fault.
+ * Removing the trap is cheaper than remembering it, and nothing here is invoked
+ * directly: every caller uses `node <path>` or `process.execPath`, and no file
+ * under scripts/ is mode 100755 in git.
+ */
+const shebangs = []
+for (const file of walk(path.join(ROOT, 'scripts'))) {
+  if (!file.endsWith('.mjs')) continue
+  let head
+  try {
+    head = readFileSync(file, 'utf8').slice(0, 2)
+  } catch {
+    continue
+  }
+  if (head === '#!') shebangs.push(path.relative(ROOT, file).replace(/\\/g, '/'))
+}
+
+if (shebangs.length > 0) {
+  console.error(
+    `[no-control-characters] FAIL - ${shebangs.length} script(s) under scripts/ start with a shebang:\n`,
+  )
+  for (const f of shebangs) console.error(`  ${f}`)
+  console.error(
+    '\n  Vite does not strip a shebang when a test imports the module, so the whole\n' +
+      '  importing suite fails to collect with "Invalid or unexpected token" and no\n' +
+      '  line number, and reports "no tests" rather than a failure. Delete the line.\n' +
+      '  Every caller here invokes these as `node <path>`, so it buys nothing.\n',
+  )
+  process.exit(1)
+}
+
 if (findings.length > 0) {
   console.error(`[no-control-characters] FAIL - ${findings.length} control character(s) in source:\n`)
   for (const f of findings) {
@@ -131,4 +178,6 @@ if (findings.length > 0) {
   process.exit(1)
 }
 
-console.log(`[no-control-characters] PASS - ${scanned} files, no control characters.`)
+console.log(
+  `[no-control-characters] PASS - ${scanned} files, no control characters, no shebang under scripts/.`,
+)

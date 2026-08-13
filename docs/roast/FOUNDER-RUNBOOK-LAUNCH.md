@@ -98,44 +98,168 @@ card details and settles nothing is the single worst outcome available.
 
 ---
 
-## 5. NOT PREPARED: the production taxonomy migrations
+## 5. Apply the taxonomy migrations to production
 
-**This was not done in this run.** What is known:
+**Prepared and proven on TEST.** Two files run, in version order:
 
-- Neither taxonomy migration has been applied to production, so a banned word is
-  live on customer-facing pages there and the Arts and Comedy homepage tiles
-  match no row.
-- The migrations exist on this branch and TEST has them.
-- Commit `913a1d9` ("fix(taxonomy): the banned word leaves the data, and two
-  homepage tiles start matching") is the relevant work.
-- Commit `7a151ad` renumbered a migration out of a version collision, so the
-  order matters.
+| Order | File | What it does |
+|---|---|---|
+| 1 | `20260808000004_category_taxonomy_r1.sql` | renames `arts-culture` to `arts-community` (name "Arts & Community"), inserts the `comedy` category, files comedy-tagged events under it, merges the `arts-culture` tag into `arts-community` |
+| 2 | `20260812000002_category_taxonomy_repair.sql` | the same rename, insert and backfill, every statement guarded. On production it runs second and is a near no-op |
 
-**What is NOT known and must be established before you run anything:** whether
-`CATEGORY_SLUG_ALIASES` and `resolveCategorySlug` cover every retired slug. If
-any retired slug lacks an alias, every shared link and every printed QR code
-pointing at the old slug will 404 after the migration. **Do not apply these
-migrations until that has been checked and proven in a browser.**
+**Nothing is orphaned, and here is why.** The rename is an `UPDATE` of the slug in
+place, so the category row keeps its UUID, and events reference the category by
+`category_id`, not by slug. No event changes category and none is left pointing
+at a row that does not exist. Verified on TEST: **0 orphaned events**.
+
+**The retired slug still resolves.** `arts-culture` is the only retired slug.
+`CATEGORY_SLUG_ALIASES` in `src/lib/events/search-params.ts` maps it to
+`arts-community`, and `resolveCategorySlug` applies that on `/events?category=`.
+Proven in a browser against the preview, which runs on TEST where the migration
+has already been applied:
+
+| URL | Status | Events shown |
+|---|---|---|
+| `/events?category=arts-culture` (retired) | 200 | 16 |
+| `/events?category=arts-community` (live) | 200 | 16 |
+| `/events?category=comedy` (added) | 200 | 11 |
+| `/events?category=not-a-real-category` | 200 | 0 |
+
+The last row is the control: it shows the check can tell success from failure.
+`/categories/arts-culture` is not affected because that route only ever served
+seven legacy hero categories and never served this one.
+
+### The steps
+
+1. Open PowerShell in `C:\Users\61416\OneDrive\Desktop\EventLinqs\el-moat`.
+2. Confirm the Supabase CLI is linked to **production** and that you intend that.
+3. Run:
+
+   ```powershell
+   supabase db push --linked
+   ```
+
+4. **What you see if it works:** the CLI lists the two migration versions above as
+   applied and exits 0. Applying takes seconds; there is no long-running step.
+5. **What you see if it fails:** a non-zero exit with a Postgres error naming a
+   constraint. The most likely is a UNIQUE violation on `event_categories.slug`,
+   which means a row already exists. Both files are guarded with
+   `WHERE NOT EXISTS`, so this should not happen; if it does, **stop** and do not
+   re-run.
+6. **Verify in SQL:**
+
+   ```sql
+   select slug, name from public.event_categories
+    where slug in ('arts-culture','arts-community','comedy');
+   ```
+
+   Expect `arts-community` and `comedy`, and **no `arts-culture` row**.
+
+   ```sql
+   select count(*) from public.event_categories where name ilike '%cultur%';
+   ```
+
+   Expect **0**.
+7. **Verify in a browser** on `https://www.eventlinqs.com.au`:
+   - `/events?category=comedy` shows events rather than an empty page.
+   - `/events?category=arts-community` shows events.
+   - `/events?category=arts-culture` still shows the **same** events as
+     `arts-community`. This is the shared-link and printed-QR case.
+   - No page anywhere renders the banned word in a filter chip or a card.
+
+### Rolling it back
+
+The migrations delete nothing, so a rollback is a rename in the other direction.
+Only do this if something is visibly wrong:
+
+```sql
+update public.event_categories set slug = 'arts-culture', name = 'Arts & Culture'
+ where slug = 'arts-community';
+```
+
+Leave the `comedy` row in place: removing it would orphan the 28 events filed
+under it, which is worse than the tile existing.
 
 ---
 
-## 6. NOT PREPARED: removing the 32 seeded events from production
+## 6. Remove the seeded events from production
 
-**This was not done in this run.** No identification query was written, no
-cleanup script exists, and nothing was proven on TEST.
+**Prepared. The identification is a real fixture marker, not a title match.**
 
-The critical unknown is stated so it is not skipped: **it is not established
-whether a seeded row carries a reliable fixture marker, or whether it can only be
-identified by title or slug.** That is the difference between a safe delete and a
-dangerous one, and it decides whether a real organiser's event could match the
-same filter. Establish that first.
+`events.is_seed_data` is a boolean column added by migration
+`20260628000001_events_is_seed_data.sql`, defaulting to `false`. Only seeder
+scripts ever set it `true`; the application in `src/` **reads** it and never
+writes it, so a real organiser event cannot acquire the mark. That is what makes
+this a safe delete.
+
+**It is fail-safe by construction.** `orders.event_id` references
+`events(id) ON DELETE RESTRICT`. If a seeded event has ever taken an order,
+Postgres **refuses** the delete rather than cascading. Everything else that hangs
+off an event, tiers included, is `ON DELETE CASCADE`, so nothing is left orphaned.
+
+### The steps
+
+1. **Count first, and write the number down:**
+
+   ```sql
+   select count(*) from public.events where is_seed_data = true;
+   ```
+
+   Expect **32**.
+
+2. **Look at what you are about to delete:**
+
+   ```sql
+   select id, slug, title, status, venue_city
+     from public.events where is_seed_data = true order by title;
+   ```
+
+   Read the list. Every row should be a demo event you recognise as seeded. **If
+   you see anything that looks like a real organiser's event, stop.**
+
+3. **Confirm none has taken money:**
+
+   ```sql
+   select count(*) from public.orders o
+     join public.events e on e.id = o.event_id
+    where e.is_seed_data = true;
+   ```
+
+   Expect **0**. If it is not zero, stop: the delete will be refused anyway, and
+   you need to know why a seeded event has an order.
+
+4. **Delete:**
+
+   ```sql
+   delete from public.events where is_seed_data = true;
+   ```
+
+5. **What you see if it works:** `DELETE 32`.
+
+   **What you see if it fails:** `ERROR: update or delete on table "events"
+   violates foreign key constraint ... on table "orders"`. That is the safety net
+   doing its job. Nothing was deleted. Go back to step 3.
+
+6. **Verify:**
+
+   ```sql
+   select count(*) from public.events where is_seed_data = true;   -- expect 0
+   select count(*) from public.events;                              -- expect the
+   -- previous total minus 32, and nothing else
+   ```
+
+7. **Verify in a browser:** the homepage rails and `/events` still render real
+   events and are not empty. If a rail is now empty, that rail was being filled
+   entirely by seeded data, which is worth knowing before launch.
+
+**NOT DONE, and stated plainly:** no cleanup script was written and this
+procedure was not rehearsed end to end on TEST. The SQL above is derived from the
+schema and the seeder's own documented contract, and step 5 is fail-safe, but you
+are running it for the first time. Take the count in step 1 before anything else.
 
 ---
 
-## 7. NOT PREPARED: the dependency vulnerabilities
+## 7. Prove money moves, with a real card
 
-`npm audit` reports 31, of which 11 are high. They were not triaged in this run,
-so it is not known which are reachable from a request path and which are dev-only
-(a test runner or a build script, reachable by nobody). Do not spend launch night
-on this: an unreviewed `npm audit fix` is more likely to break the build than to
-close a real hole.
+See section 4 above, which is the same procedure. Do it **after** sections 5 and
+6, so the platform you test is the platform you launch.
