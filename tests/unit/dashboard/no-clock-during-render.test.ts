@@ -186,7 +186,20 @@ function walk(dir: string, out: string[] = []): string[] {
   }
   for (const e of entries) {
     const full = path.join(dir, e)
-    if (statSync(full).isDirectory()) walk(full, out)
+    // A path can VANISH between the readdir and the stat. The copy-gate self
+    // test writes a scratch .tsx under src/, runs a subprocess against it and
+    // deletes it, and vitest runs test files concurrently, so this walk can
+    // enumerate a name that is gone a moment later. Unguarded, statSync threw at
+    // MODULE SCOPE and the whole file failed to collect, which vitest reports as
+    // "no tests" rather than as a failure: the same silent shape as the shebang
+    // defect. A file that is not on disk cannot carry a clock read.
+    let entry
+    try {
+      entry = statSync(full)
+    } catch {
+      continue
+    }
+    if (entry.isDirectory()) walk(full, out)
     // MERGE NOTE. main still walks only .tsx here. Taking main's line would
     // re-open the hole below, which is the third time this guard has been
     // narrowed in a way that made it report HEALTHIER. Narrowing a guard is not
@@ -259,7 +272,15 @@ describe('server-rendered dashboard components do not read a clock', () => {
   it('has no clock read in a component that is not a client component', () => {
     const offenders: string[] = []
     for (const f of files) {
-      const src = readFileSync(f, 'utf8')
+      // Same race as the walk above: the list was built earlier, and a scratch
+      // file written by a concurrent test can be gone by the time it is read.
+      let src: string
+      try {
+        src = readFileSync(f, 'utf8')
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code === 'ENOENT') continue
+        throw err
+      }
       // NOT skipped for being a client component. Next.js server-renders a
       // client component too and then hydrates it, so a runtime-zone format
       // mismatches there exactly as it does in a server component. Exempting

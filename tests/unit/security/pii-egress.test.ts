@@ -127,7 +127,15 @@ describe('client components are not handed whole database rows', () => {
     const walk = (dir: string, out: string[] = []): string[] => {
       for (const e of readdirSync(dir)) {
         const full = path.join(dir, e)
-        if (statSync(full).isDirectory()) walk(full, out)
+        // Guarded: a concurrent test writes and deletes a scratch file under
+        // src/, so a name enumerated a moment ago may already be gone.
+        let entry
+        try {
+          entry = statSync(full)
+        } catch {
+          continue
+        }
+        if (entry.isDirectory()) walk(full, out)
         else if (e.endsWith('.tsx')) out.push(full)
       }
       return out
@@ -146,14 +154,43 @@ describe('no secret can reach the browser bundle', () => {
     const walk = (dir: string, out: string[] = []): string[] => {
       for (const e of readdirSync(dir)) {
         const full = path.join(dir, e)
-        if (statSync(full).isDirectory()) walk(full, out)
+        // Guarded: a concurrent test writes and deletes a scratch file under
+        // src/, so a name enumerated a moment ago may already be gone.
+        let entry
+        try {
+          entry = statSync(full)
+        } catch {
+          continue
+        }
+        if (entry.isDirectory()) walk(full, out)
         else if (e.endsWith('.tsx') || e.endsWith('.ts')) out.push(full)
       }
       return out
     }
     const offenders: string[] = []
     for (const file of walk(path.join(ROOT, 'src'))) {
-      const src = readFileSync(file, 'utf8')
+      /*
+       * A FILE CAN VANISH BETWEEN THE WALK AND THE READ, and this test used to
+       * die when it did: `ENOENT ... src/__copy_gate_scratch__/scratch.tsx`.
+       *
+       * The copy-gate self test writes a scratch .tsx under src/, runs the gate
+       * against it in a subprocess, and deletes it. Vitest runs test files
+       * concurrently, so this walk can enumerate that scratch file and then read
+       * it a moment after it has gone. Nothing is wrong with either test; they
+       * simply share a directory.
+       *
+       * Skipping a file that no longer exists is also the CORRECT answer on the
+       * merits, not merely a way to stop the crash: a file that is not on disk
+       * cannot be in the shipped client bundle, which is the only thing this
+       * assertion is about.
+       */
+      let src: string
+      try {
+        src = readFileSync(file, 'utf8')
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code === 'ENOENT') continue
+        throw err
+      }
       if (!/^['"]use client['"]/m.test(src)) continue
       for (const m of src.matchAll(/process\.env\.([A-Z0-9_]+)/g)) {
         const name = m[1]!
