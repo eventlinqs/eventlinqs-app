@@ -47,6 +47,10 @@ const VIEWPORTS = [
   { name: '1440', width: 1440, height: 900 },
 ]
 
+/** A real promoter's first sentence, priced so the pill reads "From $25". */
+const ARRIVAL =
+  'Warehouse party at the Barwon Club, Marlo Reyes b2b Kita, Sat 20th September, doors 10pm, $25 presale'
+
 /** Set a React-controlled field so the component actually sees the value. */
 async function reactFill(page, selector, value) {
   await page.waitForSelector(selector, { timeout: 30_000 })
@@ -80,9 +84,12 @@ async function measure(page) {
  */
 async function navOverlap(page) {
   return page.evaluate(() => {
+    // The whole price, not its first digit: an earlier version of this pattern
+    // ended after `\$\d` and so could never match "From $25", which made the
+    // walk report "no pill" on a page that plainly had one.
     const findPill = () =>
       [...document.querySelectorAll('span, button, a')].find(el =>
-        /^\s*(From \$\d|Free entry)\s*$/.test(el.textContent || ''),
+        /^\s*(From \$[\d.,]+|Free entry)\s*$/.test(el.textContent || ''),
       )
     const nav = document.querySelector('nav[class*="fixed"], [class*="fixed"][class*="bottom-0"]')
     const pill = findPill()
@@ -154,9 +161,28 @@ for (const vp of VIEWPORTS) {
 
   report.push({ viewport: vp.name, composer, fields })
 
-  // 3. the nav-versus-pill measurement, on whatever surface shows the pill.
+  // 3. fill it and submit. One textarea, so this is the whole form.
+  await reactFill(page, '#launch-description', ARRIVAL)
+  await page.waitForTimeout(400)
+  const submit = page
+    .getByRole('button', { name: /make|build|create|generate|kit|start|go/i })
+    .first()
+  await submit.click({ timeout: 30_000 })
+
+  // 4. the reveal. The composer works for a few seconds, so this waits on the
+  //    kit surface appearing rather than on a fixed delay.
+  await page
+    .waitForURL((u) => /\/launch\/(k|with)\//.test(u.pathname), { timeout: 180_000 })
+    .catch(() => console.log(`  [${vp.name}] no url change; the kit may render in place`))
+  await page.waitForTimeout(4000)
+  await step('02-reveal')
+  console.log(`  [${vp.name}] reveal url: ${page.url()}`)
+
+  // 5. the event page preview inside the reveal, and the measurement this walk
+  //    exists for.
   const overlap = await navOverlap(page)
-  console.log(`  [${vp.name}] composer nav/pill: ${JSON.stringify(overlap)}`)
+  console.log(`  [${vp.name}] REVEAL nav/pill: ${JSON.stringify(overlap)}`)
+  await step('03-reveal-bottom')
 
   await context.close()
 }
