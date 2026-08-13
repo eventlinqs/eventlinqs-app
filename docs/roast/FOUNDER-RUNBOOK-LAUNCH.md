@@ -217,7 +217,9 @@ off an event, tiers included, is `ON DELETE CASCADE`, so nothing is left orphane
    Read the list. Every row should be a demo event you recognise as seeded. **If
    you see anything that looks like a real organiser's event, stop.**
 
-3. **Confirm none has taken money:**
+3. **Find out how many have taken an order.** This is not a formality: on TEST
+   this number is 61, not 0, because the demo catalogue was bought against
+   during testing.
 
    ```sql
    select count(*) from public.orders o
@@ -225,27 +227,66 @@ off an event, tiers included, is `ON DELETE CASCADE`, so nothing is left orphane
     where e.is_seed_data = true;
    ```
 
-   Expect **0**. If it is not zero, stop: the delete will be refused anyway, and
-   you need to know why a seeded event has an order.
+   **If it is 0**, step 4 will remove everything and you are done in one
+   statement. **If it is not 0**, that is normal and expected, and step 4 below
+   still does the right thing: it removes every seeded event that has NOT taken
+   money and leaves the rest alone. Nothing is refused and nothing is guessed.
 
-4. **Delete:**
+   To see exactly which ones will be kept:
 
    ```sql
-   delete from public.events where is_seed_data = true;
+   select e.id, e.slug, e.title, count(o.id) as orders
+     from public.events e
+     join public.orders o on o.event_id = e.id
+    where e.is_seed_data = true
+    group by e.id, e.slug, e.title
+    order by orders desc;
    ```
 
-5. **What you see if it works:** `DELETE 32`.
+4. **Delete the seeded events that have taken no money:**
 
-   **What you see if it fails:** `ERROR: update or delete on table "events"
-   violates foreign key constraint ... on table "orders"`. That is the safety net
-   doing its job. Nothing was deleted. Go back to step 3.
+   ```sql
+   delete from public.events e
+    where e.is_seed_data = true
+      and not exists (select 1 from public.orders o where o.event_id = e.id);
+   ```
+
+   **Why this rather than a plain `delete ... where is_seed_data = true`:** the
+   plain form is REFUSED outright, deleting nothing, the moment a single seeded
+   event has an order, because `orders.event_id` is `ON DELETE RESTRICT`. Proven
+   on TEST on 13 August 2026, where it failed with
+   `ERROR: update or delete on table "events" violates foreign key constraint
+   "orders_event_id_fkey" on table "orders"`. The guarded form above cannot be
+   refused, and it can never remove an event that has taken money.
+
+5. **What you see if it works:** `DELETE n`, where `n` is the count from step 1
+   minus the number of distinct seeded events that have orders.
+
+   **What you see if something is wrong:** any error at all. The guarded form has
+   nothing left to trip over, so an error here means something unexpected about
+   the database, not about this procedure. Stop and read it.
 
 6. **Verify:**
 
    ```sql
-   select count(*) from public.events where is_seed_data = true;   -- expect 0
-   select count(*) from public.events;                              -- expect the
-   -- previous total minus 32, and nothing else
+   select count(*) from public.events where is_seed_data = true;
+   ```
+
+   Expect **0** if step 3 was 0. Otherwise expect exactly the number of distinct
+   seeded events that carry orders, and those are deliberately still there.
+
+   ```sql
+   select count(*) from public.events;
+   ```
+
+   Expect the step 1 total minus the number deleted in step 4, and nothing else.
+
+7. **If you want the order-bearing ones gone too**, do not delete them: hide
+   them, so the order history and its money trail stay intact.
+
+   ```sql
+   update public.events set status = 'draft', visibility = 'private'
+    where is_seed_data = true;
    ```
 
 7. **Verify in a browser:** the homepage rails and `/events` still render real
