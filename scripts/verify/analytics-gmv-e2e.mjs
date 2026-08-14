@@ -17,6 +17,11 @@ import pg from 'pg'
 import { randomUUID } from 'node:crypto'
 
 const target = assertNotProductionDatabase()
+// clientConfig carries DISCRETE fields (user/password/host/port/database), never
+// a `connectionString`. The database password is not percent-encoded, so the
+// string form makes pg throw ERR_INVALID_URL while printing the input as
+// `*****REDACTED*****`, which reads like an unset placeholder rather than a
+// parse failure. The hand parser lives once, in production-write-preflight.mjs.
 const client = new pg.Client(target.clientConfig)
 
 const fails = []

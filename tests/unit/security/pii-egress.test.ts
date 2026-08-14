@@ -26,8 +26,9 @@
  * that must not regress is the configured value, so that is what is checked.
  */
 import { describe, it, expect } from 'vitest'
-import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import path from 'node:path'
+import { safeWalk, safeRead } from '../../helpers/safe-walk'
 
 const ROOT = path.resolve(__dirname, '../../..')
 const read = (rel: string) => readFileSync(path.join(ROOT, rel), 'utf8')
@@ -124,24 +125,18 @@ describe('client components are not handed whole database rows', () => {
     // table component with the pages that render it.
     const clientTables = ['OrderTable', 'EventsTable']
     const offenders: string[] = []
-    const walk = (dir: string, out: string[] = []): string[] => {
-      for (const e of readdirSync(dir)) {
-        const full = path.join(dir, e)
-        // Guarded: a concurrent test writes and deletes a scratch file under
-        // src/, so a name enumerated a moment ago may already be gone.
-        let entry
-        try {
-          entry = statSync(full)
-        } catch {
-          continue
-        }
-        if (entry.isDirectory()) walk(full, out)
-        else if (e.endsWith('.tsx')) out.push(full)
-      }
-      return out
-    }
-    for (const file of walk(path.join(ROOT, 'src/app'))) {
-      const src = readFileSync(file, 'utf8')
+    /*
+     * safeWalk, not a local walk. The local version guarded statSync and left
+     * readdirSync bare, which is the half-guard the helper's own header records
+     * as having been shipped and failed twice: a RECURSIVE readdir into a
+     * directory that has just been removed throws the same ENOENT as a stat on a
+     * removed entry. src/app is not where the known scratch file lands, so this
+     * one could not race today, but a walk that is only safe because of where
+     * something else happens to write is not safe, it is lucky.
+     */
+    for (const file of safeWalk(path.join(ROOT, 'src/app'), (n) => n.endsWith('.tsx'))) {
+      const src = safeRead(file)
+      if (src === null) continue
       if (!clientTables.some((c) => src.includes(`<${c}`))) continue
       if (/\.select\(\s*['"`]\*/.test(src)) offenders.push(path.relative(ROOT, file))
     }
@@ -151,46 +146,28 @@ describe('client components are not handed whole database rows', () => {
 
 describe('no secret can reach the browser bundle', () => {
   it("every process.env read in a 'use client' file is NEXT_PUBLIC_ or NODE_ENV", () => {
-    const walk = (dir: string, out: string[] = []): string[] => {
-      for (const e of readdirSync(dir)) {
-        const full = path.join(dir, e)
-        // Guarded: a concurrent test writes and deletes a scratch file under
-        // src/, so a name enumerated a moment ago may already be gone.
-        let entry
-        try {
-          entry = statSync(full)
-        } catch {
-          continue
-        }
-        if (entry.isDirectory()) walk(full, out)
-        else if (e.endsWith('.tsx') || e.endsWith('.ts')) out.push(full)
-      }
-      return out
-    }
     const offenders: string[] = []
-    for (const file of walk(path.join(ROOT, 'src'))) {
-      /*
-       * A FILE CAN VANISH BETWEEN THE WALK AND THE READ, and this test used to
-       * die when it did: `ENOENT ... src/__copy_gate_scratch__/scratch.tsx`.
-       *
-       * The copy-gate self test writes a scratch .tsx under src/, runs the gate
-       * against it in a subprocess, and deletes it. Vitest runs test files
-       * concurrently, so this walk can enumerate that scratch file and then read
-       * it a moment after it has gone. Nothing is wrong with either test; they
-       * simply share a directory.
-       *
-       * Skipping a file that no longer exists is also the CORRECT answer on the
-       * merits, not merely a way to stop the crash: a file that is not on disk
-       * cannot be in the shipped client bundle, which is the only thing this
-       * assertion is about.
-       */
-      let src: string
-      try {
-        src = readFileSync(file, 'utf8')
-      } catch (err) {
-        if ((err as NodeJS.ErrnoException).code === 'ENOENT') continue
-        throw err
-      }
+    /*
+     * THE WALK AND THE READ ARE BOTH GUARDED, VIA THE SHARED HELPER.
+     *
+     * This test used to die on `ENOENT ... src/__copy_gate_scratch__/scratch.tsx`.
+     * The first fix guarded only the READ, and left readdirSync and statSync
+     * bare; the second guarded statSync too and still left the recursive
+     * readdirSync bare. Both were narrower blind spots rather than fixes, which
+     * is why the walk now lives in one helper that guards all three operations.
+     *
+     * The scratch file itself has since moved OUT of src/ entirely, into the
+     * system temp directory, so this race is closed at its source as well. Both
+     * layers are kept deliberately: the helper protects against the next writer
+     * under src/, whoever adds it.
+     *
+     * Skipping a vanished file is also the CORRECT answer on the merits, not
+     * merely a way to stop a crash: a file that is not on disk cannot be in the
+     * shipped client bundle, which is the only thing this assertion is about.
+     */
+    for (const file of safeWalk(path.join(ROOT, 'src'), (n) => n.endsWith('.ts') || n.endsWith('.tsx'))) {
+      const src = safeRead(file)
+      if (src === null) continue
       if (!/^['"]use client['"]/m.test(src)) continue
       for (const m of src.matchAll(/process\.env\.([A-Z0-9_]+)/g)) {
         const name = m[1]!

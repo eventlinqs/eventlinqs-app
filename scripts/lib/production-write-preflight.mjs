@@ -321,23 +321,69 @@ export function refFromDatabaseTarget({ host = '', user = '' } = {}) {
 }
 
 /**
- * Split a Postgres connection string into the two identifying parts.
+ * Split a Postgres connection string into its DISCRETE parts, by hand.
  *
- * Deliberately hand-rolled rather than `new URL()`: a Supabase database
- * password routinely contains characters that make the whole string
- * unparseable as a WHATWG URL, and the real .env.test value is one of them.
- * Returns the user and host ONLY. The password is never extracted, never
- * returned and never logged.
+ * WHY HAND-PARSED, AND WHY NOTHING MAY HAND `connectionString` TO pg AGAIN.
+ * A Supabase database password routinely contains characters that are RESERVED
+ * in a URL and are not percent-encoded, and the real SUPABASE_DB_URL value in
+ * this repo is one of them. Two things follow:
+ *
+ *   1. `new URL(...)` throws on it, so the ref could never be read that way.
+ *   2. `new pg.Client({ connectionString })` throws ERR_INVALID_URL, and pg
+ *      prints the offending input as `*****REDACTED*****`. That redaction reads
+ *      like an unset placeholder value rather than a parse failure, which is
+ *      exactly how an hour was lost to it once. Handing pg discrete fields
+ *      removes the parse from the path entirely, so the failure cannot recur.
+ *
+ * The password is passed through VERBATIM, with no percent-decoding, because
+ * the stored value is not percent-encoded. It is extracted for the client
+ * config only: `resolveDatabaseTarget` keeps it inside `clientConfig` and never
+ * puts it on the returned target, never packs it into a message, and never
+ * logs it.
+ *
+ * The two positional rules are what make an unescaped password safe to read:
+ * the LAST `@` separates credentials from host (an `@` inside the password
+ * cannot split it early), and the FIRST `:` inside the credentials separates
+ * user from password (a `:` inside the password stays in the password).
+ *
+ * @returns {{ user: string, password: string, host: string, port: number, database: string } | null}
  */
-function splitConnectionString(raw) {
-  const s = String(raw ?? '').trim()
+function parseConnectionString(raw) {
+  const s = String(raw ?? '').trim().replace(/^["']|["']$/g, '')
   const schemeEnd = s.indexOf('://')
   const at = s.lastIndexOf('@')
   if (schemeEnd === -1 || at === -1 || at < schemeEnd) return null
-  const hostPort = s.slice(at + 1).split(/[/?]/)[0]
+
+  const creds = s.slice(schemeEnd + 3, at)
+  const sep = creds.indexOf(':')
+
+  const tail = s.slice(at + 1)
+  const cut = tail.search(/[/?]/)
+  const hostPort = cut === -1 ? tail : tail.slice(0, cut)
+  const database = cut === -1 || tail[cut] === '?' ? '' : tail.slice(cut + 1).split('?')[0]
+
+  // An IPv6 literal keeps its brackets, matching what the ref reader has always
+  // been handed. Otherwise the port is whatever follows the colon.
+  let host = hostPort
+  let port = ''
+  if (hostPort.startsWith('[')) {
+    const close = hostPort.indexOf(']')
+    host = hostPort.slice(0, close + 1)
+    port = hostPort.slice(close + 1).replace(/^:/, '')
+  } else {
+    const colon = hostPort.indexOf(':')
+    if (colon !== -1) {
+      host = hostPort.slice(0, colon)
+      port = hostPort.slice(colon + 1)
+    }
+  }
+
   return {
-    user: s.slice(schemeEnd + 3, at).split(':')[0],
-    host: hostPort.startsWith('[') ? hostPort.slice(0, hostPort.indexOf(']') + 1) : hostPort.split(':')[0],
+    user: sep === -1 ? creds : creds.slice(0, sep),
+    password: sep === -1 ? '' : creds.slice(sep + 1),
+    host,
+    port: Number(port || 5432),
+    database: database || 'postgres',
   }
 }
 
@@ -353,10 +399,25 @@ function splitConnectionString(raw) {
 export function resolveDatabaseTarget() {
   const conn = process.env.SUPABASE_DB_URL
   if (nonEmpty(conn)) {
-    const parts = splitConnectionString(conn) ?? { user: '', host: '' }
+    const parts = parseConnectionString(conn) ?? { user: '', password: '', host: '', port: 5432, database: 'postgres' }
     return {
-      clientConfig: { connectionString: conn.trim(), ssl: { rejectUnauthorized: false } },
-      ...parts,
+      // DISCRETE FIELDS, never `connectionString`. See parseConnectionString:
+      // the password is not percent-encoded, so the string form makes pg throw
+      // ERR_INVALID_URL and report the input as `*****REDACTED*****`. An
+      // unparseable value lands here with an empty host, which fails the ref
+      // check below and is refused before a socket is opened.
+      clientConfig: {
+        user: parts.user,
+        password: parts.password,
+        host: parts.host,
+        port: parts.port,
+        database: parts.database,
+        ssl: { rejectUnauthorized: false },
+      },
+      // Top level carries the two IDENTIFYING parts only. The password stays
+      // inside clientConfig so a caller that logs its target cannot leak it.
+      user: parts.user,
+      host: parts.host,
       source: 'SUPABASE_DB_URL',
     }
   }

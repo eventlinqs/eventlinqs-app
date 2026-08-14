@@ -321,6 +321,48 @@ files to watch are already known:
 - the migration versions, where `migration-collision-guard` is now a registered
   gate and should catch anything not yet seen
 
+## 6b. `SUPABASE_DB_URL` MUST NEVER BE HANDED TO pg AS A STRING
+
+Recorded because the symptom points at the wrong thing and cost an hour once.
+
+**The database password is not percent-encoded**, and the real value in this repo
+contains characters that are RESERVED in a URL. Two consequences follow, and the
+second is the trap:
+
+1. `new URL(SUPABASE_DB_URL)` throws on it, so the project ref can never be read
+   that way.
+2. `new pg.Client({ connectionString })` throws `ERR_INVALID_URL` and pg prints
+   the offending input as `*****REDACTED*****`. **That redaction reads like an
+   unset placeholder value rather than a parse failure**, so the obvious
+   conclusion is "the variable is not set" when in fact it is set and correct.
+
+**The fix, and where it lives.** `scripts/lib/production-write-preflight.mjs`
+owns a hand parser (`parseConnectionString`) and hands pg **discrete fields**
+(`user`, `password`, `host`, `port`, `database`) through
+`resolveDatabaseTarget().clientConfig`. Nothing else may parse a connection
+string. Two positional rules make an unescaped password safe to read: the **last**
+`@` separates credentials from host, so an `@` inside the password cannot split
+it early, and the **first** `:` inside the credentials separates user from
+password, so a `:` inside the password stays there.
+
+The password is extracted into `clientConfig` only. It is never placed on the
+returned target, never packed into a message, and never logged.
+
+**All seven call sites now route through it:** the four e2e scripts
+(`payout-e2e`, `refund-e2e`, `analytics-gmv-e2e`, `organiser-transition-e2e`) and
+the three seeded-data scripts (`seeded-order-forensics`, `seeded-dependency-map`,
+`seeded-purge-rehearsal`). The last three additionally had the WRONG preflight:
+they called `assertNotProduction()`, which judges `NEXT_PUBLIC_SUPABASE_URL`,
+while connecting over `SUPABASE_DB_URL`. Those are different variables and can
+name different projects, so a run could pass its preflight and connect somewhere
+else entirely. They now call `assertNotProductionDatabase()`, which judges the
+connection string it is actually about to open.
+
+`pg` is a declared devDependency, pinned `8.23.0`. It was imported by the four
+e2e scripts and declared nowhere, so none of them could run at all. 8.23.0 is the
+current release on the npm registry as at 14 August 2026 and declares
+`node >= 16.0.0`, so it is not a backwards pin under Law 9.
+
 ## 7. RESUMING
 
 1. Resolve 5b and 5c. Report on 5a, do not choose.

@@ -26,8 +26,9 @@
  * reach the query as a FILTER. An argument named userId is an attacker's field.
  */
 import { describe, it, expect } from 'vitest'
-import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import path from 'node:path'
+import { safeWalkSource, safeRead } from '../../helpers/safe-walk'
 
 const ROOT = path.resolve(__dirname, '../../..')
 const read = (rel: string) => readFileSync(path.join(ROOT, rel), 'utf8')
@@ -107,18 +108,17 @@ describe('the class: no action takes a bare userId argument alongside a privileg
     // A different implementation from the entry-point scanner, so a shared blind
     // spot cannot hide an instance from both. This is the pattern that produced
     // IDOR-03, expressed so a NEW action cannot reintroduce it unnoticed.
-    const walk = (dir: string, out: string[] = []): string[] => {
-      for (const e of readdirSync(dir)) {
-        const full = path.join(dir, e)
-        if (statSync(full).isDirectory()) walk(full, out)
-        else if (e.endsWith('.ts') || e.endsWith('.tsx')) out.push(full)
-      }
-      return out
-    }
-
+    /*
+     * safeWalk, not a hand-rolled walk. This one was entirely unguarded on all
+     * three operations. It walks src/app, where nothing currently plants a
+     * temporary file, so it could not race today; a walk that is safe only
+     * because of where some other test happens to write is not safe, it is
+     * lucky, and the two silent-collection incidents both began exactly there.
+     */
     const offenders: string[] = []
-    for (const file of walk(path.join(ROOT, 'src/app'))) {
-      const raw = readFileSync(file, 'utf8')
+    for (const file of safeWalkSource(path.join(ROOT, 'src/app'))) {
+      const raw = safeRead(file)
+      if (raw === null) continue
       if (!/^['"]use server['"]/m.test(raw)) continue
       const stripped = raw.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\/\/.*/g, ' ')
       if (!/createAdminClient\s*\(/.test(stripped)) continue

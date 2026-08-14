@@ -1,6 +1,7 @@
-import { readFileSync, readdirSync } from 'node:fs'
-import { join } from 'node:path'
+import { readFileSync } from 'node:fs'
+import { join, relative } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { safeRead, safeWalkSource } from '../helpers/safe-walk'
 
 /**
  * PROOFS 1, 3 and 4 of the child-safety ruling: discovery, the sitemap, and
@@ -121,17 +122,11 @@ describe('nothing in the codebase uses the leaky deny-list shape', () => {
    * So it now walks the whole of src/. A new surface cannot reintroduce the
    * bug without failing this test, whether or not anyone remembers to add it.
    */
-  function walk(dir: string): string[] {
-    const out: string[] = []
-    for (const entry of readdirSync(join(root, dir), { withFileTypes: true })) {
-      const rel = `${dir}/${entry.name}`
-      if (entry.isDirectory()) out.push(...walk(rel))
-      else if (/\.tsx?$/.test(entry.name)) out.push(rel)
-    }
-    return out
-  }
-
-  const SOURCES = walk('src')
+  // safeWalkSource guards readdirSync AND statSync, so a file that vanishes
+  // mid-walk cannot crash this. The walk runs at DESCRIBE scope, where an
+  // unguarded ENOENT fails COLLECTION and vitest reports "no tests" rather than
+  // a failure, and the suite goes green having run fewer tests.
+  const SOURCES = safeWalkSource(join(root, 'src'))
 
   it('walks a real tree rather than a hand-listed handful', () => {
     // Guards the guard: if this collapses to a few files the sweep is fake.
@@ -139,9 +134,15 @@ describe('nothing in the codebase uses the leaky deny-list shape', () => {
   })
 
   it('no surface compares visibility against private alone', () => {
-    const offenders = SOURCES.filter(f =>
-      /visibility\s*!==\s*['"]private['"]/.test(code(read(f))),
-    )
+    const offenders: string[] = []
+    for (const f of SOURCES) {
+      // safeRead returns null for a file deleted since the walk listed it.
+      const src = safeRead(f)
+      if (src === null) continue
+      if (/visibility\s*!==\s*['"]private['"]/.test(code(src))) {
+        offenders.push(relative(root, f).replace(/\\/g, '/'))
+      }
+    }
     expect(offenders).toEqual([])
   })
 

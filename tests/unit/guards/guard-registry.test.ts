@@ -45,8 +45,18 @@ const EXTERNAL_GUARDS = [
   },
 ]
 
-/** Files in scripts/guards/ that are not themselves guards. */
-const NOT_GUARDS = new Set(['run-guards.mjs', 'contract-node.mjs'])
+/**
+ * Files in scripts/guards/ that are not themselves prebuild guards.
+ *
+ * `test-count-canary.mjs` is deliberately NOT registered in the runner, and the
+ * reason is a real trade rather than an oversight. It RUNS THE WHOLE TEST SUITE
+ * to count what executed, which takes about thirty seconds. `prebuild` runs on
+ * every Vercel build, and by build time the code has already been pushed, so
+ * paying that there would cost half a minute per deployment and catch nothing a
+ * push-time check has not already caught. It is wired into `.githooks/pre-push`
+ * instead, where a push is the moment work becomes shared.
+ */
+const NOT_GUARDS = new Set(['run-guards.mjs', 'contract-node.mjs', 'test-count-canary.mjs'])
 
 describe('the build-guard registry', () => {
   test('every guard file in scripts/guards/ is registered in the runner', () => {

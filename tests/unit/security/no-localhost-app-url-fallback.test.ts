@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, extname } from 'node:path'
 import { getAppUrl } from '@/lib/site-url'
+import { safeRead, safeWalk } from '../../helpers/safe-walk'
 
 /**
  * HARD-07 proof.
@@ -19,18 +19,13 @@ import { getAppUrl } from '@/lib/site-url'
 const ROOT = process.cwd()
 const CODE_EXT = new Set(['.ts', '.tsx'])
 
-function walk(dir: string, out: string[]): void {
-  let entries: string[]
-  try {
-    entries = readdirSync(dir)
-  } catch {
-    return
-  }
-  for (const name of entries) {
-    const full = join(dir, name)
-    if (statSync(full).isDirectory()) walk(full, out)
-    else if (CODE_EXT.has(extname(name))) out.push(full)
-  }
+/**
+ * Every code file under `dir`. safeWalk guards readdirSync AND statSync: the
+ * local walk guarded only the readdir, so a file that vanished between being
+ * listed and being stat-ed still threw ENOENT out of the sweep.
+ */
+function walk(dir: string): string[] {
+  return safeWalk(dir, (name) => CODE_EXT.has(extname(name)))
 }
 
 describe('HARD-07: no localhost fallback for NEXT_PUBLIC_APP_URL', () => {
@@ -41,13 +36,16 @@ describe('HARD-07: no localhost fallback for NEXT_PUBLIC_APP_URL', () => {
   // violation. A security gate that fails at random is a security gate people
   // learn to re-run instead of read.
   it('src/ contains no NEXT_PUBLIC_APP_URL ?? localhost fallback', { timeout: 30_000 }, () => {
-    const files: string[] = []
-    walk(join(ROOT, 'src'), files)
+    const files = walk(join(ROOT, 'src'))
     const offenders: string[] = []
     // Matches `NEXT_PUBLIC_APP_URL ?? 'http://localhost...` or `|| "http://localhost...`
     const pattern = /NEXT_PUBLIC_APP_URL\s*(\?\?|\|\|)\s*['"]https?:\/\/localhost/
     for (const file of files) {
-      if (pattern.test(readFileSync(file, 'utf8'))) {
+      // safeRead returns null for a file deleted since the walk listed it, which
+      // cannot carry a localhost fallback and is correctly skipped.
+      const src = safeRead(file)
+      if (src === null) continue
+      if (pattern.test(src)) {
         offenders.push(file.slice(ROOT.length + 1).replace(/\\/g, '/'))
       }
     }

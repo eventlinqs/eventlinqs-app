@@ -97,6 +97,18 @@ const ALLOWLIST = [
     reason: 'this guard has to name the host it is guarding',
   },
   {
+    file: 'scripts/verify/seeded-order-forensics.mjs',
+    reason:
+      'classifies the EMAIL DOMAIN on a seeded order, alongside the RFC 2606 reserved names and ' +
+      'a public throwaway inbox, to decide whether an order could belong to a real person. Those ' +
+      'are recipient domains, not a URL this platform emits, and they are the same class as the ' +
+      'sender.ts entry above: mail and web are different systems and must not move together. ' +
+      'Resolving them through getSiteUrl() would be wrong twice over: it would follow a ' +
+      'deployment environment, and it would not cover the .com mail domain at all, which is where ' +
+      '6 of the 60 seeded orders sit. Getting this classification wrong in the permissive ' +
+      'direction is what would let a real buyer be deleted',
+  },
+  {
     file: 'scripts/guards/canonical-host-runtime.mjs',
     reason:
       'the runtime half of this guard. It PROVES the resolvers refuse the secondary host, so every ' +

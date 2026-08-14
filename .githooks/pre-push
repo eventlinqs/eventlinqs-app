@@ -31,10 +31,18 @@
 
 echo "[pre-push] running the test suite before this leaves the machine"
 
+# The CANARY runs the suite AND checks that nothing stopped running.
+#
+# A plain `npm test` was not enough. Twice a test file has reported healthy while
+# executing nothing, and a green suite that runs fewer tests than yesterday looks
+# identical to a green suite that runs all of them. The canary holds a committed
+# floor for both the file count and the test count, so a silent drop is a red
+# push rather than a number nobody compared.
+#
 # The repository pins its runtime in .nvmrc and package.json engines (Law 9).
 # The hook does not choose a Node; it uses whatever is on PATH, and the guard
 # suite reports whether that matches the contract.
-npm test
+node scripts/guards/test-count-canary.mjs
 status=$?
 
 if [ $status -ne 0 ]; then

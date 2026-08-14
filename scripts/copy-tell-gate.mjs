@@ -22,6 +22,39 @@ import { measureCoverage } from './lib/copy-coverage.mjs'
 const ROOT = process.cwd()
 
 /**
+ * AN EXTRA DIRECTORY TO SCAN, AND WHY IT CANNOT WEAKEN THIS GATE.
+ *
+ * The self test in tests/unit/ci/copy-gate-can-see.test.ts has to plant a known
+ * violation somewhere this gate will read it. It used to plant it INSIDE the
+ * tree, at src/__copy_gate_scratch__/scratch.tsx, and that cost twice:
+ *
+ *   1. Every other test that walks src/ could enumerate the scratch file and
+ *      then read it after the self test deleted it, throwing ENOENT at module
+ *      scope. vitest reports a collection failure as "no tests" rather than as a
+ *      failure, so the suite went green having run LESS. That happened to two
+ *      test files.
+ *   2. If a run was ever interrupted between plant and delete, the scratch was
+ *      left behind and THIS GATE then failed on it, on a tree that was actually
+ *      clean. That is not hypothetical: it was found sitting in the tree, and
+ *      `node scripts/copy-tell-gate.mjs` exited 1 reporting
+ *      `src/__copy_gate_scratch__/scratch.tsx:4 placeholder-copy`.
+ *
+ * So the scratch now lives in the OS temp directory, outside the repository
+ * entirely, where no walker over src/ can ever see it, and the self test points
+ * this variable at it.
+ *
+ * THE SAFETY PROPERTY IS THAT THIS IS ADDITIVE. It appends a directory to the
+ * scan; it can never remove one. src/ is always scanned regardless of what this
+ * is set to, so the variable can only ever make the gate report MORE. There is
+ * no value of it that hides a violation, which is the only reason a gate is
+ * allowed to take an input from the environment at all.
+ *
+ * Coverage (LOCK 6, below) is deliberately NOT affected: it is measured over
+ * src/ alone, so a scratch file cannot move the recorded eyesight ratio.
+ */
+const EXTRA_DIR = (process.env.COPY_GATE_EXTRA_DIR ?? '').trim()
+
+/**
  * The floor the gate's own eyesight must clear, MEASURED rather than guessed.
  *
  * Across .tsx the sighted chunker reads 37.2% of non-comment lines and the
@@ -210,9 +243,34 @@ function* walk(dir) {
   }
 }
 
-const violations = []
-for (const file of walk(path.join(ROOT, 'src'))) {
+/**
+ * Every directory this run scans. src/ is unconditional and always first; the
+ * extra directory is appended only when it is set AND exists, so a stale value
+ * pointing at a deleted temp directory is a no-op rather than a crash.
+ */
+function scanRoots() {
+  const roots = [path.join(ROOT, 'src')]
+  if (EXTRA_DIR && fs.existsSync(EXTRA_DIR)) roots.push(path.resolve(EXTRA_DIR))
+  return roots
+}
+
+function* walkAll(roots) {
+  for (const root of roots) yield* walk(root)
+}
+
+/**
+ * How a file is named in the output. A path inside the repository is shown
+ * relative, which is what the allowlist matches on. A path OUTSIDE it (the temp
+ * scratch) would render as a pile of `../`, so it is shown absolute instead.
+ */
+function label(file) {
   const rel = path.relative(ROOT, file).replaceAll('\\', '/')
+  return rel.startsWith('..') ? file.replaceAll('\\', '/') : rel
+}
+
+const violations = []
+for (const file of walkAll(scanRoots())) {
+  const rel = label(file)
   const allowed = ALLOWLIST.find(a => a.file === rel)?.patterns ?? []
   const lines = fs.readFileSync(file, 'utf8').split(/\r?\n/)
 

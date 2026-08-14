@@ -19,8 +19,9 @@
  */
 import { describe, it, expect } from 'vitest'
 import { execFileSync } from 'node:child_process'
-import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import path from 'node:path'
+import { safeRead, safeWalk } from '../../helpers/safe-walk'
 
 const ROOT = path.resolve(__dirname, '../../..')
 const GUARD = path.join(ROOT, 'scripts/guards/no-native-submit-guard.mjs')
@@ -35,13 +36,12 @@ function runGuard(): { code: number; out: string } {
   }
 }
 
-function tsxFiles(dir: string, out: string[] = []): string[] {
-  for (const entry of readdirSync(dir)) {
-    const full = path.join(dir, entry)
-    if (statSync(full).isDirectory()) tsxFiles(full, out)
-    else if (entry.endsWith('.tsx')) out.push(full)
-  }
-  return out
+/**
+ * Every .tsx under `dir`. safeWalk guards readdirSync AND statSync, so a file
+ * that vanishes between being listed and being stat-ed cannot crash the sweep.
+ */
+function tsxFiles(dir: string): string[] {
+  return safeWalk(dir, (entry) => entry.endsWith('.tsx'))
 }
 
 describe('the guard passes on the current tree', () => {
@@ -142,7 +142,10 @@ describe('the whole class is covered, not one directory', () => {
     // in the guard does not hide a form from both.
     const offenders: string[] = []
     for (const file of tsxFiles(path.join(ROOT, 'src'))) {
-      const src = readFileSync(file, 'utf8')
+      // safeRead returns null for a file deleted since the walk listed it, which
+      // cannot carry an unprotected form and is correctly skipped.
+      const src = safeRead(file)
+      if (src === null) continue
       if (!/<form/.test(src)) continue
       if (!/type=(['"])password\1|autoComplete=(['"])(current-password|new-password|one-time-code)\2/i.test(src)) continue
       const flat = src.replace(/\n/g, ' ')

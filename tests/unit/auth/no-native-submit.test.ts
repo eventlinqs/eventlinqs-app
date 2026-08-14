@@ -27,8 +27,9 @@
  * test hydrates immediately and can never observe the window.
  */
 import { describe, it, expect } from 'vitest'
-import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import path from 'node:path'
+import { safeWalk } from '../../helpers/safe-walk'
 
 const ROOT = path.resolve(__dirname, '../../..')
 // Not just src/components/auth. The build guard found two more credential
@@ -37,15 +38,11 @@ const ROOT = path.resolve(__dirname, '../../..')
 const SRC_DIR = path.join(ROOT, 'src')
 
 function formFiles(): string[] {
-  const walk = (dir: string, out: string[] = []): string[] => {
-    for (const e of readdirSync(dir)) {
-      const full = path.join(dir, e)
-      if (statSync(full).isDirectory()) walk(full, out)
-      else if (e.endsWith('.tsx')) out.push(full)
-    }
-    return out
-  }
-  return walk(SRC_DIR).filter((f) => {
+  // safeWalk guards readdirSync AND statSync, which the local walk did not: the
+  // same vanish race that the read below already handles throws from the
+  // directory listing and the stat too, and this runs at DESCRIBE scope where an
+  // ENOENT fails COLLECTION and reads as "no tests" rather than as a failure.
+  return safeWalk(SRC_DIR, (e) => e.endsWith('.tsx')).filter((f) => {
     // A file listed by the walk can be gone by the time it is read. Vitest runs
     // test FILES in parallel workers, and tests/unit/ci/copy-gate-can-see.test.ts
     // plants and then deletes src/__copy_gate_scratch__/scratch.tsx to prove the

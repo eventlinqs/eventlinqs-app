@@ -16,8 +16,9 @@
  * greeting-text.tsx does.
  */
 import { describe, it, expect } from 'vitest'
-import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import path from 'node:path'
+import { safeRead, safeWalk } from '../../helpers/safe-walk'
 
 const ROOT = path.resolve(__dirname, '../../..')
 const SCAN_DIRS = ['src']
@@ -177,48 +178,35 @@ function isExempt(src: string): boolean {
   return /useHydrated/.test(src)
 }
 
-function walk(dir: string, out: string[] = []): string[] {
-  let entries: string[]
-  try {
-    entries = readdirSync(dir)
-  } catch {
-    return out
-  }
-  for (const e of entries) {
-    const full = path.join(dir, e)
-    // A path can VANISH between the readdir and the stat. The copy-gate self
-    // test writes a scratch .tsx under src/, runs a subprocess against it and
-    // deletes it, and vitest runs test files concurrently, so this walk can
-    // enumerate a name that is gone a moment later. Unguarded, statSync threw at
-    // MODULE SCOPE and the whole file failed to collect, which vitest reports as
-    // "no tests" rather than as a failure: the same silent shape as the shebang
-    // defect. A file that is not on disk cannot carry a clock read.
-    let entry
-    try {
-      entry = statSync(full)
-    } catch {
-      continue
-    }
-    if (entry.isDirectory()) walk(full, out)
-    // MERGE NOTE. main still walks only .tsx here. Taking main's line would
-    // re-open the hole below, which is the third time this guard has been
-    // narrowed in a way that made it report HEALTHIER. Narrowing a guard is not
-    // a smaller scope, it is a blind spot, so the broader walk is kept.
-    //
-    // .ts AND .tsx. THE THIRD HOLE, found 2026-08-09. This walked only .tsx,
-    // so 345 of the 788 TypeScript files under src were never scanned at all,
-    // and the guard reported clean over them. That is not a narrower scope, it
-    // is a blind spot: the unscanned half included the ORDER CONFIRMATION
-    // email, the city digest email, the poster route and the attendee export,
-    // each formatting an event's start_date with no timeZone. Those render on
-    // the Vercel server in UTC, so a 9pm Perth event is emailed to the buyer
-    // as the next day. No hydration mismatch there, and the same wrong answer.
-    else if (/\.tsx?$/.test(e)) out.push(full)
-  }
-  return out
-}
-
-const files = SCAN_DIRS.flatMap((d) => walk(path.join(ROOT, d)))
+/*
+ * THE WALK IS THE SHARED ONE. It used to be a local copy, and although it did
+ * guard readdirSync and statSync, both catches swallowed EVERY error rather than
+ * only "the path is gone". A permission fault or a broken mount therefore read
+ * as an empty directory, and this guard would have reported clean over a tree it
+ * never managed to open, at MODULE SCOPE, where the failure is silent. safeWalk
+ * rethrows anything that is not ENOENT or ENOTDIR, so that cannot happen.
+ *
+ * Why the vanish guard is needed at all: the copy-gate self test used to write a
+ * scratch .tsx under src/ and delete it while vitest ran this file in a parallel
+ * worker. That scratch now lives outside the repository, so the race is closed at
+ * its source too; the guard stays for the next writer under src/.
+ *
+ * MERGE NOTE. main still walks only .tsx here. Taking main's line would re-open
+ * the hole below, which is the third time this guard has been narrowed in a way
+ * that made it report HEALTHIER. Narrowing a guard is not a smaller scope, it is
+ * a blind spot, so the broader walk is kept.
+ *
+ * .ts AND .tsx. THE THIRD HOLE, found 2026-08-09. This walked only .tsx, so 345
+ * of the 788 TypeScript files under src were never scanned at all, and the guard
+ * reported clean over them. The unscanned half included the ORDER CONFIRMATION
+ * email, the city digest email, the poster route and the attendee export, each
+ * formatting an event's start_date with no timeZone. Those render on the Vercel
+ * server in UTC, so a 9pm Perth event is emailed to the buyer as the next day.
+ * No hydration mismatch there, and the same wrong answer.
+ */
+const files = SCAN_DIRS.flatMap((d) =>
+  safeWalk(path.join(ROOT, d), (name) => /\.tsx?$/.test(name)),
+)
 
 /**
  * KNOWN AND NOT YET FIXED, dated 2026-08-08. A RATCHET, not an allowlist:
@@ -402,7 +390,13 @@ describe('server-rendered dashboard components do not read a clock', () => {
     })
 
     it('sweeps client components, which is the hole that hid most of the platform', () => {
-      const clientFiles = files.filter((f) => /^['"]use client['"]/m.test(readFileSync(f, 'utf8')))
+      // safeRead guards the vanish race the walk and the other reads in this
+      // file already guard: a file deleted since the walk listed it is skipped
+      // rather than throwing ENOENT out of the assertion.
+      const clientFiles = files.filter((f) => {
+        const src = safeRead(f)
+        return src !== null && /^['"]use client['"]/m.test(src)
+      })
       expect(clientFiles.length).toBeGreaterThan(100)
     })
 
