@@ -24,6 +24,8 @@
  *   VERCEL_PROJECT_ID / VERCEL_ORG_ID   default to .vercel/project.json
  */
 import { execFileSync } from 'node:child_process'
+
+import { gitEnv } from '../lib/git-env.mjs'
 import { existsSync, readFileSync } from 'node:fs'
 
 const token = process.env.VERCEL_TOKEN
@@ -49,7 +51,7 @@ function branch() {
   const fromCi = process.env.GITHUB_HEAD_REF || process.env.GITHUB_REF_NAME
   if (fromCi) return fromCi
   try {
-    const ref = execFileSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], { encoding: 'utf8' }).trim()
+    const ref = execFileSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], { encoding: 'utf8', env: gitEnv() }).trim()
     return ref === 'HEAD' ? null : ref
   } catch {
     return null

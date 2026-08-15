@@ -36,6 +36,8 @@
 
 import { execFileSync } from 'node:child_process'
 
+import { gitEnv } from '../lib/git-env.mjs'
+
 /**
  * The boundary. Every commit descending from this must be clean.
  *
@@ -107,7 +109,7 @@ const PATTERNS = [
 ]
 
 function git(args) {
-  return execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+  return execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, env: gitEnv() })
 }
 
 /**

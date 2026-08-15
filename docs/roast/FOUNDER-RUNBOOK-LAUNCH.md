@@ -253,10 +253,21 @@ reviewable:
 
 **Expect:** the PR shows merged, and `main` now contains the branch SHA.
 
-**Know what the merge button does before you press it, because the rollback in
-3.8 depends on it.** This repository allows all three methods, and its recent
-practice is **Squash and merge**: every commit on `main` from `(#105)` to
-`(#112)` is single-parent, and the last true merge commit was PR #44.
+**USE "SQUASH AND MERGE". NOT "CREATE A MERGE COMMIT".** This was already the
+habit; as of 15 August 2026 it is also a reason. Two commits on this branch,
+`487846f` and `ae55157`, are authored `drill <drill@eventlinqs.test>` after a
+test drill wrote its identity into the shared config through an inherited
+`GIT_DIR` (finding 77). A squash merge writes ONE new commit and does not carry
+the squashed commits forward, so neither of those ever reaches `main`, and where
+the squashed commits have more than one author GitHub attributes the new commit
+to whoever presses the button. Pressing "Create a merge commit" instead would
+carry both into `main`'s history permanently, and the only ways to undo that are
+banned here.
+
+**Know what the button does, because the rollback in 3.8 depends on it.** This
+repository allows all three methods, and its practice is **Squash and merge**:
+every commit on `main` from `(#105)` to `(#112)` is single-parent, and the last
+true merge commit was PR #44.
 
 A squash collapses **all 202 commits** on this branch into **one** commit on
 main. That is fine, and it has one consequence worth knowing in advance rather

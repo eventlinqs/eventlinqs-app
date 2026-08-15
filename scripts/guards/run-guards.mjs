@@ -19,6 +19,7 @@
  *   short-link-namespace       /e/ and /s/ own their segments; no code can shadow a route
  *   check-client-barrel-imports  no third-party namespace import in the browser bundle
  *   migration-collision-guard  no two migrations claiming one version, on any branch
+ *   no-inherited-git-env       every git subprocess clears inherited GIT_ variables
  *   payment-critical-doctrine  every paymentCritical variable is actually protected
  *   rls-exposure-scan          no world-readable policy exposes a sensitive column
  *   no-native-submit           no form puts a credential in the URL pre-hydration
@@ -184,6 +185,8 @@
  * old answer, which is the failure it exists to prevent.
  */
 import { spawnSync } from 'node:child_process'
+
+import { gitEnv } from '../lib/git-env.mjs'
 import { readFileSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
@@ -248,6 +251,18 @@ const GUARDS = [
   // scripts/verify/ because it is also run by hand with --remote against the
   // linked project; the path below is the one thing that makes it a gate.
   'scripts/verify/migration-collision-guard.mjs',
+  // Founder ruling 2026-08-15, the GIT_DIR incident class. A git hook exports
+  // GIT_DIR, an inheriting child ignores cwd for the purpose of choosing a
+  // repository, and the command runs against the REAL one. That is how a test
+  // drill set core.bare=true on the shared config and broke `git status` in all
+  // nine worktrees at once, and how two commits reached the remote authored by a
+  // test fixture.
+  //
+  // Registered here rather than left as a convention because the failure is
+  // invisible outside a hook: in an ordinary shell GIT_DIR is unset, every call
+  // site behaves correctly, and code review cannot tell the safe line from the
+  // unsafe one. This is the only place the decision is checked at all.
+  'scripts/guards/no-inherited-git-env.mjs',
   // Founder ruling 2026-08-12: of the twelve unwired source-only checks found by
   // the sweep, wire THIS one and leave the other eleven listed and unwired,
   // because it guards money. It asserts the paymentCritical doctrine: every
@@ -353,7 +368,16 @@ const CI_EQUIVALENT = CONTRACT !== null && RUNNING === CONTRACT
 let failed = 0
 
 for (const guard of GUARDS) {
-  const result = spawnSync(process.execPath, [join(ROOT, guard)], { stdio: 'inherit' })
+  // env: gitEnv() SEVERS THE INCIDENT CLASS AT THE ROOT rather than at the leaves.
+  // This one line fans an environment out to every registered guard, three of
+  // which shell out to git. Clearing GIT_ here means a guard added tomorrow is
+  // safe without its author knowing the rule, which is the only kind of safety
+  // that survives. The per-guard clearing stays as well: this is the belt, that
+  // is the braces, and neither is load-bearing alone.
+  const result = spawnSync(process.execPath, [join(ROOT, guard)], {
+    stdio: 'inherit',
+    env: gitEnv(),
+  })
   if (result.status !== 0) failed += 1
 }
 

@@ -28,15 +28,21 @@
  */
 import { describe, it, expect } from 'vitest'
 import { execFileSync } from 'node:child_process'
+
+import { gitEnv } from '../../../scripts/lib/git-env.mjs'
 import path from 'node:path'
 
 const ROOT = path.resolve(__dirname, '../../..')
 
 /** `git ls-files -s .githooks/` -> [{ mode, file }], read from the index. */
 function hooksInIndex(): { mode: string; file: string }[] {
+  // env: gitEnv() because this test runs inside the pre-push hook, where git
+  // exports GIT_DIR and an inheriting child reads the real repository whatever
+  // cwd says. See scripts/lib/git-env.mjs.
   const out = execFileSync('git', ['ls-files', '-s', '.githooks/'], {
     cwd: ROOT,
     encoding: 'utf8',
+    env: gitEnv(),
   })
   return out
     .split(/\r?\n/)

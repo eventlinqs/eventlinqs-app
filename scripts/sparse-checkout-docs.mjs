@@ -29,6 +29,8 @@
  *       node scripts/sparse-checkout-docs.mjs --restore  full checkout back
  */
 import { execFileSync } from 'node:child_process'
+
+import { gitEnv } from './lib/git-env.mjs'
 import { existsSync, readdirSync, statSync } from 'node:fs'
 import { join, resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -48,7 +50,7 @@ const KEEP = [
 ]
 
 const git = (...a) =>
-  execFileSync('git', a, { cwd: REPO, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim()
+  execFileSync('git', a, { cwd: REPO, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: gitEnv() }).trim()
 
 function sizeGb(dir) {
   let bytes = 0

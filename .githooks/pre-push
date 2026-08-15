@@ -28,8 +28,37 @@
 # BYPASS. `git push --no-verify` skips this, and that is deliberate: a hook that
 # cannot be bypassed in an emergency is a hook someone deletes. Bypassing it is a
 # decision to push untested code, so make it knowingly.
+#
+# THE TYPECHECK IS HERE FOR A SEPARATE REASON, added 15 August 2026.
+# On 15 August a type error reached the remote and put two preview deployments
+# into ERROR. `tsc --noEmit` HAD been run and HAD exited 0, and was reported as
+# evidence. It ran before the final edit and was quoted after it, so the claim
+# was true when measured and false when made. That is the third instance of that
+# shape in this repository (finding 79), after the stale node_modules junction
+# and the Sensitive environment variable.
+#
+# A hook cannot stop somebody quoting an old measurement. It can make the LAST
+# gate before code leaves the machine measure the tree that is actually leaving,
+# which removes the window entirely. Vercel type-checks the whole tree including
+# tests/, so a local `next build` does not catch what CI catches; `tsc --noEmit`
+# against the repo tsconfig does.
 
-echo "[pre-push] running the test suite before this leaves the machine"
+echo "[pre-push] running the typecheck and the test suite before this leaves the machine"
+
+# TYPECHECK FIRST. It is the faster of the two, so a type error fails in seconds
+# rather than after a minute of tests.
+npx tsc --noEmit
+tsc_status=$?
+
+if [ $tsc_status -ne 0 ]; then
+  echo ""
+  echo "[pre-push] BLOCKED: tsc --noEmit failed, so nothing was pushed."
+  echo "[pre-push] Vercel type-checks tests/ as well as src/, so this is the same"
+  echo "[pre-push] check that would have failed the preview build."
+  exit $tsc_status
+fi
+
+echo "[pre-push] typecheck clean"
 
 # The CANARY runs the suite AND checks that nothing stopped running.
 #
@@ -53,5 +82,5 @@ if [ $status -ne 0 ]; then
   exit $status
 fi
 
-echo "[pre-push] suite green, pushing"
+echo "[pre-push] typecheck clean, suite green, pushing"
 exit 0

@@ -12,6 +12,8 @@
  * Default beforeRef is HEAD, i.e. the last commit before the band change.
  */
 import { execFileSync } from 'node:child_process'
+
+import { gitEnv } from '../lib/git-env.mjs'
 import { copyFileSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
 
 const BEFORE_REF = process.argv[2] || 'HEAD'
@@ -47,7 +49,7 @@ try {
   after = render('after')
 
   console.log(`\n[band] 2/2 rendering ${BEFORE_REF} (before)...`)
-  writeFileSync(TARGET, execFileSync('git', ['show', `${BEFORE_REF}:${TARGET}`], { encoding: 'utf8' }))
+  writeFileSync(TARGET, execFileSync('git', ['show', `${BEFORE_REF}:${TARGET}`], { encoding: 'utf8', env: gitEnv() }))
   before = render('before')
 } finally {
   writeFileSync(TARGET, snapshot)

@@ -56,6 +56,8 @@
 import { readdirSync, readFileSync, existsSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 
+import { gitEnv } from '../lib/git-env.mjs'
+
 const DIR = 'supabase/migrations'
 const REMOTE = process.argv.includes('--remote')
 
@@ -178,6 +180,7 @@ console.log('\n--- d. no version is claimed by different files on different bran
     refs = execFileSync('git', ['for-each-ref', '--format=%(refname:short)', 'refs/heads/', 'refs/remotes/'], {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
+      env: gitEnv(),
     })
       .split('\n')
       .map((r) => r.trim())
@@ -205,6 +208,7 @@ console.log('\n--- d. no version is claimed by different files on different bran
         listed = execFileSync('git', ['ls-tree', '-r', '--name-only', ref, '--', `${DIR}/`], {
           encoding: 'utf8',
           stdio: ['ignore', 'pipe', 'pipe'],
+          env: gitEnv(),
         })
       } catch {
         continue
@@ -350,7 +354,7 @@ if (!REMOTE) {
         const firstCommit = execFileSync(
           'git',
           ['log', '--diff-filter=A', '--format=%cI', '--', `${DIR}/${file}`],
-          { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
+          { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: gitEnv() },
         ).trim().split('\n').filter(Boolean).pop()
         if (!firstCommit) suspicious.push({ version, file, why: 'untracked: not committed on this branch' })
       } catch {

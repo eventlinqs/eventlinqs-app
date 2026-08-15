@@ -1,4 +1,4 @@
-/**
+﻿/**
  * PROOF: thinning a worktree loses nothing, and a worktree that needs a
  * document can still get it.
  *
@@ -19,6 +19,8 @@
  * Usage: node scripts/verify/sparse-checkout-proof.mjs
  */
 import { execFileSync } from 'node:child_process'
+
+import { gitEnv } from '../lib/git-env.mjs'
 import { existsSync, rmSync, readdirSync, statSync } from 'node:fs'
 import { resolve, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -35,7 +37,7 @@ const check = (name, ok, detail) => {
 }
 
 const git = (cwd, ...a) =>
-  execFileSync('git', a, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim()
+  execFileSync('git', a, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: gitEnv() }).trim()
 
 function sizeGb(dir) {
   let bytes = 0
@@ -115,6 +117,7 @@ try {
   const bytesFromGit = execFileSync('git', ['show', `HEAD:${sampleFile}`], {
     cwd: PROOF,
     maxBuffer: 64 * 1024 * 1024,
+    env: gitEnv(),
   }).length
   check(
     'a specific image is byte-retrievable from the thin worktree',
@@ -177,12 +180,12 @@ try {
   check('the proof ran', false, String(err).slice(0, 300))
 } finally {
   try {
-    execFileSync('git', ['worktree', 'remove', '--force', PROOF], { cwd: REPO, stdio: 'ignore' })
+    execFileSync('git', ['worktree', 'remove', '--force', PROOF], { cwd: REPO, stdio: 'ignore', env: gitEnv() })
   } catch {
     rmSync(PROOF, { recursive: true, force: true })
   }
   try {
-    execFileSync('git', ['worktree', 'prune'], { cwd: REPO, stdio: 'ignore' })
+    execFileSync('git', ['worktree', 'prune'], { cwd: REPO, stdio: 'ignore', env: gitEnv() })
   } catch {
     /* ignore */
   }

@@ -4,6 +4,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
+import { gitEnv } from '../../../scripts/lib/git-env.mjs'
+
 /**
  * THE MIGRATION COLLISION GUARD ACTUALLY CATCHES A COLLISION.
  *
@@ -51,17 +53,10 @@ let repo: string
  *
  * So: no GIT_ variable reaches a child of this file, ever.
  */
-function cleanEnv(extra: Record<string, string> = {}): NodeJS.ProcessEnv {
-  // Built by DELETION from process.env rather than by construction. This project
-  // types NODE_ENV as a required property of ProcessEnv, so a freshly built
-  // Record<string, string> is not assignable and tsc rejects every spawnSync
-  // call below. Copying and deleting keeps the type and the required key.
-  const env: NodeJS.ProcessEnv = { ...process.env }
-  for (const key of Object.keys(env)) {
-    if (key.startsWith('GIT_')) delete env[key]
-  }
-  return { ...env, ...extra }
-}
+// One implementation, in scripts/lib/git-env.mjs, rather than a copy here. A
+// second copy of a security control drifts from the first, and the drift is
+// invisible because both look correct in isolation.
+const cleanEnv = gitEnv
 
 function git(args: string[], cwd: string) {
   const r = spawnSync('git', args, { cwd, encoding: 'utf8', env: cleanEnv() })

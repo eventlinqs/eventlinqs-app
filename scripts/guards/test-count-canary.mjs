@@ -118,8 +118,18 @@ const ROOT = join(HERE, '..', '..')
  * guard go red on a real two-file version collision and pins that a skipped
  * remote check never prints ALL GREEN.
  */
-const MIN_FILES = 194
-const MIN_TESTS = 2345
+/*
+ * 2026-08-15: raised 194/2345 -> 195/2356. The GIT_DIR incident class.
+ * tests/unit/guards/no-inherited-git-env.test.ts is new and adds 11. It proves
+ * the MECHANISM first (a git child inheriting GIT_DIR answers about the wrong
+ * repository, and gitEnv() makes it answer about the right one) and only then
+ * the guard, because a guard drilled without its mechanism proven is a guard
+ * that might be enforcing nothing. It is drilled with GIT_DIR deliberately set,
+ * which is the one context a clean shell cannot reproduce and the one context
+ * where the original defect actually fired.
+ */
+const MIN_FILES = 195
+const MIN_TESTS = 2356
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
@@ -169,10 +179,18 @@ const REPORT = join(ROOT, REPORT_NAME)
  * there is nothing to get wrong and nothing to quote.
  */
 const VITEST = join(ROOT, 'node_modules', 'vitest', 'vitest.mjs')
+// env: gitEnv() BECAUSE THIS IS WHAT CARRIES GIT_DIR INTO THE SUITE.
+// This file is spawned by .githooks/pre-push, so its own environment contains
+// the GIT_ variables git exports for a hook. Without this, every one of the
+// 2345 tests below inherits GIT_DIR, and any of them that shells out to git
+// operates on the real repository whatever cwd it was given. That is exactly
+// how a drill set core.bare=true on the shared config and broke `git status`
+// in all nine worktrees at once. Clearing it here severs the class for every
+// current and future test at once.
 const result = spawnSync(
   process.execPath,
   [VITEST, 'run', '--reporter=json', `--outputFile=${REPORT_NAME}`],
-  { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
+  { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, env: gitEnv() },
 )
 
 if (!existsSync(REPORT)) {
