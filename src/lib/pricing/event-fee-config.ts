@@ -35,23 +35,20 @@ export async function getEventFeeRates(opts: EventFeeRatesOptions): Promise<FeeR
   const organisationId = opts.organisationId ?? null
   const eventId = opts.eventId ?? null
 
+  // ONE FEE (founder ruling 15 August 2026). The processing rules are no longer
+  // resolved anywhere, which is what leaves those pricing_rules rows inert
+  // rather than requiring a migration to remove them.
   let platformFeePercent: number = PUBLIC_PLATFORM_FEE.percent
   let platformFeeFixedCents: number = PUBLIC_PLATFORM_FEE.fixedCents
-  let processingFeePercent: number = PUBLIC_PROCESSING_FEE.percent
-  let processingFeeFixedCents: number = PUBLIC_PROCESSING_FEE.fixedCents
 
   try {
     const client = createPublicClient() as unknown as PricingReadClient
-    const [pp, pf, rp, rf] = await Promise.all([
+    const [pp, pf] = await Promise.all([
       getPricingRule({ ruleType: 'platform_fee_percentage', countryCode, currency, organisationId, eventId }, { client }),
       getPricingRule({ ruleType: 'platform_fee_fixed', countryCode, currency, organisationId, eventId }, { client }),
-      getPricingRule({ ruleType: 'processing_fee_percentage', countryCode, currency, organisationId, eventId }, { client }),
-      getPricingRule({ ruleType: 'processing_fee_fixed_cents', countryCode, currency, organisationId, eventId }, { client }),
     ])
     platformFeePercent = pp.value
     platformFeeFixedCents = pf.value
-    processingFeePercent = rp.value
-    processingFeeFixedCents = rf.value
 
     // The FOUNDING ORGANISER WAIVER, applied through the SAME shared function
     // the charge authority uses. Without this the event page would show a
@@ -67,10 +64,7 @@ export async function getEventFeeRates(opts: EventFeeRatesOptions): Promise<FeeR
         client as unknown as OrganisationReadClient,
         organisationId,
       )
-      const waived = applyFoundingWaiver(
-        { platformFeePercent, platformFeeFixedCents, processingFeePercent, processingFeeFixedCents },
-        waiver.active,
-      )
+      const waived = applyFoundingWaiver({ platformFeePercent, platformFeeFixedCents }, waiver.active)
       platformFeePercent = waived.platformFeePercent
       platformFeeFixedCents = waived.platformFeeFixedCents
     }
@@ -78,5 +72,5 @@ export async function getEventFeeRates(opts: EventFeeRatesOptions): Promise<FeeR
     // Fall back to the reviewed constants; the public page must never 500.
   }
 
-  return { platformFeePercent, platformFeeFixedCents, processingFeePercent, processingFeeFixedCents }
+  return { platformFeePercent, platformFeeFixedCents }
 }

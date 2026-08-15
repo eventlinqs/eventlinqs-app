@@ -91,8 +91,8 @@ const ROOT = join(HERE, '..', '..')
  * embed lost the two Stripe columns the sale gate reads, so saleBlocked was true
  * platform-wide.
  */
-const MIN_FILES = 190
-const MIN_TESTS = 2284
+const MIN_FILES = 191
+const MIN_TESTS = 2300
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

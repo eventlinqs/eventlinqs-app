@@ -56,9 +56,15 @@ export function isWaiverActive(feeFreeUntil: string | null | undefined, now: Dat
 /**
  * Applies the waiver to a resolved rate set.
  *
- * PLATFORM fee to zero, both the percentage and the per-ticket flat component.
- * PROCESSING fee untouched, which is why a waived 20.00 ticket is 20.50 all in
- * and not 20.00: the processor still has to be paid.
+ * The fee goes to zero, both the percentage and the per-ticket flat component.
+ *
+ * UNDER ONE FEE A WAIVED TICKET IS GENUINELY FREE OF CHARGE. This used to say
+ * that a waived 20.00 ticket was 20.50 all in and not 20.00, because the
+ * separate processing fee was never waived. That fee no longer exists: the
+ * founder ruling of 15 August 2026 deleted it and Stripe's cost now comes out of
+ * the single 3.5 per cent. So a waived 20.00 ticket is 20.00 all in, and
+ * "completely fee-free" in the founding-offer copy is now literally true where
+ * before it was 50 cents short.
  *
  * Pure, so the same function is safe on the server and in a test, and so the
  * waiver can never be half-applied.

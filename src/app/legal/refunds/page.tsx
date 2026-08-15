@@ -38,7 +38,7 @@ export default async function RefundPolicyPage() {
   const platformLabel = `${Number(rates.platformFeePercent.toFixed(2))}% + AUD ${(
     rates.platformFeeFixedCents / 100
   ).toFixed(2)}`
-  const processingLabel = `${Number(rates.processingFeePercent.toFixed(2))}%`
+  // ONE FEE, 15 August 2026. Card processing is included in the single fee.
 
   return (
     <LegalPageShell
@@ -185,9 +185,8 @@ export default async function RefundPolicyPage() {
 
       <h2 id="fees">What Happens to the Fees</h2>
       <p>
-        EventLinqs charges a platform fee of{' '}
-        <strong>{platformLabel}</strong> per paid ticket and a payment processing
-        fee of <strong>{processingLabel}</strong> of the order. Free events carry
+        EventLinqs charges a single fee of <strong>{platformLabel}</strong> per
+        paid ticket, with card processing included in it. Free events carry
         no fees at all. The full, all-in amount is shown to you on the event page
         before you commit to buy, and again at checkout.
       </p>

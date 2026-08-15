@@ -74,17 +74,20 @@ describe('PaymentCalculator rounding + composition (current behaviour)', () => {
     expect(fb.total_cents).toBe(1250 + 63)
   })
 
-  test('platform fixed cents is multiplied per ticket; processing fixed is not', async () => {
+  test('the fixed fee is multiplied per ticket, and no processing line is charged', async () => {
     h.rules.platformPct = 1.5 // 3000 * 1.5 / 100 = 45
     h.rules.platformFixed = 30 // + 3 tickets * 30 = 90  -> round(135) = 135
-    h.rules.processingPct = 2.9 // 3000 * 2.9 / 100 = 87
-    h.rules.processingFixed = 30 // + 30 (NOT * ticketCount) -> round(117) = 117
+    // The processing rules are set here deliberately and must be IGNORED: the
+    // calculator no longer reads them (founder ruling 15 August 2026), which is
+    // what leaves those pricing_rules rows inert instead of needing a migration.
+    h.rules.processingPct = 2.9
+    h.rules.processingFixed = 30
     const calc = new PaymentCalculator()
     const fb = await calc.calculate([ticket(3, 1000)], [], 'AUD')
 
     expect(fb.platform_fee_cents).toBe(135)
-    expect(fb.payment_processing_fee_cents).toBe(117)
-    expect(fb.total_cents).toBe(3000 + 135 + 117)
+    expect(fb.payment_processing_fee_cents).toBe(0)
+    expect(fb.total_cents).toBe(3000 + 135)
   })
 
   test('discount is clamped to merch subtotal; absorb mode hides fees', async () => {

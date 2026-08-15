@@ -142,17 +142,23 @@ export class PaymentCalculator {
     const orgId = organisationId ?? null
     const evId = eventId ?? null
 
-    const [
-      platformFeePercent,
-      platformFeeFixedCents,
-      processingFeePercent,
-      processingFeeFixedCents,
-      passThroughDefault,
-    ] = await Promise.all([
+    /*
+     * ONE FEE. The processing percentage and its flat component are no longer
+     * READ, which is what makes the `processing_fee_percentage` and
+     * `processing_fee_fixed_cents` rows in `pricing_rules` INERT rather than
+     * requiring a migration to remove them. Nothing resolves them, so nothing
+     * can be surprised by them.
+     *
+     * `processing_fee_pass_through` is STILL read, and the name is now a
+     * misnomer worth flagging rather than renaming under launch pressure: that
+     * rule has always governed whether BOTH fees are passed to the buyer or
+     * absorbed by the organiser, not just the processing one. Renaming it means
+     * a migration and a coordinated deploy, which is exactly the risk this
+     * change is avoiding. It is read here, once, and its meaning is stated.
+     */
+    const [platformFeePercent, platformFeeFixedCents, passThroughDefault] = await Promise.all([
       getPlatformFeePercentage(country, currency, orgId, evId),
       getPlatformFeeFixedCents(country, currency, orgId, evId),
-      getProcessingFeePercentage(country, currency, orgId, evId),
-      getProcessingFeeFixedCents(country, currency, orgId, evId),
       getProcessingFeePassThrough(country, currency, orgId, evId),
     ])
 
@@ -161,9 +167,12 @@ export class PaymentCalculator {
     // application fee from the fee amounts STORED on the order, so a waived
     // charge is a waived payout without a second lookup.
     //
-    // The platform fee goes to zero inside the window; the processing fee never
-    // does. On any lookup failure the waiver reads INACTIVE, so an error charges
-    // the standard rate rather than silently giving the fee away.
+    // The platform fee goes to zero inside the window. With one fee, a waived
+    // ticket is now genuinely free of platform charge: a 20.00 ticket inside the
+    // window is 20.00 all in, where under the two-fee model it was 20.50 because
+    // the processing line was never waived. On any lookup failure the waiver
+    // reads INACTIVE, so an error charges the standard rate rather than silently
+    // giving the fee away.
     // The client is built ONLY when there is an organisation to look up. A
     // null orgId needs no query, so the no-organisation path never constructs
     // a service-role client at all. Building it unconditionally was wasteful
@@ -175,12 +184,7 @@ export class PaymentCalculator {
       ? await getFoundingWaiver(createAdminClient() as unknown as OrganisationReadClient, orgId)
       : { feeFreeUntil: null, active: false }
     const waivedRates = applyFoundingWaiver(
-      {
-        platformFeePercent,
-        platformFeeFixedCents,
-        processingFeePercent,
-        processingFeeFixedCents,
-      },
+      { platformFeePercent, platformFeeFixedCents },
       waiver.active,
     )
 

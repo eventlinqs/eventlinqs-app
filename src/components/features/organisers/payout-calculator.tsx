@@ -212,23 +212,17 @@ export function PayoutCalculator({ rates, currency = 'AUD' }: Props) {
               </dd>
             </div>
             <div className="border-t border-ink-200 pt-4">
-              <dt className="text-sm font-semibold text-[var(--text-primary)]">EventLinqs fees</dt>
+              {/*
+                ONE FEE. The separate payment-processing row was deleted on
+                15 August 2026: there is a single all-in fee and card processing
+                comes out of it, so a second line would describe a charge that no
+                longer exists.
+              */}
+              <dt className="text-sm font-semibold text-[var(--text-primary)]">EventLinqs fee</dt>
               <dd className="mt-1 flex items-baseline justify-between text-sm text-[var(--text-secondary)]">
-                <span>Platform fee ({rates.platformFeePercent}% + {formatMoney(rates.platformFeeFixedCents, currency)} per ticket)</span>
+                <span>{rates.platformFeePercent}% + {formatMoney(rates.platformFeeFixedCents, currency)} per ticket</span>
                 <span className="font-semibold text-[var(--text-primary)]">
                   {formatMoney(fees.platform_fee_cents, currency)}
-                </span>
-              </dd>
-              <dd className="mt-1 flex items-baseline justify-between text-sm text-[var(--text-secondary)]">
-                <span>
-                  Payment processing ({rates.processingFeePercent}%
-                  {rates.processingFeeFixedCents > 0
-                    ? ` + ${formatMoney(rates.processingFeeFixedCents, currency)} per order`
-                    : ''}
-                  )
-                </span>
-                <span className="font-semibold text-[var(--text-primary)]">
-                  {formatMoney(fees.payment_processing_fee_cents, currency)}
                 </span>
               </dd>
             </div>

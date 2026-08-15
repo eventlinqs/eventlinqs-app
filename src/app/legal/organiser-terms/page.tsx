@@ -44,7 +44,7 @@ export default async function OrganiserAgreementPage() {
   const rates = await getEventFeeRates({})
   const platformPercent = `${Number(rates.platformFeePercent.toFixed(2))}%`
   const platformFixed = `AUD ${(rates.platformFeeFixedCents / 100).toFixed(2)}`
-  const processingPercent = `${Number(rates.processingFeePercent.toFixed(2))}%`
+  // ONE FEE, 15 August 2026. Card processing is included in the single fee.
 
   return (
     <LegalPageShell
@@ -137,15 +137,12 @@ export default async function OrganiserAgreementPage() {
       </p>
 
       <h2 id="fees">Fees</h2>
-      <p>Two fees apply to each paid ticket sold through EventLinqs:</p>
+      <p>One fee applies to each paid ticket sold through EventLinqs:</p>
       <ul>
         <li>
-          <strong>Platform fee:</strong> {platformPercent} of the ticket price plus{' '}
-          {platformFixed} per ticket.
-        </li>
-        <li>
-          <strong>Payment processing fee:</strong> {processingPercent} of the order
-          value, with no flat component.
+          <strong>EventLinqs fee:</strong> {platformPercent} of the ticket price plus{' '}
+          {platformFixed} per ticket. Card processing is included in this fee and
+          is not charged separately.
         </li>
       </ul>
       <p>
@@ -194,9 +191,10 @@ export default async function OrganiserAgreementPage() {
         </li>
       </ul>
       <p>
-        <strong>The payment processing fee of {processingPercent} still applies</strong>{' '}
-        during the fee-free period, because it covers the cost of taking the
-        payment. Only the platform fee is waived.
+        <strong>The fee-free period means no EventLinqs fee at all.</strong> There
+        is one fee and it is waived in full during the period, so a $20 ticket is
+        $20 all in. Card processing is included in our fee, so nothing is charged
+        separately in its place.
       </p>
       <p>
         The offer is capped and closes once 50 places are taken. Places are

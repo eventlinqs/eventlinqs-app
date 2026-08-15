@@ -23,18 +23,53 @@ country            = AU
 currency           = AUD
 platform_fee_percentage    = 3.5
 platform_fee_fixed         = 99
-processing_fee_percentage  = 2.5
-processing_fee_fixed_cents = 0
 processing_fee_pass_through = 1
 ```
 <!-- PRICING-LOCK:END -->
 
-Read as: a PLATFORM (service) fee of 3.5 percent plus 99 cents per ticket, and a
-PAYMENT PROCESSING fee of 2.5 percent of the order with no flat component.
-`processing_fee_pass_through = 1` means the processing fee is passed to the buyer
-by default.
+Read as: **ONE fee of 3.5 percent plus 99 cents per ticket, all in.** The buyer
+pays it, the organiser keeps 100 percent of face value, and card processing comes
+out of that 3.5 rather than being charged as a second line.
+
+`processing_fee_pass_through = 1` is a MISNOMER kept deliberately. That rule has
+always governed whether the fee is passed to the buyer or absorbed by the
+organiser, not just a processing component, and renaming it means a migration and
+a coordinated deploy. It is read once, in the calculator, and its meaning is
+stated here rather than corrected under launch pressure.
 
 Free events are free: a zero subtotal short-circuits before any fee applies.
+
+### The separate processing fee is DELETED (founder ruling, 15 August 2026)
+
+There used to be a second fee: 2.5 percent of the order, described as covering
+Stripe. It is gone. Nothing in the codebase reads
+`processing_fee_percentage` or `processing_fee_fixed_cents` any more, which is
+why **those rows can stay in `pricing_rules` as inert history rather than
+requiring a migration during launch week**. An unnecessary production migration
+is risk for no gain.
+
+**Deleting it also removed a regulatory exposure rather than creating one.**
+Competition and Consumer Act 2010 s 55A(a) defines a payment surcharge as "an
+amount charged, in addition to the price of goods or services, **for processing
+payment** for the goods or services", with **no requirement that it vary by
+payment method**. A buyer-facing line named "payment processing fee" answers that
+description on its face. The RBA's carve-out for booking and service fees is
+worded as fees "unrelated to payment costs **and** apply regardless of the method
+of payment", which is a conjunctive test, so a processing-named fee forfeited half
+of it even though it never varied by method. One fee, not named after processing,
+sits inside the carve-out. The RBA states the ban does "not apply to weekend
+surcharges, public holiday surcharges, **or booking fees or service fees**", and
+its own Q&A names **the ticketing industry** as the example.
+(RBA FAQ and RBA Q&A, both fetched 15 August 2026; CCA s 55A, compilation
+1 January 2026.)
+
+**A dated obligation to diarise.** The Competition and Consumer Amendment (Unfair
+Trading Practices) Act 2026 inserts ACL **s 48A**, commencing **1 July 2027**,
+requiring a "transaction based charge" to be displayed **in close proximity to
+every displayed base price**, each time a base price is displayed. A per-ticket
+booking fee is such a charge. The all-in display already satisfies the spirit of
+it; the wording of s 48A(3) should be checked against the ticket selector before
+that date.
 
 ## 2. How a total is composed, in order
 

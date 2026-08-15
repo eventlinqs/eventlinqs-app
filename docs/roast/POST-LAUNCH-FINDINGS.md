@@ -1,11 +1,14 @@
 # Post-launch findings: integration/launch
 
-## STILL OPEN AND BLOCKING, 15 August 2026
+## CORRECTED 15 August 2026: two findings I reported were WRONG
 
-| # | Finding |
-|---|---|
-| B1 | **The login form fails SILENTLY.** Filling a correct email and password on the deployed preview and clicking Sign in leaves the browser on `/login` with **no error message anywhere on the page**. Captured verbatim: the page still reads "Welcome back ... Email Password Forgot password? Sign in". Whatever refused the attempt, the user is told nothing. Reproduced three times after several successful logins earlier in the day, which points at the GoTrue per-IP rate limit that `scripts/verify/lib/proof-session.mjs:8-19` already documents, but **the defect is the silence, not the limit**: a real person who mistypes a password, or who shares an office IP with someone who did, sees a form that appears to do nothing. This also blocked the seat-builder interaction proof below. |
-| B2 | **The seat builder zoom and pan are STILL UNVERIFIED on the deployment.** The earlier "no canvas element" conclusion was the audit's own fault: it followed the first `/seat-maps` link from `/dashboard/venues`, which is the seat-map LIST, and the canvas belongs to the BUILDER, which mounts only once a chart is opened (`seat-map-builder.tsx:47` imports `SeatCanvas`). `scripts/verify/seat-builder-interaction.mjs` now opens the chart and compares canvas pixels across a real wheel and a real drag, but it could not run because of B1. NOT COVERED, not a pass. |
+Both are struck rather than quietly edited, because the way they were wrong is
+the point.
+
+| # | Finding | Correction |
+|---|---|---|
+| B1 | ~~"The login form fails SILENTLY."~~ | **WRONG, and the method was the fault.** The evidence was a page-text capture truncated at 300 characters, which cut off exactly where the error renders. Captured properly from the wire: a wrong password returns GoTrue `400 {"code":"invalid_credentials"}` and the page renders "That email address and password combination did not match. Check them and try again." The credentials path was never silent. A correct password returns `200` with a token and lands on `/dashboard`, verified repeatedly. **What IS real and unexplained:** the sign-in is intermittently refused on this preview under repeated automated logins from one IP, and I could not catch that specific failure with the network attached, so its cause is UNPROVEN. It is not the GoTrue rate limit at the token endpoint: twelve rapid attempts all returned `400`, never `429`. Guarded going forward by `tests/unit/auth/no-silent-auth-failure.test.ts`. |
+| B2 | ~~"The seat builder zoom and pan are UNVERIFIED."~~ | **NOW PROVEN, and the first two attempts were both the test's fault.** Attempt one looked for a canvas on the seat-map list and concluded there was none; there is one, 754x560. Attempt two drove a plain wheel and reported zoom INERT; `seat-canvas.tsx:8` binds the gestures as "drag pan, pinch, **Ctrl+wheel**, double tap", so a bare wheel is deliberately left to scroll the page rather than trap it. With Ctrl held, `scripts/verify/seat-builder-interaction.mjs` reports **zoom WORKS and pan WORKS**, both by comparing canvas pixels before and after. |
 
 Non-blocking observations found while merging the five launch branches and
 clearing the guard failures, 12 August 2026. One line each, by founder

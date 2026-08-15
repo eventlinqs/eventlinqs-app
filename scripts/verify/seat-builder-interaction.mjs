@@ -51,8 +51,27 @@ try {
   await page.getByLabel(/email/i).first().fill(EMAIL)
   await page.getByLabel(/password/i).first().fill(PASSWORD)
   await page.getByRole('button', { name: /sign in|log in/i }).first().click()
-  await page.waitForURL(u => !u.pathname.startsWith('/login'), { timeout: 45_000 })
-  note('login', 'OK', new URL(page.url()).pathname)
+  /*
+   * POLL THE URL rather than waitForURL with a predicate. The sign-in completes
+   * with a client-side router.push, and waitForURL timed out against it here
+   * while a plain wait-then-read saw /dashboard within a few seconds. Polling is
+   * what actually observes the transition, and it reports the page's own text on
+   * failure so a refusal is diagnosed rather than guessed at.
+   */
+  let landed = null
+  for (let i = 0; i < 30; i += 1) {
+    await page.waitForTimeout(1000)
+    if (!new URL(page.url()).pathname.startsWith('/login')) {
+      landed = new URL(page.url()).pathname
+      break
+    }
+  }
+  if (!landed) {
+    const said = await page.evaluate(() => document.body.innerText.replace(/\s+/g, ' ').slice(0, 300))
+    note('login', 'REFUSED', `still on /login. Page says: ${said}`)
+    throw new Error('login did not complete')
+  }
+  note('login', 'OK', landed)
 
   // Venues, then a venue with seat maps.
   await page.goto(`${BASE}/dashboard/venues`, { waitUntil: 'domcontentloaded', timeout: 60_000 })
@@ -122,12 +141,24 @@ try {
   const before = await snap()
   await page.screenshot({ path: path.join(OUT, 'seat-builder-before-1440.png') }).catch(() => {})
 
-  // A REAL WHEEL over the canvas.
+  /*
+   * CTRL + WHEEL, which is the gesture the renderer actually binds.
+   *
+   * A plain wheel was tried first and reported zoom INERT. That was the test
+   * being wrong, not the product: seat-canvas.tsx:8 lists the gestures as "drag
+   * pan, pinch, Ctrl+wheel, double tap". A bare wheel is deliberately left to
+   * scroll the PAGE, which is the correct behaviour for a canvas embedded in a
+   * scrolling document, because trapping the scroll strands a reader who is only
+   * trying to get past it. Asserting the wrong gesture and calling the result a
+   * defect is the same error this audit has made about itself repeatedly.
+   */
   await page.mouse.move(cx, cy)
+  await page.keyboard.down('Control')
   for (let i = 0; i < 4; i += 1) {
     await page.mouse.wheel(0, -200)
     await page.waitForTimeout(200)
   }
+  await page.keyboard.up('Control')
   await page.waitForTimeout(800)
   const afterZoom = await snap()
   await page.screenshot({ path: path.join(OUT, 'seat-builder-zoom-1440.png') }).catch(() => {})

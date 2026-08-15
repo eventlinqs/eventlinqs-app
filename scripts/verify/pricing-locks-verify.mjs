@@ -45,8 +45,16 @@ const check = (name, ok, detail) => { results.push({ name, ok }); console.log(` 
 const LOCKED = {
   platform_fee_percentage: 3.5,
   platform_fee_fixed: 99,
-  processing_fee_percentage: 2.5,
-  processing_fee_fixed_cents: 0,
+  /*
+   * ONE FEE, founder ruling 15 August 2026. `processing_fee_percentage` and
+   * `processing_fee_fixed_cents` were removed from this list when the separate
+   * processing fee was deleted. Nothing in the codebase reads those rules any
+   * more, so asserting a live value for them would gate a check on data that no
+   * longer means anything. The rows stay in pricing_rules as inert history.
+   *
+   * `processing_fee_pass_through` stays because it is still read: despite the
+   * name it decides buyer-pays versus organiser-absorbs for the single fee.
+   */
   processing_fee_pass_through: 1,
 }
 const now = new Date().toISOString()

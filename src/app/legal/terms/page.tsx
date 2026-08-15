@@ -46,7 +46,8 @@ export default async function TermsOfServicePage() {
   const platformLabel = `${Number(rates.platformFeePercent.toFixed(2))}% + AUD ${(
     rates.platformFeeFixedCents / 100
   ).toFixed(2)}`
-  const processingLabel = `${Number(rates.processingFeePercent.toFixed(2))}%`
+  // ONE FEE, 15 August 2026. The separate payment-processing fee was deleted and
+  // card processing now comes out of the single fee above.
 
   return (
     <LegalPageShell
@@ -167,9 +168,9 @@ export default async function TermsOfServicePage() {
 
       <h2 id="fees">Fees and Pricing</h2>
       <p>
-        EventLinqs charges a platform fee of{' '}
-        <strong>{platformLabel}</strong> per paid ticket and a payment processing
-        fee of <strong>{processingLabel}</strong> of the order value.{' '}
+        EventLinqs charges a single fee of <strong>{platformLabel}</strong> per
+        paid ticket. That is the whole fee: card processing is included in it and
+        is not charged separately.{' '}
         <strong>Free events carry no fees.</strong>
       </p>
       <p>
