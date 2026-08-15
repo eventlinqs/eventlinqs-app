@@ -51,11 +51,14 @@ let repo: string
  *
  * So: no GIT_ variable reaches a child of this file, ever.
  */
-function cleanEnv(extra: Record<string, string> = {}) {
-  const env: Record<string, string> = {}
-  for (const [k, v] of Object.entries(process.env)) {
-    if (k.startsWith('GIT_')) continue
-    if (typeof v === 'string') env[k] = v
+function cleanEnv(extra: Record<string, string> = {}): NodeJS.ProcessEnv {
+  // Built by DELETION from process.env rather than by construction. This project
+  // types NODE_ENV as a required property of ProcessEnv, so a freshly built
+  // Record<string, string> is not assignable and tsc rejects every spawnSync
+  // call below. Copying and deleting keeps the type and the required key.
+  const env: NodeJS.ProcessEnv = { ...process.env }
+  for (const key of Object.keys(env)) {
+    if (key.startsWith('GIT_')) delete env[key]
   }
   return { ...env, ...extra }
 }
