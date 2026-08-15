@@ -138,3 +138,86 @@ honest framing is "published industry figures", not "measured".
    quote rather than fall back to something written down.
 4. **Build 7 is explicitly "build nothing chargeable now".** The deliverable is a
    written trigger with the metric named, in the roadmap, not a feature.
+
+### Addition: the external event is the funnel (U1 to U10)
+
+Ruled after Build B and NOT started. It depends on Build B, which depends on
+Build A, so the order is A, then B, then this. Summarised so the intent survives:
+
+- **U1 question-mark report:** per-channel clicks with the conversion column
+  present and EMPTY, one line saying we can see who arrived and not who bought,
+  and no call to action beside it. The empty column does the work.
+- **U2 friction receipt:** count manual sold-number entries; from the third, one
+  line, once, never more than fortnightly.
+- **U3 staleness:** a self-reported number older than four days carries a plain
+  warning that the read may be wrong. Do not soften it.
+- **U4 missed signal:** a material click spike, named by channel and time, with
+  "we cannot tell whether any of it converted". Define spike FROM THE DATA and
+  state the definition.
+- **U5 post-event report:** the day after, once, never chased. Everything we
+  actually know, closing on the truth that their next event starts from zero.
+- **U6 migration close:** converting external to internal carries past events,
+  click history, channel performance and tracked links forward. Prove on TEST.
+- **U7 cadence:** external is weekly plus daily in the final week, clicks only.
+  Internal is richer. **No comparison table anywhere**, let it be felt.
+- **U8 never nag:** no upsell line in a BEHIND brief, with a test that fails if
+  one can render there.
+- **U9 honesty guard:** every claim about what we would know on-platform pinned
+  by test to the feature that delivers it, so a claim cannot outlive its feature.
+- **U10:** read `/mnt/skills/public/frontend-design/SKILL.md` first. Navy ground,
+  gold accents, Archivo headline, existing design language, designed for a phone
+  at 7am.
+
+---
+
+## BUILD C: The Launch Kit information panel
+
+Ruled 15 August 2026, NOT started. This is a design build, not a plumbing one.
+
+**The defect, in the founder's words:** the uploaded photo renders well. What is
+wrong is everything BELOW it, the dark band carrying title, date, venue, price,
+QR and CTA pill. "The photo is bespoke; the panel is a template."
+
+**The bar, verbatim, because it is the whole brief:** if a stranger saw the
+artefact with no branding on it, they should assume a designer was paid to make
+it. If it could plausibly be a stock template with the details swapped, it has
+failed.
+
+**Explicitly required by the ruling:**
+
+- Diagnose the current panel yourself first, by rendering and OPENING it, in
+  design terms. Do not accept the founder's diagnosis.
+- Law 7 research, gone wide: how professional gig posters compose an information
+  zone, how designers relate type to photography, palette extraction from an
+  image, and 2026 award-winning work (D&AD, Type Directors Club, Communication
+  Arts). Report what each establishes, cite it, and say what you deliberately did
+  NOT copy.
+- Multiple distinct looks, selectable, differing in DESIGN LANGUAGE not colour,
+  changeable later.
+- Every size composed for its own aspect ratio: A4, 1080x1920, 1080x1080,
+  1440x1800. Never cropped from one master.
+- Palette extraction must not be the naive "dominant colour as background",
+  which goes muddy on real photographs. Extract a full palette, assign roles
+  deliberately, verify contrast per pairing and REJECT failures. Handle
+  monochrome, very dark, very bright, unsaturated, and clashing-with-the-QR
+  explicitly. Prove on at least eight genuinely different photographs.
+- **Banned:** flat panels unrelated to the image, centred stacks of similar
+  sizes, drop shadows used to separate, a full-width gradient scrim as the only
+  treatment, anything identical with different details pasted in.
+- Must be excellent with NO photo uploaded. That case is not an afterthought.
+- Name the accessibility standard, report the measured ratio for every
+  text-on-background pair in every design.
+- Confirm the A4 is genuinely print-ready (resolution, colour space, bleed,
+  margins) cited to a primary source, with a plain yes or no on whether a
+  commercial printer would accept it.
+- Verification is where it is won or lost: render, OPEN, and describe what you
+  actually see, not what you intended. Stress with a very long name, a very short
+  one, missing venue, missing time, portrait, landscape, dark, busy,
+  low-resolution, and no photo. View social sizes at thumbnail scale.
+- Do not regress the tracked link, QR payload, canonical printed host, caption
+  generation or the external-URL path.
+
+**Known context that will matter:** finding 74 records that the poster currently
+prints the APEX host (`eventlinqs.com.au/launch/k/<code>`), which resolves via
+one 301 to the canonical host. A printed artefact cannot be corrected after
+printing, so fix the printed line in the same pass.
