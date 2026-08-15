@@ -1,7 +1,7 @@
 {
   "report": {
     "base": "https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app",
-    "startedAt": "2026-08-15T00:04:11.693Z",
+    "startedAt": "2026-08-15T00:48:24.057Z",
     "passes": [
       {
         "viewport": {
@@ -9,7 +9,7 @@
           "width": 390,
           "height": 844
         },
-        "surfaceCount": 34
+        "surfaceCount": 35
       },
       {
         "viewport": {
@@ -17,7 +17,7 @@
           "width": 1440,
           "height": 900
         },
-        "surfaceCount": 34
+        "surfaceCount": 35
       }
     ]
   },
@@ -30,15 +30,17 @@
       "error": null,
       "measuredViewport": "390x844",
       "title": "EventLinqs - Every community. Every event. One platform.",
-      "textLength": 2582,
-      "eventCards": 0,
-      "state": "EMPTY STATE",
+      "textLength": 11429,
+      "eventCards": 93,
+      "markerHit": false,
+      "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
-      "links": 141,
-      "controls": 18,
+      "badHosts": [],
+      "links": 255,
+      "controls": 51,
       "shot": "homepage-390.png"
     },
     {
@@ -51,11 +53,13 @@
       "title": "Find your next event | EventLinqs",
       "textLength": 4648,
       "eventCards": 32,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 115,
       "controls": 77,
       "shot": "events-browse-390.png"
@@ -70,11 +74,13 @@
       "title": "Find your next event | EventLinqs",
       "textLength": 3673,
       "eventCards": 24,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 106,
       "controls": 67,
       "shot": "events-filtered-category-390.png"
@@ -89,11 +95,13 @@
       "title": "Find your next event | EventLinqs",
       "textLength": 2313,
       "eventCards": 11,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 90,
       "controls": 54,
       "shot": "events-category-comedy-390.png"
@@ -108,11 +116,13 @@
       "title": "Find your next event | EventLinqs",
       "textLength": 2720,
       "eventCards": 14,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 93,
       "controls": 57,
       "shot": "events-category-arts-and-community-390.png"
@@ -127,11 +137,13 @@
       "title": "Find your next event | EventLinqs",
       "textLength": 4650,
       "eventCards": 32,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 115,
       "controls": 77,
       "shot": "events-sorted-390.png"
@@ -146,11 +158,13 @@
       "title": "Find your next event | EventLinqs",
       "textLength": 3622,
       "eventCards": 24,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 105,
       "controls": 67,
       "shot": "events-free-filter-390.png"
@@ -165,11 +179,13 @@
       "title": "Find your next event | EventLinqs",
       "textLength": 3774,
       "eventCards": 24,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 106,
       "controls": 67,
       "shot": "search-hit-390.png"
@@ -184,11 +200,13 @@
       "title": "Find your next event | EventLinqs",
       "textLength": 1397,
       "eventCards": 0,
+      "markerHit": true,
       "state": "EMPTY STATE",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 81,
       "controls": 43,
       "shot": "search-miss-390.png"
@@ -203,11 +221,13 @@
       "title": "African events in your city | EventLinqs",
       "textLength": 4234,
       "eventCards": 9,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 114,
       "controls": 21,
       "shot": "hero-category-afrobeats-390.png"
@@ -222,11 +242,13 @@
       "title": "Business & Networking events - Where the next deal, hire, and big idea gets made. | EventLinqs",
       "textLength": 3673,
       "eventCards": 0,
+      "markerHit": true,
       "state": "EMPTY STATE",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 82,
       "controls": 10,
       "shot": "hero-category-networking-390.png"
@@ -241,11 +263,13 @@
       "title": "Browse by Community | EventLinqs",
       "textLength": 2608,
       "eventCards": 0,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 100,
       "controls": 10,
       "shot": "communities-index-390.png"
@@ -260,11 +284,13 @@
       "title": "Browse by City | EventLinqs",
       "textLength": 1696,
       "eventCards": 0,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 99,
       "controls": 10,
       "shot": "cities-index-390.png"
@@ -279,11 +305,13 @@
       "title": "For Organisers | EventLinqs",
       "textLength": 8204,
       "eventCards": 0,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 101,
       "controls": 25,
       "shot": "organisers-marketing-390.png"
@@ -298,11 +326,13 @@
       "title": "Pricing | EventLinqs",
       "textLength": 4252,
       "eventCards": 0,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 84,
       "controls": 25,
       "shot": "pricing-390.png"
@@ -317,11 +347,13 @@
       "title": "About | EventLinqs",
       "textLength": 4996,
       "eventCards": 0,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 82,
       "controls": 10,
       "shot": "about-390.png"
@@ -336,11 +368,13 @@
       "title": "Contact Us | EventLinqs",
       "textLength": 1475,
       "eventCards": 0,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 84,
       "controls": 11,
       "shot": "contact-390.png"
@@ -355,11 +389,13 @@
       "title": "Help Centre | EventLinqs",
       "textLength": 2204,
       "eventCards": 0,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 91,
       "controls": 20,
       "shot": "help-390.png"
@@ -374,11 +410,13 @@
       "title": "Privacy Policy | EventLinqs",
       "textLength": 18533,
       "eventCards": 0,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 87,
       "controls": 10,
       "shot": "legal-privacy-390.png"
@@ -393,11 +431,13 @@
       "title": "Terms of Service | EventLinqs",
       "textLength": 14757,
       "eventCards": 0,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 97,
       "controls": 10,
       "shot": "legal-terms-390.png"
@@ -412,11 +452,13 @@
       "title": "Refund and Ticket Policy | EventLinqs",
       "textLength": 10488,
       "eventCards": 0,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 84,
       "controls": 10,
       "shot": "legal-refunds-390.png"
@@ -431,11 +473,13 @@
       "title": "Build your event | EventLinqs",
       "textLength": 1206,
       "eventCards": 0,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 79,
       "controls": 12,
       "shot": "launch-composer-390.png"
@@ -450,11 +494,13 @@
       "title": "Sign in | EventLinqs",
       "textLength": 211,
       "eventCards": 0,
+      "markerHit": false,
       "state": "THIN",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 5,
       "controls": 2,
       "shot": "login-390.png"
@@ -469,11 +515,13 @@
       "title": "Create account | EventLinqs",
       "textLength": 462,
       "eventCards": 0,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 6,
       "controls": 1,
       "shot": "signup-390.png"
@@ -488,11 +536,13 @@
       "title": "Reset password | EventLinqs",
       "textLength": 196,
       "eventCards": 0,
+      "markerHit": false,
       "state": "THIN",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 4,
       "controls": 1,
       "shot": "forgot-password-390.png"
@@ -507,6 +557,7 @@
       "title": "EventLinqs | The ticketing platform built for every community",
       "textLength": 1069,
       "eventCards": 0,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [
         "Failed to load resource: the server responded with a status of 404 ()"
@@ -516,6 +567,7 @@
         "HTTP 404 https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/this-route-does-not-exist-audit-probe"
       ],
       "overflows": false,
+      "badHosts": [],
       "links": 81,
       "controls": 10,
       "shot": "deliberate-404-390.png"
@@ -530,11 +582,13 @@
       "title": "OPM Night: Filipino Live Music Showcase - Sat, 15 Aug - Brisbane Powerhouse, Brisbane - EventLinqs",
       "textLength": 2634,
       "eventCards": 0,
+      "markerHit": true,
       "state": "EMPTY STATE",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 93,
       "controls": 18,
       "shot": "event-detail-390.png"
@@ -549,9 +603,12 @@
       "title": "Things to do in Melbourne | EventLinqs",
       "textLength": 7039,
       "eventCards": 36,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [
         "Attempted to load a Vector Map, but failed. Falling back to Raster. Please see https://developers.google.com/maps/documentation/javascript/webgl/support for more info",
+        "Attempted to load a Vector Map, but failed. Falling back to Raster. Please see https://developers.google.com/maps/documentation/javascript/webgl/support for more info",
+        "Google Maps JavaScript API error: RefererNotAllowedMapError\nhttps://developers.google.com/maps/documentation/javascript/error-messages#referer-not-allowed-map-error\nYour site URL to be authorized: https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/city/melbourne",
         "Google Maps JavaScript API error: RefererNotAllowedMapError\nhttps://developers.google.com/maps/documentation/javascript/error-messages#referer-not-allowed-map-error\nYour site URL to be authorized: https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/city/melbourne"
       ],
       "pageErrors": [
@@ -559,6 +616,7 @@
       ],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 161,
       "controls": 62,
       "shot": "city-page-390.png"
@@ -573,11 +631,13 @@
       "title": "Aboriginal & Torres Strait Islander events in your city | EventLinqs",
       "textLength": 4411,
       "eventCards": 1,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 106,
       "controls": 13,
       "shot": "community-page-390.png"
@@ -592,14 +652,37 @@
       "title": "Create account | EventLinqs",
       "textLength": 680,
       "eventCards": 0,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 7,
       "controls": 1,
       "shot": "organiser-profile-390.png"
+    },
+    {
+      "label": "suburb page",
+      "url": "https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/city/melbourne/inner-melbourne",
+      "vp": "390",
+      "status": 200,
+      "error": null,
+      "measuredViewport": "390x844",
+      "title": "Things to do in Inner Melbourne, Melbourne | EventLinqs",
+      "textLength": 3679,
+      "eventCards": 21,
+      "markerHit": false,
+      "state": "CONTENT",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "overflows": false,
+      "badHosts": [],
+      "links": 106,
+      "controls": 38,
+      "shot": "suburb-page-390.png"
     },
     {
       "label": "artists (flag off, 404 expected)",
@@ -611,6 +694,7 @@
       "title": "Find performers | EventLinqs",
       "textLength": 1069,
       "eventCards": 0,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [
         "Failed to load resource: the server responded with a status of 404 ()"
@@ -620,6 +704,7 @@
         "HTTP 404 https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/artists"
       ],
       "overflows": false,
+      "badHosts": [],
       "links": 81,
       "controls": 10,
       "shot": "artists-flag-off-404-expected--390.png"
@@ -667,15 +752,17 @@
       "error": null,
       "measuredViewport": "1440x900",
       "title": "EventLinqs - Every community. Every event. One platform.",
-      "textLength": 2677,
-      "eventCards": 0,
-      "state": "EMPTY STATE",
+      "textLength": 11667,
+      "eventCards": 93,
+      "markerHit": false,
+      "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
-      "links": 141,
-      "controls": 18,
+      "badHosts": [],
+      "links": 255,
+      "controls": 51,
       "shot": "homepage-1440.png"
     },
     {
@@ -688,11 +775,16 @@
       "title": "Find your next event | EventLinqs",
       "textLength": 4698,
       "eventCards": 32,
+      "markerHit": false,
       "state": "CONTENT",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Attempted to load a Vector Map, but failed. Falling back to Raster. Please see https://developers.google.com/maps/documentation/javascript/webgl/support for more info",
+        "Google Maps JavaScript API error: RefererNotAllowedMapError\nhttps://developers.google.com/maps/documentation/javascript/error-messages#referer-not-allowed-map-error\nYour site URL to be authorized: https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/events"
+      ],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 115,
       "controls": 77,
       "shot": "events-browse-1440.png"
@@ -707,11 +799,16 @@
       "title": "Find your next event | EventLinqs",
       "textLength": 3713,
       "eventCards": 24,
+      "markerHit": false,
       "state": "CONTENT",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Attempted to load a Vector Map, but failed. Falling back to Raster. Please see https://developers.google.com/maps/documentation/javascript/webgl/support for more info",
+        "Google Maps JavaScript API error: RefererNotAllowedMapError\nhttps://developers.google.com/maps/documentation/javascript/error-messages#referer-not-allowed-map-error\nYour site URL to be authorized: https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/events"
+      ],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 106,
       "controls": 67,
       "shot": "events-filtered-category-1440.png"
@@ -726,11 +823,16 @@
       "title": "Find your next event | EventLinqs",
       "textLength": 2353,
       "eventCards": 11,
+      "markerHit": false,
       "state": "CONTENT",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Attempted to load a Vector Map, but failed. Falling back to Raster. Please see https://developers.google.com/maps/documentation/javascript/webgl/support for more info",
+        "Google Maps JavaScript API error: RefererNotAllowedMapError\nhttps://developers.google.com/maps/documentation/javascript/error-messages#referer-not-allowed-map-error\nYour site URL to be authorized: https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/events"
+      ],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 90,
       "controls": 54,
       "shot": "events-category-comedy-1440.png"
@@ -745,11 +847,16 @@
       "title": "Find your next event | EventLinqs",
       "textLength": 2760,
       "eventCards": 14,
+      "markerHit": false,
       "state": "CONTENT",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Attempted to load a Vector Map, but failed. Falling back to Raster. Please see https://developers.google.com/maps/documentation/javascript/webgl/support for more info",
+        "Google Maps JavaScript API error: RefererNotAllowedMapError\nhttps://developers.google.com/maps/documentation/javascript/error-messages#referer-not-allowed-map-error\nYour site URL to be authorized: https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/events"
+      ],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 93,
       "controls": 57,
       "shot": "events-category-arts-and-community-1440.png"
@@ -764,11 +871,16 @@
       "title": "Find your next event | EventLinqs",
       "textLength": 4700,
       "eventCards": 32,
+      "markerHit": false,
       "state": "CONTENT",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Attempted to load a Vector Map, but failed. Falling back to Raster. Please see https://developers.google.com/maps/documentation/javascript/webgl/support for more info",
+        "Google Maps JavaScript API error: RefererNotAllowedMapError\nhttps://developers.google.com/maps/documentation/javascript/error-messages#referer-not-allowed-map-error\nYour site URL to be authorized: https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/events"
+      ],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 115,
       "controls": 77,
       "shot": "events-sorted-1440.png"
@@ -783,11 +895,17 @@
       "title": "Find your next event | EventLinqs",
       "textLength": 3662,
       "eventCards": 24,
+      "markerHit": false,
       "state": "CONTENT",
-      "consoleErrors": [],
-      "pageErrors": [],
+      "consoleErrors": [
+        "Google Maps JavaScript API error: RefererNotAllowedMapError\nhttps://developers.google.com/maps/documentation/javascript/error-messages#referer-not-allowed-map-error\nYour site URL to be authorized: https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/events"
+      ],
+      "pageErrors": [
+        "Cannot read properties of undefined (reading 'getRootNode')"
+      ],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 105,
       "controls": 67,
       "shot": "events-free-filter-1440.png"
@@ -802,11 +920,16 @@
       "title": "Find your next event | EventLinqs",
       "textLength": 3814,
       "eventCards": 24,
+      "markerHit": false,
       "state": "CONTENT",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Attempted to load a Vector Map, but failed. Falling back to Raster. Please see https://developers.google.com/maps/documentation/javascript/webgl/support for more info",
+        "Google Maps JavaScript API error: RefererNotAllowedMapError\nhttps://developers.google.com/maps/documentation/javascript/error-messages#referer-not-allowed-map-error\nYour site URL to be authorized: https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/events"
+      ],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 106,
       "controls": 67,
       "shot": "search-hit-1440.png"
@@ -821,11 +944,13 @@
       "title": "Find your next event | EventLinqs",
       "textLength": 1437,
       "eventCards": 0,
+      "markerHit": true,
       "state": "EMPTY STATE",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 81,
       "controls": 43,
       "shot": "search-miss-1440.png"
@@ -840,11 +965,13 @@
       "title": "African events in your city | EventLinqs",
       "textLength": 4265,
       "eventCards": 9,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 114,
       "controls": 21,
       "shot": "hero-category-afrobeats-1440.png"
@@ -859,11 +986,13 @@
       "title": "Business & Networking events - Where the next deal, hire, and big idea gets made. | EventLinqs",
       "textLength": 3704,
       "eventCards": 0,
+      "markerHit": true,
       "state": "EMPTY STATE",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 82,
       "controls": 10,
       "shot": "hero-category-networking-1440.png"
@@ -878,11 +1007,13 @@
       "title": "Browse by Community | EventLinqs",
       "textLength": 2639,
       "eventCards": 0,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 100,
       "controls": 10,
       "shot": "communities-index-1440.png"
@@ -897,11 +1028,13 @@
       "title": "Browse by City | EventLinqs",
       "textLength": 1727,
       "eventCards": 0,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 99,
       "controls": 10,
       "shot": "cities-index-1440.png"
@@ -916,11 +1049,13 @@
       "title": "For Organisers | EventLinqs",
       "textLength": 8436,
       "eventCards": 0,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 101,
       "controls": 25,
       "shot": "organisers-marketing-1440.png"
@@ -935,11 +1070,13 @@
       "title": "Pricing | EventLinqs",
       "textLength": 4283,
       "eventCards": 0,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 84,
       "controls": 25,
       "shot": "pricing-1440.png"
@@ -954,11 +1091,13 @@
       "title": "About | EventLinqs",
       "textLength": 5027,
       "eventCards": 0,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 82,
       "controls": 10,
       "shot": "about-1440.png"
@@ -973,11 +1112,13 @@
       "title": "Contact Us | EventLinqs",
       "textLength": 1506,
       "eventCards": 0,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 84,
       "controls": 11,
       "shot": "contact-1440.png"
@@ -992,11 +1133,13 @@
       "title": "Help Centre | EventLinqs",
       "textLength": 2235,
       "eventCards": 0,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 91,
       "controls": 20,
       "shot": "help-1440.png"
@@ -1011,11 +1154,13 @@
       "title": "Privacy Policy | EventLinqs",
       "textLength": 18940,
       "eventCards": 0,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 87,
       "controls": 10,
       "shot": "legal-privacy-1440.png"
@@ -1030,11 +1175,13 @@
       "title": "Terms of Service | EventLinqs",
       "textLength": 15151,
       "eventCards": 0,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 97,
       "controls": 10,
       "shot": "legal-terms-1440.png"
@@ -1049,11 +1196,13 @@
       "title": "Refund and Ticket Policy | EventLinqs",
       "textLength": 10773,
       "eventCards": 0,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 84,
       "controls": 10,
       "shot": "legal-refunds-1440.png"
@@ -1068,11 +1217,13 @@
       "title": "Build your event | EventLinqs",
       "textLength": 1237,
       "eventCards": 0,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 79,
       "controls": 12,
       "shot": "launch-composer-1440.png"
@@ -1087,11 +1238,13 @@
       "title": "Sign in | EventLinqs",
       "textLength": 374,
       "eventCards": 0,
+      "markerHit": false,
       "state": "THIN",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 5,
       "controls": 2,
       "shot": "login-1440.png"
@@ -1106,11 +1259,13 @@
       "title": "Create account | EventLinqs",
       "textLength": 625,
       "eventCards": 0,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 6,
       "controls": 1,
       "shot": "signup-1440.png"
@@ -1125,11 +1280,13 @@
       "title": "Reset password | EventLinqs",
       "textLength": 359,
       "eventCards": 0,
+      "markerHit": false,
       "state": "THIN",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 4,
       "controls": 1,
       "shot": "forgot-password-1440.png"
@@ -1144,6 +1301,7 @@
       "title": "EventLinqs | The ticketing platform built for every community",
       "textLength": 1100,
       "eventCards": 0,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [
         "Failed to load resource: the server responded with a status of 404 ()"
@@ -1153,6 +1311,7 @@
         "HTTP 404 https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/this-route-does-not-exist-audit-probe"
       ],
       "overflows": false,
+      "badHosts": [],
       "links": 81,
       "controls": 10,
       "shot": "deliberate-404-1440.png"
@@ -1167,11 +1326,16 @@
       "title": "OPM Night: Filipino Live Music Showcase - Sat, 15 Aug - Brisbane Powerhouse, Brisbane - EventLinqs",
       "textLength": 2866,
       "eventCards": 0,
+      "markerHit": true,
       "state": "EMPTY STATE",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Attempted to load a Vector Map, but failed. Falling back to Raster. Please see https://developers.google.com/maps/documentation/javascript/webgl/support for more info",
+        "Google Maps JavaScript API error: RefererNotAllowedMapError\nhttps://developers.google.com/maps/documentation/javascript/error-messages#referer-not-allowed-map-error\nYour site URL to be authorized: https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/events/opm-night-filipino-live-music-showcase"
+      ],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 93,
       "controls": 18,
       "shot": "event-detail-1440.png"
@@ -1186,16 +1350,18 @@
       "title": "Things to do in Melbourne | EventLinqs",
       "textLength": 7026,
       "eventCards": 36,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [
-        "Google Maps JavaScript API error: RefererNotAllowedMapError\nhttps://developers.google.com/maps/documentation/javascript/error-messages#referer-not-allowed-map-error\nYour site URL to be authorized: https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/city/melbourne",
         "Attempted to load a Vector Map, but failed. Falling back to Raster. Please see https://developers.google.com/maps/documentation/javascript/webgl/support for more info",
+        "Google Maps JavaScript API error: RefererNotAllowedMapError\nhttps://developers.google.com/maps/documentation/javascript/error-messages#referer-not-allowed-map-error\nYour site URL to be authorized: https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/city/melbourne",
         "TypeError: Cannot read properties of undefined (reading 'getRootNode')\n    at _.Xm (https://maps.googleapis.com/maps-api-v3/api/js/65/12f/main.js:205:39)\n    at set map (https://maps.googleapis.com/maps-api-v3/api/js/65/12f/marker.js:108:207)\n    at https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/_next/static/immutable/chunks/30-gx3ql0hhj4.js:2:2332\n    at ik (htt",
         "TypeError: Cannot read properties of undefined (reading 'getRootNode')\n    at _.Xm (https://maps.googleapis.com/maps-api-v3/api/js/65/12f/main.js:205:39)\n    at set map (https://maps.googleapis.com/maps-api-v3/api/js/65/12f/marker.js:108:207)\n    at https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/_next/static/immutable/chunks/30-gx3ql0hhj4.js:2:2332\n    at ik (htt"
       ],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 161,
       "controls": 62,
       "shot": "city-page-1440.png"
@@ -1210,11 +1376,13 @@
       "title": "Aboriginal & Torres Strait Islander events in your city | EventLinqs",
       "textLength": 4442,
       "eventCards": 1,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 106,
       "controls": 13,
       "shot": "community-page-1440.png"
@@ -1229,14 +1397,37 @@
       "title": "Create account | EventLinqs",
       "textLength": 843,
       "eventCards": 0,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
+      "badHosts": [],
       "links": 7,
       "controls": 1,
       "shot": "organiser-profile-1440.png"
+    },
+    {
+      "label": "suburb page",
+      "url": "https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/city/melbourne/inner-melbourne",
+      "vp": "1440",
+      "status": 200,
+      "error": null,
+      "measuredViewport": "1440x900",
+      "title": "Things to do in Inner Melbourne, Melbourne | EventLinqs",
+      "textLength": 3660,
+      "eventCards": 21,
+      "markerHit": false,
+      "state": "CONTENT",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "overflows": false,
+      "badHosts": [],
+      "links": 106,
+      "controls": 36,
+      "shot": "suburb-page-1440.png"
     },
     {
       "label": "artists (flag off, 404 expected)",
@@ -1248,6 +1439,7 @@
       "title": "Find performers | EventLinqs",
       "textLength": 1100,
       "eventCards": 0,
+      "markerHit": false,
       "state": "CONTENT",
       "consoleErrors": [
         "Failed to load resource: the server responded with a status of 404 ()"
@@ -1257,6 +1449,7 @@
         "HTTP 404 https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/artists"
       ],
       "overflows": false,
+      "badHosts": [],
       "links": 81,
       "controls": 10,
       "shot": "artists-flag-off-404-expected--1440.png"
@@ -1301,7 +1494,7 @@
       "url": "",
       "vp": "1440",
       "status": "NOT COVERED",
-      "state": "no credentials",
+      "state": "login failed",
       "consoleErrors": [],
       "failedRequests": [],
       "links": 0,
@@ -1312,7 +1505,7 @@
       "url": "",
       "vp": "1440",
       "status": "NOT COVERED",
-      "state": "no credentials",
+      "state": "login failed",
       "consoleErrors": [],
       "failedRequests": [],
       "links": 0,
@@ -1323,7 +1516,7 @@
       "url": "",
       "vp": "1440",
       "status": "NOT COVERED",
-      "state": "no credentials",
+      "state": "login failed",
       "consoleErrors": [],
       "failedRequests": [],
       "links": 0,
@@ -1334,7 +1527,7 @@
       "url": "",
       "vp": "1440",
       "status": "NOT COVERED",
-      "state": "no credentials",
+      "state": "login failed",
       "consoleErrors": [],
       "failedRequests": [],
       "links": 0,
@@ -1345,7 +1538,7 @@
       "url": "",
       "vp": "1440",
       "status": "NOT COVERED",
-      "state": "no credentials",
+      "state": "login failed",
       "consoleErrors": [],
       "failedRequests": [],
       "links": 0,
@@ -1356,7 +1549,62 @@
       "url": "",
       "vp": "1440",
       "status": "NOT COVERED",
-      "state": "no credentials",
+      "state": "login failed",
+      "consoleErrors": [],
+      "failedRequests": [],
+      "links": 0,
+      "controls": 0
+    },
+    {
+      "label": "dashboard invites",
+      "url": "",
+      "vp": "1440",
+      "status": "NOT COVERED",
+      "state": "login failed",
+      "consoleErrors": [],
+      "failedRequests": [],
+      "links": 0,
+      "controls": 0
+    },
+    {
+      "label": "dashboard insights",
+      "url": "",
+      "vp": "1440",
+      "status": "NOT COVERED",
+      "state": "login failed",
+      "consoleErrors": [],
+      "failedRequests": [],
+      "links": 0,
+      "controls": 0
+    },
+    {
+      "label": "dashboard tickets",
+      "url": "",
+      "vp": "1440",
+      "status": "NOT COVERED",
+      "state": "login failed",
+      "consoleErrors": [],
+      "failedRequests": [],
+      "links": 0,
+      "controls": 0
+    },
+    {
+      "label": "account",
+      "url": "",
+      "vp": "1440",
+      "status": "NOT COVERED",
+      "state": "login failed",
+      "consoleErrors": [],
+      "failedRequests": [],
+      "links": 0,
+      "controls": 0
+    },
+    {
+      "label": "my tickets",
+      "url": "",
+      "vp": "1440",
+      "status": "NOT COVERED",
+      "state": "login failed",
       "consoleErrors": [],
       "failedRequests": [],
       "links": 0,
@@ -1365,17 +1613,16 @@
   ],
   "findings": [
     {
-      "severity": 1,
-      "surface": "organisers marketing",
-      "kind": "inert control",
-      "detail": "\"-\" changed nothing observable",
-      "vp": "390"
+      "severity": 0,
+      "surface": "checkout",
+      "kind": "payment surface not reached",
+      "detail": "the walk stopped at /events/opm-night-filipino-live-music-showcase without mounting a Stripe payment element. Either the flow needs sign-in first, or the money path is blocked."
     },
     {
       "severity": 1,
       "surface": "organisers marketing",
       "kind": "inert control",
-      "detail": "\"My buyer\" changed nothing observable",
+      "detail": "\"-\" changed nothing observable",
       "vp": "390"
     },
     {
@@ -1387,107 +1634,30 @@
     },
     {
       "severity": 1,
-      "surface": "pricing",
+      "surface": "launch composer",
       "kind": "inert control",
-      "detail": "\"My buyer\" changed nothing observable",
+      "detail": "\"Copy\" changed nothing observable",
       "vp": "390"
     },
     {
       "severity": 1,
       "surface": "launch composer",
       "kind": "inert control",
-      "detail": "\"Discover\" changed nothing observable",
+      "detail": "\"Copy\" changed nothing observable",
       "vp": "390"
     },
     {
       "severity": 1,
       "surface": "launch composer",
       "kind": "inert control",
-      "detail": "\"Communities\" changed nothing observable",
+      "detail": "\"Copy\" changed nothing observable",
       "vp": "390"
-    },
-    {
-      "severity": 1,
-      "surface": "launch composer",
-      "kind": "inert control",
-      "detail": "\"For organisers\" changed nothing observable",
-      "vp": "390"
-    },
-    {
-      "severity": 1,
-      "surface": "launch composer",
-      "kind": "inert control",
-      "detail": "\"Company\" changed nothing observable",
-      "vp": "390"
-    },
-    {
-      "severity": 1,
-      "surface": "events browse",
-      "kind": "inert control",
-      "detail": "\"Grid\" changed nothing observable",
-      "vp": "1440"
-    },
-    {
-      "severity": 1,
-      "surface": "events filtered category",
-      "kind": "inert control",
-      "detail": "\"Grid\" changed nothing observable",
-      "vp": "1440"
-    },
-    {
-      "severity": 1,
-      "surface": "events category comedy",
-      "kind": "inert control",
-      "detail": "\"Grid\" changed nothing observable",
-      "vp": "1440"
-    },
-    {
-      "severity": 1,
-      "surface": "events category arts and community",
-      "kind": "inert control",
-      "detail": "\"Grid\" changed nothing observable",
-      "vp": "1440"
-    },
-    {
-      "severity": 1,
-      "surface": "events sorted",
-      "kind": "inert control",
-      "detail": "\"Grid\" changed nothing observable",
-      "vp": "1440"
-    },
-    {
-      "severity": 1,
-      "surface": "events free filter",
-      "kind": "inert control",
-      "detail": "\"Grid\" changed nothing observable",
-      "vp": "1440"
-    },
-    {
-      "severity": 1,
-      "surface": "search hit",
-      "kind": "inert control",
-      "detail": "\"Grid\" changed nothing observable",
-      "vp": "1440"
-    },
-    {
-      "severity": 1,
-      "surface": "search miss",
-      "kind": "inert control",
-      "detail": "\"Grid\" changed nothing observable",
-      "vp": "1440"
     },
     {
       "severity": 1,
       "surface": "organisers marketing",
       "kind": "inert control",
       "detail": "\"-\" changed nothing observable",
-      "vp": "1440"
-    },
-    {
-      "severity": 1,
-      "surface": "organisers marketing",
-      "kind": "inert control",
-      "detail": "\"My buyer\" changed nothing observable",
       "vp": "1440"
     },
     {
@@ -1499,158 +1669,317 @@
     },
     {
       "severity": 1,
-      "surface": "pricing",
-      "kind": "inert control",
-      "detail": "\"My buyer\" changed nothing observable",
-      "vp": "1440"
+      "surface": "event detail",
+      "kind": "inert disclosure",
+      "detail": "\"Open menu\" did not open or close"
     },
     {
-      "severity": 2,
-      "surface": "deliberate 404",
-      "kind": "console error",
-      "detail": "Failed to load resource: the server responded with a status of 404 ()",
-      "vp": "390"
+      "severity": 1,
+      "surface": "event detail",
+      "kind": "inert disclosure",
+      "detail": "\"Melbourne\" did not open or close"
     },
     {
-      "severity": 2,
-      "surface": "deliberate 404",
-      "kind": "failed request",
-      "detail": "HTTP 404 https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/this-route-does-not-exist-audit-probe",
-      "vp": "390"
+      "severity": 1,
+      "surface": "event detail",
+      "kind": "inert disclosure",
+      "detail": "\"Discover\" did not open or close"
     },
     {
-      "severity": 2,
-      "surface": "artists (flag off, 404 expected)",
-      "kind": "console error",
-      "detail": "Failed to load resource: the server responded with a status of 404 ()",
-      "vp": "390"
+      "severity": 1,
+      "surface": "event detail",
+      "kind": "inert disclosure",
+      "detail": "\"Communities\" did not open or close"
     },
     {
-      "severity": 2,
-      "surface": "artists (flag off, 404 expected)",
-      "kind": "failed request",
-      "detail": "HTTP 404 https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/artists",
-      "vp": "390"
+      "severity": 1,
+      "surface": "event detail",
+      "kind": "inert disclosure",
+      "detail": "\"For organisers\" did not open or close"
     },
     {
-      "severity": 2,
-      "surface": "deliberate 404",
-      "kind": "console error",
-      "detail": "Failed to load resource: the server responded with a status of 404 ()",
-      "vp": "1440"
-    },
-    {
-      "severity": 2,
-      "surface": "deliberate 404",
-      "kind": "failed request",
-      "detail": "HTTP 404 https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/this-route-does-not-exist-audit-probe",
-      "vp": "1440"
-    },
-    {
-      "severity": 2,
-      "surface": "artists (flag off, 404 expected)",
-      "kind": "console error",
-      "detail": "Failed to load resource: the server responded with a status of 404 ()",
-      "vp": "1440"
-    },
-    {
-      "severity": 2,
-      "surface": "artists (flag off, 404 expected)",
-      "kind": "failed request",
-      "detail": "HTTP 404 https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/artists",
-      "vp": "1440"
+      "severity": 1,
+      "surface": "event detail",
+      "kind": "inert disclosure",
+      "detail": "\"Company\" did not open or close"
     },
     {
       "severity": 2,
       "surface": "dashboard",
       "kind": "NOT COVERED",
-      "detail": "no credentials supplied, so this surface was not audited. It is not a pass."
+      "detail": "login did not complete, so this surface was not audited. It is not a pass."
     },
     {
       "severity": 2,
       "surface": "dashboard events",
       "kind": "NOT COVERED",
-      "detail": "no credentials supplied, so this surface was not audited. It is not a pass."
+      "detail": "login did not complete, so this surface was not audited. It is not a pass."
     },
     {
       "severity": 2,
       "surface": "dashboard create event",
       "kind": "NOT COVERED",
-      "detail": "no credentials supplied, so this surface was not audited. It is not a pass."
+      "detail": "login did not complete, so this surface was not audited. It is not a pass."
     },
     {
       "severity": 2,
       "surface": "dashboard venues",
       "kind": "NOT COVERED",
-      "detail": "no credentials supplied, so this surface was not audited. It is not a pass."
+      "detail": "login did not complete, so this surface was not audited. It is not a pass."
     },
     {
       "severity": 2,
       "surface": "dashboard payouts",
       "kind": "NOT COVERED",
-      "detail": "no credentials supplied, so this surface was not audited. It is not a pass."
+      "detail": "login did not complete, so this surface was not audited. It is not a pass."
     },
     {
       "severity": 2,
       "surface": "dashboard organisation",
       "kind": "NOT COVERED",
-      "detail": "no credentials supplied, so this surface was not audited. It is not a pass."
+      "detail": "login did not complete, so this surface was not audited. It is not a pass."
     },
     {
-      "severity": 3,
-      "surface": "homepage",
-      "kind": "empty state",
-      "detail": "renders the designed empty state rather than content",
-      "vp": "390"
+      "severity": 2,
+      "surface": "dashboard invites",
+      "kind": "NOT COVERED",
+      "detail": "login did not complete, so this surface was not audited. It is not a pass."
+    },
+    {
+      "severity": 2,
+      "surface": "dashboard insights",
+      "kind": "NOT COVERED",
+      "detail": "login did not complete, so this surface was not audited. It is not a pass."
+    },
+    {
+      "severity": 2,
+      "surface": "dashboard tickets",
+      "kind": "NOT COVERED",
+      "detail": "login did not complete, so this surface was not audited. It is not a pass."
+    },
+    {
+      "severity": 2,
+      "surface": "account",
+      "kind": "NOT COVERED",
+      "detail": "login did not complete, so this surface was not audited. It is not a pass."
+    },
+    {
+      "severity": 2,
+      "surface": "my tickets",
+      "kind": "NOT COVERED",
+      "detail": "login did not complete, so this surface was not audited. It is not a pass."
     },
     {
       "severity": 3,
       "surface": "search miss",
       "kind": "empty state",
-      "detail": "renders the designed empty state rather than content",
+      "detail": "renders the designed empty state rather than content (0 event links)",
       "vp": "390"
     },
     {
       "severity": 3,
       "surface": "hero category networking",
       "kind": "empty state",
-      "detail": "renders the designed empty state rather than content",
+      "detail": "renders the designed empty state rather than content (0 event links)",
       "vp": "390"
     },
     {
       "severity": 3,
       "surface": "event detail",
       "kind": "empty state",
-      "detail": "renders the designed empty state rather than content",
+      "detail": "renders the designed empty state rather than content (0 event links)",
       "vp": "390"
-    },
-    {
-      "severity": 3,
-      "surface": "homepage",
-      "kind": "empty state",
-      "detail": "renders the designed empty state rather than content",
-      "vp": "1440"
     },
     {
       "severity": 3,
       "surface": "search miss",
       "kind": "empty state",
-      "detail": "renders the designed empty state rather than content",
+      "detail": "renders the designed empty state rather than content (0 event links)",
       "vp": "1440"
     },
     {
       "severity": 3,
       "surface": "hero category networking",
       "kind": "empty state",
-      "detail": "renders the designed empty state rather than content",
+      "detail": "renders the designed empty state rather than content (0 event links)",
       "vp": "1440"
     },
     {
       "severity": 3,
       "surface": "event detail",
       "kind": "empty state",
-      "detail": "renders the designed empty state rather than content",
+      "detail": "renders the designed empty state rather than content (0 event links)",
       "vp": "1440"
+    }
+  ],
+  "deep": [
+    {
+      "phase": "event detail",
+      "item": "tabs",
+      "verdict": "NONE",
+      "detail": "this page uses no tab pattern"
+    },
+    {
+      "phase": "event detail",
+      "item": "disclosure \"Melbourne\"",
+      "verdict": "WORKS",
+      "detail": ""
+    },
+    {
+      "phase": "event detail",
+      "item": "disclosure \"Open menu\"",
+      "verdict": "INERT",
+      "detail": ""
+    },
+    {
+      "phase": "event detail",
+      "item": "disclosure \"Melbourne\"",
+      "verdict": "INERT",
+      "detail": ""
+    },
+    {
+      "phase": "event detail",
+      "item": "disclosure \"Discover\"",
+      "verdict": "INERT",
+      "detail": ""
+    },
+    {
+      "phase": "event detail",
+      "item": "disclosure \"Communities\"",
+      "verdict": "INERT",
+      "detail": ""
+    },
+    {
+      "phase": "event detail",
+      "item": "disclosure \"For organisers\"",
+      "verdict": "INERT",
+      "detail": ""
+    },
+    {
+      "phase": "event detail",
+      "item": "disclosure \"Company\"",
+      "verdict": "INERT",
+      "detail": ""
+    },
+    {
+      "phase": "event detail",
+      "item": "Share button",
+      "verdict": "WORKS",
+      "detail": "opened the share surface"
+    },
+    {
+      "phase": "event detail",
+      "item": "share: WhatsApp",
+      "verdict": "WORKS",
+      "detail": "https://wa.me/?text=OPM%20Night%3A%20Filipino%20Live%20Music%20Showcase%20-%20Sat%2C%2015%20Aug%20https%3A%2F%2Feventlin"
+    },
+    {
+      "phase": "event detail",
+      "item": "share: Facebook",
+      "verdict": "WORKS",
+      "detail": "https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Feventlinqs-app-git-integration-launch-lawals-projects-c20c0be"
+    },
+    {
+      "phase": "event detail",
+      "item": "share: X",
+      "verdict": "WORKS",
+      "detail": "https://twitter.com/intent/tweet?text=OPM%20Night%3A%20Filipino%20Live%20Music%20Showcase%20-%20Sat%2C%2015%20Aug&url=ht"
+    },
+    {
+      "phase": "event detail",
+      "item": "share: Email",
+      "verdict": "WORKS",
+      "detail": "mailto:?subject=OPM%20Night%3A%20Filipino%20Live%20Music%20Showcase%20-%20Sat%2C%2015%20Aug&body=OPM%20Night%3A%20Filipi"
+    },
+    {
+      "phase": "event detail",
+      "item": "share: Copy link",
+      "verdict": "UNREADABLE",
+      "detail": "the button clicked but the clipboard could not be read back headless"
+    },
+    {
+      "phase": "event detail",
+      "item": "Open in Maps",
+      "verdict": "WORKS",
+      "detail": "https://www.google.com/maps/search/?api=1&query=Brisbane%20Powerhouse%2C%20Brisbane%20Powerhouse%2C%20119%20La -> 200"
+    },
+    {
+      "phase": "auth",
+      "item": "signup",
+      "verdict": "STOPPED",
+      "detail": "filled [email, password]; the submit control \"Create account\" is ENABLED and was NOT clicked"
+    },
+    {
+      "phase": "auth",
+      "item": "login",
+      "verdict": "STOPPED",
+      "detail": "filled [email, password]; the submit control \"Sign in\" is ENABLED and was NOT clicked"
+    },
+    {
+      "phase": "auth",
+      "item": "forgot password",
+      "verdict": "STOPPED",
+      "detail": "filled [email]; the submit control \"Send reset link\" is ENABLED and was NOT clicked"
+    },
+    {
+      "phase": "launch composer",
+      "item": "description accepted",
+      "verdict": "WORKS",
+      "detail": "115 chars read back"
+    },
+    {
+      "phase": "launch composer",
+      "item": "artefact reveal",
+      "verdict": "WORKS",
+      "detail": "heading: \"Warehouse party at the Barwon Club in Geelong, Marlo Reyes b2b Kita\""
+    },
+    {
+      "phase": "launch composer",
+      "item": "reveal at 390",
+      "verdict": "WORKS",
+      "detail": "horizontal overflow 0px"
+    },
+    {
+      "phase": "launch composer",
+      "item": "kit code",
+      "verdict": "WORKS",
+      "detail": "eakmhzwhbc65"
+    },
+    {
+      "phase": "artefact",
+      "item": "story",
+      "verdict": "PULLED",
+      "detail": "183 KB, 1080x1920 px, image/jpeg"
+    },
+    {
+      "phase": "artefact",
+      "item": "square",
+      "verdict": "PULLED",
+      "detail": "169 KB, 1080x1080 px, image/jpeg"
+    },
+    {
+      "phase": "artefact",
+      "item": "feed",
+      "verdict": "PULLED",
+      "detail": "250 KB, 1440x1800 px, image/jpeg"
+    },
+    {
+      "phase": "artefact",
+      "item": "poster",
+      "verdict": "PULLED",
+      "detail": "26 KB, unreadable, application/pdf"
+    },
+    {
+      "phase": "artefact",
+      "item": "poster printed address line",
+      "verdict": "READ",
+      "detail": "C:\\Users\\61416\\OneDrive\\Desktop\\EventLinqs\\el-moat\\docs\\roast\\audit-2026-08-15\\artefacts\\poster.pdf"
+    },
+    {
+      "phase": "checkout",
+      "item": "Stripe payment surface",
+      "verdict": "NOT REACHED",
+      "detail": "stopped at /events/opm-night-filipino-live-music-showcase"
     }
   ]
 }

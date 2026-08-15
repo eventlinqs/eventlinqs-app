@@ -145,7 +145,50 @@ const nextConfig: NextConfig = {
       {
         source: '/:path*',
         headers: [
-          { key: 'X-Robots-Tag', value: 'index, follow' },
+          /*
+           * INDEXABLE ON PRODUCTION ONLY.
+           *
+           * This was a flat `index, follow` on every deployment, and it was
+           * OVERRIDING a Vercel default rather than filling a gap. Vercel adds
+           * `X-Robots-Tag: noindex` to preview deployments itself
+           * (https://vercel.com/kb/guide/are-vercel-preview-deployment-indexed-by-search-engines,
+           * fetched 15 August 2026: "Vercel automatically adds a noindex header
+           * to preview deployments"), and a framework-level header replaces it.
+           *
+           * Measured on 15 August 2026, the branch preview answered
+           * `x-robots-tag: index, follow`, served a `robots.txt` with `Allow: /`,
+           * and published a sitemap of 932 URLs on the preview host. That is a
+           * near-complete second copy of the catalogue, on a different hostname,
+           * openly inviting Googlebot, on a platform whose growth plan names SEO
+           * as one of its two compounding engines. It is recorded as a pre-launch
+           * blocker in docs/PRE-LAUNCH-HARDENING.md, flagged 15 May 2026 and
+           * still open three months later.
+           *
+           * `VERCEL_ENV` is documented as available at BUILD time with the values
+           * production, preview or development
+           * (https://vercel.com/docs/environment-variables/system-environment-variables,
+           * fetched 15 August 2026), and `headers()` is evaluated at build, so
+           * each deployment bakes in the answer for the environment it belongs to.
+           *
+           * IT FAILS OPEN TO TODAY'S BEHAVIOUR ON PURPOSE. When `VERCEL_ENV` is
+           * absent, which is every local build and every CI build, the value stays
+           * `index, follow`. That keeps the Lighthouse SEO `is-crawlable` audit
+           * green on localhost, where the gate actually runs, so closing an SEO
+           * hole cannot open a gate failure somewhere else.
+           *
+           * THIS IS HALF THE FIX. It stops previews being INDEXED. It does not
+           * stop them being READ: the deployment still answers 200 to anyone with
+           * the URL. Access control is Vercel Deployment Protection, which is a
+           * dashboard action and remains the founder's, exactly as
+           * docs/PRE-LAUNCH-HARDENING.md sets out.
+           */
+          {
+            key: 'X-Robots-Tag',
+            value:
+              process.env.VERCEL_ENV && process.env.VERCEL_ENV !== 'production'
+                ? 'noindex, nofollow'
+                : 'index, follow',
+          },
           ...SECURITY_HEADERS,
         ],
       },

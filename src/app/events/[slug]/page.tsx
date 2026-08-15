@@ -45,6 +45,9 @@ import { SectionHeader } from '@/components/ui/SectionHeader'
 import { EventSoldOut } from '@/components/features/events/event-sold-out'
 import { TicketsNotOnSale } from '@/components/features/events/tickets-not-on-sale'
 import { eventIsPaid, isOrganiserSellable } from '@/lib/payments/sale-status'
+// Service role, used for exactly one thing on this page: reading the two
+// organiser Stripe columns that `anon` may not see. See organiserCanSell.
+import { createAdminClient } from '@/lib/supabase/admin'
 import { getEventFeeRates } from '@/lib/pricing/event-fee-config'
 import type { FeePassType } from '@/lib/payments/fee-math'
 import { EventViewTracker } from '@/components/features/events/event-view-tracker'
@@ -131,6 +134,55 @@ async function fetchEvent(slug: string): Promise<FullEvent | null> {
     return null
   }
   return data
+}
+
+/**
+ * CAN THIS EVENT'S ORGANISER ACTUALLY TAKE MONEY? Asked with a privileged client,
+ * because `anon` is not allowed to know.
+ *
+ * THE DEFECT THIS FIXES, and it is the most expensive kind: a SECURITY FIX THAT
+ * SILENTLY TURNED OFF TICKET SALES.
+ *
+ * Migration 20260808000010 revoked `stripe_account_id`, `stripe_charges_enabled`,
+ * `email`, `phone` and `owner_id` on `organisations` from `anon`, which is
+ * correct and must stay. The embed above was narrowed to the six columns anon
+ * may still read, which is also correct.
+ *
+ * But `isOrganiserSellable(org)` requires `stripe_account_id` AND
+ * `stripe_charges_enabled === true`, and neither is in that list any more. Both
+ * arrive `undefined`, so the guard returned false for EVERY organiser, and
+ * `saleBlocked` became true for EVERY PAID EVENT ON THE PLATFORM. A fully
+ * onboarded, charges-enabled organiser's event rendered "This organiser is still
+ * finishing their payment setup. Check back soon." and offered no way to buy.
+ *
+ * Confirmed on the deployed preview against TEST, where the sampled event's
+ * organiser holds acct_1TpM2q... with stripe_charges_enabled = true and the page
+ * still refused to sell. Nothing failed: the page is a correct, designed state,
+ * it was simply the wrong one, and it is indistinguishable from an organiser who
+ * genuinely has not onboarded.
+ *
+ * The fix does NOT widen the anon grant and does NOT put a Stripe identifier in
+ * the RSC payload. This is a server component, so the two columns are read here
+ * with the service role and collapsed to a single boolean before anything
+ * crosses the client boundary. The column privilege stays exactly as the audit
+ * left it.
+ */
+async function organiserCanSell(organisationId: string | null | undefined): Promise<boolean> {
+  if (!organisationId) return false
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from('organisations')
+    .select('stripe_account_id, stripe_charges_enabled')
+    .eq('id', organisationId)
+    .maybeSingle()
+  if (error) {
+    // Fail CLOSED. Refusing to sell when we cannot establish the organiser can
+    // settle is the safe direction: the alternative is taking money the platform
+    // may not be able to pay out.
+    console.error('[event-detail] organiserCanSell failed:', error)
+    return false
+  }
+  return isOrganiserSellable(data)
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -546,8 +598,13 @@ export default async function EventDetailPage({ params }: Props) {
   // connected, charges-enabled Stripe account cannot be checked out, so we
   // show the not-on-sale state and render no selection. FREE events need no
   // Stripe and stay fully sellable.
+  //
+  // The organiser's Stripe posture is read with the service role by
+  // organiserCanSell, NOT from event.organisation: anon lost those two columns
+  // to migration 20260808000010, so reading them from the public embed made this
+  // guard true for every paid event on the platform. See organiserCanSell.
   const saleBlocked =
-    eventIsPaid(allTiers) && !isOrganiserSellable(event.organisation)
+    eventIsPaid(allTiers) && !(await organiserCanSell(event.organisation_id))
 
   const baseUrl = getSiteUrl()
   const eventStateForSchema =

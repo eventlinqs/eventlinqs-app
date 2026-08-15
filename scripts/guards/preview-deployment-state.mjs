@@ -29,9 +29,28 @@ import { existsSync, readFileSync } from 'node:fs'
 const token = process.env.VERCEL_TOKEN
 const PROJECT_JSON = '.vercel/project.json'
 
+/**
+ * The branch this run is about.
+ *
+ * `git rev-parse --abbrev-ref HEAD` is right locally and WRONG in CI. GitHub's
+ * checkout action leaves a DETACHED HEAD, so that command returns the literal
+ * string "HEAD", which matches no `githubCommitRef` on any deployment, so the
+ * guard printed "no deployment found for HEAD yet" and exited 0. It would have
+ * skipped for ever in the one place it is meant to gate a merge, and the skip
+ * line would have read as though the branch simply had no preview yet.
+ *
+ * GITHUB_HEAD_REF is the source branch of a pull request and is empty otherwise;
+ * GITHUB_REF_NAME is the branch on a push. Both are documented on
+ * https://docs.github.com/en/actions/reference/variables-reference (fetched
+ * 15 August 2026). They are consulted first precisely because git cannot see
+ * what they know.
+ */
 function branch() {
+  const fromCi = process.env.GITHUB_HEAD_REF || process.env.GITHUB_REF_NAME
+  if (fromCi) return fromCi
   try {
-    return execFileSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], { encoding: 'utf8' }).trim()
+    const ref = execFileSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], { encoding: 'utf8' }).trim()
+    return ref === 'HEAD' ? null : ref
   } catch {
     return null
   }
@@ -39,7 +58,10 @@ function branch() {
 
 const ref = branch()
 if (!ref) {
-  console.log('[preview-state] SKIP - not a git checkout.')
+  console.log(
+    '[preview-state] SKIP - no branch name available: this is either not a git checkout,\n' +
+      '                 or it is a DETACHED HEAD with no GITHUB_HEAD_REF / GITHUB_REF_NAME set.',
+  )
   process.exit(0)
 }
 

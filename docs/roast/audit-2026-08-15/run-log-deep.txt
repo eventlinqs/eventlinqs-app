@@ -1,0 +1,20 @@
+﻿==============================================================================
+FULL PLATFORM AUDIT
+==============================================================================
+Base: https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app
+
+CATALOGUE CENSUS
+  catalogue: 87 distinct event pages; sampled 40; 33 cannot sell, 0 PAID and sellable, 7 free
+  discovered from the sitemap: organiser=/organisers/sydney-pride-collective city=/city/sydney suburb=/city/sydney/inner-west community=/community/aboriginal-torres-strait-islander
+    SELLABLE     event walked by the deep phases  /events/marketplace-gate-night-geelong
+
+==============================================================================
+CORRECTED SURFACES, both widths
+==============================================================================
+  organiser profile (real)           200  CONTENT            measured 390x844 links=81
+  event detail (sellable)            200  CONTENT            measured 390x844 links=90
+  event detail (ticketing blocked)   200  TICKETING BLOCKED  measured 390x844 links=93
+  suburb page                        200  CONTENT            measured 390x844 links=107
+  organiser profile (real)           200  CONTENT            measured 1440x900 links=81
+  event detail (sellable)            200  CONTENT            measured 1440x900 links=90
+  event detail (ticketing blocked)   200  TICKETING BLOCKED  measured 1440x900 links=93

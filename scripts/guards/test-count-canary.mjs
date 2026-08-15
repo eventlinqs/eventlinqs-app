@@ -73,9 +73,15 @@ const ROOT = join(HERE, '..', '..')
  * fixture-fallthrough file pinning that a stale fixture falls through to the
  * live query instead of blanking the homepage. That defect had the deployed
  * preview serving an empty homepage over a database holding 184 upcoming events.
+ *
+ * 2026-08-15 (later): 188 files / 2265 tests. Five added in the new
+ * tests/unit/events/sale-gate-source.test.ts, pinning the defect where a
+ * security fix silently turned off ticket sales on every paid event: the anon
+ * embed lost the two Stripe columns the sale gate reads, so saleBlocked was true
+ * platform-wide.
  */
-const MIN_FILES = 187
-const MIN_TESTS = 2260
+const MIN_FILES = 188
+const MIN_TESTS = 2265
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
