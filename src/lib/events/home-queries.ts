@@ -121,6 +121,20 @@ export async function loadHomeUpcoming(
     .eq('status', 'published')
     .eq('visibility', 'public')
     .gte('start_date', nowIso)
+    /*
+     * EXTERNALLY TICKETED EVENTS ARE NOT IN THE RAILS. Founder ruling
+     * 15 August 2026, non-negotiable 4.
+     *
+     * The homepage rails are the platform's scarcest surface and they exist to
+     * sell tickets. An event whose ticketing lives somewhere else cannot convert
+     * there, so giving it a rail slot would spend our best real estate driving
+     * traffic off the platform, ahead of an organiser who did move their
+     * ticketing here. Its own event page stays live and indexable, because that
+     * page serves the artist and is the entire point of the feature.
+     *
+     * The partial index idx_events_internal_ticketing is exactly this shape.
+     */
+    .is('external_ticket_url', null)
     .order('start_date', { ascending: true })
     .limit(limit)
   return (data ?? []) as unknown as RawRow[]

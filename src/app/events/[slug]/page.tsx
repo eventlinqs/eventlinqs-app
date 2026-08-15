@@ -44,7 +44,12 @@ import { VenueMapLazy } from '@/components/features/events/venue-map-lazy'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { EventSoldOut } from '@/components/features/events/event-sold-out'
 import { TicketsNotOnSale } from '@/components/features/events/tickets-not-on-sale'
-import { eventIsPaid, isOrganiserSellable } from '@/lib/payments/sale-status'
+import {
+  eventIsPaid,
+  isExternallyTicketed,
+  isOrganiserSellable,
+} from '@/lib/payments/sale-status'
+import { ExternalTicketsPanel } from '@/components/events/external-tickets-panel'
 // Service role, used for exactly one thing on this page: reading the two
 // organiser Stripe columns that `anon` may not see. See organiserCanSell.
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -608,8 +613,32 @@ export default async function EventDetailPage({ params }: Props) {
   // organiserCanSell, NOT from event.organisation: anon lost those two columns
   // to migration 20260808000010, so reading them from the public embed made this
   // guard true for every paid event on the platform. See organiserCanSell.
+  /*
+   * EXTERNAL TICKETING. Founder ruling 15 August 2026, non-negotiable 3: an
+   * externally ticketed event must never render a ticket selector, a price, a
+   * quantity stepper, or anything a buyer could mistake for a checkout here.
+   *
+   * It is read from the event itself rather than passed as a separate flag, and
+   * it short-circuits the paid/free split entirely: a free external event is
+   * still external. `ticketsOnSale` encodes the same ordering, and this page
+   * calls it rather than re-deriving the rule.
+   */
+  const externallyTicketed = isExternallyTicketed(event)
+
+  // The destination hostname, for the "Opens ..." line. Parsed defensively: a
+  // malformed stored URL must not throw a whole event page.
+  let externalTicketHost: string | null = null
+  if (externallyTicketed && event.external_ticket_url) {
+    try {
+      externalTicketHost = new URL(event.external_ticket_url).hostname
+    } catch {
+      externalTicketHost = null
+    }
+  }
+
   const saleBlocked =
-    eventIsPaid(allTiers) && !(await organiserCanSell(event.organisation_id))
+    externallyTicketed ||
+    (eventIsPaid(allTiers) && !(await organiserCanSell(event.organisation_id)))
 
   const baseUrl = getSiteUrl()
   const eventStateForSchema =
@@ -1006,7 +1035,18 @@ export default async function EventDetailPage({ params }: Props) {
                 id="tickets"
                 className={`w-full shrink-0 ${seatedActive ? '' : 'lg:w-[360px]'}`}
               >
-                {seatedActive ? (
+                {externallyTicketed && event.external_ticket_url ? (
+                  /*
+                   * FIRST branch, ahead of seating, sold-out and everything
+                   * else. An externally ticketed event has no inventory here, so
+                   * none of the states below can apply to it: there are no seats
+                   * to choose, nothing to sell out of, and no sale to block.
+                   */
+                  <ExternalTicketsPanel
+                    destinationUrl={event.external_ticket_url}
+                    host={externalTicketHost}
+                  />
+                ) : seatedActive ? (
                   <div className="space-y-6">
                     <div className="rounded-2xl border border-ink-200 bg-white p-6 shadow-sm">
                       <SectionHeader eyebrow="Seating" title="Choose your seats" size="sm" className="mb-5" />

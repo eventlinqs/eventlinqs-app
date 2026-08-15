@@ -100,8 +100,15 @@ const ROOT = join(HERE, '..', '..')
  * be raised on the push that introduced them, which is the point of it: a floor
  * that is not raised stops being a floor.
  */
-const MIN_FILES = 191
-const MIN_TESTS = 2305
+/*
+ * 2026-08-15: raised 191/2305 -> 192/2331. External ticketing support: a new
+ * file (tests/unit/payments/external-ticketing.test.ts, 23 tests pinning the
+ * five non-negotiables and the destination validator) plus three added to
+ * sales-attribution for the exclusion of external events from the sold-ticket
+ * buckets.
+ */
+const MIN_FILES = 192
+const MIN_TESTS = 2331
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

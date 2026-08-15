@@ -119,6 +119,18 @@ export interface SalesAttribution {
   /** Orders carrying more than one conversion row. Should always be zero. */
   multiplyAttributedOrders: number
   refundedOrders: number
+  /**
+   * TRUE when this event sells its tickets on another platform, so there is no
+   * sold-ticket answer to give and none is attempted.
+   *
+   * NOT the same as an event with zero sales, and the difference is the whole
+   * point. Zero sales means we looked and found none. This means we CANNOT look:
+   * the orders are on somebody else's ledger. Every bucket is empty, every
+   * percentage is zero, and `reconciles` is true because zero does tie out to
+   * zero. A caller that renders a percentage here would be inventing one, so the
+   * reach panel checks this flag first and shows clicks only.
+   */
+  externallyTicketed: boolean
 }
 
 const emptyBucket = (): AttributionBucket => ({ orders: 0, tickets: 0, grossCents: 0 })
@@ -133,6 +145,46 @@ const pct = (part: number, whole: number) => (whole === 0 ? 0 : Math.round((part
 
 export async function fetchSalesAttribution(eventId: string): Promise<SalesAttribution> {
   const admin = createAdminClient()
+
+  /*
+   * 0. IS THIS EVENT OURS TO COUNT? Founder ruling 15 August 2026,
+   *    non-negotiable 2.
+   *
+   * An externally ticketed event is EXCLUDED from the sold-ticket buckets
+   * entirely rather than falling into `untracked`. That distinction is the whole
+   * requirement and it is not cosmetic: `untracked` means "a sale happened here
+   * and no tracked link was involved", which is a real, countable thing. An
+   * external event has no sale here at all. Letting it land in `untracked` would
+   * put a zero in a bucket whose name asserts we looked at a ledger, and the
+   * reach panel would then render "0% of sales came from your sharing" about an
+   * event whose sales we cannot see. That is the false claim this ruling exists
+   * to prevent.
+   *
+   * So it returns early with empty buckets and the flag set. `reconciles` is
+   * true, honestly: zero ties out to zero.
+   */
+  const { data: eventRow } = await admin
+    .from('events')
+    .select('external_ticket_url')
+    .eq('id', eventId)
+    .maybeSingle()
+
+  const externalUrl = eventRow?.external_ticket_url
+  if (typeof externalUrl === 'string' && externalUrl.trim().length > 0) {
+    return {
+      eventId,
+      totals: emptyBucket(),
+      buckets: { organiserShared: emptyBucket(), platformChannel: emptyBucket(), untracked: emptyBucket() },
+      byChannel: [],
+      organiserSharedPercent: 0,
+      platformAttributablePercent: 0,
+      reconciles: true,
+      discrepancy: { orders: 0, tickets: 0 },
+      multiplyAttributedOrders: 0,
+      refundedOrders: 0,
+      externallyTicketed: true,
+    }
+  }
 
   // 1. THE LEDGER. Every sold order for this event. This is the denominator.
   const { data: orderRows } = await admin
@@ -157,6 +209,7 @@ export async function fetchSalesAttribution(eventId: string): Promise<SalesAttri
       discrepancy: { orders: 0, tickets: 0 },
       multiplyAttributedOrders: 0,
       refundedOrders,
+      externallyTicketed: false,
     }
   }
 
@@ -266,5 +319,7 @@ export async function fetchSalesAttribution(eventId: string): Promise<SalesAttri
     discrepancy,
     multiplyAttributedOrders,
     refundedOrders,
+    // Reached only when the event sells here: the external case returned above.
+    externallyTicketed: false,
   }
 }

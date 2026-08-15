@@ -3,6 +3,7 @@ import QRCode from 'qrcode'
 import { createClient } from '@/lib/supabase/server'
 import { readDraftByCode } from '@/lib/launch/draft-store'
 import { buildDraftContext } from '@/lib/launch/draft-artefacts'
+import { readExternalCodesForDraft } from '@/lib/broadcast/share-links'
 import { toCardInput } from '@/lib/broadcast/kit-artefacts'
 import {
   prepareCardCover,
@@ -82,6 +83,11 @@ export async function GET(
   const requested = request.nextUrl.searchParams.get('channel') ?? ''
   const channel = (CHANNELS.includes(requested) ? requested : 'instagram') as CaptionPlatform
 
+  // See the poster route: read the tracked codes, never mint them here.
+  const externalCodes = draft.payload.externalTicketUrl
+    ? await readExternalCodesForDraft(draft.code)
+    : null
+
   const context = buildDraftContext({
     payload: draft.payload,
     code: draft.code,
@@ -89,6 +95,7 @@ export async function GET(
     // An anonymous draft has no organisation yet. The organiser's own words
     // are the only name we have, and inventing one would be a placeholder.
     organiserName: '',
+    externalCodes,
   })
 
   const cardInput = toCardInput(context, channel)

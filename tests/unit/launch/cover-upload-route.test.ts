@@ -93,6 +93,8 @@ const { saveDraft, readDraftByCode, mintKitCode, mintKitToken } = await import(
 const { IMAGE_DOWNSCALE_LONG_EDGE } = await import('@/lib/media/limits')
 
 const payload = {
+  // Internal ticketing: the cover-upload path is identical either way.
+  externalTicketUrl: null,
   title: "Ruby's 16th",
   summary: 'A sixteenth at home.',
   description: 'A sixteenth at home.',

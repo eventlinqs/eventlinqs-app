@@ -32,6 +32,18 @@
  *   one-fee-copy               no customer-facing surface names a second fee
  *   pricing-derive             the worked fee figures match the lock block they derive from
  *   no-partial-builds          no undated flag, deferral marker or placeholder ships
+ *   no-external-checkout       an externally ticketed event cannot reach a checkout
+ *
+ * On no-external-checkout: an event whose tickets are sold on another platform
+ * must never render a selector or take a payment here, and the ruling was
+ * explicit that this hold "by construction, not by a flag someone can forget".
+ * Four refusals enforce it and each depends on its POSITION as much as its
+ * presence: move the check in ticketsOnSale below the free-event line and every
+ * FREE external event becomes sellable; move the charge preconditions refusal
+ * below the organiser checks and an external event under a fully onboarded
+ * organiser gets charged; move the reservation check inside its isPaid branch
+ * and a free external event reserves. All three still pass every behavioural
+ * test, which is why the structure is pinned separately from the behaviour.
  *
  * On one-fee-copy and pricing-derive: the founder ruling of 15 August 2026
  * deleted the separate payment processing fee. The CODE changed that day and the
@@ -306,6 +318,10 @@ const GUARDS = [
   // matter, 2 TODOs waited on a route that was never built and now point at the
   // real one, and the rest were reworded or dated. It blocks from here.
   'scripts/guards/no-partial-builds.mjs',
+  // Founder ruling 2026-08-15, external ticketing non-negotiable 3. Pins the
+  // POSITION of four refusals, not just their presence: each one is still
+  // present and still passes every unit test when moved, and wrong.
+  'scripts/guards/no-external-checkout.mjs',
 ]
 
 /**

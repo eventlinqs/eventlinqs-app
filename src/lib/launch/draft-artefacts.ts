@@ -19,6 +19,20 @@ import type { KitDraftPayload } from './draft-store'
  * track and no checkout behind it would be a promise we have not kept. Nothing
  * is ever rendered with a dead or fake URL: Law 5 holds on a preview exactly as
  * it does on a published page.
+ *
+ * THE EXTERNAL EXCEPTION (founder ruling 15 August 2026, non-negotiable 1). When
+ * the organiser sells tickets on another platform, the artefacts carry a TRACKED
+ * EVENTLINQS SHORT LINK on the canonical host, which 302s out to their box
+ * office. The reasoning of 0.2a does not apply, because there IS something to
+ * track: the click is the only signal that link will ever produce, and the
+ * destination is a real checkout that exists today rather than one we are
+ * promising to build.
+ *
+ * THE EXTERNAL URL IS NEVER PRINTED ON AN ARTEFACT. The poster, the QR, the
+ * cards and the captions all show our address. That is not decoration: it keeps
+ * the printed line short and canonical, it makes the click countable, and it
+ * dissolves the ticketBarText hazard completely, because the host on the paper
+ * genuinely IS ours and nothing has been swapped or implied.
  */
 
 /** Australian date wording from the extractor's local "YYYY-MM-DDTHH:mm". */
@@ -73,16 +87,37 @@ export function buildDraftContext(opts: {
   code: string
   origin: string
   organiserName: string
+  /**
+   * Tracked short CODES per channel, for an externally ticketed draft. Keyed by
+   * channel with a `fallback` and a `qr` entry, exactly like `links`.
+   *
+   * Codes rather than URLs, so this module owns the address shape and there is
+   * one place that decides an EventLinqs short link looks like `/e/<code>`.
+   * Omitted or empty for an internal draft, which keeps the 0.2a kit-URL rule
+   * byte-identical.
+   */
+  externalCodes?: Record<string, string> | null
 }): ArtefactContext {
-  const { payload, code, origin, organiserName } = opts
+  const { payload, code, origin, organiserName, externalCodes } = opts
   const { dateLabel, shortDateLabel, timeLabel } = formatParts(payload.startDate)
 
   // The kit URL: real, resolving, shareable, and stable for 30 days.
   const kitUrl = `${origin}/launch/k/${code}`
 
-  const links = { fallback: kitUrl } as ArtefactContext['links']
-  for (const platform of ARTEFACT_CHANNELS) links[platform] = kitUrl
-  links.qr = kitUrl
+  /*
+   * An externally ticketed draft points every artefact at its tracked short
+   * link. A channel with no minted code falls back to the kit URL rather than to
+   * the external address, because the external address must never be printed and
+   * a dead link must never be rendered: the kit page is real and resolves.
+   */
+  const shortUrl = (channel: string): string => {
+    const shortCode = externalCodes?.[channel] ?? externalCodes?.fallback
+    return shortCode ? `${origin}/e/${shortCode}` : kitUrl
+  }
+
+  const links = { fallback: shortUrl('fallback') } as ArtefactContext['links']
+  for (const platform of ARTEFACT_CHANNELS) links[platform] = shortUrl(platform)
+  links.qr = shortUrl('qr')
 
   const place = draftPlaceLabel(payload)
   const eyebrow = [payload.categoryName, payload.venueCity].filter(Boolean).join(' · ') || 'Live event'

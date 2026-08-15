@@ -76,6 +76,20 @@ export type KitDraftPayload = {
   /** True when the venue reads as a private residence and the street is held back. */
   addressHeldBack: boolean
   coverUrl: string | null
+  /**
+   * EXTERNAL TICKETING (founder ruling 15 August 2026). When set, this event
+   * sells its tickets on another platform and EventLinqs sells nothing for it.
+   *
+   * The kit is built exactly as it is for anyone else: the whole point of the
+   * ruling is that the tool is genuinely useful to someone whose ticketing we
+   * were never going to get. What changes is where the tracked link POINTS, and
+   * that no fee is ever quoted, because we take no money on these.
+   *
+   * Always a validated, normalised https URL, or null. Never the raw input:
+   * `validateExternalTicketUrl` re-serialises what it parsed, so what is stored
+   * is what will actually be sent in a Location header.
+   */
+  externalTicketUrl: string | null
   /** What the organiser originally typed, kept so the kit can be rebuilt. */
   sourceText: string
   /** Flagged gaps the composer asks about, one plain question each. */

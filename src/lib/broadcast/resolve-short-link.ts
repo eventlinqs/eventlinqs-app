@@ -7,29 +7,44 @@ import { isValidReadableCode } from '@/lib/broadcast/short-links'
 import { recordShareLinkEvent, resolveShareLink, visitorHash } from '@/lib/broadcast/share-links'
 
 /**
- * Resolve a share code to the event it belongs to, and record the click, on
- * the SAME request that renders the page.
+ * Resolve a share code, and record the click.
  *
- * There is no redirect. Eventbrite does not redirect, DICE does not redirect,
- * Ticketmaster does not redirect: the readable address IS the page. A redirect
- * costs a hop, drops a bearer token across hosts, and needs a whole subsystem
- * to keep alive. /e/[code] renders the event page itself and books the click
- * on the way through.
+ * TWO OUTCOMES, because there are two kinds of link.
  *
- * BOTH code formats resolve here. A readable code (basement-45-ig) and a
- * legacy random code (Rk9dW2xa1B) are both valid input, because a poster
+ *   INTERNAL. The code belongs to an event on this platform. There is no
+ *   redirect: the readable address IS the page. Eventbrite does not redirect,
+ *   DICE does not redirect, Ticketmaster does not redirect. A redirect costs a
+ *   round trip on a phone in a venue and needs a whole subsystem kept alive.
+ *   /e/[code] renders the event page itself and books the click on the way
+ *   through. UNCHANGED by the external work.
+ *
+ *   EXTERNAL. The code points at ticketing on another platform. Here a redirect
+ *   is the entire point: the tracked link is ours and canonical so it can be
+ *   printed and counted, and it hands the visitor onward to the box office that
+ *   actually sells the ticket. Founder ruling 15 August 2026.
+ *
+ * BOTH code formats resolve in both cases. A readable code (basement-45-ig) and
+ * a legacy random code (Rk9dW2xa1B) are both valid input, because a poster
  * already in a venue window carries the legacy form and must never break.
  */
 
-export type ResolvedShortLink = {
-  /** The event page to render. */
-  slug: string
-  /** The artist landing, when the link was minted for a tagged act. */
-  artistSlug: string | null
-  /** The share_links row id, for attribution. */
-  linkId: string
-  code: string
-}
+export type ResolvedShortLink =
+  | {
+      kind: 'event'
+      /** The event page to render. */
+      slug: string
+      /** The artist landing, when the link was minted for a tagged act. */
+      artistSlug: string | null
+      linkId: string
+      code: string
+    }
+  | {
+      kind: 'external'
+      /** Where to send the visitor. Already https and validated at mint time. */
+      destination: string
+      linkId: string
+      code: string
+    }
 
 /** Look up a code without recording anything. Format-gated before any query. */
 export async function resolveShortCode(code: string): Promise<ResolvedShortLink | null> {
@@ -38,13 +53,41 @@ export async function resolveShortCode(code: string): Promise<ResolvedShortLink 
   const link = await resolveShareLink(code)
   if (!link) return null
 
+  /*
+   * EXTERNAL FIRST. The database guarantees exactly one of event_id and
+   * destination_url is set, so this ordering is a readability choice rather than
+   * a precedence rule: there is no row where both could apply.
+   */
+  if (link.destination_url) {
+    return {
+      kind: 'external',
+      destination: link.destination_url,
+      linkId: link.id,
+      code: link.code,
+    }
+  }
+
+  if (!link.event_id) return null
+
   const admin = createAdminClient()
   const { data: event } = await admin
     .from('events')
-    .select('slug')
+    .select('slug, external_ticket_url')
     .eq('id', link.event_id)
     .maybeSingle()
   if (!event?.slug) return null
+
+  /*
+   * AN EVENT ROW THAT SELLS ELSEWHERE. This is the signed-in organiser case, as
+   * distinct from the anonymous draft above. The destination is read from the
+   * EVENT rather than stored on the link, so an organiser changing where their
+   * tickets are sold does not require rewriting every link ever minted for them,
+   * and a poster printed last month follows the change.
+   */
+  const externalUrl = event.external_ticket_url
+  if (typeof externalUrl === 'string' && externalUrl.trim().length > 0) {
+    return { kind: 'external', destination: externalUrl, linkId: link.id, code: link.code }
+  }
 
   let artistSlug: string | null = null
   if (link.artist_id) {
@@ -56,7 +99,7 @@ export async function resolveShortCode(code: string): Promise<ResolvedShortLink 
     artistSlug = artist?.slug ?? null
   }
 
-  return { slug: event.slug, artistSlug, linkId: link.id, code: link.code }
+  return { kind: 'event', slug: event.slug, artistSlug, linkId: link.id, code: link.code }
 }
 
 /**
@@ -69,6 +112,12 @@ export async function resolveShortCode(code: string): Promise<ResolvedShortLink 
  * Best-effort by design. Attribution is valuable; it is not worth failing an
  * organiser's event page over. A write that fails is a lost row, not a lost
  * sale.
+ *
+ * FOR AN EXTERNAL LINK THIS IS AWAITED BEFORE THE REDIRECT, deliberately. The
+ * founder ruling says record the click BEFORE redirecting, and it is the only
+ * signal that link will ever produce: once the visitor leaves, everything that
+ * happens is on somebody else's site and invisible to us. A dropped click there
+ * is not a degraded metric, it is the whole measurement.
  */
 export async function recordShortLinkClick(
   link: ResolvedShortLink,

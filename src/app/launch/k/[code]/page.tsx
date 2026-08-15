@@ -4,6 +4,7 @@ import { SiteHeader } from '@/components/layout/site-header'
 import { SiteFooter } from '@/components/layout/site-footer'
 import { readDraftByCode } from '@/lib/launch/draft-store'
 import { buildDraftContext } from '@/lib/launch/draft-artefacts'
+import { readExternalCodesForDraft } from '@/lib/broadcast/share-links'
 import { toCaptionInput } from '@/lib/broadcast/kit-artefacts'
 import { buildCaptions } from '@/lib/broadcast/captions'
 import { getSiteUrl } from '@/lib/site-url'
@@ -61,6 +62,12 @@ export default async function KitPage({ params }: { params: Promise<{ code: stri
 
   // Deterministic, no model call, no network: the same six captions the reveal
   // showed when this kit was built.
+  // The tracked codes for an externally ticketed kit, read rather than minted,
+  // so the captions carry the same addresses the poster and cards print.
+  const externalCodes = p.externalTicketUrl
+    ? await readExternalCodesForDraft(draft.code)
+    : null
+
   const captions = buildCaptions(
     toCaptionInput(
       buildDraftContext({
@@ -68,6 +75,7 @@ export default async function KitPage({ params }: { params: Promise<{ code: stri
         code: draft.code,
         origin: getSiteUrl(),
         organiserName: '',
+        externalCodes,
       }),
     ),
   )

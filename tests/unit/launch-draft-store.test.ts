@@ -85,6 +85,9 @@ const {
 } = await import('@/lib/launch/draft-store')
 
 const payload = {
+  // Internal ticketing, which is the default and the case this whole file
+  // covers. The external path has its own suite.
+  externalTicketUrl: null,
   title: "Ruby's 16th",
   summary: 'A sixteenth at home.',
   description: 'A sixteenth at home.',

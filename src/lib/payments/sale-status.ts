@@ -101,13 +101,58 @@ export function eventIsPaid(tiers: { price: number }[]): boolean {
 }
 
 /**
- * Whether tickets for an event are on sale. Free events are always on sale;
- * paid events require a connected, charges-enabled organiser.
+ * EXTERNAL TICKETING: this event sells somewhere else, so EventLinqs sells
+ * nothing for it. Founder ruling 15 August 2026.
+ *
+ * WHY IT IS A FUNCTION OVER THE EVENT AND NOT A BOOLEAN FLAG. The ruling was
+ * explicit that the refusal must hold "by construction, not by a flag someone
+ * can forget". A separate `isExternal` boolean would have to be passed correctly
+ * at every call site, and the call site that forgot would render a checkout for
+ * an event that cannot take money. Instead the URL itself IS the state: an event
+ * carrying `external_ticket_url` is externally ticketed, there is no second
+ * source to disagree with it, and `ticketsOnSale` reads it first and returns
+ * before any other consideration.
+ */
+export type ExternalTicketFields = { external_ticket_url?: string | null }
+
+export function isExternallyTicketed(
+  event: ExternalTicketFields | null | undefined,
+): boolean {
+  const url = event?.external_ticket_url
+  return typeof url === 'string' && url.trim().length > 0
+}
+
+/** What the event page says instead of a ticket selector. */
+export const TICKETS_SOLD_ELSEWHERE_HEADING = 'Tickets are sold elsewhere'
+
+export const TICKETS_SOLD_ELSEWHERE_BODY =
+  'This organiser sells tickets for this event on another site. The button below takes you straight there.'
+
+/**
+ * What the reservation action returns if anything ever asks it to hold seats for
+ * an externally ticketed event. Unreachable through the UI, which is why it says
+ * what is true rather than apologising for an error.
+ */
+export const TICKETS_SOLD_ELSEWHERE_RESERVATION_ERROR =
+  'Tickets for this event are sold on another site, so there is nothing to reserve here.'
+
+/**
+ * Whether tickets for an event are on sale HERE. Free events are always on sale;
+ * paid events require a connected, charges-enabled organiser; an externally
+ * ticketed event is NEVER on sale here, whatever else is true of it.
+ *
+ * The external check runs FIRST and unconditionally, before the paid/free split
+ * and before any organiser state is consulted. That ordering is the whole
+ * guarantee: there is no combination of organiser fields, tier prices or feature
+ * flags that can make an externally ticketed event sellable here, because none
+ * of them is reached.
  */
 export function ticketsOnSale(params: {
   isPaidEvent: boolean
   org: OrgSaleFields | null | undefined
+  event?: ExternalTicketFields | null
 }): boolean {
+  if (isExternallyTicketed(params.event)) return false
   if (!params.isPaidEvent) return true
   return isOrganiserSellable(params.org)
 }

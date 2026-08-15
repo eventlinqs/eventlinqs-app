@@ -26,11 +26,20 @@ type TicketRow = { order_id: string }
 type LinkRow = { id: string; channel: string }
 type ConvRow = { link_id: string; order_id: string | null; occurred_at: string }
 
+type EventRow = { external_ticket_url: string | null }
+
 const data = {
   orders: [] as OrderRow[],
   tickets: [] as TicketRow[],
   share_links: [] as LinkRow[],
   share_link_events: [] as ConvRow[],
+  /**
+   * The event itself. Added when attribution began EXCLUDING externally
+   * ticketed events from the sold-ticket buckets: the module now reads this row
+   * first, so the stub has to serve it. Defaults to an internal event, which is
+   * what every existing case in this file assumes.
+   */
+  events: [{ external_ticket_url: null }] as EventRow[],
 }
 
 /**
@@ -46,6 +55,11 @@ function stubAdmin() {
       for (const m of ['select', 'eq', 'in', 'not', 'order', 'limit']) {
         builder[m] = () => builder
       }
+      // A single-row terminal, for the events lookup. Resolves the FIRST row or
+      // null, which is what PostgREST does, so a test that empties `events` gets
+      // the same null the real client would return.
+      builder.maybeSingle = () =>
+        Promise.resolve({ data: (rows as unknown[])[0] ?? null, error: null })
       builder.then = (resolve: (v: { data: unknown; error: null }) => unknown) =>
         Promise.resolve({ data: rows, error: null }).then(resolve)
       return builder
@@ -65,6 +79,8 @@ beforeEach(() => {
   data.tickets = []
   data.share_links = []
   data.share_link_events = []
+  // Internal by default. The external case sets this explicitly.
+  data.events = [{ external_ticket_url: null }]
 })
 
 /** One order, one ticket each, so ticket counts are easy to reason about. */
@@ -74,6 +90,55 @@ function seed(orders: { id: string; status?: string; tickets?: number }[]) {
     Array.from({ length: o.tickets ?? 1 }, () => ({ order_id: o.id })),
   )
 }
+
+/**
+ * NON-NEGOTIABLE 2 (founder ruling 15 August 2026): never claim a sale we
+ * cannot see.
+ *
+ * An externally ticketed event's conversions happen on somebody else's site.
+ * The requirement is that it is EXCLUDED from the sold-ticket buckets rather
+ * than counted as `untracked`, and the distinction is the whole point:
+ * `untracked` asserts "a sale happened here and no tracked link was involved",
+ * which is a real, countable thing. An external event has no sale here at all.
+ * Letting it fall into `untracked` would put a zero in a bucket whose name
+ * claims we read a ledger, and the panel would then render "0% of sales came
+ * from your sharing" about sales it cannot see.
+ */
+describe('NON-NEGOTIABLE 2: an external event is excluded, not counted as untracked', () => {
+  it('returns the externallyTicketed flag and every bucket empty', async () => {
+    data.events = [{ external_ticket_url: 'https://tickets.example.org/e/1' }]
+    // Orders that WOULD have counted, to prove exclusion beats "no data".
+    seed([{ id: 'o1', tickets: 3 }, { id: 'o2', tickets: 2 }])
+
+    const r = await fetchSalesAttribution(EVENT)
+
+    expect(r.externallyTicketed).toBe(true)
+    expect(r.totals.tickets).toBe(0)
+    expect(r.buckets.untracked.tickets).toBe(0)
+    expect(r.buckets.untracked.orders).toBe(0)
+    expect(r.buckets.organiserShared.tickets).toBe(0)
+    expect(r.organiserSharedPercent).toBe(0)
+    expect(r.platformAttributablePercent).toBe(0)
+  })
+
+  it('STILL RECONCILES, because zero ties out to zero', async () => {
+    data.events = [{ external_ticket_url: 'https://tickets.example.org/e/1' }]
+    seed([{ id: 'o1', tickets: 3 }])
+
+    const r = await fetchSalesAttribution(EVENT)
+
+    expect(r.reconciles).toBe(true)
+    expect(r.discrepancy).toEqual({ orders: 0, tickets: 0 })
+  })
+
+  it('an INTERNAL event is unaffected and still reports its buckets', async () => {
+    seed([{ id: 'o1', tickets: 2 }])
+    const r = await fetchSalesAttribution(EVENT)
+    expect(r.externallyTicketed).toBe(false)
+    expect(r.totals.tickets).toBe(2)
+    expect(r.reconciles).toBe(true)
+  })
+})
 
 describe('the sale definition is single-sourced', () => {
   it('counts a refunded ticket as sold, because the sale happened', () => {

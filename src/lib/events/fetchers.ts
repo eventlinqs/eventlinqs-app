@@ -654,6 +654,24 @@ export async function fetchPublicEvents(
     }
   }
 
+  /*
+   * EXTERNAL_TICKETING_NOTE. Founder ruling 15 August 2026, non-negotiable 4.
+   *
+   * THE DECISION, in one line: an externally ticketed event is FINDABLE but not
+   * PROMOTED. It appears here on /events and in search, and never in the
+   * homepage rails, the for-you feed, the recommended list or popular-this-week.
+   *
+   * WHY THE TWO DIFFER. /events and search are INTENT surfaces: somebody typed a
+   * name or set a filter, and answering "no results" for an event that genuinely
+   * exists, on the platform that made its poster, is a worse answer than the
+   * truth. The rails and the feed are CURATION surfaces: the platform chose what
+   * to put there, and choosing an event that cannot transact here, ahead of an
+   * organiser who did move their ticketing, spends our scarcest space driving
+   * traffic away.
+   *
+   * So there is deliberately NO `external_ticket_url` filter on this query. The
+   * four ranking queries in this file each carry one, individually marked.
+   */
   let query = supabase
     .from('events')
     .select(BASE_SELECT, { count: 'exact' })
@@ -1010,6 +1028,8 @@ export async function fetchPopularThisWeek(
     .eq('status', 'published')
     .eq('visibility', 'public')
     .gte('start_date', now)
+    // Not promoted: see EXTERNAL_TICKETING_NOTE below.
+    .is('external_ticket_url', null)
     .in('id', sortedIds)
   if (city) query = query.ilike('venue_city', `%${city}%`)
 
@@ -1077,6 +1097,8 @@ export async function fetchPopularThisWeekPublic(
         .eq('status', 'published')
         .eq('visibility', 'public')
         .gte('start_date', now)
+        // Not promoted: see EXTERNAL_TICKETING_NOTE below.
+        .is('external_ticket_url', null)
         .order('start_date', { ascending: true })
         .limit(limit)
       if (sortedIds.length > 0) query = query.in('id', sortedIds)
@@ -1148,6 +1170,8 @@ export async function fetchRecommendedEvents(
     .eq('status', 'published')
     .eq('visibility', 'public')
     .gte('start_date', now)
+    // Not promoted: see EXTERNAL_TICKETING_NOTE below.
+    .is('external_ticket_url', null)
     .order('start_date', { ascending: true })
     .limit(limit)
 
@@ -1312,6 +1336,8 @@ export async function fetchForYouFeed(
     .eq('status', 'published')
     .eq('visibility', 'public')
     .gte('start_date', nowIso)
+    // Not promoted: see EXTERNAL_TICKETING_NOTE below.
+    .is('external_ticket_url', null)
     .or(orFilters.join(','))
     .order('start_date', { ascending: true })
     .limit(poolSize)

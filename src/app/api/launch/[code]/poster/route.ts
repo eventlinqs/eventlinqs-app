@@ -3,6 +3,7 @@ import QRCode from 'qrcode'
 import { createClient } from '@/lib/supabase/server'
 import { readDraftByCode } from '@/lib/launch/draft-store'
 import { buildDraftContext } from '@/lib/launch/draft-artefacts'
+import { readExternalCodesForDraft } from '@/lib/broadcast/share-links'
 import { buildEventPosterPdf, type PosterImage } from '@/lib/broadcast/poster'
 import { fetchImageBytes } from '@/lib/media/fetch-image'
 import { applyRateLimit } from '@/lib/rate-limit/middleware'
@@ -72,11 +73,19 @@ export async function GET(
     }
   }
 
+  // An externally ticketed draft prints a TRACKED EventLinqs address whose QR
+  // redirects to the organiser box office. Read rather than minted, so the
+  // poster and the cards carry the same code per channel.
+  const externalCodes = draft.payload.externalTicketUrl
+    ? await readExternalCodesForDraft(draft.code)
+    : null
+
   const context = buildDraftContext({
     payload: draft.payload,
     code: draft.code,
     origin: request.nextUrl.origin,
     organiserName: '',
+    externalCodes,
   })
 
   const shortUrl = context.links.qr ?? context.links.fallback

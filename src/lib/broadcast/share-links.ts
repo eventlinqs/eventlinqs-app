@@ -70,13 +70,27 @@ export function visitorHash(ip: string | null, userAgent: string | null): string
 
 export type ShareLinkRow = {
   id: string
-  event_id: string
+  /**
+   * NULL for an EXTERNAL link. A cold stranger composing a kit has no event row
+   * at all, so there is nothing for this to reference; `destination_url` carries
+   * the target instead. The database enforces exactly one of the two
+   * (share_links_target_exactly_one), so a row can never be ambiguous.
+   */
+  event_id: string | null
+  /** The external ticketing URL to 302 to. NULL for an ordinary internal link. */
+  destination_url: string | null
+  /** The Launch Kit draft these external links belong to. NULL when internal. */
+  draft_code: string | null
   artist_id: string | null
   channel: ShareChannel
   code: string
   created_by: string | null
   created_at: string
 }
+
+/** The columns every read of this table selects. One list, so none drifts. */
+const SHARE_LINK_COLUMNS =
+  'id, event_id, destination_url, draft_code, artist_id, channel, code, created_by, created_at'
 
 export type BroadcastClient = Pick<ReturnType<typeof createAdminClient>, 'from'>
 
@@ -95,7 +109,7 @@ export async function resolveShareLink(
   const client = opts?.client ?? createAdminClient()
   const { data, error } = await client
     .from('share_links')
-    .select('id, event_id, artist_id, channel, code, created_by, created_at')
+    .select(SHARE_LINK_COLUMNS)
     .eq('code', code)
     .maybeSingle()
   if (error || !data) return null
@@ -136,7 +150,7 @@ export async function getOrCreateShareLink(
 
   let lookup = client
     .from('share_links')
-    .select('id, event_id, artist_id, channel, code, created_by, created_at')
+    .select(SHARE_LINK_COLUMNS)
     .eq('event_id', input.eventId)
     .eq('channel', input.channel)
   lookup = artistId === null ? lookup.is('artist_id', null) : lookup.eq('artist_id', artistId)
@@ -161,7 +175,7 @@ export async function getOrCreateShareLink(
       created_by: createdBy,
       code,
     })
-    .select('id, event_id, artist_id, channel, code, created_by, created_at')
+    .select(SHARE_LINK_COLUMNS)
     .single()
   if (error || !created) return null
   return created as ShareLinkRow
@@ -221,6 +235,129 @@ async function mintCode(
   // Effectively unreachable: it needs the same event name, on the same day, in
   // the same channel, nine times over. A working opaque link still beats no
   // link, so this is a floor rather than a failure.
+  return generateShareCode()
+}
+
+/**
+ * Mint (or reuse) an EXTERNAL share link for one Launch Kit draft and channel.
+ *
+ * WHY A SEPARATE FUNCTION RATHER THAN A FLAG ON getOrCreateShareLink. The two
+ * cases share no lookup key: the internal one is identified by
+ * (event, channel, artist, creator) and this one by (draft, channel). Folding
+ * them together would mean a function whose every line is an if, and the
+ * database CHECK already treats them as two different shapes of row.
+ *
+ * THE CODE IS MINTED FROM THE EVENT TITLE, exactly as an internal readable code
+ * is, because the address is the only thing a stranger judges before tapping and
+ * this one is going onto a printed poster. It falls back to a random code when
+ * the title yields nothing printable.
+ *
+ * The destination is written as given. Callers MUST pass a URL that has already
+ * been through `validateExternalTicketUrl`; the database CHECK is the backstop,
+ * not the validation.
+ */
+export async function getOrCreateExternalShareLink(
+  input: {
+    draftCode: string
+    channel: ShareChannel
+    destinationUrl: string
+    /** The event title, used to mint a readable code. */
+    titleSlug?: string | null
+  },
+  opts?: { client?: BroadcastClient },
+): Promise<ShareLinkRow | null> {
+  const client = opts?.client ?? createAdminClient()
+
+  const { data: existing } = await client
+    .from('share_links')
+    .select(SHARE_LINK_COLUMNS)
+    .eq('draft_code', input.draftCode)
+    .eq('channel', input.channel)
+    .limit(1)
+    .maybeSingle()
+  if (existing) {
+    // The destination can change when the organiser edits their draft, and the
+    // link must follow it: a poster already carrying this code has to keep
+    // working and has to point at the right place.
+    if ((existing as ShareLinkRow).destination_url !== input.destinationUrl) {
+      const { data: updated } = await client
+        .from('share_links')
+        .update({ destination_url: input.destinationUrl })
+        .eq('id', (existing as ShareLinkRow).id)
+        .select(SHARE_LINK_COLUMNS)
+        .single()
+      if (updated) return updated as ShareLinkRow
+    }
+    return existing as ShareLinkRow
+  }
+
+  const code = await mintExternalCode(client, input.titleSlug ?? null, input.channel)
+
+  const { data: created, error } = await client
+    .from('share_links')
+    .insert({
+      event_id: null,
+      destination_url: input.destinationUrl,
+      draft_code: input.draftCode,
+      channel: input.channel,
+      artist_id: null,
+      created_by: null,
+      code,
+    })
+    .select(SHARE_LINK_COLUMNS)
+    .single()
+  if (error || !created) return null
+  return created as ShareLinkRow
+}
+
+/**
+ * The tracked codes already minted for one external draft, keyed by channel.
+ *
+ * READ, never mint. The links are created once when the kit is composed; every
+ * render path (the poster, the cards, the kit page) looks up what exists rather
+ * than minting its own, so a poster and the card beside it carry the SAME code
+ * for the same channel and their clicks land in one bucket. A renderer that
+ * minted would quietly fragment the only measurement these events produce.
+ *
+ * Returns an empty object when there is nothing, which the artefact builder
+ * treats as "fall back to the kit URL".
+ */
+export async function readExternalCodesForDraft(
+  draftCode: string,
+  opts?: { client?: BroadcastClient },
+): Promise<Record<string, string>> {
+  const client = opts?.client ?? createAdminClient()
+  const { data } = await client
+    .from('share_links')
+    .select('channel, code')
+    .eq('draft_code', draftCode)
+  const out: Record<string, string> = {}
+  for (const row of (data ?? []) as { channel: string; code: string }[]) {
+    out[row.channel] = row.code
+  }
+  return out
+}
+
+/** The readable-code ladder for an external link. Same shape, no event id. */
+async function mintExternalCode(
+  client: BroadcastClient,
+  titleSlug: string | null,
+  channel: ShareChannel,
+): Promise<string> {
+  if (!titleSlug) return generateShareCode()
+  const candidates = [buildReadableCode(titleSlug, channel)]
+  for (let n = 2; n <= 9; n += 1) {
+    candidates.push(buildReadableCode(titleSlug, channel, { disambiguator: n }))
+  }
+  for (const candidate of candidates) {
+    if (!isValidReadableCode(candidate)) continue
+    const { data: taken } = await client
+      .from('share_links')
+      .select('id')
+      .eq('code', candidate)
+      .maybeSingle()
+    if (!taken) return candidate
+  }
   return generateShareCode()
 }
 

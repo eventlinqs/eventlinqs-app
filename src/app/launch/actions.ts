@@ -16,8 +16,10 @@ import { listCategoryNames, listCommunitySlugs } from '@/lib/launch/taxonomy'
 import { isPlausibleEmail, sendKitEmail } from '@/lib/launch/kit-email'
 import { getSiteUrl } from '@/lib/site-url'
 import { buildDraftContext } from '@/lib/launch/draft-artefacts'
-import { toCaptionInput } from '@/lib/broadcast/kit-artefacts'
+import { ARTEFACT_CHANNELS, toCaptionInput } from '@/lib/broadcast/kit-artefacts'
 import { buildCaptions, type Caption } from '@/lib/broadcast/captions'
+import { validateExternalTicketUrl } from '@/lib/broadcast/external-destination'
+import { getOrCreateExternalShareLink, type ShareChannel } from '@/lib/broadcast/share-links'
 
 /**
  * The public composer's server actions. No auth on any of them, by design.
@@ -39,6 +41,17 @@ export type ComposeState = {
   /** True when the draft store is unavailable, so persistence is degraded. */
   ephemeral: boolean
   /**
+   * A plain, actionable message when the ticketing URL was rejected. Null when
+   * there was no URL or it was accepted.
+   *
+   * A REJECTED URL DOES NOT COST THE VISITOR THEIR KIT. The kit is composed and
+   * returned exactly as it would be without a ticketing address; only the
+   * tracked link falls back to the kit URL. Throwing away somebody's event
+   * description because they mistyped a web address would be the opposite of
+   * what this surface is for.
+   */
+  destinationError: string | null
+  /**
    * All six per-channel captions, rendered by the same deterministic engine the
    * published kit uses. Ruling 0.2a says a stranger sees EVERY caption, so they
    * travel with the state rather than sitting behind a control.
@@ -52,14 +65,55 @@ export type ComposeState = {
  * The origin only ever reaches the caption text as the kit link, which is a
  * real URL that resolves for thirty days.
  */
-function captionsFor(payload: KitDraftPayload, code: string | null): Caption[] {
+function captionsFor(
+  payload: KitDraftPayload,
+  code: string | null,
+  externalCodes?: Record<string, string> | null,
+): Caption[] {
   const context = buildDraftContext({
     payload,
     code: code ?? 'preview',
     origin: getSiteUrl(),
     organiserName: '',
+    externalCodes,
   })
   return buildCaptions(toCaptionInput(context))
+}
+
+/**
+ * Mint one tracked short link per channel for an externally ticketed draft.
+ *
+ * PER CHANNEL, not one shared link, because the reach panel reports clicks BY
+ * CHANNEL and a single link would collapse Instagram, Facebook and the printed
+ * poster into one indistinguishable number. That is the only measurement an
+ * external event ever produces, so flattening it would leave the panel with
+ * nothing worth reading.
+ *
+ * Best-effort: a store failure returns an empty map and the artefacts fall back
+ * to the kit URL, which is real and resolves. A stranger never loses their kit
+ * because attribution could not be set up.
+ */
+async function mintExternalCodes(
+  draftCode: string,
+  destinationUrl: string,
+  titleSlug: string,
+): Promise<Record<string, string>> {
+  const channels = [...ARTEFACT_CHANNELS, 'qr', 'fallback'] as const
+  const out: Record<string, string> = {}
+  for (const channel of channels) {
+    try {
+      const link = await getOrCreateExternalShareLink({
+        draftCode,
+        channel: channel as ShareChannel,
+        destinationUrl,
+        titleSlug,
+      })
+      if (link) out[channel] = link.code
+    } catch {
+      // One channel failing must not cost the others their link.
+    }
+  }
+  return out
 }
 
 /**
@@ -70,7 +124,23 @@ function captionsFor(payload: KitDraftPayload, code: string | null): Caption[] {
  * an unparseable sentence all still produce a draft, because the composition
  * itself is local and cannot fail on the network.
  */
-export async function composeKit(text: string): Promise<ComposeState> {
+export async function composeKit(
+  text: string,
+  /**
+   * The organiser's external ticketing address, when they sell somewhere else.
+   * Optional so every existing caller compiles and behaves identically.
+   */
+  ticketingUrl?: string,
+): Promise<ComposeState> {
+  /*
+   * VALIDATE BEFORE ANYTHING ELSE, and never store the raw input. An empty
+   * field is not an error: most organisers sell here and leave it blank.
+   */
+  const supplied = typeof ticketingUrl === 'string' ? ticketingUrl.trim() : ''
+  const checked = supplied.length > 0 ? validateExternalTicketUrl(supplied) : null
+  const externalTicketUrl = checked?.ok ? checked.url : null
+  const destinationError = checked && !checked.ok ? checked.message : null
+
   // Bound the write and render volume. Fail-open by policy (see policies.ts):
   // there is no model spend on this path, so a Redis blip must never stop a
   // stranger building a kit.
@@ -90,6 +160,7 @@ export async function composeKit(text: string): Promise<ComposeState> {
     categoryNames,
     communitySlugs,
     nowIso: new Date().toISOString(),
+    externalTicketUrl,
   })
 
   // Over the cap the kit still renders from the payload in this request: the
@@ -113,6 +184,7 @@ export async function composeKit(text: string): Promise<ComposeState> {
       questions: result.questions,
       ephemeral: true,
       captions: captionsFor(result.payload, null),
+      destinationError,
     }
   }
 
@@ -134,6 +206,7 @@ export async function composeKit(text: string): Promise<ComposeState> {
       questions: result.questions,
       ephemeral: true,
       captions: captionsFor(result.payload, null),
+      destinationError,
     }
   }
 
@@ -156,6 +229,17 @@ export async function composeKit(text: string): Promise<ComposeState> {
     })
   }
 
+  /*
+   * The tracked links, minted only once the draft has a persisted code. Without
+   * a code there is nothing to group the links by and nothing addressable to
+   * print, so an ephemeral kit keeps the kit URL, which is the same degradation
+   * the cards and poster already take.
+   */
+  const externalCodes =
+    saved && externalTicketUrl
+      ? await mintExternalCodes(saved.code, externalTicketUrl, result.payload.title)
+      : null
+
   return {
     ok: true,
     code: saved?.code ?? null,
@@ -164,7 +248,8 @@ export async function composeKit(text: string): Promise<ComposeState> {
     reachFraming: result.reachFraming,
     questions: result.questions,
     ephemeral: !saved,
-    captions: captionsFor(result.payload, saved?.code ?? null),
+    captions: captionsFor(result.payload, saved?.code ?? null, externalCodes),
+    destinationError,
   }
 }
 
@@ -229,18 +314,53 @@ export async function updateKit(patch: Partial<KitDraftPayload>): Promise<Compos
   const prior = await readDraftByToken(token)
   if (!prior) return null
 
-  const payload: KitDraftPayload = { ...prior.payload, ...patch }
+  /*
+   * RE-VALIDATE THE TICKETING URL HERE, even though composeKit already did.
+   *
+   * This action takes a Partial<KitDraftPayload> straight from the client, so
+   * "it was validated on the way in" is only true of the OTHER entry point. A
+   * patch carrying a `javascript:` destination would otherwise be written
+   * straight to the draft and then minted into a redirect. Validating at both
+   * doors is the difference between a validated field and a validated request.
+   *
+   * An invalid patch value is DROPPED rather than throwing: the rest of the
+   * organiser's correction still lands, and the error comes back for display.
+   */
+  let destinationError: string | null = null
+  const nextPatch: Partial<KitDraftPayload> = { ...patch }
+  if ('externalTicketUrl' in patch) {
+    const raw = typeof patch.externalTicketUrl === 'string' ? patch.externalTicketUrl.trim() : ''
+    if (raw.length === 0) {
+      nextPatch.externalTicketUrl = null
+    } else {
+      const checked = validateExternalTicketUrl(raw)
+      if (checked.ok) {
+        nextPatch.externalTicketUrl = checked.url
+      } else {
+        destinationError = checked.message
+        delete nextPatch.externalTicketUrl
+      }
+    }
+  }
+
+  const payload: KitDraftPayload = { ...prior.payload, ...nextPatch }
   const saved = await saveDraft({ code: prior.code, token, payload })
+
+  const code = saved?.code ?? prior.code
+  const externalCodes = payload.externalTicketUrl
+    ? await mintExternalCodes(code, payload.externalTicketUrl, payload.title)
+    : null
 
   return {
     ok: true,
-    code: saved?.code ?? prior.code,
+    code,
     payload,
     recurringNote: null,
     reachFraming:
       payload.isFree || payload.visibility !== 'public' ? 'attendance' : 'tickets',
     questions: [],
     ephemeral: !saved,
-    captions: captionsFor(payload, saved?.code ?? prior.code),
+    captions: captionsFor(payload, code, externalCodes),
+    destinationError,
   }
 }

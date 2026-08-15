@@ -36,7 +36,11 @@ const { loadHomeUpcoming } = await import('@/lib/events/home-queries')
 function stubClient(rows: unknown[]) {
   const result = Promise.resolve({ data: rows, error: null })
   const chain: Record<string, unknown> = {}
-  for (const m of ['from', 'select', 'eq', 'gte', 'order', 'limit']) {
+  // `is` was added when the homepage rails began excluding externally ticketed
+  // events (`.is('external_ticket_url', null)`). A stub that omits a builder
+  // method fails with "is not a function", which reads as a broken query rather
+  // than an out-of-date double, so the list is kept complete deliberately.
+  for (const m of ['from', 'select', 'eq', 'gte', 'is', 'order', 'limit']) {
     chain[m] = () => chain
   }
   chain.then = (...args: unknown[]) => (result as unknown as { then: (...a: unknown[]) => unknown }).then(...args)

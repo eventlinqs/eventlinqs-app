@@ -54,6 +54,8 @@ export type ChargePreconditionFailure =
   | 'org_payouts_restricted'
   | 'org_country_unsupported'
   | 'fee_breakdown_invalid'
+  /** The event sells its tickets on another platform. We never take money for it. */
+  | 'event_externally_ticketed'
 
 export class ChargePreconditionError extends Error {
   readonly reason: ChargePreconditionFailure
@@ -174,8 +176,33 @@ export function assertCanCreateDestinationCharge(
     | 'stripe_account_country'
     | 'payout_status'
   >,
-  fees: FeeBreakdown
+  fees: FeeBreakdown,
+  /**
+   * The event being charged for, when the caller has it. Optional so every
+   * existing internal call site compiles and behaves identically.
+   */
+  event?: { external_ticket_url?: string | null } | null
 ): void {
+  /*
+   * EXTERNAL TICKETING: refuse before anything else. Founder ruling 15 August
+   * 2026, non-negotiable 3.
+   *
+   * This is the SECOND of the two independent refusals, and it exists precisely
+   * because the first one can be bypassed. `ticketsOnSale` governs what the page
+   * RENDERS; this governs whether money can MOVE. A caller that reached here
+   * with an externally ticketed event has already gone wrong, and the right
+   * answer is to throw rather than to charge a buyer for a ticket this platform
+   * does not sell and cannot deliver.
+   *
+   * It is checked first so no combination of organiser state can reach a charge
+   * for an event whose tickets are somebody else's to sell.
+   */
+  if (event && typeof event.external_ticket_url === 'string' && event.external_ticket_url.trim().length > 0) {
+    throw new ChargePreconditionError(
+      'event_externally_ticketed',
+      'Event is externally ticketed: EventLinqs sells no tickets for it and must never take a payment for it.'
+    )
+  }
   if (!org.stripe_account_id) {
     throw new ChargePreconditionError(
       'org_not_connected',

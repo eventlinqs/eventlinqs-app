@@ -238,6 +238,15 @@ export function composeFromText(opts: {
   categoryNames: string[]
   communitySlugs: string[]
   nowIso?: string
+  /**
+   * A validated external ticketing URL, when the organiser sells elsewhere.
+   *
+   * Passed in already validated rather than parsed here: this module is the
+   * deterministic text extractor and has no business deciding what is a safe
+   * redirect target. `validateExternalTicketUrl` owns that, the server action
+   * calls it, and what arrives here is normalised or null.
+   */
+  externalTicketUrl?: string | null
 }): ComposeResult {
   const text = (opts.text ?? '').trim()
 
@@ -310,6 +319,7 @@ export function composeFromText(opts: {
   })
 
   const payload: KitDraftPayload = {
+    externalTicketUrl: opts.externalTicketUrl ?? null,
     title,
     summary,
     description: draft.description,

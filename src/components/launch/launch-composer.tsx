@@ -28,6 +28,8 @@ const PLACEHOLDER = 'Comedy night at the Prince, Tuesday the 12th, five comics, 
 
 export function LaunchComposer() {
   const [text, setText] = useState('')
+  const [ticketingUrl, setTicketingUrl] = useState('')
+  const [destinationError, setDestinationError] = useState<string | null>(null)
   const [state, setState] = useState<ComposeState | null>(null)
   const [pending, startTransition] = useTransition()
 
@@ -35,7 +37,22 @@ export function LaunchComposer() {
     const trimmed = text.trim()
     if (!trimmed) return
     startTransition(async () => {
-      const next = await composeKit(trimmed)
+      const next = await composeKit(trimmed, ticketingUrl.trim() || undefined)
+      /*
+       * A REJECTED TICKETING ADDRESS KEEPS THEM ON THIS SCREEN, and nothing they
+       * typed is lost: the description is still in the textarea and the address
+       * is still in its field, one keystroke from being right.
+       *
+       * The alternative, revealing the kit anyway, was rejected: the kit would
+       * silently carry the ordinary kit link instead of a tracked one, and the
+       * organiser would find out when the poster was already printed. A visible
+       * correction now beats an invisible downgrade later.
+       */
+      if (next.destinationError) {
+        setDestinationError(next.destinationError)
+        return
+      }
+      setDestinationError(null)
       setState(next)
     })
   }
@@ -76,6 +93,53 @@ export function LaunchComposer() {
           className="mt-5 w-full rounded-xl border border-ink-200 bg-white p-4 text-base text-ink-900 shadow-sm outline-none transition focus:border-ink-400 focus:ring-2 focus:ring-[var(--brand-accent)]"
         />
 
+        {/*
+          THE TICKETING ADDRESS. Optional, and deliberately quiet.
+
+          Founder ruling 15 August 2026: the kit must serve someone whose
+          ticketing is locked inside a festival box office and is never moving.
+          So this asks for a link rather than asking WHO THEY ARE, which is the
+          same rule the description field follows: branch on what they wrote,
+          never on a question about themselves. Leave it blank and nothing about
+          the kit changes.
+        */}
+        <div className="mt-5">
+          <label
+            htmlFor="launch-ticketing-url"
+            className="block text-sm font-semibold text-ink-900"
+          >
+            Selling tickets somewhere else?
+          </label>
+          <p className="mt-1 text-sm text-ink-600">
+            Paste the link and your kit will point people straight there. Leave it
+            blank if you are not selling tickets yet.
+          </p>
+          <input
+            id="launch-ticketing-url"
+            name="ticketingUrl"
+            type="url"
+            inputMode="url"
+            value={ticketingUrl}
+            onChange={e => {
+              setTicketingUrl(e.target.value)
+              if (destinationError) setDestinationError(null)
+            }}
+            placeholder="https://"
+            aria-invalid={destinationError ? true : undefined}
+            aria-describedby={destinationError ? 'launch-ticketing-error' : undefined}
+            className="mt-3 w-full rounded-xl border border-ink-200 bg-white p-4 text-base text-ink-900 shadow-sm outline-none transition focus:border-ink-400 focus:ring-2 focus:ring-[var(--brand-accent)]"
+          />
+          {destinationError && (
+            <p
+              id="launch-ticketing-error"
+              role="alert"
+              className="mt-2 text-sm font-medium text-ink-900"
+            >
+              {destinationError}
+            </p>
+          )}
+        </div>
+
         <div className="mt-5 flex flex-wrap items-center gap-4">
           <button
             type="button"
@@ -92,7 +156,9 @@ export function LaunchComposer() {
               // "Start from blank" is the same path with an empty sentence:
               // the composer still returns a real kit shell and asks its plain
               // questions, rather than presenting an empty form.
-              startTransition(async () => setState(await composeKit(' ')))
+              startTransition(async () =>
+                setState(await composeKit(' ', ticketingUrl.trim() || undefined)),
+              )
             }}
             className="min-h-[44px] text-base font-medium text-ink-600 underline-offset-4 transition hover:text-ink-900 hover:underline"
           >
