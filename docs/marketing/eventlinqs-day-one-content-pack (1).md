@@ -20,14 +20,26 @@
 
 ## BLOCK 1: BIOS (publish today, all channels)
 
+> **EVERY FEE FIGURE IN THIS FILE IS DERIVED, NOT CHOSEN.** They come from the
+> PRICING-LOCK block in `docs/PRICING.md` and were re-derived on 15 August 2026,
+> when the second fee was deleted. If the rate ever changes, run
+> `node scripts/pricing-derive.mjs --write`, read the new worked example out of
+> `docs/PRICING.md` section 3, and update this file in the same commit.
+> `scripts/guards/one-fee-copy.mjs` fails the build if the old figures reappear.
+>
+<!-- ONE-FEE-ALLOW-BEGIN: the copy rule forbidding the second fee has to name it. -->
+> **ONE fee. Card processing is inside it.** Never write "plus processing", never
+> quote a second fee, and never claim a fee-free ticket costs the buyer anything.
+<!-- ONE-FEE-ALLOW-END -->
+
 **Instagram (@eventlinqs or closest available):**
 Ticketing built for local events. Geelong + Melbourne first.
-$2.19 all-in on a $20 ticket. You keep the full $20.
+$1.69 all-in on a $20 ticket. You keep the full $20.
 Free events always free. 50 founding organiser spots.
 [Link to organiser page]
 
 **LinkedIn company page:**
-EventLinqs is the Australian ticketing platform built for local organisers. All-in fees of $2.19 on a $20 ticket, organisers keep full face value, free events always free. Launching in Geelong and Melbourne with 50 founding organiser spots: zero platform fees for 6 months in exchange for your honest feedback. Built in Melbourne.
+EventLinqs is the Australian ticketing platform built for local organisers. One all-in fee of $1.69 on a $20 ticket, organisers keep full face value, free events always free. Launching in Geelong and Melbourne with 50 founding organiser spots: zero fees for 6 months in exchange for your honest feedback. Built in Melbourne.
 
 **Lawal's personal LinkedIn headline:**
 Founder, EventLinqs. Building Australia's ticketing platform for local events, starting with Geelong and Melbourne. 50 founding organiser spots open.
@@ -43,16 +55,16 @@ Founder, EventLinqs. Building Australia's ticketing platform for local events, s
 Visual direction throughout: clean, bold typography on brand colours, one message per tile, professional and consistent so the grid reads as one product. Build in Canva. No UI screenshots until the Tab 4 redesign ships and the feature-claim audit clears them; until then use typographic tiles and the fee numbers, which are verified and are the strongest visual asset available today.
 
 **POST 1 (Product): The fee reveal.**
-Tile text: A $20 ticket. $2.19 all-in. You keep the full $20.
-Caption: Ticketing fees in Australia are a maze on purpose. Ours are not. On EventLinqs, a $20 ticket carries $2.19 in fees all-in, GST-inclusive, shown to your buyer up front, and you keep the full $20 face value. That is the whole model. Launching in Geelong and Melbourne. #geelongevents #melbourneevents #eventticketing #supportlocal
+Tile text: A $20 ticket. $1.69 all-in. You keep the full $20.
+Caption: Ticketing fees in Australia are a maze on purpose. Ours are not. On EventLinqs there is ONE fee, card processing included, so a $20 ticket carries $1.69 all-in, shown to your buyer up front, and you keep the full $20 face value. No second fee, no processing line, no surprise at the last step. That is the whole model. Launching in Geelong and Melbourne. #geelongevents #melbourneevents #eventticketing #supportlocal
 
 **POST 2 (Product): The founding number.**
-Tile text: $20.50. That is what your fans pay for your $20 ticket as a founding organiser.
-Caption: Our first 50 founding organisers across Geelong and Melbourne pay zero platform fees for 6 months. On a $20 ticket, your buyers pay just $20.50 all-in instead of $22.19, and you still keep the full $20. In return we ask one thing: your honest feedback, so the platform gets built around organisers like you. Link in bio. #foundingorganiser #geelongevents #melbourneevents
+Tile text: $20.00. That is what your fans pay for your $20 ticket as a founding organiser.
+Caption: Our first 50 founding organisers across Geelong and Melbourne pay zero fees for 6 months. Zero means zero: on a $20 ticket your buyers pay $20.00, not a cent more, and you still keep the full $20. In return we ask one thing: your honest feedback, so the platform gets built around organisers like you. Link in bio. #foundingorganiser #geelongevents #melbourneevents
 
 **POST 3 (Product): Free means free.**
 Tile text: Free events. Zero fees. Actually zero.
-Caption: Community events, club nights, meetups, fundraisers: if your event is free, EventLinqs is free. No platform fee, no processing fee, no catch, and that is written into the code, not the fine print. #communityevents #geelong #melbourne
+Caption: Community events, club nights, meetups, fundraisers: if your event is free, EventLinqs is free. No fee of any kind, no catch, and that is written into the code, not the fine print. #communityevents #geelong #melbourne
 
 **POST 4 (Value): The founding offer card.**
 Tile text: 50 founding organiser spots. Geelong + Melbourne.
@@ -88,7 +100,7 @@ I have spent [X months] building a ticketing platform, and this week it processe
 
 EventLinqs is my answer to a simple problem: Australian event organisers, especially the local ones running gigs, markets, comedy nights and community events, give away too much of every ticket and get too little back.
 
-So the model is simple. On a $20 ticket, fees are $2.19 all-in, GST-inclusive, shown up front, and the organiser keeps the full $20. Free events are completely free.
+So the model is simple. One fee, with card processing inside it. On a $20 ticket that is $1.69 all-in, shown up front, and the organiser keeps the full $20. Free events are completely free.
 
 We launch in Geelong and Melbourne first, deliberately. Density beats reach when you are building a community.
 
@@ -124,7 +136,9 @@ Daily engagement warm-up, 30 minutes: follow 20 to 30 local organisers, venues a
 
 ## STANDING CONTENT RULES
 1. Locked terms verbatim, every time. One offer, one wording.
-2. Only verified fee figures: $2.19 all-in and $20.50 founding on a $20 ticket, $2.79 all-in on a $30 ticket, full face value kept, free events free. $20 anchor primary, $30 secondary, nothing higher.
+<!-- ONE-FEE-ALLOW-BEGIN: the copy rule forbidding the second fee has to name it. -->
+2. Only verified fee figures, and there is ONE fee: $1.69 all-in on a $20 ticket, $2.04 all-in on a $30 ticket, $20.00 flat during the founding window because the waiver takes the whole fee to zero, full face value kept, free events free. $20 anchor primary, $30 secondary, nothing higher. Never write "plus processing" or name a second fee. Every figure here is derived from the PRICING-LOCK block in docs/PRICING.md, so re-derive rather than re-guess if the rate moves.
+<!-- ONE-FEE-ALLOW-END -->
 3. No UI screenshots until the redesign ships and the feature-claim audit clears them. No claims about features sections 4, 6 and 7 of the landing page are still holding as draft.
 4. Real countdown numbers only. Real testimonials only, which today means none.
 5. Every post is Australian English, no em-dashes or en-dashes, "community" always.

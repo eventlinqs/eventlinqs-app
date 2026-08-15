@@ -29,6 +29,25 @@
  *   no-ai-authorship           Law 8: no commit attributes this work to an AI
  *   no-unguarded-production-write  no script writes to a database without checking which one
  *   migration-needs-sale-gate-fix  the anon column revoke never ships without the sale-gate fix
+ *   one-fee-copy               no customer-facing surface names a second fee
+ *   pricing-derive             the worked fee figures match the lock block they derive from
+ *   no-partial-builds          no undated flag, deferral marker or placeholder ships
+ *
+ * On one-fee-copy and pricing-derive: the founder ruling of 15 August 2026
+ * deleted the separate payment processing fee. The CODE changed that day and the
+ * COPY did not, and the sweep found the deleted fee still alive in about twenty
+ * places, including the AI support knowledge base, which told anyone who asked
+ * that there was "a payment processing fee shown at checkout". Not one of those
+ * failed a test, a type check or a gate, because prose is not executed. Worse,
+ * docs/PRICING.md, the document that declares itself the ONLY place a fee figure
+ * may be written, carried four worked examples built on the deleted fee and was
+ * itself the largest single source of the wrong number. So there are now two
+ * gates rather than one: pricing-derive RECOMPUTES every worked figure in that
+ * document from the lock block and fails on any disagreement, and one-fee-copy
+ * fails the build when a customer-facing surface asserts a second fee. The
+ * second is deliberately scoped to ASSERTIONS rather than words, because the
+ * database column is real, the pass-through rule is live, and the correct copy
+ * for an assistant is the sentence "there is no payment processing fee".
  *
  * On no-ai-authorship: Law 8 makes the founder the sole author, which overrides
  * this tooling default of appending a Co-Authored-By trailer. The commit-msg hook
@@ -260,6 +279,33 @@ const GUARDS = [
   // designed "organiser is still finishing their payment setup" state. This
   // guard fails the build if the migration is present without the fix.
   'scripts/guards/migration-needs-sale-gate-fix.mjs',
+
+  // Founder ruling 2026-08-15, ONE FEE. Two gates, because the failure had two
+  // halves and only one of them is about copy.
+  //
+  // one-fee-copy walks the customer-facing surfaces and fails on an ASSERTION of
+  // a second fee. It is scoped to assertions rather than to the word
+  // "processing" on purpose: orders.processing_fee_cents is a real column
+  // holding real history, processing_fee_pass_through is live and decides who
+  // carries the one fee, and the correct copy for an assistant includes the
+  // sentence that there is no payment processing fee. Reviewed exemptions carry
+  // ONE-FEE-ALLOW with a written reason and print on every run.
+  'scripts/guards/one-fee-copy.mjs',
+  // pricing-derive recomputes the worked examples and the margin table in
+  // docs/PRICING.md from the PRICING-LOCK block and fails if the committed text
+  // disagrees. It lives outside scripts/guards/ because it is also the
+  // GENERATOR: run it with --write to regenerate, and with no arguments, which
+  // is how the runner invokes it, it checks.
+  'scripts/pricing-derive.mjs',
+  // Founder ruling 2026-08-15: nothing on this platform stays partially built.
+  // Held unregistered while it reported 57 hits, because a gate that cannot go
+  // green is a gate somebody switches off. All 57 are now classified and
+  // cleared: 41 were feature flags whose decision moved to one dated registry
+  // beside the flags rather than 41 copies beside the call sites, 5 were this
+  // guard reading OTHER detectors regex literals and finding its own subject
+  // matter, 2 TODOs waited on a route that was never built and now point at the
+  // real one, and the rest were reworded or dated. It blocks from here.
+  'scripts/guards/no-partial-builds.mjs',
 ]
 
 /**

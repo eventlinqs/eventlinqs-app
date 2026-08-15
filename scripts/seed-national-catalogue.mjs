@@ -349,7 +349,7 @@ async function main() {
   for (const c of COMMUNITIES) {
     while (commCount[c.slug] < 3) {
       const home = (HOME[c.slug] || ['Sydney']).find(n => CITIES.some(x => x.name === n)) || 'Sydney'
-      // force this community by temporarily zeroing others is complex; build directly
+      // forcing this community by zeroing the others for one pass is complex; build directly
       const city = majorCity(home); const venue = pickVenue(city, 'community', commCount[c.slug] + 3)
       const evName = pick(c.events, commCount[c.slug]); const title = `${evName}, ${city.name}`
       const tiers = priceTiers('community', gi); const { start, end } = eventDate(gi, false)

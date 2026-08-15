@@ -75,14 +75,23 @@ export function getCurrencyForCountry(country: string | null | undefined): strin
  * rule.
  *
  *   mode 1 (stripe_fee_inclusive, default): app_fee = platform_fee + processing_fee
- *     The buyer-paid processing fee covers Stripe's actual cost from the
- *     platform balance. Platform stays cash-flow positive on every charge.
+ *   mode 2 (stripe_fee_exclusive):          app_fee = platform_fee
  *
- *   mode 2 (stripe_fee_exclusive): app_fee = platform_fee
- *     Only the platform commission is pulled to the platform balance.
- *     The buyer-paid processing fee bonuses to the organiser; Stripe's
- *     actual cost still comes from the platform balance, so the platform
- *     subsidises processing out of its commission. Use sparingly.
+ * ONE FEE (founder ruling 15 August 2026): THE TWO MODES NOW PRODUCE THE SAME
+ * NUMBER, and that is worth stating rather than leaving to be rediscovered.
+ * `processing_fee` is 0 on every order priced after that date, so mode 1's
+ * `platform_fee + 0` and mode 2's `platform_fee` are identical. The mode is kept
+ * and still resolved because it is meaningful for HISTORICAL orders, whose
+ * stored `processing_fee_cents` is non-zero and whose payout must compose the
+ * way it did when the money moved.
+ *
+ * ONE-FEE-ALLOW-BEGIN: records what the modes meant historically, which the
+ * payout path still needs for orders placed before the deletion.
+ * What the modes meant while there were two fees: mode 1 pulled the buyer-paid
+ * processing fee to the platform balance to cover Stripe's actual cost, keeping
+ * the platform cash-flow positive per charge; mode 2 left it with the organiser
+ * and had the platform subsidise processing out of its commission.
+ * ONE-FEE-ALLOW-END
  *
  * Mode is resolved by `(country_code, currency, organisationId)` precedence
  * via the pricing-rules service.

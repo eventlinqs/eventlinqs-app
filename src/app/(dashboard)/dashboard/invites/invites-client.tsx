@@ -44,7 +44,7 @@ export function InvitesClient({
     : ''
   const waiverLabel = waiverActive ? waiverDate : waiverUntil ? 'Ended' : 'Not active'
   const waiverHint = waiverActive
-    ? 'Platform fee is zero until then. Processing fee still applies'
+    ? 'Your fee is zero until then. There is no second fee, so your buyers pay the ticket price and nothing else'
     : waiverUntil
       ? 'Ended ' + waiverDate + '. Standard platform fee applies'
       : 'Claim a founding spot to start your six months'

@@ -9,7 +9,7 @@
  *
  * So if the CODE ships before the MIGRATION is applied, every disconnect fails on a
  * check violation. This script establishes which side of that the database is on,
- * by attempting the write against a temporary row and then removing it, rather than
+ * by attempting the write against a throwaway row and then removing it, rather than
  * by reading the migration folder and assuming.
  *
  * TEST ONLY, refuses the production project, and cleans up after itself.

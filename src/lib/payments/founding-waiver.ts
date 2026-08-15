@@ -3,12 +3,21 @@
  * is computed.
  *
  * THE TERMS (founder, locked 2026-07-27, recorded in docs/PRICING.md):
- *   - Zero PLATFORM fee for six months from onboarding.
+ *   - Zero fee for six months from onboarding. There is one fee, so the waiver
+ *     takes the whole charge to zero.
  *   - Plus three months for every organiser they bring on board.
  *   - Capped at the first fifty organisations across Geelong and Melbourne.
- *   - The PROCESSING fee is NEVER waived. It is a real third-party cost.
- *   - Anchor: a 20.00 ticket inside the window is 20.50 all in, and the
- *     organiser still keeps the full 20.00.
+ *
+ * ONE-FEE-ALLOW-BEGIN: quotes the wrong text it replaced, so the correction is
+ * legible rather than a silent edit.
+ * These two lines used to sit here and were WRONG from 15 August 2026: "The
+ * PROCESSING fee is NEVER waived. It is a real third-party cost." and "Anchor: a
+ * 20.00 ticket inside the window is 20.50 all in." Both described the deleted
+ * second fee, and both contradicted the docblock on applyFoundingWaiver twelve
+ * lines below, which had been corrected. A file arguing with itself is how the
+ * next reader picks the wrong half. The worked anchors are computed from the lock
+ * block in docs/PRICING.md and are not restated here.
+ * ONE-FEE-ALLOW-END
  *
  * WHY A DATE WINDOW. The waiver used to be `founding_bonus_months`, a counter
  * that nothing read and nothing expired. A timestamp answers "is this
@@ -58,6 +67,7 @@ export function isWaiverActive(feeFreeUntil: string | null | undefined, now: Dat
  *
  * The fee goes to zero, both the percentage and the per-ticket flat component.
  *
+ * ONE-FEE-ALLOW-BEGIN: records the superseded anchor so the change is auditable.
  * UNDER ONE FEE A WAIVED TICKET IS GENUINELY FREE OF CHARGE. This used to say
  * that a waived 20.00 ticket was 20.50 all in and not 20.00, because the
  * separate processing fee was never waived. That fee no longer exists: the
@@ -65,6 +75,7 @@ export function isWaiverActive(feeFreeUntil: string | null | undefined, now: Dat
  * the single 3.5 per cent. So a waived 20.00 ticket is 20.00 all in, and
  * "completely fee-free" in the founding-offer copy is now literally true where
  * before it was 50 cents short.
+ * ONE-FEE-ALLOW-END
  *
  * Pure, so the same function is safe on the server and in a test, and so the
  * waiver can never be half-applied.

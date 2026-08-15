@@ -66,11 +66,11 @@ export const gettingPaidAndPayoutTiming: Guide = {
     { kind: 'heading', text: 'What is taken out' },
     {
       kind: 'para',
-      text: 'Two fees apply to each paid ticket, and both are currently set to {{fee}} for the platform fee plus a payment processing fee, shown live from the platform pricing engine rather than typed into this page. Free tickets carry no fees at all, permanently.',
+      text: 'One fee applies to each paid ticket, currently {{fee}}, shown live from the platform pricing engine rather than typed into this page. Card processing is inside that fee: there is no separate processing charge and no second fee. Free tickets carry no fees at all, permanently.',
     },
     {
       kind: 'para',
-      text: 'You choose per event whether those fees are passed on to the buyer or absorbed by you. Pass on is the default: the buyer pays the fees on top and you keep the full face value of the ticket. Absorb takes the fees out of your payout instead, so the buyer pays exactly the sticker price. Either way the buyer sees the true all-in total before they reach checkout, which is required in Australia and is a good idea regardless.',
+      text: 'You choose per event whether that fee is passed on to the buyer or absorbed by you. Pass on is the default: the buyer pays the fee on top and you keep the full face value of the ticket. Absorb takes the fee out of your payout instead, so the buyer pays exactly the sticker price. Either way the buyer sees the true all-in total before they reach checkout, which is required in Australia and is a good idea regardless.',
     },
     { kind: 'heading', text: 'When the money moves' },
     {

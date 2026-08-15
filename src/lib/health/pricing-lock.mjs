@@ -40,11 +40,13 @@ export const LOCKED_RULE_TYPES = [
   { key: 'platform_fee_percentage', valueType: 'percentage', column: 'value_percentage' },
   { key: 'platform_fee_fixed', valueType: 'fixed', column: 'value_cents' },
   /*
+   * ONE-FEE-ALLOW-BEGIN: names the removed rules so the list is auditable.
    * `processing_fee_percentage` and `processing_fee_fixed_cents` were REMOVED
    * from this list on 15 August 2026, when the founder ruling deleted the
    * separate processing fee. No code reads those rules any more, so the rows in
    * `pricing_rules` are inert history. Asserting a live value for a rule nothing
    * consumes would make the build depend on data that no longer means anything.
+   * ONE-FEE-ALLOW-END
    *
    * `processing_fee_pass_through` STAYS, because it is still read: despite its
    * name it governs whether the single fee is passed to the buyer or absorbed by

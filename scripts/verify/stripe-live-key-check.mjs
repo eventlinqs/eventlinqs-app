@@ -4,7 +4,7 @@
  * Production currently runs `sk_test_` / `pk_test_` while holding a LIVE
  * webhook signing secret. That combination looks configured and takes card
  * details, but every charge is a test charge: no money ever moves. This script
- * is the proof step for the moment the live keys are set.
+ * is the proof step to run once the live keys are set.
  *
  * It performs a READ-ONLY live-mode API call. It never creates a charge, a
  * customer, a product or any other object, so running it costs nothing and

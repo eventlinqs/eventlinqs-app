@@ -139,9 +139,16 @@ export function CategoryLandingPage({ category, liveEvents = [] }: CategoryLandi
             headline={`The first ${displayName} event on EventLinqs could be yours.`}
             subhead={`${category.tagline} We're built for this. Set up in 5 minutes, take payments in 7 days, share to WhatsApp in one tap.`}
             primaryAction={{
-              // TODO(Session 2): replace with direct signup once /auth/signup?role=organiser is built
-              label: 'Talk to us about listing',
-              href: `/contact?topic=organiser&interest=${slug}`,
+              /*
+               * FINISHED 15 August 2026. This waited on `/auth/signup?role=organiser`,
+               * a route that was never built and is not going to be: the real
+               * organiser entry point is `/organisers/signup`, which every other
+               * surface already uses. So the CTA now goes straight there instead
+               * of parking an interested organiser in a contact form, which is a
+               * step the acquisition loop exists to remove.
+               */
+              label: 'Start selling tickets',
+              href: '/organisers/signup',
             }}
             secondaryAction={{
               label: 'Browse all events',
@@ -239,13 +246,15 @@ export function CategoryLandingPage({ category, liveEvents = [] }: CategoryLandi
                 real human support, and a platform that actually understands the community.
               </p>
             </div>
-            {/* TODO(Session 2): replace with /auth/signup?role=organiser once built */}
+            {/* FINISHED 15 August 2026: points at the real organiser signup
+                (`/organisers/signup`) rather than the route that was never
+                built. Same change and same reason as the empty-state CTA above. */}
             <Button
               variant="primary"
               size="lg"
-              href={`/contact?topic=organiser&interest=${slug}`}
+              href="/organisers/signup"
             >
-              Talk to us about your event
+              Start selling tickets
             </Button>
           </div>
         </div>

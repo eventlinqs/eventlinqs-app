@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { assertPreviewRouteAllowed } from '@/lib/dev/preview-route'
 
 export const metadata: Metadata = {
   title: 'Logo preview | EventLinqs (dev)',
@@ -71,6 +72,7 @@ function LogoSwatch({
 }
 
 export default function LogoPreviewPage() {
+  assertPreviewRouteAllowed()
   return (
     <div className="min-h-screen bg-canvas px-4 py-12 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl">

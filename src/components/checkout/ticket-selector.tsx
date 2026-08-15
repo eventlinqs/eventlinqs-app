@@ -405,7 +405,7 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
           {feesPassedToBuyer ? (
             <>
               <div className="flex justify-between text-sm text-ink-600">
-                <span>Service + processing fees</span>
+                <span>Service fee</span>
                 <span className="tabular-nums">{formatPrice(buyerFeesCents, currency)}</span>
               </div>
               <div className="flex justify-between text-base font-bold text-ink-900 pt-1.5 border-t border-ink-100">
@@ -419,7 +419,7 @@ export function TicketSelector({ eventId, tiers, addons, isTicketingSuspended, c
                 <span>Total</span>
                 <span className="tabular-nums">{formatPrice(allInTotalCents, currency)}</span>
               </div>
-              <p className="text-[11px] text-ink-400">All fees included in the ticket price</p>
+              <p className="text-[11px] text-ink-400">Fee included in the ticket price</p>
             </>
           )}
         </div>

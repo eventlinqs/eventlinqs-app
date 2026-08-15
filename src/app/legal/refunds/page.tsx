@@ -99,8 +99,9 @@ export default async function RefundPolicyPage() {
       <p>
         If an event is cancelled and not rescheduled, you are entitled to a full
         refund of the total amount you paid. That includes the ticket price and
-        every EventLinqs fee shown at checkout: the platform fee and the payment
-        processing fee. There is no deduction and no administration charge.
+        the EventLinqs service fee shown at checkout, which is the only fee
+        charged and already includes card processing. There is no deduction and
+        no administration charge.
       </p>
       <p>
         You do not need to lodge a request. When an organiser confirms a

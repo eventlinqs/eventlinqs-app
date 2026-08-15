@@ -182,8 +182,8 @@ export function PayoutCalculator({ rates, currency = 'AUD' }: Props) {
               $0 in fees
             </p>
             <p className="mt-3 text-sm leading-relaxed text-[var(--text-secondary)]">
-              No platform fee, no processing fee, no card required. Every tool
-              included, same as every paid event.
+              No fee of any kind, and no card required. Every tool included, same
+              as every paid event.
             </p>
           </div>
         ) : (

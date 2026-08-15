@@ -224,13 +224,24 @@ export default async function OrderDetailPage({ params }: Props) {
               </div>
               <div className="border-t border-ink-100 pt-2 space-y-1 text-ink-400">
                 <div className="flex justify-between">
-                  <span>Platform fee</span>
+                  <span>EventLinqs fee</span>
                   <span>−{formatCents(fullOrder.platform_fee_cents, fullOrder.currency)}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span>Processing fee</span>
-                  <span>−{formatCents(fullOrder.processing_fee_cents, fullOrder.currency)}</span>
-                </div>
+                {/*
+                  ONE-FEE-ALLOW: a HISTORICAL order must show what it was actually
+                  charged. Orders placed before 15 August 2026 carry a non-zero
+                  processing_fee_cents and the organiser is entitled to see it;
+                  every order since carries 0 and this row does not render at all.
+                  It was unconditional, so a new order displayed a 0.00 line
+                  labelled with a fee the platform does not charge.
+                */}
+                {fullOrder.processing_fee_cents > 0 && (
+                  <div className="flex justify-between">
+                    {/* ONE-FEE-ALLOW: historical order, gated on a non-zero value. */}
+                    <span>Processing fee (historical)</span>
+                    <span>−{formatCents(fullOrder.processing_fee_cents, fullOrder.currency)}</span>
+                  </div>
+                )}
               </div>
               <div className="border-t border-ink-100 pt-2 flex justify-between font-bold text-green-700">
                 <span>Your Revenue</span>

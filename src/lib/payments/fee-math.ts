@@ -15,6 +15,10 @@ export type FeePassType = 'absorb' | 'pass_to_buyer'
 /**
  * THE FEE VALUES. ONE FEE, founder ruling 15 August 2026.
  *
+ * ONE-FEE-ALLOW-BEGIN: this paragraph records WHAT WAS DELETED and why, which
+ * requires naming it. Deleting the explanation would leave the next reader to
+ * rediscover the reasoning from the migration history.
+ *
  * There used to be two: a platform fee of 3.5% + AUD 0.99 per ticket, and a
  * SEPARATE payment processing fee of 2.5% of the order. The processing line is
  * DELETED. The buyer pays one all-in fee of 3.5% + AUD 0.99, the organiser keeps
@@ -33,6 +37,7 @@ export type FeePassType = 'absorb' | 'pass_to_buyer'
  * method. One fee, not named after processing, sits inside the carve-out.
  * (RBA FAQ and RBA Q&A, both fetched 15 August 2026; CCA s 55A, compilation
  * 1 January 2026.)
+ * ONE-FEE-ALLOW-END
  */
 export interface FeeRates {
   /** Platform / service fee percent, e.g. 3.5 means 3.5%. */

@@ -7,7 +7,10 @@ import { StripeDashboardButton } from '@/components/payouts/stripe-dashboard-but
  *
  * This band exists because the disagreement was previously invisible. On
  * production an organisation named "Party Pty Ltd" carries a Stripe account
- * whose business name reads "Eventlinqs", and no surface anywhere said so. The
+ * whose business name reads "Eventlinqs", and no surface anywhere said so.
+ * ("Party Pty Ltd" is the founder's TEST organiser record, not a company and not
+ * EventLinqs' legal entity; it is deleted after the $1 card test. The divergence
+ * it revealed is real, which is why this band ships.) The
  * organiser is the only person who can put it right, because Stripe stops the
  * platform editing that field once Express onboarding has started, so the fix
  * has to be told to them plainly and with the door to Stripe already open.

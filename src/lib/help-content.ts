@@ -59,7 +59,7 @@ export const helpTopics: HelpTopic[] = [
       },
       {
         q: 'Is it free to create an account?',
-        a: "Yes. Creating a buyer account is completely free. There are no monthly or annual fees for buyers. For organisers, there is no upfront cost to list events. Our fees are a share of ticket revenue, only charged when paid tickets are sold. Free events incur zero platform fees, permanently. See our pricing page for current fee details.",
+        a: "Yes. Creating a buyer account is completely free. There are no monthly or annual fees for buyers. For organisers, there is no upfront cost to list events. Our single fee is a share of ticket revenue, only charged when paid tickets are sold. Free events carry no fee at all, permanently. See our pricing page for the current rate.",
       },
       {
         q: 'How is EventLinqs different from other ticketing platforms?',
@@ -231,11 +231,11 @@ export const helpTopics: HelpTopic[] = [
       },
       {
         q: 'What is the booking fee and where does it go?',
-        a: "The booking fee covers the cost of running the platform: payment processing, fraud prevention, customer support, and platform development. It is split between EventLinqs and a portion the organiser can set within our published cap. All fees are shown in full before the buyer confirms their purchase. There are no hidden charges added at the final step.",
+        a: "There is one fee on a paid ticket and it goes to EventLinqs. It covers card processing, fraud prevention, customer support, and running the platform. Card processing is inside that fee, so there is no separate processing charge and no second fee anywhere in checkout. The full amount is shown before the buyer confirms their purchase, and nothing is added at the final step.",
       },
       {
-        q: 'Is there a cap on what organisers can charge as a booking fee?',
-        a: "Yes. EventLinqs caps the total booking fee to protect buyer trust. Organisers cannot set a booking fee that exceeds our published limit. The current cap and fee structure are on our pricing page, which is always kept up to date.",
+        q: 'Can an organiser add their own booking fee on top?',
+        a: "No. EventLinqs sets one published fee and an organiser cannot add a fee of their own on top of it. The only choice an organiser makes is whether that single fee is passed on to the buyer or absorbed into the ticket price. The current rate is on our pricing page, read live from the same source that charges it.",
       },
       {
         q: 'Can I get a receipt for my ticket purchase?',
@@ -243,7 +243,7 @@ export const helpTopics: HelpTopic[] = [
       },
       {
         q: 'What happens if a buyer files a chargeback?',
-        a: "A chargeback that is upheld results in the disputed amount being deducted from the organiser's payout balance. Stripe may also apply a chargeback processing fee. EventLinqs will contest chargebacks that are not legitimate and will notify the organiser. We encourage buyers to contact us directly before initiating a chargeback, as we can usually resolve genuine disputes faster.",
+        a: "A chargeback that is upheld results in the disputed amount being deducted from the organiser's payout balance. Stripe also charges a dispute fee on top of that, which is a cost of the dispute itself and is separate from the EventLinqs ticket fee. EventLinqs will contest chargebacks that are not legitimate and will notify the organiser. We encourage buyers to contact us directly before initiating a chargeback, as we can usually resolve genuine disputes faster.",
       },
       {
         q: 'What happens to payments if an event is cancelled?',

@@ -56,30 +56,49 @@ have narrower capability sets.
 
 ---
 
-## 3. Changing the platform fee (step by step)
+## 3. Changing the fee (step by step)
 
-This is the immediate task: set the AU platform fee to **2%** (the fixed fee stays
-AUD 0.50). The fee shown on /pricing and charged at checkout come from the SAME
+**There is ONE fee.** Card processing comes out of it; there is no second fee to
+set. The fee shown on /pricing and the fee charged at checkout come from the SAME
 source (the `pricing_rules` table), so changing it here moves both together.
 
+**This guide deliberately states no fee figure.** The current rate lives in one
+place, the PRICING-LOCK block in `docs/PRICING.md`, and the build fails if the
+database and that block disagree. Read the rate there or from the screen itself,
+never from this page. (This section previously walked through setting the rate to
+a specific number that had already been superseded, which is why it now names
+none.)
+
 1. Log in (section 1) and click **Pricing and fees** in the sidebar.
-2. You'll see a table, one row per region. Find the **AU AUD** row.
-3. In **Platform fee percent**, change the value to `2` (for 2%). Leave **Fixed
-   fee per ticket (cents)** at `50` (= AUD 0.50). Leave **Processing fee** as is.
+2. You will see a table, one row per region. Find the **AU AUD** row.
+3. Set **Platform fee percent** and **Fixed fee per ticket (cents)** to the values
+   you intend. Choose **Who pays the fee**: *pass to buyer* adds it on top at
+   checkout and the organiser keeps the full face value, *absorb* takes it out of
+   the organiser payout and the buyer pays the ticket price only.
 4. Click **Save** on that row. A confirmation box appears naming the region and
    warning that new transactions will use the new fee. Click **OK**.
-5. A green banner confirms "Saved AU. N fields updated." The change is now live:
-   - new checkouts charge 2% + AUD 0.50,
-   - the public **/pricing** page shows "2% + AUD 0.50",
-   - the **/organisers** page shows "2% + AUD 0.50".
+5. A green banner confirms "Saved AU. N fields updated." The change is live
+   immediately: new checkouts charge it, and /pricing and /organisers display it,
+   because all three read the same row through the same resolver.
 6. (Optional) Do the same for the **GLOBAL** row so non-AU markets match.
-7. Verify in **Audit log**: you'll see `admin.pricing.updated` with the old value
-   (2.5) and new value (2.0), timestamped, under your name.
+7. Verify in **Audit log**: `admin.pricing.updated` appears with the old and new
+   values, timestamped, under your name.
+
+**If you change the rate, update the lock block too.** `docs/PRICING.md` section 1
+is the written authority and `scripts/check-pricing-lock.mjs` fails the build when
+the database does not match it. Change the database here, change the lock block in
+the same commit, then run `node scripts/pricing-derive.mjs --write` so the worked
+examples and the margin table recompute themselves.
 
 Notes:
 - Every save writes a new VERSION. History is preserved; nothing is overwritten.
 - Past orders are never re-priced.
-- Per-event organiser overrides (where set) still win over the regional default.
+- Per-event and per-organiser overrides (where set) still win over the regional
+  default.
+- <!-- ONE-FEE-ALLOW: records the removed fields. --> The **Processing fee
+  percent** and **Processing fixed** inputs were removed from this screen on
+  15 August 2026. Nothing read them, so they accepted a number, versioned it,
+  wrote it to the audit log, and charged nobody a cent of it.
 
 ---
 

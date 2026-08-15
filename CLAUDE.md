@@ -888,7 +888,7 @@ rules:
   so the displayed fee always equals the charged fee. Never hardcode a fee number
   anywhere (copy included); use the live value or neutral phrasing. The
   `public-fee.ts` constant is a LAST-RESORT fallback used only when the DB is
-  unreachable, never a second fee.
+  unreachable, and it is not a second source of the fee.
 - **Three scopes, clear precedence:** per-event (highest) > per-organiser >
   region/global default. The resolver applies the most specific matching rule and
   guards every lower level with `event_id IS NULL` so scopes never collide. Both
@@ -904,22 +904,28 @@ The final, decided fee model, sourced from `docs/EventLinqs-Fee-Structure-LOCKED
 the single-source fee system above; the values live in `pricing_rules` and are
 admin-editable. Do not reopen the numbers; tune only in admin if real data warrants.
 
-- **Two fees on every PAID ticket.** (1) PLATFORM / SERVICE fee (the profit
-  margin): `3.5% + AUD 0.99` per ticket. (2) PAYMENT PROCESSING fee (covers
-  Stripe, thin margin): `2.5%` of the order, no flat component. POSITIONING
-  (founder decision 2026-07-05, Path B): our HEADLINE platform fee undercuts
-  Humanitix's headline (3.5% + $0.99 versus their 4% + $0.99) and we are far
-  cheaper than Eventbrite all-in, but Humanitix's rate INCLUDES payment
-  processing, so on an all-in basis they are 7 to 29 cents cheaper across
-  $15 to $35. NEVER claim to be cheaper than Humanitix all-in (false, a
-  consumer-law risk); the money story is the lower headline platform fee,
-  far-cheaper-than-Eventbrite, and radical fee transparency (published
-  rates, all-in at first click, the live payout calculator).
+- **ONE fee on every PAID ticket** (founder ruling 15 August 2026). Card
+  processing comes out of it; there is no second fee and no processing line.
+  **The rate is NOT written here.** It lives in exactly one place, the
+  PRICING-LOCK block in `docs/PRICING.md`, and every surface derives it through
+  `getLivePublicFee` / `getPricingRule`. This bullet used to carry the two rates
+  as literals, which is precisely how the deleted fee outlived its deletion.
+  POSITIONING: the 5 July 2026 rule "NEVER claim to be cheaper than Humanitix
+  all-in" was correct under the two-fee model and is now OUT OF DATE, because
+  deleting the second fee inverted the comparison. Whether to make a comparative
+  claim is a founder decision; the sourced arithmetic is in
+  `docs/EventLinqs-Fee-Structure-LOCKED.md`. The standing money story remains
+  the lower headline rate, far-cheaper-than-Eventbrite, and radical fee
+  transparency (published rates, all-in at first click, the live payout
+  calculator).
 - **Free events are free.** `$0`, no fees, same as every competitor. The
   calculator short-circuits a zero-subtotal cart before any fee is applied.
-- **Admin-editable, no code change.** Both percentages AND the flat amount are
+- **Admin-editable, no code change.** The percentage AND the flat amount are
   edited by the founder in `/admin/pricing` (region defaults plus per-organiser /
-  per-event overrides), persisted as the single source the checkout reads.
+  per-event overrides), persisted as the single source the checkout reads. The
+  processing-fee amount fields were REMOVED from that screen on 15 August 2026:
+  nothing read them, so they accepted a number, versioned it, audit-logged it and
+  charged nobody a cent of it.
 - **ACCC all-in display (Australian Consumer Law, drip-pricing).** The true
   all-in total is shown to the buyer CLEARLY and EARLY, as a single total figure,
   on the ticket-selection surface, never sprung only at the final checkout step.
@@ -927,8 +933,8 @@ admin-editable. Do not reopen the numbers; tune only in admin if real data warra
   (`src/lib/payments/fee-math.ts`, used by both the server `PaymentCalculator` and
   the client display, so the shown total can never diverge from the charged total).
 - **Absorb or pass-on, pass-on default.** Per-event organiser toggle
-  (`events.fee_pass_type`): PASS-ON (buyer pays the fees, organiser keeps full
-  face value) is the default; ABSORB deducts the fees from the organiser payout.
+  (`events.fee_pass_type`): PASS-ON (buyer pays the fee, organiser keeps full
+  face value) is the default; ABSORB deducts the fee from the organiser payout.
   Both modes route through the proven funds-holding payout math unchanged.
 - **GST posture (limited collection agent).** EventLinqs is the organiser's
   limited payment collection agent: the ORGANISER is the seller and remits GST on
@@ -936,9 +942,21 @@ admin-editable. Do not reopen the numbers; tune only in admin if real data warra
   GST-registered (turnover over $75k). Do NOT add 10% GST to the EventLinqs fee
   until registered; the ticket face value and the fee are treated GST-inclusive,
   so no separate GST line is added to the buyer total.
-- **Launch baseline:** AU = `3.5% + AUD 0.99` platform, `2.5%` processing, written
-  to `pricing_rules` by a lawful migration so the documented fee and the live value
-  match (`public-fee.ts` is the last-resort fallback and is kept in sync).
+- **Launch baseline:** the AU rate lives in the PRICING-LOCK block in
+  `docs/PRICING.md` and in `pricing_rules`, written by a lawful migration so the
+  documented fee and the live value match (`public-fee.ts` is the last-resort
+  fallback and is kept in sync). No migration was needed to delete the second
+  fee: nothing reads those rows any more, so they are inert history.
+<!-- ONE-FEE-ALLOW-BEGIN: describes the guards and what they catch. -->
+- **The fee is written down in ONE place and derived everywhere else.** Six locks
+  hold it, listed in `docs/PRICING.md` section 8. Two of them were added on
+  15 August 2026 after the deleted fee was found alive in about twenty surfaces:
+  `scripts/pricing-derive.mjs --check`, which recomputes every worked figure in
+  the authority document from the lock block, and
+  `scripts/guards/one-fee-copy.mjs`, which fails the build if any
+  customer-facing surface names a second fee. Assistants resolve the fee live per
+  request and are forbidden from quoting a figure at all when that lookup fails.
+<!-- ONE-FEE-ALLOW-END -->
 
 ## Venue Revenue Sharing Program: REMOVED (founder decision 2026-07-05)
 

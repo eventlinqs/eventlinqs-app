@@ -106,7 +106,9 @@ const MESSAGES: Record<AuthFailureClass, string> = {
   email_not_confirmed:
     'This account still needs its email confirmed. Open the verification link we sent you, or request a new one.',
 
-  // Our fault. Honest that it is us, honest that it is temporary.
+  // Our fault, and the copy says so plainly rather than blaming the account.
+  // It also tells the user the failure is transient so they retry instead of
+  // assuming their account is broken.
   mail_transport_failed:
     'We could not send that email just now. This is a problem on our side, not with your account. Please try again in a few minutes.',
 

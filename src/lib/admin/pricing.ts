@@ -34,16 +34,25 @@ export const ADMIN_PRICING_SCOPES: readonly AdminPricingScope[] = [
   { countryCode: 'IE', currency: 'EUR', label: 'Europe' },
 ]
 
-// The fields the owner edits per region. Both fees (their percentages AND the
-// platform flat amount) and the processing-fee treatment are editable, no code
-// change (locked fee structure: founder controls pricing). processing_fee_fixed_cents
-// is the flat processing component (0 under the locked AU model).
-// processing_fee_pass_through is the treatment: 0 = absorb, 1 = pass to buyer.
+// The fields the owner edits per region: the ONE fee (its percentage and its
+// flat per-ticket amount) and who carries it. No code change required (locked
+// fee structure: the founder controls pricing).
+//
+// ONE FEE, founder ruling 15 August 2026. `processing_fee_percentage` and
+// `processing_fee_fixed_cents` were REMOVED from this list, and from the admin
+// screen with it, because nothing reads those rules any more. Leaving them
+// editable was worse than leaving them unread: the screen invited the founder to
+// set a number, accepted it, versioned it, wrote it to the audit log, and
+// charged nobody a cent of it. An editor that silently does nothing is a no-op
+// control, and this one was a no-op control over money.
+//
+// `processing_fee_pass_through` STAYS and is genuinely live: despite its name it
+// governs whether the single fee is passed to the buyer (1) or absorbed by the
+// organiser (0). Renaming the rule needs a migration and a coordinated deploy,
+// so the name is left alone and the screen labels it for what it does.
 export const ADMIN_EDITABLE_FIELDS = [
   'platform_fee_percentage',
   'platform_fee_fixed',
-  'processing_fee_percentage',
-  'processing_fee_fixed_cents',
   'processing_fee_pass_through',
 ] as const
 export type AdminEditableField = (typeof ADMIN_EDITABLE_FIELDS)[number]
@@ -51,8 +60,6 @@ export type AdminEditableField = (typeof ADMIN_EDITABLE_FIELDS)[number]
 const FIELD_VALUE_TYPE: Record<AdminEditableField, PricingRuleValueType> = {
   platform_fee_percentage: 'percentage',
   platform_fee_fixed: 'fixed',
-  processing_fee_percentage: 'percentage',
-  processing_fee_fixed_cents: 'fixed',
   processing_fee_pass_through: 'integer',
 }
 
@@ -65,9 +72,8 @@ export interface AdminPricingRowView {
   scope: AdminPricingScope
   platformFeePercentage: AdminPricingCell
   platformFeeFixedCents: AdminPricingCell
-  processingFeePercentage: AdminPricingCell
-  processingFeeFixedCents: AdminPricingCell
-  processingTreatment: AdminPricingCell // value 0 (absorb) | 1 (pass)
+  /** Who carries the one fee: 0 = organiser absorbs, 1 = passed to the buyer. */
+  processingTreatment: AdminPricingCell
 }
 
 type AdminClient = ReturnType<typeof createAdminClient>
@@ -112,19 +118,15 @@ export async function readAdminPricingMatrix(): Promise<AdminPricingRowView[]> {
   const admin = createAdminClient()
   const rows: AdminPricingRowView[] = []
   for (const scope of ADMIN_PRICING_SCOPES) {
-    const [pct, fixed, procPct, procFixed, treat] = await Promise.all([
+    const [pct, fixed, treat] = await Promise.all([
       readCurrent(admin, 'platform_fee_percentage', scope.countryCode, scope.currency),
       readCurrent(admin, 'platform_fee_fixed', scope.countryCode, scope.currency),
-      readCurrent(admin, 'processing_fee_percentage', scope.countryCode, scope.currency),
-      readCurrent(admin, 'processing_fee_fixed_cents', scope.countryCode, scope.currency),
       readCurrent(admin, 'processing_fee_pass_through', scope.countryCode, scope.currency),
     ])
     rows.push({
       scope,
       platformFeePercentage: pct,
       platformFeeFixedCents: fixed,
-      processingFeePercentage: procPct,
-      processingFeeFixedCents: procFixed,
       processingTreatment: treat,
     })
   }

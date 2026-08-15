@@ -287,8 +287,8 @@ export default async function OrganiserAgreementPage() {
       <p>
         <strong>Who bears the cost.</strong> When an order is refunded, the refund
         is taken from your reserve and balance for that event, up to the amount you
-        received. Under the fee arrangement currently operating, the platform and
-        processing fee portion of a refunded order is borne by EventLinqs and is not
+        received. Under the fee arrangement currently operating, the EventLinqs
+        fee portion of a refunded order is borne by EventLinqs and is not
         deducted from you in addition to your share.
       </p>
       <p>

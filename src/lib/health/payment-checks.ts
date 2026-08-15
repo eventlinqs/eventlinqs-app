@@ -228,6 +228,12 @@ export async function driftWatchdog(): Promise<PaymentCheckResult> {
  * with nothing anywhere reporting the disagreement. Silent divergence is the
  * actual defect; the empty form was only how it started.
  *
+ * On the example itself: "Party Pty Ltd" is NOT a company and not EventLinqs'
+ * legal entity. It is the founder's TEST organiser record, created with a
+ * made-up name to put a real card through a $1 checkout, and it is deleted once
+ * that passes. The divergence it exposed is real and this check stays; the name
+ * is a fixture, so do not read it as a customer.
+ *
  * ONE Stripe call, not one per organisation. `/v1/accounts` returns
  * `business_profile` inline, so a platform with a hundred organisers costs a
  * single request rather than a hundred, and the sentinel stays cheap enough to

@@ -16,8 +16,9 @@ const ScopeSchema = z.object({
   currency: z.string().length(3),
   platform_fee_percentage: z.coerce.number().min(0).max(100),
   platform_fee_fixed: z.coerce.number().int().min(0).max(100000), // cents
-  processing_fee_percentage: z.coerce.number().min(0).max(100),
-  processing_fee_fixed_cents: z.coerce.number().int().min(0).max(100000), // cents
+  // ONE FEE (15 August 2026): the two processing-fee amounts were removed from
+  // the form and from ADMIN_EDITABLE_FIELDS because nothing charges them. Only
+  // the pass-through treatment remains, and it decides who carries the one fee.
   processing_fee_pass_through: z.coerce.number().int().min(0).max(1),
 })
 
@@ -35,8 +36,6 @@ export async function updateScopePricingAction(formData: FormData): Promise<void
     currency: formData.get('currency'),
     platform_fee_percentage: formData.get('platform_fee_percentage'),
     platform_fee_fixed: formData.get('platform_fee_fixed'),
-    processing_fee_percentage: formData.get('processing_fee_percentage'),
-    processing_fee_fixed_cents: formData.get('processing_fee_fixed_cents'),
     processing_fee_pass_through: formData.get('processing_fee_pass_through'),
   })
   if (!parsed.success) {

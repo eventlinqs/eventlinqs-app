@@ -21,6 +21,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { LoadingState } from '@/components/ui/LoadingState'
 import { FileQuestion } from 'lucide-react'
 import { PreviewForm } from './PreviewForm'
+import { assertPreviewRouteAllowed } from '@/lib/dev/preview-route'
 
 function BlockLabel({ number, name }: { number: number; name: string }) {
   return (
@@ -36,6 +37,7 @@ function BlockLabel({ number, name }: { number: number; name: string }) {
 }
 
 export default function ShellPreviewPage() {
+  assertPreviewRouteAllowed()
   return (
     <PageShell>
 

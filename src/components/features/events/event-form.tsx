@@ -1296,26 +1296,28 @@ export function EventForm({
         )}
       </div>
 
-      {/* Booking fees: who pays (per-event). Pass-on is the default so the
-          organiser keeps the full face value; absorb deducts the fees from the
-          payout. The buyer always sees the true all-in total before checkout. */}
+      {/* Booking fee: who pays (per-event). Pass-on is the default so the
+          organiser keeps the full face value; absorb deducts the fee from the
+          payout. The buyer always sees the true all-in total before checkout.
+          ONE fee since 15 August 2026: card processing is inside it, so no
+          surface may name a separate processing charge. */}
       <div className="rounded-lg border border-ink-200 p-5">
-        <p className="text-sm font-semibold text-ink-900">Booking fees</p>
+        <p className="text-sm font-semibold text-ink-900">Booking fee</p>
         <p className="mt-1 text-xs text-ink-400">
-          Choose who pays the EventLinqs service and processing fees. Free tickets are
-          never charged a fee.
+          Choose who pays the EventLinqs service fee, which includes card
+          processing. Free tickets are never charged a fee.
         </p>
         <div className="mt-4 space-y-3">
           {([
             {
               value: 'pass_to_buyer',
-              label: 'Pass fees to the buyer (recommended)',
-              desc: 'The buyer pays the fees on top at checkout and you keep the full ticket face value. The all-in total is shown to the buyer up front.',
+              label: 'Pass the fee to the buyer (recommended)',
+              desc: 'The buyer pays the fee on top at checkout and you keep the full ticket face value. The all-in total is shown to the buyer up front.',
             },
             {
               value: 'absorb',
-              label: 'Absorb the fees',
-              desc: 'The buyer pays only the ticket price and the fees are deducted from your payout.',
+              label: 'Absorb the fee',
+              desc: 'The buyer pays only the ticket price and the fee is deducted from your payout.',
             },
           ] as { value: FeePassType; label: string; desc: string }[]).map(opt => (
             <label

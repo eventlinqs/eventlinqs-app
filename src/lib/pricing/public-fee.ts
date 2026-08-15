@@ -14,29 +14,24 @@
  * failure degrades to the right number.
  *
  * Launch baseline (founder, LOCKED 2026, docs/EventLinqs-Fee-Structure-LOCKED.md):
- * the PLATFORM / SERVICE fee 3.5% + AUD 0.99 per paid ticket, written to
- * `pricing_rules` by migration 20260627000001_fee_structure_locked_au. This
- * constant mirrors only the platform fee (the public marketing number); the
- * separate 2.5% processing fee lives in pricing_rules and is resolved live.
+ * the SERVICE fee 3.5% + AUD 0.99 per paid ticket, written to `pricing_rules`
+ * by migration 20260627000001_fee_structure_locked_au.
  *   platform_fee_percentage = 3.5
  *   platform_fee_fixed      = 99 (cents) = AUD 0.99
+ *
+ * ONE-FEE-ALLOW-BEGIN: names the deleted constant so its removal is auditable.
+ * ONE FEE, founder ruling 15 August 2026. There is no second constant here
+ * because there is no second fee: card processing is paid out of the 3.5, not
+ * charged as a line of its own. A `PUBLIC_PROCESSING_FEE` fallback of 2.5% used
+ * to sit below this one; it was DELETED rather than zeroed, because a fallback
+ * constant is read exactly when the database cannot be, and a stale one would
+ * reintroduce the deleted fee at the precise moment nothing could contradict it.
+ * ONE-FEE-ALLOW-END
  */
 export const PUBLIC_PLATFORM_FEE = {
   percent: 3.5,
   fixedCents: 99,
   currency: 'AUD',
-} as const
-
-/**
- * LAST-RESORT processing-fee fallback (NOT a second source). Mirrors the locked
- * AU processing fee written to `pricing_rules` by migration
- * 20260627000001_fee_structure_locked_au: 2.5% of the order, no flat component.
- * Used only when a live processing-fee lookup fails, so the all-in display never
- * 500s and degrades to the right number.
- */
-export const PUBLIC_PROCESSING_FEE = {
-  percent: 2.5,
-  fixedCents: 0,
 } as const
 
 /** e.g. "2%" */

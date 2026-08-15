@@ -131,7 +131,9 @@ export async function POST(req: NextRequest) {
         // the business name filled in instead of blank. A blank field is how
         // "Party Pty Ltd" became "Eventlinqs" on the production account
         // acct_1U2Df1GThKJm4ih9: the organiser was asked to retype a name the
-        // platform had in this very row and got it wrong.
+        // platform had in this very row and got it wrong. ("Party Pty Ltd" is
+        // the founder's TEST organiser record, not a company; the retyping
+        // defect it exposed is real and applies to every organiser.)
         businessProfile: buildConnectBusinessProfile(org, user.email ?? null),
       })
       accountId = account.id

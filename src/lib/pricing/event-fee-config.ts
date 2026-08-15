@@ -7,7 +7,7 @@ import {
   getFoundingWaiver,
   type OrganisationReadClient,
 } from '@/lib/payments/founding-waiver'
-import { PUBLIC_PLATFORM_FEE, PUBLIC_PROCESSING_FEE } from './public-fee'
+import { PUBLIC_PLATFORM_FEE } from './public-fee'
 
 /**
  * Resolves the full set of fee VALUES (both percentages + the platform flat fee)

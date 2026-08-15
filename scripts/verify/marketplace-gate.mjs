@@ -1,6 +1,6 @@
 ﻿/**
  * Performer marketplace evidence battery (TEST only, guarded). Runs against
- * staging with gig_board + artist_showcase temporarily ON, restores both to
+ * staging with gig_board + artist_showcase switched ON for the run, restores both to
  * OFF at the end (the launch state). Stages:
  *   setup    - flags ON, fixture event, performer showcase data, passwords
  *   showcase - performer edits their showcase through the REAL editor

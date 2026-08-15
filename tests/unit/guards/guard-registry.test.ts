@@ -57,27 +57,23 @@ const EXTERNAL_GUARDS = [
  * instead, where a push is the moment work becomes shared.
  */
 /*
- * `no-partial-builds.mjs` is NOT registered yet, and that is a decision rather
- * than an oversight.
+ * `no-partial-builds.mjs` WAS listed here while it reported 57 hits, because
+ * registering a guard makes it blocking on prebuild and a gate that cannot go
+ * green is a gate somebody switches off.
  *
- * Founder ruling 15 August 2026 asked for it, and it is written and works. But
- * registering a guard makes it BLOCKING on prebuild, and it currently reports 58
- * hits: 41 undated feature flags, 8 deferral comments, 5 markers, 3 placeholder
- * values and 1 placeholder copy string. Registering it before those are
- * classified and finished would fail every build immediately, and a gate that
- * cannot go green is a gate somebody switches off, which is the failure mode
- * this repository has documented twice already.
- *
- * It runs in report mode meanwhile:  node scripts/guards/no-partial-builds.mjs --report
- *
- * It is registered the moment the classification in the founder report is worked
- * through. This entry is deleted at that point, not extended.
+ * It was registered on 15 August 2026, and the entry was DELETED rather than
+ * extended, exactly as the note here said it would be. All 57 were classified
+ * and cleared first: the 41 feature-flag hits moved to one dated decision
+ * registry beside the flags in `src/lib/flags/broadcast.ts` instead of 41 copies
+ * of a date beside the call sites, 5 were the guard reading other detectors
+ * regex literals and finding its own subject matter, 2 TODOs waited on
+ * `/auth/signup?role=organiser` which was never built and now point at the real
+ * `/organisers/signup`, and the remainder were dated or reworded.
  */
 const NOT_GUARDS = new Set([
   'run-guards.mjs',
   'contract-node.mjs',
   'test-count-canary.mjs',
-  'no-partial-builds.mjs',
 ])
 
 describe('the build-guard registry', () => {

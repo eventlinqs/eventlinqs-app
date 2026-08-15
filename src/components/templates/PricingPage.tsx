@@ -102,7 +102,7 @@ const FAQ = [
   },
   {
     q: "Do you charge a fee for refunds?",
-    a: "EventLinqs does not charge a separate refund processing fee. If a refund is issued, the platform fee is refunded to the buyer. Payment processing fees charged by Stripe may not be recoverable in all cases. For events cancelled by the organiser, EventLinqs refunds the full amount including service fees.",
+    a: "No. There is no refund fee and no administration charge. When a refund is issued the EventLinqs service fee goes back to the buyer with the ticket price, and for an event cancelled by the organiser the full amount paid is refunded. There is only ever the one fee, and card processing is already inside it.",
   },
 ]
 

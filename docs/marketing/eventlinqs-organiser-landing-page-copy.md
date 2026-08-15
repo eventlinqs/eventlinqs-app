@@ -18,7 +18,7 @@ Voice rules applied throughout: plain, confident, specific, no hype words (no re
 
 **Headline (verbatim, locked):** Build your event, map your room, get your complete promo kit, in minutes. Free.
 
-**Subheadline:** EventLinqs is the Australian ticketing platform built for local organisers. Every event you create comes with its complete promo kit: live event page, print-ready QR poster, social share cards, tracked links, and a live reach panel. All-in fees of $2.19 on a $20 ticket, and you keep the full $20.
+**Subheadline:** EventLinqs is the Australian ticketing platform built for local organisers. Every event you create comes with its complete promo kit: live event page, print-ready QR poster, social share cards, tracked links, and a live reach panel. One all-in fee of $1.69 on a $20 ticket, and you keep the full $20.
 
 **Primary CTA button:** Build your event
 **Secondary CTA:** Join the Founding Organiser Program
@@ -42,25 +42,25 @@ Option B (local-led): "Sell out your next event, right here in your city." Use f
 
 | | EventLinqs |
 |---|---|
-| Fee on a $20 ticket | $2.19 all-in ($1.69 platform + $0.50 processing), GST-inclusive, shown up front |
-| Buyer pays | $22.19 |
+| Fee on a $20 ticket | $1.69 all-in, one fee with card processing included, shown up front |
+| Buyer pays | $21.69 |
 | You keep | The full $20.00 |
-| Free events | Always free, no fees at all |
+| Free events | Always free, no fee at all |
 
 **Comparison prompt (under the table):** Pull up what your current platform charges on a $20 ticket, and what it holds back from you. Then compare. We publish our numbers because we are happy for you to.
 
-**Founding organiser line (directly under the table):** Founding organisers pay zero platform fees for 6 months: your $20 ticket costs your attendees just $20.50 instead of $22.19.
+**Founding organiser line (directly under the table):** Founding organisers pay zero fees for 6 months, and zero means zero: your $20 ticket costs your attendees exactly $20.00.
 
-**Secondary example line (small text under the table):** On a $30 ticket: $2.79 all-in, buyer pays $32.79, you keep the full $30. Fees correct as at [date].
+**Secondary example line (small text under the table):** On a $30 ticket: $2.04 all-in, buyer pays $32.04, you keep the full $30. Fees correct as at [date].
 
 **RETIRED (claims law, 8 July 2026):** the previous version of this table named Eventbrite and Ticketek in public copy. Competitors are never named publicly. Naming a prospect's own current platform inside a private one-to-one DM or email remains acceptable, because that is their platform, not public comparative advertising. The cheapest-all-in claim is also never made: we state our own numbers and invite comparison, we never claim to be the cheapest.
 
-**Line under the table:** No hidden charges. No fee to create an event. All fees are GST-inclusive and shown to the buyer up front, and in the default setup you keep the full face value of every ticket.
+**Line under the table:** No hidden charges. No fee to create an event. There is one fee, card processing is inside it, it is shown to the buyer up front, and in the default setup you keep the full face value of every ticket.
 
-**PRICING ANCHOR RULE (founder directive, 5 July 2026):** every fee example on this page and in every template anchors on a $20 ticket first, with $30 as the secondary example where a second helps. The founding segment is local gigs, comedy, markets and community events priced $15 to $35. Higher-priced examples are banned because they position the platform for expensive events and alienate the exact organisers being recruited. STATUS: EventLinqs figures VERIFIED 5 July 2026, computed by executing the platform's single-source fee code (computeFeeLineCents and computeAllInTotalCents) against the live AU pricing rules, cross-anchored to a real staging card purchase. Rates: platform 3.5% + $0.99 per ticket, processing 2.5%, GST-inclusive, pass-on mode default.
+**PRICING ANCHOR RULE (founder directive, 5 July 2026):** every fee example on this page and in every template anchors on a $20 ticket first, with $30 as the secondary example where a second helps. The founding segment is local gigs, comedy, markets and community events priced $15 to $35. Higher-priced examples are banned because they position the platform for expensive events and alienate the exact organisers being recruited. STATUS: RE-DERIVED 15 August 2026 against the PRICING-LOCK block in docs/PRICING.md after the second fee was deleted. There is now ONE fee, pass-on mode default, and card processing comes out of it. The figures above are produced by `node scripts/pricing-derive.mjs --write`; re-derive rather than re-guess if the rate ever moves, and never write a rate into this file.
 
 **COPY SAFETY RULES FROM ENGINEERING (binding on all marketing copy):**
-1. These figures are one ticket per order, pass-on mode. The $0.99 platform component is per ticket but the processing percentage is per order, so NEVER multiply a single-ticket row to claim fees for multi-ticket orders. Multi-ticket examples must be recomputed, never extrapolated.
+1. These figures are one ticket per order, pass-on mode. The flat component is per ticket, so NEVER multiply a single-ticket row to claim fees for multi-ticket orders. Multi-ticket examples must be recomputed, never extrapolated.
 2. "You keep the full face value" is true in pass-on mode (the default) only. In absorb mode the buyer pays face value and fees come from the payout. Never mix the two framings in one claim.
 3. All amounts are GST-inclusive; never add or imply a separate GST line.
 4. PRE-PUBLISH CHECK: these rates were resolved from the TEST database pricing rules. Confirm production carries identical pricing rules before this page goes live.
@@ -82,7 +82,7 @@ Here is the deal, plainly: you get 6 months with zero platform fees, and in retu
 
 As a founding organiser you get:
 
-- **Zero platform fees for 6 months.** Your attendees pay only the card processing fee: on a $20 ticket, that is $20.50 all-in instead of $22.19.
+- **Zero fees for 6 months, and zero means zero.** There is no second fee left to charge, so on a $20 ticket your attendees pay exactly $20.00 instead of $21.69.
 - **Extend it by referring.** Every organiser you successfully refer adds 3 months to your zero-fee period.
 - **Free migration.** Send us your event details and attendee list, and we will have your events live within a day. You approve everything before it goes public.
 - **A direct line to the founder.** Not a ticket queue. A real person who will fix your problem today.
@@ -171,7 +171,7 @@ I'm Lawal. I built EventLinqs in Melbourne because local organisers deserve a pl
 No. Run one event with us and see how it goes. Most organisers move the rest after their first payout.
 
 **What does it cost?**
-Our fee is 3.5% + $0.99 per ticket plus 2.5% card processing, all GST-inclusive and shown up front. On a $20 ticket that is $2.19 all-in, and you keep the full $20. Free events are always free, no fees at all. Founding organisers pay zero platform fees for 6 months, extendable by 3 months per successful organiser referral.
+One fee, with card processing already inside it, shown up front. On a $20 ticket that is $1.69 all-in, and you keep the full $20. There is no separate processing charge and no second fee anywhere. Free events are always free, no fee at all. Founding organisers pay zero fees for 6 months, extendable by 3 months per successful organiser referral.
 
 **When do I get paid?**
 [X days] after [purchase / your event]. Payouts go straight to your nominated bank account via Stripe.
@@ -219,6 +219,7 @@ Yes. Export it any time. We never sell it and never contact your attendees witho
 
 **Claims law, locked 8 July 2026 (build side, binding on every asset):** BETTER claims are made only on creation speed, seating, share-attribution, and check-in integrity, all benchmark-proven. Everything else is claimed as EQUAL at most. No competitor is ever named publicly (naming a prospect's own current platform in private one-to-one outreach is acceptable). Never claim: recurring events, wallet passes, organiser email campaigns, offline check-in, or cheapest all-in pricing. The gig board and performer directory are built but OFF: they are never marketed until the post-launch "performers, bring your numbers" moment. The Event Launch Kit hook is verbatim and unedited: "Build your event, map your room, get your complete promo kit, in minutes. Free."
 
-**Founding Organiser offer, locked 4 July 2026, amended 5 July 2026:** zero platform fees for 6 months, extendable by 3 months per successful organiser referral, capped at the first 50 organisers in Geelong and Melbourne, offered in exchange for the organiser's honest feedback (one short chat after their first event, a brief quarterly survey, and an open line for feature and growth ideas). The feedback ask is light and specific, and the zero-fee period is never revoked for non-participation. Every mention of the offer, in this document and in every template, uses this term and no other.
+<!-- ONE-FEE-ALLOW: records what the waiver used to leave behind. -->
+**Founding Organiser offer, locked 4 July 2026, amended 5 July 2026 and 15 August 2026:** zero fees for 6 months, and with the second fee deleted that is now literally zero to the buyer rather than the ticket price plus a processing line, extendable by 3 months per successful organiser referral, capped at the first 50 organisers in Geelong and Melbourne, offered in exchange for the organiser's honest feedback (one short chat after their first event, a brief quarterly survey, and an open line for feature and growth ideas). The feedback ask is light and specific, and the zero-fee period is never revoked for non-participation. Every mention of the offer, in this document and in every template, uses this term and no other.
 
-**Pricing anchor rule, locked 5 July 2026:** all fee examples anchor on a $20 ticket as the primary example, $30 as the secondary where a second helps. Exact figures come only from the verified fee table, used exactly as given with no rounding into different numbers. STATUS: figures VERIFIED 5 July 2026, executed from the platform's single-source fee code against live AU pricing rules and cross-anchored to a real staging purchase. Canonical rows: $20 ticket = $1.69 platform + $0.50 processing, buyer pays $22.19, organiser keeps $20.00; $30 ticket = $2.04 + $0.75, buyer pays $32.79, organiser keeps $30.00; founding period $20 ticket = $20.50 all-in to the buyer. Binding caveats: single-ticket, pass-on mode figures only, never extrapolated to multi-ticket orders; "keep full face value" claims apply to pass-on mode only; all amounts GST-inclusive, never imply a separate GST line; confirm production pricing rules match TEST before anything publishes.
+**Pricing anchor rule, locked 5 July 2026, figures RE-DERIVED 15 August 2026:** all fee examples anchor on a $20 ticket as the primary example, $30 as the secondary where a second helps. Exact figures come only from the derived block in docs/PRICING.md section 3, used exactly as given with no rounding into different numbers. STATUS: there is now ONE fee and the second fee is deleted, so every canonical row below changed. Canonical rows: $20 ticket = $1.69 all-in, buyer pays $21.69, organiser keeps $20.00; $30 ticket = $2.04 all-in, buyer pays $32.04, organiser keeps $30.00; founding period $20 ticket = $20.00 to the buyer, because the waiver now takes the whole fee to zero. Binding caveats: single-ticket, pass-on mode figures only, never extrapolated to multi-ticket orders; "keep full face value" claims apply to pass-on mode only; never imply a separate GST line and never name a processing fee; confirm production pricing rules match the lock block before anything publishes.

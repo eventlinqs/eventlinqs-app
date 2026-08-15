@@ -109,8 +109,60 @@ const RULES = [
   },
 ]
 
-/** Feature flags must carry an owner and a dated decision somewhere in the file. */
+/** Feature-flag call sites. */
 const FLAG_DECL = /(?:isFeatureEnabled|FEATURE_FLAGS|featureFlag|flags?\.)\s*[([]\s*['"`]([a-z0-9_]+)['"`]/gi
+
+/**
+ * THE FLAG DECISION REGISTRY.
+ *
+ * A flag is a single decision with a single owner. The first version of this
+ * rule asked for a date in the file containing each CALL, which produced 41 hits
+ * across about thirty files and could have been silenced by pasting a date
+ * comment into every one of them. Thirty copies of a decision rot independently,
+ * so the requirement moved to where the decision belongs: beside the flag.
+ *
+ * `src/lib/flags/broadcast.ts` exports BROADCAST_FLAG_DECISIONS, one entry per
+ * flag, each carrying an owner and an ISO date. A call site is satisfied when
+ * its flag has an entry there. A flag with no entry fails the build, which is
+ * the case worth catching: a switch nobody decided.
+ */
+const DECISION_REGISTRY = 'src/lib/flags/broadcast.ts'
+const DECISION_ENTRY = /^\s*([a-z0-9_]+)\s*:\s*['"`][^'"`]*\b[a-z][a-z.\- ]{1,30}\s+\d{4}-\d{2}-\d{2}/gim
+
+function readDecidedFlags() {
+  const decided = new Set()
+  let src
+  try {
+    src = readFileSync(path.join(ROOT, DECISION_REGISTRY), 'utf8')
+  } catch {
+    return decided
+  }
+  for (const m of src.matchAll(DECISION_ENTRY)) decided.add(m[1])
+  return decided
+}
+
+/**
+ * DETECTOR FILES: excluded from the placeholder, marker and deferral rules.
+ *
+ * These files exist to DEFINE the very patterns this guard looks for, so their
+ * regex literals matched their own subject matter. On the first run that produced
+ * five hits which were all the same joke: `copy-tell-gate.mjs` was reported for
+ * containing the string "lorem ipsum" inside the rule that BANS lorem ipsum, and
+ * for quoting the constitution line "not a stub to fix later" while explaining
+ * why placeholder copy is a defect. `no-partial-builds.mjs` already skipped
+ * itself for exactly this reason; the exemption was simply too narrow, because
+ * it is not the only detector in the tree.
+ *
+ * Listed explicitly rather than inferred, and printed on every run, so the list
+ * cannot quietly grow into a way of hiding real work.
+ */
+const DETECTOR_FILES = new Set([
+  'scripts/guards/no-partial-builds.mjs',
+  'scripts/guards/no-plaintext-credential.mjs',
+  'scripts/guards/one-fee-copy.mjs',
+  'scripts/copy-tell-gate.mjs',
+  'scripts/sweep/walk.mjs',
+])
 
 function walk(dir, out = []) {
   let entries
@@ -140,8 +192,8 @@ const hits = []
 for (const file of files) {
   const rel = path.relative(ROOT, file).split('\\').join('/')
   const isTest = /(^|\/)tests?\//.test(rel) || /\.test\.|\.spec\./.test(rel)
-  // This guard has to name the very words it bans.
-  if (rel === 'scripts/guards/no-partial-builds.mjs') continue
+  // A detector has to name the very words it bans. See DETECTOR_FILES.
+  if (DETECTOR_FILES.has(rel)) continue
 
   let src
   try {
@@ -162,25 +214,26 @@ for (const file of files) {
   })
 }
 
-/* Feature flags with no dated decision anywhere in their declaring file. */
+/* Feature flags with no dated decision in the registry. */
+const decidedFlags = readDecidedFlags()
 for (const file of files) {
   const rel = path.relative(ROOT, file).split('\\').join('/')
-  if (rel === 'scripts/guards/no-partial-builds.mjs') continue
+  if (DETECTOR_FILES.has(rel)) continue
   let src
   try {
     src = readFileSync(file, 'utf8')
   } catch {
     continue
   }
-  const hasDatedDecision = /\d{4}-\d{2}-\d{2}/.test(src)
-  if (hasDatedDecision) continue
   for (const m of src.matchAll(FLAG_DECL)) {
+    const flag = m[1]
+    if (decidedFlags.has(flag)) continue
     const line = src.slice(0, m.index).split(/\r?\n/).length
     hits.push({
       file: rel,
       line,
       rule: 'undated-flag',
-      why: 'a feature flag with no dated decision in its file',
+      why: `feature flag "${flag}" has no owner-and-dated decision in ${DECISION_REGISTRY}`,
       text: m[0].slice(0, 120),
     })
   }
@@ -190,6 +243,11 @@ const byRule = new Map()
 for (const h of hits) byRule.set(h.rule, (byRule.get(h.rule) ?? 0) + 1)
 
 console.log(`[no-partial-builds] scanned ${files.length} file(s) under ${SCAN_DIRS.join(', ')}`)
+console.log(
+  `[no-partial-builds] flag decisions read from ${DECISION_REGISTRY}: ` +
+    `${[...decidedFlags].sort().join(', ') || '(none)'}`,
+)
+console.log(`[no-partial-builds] detector files exempt by design: ${[...DETECTOR_FILES].join(', ')}`)
 for (const [rule, n] of [...byRule].sort((a, b) => b[1] - a[1])) {
   console.log(`[no-partial-builds]   ${String(n).padStart(5)}  ${rule}`)
 }

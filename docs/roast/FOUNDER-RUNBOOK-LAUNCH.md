@@ -165,17 +165,150 @@ returning 401 and the platform going quiet with no error raised anywhere.
 
 ---
 
-## 3. Merge to main
+## 3. THE MERGE, AS EXECUTABLE STEPS
 
 Nothing in this run merged to main. `origin/main` is untouched.
 
-1. Confirm CI is green on `integration/launch`.
-2. Merge `integration/launch` into `main` through the GitHub UI.
-3. Watch the production deployment reach **READY**.
-4. Open `https://www.eventlinqs.com.au` and confirm it loads without a redirect.
+**Run these in order. Do not skip a verification.** Every step says what to type,
+what you should see, and what it means if you see something else. Where a step
+says STOP, stop: the next step assumes the previous one succeeded.
 
-**Success:** the address bar shows `www.eventlinqs.com.au` and did not bounce
-through `eventlinqs.com`.
+Open PowerShell. Every command in this section assumes this prefix, which is not
+repeated on each line:
+
+```powershell
+Set-Location "C:\Users\61416\OneDrive\Desktop\EventLinqs\el-moat"; $env:PATH="C:\node24\node-v24.19.0-win-x64;$env:PATH"
+```
+
+### THE ONE RULE THAT CAN TAKE THE LIVE SITE OFF SALE
+
+**Deploy the code FIRST. Apply the migrations SECOND. Never the other way round.**
+
+Migration `20260808000010_rls_column_privilege_lockdown.sql` revokes
+`stripe_account_id` and `stripe_charges_enabled` from the `anon` role. The code
+on `main` **today** reads those two columns through an anon embed and hands them
+to the sale gate. Apply that migration to a database whose deployed code still
+does that, and both fields read `undefined` for every organiser, the gate returns
+false platform-wide, and **every paid event on the live site stops selling.** It
+does not error and it does not alert. It renders the real, designed "still
+finishing their payment setup" state, which is why it went unnoticed on the
+preview for weeks.
+
+`integration/launch` carries the fix. Steps 3.1 to 3.6 below are ordered so that
+getting this wrong requires ignoring an explicit STOP.
+
+---
+
+### 3.1 Confirm the branch is green and is what you think it is
+
+```powershell
+git fetch origin; git status --short --branch
+git log --oneline -1 origin/integration/launch
+```
+
+**Expect:** the working tree clean, the branch up to date with
+`origin/integration/launch`, and the SHA matching the one at the top of the
+report you were handed.
+
+Then open the GitHub Actions run for that SHA and confirm **CI is green**.
+
+**STOP IF:** CI is red, or the SHA does not match. Do not merge a branch whose
+verification you have not seen.
+
+### 3.2 Merge to main
+
+Through the **GitHub UI**, not the command line, so the merge is recorded and
+reviewable:
+
+1. Open a pull request from `integration/launch` into `main`.
+2. Confirm the checks pass on the PR itself.
+3. Merge it.
+
+**Expect:** the PR shows merged, and `main` now contains the branch SHA.
+
+### 3.3 Watch production deploy, and verify it is the NEW code
+
+```powershell
+git fetch origin; git log --oneline -3 origin/main
+```
+
+In Vercel, project `eventlinqs-app`, **Deployments**: wait for the production
+deployment of that merge commit to reach **READY**.
+
+**Expect:** state READY, and its commit SHA equals the merge commit.
+
+**STOP IF:** the deployment is ERROR or CANCELED. A branch alias can keep serving
+the previous good build, so "the site still works" does not mean the deploy
+succeeded. Read the state, not the site.
+
+### 3.4 VERIFY THE SALE-GATE FIX IS LIVE, before any migration
+
+This is the step that makes the ordering rule safe. Do it before you touch the
+database.
+
+1. Open `https://www.eventlinqs.com.au` in a **private window**. Confirm the
+   address bar stays on `www.eventlinqs.com.au` and does not bounce through
+   `eventlinqs.com`.
+2. Open a **paid** event page whose organiser is fully onboarded.
+3. Confirm a **ticket selector renders**, with a quantity control and an all-in
+   total.
+4. Confirm the words **"finishing their payment setup" do NOT appear.**
+
+**STOP IF** that message appears on a fully onboarded organiser's paid event.
+The fixed code is not live, and applying the migration now would take every paid
+event off sale. Go back to 3.3 and find out what deployed.
+
+### 3.5 Apply the migrations
+
+Only once 3.4 passed. PowerShell only, never the Supabase Dashboard SQL editor
+and never the MCP.
+
+```powershell
+supabase db push --linked
+```
+
+**Expect:** the CLI lists the pending migration versions as applied and exits 0.
+It takes seconds; there is no long-running step.
+
+**STOP IF:** a non-zero exit with a Postgres error naming a constraint. Do not
+re-run. Read section 5 for the taxonomy migrations specifically, and section 5a
+for the ordering hazard.
+
+### 3.6 Verify BOTH halves landed
+
+Both, not either. One without the other is a silent failure in one direction or
+the other.
+
+**(a) The site still sells.** Re-open the same paid event page from 3.4. It must
+**still render a ticket selector**. If it now shows the payment-setup message,
+the code deployed in 3.3 was not the fixed code, and you should roll back per
+3.7 immediately.
+
+**(b) The revoke actually applied.** In the Supabase SQL editor, as the `anon`
+role, selecting `stripe_account_id` from `organisations` must be **refused**. If
+it still succeeds, the migration did not apply and step 3.6(a) passed for the
+wrong reason.
+
+**Success for section 3 is both together:** a paid event page that renders a
+ticket selector, AND an `anon` role that cannot read `stripe_account_id`.
+
+### 3.7 Rollback
+
+History rewriting and force pushing are banned, so rollback is forward-only.
+
+1. **Fastest, no git at all:** Vercel, **Deployments**, find the last known-good
+   production deployment, **Promote to Production**. Instant and reversible, and
+   it is the right first move if step 3.3 or 3.4 was the problem, because the
+   migration is harmless while the old code is not yet live.
+2. **If the migration is already applied and the code cannot go forward:** write
+   a NEW migration re-granting the two columns to `anon`, and apply it. **Do not
+   edit or delete `20260808000010`.** An applied migration is corrected by a new
+   one, never by editing the old one.
+3. **For the code:** `git revert -m 1 <merge-sha>` on `main`, then push. `-m 1`
+   keeps main's side as the parent, which is what you want for a merge commit.
+
+Never `git reset`, never `--amend`, never force push. A revert is a new commit
+and leaves every SHA quoted in every handover valid.
 
 ### 3.1 Rollback, if the merge goes wrong
 
@@ -196,24 +329,150 @@ every quoted SHA in every handover valid.
 
 ## 4. Prove money moves, with a real card
 
-Do this on production, after the merge, with your own card.
+Do this on production, after section 3 is fully green, with your own card. It is
+the gate on everything in section 6: nothing is deleted from production until
+this passes.
 
-1. Create a paid event with a single ticket tier at **$1.00**, publish it.
-2. Open the public event page in a private browser window, not logged in as the
-   organiser.
-3. Buy one ticket with a real card.
-4. **Success at the buyer end:** you land on the order confirmation page, and the
-   ticket email arrives with a QR code.
-5. **Check in Stripe:** dashboard, **Payments**. The payment shows **Succeeded**.
-   Open it and confirm: the amount is the $1.00 face value plus the platform fee
-   and the processing fee, the statement descriptor is what you expect, and under
-   **Connect** the transfer to the organiser account is listed or scheduled.
-6. **Check the platform:** the order appears in the organiser dashboard, and the
-   ticket count on the event decrements by one.
-7. Refund it from Stripe, and confirm the platform marks the order refunded.
+**Where it lands.** On `Party Pty Ltd`, which is your own TEST organiser record
+carrying a live Connect account. It is not a company and not EventLinqs' legal
+entity, and it is deleted in section 6.4 once this passes.
 
-**If any step fails, stop and do not announce launch.** A checkout that takes
-card details and settles nothing is the single worst outcome available.
+### 4.1 Create the event
+
+1. Sign in as the organiser who owns `Party Pty Ltd`.
+2. Create a paid event with a single ticket tier at **$1.00**. Publish it.
+3. Open its public page in a **private window**, not signed in.
+
+**Verify before buying:** the page renders a ticket selector, and the all-in
+total reads **$2.03**.
+
+That looks wrong at a glance and it is right. The one fee is
+`round(100 x 3.5 / 100 + 1 x 99)` = `round(3.5 + 99)` = **103 cents**, so the fee
+on a $1 ticket is **$1.03** and the buyer pays **$2.03**. The flat 99c per ticket
+dominates completely at this price. It is the worst-looking ratio the fee model
+ever produces, which is exactly why a $1 ticket is a good test of it and a
+terrible thing to screenshot.
+
+**STOP IF** you see a second fee line, a "payment processing fee", or any total
+other than $2.03. There is ONE fee. A second line means something shipped that
+this branch removed.
+
+### 4.2 Buy it
+
+Buy one ticket with a real card.
+
+**Verify, all four:**
+
+1. You land on the order confirmation page.
+2. The ticket email arrives, and it carries a QR code.
+3. In **Stripe, Payments**: the payment reads **Succeeded**, the amount is
+   **AUD 2.03**, and the statement descriptor is `ELINQS* PARTY PTY LTD`.
+4. In the organiser dashboard: the order appears, and the event's remaining
+   ticket count has gone down by one.
+
+**STOP IF** the card is charged but no order appears, or an order appears with no
+payment. A checkout that takes card details and settles nothing is the worst
+outcome available, and it is the reason this step exists.
+
+### 4.3 Refund it
+
+Refund the payment from the Stripe dashboard.
+
+**Verify:** the order shows as refunded in the organiser dashboard within a
+minute or two, and the ticket is voided.
+
+**Only when 4.1 to 4.3 have all passed is section 6 unlocked.**
+
+---
+
+## 4a. The purge, as executable steps
+
+**Do not start this until section 4 passed.** Founder ruling: nothing on
+production is deleted until the $1 purchase has succeeded, because the demo
+catalogue is the thing you would need in order to diagnose a failure.
+
+### 4a.1 Prove the orders are synthetic
+
+```powershell
+node --env-file=<your production env file> scripts/verify/seeded-order-forensics.mjs
+```
+
+**Expect:** it ends `SAFE TO PURGE`.
+
+**STOP IF** it prints `STOP`. It lists exactly which orders and why. Each has to
+be explained individually first. It is read only and opens no transaction.
+
+### 4a.2 Dry run, and READ THE ROW LIST
+
+```powershell
+node --env-file=<your production env file> scripts/verify/seeded-purge-rehearsal.mjs
+```
+
+Without `--commit` this **always rolls back**. It prints:
+
+- the organisations it matched, keyed on
+  `owner_id = 00000000-0000-4000-8000-000000000001`, with their event and order
+  counts,
+- every table it would touch, before and after,
+- a real-data fingerprint proving non-seeded rows are unchanged.
+
+**Read the organisation list.** Every row should be demo content you recognise.
+
+**Expect:** `RESULT: PASS`, `real data untouched: confirmed`, and
+`tables whose count changed on disk: none`.
+
+**STOP IF** you see a name you do not recognise as demo content, or
+`ORPHANED:`, or `REAL DATA CHANGED:`.
+
+**It refuses to run at all** if the owner marker ever matches `OANH` or
+`Party Pty Ltd`. That refusal means the marker is wrong, not that the exclusion
+should be relaxed.
+
+### 4a.3 Commit it
+
+The dry run printed a count of organisations. Pass that exact number back:
+
+```powershell
+node --env-file=<your production env file> scripts/verify/seeded-purge-rehearsal.mjs --commit --confirm=<N>
+```
+
+`--commit` on its own is **refused**, and a wrong `--confirm` is refused, both
+with exit 1 and nothing changed. The number cannot be supplied without having
+read the dry run, which is the point.
+
+**Expect:** `=== COMMITTED ===` and `RESULT: PASS`.
+
+### 4a.4 Verify afterwards, and expect the site to look thinner
+
+```sql
+select count(*) from public.events;
+select count(*) from public.organisations;
+select count(*) from public.share_links where event_id is null;
+```
+
+The third must be **unchanged**, not zero: pre-existing nulls are legitimate, and
+a null count that GREW means a row was severed from its parent instead of removed.
+
+Then in a browser: the homepage, `/events`, search and the category pages still
+render. **Two things will look alarming and are correct:**
+
+1. **Rails will thin out or vanish.** `RAIL_MIN = 3` hides any category rail with
+   fewer than three events, and with none upcoming the homepage swaps in its
+   "Events loading soon" state. That is the completeness bar telling you the
+   truth: the catalogue is thin. Seed real events, never restore fixtures.
+2. **`/events` additionally hides any event with no cover image**
+   (`hasRealCover`), so a real event without artwork will not appear there even
+   though the row exists.
+
+### 4a.5 Delete the test organiser record
+
+Last, by hand, once section 4 is complete and refunded: remove `Party Pty Ltd`,
+its $1 event, and unwind its Stripe Connect account on the Stripe side. The purge
+script deliberately leaves it, because it is not owned by the seed account and
+because the $1 purchase lands on it.
+
+**`OANH` is never deleted by anything.** It is a real person who signed up on
+8 August and has listed nothing yet.
 
 ---
 
@@ -421,8 +680,18 @@ demo content sits there unmarked. Reading the zero as "there is nothing to clean
 is the same silent fail-open this branch has been closing all week: the query
 answered a narrower question than the one asked.
 
+**WHAT `Party Pty Ltd` IS, corrected by the founder 15 August 2026.** It is
+**NOT a company and NOT EventLinqs' legal entity.** It is a **test organiser
+record the founder created on the platform with a made-up name**, so that a real
+card could be put through a $1 checkout. It holds a Stripe CONNECTED account, and
+**it is deleted after the $1 purchase passes.** Every earlier description of it in
+this runbook and in the findings log as "the one real organisation", a company, or
+a legal entity was wrong, and those lines are corrected below. Treat it as the
+founder's test fixture with a live Connect account attached.
+
 **What the 48 actually are, read 15 August 2026, read only.** 18 organisations,
-of which **17 hold no Stripe Connect account at all** and one, `Party Pty Ltd`,
+of which **17 hold no Stripe Connect account at all** and one, `Party Pty Ltd`
+(the founder's test organiser record, see above),
 holds `acct_1SFaa2E8...` with charges enabled. The events cluster on
 `created_at = 2026-04-25` under organisation names that are plainly demo content:
 Owambe Sydney, Afrobeats Melbourne, Gospel Brisbane, Amapiano Adelaide, Lagos
@@ -447,8 +716,13 @@ before:
    `scripts/verify/seeded-order-forensics.mjs` against production first; it must
    print SAFE TO PURGE. Production currently holds exactly one order, and it is
    an abandoned `pending` with no payment intent.
-5. **Keep `Party Pty Ltd` and everything under it.** It is the one connected,
-   charge-ready organisation and it is where the $1 purchase will land.
+5. **Exclude `Party Pty Ltd` from the purge, then delete it separately.** It is
+   the founder's TEST ORGANISER RECORD, not a company and not EventLinqs' legal
+   entity. It is where the $1 purchase lands, so it must survive the seeded purge;
+   once the $1 purchase has passed and been refunded it is **deleted on its own**,
+   together with its test event and its Connect account, which is a Stripe-side
+   job (section 8.4). It is excluded from the purge because it is not owned by the
+   seed account, not because it is a real business.
 
 ### THE DECISIVE MARKER IS THE OWNER, not the date. Verified 15 August 2026.
 
@@ -463,7 +737,7 @@ they are not.
 | Owner | Account | Organisations | With a Connect account |
 |---|---|---|---|
 | `00000000-0000-4000-8000-000000000001` | `s***@eventlinqs.app`, created 2026-04-25 | **16** | **0** |
-| `3b753251-...` | the founder's own account | 1 (`Party Pty Ltd`) | **1** |
+| `3b753251-...` | the founder's own account | 1 (`Party Pty Ltd`, the founder's TEST organiser record, deleted after the $1 purchase) | **1** |
 | `5758a4b1-...` | `w***@icloud.com`, created 2026-08-08 | 1 (`OANH`) | 0 |
 
 The first is a **single synthetic seed account**: an all-zeros UUID on an

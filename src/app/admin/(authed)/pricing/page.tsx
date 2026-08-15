@@ -41,12 +41,15 @@ export default async function AdminPricingPage({ searchParams }: { searchParams:
         <p className="font-display text-[11px] uppercase tracking-[0.2em] text-white/50">Money</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Pricing and fees</h1>
         <p className="mt-2 max-w-2xl text-sm text-white/60">
-          Edit the platform fee (percent + fixed per ticket), the payment processing fee
-          (percent + fixed), and the processing-fee treatment per region, or set a
-          per-organiser or per-event override below. Precedence is event, then
-          organiser, then region. The same value drives the displayed fee, the checkout charge,
-          and the payout. Saving writes a new version that takes effect for new transactions
-          immediately. Past orders keep their original fees.
+          There is ONE fee. Edit its percent and its fixed amount per ticket, and
+          choose who pays it, per region, or set a per-organiser or per-event
+          override below. Card processing comes out of that one fee: there is no
+          separate processing rate to set, and the fields that used to offer one
+          were removed because nothing charged them. Precedence is event, then
+          organiser, then region. The same value drives the displayed fee, the
+          checkout charge, and the payout. Saving writes a new version that takes
+          effect for new transactions immediately. Past orders keep their
+          original fees.
         </p>
       </header>
 
@@ -88,9 +91,7 @@ export default async function AdminPricingPage({ searchParams }: { searchParams:
               <th scope="col" className="px-4 py-3 font-medium">Region</th>
               <th scope="col" className="px-4 py-3 font-medium">Platform fee percent</th>
               <th scope="col" className="px-4 py-3 font-medium">Fixed fee per ticket (cents)</th>
-              <th scope="col" className="px-4 py-3 font-medium">Processing fee percent</th>
-              <th scope="col" className="px-4 py-3 font-medium">Processing fixed (cents)</th>
-              <th scope="col" className="px-4 py-3 font-medium">Processing treatment</th>
+              <th scope="col" className="px-4 py-3 font-medium">Who pays the fee</th>
               <th scope="col" className="px-4 py-3 font-medium">Version</th>
               <th scope="col" className="px-4 py-3 font-medium"><span className="sr-only">Save</span></th>
             </tr>
@@ -101,8 +102,6 @@ export default async function AdminPricingPage({ searchParams }: { searchParams:
               const ver = Math.max(
                 row.platformFeePercentage.version ?? 0,
                 row.platformFeeFixedCents.version ?? 0,
-                row.processingFeePercentage.version ?? 0,
-                row.processingFeeFixedCents.version ?? 0,
                 row.processingTreatment.version ?? 0,
               )
               return (
@@ -145,35 +144,7 @@ export default async function AdminPricingPage({ searchParams }: { searchParams:
                     />
                   </td>
                   <td className="px-4 py-3">
-                    <label className="sr-only" htmlFor={`procpct-${id}`}>Processing fee percent for {row.scope.label}</label>
-                    <input
-                      form={`form-${id}`}
-                      id={`procpct-${id}`}
-                      name="processing_fee_percentage"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      max="100"
-                      defaultValue={row.processingFeePercentage.value ?? 0}
-                      className="w-24 rounded-md border border-white/15 bg-white/[0.04] px-2 py-1.5 text-white focus:border-white/40 focus:outline-none"
-                    />
-                  </td>
-                  <td className="px-4 py-3">
-                    <label className="sr-only" htmlFor={`procfixed-${id}`}>Processing fixed fee in cents for {row.scope.label}</label>
-                    <input
-                      form={`form-${id}`}
-                      id={`procfixed-${id}`}
-                      name="processing_fee_fixed_cents"
-                      type="number"
-                      step="1"
-                      min="0"
-                      max="100000"
-                      defaultValue={row.processingFeeFixedCents.value ?? 0}
-                      className="w-24 rounded-md border border-white/15 bg-white/[0.04] px-2 py-1.5 text-white focus:border-white/40 focus:outline-none"
-                    />
-                  </td>
-                  <td className="px-4 py-3">
-                    <label className="sr-only" htmlFor={`treat-${id}`}>Processing fee treatment for {row.scope.label}</label>
+                    <label className="sr-only" htmlFor={`treat-${id}`}>Who pays the fee for {row.scope.label}</label>
                     <select
                       form={`form-${id}`}
                       id={`treat-${id}`}
@@ -206,7 +177,7 @@ export default async function AdminPricingPage({ searchParams }: { searchParams:
       </div>
 
       <p className="mt-4 text-xs text-white/40">
-        Processing fee: pass to buyer adds it on top at checkout; absorb takes it from the organiser. Overrides below win over these regional defaults.
+        Who pays the fee: pass to buyer adds it on top at checkout and the organiser keeps the full face value; absorb takes it from the organiser payout and the buyer pays the ticket price only. Overrides below win over these regional defaults.
       </p>
 
       {/* ---- Per-organiser and per-event overrides ---------------------- */}

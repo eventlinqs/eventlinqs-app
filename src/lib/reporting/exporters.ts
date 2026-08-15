@@ -70,7 +70,14 @@ const orderColumns: Column<OrderReportRow>[] = [
   { header: 'Subtotal', value: r => (r.subtotalCents / 100).toFixed(2) },
   { header: 'Discount', value: r => (r.discountCents / 100).toFixed(2) },
   { header: 'Platform fee', value: r => (r.platformFeeCents / 100).toFixed(2) },
+  // ONE-FEE-ALLOW-BEGIN: an accounting export reproduces what the order was
+  // actually charged. Orders before 15 August 2026 carry a real
+  // processing_fee_cents and the organiser has to be able to reconcile them. The
+  // header is left EXACTLY as it is on purpose: it is a machine-readable column
+  // name that people build spreadsheets against, so renaming it would break
+  // their reconciliation to fix nothing. Every order since carries 0.00 here.
   { header: 'Processing fee', value: r => (r.processingFeeCents / 100).toFixed(2) },
+  // ONE-FEE-ALLOW-END
   { header: 'Total', value: r => (r.totalCents / 100).toFixed(2) },
 ]
 
@@ -137,7 +144,9 @@ export function buildOrdersXlsx(rows: OrderReportRow[]): Promise<Buffer> {
       { header: 'Subtotal', value: r => r.subtotalCents / 100, width: 12 },
       { header: 'Discount', value: r => r.discountCents / 100, width: 12 },
       { header: 'Platform fee', value: r => r.platformFeeCents / 100, width: 14 },
+      // ONE-FEE-ALLOW-BEGIN: same reasoning as the CSV column above.
       { header: 'Processing fee', value: r => r.processingFeeCents / 100, width: 14 },
+      // ONE-FEE-ALLOW-END
       { header: 'Total', value: r => r.totalCents / 100, width: 12 },
     ],
     rows

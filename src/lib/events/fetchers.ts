@@ -766,8 +766,11 @@ export async function fetchPublicEvents(
   // reflects the pre-filter total and disagrees with the rendered grid.
   // Use the filtered length as the source of truth so the hero strip
   // and pagination match what the user sees.
-  // TODO(m5-perf): move price filter into SQL to avoid over-fetching
-  //   when query pages are large - tracked against Step 8.
+  // TODO(lawal 2026-10-01): move the price filter into SQL to avoid over-fetching
+  //   when query pages are large. DELIBERATELY NOT BEFORE LAUNCH: the behaviour
+  //   above is CORRECT today, the cost is extra rows fetched rather than a wrong
+  //   result, and it only becomes measurable at a catalogue size this platform
+  //   does not have yet. Revisit when a query page routinely over-fetches.
   const total = sortedWhole
     ? (priceFiltered ? matchedBeforeSlice : count ?? matchedBeforeSlice)
     : priceFiltered
