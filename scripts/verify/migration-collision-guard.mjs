@@ -34,10 +34,24 @@
  *
  * Usage:
  *   node scripts/verify/migration-collision-guard.mjs              # local only
- *   node scripts/verify/migration-collision-guard.mjs --remote     # + TEST history
+ *   node scripts/verify/migration-collision-guard.mjs --remote     # + the linked project
  *
- * The local half needs no network and is the one worth running constantly.
- * Exit 1 on any collision.
+ * The local half needs no network, is registered in run-guards.mjs and therefore
+ * blocks `prebuild`, and is the one worth running constantly. Exit 1 on any
+ * collision.
+ *
+ * THE REMOTE HALF SKIPS LOUDLY AND IS NEVER FOLDED INTO A PASS. It needs network
+ * and a linked project, so it cannot be made unconditional without making the
+ * build depend on database credentials. What it can do is refuse to be mistaken
+ * for a pass: a run without it ends `PASSED WHAT RAN, N CHECK(S) SKIPPED`, never
+ * `ALL GREEN`, and names what went unchecked. Same standard as
+ * preview-deployment-state, and for the same reason: a skip is the honest state,
+ * not a pass.
+ *
+ * `--remote` reads whichever project the Supabase CLI is LINKED to, which is a
+ * per-directory setting and is not necessarily production. `supabase migration
+ * list --linked --workdir <path>` runs it against another checkout's link
+ * without changing this one.
  */
 import { readdirSync, readFileSync, existsSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
@@ -131,6 +145,23 @@ if (twins.length) {
   console.log('  [PASS] every migration is distinct')
 }
 
+/**
+ * Checks that did not run, and why.
+ *
+ * SEPARATE FROM `failures` ON PURPOSE. A check that could not be performed is
+ * not a check that passed, and the difference has to survive all the way to the
+ * final banner or it is lost exactly where it matters. Before this list existed,
+ * the remote half printed a lower-case `[skip]` line in the middle of the output
+ * and the run still ended `===== ALL GREEN =====`, so a guard that had answered
+ * three of its four questions reported like one that had answered four.
+ *
+ * That is the same standard preview-deployment-state already holds itself to:
+ * "Skips loudly ... A skip is the honest state, not a pass." Exit code stays 0,
+ * because a machine without network credentials must still be able to build; the
+ * honesty is carried by the banner, not by blocking.
+ */
+const skipped = []
+
 // --- 3. THE CROSS-BRANCH CHECK ----------------------------------------------
 //
 // The working tree only ever shows ONE branch. The collision this guard exists
@@ -153,7 +184,8 @@ console.log('\n--- d. no version is claimed by different files on different bran
       .filter(Boolean)
       .filter((r) => !r.endsWith('/HEAD'))
   } catch (err) {
-    console.log(`  [skip] git unavailable: ${String(err).slice(0, 100)}`)
+    console.log(`  [migration-collision] SKIP - git unavailable: ${String(err).slice(0, 100)}`)
+    skipped.push('d. cross-branch: git could not list refs, so no other branch was read')
   }
 
   // Named, reasoned exclusions, printed so they are visible rather than silent.
@@ -239,6 +271,7 @@ console.log('\n--- d. no version is claimed by different files on different bran
       console.log(`  [skip] only ${refs.length} ref(s) visible, so there is nothing to compare across.`)
       console.log('         This is a shallow clone. Set fetch-depth: 0 on the job to enable this check.')
       console.log('         NOT a pass: the cross-branch question is unanswered here.')
+      skipped.push('d. cross-branch: shallow clone, only one ref was readable (set fetch-depth: 0)')
     } else if (crossBranch.length === 0) {
       console.log(
         `  [PASS] ${claims.size} version(s) across ${refs.length} refs, each claimed by exactly one filename`,
@@ -268,7 +301,16 @@ console.log('\n--- d. no version is claimed by different files on different bran
 // --- 3. a local version already applied on the remote -----------------------
 console.log('\n--- c. no local file claims a version the remote has already applied ---')
 if (!REMOTE) {
-  console.log('  [skip] pass --remote to compare against the linked project (needs network)')
+  // THIS IS THE CHECK THAT ANSWERS THE QUESTION A MERGE ACTUALLY ASKS, and it is
+  // the one that does not run by default. On 15 August 2026 it was the only way
+  // to know whether 20260808000004, which main and this branch claim with
+  // DIFFERENT files, was already recorded on production. If it had been, the r1
+  // migration would have been treated as done and would never have run.
+  console.log('  [migration-collision] SKIP - the remote half did not run, so whether any of these')
+  console.log('                        versions is ALREADY APPLIED on the linked project is UNKNOWN,')
+  console.log('                        not clear. Local checks cannot see a database.')
+  console.log('                        Answer it with: node scripts/verify/migration-collision-guard.mjs --remote')
+  skipped.push('c. remote: no --remote, so no database was read and applied-version collisions are unchecked')
 } else {
   let remoteVersions = null
   try {
@@ -282,7 +324,10 @@ if (!REMOTE) {
       (json.migrations ?? []).filter((m) => m.remote).map((m) => [m.remote, m.local]),
     )
   } catch (err) {
-    console.log(`  [skip] could not read the remote history: ${String(err).slice(0, 120)}`)
+    console.log(`  [migration-collision] SKIP - --remote was asked for and the remote history could`)
+    console.log(`                        not be read: ${String(err).slice(0, 120)}`)
+    console.log('                        Treat this as UNKNOWN. It is not the same as no collisions.')
+    skipped.push('c. remote: --remote was requested but the linked project could not be read')
   }
 
   if (remoteVersions) {
@@ -336,6 +381,16 @@ if (failures.length) {
   console.log('')
   console.log('To fix: rename the later file to the next free version. Nothing else')
   console.log('changes, because the version is the only thing db push keys on.')
+} else if (skipped.length) {
+  // Deliberately NOT "ALL GREEN". Every check that ran passed, and not every
+  // check ran, and the banner has to be able to say both at once or the second
+  // half is the part that gets forgotten.
+  console.log(`===== PASSED WHAT RAN, ${skipped.length} CHECK(S) SKIPPED =====`)
+  for (const s of skipped) console.log(`  SKIPPED  ${s}`)
+  console.log('')
+  console.log('A skipped check is UNKNOWN, not clear. This exits 0 so a machine with no')
+  console.log('database credentials can still build, which means the exit code cannot')
+  console.log('carry the caveat and this banner has to.')
 } else {
   console.log('===== ALL GREEN =====')
 }

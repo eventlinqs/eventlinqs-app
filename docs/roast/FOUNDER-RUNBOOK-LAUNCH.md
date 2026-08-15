@@ -1,12 +1,29 @@
 # Founder runbook: launch
 
 Everything you have to do yourself, in the order to do it. Written 13 August 2026
-from `integration/launch`.
+from `integration/launch`, re-verified against the tree and against production on
+15 August 2026 at `48dd6e8`.
 
-**Read the scope note first.** Sections 1 to 4 were prepared and verified in this
-run. Sections 5 to 7 were NOT prepared, and they say so at the top of each. Do
+**Read the scope note first.** Sections 1 to 4 were prepared and verified in the
+original run. Sections 5 to 7 were not, and they say so at the top of each. Do
 not treat an unprepared section as a checklist; treat it as a statement of what
 is still unknown.
+
+**What the 15 August re-verification changed**, so you are not comparing this
+against an older copy someone quoted at you:
+
+| Where | What was wrong | Now |
+|---|---|---|
+| 3.1 | told you to expect an upstream comparison that cannot appear, because this worktree tracks `origin/main` | uses `--porcelain` plus two `rev-parse` lines, which do not depend on the upstream |
+| 3.2 | silent on the merge method | records that a squash collapses 202 commits, so the revert is all or nothing |
+| 3.5 | did not exist | new read-only step: confirm no pending version is already applied. Measured: production ends at `20260727000002`, so nothing collides |
+| 3.6 (was 3.5) | read as though it applied one migration | says plainly that one push applies **eleven**, and that section 5's push is therefore a no-op |
+| 3.8 (was 3.7) | `git revert -m 1` given unconditionally, plus a duplicate rollback misnumbered `3.1` | one rollback, with the squash and merge-commit forms distinguished, and the promote-vs-migration ordering trap spelled out |
+| 4.0 | did not exist | confirm the live fee in `pricing_rules` before trusting the `$2.03` |
+| 4a | three commands that would all have been REFUSED by the production write preflight | every command carries `ALLOW_PRODUCTION_SUPABASE`, with the clear-it-after step |
+| 5 | told you to push again, from a worktree that is not linked | push marked as already done by 3.6, and `--workdir` supplied for the linked checkout |
+| 6 | a heading saying "nothing to do here" sitting above the correction that disproves it | heading marked superseded, purge confirmed as a launch step |
+| 7 | ordered the $1 purchase after the purge, contradicting the founder ruling in section 4 | corrected: purchase first, purge second, repeat purchase third |
 
 ---
 
@@ -194,7 +211,7 @@ does not error and it does not alert. It renders the real, designed "still
 finishing their payment setup" state, which is why it went unnoticed on the
 preview for weeks.
 
-`integration/launch` carries the fix. Steps 3.1 to 3.6 below are ordered so that
+`integration/launch` carries the fix. Steps 3.1 to 3.7 below are ordered so that
 getting this wrong requires ignoring an explicit STOP.
 
 ---
@@ -202,18 +219,28 @@ getting this wrong requires ignoring an explicit STOP.
 ### 3.1 Confirm the branch is green and is what you think it is
 
 ```powershell
-git fetch origin; git status --short --branch
-git log --oneline -1 origin/integration/launch
+git fetch origin; git status --porcelain
+git rev-parse HEAD; git rev-parse origin/integration/launch
 ```
 
-**Expect:** the working tree clean, the branch up to date with
-`origin/integration/launch`, and the SHA matching the one at the top of the
-report you were handed.
+**Expect:** `git status --porcelain` prints **nothing at all**, and the two
+`rev-parse` lines print the **same** 40-character SHA, matching the one at the
+top of the report you were handed.
 
 Then open the GitHub Actions run for that SHA and confirm **CI is green**.
 
-**STOP IF:** CI is red, or the SHA does not match. Do not merge a branch whose
-verification you have not seen.
+**Why not `git status --short --branch`.** An earlier draft used it and told you
+to expect "up to date with `origin/integration/launch`". You will never see that
+line: this worktree's upstream is set to `origin/main`, so that command prints
+`## integration/launch...origin/main [ahead 202]`. It is comparing against the
+wrong branch, and the commands above do not depend on the upstream at all.
+
+**The same fact matters later.** Because the upstream is `origin/main`, a bare
+`git push` from this worktree targets **main**. Every push in this runbook names
+its remote and branch for that reason. Never push from here without the refspec.
+
+**STOP IF:** CI is red, or the SHAs do not match, or anything at all is listed by
+`--porcelain`. Do not merge a branch whose verification you have not seen.
 
 ### 3.2 Merge to main
 
@@ -225,6 +252,19 @@ reviewable:
 3. Merge it.
 
 **Expect:** the PR shows merged, and `main` now contains the branch SHA.
+
+**Know what the merge button does before you press it, because the rollback in
+3.8 depends on it.** This repository allows all three methods, and its recent
+practice is **Squash and merge**: every commit on `main` from `(#105)` to
+`(#112)` is single-parent, and the last true merge commit was PR #44.
+
+A squash collapses **all 202 commits** on this branch into **one** commit on
+main. That is fine, and it has one consequence worth knowing in advance rather
+than discovering under pressure: **the revert is all or nothing.** There is no
+reverting one fix out of the merge. Undoing it undoes the entire branch, and
+anything you then want back has to be re-applied forward as new work.
+
+Note which button you press. Step 3.8 asks for it.
 
 ### 3.3 Watch production deploy, and verify it is the NEW code
 
@@ -258,23 +298,107 @@ database.
 The fixed code is not live, and applying the migration now would take every paid
 event off sale. Go back to 3.3 and find out what deployed.
 
-### 3.5 Apply the migrations
+### 3.5 Confirm no pending version has already been applied
 
-Only once 3.4 passed. PowerShell only, never the Supabase Dashboard SQL editor
-and never the MCP.
+Read only. Takes about twenty seconds, and it is the difference between a
+migration running and a migration being silently marked done without ever
+running.
+
+**The hazard, in one paragraph.** `supabase db push` keys on the fourteen-digit
+VERSION PREFIX, never on the filename or the contents. `main` carries a file at
+version `20260808000004` called `category_taxonomy_repair.sql`. This branch
+renumbered that file to `20260812000002` and put a **different** migration at
+`20260808000004`, called `category_taxonomy_r1.sql`. If production had ever
+recorded `20260808000004`, the new `r1` file would be treated as already applied
+and would **never run**, with nothing reporting it.
+
+**This worktree is not linked to any Supabase project**, so `--linked` on its own
+has nothing to resolve. Two ways to ask, and either is enough.
+
+**Form 1, the CLI.** `--workdir` points the command at a checkout that IS linked,
+without changing the link in this one:
 
 ```powershell
-supabase db push --linked
+supabase migration list --linked --workdir "C:\Users\61416\OneDrive\Desktop\EventLinqs\eventlinqs-app-hardening"
 ```
 
-**Expect:** the CLI lists the pending migration versions as applied and exits 0.
-It takes seconds; there is no long-running step.
+**Form 2, SQL.** In the Supabase SQL editor on the production project:
+
+```sql
+select version from supabase_migrations.schema_migrations
+ order by version desc limit 5;
+```
+
+**Expect:** the newest applied version is **`20260727000002`** and there is no
+`20260808000004` anywhere in the list.
+
+**MEASURED 15 AUGUST 2026, READ ONLY: this is already true.** Production's
+migration history ends at `20260727000002` with **77 versions applied**, and
+`20260808000004` is **not among them**. Nothing from August has been applied at
+all. So both taxonomy migrations will run, in order, exactly as section 5
+describes, and the hazard above does not fire on this merge. Re-run the check
+anyway if any time has passed, because the whole point is that this is a fact
+about the database and not about the repository.
+
+**STOP IF:** `20260808000004` appears as applied. That is not a reason to abort
+the merge, but it changes what you should believe afterwards: `r1` will be
+skipped, `20260812000002_category_taxonomy_repair.sql` will do the work instead
+(it performs the same rename, insert and backfill with every statement guarded),
+and section 5's verification SQL becomes the only thing that proves the end state
+is right.
+
+**The automated form of this check** is
+`node scripts/verify/migration-collision-guard.mjs --remote`. Its local half is
+registered in the guard runner and blocks every build; the remote half needs
+network and a linked project, so it does not run by default and reports
+`PASSED WHAT RAN, 1 CHECK(S) SKIPPED` rather than pretending to be green.
+
+### 3.6 Apply the migrations
+
+Only once 3.4 and 3.5 have both passed. PowerShell only, never the Supabase
+Dashboard SQL editor and never the MCP.
+
+**This worktree is not linked**, so run it against a checkout that is, or link
+this one first. Confirm the target is production before you press return:
+
+```powershell
+supabase migration list --linked --workdir "C:\Users\61416\OneDrive\Desktop\EventLinqs\eventlinqs-app-hardening"
+supabase db push --linked --workdir "C:\Users\61416\OneDrive\Desktop\EventLinqs\eventlinqs-app-hardening"
+```
+
+**ONE PUSH APPLIES ELEVEN MIGRATIONS, NOT ONE.** `db push` applies **every**
+pending version in order, so this single command applies the whole August set,
+measured against production on 15 August 2026:
+
+```
+20260808000001_city_primary_backfill.sql
+20260808000002_share_channel_digest.sql
+20260808000003_suburb_primary_backfill.sql
+20260808000004_category_taxonomy_r1.sql            <- section 5's file 1
+20260808000005_cultural_tag_to_community.sql
+20260808000006_share_codes_never_released.sql
+20260808000010_rls_column_privilege_lockdown.sql   <- the sale-gate hazard
+20260809000001_payout_status_unset.sql
+20260812000001_kit_draft_covers.sql
+20260812000002_category_taxonomy_repair.sql        <- section 5's file 2
+20260815000001_external_ticketing.sql
+```
+
+**Section 5 therefore does not need a second push.** Section 5 is written as
+though its two taxonomy migrations are applied separately and later. They are
+not: this step applies them. When you reach section 5, **skip its push and run
+only its verification SQL and browser checks.** Running the push again is
+harmless and does nothing, which is worth knowing so a no-op does not read as a
+failure.
+
+**Expect:** the CLI lists those eleven versions as applied and exits 0. It takes
+seconds; there is no long-running step.
 
 **STOP IF:** a non-zero exit with a Postgres error naming a constraint. Do not
 re-run. Read section 5 for the taxonomy migrations specifically, and section 5a
 for the ordering hazard.
 
-### 3.6 Verify BOTH halves landed
+### 3.7 Verify BOTH halves landed
 
 Both, not either. One without the other is a silent failure in one direction or
 the other.
@@ -282,48 +406,76 @@ the other.
 **(a) The site still sells.** Re-open the same paid event page from 3.4. It must
 **still render a ticket selector**. If it now shows the payment-setup message,
 the code deployed in 3.3 was not the fixed code, and you should roll back per
-3.7 immediately.
+3.8 immediately.
 
 **(b) The revoke actually applied.** In the Supabase SQL editor, as the `anon`
 role, selecting `stripe_account_id` from `organisations` must be **refused**. If
-it still succeeds, the migration did not apply and step 3.6(a) passed for the
+it still succeeds, the migration did not apply and step 3.7(a) passed for the
 wrong reason.
 
 **Success for section 3 is both together:** a paid event page that renders a
 ticket selector, AND an `anon` role that cannot read `stripe_account_id`.
 
-### 3.7 Rollback
+### 3.8 Rollback
 
 History rewriting and force pushing are banned, so rollback is forward-only.
+Work down this list and stop as soon as the site is correct.
 
-1. **Fastest, no git at all:** Vercel, **Deployments**, find the last known-good
-   production deployment, **Promote to Production**. Instant and reversible, and
-   it is the right first move if step 3.3 or 3.4 was the problem, because the
-   migration is harmless while the old code is not yet live.
-2. **If the migration is already applied and the code cannot go forward:** write
-   a NEW migration re-granting the two columns to `anon`, and apply it. **Do not
-   edit or delete `20260808000010`.** An applied migration is corrected by a new
-   one, never by editing the old one.
-3. **For the code:** `git revert -m 1 <merge-sha>` on `main`, then push. `-m 1`
-   keeps main's side as the parent, which is what you want for a merge commit.
+**1. Fastest, no git at all:** Vercel, **Deployments**, find the last known-good
+production deployment, **Promote to Production**.
+
+Read this next sentence before you use it, because the ordering rule cuts both
+ways. Promoting the OLD build is the right first move **while the migration has
+not been applied**, because the old code does not need the revoked grant yet.
+Once 3.6 has run, the old code DOES depend on a grant the database no longer
+gives, so promoting it re-creates the off-sale state you were trying to escape.
+
+- **Not past 3.6 yet:** promote freely. This is the clean fix.
+- **Past 3.6:** do step 2 first, then promote.
+
+**2. If the migration is already applied and the code cannot go forward:** write
+a NEW migration re-granting the two columns to `anon`, and apply it:
+
+```sql
+-- e.g. supabase/migrations/20260816000001_restore_anon_stripe_columns.sql
+grant select (stripe_account_id, stripe_charges_enabled)
+  on public.organisations to anon;
+```
+
+**Do not edit or delete `20260808000010`.** An applied migration is corrected by
+a new one, never by editing the old one: the database has recorded that version
+as done and will never read the file again.
+
+**3. For the code, and the form depends on which merge button you pressed in
+3.2:**
+
+```powershell
+git fetch origin; git checkout main; git pull
+
+# If you pressed "Squash and merge" (this repository's recent practice):
+git revert <squash-sha>
+
+# If you pressed "Create a merge commit":
+git revert -m 1 <merge-sha>
+
+git push origin main
+```
+
+`-m 1` names which parent to treat as the mainline, which only means anything on
+a commit that HAS two parents. A squash merge produces an ordinary single-parent
+commit, so `-m 1` describes nothing there. On git 2.53 it is accepted rather than
+rejected, so the wrong form will not stop you and will not warn you; use the
+right one anyway, because the next person reads the command to learn what the
+commit was.
+
+**Push with the explicit refspec.** This worktree's upstream is `origin/main`, so
+a bare `git push` is ambiguous about intent even when it happens to be correct.
+
+**4. Confirm:** the revert commit appears on main, a new production deployment
+reaches READY, and a paid event page renders a ticket selector.
 
 Never `git reset`, never `--amend`, never force push. A revert is a new commit
 and leaves every SHA quoted in every handover valid.
-
-### 3.1 Rollback, if the merge goes wrong
-
-History rewriting and force pushing are banned, so rollback is forward-only.
-
-1. **Fastest, no git at all:** Vercel, project, **Deployments**, find the last
-   known-good production deployment, use **Promote to Production**. This is
-   instant and reversible and should be your first move.
-2. **Then fix the code:** `git revert -m 1 <merge-sha>` on `main`, push. `-m 1`
-   keeps main's side as the parent, which is what you want for a merge commit.
-3. **Confirm:** the revert commit appears on main, a new production deployment
-   reaches READY, and the site behaves as it did before the merge.
-
-Never `git reset` or force push to recover. A revert is a new commit and leaves
-every quoted SHA in every handover valid.
 
 ---
 
@@ -336,6 +488,38 @@ this passes.
 **Where it lands.** On `Party Pty Ltd`, which is your own TEST organiser record
 carrying a live Connect account. It is not a company and not EventLinqs' legal
 entity, and it is deleted in section 6.4 once this passes.
+
+### 4.0 Confirm the live fee before you build anything
+
+Read only, one query, and it decides whether the `$2.03` below is the right
+number to expect.
+
+**Why this step exists.** The `$2.03` in 4.1 is derived from the PRICING-LOCK
+block in `docs/PRICING.md`, which is the DOCUMENTED fee. The CHARGED fee is
+resolved at runtime from the `pricing_rules` table through `getPricingRule`. They
+are supposed to agree and there is no gate that can prove they do from the
+repository, because one of them lives in a database. If they disagree you will
+see a total other than $2.03, the STOP in 4.1 will fire, and you will be halting
+a system that is behaving exactly as configured.
+
+In the Supabase SQL editor on production:
+
+```sql
+select country, currency, platform_fee_percentage, platform_fee_fixed,
+       effective_from, effective_until
+  from public.pricing_rules
+ where organisation_id is null and event_id is null
+ order by effective_from desc
+ limit 5;
+```
+
+**Expect:** the live AU row reads `platform_fee_percentage = 3.5` and
+`platform_fee_fixed = 99`, with `effective_until` null.
+
+**If it differs:** the live fee is correct and the `$2.03` in 4.1 is stale. Do
+the arithmetic with the real values, `round(subtotal x pct / 100 + tickets x
+fixed)`, and expect that instead. Do not change the database to match the
+document.
 
 ### 4.1 Create the event
 
@@ -391,10 +575,46 @@ minute or two, and the ticket is voided.
 production is deleted until the $1 purchase has succeeded, because the demo
 catalogue is the thing you would need in order to diagnose a failure.
 
+### 4a.0 The approval, and why every command below carries it
+
+All three commands in this section write, or rehearse a write, against
+production. They call `assertNotProductionDatabase()` as their first executable
+statement, which **refuses a production target outright** and prints:
+
+```
+========================================================================
+REFUSED BY THE PRODUCTION WRITE PREFLIGHT
+========================================================================
+```
+
+That refusal happens before any client is constructed and before any socket
+opens, so a refused run has changed nothing. It is not a fault to work around; it
+is the control doing its job. The approval is per run, and you give it like this:
+
+```powershell
+$env:ALLOW_PRODUCTION_SUPABASE="1"
+```
+
+**Give it in the shell, never in the env file.** Putting the line in your
+production env file would work through `--env-file` and would approve every run
+from then on, silently, which is the exact failure the control exists to prevent.
+The preflight now detects that case and refuses it by name, telling you which
+file parked the approval, so the file route is closed rather than merely
+discouraged.
+
+**Clear it the moment this section is done:**
+
+```powershell
+Remove-Item Env:\ALLOW_PRODUCTION_SUPABASE
+```
+
+An approved shell that stays open is a shell in which the next command you
+happen to run is also approved.
+
 ### 4a.1 Prove the orders are synthetic
 
 ```powershell
-node --env-file=<your production env file> scripts/verify/seeded-order-forensics.mjs
+$env:ALLOW_PRODUCTION_SUPABASE="1"; node --env-file=<your production env file> scripts/verify/seeded-order-forensics.mjs
 ```
 
 **Expect:** it ends `SAFE TO PURGE`.
@@ -405,7 +625,7 @@ be explained individually first. It is read only and opens no transaction.
 ### 4a.2 Dry run, and READ THE ROW LIST
 
 ```powershell
-node --env-file=<your production env file> scripts/verify/seeded-purge-rehearsal.mjs
+$env:ALLOW_PRODUCTION_SUPABASE="1"; node --env-file=<your production env file> scripts/verify/seeded-purge-rehearsal.mjs
 ```
 
 Without `--commit` this **always rolls back**. It prints:
@@ -433,14 +653,22 @@ should be relaxed.
 The dry run printed a count of organisations. Pass that exact number back:
 
 ```powershell
-node --env-file=<your production env file> scripts/verify/seeded-purge-rehearsal.mjs --commit --confirm=<N>
+$env:ALLOW_PRODUCTION_SUPABASE="1"; node --env-file=<your production env file> scripts/verify/seeded-purge-rehearsal.mjs --commit --confirm=<N>
 ```
 
 `--commit` on its own is **refused**, and a wrong `--confirm` is refused, both
 with exit 1 and nothing changed. The number cannot be supplied without having
 read the dry run, which is the point.
 
-**Expect:** `=== COMMITTED ===` and `RESULT: PASS`.
+**Expect:** `=== COMMITTED ===` and `RESULT: PASS`, preceded by the approval
+banner naming the project this is about to write to. Read that banner. It is the
+last thing between you and a real delete.
+
+**Then clear the approval:**
+
+```powershell
+Remove-Item Env:\ALLOW_PRODUCTION_SUPABASE
+```
 
 ### 4a.4 Verify afterwards, and expect the site to look thinner
 
@@ -509,12 +737,32 @@ seven legacy hero categories and never served this one.
 
 ### The steps
 
+> **STEP 3 BELOW IS ALREADY DONE IF YOU FOLLOWED SECTION 3.**
+>
+> `supabase db push` applies EVERY pending version in one go, so step 3.6 has
+> already applied both files above along with the other nine. Running the push
+> again is a harmless no-op that reports nothing pending.
+>
+> **Coming from section 3: skip to step 6 and do the verification only.** The
+> verification is the part that still matters, and it matters more than usual,
+> because it is what proves the two files landed in the right order.
+>
+> Steps 1 to 5 are kept for the case where this section is run on its own.
+
 1. Open PowerShell in `C:\Users\61416\OneDrive\Desktop\EventLinqs\el-moat`.
-2. Confirm the Supabase CLI is linked to **production** and that you intend that.
+2. Confirm the Supabase CLI target is **production** and that you intend that.
+   **This worktree is not linked to any project**, so `--linked` alone resolves
+   nothing here. Point the command at a checkout that is linked, and read back
+   which project answers:
+
+   ```powershell
+   supabase migration list --linked --workdir "C:\Users\61416\OneDrive\Desktop\EventLinqs\eventlinqs-app-hardening"
+   ```
+
 3. Run:
 
    ```powershell
-   supabase db push --linked
+   supabase db push --linked --workdir "C:\Users\61416\OneDrive\Desktop\EventLinqs\eventlinqs-app-hardening"
    ```
 
 4. **What you see if it works:** the CLI lists the two migration versions above as
@@ -620,7 +868,10 @@ Rollback, in the order to try it:
    rewriting is banned here and a migration that has been applied must be
    corrected by a new one, never by editing the old one.
 3. `git revert` is available for the code and is the sanctioned way to undo a
-   commit. `git reset`, `--amend`, and force-pushing are banned.
+   commit. `git reset`, `--amend`, and force-pushing are banned. The exact form
+   depends on which merge button was used and is written out in step 3.8; in
+   short, `git revert <sha>` after a squash merge and `git revert -m 1 <sha>`
+   after a true merge commit.
 
 ### What stops this being a written procedure nobody follows
 
@@ -639,7 +890,22 @@ older. Steps 1 to 3 above are the part only a person can do.
 
 ## 6. Remove the seeded events from production
 
-> ## MEASURED 15 AUGUST 2026: THERE IS NOTHING TO DO HERE.
+> ## WITHDRAWN 15 AUGUST 2026. THE BANNER BELOW IS WRONG AND IS KEPT ONLY SO THE
+> ## CORRECTION HAS SOMETHING TO POINT AT.
+>
+> **The purge IS a launch step. Run section 4a.** The block quote that follows
+> said "there is nothing to do here" on the strength of `is_seed_data = true`
+> returning zero rows on production. That zero means nothing: `false` is the
+> column default and the backfill that would have set it `true` only ever ran on
+> TEST, so a marker-keyed count finds nothing while sixteen demo organisations
+> sit there unmarked. The correction directly beneath the quote has the real
+> identification method, keyed on `owner_id`.
+>
+> This was left standing for one session with the correction underneath it, which
+> is the worst of both: a reader who stops at the heading skips the purge
+> entirely, and the heading is in larger type than the thing that disproves it.
+
+> ## SUPERSEDED, DO NOT ACT ON THIS: MEASURED 15 AUGUST 2026, THERE IS NOTHING TO DO HERE.
 >
 > Production was read, read only, with exact server-side counts:
 >
@@ -1121,7 +1387,18 @@ rather than discovered later. Recorded in `docs/roast/POST-LAUNCH-FINDINGS.md`.
 
 ---
 
-## 7. Prove money moves, with a real card
+## 7. Prove money moves, with a real card, a SECOND time
 
-See section 4 above, which is the same procedure. Do it **after** sections 5 and
-6, so the platform you test is the platform you launch.
+See section 4 above, which is the same procedure.
+
+**CORRECTED 15 AUGUST 2026.** This section used to read "do it after sections 5
+and 6", which contradicted the founder ruling recorded in section 4 and section
+4a: **the $1 purchase comes FIRST and gates the purge**, because the demo
+catalogue is what you would need in order to diagnose a failed checkout, and
+deleting it first throws away the evidence.
+
+The order is: section 4 (buy, verify, refund), then 4a (purge), then this section
+as a **repeat** of section 4 on the purged platform, so the thing you finally
+test is the thing you launch. Two purchases, not one, and the first is the gate.
+
+Skip the repeat only if 4a made no changes at all.

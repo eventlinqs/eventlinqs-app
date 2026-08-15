@@ -68,13 +68,58 @@ const REPO_ROOT = resolve(HERE, '..', '..')
  * The variables the isolation rule reads, plus the bare `SUPABASE_URL` some
  * scripts use.
  *
- * ALLOW_PRODUCTION_SUPABASE is deliberately NOT in this list. It is read from
- * the real environment ONLY, never from a file, so the approval is per run and
- * cannot be parked in .env.local and forgotten. A bypass that can be stored is
- * a bypass that gets stored once and silently disables the control forever,
- * which is the failure this whole preflight exists to end. The env manifest
- * already treats a STORED guard bypass as a violation in its own right
+ * ALLOW_PRODUCTION_SUPABASE is deliberately NOT in this list, so it is never
+ * picked up by the file reader below. The approval must be per run and must not
+ * be parkable in a file, because a bypass that can be stored is a bypass that
+ * gets stored once and silently disables the control forever, which is the
+ * failure this whole preflight exists to end. The env manifest already treats a
+ * STORED guard bypass as a violation in its own right
  * (tests/unit/security/env-manifest.test.ts), so this matches that posture.
+ *
+ * KEEPING IT OUT OF THIS LIST IS NOT SUFFICIENT, AND SAYING SO IS THE POINT.
+ * This comment previously claimed the approval "is read from the real
+ * environment ONLY, never from a file". That claim was false, and a false claim
+ * inside a security control is worse than no claim, because it is the sentence
+ * the next reader trusts instead of checking.
+ *
+ * The hole: `node --env-file=<file>` writes the file's variables INTO
+ * `process.env` before the script runs, so a bare `process.env` read cannot tell
+ * a shell approval from a file approval. Node publishes the loading behaviour
+ * and the precedence at https://nodejs.org/api/cli.html#--env-fileconfig
+ * (fetched 15 August 2026): "Loads environment variables from a file relative to
+ * the current directory, making them available to applications on process.env",
+ * and "If the same variable is defined in the environment and in the file, the
+ * value from the environment takes precedence."
+ *
+ * That hole matters here specifically because the runbook drives the purge
+ * scripts as `node --env-file=<production env file> scripts/verify/...`, which
+ * is exactly the invocation that would have loaded a parked approval.
+ *
+ * WHAT CLOSES IT, and what it can and cannot see. `--env-file` can only arrive
+ * on the command line, and the command line is readable at `process.execArgv`.
+ * Verified by execution on the pinned runtime, node v24.19.0:
+ *
+ *   node --env-file=probe.env -e "console.log(process.execArgv)"
+ *     -> [ '--env-file=probe.env', '-e', ... ]        the flag is visible
+ *   node --env-file probe.env -e "..."
+ *     -> [ '--env-file', 'probe.env', '-e', ... ]     the spaced form too
+ *   NODE_OPTIONS="--env-file=probe.env" node -e "..."
+ *     -> node.exe: --env-file= is not allowed in NODE_OPTIONS
+ *
+ * The third line is the one that makes this reliable rather than best-effort:
+ * there is no second, invisible path by which a file can inject the approval.
+ * Node does not publish that refusal on the page above, so it is recorded here
+ * as VERIFIED BY EXECUTION on v24.19.0 rather than cited, and the drill in
+ * tests/unit/security/production-write-preflight-approval.test.ts re-measures it
+ * so a future runtime that starts allowing it turns a test red here.
+ *
+ * So `approvalParkedInEnvFile()` reads every file named by a `--env-file` or
+ * `--env-file-if-exists` flag and refuses the approval outright if any of them
+ * defines ALLOW_PRODUCTION_SUPABASE. It CANNOT tell "shell only" from "shell and
+ * file", because by the time the script runs those are the same string. So it
+ * refuses both, which is stricter and never looser, matching the two other ways
+ * this module is deliberately stricter than the build guard. The remedy is the
+ * one we want anyway: take the approval out of the file and give it in the shell.
  */
 const RELEVANT = [
   'NEXT_PUBLIC_SUPABASE_URL',
@@ -100,6 +145,84 @@ function parseEnvFile(file) {
     out[t.slice(0, i).trim()] = value.startsWith('#') ? '' : value
   }
   return out
+}
+
+/** The name of the approval, written once so the scanner and the messages agree. */
+const APPROVAL = 'ALLOW_PRODUCTION_SUPABASE'
+
+/**
+ * Every file this process loaded with --env-file, read off the command line.
+ *
+ * Both spellings Node accepts are handled, and both argument forms:
+ *   --env-file=<path>   --env-file <path>
+ *   --env-file-if-exists=<path>   --env-file-if-exists <path>
+ *
+ * Reasoning for reading execArgv rather than argv: execArgv holds the flags Node
+ * itself consumed, which is where these land. See the header note for the
+ * measurements that establish this is the only path in.
+ */
+function envFilesOnTheCommandLine() {
+  const flags = ['--env-file', '--env-file-if-exists']
+  const files = []
+  const argv = process.execArgv
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i]
+    for (const flag of flags) {
+      if (arg.startsWith(`${flag}=`)) {
+        files.push(arg.slice(flag.length + 1))
+      } else if (arg === flag && typeof argv[i + 1] === 'string') {
+        files.push(argv[i + 1])
+      }
+    }
+  }
+  return files
+}
+
+/**
+ * The file that parked the approval, or null.
+ *
+ * Returns the path as written on the command line, because that is the string
+ * the person needs to open and edit, not a resolved absolute path they then have
+ * to match back to what they typed.
+ */
+function approvalParkedInEnvFile() {
+  for (const file of envFilesOnTheCommandLine()) {
+    const parsed = parseEnvFile(resolve(process.cwd(), file))
+    if (parsed && nonEmpty(parsed[APPROVAL])) return file
+  }
+  return null
+}
+
+/**
+ * Computed once. The command line cannot change during a run, so neither can
+ * this, and evaluating it at module load keeps both assert functions honest
+ * without either being able to forget the check.
+ */
+const PARKED_APPROVAL = approvalParkedInEnvFile()
+
+/** Is the approval present AND given in a way this module will honour? */
+function approvalGiven() {
+  return PARKED_APPROVAL === null && nonEmpty(process.env[APPROVAL])
+}
+
+/**
+ * The extra lines a refusal carries when the approval WAS supplied but came from
+ * a file. Without these the person sees the ordinary "requires approval" refusal
+ * while looking straight at the approval they set, which is the confusing shape
+ * this whole change exists to avoid.
+ */
+function parkedApprovalLines() {
+  if (!PARKED_APPROVAL) return []
+  return [
+    '',
+    `${APPROVAL} IS SET, AND IT IS BEING IGNORED ON PURPOSE.`,
+    `It is defined in ${PARKED_APPROVAL}, which this process loaded with`,
+    '--env-file. An approval that lives in a file is not an approval for THIS run:',
+    'it approves every run from now on, including the ones nobody meant to make.',
+    '',
+    `Remove ${APPROVAL} from ${PARKED_APPROVAL}, then give it in the shell for the`,
+    'one run you intend:',
+  ]
 }
 
 /**
@@ -147,10 +270,12 @@ function collectEnv(envFileHint) {
     origin.NEXT_PUBLIC_SUPABASE_URL = origin.SUPABASE_URL
   }
 
-  // The approval, from the real environment only. See RELEVANT above.
-  if (nonEmpty(process.env.ALLOW_PRODUCTION_SUPABASE)) {
-    bag.ALLOW_PRODUCTION_SUPABASE = process.env.ALLOW_PRODUCTION_SUPABASE
-    origin.ALLOW_PRODUCTION_SUPABASE = 'the process environment'
+  // The approval, and ONLY when it did not come out of a --env-file. See the
+  // RELEVANT note above for why keeping it off the file-reader list was never
+  // enough on its own.
+  if (approvalGiven()) {
+    bag[APPROVAL] = process.env[APPROVAL]
+    origin[APPROVAL] = 'the process environment'
   }
 
   return { bag, origin, candidates }
@@ -258,16 +383,17 @@ export function assertNotProduction(opts = {}) {
       'To run this against TEST instead, point the process at the TEST project:',
       '  PowerShell : Get-Content .env.test | ForEach-Object { if ($_ -match \'^([A-Z0-9_]+)=(.*)$\') { Set-Item -Path "env:$($Matches[1])" -Value $Matches[2] } }',
       '  bash       : set -a; . ./.env.test; set +a',
-      '',
-      'If this run IS an approved production write, state that explicitly:',
-      `  PowerShell : $env:ALLOW_PRODUCTION_SUPABASE="1"; node ${script}`,
-      `  bash       : ALLOW_PRODUCTION_SUPABASE=1 node ${script}`,
+      ...(PARKED_APPROVAL
+        ? parkedApprovalLines()
+        : ['', 'If this run IS an approved production write, state that explicitly:']),
+      `  PowerShell : $env:${APPROVAL}="1"; node ${script}`,
+      `  bash       : ${APPROVAL}=1 node ${script}`,
     ])
   }
 
   // The rule passed. Either the target is not production, or the override was
   // set. Say which, out loud, so an approved production run is never quiet.
-  if (bag.ALLOW_PRODUCTION_SUPABASE === '1') {
+  if (approvalGiven() && bag[APPROVAL] === '1') {
     const bar = '!'.repeat(72)
     console.warn('')
     console.warn(bar)
@@ -511,8 +637,8 @@ export function assertNotProductionDatabase() {
   }
 
   const judged = { NEXT_PUBLIC_SUPABASE_URL: `https://${ref}.supabase.co` }
-  if (nonEmpty(process.env.ALLOW_PRODUCTION_SUPABASE)) {
-    judged.ALLOW_PRODUCTION_SUPABASE = process.env.ALLOW_PRODUCTION_SUPABASE
+  if (approvalGiven()) {
+    judged[APPROVAL] = process.env[APPROVAL]
   }
 
   const verdict = evalEnvRule(rule, judged)
@@ -535,14 +661,15 @@ export function assertNotProductionDatabase() {
       '',
       'To run this against TEST instead:',
       `  node --env-file=.env.test ${script}`,
-      '',
-      'If this run IS an approved production write, state that explicitly:',
-      `  PowerShell : $env:ALLOW_PRODUCTION_SUPABASE="1"; node ${script}`,
-      `  bash       : ALLOW_PRODUCTION_SUPABASE=1 node ${script}`,
+      ...(PARKED_APPROVAL
+        ? parkedApprovalLines()
+        : ['', 'If this run IS an approved production write, state that explicitly:']),
+      `  PowerShell : $env:${APPROVAL}="1"; node ${script}`,
+      `  bash       : ${APPROVAL}=1 node ${script}`,
     ])
   }
 
-  if (process.env.ALLOW_PRODUCTION_SUPABASE === '1') {
+  if (approvalGiven() && process.env[APPROVAL] === '1') {
     const bar = '!'.repeat(72)
     console.warn('')
     console.warn(bar)
