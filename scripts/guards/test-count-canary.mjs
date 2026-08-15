@@ -91,8 +91,17 @@ const ROOT = join(HERE, '..', '..')
  * embed lost the two Stripe columns the sale gate reads, so saleBlocked was true
  * platform-wide.
  */
+/*
+ * 2026-08-15: raised 2300 -> 2305. Five tests added by the ONE FEE pass, all in
+ * tests/unit/ai-layer.test.ts: every assistant carries the live fee label, every
+ * assistant refuses to quote a figure when the live lookup fails, no assistant
+ * ASSERTS a second fee or carries a deleted figure, and two on the knowledge
+ * base rendering with and without a live fee. The canary asked for the floor to
+ * be raised on the push that introduced them, which is the point of it: a floor
+ * that is not raised stops being a floor.
+ */
 const MIN_FILES = 191
-const MIN_TESTS = 2300
+const MIN_TESTS = 2305
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
