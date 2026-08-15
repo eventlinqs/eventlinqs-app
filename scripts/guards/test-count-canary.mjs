@@ -107,8 +107,19 @@ const ROOT = join(HERE, '..', '..')
  * sales-attribution for the exclusion of external events from the sold-ticket
  * buckets.
  */
-const MIN_FILES = 192
-const MIN_TESTS = 2332
+/*
+ * 2026-08-15: raised 192/2332 -> 194/2345. Two drill files, both of which spawn
+ * real child processes rather than reading source, because both guard runtime
+ * behaviour that a source-reading test would pass against while broken.
+ * tests/unit/security/production-write-preflight-approval.test.ts (8) proves the
+ * production approval cannot be parked in a --env-file, and re-measures the two
+ * Node behaviours that fix depends on.
+ * tests/unit/guards/migration-collision-guard.test.ts (5) makes the collision
+ * guard go red on a real two-file version collision and pins that a skipped
+ * remote check never prints ALL GREEN.
+ */
+const MIN_FILES = 194
+const MIN_TESTS = 2345
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
