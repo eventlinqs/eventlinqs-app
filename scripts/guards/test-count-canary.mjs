@@ -108,7 +108,7 @@ const ROOT = join(HERE, '..', '..')
  * buckets.
  */
 const MIN_FILES = 192
-const MIN_TESTS = 2331
+const MIN_TESTS = 2332
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

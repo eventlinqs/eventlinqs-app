@@ -118,6 +118,35 @@ describe('NON-NEGOTIABLE 1: the printed link is ours, never the external URL', (
     expect(JSON.stringify(ctx.links)).not.toContain('melbournefringe')
   })
 
+  it('the PRINTED line on a poster is our canonical host, and dissolves the ticketBarText hazard', async () => {
+    const { ticketBarText } = await import('@/lib/broadcast/social-card-layout')
+
+    // Exactly what the poster draws: ticketBarText(priceLabel, links.qr,
+    // printableHost()). The third argument is why this is safe.
+    const printed = ticketBarText(
+      'From $28',
+      'https://eventlinqs-app-git-integration-launch.vercel.app/e/the-basement-tapes-qr',
+      'www.eventlinqs.com.au',
+    )
+
+    expect(printed).toBe('From $28 · eventlinqs.com.au/e/the-basement-tapes-qr')
+
+    /*
+     * THE HAZARD, AND WHY IT IS GONE. ticketBarText SWAPS the host in the
+     * printed line for the canonical one, so what a promoter reads on paper is
+     * not literally the URL the QR encodes. For an INTERNAL event that was
+     * always a canonicalisation of our own address, which is honest.
+     *
+     * The risk external ticketing raised was printing OUR host on a line whose
+     * link belonged to somebody else. It does not arise, because the link the
+     * poster carries genuinely IS ours: `/e/<code>` on the canonical host, which
+     * we serve and which redirects. The host on the paper is the host that
+     * answers. Nothing is swapped for something it is not.
+     */
+    expect(printed).not.toContain('melbournefringe')
+    expect(printed.startsWith('From $28 · eventlinqs.com.au/e/')).toBe(true)
+  })
+
   it('leaves an INTERNAL draft on the kit URL exactly as before', () => {
     const ctx = buildDraftContext({
       payload: draftPayload(),
