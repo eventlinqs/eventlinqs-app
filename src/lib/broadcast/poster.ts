@@ -76,6 +76,96 @@ const PAGE_W = 595.28
 const PAGE_H = 841.89
 const MARGIN = 48
 
+/**
+ * THE QR IS SIZED TO WHAT IT NEEDS TO SCAN, NOT TO WHAT THE LAYOUT ALLOWED.
+ *
+ * Founder ruling, 15 August 2026, raised as a merge blocker: "the QR must be
+ * unobtrusive and never compete with the event. It currently wins outright."
+ *
+ * It did. Measured off the rendered bytes rather than from the source: the
+ * cover composition drew a 140pt code beside a headline hardcoded at 29pt, so
+ * the code was 4.83 times the headline's point size. On A4 that is a 49.4mm
+ * square of high-contrast black, which is the first thing the eye resolves at
+ * any distance, against an event name at 10mm.
+ *
+ * THE SIZE IS SET FROM THE SCANNING REQUIREMENT, EXPRESSED IN MILLIMETRES,
+ * because the requirement is physical: a scanner resolves MODULES, and a module
+ * is a printed distance. Points are an accident of the page.
+ *
+ * WHAT THE PAYLOAD ACTUALLY IS, computed rather than assumed. A tracked short
+ * link, `https://www.eventlinqs.com.au/e/<12 chars>`, is 44 characters, which
+ * the encoder resolves to QR **version 4 at error correction level M, so 33 x 33
+ * modules**. At 30mm that is a 0.909mm module.
+ *
+ * THE PUBLISHED FLOOR. GS1 General Specifications, Release 26.0 (Ratified,
+ * January 2026), Table 5-46, publishes the X-dimension band for a QR Code
+ * carrying a GS1 Digital Link URI as **minimum 0.396mm, target 0.495mm**, and
+ * scopes it on the following page to "a read range typical of mobile device
+ * scanning". The same table records WHY a 2D symbol must be larger than a
+ * linear one: "Optical effects in the image capture process require that the
+ * Data Matrix and QR Code symbols be printed at 1.5 times the equivalent
+ * X-dimension allowed for linear symbols."
+ * (https://ref.gs1.org/standards/genspecs/, retrieved 15 August 2026.)
+ *
+ * So 0.909mm is 2.3 times GS1's published minimum and 1.8 times its target.
+ *
+ * AUSTRALIAN TRADE PRACTICE, which is not a standard and is labelled as such.
+ * DTPS: "QR codes should be printed at a minimum size of 3 x 3 cm with adequate
+ * clear space around them for reliable scanning."
+ * (https://www.dtps.com.au/poster-printing-services-everything-you-need-to-know/)
+ * Same Day Printing: "Minimum size: 20 x 20 mm for close-up use", "Recommended:
+ * 30-40 mm or larger for flyers, menus, or signage."
+ * (https://samedayprinting.com.au/variable-data-qr-codes/) Both retrieved
+ * 15 August 2026. 30mm is the floor of the published poster band, not below it.
+ *
+ * THE 1:10 "SIZE EQUALS DISTANCE OVER TEN" RULE IS **UNSOURCED** AND IS NOT
+ * USED HERE. It appears on no Denso Wave page and in no GS1 specification; every
+ * instance found was a QR-generator vendor's own marketing. What Denso Wave
+ * actually publishes is a printer-and-scanner rule: "Each scanner has its own
+ * readable module size limit" (https://www.qrcode.com/en/howto/cell.html). This
+ * is recorded because quoting that rule as a standard is precisely the failure
+ * Law 7 exists to stop.
+ *
+ * THE QUIET ZONE IS PART OF THE SYMBOL, NOT PADDING AROUND IT. Denso Wave:
+ * "QR Code requires a four-module wide margin at all sides of a symbol"
+ * (https://www.qrcode.com/en/howto/code.html), and GS1 records the same as
+ * "4-X surrounding Quiet Zone". The generator bakes in `margin: 1`, so the white
+ * tile drawn behind the code has to supply the other three modules. At 30mm on a
+ * 33-module symbol the tile needs at least 3 x 0.909mm = 2.7mm, which is 7.7pt;
+ * the tile is drawn with 10pt on every side, so the requirement is met with
+ * margin. Anything that reduces that padding breaks the symbol, not just its
+ * appearance.
+ */
+const MM = 72 / 25.4
+/** Printed side of the QR symbol itself, excluding its white tile. */
+const POSTER_QR_MM = 30
+const POSTER_QR_PT = Math.round(POSTER_QR_MM * MM)
+
+/**
+ * The headline range for the PHOTOGRAPH composition.
+ *
+ * The floor is the size below which a poster headline stops working across a
+ * room. The ceiling exists so a two-word event name does not swallow the band
+ * and crush the photograph the organiser uploaded, which is the opposite defect
+ * and just as bad. The fitter chooses inside this range against a computed
+ * budget; neither bound is hit on a typical title.
+ */
+const COVER_TITLE_MIN = 26
+const COVER_TITLE_MAX = 104
+
+/**
+ * Clear air between the organiser's name and the headline's CAP LINE.
+ *
+ * The headline's ascender is added to this separately, in both the measurement
+ * and the drawing. The old code advanced a flat 26 from the organiser baseline
+ * and drew the title's baseline there, which worked only because the title was
+ * a fixed 29pt. The moment the headline is fitted and reaches 81pt, its
+ * ascender rises 58pt above its baseline and prints straight through the
+ * organiser's name. That regression appeared on the very first render of the
+ * fitted headline, on the no-mark path, which is the common one.
+ */
+const IDENTITY_TO_TITLE = 20
+
 export type PosterImage = { bytes: Uint8Array; format: 'jpg' | 'png' }
 
 export interface PosterInput {
@@ -275,20 +365,66 @@ async function drawCoverPoster(
   const logo = input.organiserLogo ? await embed(doc, input.organiserLogo) : null
   const onTile = input.logoPlacement !== 'on-navy'
 
-  const qrSize = 140
+  const qrSize = POSTER_QR_PT
   const qrX = PAGE_W - MARGIN - qrSize
   const textMaxW = qrX - MARGIN - 24
 
-  // Title metrics are needed BEFORE the mark is placed: pdf-lib draws text from
-  // its baseline, so the gap under the mark has to clear the title's ascender,
-  // not the baseline.
-  const titleSize = 29
-  const titleAscent = display.heightAtSize(titleSize, { descender: false })
-  const titleLines = wrapText(input.title, display, titleSize, textMaxW).slice(0, 3)
   const localityLines = input.locality
     ? wrapText(input.locality, body, 12.5, textMaxW).slice(0, 2)
     : []
   const barH = 30
+  // Clear of the shared platform footer, which both compositions draw at an
+  // absolute y of 30.
+  const BAND_BOTTOM_PAD = 46
+  const BAND_MAX = PAGE_H * 0.45
+
+  /* ---- THE HEADLINE IS FITTED, NOT FIXED (founder ruling, 15 Aug 2026) ------
+   *
+   * It used to be a hardcoded 29pt on every poster ever made by this platform,
+   * while the QR beside it was drawn at 140pt. Measured off the rendered bytes:
+   * the code was 4.83 TIMES the headline's point size, so on an A4 sheet in a
+   * shop window the first thing a passer-by resolved from three metres was a
+   * black and white machine-readable square, and the event's name was smaller
+   * than the venue name on an ordinary gig poster.
+   *
+   * The artwork-free composition never had this problem. It has always fitted
+   * its headline, reaching 145pt against a 132pt code, a ratio of 0.91. So the
+   * defect was not the design, it was that the PHOTOGRAPH composition never got
+   * the fitter the other one had.
+   *
+   * The budget is computed rather than guessed: measure everything in the band
+   * that is NOT the headline, subtract it from the band's own ceiling, and give
+   * the headline what is left. That keeps the band's existing behaviour, which
+   * is that it sizes to its content and the photograph takes the rest, while
+   * making the headline the element that gets first call on the space.
+   */
+  const logoH = logo ? Math.min(34, (logo.height / logo.width) * 120) : 0
+  const logoTilePad = logo && onTile ? 6 : 0
+
+  let chrome = 44
+  chrome += logo ? logoH + logoTilePad + 22 : IDENTITY_TO_TITLE
+  chrome += 22
+  chrome += localityLines.length * 18
+  chrome += 14
+  chrome += barH - 8
+  chrome += BAND_BOTTOM_PAD
+
+  const headlineBudget = Math.max(BAND_MAX - chrome, COVER_TITLE_MIN * 1.08)
+
+  const titleFit = fitPosterTitle(input.title, display, {
+    maxWidth: textMaxW,
+    maxHeight: headlineBudget,
+    maxLines: 3,
+    max: COVER_TITLE_MAX,
+    min: COVER_TITLE_MIN,
+  })
+  const titleSize = titleFit.size
+  const titleLines = titleFit.lines
+  const titleLeading = titleFit.leading
+  // Title metrics are needed BEFORE the mark is placed: pdf-lib draws text from
+  // its baseline, so the gap under the mark has to clear the title's ascender,
+  // not the baseline.
+  const titleAscent = display.heightAtSize(titleSize, { descender: false })
 
   /* ---- THE BAND SIZES ITSELF TO ITS CONTENT (founder ruling, 9 Aug 2026) ----
    *
@@ -305,31 +441,40 @@ async function drawCoverPoster(
    * makes, with the band top at zero, so the two can never drift apart. Every
    * spacing constant is unchanged; only the height they add up to is new.
    */
+  /**
+   * The gap under the LAST headline baseline.
+   *
+   * Advancing a full leading after the final line, which is what the loop used
+   * to do, leaves a whole empty line of navy under the headline. At 29pt that
+   * was 34pt and went unnoticed; at 81pt it is 87pt of dead region directly
+   * under the biggest thing on the page, which is exactly where the eye goes
+   * next. It scales with the headline rather than being a constant, so the
+   * relationship holds at every size the fitter can choose.
+   */
+  const titleBlockGap = Math.max(26, Math.round(titleSize * 0.42) + 10)
+
   let measured = 44
   if (logo) {
-    const lh = Math.min(34, (logo.height / logo.width) * 120)
-    measured += lh + (onTile ? 6 : 0) + 22 + titleAscent
+    measured += logoH + logoTilePad + 22
   } else {
-    measured += 26
+    measured += IDENTITY_TO_TITLE
   }
-  measured += titleLines.length * (titleSize + 5)
-  measured += 10 + 22
+  // The ascender belongs to the title in BOTH branches. It was previously added
+  // only in the logo branch, so with a fitted headline the organiser's name and
+  // the headline's cap line collided on every poster without a mark.
+  measured += titleAscent
+  measured += (titleLines.length - 1) * titleLeading
+  measured += titleBlockGap
+  measured += 22
   measured += localityLines.length * 18
   measured += 14
   measured += barH - 8 // the ticket bar's lowest drawn edge
 
-  // The QR column is fixed height and often the taller of the two, so it sets
-  // the floor: 60 below the band top, 140 tall, its label 26 under that, plus
-  // air for the descender.
+  // The QR column: 60 below the band top, the code itself, its label 26 under
+  // that, plus air for the descender. It no longer SETS the floor in practice,
+  // because a fitted headline is now the taller of the two on almost every
+  // poster, which is the point of the change.
   const qrColumnH = 60 + qrSize + 26 + 6
-
-  // Clear of the shared platform footer, which both compositions draw at an
-  // absolute y of 30.
-  const BAND_BOTTOM_PAD = 46
-  // Never TALLER than it used to be, so the photograph can only ever gain space
-  // by this change and never lose it. A title long enough to need more than
-  // this already overflowed before; that is untouched here.
-  const BAND_MAX = PAGE_H * 0.45
 
   const bandH = Math.min(Math.max(measured, qrColumnH) + BAND_BOTTOM_PAD, BAND_MAX)
   const imageRegionH = PAGE_H - bandH
@@ -358,7 +503,7 @@ async function drawCoverPoster(
 
   // The organiser identity leads the band. Their mark, their name.
   if (logo) {
-    const lh = Math.min(34, (logo.height / logo.width) * 120)
+    const lh = logoH
     const lw = (logo.width / logo.height) * lh
     // A dark mark gets a white readability tile, and the tile is TALLER than
     // the mark by this padding on each side. Advancing by the mark's height
@@ -396,16 +541,21 @@ async function drawCoverPoster(
       color: pal.textMuted,
       tracking: 1.4,
     })
-    y -= 26
+    // Clear the headline's ASCENDER, not just its baseline. A flat 26 was
+    // enough while the headline was fixed at 29pt and overlaps it the moment
+    // the headline is fitted.
+    y -= IDENTITY_TO_TITLE + titleAscent
   }
 
-  // Title, wrapped, at most three lines. Measured above, drawn here.
-  for (const line of titleLines) {
+  // Title, wrapped, at most three lines. Measured above, drawn here, on the
+  // SAME leading and the SAME trailing gap the measurement used, so the two
+  // cannot drift.
+  titleLines.forEach((line, i) => {
     page.drawText(line, { x: MARGIN, y, size: titleSize, font: display, color: pal.text })
-    y -= titleSize + 5
-  }
+    if (i < titleLines.length - 1) y -= titleLeading
+  })
 
-  y -= 10
+  y -= titleBlockGap
   page.drawText(posterWhenLine(input), { x: MARGIN, y, size: 14, font: bodyStrong, color: pal.accent })
   y -= 22
   for (const line of localityLines) {
