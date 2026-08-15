@@ -303,6 +303,37 @@ under it, which is worse than the tile existing.
 
 ## 6. Remove the seeded events from production
 
+> ## MEASURED 15 AUGUST 2026: THERE IS NOTHING TO DO HERE.
+>
+> Production was read, read only, with exact server-side counts:
+>
+> | | |
+> |---|---|
+> | events total | **48** |
+> | `is_seed_data = true` | **0** |
+> | `is_seed_data = false` | 48 |
+> | `is_seed_data IS NULL` | 0 |
+> | organisations owning only seeded events | **0** |
+> | venues referenced only by seeded events | **0** |
+>
+> **Production carries no seeded data at all.** An earlier draft of this section
+> said "Expect 32". That figure was never verified against production and it is
+> wrong. The seeded catalogue lives on TEST only.
+>
+> So section 6 is **NOT a launch step**. Run step 1 below if you ever seed
+> production, and otherwise skip the whole section. The scripts and the procedure
+> are kept because they are correct, rehearsed, and the gate that proves the
+> above is step 1 itself.
+>
+> The orphaned-organisation problem described in section 6a is likewise a TEST
+> finding only. On production exactly **one** organisation has zero events
+> (`oanh`), it holds no Stripe account, and it is not seeded data.
+>
+> One incidental read worth recording: production has **1 order**, `pending`,
+> with its payment `initiated`, **no payment intent, no ticket**. That is an
+> abandoned checkout from 28 May 2026, not a defect. No money moved and no ticket
+> is owed.
+
 **Rehearsed end to end on TEST, 14 August 2026, and it passed.** Two scripts do
 the work. You do not write SQL by hand and you do not delete anything the
 forensic check has not first cleared.

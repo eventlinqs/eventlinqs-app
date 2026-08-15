@@ -67,9 +67,15 @@ const ROOT = join(HERE, '..', '..')
  * is new and adds 3, asserting the hooks are mode 100755 in the git index after
  * both were found committed as 100644, a state in which a POSIX checkout runs
  * NEITHER of them and says nothing.
+ *
+ * 2026-08-15: 187 files / 2260 tests. Six added: two in fixture-integrity
+ * asserting the homepage density fixture is not stale, and four in the new
+ * fixture-fallthrough file pinning that a stale fixture falls through to the
+ * live query instead of blanking the homepage. That defect had the deployed
+ * preview serving an empty homepage over a database holding 184 upcoming events.
  */
-const MIN_FILES = 186
-const MIN_TESTS = 2254
+const MIN_FILES = 187
+const MIN_TESTS = 2260
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

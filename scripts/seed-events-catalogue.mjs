@@ -259,7 +259,24 @@ function computeSlots() {
 function startDate(slot) {
   // First full round (one per category) lands inside 7 days so This Week
   // leads; the rest spread over the following weeks for the category rails.
-  const base = Date.parse('2026-06-07T00:00:00Z')
+  //
+  // ANCHORED TO TOMORROW, NOT TO A FIXED DATE. This read
+  // `Date.parse('2026-06-07T00:00:00Z')`, which was correct on the day it was
+  // written and silently wrong from then on. By 15 August 2026 every one of the
+  // 55 fixture events sat 5 to 10 weeks in the PAST, so the homepage filter
+  // `start_date >= now` removed all of them and the deployed preview served an
+  // EMPTY homepage while the database held 184 upcoming events. The comment
+  // above still claimed the first round "lands inside 7 days"; it had not for
+  // two months, and nothing failed, because a fixture that has aged out and a
+  // catalogue with nothing in it render the identical screen.
+  //
+  // Anchoring on the current day makes that sentence true on every run and makes
+  // the fixture incapable of expiring. Tomorrow rather than today because slot 0
+  // sets its hour to 08:00 UTC, so anchoring on today ships the first few rows
+  // already in the past, which is the smaller version of the same defect.
+  // Deterministic within a day, and the file is gitignored, so a shifting date
+  // changes nothing tracked.
+  const base = new Date().setUTCHours(0, 0, 0, 0) + DAY
   const d = new Date(base + Math.round(slot * 0.7 * DAY))
   d.setUTCHours([8, 9, 10, 6][slot % 4], 0, 0, 0) // 6pm/7pm/8pm/4pm AEST
   return d

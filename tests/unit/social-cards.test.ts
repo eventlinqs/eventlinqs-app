@@ -317,7 +317,23 @@ describe('the ticket bar never leaves its bar and never cuts the address', () =>
       }
     }
     expect(failures).toEqual([])
-  })
+    /*
+     * AN EXPLICIT TIMEOUT, because this is 120 exhaustive cases each doing real
+     * font layout.
+     *
+     * WHY IT IS HERE. This test failed once in a full-suite run and passed
+     * twice on its own, which is the signature everybody misreads as "flaky, run
+     * it again". It is not flaky: it is DETERMINISTIC and slow. Isolated it
+     * takes about 2.4s; under full parallel load the same 120 cases took 6.6s
+     * and crossed vitest's 5s default, so the run reported a FAILED ASSERTION on
+     * a test whose arithmetic had not changed.
+     *
+     * That matters beyond this file. A timeout under load is indistinguishable
+     * in the output from a real regression, so the next person spends an hour
+     * looking for a bug in the fitter. tests/unit/ci/copy-gate-can-see.test.ts
+     * carries the same allowance for the same reason.
+     */
+  }, 60_000)
 
   it('steps the type down before it shortens the line', () => {
     const short = fitTicketBar(

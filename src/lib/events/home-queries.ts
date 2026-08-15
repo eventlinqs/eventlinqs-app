@@ -92,12 +92,28 @@ export async function loadHomeUpcoming(
 ): Promise<RawRow[]> {
   if (fixtureEnabled()) {
     const rows = await loadFixtureRows()
-    if (rows.length > 0) {
-      return rows
-        .filter(r => r.start_date >= nowIso)
-        .sort((a, b) => a.start_date.localeCompare(b.start_date))
-    }
-    // Fixture missing - fall through to the live query rather than break.
+    /*
+     * FALL THROUGH WHEN THE FIXTURE YIELDS NOTHING USABLE, not merely when the
+     * FILE is missing.
+     *
+     * This used to test `rows.length > 0` and then return the filtered list. A
+     * fixture that existed but had aged entirely into the past therefore
+     * returned an EMPTY array and never reached the live query below, and the
+     * homepage rendered its designed empty state over a database holding 184
+     * upcoming events. That is exactly what happened: the generator anchored its
+     * dates to a hardcoded 7 June 2026, so by mid-August every fixture row was
+     * in the past, and the deployed preview homepage showed no events at all
+     * while /events showed a full catalogue.
+     *
+     * Nothing failed, because "the fixture is stale" and "there are no events"
+     * produce the identical screen. The generator is fixed to anchor on today,
+     * and this fall-through makes a stale fixture harmless rather than silent:
+     * the worst case is now real data instead of a blank page.
+     */
+    const usable = rows
+      .filter(r => r.start_date >= nowIso)
+      .sort((a, b) => a.start_date.localeCompare(b.start_date))
+    if (usable.length > 0) return usable
   }
   const { data } = await supabase
     .from('events')

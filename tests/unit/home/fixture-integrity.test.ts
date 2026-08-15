@@ -24,6 +24,7 @@ type FixtureRow = {
   id: string
   slug: string
   status?: string
+  start_date?: string
   cover_image_url?: string | null
   ticket_tiers?: FixtureTier[] | null
 }
@@ -59,5 +60,45 @@ describe('homepage density fixture integrity', () => {
       .filter(r => !r.cover_image_url || !/^https?:\/\//.test(r.cover_image_url))
       .map(r => r.slug)
     expect(bad).toEqual([])
+  })
+
+  /**
+   * THE FIXTURE MUST BE IN THE FUTURE, or it shows nothing and says nothing.
+   *
+   * THE DEFECT THIS PINS (15 August 2026). The generator anchored its dates to a
+   * hardcoded `2026-06-07`, so the fixture aged out. By mid-August all 55 rows
+   * were in the past, and because the homepage filters `start_date >= now`, the
+   * deployed preview served an EMPTY homepage while the database held 184
+   * upcoming events. Nothing failed anywhere: a stale fixture and an empty
+   * catalogue render the identical screen, and every "verified on the preview"
+   * claim about the homepage had been made against a blank page.
+   *
+   * The generator now anchors on today and loadHomeUpcoming falls through to the
+   * live query when the fixture yields nothing usable. This is the third layer,
+   * and it is the one that fails LOUDLY: if the fixture ever ages out again, CI
+   * goes red here rather than the homepage quietly emptying.
+   */
+  it('has upcoming events, so the homepage cannot be blanked by a stale fixture', () => {
+    const now = new Date().toISOString()
+    const upcoming = fixture.filter(r => typeof r.start_date === 'string' && r.start_date >= now)
+    expect(
+      upcoming.length,
+      `every one of the ${fixture.length} fixture events is in the past, so the homepage ` +
+        'filter start_date >= now removes all of them and the page renders its empty ' +
+        'state. Regenerate with `node scripts/seed-events-catalogue.mjs --fixture`.',
+    ).toBeGreaterThan(0)
+  })
+
+  it('lands its first events inside 7 days, which is what the rails are built for', () => {
+    const now = Date.now()
+    const week = now + 7 * 24 * 60 * 60 * 1000
+    const thisWeek = fixture.filter(
+      r => typeof r.start_date === 'string' && Date.parse(r.start_date) >= now && Date.parse(r.start_date) <= week,
+    )
+    expect(
+      thisWeek.length,
+      'no fixture event falls inside the next 7 days, so the This Week rail is empty ' +
+        'even though the fixture is technically in the future',
+    ).toBeGreaterThan(0)
   })
 })
