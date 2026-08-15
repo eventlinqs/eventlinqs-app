@@ -32,8 +32,36 @@ const GUARD = join(ROOT, 'scripts', 'verify', 'migration-collision-guard.mjs')
 
 let repo: string
 
+/**
+ * EVERY GIT_* VARIABLE IS STRIPPED, AND THIS IS NOT DEFENSIVE TIDINESS.
+ *
+ * This drill spawns `git init` and `git commit` inside a temp directory. The
+ * suite is run by `.githooks/pre-push`, and git sets GIT_DIR (among others) for
+ * a hook, pointing at the REAL repository. A child `git` inherits it, and then
+ * `cwd` is decorative: the command operates on this repository instead of the
+ * fixture.
+ *
+ * That is not hypothetical. The first version of this file had no such
+ * stripping, and on its first push it set `core.bare=true` in the shared
+ * worktree config, which made `git status` fail with "this operation must be run
+ * in a work tree" in ALL NINE worktrees at once. Nothing was lost, because the
+ * failing `git init` also stopped the `git add .` that would have staged temp
+ * files into the real index, but the next arrangement of the same bug would not
+ * have been so tidy.
+ *
+ * So: no GIT_ variable reaches a child of this file, ever.
+ */
+function cleanEnv(extra: Record<string, string> = {}) {
+  const env: Record<string, string> = {}
+  for (const [k, v] of Object.entries(process.env)) {
+    if (k.startsWith('GIT_')) continue
+    if (typeof v === 'string') env[k] = v
+  }
+  return { ...env, ...extra }
+}
+
 function git(args: string[], cwd: string) {
-  const r = spawnSync('git', args, { cwd, encoding: 'utf8' })
+  const r = spawnSync('git', args, { cwd, encoding: 'utf8', env: cleanEnv() })
   if (r.status !== 0) throw new Error(`git ${args.join(' ')} failed: ${r.stderr}`)
 }
 
@@ -49,11 +77,39 @@ function makeRepo(files: Record<string, string>) {
   git(['config', 'user.name', 'drill'], dir)
   git(['add', '.'], dir)
   git(['commit', '-qm', 'drill fixture'], dir)
+
+  // PROVE THE ISOLATION RATHER THAN TRUST IT. If a GIT_ variable ever leaks
+  // again, these two reads answer about the wrong repository and this throws
+  // here, loudly, instead of quietly mutating the real one.
+  const top = spawnSync('git', ['rev-parse', '--show-toplevel'], {
+    cwd: dir,
+    encoding: 'utf8',
+    env: cleanEnv(),
+  }).stdout.trim()
+  if (!top.toLowerCase().includes('el-collision-drill-')) {
+    throw new Error(`fixture git escaped its temp dir: rev-parse says ${top}`)
+  }
+  const subject = spawnSync('git', ['log', '-1', '--format=%s'], {
+    cwd: dir,
+    encoding: 'utf8',
+    env: cleanEnv(),
+  }).stdout.trim()
+  if (subject !== 'drill fixture') {
+    throw new Error(`fixture repo HEAD is "${subject}", not the fixture commit`)
+  }
+
   return dir
 }
 
 function runGuard(cwd: string, args: string[] = []) {
-  const r = spawnSync(process.execPath, [GUARD, ...args], { cwd, encoding: 'utf8' })
+  // The guard itself shells out to git. Same reasoning: without a clean
+  // environment it would read this repository's refs while claiming to read the
+  // fixture, and the drill would pass while proving nothing.
+  const r = spawnSync(process.execPath, [GUARD, ...args], {
+    cwd,
+    encoding: 'utf8',
+    env: cleanEnv(),
+  })
   return { status: r.status, out: `${r.stdout}${r.stderr}` }
 }
 
