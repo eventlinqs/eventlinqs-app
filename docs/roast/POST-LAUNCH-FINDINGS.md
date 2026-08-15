@@ -1,5 +1,12 @@
 # Post-launch findings: integration/launch
 
+## STILL OPEN AND BLOCKING, 15 August 2026
+
+| # | Finding |
+|---|---|
+| B1 | **The login form fails SILENTLY.** Filling a correct email and password on the deployed preview and clicking Sign in leaves the browser on `/login` with **no error message anywhere on the page**. Captured verbatim: the page still reads "Welcome back ... Email Password Forgot password? Sign in". Whatever refused the attempt, the user is told nothing. Reproduced three times after several successful logins earlier in the day, which points at the GoTrue per-IP rate limit that `scripts/verify/lib/proof-session.mjs:8-19` already documents, but **the defect is the silence, not the limit**: a real person who mistypes a password, or who shares an office IP with someone who did, sees a form that appears to do nothing. This also blocked the seat-builder interaction proof below. |
+| B2 | **The seat builder zoom and pan are STILL UNVERIFIED on the deployment.** The earlier "no canvas element" conclusion was the audit's own fault: it followed the first `/seat-maps` link from `/dashboard/venues`, which is the seat-map LIST, and the canvas belongs to the BUILDER, which mounts only once a chart is opened (`seat-map-builder.tsx:47` imports `SeatCanvas`). `scripts/verify/seat-builder-interaction.mjs` now opens the chart and compares canvas pixels across a real wheel and a real drag, but it could not run because of B1. NOT COVERED, not a pass. |
+
 Non-blocking observations found while merging the five launch branches and
 clearing the guard failures, 12 August 2026. One line each, by founder
 instruction. Nothing here is fixed; nothing here blocks. Fix only on a ruling.

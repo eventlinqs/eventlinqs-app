@@ -435,10 +435,11 @@ Mahrajan Sydney, Pasifika Collective.
 before:
 
 1. **Never key on `is_seed_data` alone on production.** It is unset there.
-2. **Key on the organiser instead.** An organisation with **no Stripe Connect
-   account** has never been able to take a cent, so nothing under it can be a
-   real sale. That is the reliable discriminator on production, and it is a fact
-   about money rather than a flag somebody remembered to set.
+2. **Key on the OWNER, not on the Connect account.** The demo catalogue belongs
+   to one synthetic seed account, `00000000-0000-4000-8000-000000000001`. Select
+   by that `owner_id`. Keying on "has no Connect account" is close but WRONG: it
+   would also catch `OANH`, a real signup with no events, and delete a real
+   person's organisation. See the owner table below.
 3. **Corroborate with the creation date.** The demo cohort shares
    `created_at::date = 2026-04-25`. Use it to confirm the set, never alone to
    define it.
@@ -448,6 +449,38 @@ before:
    an abandoned `pending` with no payment intent.
 5. **Keep `Party Pty Ltd` and everything under it.** It is the one connected,
    charge-ready organisation and it is where the $1 purchase will land.
+
+### THE DECISIVE MARKER IS THE OWNER, not the date. Verified 15 August 2026.
+
+A correction to an earlier draft of this section, and to the founder report that
+went with it. That draft said the demo cohort could be identified by
+`created_at::date = 2026-04-25`. **It cannot.** Seven of the organisations have
+events created on 9 and 14 May as well, so a date test flags them as real when
+they are not.
+
+**Production has exactly THREE organisation owners.** Read only, 15 August 2026:
+
+| Owner | Account | Organisations | With a Connect account |
+|---|---|---|---|
+| `00000000-0000-4000-8000-000000000001` | `s***@eventlinqs.app`, created 2026-04-25 | **16** | **0** |
+| `3b753251-...` | the founder's own account | 1 (`Party Pty Ltd`) | **1** |
+| `5758a4b1-...` | `w***@icloud.com`, created 2026-08-08 | 1 (`OANH`) | 0 |
+
+The first is a **single synthetic seed account**: an all-zeros UUID on an
+`eventlinqs.app` address, created the day the demo catalogue was written, owning
+sixteen organisations and holding no Connect account anywhere. **Those sixteen
+are the demo cohort.** Identify them by `owner_id`, not by date and not by name.
+
+**THERE IS NO REAL ORGANISER BLOCKED ON ONBOARDING.** Every organisation without
+a Connect account except one belongs to that seed owner, and the exception has no
+events.
+
+**`OANH` IS A REAL PERSON AND MUST NOT BE PURGED.** It is owned by a genuine
+`icloud.com` signup from 8 August 2026 with no events and no Connect account.
+Nothing of theirs is blocked from selling, because they have listed nothing, but
+they are a real user. **Any purge keyed on "no Connect account" would delete
+them, which is exactly why the marker is the OWNER ID and not the Connect
+status.**
 
 **NOTHING ON PRODUCTION IS DELETED UNTIL THE $1 PURCHASE SUCCEEDS.** Founder
 ruling, 15 August 2026. The purchase is the proof that the money path works end

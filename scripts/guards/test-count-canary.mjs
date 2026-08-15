@@ -79,14 +79,20 @@ const ROOT = join(HERE, '..', '..')
  * chart because a zero-row update is not an error) and widened the sale-gate
  * cases to the five fields the charge precondition actually requires.
  *
+ * 2026-08-15 (fourth): 190 files / 2284 tests. The sales-attribution
+ * reconciliation: nine cases pinning that the three buckets sum to the order
+ * ledger exactly, that an order carrying two conversion rows is counted once,
+ * and that one exported SOLD_STATUSES decides what a sale is (three different
+ * definitions were live at the same time).
+ *
  * 2026-08-15 (later): 188 files / 2265 tests. Five added in the new
  * tests/unit/events/sale-gate-source.test.ts, pinning the defect where a
  * security fix silently turned off ticket sales on every paid event: the anon
  * embed lost the two Stripe columns the sale gate reads, so saleBlocked was true
  * platform-wide.
  */
-const MIN_FILES = 189
-const MIN_TESTS = 2275
+const MIN_FILES = 190
+const MIN_TESTS = 2284
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

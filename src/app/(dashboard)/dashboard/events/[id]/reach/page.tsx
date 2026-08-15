@@ -4,6 +4,7 @@ import type { Metadata } from 'next'
 import { getOrganiserEvent } from '@/lib/reporting/attendees'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { fetchReachSummary } from '@/lib/broadcast/reach'
+import { fetchSalesAttribution } from '@/lib/broadcast/sales-attribution'
 import {
   buildShortUrl,
   getOrCreateShareLink,
@@ -74,6 +75,20 @@ export default async function ReachPage({ params }: Props) {
     ? await fetchReachSummary(id)
     : { totals: { views: 0, clicks: 0, conversions: 0, tickets: 0 }, byChannel: [], linkCount: 0 }
 
+  /*
+   * THE DENOMINATOR. Everything above counts activity on TRACKED LINKS, which
+   * left the organiser with a numerator and no total: "12 tickets from shares"
+   * says nothing until you know whether the event sold 20 or 500.
+   *
+   * fetchSalesAttribution reads the ORDER LEDGER and lays the attribution over
+   * it, so every sold order lands in exactly one of three buckets and the three
+   * must sum to the ledger. When they do not, it reports `reconciles: false` and
+   * the panel shows the discrepancy instead of a percentage. A share-of-sales
+   * figure that does not tie to the books is worse than none, because it gets
+   * quoted.
+   */
+  const attribution = await fetchSalesAttribution(id)
+
   // Request origin: handed-out links must point at the deployment that
   // minted them (identical on production, self-referential on staging).
   const origin = await getRequestOrigin()
@@ -112,6 +127,60 @@ export default async function ReachPage({ params }: Props) {
         <span className="text-sm text-ink-400">·</span>
         <span className="text-sm text-ink-600">{event.title}</span>
       </div>
+
+      {/*
+        WHERE THE SALES CAME FROM. This sits above the link stats because it is
+        the question the organiser actually has, and because it is the only
+        number on the screen with a denominator behind it.
+      */}
+      {attribution.totals.tickets > 0 && (
+        <div className="mb-6 rounded-xl border border-ink-200 bg-white px-5 py-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-500">
+            Where these sales came from
+          </h2>
+
+          {!attribution.reconciles ? (
+            /*
+             * REFUSE RATHER THAN GUESS. If the buckets do not sum to the ledger,
+             * no percentage is shown at all. Showing one anyway is how a wrong
+             * number ends up in a pitch deck.
+             */
+            <p className="mt-3 text-sm text-ink-700">
+              These figures do not currently balance against your order records, so no
+              split is shown. {attribution.totals.tickets} ticket
+              {attribution.totals.tickets === 1 ? '' : 's'} sold in total.
+              {attribution.discrepancy.tickets !== 0 && (
+                <> {Math.abs(attribution.discrepancy.tickets)} unaccounted for.</>
+              )}
+            </p>
+          ) : (
+            <>
+              <p className="mt-3 text-3xl font-bold text-ink-900">
+                {attribution.organiserSharedPercent}%
+                <span className="ml-2 text-base font-normal text-ink-600">
+                  through links you shared
+                </span>
+              </p>
+              <p className="mt-1 text-sm text-ink-600">
+                {attribution.buckets.organiserShared.tickets} of {attribution.totals.tickets} ticket
+                {attribution.totals.tickets === 1 ? '' : 's'} sold.
+                {attribution.buckets.platformChannel.tickets > 0 && (
+                  <>
+                    {' '}
+                    {attribution.buckets.platformChannel.tickets} came through an EventLinqs
+                    channel.
+                  </>
+                )}
+              </p>
+              <p className="mt-3 text-xs text-ink-500">
+                The remaining {attribution.buckets.untracked.tickets} reached your event without a
+                tracked link: through search, the EventLinqs feed, or by typing the address. We do
+                not claim those as ours, because we cannot prove where they came from.
+              </p>
+            </>
+          )}
+        </div>
+      )}
 
       {!shareOn ? (
         <div className="rounded-xl border border-ink-200 bg-white px-5 py-6">

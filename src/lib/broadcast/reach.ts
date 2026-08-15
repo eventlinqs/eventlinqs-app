@@ -1,5 +1,8 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { ShareChannel } from '@/lib/broadcast/share-codes'
+// ONE definition of a sale, shared with the attribution panel. See its header
+// for the three that were live at once before this.
+import { SOLD_STATUSES } from '@/lib/broadcast/sales-attribution'
 
 /**
  * Reach panel v1 aggregates (SPEC section 2.5). Honest by construction:
@@ -79,9 +82,27 @@ export async function fetchReachSummary(eventId: string): Promise<ReachSummary> 
     }
   }
 
-  // Tickets per channel: a read-only count of tickets on the attributed
-  // orders. One query for all channels, grouped in memory.
-  const allOrderIds = [...conversionOrderIdsByChannel.values()].flat()
+  /*
+   * Tickets per channel: a read-only count of tickets on the attributed orders.
+   *
+   * THE ORDERS ARE FILTERED TO SOLD ONES FIRST, using the SAME definition the
+   * attribution panel uses. This counted tickets on every attributed order
+   * regardless of status, so a pending or cancelled order contributed tickets
+   * here while contributing nothing to the sales total on the panel above it.
+   * The two numbers then disagreed on the same screen, and the smaller one
+   * looked like under-attribution rather than a different question.
+   */
+  const attributedOrderIds = [...conversionOrderIdsByChannel.values()].flat()
+  let allOrderIds: string[] = []
+  if (attributedOrderIds.length > 0) {
+    const { data: soldOrders } = await admin
+      .from('orders')
+      .select('id, status')
+      .in('id', attributedOrderIds)
+    allOrderIds = ((soldOrders ?? []) as { id: string; status: string }[])
+      .filter(o => (SOLD_STATUSES as readonly string[]).includes(o.status))
+      .map(o => o.id)
+  }
   if (allOrderIds.length > 0) {
     const { data: tickets } = await admin
       .from('tickets')
