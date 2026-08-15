@@ -301,6 +301,83 @@ under it, which is worse than the tile existing.
 
 ---
 
+## 5a. MIGRATION AND DEPLOY ORDER, and why this one is not negotiable
+
+**Founder ruling, 15 August 2026. This is a production safety rule, not a
+preference. Getting the order wrong takes the live site off sale silently.**
+
+### What the hazard is
+
+Migration `20260808000010_rls_column_privilege_lockdown.sql` REVOKES
+`stripe_account_id` and `stripe_charges_enabled` on `organisations` from the
+`anon` role. That is correct and it stays.
+
+Production's event page **on `main` today** reads those two columns through an
+`anon` embed and hands them to the sale gate. The moment the migration is applied
+to a database whose deployed code still does that, both fields read `undefined`
+for every organiser, the gate returns false platform-wide, and **every paid event
+on the live site stops selling**.
+
+It does not error. It does not alert. It renders "This organiser is still
+finishing their payment setup. Check back soon.", which is a real, designed state
+that an organiser who genuinely has not onboarded also sees. That is precisely
+why it went unnoticed on the preview for weeks.
+
+### The order
+
+1. **DEPLOY THE CODE FIRST.** `integration/launch` carries the fix: the event
+   page reads the two columns with the service role and collapses them to a
+   boolean, so it does not depend on the anon grant at all.
+   **Verify before going further:** open any paid event on the deployed target
+   and confirm a ticket selector renders and the words "finishing their payment
+   setup" do NOT appear. If they do, stop. The fix is not live.
+2. **THEN APPLY THE MIGRATION**, with `supabase db push --linked` in PowerShell,
+   never the Dashboard editor and never the MCP.
+   **Verify:** re-open the same event page. It must still sell. If it now shows
+   the payment-setup message, the code deployed in step 1 was not the fixed code.
+3. **CONFIRM THE REVOKE ACTUALLY LANDED**, otherwise step 2 passed for the wrong
+   reason. As `anon`, selecting `stripe_account_id` from `organisations` must be
+   refused. If it still succeeds, the migration did not apply and the column is
+   still public.
+
+### What success looks like
+
+A paid event page that renders a ticket selector, AND an `anon` role that cannot
+read `stripe_account_id`. Both, not either.
+
+### What failure looks like, and the rollback
+
+**Failure is the payment-setup message appearing on an event whose organiser is
+fully onboarded.**
+
+Rollback, in the order to try it:
+
+1. **Redeploy the previous good build** from the Vercel dashboard. This is the
+   fastest lever and it is the right one if step 1 was the problem, because the
+   migration is harmless while the old code is not yet live.
+2. **If the migration is already applied and the code cannot be rolled forward,
+   restore the grant.** Write a new migration that re-grants the two columns to
+   `anon`, and apply it. **Do not edit or delete `20260808000010`.** History
+   rewriting is banned here and a migration that has been applied must be
+   corrected by a new one, never by editing the old one.
+3. `git revert` is available for the code and is the sanctioned way to undo a
+   commit. `git reset`, `--amend`, and force-pushing are banned.
+
+### What stops this being a written procedure nobody follows
+
+`scripts/guards/migration-needs-sale-gate-fix.mjs`, registered in the guard
+runner and therefore blocking on `prebuild`. If the revoking migration is present
+in the tree, the guard requires the fix to be present too: the event page must
+not pass the anon embed into `isOrganiserSellable`, and it must read the posture
+with a privileged client. Either half missing fails the build.
+
+**What the guard cannot see, stated plainly:** it reads the working tree. It
+cannot tell you what is deployed, nor which migrations have been applied to any
+database. A tree that passes can still be pushed at a project whose live code is
+older. Steps 1 to 3 above are the part only a person can do.
+
+---
+
 ## 6. Remove the seeded events from production
 
 > ## MEASURED 15 AUGUST 2026: THERE IS NOTHING TO DO HERE.
@@ -333,6 +410,52 @@ under it, which is worse than the tile existing.
 > with its payment `initiated`, **no payment intent, no ticket**. That is an
 > abandoned checkout from 28 May 2026, not a defect. No money moved and no ticket
 > is owed.
+
+### CORRECTION, 15 August 2026: the marker is not the identification method
+
+**`is_seed_data = false` on all 48 production rows does NOT mean production has
+no demo content.** `false` is the column DEFAULT
+(`20260628000001_events_is_seed_data.sql`), and the backfill that set it `true`
+ran against TEST only. So a marker-keyed purge finds nothing on production while
+demo content sits there unmarked. Reading the zero as "there is nothing to clean"
+is the same silent fail-open this branch has been closing all week: the query
+answered a narrower question than the one asked.
+
+**What the 48 actually are, read 15 August 2026, read only.** 18 organisations,
+of which **17 hold no Stripe Connect account at all** and one, `Party Pty Ltd`,
+holds `acct_1SFaa2E8...` with charges enabled. The events cluster on
+`created_at = 2026-04-25` under organisation names that are plainly demo content:
+Owambe Sydney, Afrobeats Melbourne, Gospel Brisbane, Amapiano Adelaide, Lagos
+Comedy Tour, Caribbean Carnival Melbourne, Island Vibes Sydney, Bollywood Nights
+Sydney, Diwali Festival Melbourne, Filipino Fiesta Brisbane, Lunar Nights
+Melbourne, Latin Sabor Sydney, Sydney Pride Collective, Polonia Australia Events,
+Mahrajan Sydney, Pasifika Collective.
+
+**THE CORRECTED IDENTIFICATION METHOD**, to be used after the $1 purchase and not
+before:
+
+1. **Never key on `is_seed_data` alone on production.** It is unset there.
+2. **Key on the organiser instead.** An organisation with **no Stripe Connect
+   account** has never been able to take a cent, so nothing under it can be a
+   real sale. That is the reliable discriminator on production, and it is a fact
+   about money rather than a flag somebody remembered to set.
+3. **Corroborate with the creation date.** The demo cohort shares
+   `created_at::date = 2026-04-25`. Use it to confirm the set, never alone to
+   define it.
+4. **Exclude anything with an order carrying a real payment.** Run
+   `scripts/verify/seeded-order-forensics.mjs` against production first; it must
+   print SAFE TO PURGE. Production currently holds exactly one order, and it is
+   an abandoned `pending` with no payment intent.
+5. **Keep `Party Pty Ltd` and everything under it.** It is the one connected,
+   charge-ready organisation and it is where the $1 purchase will land.
+
+**NOTHING ON PRODUCTION IS DELETED UNTIL THE $1 PURCHASE SUCCEEDS.** Founder
+ruling, 15 August 2026. The purchase is the proof that the money path works end
+to end on the live platform; deleting demo content before that removes the very
+catalogue that might be needed to diagnose a failure.
+
+**Status: REPORT ONLY. Nothing on production was modified, and no purge of
+production has been written or run.**
 
 **Rehearsed end to end on TEST, 14 August 2026, and it passed.** Two scripts do
 the work. You do not write SQL by hand and you do not delete anything the

@@ -74,14 +74,19 @@ const ROOT = join(HERE, '..', '..')
  * live query instead of blanking the homepage. That defect had the deployed
  * preview serving an empty homepage over a database holding 184 upcoming events.
  *
+ * 2026-08-15 (third): 189 files / 2275 tests. Added the seat-map cross-tenant
+ * pins (a genuine IDOR: saveSeatMap wrote sections into another organisation's
+ * chart because a zero-row update is not an error) and widened the sale-gate
+ * cases to the five fields the charge precondition actually requires.
+ *
  * 2026-08-15 (later): 188 files / 2265 tests. Five added in the new
  * tests/unit/events/sale-gate-source.test.ts, pinning the defect where a
  * security fix silently turned off ticket sales on every paid event: the anon
  * embed lost the two Stripe columns the sale gate reads, so saleBlocked was true
  * platform-wide.
  */
-const MIN_FILES = 188
-const MIN_TESTS = 2265
+const MIN_FILES = 189
+const MIN_TESTS = 2275
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

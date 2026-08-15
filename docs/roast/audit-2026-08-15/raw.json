@@ -1,7 +1,7 @@
 {
   "report": {
     "base": "https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app",
-    "startedAt": "2026-08-15T00:48:24.057Z",
+    "startedAt": "2026-08-15T02:28:25.959Z",
     "passes": [
       {
         "viewport": {
@@ -19,7 +19,15 @@
         },
         "surfaceCount": 35
       }
-    ]
+    ],
+    "census": {
+      "total": 87,
+      "sampled": 40,
+      "sellable": 40,
+      "paid": 33,
+      "free": 7,
+      "blocked": 0
+    }
   },
   "surfaces": [
     {
@@ -33,6 +41,7 @@
       "textLength": 11429,
       "eventCards": 93,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -54,6 +63,7 @@
       "textLength": 4648,
       "eventCards": 32,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -75,6 +85,7 @@
       "textLength": 3673,
       "eventCards": 24,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -96,6 +107,7 @@
       "textLength": 2313,
       "eventCards": 11,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -117,6 +129,7 @@
       "textLength": 2720,
       "eventCards": 14,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -138,6 +151,7 @@
       "textLength": 4650,
       "eventCards": 32,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -159,6 +173,7 @@
       "textLength": 3622,
       "eventCards": 24,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -180,6 +195,7 @@
       "textLength": 3774,
       "eventCards": 24,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -201,6 +217,7 @@
       "textLength": 1397,
       "eventCards": 0,
       "markerHit": true,
+      "blocked": false,
       "state": "EMPTY STATE",
       "consoleErrors": [],
       "pageErrors": [],
@@ -222,6 +239,7 @@
       "textLength": 4234,
       "eventCards": 9,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -243,6 +261,7 @@
       "textLength": 3673,
       "eventCards": 0,
       "markerHit": true,
+      "blocked": false,
       "state": "EMPTY STATE",
       "consoleErrors": [],
       "pageErrors": [],
@@ -264,6 +283,7 @@
       "textLength": 2608,
       "eventCards": 0,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -285,6 +305,7 @@
       "textLength": 1696,
       "eventCards": 0,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -306,6 +327,7 @@
       "textLength": 8204,
       "eventCards": 0,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -327,6 +349,7 @@
       "textLength": 4252,
       "eventCards": 0,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -348,6 +371,7 @@
       "textLength": 4996,
       "eventCards": 0,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -369,6 +393,7 @@
       "textLength": 1475,
       "eventCards": 0,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -390,6 +415,7 @@
       "textLength": 2204,
       "eventCards": 0,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -411,6 +437,7 @@
       "textLength": 18533,
       "eventCards": 0,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -432,6 +459,7 @@
       "textLength": 14757,
       "eventCards": 0,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -453,6 +481,7 @@
       "textLength": 10488,
       "eventCards": 0,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -474,6 +503,7 @@
       "textLength": 1206,
       "eventCards": 0,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -495,6 +525,7 @@
       "textLength": 211,
       "eventCards": 0,
       "markerHit": false,
+      "blocked": false,
       "state": "THIN",
       "consoleErrors": [],
       "pageErrors": [],
@@ -516,6 +547,7 @@
       "textLength": 462,
       "eventCards": 0,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -537,6 +569,7 @@
       "textLength": 196,
       "eventCards": 0,
       "markerHit": false,
+      "blocked": false,
       "state": "THIN",
       "consoleErrors": [],
       "pageErrors": [],
@@ -558,6 +591,7 @@
       "textLength": 1069,
       "eventCards": 0,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [
         "Failed to load resource: the server responded with a status of 404 ()"
@@ -580,17 +614,21 @@
       "error": null,
       "measuredViewport": "390x844",
       "title": "OPM Night: Filipino Live Music Showcase - Sat, 15 Aug - Brisbane Powerhouse, Brisbane - EventLinqs",
-      "textLength": 2634,
+      "textLength": 2658,
       "eventCards": 0,
-      "markerHit": true,
-      "state": "EMPTY STATE",
-      "consoleErrors": [],
+      "markerHit": false,
+      "blocked": false,
+      "state": "CONTENT",
+      "consoleErrors": [
+        "Attempted to load a Vector Map, but failed. Falling back to Raster. Please see https://developers.google.com/maps/documentation/javascript/webgl/support for more info",
+        "Google Maps JavaScript API error: RefererNotAllowedMapError\nhttps://developers.google.com/maps/documentation/javascript/error-messages#referer-not-allowed-map-error\nYour site URL to be authorized: https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/events/opm-night-filipino-live-music-showcase"
+      ],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
       "badHosts": [],
       "links": 93,
-      "controls": 18,
+      "controls": 23,
       "shot": "event-detail-390.png"
     },
     {
@@ -604,17 +642,22 @@
       "textLength": 7039,
       "eventCards": 36,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [
         "Attempted to load a Vector Map, but failed. Falling back to Raster. Please see https://developers.google.com/maps/documentation/javascript/webgl/support for more info",
-        "Attempted to load a Vector Map, but failed. Falling back to Raster. Please see https://developers.google.com/maps/documentation/javascript/webgl/support for more info",
         "Google Maps JavaScript API error: RefererNotAllowedMapError\nhttps://developers.google.com/maps/documentation/javascript/error-messages#referer-not-allowed-map-error\nYour site URL to be authorized: https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/city/melbourne",
-        "Google Maps JavaScript API error: RefererNotAllowedMapError\nhttps://developers.google.com/maps/documentation/javascript/error-messages#referer-not-allowed-map-error\nYour site URL to be authorized: https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/city/melbourne"
+        "Google Maps JavaScript API error: RefererNotAllowedMapError\nhttps://developers.google.com/maps/documentation/javascript/error-messages#referer-not-allowed-map-error\nYour site URL to be authorized: https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/city/melbourne",
+        "TypeError: Cannot read properties of undefined (reading 'getRootNode')\n    at _.Xm (https://maps.googleapis.com/maps-api-v3/api/js/65/12f/main.js:205:39)\n    at set map (https://maps.googleapis.com/maps-api-v3/api/js/65/12f/marker.js:108:207)\n    at https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/_next/static/immutable/chunks/30-gx3ql0hhj4.js:2:2332\n    at ik (htt",
+        "TypeError: Cannot read properties of undefined (reading 'getRootNode')\n    at _.Xm (https://maps.googleapis.com/maps-api-v3/api/js/65/12f/main.js:205:39)\n    at set map (https://maps.googleapis.com/maps-api-v3/api/js/65/12f/marker.js:108:207)\n    at https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/_next/static/immutable/chunks/30-gx3ql0hhj4.js:2:2332\n    at ik (htt",
+        "Failed to load resource: the server responded with a status of 400 ()"
       ],
       "pageErrors": [
-        "Failed to execute 'observe' on 'IntersectionObserver': parameter 1 is not of type 'Element'."
+        "Cannot read properties of undefined (reading 'getRootNode')"
       ],
-      "failedRequests": [],
+      "failedRequests": [
+        "HTTP 400 https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/api/monitoring?o=4511144322203648&p=4511144328101888&r=us"
+      ],
       "overflows": false,
       "badHosts": [],
       "links": 161,
@@ -632,6 +675,7 @@
       "textLength": 4411,
       "eventCards": 1,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -644,23 +688,24 @@
     },
     {
       "label": "organiser profile",
-      "url": "https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/organisers/signup",
+      "url": "https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/organisers/sydney-pride-collective",
       "vp": "390",
       "status": 200,
       "error": null,
       "measuredViewport": "390x844",
-      "title": "Create account | EventLinqs",
-      "textLength": 680,
+      "title": "Sydney Pride Collective - Events & Profile - EventLinqs",
+      "textLength": 1689,
       "eventCards": 0,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
       "badHosts": [],
-      "links": 7,
-      "controls": 1,
+      "links": 81,
+      "controls": 12,
       "shot": "organiser-profile-390.png"
     },
     {
@@ -674,6 +719,7 @@
       "textLength": 3679,
       "eventCards": 21,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -695,6 +741,7 @@
       "textLength": 1069,
       "eventCards": 0,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [
         "Failed to load resource: the server responded with a status of 404 ()"
@@ -755,6 +802,7 @@
       "textLength": 11667,
       "eventCards": 93,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -776,10 +824,11 @@
       "textLength": 4698,
       "eventCards": 32,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [
-        "Attempted to load a Vector Map, but failed. Falling back to Raster. Please see https://developers.google.com/maps/documentation/javascript/webgl/support for more info",
-        "Google Maps JavaScript API error: RefererNotAllowedMapError\nhttps://developers.google.com/maps/documentation/javascript/error-messages#referer-not-allowed-map-error\nYour site URL to be authorized: https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/events"
+        "Google Maps JavaScript API error: RefererNotAllowedMapError\nhttps://developers.google.com/maps/documentation/javascript/error-messages#referer-not-allowed-map-error\nYour site URL to be authorized: https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/events",
+        "Attempted to load a Vector Map, but failed. Falling back to Raster. Please see https://developers.google.com/maps/documentation/javascript/webgl/support for more info"
       ],
       "pageErrors": [],
       "failedRequests": [],
@@ -800,6 +849,7 @@
       "textLength": 3713,
       "eventCards": 24,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [
         "Attempted to load a Vector Map, but failed. Falling back to Raster. Please see https://developers.google.com/maps/documentation/javascript/webgl/support for more info",
@@ -824,6 +874,7 @@
       "textLength": 2353,
       "eventCards": 11,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [
         "Attempted to load a Vector Map, but failed. Falling back to Raster. Please see https://developers.google.com/maps/documentation/javascript/webgl/support for more info",
@@ -848,6 +899,7 @@
       "textLength": 2760,
       "eventCards": 14,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [
         "Attempted to load a Vector Map, but failed. Falling back to Raster. Please see https://developers.google.com/maps/documentation/javascript/webgl/support for more info",
@@ -872,6 +924,7 @@
       "textLength": 4700,
       "eventCards": 32,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [
         "Attempted to load a Vector Map, but failed. Falling back to Raster. Please see https://developers.google.com/maps/documentation/javascript/webgl/support for more info",
@@ -896,13 +949,13 @@
       "textLength": 3662,
       "eventCards": 24,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [
+        "Attempted to load a Vector Map, but failed. Falling back to Raster. Please see https://developers.google.com/maps/documentation/javascript/webgl/support for more info",
         "Google Maps JavaScript API error: RefererNotAllowedMapError\nhttps://developers.google.com/maps/documentation/javascript/error-messages#referer-not-allowed-map-error\nYour site URL to be authorized: https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/events"
       ],
-      "pageErrors": [
-        "Cannot read properties of undefined (reading 'getRootNode')"
-      ],
+      "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
       "badHosts": [],
@@ -921,6 +974,7 @@
       "textLength": 3814,
       "eventCards": 24,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [
         "Attempted to load a Vector Map, but failed. Falling back to Raster. Please see https://developers.google.com/maps/documentation/javascript/webgl/support for more info",
@@ -945,8 +999,12 @@
       "textLength": 1437,
       "eventCards": 0,
       "markerHit": true,
+      "blocked": false,
       "state": "EMPTY STATE",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Attempted to load a Vector Map, but failed. Falling back to Raster. Please see https://developers.google.com/maps/documentation/javascript/webgl/support for more info",
+        "Google Maps JavaScript API error: RefererNotAllowedMapError\nhttps://developers.google.com/maps/documentation/javascript/error-messages#referer-not-allowed-map-error\nYour site URL to be authorized: https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/events"
+      ],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
@@ -966,6 +1024,7 @@
       "textLength": 4265,
       "eventCards": 9,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -987,6 +1046,7 @@
       "textLength": 3704,
       "eventCards": 0,
       "markerHit": true,
+      "blocked": false,
       "state": "EMPTY STATE",
       "consoleErrors": [],
       "pageErrors": [],
@@ -1008,6 +1068,7 @@
       "textLength": 2639,
       "eventCards": 0,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -1029,6 +1090,7 @@
       "textLength": 1727,
       "eventCards": 0,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -1050,6 +1112,7 @@
       "textLength": 8436,
       "eventCards": 0,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -1071,6 +1134,7 @@
       "textLength": 4283,
       "eventCards": 0,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -1092,6 +1156,7 @@
       "textLength": 5027,
       "eventCards": 0,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -1113,6 +1178,7 @@
       "textLength": 1506,
       "eventCards": 0,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -1134,6 +1200,7 @@
       "textLength": 2235,
       "eventCards": 0,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -1155,6 +1222,7 @@
       "textLength": 18940,
       "eventCards": 0,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -1176,6 +1244,7 @@
       "textLength": 15151,
       "eventCards": 0,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -1197,6 +1266,7 @@
       "textLength": 10773,
       "eventCards": 0,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -1218,6 +1288,7 @@
       "textLength": 1237,
       "eventCards": 0,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -1239,6 +1310,7 @@
       "textLength": 374,
       "eventCards": 0,
       "markerHit": false,
+      "blocked": false,
       "state": "THIN",
       "consoleErrors": [],
       "pageErrors": [],
@@ -1260,6 +1332,7 @@
       "textLength": 625,
       "eventCards": 0,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -1281,6 +1354,7 @@
       "textLength": 359,
       "eventCards": 0,
       "markerHit": false,
+      "blocked": false,
       "state": "THIN",
       "consoleErrors": [],
       "pageErrors": [],
@@ -1302,6 +1376,7 @@
       "textLength": 1100,
       "eventCards": 0,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [
         "Failed to load resource: the server responded with a status of 404 ()"
@@ -1324,20 +1399,21 @@
       "error": null,
       "measuredViewport": "1440x900",
       "title": "OPM Night: Filipino Live Music Showcase - Sat, 15 Aug - Brisbane Powerhouse, Brisbane - EventLinqs",
-      "textLength": 2866,
+      "textLength": 2891,
       "eventCards": 0,
-      "markerHit": true,
-      "state": "EMPTY STATE",
+      "markerHit": false,
+      "blocked": false,
+      "state": "CONTENT",
       "consoleErrors": [
-        "Attempted to load a Vector Map, but failed. Falling back to Raster. Please see https://developers.google.com/maps/documentation/javascript/webgl/support for more info",
-        "Google Maps JavaScript API error: RefererNotAllowedMapError\nhttps://developers.google.com/maps/documentation/javascript/error-messages#referer-not-allowed-map-error\nYour site URL to be authorized: https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/events/opm-night-filipino-live-music-showcase"
+        "Google Maps JavaScript API error: RefererNotAllowedMapError\nhttps://developers.google.com/maps/documentation/javascript/error-messages#referer-not-allowed-map-error\nYour site URL to be authorized: https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/events/opm-night-filipino-live-music-showcase",
+        "Attempted to load a Vector Map, but failed. Falling back to Raster. Please see https://developers.google.com/maps/documentation/javascript/webgl/support for more info"
       ],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
       "badHosts": [],
       "links": 93,
-      "controls": 18,
+      "controls": 23,
       "shot": "event-detail-1440.png"
     },
     {
@@ -1351,14 +1427,15 @@
       "textLength": 7026,
       "eventCards": 36,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [
         "Attempted to load a Vector Map, but failed. Falling back to Raster. Please see https://developers.google.com/maps/documentation/javascript/webgl/support for more info",
-        "Google Maps JavaScript API error: RefererNotAllowedMapError\nhttps://developers.google.com/maps/documentation/javascript/error-messages#referer-not-allowed-map-error\nYour site URL to be authorized: https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/city/melbourne",
-        "TypeError: Cannot read properties of undefined (reading 'getRootNode')\n    at _.Xm (https://maps.googleapis.com/maps-api-v3/api/js/65/12f/main.js:205:39)\n    at set map (https://maps.googleapis.com/maps-api-v3/api/js/65/12f/marker.js:108:207)\n    at https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/_next/static/immutable/chunks/30-gx3ql0hhj4.js:2:2332\n    at ik (htt",
-        "TypeError: Cannot read properties of undefined (reading 'getRootNode')\n    at _.Xm (https://maps.googleapis.com/maps-api-v3/api/js/65/12f/main.js:205:39)\n    at set map (https://maps.googleapis.com/maps-api-v3/api/js/65/12f/marker.js:108:207)\n    at https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/_next/static/immutable/chunks/30-gx3ql0hhj4.js:2:2332\n    at ik (htt"
+        "Google Maps JavaScript API error: RefererNotAllowedMapError\nhttps://developers.google.com/maps/documentation/javascript/error-messages#referer-not-allowed-map-error\nYour site URL to be authorized: https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/city/melbourne"
       ],
-      "pageErrors": [],
+      "pageErrors": [
+        "Failed to execute 'observe' on 'IntersectionObserver': parameter 1 is not of type 'Element'."
+      ],
       "failedRequests": [],
       "overflows": false,
       "badHosts": [],
@@ -1377,6 +1454,7 @@
       "textLength": 4442,
       "eventCards": 1,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -1389,23 +1467,24 @@
     },
     {
       "label": "organiser profile",
-      "url": "https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/organisers/signup",
+      "url": "https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/organisers/sydney-pride-collective",
       "vp": "1440",
       "status": 200,
       "error": null,
       "measuredViewport": "1440x900",
-      "title": "Create account | EventLinqs",
-      "textLength": 843,
+      "title": "Sydney Pride Collective - Events & Profile - EventLinqs",
+      "textLength": 1665,
       "eventCards": 0,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
       "failedRequests": [],
       "overflows": false,
       "badHosts": [],
-      "links": 7,
-      "controls": 1,
+      "links": 81,
+      "controls": 12,
       "shot": "organiser-profile-1440.png"
     },
     {
@@ -1419,6 +1498,7 @@
       "textLength": 3660,
       "eventCards": 21,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [],
       "pageErrors": [],
@@ -1440,6 +1520,7 @@
       "textLength": 1100,
       "eventCards": 0,
       "markerHit": false,
+      "blocked": false,
       "state": "CONTENT",
       "consoleErrors": [
         "Failed to load resource: the server responded with a status of 404 ()"
@@ -1490,125 +1571,400 @@
       "controls": 0
     },
     {
-      "label": "dashboard",
-      "url": "",
-      "vp": "1440",
-      "status": "NOT COVERED",
-      "state": "login failed",
+      "label": "organiser profile (real)",
+      "url": "https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/organisers/sydney-pride-collective",
+      "vp": "390",
+      "status": 200,
+      "error": null,
+      "measuredViewport": "390x844",
+      "title": "Sydney Pride Collective - Events & Profile - EventLinqs",
+      "textLength": 1689,
+      "eventCards": 0,
+      "markerHit": false,
+      "blocked": false,
+      "state": "CONTENT",
       "consoleErrors": [],
+      "pageErrors": [],
       "failedRequests": [],
-      "links": 0,
-      "controls": 0
+      "overflows": false,
+      "badHosts": [],
+      "links": 81,
+      "controls": 12,
+      "shot": "organiser-profile-real--390.png"
+    },
+    {
+      "label": "event detail (sellable)",
+      "url": "https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/events/opm-night-filipino-live-music-showcase",
+      "vp": "390",
+      "status": 200,
+      "error": null,
+      "measuredViewport": "390x844",
+      "title": "OPM Night: Filipino Live Music Showcase - Sat, 15 Aug - Brisbane Powerhouse, Brisbane - EventLinqs",
+      "textLength": 2658,
+      "eventCards": 0,
+      "markerHit": false,
+      "blocked": false,
+      "state": "CONTENT",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "overflows": false,
+      "badHosts": [],
+      "links": 93,
+      "controls": 23,
+      "shot": "event-detail-sellable--390.png"
+    },
+    {
+      "label": "suburb page",
+      "url": "https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/city/melbourne/inner-melbourne",
+      "vp": "390",
+      "status": 200,
+      "error": null,
+      "measuredViewport": "390x844",
+      "title": "Things to do in Inner Melbourne, Melbourne | EventLinqs",
+      "textLength": 3679,
+      "eventCards": 21,
+      "markerHit": false,
+      "blocked": false,
+      "state": "CONTENT",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "overflows": false,
+      "badHosts": [],
+      "links": 106,
+      "controls": 38,
+      "shot": "suburb-page-390.png"
+    },
+    {
+      "label": "organiser profile (real)",
+      "url": "https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/organisers/sydney-pride-collective",
+      "vp": "1440",
+      "status": 200,
+      "error": null,
+      "measuredViewport": "1440x900",
+      "title": "Sydney Pride Collective - Events & Profile - EventLinqs",
+      "textLength": 1665,
+      "eventCards": 0,
+      "markerHit": false,
+      "blocked": false,
+      "state": "CONTENT",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "overflows": false,
+      "badHosts": [],
+      "links": 81,
+      "controls": 12,
+      "shot": "organiser-profile-real--1440.png"
+    },
+    {
+      "label": "event detail (sellable)",
+      "url": "https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/events/opm-night-filipino-live-music-showcase",
+      "vp": "1440",
+      "status": 200,
+      "error": null,
+      "measuredViewport": "1440x900",
+      "title": "OPM Night: Filipino Live Music Showcase - Sat, 15 Aug - Brisbane Powerhouse, Brisbane - EventLinqs",
+      "textLength": 2891,
+      "eventCards": 0,
+      "markerHit": false,
+      "blocked": false,
+      "state": "CONTENT",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "overflows": false,
+      "badHosts": [],
+      "links": 93,
+      "controls": 23,
+      "shot": "event-detail-sellable--1440.png"
+    },
+    {
+      "label": "suburb page",
+      "url": "https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/city/melbourne/inner-melbourne",
+      "vp": "1440",
+      "status": 200,
+      "error": null,
+      "measuredViewport": "1440x900",
+      "title": "Things to do in Inner Melbourne, Melbourne | EventLinqs",
+      "textLength": 3660,
+      "eventCards": 21,
+      "markerHit": false,
+      "blocked": false,
+      "state": "CONTENT",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "overflows": false,
+      "badHosts": [],
+      "links": 106,
+      "controls": 36,
+      "shot": "suburb-page-1440.png"
+    },
+    {
+      "label": "dashboard",
+      "url": "https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/dashboard",
+      "vp": "1440",
+      "status": 200,
+      "error": null,
+      "measuredViewport": "1440x900",
+      "title": "EventLinqs | The ticketing platform built for every community",
+      "textLength": 1892,
+      "eventCards": 18,
+      "markerHit": false,
+      "blocked": false,
+      "state": "CONTENT",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "overflows": false,
+      "badHosts": [],
+      "links": 32,
+      "controls": 3,
+      "shot": "dashboard-1440.png"
     },
     {
       "label": "dashboard events",
-      "url": "",
+      "url": "https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/dashboard/events",
       "vp": "1440",
-      "status": "NOT COVERED",
-      "state": "login failed",
+      "status": 200,
+      "error": null,
+      "measuredViewport": "1440x900",
+      "title": "EventLinqs | The ticketing platform built for every community",
+      "textLength": 8595,
+      "eventCards": 209,
+      "markerHit": false,
+      "blocked": false,
+      "state": "CONTENT",
       "consoleErrors": [],
+      "pageErrors": [],
       "failedRequests": [],
-      "links": 0,
-      "controls": 0
+      "overflows": false,
+      "badHosts": [],
+      "links": 225,
+      "controls": 210,
+      "shot": "dashboard-events-1440.png"
     },
     {
       "label": "dashboard create event",
-      "url": "",
+      "url": "https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/dashboard/events/create",
       "vp": "1440",
-      "status": "NOT COVERED",
-      "state": "login failed",
+      "status": 200,
+      "error": null,
+      "measuredViewport": "1440x900",
+      "title": "EventLinqs | The ticketing platform built for every community",
+      "textLength": 1086,
+      "eventCards": 1,
+      "markerHit": false,
+      "blocked": false,
+      "state": "CONTENT",
       "consoleErrors": [],
+      "pageErrors": [],
       "failedRequests": [],
-      "links": 0,
-      "controls": 0
+      "overflows": false,
+      "badHosts": [],
+      "links": 13,
+      "controls": 12,
+      "shot": "dashboard-create-event-1440.png"
     },
     {
       "label": "dashboard venues",
-      "url": "",
+      "url": "https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/dashboard/venues",
       "vp": "1440",
-      "status": "NOT COVERED",
-      "state": "login failed",
+      "status": 200,
+      "error": null,
+      "measuredViewport": "1440x900",
+      "title": "EventLinqs | The ticketing platform built for every community",
+      "textLength": 1220,
+      "eventCards": 1,
+      "markerHit": false,
+      "blocked": false,
+      "state": "CONTENT",
       "consoleErrors": [],
+      "pageErrors": [],
       "failedRequests": [],
-      "links": 0,
-      "controls": 0
+      "overflows": false,
+      "badHosts": [],
+      "links": 24,
+      "controls": 28,
+      "shot": "dashboard-venues-1440.png"
     },
     {
       "label": "dashboard payouts",
-      "url": "",
+      "url": "https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/dashboard/payouts",
       "vp": "1440",
-      "status": "NOT COVERED",
-      "state": "login failed",
+      "status": 200,
+      "error": null,
+      "measuredViewport": "1440x900",
+      "title": "Payouts | EventLinqs Dashboard",
+      "textLength": 6784,
+      "eventCards": 1,
+      "markerHit": false,
+      "blocked": false,
+      "state": "CONTENT",
       "consoleErrors": [],
+      "pageErrors": [],
       "failedRequests": [],
-      "links": 0,
-      "controls": 0
+      "overflows": false,
+      "badHosts": [],
+      "links": 12,
+      "controls": 7,
+      "shot": "dashboard-payouts-1440.png"
     },
     {
       "label": "dashboard organisation",
-      "url": "",
+      "url": "https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/dashboard/organisation",
       "vp": "1440",
-      "status": "NOT COVERED",
-      "state": "login failed",
+      "status": 200,
+      "error": null,
+      "measuredViewport": "1440x900",
+      "title": "EventLinqs | The ticketing platform built for every community",
+      "textLength": 902,
+      "eventCards": 2,
+      "markerHit": false,
+      "blocked": false,
+      "state": "CONTENT",
       "consoleErrors": [],
+      "pageErrors": [],
       "failedRequests": [],
-      "links": 0,
-      "controls": 0
+      "overflows": false,
+      "badHosts": [],
+      "links": 15,
+      "controls": 4,
+      "shot": "dashboard-organisation-1440.png"
     },
     {
       "label": "dashboard invites",
-      "url": "",
+      "url": "https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/dashboard/invites",
       "vp": "1440",
-      "status": "NOT COVERED",
-      "state": "login failed",
+      "status": 200,
+      "error": null,
+      "measuredViewport": "1440x900",
+      "title": "Founding invites | EventLinqs",
+      "textLength": 546,
+      "eventCards": 2,
+      "markerHit": false,
+      "blocked": false,
+      "state": "CONTENT",
       "consoleErrors": [],
+      "pageErrors": [],
       "failedRequests": [],
-      "links": 0,
-      "controls": 0
+      "overflows": false,
+      "badHosts": [],
+      "links": 13,
+      "controls": 3,
+      "shot": "dashboard-invites-1440.png"
     },
     {
       "label": "dashboard insights",
-      "url": "",
+      "url": "https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/dashboard/insights",
       "vp": "1440",
-      "status": "NOT COVERED",
-      "state": "login failed",
+      "status": 200,
+      "error": null,
+      "measuredViewport": "1440x900",
+      "title": "Insights | EventLinqs Dashboard",
+      "textLength": 269,
+      "eventCards": 1,
+      "markerHit": false,
+      "blocked": false,
+      "state": "THIN",
       "consoleErrors": [],
+      "pageErrors": [],
       "failedRequests": [],
-      "links": 0,
-      "controls": 0
+      "overflows": false,
+      "badHosts": [],
+      "links": 13,
+      "controls": 3,
+      "shot": "dashboard-insights-1440.png"
     },
     {
       "label": "dashboard tickets",
-      "url": "",
+      "url": "https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/dashboard/tickets",
       "vp": "1440",
-      "status": "NOT COVERED",
-      "state": "login failed",
+      "status": 200,
+      "error": null,
+      "measuredViewport": "1440x900",
+      "title": "EventLinqs | The ticketing platform built for every community",
+      "textLength": 231,
+      "eventCards": 1,
+      "markerHit": false,
+      "blocked": false,
+      "state": "THIN",
       "consoleErrors": [],
+      "pageErrors": [],
       "failedRequests": [],
-      "links": 0,
-      "controls": 0
+      "overflows": false,
+      "badHosts": [],
+      "links": 14,
+      "controls": 3,
+      "shot": "dashboard-tickets-1440.png"
     },
     {
       "label": "account",
-      "url": "",
+      "url": "https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/account",
       "vp": "1440",
-      "status": "NOT COVERED",
-      "state": "login failed",
+      "status": 200,
+      "error": null,
+      "measuredViewport": "1440x900",
+      "title": "Your account | EventLinqs",
+      "textLength": 1410,
+      "eventCards": 0,
+      "markerHit": false,
+      "blocked": false,
+      "state": "CONTENT",
       "consoleErrors": [],
+      "pageErrors": [],
       "failedRequests": [],
-      "links": 0,
-      "controls": 0
+      "overflows": false,
+      "badHosts": [],
+      "links": 84,
+      "controls": 12,
+      "shot": "account-1440.png"
     },
     {
       "label": "my tickets",
-      "url": "",
+      "url": "https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/tickets",
       "vp": "1440",
-      "status": "NOT COVERED",
-      "state": "login failed",
+      "status": 200,
+      "error": null,
+      "measuredViewport": "1440x900",
+      "title": "My tickets | EventLinqs",
+      "textLength": 10478,
+      "eventCards": 0,
+      "markerHit": false,
+      "blocked": false,
+      "state": "CONTENT",
       "consoleErrors": [],
+      "pageErrors": [],
       "failedRequests": [],
-      "links": 0,
-      "controls": 0
+      "overflows": false,
+      "badHosts": [],
+      "links": 62,
+      "controls": 80,
+      "shot": "my-tickets-1440.png"
+    },
+    {
+      "label": "seat maps",
+      "url": "https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/dashboard/venues/fa1f4f8f-543a-408d-81df-59e1806dd783/seat-maps",
+      "vp": "1440",
+      "status": 200,
+      "error": null,
+      "measuredViewport": "1440x900",
+      "title": "EventLinqs | The ticketing platform built for every community",
+      "textLength": 404,
+      "eventCards": 1,
+      "markerHit": false,
+      "blocked": false,
+      "state": "CONTENT",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "overflows": false,
+      "badHosts": [],
+      "links": 13,
+      "controls": 6,
+      "shot": "seat-maps-1440.png"
     }
   ],
   "findings": [
@@ -1634,27 +1990,6 @@
     },
     {
       "severity": 1,
-      "surface": "launch composer",
-      "kind": "inert control",
-      "detail": "\"Copy\" changed nothing observable",
-      "vp": "390"
-    },
-    {
-      "severity": 1,
-      "surface": "launch composer",
-      "kind": "inert control",
-      "detail": "\"Copy\" changed nothing observable",
-      "vp": "390"
-    },
-    {
-      "severity": 1,
-      "surface": "launch composer",
-      "kind": "inert control",
-      "detail": "\"Copy\" changed nothing observable",
-      "vp": "390"
-    },
-    {
-      "severity": 1,
       "surface": "organisers marketing",
       "kind": "inert control",
       "detail": "\"-\" changed nothing observable",
@@ -1669,105 +2004,85 @@
     },
     {
       "severity": 1,
-      "surface": "event detail",
-      "kind": "inert disclosure",
-      "detail": "\"Open menu\" did not open or close"
-    },
-    {
-      "severity": 1,
-      "surface": "event detail",
-      "kind": "inert disclosure",
-      "detail": "\"Melbourne\" did not open or close"
-    },
-    {
-      "severity": 1,
-      "surface": "event detail",
-      "kind": "inert disclosure",
-      "detail": "\"Discover\" did not open or close"
-    },
-    {
-      "severity": 1,
-      "surface": "event detail",
-      "kind": "inert disclosure",
-      "detail": "\"Communities\" did not open or close"
-    },
-    {
-      "severity": 1,
-      "surface": "event detail",
-      "kind": "inert disclosure",
-      "detail": "\"For organisers\" did not open or close"
-    },
-    {
-      "severity": 1,
-      "surface": "event detail",
-      "kind": "inert disclosure",
-      "detail": "\"Company\" did not open or close"
-    },
-    {
-      "severity": 2,
       "surface": "dashboard",
-      "kind": "NOT COVERED",
-      "detail": "login did not complete, so this surface was not audited. It is not a pass."
+      "kind": "inert control",
+      "detail": "\"Notifications\" changed nothing observable",
+      "vp": "1440"
     },
     {
-      "severity": 2,
+      "severity": 1,
       "surface": "dashboard events",
-      "kind": "NOT COVERED",
-      "detail": "login did not complete, so this surface was not audited. It is not a pass."
+      "kind": "inert control",
+      "detail": "\"Notifications\" changed nothing observable",
+      "vp": "1440"
     },
     {
-      "severity": 2,
+      "severity": 1,
+      "surface": "dashboard events",
+      "kind": "inert control",
+      "detail": "\"Cancel\" changed nothing observable",
+      "vp": "1440"
+    },
+    {
+      "severity": 1,
       "surface": "dashboard create event",
-      "kind": "NOT COVERED",
-      "detail": "login did not complete, so this surface was not audited. It is not a pass."
+      "kind": "inert control",
+      "detail": "\"Notifications\" changed nothing observable",
+      "vp": "1440"
     },
     {
-      "severity": 2,
+      "severity": 1,
       "surface": "dashboard venues",
-      "kind": "NOT COVERED",
-      "detail": "login did not complete, so this surface was not audited. It is not a pass."
+      "kind": "inert control",
+      "detail": "\"Notifications\" changed nothing observable",
+      "vp": "1440"
     },
     {
-      "severity": 2,
+      "severity": 1,
       "surface": "dashboard payouts",
-      "kind": "NOT COVERED",
-      "detail": "login did not complete, so this surface was not audited. It is not a pass."
+      "kind": "inert control",
+      "detail": "\"Notifications\" changed nothing observable",
+      "vp": "1440"
     },
     {
-      "severity": 2,
+      "severity": 1,
       "surface": "dashboard organisation",
-      "kind": "NOT COVERED",
-      "detail": "login did not complete, so this surface was not audited. It is not a pass."
+      "kind": "inert control",
+      "detail": "\"Notifications\" changed nothing observable",
+      "vp": "1440"
     },
     {
-      "severity": 2,
+      "severity": 1,
       "surface": "dashboard invites",
-      "kind": "NOT COVERED",
-      "detail": "login did not complete, so this surface was not audited. It is not a pass."
+      "kind": "inert control",
+      "detail": "\"Notifications\" changed nothing observable",
+      "vp": "1440"
     },
     {
-      "severity": 2,
+      "severity": 1,
       "surface": "dashboard insights",
-      "kind": "NOT COVERED",
-      "detail": "login did not complete, so this surface was not audited. It is not a pass."
+      "kind": "inert control",
+      "detail": "\"Notifications\" changed nothing observable",
+      "vp": "1440"
     },
     {
-      "severity": 2,
+      "severity": 1,
       "surface": "dashboard tickets",
-      "kind": "NOT COVERED",
-      "detail": "login did not complete, so this surface was not audited. It is not a pass."
+      "kind": "inert control",
+      "detail": "\"Notifications\" changed nothing observable",
+      "vp": "1440"
     },
     {
       "severity": 2,
-      "surface": "account",
+      "surface": "event detail (ticketing blocked)",
       "kind": "NOT COVERED",
-      "detail": "login did not complete, so this surface was not audited. It is not a pass."
+      "detail": "no example of this page type could be discovered from the site or its sitemap, so it was not audited. It is not a pass."
     },
     {
       "severity": 2,
-      "surface": "my tickets",
-      "kind": "NOT COVERED",
-      "detail": "login did not complete, so this surface was not audited. It is not a pass."
+      "surface": "seat builder",
+      "kind": "no canvas rendered",
+      "detail": "/dashboard/venues/fa1f4f8f-543a-408d-81df-59e1806dd783/seat-maps"
     },
     {
       "severity": 3,
@@ -1779,13 +2094,6 @@
     {
       "severity": 3,
       "surface": "hero category networking",
-      "kind": "empty state",
-      "detail": "renders the designed empty state rather than content (0 event links)",
-      "vp": "390"
-    },
-    {
-      "severity": 3,
-      "surface": "event detail",
       "kind": "empty state",
       "detail": "renders the designed empty state rather than content (0 event links)",
       "vp": "390"
@@ -1805,14 +2113,31 @@
       "vp": "1440"
     },
     {
-      "severity": 3,
+      "severity": 4,
       "surface": "event detail",
-      "kind": "empty state",
-      "detail": "renders the designed empty state rather than content (0 event links)",
-      "vp": "1440"
+      "kind": "no link to the organiser",
+      "detail": "no event page links to the organiser running the event; the only /organisers/ link on an event page is the signup call to action. 38 organiser profiles are in the sitemap and indexable but unreachable by clicking."
+    },
+    {
+      "severity": 4,
+      "surface": "event detail",
+      "kind": "no link to the organiser",
+      "detail": "no event page links to the organiser running the event; the only /organisers/ link on an event page is the signup call to action. 38 organiser profiles are in the sitemap and indexable but unreachable by clicking."
     }
   ],
   "deep": [
+    {
+      "phase": "sample selection",
+      "item": "event walked by the deep phases",
+      "verdict": "SELLABLE",
+      "detail": "/events/opm-night-filipino-live-music-showcase"
+    },
+    {
+      "phase": "corrected surfaces",
+      "item": "event detail (ticketing blocked)",
+      "verdict": "NOT COVERED",
+      "detail": "no example of this page type could be discovered"
+    },
     {
       "phase": "event detail",
       "item": "tabs",
@@ -1823,42 +2148,6 @@
       "phase": "event detail",
       "item": "disclosure \"Melbourne\"",
       "verdict": "WORKS",
-      "detail": ""
-    },
-    {
-      "phase": "event detail",
-      "item": "disclosure \"Open menu\"",
-      "verdict": "INERT",
-      "detail": ""
-    },
-    {
-      "phase": "event detail",
-      "item": "disclosure \"Melbourne\"",
-      "verdict": "INERT",
-      "detail": ""
-    },
-    {
-      "phase": "event detail",
-      "item": "disclosure \"Discover\"",
-      "verdict": "INERT",
-      "detail": ""
-    },
-    {
-      "phase": "event detail",
-      "item": "disclosure \"Communities\"",
-      "verdict": "INERT",
-      "detail": ""
-    },
-    {
-      "phase": "event detail",
-      "item": "disclosure \"For organisers\"",
-      "verdict": "INERT",
-      "detail": ""
-    },
-    {
-      "phase": "event detail",
-      "item": "disclosure \"Company\"",
-      "verdict": "INERT",
       "detail": ""
     },
     {
@@ -1894,8 +2183,8 @@
     {
       "phase": "event detail",
       "item": "share: Copy link",
-      "verdict": "UNREADABLE",
-      "detail": "the button clicked but the clipboard could not be read back headless"
+      "verdict": "WORKS",
+      "detail": "clipboard: https://eventlinqs-k7dxfjn4m-lawals-projects-c20c0be8.vercel.app/events/opm-night-filipino-live-music-showcase"
     },
     {
       "phase": "event detail",
@@ -1943,13 +2232,13 @@
       "phase": "launch composer",
       "item": "kit code",
       "verdict": "WORKS",
-      "detail": "eakmhzwhbc65"
+      "detail": "aszp9zddhqrb"
     },
     {
       "phase": "artefact",
       "item": "story",
       "verdict": "PULLED",
-      "detail": "183 KB, 1080x1920 px, image/jpeg"
+      "detail": "184 KB, 1080x1920 px, image/jpeg"
     },
     {
       "phase": "artefact",
@@ -1961,25 +2250,67 @@
       "phase": "artefact",
       "item": "feed",
       "verdict": "PULLED",
-      "detail": "250 KB, 1440x1800 px, image/jpeg"
+      "detail": "252 KB, 1440x1800 px, image/jpeg"
     },
     {
       "phase": "artefact",
       "item": "poster",
       "verdict": "PULLED",
-      "detail": "26 KB, unreadable, application/pdf"
+      "detail": "26 KB, 595x842 pt (210x297 mm = A4), application/pdf"
     },
     {
       "phase": "artefact",
-      "item": "poster printed address line",
+      "item": "poster: the printed call-to-action line",
       "verdict": "READ",
-      "detail": "C:\\Users\\61416\\OneDrive\\Desktop\\EventLinqs\\el-moat\\docs\\roast\\audit-2026-08-15\\artefacts\\poster.pdf"
+      "detail": "From $25 · eventlinqs.com.au/launch/k/aszp9zddhqrb"
+    },
+    {
+      "phase": "artefact",
+      "item": "poster: the printed date and time line",
+      "verdict": "READ",
+      "detail": "Sunday 20 September, 10:00 pm"
+    },
+    {
+      "phase": "artefact",
+      "item": "poster: every drawn line, verbatim",
+      "verdict": "READ",
+      "detail": "Warehoushptay pB / From $25 · eventlinqs.com.au/launch/k/aszp9zddhqrb / Waareho / Sunday 20 September, 10:00 pm / Warehouse / party at the / Barwon Club / in Geelong, / Marlo Reyes / b2b Kita / Warehoausptyp B wWnCwlb / i"
+    },
+    {
+      "phase": "checkout",
+      "item": "quantity stepper",
+      "verdict": "WORKS",
+      "detail": "raised the quantity by one"
+    },
+    {
+      "phase": "checkout",
+      "item": "controls on the ticket surface",
+      "verdict": "NONE MATCHED",
+      "detail": "enabled+visible buttons: \"What are you in the mood for?\n/\", \"Melbourne\", \"Share event\", \"Save event\", \"Save event\", \"Follow\", \"Share\", \"Copy link\", \"−\", \"+\", \"+\", \"Checkout · AUD 48.70\", \"Share\", \"Copy link\""
+    },
+    {
+      "phase": "checkout",
+      "item": "proceed control",
+      "verdict": "NONE ENABLED",
+      "detail": "0 matched by name, none of them enabled"
     },
     {
       "phase": "checkout",
       "item": "Stripe payment surface",
       "verdict": "NOT REACHED",
       "detail": "stopped at /events/opm-night-filipino-live-music-showcase"
+    },
+    {
+      "phase": "magic start",
+      "item": "verdict",
+      "verdict": "MODEL",
+      "detail": "HTTP 200, source=\"model\": the Anthropic call succeeded and wrote the draft"
+    },
+    {
+      "phase": "seat builder",
+      "item": "canvas",
+      "verdict": "ABSENT",
+      "detail": "no canvas element on the seat map surface"
     }
   ]
 }

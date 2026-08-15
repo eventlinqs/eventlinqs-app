@@ -28,6 +28,7 @@
  *   sourced-specifications     Law 7: a third-party spec carries a source or UNSOURCED
  *   no-ai-authorship           Law 8: no commit attributes this work to an AI
  *   no-unguarded-production-write  no script writes to a database without checking which one
+ *   migration-needs-sale-gate-fix  the anon column revoke never ships without the sale-gate fix
  *
  * On no-ai-authorship: Law 8 makes the founder the sole author, which overrides
  * this tooling default of appending a Co-Authored-By trailer. The commit-msg hook
@@ -249,6 +250,16 @@ const GUARDS = [
   // what stops the eleventh. Without it the fix is a written procedure, and a
   // written procedure is not a control.
   'scripts/guards/no-unguarded-production-write.mjs',
+
+  // Founder ruling 2026-08-15, a PRODUCTION SAFETY ordering rule expressed as a
+  // gate. Migration 20260808000010 revokes stripe_account_id and
+  // stripe_charges_enabled from anon. The event page used to read exactly those
+  // two through an anon embed and feed them to the sale gate, so applying that
+  // migration to a database whose deployed code still does that takes EVERY PAID
+  // EVENT off sale instantly, with no error and no alert: it renders the real,
+  // designed "organiser is still finishing their payment setup" state. This
+  // guard fails the build if the migration is present without the fix.
+  'scripts/guards/migration-needs-sale-gate-fix.mjs',
 ]
 
 /**

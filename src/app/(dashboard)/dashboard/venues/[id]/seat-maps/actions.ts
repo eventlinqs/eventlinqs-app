@@ -217,15 +217,44 @@ export async function saveSeatMap(
 
   let mapId = seatMapId
   if (mapId) {
-    const { error: updateError } = await admin
+    /*
+     * CROSS-TENANT WRITE, CLOSED. `seatMapId` is a SECOND caller-supplied id and
+     * the venue gate above says nothing about it.
+     *
+     * THE DEFECT. This update carried the right filters, `.eq('id', mapId)` AND
+     * `.eq('venue_id', venueId)`, so a foreign map's layout was never
+     * overwritten. But a PostgREST update that matches ZERO rows is NOT an
+     * error: `updateError` came back null, the function carried on, and `mapId`
+     * still held the caller's foreign id. It then reached the section upsert
+     * below, which runs on the SERVICE-ROLE client and therefore bypasses RLS,
+     * and `seat_map_sections.seat_map_id` is only FK-constrained to
+     * `seat_maps(id)`. An organiser who legitimately owned venue A could pass
+     * their own venueId with another organisation's seatMapId and insert or
+     * update section rows on that organisation's chart. Those rows render on
+     * the victim's public event page legend and their seats dashboard.
+     *
+     * THE FIX, and why it is shaped this way. `.select('id')` makes the
+     * zero-row case visible, an empty result is refused, and `mapId` is then
+     * REASSIGNED FROM THE ROW THE DATABASE RETURNED rather than kept from the
+     * caller. After this block `mapId` can only be a row that satisfied both
+     * filters, so the upsert below cannot address anything outside this venue
+     * even if some later edit drops a guard.
+     */
+    const { data: updated, error: updateError } = await admin
       .from('seat_maps')
       .update({ name, layout, total_seats: layout.totalSeats })
       .eq('id', mapId)
       .eq('venue_id', venueId)
+      .select('id')
     if (updateError) {
       console.error('[seat-maps] update failed:', updateError)
       return { success: false, error: 'Failed to save the seating chart.' }
     }
+    if (!updated || updated.length === 0) {
+      // Not this venue's chart. Refused without saying whether it exists.
+      return { success: false, error: 'Seating chart not found for this venue.' }
+    }
+    mapId = updated[0]!.id
   } else {
     const { data: created, error: insertError } = await admin
       .from('seat_maps')

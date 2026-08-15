@@ -172,7 +172,12 @@ async function organiserCanSell(organisationId: string | null | undefined): Prom
   const admin = createAdminClient()
   const { data, error } = await admin
     .from('organisations')
-    .select('stripe_account_id, stripe_charges_enabled')
+    // All five fields the sale gate reads, so it agrees with the charge
+    // precondition rather than passing an organiser who will be refused at the
+    // payment step. See isOrganiserSellable.
+    .select(
+      'stripe_account_id, stripe_charges_enabled, stripe_payouts_enabled, stripe_account_country, payout_status',
+    )
     .eq('id', organisationId)
     .maybeSingle()
   if (error) {

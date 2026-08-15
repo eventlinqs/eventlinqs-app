@@ -48,10 +48,23 @@ describe('the organiser sale gate', () => {
     expect(isOrganiserSellable(PUBLIC_ORG_SHAPE as never)).toBe(false)
   })
 
-  it('returns TRUE only with both Stripe fields present and enabled', () => {
-    expect(isOrganiserSellable({ stripe_account_id: 'acct_1', stripe_charges_enabled: true } as never)).toBe(true)
-    expect(isOrganiserSellable({ stripe_account_id: 'acct_1', stripe_charges_enabled: false } as never)).toBe(false)
-    expect(isOrganiserSellable({ stripe_account_id: null, stripe_charges_enabled: true } as never)).toBe(false)
+  it('returns TRUE only when every requirement the charge path needs is met', () => {
+    // Five fields, not two. The gate was widened on 15 August 2026 to agree with
+    // assertOrganiserCanReceiveFunds, which also requires payouts_enabled, an
+    // active payout_status and a country in the Connect currency map. Before
+    // that, an organiser missing any of the extra three passed here and was
+    // refused at the payment step with the button still enabled.
+    const ok = {
+      stripe_account_id: 'acct_1',
+      stripe_charges_enabled: true,
+      stripe_payouts_enabled: true,
+      stripe_account_country: 'AU',
+      payout_status: 'active',
+    }
+    expect(isOrganiserSellable(ok as never)).toBe(true)
+    expect(isOrganiserSellable({ ...ok, stripe_charges_enabled: false } as never)).toBe(false)
+    expect(isOrganiserSellable({ ...ok, stripe_account_id: null } as never)).toBe(false)
+    expect(isOrganiserSellable({ ...ok, stripe_account_country: null } as never)).toBe(false)
   })
 
   it('the event page does NOT derive sellability from event.organisation', () => {

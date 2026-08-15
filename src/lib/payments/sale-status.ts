@@ -1,4 +1,8 @@
 import type { Organisation } from '@/types/database'
+// The SAME currency-map check the charge precondition uses. Imported rather than
+// duplicated so the gate and the precondition cannot drift apart on which
+// countries are supported.
+import { getCurrencyForCountry } from './application-fee'
 
 // Single source of truth for "can this event sell tickets right now".
 //
@@ -42,11 +46,53 @@ export function tierSaleWindowState(
   return 'open'
 }
 
-type OrgSaleFields = Pick<Organisation, 'stripe_account_id' | 'stripe_charges_enabled'>
+type OrgSaleFields = Pick<
+  Organisation,
+  | 'stripe_account_id'
+  | 'stripe_charges_enabled'
+  | 'stripe_payouts_enabled'
+  | 'stripe_account_country'
+  | 'payout_status'
+>
 
-/** True when the organiser can take card payments (connected + charges enabled). */
+/**
+ * THE SALE GATE AND THE CHARGE PRECONDITION MUST AGREE.
+ *
+ * THE DEFECT THIS CLOSES. This used to require two things: a connected account
+ * and `charges_enabled`. The precondition that actually runs when money moves,
+ * `assertOrganiserCanReceiveFunds` in application-fee.ts, requires FOUR:
+ * a connected account, `payouts_enabled`, `payout_status === 'active'`, and a
+ * country present in the Connect currency map.
+ *
+ * So an organiser with a connected, charges-enabled account but a NULL
+ * `stripe_account_country`, or a payout status on hold, PASSED this gate and
+ * FAILED at the payment step. The buyer got the whole way to checkout, chose
+ * their tickets, and was then told "Payments for this region are not yet
+ * supported" with the button still enabled. `getCurrencyForCountry(null)`
+ * returns null, and a null country is the default for an account that has
+ * connected but not finished onboarding, so this was reachable rather than
+ * theoretical.
+ *
+ * NEITHER CHECK IS WEAKENED. The precondition still throws on all four; this
+ * gate now refuses on the same four, plus `charges_enabled`, which it already
+ * required and which is kept. The gate is therefore at least as strict as the
+ * precondition on every field, which is the only relationship between them that
+ * cannot strand a buyer: an event is offered only if the money can actually
+ * move.
+ *
+ * The currency-map membership is decided by the same function the precondition
+ * uses, imported rather than duplicated, so the two cannot drift apart.
+ */
 export function isOrganiserSellable(org: OrgSaleFields | null | undefined): boolean {
-  return !!org && !!org.stripe_account_id && org.stripe_charges_enabled === true
+  if (!org) return false
+  if (!org.stripe_account_id) return false
+  if (org.stripe_charges_enabled !== true) return false
+  // Funds-holding: the platform is merchant of record, so what decides whether a
+  // sale can complete is the organiser's ability to RECEIVE the later transfer.
+  if (org.stripe_payouts_enabled !== true) return false
+  if (org.payout_status !== 'active') return false
+  if (!getCurrencyForCountry(org.stripe_account_country)) return false
+  return true
 }
 
 /** An event is "paid" when any of the given tiers has a base price above zero. */

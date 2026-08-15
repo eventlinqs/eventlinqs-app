@@ -87,7 +87,16 @@ export async function createReservation(
       const { data: org } = ev?.organisation_id
         ? await admin
             .from('organisations')
-            .select('stripe_account_id, stripe_charges_enabled')
+            // ALL FIVE fields the sale gate reads. It was two, and the gate then
+            // silently disagreed with the charge precondition, which also
+            // requires payouts_enabled, an active payout_status and a country in
+            // the Connect currency map. Selecting fewer fields than the gate
+            // reads makes the missing ones undefined, which now refuses the sale
+            // rather than passing it: fail closed, but only if the columns are
+            // actually here. See isOrganiserSellable.
+            .select(
+              'stripe_account_id, stripe_charges_enabled, stripe_payouts_enabled, stripe_account_country, payout_status',
+            )
             .eq('id', ev.organisation_id)
             .single()
         : { data: null }
