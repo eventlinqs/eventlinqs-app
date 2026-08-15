@@ -131,7 +131,16 @@ const NEVER_CLICK = [
   // money
   /\bpay\b/i, /checkout/i, /purchase/i, /buy now/i, /complete order/i, /confirm and pay/i,
   // account creation and auth submission
-  /sign ?up/i, /create account/i, /register/i, /\bsign in\b/i, /\blog ?in\b/i,
+  /sign ?up/i, /create account/i, /\bsign in\b/i, /\blog ?in\b/i,
+  /*
+   * "REGISTER" IS TWO DIFFERENT WORDS ON THIS PLATFORM. A bare /register/i sat
+   * here to stop the audit creating an account, and it also matched
+   * "Register 1 ticket", which is the ONLY proceed control a FREE event offers.
+   * The checkout walk therefore excluded the exact button it existed to press,
+   * and reported "0 candidates, none enabled" about a page that had one in plain
+   * sight. Narrowed to the account sense of the word.
+   */
+  /^register$/i, /register (an |a )?(account|profile)/i,
   /send reset/i, /reset password/i, /magic link/i, /continue with (google|apple|facebook)/i,
   // destructive
   /delete/i, /remove/i, /revoke/i, /cancel (event|order|ticket)/i, /archive/i, /deactivate/i,
@@ -457,6 +466,22 @@ console.log('FULL PLATFORM AUDIT')
 console.log('='.repeat(78))
 console.log(`Base: ${BASE}`)
 
+/**
+ * Every context gets clipboard permission, and the reason is a false finding.
+ *
+ * The audit reported six "Copy" controls on the launch reveal as INERT. They are
+ * not. `kit-artefacts.tsx`, `kit-link-bar.tsx` and `the-bill.tsx` all call
+ * `setCopied(true)` only AFTER `navigator.clipboard.writeText` RESOLVES, and
+ * headless Chromium rejects that call when the origin has no clipboard
+ * permission. The promise rejected, the catch reset the state, no confirmation
+ * ever rendered, and a working control was recorded as dead. The product was
+ * right and the harness was wrong.
+ *
+ * Granting the permission makes the audit see what a person with a real browser
+ * sees, which is the only thing worth measuring.
+ */
+const CONTEXT_DEFAULTS = { permissions: ['clipboard-read', 'clipboard-write'] }
+
 const browser = await chromium.launch()
 const report = { base: BASE, startedAt: new Date().toISOString(), passes: [] }
 
@@ -539,7 +564,7 @@ const ONLY = process.env.AUDIT_ONLY ?? 'all'
 
 console.log('\nCATALOGUE CENSUS')
 {
-  const c = await browser.newContext({ viewport: { width: 1440, height: 900 } })
+  const c = await browser.newContext({ ...CONTEXT_DEFAULTS,  viewport: { width: 1440, height: 900 } })
   const census = await ticketingCensus(c)
   report.census = { total: census.total, sampled: census.sampled, sellable: census.sellable.length, paid: census.paid.length, free: census.free.length, blocked: census.blocked.length }
   // A PAID event first, because it is the only one that can reach Stripe.
@@ -556,7 +581,7 @@ console.log('\nCATALOGUE CENSUS')
  * stays silent about it, which this file has already been caught doing once.
  */
 if (ONLY === 'deep') {
-  const c = await browser.newContext({ viewport: { width: 1440, height: 900 } })
+  const c = await browser.newContext({ ...CONTEXT_DEFAULTS,  viewport: { width: 1440, height: 900 } })
   const p = await c.newPage()
   const RESERVED = new Set(['signup', 'login', 'pricing'])
   try {
@@ -605,7 +630,7 @@ if (ONLY === 'deep') {
 
 for (const vp of ONLY === 'deep' ? [] : VIEWPORTS) {
   console.log(`\n${'='.repeat(78)}\nPASS AT ${vp.width}x${vp.height}\n${'='.repeat(78)}`)
-  const context = await browser.newContext({
+  const context = await browser.newContext({ ...CONTEXT_DEFAULTS, 
     viewport: { width: vp.width, height: vp.height },
     deviceScaleFactor: 1,
   })
@@ -897,7 +922,7 @@ if (walkEvent) note('sample selection', 'event walked by the deep phases', found
   }
   const walkable = targets.filter(([, href]) => href)
   for (const vp of VIEWPORTS) {
-    const c = await browser.newContext({ viewport: { width: vp.width, height: vp.height } })
+    const c = await browser.newContext({ ...CONTEXT_DEFAULTS,  viewport: { width: vp.width, height: vp.height } })
     for (const [label, href] of walkable) {
       const v = await visit(c, `${BASE}${href}`, label, vp)
       console.log(`  ${label.padEnd(34)} ${String(v.record.status).padEnd(4)} ${v.record.state.padEnd(18)} measured ${v.record.measuredViewport} links=${v.links.length}`)
@@ -910,7 +935,7 @@ if (walkEvent) note('sample selection', 'event walked by the deep phases', found
 /** PHASE A. The event detail page, taken apart. */
 if (walkEvent) {
   console.log(`\n${'='.repeat(78)}\nPHASE A: event detail, taken apart\n${'='.repeat(78)}`)
-  const ctx = await browser.newContext({ viewport: { width: 1440, height: 1000 } })
+  const ctx = await browser.newContext({ ...CONTEXT_DEFAULTS,  viewport: { width: 1440, height: 1000 } })
   const page = await ctx.newPage()
   try {
     await page.goto(`${BASE}${walkEvent}`, { waitUntil: 'domcontentloaded', timeout: 60_000 })
@@ -1081,7 +1106,7 @@ if (walkEvent) {
 /** PHASE B. The auth forms, filled to the boundary and stopped there. */
 {
   console.log(`\n${'='.repeat(78)}\nPHASE B: auth forms, filled but NOT submitted\n${'='.repeat(78)}`)
-  const ctx = await browser.newContext({ viewport: { width: 1440, height: 1000 } })
+  const ctx = await browser.newContext({ ...CONTEXT_DEFAULTS,  viewport: { width: 1440, height: 1000 } })
   for (const [label, href, fields] of [
     ['signup', '/signup', { email: 'audit.probe.not.submitted@example.invalid', password: 'NeverSubmitted!2026' }],
     ['login', '/login', { email: 'audit.probe.not.submitted@example.invalid', password: 'NeverSubmitted!2026' }],
@@ -1116,7 +1141,7 @@ if (walkEvent) {
 let kitCode = null
 {
   console.log(`\n${'='.repeat(78)}\nPHASE C: /launch composer, cold anonymous start\n${'='.repeat(78)}`)
-  const ctx = await browser.newContext({ viewport: { width: 1440, height: 1000 } })
+  const ctx = await browser.newContext({ ...CONTEXT_DEFAULTS,  viewport: { width: 1440, height: 1000 } })
   const page = await ctx.newPage()
   const consoleErrors = []
   page.on('console', (m) => { if (m.type() === 'error') consoleErrors.push(m.text().slice(0, 200)) })
@@ -1220,11 +1245,33 @@ if (kitCode) {
       encoding: 'utf8', timeout: 60_000,
     })
     writeFileSync(path.join(ART, 'poster-decoded.txt'), dec, 'utf8')
-    const lines = dec.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
-    const addr = lines.find((l) => /barwon|geelong|st\b|street|road|rd\b|ave|lane/i.test(l)) ?? null
-    note('artefact', 'poster printed address line', addr ? 'READ' : 'NOT FOUND', addr ?? `${lines.length} decoded lines, none matched a place`)
-    console.log('    --- decoded poster text ---')
-    for (const l of lines.slice(0, 24)) console.log(`      ${l}`)
+    /*
+     * READ ONLY THE DRAWN TEXT. The decoder prints its own header first, and the
+     * first version searched the whole output for a place name, matched
+     * "roa[st]\" inside the file path it had just printed, and reported a Windows
+     * path as the poster's address line. Everything above the marker is the
+     * tool talking about itself.
+     */
+    const all = dec.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
+    const marker = all.findIndex((l) => /drawn text/i.test(l))
+    const drawn = marker >= 0 ? all.slice(marker + 1) : all
+    const linkLine = drawn.find((l) => /eventlinqs\.com/i.test(l)) ?? null
+    const whenLine = drawn.find((l) => /\b(mon|tue|wed|thu|fri|sat|sun)[a-z]*\b.*\d|\d{1,2}:\d{2}\s*(am|pm)/i.test(l)) ?? null
+    note('artefact', 'poster: the printed call-to-action line', linkLine ? 'READ' : 'NOT FOUND', linkLine ?? '(no line carrying the domain)')
+    note('artefact', 'poster: the printed date and time line', whenLine ? 'READ' : 'NOT FOUND', whenLine ?? '(no line carrying a date)')
+    if (linkLine) {
+      const bad = (linkLine.match(BAD_HOST) ?? [])[0]
+      if (bad) finding(SEV.DEAD, 'launch kit artefact', 'poster prints a non-canonical host', linkLine)
+    }
+    /*
+     * NO SEPARATE STREET ADDRESS IS EXPECTED. The poster route returns a
+     * suburb-only place label when the address is held back, so a home address
+     * can never reach a printed page. What is printed is reported verbatim
+     * rather than judged against an address that was never meant to be there.
+     */
+    note('artefact', 'poster: every drawn line, verbatim', 'READ', drawn.join(' / ').slice(0, 240))
+    console.log('    --- drawn poster text, verbatim ---')
+    for (const l of drawn.slice(0, 24)) console.log(`      ${l}`)
   } catch (e) {
     note('artefact', 'poster printed address line', 'UNDECODED', String(e.message).split('\n')[0])
   }
@@ -1234,7 +1281,7 @@ if (kitCode) {
 /** PHASE E. Checkout, driven to the Stripe payment surface and stopped there. */
 if (walkEvent) {
   console.log(`\n${'='.repeat(78)}\nPHASE E: checkout, up to Stripe and no further\n${'='.repeat(78)}`)
-  const ctx = await browser.newContext({ viewport: { width: 1440, height: 1000 } })
+  const ctx = await browser.newContext({ ...CONTEXT_DEFAULTS,  viewport: { width: 1440, height: 1000 } })
   const page = await ctx.newPage()
   try {
     await page.goto(`${BASE}${walkEvent}`, { waitUntil: 'domcontentloaded', timeout: 60_000 })
@@ -1258,20 +1305,47 @@ if (walkEvent) {
       note('checkout', 'quantity stepper', 'ABSENT', 'no + control found on the ticket surface')
     }
 
-    const proceed = page
-      .locator('button')
-      .filter({ hasText: /select tickets to continue|get tickets|continue|checkout|proceed/i })
-    const n = await proceed.count()
+    /*
+     * DO NOT GUESS THE LABEL. The first version filtered on a fixed phrase list
+     * and matched nothing, then reported "0 candidate buttons", which tells the
+     * reader the page had no controls when it had several under names the list
+     * did not anticipate. The label changes as the cart changes: "Select tickets
+     * to continue" while empty, something else once a quantity is chosen, and
+     * different again for a free event. So every visible enabled button is
+     * enumerated and LOGGED, and the choice is made from what is actually there.
+     */
+    const allButtons = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('button'))
+        .map((b, i) => ({
+          i,
+          name: (b.innerText || b.getAttribute('aria-label') || '').trim().slice(0, 60),
+          enabled: !b.hasAttribute('disabled') && b.getAttribute('aria-disabled') !== 'true',
+          visible: !!(b.offsetWidth || b.offsetHeight),
+        }))
+        .filter((b) => b.name && b.visible))
+    const PROCEED = /continue|checkout|proceed|get (free )?ticket|reserve|register|book|confirm selection|next/i
+    const candidates = allButtons.filter((b) => PROCEED.test(b.name) && safeToClick(b.name))
+    note(
+      'checkout',
+      'controls on the ticket surface',
+      candidates.length ? 'FOUND' : 'NONE MATCHED',
+      `enabled+visible buttons: ${allButtons.filter((b) => b.enabled).map((b) => `"${b.name}"`).join(', ').slice(0, 300)}`,
+    )
     let clickedLabel = null
-    for (let i = 0; i < n; i += 1) {
-      const b = proceed.nth(i)
+    for (const c of candidates) {
+      if (!c.enabled) continue
+      const b = page.locator('button').nth(c.i)
       if (!(await b.isVisible().catch(() => false))) continue
-      if (!(await b.isEnabled().catch(() => false))) continue
-      clickedLabel = (await b.innerText().catch(() => '')).trim()
+      clickedLabel = c.name
       await b.click({ timeout: 8000 }).catch(() => {})
       break
     }
-    note('checkout', 'proceed control', clickedLabel ? 'CLICKED' : 'NONE ENABLED', clickedLabel ?? `${n} candidate button(s), none enabled and visible`)
+    note(
+      'checkout',
+      'proceed control',
+      clickedLabel ? 'CLICKED' : 'NONE ENABLED',
+      clickedLabel ?? `${candidates.length} matched by name, none of them enabled`,
+    )
     await page.waitForTimeout(3500)
 
     for (let hop = 0; hop < 3; hop += 1) {
@@ -1357,7 +1431,7 @@ const AUTHED = [
 ]
 if (email && password) {
   console.log(`\n${'='.repeat(78)}\nAUTHED PASS (1440)\n${'='.repeat(78)}`)
-  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } })
+  const context = await browser.newContext({ ...CONTEXT_DEFAULTS,  viewport: { width: 1440, height: 900 } })
   const p = await context.newPage()
   let loggedIn = false
   let loginReason = ''

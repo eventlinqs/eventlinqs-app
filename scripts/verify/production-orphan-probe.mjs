@@ -243,7 +243,7 @@ if ((seededEvents ?? 0) === 0 && (eventsTotal ?? 0) > 0) {
     .order('created_at', { ascending: true })
   const { data: allOrgs, error: allOrgsErr } = await db
     .from('organisations')
-    .select('id, name, slug, stripe_account_id, stripe_charges_enabled, stripe_onboarding_complete, created_at')
+    .select('id, name, slug, stripe_account_id, stripe_account_country, stripe_charges_enabled, stripe_onboarding_complete, payout_status, created_at')
     .order('created_at', { ascending: true })
   /*
    * A SWALLOWED ERROR READS EXACTLY LIKE AN EMPTY TABLE, and the first run of
@@ -268,7 +268,7 @@ if ((seededEvents ?? 0) === 0 && (eventsTotal ?? 0) > 0) {
     const owned = byOrg.get(o.id) ?? []
     console.log(
       `    ${(o.name ?? '(no name)').slice(0, 34).padEnd(34)} events=${String(owned.length).padEnd(3)} ` +
-        `connect=${o.stripe_account_id ? o.stripe_account_id : 'NONE'} charges=${o.stripe_charges_enabled} ` +
+        `connect=${o.stripe_account_id ? o.stripe_account_id : 'NONE'} country=${o.stripe_account_country ?? 'NULL'} charges=${o.stripe_charges_enabled} payout=${o.payout_status} ` +
         `onboarded=${o.stripe_onboarding_complete}`,
     )
   }

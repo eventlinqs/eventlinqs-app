@@ -1,0 +1,583 @@
+{
+  "report": {
+    "base": "https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app",
+    "startedAt": "2026-08-15T01:18:55.798Z",
+    "passes": [],
+    "census": {
+      "total": 87,
+      "sampled": 40,
+      "sellable": 7,
+      "paid": 0,
+      "free": 7,
+      "blocked": 33
+    }
+  },
+  "surfaces": [
+    {
+      "label": "organiser profile (real)",
+      "url": "https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/organisers/sydney-pride-collective",
+      "vp": "390",
+      "status": 200,
+      "error": null,
+      "measuredViewport": "390x844",
+      "title": "Sydney Pride Collective - Events & Profile - EventLinqs",
+      "textLength": 1689,
+      "eventCards": 0,
+      "markerHit": false,
+      "blocked": false,
+      "state": "CONTENT",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "overflows": false,
+      "badHosts": [],
+      "links": 81,
+      "controls": 12,
+      "shot": "organiser-profile-real--390.png"
+    },
+    {
+      "label": "event detail (sellable)",
+      "url": "https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/events/marketplace-gate-night-geelong",
+      "vp": "390",
+      "status": 200,
+      "error": null,
+      "measuredViewport": "390x844",
+      "title": "Marketplace Gate Night, Geelong - Fri, 21 Aug - Waterfront Pavilion, Geelong - EventLinqs",
+      "textLength": 2404,
+      "eventCards": 0,
+      "markerHit": false,
+      "blocked": false,
+      "state": "CONTENT",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "overflows": false,
+      "badHosts": [],
+      "links": 90,
+      "controls": 21,
+      "shot": "event-detail-sellable--390.png"
+    },
+    {
+      "label": "event detail (ticketing blocked)",
+      "url": "https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/events/opm-night-filipino-live-music-showcase",
+      "vp": "390",
+      "status": 200,
+      "error": null,
+      "measuredViewport": "390x844",
+      "title": "OPM Night: Filipino Live Music Showcase - Sat, 15 Aug - Brisbane Powerhouse, Brisbane - EventLinqs",
+      "textLength": 2634,
+      "eventCards": 0,
+      "markerHit": true,
+      "blocked": true,
+      "state": "TICKETING BLOCKED",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "overflows": false,
+      "badHosts": [],
+      "links": 93,
+      "controls": 18,
+      "shot": "event-detail-ticketing-blocked--390.png"
+    },
+    {
+      "label": "suburb page",
+      "url": "https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/city/sydney/inner-west",
+      "vp": "390",
+      "status": 200,
+      "error": null,
+      "measuredViewport": "390x844",
+      "title": "Things to do in Inner West, Sydney | EventLinqs",
+      "textLength": 3666,
+      "eventCards": 22,
+      "markerHit": false,
+      "blocked": false,
+      "state": "CONTENT",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "overflows": false,
+      "badHosts": [],
+      "links": 107,
+      "controls": 39,
+      "shot": "suburb-page-390.png"
+    },
+    {
+      "label": "organiser profile (real)",
+      "url": "https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/organisers/sydney-pride-collective",
+      "vp": "1440",
+      "status": 200,
+      "error": null,
+      "measuredViewport": "1440x900",
+      "title": "Sydney Pride Collective - Events & Profile - EventLinqs",
+      "textLength": 1665,
+      "eventCards": 0,
+      "markerHit": false,
+      "blocked": false,
+      "state": "CONTENT",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "overflows": false,
+      "badHosts": [],
+      "links": 81,
+      "controls": 12,
+      "shot": "organiser-profile-real--1440.png"
+    },
+    {
+      "label": "event detail (sellable)",
+      "url": "https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/events/marketplace-gate-night-geelong",
+      "vp": "1440",
+      "status": 200,
+      "error": null,
+      "measuredViewport": "1440x900",
+      "title": "Marketplace Gate Night, Geelong - Fri, 21 Aug - Waterfront Pavilion, Geelong - EventLinqs",
+      "textLength": 2636,
+      "eventCards": 0,
+      "markerHit": false,
+      "blocked": false,
+      "state": "CONTENT",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "overflows": false,
+      "badHosts": [],
+      "links": 90,
+      "controls": 21,
+      "shot": "event-detail-sellable--1440.png"
+    },
+    {
+      "label": "event detail (ticketing blocked)",
+      "url": "https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/events/opm-night-filipino-live-music-showcase",
+      "vp": "1440",
+      "status": 200,
+      "error": null,
+      "measuredViewport": "1440x900",
+      "title": "OPM Night: Filipino Live Music Showcase - Sat, 15 Aug - Brisbane Powerhouse, Brisbane - EventLinqs",
+      "textLength": 2891,
+      "eventCards": 0,
+      "markerHit": false,
+      "blocked": false,
+      "state": "CONTENT",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "overflows": false,
+      "badHosts": [],
+      "links": 93,
+      "controls": 23,
+      "shot": "event-detail-ticketing-blocked--1440.png"
+    },
+    {
+      "label": "suburb page",
+      "url": "https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app/city/sydney/inner-west",
+      "vp": "1440",
+      "status": 200,
+      "error": null,
+      "measuredViewport": "1440x900",
+      "title": "Things to do in Inner West, Sydney | EventLinqs",
+      "textLength": 3651,
+      "eventCards": 22,
+      "markerHit": false,
+      "blocked": false,
+      "state": "CONTENT",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [],
+      "overflows": false,
+      "badHosts": [],
+      "links": 107,
+      "controls": 37,
+      "shot": "suburb-page-1440.png"
+    },
+    {
+      "label": "dashboard",
+      "url": "",
+      "vp": "1440",
+      "status": "NOT COVERED",
+      "state": "no credentials",
+      "consoleErrors": [],
+      "failedRequests": [],
+      "links": 0,
+      "controls": 0
+    },
+    {
+      "label": "dashboard events",
+      "url": "",
+      "vp": "1440",
+      "status": "NOT COVERED",
+      "state": "no credentials",
+      "consoleErrors": [],
+      "failedRequests": [],
+      "links": 0,
+      "controls": 0
+    },
+    {
+      "label": "dashboard create event",
+      "url": "",
+      "vp": "1440",
+      "status": "NOT COVERED",
+      "state": "no credentials",
+      "consoleErrors": [],
+      "failedRequests": [],
+      "links": 0,
+      "controls": 0
+    },
+    {
+      "label": "dashboard venues",
+      "url": "",
+      "vp": "1440",
+      "status": "NOT COVERED",
+      "state": "no credentials",
+      "consoleErrors": [],
+      "failedRequests": [],
+      "links": 0,
+      "controls": 0
+    },
+    {
+      "label": "dashboard payouts",
+      "url": "",
+      "vp": "1440",
+      "status": "NOT COVERED",
+      "state": "no credentials",
+      "consoleErrors": [],
+      "failedRequests": [],
+      "links": 0,
+      "controls": 0
+    },
+    {
+      "label": "dashboard organisation",
+      "url": "",
+      "vp": "1440",
+      "status": "NOT COVERED",
+      "state": "no credentials",
+      "consoleErrors": [],
+      "failedRequests": [],
+      "links": 0,
+      "controls": 0
+    },
+    {
+      "label": "dashboard invites",
+      "url": "",
+      "vp": "1440",
+      "status": "NOT COVERED",
+      "state": "no credentials",
+      "consoleErrors": [],
+      "failedRequests": [],
+      "links": 0,
+      "controls": 0
+    },
+    {
+      "label": "dashboard insights",
+      "url": "",
+      "vp": "1440",
+      "status": "NOT COVERED",
+      "state": "no credentials",
+      "consoleErrors": [],
+      "failedRequests": [],
+      "links": 0,
+      "controls": 0
+    },
+    {
+      "label": "dashboard tickets",
+      "url": "",
+      "vp": "1440",
+      "status": "NOT COVERED",
+      "state": "no credentials",
+      "consoleErrors": [],
+      "failedRequests": [],
+      "links": 0,
+      "controls": 0
+    },
+    {
+      "label": "account",
+      "url": "",
+      "vp": "1440",
+      "status": "NOT COVERED",
+      "state": "no credentials",
+      "consoleErrors": [],
+      "failedRequests": [],
+      "links": 0,
+      "controls": 0
+    },
+    {
+      "label": "my tickets",
+      "url": "",
+      "vp": "1440",
+      "status": "NOT COVERED",
+      "state": "no credentials",
+      "consoleErrors": [],
+      "failedRequests": [],
+      "links": 0,
+      "controls": 0
+    }
+  ],
+  "findings": [
+    {
+      "severity": 0,
+      "surface": "catalogue",
+      "kind": "no paid ticket exists to buy",
+      "detail": "every one of the 7 sellable events sampled is FREE, so no automated walk on this deployment can reach the Stripe payment surface. That is not proof the paid path works, and it is not proof it is broken: it is proof it is UNTESTED here."
+    },
+    {
+      "severity": 0,
+      "surface": "catalogue",
+      "kind": "events that cannot sell a ticket",
+      "detail": "33 of 40 sampled event pages render \"still finishing their payment setup\" because the organiser has no completed Stripe Connect account. Correct behaviour per event, but it means most of the browsable catalogue has no purchase path."
+    },
+    {
+      "severity": 0,
+      "surface": "event detail (ticketing blocked)",
+      "kind": "ticketing blocked",
+      "detail": "the organiser has not completed Stripe Connect, so this event page offers no way to buy a ticket",
+      "vp": "390"
+    },
+    {
+      "severity": 0,
+      "surface": "checkout",
+      "kind": "payment surface not reached",
+      "detail": "the walk stopped at /events/marketplace-gate-night-geelong without mounting a Stripe payment element. Either the flow needs sign-in first, or the money path is blocked."
+    },
+    {
+      "severity": 2,
+      "surface": "dashboard",
+      "kind": "NOT COVERED",
+      "detail": "no credentials supplied, so this surface was not audited. It is not a pass."
+    },
+    {
+      "severity": 2,
+      "surface": "dashboard events",
+      "kind": "NOT COVERED",
+      "detail": "no credentials supplied, so this surface was not audited. It is not a pass."
+    },
+    {
+      "severity": 2,
+      "surface": "dashboard create event",
+      "kind": "NOT COVERED",
+      "detail": "no credentials supplied, so this surface was not audited. It is not a pass."
+    },
+    {
+      "severity": 2,
+      "surface": "dashboard venues",
+      "kind": "NOT COVERED",
+      "detail": "no credentials supplied, so this surface was not audited. It is not a pass."
+    },
+    {
+      "severity": 2,
+      "surface": "dashboard payouts",
+      "kind": "NOT COVERED",
+      "detail": "no credentials supplied, so this surface was not audited. It is not a pass."
+    },
+    {
+      "severity": 2,
+      "surface": "dashboard organisation",
+      "kind": "NOT COVERED",
+      "detail": "no credentials supplied, so this surface was not audited. It is not a pass."
+    },
+    {
+      "severity": 2,
+      "surface": "dashboard invites",
+      "kind": "NOT COVERED",
+      "detail": "no credentials supplied, so this surface was not audited. It is not a pass."
+    },
+    {
+      "severity": 2,
+      "surface": "dashboard insights",
+      "kind": "NOT COVERED",
+      "detail": "no credentials supplied, so this surface was not audited. It is not a pass."
+    },
+    {
+      "severity": 2,
+      "surface": "dashboard tickets",
+      "kind": "NOT COVERED",
+      "detail": "no credentials supplied, so this surface was not audited. It is not a pass."
+    },
+    {
+      "severity": 2,
+      "surface": "account",
+      "kind": "NOT COVERED",
+      "detail": "no credentials supplied, so this surface was not audited. It is not a pass."
+    },
+    {
+      "severity": 2,
+      "surface": "my tickets",
+      "kind": "NOT COVERED",
+      "detail": "no credentials supplied, so this surface was not audited. It is not a pass."
+    },
+    {
+      "severity": 4,
+      "surface": "event detail",
+      "kind": "copy-link result unproven",
+      "detail": "the button clicked but neither a clipboard read nor a visible confirmation could establish what it copied"
+    }
+  ],
+  "deep": [
+    {
+      "phase": "sample selection",
+      "item": "event walked by the deep phases",
+      "verdict": "SELLABLE",
+      "detail": "/events/marketplace-gate-night-geelong"
+    },
+    {
+      "phase": "event detail",
+      "item": "tabs",
+      "verdict": "NONE",
+      "detail": "this page uses no tab pattern"
+    },
+    {
+      "phase": "event detail",
+      "item": "disclosure \"Melbourne\"",
+      "verdict": "WORKS",
+      "detail": ""
+    },
+    {
+      "phase": "event detail",
+      "item": "Share button",
+      "verdict": "WORKS",
+      "detail": "opened the share surface"
+    },
+    {
+      "phase": "event detail",
+      "item": "share: WhatsApp",
+      "verdict": "WORKS",
+      "detail": "https://wa.me/?text=Marketplace%20Gate%20Night%2C%20Geelong%20-%20Fri%2C%2021%20Aug%20https%3A%2F%2Feventlinqs-app-git-i"
+    },
+    {
+      "phase": "event detail",
+      "item": "share: Facebook",
+      "verdict": "WORKS",
+      "detail": "https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Feventlinqs-app-git-integration-launch-lawals-projects-c20c0be"
+    },
+    {
+      "phase": "event detail",
+      "item": "share: X",
+      "verdict": "WORKS",
+      "detail": "https://twitter.com/intent/tweet?text=Marketplace%20Gate%20Night%2C%20Geelong%20-%20Fri%2C%2021%20Aug&url=https%3A%2F%2F"
+    },
+    {
+      "phase": "event detail",
+      "item": "share: Email",
+      "verdict": "WORKS",
+      "detail": "mailto:?subject=Marketplace%20Gate%20Night%2C%20Geelong%20-%20Fri%2C%2021%20Aug&body=Marketplace%20Gate%20Night%2C%20Gee"
+    },
+    {
+      "phase": "event detail",
+      "item": "share: Copy link",
+      "verdict": "UNPROVEN",
+      "detail": "the control was clicked; the clipboard could not be read headless and no confirmation appeared. Canonical for reference: https://eventlinqs-p85kfm0fy-lawals-projects-c20c0be8.vercel.app/events/marketplace-gate-night-geelong"
+    },
+    {
+      "phase": "event detail",
+      "item": "Open in Maps",
+      "verdict": "WORKS",
+      "detail": "https://www.google.com/maps/search/?api=1&query=Waterfront%20Pavilion%2C%20Waterfront%20Pavilion%2C%20Geelong% -> 200"
+    },
+    {
+      "phase": "auth",
+      "item": "signup",
+      "verdict": "STOPPED",
+      "detail": "filled [email, password]; the submit control \"Create account\" is ENABLED and was NOT clicked"
+    },
+    {
+      "phase": "auth",
+      "item": "login",
+      "verdict": "STOPPED",
+      "detail": "filled [email, password]; the submit control \"Sign in\" is ENABLED and was NOT clicked"
+    },
+    {
+      "phase": "auth",
+      "item": "forgot password",
+      "verdict": "STOPPED",
+      "detail": "filled [email]; the submit control \"Send reset link\" is ENABLED and was NOT clicked"
+    },
+    {
+      "phase": "launch composer",
+      "item": "description accepted",
+      "verdict": "WORKS",
+      "detail": "115 chars read back"
+    },
+    {
+      "phase": "launch composer",
+      "item": "artefact reveal",
+      "verdict": "WORKS",
+      "detail": "heading: \"Warehouse party at the Barwon Club in Geelong, Marlo Reyes b2b Kita\""
+    },
+    {
+      "phase": "launch composer",
+      "item": "reveal at 390",
+      "verdict": "WORKS",
+      "detail": "horizontal overflow 0px"
+    },
+    {
+      "phase": "launch composer",
+      "item": "kit code",
+      "verdict": "WORKS",
+      "detail": "fu9q7jvkkd7z"
+    },
+    {
+      "phase": "artefact",
+      "item": "story",
+      "verdict": "PULLED",
+      "detail": "184 KB, 1080x1920 px, image/jpeg"
+    },
+    {
+      "phase": "artefact",
+      "item": "square",
+      "verdict": "PULLED",
+      "detail": "169 KB, 1080x1080 px, image/jpeg"
+    },
+    {
+      "phase": "artefact",
+      "item": "feed",
+      "verdict": "PULLED",
+      "detail": "251 KB, 1440x1800 px, image/jpeg"
+    },
+    {
+      "phase": "artefact",
+      "item": "poster",
+      "verdict": "PULLED",
+      "detail": "26 KB, 595x842 pt (210x297 mm = A4), application/pdf"
+    },
+    {
+      "phase": "artefact",
+      "item": "poster: the printed call-to-action line",
+      "verdict": "READ",
+      "detail": "From $25 · eventlinqs.com.au/launch/k/fu9q7jvkkd7z"
+    },
+    {
+      "phase": "artefact",
+      "item": "poster: the printed date and time line",
+      "verdict": "READ",
+      "detail": "Sunday 20 September, 10:00 pm"
+    },
+    {
+      "phase": "artefact",
+      "item": "poster: every drawn line, verbatim",
+      "verdict": "READ",
+      "detail": "Warehoushptay pB / From $25 · eventlinqs.com.au/launch/k/fu9q7jvkkd7z / Waareho / Sunday 20 September, 10:00 pm / Warehouse / party at the / Barwon Club / in Geelong, / Marlo Reyes / b2b Kita / Warehoausptyp B wWnCwlb / i"
+    },
+    {
+      "phase": "checkout",
+      "item": "quantity stepper",
+      "verdict": "WORKS",
+      "detail": "raised the quantity by one"
+    },
+    {
+      "phase": "checkout",
+      "item": "controls on the ticket surface",
+      "verdict": "NONE MATCHED",
+      "detail": "enabled+visible buttons: \"What are you in the mood for?\n/\", \"Melbourne\", \"Share event\", \"Save event\", \"Save event\", \"Follow\", \"Share\", \"Copy link\", \"−\", \"+\", \"Register 1 ticket\", \"Share\", \"Copy link\""
+    },
+    {
+      "phase": "checkout",
+      "item": "proceed control",
+      "verdict": "NONE ENABLED",
+      "detail": "0 matched by name, none of them enabled"
+    },
+    {
+      "phase": "checkout",
+      "item": "Stripe payment surface",
+      "verdict": "NOT REACHED",
+      "detail": "stopped at /events/marketplace-gate-night-geelong"
+    }
+  ]
+}

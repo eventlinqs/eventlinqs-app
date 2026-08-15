@@ -17,4 +17,76 @@ CORRECTED SURFACES, both widths
   suburb page                        200  CONTENT            measured 390x844 links=107
   organiser profile (real)           200  CONTENT            measured 1440x900 links=81
   event detail (sellable)            200  CONTENT            measured 1440x900 links=90
-  event detail (ticketing blocked)   200  TICKETING BLOCKED  measured 1440x900 links=93
+  event detail (ticketing blocked)   200  CONTENT            measured 1440x900 links=93
+  suburb page                        200  CONTENT            measured 1440x900 links=107
+
+==============================================================================
+PHASE A: event detail, taken apart
+==============================================================================
+    NONE         tabs  this page uses no tab pattern
+    WORKS        disclosure "Melbourne"
+    WORKS        Share button  opened the share surface
+    WORKS        share: WhatsApp  https://wa.me/?text=Marketplace%20Gate%20Night%2C%20Geelong%20-%20Fri%2C%2021%20Aug%20https%3A%2F%2Feventlinqs-app-git-i
+    WORKS        share: Facebook  https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Feventlinqs-app-git-integration-launch-lawals-projects-c20c0be
+    WORKS        share: X  https://twitter.com/intent/tweet?text=Marketplace%20Gate%20Night%2C%20Geelong%20-%20Fri%2C%2021%20Aug&url=https%3A%2F%2F
+    WORKS        share: Email  mailto:?subject=Marketplace%20Gate%20Night%2C%20Geelong%20-%20Fri%2C%2021%20Aug&body=Marketplace%20Gate%20Night%2C%20Gee
+    UNPROVEN     share: Copy link  the control was clicked; the clipboard could not be read headless and no confirmation appeared. Canonical for reference: https://eventlinqs-p85kfm0fy-lawals-projects-c20c0be8.vercel.app/events/marketplace-gate-night-geelong
+    WORKS        Open in Maps  https://www.google.com/maps/search/?api=1&query=Waterfront%20Pavilion%2C%20Waterfront%20Pavilion%2C%20Geelong% -> 200
+
+==============================================================================
+PHASE B: auth forms, filled but NOT submitted
+==============================================================================
+    STOPPED      signup  filled [email, password]; the submit control "Create account" is ENABLED and was NOT clicked
+    STOPPED      login  filled [email, password]; the submit control "Sign in" is ENABLED and was NOT clicked
+    STOPPED      forgot password  filled [email]; the submit control "Send reset link" is ENABLED and was NOT clicked
+
+==============================================================================
+PHASE C: /launch composer, cold anonymous start
+==============================================================================
+    WORKS        description accepted  115 chars read back
+    WORKS        artefact reveal  heading: "Warehouse party at the Barwon Club in Geelong, Marlo Reyes b2b Kita"
+    WORKS        reveal at 390  horizontal overflow 0px
+    WORKS        kit code  fu9q7jvkkd7z
+
+==============================================================================
+PHASE D: the artefacts, opened and looked at
+==============================================================================
+    PULLED       story  184 KB, 1080x1920 px, image/jpeg
+    PULLED       square  169 KB, 1080x1080 px, image/jpeg
+    PULLED       feed  251 KB, 1440x1800 px, image/jpeg
+    PULLED       poster  26 KB, 595x842 pt (210x297 mm = A4), application/pdf
+    READ         poster: the printed call-to-action line  From $25 · eventlinqs.com.au/launch/k/fu9q7jvkkd7z
+    READ         poster: the printed date and time line  Sunday 20 September, 10:00 pm
+    READ         poster: every drawn line, verbatim  Warehoushptay pB / From $25 · eventlinqs.com.au/launch/k/fu9q7jvkkd7z / Waareho / Sunday 20 September, 10:00 pm / Warehouse / party at the / Barwon Club / in Geelong, / Marlo Reyes / b2b Kita / Warehoausptyp B wWnCwlb / i
+    --- drawn poster text, verbatim ---
+      Warehoushptay pB
+      From $25 · eventlinqs.com.au/launch/k/fu9q7jvkkd7z
+      Waareho
+      Sunday 20 September, 10:00 pm
+      Warehouse
+      party at the
+      Barwon Club
+      in Geelong,
+      Marlo Reyes
+      b2b Kita
+      Warehoausptyp B wWnCwlb
+      i
+
+==============================================================================
+PHASE E: checkout, up to Stripe and no further
+==============================================================================
+    WORKS        quantity stepper  raised the quantity by one
+    NONE MATCHED controls on the ticket surface  enabled+visible buttons: "What are you in the mood for?
+/", "Melbourne", "Share event", "Save event", "Save event", "Follow", "Share", "Copy link", "−", "+", "Register 1 ticket", "Share", "Copy link"
+    NONE ENABLED proceed control  0 matched by name, none of them enabled
+    NOT REACHED  Stripe payment surface  stopped at /events/marketplace-gate-night-geelong
+
+AUTHED SURFACES: NOT COVERED. No PROOF_EMAIL / PROOF_PASSWORD supplied.
+
+==============================================================================
+SURFACES: 19   FINDINGS: 16
+   MONEY PATH               4
+   ERROR                    11
+   COSMETIC                 1
+Report: C:\Users\61416\OneDrive\Desktop\EventLinqs\el-moat\docs\roast\audit-2026-08-15\REPORT-deep.md
+==============================================================================

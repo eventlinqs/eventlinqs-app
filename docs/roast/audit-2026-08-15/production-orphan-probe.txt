@@ -1,4 +1,4 @@
-﻿PRODUCTION (READ ONLY): https://gndnldyfudbytbboxesk.supabase.co
+PRODUCTION (READ ONLY): https://gndnldyfudbytbboxesk.supabase.co
 
 === 1. The seed marker on production ===
   events total        : 48
@@ -26,24 +26,24 @@
 
 === 6. ZERO MARKED. What are the 48 then ===
   organisations on production: 18
-    Owambe Sydney                      events=3   connect=NONE charges=false onboarded=false
-    Afrobeats Melbourne                events=4   connect=NONE charges=false onboarded=false
-    Gospel Brisbane                    events=2   connect=NONE charges=false onboarded=false
-    Amapiano Adelaide                  events=2   connect=NONE charges=false onboarded=false
-    Lagos Comedy Tour                  events=3   connect=NONE charges=false onboarded=false
-    Caribbean Carnival Melbourne       events=3   connect=NONE charges=false onboarded=false
-    Island Vibes Sydney                events=2   connect=NONE charges=false onboarded=false
-    Bollywood Nights Sydney            events=2   connect=NONE charges=false onboarded=false
-    Diwali Festival Melbourne          events=3   connect=NONE charges=false onboarded=false
-    Filipino Fiesta Brisbane           events=2   connect=NONE charges=false onboarded=false
-    Lunar Nights Melbourne             events=2   connect=NONE charges=false onboarded=false
-    Latin Sabor Sydney                 events=2   connect=NONE charges=false onboarded=false
-    Sydney Pride Collective            events=4   connect=NONE charges=false onboarded=false
-    Polonia Australia Events           events=3   connect=NONE charges=false onboarded=false
-    Mahrajan Sydney                    events=5   connect=NONE charges=false onboarded=false
-    Pasifika Collective                events=4   connect=NONE charges=false onboarded=false
-    Party Pty Ltd                      events=2   connect=acct_1SFaa2E8rD62IcbM charges=true onboarded=true
-    OANH                               events=0   connect=NONE charges=false onboarded=false
+    Owambe Sydney                      events=3   connect=NONE country=NULL charges=false payout=active onboarded=false
+    Afrobeats Melbourne                events=4   connect=NONE country=NULL charges=false payout=active onboarded=false
+    Gospel Brisbane                    events=2   connect=NONE country=NULL charges=false payout=active onboarded=false
+    Amapiano Adelaide                  events=2   connect=NONE country=NULL charges=false payout=active onboarded=false
+    Lagos Comedy Tour                  events=3   connect=NONE country=NULL charges=false payout=active onboarded=false
+    Caribbean Carnival Melbourne       events=3   connect=NONE country=NULL charges=false payout=active onboarded=false
+    Island Vibes Sydney                events=2   connect=NONE country=NULL charges=false payout=active onboarded=false
+    Bollywood Nights Sydney            events=2   connect=NONE country=NULL charges=false payout=active onboarded=false
+    Diwali Festival Melbourne          events=3   connect=NONE country=NULL charges=false payout=active onboarded=false
+    Filipino Fiesta Brisbane           events=2   connect=NONE country=NULL charges=false payout=active onboarded=false
+    Lunar Nights Melbourne             events=2   connect=NONE country=NULL charges=false payout=active onboarded=false
+    Latin Sabor Sydney                 events=2   connect=NONE country=NULL charges=false payout=active onboarded=false
+    Sydney Pride Collective            events=4   connect=NONE country=NULL charges=false payout=active onboarded=false
+    Polonia Australia Events           events=3   connect=NONE country=NULL charges=false payout=active onboarded=false
+    Mahrajan Sydney                    events=5   connect=NONE country=NULL charges=false payout=active onboarded=false
+    Pasifika Collective                events=4   connect=NONE country=NULL charges=false payout=active onboarded=false
+    Party Pty Ltd                      events=2   connect=acct_1SFaa2E8rD62IcbM country=AU charges=true payout=active onboarded=true
+    OANH                               events=0   connect=NONE country=NULL charges=false payout=active onboarded=false
   events whose organisation row is missing entirely: 0
 
   every event, oldest first:
@@ -101,7 +101,7 @@
     acct_1SFaa2E8rD62IcbM  HTTP 403 (account_invalid) under the test-mode key. UNRESOLVED: not this platform, or not this mode. A live-mode key would be needed to say which.
 
 {
-  "probedAt": "2026-08-15T00:42:38.347Z",
+  "probedAt": "2026-08-15T01:28:13.862Z",
   "project": "gndnldyfudbytbboxesk",
   "eventsTotal": 48,
   "seededEvents": 0,
