@@ -133,6 +133,33 @@ export default async function ReachPage({ params }: Props) {
         the question the organiser actually has, and because it is the only
         number on the screen with a denominator behind it.
       */}
+      {/*
+        EXTERNALLY TICKETED: say what we cannot see, in the organiser's words.
+
+        Founder ruling 15 August 2026, non-negotiable 2. The sales block below is
+        already gated on `totals.tickets > 0`, and an external event has zero, so
+        no percentage could render either way. That silence is not enough on its
+        own: an organiser looking at a page of click counts with no sales section
+        is entitled to know WHY, and to know it from a sentence rather than by
+        inferring it from an absence.
+
+        It says what is true and stops. No call to action sits beside it, because
+        the honest limitation is not a sales opportunity.
+      */}
+      {attribution.externallyTicketed && (
+        <div className="mb-6 rounded-xl border border-ink-200 bg-white px-5 py-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-500">
+            What these numbers are
+          </h2>
+          <p className="mt-3 text-sm leading-relaxed text-ink-700">
+            Your tickets are sold on another site, so everything on this page counts
+            people ARRIVING, not buying. We can see who clicked your links and which
+            channel they came from. We cannot see who bought, because that happens
+            somewhere we have no access to, and we will not estimate it.
+          </p>
+        </div>
+      )}
+
       {attribution.totals.tickets > 0 && (
         <div className="mb-6 rounded-xl border border-ink-200 bg-white px-5 py-5">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-500">
