@@ -94,7 +94,7 @@
  * below any figure in circulation.
  */
 
-export type SocialCardFormat = 'story' | 'square' | 'feed'
+export type SocialCardFormat = 'story' | 'square' | 'feed' | 'cover'
 
 export type SocialCardSpec = {
   /** Rendered pixel width. */
@@ -193,10 +193,53 @@ export const SOCIAL_CARD_FORMATS: Record<SocialCardFormat, SocialCardSpec> = {
     justification:
       '4:5 is the tightest bound Instagram publishes across both the app and the publishing API, so this one asset is correct wherever it is posted. Instagram will show it at 1080 x 1350; Facebook uses the full 1440 x 1800.',
   },
+
+  /*
+   * NOT A THIRD-PARTY SPECIFICATION. Every other entry in this file answers a
+   * published platform rule and carries its citation. This one answers OUR OWN
+   * frame, and the source is this repository rather than anybody's help centre,
+   * so it is stated that way instead of being dressed up as an external rule.
+   *
+   * THE FRAME. `src/components/features/events/event-card.tsx:133` renders an
+   * event cover as `aspect-video md:aspect-[4/3]`, so the same asset is cropped
+   * to 16:9 on a phone and to 4:3 on a desktop, and the event hero crops it
+   * wider again.
+   *
+   * WHY 4:3 RATHER THAN 16:9, which is the arithmetic that decided it. Cropping
+   * a 4:3 asset to 16:9 removes about a quarter of the HEIGHT, taken evenly off
+   * the top and bottom. Cropping a 16:9 asset to 4:3 removes about a ninth of
+   * the WIDTH, taken off both sides, and at this scale that is roughly the size
+   * of the composition's own padding. On a TYPE composition those two losses are
+   * not equivalent: vertical loss clips the eyebrow chip and the EventLinqs
+   * lockup, which is chrome, while horizontal loss clips the first and last
+   * characters of the event's NAME, which reads as broken. So the frame is 4:3
+   * and the headline survives every crop the platform applies.
+   *
+   * 1440 x 1080 is the same long edge as the tall post above, so one font load
+   * and one measurer serve both, and it is comfortably above the 1200 px width
+   * the link-preview image is served at.
+   */
+  cover: {
+    width: 1440,
+    height: 1080,
+    ratio: '4:3',
+    label: 'Event cover',
+    postedTo: 'The event page and every EventLinqs card. Not a social post.',
+    safeTop: 0,
+    safeBottom: 0,
+    photoHeight: 0,
+    justification:
+      'The EventLinqs event cover frame, taken from the card components in this repository rather than from any platform rule. 4:3 because the crops this platform applies to a cover take height rather than width, and a clipped event name reads as broken where a clipped eyebrow does not.',
+  },
 }
 
 export const SOCIAL_CARD_ORDER: readonly SocialCardFormat[] = ['story', 'square', 'feed']
 
+/**
+ * The three formats an organiser can DOWNLOAD. `cover` is deliberately absent:
+ * it is not a social post, it is the event's own artwork, and it is minted by
+ * the platform rather than requested by a channel.
+ */
 export function isSocialCardFormat(value: string): value is SocialCardFormat {
   return value === 'story' || value === 'square' || value === 'feed'
 }

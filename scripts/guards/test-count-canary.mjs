@@ -160,8 +160,18 @@ const ROOT = join(HERE, '..', '..')
  * LISTING_PROOF=1 rather than skipped, because this canary allows zero skipped
  * tests by design and a conditional `describe.skip` would have cost that.
  */
-const MIN_FILES = 198
-const MIN_TESTS = 2396
+/*
+ * 2026-08-16: raised 198/2396 -> 200/2415. Two new files, 19 tests, both from
+ * the exclusion-audit night. tests/unit/events/preset-window.test.ts pins the
+ * date presets (a window that includes today starts at the START of today, and
+ * every boundary is computed in the platform zone) and the price filter's
+ * paginate-in-memory decision, all three of which had surviving copies of the
+ * defect the previous pass claimed to have closed.
+ * tests/unit/broadcast/cover-format.test.ts pins the fourth card format out of
+ * the organiser download set and out of the public route guard.
+ */
+const MIN_FILES = 200
+const MIN_TESTS = 2415
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
