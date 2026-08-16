@@ -100,6 +100,80 @@ rather than mine. Reference build is `/organisers` with
 `src/lib/images/organiser-photos.ts` and `MarketingMedia`. This is a design task
 needing Law 2 evidence and approval, so it is recorded, not actioned.
 
+### Recorded 16 August 2026: the silent fail-open family gains another member
+
+**The near-miss.** While waiting for PR #118's checks I armed a monitor to report
+each check as it landed. It parsed `gh pr checks` with `jq`. There is no `jq` on
+this machine. Every poll therefore produced an empty string, the monitor emitted
+nothing, and it would have run to its one-hour timeout in perfect silence. It was
+caught only because the absence of any event after several minutes looked wrong
+and the binary was checked by hand.
+
+**Why it belongs here rather than in a session note.** The monitor was never
+committed, so the repository carries no defect from it, and it is recorded anyway
+because the SHAPE is the one this project keeps finding:
+
+- a shebang that made a security test file collect zero tests and report healthy
+- a guard that scanned zero files and printed PASS
+- a canary that reported zero failures on a suite that had failed to collect
+- evidence that was true when captured and false when quoted
+- and now, a watcher whose silence is indistinguishable from patience
+
+The shared mechanism is always the same. **The thing that reports the outcome is
+not the thing that does the work**, so when the work does not happen there is
+nothing left to notice. Failure and absence produce identical output. Every fix
+in this family is the same fix too: make the reporter assert that the work
+actually ran, and make "I could not tell" print differently from "it is fine".
+
+Both gates shipped in commit 78464e3 were written to that rule, which is why
+`scripts/ci/assert-seo-audits.mjs` fails when Lighthouse's audit set drifts from
+its baseline rather than quietly asserting nine of twelve audits, and why
+`scripts/ci/types-drift-guard.mjs` fails closed when it cannot read the applied
+migration list instead of assuming every migration is pending.
+
+**The audit that followed: what else could go quiet?** Every external-binary
+dependency in the tree, and what its absence actually looks like. None is a false
+PASS, so per the founder's instruction none was changed tonight.
+
+| Where | Depends on | What its absence looks like | Severity |
+|---|---|---|---|
+| The PR-check monitor (session tool, never committed) | `jq` | SILENCE, reads as still-waiting | the near-miss itself |
+| `.github/workflows/post-deploy-smoke.yml:111,115` | `curl`, swallowed with `\|\| true` | A failed first `curl` leaves `START_ID` empty, so the next non-empty read reports "deployment changed" when nothing changed. A false PROGRESS signal, not a false pass: the step is explicitly non-gating and the real assertions (HTTP status, error-boundary HTML) run afterwards | LOW |
+| `.github/workflows/post-deploy-smoke.yml:240` | `npx playwright install chromium >/dev/null 2>&1 \|\| true` | An install failure is invisible where it happens and surfaces later as a loud browser-launch error. The swallow buys nothing | LOW |
+| `.github/workflows/lighthouse.yml:78,82` | `gh api ... \|\| true` | Empty result simply retries; after the 10-minute deadline it errors explicitly. Correct as written | none |
+| `.github/workflows/lighthouse.yml:175` | `lhci upload ... \|\| true` | Deliberate. Upload is diagnostic and must never gate | none, by design |
+| `.github/workflows/env-locks.yml:109-127` | `jq` | Runs on `ubuntu-latest`, where `jq` is preinstalled, under `set -e`. A missing `jq` fails loudly | none |
+| `scripts/check-types-drift.sh` | `bash`, `node` | `run: bash <file>` fails loudly if absent. Its surface shrank on 16 August: it is now a one-line delegation to Node | none |
+| `scripts/guards/preview-deployment-state.mjs` | `VERCEL_TOKEN` | SKIPS and exits 0, but prints the state is "UNKNOWN, not good" | none: this is the honest handling of the class |
+| `scripts/verify/migration-collision-guard.mjs` | `--remote` plus credentials | SKIPS and exits 0, printing "a skipped check is UNKNOWN, not clear" | none, same reason |
+| `scripts/guards/no-ai-authorship.mjs` | git history | SKIPS on a shallow checkout and says so | none, same reason |
+
+The last three are worth naming precisely because they look like the defect and
+are not. They exit 0 without checking, which is structurally "absence reads as
+pass" - but each one says out loud that it did not run and that the answer is
+unknown. That is the whole difference, and it is the pattern to copy.
+
+**The exemplar fix is already in this repository, and I nearly mis-reported it.**
+I started to write that `no-ai-authorship` still passes vacuously on CI's depth-1
+checkout. That was true once and is not true now, and I only found out by reading
+`.github/workflows/ci.yml:53-69` instead of trusting the recollection. The build
+job pins `fetch-depth: 0` specifically because the guard reads commit MESSAGES and
+was "being handed a one-commit clone and reporting PASS having inspected a single
+message".
+
+The second half of that fix is the part worth copying everywhere. The guard now
+ends with `[no-ai-authorship] scanned N commit(s), scope: ...`
+(`scripts/guards/no-ai-authorship.mjs:235`), and the workflow comment states that
+a line reading "scanned 1 commit(s)" means the `fetch-depth` block has been lost.
+That is the whole family solved in one move: the reporter publishes HOW MUCH WORK
+IT DID, so a gate that has quietly stopped working says so in its own output
+rather than printing the same PASS it always printed.
+
+Measured against that standard, tonight's `[types-drift] 88 migration(s) in the
+repository, 77 applied, 11 pending` and `[seo-audits] 2 report(s) from ...` lines
+are the same device, and the SEO gate additionally refuses to print "matches the
+baseline" when it does not.
+
 
 ## CORRECTED 15 August 2026: two findings I reported were WRONG
 
