@@ -995,6 +995,7 @@ export function EventForm({
       startLocal={formData.start_date}
       venueName={formData.venue_name}
       venueCity={formData.venue_city}
+      organisationId={organisationId}
     />
   )
 

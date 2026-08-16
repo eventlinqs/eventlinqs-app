@@ -154,6 +154,7 @@ export type GeneratedCoverPreviewResult =
  */
 export async function generateEventCoverPreview(input: {
   eventId: string
+  organisationId?: string | null
   title?: string | null
   startLocal?: string | null
   venueName?: string | null
@@ -174,10 +175,27 @@ export async function generateEventCoverPreview(input: {
   }
 
   if (!input.eventId) {
-    return { ok: false, error: 'Save your event details first, then make a cover.' }
+    return { ok: false, error: 'Add your event details first, then make a cover.' }
   }
   if (!(await callerCanWriteEvent(supabase, user.id, input.eventId))) {
     return { ok: false, error: 'You do not have permission to change this event.' }
+  }
+  if (!input.title?.trim()) {
+    return { ok: false, error: 'Add your event name first. The cover is built from it.' }
+  }
+
+  // The trading name is read through the CALLER's own client, so row-level
+  // security is the membership check: an organisation they do not belong to
+  // simply does not come back, and a name they do not own cannot be printed
+  // onto artwork by passing an id.
+  let organiserName: string | null = null
+  if (input.organisationId) {
+    const { data: org } = await supabase
+      .from('organisations')
+      .select('name')
+      .eq('id', input.organisationId)
+      .maybeSingle()
+    organiserName = org?.name ?? null
   }
 
   try {
@@ -187,8 +205,9 @@ export async function generateEventCoverPreview(input: {
       startLocal: input.startLocal,
       venueName: input.venueName,
       venueCity: input.venueCity,
+      organiserName,
     })
-    if (!bytes) return { ok: false, error: 'We could not find that event. Try saving it first.' }
+    if (!bytes) return { ok: false, error: 'We could not make a cover from those details yet.' }
     return {
       ok: true,
       dataUrl: `data:image/jpeg;base64,${Buffer.from(bytes).toString('base64')}`,

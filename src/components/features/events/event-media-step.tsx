@@ -49,6 +49,8 @@ type Props = {
   startLocal: string
   venueName: string
   venueCity: string
+  /** Whose name goes on the cover. Verified server-side against a real membership. */
+  organisationId: string
 }
 
 /** The details a designed cover prints, as one comparable value. */
@@ -80,6 +82,7 @@ export function EventMediaStep({
   startLocal,
   venueName,
   venueCity,
+  organisationId,
 }: Props) {
   // Internal state is the source of truth so parallel uploads update individual
   // tiles without stale-closure races; the parent is notified on every change.
@@ -193,6 +196,7 @@ export function EventMediaStep({
     try {
       const result = await generateEventCoverPreview({
         eventId,
+        organisationId,
         title,
         startLocal,
         venueName,
@@ -210,7 +214,7 @@ export function EventMediaStep({
     } finally {
       setMaking(false)
     }
-  }, [eventId, title, startLocal, venueName, venueCity, currentKey])
+  }, [eventId, organisationId, title, startLocal, venueName, venueCity, currentKey])
 
   // COMMIT, and only on an explicit press. An existing cover is never destroyed:
   // it moves down into the gallery, where they can put it back with one press.

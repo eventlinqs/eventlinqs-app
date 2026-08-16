@@ -49,6 +49,12 @@ export type CoverDetailOverrides = {
   startLocal?: string | null
   venueName?: string | null
   venueCity?: string | null
+  /**
+   * The organisation's trading name, resolved SERVER-SIDE from a membership the
+   * caller actually holds. Only used when there is no event row to read it from,
+   * which is the create path.
+   */
+  organiserName?: string | null
 }
 
 /**
@@ -109,9 +115,30 @@ export async function renderGeneratedCover(
   // mintLinks false: a cover is not a channel, so nothing is written to
   // share_links and no tracked code is burned to make an image.
   const context = await loadArtefactContext(eventId, origin, null, 'EventLinqs', false)
-  if (!context) return null
 
-  const base = toCardInput(context, 'qr')
+  // NO ROW YET IS THE NORMAL CASE, not an error. The create wizard mints the
+  // event id on the client and writes the row only at the end, so the organiser
+  // who most needs a designed cover, the one starting from nothing, reaches the
+  // media step before anything exists to read. Refusing here would have made the
+  // escape hatch work everywhere except where it is needed.
+  //
+  // What is printed then: their own details, their organisation name resolved
+  // from a membership they hold, and the platform address. No price, because
+  // tickets come after this step and a made-up price on artwork is a lie; no
+  // event URL, because the slug does not exist yet and a link that 404s is worse
+  // than no link. ticketBarText prints the address alone when the price is empty.
+  const base = context
+    ? toCardInput(context, 'qr')
+    : {
+        title: '',
+        dateLabel: '',
+        timeLabel: '',
+        placeLabel: '',
+        priceLabel: '',
+        shortUrl: origin,
+        eyebrow: 'Live event',
+        organiserName: overrides?.organiserName?.trim() || 'EventLinqs',
+      }
 
   // The organiser's CURRENT details win over the saved row, so a cover made
   // during authoring never carries a name, date or venue they have already
@@ -125,6 +152,11 @@ export async function renderGeneratedCover(
     .join(', ')
   const placeLabel = overrides ? place : base.placeLabel
 
+  // A composition with no headline is not a cover. Without a row to fall back
+  // on there is nothing else to draw, so this refuses rather than rendering a
+  // navy rectangle and calling it artwork.
+  if (!title.trim()) return null
+
   return renderSocialCard('cover', {
     ...base,
     title,
@@ -137,7 +169,7 @@ export async function renderGeneratedCover(
     cover: null,
     qr: null,
     organiserLogo: null,
-    summary: context.summary,
+    summary: context?.summary ?? null,
   })
 }
 
