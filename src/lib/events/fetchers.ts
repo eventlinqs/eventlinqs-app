@@ -6,6 +6,8 @@ import { withBadge } from './badges'
 import { buildCommunityTagOrFilter } from '@/lib/communities/tag-bridge'
 import type { CommunitySlug } from '@/lib/communities/data'
 import { buildSearchOrGroups, tokenise, sanitiseToken } from './search-query'
+import { listingWindowOrPredicate, startOfLocalDayUtc, endOfLocalDayUtc } from './listing-window'
+import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 import { EVENT_TYPE_FILTER, buildEventTypeTagOr } from './event-type-filter'
 import { resolveSearchTab } from './search-tab'
 import {
@@ -537,6 +539,33 @@ export function hasRealCover(url: string | null | undefined): url is string {
   return true
 }
 
+/**
+ * RANKING, NOT FILTERING. Founder ruling, 16 August 2026: published means
+ * visible, and no published event is ever hidden from a discovery surface.
+ *
+ * This comparator replaced `.filter(e => hasRealCover(e.cover_image_url))` at
+ * seven call sites in this file. That filter removed rows AFTER the database had
+ * already chosen the page, so a paginated surface lost events silently and the
+ * page came back short.
+ *
+ * It was also, on production, incapable of doing anything: the DB constraint
+ * `events_published_real_cover` (validated by 20260509000010) already guarantees
+ * that a `published` + `public` row carries a real cover, and every query here
+ * filters on exactly those two columns first. So the filter could only ever be a
+ * no-op on rows the query returned, while looking load-bearing. It was blamed
+ * for hiding the founder's 16 August event; the real cause was the date window.
+ *
+ * A real organiser-supplied cover now RANKS ABOVE one without. Nothing is
+ * removed. `Array.prototype.sort` is a stable sort by specification (ES2019), so
+ * the relative order the query chose survives within each group.
+ */
+export function realCoverFirst(
+  a: { cover_image_url: string | null },
+  b: { cover_image_url: string | null },
+): number {
+  return Number(hasRealCover(b.cover_image_url)) - Number(hasRealCover(a.cover_image_url))
+}
+
 function toPublicEventRow(raw: RawRow): PublicEventRow {
   const row = {
     id: raw.id,
@@ -569,9 +598,20 @@ function presetWindow(preset: string | undefined, now: Date): { from: string; to
   const nowIso = now.toISOString()
 
   if (preset === 'today') {
-    const end = new Date(now)
-    end.setHours(23, 59, 59, 999)
-    return { from: nowIso, to: end.toISOString() }
+    // TWO DEFECTS FIXED HERE, both instances of the class this audit closed.
+    //
+    // 1. `from` was `nowIso`, so the filter literally called "Today" hid an
+    //    event that started this morning and is on RIGHT NOW. It now runs from
+    //    the start of the day, so an in-progress event is included, which is the
+    //    founder ruling of 16 August 2026.
+    // 2. The bounds were built with `setHours`, which is the SERVER's zone. On
+    //    Vercel that is UTC, so "today" was a UTC day and an evening event in
+    //    Australia fell into the wrong one. Bounds are now the platform zone,
+    //    the same rule src/lib/dates/event-time.ts states for formatting.
+    return {
+      from: startOfLocalDayUtc(now, PLATFORM_TIME_ZONE).toISOString(),
+      to: endOfLocalDayUtc(now, PLATFORM_TIME_ZONE).toISOString(),
+    }
   }
 
   if (preset === 'tomorrow') {
@@ -735,7 +775,11 @@ export async function fetchPublicEvents(
     query = query.gte('start_date', window.from)
     if (window.to) query = query.lte('start_date', window.to)
   } else {
-    query = query.gte('start_date', now.toISOString())
+    // LISTED UNTIL IT HAS ENDED, not until it has started. This replaced
+    // `start_date >= now`, which removed an event from discovery the moment it
+    // began: a 09:00 gig was invisible at 09:01, on the day it was on. The rule
+    // and the reason live in src/lib/events/listing-window.ts.
+    query = query.or(listingWindowOrPredicate(now))
   }
 
   if (filters.from) query = query.gte('start_date', filters.from)
@@ -756,7 +800,7 @@ export async function fetchPublicEvents(
   }
 
   const raw = (data ?? []) as unknown as RawRow[]
-  let events = raw.map(toPublicEventRow).filter(e => hasRealCover(e.cover_image_url))
+  let events = raw.map(toPublicEventRow).sort(realCoverFirst)
 
   // price_min / price_max arrive in AUD (dollar units) from the URL; tier
   // prices are stored as integer minor units (cents) per the monetary
@@ -935,7 +979,11 @@ async function runFetchPublicEventsAdmin(
     query = query.gte('start_date', window.from)
     if (window.to) query = query.lte('start_date', window.to)
   } else {
-    query = query.gte('start_date', now.toISOString())
+    // LISTED UNTIL IT HAS ENDED, not until it has started. This replaced
+    // `start_date >= now`, which removed an event from discovery the moment it
+    // began: a 09:00 gig was invisible at 09:01, on the day it was on. The rule
+    // and the reason live in src/lib/events/listing-window.ts.
+    query = query.or(listingWindowOrPredicate(now))
   }
 
   if (filters.from) query = query.gte('start_date', filters.from)
@@ -948,7 +996,7 @@ async function runFetchPublicEventsAdmin(
   }
 
   const raw = (data ?? []) as unknown as RawRow[]
-  let events = raw.map(toPublicEventRow).filter(e => hasRealCover(e.cover_image_url))
+  let events = raw.map(toPublicEventRow).sort(realCoverFirst)
 
   const priceFiltered =
     typeof filters.price_min === 'number' || typeof filters.price_max === 'number'
@@ -1027,7 +1075,7 @@ export async function fetchPopularThisWeek(
     .select(BASE_SELECT)
     .eq('status', 'published')
     .eq('visibility', 'public')
-    .gte('start_date', now)
+    .or(listingWindowOrPredicate(new Date(now)))
     // Not promoted: see EXTERNAL_TICKETING_NOTE below.
     .is('external_ticket_url', null)
     .in('id', sortedIds)
@@ -1046,7 +1094,7 @@ export async function fetchPopularThisWeek(
     .map(id => byId.get(id))
     .filter((r): r is RawRow => Boolean(r))
     .map(toPublicEventRow)
-    .filter(e => hasRealCover(e.cover_image_url))
+    .sort(realCoverFirst)
 }
 
 /**
@@ -1096,7 +1144,7 @@ export async function fetchPopularThisWeekPublic(
         .select(BASE_SELECT)
         .eq('status', 'published')
         .eq('visibility', 'public')
-        .gte('start_date', now)
+        .or(listingWindowOrPredicate(new Date(now)))
         // Not promoted: see EXTERNAL_TICKETING_NOTE below.
         .is('external_ticket_url', null)
         .order('start_date', { ascending: true })
@@ -1117,9 +1165,9 @@ export async function fetchPopularThisWeekPublic(
           .map(id => byId.get(id))
           .filter((r): r is RawRow => Boolean(r))
           .map(toPublicEventRow)
-          .filter(e => hasRealCover(e.cover_image_url))
+          .sort(realCoverFirst)
       }
-      return raw.map(toPublicEventRow).filter(e => hasRealCover(e.cover_image_url))
+      return raw.map(toPublicEventRow).sort(realCoverFirst)
     },
     keyParts,
     { revalidate: 60 * 30, tags: ['events:popular-public'] },
@@ -1169,7 +1217,7 @@ export async function fetchRecommendedEvents(
     .select(BASE_SELECT)
     .eq('status', 'published')
     .eq('visibility', 'public')
-    .gte('start_date', now)
+    .or(listingWindowOrPredicate(new Date(now)))
     // Not promoted: see EXTERNAL_TICKETING_NOTE below.
     .is('external_ticket_url', null)
     .order('start_date', { ascending: true })
@@ -1190,7 +1238,7 @@ export async function fetchRecommendedEvents(
   const raw = (data ?? []) as unknown as RawRow[]
   const events = raw
     .map(toPublicEventRow)
-    .filter(e => hasRealCover(e.cover_image_url))
+    .sort(realCoverFirst)
   if (events.length === 0) return fetchPopularThisWeek(limit, city)
   return events
 }
@@ -1335,7 +1383,7 @@ export async function fetchForYouFeed(
     .select(BASE_SELECT)
     .eq('status', 'published')
     .eq('visibility', 'public')
-    .gte('start_date', nowIso)
+    .or(listingWindowOrPredicate(new Date(nowIso)))
     // Not promoted: see EXTERNAL_TICKETING_NOTE below.
     .is('external_ticket_url', null)
     .or(orFilters.join(','))
@@ -1350,7 +1398,7 @@ export async function fetchForYouFeed(
   const raw = (data ?? []) as unknown as RawRow[]
   const candidates = raw
     .map(toPublicEventRow)
-    .filter(e => hasRealCover(e.cover_image_url))
+    .sort(realCoverFirst)
 
   const ranked = rankEventsByAffinity(candidates, signals, now)
   return { events: ranked.slice(0, limit).map(r => r.event), hasGraph: true }

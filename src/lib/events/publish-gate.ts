@@ -134,12 +134,21 @@ async function defaultReconcile(organisationId: string): Promise<ReconcileOutcom
  */
 export async function checkPublishGate(
   client: SupabaseClient,
-  input: { organisationId: string; tiersHavePaid: boolean; coverImageUrl?: string | null },
+  // `coverImageUrl` is REQUIRED, not optional. Making it optional is what let
+  // callers skip the cover check by omission; the type now refuses that.
+  input: { organisationId: string; tiersHavePaid: boolean; coverImageUrl: string | null },
   /** `null` opts out of the Stripe re-read; see the branch below for when that is right. */
   reconcile: ReconcileFn | null = defaultReconcile,
 ): Promise<PublishGateResult> {
-  // Photo-required gate fires for both free and paid events.
-  if ('coverImageUrl' in input && !hasRealCover(input.coverImageUrl)) {
+  // COVER REQUIRED TO PUBLISH, for free and paid events alike.
+  //
+  // THE HOLE THIS CLOSES. The condition used to begin `'coverImageUrl' in input`,
+  // so any caller that simply omitted the key skipped the check in silence and
+  // published an event with no cover. The requirement was real, was documented,
+  // and was opt-in by accident. A gate a caller can skip by forgetting a field is
+  // not a gate. The key is now required by the type, so omitting it is a compile
+  // error rather than a silent pass.
+  if (!hasRealCover(input.coverImageUrl)) {
     return {
       ok: false,
       reason: 'cover_image_required',
