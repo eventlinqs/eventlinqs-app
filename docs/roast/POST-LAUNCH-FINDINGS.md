@@ -7,7 +7,7 @@
 | # | Open and blocking | What unblocks it |
 |---|---|---|
 | B-1 | **The $1 real-card purchase has not been run.** Every gate is green and the money path is proven on TEST, but no real card has moved on production. Until it does, "the platform can sell" is an inference. | Runbook section 4. It is also the gate on the purge: nothing is deleted from production before it passes. |
-| B-2 | **The migrations are not applied to production**, and the ORDER is the one thing that can take the live site off sale silently. | Runbook section 3, steps 3.4 to 3.6. Deploy the code first, verify a paid event still renders a ticket selector, then apply, then verify both halves. |
+| B-2 | **ELEVEN migrations are not applied to production**, not two, and one `db push` applies all eleven in one go. The ORDER is the one thing that can take the live site off sale silently. | Runbook section 3, steps 3.4 to 3.6, which lists all eleven by name. Deploy the code first, verify a paid event still renders a ticket selector, then apply, then verify both halves. Section 5 needs no second push. |
 
 Everything else previously listed here is FIXED, SUPERSEDED, or open and NOT
 blocking. The sections below are the running record and are kept in date order.

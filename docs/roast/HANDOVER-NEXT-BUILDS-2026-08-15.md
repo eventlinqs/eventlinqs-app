@@ -57,10 +57,20 @@ because it shapes the rest.
 
 ### The migration, verbatim, as written and removed
 
+> **CORRECTED 16 AUGUST 2026: the `DROP NOT NULL` line below is a no-op on
+> production.** `share_links.event_id` is made nullable by
+> `20260808000006_share_codes_never_released.sql`, which sorts earlier and so runs
+> first in the single `db push` that applies the whole pending set. Do not read the
+> line below as the change that makes external links possible at the column level:
+> that had already happened. What this migration solely contributes is
+> `destination_url`, `draft_code` and `events.external_ticket_url`. Confirmed
+> independently by the types-drift guard on PR #118, which attributes the three
+> `event_id` type changes to 000006 and the rest to this file.
+
 ```sql
 -- 20260815000001_external_ticketing.sql
 ALTER TABLE public.share_links ADD COLUMN IF NOT EXISTS destination_url TEXT;
-ALTER TABLE public.share_links ALTER COLUMN event_id DROP NOT NULL;
+ALTER TABLE public.share_links ALTER COLUMN event_id DROP NOT NULL;  -- no-op: 20260808000006 already did this
 
 ALTER TABLE public.share_links DROP CONSTRAINT IF EXISTS share_links_target_exactly_one;
 ALTER TABLE public.share_links ADD CONSTRAINT share_links_target_exactly_one

@@ -395,6 +395,33 @@ measured against production on 15 August 2026:
 20260815000001_external_ticketing.sql
 ```
 
+**RE-VERIFIED INDEPENDENTLY ON 16 AUGUST 2026, AND STILL ELEVEN.** The list above
+was measured by hand on 15 August. It has since been confirmed by machine, from a
+different source, without anybody typing the number: the types-drift guard on
+PR #118 reads the applied set from the Supabase Management API
+(`GET /v1/projects/{ref}/database/migrations`) and printed
+
+```
+[types-drift] 88 migration(s) in the repository, 77 applied to gndnldyfudbytbboxesk, 11 pending.
+```
+
+88 minus 77 is 11, and they are the eleven files above. **So when you run the push
+and the CLI lists eleven versions, that is correct and expected, not a surprise
+and not a sign that something extra crept in.**
+
+**ATTRIBUTION, because two migrations do the same thing and only the first one
+counts.** `share_links.event_id` becoming nullable is done by
+**`20260808000006_share_codes_never_released.sql`**, NOT by
+`20260815000001_external_ticketing.sql`. Both files contain
+`ALTER COLUMN event_id DROP NOT NULL`, but 000006 sorts earlier and therefore runs
+first in this single push, so by the time 20260815000001 executes that statement
+it is a **no-op**. The types-drift guard reaches the same conclusion independently
+and attributes the three `event_id` type changes to 000006. This matters if you
+are ever reading the push output or a failure trace and trying to work out which
+file actually changed the column: it is 000006. What 20260815000001 genuinely and
+solely contributes is `destination_url`, `draft_code` and
+`events.external_ticket_url`.
+
 **Section 5 therefore does not need a second push.** Section 5 is written as
 though its two taxonomy migrations are applied separately and later. They are
 not: this step applies them. When you reach section 5, **skip its push and run
