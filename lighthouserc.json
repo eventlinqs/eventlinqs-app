@@ -24,7 +24,26 @@
       },
       "assertMatrix": [
         {
-          "_pattern_note": "Negative lookahead excludes /login and /signup (SEO category - they are deliberately noindex), /culture/* (perf score - Issue #42 cold-start image-optimiser race; see the third assertMatrix entry below), AND the homepage / (same Issue #42 class per CLAUDE.md docs/perf/v2/closure-report.md flagging 'Mobile homepage and /events have known cold-cache measurement issue ... do not block on it'; see the fourth assertMatrix entry below). Each excluded path has its own dedicated assertMatrix entry that re-applies whichever assertions still need to fire at error-level for that path. assertMatrix entries are independent and additive (a URL matched by multiple entries has all matching assertions evaluated), so excluding here is the only way to suppress the default error-level threshold from also firing.",
+          "_note": "SEO IS ASSERTED AUDIT BY AUDIT, NOT AS A CATEGORY SCORE. This entry replaced `categories:seo: [error, minScore 1]`, which used to sit in the general entry below and in the /culture/* and homepage entries. THE REASON: this gate measures a VERCEL PREVIEW, and on 15 August 2026 a real defect was fixed - previews were serving `x-robots-tag: index, follow` and publishing a 932-URL sitemap on the preview host, overriding Vercel's own noindex and offering Googlebot a second copy of the catalogue. next.config.ts now sends `noindex, nofollow` on every non-production deployment. Lighthouse's `is-crawlable` audit carries 4.04 of the SEO category's 13.04 weighted points, so a CORRECTLY noindexed preview scores 0.69 and can never reach 1. Measured on PR #118, is-crawlable was the ONLY failing SEO audit on all eleven gated URLs: the gate was failing the fix. NOT A RELAXATION: a category score of 1 is reached exactly when every weighted audit passes, so asserting each audit at minScore 1 demands precisely the same things of the page, and names the one that broke instead of reporting a fraction. aggregationMethod is pinned to `optimistic` on every one of them so the replacement judges runs identically to the category floor it replaces - neither stricter nor looser. THE TWO EXCLUSIONS, both enforced elsewhere rather than dropped: `is-crawlable` is environment-dependent and is asserted by scripts/ci/assert-seo-audits.mjs against the HOST (a preview MUST be blocked, production MUST be crawlable), which means re-breaking the indexing defect now fails this gate - nothing checked that before; `structured-data` is weight 0 with scoreDisplayMode `manual`, for which LHCI's minScore getter returns undefined. That script also fails the build if Lighthouse ever reports an SEO audit outside its reviewed baseline, which is what stops a hand-written list silently covering less than the category floor did.",
+          "_pattern_note": "Excludes /login and /signup only. They are deliberately noindex AND deliberately non-canonical (measured: both fail `canonical` as well as `is-crawlable`), and the dedicated entry below already switches their SEO category off for that reason. Every other audited URL gets the full per-audit set.",
+          "matchingUrlPattern": "^(?!.*/(login|signup)$).*",
+          "_permanent": true,
+          "_expiryReason": "The categories:seo floor is off because this gate measures a Vercel preview, which is noindex BY DESIGN and permanently so. That is a settled design decision, not a deferred fix, so it carries no expiry date. The per-audit assertions in this entry hold the same bar, and scripts/ci/assert-seo-audits.mjs asserts indexability against the environment and fails if the audit set drifts from its reviewed baseline. scripts/ci/lighthouse-exemption-expiry.mjs reprints this on every run so it stays visible.",
+          "assertions": {
+            "categories:seo": "off",
+            "canonical": ["error", { "minScore": 1, "aggregationMethod": "optimistic" }],
+            "crawlable-anchors": ["error", { "minScore": 1, "aggregationMethod": "optimistic" }],
+            "document-title": ["error", { "minScore": 1, "aggregationMethod": "optimistic" }],
+            "hreflang": ["error", { "minScore": 1, "aggregationMethod": "optimistic" }],
+            "http-status-code": ["error", { "minScore": 1, "aggregationMethod": "optimistic" }],
+            "image-alt": ["error", { "minScore": 1, "aggregationMethod": "optimistic" }],
+            "link-text": ["error", { "minScore": 1, "aggregationMethod": "optimistic" }],
+            "meta-description": ["error", { "minScore": 1, "aggregationMethod": "optimistic" }],
+            "robots-txt": ["error", { "minScore": 1, "aggregationMethod": "optimistic" }]
+          }
+        },
+        {
+          "_pattern_note": "Negative lookahead excludes /login and /signup (they carry their own entry below; note this entry no longer asserts any SEO category - SEO moved to the per-audit entry at the top of this matrix on 16 August 2026), /culture/* (perf score - Issue #42 cold-start image-optimiser race; see the third assertMatrix entry below), AND the homepage / (same Issue #42 class per CLAUDE.md docs/perf/v2/closure-report.md flagging 'Mobile homepage and /events have known cold-cache measurement issue ... do not block on it'; see the fourth assertMatrix entry below). Each excluded path has its own dedicated assertMatrix entry that re-applies whichever assertions still need to fire at error-level for that path. assertMatrix entries are independent and additive (a URL matched by multiple entries has all matching assertions evaluated), so excluding here is the only way to suppress the default error-level threshold from also firing.",
           "matchingUrlPattern": "^(?!.*/(login|signup)$)(?!.*/culture/.+$)(?!https?://[^/]+/?$).*",
           "assertions": {
             "categories:performance": [
@@ -42,13 +61,6 @@
               }
             ],
             "categories:best-practices": [
-              "error",
-              {
-                "minScore": 1,
-                "aggregationMethod": "optimistic"
-              }
-            ],
-            "categories:seo": [
               "error",
               {
                 "minScore": 1,
@@ -184,7 +196,7 @@
           }
         },
         {
-          "_note": "Culture landing pages (/culture/<slug>) hit a cold-start Vercel image optimiser race that drops mobile performance score below the global 0.80 floor on heavy hero rasters. Surfaced after PR #40 fixed the /events 500 that previously masked Lighthouse from reaching this URL's assertion phase at all. Issue #42 tracks the proper fix (image-optimiser pre-warm or static raster hero on culture pages). Until then, performance is gated at warn-level on this route only - the score is still measured and visible in CI, just non-blocking - while accessibility, best-practices, and SEO stay at the full error-level 1.0 floor. Restore performance to error-level when Issue #42 closes.",
+          "_note": "Culture landing pages (/culture/<slug>) hit a cold-start Vercel image optimiser race that drops mobile performance score below the global 0.80 floor on heavy hero rasters. Surfaced after PR #40 fixed the /events 500 that previously masked Lighthouse from reaching this URL's assertion phase at all. Issue #42 tracks the proper fix (image-optimiser pre-warm or static raster hero on culture pages). Until then, performance is gated at warn-level on this route only - the score is still measured and visible in CI, just non-blocking - while accessibility and best-practices stay at the full error-level 1.0 floor. SEO is no longer asserted as a category here: it moved to the per-audit entry at the top of this matrix on 16 August 2026, which applies to this URL too and holds the same bar audit by audit. Restore performance to error-level when Issue #42 closes.",
           "matchingUrlPattern": "/culture/.+$",
           "_expiresOn": "2026-11-01",
           "_expiryReason": "Issue #42 image-optimiser cold-start. Performance is warn-level on this route only. scripts/ci/lighthouse-exemption-expiry.mjs FAILS the build once this date passes, so the waiver cannot outlive its justification unnoticed.",
@@ -204,13 +216,6 @@
               }
             ],
             "categories:best-practices": [
-              "error",
-              {
-                "minScore": 1,
-                "aggregationMethod": "optimistic"
-              }
-            ],
-            "categories:seo": [
               "error",
               {
                 "minScore": 1,
@@ -250,7 +255,7 @@
           }
         },
         {
-          "_note": "Homepage / mobile cold-cache image-optimiser race - same class as /culture/* per Issue #42 and CLAUDE.md docs/perf/v2/closure-report.md ('Mobile homepage and /events have known cold-cache measurement issue to be revisited with production warm-cache data, do not block on it'). The homepage hero is a heavy priority-painted raster on mobile and trips the same Vercel image optimiser cold-start race already documented for /culture/*. Observed in this PR's run (median-of-3): perf 0.76 on /, while /culture/african produced null/NaN for perf/LCP/TBT in the same run - both routes are stuck below the 0.80 floor for the same documented reason. Performance is gated at warn-level so the score stays visible in CI without blocking deploys; accessibility, best-practices, SEO, and CLS remain at the full error-level. Restore performance to error-level when the underlying cold-cache fix lands (same fix horizon as Issue #42). /events is also flagged in CLAUDE.md as having the same issue but is left at error-level for now because the current run still measured it above 0.80 - relax it only when it actually fails.",
+          "_note": "Homepage / mobile cold-cache image-optimiser race - same class as /culture/* per Issue #42 and CLAUDE.md docs/perf/v2/closure-report.md ('Mobile homepage and /events have known cold-cache measurement issue to be revisited with production warm-cache data, do not block on it'). The homepage hero is a heavy priority-painted raster on mobile and trips the same Vercel image optimiser cold-start race already documented for /culture/*. Observed in this PR's run (median-of-3): perf 0.76 on /, while /culture/african produced null/NaN for perf/LCP/TBT in the same run - both routes are stuck below the 0.80 floor for the same documented reason. Performance is gated at warn-level so the score stays visible in CI without blocking deploys; accessibility, best-practices, and CLS remain at the full error-level. SEO is no longer asserted as a category here: it moved to the per-audit entry at the top of this matrix on 16 August 2026, which applies to this URL too and holds the same bar audit by audit. Restore performance to error-level when the underlying cold-cache fix lands (same fix horizon as Issue #42). /events is also flagged in CLAUDE.md as having the same issue but is left at error-level for now because the current run still measured it above 0.80 - relax it only when it actually fails.",
           "matchingUrlPattern": "^https?://[^/]+/?$",
           "_expiresOn": "2026-11-01",
           "_expiryReason": "Homepage cold-cache image-optimiser race, same class as Issue #42. Performance is warn-level here only. scripts/ci/lighthouse-exemption-expiry.mjs FAILS the build once this date passes.",
@@ -270,13 +275,6 @@
               }
             ],
             "categories:best-practices": [
-              "error",
-              {
-                "minScore": 1,
-                "aggregationMethod": "optimistic"
-              }
-            ],
-            "categories:seo": [
               "error",
               {
                 "minScore": 1,

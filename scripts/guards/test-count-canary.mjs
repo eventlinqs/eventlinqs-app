@@ -130,8 +130,24 @@ const ROOT = join(HERE, '..', '..')
  * which is the one context a clean shell cannot reproduce and the one context
  * where the original defect actually fired.
  */
-const MIN_FILES = 195
-const MIN_TESTS = 2356
+/*
+ * 2026-08-16: raised 195/2356 -> 197/2377. The two blocking checks on PR #118,
+ * both of which turned out to be gates that could not tell two opposite states
+ * apart.
+ * tests/unit/ci/types-drift-analyse.test.ts is new and adds 16. The types-drift
+ * guard reported PENDING MIGRATIONS (expected, and the committed types are
+ * correct) and STALE TYPES (a defect) as one failure with one remedy, and that
+ * remedy destroys correct work in the first case. These pin the classification
+ * in BOTH directions, including the case the old guard could not see at all: a
+ * committed column that no migration in the tree creates.
+ * tests/unit/ci/seo-audit-coverage.test.ts is new and adds 5. SEO stopped being
+ * a categories:seo floor, because that floor is unreachable on a preview that is
+ * noindex by design. It is now asserted audit by audit, and a hand-written list
+ * is weaker than a category floor the moment a line goes missing from it, so
+ * these bind lighthouserc.json to the reviewed baseline.
+ */
+const MIN_FILES = 197
+const MIN_TESTS = 2377
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

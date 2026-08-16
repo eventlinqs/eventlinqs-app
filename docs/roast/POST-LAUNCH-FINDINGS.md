@@ -34,6 +34,71 @@ blocking. The sections below are the running record and are kept in date order.
 | N-3 | Finding 68: whether Vercel Skew Protection is enabled could not be read from the API. | One deployment-skew error boundary was seen once and did not reproduce. Check the dashboard setting before launch; the same shape would throw a buyer out mid-checkout on any production deploy. |
 | N-4 | Finding 61: preview deployments stopped being indexable, but they are still readable. | Deployment Protection is a dashboard action and remains outstanding. |
 | N-5 | Two builds requested on 15 August 2026, external ticketing support and the pace engine, are NOT STARTED. | Named in the handover with their design and their blockers. Neither is launch-blocking; both are the next workstream. |
+| N-6 | Mobile performance on the homepage is 0.63 and LCP runs 5.2 to 6.3 seconds on the preview. | Warn-level by a dated waiver (Issue #42, expires 2026-11-01), not a blocker. Detail and the proposed fix are in the section below. |
+| N-7 | `/pricing`, `/help` and `/legal/terms` render zero `<img>` elements. | Not a gate failure, but `/pricing` is a marketing surface and Law 4 says a text-only marketing surface is a design defect by definition. Detail below. |
+
+### Recorded 16 August 2026: Lighthouse performance, and a Law 4 gap found beside it
+
+Both came out of diagnosing the SEO gate on PR #118. Neither blocks the merge and
+neither was chased on the night, per instruction.
+
+**N-6. Mobile performance and LCP on the homepage.** Measured against the warmed
+Vercel preview, median of three, `el-audit=1`:
+
+| Route | Performance (gate value / median) | LCP, all three runs |
+|---|---|---|
+| `/` | 0.63 / 0.58 | 5156.63, 5900.02, 6341.78 ms |
+| `/events` | 0.88 / 0.81 | within the 4000 ms warn cap |
+| every other gated route | 0.87 to 0.94 | within cap |
+
+The homepage is the only route below the 0.80 floor, and it is warn-waived on a
+dated exemption rather than silently excused: `matchingUrlPattern`
+`^https?://[^/]+/?$` carries `_expiresOn: 2026-11-01`, and
+`scripts/ci/lighthouse-exemption-expiry.mjs` fails the build the day that passes.
+
+WHAT I WOULD DO, in order, and none of it tonight:
+
+1. **Settle whether this is measurement or reality before optimising anything.**
+   The waiver attributes it to the Issue #42 Vercel image-optimiser cold-start
+   race, and the warming pass in the workflow is two unrecorded curl hits per URL.
+   An LCP spread of 5.2 to 6.3 seconds across three consecutive runs on the same
+   build is a wide band, and a genuinely warm cache should not produce it. Warm
+   with more passes, or measure the same commit on production, and see whether the
+   band collapses. Optimising against a cold-start artefact would be work spent on
+   the harness rather than the page.
+2. **Get the LCP element named.** This gate physically cannot say which element is
+   the LCP: `lighthouserc.json` records that Lighthouse 12.1.0's TraceElements
+   gatherer throws, so `largest-contentful-paint-element` returns
+   `scoreDisplayMode=error` with no details in every report it produces. That is
+   the single most useful fact about an LCP problem and the gate does not have it.
+   The fix is already scoped in that file: `@lhci/cli` 0.15.1 ships Lighthouse
+   12.6.1 where both audits return real data. It re-baselines all eleven URLs, so
+   it needs a validation run, and it is also flagged RE-CHECK BY 2026-11-01.
+   Do this BEFORE step 3, or step 3 is guesswork.
+3. **Only then, the hero.** The homepage hero is a priority-painted AVIF raster
+   and is the likely LCP. The candidates are a smaller mobile-specific raster, a
+   pre-warmed optimiser path, or serving the mobile hero as a static asset that
+   bypasses the optimiser entirely. Which one depends on what step 2 names.
+
+Explicitly NOT recommended: lowering the 0.80 floor, or widening the LCP cap.
+Both would make the number go green without making the page faster, and the
+constitution's delivery rule forbids it.
+
+**N-7. Three pages carry no imagery at all.** `/pricing`, `/help` and
+`/legal/terms` render zero `<img>` elements, confirmed by fetching the preview
+directly. This surfaced because it is why those three score 0.66 on SEO where
+every other page scores 0.69: Lighthouse marks `image-alt` `notApplicable` when a
+page has no images and drops it from the denominator, so the category total falls
+from 13.04 weighted points to 12.04 and the same single failure costs a larger
+fraction. The score difference is therefore an artefact and not a defect.
+
+The defect it exposes is a different one. Law 4 says every marketing and landing
+surface carries image-rich, full-craft treatment, and that a text-only marketing
+surface is a design defect by definition. `/pricing` is squarely a marketing
+surface. `/help` and `/legal/terms` are arguably not, and that is a founder call
+rather than mine. Reference build is `/organisers` with
+`src/lib/images/organiser-photos.ts` and `MarketingMedia`. This is a design task
+needing Law 2 evidence and approval, so it is recorded, not actioned.
 
 
 ## CORRECTED 15 August 2026: two findings I reported were WRONG
