@@ -179,7 +179,19 @@ export function EventShareBar({ eventTitle, eventDate, eventUrl, eventSlug, vari
   const labelClass = variant === 'dark' ? 'text-white' : 'text-[var(--text-primary)]'
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    /*
+     * gap-3, not gap-2. MEASURED at 390: six controls, each 44px tall, totalling
+     * 405px of width plus gaps inside a 358px container, so the row always wraps
+     * to two lines. At gap-2 those two lines of pill buttons sat EIGHT pixels
+     * apart, which is the tightest gap anywhere in this system and is why the row
+     * reads as a jammed block rather than a set of choices.
+     *
+     * 12px, and no more, is the considered number: it separates the wrapped rows
+     * without pushing a seventh control onto a third line. The five that fit on
+     * the first row at gap-2 still fit at gap-3 (336px of 358px), so the shape of
+     * the row is unchanged and only the air between the controls moves.
+     */
+    <div className="flex flex-wrap items-center gap-3">
       <button
         type="button"
         onClick={onNativeShare}
