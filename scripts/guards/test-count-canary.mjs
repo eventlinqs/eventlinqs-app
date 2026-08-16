@@ -169,9 +169,16 @@ const ROOT = join(HERE, '..', '..')
  * defect the previous pass claimed to have closed.
  * tests/unit/broadcast/cover-format.test.ts pins the fourth card format out of
  * the organiser download set and out of the public route guard.
+ *
+ * 2026-08-16 (later, same day): raised 200/2415 -> 201/2420.
+ * tests/component/thin-categories-note.test.ts, 5 tests. It exists because the
+ * VISIBLE branch of that component cannot be photographed on a dense preview:
+ * at real density it renders nothing at all, by design. So the branch that only
+ * appears on a thin catalogue is proven in the DOM rather than asserted from
+ * the source.
  */
-const MIN_FILES = 200
-const MIN_TESTS = 2415
+const MIN_FILES = 201
+const MIN_TESTS = 2420
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
