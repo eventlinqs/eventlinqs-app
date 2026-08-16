@@ -40,7 +40,12 @@ function stubClient(rows: unknown[]) {
   // events (`.is('external_ticket_url', null)`). A stub that omits a builder
   // method fails with "is not a function", which reads as a broken query rather
   // than an out-of-date double, so the list is kept complete deliberately.
-  for (const m of ['from', 'select', 'eq', 'gte', 'is', 'order', 'limit']) {
+  // `or` was added on 16 August 2026 when the rails stopped filtering
+  // `start_date >= now` and began asking "has this ended yet?" instead
+  // (src/lib/events/listing-window.ts). Same lesson as `is` above: the stub
+  // failing with "or is not a function" reads as a broken query rather than an
+  // out-of-date double.
+  for (const m of ['from', 'select', 'eq', 'gte', 'or', 'is', 'order', 'limit']) {
     chain[m] = () => chain
   }
   chain.then = (...args: unknown[]) => (result as unknown as { then: (...a: unknown[]) => unknown }).then(...args)

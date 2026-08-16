@@ -20,6 +20,7 @@ import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import type { EventCardData } from '@/components/features/events/event-card'
 import type { MapEventPin } from '@/components/features/city/city-map'
 import { getSiteUrl } from '@/lib/site-url'
+import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 
 export const revalidate = 300
 
@@ -87,7 +88,7 @@ export default async function CityPage({ params }: Props) {
         .select(baseSelect)
         .eq('status', 'published')
         .eq('visibility', 'public')
-        .gte('start_date', w.nowIso)
+        .or(listingWindowOrPredicate(new Date(w.nowIso)))
         .ilike('venue_city', `%${city.name}%`)
         .order('start_date', { ascending: true })
         .limit(120),

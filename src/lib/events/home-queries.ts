@@ -4,6 +4,7 @@ import type {
   FeaturedHeroEvent,
 } from '@/components/features/events/featured-event-hero'
 import { fixtureEnabled, loadFixtureRows } from '@/lib/dev/fixture-events'
+import { isStillListed, listingWindowOrPredicate } from '@/lib/events/listing-window'
 
 export const EVENT_SELECT =
   // `timezone` is selected because every card that prints a date must format it
@@ -111,7 +112,10 @@ export async function loadHomeUpcoming(
      * the worst case is now real data instead of a blank page.
      */
     const usable = rows
-      .filter(r => r.start_date >= nowIso)
+      // Listed until it has ENDED, not until it has started. The fixture path
+      // gets the same rule as the live query below, or the homepage would
+      // disagree with /events about what is on today.
+      .filter(r => isStillListed(r, new Date(nowIso)))
       .sort((a, b) => a.start_date.localeCompare(b.start_date))
     if (usable.length > 0) return usable
   }
@@ -120,7 +124,10 @@ export async function loadHomeUpcoming(
     .select(EVENT_SELECT)
     .eq('status', 'published')
     .eq('visibility', 'public')
-    .gte('start_date', nowIso)
+    // LISTED UNTIL IT HAS ENDED. This was `start_date >= now`, which took an
+    // event off the homepage the moment it began. src/lib/events/listing-window.ts
+    // carries the rule and the reason.
+    .or(listingWindowOrPredicate(new Date(nowIso)))
     /*
      * EXTERNALLY TICKETED EVENTS ARE NOT IN THE RAILS. Founder ruling
      * 15 August 2026, non-negotiable 4.

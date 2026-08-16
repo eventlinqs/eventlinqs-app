@@ -16,6 +16,7 @@ import { SiteFooter } from '@/components/layout/site-footer'
 import { PhotographicCommunityHero } from '@/components/templates/PhotographicCommunityHero'
 import { EventCard, type EventCardData } from '@/components/features/events/event-card'
 import { getSiteUrl } from '@/lib/site-url'
+import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 
 // ISR: 5-minute revalidate matches the rest of the public surface.
 export const revalidate = 300
@@ -66,7 +67,7 @@ export default async function FaithPage({ params }: Props) {
           .select(EVENT_SELECT)
           .eq('status', 'published')
           .eq('visibility', 'public')
-          .gte('start_date', new Date().toISOString())
+          .or(listingWindowOrPredicate(new Date()))
           .or(tagOr)
           .order('start_date', { ascending: true })
           .limit(12),

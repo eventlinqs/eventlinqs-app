@@ -13,6 +13,7 @@ import { SuburbLandingPage } from '@/components/templates/SuburbLandingPage'
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import type { EventCardData } from '@/components/features/events/event-card'
 import { getSiteUrl } from '@/lib/site-url'
+import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 
 export const revalidate = 300
 
@@ -98,7 +99,7 @@ export default async function SuburbPage({ params }: Props) {
     .select(`${baseSelect}, suburb_primary, venue_latitude, venue_longitude`)
     .eq('status', 'published')
     .eq('visibility', 'public')
-    .gte('start_date', new Date().toISOString())
+    .or(listingWindowOrPredicate(new Date()))
     .ilike('venue_city', `%${city.name}%`)
     .order('start_date', { ascending: true })
     .limit(200)

@@ -18,6 +18,7 @@ import {
 } from '@/components/dashboard/get-started-checklist'
 import { QuickActionsPanel } from '@/components/dashboard/quick-actions-panel'
 import { AssistantPanel } from '@/components/ai/assistant-panel'
+import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 
 type OrderSummary = {
   id: string
@@ -113,7 +114,7 @@ export default async function DashboardPage({
       )
       .eq('organisation_id', org.id)
       .eq('status', 'published')
-      .gte('start_date', nowIso)
+      .or(listingWindowOrPredicate(new Date(nowIso)))
       .order('start_date', { ascending: true })
       .limit(5)
 
@@ -139,7 +140,7 @@ export default async function DashboardPage({
       .select('id', { count: 'exact', head: true })
       .eq('organisation_id', org.id)
       .eq('status', 'published')
-      .gte('start_date', nowIso)
+      .or(listingWindowOrPredicate(new Date(nowIso)))
     upcomingCount = upcoming ?? 0
 
     // Recent confirmed orders for this organisation over 60 days (for KPIs + activity)

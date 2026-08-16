@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createPublicClient } from '@/lib/supabase/public-client'
+import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 
 /**
  * GET /api/home/surprise - server-side curated event picks for the
@@ -74,7 +75,7 @@ export async function GET(request: Request) {
     )
     .eq('status', 'published')
     .eq('visibility', 'public')
-    .gte('start_date', nowIso)
+    .or(listingWindowOrPredicate(new Date(nowIso)))
     .order('start_date', { ascending: true })
     .limit(30)
 

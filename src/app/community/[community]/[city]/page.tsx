@@ -24,6 +24,7 @@ import type { EventCardData } from '@/components/features/events/event-card'
 import type { MapEventPin } from '@/components/features/city/city-map'
 import { getSiteUrl } from '@/lib/site-url'
 import { formatEventDateShort } from '@/lib/dates/event-time'
+import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 
 export const revalidate = 300
 
@@ -145,7 +146,7 @@ export default async function CommunityByCityPage({ params }: Props) {
       .select(baseSelect)
       .eq('status', 'published')
       .eq('visibility', 'public')
-      .gte('start_date', now.toISOString())
+      .or(listingWindowOrPredicate(now))
       .ilike('venue_city', `%${cityName}%`)
       .or(tagOr)
       .order('start_date', { ascending: true })

@@ -19,6 +19,7 @@ import { VenueProfileHero } from '@/components/features/venues/venue-profile-her
 import { VenueAmenitiesGrid } from '@/components/features/venues/venue-amenities-grid'
 import { VenueMobileStickyBar } from '@/components/features/venues/venue-mobile-sticky-bar'
 import { getSiteUrl } from '@/lib/site-url'
+import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 
 export const revalidate = 300
 
@@ -50,7 +51,7 @@ async function fetchVenueEventsByName(venueName: string) {
       .eq('status', 'published')
       .eq('visibility', 'public')
       .ilike('venue_name', venueName)
-      .gte('start_date', nowIso)
+      .or(listingWindowOrPredicate(new Date(nowIso)))
       .order('start_date', { ascending: true })
       .limit(24),
     supabase
