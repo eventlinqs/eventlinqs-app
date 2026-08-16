@@ -129,18 +129,61 @@ function localMidnightUtc(year: number, month: number, day: number, zone: string
   return new Date(settled)
 }
 
+/**
+ * Start of the local calendar day `offsetDays` from the day containing `date`,
+ * in `zone`, as a UTC instant.
+ *
+ * Every date window on the platform is built from this one function rather than
+ * from `setHours`, which uses the SERVER's zone. On Vercel the server runs UTC,
+ * so a `setHours(0,0,0,0)` boundary put an Australian evening event in the wrong
+ * day. Each boundary is resolved through localMidnightUtc independently, so a
+ * window that spans a daylight-saving change is still correct at both ends.
+ */
+export function startOfLocalDayUtcOffset(date: Date, zone: string, offsetDays: number): Date {
+  const [y, m, d] = localDateParts(date, zone)
+  // Date.UTC normalises a day overflow (32 January, day 0, etc), so month-end
+  // and year-end need no special case.
+  return localMidnightUtc(y, m, d + offsetDays, zone)
+}
+
 /** Start of the calendar day containing `now`, in `zone`, as a UTC instant. */
 export function startOfLocalDayUtc(now: Date, zone: string): Date {
-  const [y, m, d] = localDateParts(now, zone)
-  return localMidnightUtc(y, m, d, zone)
+  return startOfLocalDayUtcOffset(now, zone, 0)
 }
 
 /** End of the calendar day containing `date`, in `zone`, as a UTC instant. */
 export function endOfLocalDayUtc(date: Date, zone: string): Date {
+  return startOfLocalDayUtcOffset(date, zone, 1)
+}
+
+/**
+ * Day of the week (0 Sunday to 6 Saturday) of the calendar day containing
+ * `date`, IN `zone`. `Date.prototype.getDay()` answers for the server's zone,
+ * which is how a weekend window came to start on the wrong day.
+ */
+export function localDayOfWeek(date: Date, zone: string): number {
   const [y, m, d] = localDateParts(date, zone)
-  // Next local midnight. Date.UTC normalises a day overflow (32 January etc),
-  // so month-end and year-end need no special case.
-  return localMidnightUtc(y, m, d + 1, zone)
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay()
+}
+
+/**
+ * The upcoming weekend, Saturday 00:00 to the last instant of Sunday, in
+ * `zone`. On a Sunday the weekend already under way is the one meant, so it
+ * steps back a day rather than jumping forward six.
+ *
+ * ONE DEFINITION, because there were FOUR: the /events weekend preset, the city
+ * page, the suburb page and the community-by-city page each carried their own
+ * copy built on `setHours`, so all four ran on the server's UTC day and all four
+ * had to be found separately. `to` is inclusive, matching the `lte` comparisons
+ * at the call sites.
+ */
+export function weekendWindowUtc(now: Date, zone: string): { from: Date; to: Date } {
+  const day = localDayOfWeek(now, zone) // 0 Sun .. 6 Sat
+  const toSaturday = day === 6 ? 0 : day === 0 ? -1 : 6 - day
+  return {
+    from: startOfLocalDayUtcOffset(now, zone, toSaturday),
+    to: new Date(startOfLocalDayUtcOffset(now, zone, toSaturday + 2).getTime() - 1),
+  }
 }
 
 /** Resolve an event's zone, falling back to the platform zone, never the runtime's. */

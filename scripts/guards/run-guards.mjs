@@ -183,6 +183,28 @@
  * this file printed the day before. That is the property worth having. A banner
  * with the number written into it would have gone on confidently reporting the
  * old answer, which is the failure it exists to prevent.
+ *
+ * no-display-time-exclusion: founder ruling 16 August 2026, PUBLISHED MEANS
+ * VISIBLE. Refuses the four shapes in which a published, public row has
+ * actually been removed from a discovery surface on this platform: a SQL lower
+ * bound at now, the same bound written in JavaScript, a cover test used to
+ * exclude rather than to rank, and a post-query filter running on a page the
+ * database had already chosen. Nineteen tests pinned the listing window and all
+ * of them passed while seven more copies of the defect were live; a test proves
+ * the code it calls, and only a scanner proves the absence of a shape. Its scope
+ * is derived rather than listed, and it prints how many files, predicates,
+ * filters and range calls it inspected, so a scope that collapses says so
+ * instead of printing the same PASS.
+ *
+ * publish-requires-cover: the photo-required rule, in four parts, because
+ * removing any one of them leaves the other three looking healthy: the
+ * predicate still rejects null, empty and picsum; the cover field is REQUIRED by
+ * the type (it was once optional, and a caller that omitted it skipped the check
+ * in silence); the refusal runs before any path that can return ok; and every
+ * publish site in a derived scan is either gated or carries a written
+ * allowance. It also asserts the database backstop, both the migration that adds
+ * the events_published_real_cover constraint and the one that VALIDATES it,
+ * since a constraint left NOT VALID binds new rows only.
  */
 import { spawnSync } from 'node:child_process'
 
@@ -337,6 +359,14 @@ const GUARDS = [
   // POSITION of four refusals, not just their presence: each one is still
   // present and still passes every unit test when moved, and wrong.
   'scripts/guards/no-external-checkout.mjs',
+  // Founder ruling 2026-08-16, PUBLISHED MEANS VISIBLE. The exclusion audit
+  // found eleven ways a legitimate row could vanish; these two guards close the
+  // class rather than the instance. The first refuses a display-time exclusion,
+  // the second refuses a publish with no cover. Both print how much they
+  // scanned, so a gate that has quietly stopped working says so in its own
+  // output instead of printing the PASS it always printed.
+  'scripts/guards/no-display-time-exclusion.mjs',
+  'scripts/guards/publish-requires-cover.mjs',
 ]
 
 /**

@@ -13,7 +13,8 @@ import { SuburbLandingPage } from '@/components/templates/SuburbLandingPage'
 import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld'
 import type { EventCardData } from '@/components/features/events/event-card'
 import { getSiteUrl } from '@/lib/site-url'
-import { listingWindowOrPredicate } from '@/lib/events/listing-window'
+import { listingWindowOrPredicate, weekendWindowUtc } from '@/lib/events/listing-window'
+import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 
 export const revalidate = 300
 
@@ -50,14 +51,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
+/**
+ * One shared definition, in the PLATFORM zone. The local copy this replaced was
+ * built on `setHours`, which is the server's zone (UTC on Vercel), so an
+ * Australian Saturday evening could fall outside the window called This weekend.
+ */
 function weekendWindow(now: Date) {
-  const day = now.getDay()
-  const weekendStart = new Date(now)
-  if (day === 6) weekendStart.setHours(0, 0, 0, 0)
-  else if (day === 0) { weekendStart.setDate(now.getDate() - 1); weekendStart.setHours(0, 0, 0, 0) }
-  else { weekendStart.setDate(now.getDate() + (6 - day)); weekendStart.setHours(0, 0, 0, 0) }
-  const weekendEnd = new Date(weekendStart); weekendEnd.setDate(weekendStart.getDate() + 1); weekendEnd.setHours(23, 59, 59, 999)
-  return { weekendStartIso: weekendStart.toISOString(), weekendEndIso: weekendEnd.toISOString() }
+  const weekend = weekendWindowUtc(now, PLATFORM_TIME_ZONE)
+  return {
+    weekendStartIso: weekend.from.toISOString(),
+    weekendEndIso: weekend.to.toISOString(),
+  }
 }
 
 export default async function SuburbPage({ params }: Props) {

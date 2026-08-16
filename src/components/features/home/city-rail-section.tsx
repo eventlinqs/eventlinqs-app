@@ -7,6 +7,7 @@ import { getSpineCity } from '@/lib/images/spine'
 import { CONTAINER, SECTION_RAIL } from '@/lib/ui/spacing'
 import { RHYTHM_GAP, CITY_TILE_CELL } from '@/lib/ui/rhythm'
 import { CITY_TILES, LOCAL_CITY_SVG } from '@/lib/events/home-queries'
+import { listingWindowOrPredicate } from '@/lib/events/listing-window'
 
 interface Props {
   nowIso: string
@@ -25,9 +26,15 @@ export async function CityRailSection({ nowIso }: Props) {
         // landing pages (/city/[slug] uses %city.name%). Matching the slug
         // ("gold-coast") would never match a "Gold Coast" venue_city, so
         // multi-word cities would show 0 events on the rail even when seeded.
+        // LISTED UNTIL IT HAS ENDED, not until it has started. This count used
+        // `start_date >= now`, so an event that had begun stopped being counted,
+        // and a city whose only event was on right now lost its tile from the
+        // rail entirely. Survivor of the 16 August 2026 date-window pass, which
+        // corrected the query files and missed this component.
         supabase.from('events').select('id', { count: 'exact', head: true })
           .eq('status', 'published').eq('visibility', 'public')
-          .gte('start_date', nowIso).ilike('venue_city', `%${t.city}%`),
+          .or(listingWindowOrPredicate(new Date(nowIso)))
+          .ilike('venue_city', `%${t.city}%`),
         spine ? Promise.resolve(null) : getCityPhoto(t.slug),
       ])
       const localSvg = LOCAL_CITY_SVG.has(t.slug)
