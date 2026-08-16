@@ -1,0 +1,72 @@
+{
+  "base": "http://localhost:3000",
+  "startedAt": "2026-08-08T02:07:56.722Z",
+  "guestEmail": "share-conversion-1786154876722@mailinator.com",
+  "conversionsBefore": 10,
+  "orderId": "0d6a9c5e-c9d2-4dd0-92e6-7edb7d0c929a",
+  "slug": "cat-a-midsummer-night-dream-on-stage-melbourne",
+  "code": "VxAFQNHFeK",
+  "linkId": "581fe87a-1072-4d29-85f1-5a6dd145574b",
+  "secondsToConversion": 0,
+  "order": {
+    "order_number": "EL-86C9MXW3",
+    "status": "confirmed",
+    "total_cents": 6354,
+    "currency": "AUD"
+  },
+  "conversion": {
+    "id": "99bf4306-1a24-4ff0-bfa1-42707fad9e1d",
+    "link_id": "581fe87a-1072-4d29-85f1-5a6dd145574b",
+    "occurred_at": "2026-08-08T02:08:31.774548+00:00"
+  },
+  "conversionsAfter": 11,
+  "finishedAt": "2026-08-08T02:08:32.908Z",
+  "steps": [
+    {
+      "name": "mint",
+      "ok": true,
+      "detail": "http://localhost:3000/s/VxAFQNHFeK (link 581fe87a-1072-4d29-85f1-5a6dd145574b, channel whatsapp)"
+    },
+    {
+      "name": "redirect",
+      "ok": true,
+      "detail": "landed on http://localhost:3000/events/cat-a-midsummer-night-dream-on-stage-melbourne"
+    },
+    {
+      "name": "cookie-set",
+      "ok": true,
+      "detail": "el_share_code=VxAFQNHFeK"
+    },
+    {
+      "name": "click-recorded",
+      "ok": true,
+      "detail": "0 -> 1 click rows"
+    },
+    {
+      "name": "cookie-survives-to-checkout",
+      "ok": true,
+      "detail": "still VxAFQNHFeK"
+    },
+    {
+      "name": "cookie-survives-stripe-round-trip",
+      "ok": true,
+      "detail": "still VxAFQNHFeK after returning from Stripe"
+    },
+    {
+      "name": "conversion-recorded",
+      "ok": true,
+      "detail": "share_link_events 99bf4306-1a24-4ff0-bfa1-42707fad9e1d kind=conversion order=0d6a9c5e-c9d2-4dd0-92e6-7edb7d0c929a link=581fe87a-1072-4d29-85f1-5a6dd145574b at 2026-08-08T02:08:31.774548+00:00"
+    },
+    {
+      "name": "conversion-credits-the-right-link",
+      "ok": true,
+      "detail": "581fe87a-1072-4d29-85f1-5a6dd145574b (minted 581fe87a-1072-4d29-85f1-5a6dd145574b)"
+    },
+    {
+      "name": "order-is-a-real-paid-order",
+      "ok": true,
+      "detail": "EL-86C9MXW3 confirmed 6354c AUD"
+    }
+  ],
+  "verdict": "PASS"
+}

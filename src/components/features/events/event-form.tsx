@@ -8,6 +8,7 @@ import { parseGallery } from '@/lib/media/event-media-model'
 import { AssistantPanel, type PanelSuggestion } from '@/components/ai/assistant-panel'
 import { MagicStart } from './magic-start'
 import type { MagicStartDraft } from '@/lib/ai/magic-start'
+import { addHoursLocal, buildDraftPatch, summariseDraft } from '@/lib/events/magic-draft-apply'
 import { getAllCommunities, type CommunitySlug } from '@/lib/communities/data'
 import { trackKitStarted } from '@/lib/analytics/plausible'
 import {
@@ -593,73 +594,29 @@ export function EventForm({
 
   // Magic Start: land one description as an editable prefilled draft. Only
   // fields the AI resolved are written; blanks stay blank. Never publishes.
-  const [magicSummary, setMagicSummary] = useState<{ filled: string[]; unresolved: string[] } | null>(null)
-  // Add hours to a naive "YYYY-MM-DDTHH:mm" datetime-local string, staying in
-  // local components (never through toISOString, which would shift by the UTC
-  // offset and corrupt the time).
-  const addHoursLocal = (localStr: string, hours: number): string => {
-    const d = new Date(localStr)
-    if (Number.isNaN(d.getTime())) return localStr
-    d.setHours(d.getHours() + hours)
-    const p = (n: number) => String(n).padStart(2, '0')
-    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
-  }
+  const [magicSummary, setMagicSummary] = useState<{
+    filled: string[]
+    assumed: string[]
+    stillNeeded: string[]
+  } | null>(null)
+
+  /**
+   * Land a Magic Start draft. The write and the status message both come from
+   * ONE pure function (src/lib/events/magic-draft-apply.ts), so a field can
+   * never be reported as filled and missing at the same time, which is what
+   * defect C1 was.
+   */
   const applyMagicDraft = (draft: MagicStartDraft) => {
     markKitStarted('magic_start')
-    const filled: string[] = []
+    const application = buildDraftPatch(draft, {
+      categories,
+      allowedCommunitySlugs: ALL_COMMUNITIES.map(c => c.slug),
+      newId: () => crypto.randomUUID(),
+    })
     setFormData(d => {
-      const next = { ...d }
-      if (draft.title) { next.title = draft.title; filled.push('Title') }
-      if (draft.description) { next.description = draft.description; filled.push('Description') }
-      if (draft.category) {
-        const match = categories.find(c => c.name.trim().toLowerCase() === draft.category.trim().toLowerCase())
-        if (match) { next.category_id = match.id; filled.push('Category') }
-      }
-      if (draft.start_date) {
-        next.start_date = draft.start_date
-        filled.push('Start')
-        // Guarantee a valid window: the AI can return an end that is empty,
-        // equal to, or before the start (an ambiguous "8pm to late"). The date
-        // step and publish both require end > start, so default the end to two
-        // hours after the start whenever the returned end is not strictly
-        // after it. The organiser edits it freely.
-        const startMs = new Date(draft.start_date).getTime()
-        const endMs = draft.end_date ? new Date(draft.end_date).getTime() : NaN
-        if (Number.isFinite(startMs) && (!Number.isFinite(endMs) || endMs <= startMs)) {
-          next.end_date = addHoursLocal(draft.start_date, 2)
-        } else if (draft.end_date) {
-          next.end_date = draft.end_date
-        }
-        filled.push('End')
-      } else if (draft.end_date) {
-        next.end_date = draft.end_date
-      }
-      next.event_type = draft.event_type
-      if (draft.venue_name) { next.venue_name = draft.venue_name; filled.push('Venue') }
-      if (draft.venue_address) next.venue_address = draft.venue_address
-      if (draft.venue_city) next.venue_city = draft.venue_city
-      if (draft.venue_state) next.venue_state = draft.venue_state
-      if (draft.venue_postal_code) next.venue_postal_code = draft.venue_postal_code
-      if (draft.ticket_tiers.length > 0) {
-        next.ticket_tiers = draft.ticket_tiers.map((t, i) => ({
-          id: crypto.randomUUID(),
-          name: t.name,
-          description: '',
-          tier_type: (draft.is_free || t.price === 0 ? 'free' : 'general_admission') as TicketTierType,
-          price: String(t.price),
-          currency: t.currency,
-          total_capacity: t.total_capacity != null ? String(t.total_capacity) : '',
-          sale_start: '',
-          sale_end: '',
-          min_per_order: '1',
-          max_per_order: '10',
-          sort_order: i,
-        }))
-        filled.push(draft.is_free ? 'Free ticket' : 'Ticket prices')
-      }
-      // Catch-all invariant: the draft must never leave end <= start (the date
-      // step and publish both reject it). Whatever combination of fields the AI
-      // set, clamp the end to two hours after the start when it is not after.
+      const next = { ...d, ...application.patch } as typeof d
+      // Catch-all invariant: the wizard and publish both reject end <= start,
+      // so clamp whatever combination of fields the draft produced.
       const s = new Date(next.start_date).getTime()
       const e = new Date(next.end_date).getTime()
       if (Number.isFinite(s) && (!Number.isFinite(e) || e <= s)) {
@@ -667,7 +624,7 @@ export function EventForm({
       }
       return next
     })
-    setMagicSummary({ filled, unresolved: draft.unresolved })
+    setMagicSummary(summariseDraft(application))
     setStep(1)
   }
 
@@ -690,15 +647,22 @@ export function EventForm({
           {magicSummary && (
             <div role="status" className="rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-sm text-ink-900">
               <p className="font-semibold">
-                Draft ready. {magicSummary.filled.length > 0 ? `Filled: ${magicSummary.filled.join(', ')}.` : ''}
+                Your draft is built.
+                {magicSummary.filled.length > 0 ? ` Filled from what you said: ${magicSummary.filled.join(', ')}.` : ''}
               </p>
-              {magicSummary.unresolved.length > 0 && (
+              {magicSummary.assumed.length > 0 && (
                 <p className="mt-1 text-ink-600">
-                  Add these yourself: {magicSummary.unresolved.join(', ')}. Everything is editable below before you publish.
+                  Assumed for you: {magicSummary.assumed.join('; ')}. Change it below if that is not right.
                 </p>
               )}
-              {magicSummary.unresolved.length === 0 && (
-                <p className="mt-1 text-ink-600">Review everything below, then continue. Nothing publishes until you do.</p>
+              {magicSummary.stillNeeded.length > 0 ? (
+                <p className="mt-1 text-ink-600">
+                  Still needs you: {magicSummary.stillNeeded.join(', ')}. Everything is editable below before you publish.
+                </p>
+              ) : (
+                <p className="mt-1 text-ink-600">
+                  Nothing is missing. Read it through, change anything you want, then continue.
+                </p>
               )}
             </div>
           )}
@@ -1332,26 +1296,28 @@ export function EventForm({
         )}
       </div>
 
-      {/* Booking fees: who pays (per-event). Pass-on is the default so the
-          organiser keeps the full face value; absorb deducts the fees from the
-          payout. The buyer always sees the true all-in total before checkout. */}
+      {/* Booking fee: who pays (per-event). Pass-on is the default so the
+          organiser keeps the full face value; absorb deducts the fee from the
+          payout. The buyer always sees the true all-in total before checkout.
+          ONE fee since 15 August 2026: card processing is inside it, so no
+          surface may name a separate processing charge. */}
       <div className="rounded-lg border border-ink-200 p-5">
-        <p className="text-sm font-semibold text-ink-900">Booking fees</p>
+        <p className="text-sm font-semibold text-ink-900">Booking fee</p>
         <p className="mt-1 text-xs text-ink-400">
-          Choose who pays the EventLinqs service and processing fees. Free tickets are
-          never charged a fee.
+          Choose who pays the EventLinqs service fee, which includes card
+          processing. Free tickets are never charged a fee.
         </p>
         <div className="mt-4 space-y-3">
           {([
             {
               value: 'pass_to_buyer',
-              label: 'Pass fees to the buyer (recommended)',
-              desc: 'The buyer pays the fees on top at checkout and you keep the full ticket face value. The all-in total is shown to the buyer up front.',
+              label: 'Pass the fee to the buyer (recommended)',
+              desc: 'The buyer pays the fee on top at checkout and you keep the full ticket face value. The all-in total is shown to the buyer up front.',
             },
             {
               value: 'absorb',
-              label: 'Absorb the fees',
-              desc: 'The buyer pays only the ticket price and the fees are deducted from your payout.',
+              label: 'Absorb the fee',
+              desc: 'The buyer pays only the ticket price and the fee is deducted from your payout.',
             },
           ] as { value: FeePassType; label: string; desc: string }[]).map(opt => (
             <label
@@ -1693,8 +1659,8 @@ export function EventForm({
         {launchKitEnabled && !editMode && (
           <div className="rounded-lg border border-gold-500/40 bg-gold-500/10 px-4 py-3 text-sm text-ink-900">
             <span className="font-semibold">Publishing delivers your launch kit:</span>{' '}
-            your live page link, a print-ready QR poster, your invitation card, one-tap
-            tracked sharing, and live reach numbers, all on one screen.
+            your live page link, a print-ready QR poster, share cards and captions for every
+            channel, and the tickets each channel sold you, all on one screen.
           </div>
         )}
 

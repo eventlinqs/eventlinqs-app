@@ -30,6 +30,7 @@ import { getFeaturedHeroBackground } from '@/lib/images/event-media'
 import { StickyActionBar } from '@/components/features/events/sticky-action-bar'
 import { Reveal } from '@/components/ui/reveal'
 import { buildEventMetaDescription } from '@/lib/events/event-meta'
+import { eventRobotsDirective } from '@/lib/events/visibility'
 import { EventTrustSignals } from '@/components/features/event/EventTrustSignals'
 import { fetchFixtureEvent } from '@/lib/dev/fixture-events'
 
@@ -43,7 +44,15 @@ import { VenueMapLazy } from '@/components/features/events/venue-map-lazy'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { EventSoldOut } from '@/components/features/events/event-sold-out'
 import { TicketsNotOnSale } from '@/components/features/events/tickets-not-on-sale'
-import { eventIsPaid, isOrganiserSellable } from '@/lib/payments/sale-status'
+import {
+  eventIsPaid,
+  isExternallyTicketed,
+  isOrganiserSellable,
+} from '@/lib/payments/sale-status'
+import { ExternalTicketsPanel } from '@/components/events/external-tickets-panel'
+// Service role, used for exactly one thing on this page: reading the two
+// organiser Stripe columns that `anon` may not see. See organiserCanSell.
+import { createAdminClient } from '@/lib/supabase/admin'
 import { getEventFeeRates } from '@/lib/pricing/event-fee-config'
 import type { FeePassType } from '@/lib/payments/fee-math'
 import { EventViewTracker } from '@/components/features/events/event-view-tracker'
@@ -113,7 +122,15 @@ async function fetchEvent(slug: string): Promise<FullEvent | null> {
   const supabase = createPublicClient()
   const { data, error } = await supabase
     .from('events')
-    .select('*, ticket_tiers(*), organisation:organisations(*), category:event_categories(*), event_addons(*)')
+    // organisations is embedded with an EXPLICIT column list, never (*). This is
+    // a public page read as `anon`, and organisations carries email, phone,
+    // owner_id and the full Stripe Connect posture. Those columns are now
+    // revoked from anon by column privilege (migration 20260808000010), so a
+    // (*) embed would fail the whole query with "permission denied for column
+    // email" and blank the event page. See docs/security/AUDIT-2026-08-08.md.
+    .select(
+      '*, ticket_tiers(*), organisation:organisations(id, name, slug, description, logo_url, website), category:event_categories(*), event_addons(*)',
+    )
     .eq('slug', slug)
     .single() as { data: FullEvent | null; error: unknown }
 
@@ -122,6 +139,60 @@ async function fetchEvent(slug: string): Promise<FullEvent | null> {
     return null
   }
   return data
+}
+
+/**
+ * CAN THIS EVENT'S ORGANISER ACTUALLY TAKE MONEY? Asked with a privileged client,
+ * because `anon` is not allowed to know.
+ *
+ * THE DEFECT THIS FIXES, and it is the most expensive kind: a SECURITY FIX THAT
+ * SILENTLY TURNED OFF TICKET SALES.
+ *
+ * Migration 20260808000010 revoked `stripe_account_id`, `stripe_charges_enabled`,
+ * `email`, `phone` and `owner_id` on `organisations` from `anon`, which is
+ * correct and must stay. The embed above was narrowed to the six columns anon
+ * may still read, which is also correct.
+ *
+ * But `isOrganiserSellable(org)` requires `stripe_account_id` AND
+ * `stripe_charges_enabled === true`, and neither is in that list any more. Both
+ * arrive `undefined`, so the guard returned false for EVERY organiser, and
+ * `saleBlocked` became true for EVERY PAID EVENT ON THE PLATFORM. A fully
+ * onboarded, charges-enabled organiser's event rendered "This organiser is still
+ * finishing their payment setup. Check back soon." and offered no way to buy.
+ *
+ * Confirmed on the deployed preview against TEST, where the sampled event's
+ * organiser holds acct_1TpM2q... with stripe_charges_enabled = true and the page
+ * still refused to sell. Nothing failed: the page is a correct, designed state,
+ * it was simply the wrong one, and it is indistinguishable from an organiser who
+ * genuinely has not onboarded.
+ *
+ * The fix does NOT widen the anon grant and does NOT put a Stripe identifier in
+ * the RSC payload. This is a server component, so the two columns are read here
+ * with the service role and collapsed to a single boolean before anything
+ * crosses the client boundary. The column privilege stays exactly as the audit
+ * left it.
+ */
+async function organiserCanSell(organisationId: string | null | undefined): Promise<boolean> {
+  if (!organisationId) return false
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from('organisations')
+    // All five fields the sale gate reads, so it agrees with the charge
+    // precondition rather than passing an organiser who will be refused at the
+    // payment step. See isOrganiserSellable.
+    .select(
+      'stripe_account_id, stripe_charges_enabled, stripe_payouts_enabled, stripe_account_country, payout_status',
+    )
+    .eq('id', organisationId)
+    .maybeSingle()
+  if (error) {
+    // Fail CLOSED. Refusing to sell when we cannot establish the organiser can
+    // settle is the safe direction: the alternative is taking money the platform
+    // may not be able to pay out.
+    console.error('[event-detail] organiserCanSell failed:', error)
+    return false
+  }
+  return isOrganiserSellable(data)
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -153,6 +224,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const baseUrl = getSiteUrl()
 
+  // CHILD SAFETY, founder ruling 9 August 2026. Until this line the page
+  // emitted no robots directive at all, so an UNLISTED event was fully
+  // indexable the moment a crawler found the URL, which it will, because the
+  // organiser shares that URL by design. A sixteenth birthday at a home
+  // address must never enter a search index. Anything not exactly 'public'
+  // gets index:false, follow:false and noimageindex.
+  const robots = eventRobotsDirective(event.visibility)
+
   return {
     title,
     description,
@@ -163,6 +242,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       'tickets',
       'events',
     ].filter(Boolean) as string[],
+    ...(robots ? { robots } : {}),
     alternates: { canonical: `/events/${slug}` },
     // og:image and twitter:image come from the designed per-event share card
     // (opengraph-image.tsx in this route folder): the branded invitation with
@@ -243,10 +323,10 @@ export default async function EventDetailPage({ params }: Props) {
   // 500'd on the chrome + Sentry render-time cookie read.
   await headers()
 
-  // Broadcast Layer Stage 2 (SPEC 3.3): the organiser follow prompt on the
-  // event page, gated on broadcast_follow. ISR means a flag flip lands
-  // within the revalidate window.
-  const followOn = await isFeatureEnabled('broadcast_follow')
+  // broadcast_follow is deliberately NOT read here any more. The organiser
+  // follow control on this page is ungated and live (see the "Organised by"
+  // card below); the flag governs the account-level Following surface. Reading
+  // it here gated a duplicate of a control that was already showing.
 
   // Broadcast Layer Stage 3 (SPEC 4.2): confirmed lineup tags appear on the
   // event page, gated on broadcast_artists. Public-read RLS on both tables.
@@ -528,8 +608,37 @@ export default async function EventDetailPage({ params }: Props) {
   // connected, charges-enabled Stripe account cannot be checked out, so we
   // show the not-on-sale state and render no selection. FREE events need no
   // Stripe and stay fully sellable.
+  //
+  // The organiser's Stripe posture is read with the service role by
+  // organiserCanSell, NOT from event.organisation: anon lost those two columns
+  // to migration 20260808000010, so reading them from the public embed made this
+  // guard true for every paid event on the platform. See organiserCanSell.
+  /*
+   * EXTERNAL TICKETING. Founder ruling 15 August 2026, non-negotiable 3: an
+   * externally ticketed event must never render a ticket selector, a price, a
+   * quantity stepper, or anything a buyer could mistake for a checkout here.
+   *
+   * It is read from the event itself rather than passed as a separate flag, and
+   * it short-circuits the paid/free split entirely: a free external event is
+   * still external. `ticketsOnSale` encodes the same ordering, and this page
+   * calls it rather than re-deriving the rule.
+   */
+  const externallyTicketed = isExternallyTicketed(event)
+
+  // The destination hostname, for the "Opens ..." line. Parsed defensively: a
+  // malformed stored URL must not throw a whole event page.
+  let externalTicketHost: string | null = null
+  if (externallyTicketed && event.external_ticket_url) {
+    try {
+      externalTicketHost = new URL(event.external_ticket_url).hostname
+    } catch {
+      externalTicketHost = null
+    }
+  }
+
   const saleBlocked =
-    eventIsPaid(allTiers) && !isOrganiserSellable(event.organisation)
+    externallyTicketed ||
+    (eventIsPaid(allTiers) && !(await organiserCanSell(event.organisation_id)))
 
   const baseUrl = getSiteUrl()
   const eventStateForSchema =
@@ -866,14 +975,19 @@ export default async function EventDetailPage({ params }: Props) {
                         {event.organisation.description && (
                           <p className="text-sm text-ink-600 line-clamp-3">{event.organisation.description}</p>
                         )}
-                        {followOn && (
-                          <div className="mt-3">
-                            <FollowButton type="organiser" id={event.organisation.id} variant="outline" />
-                          </div>
-                        )}
                       </div>
                       {/* Demand-graph follow: their next event lands in the
-                          follower's feed and alerts the moment it goes live. */}
+                          follower's feed and alerts the moment it goes live.
+                          ONE control, deliberately ungated.
+                          There used to be a second FollowButton here for the
+                          same organiser, gated on broadcast_follow, from an
+                          earlier stage. Two features landed on one card and
+                          neither noticed the other, so turning broadcast_follow
+                          on rendered TWO Follow buttons side by side for the
+                          same organiser: measured, 1 control with the flag off
+                          and 2 with it on. Invisible until the day somebody
+                          flips the flag, which is the point at which nobody
+                          would be looking for it. */}
                       <FollowButton type="organiser" id={event.organisation.id} className="shrink-0" />
                     </div>
                   </div>
@@ -921,7 +1035,18 @@ export default async function EventDetailPage({ params }: Props) {
                 id="tickets"
                 className={`w-full shrink-0 ${seatedActive ? '' : 'lg:w-[360px]'}`}
               >
-                {seatedActive ? (
+                {externallyTicketed && event.external_ticket_url ? (
+                  /*
+                   * FIRST branch, ahead of seating, sold-out and everything
+                   * else. An externally ticketed event has no inventory here, so
+                   * none of the states below can apply to it: there are no seats
+                   * to choose, nothing to sell out of, and no sale to block.
+                   */
+                  <ExternalTicketsPanel
+                    destinationUrl={event.external_ticket_url}
+                    host={externalTicketHost}
+                  />
+                ) : seatedActive ? (
                   <div className="space-y-6">
                     <div className="rounded-2xl border border-ink-200 bg-white p-6 shadow-sm">
                       <SectionHeader eyebrow="Seating" title="Choose your seats" size="sm" className="mb-5" />
@@ -964,6 +1089,7 @@ export default async function EventDetailPage({ params }: Props) {
                         <TicketPanelClient
                           eventId={event.id}
                           eventCreatedAt={event.created_at}
+                          eventTimezone={event.timezone ?? null}
                           allTiers={gaTiersAlongsideSeats}
                           addons={event.event_addons ?? []}
                           isTicketingSuspended={isTicketingSuspended}
@@ -1001,6 +1127,7 @@ export default async function EventDetailPage({ params }: Props) {
                       <TicketPanelClient
                         eventId={event.id}
                         eventCreatedAt={event.created_at}
+                        eventTimezone={event.timezone ?? null}
                         allTiers={enrichedAllTiers}
                         addons={event.event_addons ?? []}
                         isTicketingSuspended={isTicketingSuspended}

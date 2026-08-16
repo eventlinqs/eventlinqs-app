@@ -105,6 +105,14 @@
   --color-success: #0F9D58;
   --color-warning: #F59E0B;
   --color-error:   #DC2626;
+  /* For error TEXT on a light error tint, exactly as --brand-accent-strong
+     exists for gold. #DC2626 on the bg-error/10 wash (#FCE9E9) measures
+     4.13:1 at 14px, under AA. Found by axe over the signup form's error
+     states on 2026-08-09; it had been failing on every auth alert since the
+     wash was introduced. This hits 5.54:1 on the tint and 6.47:1 on white,
+     so one token is safe on both. --color-error stays the border, icon and
+     on-dark value. */
+  --color-error-strong: #B91C1C;
   --color-info:    #0EA5E9;
 
   /* ── Typography - font families ── */

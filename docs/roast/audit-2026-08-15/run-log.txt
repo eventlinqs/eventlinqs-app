@@ -1,0 +1,160 @@
+﻿==============================================================================
+FULL PLATFORM AUDIT
+==============================================================================
+Base: https://eventlinqs-app-git-integration-launch-lawals-projects-c20c0be8.vercel.app
+
+==============================================================================
+PASS AT 390x844
+==============================================================================
+  homepage           200  CONTENT  measured 390x844  links=255
+  events browse                      200  CONTENT      ce=0 links=115
+  events filtered category           200  CONTENT      ce=0 links=106
+  events category comedy             200  CONTENT      ce=0 links=90
+  events category arts and community 200  CONTENT      ce=0 links=93
+  events sorted                      200  CONTENT      ce=0 links=115
+  events free filter                 200  CONTENT      ce=0 links=105
+  search hit                         200  CONTENT      ce=0 links=106
+  search miss                        200  EMPTY STATE  ce=0 links=81
+  hero category afrobeats            200  CONTENT      ce=0 links=114
+  hero category networking           200  EMPTY STATE  ce=0 links=82
+  communities index                  200  CONTENT      ce=0 links=100
+  cities index                       200  CONTENT      ce=0 links=99
+  organisers marketing               200  CONTENT      ce=0 links=101
+  pricing                            200  CONTENT      ce=0 links=84
+  about                              200  CONTENT      ce=0 links=82
+  contact                            200  CONTENT      ce=0 links=84
+  help                               200  CONTENT      ce=0 links=91
+  legal privacy                      200  CONTENT      ce=0 links=87
+  legal terms                        200  CONTENT      ce=0 links=97
+  legal refunds                      200  CONTENT      ce=0 links=84
+  launch composer                    200  CONTENT      ce=0 links=79
+  login                              200  THIN         ce=0 links=5
+  signup                             200  CONTENT      ce=0 links=6
+  forgot password                    200  THIN         ce=0 links=4
+  deliberate 404                     404  CONTENT      ce=1 links=81
+  event detail                       200  EMPTY STATE  ce=0 links=93
+  city page                          200  CONTENT      ce=0 links=161
+  community page                     200  CONTENT      ce=0 links=106
+  organiser profile                  200  CONTENT      ce=0 links=7
+  suburb page                        200  CONTENT      ce=0 links=106
+  artists (flag off, 404 expected)   404  CONTENT      ce=1 links=81
+  sitemap.xml                    200  932 urls
+  robots.txt                     200  
+  checkout (no card typed)       at /events/opm-night-filipino-live-music-showcase
+
+==============================================================================
+PASS AT 1440x900
+==============================================================================
+  homepage           200  CONTENT  measured 1440x900  links=255
+  events browse                      200  CONTENT      ce=0 links=115
+  events filtered category           200  CONTENT      ce=0 links=106
+  events category comedy             200  CONTENT      ce=0 links=90
+  events category arts and community 200  CONTENT      ce=0 links=93
+  events sorted                      200  CONTENT      ce=0 links=115
+  events free filter                 200  CONTENT      ce=0 links=105
+  search hit                         200  CONTENT      ce=0 links=106
+  search miss                        200  EMPTY STATE  ce=0 links=81
+  hero category afrobeats            200  CONTENT      ce=0 links=114
+  hero category networking           200  EMPTY STATE  ce=0 links=82
+  communities index                  200  CONTENT      ce=0 links=100
+  cities index                       200  CONTENT      ce=0 links=99
+  organisers marketing               200  CONTENT      ce=0 links=101
+  pricing                            200  CONTENT      ce=0 links=84
+  about                              200  CONTENT      ce=0 links=82
+  contact                            200  CONTENT      ce=0 links=84
+  help                               200  CONTENT      ce=0 links=91
+  legal privacy                      200  CONTENT      ce=0 links=87
+  legal terms                        200  CONTENT      ce=0 links=97
+  legal refunds                      200  CONTENT      ce=0 links=84
+  launch composer                    200  CONTENT      ce=0 links=79
+  login                              200  THIN         ce=0 links=5
+  signup                             200  CONTENT      ce=0 links=6
+  forgot password                    200  THIN         ce=0 links=4
+  deliberate 404                     404  CONTENT      ce=1 links=81
+  event detail                       200  EMPTY STATE  ce=0 links=93
+  city page                          200  CONTENT      ce=0 links=161
+  community page                     200  CONTENT      ce=0 links=106
+  organiser profile                  200  CONTENT      ce=0 links=7
+  suburb page                        200  CONTENT      ce=0 links=106
+  artists (flag off, 404 expected)   404  CONTENT      ce=1 links=81
+  sitemap.xml                    200  932 urls
+  robots.txt                     200  
+  checkout (no card typed)       at /events/opm-night-filipino-live-music-showcase
+
+==============================================================================
+PHASE A: event detail, taken apart
+==============================================================================
+    NONE         tabs  this page uses no tab pattern
+    WORKS        disclosure "Melbourne"
+    INERT        disclosure "Open menu"
+    INERT        disclosure "Melbourne"
+    INERT        disclosure "Discover"
+    INERT        disclosure "Communities"
+    INERT        disclosure "For organisers"
+    INERT        disclosure "Company"
+    WORKS        Share button  opened the share surface
+    WORKS        share: WhatsApp  https://wa.me/?text=OPM%20Night%3A%20Filipino%20Live%20Music%20Showcase%20-%20Sat%2C%2015%20Aug%20https%3A%2F%2Feventlin
+    WORKS        share: Facebook  https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Feventlinqs-app-git-integration-launch-lawals-projects-c20c0be
+    WORKS        share: X  https://twitter.com/intent/tweet?text=OPM%20Night%3A%20Filipino%20Live%20Music%20Showcase%20-%20Sat%2C%2015%20Aug&url=ht
+    WORKS        share: Email  mailto:?subject=OPM%20Night%3A%20Filipino%20Live%20Music%20Showcase%20-%20Sat%2C%2015%20Aug&body=OPM%20Night%3A%20Filipi
+    UNREADABLE   share: Copy link  the button clicked but the clipboard could not be read back headless
+    WORKS        Open in Maps  https://www.google.com/maps/search/?api=1&query=Brisbane%20Powerhouse%2C%20Brisbane%20Powerhouse%2C%20119%20La -> 200
+
+==============================================================================
+PHASE B: auth forms, filled but NOT submitted
+==============================================================================
+    STOPPED      signup  filled [email, password]; the submit control "Create account" is ENABLED and was NOT clicked
+    STOPPED      login  filled [email, password]; the submit control "Sign in" is ENABLED and was NOT clicked
+    STOPPED      forgot password  filled [email]; the submit control "Send reset link" is ENABLED and was NOT clicked
+
+==============================================================================
+PHASE C: /launch composer, cold anonymous start
+==============================================================================
+    WORKS        description accepted  115 chars read back
+    WORKS        artefact reveal  heading: "Warehouse party at the Barwon Club in Geelong, Marlo Reyes b2b Kita"
+    WORKS        reveal at 390  horizontal overflow 0px
+    WORKS        kit code  eakmhzwhbc65
+
+==============================================================================
+PHASE D: the artefacts, opened and looked at
+==============================================================================
+    PULLED       story  183 KB, 1080x1920 px, image/jpeg
+    PULLED       square  169 KB, 1080x1080 px, image/jpeg
+    PULLED       feed  250 KB, 1440x1800 px, image/jpeg
+    PULLED       poster  26 KB, unreadable, application/pdf
+    READ         poster printed address line  C:\Users\61416\OneDrive\Desktop\EventLinqs\el-moat\docs\roast\audit-2026-08-15\artefacts\poster.pdf
+    --- decoded poster text ---
+      C:\Users\61416\OneDrive\Desktop\EventLinqs\el-moat\docs\roast\audit-2026-08-15\artefacts\poster.pdf
+      embedded ToUnicode maps: 4
+      --- drawn text, in draw order, best decode per line ---
+      Warehoushptay pB
+      From $25 · eventlinqs.com.au/launch/k/eakmhzwhbc65
+      Waareho
+      Sunday 20 September, 10:00 pm
+      Warehouse
+      party at the
+      Barwon Club
+      in Geelong,
+      Marlo Reyes
+      b2b Kita
+      Warehoausptyp B wWnCwlb
+      i
+
+==============================================================================
+PHASE E: checkout, up to Stripe and no further
+==============================================================================
+    NOT REACHED  Stripe payment surface  stopped at /events/opm-night-filipino-live-music-showcase
+
+==============================================================================
+AUTHED PASS (1440)
+==============================================================================
+  login did not complete: page.waitForURL: Timeout 45000ms exceeded.
+
+==============================================================================
+SURFACES: 81   FINDINGS: 31
+   MONEY PATH               1
+   DEAD LINK OR CONTROL     13
+   ERROR                    11
+   EMPTY STATE              6
+Report: C:\Users\61416\OneDrive\Desktop\EventLinqs\el-moat\docs\roast\audit-2026-08-15\REPORT.md
+==============================================================================

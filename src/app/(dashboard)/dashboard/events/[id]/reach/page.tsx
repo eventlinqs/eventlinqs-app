@@ -4,12 +4,14 @@ import type { Metadata } from 'next'
 import { getOrganiserEvent } from '@/lib/reporting/attendees'
 import { isFeatureEnabled } from '@/lib/flags/broadcast'
 import { fetchReachSummary } from '@/lib/broadcast/reach'
+import { fetchSalesAttribution } from '@/lib/broadcast/sales-attribution'
 import {
   buildShortUrl,
   getOrCreateShareLink,
   type ShareChannel,
 } from '@/lib/broadcast/share-links'
 import { ShareKit } from '@/components/broadcast/share-kit'
+import { ReachEmptyState } from '@/components/broadcast/reach-empty-state'
 import { getRequestOrigin } from '@/lib/site-origin'
 
 export const metadata: Metadata = {
@@ -44,13 +46,22 @@ const CHANNEL_LABELS: Record<string, string> = {
   copy: 'Copied links',
   native: 'Share sheet',
   qr: 'Poster QR',
+  digest: 'Weekly city email',
   other: 'Other',
 }
 
 /**
- * Reach panel v1 (SPEC section 2.5): views, clicks, and tickets by channel,
- * plus the share kit. Only measured numbers are shown: the panel is the
- * "tools to expand your reach" pitch made visible and honest.
+ * The reach panel: tickets and orders by channel, then clicks and views, plus
+ * the share kit.
+ *
+ * Ordered hardest first, deliberately. A ticket and an order require a real
+ * payment against a real order row and cannot be forged. A click is a request,
+ * and a request is a string the client chooses: preview crawlers are filtered
+ * and repeat taps are de-duplicated, but it stays an estimate and the panel
+ * says so rather than presenting all four as the same kind of fact. The one
+ * claim this product makes that the incumbents cannot match is measurement
+ * against real ticket sales, so the softest number must not lead the screen
+ * that claim is made on.
  */
 export default async function ReachPage({ params }: Props) {
   const { id } = await params
@@ -64,6 +75,20 @@ export default async function ReachPage({ params }: Props) {
     ? await fetchReachSummary(id)
     : { totals: { views: 0, clicks: 0, conversions: 0, tickets: 0 }, byChannel: [], linkCount: 0 }
 
+  /*
+   * THE DENOMINATOR. Everything above counts activity on TRACKED LINKS, which
+   * left the organiser with a numerator and no total: "12 tickets from shares"
+   * says nothing until you know whether the event sold 20 or 500.
+   *
+   * fetchSalesAttribution reads the ORDER LEDGER and lays the attribution over
+   * it, so every sold order lands in exactly one of three buckets and the three
+   * must sum to the ledger. When they do not, it reports `reconciles: false` and
+   * the panel shows the discrepancy instead of a percentage. A share-of-sales
+   * figure that does not tie to the books is worse than none, because it gets
+   * quoted.
+   */
+  const attribution = await fetchSalesAttribution(id)
+
   // Request origin: handed-out links must point at the deployment that
   // minted them (identical on production, self-referential on staging).
   const origin = await getRequestOrigin()
@@ -74,17 +99,23 @@ export default async function ReachPage({ params }: Props) {
         eventId: id,
         channel,
         createdBy: event.userId,
+        eventSlug: event.slug,
       })
       if (link) kitLinks.push({ channel, url: buildShortUrl(origin, link.code) })
     }
   }
 
+  // Hardest number first. A ticket and an order require a real payment against
+  // a real order row and cannot be forged; a click is a request and a request
+  // is soft. This panel used to run views-first, which put the softest number
+  // in the lead position on the one screen that has to be trusted.
   const stats = [
-    { label: 'Link views', value: summary.totals.views },
-    { label: 'Link clicks', value: summary.totals.clicks },
-    { label: 'Orders from links', value: summary.totals.conversions },
-    { label: 'Tickets from links', value: summary.totals.tickets },
+    { label: 'Tickets sold from links', value: summary.totals.tickets, hard: true },
+    { label: 'Orders from links', value: summary.totals.conversions, hard: true },
+    { label: 'Link clicks', value: summary.totals.clicks, hard: false },
+    { label: 'Link views', value: summary.totals.views, hard: false },
   ]
+  const nothingHasTravelled = stats.every(stat => stat.value === 0)
 
   return (
     <div>
@@ -97,6 +128,87 @@ export default async function ReachPage({ params }: Props) {
         <span className="text-sm text-ink-600">{event.title}</span>
       </div>
 
+      {/*
+        WHERE THE SALES CAME FROM. This sits above the link stats because it is
+        the question the organiser actually has, and because it is the only
+        number on the screen with a denominator behind it.
+      */}
+      {/*
+        EXTERNALLY TICKETED: say what we cannot see, in the organiser's words.
+
+        Founder ruling 15 August 2026, non-negotiable 2. The sales block below is
+        already gated on `totals.tickets > 0`, and an external event has zero, so
+        no percentage could render either way. That silence is not enough on its
+        own: an organiser looking at a page of click counts with no sales section
+        is entitled to know WHY, and to know it from a sentence rather than by
+        inferring it from an absence.
+
+        It says what is true and stops. No call to action sits beside it, because
+        the honest limitation is not a sales opportunity.
+      */}
+      {attribution.externallyTicketed && (
+        <div className="mb-6 rounded-xl border border-ink-200 bg-white px-5 py-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-500">
+            What these numbers are
+          </h2>
+          <p className="mt-3 text-sm leading-relaxed text-ink-700">
+            Your tickets are sold on another site, so everything on this page counts
+            people ARRIVING, not buying. We can see who clicked your links and which
+            channel they came from. We cannot see who bought, because that happens
+            somewhere we have no access to, and we will not estimate it.
+          </p>
+        </div>
+      )}
+
+      {attribution.totals.tickets > 0 && (
+        <div className="mb-6 rounded-xl border border-ink-200 bg-white px-5 py-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-500">
+            Where these sales came from
+          </h2>
+
+          {!attribution.reconciles ? (
+            /*
+             * REFUSE RATHER THAN GUESS. If the buckets do not sum to the ledger,
+             * no percentage is shown at all. Showing one anyway is how a wrong
+             * number ends up in a pitch deck.
+             */
+            <p className="mt-3 text-sm text-ink-700">
+              These figures do not currently balance against your order records, so no
+              split is shown. {attribution.totals.tickets} ticket
+              {attribution.totals.tickets === 1 ? '' : 's'} sold in total.
+              {attribution.discrepancy.tickets !== 0 && (
+                <> {Math.abs(attribution.discrepancy.tickets)} unaccounted for.</>
+              )}
+            </p>
+          ) : (
+            <>
+              <p className="mt-3 text-3xl font-bold text-ink-900">
+                {attribution.organiserSharedPercent}%
+                <span className="ml-2 text-base font-normal text-ink-600">
+                  through links you shared
+                </span>
+              </p>
+              <p className="mt-1 text-sm text-ink-600">
+                {attribution.buckets.organiserShared.tickets} of {attribution.totals.tickets} ticket
+                {attribution.totals.tickets === 1 ? '' : 's'} sold.
+                {attribution.buckets.platformChannel.tickets > 0 && (
+                  <>
+                    {' '}
+                    {attribution.buckets.platformChannel.tickets} came through an EventLinqs
+                    channel.
+                  </>
+                )}
+              </p>
+              <p className="mt-3 text-xs text-ink-500">
+                The remaining {attribution.buckets.untracked.tickets} reached your event without a
+                tracked link: through search, the EventLinqs feed, or by typing the address. We do
+                not claim those as ours, because we cannot prove where they came from.
+              </p>
+            </>
+          )}
+        </div>
+      )}
+
       {!shareOn ? (
         <div className="rounded-xl border border-ink-200 bg-white px-5 py-6">
           <p className="text-sm text-ink-600">
@@ -106,54 +218,73 @@ export default async function ReachPage({ params }: Props) {
         </div>
       ) : (
         <>
-          <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {stats.map((s) => (
-              <div key={s.label} className="rounded-xl border border-ink-200 bg-white px-4 py-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-600">
-                  {s.label}
-                </p>
-                <p className="mt-2 text-2xl font-bold text-ink-900">{s.value}</p>
-              </div>
-            ))}
-          </div>
+          {nothingHasTravelled ? (
+            <div className="mb-6 rounded-2xl border border-ink-200 bg-white shadow-[var(--shadow-card)]">
+              <ReachEmptyState
+                shareHref={`/dashboard/events/${id}/reach#share-kit`}
+                posterHref={`/api/organiser/events/${id}/poster`}
+              />
+            </div>
+          ) : (
+            <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {stats.map((s) => (
+                <div key={s.label} className="rounded-xl border border-ink-200 bg-white px-4 py-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-600">
+                    {s.label}
+                  </p>
+                  <p
+                    className={`mt-2 text-2xl font-bold ${
+                      s.hard ? 'text-[var(--brand-accent-strong)]' : 'text-ink-900'
+                    }`}
+                  >
+                    {s.value}
+                  </p>
+                  {!s.hard && <p className="mt-1 text-[11px] text-ink-500">Close estimate</p>}
+                </div>
+              ))}
+            </div>
+          )}
 
-          <div className="mb-6 overflow-x-auto rounded-xl border border-ink-200 bg-white">
-            <table className="w-full min-w-[560px] text-sm">
-              <thead>
-                <tr className="border-b border-ink-200 text-left text-ink-600">
-                  <th scope="col" className="px-5 py-3 font-medium">Channel</th>
-                  <th scope="col" className="px-5 py-3 font-medium">Views</th>
-                  <th scope="col" className="px-5 py-3 font-medium">Clicks</th>
-                  <th scope="col" className="px-5 py-3 font-medium">Orders</th>
-                  <th scope="col" className="px-5 py-3 font-medium">Tickets</th>
-                </tr>
-              </thead>
-              <tbody>
-                {summary.byChannel.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-5 py-6 text-ink-600">
-                      No tracked activity yet. Share a link from the kit below, or put the QR
-                      poster up where your people are: every view, click, and sale lands here.
-                    </td>
+          {/* The per-channel table only exists once there is a channel to
+              compare. At zero the empty state above already says everything
+              this table's own empty row was saying, and saying it twice on one
+              screen reads as two failures rather than one beginning. */}
+          {summary.byChannel.length > 0 && (
+            <div className="mb-6 overflow-x-auto rounded-xl border border-ink-200 bg-white">
+              <table className="w-full min-w-[560px] text-sm">
+                <thead>
+                  <tr className="border-b border-ink-200 text-left text-ink-600">
+                    <th scope="col" className="px-5 py-3 font-medium">Channel</th>
+                    <th scope="col" className="px-5 py-3 font-medium">Tickets</th>
+                    <th scope="col" className="px-5 py-3 font-medium">Orders</th>
+                    <th scope="col" className="px-5 py-3 font-medium">Clicks</th>
+                    <th scope="col" className="px-5 py-3 font-medium">Views</th>
                   </tr>
-                ) : (
-                  summary.byChannel.map((row) => (
+                </thead>
+                <tbody>
+                  {summary.byChannel.map((row) => (
                     <tr key={row.channel} className="border-b border-ink-200/60 last:border-b-0">
                       <td className="px-5 py-3 font-semibold text-ink-900">
                         {CHANNEL_LABELS[row.channel] ?? row.channel}
                       </td>
-                      <td className="px-5 py-3 text-ink-900">{row.views}</td>
+                      <td className="px-5 py-3 font-semibold text-[var(--brand-accent-strong)]">
+                        {row.tickets}
+                      </td>
+                      <td className="px-5 py-3 font-semibold text-[var(--brand-accent-strong)]">
+                        {row.conversions}
+                      </td>
                       <td className="px-5 py-3 text-ink-900">{row.clicks}</td>
-                      <td className="px-5 py-3 text-ink-900">{row.conversions}</td>
-                      <td className="px-5 py-3 font-semibold text-ink-900">{row.tickets}</td>
+                      <td className="px-5 py-3 text-ink-900">{row.views}</td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
-          <ShareKit links={kitLinks} posterHref={`/api/organiser/events/${id}/poster`} />
+          <div id="share-kit">
+            <ShareKit links={kitLinks} posterHref={`/api/organiser/events/${id}/poster`} />
+          </div>
 
           <p className="mt-4 max-w-2xl text-xs text-ink-600">
             Numbers here count only activity through tracked share links, deduplicated and

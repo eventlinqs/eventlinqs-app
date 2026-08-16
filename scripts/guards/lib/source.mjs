@@ -22,15 +22,58 @@
  *
  * Also the single source of the file LIST every guard scans. It used to be a
  * `globSync` call copy-pasted into three guards, which crashed the CI build on
- * 2026-08-05: `node:fs` only began exporting `globSync` in Node 22, and CI runs
- * Node 20, so all three died at import with a SyntaxError while passing locally
- * on Node 24. One walker, in one place, on an API that has existed since Node
- * 10, removes both the duplication and the version exposure.
+ * 2026-08-05: `node:fs` only began exporting `globSync` in Node 22, and CI ran
+ * Node 20 at the time, so all three died at import with a SyntaxError while
+ * passing locally on Node 24. One walker, in one place, on an API that has
+ * existed since Node 10, removes both the duplication and the version exposure.
+ *
+ * The contract moved to Node 24 on 13 August 2026, so `globSync` is now
+ * available. This walker stays anyway. It is not here because the newer API was
+ * unavailable; it is here because ONE definition of the scanned file list is
+ * worth having, and because an API that has existed since Node 10 cannot be the
+ * thing that breaks the next runtime move.
  */
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
 
 const blank = (ch) => (ch === '\n' ? '\n' : ' ')
+
+/**
+ * Keywords after which a `/` can only begin a REGEX, never a division.
+ *
+ * `return /x/.test(s)` is the realistic one. Without this the scanner sees an
+ * identifier before the slash, decides it is division, and walks straight into
+ * the regex body looking for string quotes.
+ */
+const REGEX_PRECEDING_KEYWORDS = [
+  'return', 'typeof', 'instanceof', 'case', 'in', 'of', 'new', 'delete', 'void',
+  'do', 'else', 'yield', 'await', 'throw',
+]
+
+/**
+ * Does the `/` at `i` begin a regex literal rather than a division?
+ *
+ * The classic JavaScript ambiguity, resolved the classic way: look at the last
+ * significant character before it. After a value (an identifier, a number, a
+ * closing bracket) a slash divides. After an operator, a comma, an opening
+ * bracket or the start of a statement, it opens a regex. `)` is deliberately
+ * treated as a VALUE, so `(a + b) / 2` stays division; the rare
+ * `if (x) /re/.test(y)` is accepted as the cost of not mangling arithmetic.
+ */
+function startsRegex(src, i) {
+  let j = i - 1
+  while (j >= 0 && /\s/.test(src[j])) j -= 1
+  if (j < 0) return true
+  const prev = src[j]
+  if (/[A-Za-z0-9_$)\]]/.test(prev)) {
+    // Could still be a keyword rather than a value.
+    let k = j
+    while (k >= 0 && /[A-Za-z]/.test(src[k])) k -= 1
+    const word = src.slice(k + 1, j + 1)
+    return REGEX_PRECEDING_KEYWORDS.includes(word)
+  }
+  return true
+}
 
 function scan(src, { blankStrings }) {
   let out = ''
@@ -50,6 +93,53 @@ function scan(src, { blankStrings }) {
       while (i < n && src.slice(i, i + 2) !== '*/') out += blank(src[i++])
       if (i < n) out += '  '
       i += 2
+      continue
+    }
+
+    /*
+     * REGEX LITERALS. Added 13 August 2026, and the omission was not cosmetic.
+     *
+     * The scanner used to know only comments and quotes, so a regex containing a
+     * quote character opened a phantom string. `.replace(/^["']|["']$/g, '')` is
+     * the shape that exposes it: the `"` inside the character class is read as
+     * the start of a string literal and the scanner consumes forward looking for
+     * a closing quote that has nothing to do with it. Every subsequent quote is
+     * then paired off by one, so from that point on the file is scanned
+     * inside-out: real code is blanked as though it were string contents, and
+     * real string contents are exposed as though they were code.
+     *
+     * It fails in the DANGEROUS direction. A desynchronised scanner blanks the
+     * code that follows, and blanked code matches no pattern, so every guard
+     * built on this view reports the rest of that file as clean. A file can be
+     * made invisible to seven guards by one regex.
+     *
+     * The body is consumed here with character classes respected, because `/`
+     * inside `[...]` does not end the literal.
+     */
+    if (src[i] === '/' && startsRegex(src, i)) {
+      out += ' '
+      i += 1
+      let inClass = false
+      while (i < n && src[i] !== '\n') {
+        const c = src[i]
+        if (c === '\\') {
+          out += '  '
+          i += 2
+          continue
+        }
+        if (c === '[') inClass = true
+        else if (c === ']') inClass = false
+        else if (c === '/' && !inClass) break
+        out += blank(c)
+        i += 1
+      }
+      if (i < n && src[i] === '/') {
+        out += ' '
+        i += 1
+        // The flags. Blanked with the literal so `g`, `i` and friends cannot be
+        // read as identifiers by a guard scanning the code view.
+        while (i < n && /[a-z]/.test(src[i])) out += blank(src[i++])
+      }
       continue
     }
 
@@ -99,15 +189,19 @@ export function lineAt(src, index) {
 }
 
 /**
- * Every TypeScript source file under src/, as forward-slashed paths relative to
- * `root`, sorted so guard output is stable run to run and machine to machine.
+ * Every source file under `subdir` (default src/), as forward-slashed paths
+ * relative to `root`, sorted so guard output is stable run to run and machine to
+ * machine.
  *
  * `readdirSync(dir, { withFileTypes: true })` is the same walk the pre-existing
  * scripts/ci/critical-path-guard.mjs has always used, and it is available in
- * every Node the platform supports. Do NOT swap this back to fs.globSync or
- * fs.promises.glob: both are Node 22+ and CI runs the version pinned in .nvmrc.
+ * every Node the platform supports, which is what keeps it working across a
+ * runtime move rather than only on the runtime of the day.
+ *
+ * `subdir` exists so a guard can scan scripts/ rather than src/ without a second
+ * copy of this walker, which is the duplication this module was written to end.
  */
-export function sourceFiles(root, { extensions = ['.ts', '.tsx'] } = {}) {
+export function sourceFiles(root, { extensions = ['.ts', '.tsx'], subdir = 'src' } = {}) {
   const out = []
 
   const walk = (dir) => {
@@ -120,6 +214,6 @@ export function sourceFiles(root, { extensions = ['.ts', '.tsx'] } = {}) {
     }
   }
 
-  walk(join(root, 'src'))
+  walk(join(root, subdir))
   return out.map((f) => relative(root, f).replace(/\\/g, '/')).sort()
 }

@@ -166,9 +166,10 @@ describe('fee system: displayed == charged == payout, per scope, to the cent', (
     const { fees, appFee, organiserShare, reserve } = await chargeAndPayout(PLAIN_ORG, PLAIN_EVENT)
     // platform_fee = 10000 * 2% + 50 = 250
     expect(fees.platform_fee_cents).toBe(250)
-    expect(fees.payment_processing_fee_cents).toBe(320) // 10000 * 2.9% + 30
-    expect(fees.total_cents).toBe(10_570) // 10000 + 250 + 320
-    expect(appFee).toBe(570) // platform + processing (mode 1)
+    // ONE FEE (15 August 2026): the seeded processing rules are ignored.
+    expect(fees.payment_processing_fee_cents).toBe(0)
+    expect(fees.total_cents).toBe(10_250) // 10000 + 250
+    expect(appFee).toBe(250)
     expect(organiserShare).toBe(10_000) // total - appFee
     expect(reserve).toBe(2_000) // 20% of organiser share
 
@@ -183,8 +184,8 @@ describe('fee system: displayed == charged == payout, per scope, to the cent', (
   test('ORGANISER override (1% + AUD 0.00) wins over region', async () => {
     const { fees, appFee, organiserShare, reserve } = await chargeAndPayout(ORG_OVERRIDE, PLAIN_EVENT)
     expect(fees.platform_fee_cents).toBe(100) // 10000 * 1% + 0
-    expect(fees.total_cents).toBe(10_420) // 10000 + 100 + 320
-    expect(appFee).toBe(420)
+    expect(fees.total_cents).toBe(10_100) // 10000 + 100
+    expect(appFee).toBe(100)
     expect(organiserShare).toBe(10_000)
     expect(reserve).toBe(2_000)
 
@@ -197,8 +198,8 @@ describe('fee system: displayed == charged == payout, per scope, to the cent', (
     // Even for an organiser that has its own override, the event override wins.
     const { fees, appFee, organiserShare, reserve } = await chargeAndPayout(ORG_OVERRIDE, EVENT_OVERRIDE)
     expect(fees.platform_fee_cents).toBe(600) // 10000 * 5% + 100
-    expect(fees.total_cents).toBe(10_920) // 10000 + 600 + 320
-    expect(appFee).toBe(920)
+    expect(fees.total_cents).toBe(10_600) // 10000 + 600
+    expect(appFee).toBe(600)
     expect(organiserShare).toBe(10_000)
     expect(reserve).toBe(2_000)
 

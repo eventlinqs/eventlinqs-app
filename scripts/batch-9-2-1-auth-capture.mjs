@@ -9,9 +9,23 @@
 import { chromium } from 'playwright'
 import { existsSync, mkdirSync, statSync } from 'node:fs'
 
+// CREDENTIALS COME FROM THE ENVIRONMENT, NEVER FROM THIS FILE.
+// GitGuardian flagged plaintext account passwords committed to this repository
+// on 2026-08-08. A drive script is committed, pushed and indexed, so it is not a
+// safe place for one. Fail closed rather than fall back to a literal.
+function requireEnv(name) {
+  const v = process.env[name]
+  if (!v) {
+    console.error(`[drive] ${name} is not set. Export it for this shell; it is deliberately not in the repo.`)
+    process.exit(2)
+  }
+  return v
+}
+
+
 const BASE = process.env.ELINQS_BASE ?? 'http://localhost:3007'
 const TEST_EMAIL    = 'test-user@eventlinqs.com'
-const TEST_PASSWORD = 'TestUser2026!Secure'
+const TEST_PASSWORD = requireEnv('EL_TEST_PASSWORD')
 const OUT = 'docs/redesign/batch-9-2-1-evidence/screenshots/after'
 if (!existsSync(OUT)) mkdirSync(OUT, { recursive: true })
 

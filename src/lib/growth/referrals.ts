@@ -9,8 +9,13 @@
  * profile id, the link carries that code plus a source, the browser holds a
  * first-touch cookie, and on signup the attribution is written into the new
  * profile's existing `metadata` JSONB. No schema migration is required, so the
- * loop ships and is provable on the current database. It can be promoted to
- * dedicated columns post-launch without changing this contract.
+ * loop ships and is provable on the current database.
+ *
+ * The storage choice is a design decision, not a deferral: this module is
+ * COMPLETE and the attribution it writes is queryable today. Promoting the
+ * JSONB fields to dedicated columns is an optional optimisation that would not
+ * change this contract or any caller, so it is available if reporting volume
+ * ever justifies it and is not outstanding work.
  */
 
 /** Query-string key carrying the referrer code on a shared link. */

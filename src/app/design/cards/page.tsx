@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { assertPreviewRouteAllowed } from '@/lib/dev/preview-route'
 import {
   EventCardFeature,
   EventCardLandscape,
@@ -10,7 +11,12 @@ import {
   type CityTileData,
 } from '@/components/features/home/cards'
 
-// Temporary design-review route. Noindex so it never surfaces publicly.
+/*
+ * Internal design-review route. It is CLOSED ON PRODUCTION by
+ * assertPreviewRouteAllowed() below, not merely noindexed: this page renders
+ * placeholder imagery from a third-party host and a sample card at a fixed
+ * slug, and noindex stops a crawler rather than a person.
+ */
 export const metadata: Metadata = {
   title: 'Card system | EventLinqs',
   robots: { index: false, follow: false },
@@ -177,6 +183,7 @@ function SectionLabel({ eyebrow, title }: { eyebrow: string; title: string }) {
 }
 
 export default function DesignCardsPage() {
+  assertPreviewRouteAllowed()
   return (
     <main className="min-h-screen bg-canvas">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">

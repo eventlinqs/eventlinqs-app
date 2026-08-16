@@ -4,6 +4,7 @@ import type { VideoProvider } from '@/lib/media/limits'
 import type { ArtistRow } from '@/lib/broadcast/artists'
 import type { PerformanceType } from './gigs'
 import { isPerformanceType } from './gigs'
+import { isPubliclyDiscoverable } from '@/lib/events/visibility'
 
 /**
  * Performer marketplace: showcase profile reads and validation (flag
@@ -198,6 +199,10 @@ export interface ArtistCredit {
   slug: string
   title: string
   startDate: string
+  /** The EVENT's IANA zone, so a credit shows the night it was, not the
+   *  reader's. A credit reading "Aug 2026" can slip a month at a month
+   *  boundary when formatted in the reader's zone instead. */
+  timezone: string | null
   venueLabel: string
 }
 
@@ -209,7 +214,7 @@ export async function fetchArtistCredits(
 ): Promise<ArtistCredit[]> {
   const { data } = await admin
     .from('event_artists')
-    .select('status, event:events(id, slug, title, start_date, venue_name, venue_city, status, visibility)')
+    .select('status, event:events(id, slug, title, start_date, timezone, venue_name, venue_city, status, visibility)')
     .eq('artist_id', artistId)
     .eq('status', 'confirmed')
 
@@ -220,6 +225,7 @@ export async function fetchArtistCredits(
       slug: string
       title: string
       start_date: string
+      timezone: string | null
       venue_name: string | null
       venue_city: string | null
       status: string
@@ -231,9 +237,13 @@ export async function fetchArtistCredits(
     .map((r) => r.event)
     .filter(
       (e): e is NonNullable<Row['event']> =>
+        // Child-safety ruling, 9 August 2026. Credits render on the PUBLIC
+        // artist profile and the public gig page, so this is a discovery
+        // surface. It used to read `visibility !== 'private'`, a deny-list that
+        // passed UNLISTED events onto a public page. Allow-list only.
         !!e &&
         ['published', 'completed'].includes(e.status) &&
-        e.visibility !== 'private' &&
+        isPubliclyDiscoverable(e.visibility) &&
         e.start_date < nowIso,
     )
     .sort((a, b) => b.start_date.localeCompare(a.start_date))
@@ -243,6 +253,7 @@ export async function fetchArtistCredits(
       slug: e.slug,
       title: e.title,
       startDate: e.start_date,
+      timezone: e.timezone,
       venueLabel: [e.venue_name, e.venue_city].filter(Boolean).join(', '),
     }))
 }

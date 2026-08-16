@@ -1,0 +1,361 @@
+{
+  "base": "https://eventlinqs-app-git-feat-launch-ef8ee0-lawals-projects-c20c0be8.vercel.app",
+  "log": [
+    {
+      "step": "FOUND (pre-existing on main): login form puts the password in the URL before hydration",
+      "verdict": "FAIL",
+      "detail": {
+        "landedOn": "https://eventlinqs-app-git-feat-launch-ef8ee0-lawals-projects-c20c0be8.vercel.app/login?email=broadcast.gate.organiser%40eventlinqs.com&password=<THE PASSWORD, IN CLEAR TEXT>",
+        "formAction": null,
+        "formMethod": null
+      }
+    },
+    {
+      "step": "W0 sign in as organiser on the preview",
+      "verdict": "PASS",
+      "detail": "broadcast.gate.organiser@eventlinqs.com -> https://eventlinqs-app-git-feat-launch-ef8ee0-lawals-projects-c20c0be8.vercel.app/dashboard"
+    },
+    {
+      "step": "W8a light mark placed straight on the navy",
+      "verdict": "PASS",
+      "detail": "Your mark reads clearly on the navy, so it sits straight on the artwork with nothing behind it."
+    },
+    {
+      "step": "W5 artefacts downloaded with the light mark",
+      "verdict": "PASS",
+      "detail": {
+        "poster": 125490,
+        "story": 321327,
+        "square": 236267,
+        "feed": 454535
+      }
+    },
+    {
+      "step": "W4 caption on the clipboard matches the caption on screen",
+      "verdict": "PASS",
+      "detail": {
+        "chars": 369,
+        "confirmedInUi": true,
+        "firstLine": "Marketplace Gate Night, Geelong",
+        "carriesTrackedLink": true
+      }
+    },
+    {
+      "step": "W10 kit captured at 1440",
+      "verdict": "PASS",
+      "detail": "shots/w10-kit-1440.png"
+    },
+    {
+      "step": "W1 readable codes minted by the kit",
+      "verdict": "PASS",
+      "detail": [
+        "email=marketplace-gate-em",
+        "copy=marketplace-gate-cp",
+        "qr=marketplace-gate-qr",
+        "whatsapp=marketplace-gate-wa",
+        "linkedin=marketplace-gate-li",
+        "instagram=marketplace-gate-ig",
+        "facebook=marketplace-gate-fb",
+        "x=marketplace-gate-x"
+      ]
+    },
+    {
+      "step": "W8b dark mark put on a white tile",
+      "verdict": "PASS",
+      "detail": "Your mark is dark, so on the navy it would disappear. We put it on a white tile on every artefact, which keeps it readable. A version with a transparent background and light lettering would sit straight on the artwork instead."
+    },
+    {
+      "step": "W5 artefacts downloaded with the dark mark",
+      "verdict": "PASS",
+      "detail": {
+        "poster": 125313,
+        "story": 319580,
+        "square": 235654,
+        "feed": 453482
+      }
+    },
+    {
+      "step": "W10 kit at 390, no sideways scroll",
+      "verdict": "PASS",
+      "detail": "overflow=0px"
+    },
+    {
+      "step": "W9a preview crawler is SERVED the page in full",
+      "verdict": "PASS",
+      "detail": {
+        "status": 200,
+        "htmlBytes": 187814
+      }
+    },
+    {
+      "step": "W9b preview crawler books NO click",
+      "verdict": "PASS",
+      "detail": {
+        "linkId": "e1a1ed12-2ef9-446b-98e4-cc3118d63822",
+        "before": 1,
+        "after": 1
+      }
+    },
+    {
+      "step": "W1 /e/[code] renders the event page on ONE request, no redirect",
+      "verdict": "PASS",
+      "detail": {
+        "status": 200,
+        "finalUrl": "https://eventlinqs-app-git-feat-launch-ef8ee0-lawals-projects-c20c0be8.vercel.app/e/marketplace-gate-ig",
+        "redirectedFrom": null,
+        "h1": "Marketplace Gate Night, Geelong"
+      }
+    },
+    {
+      "step": "W3 el_share_code cookie carries the code",
+      "verdict": "PASS",
+      "detail": {
+        "value": "marketplace-gate-ig",
+        "path": "/",
+        "sameSite": "Lax",
+        "httpOnly": false
+      }
+    },
+    {
+      "step": "W7 legacy /s/[code] still resolves to the event",
+      "verdict": "PASS",
+      "detail": {
+        "finalUrl": "https://eventlinqs-app-git-feat-launch-ef8ee0-lawals-projects-c20c0be8.vercel.app/events/marketplace-gate-night-geelong/with/marlo-reyes-lojdor",
+        "h1": "Marketplace Gate Night, Geelong"
+      }
+    },
+    {
+      "step": "W2b repeat visit inside the hour is de-duplicated, not double counted",
+      "verdict": "PASS",
+      "detail": {
+        "code": "marketplace-gate-ig",
+        "before": 1,
+        "after": 1,
+        "existingRow": {
+          "id": "2cb85dd1-11dc-43f5-b5b7-9d2ca4fe8e34",
+          "kind": "click",
+          "occurred_at": "2026-08-08T06:10:57.856164+00:00",
+          "link_id": "e1a1ed12-2ef9-446b-98e4-cc3118d63822",
+          "visitor_hash": "e4ad5111bab07f55c4d2182a462ac3b1"
+        }
+      }
+    },
+    {
+      "step": "W2 a different real browser on a second link books a fresh click",
+      "verdict": "FAIL",
+      "detail": {
+        "code": "marketplace-gate-fb",
+        "status": 200,
+        "redirectedFrom": null,
+        "cookie": "marketplace-gate-fb",
+        "before": 1,
+        "after": 1
+      }
+    }
+  ],
+  "results": {
+    "credentialLeak": {
+      "url": "https://eventlinqs-app-git-feat-launch-ef8ee0-lawals-projects-c20c0be8.vercel.app/login?email=broadcast.gate.organiser%40eventlinqs.com&password=WalkKit2026%21Artefacts",
+      "leaked": true,
+      "formAction": null,
+      "formMethod": null
+    },
+    "lightPanel": {
+      "said": "Your mark reads clearly on the navy, so it sits straight on the artwork with nothing behind it.",
+      "errored": null,
+      "storedUrl": "https://vkapkibzokmfaxqogypq.supabase.co/storage/v1/object/public/event-images/d11f5c1d-d18f-429f-a58c-67caafc29d1b/organisation/e875fa77-1e8a-46fe-8f9d-e82e58b5864b/1786170839444-logo.png"
+    },
+    "lightArtefacts": {
+      "poster": {
+        "file": "C:\\Users\\61416\\OneDrive\\Desktop\\EventLinqs\\el-auth-hardening\\docs\\roast\\walk-2026-08-08\\artefacts\\light-poster.pdf",
+        "suggested": "marketplace-gate-night-geelong-poster.pdf",
+        "bytes": 125490
+      },
+      "story": {
+        "file": "C:\\Users\\61416\\OneDrive\\Desktop\\EventLinqs\\el-auth-hardening\\docs\\roast\\walk-2026-08-08\\artefacts\\light-story.jpg",
+        "suggested": "marketplace-gate-night-geelong-story.jpg",
+        "bytes": 321327
+      },
+      "square": {
+        "file": "C:\\Users\\61416\\OneDrive\\Desktop\\EventLinqs\\el-auth-hardening\\docs\\roast\\walk-2026-08-08\\artefacts\\light-square.jpg",
+        "suggested": "marketplace-gate-night-geelong-square.jpg",
+        "bytes": 236267
+      },
+      "feed": {
+        "file": "C:\\Users\\61416\\OneDrive\\Desktop\\EventLinqs\\el-auth-hardening\\docs\\roast\\walk-2026-08-08\\artefacts\\light-feed.jpg",
+        "suggested": "marketplace-gate-night-geelong-feed.jpg",
+        "bytes": 454535
+      }
+    },
+    "caption": {
+      "onScreen": "Marketplace Gate Night, Geelong\nWaterfront Pavilion, Geelong\nFriday 21 August, 7:30 pm\n\nThe performer marketplace gate event: the gig this board fills.\nBring whoever you were going to text about it.\n\nFree entry. Details: https://eventlinqs-app-git-feat-launch-ef8ee0-lawals-projects-c20c0be8.vercel.app/e/marketplace-gate-ig\n\n#geelong #geelongevents #livemusic",
+      "clipboard": "Marketplace Gate Night, Geelong\r\nWaterfront Pavilion, Geelong\r\nFriday 21 August, 7:30 pm\r\n\r\nThe performer marketplace gate event: the gig this board fills.\r\nBring whoever you were going to text about it.\r\n\r\nFree entry. Details: https://eventlinqs-app-git-feat-launch-ef8ee0-lawals-projects-c20c0be8.vercel.app/e/marketplace-gate-ig\r\n\r\n#geelong #geelongevents #livemusic",
+      "buttonSays": true
+    },
+    "codes": [
+      {
+        "code": "b7HGCxANds",
+        "channel": "copy"
+      },
+      {
+        "code": "Bf5Qvj4G5S",
+        "channel": "other"
+      },
+      {
+        "code": "EFmelAqT59",
+        "channel": "whatsapp"
+      },
+      {
+        "code": "sW5UTgLuOP",
+        "channel": "x"
+      },
+      {
+        "code": "VUF4NxVXrP",
+        "channel": "email"
+      },
+      {
+        "code": "fahYEn2ZI5",
+        "channel": "copy"
+      },
+      {
+        "code": "ydvQaYNzyM",
+        "channel": "native"
+      },
+      {
+        "code": "AsoAafEqf5",
+        "channel": "facebook"
+      },
+      {
+        "code": "marketplace-gate-em",
+        "channel": "email"
+      },
+      {
+        "code": "marketplace-gate-cp",
+        "channel": "copy"
+      },
+      {
+        "code": "marketplace-gate-qr",
+        "channel": "qr"
+      },
+      {
+        "code": "marketplace-gate-wa",
+        "channel": "whatsapp"
+      },
+      {
+        "code": "marketplace-gate-li",
+        "channel": "linkedin"
+      },
+      {
+        "code": "marketplace-gate-ig",
+        "channel": "instagram"
+      },
+      {
+        "code": "marketplace-gate-fb",
+        "channel": "facebook"
+      },
+      {
+        "code": "marketplace-gate-x",
+        "channel": "x"
+      }
+    ],
+    "darkPanel": {
+      "said": "Your mark is dark, so on the navy it would disappear. We put it on a white tile on every artefact, which keeps it readable. A version with a transparent background and light lettering would sit straight on the artwork instead.",
+      "errored": null,
+      "storedUrl": "https://vkapkibzokmfaxqogypq.supabase.co/storage/v1/object/public/event-images/d11f5c1d-d18f-429f-a58c-67caafc29d1b/organisation/e875fa77-1e8a-46fe-8f9d-e82e58b5864b/1786170857243-logo.png"
+    },
+    "darkArtefacts": {
+      "poster": {
+        "file": "C:\\Users\\61416\\OneDrive\\Desktop\\EventLinqs\\el-auth-hardening\\docs\\roast\\walk-2026-08-08\\artefacts\\dark-poster.pdf",
+        "suggested": "marketplace-gate-night-geelong-poster.pdf",
+        "bytes": 125313
+      },
+      "story": {
+        "file": "C:\\Users\\61416\\OneDrive\\Desktop\\EventLinqs\\el-auth-hardening\\docs\\roast\\walk-2026-08-08\\artefacts\\dark-story.jpg",
+        "suggested": "marketplace-gate-night-geelong-story.jpg",
+        "bytes": 319580
+      },
+      "square": {
+        "file": "C:\\Users\\61416\\OneDrive\\Desktop\\EventLinqs\\el-auth-hardening\\docs\\roast\\walk-2026-08-08\\artefacts\\dark-square.jpg",
+        "suggested": "marketplace-gate-night-geelong-square.jpg",
+        "bytes": 235654
+      },
+      "feed": {
+        "file": "C:\\Users\\61416\\OneDrive\\Desktop\\EventLinqs\\el-auth-hardening\\docs\\roast\\walk-2026-08-08\\artefacts\\dark-feed.jpg",
+        "suggested": "marketplace-gate-night-geelong-feed.jpg",
+        "bytes": 453482
+      }
+    },
+    "crawler": {
+      "status": 200,
+      "servedEventPage": true,
+      "htmlBytes": 187814,
+      "clicksBefore": 1,
+      "clicksAfter": 1
+    },
+    "shareAddress": {
+      "requested": "https://eventlinqs-app-git-feat-launch-ef8ee0-lawals-projects-c20c0be8.vercel.app/e/marketplace-gate-ig",
+      "finalUrl": "https://eventlinqs-app-git-feat-launch-ef8ee0-lawals-projects-c20c0be8.vercel.app/e/marketplace-gate-ig",
+      "status": 200,
+      "redirectedFrom": null,
+      "documentChain": [
+        {
+          "url": "https://eventlinqs-app-git-feat-launch-ef8ee0-lawals-projects-c20c0be8.vercel.app/e/marketplace-gate-ig",
+          "status": 200,
+          "location": null
+        },
+        {
+          "url": "https://eventlinqs-app-git-feat-launch-ef8ee0-lawals-projects-c20c0be8.vercel.app/s/b7HGCxANds",
+          "status": 302,
+          "location": "https://eventlinqs-app-git-feat-launch-ef8ee0-lawals-projects-c20c0be8.vercel.app/events/marketplace-gate-night-geelong/with/marlo-reyes-lojdor"
+        },
+        {
+          "url": "https://eventlinqs-app-git-feat-launch-ef8ee0-lawals-projects-c20c0be8.vercel.app/events/marketplace-gate-night-geelong/with/marlo-reyes-lojdor",
+          "status": 200,
+          "location": null
+        }
+      ],
+      "h1": "Marketplace Gate Night, Geelong",
+      "setCookie": "el_share_code=marketplace-gate-ig; Path=/; Expires=Mon, 07 Sep 2026 06:34:33 GMT; Max-Age=2592000; Secure; SameSite=lax"
+    },
+    "cookie": {
+      "name": "el_share_code",
+      "value": "marketplace-gate-ig",
+      "domain": "eventlinqs-app-git-feat-launch-ef8ee0-lawals-projects-c20c0be8.vercel.app",
+      "path": "/",
+      "expires": 1788762875.020893,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    "legacy": {
+      "requested": "https://eventlinqs-app-git-feat-launch-ef8ee0-lawals-projects-c20c0be8.vercel.app/s/b7HGCxANds",
+      "finalUrl": "https://eventlinqs-app-git-feat-launch-ef8ee0-lawals-projects-c20c0be8.vercel.app/events/marketplace-gate-night-geelong/with/marlo-reyes-lojdor",
+      "status": 200,
+      "landedOnEvent": true,
+      "h1": "Marketplace Gate Night, Geelong"
+    },
+    "clicks": {
+      "code": "marketplace-gate-ig",
+      "linkId": "e1a1ed12-2ef9-446b-98e4-cc3118d63822",
+      "before": 1,
+      "after": 1,
+      "latest": [
+        {
+          "id": "2cb85dd1-11dc-43f5-b5b7-9d2ca4fe8e34",
+          "kind": "click",
+          "occurred_at": "2026-08-08T06:10:57.856164+00:00",
+          "link_id": "e1a1ed12-2ef9-446b-98e4-cc3118d63822",
+          "visitor_hash": "e4ad5111bab07f55c4d2182a462ac3b1"
+        }
+      ]
+    },
+    "freshClick": {
+      "code": "marketplace-gate-fb",
+      "status": 200,
+      "redirectedFrom": null,
+      "cookie": "marketplace-gate-fb",
+      "before": 1,
+      "after": 1
+    }
+  }
+}

@@ -7,6 +7,8 @@ import { refreshInventoryCache } from '@/lib/redis/inventory-cache'
 import { getOrCreateGuestSessionId } from '@/lib/auth/guest-session'
 import {
   TICKETS_NOT_ON_SALE_RESERVATION_ERROR,
+  TICKETS_SOLD_ELSEWHERE_RESERVATION_ERROR,
+  isExternallyTicketed,
   ticketsOnSale,
 } from '@/lib/payments/sale-status'
 import {
@@ -78,16 +80,45 @@ export async function createReservation(
 
     const isPaid = (guardTiers ?? []).some(t => (t.price ?? 0) > 0)
 
+    /*
+     * EXTERNAL TICKETING, CHECKED UNCONDITIONALLY. Founder ruling 15 August
+     * 2026, non-negotiable 3.
+     *
+     * THIS IS DELIBERATELY OUTSIDE THE `isPaid` BRANCH, and that placement is
+     * the whole point. The organiser-sellable gate below only runs for a PAID
+     * event, because a free event needs no Stripe account. An externally
+     * ticketed event can perfectly well have no priced tier, or no tiers at all,
+     * so putting this check inside that branch would let exactly the events most
+     * likely to be external walk straight past it and take a reservation for a
+     * ticket we do not sell.
+     *
+     * The event row is read once here and reused by the paid branch, so this
+     * costs no extra query.
+     */
+    const { data: ev } = await admin
+      .from('events')
+      .select('organisation_id, external_ticket_url')
+      .eq('id', event_id)
+      .single()
+
+    if (isExternallyTicketed(ev)) {
+      return { error: TICKETS_SOLD_ELSEWHERE_RESERVATION_ERROR }
+    }
+
     if (isPaid) {
-      const { data: ev } = await admin
-        .from('events')
-        .select('organisation_id')
-        .eq('id', event_id)
-        .single()
       const { data: org } = ev?.organisation_id
         ? await admin
             .from('organisations')
-            .select('stripe_account_id, stripe_charges_enabled')
+            // ALL FIVE fields the sale gate reads. It was two, and the gate then
+            // silently disagreed with the charge precondition, which also
+            // requires payouts_enabled, an active payout_status and a country in
+            // the Connect currency map. Selecting fewer fields than the gate
+            // reads makes the missing ones undefined, which now refuses the sale
+            // rather than passing it: fail closed, but only if the columns are
+            // actually here. See isOrganiserSellable.
+            .select(
+              'stripe_account_id, stripe_charges_enabled, stripe_payouts_enabled, stripe_account_country, payout_status',
+            )
             .eq('id', ev.organisation_id)
             .single()
         : { data: null }

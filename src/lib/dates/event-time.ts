@@ -81,9 +81,34 @@ export function formatEventDateTime(iso: string, timezone: EventTimeZone): strin
   })
 }
 
+/**
+ * "14 Aug 2026, 7:30 pm" in the event's own zone.
+ *
+ * The compact pairing the ticket picker's "Sale opens" line already used, kept
+ * to the character so fixing the zone changes no layout. Its previous form was
+ * `toLocaleString('en-AU', { dateStyle:'medium', timeStyle:'short' })` with no
+ * timeZone, which is the exact defect this module exists to remove: a sale
+ * opening at 6pm Perth read as 8pm to a buyer in Sydney, so they came back
+ * after it had already started.
+ */
+export function formatEventDateTimeCompact(iso: string, timezone: EventTimeZone): string {
+  return format(iso, timezone, { dateStyle: 'medium', timeStyle: 'short' })
+}
+
 /** "Fri 14 Aug" for a compact card, in the event's own zone. */
 export function formatEventDateShort(iso: string, timezone: EventTimeZone): string {
   return format(iso, timezone, { weekday: 'short', day: 'numeric', month: 'short' })
+}
+
+/**
+ * "Aug 2026" for an artist credit, in the event's own zone. The credit-list
+ * form: a past show is placed by month, not by weekday, so the day itself
+ * carries no meaning and showing it would be noise. Still zone-pinned, because
+ * a show on the first or last night of a month lands in the WRONG MONTH when
+ * formatted in the reader's zone.
+ */
+export function formatEventMonthYear(iso: string, timezone: EventTimeZone): string {
+  return format(iso, timezone, { month: 'short', year: 'numeric' })
 }
 
 /** A date with no event behind it: a guide's reviewed date, an audit row. */

@@ -26,16 +26,60 @@ const CSP_REPORT_ONLY = [
   "worker-src 'self' blob:",
 ].join('; ')
 
+// ENFORCED Content-Security-Policy, deliberately narrow.
+//
+// THE PROBLEM WITH THE POLICY ABOVE. It ships as
+// Content-Security-Policy-Report-Only, which means it currently blocks NOTHING.
+// It reports. A report-only CSP is a measurement instrument, not a control, and
+// this one has been mistaken for a control (the header list below described it as
+// "frame and referrer protection ... and the CSP above", as though it were
+// enforcing). It also carries script-src 'unsafe-inline' 'unsafe-eval', so even
+// once enforced it would not stop injected script.
+//
+// WHY NOT JUST FLIP IT. The comment above says to enforce "once the report run is
+// clean", and whether it is clean is unknown. Flipping the full policy blind on a
+// live platform can break payment (the Stripe iframe), maps, or analytics, and a
+// broken checkout is a worse outcome than a missing header.
+//
+// SO: enforce only the directives that cost nothing and block real attacks. Each
+// one below is already satisfied by the application, carries no allowlist to get
+// wrong, and needs no nonce work:
+//
+//   object-src 'none'      no <object>/<embed>/<applet>, a classic injection sink
+//   base-uri 'self'        an injected <base> cannot re-point every relative URL
+//                          on the page at an attacker's host
+//   frame-ancestors 'self' real clickjacking protection. ASVS 3.4.6 notes
+//                          X-Frame-Options is obsolete and must not be relied on,
+//                          so the header below is the belt and this is the braces
+//   form-action 'self'     a form cannot be made to POST to another origin. That
+//                          matters directly in this pass: it is the last line of
+//                          defence if a form's destination is ever tampered with
+//
+// Crucially this policy declares NO default-src, so it does not restrain scripts,
+// styles, images, fonts or connections at all. It cannot break what works today.
+//
+// The full policy stays in report-only alongside it, which is the standard
+// migration shape: enforce what is safe now, keep measuring the rest. Removing
+// 'unsafe-inline'/'unsafe-eval' needs per-response nonces and is the follow-up
+// that turns this into actual XSS mitigation (ASVS 3.4.3).
+const CSP_ENFORCED = [
+  "object-src 'none'",
+  "base-uri 'self'",
+  "frame-ancestors 'self'",
+  "form-action 'self'",
+].join('; ')
+
 // Security response headers, applied to every route. HSTS, nosniff, frame and
 // referrer protection, a tight permissions policy that still allows the
-// features the app uses (Stripe payment, geolocation city detection), and the
-// CSP above in report-only mode.
+// features the app uses (Stripe payment, geolocation city detection), the
+// narrow ENFORCED CSP above, and the wider policy in report-only beside it.
 const SECURITY_HEADERS = [
   { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   { key: 'Permissions-Policy', value: 'camera=(), microphone=(), browsing-topics=()' },
+  { key: 'Content-Security-Policy', value: CSP_ENFORCED },
   { key: 'Content-Security-Policy-Report-Only', value: CSP_REPORT_ONLY },
 ]
 
@@ -70,6 +114,10 @@ const nextConfig: NextConfig = {
     // file too or a fixture card would 404 on the Preview. No-op when the file
     // is absent (normal/production builds).
     '/events/[slug]': ['./src/lib/dev/home-seed-fixture.json'],
+    // The social cards draw brand type. satori is handed real font buffers
+    // read from disk at render time, so the TTFs have to be traced into the
+    // card lambda or every card would silently fall back to a system face.
+    '/api/organiser/events/[id]/card/[format]': ['./src/assets/fonts/*.ttf'],
   },
   async redirects() {
     // Legacy /categories/[slug] -> the community taxonomy (Batch 5). The legacy
@@ -97,7 +145,50 @@ const nextConfig: NextConfig = {
       {
         source: '/:path*',
         headers: [
-          { key: 'X-Robots-Tag', value: 'index, follow' },
+          /*
+           * INDEXABLE ON PRODUCTION ONLY.
+           *
+           * This was a flat `index, follow` on every deployment, and it was
+           * OVERRIDING a Vercel default rather than filling a gap. Vercel adds
+           * `X-Robots-Tag: noindex` to preview deployments itself
+           * (https://vercel.com/kb/guide/are-vercel-preview-deployment-indexed-by-search-engines,
+           * fetched 15 August 2026: "Vercel automatically adds a noindex header
+           * to preview deployments"), and a framework-level header replaces it.
+           *
+           * Measured on 15 August 2026, the branch preview answered
+           * `x-robots-tag: index, follow`, served a `robots.txt` with `Allow: /`,
+           * and published a sitemap of 932 URLs on the preview host. That is a
+           * near-complete second copy of the catalogue, on a different hostname,
+           * openly inviting Googlebot, on a platform whose growth plan names SEO
+           * as one of its two compounding engines. It is recorded as a pre-launch
+           * blocker in docs/PRE-LAUNCH-HARDENING.md, flagged 15 May 2026 and
+           * still open three months later.
+           *
+           * `VERCEL_ENV` is documented as available at BUILD time with the values
+           * production, preview or development
+           * (https://vercel.com/docs/environment-variables/system-environment-variables,
+           * fetched 15 August 2026), and `headers()` is evaluated at build, so
+           * each deployment bakes in the answer for the environment it belongs to.
+           *
+           * IT FAILS OPEN TO TODAY'S BEHAVIOUR ON PURPOSE. When `VERCEL_ENV` is
+           * absent, which is every local build and every CI build, the value stays
+           * `index, follow`. That keeps the Lighthouse SEO `is-crawlable` audit
+           * green on localhost, where the gate actually runs, so closing an SEO
+           * hole cannot open a gate failure somewhere else.
+           *
+           * THIS IS HALF THE FIX. It stops previews being INDEXED. It does not
+           * stop them being READ: the deployment still answers 200 to anyone with
+           * the URL. Access control is Vercel Deployment Protection, which is a
+           * dashboard action and remains the founder's, exactly as
+           * docs/PRE-LAUNCH-HARDENING.md sets out.
+           */
+          {
+            key: 'X-Robots-Tag',
+            value:
+              process.env.VERCEL_ENV && process.env.VERCEL_ENV !== 'production'
+                ? 'noindex, nofollow'
+                : 'index, follow',
+          },
           ...SECURITY_HEADERS,
         ],
       },
@@ -131,10 +222,30 @@ const nextConfig: NextConfig = {
     // Batch 10 Track 2 - Vercel rewrites for branded storage URLs.
     // /cdn/* proxies to Supabase storage so users see eventlinqs.com URLs.
     // Parity vs Eventbrite img.evbuc.com, Ticketmaster s1.ticketm.net, DICE dice-media.imgix.net.
+    // THE ERROR HAS TO NAME THE VARIABLE, not the rewrite.
+    //
+    // Unguarded, this template produced
+    // `destination: "undefined/storage/v1/object/public/:path*"` and Next
+    // rejected it with `Error: Invalid rewrite found`. That message is true and
+    // useless: it points at a rewrite the reader did not write, one minute after
+    // a prebuild guard said the missing variable was "not blocking". Two
+    // separate people would go and read next.config.ts before either looked at
+    // the environment.
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    if (!supabaseUrl) {
+      throw new Error(
+        'NEXT_PUBLIC_SUPABASE_URL is not set, so the /cdn rewrite has no destination. ' +
+          'This stops the build. Load the environment first: the TEST values live in .env.test, ' +
+          'and every deployed scope has it set in Vercel. ' +
+          '(Next would otherwise report this as "Invalid rewrite found", which names the rewrite ' +
+          'rather than the missing variable.)',
+      )
+    }
+
     return [
       {
         source: '/cdn/:path*',
-        destination: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/:path*`,
+        destination: `${supabaseUrl}/storage/v1/object/public/:path*`,
       },
     ]
   },

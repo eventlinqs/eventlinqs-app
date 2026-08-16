@@ -1,0 +1,86 @@
+#!/bin/sh
+#
+# PRE-PUSH: the test suite runs before anything leaves this machine.
+#
+# WHY THIS EXISTS, written into the hook so it cannot be deleted as unexplained.
+# On 13 August 2026 the integration branch was found with five failing tests that
+# nobody had ever seen, because `npm test` had never been run on it. Two of them
+# mattered a great deal:
+#
+#   * tests/unit/security/rls-column-exposure.test.ts had never executed AT ALL.
+#     A shebang on the module it imports made the file fail to collect, so vitest
+#     reported "no tests" and the suite passed vacuously. The guard for the
+#     world-readable-column class was not running, and every gate stayed green.
+#
+#   * A merge-induced defect in the publish gate gave organisers a WRONG refusal
+#     reason, because two correct changes on two branches did not compose. Both
+#     branches passed their own tests; the composition was tested by nobody.
+#
+# Three of the five arrived AFTER the merges, on commits pushed straight to the
+# integration branch. So the gap was not "run the suite before merging", it was
+# "run the suite before pushing", which is what this hook does.
+#
+# WHY NOT IN THE GUARD RUNNER. `prebuild` runs the guards on every Vercel build,
+# where they take seconds. The suite takes about fifty, and paying that on every
+# deployment would buy nothing: the code being built has already been pushed. A
+# push is the moment the work becomes shared, so a push is the right trigger.
+#
+# BYPASS. `git push --no-verify` skips this, and that is deliberate: a hook that
+# cannot be bypassed in an emergency is a hook someone deletes. Bypassing it is a
+# decision to push untested code, so make it knowingly.
+#
+# THE TYPECHECK IS HERE FOR A SEPARATE REASON, added 15 August 2026.
+# On 15 August a type error reached the remote and put two preview deployments
+# into ERROR. `tsc --noEmit` HAD been run and HAD exited 0, and was reported as
+# evidence. It ran before the final edit and was quoted after it, so the claim
+# was true when measured and false when made. That is the third instance of that
+# shape in this repository (finding 79), after the stale node_modules junction
+# and the Sensitive environment variable.
+#
+# A hook cannot stop somebody quoting an old measurement. It can make the LAST
+# gate before code leaves the machine measure the tree that is actually leaving,
+# which removes the window entirely. Vercel type-checks the whole tree including
+# tests/, so a local `next build` does not catch what CI catches; `tsc --noEmit`
+# against the repo tsconfig does.
+
+echo "[pre-push] running the typecheck and the test suite before this leaves the machine"
+
+# TYPECHECK FIRST. It is the faster of the two, so a type error fails in seconds
+# rather than after a minute of tests.
+npx tsc --noEmit
+tsc_status=$?
+
+if [ $tsc_status -ne 0 ]; then
+  echo ""
+  echo "[pre-push] BLOCKED: tsc --noEmit failed, so nothing was pushed."
+  echo "[pre-push] Vercel type-checks tests/ as well as src/, so this is the same"
+  echo "[pre-push] check that would have failed the preview build."
+  exit $tsc_status
+fi
+
+echo "[pre-push] typecheck clean"
+
+# The CANARY runs the suite AND checks that nothing stopped running.
+#
+# A plain `npm test` was not enough. Twice a test file has reported healthy while
+# executing nothing, and a green suite that runs fewer tests than yesterday looks
+# identical to a green suite that runs all of them. The canary holds a committed
+# floor for both the file count and the test count, so a silent drop is a red
+# push rather than a number nobody compared.
+#
+# The repository pins its runtime in .nvmrc and package.json engines (Law 9).
+# The hook does not choose a Node; it uses whatever is on PATH, and the guard
+# suite reports whether that matches the contract.
+node scripts/guards/test-count-canary.mjs
+status=$?
+
+if [ $status -ne 0 ]; then
+  echo ""
+  echo "[pre-push] BLOCKED: the test suite failed, so nothing was pushed."
+  echo "[pre-push] Fix the failures, or push with --no-verify if you have decided"
+  echo "[pre-push] to share untested code on purpose."
+  exit $status
+fi
+
+echo "[pre-push] typecheck clean, suite green, pushing"
+exit 0

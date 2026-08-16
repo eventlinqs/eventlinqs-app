@@ -1,0 +1,47 @@
+[
+  {
+    "name": "filtering the payout history keeps the business it is showing",
+    "ok": true,
+    "detail": "/api/payouts/list?org=12780d5e-ac47-47e4-afc9-8cbdcd405d70&status=paid&offset=0&limit=20"
+  },
+  {
+    "name": "and never silently requests the FIRST business instead",
+    "ok": true,
+    "detail": "business A is 9f13238c-54b3-4796-b9aa-9b0a72ef1218"
+  },
+  {
+    "name": "returning from Stripe onboarding reconciles the row by itself",
+    "ok": true,
+    "detail": "payout_status restricted -> active, charges true, payouts true"
+  },
+  {
+    "name": "and the redirect carries the business, so it cannot land on the wrong one",
+    "ok": true,
+    "detail": "https://www.eventlinqs.com.au/login?status=complete&org=12780d5e-ac47-47e4-afc9-8cbdcd405d70&redirect=%2Fdashboard%2Fpayouts"
+  },
+  {
+    "name": "the return route refuses somebody else's business",
+    "ok": true,
+    "detail": "https://www.eventlinqs.com.au/login?status=not_found&redirect=%2Fdashboard%2Fpayouts"
+  },
+  {
+    "name": "pressing connect on a THIRD business mints a NEW Stripe account for it",
+    "ok": true,
+    "detail": "HTTP 200, account acct_1U2O4o2cqKnoPbXl, onboarding link returned"
+  },
+  {
+    "name": "and that account is its own, not either of the existing businesses",
+    "ok": true,
+    "detail": "A=acct_1U2NOpGTgPP2EN9E B=acct_1U2NOwKH9wJ7una3 new=acct_1U2O4o2cqKnoPbXl"
+  },
+  {
+    "name": "the Stripe account records which business it belongs to",
+    "ok": true,
+    "detail": "metadata.organisation_id=de240ce2-1b9d-4626-a895-2fd0bae33456"
+  },
+  {
+    "name": "onboarding refuses somebody else's business",
+    "ok": true,
+    "detail": "HTTP 403"
+  }
+]

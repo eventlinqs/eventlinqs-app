@@ -9,7 +9,12 @@ export async function POST(request: Request): Promise<NextResponse> {
   const blocked = await applyRateLimit('payouts-stripe-link', request)
   if (blocked) return blocked
 
-  const scope = await resolveOrganiserScope()
+  // ?org=<id> names which business, so a person with several Stripe accounts is
+  // sent to the dashboard for the one they are looking at rather than always the
+  // first. See the note in ../list/route.ts.
+  const scope = await resolveOrganiserScope(
+    new URL(request.url).searchParams.get('org') ?? undefined,
+  )
   if (!scope.ok) {
     return NextResponse.json(
       { ok: false, error: scope.reason },

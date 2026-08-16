@@ -33,6 +33,11 @@ const PAGES = [
   ['press', '/press'],
   ['careers', '/careers'],
   ['legal-terms', '/legal/terms'],
+  // The public composer, added 9 Aug 2026. Its REVEAL state (the share-card
+  // grid) cannot be reached by URL and so is scanned by
+  // scripts/verify/launch-axe.mjs and the kit walk instead; this entry covers
+  // the surface a stranger lands on.
+  ['launch', '/launch'],
 ]
 
 // In-page detector. Returns dead-end tile descriptors.

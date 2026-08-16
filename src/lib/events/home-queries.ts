@@ -6,7 +6,11 @@ import type {
 import { fixtureEnabled, loadFixtureRows } from '@/lib/dev/fixture-events'
 
 export const EVENT_SELECT =
-  'id, slug, title, summary, cover_image_url, thumbnail_url, gallery_urls, start_date, venue_name, venue_city, venue_state, venue_country, is_free, created_at, category:event_categories(name, slug), organisation:organisations(name), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
+  // `timezone` is selected because every card that prints a date must format it
+  // in the EVENT's zone. Without it the homepage formats in the runtime zone,
+  // which is UTC on the server and the reader's in the browser, so a Perth
+  // event at 9pm shows the wrong DAY to someone in Sydney.
+  'id, slug, title, summary, cover_image_url, thumbnail_url, gallery_urls, start_date, timezone, venue_name, venue_city, venue_state, venue_country, is_free, created_at, category:event_categories(name, slug), organisation:organisations(name), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)'
 
 export type RawRow = {
   id: string
@@ -17,6 +21,8 @@ export type RawRow = {
   thumbnail_url: string | null
   gallery_urls: string[] | null
   start_date: string
+  /** The EVENT's IANA zone. Every rail date is formatted in it, never the reader's. */
+  timezone: string | null
   venue_name: string | null
   venue_city: string | null
   venue_state: string | null
@@ -42,6 +48,7 @@ export function toBentoEvent(r: RawRow): BentoEvent {
     thumbnail_url: r.thumbnail_url,
     gallery_urls: r.gallery_urls,
     start_date: r.start_date,
+    timezone: r.timezone,
     venue_name: r.venue_name,
     venue_city: r.venue_city,
     is_free: r.is_free,
@@ -85,12 +92,28 @@ export async function loadHomeUpcoming(
 ): Promise<RawRow[]> {
   if (fixtureEnabled()) {
     const rows = await loadFixtureRows()
-    if (rows.length > 0) {
-      return rows
-        .filter(r => r.start_date >= nowIso)
-        .sort((a, b) => a.start_date.localeCompare(b.start_date))
-    }
-    // Fixture missing - fall through to the live query rather than break.
+    /*
+     * FALL THROUGH WHEN THE FIXTURE YIELDS NOTHING USABLE, not merely when the
+     * FILE is missing.
+     *
+     * This used to test `rows.length > 0` and then return the filtered list. A
+     * fixture that existed but had aged entirely into the past therefore
+     * returned an EMPTY array and never reached the live query below, and the
+     * homepage rendered its designed empty state over a database holding 184
+     * upcoming events. That is exactly what happened: the generator anchored its
+     * dates to a hardcoded 7 June 2026, so by mid-August every fixture row was
+     * in the past, and the deployed preview homepage showed no events at all
+     * while /events showed a full catalogue.
+     *
+     * Nothing failed, because "the fixture is stale" and "there are no events"
+     * produce the identical screen. The generator is fixed to anchor on today,
+     * and this fall-through makes a stale fixture harmless rather than silent:
+     * the worst case is now real data instead of a blank page.
+     */
+    const usable = rows
+      .filter(r => r.start_date >= nowIso)
+      .sort((a, b) => a.start_date.localeCompare(b.start_date))
+    if (usable.length > 0) return usable
   }
   const { data } = await supabase
     .from('events')
@@ -98,6 +121,20 @@ export async function loadHomeUpcoming(
     .eq('status', 'published')
     .eq('visibility', 'public')
     .gte('start_date', nowIso)
+    /*
+     * EXTERNALLY TICKETED EVENTS ARE NOT IN THE RAILS. Founder ruling
+     * 15 August 2026, non-negotiable 4.
+     *
+     * The homepage rails are the platform's scarcest surface and they exist to
+     * sell tickets. An event whose ticketing lives somewhere else cannot convert
+     * there, so giving it a rail slot would spend our best real estate driving
+     * traffic off the platform, ahead of an organiser who did move their
+     * ticketing here. Its own event page stays live and indexable, because that
+     * page serves the artist and is the entire point of the feature.
+     *
+     * The partial index idx_events_internal_ticketing is exactly this shape.
+     */
+    .is('external_ticket_url', null)
     .order('start_date', { ascending: true })
     .limit(limit)
   return (data ?? []) as unknown as RawRow[]

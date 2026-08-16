@@ -45,8 +45,36 @@ const EXTERNAL_GUARDS = [
   },
 ]
 
-/** Files in scripts/guards/ that are not themselves guards. */
-const NOT_GUARDS = new Set(['run-guards.mjs', 'contract-node.mjs'])
+/**
+ * Files in scripts/guards/ that are not themselves prebuild guards.
+ *
+ * `test-count-canary.mjs` is deliberately NOT registered in the runner, and the
+ * reason is a real trade rather than an oversight. It RUNS THE WHOLE TEST SUITE
+ * to count what executed, which takes about thirty seconds. `prebuild` runs on
+ * every Vercel build, and by build time the code has already been pushed, so
+ * paying that there would cost half a minute per deployment and catch nothing a
+ * push-time check has not already caught. It is wired into `.githooks/pre-push`
+ * instead, where a push is the moment work becomes shared.
+ */
+/*
+ * `no-partial-builds.mjs` WAS listed here while it reported 57 hits, because
+ * registering a guard makes it blocking on prebuild and a gate that cannot go
+ * green is a gate somebody switches off.
+ *
+ * It was registered on 15 August 2026, and the entry was DELETED rather than
+ * extended, exactly as the note here said it would be. All 57 were classified
+ * and cleared first: the 41 feature-flag hits moved to one dated decision
+ * registry beside the flags in `src/lib/flags/broadcast.ts` instead of 41 copies
+ * of a date beside the call sites, 5 were the guard reading other detectors
+ * regex literals and finding its own subject matter, 2 TODOs waited on
+ * `/auth/signup?role=organiser` which was never built and now point at the real
+ * `/organisers/signup`, and the remainder were dated or reworded.
+ */
+const NOT_GUARDS = new Set([
+  'run-guards.mjs',
+  'contract-node.mjs',
+  'test-count-canary.mjs',
+])
 
 describe('the build-guard registry', () => {
   test('every guard file in scripts/guards/ is registered in the runner', () => {

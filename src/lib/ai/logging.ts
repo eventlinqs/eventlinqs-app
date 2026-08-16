@@ -9,7 +9,14 @@ import { createHash } from 'crypto'
  */
 
 export type AiLogRecord = {
-  evt: 'ai.request' | 'ai.blocked' | 'ai.handoff' | 'ai.error'
+  /**
+   * `ai.fee_unavailable` records that the live pricing lookup fell back, so the
+   * assistants were switched into "I cannot confirm the rate" for that request.
+   * Worth a log line rather than silence: the degradation is invisible from the
+   * outside, because a polite refusal to quote reads exactly like a cautious
+   * answer.
+   */
+  evt: 'ai.request' | 'ai.blocked' | 'ai.handoff' | 'ai.error' | 'ai.fee_unavailable'
   assistant: string
   /** Truncated sha256 of the user id or IP. Never the raw identifier. */
   who: string

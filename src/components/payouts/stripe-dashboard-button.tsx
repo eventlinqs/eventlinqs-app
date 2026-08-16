@@ -5,9 +5,19 @@ import { ExternalLink, Loader2 } from 'lucide-react'
 
 interface StripeDashboardButtonProps {
   enabled: boolean
+  /**
+   * WHICH business's Stripe dashboard to open.
+   *
+   * THE LEAK THIS CLOSES. This posted with no organisation named, so the route fell
+   * back to the caller's FIRST business. An owner of several Stripe accounts looking
+   * at business B pressed "Open Stripe Dashboard" and was minted a login link into
+   * business A's Stripe account. A login link is not a read: it is an authenticated
+   * session into the wrong company's money.
+   */
+  organisationId: string
 }
 
-export function StripeDashboardButton({ enabled }: StripeDashboardButtonProps) {
+export function StripeDashboardButton({ enabled, organisationId }: StripeDashboardButtonProps) {
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
@@ -15,10 +25,10 @@ export function StripeDashboardButton({ enabled }: StripeDashboardButtonProps) {
     setError(null)
     startTransition(async () => {
       try {
-        const res = await fetch('/api/payouts/stripe-dashboard-link', {
-          method: 'POST',
-          credentials: 'same-origin',
-        })
+        const res = await fetch(
+          `/api/payouts/stripe-dashboard-link?org=${encodeURIComponent(organisationId)}`,
+          { method: 'POST', credentials: 'same-origin' },
+        )
         const json = (await res.json()) as { ok: boolean; url?: string; error?: string }
         if (!json.ok || !json.url) {
           setError('Could not open Stripe Dashboard. Please try again.')

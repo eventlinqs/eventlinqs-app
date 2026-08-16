@@ -35,7 +35,20 @@ async function requireUser() {
   return user
 }
 
-/** The caller's ACTIVE (organiser-verified) organisation, or null. */
+/**
+ * The caller's ACTIVE (organiser-verified) organisation, or null.
+ *
+ * ORDERED, and that is the fix. This was `.limit(1).maybeSingle()` with no
+ * `.order()`. It does not error the way the `single()` call sites did, so it looked
+ * healthy, but PostgREST gives no ordering guarantee without an ORDER BY and really
+ * does vary it: two runs of scripts/verify/maybe-single-behaviour.mjs against the
+ * same 26 rows on TEST returned them in two different orders. So an owner of several
+ * businesses could post a gig under one business and have the next one land under
+ * another, with nothing on screen saying which.
+ *
+ * Oldest-first makes it deterministic, so the answer is at least stable and
+ * predictable rather than whatever the planner returned that second.
+ */
 async function requireActiveOrganisation(userId: string) {
   const admin = createAdminClient()
   const { data } = await admin
@@ -43,6 +56,7 @@ async function requireActiveOrganisation(userId: string) {
     .select('id, name, status')
     .eq('owner_id', userId)
     .eq('status', 'active')
+    .order('created_at', { ascending: true })
     .limit(1)
     .maybeSingle()
   return (data as { id: string; name: string; status: string } | null) ?? null

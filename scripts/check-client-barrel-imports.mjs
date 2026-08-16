@@ -30,8 +30,11 @@
 // platform-wide, so everything it pulls in lands in the browser bundle of every
 // route. Reachability, not the directive, is what decides.
 //
-// Node 20 compatible: no globSync (Node 22+), no fs.promises.glob. The walk is
-// readdirSync(withFileTypes), which has existed since Node 10.
+// The walk is readdirSync(withFileTypes), which has existed since Node 10 and so
+// survives a runtime move untouched. It was written that way when the contract
+// was Node 20, which had no globSync; the contract is Node 24 since 13 August
+// 2026 and does, but there is nothing to gain by rewriting a walk that works on
+// every version the platform will ever run.
 
 import { readdirSync, readFileSync, existsSync, statSync } from 'node:fs'
 import { join, dirname, resolve, relative } from 'node:path'

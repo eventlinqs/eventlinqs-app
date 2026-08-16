@@ -18,20 +18,12 @@
  * links. Those still need the crawler.
  */
 import { describe, it, expect } from 'vitest'
-import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs'
+import { readdirSync, existsSync } from 'node:fs'
 import path from 'node:path'
+import { safeRead, safeWalkSource, safeIsDirectory } from '../../helpers/safe-walk'
 
 const ROOT = path.resolve(__dirname, '../../..')
 const APP = path.join(ROOT, 'src/app')
-
-function walk(dir: string, out: string[] = []): string[] {
-  for (const entry of readdirSync(dir)) {
-    const full = path.join(dir, entry)
-    if (statSync(full).isDirectory()) walk(full, out)
-    else if (/\.(tsx|ts)$/.test(entry)) out.push(full)
-  }
-  return out
-}
 
 /** Route groups like (marketing) do not appear in the URL. */
 function isGroup(segment: string): boolean {
@@ -70,7 +62,7 @@ function routeExists(urlPath: string): boolean {
       return false
     }
     return entries.some(
-      (e) => isGroup(e) && statSync(path.join(dir, e)).isDirectory() && servesHere(path.join(dir, e)),
+      (e) => isGroup(e) && safeIsDirectory(path.join(dir, e)) && servesHere(path.join(dir, e)),
     )
   }
 
@@ -98,7 +90,7 @@ function routeExists(urlPath: string): boolean {
     }
     for (const entry of entries) {
       const full = path.join(dir, entry)
-      if (!statSync(full).isDirectory()) continue
+      if (!safeIsDirectory(full)) continue
       // A route group is transparent: same depth, one level deeper on disk.
       if (isGroup(entry)) {
         if (search(full, depth)) return true
@@ -126,17 +118,37 @@ const KNOWN_NON_APP_PATHS = new Set([
 
 function collectHrefs(): { file: string; href: string }[] {
   const found: { file: string; href: string }[] = []
-  for (const file of walk(path.join(ROOT, 'src'))) {
-    const src = readFileSync(file, 'utf8')
+  // safeWalkSource + safeRead guard the vanish race: readdirSync, statSync and
+  // the read all tolerate a file that disappears mid-walk. This collector runs
+  // at DESCRIBE scope, so an unguarded ENOENT here would fail COLLECTION and
+  // vitest would report "no tests" rather than a failure.
+  for (const file of safeWalkSource(path.join(ROOT, 'src'))) {
+    const src = safeRead(file)
+    if (src === null) continue
     // href="/literal" and href={`/tpl/${x}/more`}
     const patterns = [/href="(\/[^"#?]*)"/g, /href=\{`(\/[^`#?]*)`\}/g]
     for (const re of patterns) {
       for (const m of src.matchAll(re)) {
         let raw = m[1]
-        // Template holes become a dynamic segment.
-        raw = raw.replace(/\$\{[^}]*\}/g, 'x')
+        // A hole that FOLLOWS A SLASH is a dynamic segment, so it stands in as
+        // one: /events/${slug} is checkable as /events/x.
+        raw = raw.replace(/\/\$\{[^}]*\}/g, '/x')
+        // A hole that does not follow a slash is a SUFFIX on the segment before
+        // it, and only the static prefix is checkable. Substituting there
+        // invents a route: `/login${emailParam}` became "/loginx" and was
+        // reported as a dead link, when emailParam is `?email=...` and the real
+        // targets are /login and /login?email=... Truncating at the hole checks
+        // what can actually be checked, and a literal typo like href="/loginx"
+        // is still caught because no template is involved.
+        //
+        // Same fix as on feat/launch-kit-artefacts, which hit this first when
+        // main's collector met that branch's signup form. It arrives here for
+        // the same reason: this branch now carries that form.
+        const hole = raw.indexOf('${')
+        if (hole !== -1) raw = raw.slice(0, hole)
         // Drop a trailing partial segment left by a query or hash split.
         raw = raw.split('?')[0].split('#')[0]
+        raw = raw.replace(/\/$/, '')
         if (!raw.startsWith('/') || raw.startsWith('//')) continue
         if (raw === '/') continue
         found.push({ file: path.relative(ROOT, file), href: raw })

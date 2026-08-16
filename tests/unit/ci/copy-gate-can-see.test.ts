@@ -20,10 +20,36 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { execFileSync } from 'node:child_process'
 import { writeFileSync, rmSync, mkdirSync, existsSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import path from 'node:path'
 
 const ROOT = path.resolve(__dirname, '../../..')
-const SCRATCH_DIR = path.join(ROOT, 'src/__copy_gate_scratch__')
+
+/**
+ * THE SCRATCH LIVES OUTSIDE THE REPOSITORY. This used to be
+ * src/__copy_gate_scratch__/, and planting a file inside the tree that other
+ * tests walk cost twice:
+ *
+ *   1. Any test walking src/ could list this file and then read it after the
+ *      afterEach below deleted it. That throws ENOENT, and when it happens at
+ *      module scope vitest reports the whole file as "no tests" rather than as a
+ *      failure, so the suite went green having run LESS. Two test files were hit.
+ *   2. An interrupted run left the scratch behind, and the copy gate then failed
+ *      on a tree that was genuinely clean.
+ *
+ * In the system temp directory neither is possible: nothing in this repository
+ * walks it, and a leftover cannot be seen by a gate run that does not opt in.
+ * The gate reads it because COPY_GATE_EXTRA_DIR points there, an ADDITIVE input
+ * that can only make the gate scan more (see scripts/copy-tell-gate.mjs).
+ *
+ * The directory keeps the name `__copy_gate_scratch__` because the assertions
+ * below match on it to prove the gate reported THIS file and not another.
+ *
+ * No filesystem call happens at module scope here, deliberately: path.join and
+ * tmpdir() cannot throw, so this file cannot fail to collect on a bad temp dir.
+ */
+const SCRATCH_ROOT = path.join(tmpdir(), `eventlinqs-copy-gate-${process.pid}`)
+const SCRATCH_DIR = path.join(SCRATCH_ROOT, '__copy_gate_scratch__')
 const SCRATCH = path.join(SCRATCH_DIR, 'scratch.tsx')
 
 // Each case spawns the real gate, which walks 787 files. Under full-suite
@@ -38,6 +64,9 @@ function runGate(): { failed: boolean; output: string } {
       cwd: ROOT,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
+      // Point the gate at the out-of-tree scratch. Additive: src/ is scanned
+      // either way, so this cannot hide anything, only reveal the planted file.
+      env: { ...process.env, COPY_GATE_EXTRA_DIR: SCRATCH_DIR },
     })
     return { failed: false, output: out }
   } catch (e) {
@@ -52,7 +81,9 @@ function plant(body: string): void {
 }
 
 afterEach(() => {
-  if (existsSync(SCRATCH_DIR)) rmSync(SCRATCH_DIR, { recursive: true, force: true })
+  // The whole temp root, not just the scratch directory, so nothing is left in
+  // the system temp directory either.
+  if (existsSync(SCRATCH_ROOT)) rmSync(SCRATCH_ROOT, { recursive: true, force: true })
 })
 
 describe('the copy gate can see wrapped JSX copy', () => {

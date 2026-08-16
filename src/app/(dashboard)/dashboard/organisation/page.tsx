@@ -1,18 +1,51 @@
+import { canonicalHost } from '@/lib/site-url'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { OrganisationSwitcher } from '@/components/organisations/organisation-switcher'
+import {
+  organisationIdFromParams,
+  resolveOrganisationScope,
+  withOrganisation,
+} from '@/lib/organisations/scope'
 import type { Organisation } from '@/types/database'
+import { LogoUploader } from '@/components/organisation/logo-uploader'
+import { fetchImageBytes } from '@/lib/media/fetch-image'
+import { resolveLogoPlacement } from '@/lib/media/logo-pipeline'
 
-export default async function OrganisationPage() {
+export default async function OrganisationPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
+}) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: org } = await supabase
-    .from('organisations')
-    .select('*')
-    .eq('owner_id', user.id)
-    .single() as { data: Organisation | null }
+  // WHICH business. This was `.eq('owner_id', user.id).single()`, which returns
+  // PGRST116 and `data: null` rather than a row when the caller owns more than one,
+  // so an owner of several was shown "No Organisation Yet" and a button to create
+  // the organisation they already had several of.
+  const scope = await resolveOrganisationScope(organisationIdFromParams(await searchParams))
+  const organisationCount = scope.ok ? scope.organisations.length : 0
+
+  // The owner reading their OWN organisation, including its contact email.
+  // That is legitimate: the email belongs to them. It is the same column being
+  // readable by everyone ELSE that was the defect.
+  //
+  // Identity is verified with the session client above and ownership by the scope
+  // resolver, then the row is read with the service role, because `email` is
+  // revoked from `authenticated` by column privilege (migration 20260808000010).
+  // Selecting explicit columns rather than (*) keeps this honest about what the
+  // page needs.
+  const { data: org } = scope.ok
+    ? ((await createAdminClient()
+        .from('organisations')
+        .select('id, name, slug, description, website, email, status, stripe_onboarding_complete')
+        .eq('id', scope.active.id)
+        .maybeSingle()) as { data: Organisation | null })
+    : { data: null }
 
   if (!org) {
     return (
@@ -36,6 +69,21 @@ export default async function OrganisationPage() {
     )
   }
 
+  // How the mark will actually sit on the navy, measured rather than guessed.
+  // The read is deadlined, and an unreachable object falls back to the tile,
+  // which is the placement that is always readable.
+  let logoPlacement: 'on-navy' | 'on-tile' = 'on-tile'
+  if (org.logo_url) {
+    const fetched = await fetchImageBytes(org.logo_url, 2500)
+    if (fetched) {
+      try {
+        logoPlacement = (await resolveLogoPlacement(Buffer.from(fetched.bytes))).placement
+      } catch {
+        logoPlacement = 'on-tile'
+      }
+    }
+  }
+
   const [{ count: eventCount }, { count: memberCount }] = await Promise.all([
     supabase.from('events').select('*', { count: 'exact', head: true }).eq('organisation_id', org.id),
     supabase.from('organisation_members').select('*', { count: 'exact', head: true }).eq('organisation_id', org.id),
@@ -50,10 +98,18 @@ export default async function OrganisationPage() {
 
   return (
     <div className="max-w-3xl">
+      {scope.ok ? (
+        <OrganisationSwitcher
+          organisations={scope.organisations}
+          activeId={org.id}
+          basePath="/dashboard/organisation"
+        />
+      ) : null}
+
       <div className="mb-8 flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-ink-900">{org.name}</h1>
-          <p className="mt-1 text-sm text-ink-400">eventlinqs.com/{org.slug}</p>
+          <p className="mt-1 text-sm text-ink-400">{canonicalHost()}/{org.slug}</p>
         </div>
         <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium capitalize ${statusColour[org.status] ?? 'bg-ink-100 text-ink-400'}`}>
           {org.status}
@@ -100,18 +156,39 @@ export default async function OrganisationPage() {
         )}
       </div>
 
-      <div className="mt-6 flex gap-4">
+      {/* The organiser's own mark. It goes onto their poster, their story card
+          and every post image the kit builds, at the top, where a promoter puts
+          their own name. Nothing collected it before this, so organisations
+          .logo_url was read in four places and written in none. */}
+      <div className="mt-6">
+        <LogoUploader
+          organisationId={org.id}
+          organisationName={org.name}
+          initialUrl={org.logo_url}
+          initialPlacement={logoPlacement}
+        />
+      </div>
+
+      <div className="mt-6 flex flex-wrap gap-4">
         <Link
-          href="/dashboard/events/create"
+          href={withOrganisation('/dashboard/events/create', org.id, organisationCount)}
           className="rounded-lg bg-gold-500 px-5 py-2.5 text-sm font-medium text-ink-900 hover:bg-gold-600 transition-colors"
         >
           Create Event
         </Link>
         <Link
-          href="/dashboard/events"
+          href={withOrganisation('/dashboard/events', org.id, organisationCount)}
           className="rounded-lg border border-ink-200 bg-white px-5 py-2.5 text-sm font-medium text-ink-600 hover:bg-ink-100 transition-colors"
         >
           View Events
+        </Link>
+        {/* The only entry point to a second business. Without it there is no route
+            anywhere in the product to the founder's "people can have endless". */}
+        <Link
+          href="/dashboard/organisation/create"
+          className="rounded-lg border border-ink-200 bg-white px-5 py-2.5 text-sm font-medium text-ink-600 transition-colors hover:bg-ink-100"
+        >
+          Add another business
         </Link>
       </div>
     </div>

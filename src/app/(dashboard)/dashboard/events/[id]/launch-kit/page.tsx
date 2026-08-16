@@ -29,7 +29,12 @@ import { Reveal } from '@/components/ui/reveal'
 import { CopyLinkButton } from '@/components/launch-kit/copy-link-button'
 import { KitRenderedTracker } from '@/components/launch-kit/kit-rendered-tracker'
 import { LaunchShareRow } from '@/components/launch-kit/launch-share-row'
+import { PostPack } from '@/components/launch-kit/post-pack'
+import { buildCaptions, type CaptionPlatform } from '@/lib/broadcast/captions'
+import { loadArtefactContext, toCaptionInput } from '@/lib/broadcast/kit-artefacts'
+import type { SocialCardFormat } from '@/lib/broadcast/social-card-spec'
 import { LineupLoopPanel } from '@/components/broadcast/lineup-loop-panel'
+import { ReachEmptyState } from '@/components/broadcast/reach-empty-state'
 import { getLineupPanelData, type LineupPanelData } from '@/lib/broadcast/lineup-panel'
 import { SeatMapPreview } from '@/components/seating/seat-map-preview'
 import type { SeatData, SectionData, SeatAreaData } from '@/components/checkout/seat-selector'
@@ -57,6 +62,19 @@ const KIT_CHANNELS: readonly ShareChannel[] = [
   'copy',
 ]
 
+/**
+ * Which card shape leads for each channel, and why. Every reason is a
+ * published platform rule, cited in src/lib/broadcast/social-card-spec.ts.
+ */
+const LEAD_FORMAT: Record<CaptionPlatform, SocialCardFormat> = {
+  instagram: 'story',
+  facebook: 'feed',
+  whatsapp: 'story',
+  x: 'square',
+  linkedin: 'square',
+  email: 'square',
+}
+
 const CHANNEL_LABELS: Record<string, string> = {
   whatsapp: 'WhatsApp',
   facebook: 'Facebook',
@@ -69,6 +87,7 @@ const CHANNEL_LABELS: Record<string, string> = {
   copy: 'Copied links',
   native: 'Share sheet',
   qr: 'Poster QR',
+  digest: 'Weekly city email',
   other: 'Other',
 }
 
@@ -137,8 +156,8 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
           </h1>
           <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-ink-600">
             Publish {organiserEvent.title} and this screen becomes your complete kit: the live
-            page link, your seat map, a print-ready QR poster, share cards for every channel,
-            and live reach numbers.
+            page link, your seat map, a print-ready QR poster, share cards and captions for
+            every channel, and the tickets each channel sold you.
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             <Link
@@ -178,7 +197,14 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
     const channels = [...KIT_CHANNELS, 'qr'] as ShareChannel[]
     const minted = await Promise.all(
       channels.map(channel =>
-        getOrCreateShareLink({ eventId: id, channel, createdBy: organiserEvent.userId }).then(
+        getOrCreateShareLink({
+          eventId: id,
+          channel,
+          createdBy: organiserEvent.userId,
+          eventSlug: organiserEvent.slug,
+          eventStartDate: organiserEvent.startDate,
+          eventTimezone: organiserEvent.timezone,
+        }).then(
           link => ({ channel, link }),
         ),
       ),
@@ -194,6 +220,18 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
     // nothing here is ever a dead control. Reach explains itself below.
     for (const channel of KIT_CHANNELS) kitLinks[channel] = eventUrl
   }
+
+  // The post pack: one artefact and one caption per channel, both carrying the
+  // same tracked link. Reads the event once, through the shared context the
+  // card route also uses, so an image and its caption can never disagree.
+  const artefacts = await loadArtefactContext(
+    id,
+    siteUrl,
+    organiserEvent.userId,
+    organiserEvent.organisationName,
+    shareOn,
+  )
+  const captions = artefacts ? buildCaptions(toCaptionInput(artefacts)) : []
 
   const qrSvg = qrShortUrl
     ? await QRCode.toString(qrShortUrl, {
@@ -238,15 +276,28 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
   }
   const openSeats = seats.filter(s => s.status === 'available').length
 
+  // Ordered hardest number first. A ticket and an order require a real payment
+  // against a real order row and cannot be forged. A click is a request, and a
+  // request is soft: preview crawlers are now filtered and repeat taps are
+  // de-duplicated per hour, but a user agent is a string the client chooses, so
+  // the click figure is an estimate and the panel says so rather than
+  // presenting it as fact.
   const reachStats = [
-    { label: 'Link views', value: summary.totals.views },
-    { label: 'Link clicks', value: summary.totals.clicks },
-    { label: 'Orders from links', value: summary.totals.conversions },
-    { label: 'Tickets from links', value: summary.totals.tickets },
+    { label: 'Tickets sold from links', value: summary.totals.tickets, hard: true },
+    { label: 'Orders from links', value: summary.totals.conversions, hard: true },
+    { label: 'Link clicks', value: summary.totals.clicks, hard: false },
+    { label: 'Link views', value: summary.totals.views, hard: false },
   ]
   const topChannels = [...summary.byChannel]
     .sort((a, b) => b.clicks + b.views - (a.clicks + a.views))
     .slice(0, 4)
+
+  // Four zeros in a row is not a report, it is a wall. At true zero the panel
+  // explains itself and offers the action that produces the first number; the
+  // moment ANY measure lands the real tiles come back, because a zero beside a
+  // number carries meaning that a zero beside three other zeros does not.
+  // Share tooling being off is a different state and keeps its own sentence.
+  const nothingHasTravelled = shareOn && reachStats.every(stat => stat.value === 0)
 
   const nextSteps = [
     { href: `/dashboard/events/${id}`, label: 'Manage event', icon: Pencil },
@@ -353,6 +404,35 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
           </div>
         </div>
       </Reveal>
+
+      {/* ── The post pack: the image and the words, per channel ──────────── */}
+      {captions.length > 0 && (
+        <Reveal as="section" aria-labelledby="kit-pack-heading" className="mt-6">
+          <div className="rounded-2xl border border-ink-200 bg-white shadow-[var(--shadow-card)]">
+            <div className="border-b border-ink-100 px-6 py-5">
+              <p className="font-display text-[11px] font-semibold uppercase tracking-widest text-gold-700">
+                In the kit · your post pack
+              </p>
+              <h2 id="kit-pack-heading" className="mt-1 font-display text-xl font-bold text-ink-900">
+                Ready to post, channel by channel
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm text-ink-600">
+                Every channel gets the image in the shape it actually takes and a caption written
+                in its own register, both carrying the tracked link for that channel. Download,
+                copy, post: the sales come back attributed to the exact place you posted.
+              </p>
+            </div>
+            <div className="px-6 py-5">
+              <PostPack
+                eventId={id}
+                captions={captions}
+                leadFormat={LEAD_FORMAT}
+                tracked={shareOn}
+              />
+            </div>
+          </div>
+        </Reveal>
+      )}
 
       {/* ── The lineup loop: tag the acts, hand them their tracked links ──── */}
       {artistsOn && (
@@ -536,24 +616,44 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
               <ArrowUpRight className="h-4 w-4" aria-hidden />
             </Link>
           </div>
+          {nothingHasTravelled ? (
+            <ReachEmptyState
+              shareHref={`/dashboard/events/${id}/launch-kit#kit-share-heading`}
+              posterHref={`/api/organiser/events/${id}/poster`}
+            />
+          ) : (
+            <>
           <div className="grid grid-cols-1 gap-px bg-ink-100 sm:grid-cols-4">
             {reachStats.map(stat => (
               <div key={stat.label} className="bg-white px-6 py-5">
-                <p className="font-display text-3xl font-extrabold leading-none tracking-tight text-[var(--brand-accent-strong)]">
+                <p
+                  className={`font-display text-3xl font-extrabold leading-none tracking-tight ${
+                    stat.hard ? 'text-[var(--brand-accent-strong)]' : 'text-ink-900'
+                  }`}
+                >
                   {stat.value}
                 </p>
                 <p className="mt-1 font-display text-xs font-bold uppercase tracking-[0.14em] text-ink-900">
                   {stat.label}
                 </p>
+                {!stat.hard && (
+                  <p className="mt-1 text-[11px] leading-snug text-ink-500">Close estimate</p>
+                )}
               </div>
             ))}
           </div>
           <div className="border-t border-ink-100 px-6 py-4">
-            {topChannels.length === 0 ? (
+            {!shareOn ? (
               <p className="text-sm text-ink-600">
-                {shareOn
-                  ? 'Numbers land here the moment your first shared link is opened. Only measured platform activity is counted, never estimates.'
-                  : 'Share tooling is off, so tracked reach is paused. Your event page and sales are unaffected.'}
+                Share tooling is off, so tracked reach is paused. Your event page and sales
+                are unaffected.
+              </p>
+            ) : topChannels.length === 0 ? (
+              <p className="text-sm text-ink-600">
+                Tickets and orders come straight from real payments. Clicks and views are
+                close estimates: link previews from Facebook, WhatsApp and the rest are
+                filtered out and repeat taps are counted once an hour, but nothing can make a
+                request count perfectly.
               </p>
             ) : (
               <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
@@ -569,6 +669,8 @@ export default async function LaunchKitPage({ params, searchParams }: Props) {
               </div>
             )}
           </div>
+            </>
+          )}
         </div>
       </Reveal>
 

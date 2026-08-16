@@ -21,10 +21,20 @@
 #        cold-start race is Issue #42, not a per-run flake).
 #
 # Thresholds are UNCHANGED from the prior gate - the locked assertion floors in
-# lighthouserc.json (performance >= 0.80, a11y/BP/SEO = 1.00, CLS <= 0.1, with
+# lighthouserc.json (performance >= 0.80, a11y/BP = 1.00, CLS <= 0.1, with
 # perf warn-waived on / and /culture/* per Issue #42) carry over verbatim. This
 # change only moves the target to a reachable warmed preview; it does not amend
-# any threshold. Auth-gated surfaces (/dashboard/*, /admin/*, order
+# any threshold.
+#
+# SEO, amended 16 August 2026. It is no longer a `categories:seo = 1.00` floor,
+# because moving this gate onto the preview made that floor unreachable: a
+# preview is noindex BY DESIGN (next.config.ts, 15 August 2026) and Lighthouse's
+# is-crawlable audit is 4.04 of the SEO category's 13.04 weighted points, so a
+# correctly-configured preview tops out at 0.69. The floor is now asserted audit
+# by audit at minScore 1 - the same bar, since a category score of 1 is reached
+# exactly when every weighted audit passes - plus scripts/ci/assert-seo-audits.mjs,
+# which asserts indexability against the environment and so FAILS if a preview
+# ever becomes indexable again. That is a check this gate did not previously have. Auth-gated surfaces (/dashboard/*, /admin/*, order
 # confirmation, squad) stay excluded - they need a recorded-session gate
 # (Module M7 / Pre-Task 5).
 
@@ -105,7 +115,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Resolve gate URLs
         run: |
@@ -149,6 +159,14 @@ jobs:
           # runtime code on the failing route. This is a reporter and never
           # fails the build; `lhci assert` below is the gate.
           node scripts/ci/lighthouse-aggregation-report.mjs .lighthouseci
+
+          # The SEO half that a category floor cannot express, and this one DOES
+          # fail the build. It asserts indexability against the ENVIRONMENT (a
+          # preview must be blocked, production must be crawlable), and fails if
+          # Lighthouse's SEO audit set drifts from the reviewed baseline that the
+          # per-audit assertions in lighthouserc.json are written against. See the
+          # header of that script for why SEO stopped being a category floor.
+          node scripts/ci/assert-seo-audits.mjs .lighthouseci
 
           npx --yes @lhci/cli@0.14.x assert --config=./lighthouserc.json
 

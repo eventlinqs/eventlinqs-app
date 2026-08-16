@@ -253,7 +253,7 @@ export function SquadJoinPanel({
         )}
       </div>
 
-      <form onSubmit={handleJoin} noValidate>
+      <form method="post" onSubmit={handleJoin} noValidate>
         <div className="grid grid-cols-2 gap-3 mb-3">
           <div>
             <label htmlFor="join-first" className="block text-sm font-medium text-ink-600 mb-1">

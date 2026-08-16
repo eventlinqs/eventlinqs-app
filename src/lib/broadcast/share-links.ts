@@ -31,6 +31,8 @@ export {
 } from '@/lib/broadcast/share-codes'
 export type { ShareChannel } from '@/lib/broadcast/share-codes'
 
+import { CLICK_DEDUPE_WINDOW_SECONDS } from '@/lib/broadcast/crawler'
+import { buildReadableCode, codeDateToken, isValidReadableCode } from '@/lib/broadcast/short-links'
 import {
   SHARE_CODE_LENGTH as CODE_LENGTH,
   isValidShareCode as isValidCode,
@@ -68,13 +70,27 @@ export function visitorHash(ip: string | null, userAgent: string | null): string
 
 export type ShareLinkRow = {
   id: string
-  event_id: string
+  /**
+   * NULL for an EXTERNAL link. A cold stranger composing a kit has no event row
+   * at all, so there is nothing for this to reference; `destination_url` carries
+   * the target instead. The database enforces exactly one of the two
+   * (share_links_target_exactly_one), so a row can never be ambiguous.
+   */
+  event_id: string | null
+  /** The external ticketing URL to 302 to. NULL for an ordinary internal link. */
+  destination_url: string | null
+  /** The Launch Kit draft these external links belong to. NULL when internal. */
+  draft_code: string | null
   artist_id: string | null
   channel: ShareChannel
   code: string
   created_by: string | null
   created_at: string
 }
+
+/** The columns every read of this table selects. One list, so none drifts. */
+const SHARE_LINK_COLUMNS =
+  'id, event_id, destination_url, draft_code, artist_id, channel, code, created_by, created_at'
 
 export type BroadcastClient = Pick<ReturnType<typeof createAdminClient>, 'from'>
 
@@ -86,11 +102,14 @@ export async function resolveShareLink(
   code: string,
   opts?: { client?: BroadcastClient },
 ): Promise<ShareLinkRow | null> {
-  if (!isValidCode(code)) return null
+  // BOTH formats. A readable code (basement-45-ig) is what is minted now; a
+  // legacy random code is what is printed on posters already hanging in venue
+  // windows, and those must resolve for as long as the paper lasts.
+  if (!isValidCode(code) && !isValidReadableCode(code)) return null
   const client = opts?.client ?? createAdminClient()
   const { data, error } = await client
     .from('share_links')
-    .select('id, event_id, artist_id, channel, code, created_by, created_at')
+    .select(SHARE_LINK_COLUMNS)
     .eq('code', code)
     .maybeSingle()
   if (error || !data) return null
@@ -108,6 +127,20 @@ export async function getOrCreateShareLink(
     channel: ShareChannel
     artistId?: string | null
     createdBy?: string | null
+    /**
+     * The event slug, used to mint a READABLE code (basement-45-ig). Omit it
+     * and the link falls back to a random code, which still works everywhere;
+     * a code is only ever as readable as the information available when it was
+     * minted.
+     */
+    eventSlug?: string | null
+    /**
+     * Start date and timezone. A recurring night collides with itself on the
+     * plain name, and the answer to that collision is the DATE, so a weekly
+     * event reads basement-45-26sep-ig rather than turning opaque.
+     */
+    eventStartDate?: string | null
+    eventTimezone?: string | null
   },
   opts?: { client?: BroadcastClient },
 ): Promise<ShareLinkRow | null> {
@@ -117,13 +150,21 @@ export async function getOrCreateShareLink(
 
   let lookup = client
     .from('share_links')
-    .select('id, event_id, artist_id, channel, code, created_by, created_at')
+    .select(SHARE_LINK_COLUMNS)
     .eq('event_id', input.eventId)
     .eq('channel', input.channel)
   lookup = artistId === null ? lookup.is('artist_id', null) : lookup.eq('artist_id', artistId)
   lookup = createdBy === null ? lookup.is('created_by', null) : lookup.eq('created_by', createdBy)
   const { data: existing } = await lookup.limit(1).maybeSingle()
   if (existing) return existing as ShareLinkRow
+
+  const code = await mintCode(
+    client,
+    input.eventId,
+    input.channel,
+    input.eventSlug ?? null,
+    codeDateToken(input.eventStartDate ?? null, input.eventTimezone ?? null),
+  )
 
   const { data: created, error } = await client
     .from('share_links')
@@ -132,12 +173,192 @@ export async function getOrCreateShareLink(
       channel: input.channel,
       artist_id: artistId,
       created_by: createdBy,
-      code: generateShareCode(),
+      code,
     })
-    .select('id, event_id, artist_id, channel, code, created_by, created_at')
+    .select(SHARE_LINK_COLUMNS)
     .single()
   if (error || !created) return null
   return created as ShareLinkRow
+}
+
+/**
+ * Choose the code for a new link.
+ *
+ * A readable code is preferred, because the address is the only thing a
+ * stranger judges before tapping and "Rk9dW2xa" tells them nothing. A
+ * collision is answered with the event's DATE rather than a number, because
+ * the event that collides with itself is the weekly night, and a dated code
+ * serves that case better than an undated one.
+ *
+ * A CODE IS NEVER REUSED. The unique index on share_links.code is what
+ * guarantees it, and this loop only ever asks for codes the index says are
+ * free. Luma publishes the opposite behaviour in their own help centre, where
+ * a released address can be claimed by a stranger and the old link then points
+ * at someone else's page. See docs/strategy/SHARE-LINK-SCHEME.md.
+ */
+async function mintCode(
+  client: BroadcastClient,
+  eventId: string,
+  channel: ShareChannel,
+  eventSlug: string | null,
+  dateToken: string | null,
+): Promise<string> {
+  if (!eventSlug) return generateShareCode()
+
+  // The ladder: the plain name, then the name with the date, then the dated
+  // name numbered. The dated form is where a recurring night lands, and it
+  // reads BETTER there than the undated one because it says which night.
+  const candidates: string[] = [buildReadableCode(eventSlug, channel)]
+  if (dateToken) {
+    candidates.push(buildReadableCode(eventSlug, channel, { dateToken }))
+    for (let n = 2; n <= 9; n += 1) {
+      candidates.push(buildReadableCode(eventSlug, channel, { dateToken, disambiguator: n }))
+    }
+  } else {
+    for (let n = 2; n <= 9; n += 1) {
+      candidates.push(buildReadableCode(eventSlug, channel, { disambiguator: n }))
+    }
+  }
+
+  for (const candidate of candidates) {
+    if (!isValidReadableCode(candidate)) continue
+    const { data: taken } = await client
+      .from('share_links')
+      .select('id, event_id')
+      .eq('code', candidate)
+      .maybeSingle()
+    if (!taken) return candidate
+    // Held by this same event under another creator: reuse is safe and keeps
+    // one readable address per event per channel.
+    if ((taken as { event_id: string }).event_id === eventId) return candidate
+  }
+  // Effectively unreachable: it needs the same event name, on the same day, in
+  // the same channel, nine times over. A working opaque link still beats no
+  // link, so this is a floor rather than a failure.
+  return generateShareCode()
+}
+
+/**
+ * Mint (or reuse) an EXTERNAL share link for one Launch Kit draft and channel.
+ *
+ * WHY A SEPARATE FUNCTION RATHER THAN A FLAG ON getOrCreateShareLink. The two
+ * cases share no lookup key: the internal one is identified by
+ * (event, channel, artist, creator) and this one by (draft, channel). Folding
+ * them together would mean a function whose every line is an if, and the
+ * database CHECK already treats them as two different shapes of row.
+ *
+ * THE CODE IS MINTED FROM THE EVENT TITLE, exactly as an internal readable code
+ * is, because the address is the only thing a stranger judges before tapping and
+ * this one is going onto a printed poster. It falls back to a random code when
+ * the title yields nothing printable.
+ *
+ * The destination is written as given. Callers MUST pass a URL that has already
+ * been through `validateExternalTicketUrl`; the database CHECK is the backstop,
+ * not the validation.
+ */
+export async function getOrCreateExternalShareLink(
+  input: {
+    draftCode: string
+    channel: ShareChannel
+    destinationUrl: string
+    /** The event title, used to mint a readable code. */
+    titleSlug?: string | null
+  },
+  opts?: { client?: BroadcastClient },
+): Promise<ShareLinkRow | null> {
+  const client = opts?.client ?? createAdminClient()
+
+  const { data: existing } = await client
+    .from('share_links')
+    .select(SHARE_LINK_COLUMNS)
+    .eq('draft_code', input.draftCode)
+    .eq('channel', input.channel)
+    .limit(1)
+    .maybeSingle()
+  if (existing) {
+    // The destination can change when the organiser edits their draft, and the
+    // link must follow it: a poster already carrying this code has to keep
+    // working and has to point at the right place.
+    if ((existing as ShareLinkRow).destination_url !== input.destinationUrl) {
+      const { data: updated } = await client
+        .from('share_links')
+        .update({ destination_url: input.destinationUrl })
+        .eq('id', (existing as ShareLinkRow).id)
+        .select(SHARE_LINK_COLUMNS)
+        .single()
+      if (updated) return updated as ShareLinkRow
+    }
+    return existing as ShareLinkRow
+  }
+
+  const code = await mintExternalCode(client, input.titleSlug ?? null, input.channel)
+
+  const { data: created, error } = await client
+    .from('share_links')
+    .insert({
+      event_id: null,
+      destination_url: input.destinationUrl,
+      draft_code: input.draftCode,
+      channel: input.channel,
+      artist_id: null,
+      created_by: null,
+      code,
+    })
+    .select(SHARE_LINK_COLUMNS)
+    .single()
+  if (error || !created) return null
+  return created as ShareLinkRow
+}
+
+/**
+ * The tracked codes already minted for one external draft, keyed by channel.
+ *
+ * READ, never mint. The links are created once when the kit is composed; every
+ * render path (the poster, the cards, the kit page) looks up what exists rather
+ * than minting its own, so a poster and the card beside it carry the SAME code
+ * for the same channel and their clicks land in one bucket. A renderer that
+ * minted would quietly fragment the only measurement these events produce.
+ *
+ * Returns an empty object when there is nothing, which the artefact builder
+ * treats as "fall back to the kit URL".
+ */
+export async function readExternalCodesForDraft(
+  draftCode: string,
+  opts?: { client?: BroadcastClient },
+): Promise<Record<string, string>> {
+  const client = opts?.client ?? createAdminClient()
+  const { data } = await client
+    .from('share_links')
+    .select('channel, code')
+    .eq('draft_code', draftCode)
+  const out: Record<string, string> = {}
+  for (const row of (data ?? []) as { channel: string; code: string }[]) {
+    out[row.channel] = row.code
+  }
+  return out
+}
+
+/** The readable-code ladder for an external link. Same shape, no event id. */
+async function mintExternalCode(
+  client: BroadcastClient,
+  titleSlug: string | null,
+  channel: ShareChannel,
+): Promise<string> {
+  if (!titleSlug) return generateShareCode()
+  const candidates = [buildReadableCode(titleSlug, channel)]
+  for (let n = 2; n <= 9; n += 1) {
+    candidates.push(buildReadableCode(titleSlug, channel, { disambiguator: n }))
+  }
+  for (const candidate of candidates) {
+    if (!isValidReadableCode(candidate)) continue
+    const { data: taken } = await client
+      .from('share_links')
+      .select('id')
+      .eq('code', candidate)
+      .maybeSingle()
+    if (!taken) return candidate
+  }
+  return generateShareCode()
 }
 
 export type ShareLinkEventKind = 'view' | 'click' | 'conversion'
@@ -188,6 +409,25 @@ export async function recordShareLinkEvent(
       .limit(1)
       .maybeSingle()
     if (dupe) return true
+  }
+
+  // Clicks de-duplicate on a shorter window than views. One person tapping the
+  // same link twice inside an hour, or one phone re-scanning the same poster,
+  // is one interested person. Views were already de-duplicated per day; clicks
+  // were not de-duplicated at all, which is half of why the click number ran
+  // so far ahead of the view number.
+  if (input.kind === 'click' && input.visitorHash) {
+    const since = new Date(Date.now() - CLICK_DEDUPE_WINDOW_SECONDS * 1000)
+    const { data: recent } = await client
+      .from('share_link_events')
+      .select('id')
+      .eq('link_id', input.linkId)
+      .eq('kind', 'click')
+      .eq('visitor_hash', input.visitorHash)
+      .gte('occurred_at', since.toISOString())
+      .limit(1)
+      .maybeSingle()
+    if (recent) return true
   }
 
   const { error } = await client.from('share_link_events').insert({

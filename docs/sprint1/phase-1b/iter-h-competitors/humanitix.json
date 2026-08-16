@@ -621,7 +621,7 @@
             "scriptParseCompile": 67.44800000000001
           },
           {
-            "url": "https://maps.googleapis.com/maps/api/js?callback=__googleMapsCallback&key=AIzaSyAtPJCw9A2r2ZlYlB9oIOW-b9eJb1sQGMM&libraries=places&v=weekly",
+            "url": "https://maps.googleapis.com/maps/api/js?callback=__googleMapsCallback&key=AIza<REDACTED-MAPS-KEY>&libraries=places&v=weekly",
             "total": 399.41200000000003,
             "scripting": 294.48400000000004,
             "scriptParseCompile": 99.45600000000002
@@ -1678,7 +1678,7 @@
             "entity": "humanitix.com"
           },
           {
-            "url": "https://maps.googleapis.com/maps/api/js?callback=__googleMapsCallback&key=AIzaSyAtPJCw9A2r2ZlYlB9oIOW-b9eJb1sQGMM&libraries=places&v=weekly",
+            "url": "https://maps.googleapis.com/maps/api/js?callback=__googleMapsCallback&key=AIza<REDACTED-MAPS-KEY>&libraries=places&v=weekly",
             "sessionTargetType": "page",
             "protocol": "h2",
             "rendererStartTime": 2184.2769999951124,
@@ -6003,7 +6003,7 @@
             "startTime": 2561.266
           },
           {
-            "url": "https://maps.googleapis.com/maps/api/js?callback=__googleMapsCallback&key=AIzaSyAtPJCw9A2r2ZlYlB9oIOW-b9eJb1sQGMM&libraries=places&v=weekly",
+            "url": "https://maps.googleapis.com/maps/api/js?callback=__googleMapsCallback&key=AIza<REDACTED-MAPS-KEY>&libraries=places&v=weekly",
             "duration": 363,
             "startTime": 16817.106000000007
           },
@@ -6066,7 +6066,7 @@
             "https://www.googletagmanager.com/gtag/js?id=AW-16467921417&cx=c&gtm=4e64m2",
             "https://web.humanitix.com/_next/static/chunks/framework-f00fddb9800f9292.js",
             "https://humanitix.com/au",
-            "https://maps.googleapis.com/maps/api/js?callback=__googleMapsCallback&key=AIzaSyAtPJCw9A2r2ZlYlB9oIOW-b9eJb1sQGMM&libraries=places&v=weekly",
+            "https://maps.googleapis.com/maps/api/js?callback=__googleMapsCallback&key=AIza<REDACTED-MAPS-KEY>&libraries=places&v=weekly",
             "https://www.googletagmanager.com/gtm.js?id=GTM-TWHWP7V",
             "https://humanitix.com/cdn-cgi/challenge-platform/scripts/jsd/main.js",
             "https://connect.facebook.net/en_US/fbevents.js",
@@ -6763,7 +6763,7 @@
             "unusedBytes": 167454
           },
           {
-            "name": "https://maps.googleapis.com/maps/api/js?callback=__googleMapsCallback&key=AIzaSyAtPJCw9A2r2ZlYlB9oIOW-b9eJb1sQGMM&libraries=places&v=weekly",
+            "name": "https://maps.googleapis.com/maps/api/js?callback=__googleMapsCallback&key=AIza<REDACTED-MAPS-KEY>&libraries=places&v=weekly",
             "resourceBytes": 666866,
             "encodedBytes": 182789,
             "unusedBytes": 369733
@@ -6932,7 +6932,7 @@
             "totalBytes": 376655
           },
           {
-            "url": "https://maps.googleapis.com/maps/api/js?callback=__googleMapsCallback&key=AIzaSyAtPJCw9A2r2ZlYlB9oIOW-b9eJb1sQGMM&libraries=places&v=weekly",
+            "url": "https://maps.googleapis.com/maps/api/js?callback=__googleMapsCallback&key=AIza<REDACTED-MAPS-KEY>&libraries=places&v=weekly",
             "totalBytes": 182991
           },
           {
@@ -7127,7 +7127,7 @@
             "wastedPercent": 25.880157947288563
           },
           {
-            "url": "https://maps.googleapis.com/maps/api/js?callback=__googleMapsCallback&key=AIzaSyAtPJCw9A2r2ZlYlB9oIOW-b9eJb1sQGMM&libraries=places&v=weekly",
+            "url": "https://maps.googleapis.com/maps/api/js?callback=__googleMapsCallback&key=AIza<REDACTED-MAPS-KEY>&libraries=places&v=weekly",
             "totalBytes": 182789,
             "wastedBytes": 101344,
             "wastedPercent": 55.443372431642935
@@ -7312,7 +7312,7 @@
             "wastedBytes": 256125.39999999997
           },
           {
-            "url": "https://maps.googleapis.com/maps/api/js?callback=__googleMapsCallback&key=AIzaSyAtPJCw9A2r2ZlYlB9oIOW-b9eJb1sQGMM&libraries=places&v=weekly",
+            "url": "https://maps.googleapis.com/maps/api/js?callback=__googleMapsCallback&key=AIza<REDACTED-MAPS-KEY>&libraries=places&v=weekly",
             "cacheLifetimeMs": 1800000,
             "totalBytes": 182991,
             "wastedBytes": 157829.73750000002
@@ -9013,7 +9013,7 @@
               "type": "subitems",
               "items": [
                 {
-                  "url": "https://maps.googleapis.com/maps/api/js?callback=__googleMapsCallback&key=AIzaSyAtPJCw9A2r2ZlYlB9oIOW-b9eJb1sQGMM&libraries=places&v=weekly",
+                  "url": "https://maps.googleapis.com/maps/api/js?callback=__googleMapsCallback&key=AIza<REDACTED-MAPS-KEY>&libraries=places&v=weekly",
                   "mainThreadTime": 81.88099998235703,
                   "transferSize": 182991
                 },

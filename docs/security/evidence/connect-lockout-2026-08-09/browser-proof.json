@@ -1,0 +1,85 @@
+[
+  {
+    "name": "reproduction is genuinely stranded before the browser opens",
+    "ok": true,
+    "detail": "platform: payout_status=restricted, charges=false, payouts=false | Stripe: charges=true, payouts=true"
+  },
+  {
+    "name": "the proof organiser can sign in",
+    "ok": true,
+    "detail": "multi-business-proof@eventlinqs.test"
+  },
+  {
+    "name": "the switcher renders for an owner of two businesses",
+    "ok": true,
+    "detail": "nav[aria-label=\"Switch business\"] on /dashboard/payouts"
+  },
+  {
+    "name": "both businesses are named in the switcher",
+    "ok": true
+  },
+  {
+    "name": "the Refresh Stripe status control is on the stranded screen",
+    "ok": true
+  },
+  {
+    "name": "pressing it reports a correction rather than a Stripe problem",
+    "ok": true,
+    "detail": "\"Your Stripe status was out of date and has been corrected. You can publish paid events.\""
+  },
+  {
+    "name": "the DATABASE moved: restricted -> active, with no SQL and no founder",
+    "ok": true,
+    "detail": "payout_status=active, charges=true, payouts=true"
+  },
+  {
+    "name": "recovering business A changed NOTHING on business B's row",
+    "ok": true,
+    "detail": "B payout_status restricted -> restricted"
+  },
+  {
+    "name": "switching puts the chosen business in the URL, so a tab is pinned to it",
+    "ok": true,
+    "detail": "http://localhost:3111/dashboard/payouts?org=12780d5e-ac47-47e4-afc9-8cbdcd405d70"
+  },
+  {
+    "name": "the switch is remembered, so the rest of the dashboard follows",
+    "ok": true,
+    "detail": "el_active_org=12780d5e-ac47-47e4-afc9-8cbdcd405d70 httpOnly=true"
+  },
+  {
+    "name": "a DIFFERENT dashboard page follows the switch instead of showing business A",
+    "ok": true,
+    "detail": "events list resolved an organisation rather than claiming there is none"
+  },
+  {
+    "name": "payouts with NO ?org= follows the remembered business, not the first",
+    "ok": true,
+    "detail": "page names Northside Comedy Room"
+  },
+  {
+    "name": "the page now names business B and not business A",
+    "ok": true,
+    "detail": "contains \"Northside Comedy Room\""
+  },
+  {
+    "name": "the Stripe dashboard link names business B, not the first business",
+    "ok": true,
+    "detail": "http://localhost:3111/api/payouts/stripe-dashboard-link?org=12780d5e-ac47-47e4-afc9-8cbdcd405d70"
+  },
+  {
+    "name": "the control meets the 44px touch target at 390",
+    "ok": true,
+    "detail": "316x44"
+  },
+  {
+    "name": "no horizontal overflow at 390",
+    "ok": true,
+    "detail": "scrollWidth - clientWidth = 0"
+  },
+  {
+    "name": "the same recovery works on a phone, with no SQL and no founder",
+    "ok": true,
+    "detail": "\"Your Stripe status was out of date and has been corrected. You can publish paid events.\" | payout_status=active"
+  }
+]

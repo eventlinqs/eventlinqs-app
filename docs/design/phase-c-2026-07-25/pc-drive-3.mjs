@@ -6,11 +6,28 @@
 import { chromium } from 'playwright'
 import fs from 'node:fs'
 
+// CREDENTIALS COME FROM THE ENVIRONMENT, NEVER FROM THIS FILE.
+// GitGuardian flagged a plaintext account password committed to this
+// repository on 2026-08-08. It was hardcoded in 11 committed automation
+// scripts and reproduced into 3 security documents. A drive script is not a
+// safe place for a credential: it is committed, it is pushed, and it is
+// indexed. Fail closed rather than fall back to a literal.
+function requireEnv(name) {
+  const v = process.env[name]
+  if (!v) {
+    console.error(`[drive] ${name} is not set. Export it for this shell; it is deliberately not in the repo.`)
+    process.exit(2)
+  }
+  return v
+}
+
+
+
 const BASE =
   'https://eventlinqs-app-git-feat-walkthr-37f703-lawals-projects-c20c0be8.vercel.app'
 const OUT = 'docs/design/phase-c-2026-07-25'
-const EMAIL = 'broadcast.gate.organiser@eventlinqs.com'
-const PASSWORD = 'ArtistGate2026!Drive'
+const EMAIL = requireEnv('EL_DRIVE_EMAIL')
+const PASSWORD = requireEnv('EL_DRIVE_PASSWORD')
 const COVER = 'public/images/hero/comedy.jpg'
 const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a)
 const results = {}

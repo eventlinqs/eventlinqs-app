@@ -15,21 +15,23 @@
  * Vercel preview. Here the Stripe success is simulated by setting
  * refunds.stripe_refund_id, exactly as the refund service does after Stripe.
  *
- * Run: node scripts/verify/refund-e2e.mjs
+ * Connects as the database OWNER, so the target is checked before the client is
+ * built. The target comes from SUPABASE_DB_URL and there is no default: with
+ * nothing set this connects to nothing rather than to production.
+ *
+ * Run: node --env-file=.env.test scripts/verify/refund-e2e.mjs
  */
-import { config } from 'dotenv'
-config({ path: '.env.local' })
+import { assertNotProductionDatabase } from '../lib/production-write-preflight.mjs'
 import pg from 'pg'
 import { randomUUID } from 'node:crypto'
 
-const client = new pg.Client({
-  host: 'db.gndnldyfudbytbboxesk.supabase.co',
-  port: 5432,
-  user: 'postgres',
-  password: process.env.SUPABASE_DB_PASSWORD_SYDNEY,
-  database: 'postgres',
-  ssl: { rejectUnauthorized: false },
-})
+const target = assertNotProductionDatabase()
+// clientConfig carries DISCRETE fields (user/password/host/port/database), never
+// a `connectionString`. The database password is not percent-encoded, so the
+// string form makes pg throw ERR_INVALID_URL while printing the input as
+// `*****REDACTED*****`, which reads like an unset placeholder rather than a
+// parse failure. The hand parser lives once, in production-write-preflight.mjs.
+const client = new pg.Client(target.clientConfig)
 
 const fails = []
 function assert(cond, msg, detail) {

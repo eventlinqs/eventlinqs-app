@@ -21,6 +21,31 @@ export default defineConfig({
     alias: { '@': srcAlias, 'server-only': emptyStub, 'client-only': emptyStub },
   },
   test: {
+    /**
+     * 30 SECONDS, NOT VITEST'S 5, AND THE REASON IS A DEFECT CLASS RATHER THAN A
+     * SLOW MACHINE.
+     *
+     * Several tests here are deterministic and CPU-heavy by design: scrypt key
+     * derivation in tests/unit/admin/totp.test.ts (a KDF is SUPPOSED to be slow),
+     * 120 exhaustive font-layout cases in tests/unit/social-cards.test.ts, and
+     * the subprocess gates. Alone each finishes in about 2 to 3 seconds. Under
+     * full parallel load the same work crosses 5s and vitest kills it.
+     *
+     * WHAT THAT COSTS, and why it is worth a config line. Two consecutive full
+     * runs on 15 August 2026 failed on two DIFFERENT tests, both with
+     * "Test timed out in 5000ms", and both passed in isolation. In the output a
+     * timeout is indistinguishable from a real regression, so the next person
+     * goes hunting for a bug in the fitter or the KDF that was never there. It
+     * also makes the suite non-deterministic, which quietly undermines every
+     * green run: "it passed" stops meaning anything if the same tree can go
+     * either way.
+     *
+     * This does NOT weaken anything. A test that genuinely hangs still fails; it
+     * fails at 30s instead of 5s, against a suite that already takes about 50s.
+     * What it removes is a whole category of red that was never about the code.
+     */
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
     projects: [
       {
         extends: true,

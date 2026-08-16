@@ -68,12 +68,20 @@ export function CheckoutSummary({ fees, eventTitle, eventDate, venue }: Checkout
           </div>
         )}
 
-        {bd.processing_fee > 0 && (
-          <div className="flex justify-between text-sm text-ink-600">
-            <span>Payment processing fee</span>
-            <span className="tabular-nums">{formatCents(bd.processing_fee, currency)}</span>
-          </div>
-        )}
+        {/*
+          ONE-FEE-ALLOW-BEGIN: explains the removed row, which requires naming it.
+          NO PROCESSING-FEE ROW. ONE FEE since 15 August 2026, and card
+          processing is inside the service fee above.
+
+          This surface prices a NEW reservation (its only caller is
+          checkout-form.tsx), so the line is computed fresh by the calculator and
+          `processing_fee` is 0 on every order it will ever render. The row that
+          used to sit here was therefore unreachable, and an unreachable row that
+          prints "Payment processing fee" is exactly the copy this platform must
+          not carry. Historical orders keep their own stored value and are
+          rendered by the order views, not by this component.
+          ONE-FEE-ALLOW-END
+        */}
 
         {bd.tax > 0 && (
           <div className="flex justify-between text-sm text-ink-600">
@@ -89,7 +97,7 @@ export function CheckoutSummary({ fees, eventTitle, eventDate, venue }: Checkout
       </div>
 
       {fees.fee_pass_type === 'absorb' && (
-        <p className="mt-2 text-xs text-ink-400">All fees included in ticket price</p>
+        <p className="mt-2 text-xs text-ink-400">Fee included in ticket price</p>
       )}
 
       {/* Trust signal */}

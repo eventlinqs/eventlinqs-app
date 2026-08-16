@@ -235,7 +235,7 @@ export function QueueRoom({
   }, [phase, queueId, eventId, handleAdmission])
 
   const handleLeave = async () => {
-    if (queueId) await leaveQueue({ queueId })
+    if (queueId) await leaveQueue({ queueId, sessionId: getOrCreateSessionId() })
     clearQueueId(eventId)
     router.push(`/events/${eventSlug}`)
   }

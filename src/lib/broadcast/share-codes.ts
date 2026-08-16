@@ -17,6 +17,11 @@ export const SHARE_CHANNELS = [
   'copy',
   'native',
   'qr',
+  // The weekly city digest EventLinqs sends on the organiser's behalf. Kept
+  // distinct from 'email' (the organiser mailing their own list) because the
+  // whole point of the panel is telling the organiser which channel filled
+  // the room, and "the city list we sent it to" is not "the list you own".
+  'digest',
   'other',
 ] as const
 
@@ -43,5 +48,5 @@ export function isValidShareCode(code: unknown): code is string {
 
 /** The absolute short URL for a code. */
 export function buildShortUrl(origin: string, code: string): string {
-  return `${origin.replace(/\/$/, '')}/s/${code}`
+  return `${origin.replace(/\/$/, '')}/e/${code}`
 }

@@ -7,9 +7,16 @@
  * NATIVE submit, which with no action is a GET to the current URL carrying
  * every field in the query string.
  *
- * Observed on the deployed preview from a real submit on /login:
+ * Observed on the deployed preview from a real submit on /login. The address bar
+ * came back carrying the form, shaped like this, with the real account and the
+ * real password where the placeholders are:
  *
- *   /login?email=broadcast.gate.organiser%40eventlinqs.com&password=ArtistGate2026%21Drive
+ *   /login?email=<the account address>&password=<the account password>
+ *
+ * The value itself is NOT reproduced here. It sat in this comment in clear text
+ * until 12 August 2026, which is the same disclosure the test exists to prevent,
+ * written into the test that prevents it. The account is a TEST-project drive
+ * login and is on the go-live rotation list at docs/roast/ROTATE-AT-GOLIVE.md.
  *
  * The password lands in browser history, in any URL logging, and in the
  * Referer header of the next request. The person also sees the form cleared
@@ -20,8 +27,9 @@
  * test hydrates immediately and can never observe the window.
  */
 import { describe, it, expect } from 'vitest'
-import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import path from 'node:path'
+import { safeWalk } from '../../helpers/safe-walk'
 
 const ROOT = path.resolve(__dirname, '../../..')
 // Not just src/components/auth. The build guard found two more credential
@@ -30,16 +38,28 @@ const ROOT = path.resolve(__dirname, '../../..')
 const SRC_DIR = path.join(ROOT, 'src')
 
 function formFiles(): string[] {
-  const walk = (dir: string, out: string[] = []): string[] => {
-    for (const e of readdirSync(dir)) {
-      const full = path.join(dir, e)
-      if (statSync(full).isDirectory()) walk(full, out)
-      else if (e.endsWith('.tsx')) out.push(full)
+  // safeWalk guards readdirSync AND statSync, which the local walk did not: the
+  // same vanish race that the read below already handles throws from the
+  // directory listing and the stat too, and this runs at DESCRIBE scope where an
+  // ENOENT fails COLLECTION and reads as "no tests" rather than as a failure.
+  return safeWalk(SRC_DIR, (e) => e.endsWith('.tsx')).filter((f) => {
+    // A file listed by the walk can be gone by the time it is read. Vitest runs
+    // test FILES in parallel workers, and tests/unit/ci/copy-gate-can-see.test.ts
+    // plants and then deletes src/__copy_gate_scratch__/scratch.tsx to prove the
+    // copy gate can see a new file. When the two overlap, this walk lists the
+    // scratch file and the read then throws ENOENT, failing this suite for a
+    // reason that has nothing to do with auth forms.
+    //
+    // Skipping a vanished file is correct independently of that race: a file
+    // that no longer exists cannot contain an ungated form. Any OTHER read error
+    // still throws, so this does not turn a real problem into a silent pass.
+    let src: string
+    try {
+      src = readFileSync(f, 'utf8')
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return false
+      throw err
     }
-    return out
-  }
-  return walk(SRC_DIR).filter((f) => {
-    const src = readFileSync(f, 'utf8')
     return /<form[^>]*onSubmit=/.test(src) && /type=["']password["']/.test(src) && !/<form[^>]*\saction=/.test(src)
   })
 }

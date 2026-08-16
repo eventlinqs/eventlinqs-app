@@ -10,7 +10,10 @@
  * Run: node --conditions=react-server --env-file=.env.test --import tsx scripts/verify-event-media-standard.ts
  */
 import { createClient } from '@supabase/supabase-js'
-import sharp from 'sharp'
+// Named type import: sharp 0.35 replaced the `export = sharp` namespace with
+// real ESM types, so `sharp.WriteableMetadata` no longer resolves. See the note
+// in src/lib/media/image-pipeline.ts.
+import sharp, { type WriteableMetadata } from 'sharp'
 import { processEventImage } from '@/lib/media/image-pipeline'
 import { parseVideoEmbed } from '@/lib/media/video-embed'
 import { serializeGallery } from '@/lib/media/event-media-model'
@@ -39,7 +42,7 @@ const check = (name: string, cond: boolean, detail: string) =>
 
 async function jpegWithExif(w: number, h: number) {
   return sharp({ create: { width: w, height: h, channels: 3, background: { r: 30, g: 60, b: 110 } } })
-    .withMetadata({ exif: { IFD0: { Copyright: 'EventLinqs Verify', Software: 'verify-script' }, GPS: { GPSLatitudeRef: 'S' } } as sharp.WriteableMetadata['exif'] })
+    .withMetadata({ exif: { IFD0: { Copyright: 'EventLinqs Verify', Software: 'verify-script' }, GPS: { GPSLatitudeRef: 'S' } } as WriteableMetadata['exif'] })
     .jpeg()
     .toBuffer()
 }

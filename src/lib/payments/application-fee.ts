@@ -54,6 +54,8 @@ export type ChargePreconditionFailure =
   | 'org_payouts_restricted'
   | 'org_country_unsupported'
   | 'fee_breakdown_invalid'
+  /** The event sells its tickets on another platform. We never take money for it. */
+  | 'event_externally_ticketed'
 
 export class ChargePreconditionError extends Error {
   readonly reason: ChargePreconditionFailure
@@ -75,14 +77,23 @@ export function getCurrencyForCountry(country: string | null | undefined): strin
  * rule.
  *
  *   mode 1 (stripe_fee_inclusive, default): app_fee = platform_fee + processing_fee
- *     The buyer-paid processing fee covers Stripe's actual cost from the
- *     platform balance. Platform stays cash-flow positive on every charge.
+ *   mode 2 (stripe_fee_exclusive):          app_fee = platform_fee
  *
- *   mode 2 (stripe_fee_exclusive): app_fee = platform_fee
- *     Only the platform commission is pulled to the platform balance.
- *     The buyer-paid processing fee bonuses to the organiser; Stripe's
- *     actual cost still comes from the platform balance, so the platform
- *     subsidises processing out of its commission. Use sparingly.
+ * ONE FEE (founder ruling 15 August 2026): THE TWO MODES NOW PRODUCE THE SAME
+ * NUMBER, and that is worth stating rather than leaving to be rediscovered.
+ * `processing_fee` is 0 on every order priced after that date, so mode 1's
+ * `platform_fee + 0` and mode 2's `platform_fee` are identical. The mode is kept
+ * and still resolved because it is meaningful for HISTORICAL orders, whose
+ * stored `processing_fee_cents` is non-zero and whose payout must compose the
+ * way it did when the money moved.
+ *
+ * ONE-FEE-ALLOW-BEGIN: records what the modes meant historically, which the
+ * payout path still needs for orders placed before the deletion.
+ * What the modes meant while there were two fees: mode 1 pulled the buyer-paid
+ * processing fee to the platform balance to cover Stripe's actual cost, keeping
+ * the platform cash-flow positive per charge; mode 2 left it with the organiser
+ * and had the platform subsidise processing out of its commission.
+ * ONE-FEE-ALLOW-END
  *
  * Mode is resolved by `(country_code, currency, organisationId)` precedence
  * via the pricing-rules service.
@@ -165,8 +176,33 @@ export function assertCanCreateDestinationCharge(
     | 'stripe_account_country'
     | 'payout_status'
   >,
-  fees: FeeBreakdown
+  fees: FeeBreakdown,
+  /**
+   * The event being charged for, when the caller has it. Optional so every
+   * existing internal call site compiles and behaves identically.
+   */
+  event?: { external_ticket_url?: string | null } | null
 ): void {
+  /*
+   * EXTERNAL TICKETING: refuse before anything else. Founder ruling 15 August
+   * 2026, non-negotiable 3.
+   *
+   * This is the SECOND of the two independent refusals, and it exists precisely
+   * because the first one can be bypassed. `ticketsOnSale` governs what the page
+   * RENDERS; this governs whether money can MOVE. A caller that reached here
+   * with an externally ticketed event has already gone wrong, and the right
+   * answer is to throw rather than to charge a buyer for a ticket this platform
+   * does not sell and cannot deliver.
+   *
+   * It is checked first so no combination of organiser state can reach a charge
+   * for an event whose tickets are somebody else's to sell.
+   */
+  if (event && typeof event.external_ticket_url === 'string' && event.external_ticket_url.trim().length > 0) {
+    throw new ChargePreconditionError(
+      'event_externally_ticketed',
+      'Event is externally ticketed: EventLinqs sells no tickets for it and must never take a payment for it.'
+    )
+  }
   if (!org.stripe_account_id) {
     throw new ChargePreconditionError(
       'org_not_connected',

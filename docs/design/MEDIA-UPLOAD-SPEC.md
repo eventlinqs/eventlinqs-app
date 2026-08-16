@@ -1,5 +1,39 @@
 # EventLinqs - Media Upload Spec
 
+> **STALE ON VIDEO, AND SUPERSEDED BY THE CODE. Read this first.**
+>
+> Reported under Law 0 on 8 August 2026 rather than silently followed.
+>
+> Section 2 below proposes **self-hosted video**: 50 MB organiser uploads, 100 MB
+> for verified organisers, delivered through Mux or Cloudflare Stream. **That is
+> not what was built and it is not the doctrine.** The executable authority is
+> `src/lib/media/limits.ts`:
+>
+> ```ts
+> /** Allowlisted video embed providers. EventLinqs never self-hosts the file. */
+> export const VIDEO_PROVIDERS = ['youtube', 'vimeo', 'instagram', 'tiktok']
+> ```
+>
+> What actually ships, walked in a browser on 8 August 2026 and evidenced in
+> `docs/roast/walk-2026-08-08/b2-e2-evidence.json`: one video per event, pasted
+> as a provider link, parsed **server side** to a canonical embed URL on a
+> provider-controlled host, and rendered as a click-to-play facade so no provider
+> iframe or provider JavaScript loads before the visitor asks for it. Raw iframes
+> and pasted HTML are refused outright, because accepting them is a stored-XSS
+> vector. `https://www.youtube.com/watch?v=...` becomes
+> `https://www.youtube-nocookie.com/embed/...`, and nothing else is stored.
+>
+> The video table in section 2 was always marked "future, for Session 4.5 / M10
+> scope" and the same section closes with "defer video to after Session 4". The
+> decision that was actually taken went the other way: embed, never host. Treat
+> the video row as a rejected option, kept for the record.
+>
+> The IMAGE half of this document is broadly current, with one correction: the
+> enforced minimum is `MIN_COVER_WIDTH = 1000` on the cover only, not
+> 1200 x 600 on everything, and gallery images have no minimum. `limits.ts` wins
+> on every number.
+
+
 **Requirement solved:** set recommended image and video upload limits, benchmarked against competitors, with client-side compression and CDN delivery.
 **Research source:** competitor audit completed in prior session (Eventbrite 10MB / Ticketmaster ~5MB / DICE ~8MB / Humanitix 5MB).
 

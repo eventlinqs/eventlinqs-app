@@ -28,6 +28,7 @@ const BASE = (process.argv[2] || process.env.BASE ||
 const SEED_PATHS = [
   '/',                              // homepage (full fixture density: 55 event cards)
   '/events',                        // browse
+  '/launch',                        // the public composer (added 9 Aug 2026)
   '/organisers',                    // marketing reference build
   '/pricing',
   '/about',

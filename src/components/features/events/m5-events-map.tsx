@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { MapPinOff } from 'lucide-react'
 import { loadEventsInBbox } from '@/app/events/actions'
-import { getGoogleMapsLoader } from '@/lib/maps/google-maps-loader'
-import { EVENTLINQS_MAP_STYLE } from '@/lib/maps/google-maps-style'
+import { getGoogleMapsLoader, GOOGLE_MAPS_MAP_ID } from '@/lib/maps/google-maps-loader'
+import { createBrandPin, createClusterBubble } from '@/lib/maps/brand-pin'
 import type { EventsSearchParams } from '@/lib/events/search-params'
 import type { MapEventPoint } from './m5-events-map-types'
 
@@ -16,7 +16,6 @@ type Props = {
 const DEFAULT_ZOOM = 5
 const REFETCH_DEBOUNCE_MS = 400
 // Literal hexes: JS map configs cannot read CSS vars.
-const BRAND_GOLD = '#D4A017'      // --color-gold-500 (marker + cluster fills)
 const BRAND_GOLD_TEXT = '#8B6A0E' // --color-gold-700 (gold text, AA on white)
 
 function formatDate(iso: string) {
@@ -78,14 +77,14 @@ function MapUnavailable({ reason }: { reason: string }) {
 
 type ClustererHandle = {
   clearMarkers: () => void
-  addMarkers: (markers: google.maps.Marker[]) => void
+  addMarkers: (markers: google.maps.marker.AdvancedMarkerElement[]) => void
 }
 
 export function EventsMap({ params, initialCenter }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<google.maps.Map | null>(null)
   const clustererRef = useRef<ClustererHandle | null>(null)
-  const markersRef = useRef<google.maps.Marker[]>([])
+  const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([])
   const infoWindowRef = useRef<google.maps.InfoWindow | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const idleListenerRef = useRef<google.maps.MapsEventListener | null>(null)
@@ -113,21 +112,14 @@ export function EventsMap({ params, initialCenter }: Props) {
     })
 
     clusterer.clearMarkers()
-    markersRef.current.forEach(m => m.setMap(null))
+    markersRef.current.forEach(m => { m.map = null })
     markersRef.current = []
 
     const infoWindow = infoWindowRef.current
     const newMarkers = points.map(p => {
-      const marker = new google.maps.Marker({
+      const marker = new google.maps.marker.AdvancedMarkerElement({
         position: { lat: p.lat, lng: p.lng },
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 8,
-          fillColor: BRAND_GOLD,
-          fillOpacity: 1,
-          strokeColor: '#ffffff',
-          strokeWeight: 2,
-        },
+        content: createBrandPin({ title: p.title, size: 16 }),
         title: p.title,
       })
       marker.addListener('click', () => {
@@ -154,8 +146,11 @@ export function EventsMap({ params, initialCenter }: Props) {
 
     ;(async () => {
       try {
-        const [{ Map, InfoWindow }, { MarkerClusterer }] = await Promise.all([
+        const [{ Map, InfoWindow }, , { MarkerClusterer }] = await Promise.all([
           loader.importLibrary('maps') as Promise<google.maps.MapsLibrary>,
+          // The marker library must be loaded before any AdvancedMarkerElement
+          // is constructed, including inside the clusterer's renderer.
+          loader.importLibrary('marker') as Promise<google.maps.MarkerLibrary>,
           import('@googlemaps/markerclusterer'),
         ])
 
@@ -164,7 +159,7 @@ export function EventsMap({ params, initialCenter }: Props) {
         const map = new Map(containerRef.current, {
           center: initialCenter,
           zoom: DEFAULT_ZOOM,
-          styles: EVENTLINQS_MAP_STYLE,
+          mapId: GOOGLE_MAPS_MAP_ID,
           disableDefaultUI: false,
           clickableIcons: false,
           fullscreenControl: false,
@@ -182,27 +177,12 @@ export function EventsMap({ params, initialCenter }: Props) {
           map,
           markers: [],
           renderer: {
-            render: ({ count, position }) => {
-              const scale = count < 10 ? 18 : count < 50 ? 22 : 28
-              return new google.maps.Marker({
+            render: ({ count, position }) =>
+              new google.maps.marker.AdvancedMarkerElement({
                 position,
-                icon: {
-                  path: google.maps.SymbolPath.CIRCLE,
-                  scale,
-                  fillColor: BRAND_GOLD,
-                  fillOpacity: 0.95,
-                  strokeColor: '#ffffff',
-                  strokeWeight: 2,
-                },
-                label: {
-                  text: String(count),
-                  color: '#0F172A',
-                  fontSize: '13px',
-                  fontWeight: '700',
-                },
+                content: createClusterBubble(count),
                 zIndex: 1000 + count,
-              })
-            },
+              }),
           },
         })
         clustererRef.current = clusterer
@@ -234,7 +214,7 @@ export function EventsMap({ params, initialCenter }: Props) {
       infoWindowRef.current = null
       clustererRef.current?.clearMarkers()
       clustererRef.current = null
-      markersRef.current.forEach(m => m.setMap(null))
+      markersRef.current.forEach(m => { m.map = null })
       markersRef.current = []
       mapRef.current = null
     }

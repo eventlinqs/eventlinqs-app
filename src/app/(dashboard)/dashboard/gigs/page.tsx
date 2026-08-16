@@ -28,11 +28,17 @@ export default async function OrganiserGigsPage() {
   } = await supabase.auth.getUser()
   if (!user) redirect('/login?redirect=/dashboard/gigs')
 
+  // ORDERED. This was `.limit(1).maybeSingle()` with no `.order()`, which does not
+  // error but is not stable either: PostgREST gives no ordering guarantee without an
+  // ORDER BY, so which business's gigs an owner of several was shown could change
+  // between page loads. Oldest-first matches the resolver every other dashboard
+  // surface now uses, so the same business is shown here as there.
   const admin = createAdminClient()
   const { data: org } = await admin
     .from('organisations')
     .select('id, name, status')
     .eq('owner_id', user.id)
+    .order('created_at', { ascending: true })
     .limit(1)
     .maybeSingle()
 

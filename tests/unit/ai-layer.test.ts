@@ -7,8 +7,11 @@ const redisMock = {
   incrby: vi.fn(),
   expire: vi.fn(),
 }
+// Hoisted so the fail-closed tests can make the client itself unavailable,
+// which is the "no Redis configured" case the guard must refuse on.
+const getRedisClientMock = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/redis/client', () => ({
-  getRedisClient: vi.fn(() => redisMock),
+  getRedisClient: getRedisClientMock,
 }))
 
 const messagesCreate = vi.fn()
@@ -46,6 +49,7 @@ function modelReply(json: unknown, overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  getRedisClientMock.mockReturnValue(redisMock)
   redisMock.get.mockResolvedValue(0)
   redisMock.incrby.mockResolvedValue(1)
   redisMock.expire.mockResolvedValue(1)
@@ -158,15 +162,42 @@ describe('monthly budget', () => {
   it('blocks when month-to-date spend reaches the budget', async () => {
     process.env.AI_MONTHLY_BUDGET_USD = '10'
     redisMock.get.mockResolvedValue(10_000_000)
-    const status = await checkMonthlyBudget()
-    expect(status.ok).toBe(false)
+    expect((await checkMonthlyBudget('open')).ok).toBe(false)
+    expect((await checkMonthlyBudget('closed')).ok).toBe(false)
   })
 
-  it('allows when under budget and fails open on redis errors', async () => {
+  it('allows either mode when the meter is readable and under budget', async () => {
     redisMock.get.mockResolvedValue(1_000)
-    expect((await checkMonthlyBudget()).ok).toBe(true)
+    expect((await checkMonthlyBudget('open')).ok).toBe(true)
+    expect((await checkMonthlyBudget('closed')).ok).toBe(true)
+  })
+
+  // F3: the fail mode is the whole point of the guard on an anonymous path.
+  it('fails OPEN on a redis error for the chat callers', async () => {
     redisMock.get.mockRejectedValue(new Error('boom'))
-    expect((await checkMonthlyBudget()).ok).toBe(true)
+    const status = await checkMonthlyBudget('open')
+    expect(status.ok).toBe(true)
+    expect(status.unmetered).toBe(true)
+  })
+
+  it('fails CLOSED on a redis error for draft generation', async () => {
+    redisMock.get.mockRejectedValue(new Error('boom'))
+    const status = await checkMonthlyBudget('closed')
+    expect(status.ok).toBe(false)
+    expect(status.unmetered).toBe(true)
+  })
+
+  it('fails CLOSED when redis is not configured at all', async () => {
+    redisMock.get.mockResolvedValue(1_000)
+    getRedisClientMock.mockReturnValueOnce(null)
+    const status = await checkMonthlyBudget('closed')
+    expect(status.ok).toBe(false)
+    expect(status.unmetered).toBe(true)
+  })
+
+  it('still allows the chat callers when redis is not configured', async () => {
+    getRedisClientMock.mockReturnValueOnce(null)
+    expect((await checkMonthlyBudget('open')).ok).toBe(true)
   })
 
   it('records spend with incrby and sets expiry on first write', async () => {
@@ -214,6 +245,64 @@ describe('assistant registry', () => {
     expect(system).toContain('9.9% + AUD 9.99')
   })
 
+  /*
+   * ONE FEE, EVERY ASSISTANT (founder ruling 15 August 2026).
+   *
+   * Until that date only `support` was given a fee, so the three assistants most
+   * likely to be asked about money answered from nothing. These four tests are
+   * the structural lock: the fee must arrive live, it must be the ONLY figure,
+   * and an assistant with no live fee must refuse to quote rather than fall back
+   * to a number written down somewhere.
+   */
+  it('EVERY assistant embeds the live fee label, not just support', () => {
+    for (const [id, def] of Object.entries(ASSISTANTS)) {
+      const system = def.buildSystem({ feeLabel: '9.9% + AUD 9.99', categoryNames: ['Music'] })
+      expect(system, `${id} does not carry the live fee label`).toContain('9.9% + AUD 9.99')
+      expect(system, `${id} does not state there is one fee`).toMatch(/exactly ONE fee/i)
+    }
+  })
+
+  it('EVERY assistant refuses to quote a figure when the live fee is unavailable', () => {
+    for (const [id, def] of Object.entries(ASSISTANTS)) {
+      const system = def.buildSystem({ categoryNames: ['Music'] })
+      expect(system, `${id} must say it cannot confirm the rate`).toMatch(
+        /do NOT have the current fee/i,
+      )
+      expect(system, `${id} must point at the pricing page`).toContain('/pricing')
+      // The decisive assertion: with no live value, no fee-shaped figure may
+      // appear anywhere in the prompt for the model to reach for.
+      expect(system, `${id} leaked a fee percentage with no live value`).not.toMatch(
+        /\d+(\.\d+)?\s*%/,
+      )
+    }
+  })
+
+  it('no assistant prompt ASSERTS a second fee or carries the deleted figures', () => {
+    /*
+     * The distinction this test had to learn, recorded so it is not "simplified"
+     * back out: the prompt legitimately contains the words "processing fee" and
+     * "two fees", because it INSTRUCTS the assistant to correct a user who
+     * raises either. Banning the words would ban the correction. What must never
+     * appear is an ASSERTION that the platform charges two, so the patterns below
+     * match the assertive forms only.
+     */
+    const ASSERTS_TWO_FEES = [
+      /\btwo fees apply\b/i,
+      /\bthere are two fees\b/i,
+      /\bcharges two fees\b/i,
+      /\bboth fees are\b/i,
+      /\bplus a (payment )?processing fee\b/i,
+      /\bplus processing\b/i,
+    ]
+    for (const [id, def] of Object.entries(ASSISTANTS)) {
+      const system = def.buildSystem({ feeLabel: '3.5% + AUD 0.99', categoryNames: ['Music'] })
+      for (const re of ASSERTS_TWO_FEES) {
+        expect(system, `${id} asserts a second fee via ${re}`).not.toMatch(re)
+      }
+      expect(system, `${id} carries a deleted figure`).not.toMatch(/2\.19|22\.19|20\.50|\b2\.5\s*%/)
+    }
+  })
+
   it('event helper embeds the canonical category list', () => {
     const system = ASSISTANTS['event-helper'].buildSystem({
       categoryNames: ['Music', 'Comedy'],
@@ -230,6 +319,22 @@ describe('knowledge base', () => {
     expect(kb).toContain('3.5% + AUD 0.99')
     expect(kb).not.toMatch(/[—–]/)
     expect(kb.toLowerCase()).not.toMatch(/cultur/)
+  })
+
+  it('states one fee and denies a processing fee', () => {
+    const kb = buildSupportKnowledgeBase('3.5% + AUD 0.99')
+    expect(kb).toMatch(/ONE fee on paid tickets/)
+    expect(kb).toMatch(/NO separate payment processing fee/)
+  })
+
+  it('quotes NO figure at all when the live fee is unavailable', () => {
+    // The drift that made this necessary: this file used to end its fee section
+    // with "plus a payment processing fee shown at checkout", written down here
+    // rather than resolved, so it went on describing a fee that had been deleted.
+    const kb = buildSupportKnowledgeBase(undefined)
+    expect(kb).toMatch(/NOT AVAILABLE in this conversation/)
+    expect(kb).toContain('/pricing')
+    expect(kb).not.toMatch(/\d+(\.\d+)?\s*%/)
   })
 })
 

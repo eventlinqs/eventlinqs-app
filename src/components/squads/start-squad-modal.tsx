@@ -173,7 +173,7 @@ export function StartSquadModal({
 
         <div className="flex-1 overflow-y-auto px-5 py-6">
           {step === 'form' ? (
-            <form onSubmit={handleSubmit} noValidate>
+            <form method="post" onSubmit={handleSubmit} noValidate>
               {/* Squad summary */}
               <div className="rounded-xl bg-gold-100/40 border border-gold-100 p-4 mb-6">
                 <p className="text-sm font-semibold text-ink-900">{tierName}</p>

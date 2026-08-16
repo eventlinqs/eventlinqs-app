@@ -2,19 +2,29 @@
  * Generate the API-surface manifest the node-version-contract guard checks against.
  *
  * WHY A MANIFEST AND NOT A DENYLIST. The first version of the contract guard
- * carried a hand-written list of "APIs newer than Node 20". A denylist only ever
- * knows what somebody remembered to add, so it would have caught `globSync`
+ * carried a hand-written list of "APIs newer than the contract". A denylist only
+ * ever knows what somebody remembered to add, so it would have caught `globSync`
  * (because that is the one that burned us) and sailed straight past the next
- * one. Inverting it fixes that: record what Node 20 ACTUALLY HAS, then treat
- * anything absent from that record as a violation. An API added in Node 25 that
- * nobody has heard of is caught on the day it is used, with no list to maintain.
+ * one. Inverting it fixes that: record what the contract version ACTUALLY HAS,
+ * then treat anything absent from that record as a violation. An API added in
+ * Node 26 that nobody has heard of is caught on the day it is used, with no list
+ * to maintain.
+ *
+ * IT CATCHES REMOVALS TOO, which a denylist structurally cannot. Moving the
+ * contract from 20 to 24 on 13 August 2026 added four modules (node:sea,
+ * node:sqlite, node:test, node:test/reporters) and took away real exports:
+ * fs.F_OK and its siblings, the util.is* family, crypto.Cipher and
+ * crypto.Decipher, timers.active/enroll/unenroll, tls.createSecurePair,
+ * process.assert and repl.builtinModules. A script using any of those was
+ * correct on 20 and broken on 24, and re-recording the surface is what makes the
+ * guard say so.
  *
  * WHY IT IS A CHECKED-IN FILE. The manifest must be produced BY the contract
- * version, because only Node 20 can enumerate Node 20's surface. If the guard
+ * version, because only that version can enumerate its own surface. If the guard
  * enumerated at run time it would describe whatever Node the developer happens
  * to have, which is precisely the mistake that caused the 2026-08-05 failure.
- * Generating once under Node 20 and committing the result means the guard gives
- * the same verdict on Node 20, Node 24, and CI.
+ * Generating once under the contract and committing the result means the guard
+ * gives the same verdict on every machine and in CI.
  *
  * REGENERATE ONLY when .nvmrc changes, and only under the new contract version:
  *

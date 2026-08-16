@@ -15,7 +15,9 @@
  *      emails pointed at production, where the ticket does not exist)
  *   3. VERCEL_PROJECT_PRODUCTION_URL   stable production domain (Vercel, build time)
  *   4. VERCEL_URL                      per-deployment URL (correct OG on preview deployments)
- *   5. https://eventlinqs.com          last-resort production default (never localhost)
+ *   5. https://www.eventlinqs.com.au   the canonical host, and what PRODUCTION
+ *      resolves to outright since the founder ruling of 2026-08-13 (never
+ *      localhost, and never the secondary .com)
  *
  * VERCEL_* are bare hostnames with no scheme, so https:// is prefixed.
  * The value is normalised to its origin (no trailing slash, no path) for
@@ -36,14 +38,93 @@
 // follow redirects. Auth cookies and sessions live on this one host.
 const PRODUCTION_FALLBACK = 'https://www.eventlinqs.com.au'
 
+/** The host of the canonical origin, with no scheme. */
+export const CANONICAL_HOST = 'www.eventlinqs.com.au'
+
 function withScheme(value: string): string {
   return /^https?:\/\//i.test(value) ? value : `https://${value}`
 }
 
-export function getSiteUrl(): string {
+/**
+ * One warning per misconfigured variable, not one per request.
+ *
+ * The resolvers run on every server render and every route handler, so an
+ * unbounded warning would bury the build and runtime logs it exists to make
+ * legible. Keyed by variable AND value so a second, differently-wrong value is
+ * still announced.
+ */
+const announced = new Set<string>()
+
+/**
+ * A non-canonical explicit host on PRODUCTION is ignored, loudly.
+ *
+ * WHY THIS EXISTS, and it is the gap the 2026-08-13 fix left open. Fixing the
+ * Vercel-nominated host below did nothing about the variable that sits ABOVE it.
+ * `NEXT_PUBLIC_SITE_URL` is already set on the Vercel Production environment,
+ * and whatever it holds is what `getSiteUrl()` and `getAppUrl()` returned. If it
+ * held `eventlinqs.com`, every Stripe Connect return url, every email link,
+ * every share link, every sitemap entry and every canonical tag on production
+ * was still built on a host that 301s, and the fix would have read as complete
+ * while changing nothing.
+ *
+ * `printableHost()` below already closed this for the PRINTED host by accepting
+ * the variable only when it already resolves to the canonical host. This is the
+ * same rule for the LINKED host, and for the same reason: there is no legitimate
+ * production configuration in which we link to a redirecting host.
+ *
+ * It is announced rather than swallowed, because a silent fallback is precisely
+ * how the original defect survived: everything looked correct, and the wrong
+ * host was only ever visible in the artefact.
+ *
+ * PREVIEW IS UNTOUCHED. On a preview the explicit value is honoured exactly as
+ * before, because a preview kit's draft exists only in the preview database and
+ * a link to production would 404.
+ */
+function acceptableExplicit(value: string | undefined, variable: string): string | undefined {
+  if (!value) return undefined
+  if (process.env.VERCEL_ENV !== 'production') return value
+
+  let host: string | null = null
+  try {
+    host = new URL(withScheme(value)).host
+  } catch {
+    host = null
+  }
+  if (host === CANONICAL_HOST) return value
+
+  const key = `${variable}=${value}`
+  if (!announced.has(key)) {
+    announced.add(key)
+    console.warn(
+      `[site-url] IGNORING ${variable} on production: it resolves to ${host ?? 'an unparseable host'}, ` +
+        `not the canonical ${CANONICAL_HOST}. Using ${PRODUCTION_FALLBACK}. ` +
+        `Fix the variable in the Vercel Production environment.`,
+    )
+  }
+  return undefined
+}
+
+/**
+ * PRODUCTION RESOLVES TO THE CANONICAL HOST, ALWAYS. Founder ruling 2026-08-13.
+ *
+ * `VERCEL_PROJECT_PRODUCTION_URL` used to sit above the fallback here, and on
+ * this project Vercel nominates `eventlinqs.com` as the production url. So every
+ * link this resolver produced on production, which is every Stripe Connect
+ * return and refresh url, every email link, every QR payload and every share
+ * link, was built on a host that 301s to the canonical one. The comment above
+ * PRODUCTION_FALLBACK already said why that is a defect: Stripe and some email
+ * clients do not follow redirects, and auth cookies live on the canonical host
+ * alone.
+ *
+ * The preview carve-out is untouched and deliberate: a preview's links must
+ * resolve against the preview's own deployment, because a preview kit's draft
+ * exists only in the preview database and a link to production would 404.
+ */
+function resolveOrigin(explicitFirst: string | undefined, variable: string): string {
   const candidate =
-    process.env.NEXT_PUBLIC_SITE_URL ||
+    acceptableExplicit(explicitFirst, variable) ||
     (process.env.VERCEL_ENV === 'preview' ? process.env.VERCEL_URL : undefined) ||
+    (process.env.VERCEL_ENV === 'production' ? PRODUCTION_FALLBACK : undefined) ||
     process.env.VERCEL_PROJECT_PRODUCTION_URL ||
     process.env.VERCEL_URL ||
     PRODUCTION_FALLBACK
@@ -53,6 +134,67 @@ export function getSiteUrl(): string {
   } catch {
     return PRODUCTION_FALLBACK
   }
+}
+
+export function getSiteUrl(): string {
+  return resolveOrigin(process.env.NEXT_PUBLIC_SITE_URL, 'NEXT_PUBLIC_SITE_URL')
+}
+
+/**
+ * The canonical host with no scheme, for the places that DISPLAY an address
+ * rather than link to one: the slug hint under an organisation name, the
+ * "your page lives here" line on an event, and the footer line printed onto a
+ * share card.
+ *
+ * Every one of those was a hardcoded literal, and every one of them was wrong:
+ * they read eventlinqs.com, and the canonical host has been
+ * www.eventlinqs.com.au since the founder ruling of 25 July 2026. A wrong host
+ * drawn onto a share card is a wrong host in front of a stranger.
+ *
+ * Safe in a client component: with no server environment to read, the resolver
+ * falls through to the production constant, which is the canonical host.
+ */
+export function canonicalHost(): string {
+  return getSiteUrl().replace(/^https?:\/\//, '')
+}
+
+/**
+ * The host to PRINT onto an artefact, which is not always the host the artefact
+ * links to.
+ *
+ * WHY THIS IS SEPARATE FROM canonicalHost(). That one follows getSiteUrl(), so
+ * on a preview deployment it returns the deployment's own hostname. That is
+ * correct for LINKS, deliberately so, because a preview's links must resolve
+ * against the preview's own database. It is wrong for PRINT: the hostname is
+ * about seventy characters, and a promoter's poster and story card were
+ * rendering it with an ellipsis through the middle, which is not an address
+ * anybody can type or trust (founder ruling 2026-08-13).
+ *
+ * So this resolver deliberately skips VERCEL_URL, the per-deployment host, and
+ * prefers the stable production domain. The QR code and the caption links are
+ * unaffected and still carry the working url.
+ */
+export function printableHost(): string {
+  // The canonical host, and ONLY the canonical host.
+  //
+  // This used to prefer VERCEL_PROJECT_PRODUCTION_URL, which on this project is
+  // `eventlinqs.com`, so the poster and the story cards printed a secondary host
+  // that 301s. Founder ruling 2026-08-13: eventlinqs.com is never printed,
+  // emitted, embedded, linked or handed to a machine on production.
+  //
+  // An explicit NEXT_PUBLIC_SITE_URL is honoured only when it ALREADY resolves
+  // to the canonical host. That is not a courtesy, it is the point: a
+  // misconfigured variable must not be able to reintroduce a secondary host onto
+  // a printed artefact, and there is no legitimate reason to print any other.
+  const explicit = process.env.NEXT_PUBLIC_SITE_URL
+  if (explicit) {
+    try {
+      if (new URL(withScheme(explicit)).host === CANONICAL_HOST) return CANONICAL_HOST
+    } catch {
+      /* malformed: fall through to the canonical host */
+    }
+  }
+  return CANONICAL_HOST
 }
 
 /**
@@ -71,22 +213,17 @@ export function getSiteUrl(): string {
  * via a hardcoded fallback.
  */
 export function getAppUrl(): string {
-  const candidate =
-    process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    // Same preview carve-out as getSiteUrl(): on a preview deploy the
-    // deployment's OWN url must win over VERCEL_PROJECT_PRODUCTION_URL, or
-    // staging emits production links for tickets and payouts that only exist in
-    // the TEST database. Without this line the production domain came first and
-    // every preview-built link pointed at production.
-    (process.env.VERCEL_ENV === 'preview' ? process.env.VERCEL_URL : undefined) ||
-    process.env.VERCEL_PROJECT_PRODUCTION_URL ||
-    process.env.VERCEL_URL ||
-    PRODUCTION_FALLBACK
-
-  try {
-    return new URL(withScheme(candidate)).origin
-  } catch {
-    return PRODUCTION_FALLBACK
-  }
+  // Shares resolveOrigin with getSiteUrl, so the preview carve-out and the
+  // production canonical rule cannot drift apart between the two. This is the
+  // resolver behind Stripe Connect return and refresh urls, so a redirecting
+  // host here is the most expensive version of the defect: Stripe does not
+  // follow redirects on a return url.
+  //
+  // The variable NAME is threaded through so the production warning can name the
+  // one an operator has to go and fix. Both are subject to the canonical rule:
+  // NEXT_PUBLIC_APP_URL feeds the Stripe return url directly, so a redirecting
+  // host there is worse than in NEXT_PUBLIC_SITE_URL, not better.
+  return process.env.NEXT_PUBLIC_APP_URL
+    ? resolveOrigin(process.env.NEXT_PUBLIC_APP_URL, 'NEXT_PUBLIC_APP_URL')
+    : resolveOrigin(process.env.NEXT_PUBLIC_SITE_URL, 'NEXT_PUBLIC_SITE_URL')
 }

@@ -8,6 +8,21 @@ import { formatCents, formatDate } from './format'
 
 interface PayoutsHistoryTableProps {
   initialPage: PayoutListPage
+  /**
+   * WHICH business this table belongs to.
+   *
+   * THE LEAK THIS CLOSES. The server route learned to accept `?org=<id>` so an
+   * owner of several businesses could read the right one, but this table did not
+   * send it. So the first server render showed business B's payouts under B's
+   * heading, and the moment the organiser touched a status filter or a page
+   * button, the fetch went out unscoped, the route fell back to their FIRST
+   * business, and business A's payout history appeared under business B's
+   * heading with no indication anything had moved. That is precisely the
+   * "switching between organisations leaks one organisation's payout state onto
+   * another" the brief forbids, and it was one click away on a surface that
+   * looked correct.
+   */
+  organisationId: string
 }
 
 const STATUS_FILTERS: ReadonlyArray<{ value: PayoutRecordStatus | 'all'; label: string }> = [
@@ -19,7 +34,7 @@ const STATUS_FILTERS: ReadonlyArray<{ value: PayoutRecordStatus | 'all'; label: 
   { value: 'canceled', label: 'Cancelled' },
 ]
 
-export function PayoutsHistoryTable({ initialPage }: PayoutsHistoryTableProps) {
+export function PayoutsHistoryTable({ initialPage, organisationId }: PayoutsHistoryTableProps) {
   const [page, setPage] = useState<PayoutListPage>(initialPage)
   const [status, setStatus] = useState<PayoutRecordStatus | 'all'>('all')
   const [isPending, startTransition] = useTransition()
@@ -33,6 +48,10 @@ export function PayoutsHistoryTable({ initialPage }: PayoutsHistoryTableProps) {
 
   function fetchPage(params: { status?: PayoutRecordStatus | 'all'; offset?: number }) {
     const search = new URLSearchParams()
+    // Always name the business. Without this the route falls back to the caller's
+    // first organisation and this table quietly changes which business it is
+    // showing on the first filter or page click.
+    search.set('org', organisationId)
     if (params.status) search.set('status', params.status)
     search.set('offset', String(params.offset ?? 0))
     search.set('limit', String(page.limit))

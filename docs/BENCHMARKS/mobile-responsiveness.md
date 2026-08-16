@@ -12,11 +12,11 @@ Every page and component must be verified at these exact dimensions:
 
 | Device | Viewport (px) | Notes |
 |--------|--------------|-------|
-| iPhone SE (3rd gen) | 375×667 | Smallest modern Apple target; no notch |
+| iPhone SE (3rd gen) | 375×667 | Smallest modern Apple target; no notch |  <!-- UNSOURCED: Law 7, third-party spec with no primary source cited -->
 | iPhone 15 Pro | 393×852 | Dynamic Island; safe area insets required |
 | iPhone 15 Pro Max | 430×932 | Large iPhone; tests layout at iPhone's widest |
 | Samsung Galaxy S24 | 360×780 | Android baseline; most common Android form factor |
-| Google Pixel 8 | 393×851 | Stock Android reference |
+| Google Pixel 8 | 393×851 | Stock Android reference |  <!-- UNSOURCED: Law 7, third-party spec with no primary source cited -->
 | iPad Mini (6th gen) | 768×1024 | Small tablet; often used in portrait for events |
 | iPad Pro 11" | 834×1194 | Medium tablet; landscape and portrait |
 | Desktop laptop | 1280×800 | Standard laptop screen |

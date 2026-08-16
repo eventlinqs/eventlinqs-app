@@ -32,6 +32,8 @@
 
 import { execFileSync } from 'node:child_process'
 
+import { gitEnv } from './lib/git-env.mjs'
+
 const args = process.argv.slice(2)
 const FIX = args.includes('--fix')
 const VERCEL = ['--yes', 'vercel@55']
@@ -39,7 +41,15 @@ const SCOPE_LABEL = { Production: 'production', Preview: 'preview', Development:
 
 function run(file, argv) {
   try {
-    return { ok: true, out: execFileSync(file, argv, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], shell: true }) }
+    // env: gitEnv() even though `file` is a variable and this runs vercel as
+    // well as git. This decides which branches are DEAD, and --fix deletes
+    // Vercel environment variables on that answer. Under a leaked GIT_DIR the
+    // worktree enumeration would describe another repository and a live branch
+    // could be classified dead, which deletes a live deployment's credentials.
+    // NOTE for the guard: no-inherited-git-env cannot see this call, because the
+    // command is a variable rather than the literal 'git'. It is fixed by hand
+    // and named in that guard's stated blind spot.
+    return { ok: true, out: execFileSync(file, argv, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], shell: true, env: gitEnv() }) }
   } catch (e) {
     return { ok: false, out: `${e.stdout ?? ''}\n${e.stderr ?? ''}` }
   }

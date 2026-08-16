@@ -12,33 +12,32 @@ import {
   type FeeRates,
 } from '@/lib/payments/fee-math'
 
-// Locked AU rates.
+// Locked AU rates. ONE FEE, founder ruling 15 August 2026.
 const LOCKED: FeeRates = {
   platformFeePercent: 3.5,
   platformFeeFixedCents: 99,
-  processingFeePercent: 2.5,
-  processingFeeFixedCents: 0,
 }
 
 describe('Locked fee math - pure (single source for server + client display)', () => {
-  // [faceCents, expPlatform, expProcessing] for ONE ticket at the face value.
-  const cases: Array<[number, number, number]> = [
-    // $20: platform round(700+9900/100... ) -> round(2000*3.5/100 + 99)=round(169)=169; processing round(2000*2.5/100)=50
-    [2000, 169, 50],
-    // $30: round(3000*3.5/100 + 99)=round(204)=204; processing round(75)=75
-    [3000, 204, 75],
-    // $80: round(8000*3.5/100 + 99)=round(379)=379; processing round(200)=200
-    [8000, 379, 200],
+  // [faceCents, expFee] for ONE ticket at the face value. Processing is always 0.
+  const cases: Array<[number, number]> = [
+    // $20: round(2000*3.5/100 + 99) = round(70 + 99) = 169
+    [2000, 169],
+    // $30: round(3000*3.5/100 + 99) = round(105 + 99) = 204
+    [3000, 204],
+    // $80: round(8000*3.5/100 + 99) = round(280 + 99) = 379
+    [8000, 379],
   ]
 
   test.each(cases)(
-    'face %i c -> platform %i c, processing %i c, both modes correct',
-    (faceCents, expPlatform, expProcessing) => {
+    'face %i c -> one fee of %i c, both modes correct',
+    (faceCents, expFee) => {
       const lines = computeFeeLineCents(faceCents, 1, LOCKED)
-      expect(lines.platform_fee_cents).toBe(expPlatform)
-      expect(lines.payment_processing_fee_cents).toBe(expProcessing)
+      expect(lines.platform_fee_cents).toBe(expFee)
+      // Deleted: no new order carries a processing line.
+      expect(lines.payment_processing_fee_cents).toBe(0)
 
-      const totalFees = expPlatform + expProcessing
+      const totalFees = expFee
 
       // PASS-ON: buyer pays face + fees, organiser keeps the full face value.
       const passOn = computeAllInTotalCents(faceCents, lines, 'pass_to_buyer')
@@ -50,11 +49,11 @@ describe('Locked fee math - pure (single source for server + client display)', (
     },
   )
 
-  test('platform flat fee multiplies per ticket; processing flat does not', () => {
-    // 3 x $20: platform round(6000*3.5/100 + 3*99)=round(210+297)=507; processing round(6000*2.5/100)=150
+  test('the flat fee multiplies per ticket', () => {
+    // 3 x $20: round(6000*3.5/100 + 3*99) = round(210 + 297) = 507
     const lines = computeFeeLineCents(6000, 3, LOCKED)
     expect(lines.platform_fee_cents).toBe(507)
-    expect(lines.payment_processing_fee_cents).toBe(150)
+    expect(lines.payment_processing_fee_cents).toBe(0)
   })
 
   test('free-event guarantee is a CALLER guard, not the pure math', () => {
@@ -109,10 +108,20 @@ beforeEach(() => {
 })
 
 describe('Locked fee structure through PaymentCalculator + payout (16/16 funds-holding mode 1)', () => {
+  /*
+   * ONE FEE (founder ruling 15 August 2026). `processing` is 0 on every example
+   * because the separate 2.5 per cent line was deleted and card processing comes
+   * out of the 3.5. The old expectations were 50, 75 and 200 cents.
+   *
+   * Mode 1 and mode 2 of composeApplicationFee now produce the SAME number,
+   * because mode 1 was platform + processing and processing is zero. That is
+   * harmless rather than broken: the composition mode is inert, exactly like the
+   * pricing_rules rows it was built for.
+   */
   const examples = [
-    { name: '$20', face: 2000, platform: 169, processing: 50 },
-    { name: '$30', face: 3000, platform: 204, processing: 75 },
-    { name: '$80', face: 8000, platform: 379, processing: 200 },
+    { name: '$20', face: 2000, platform: 169 },
+    { name: '$30', face: 3000, platform: 204 },
+    { name: '$80', face: 8000, platform: 379 },
   ]
 
   for (const ex of examples) {
@@ -121,31 +130,29 @@ describe('Locked fee structure through PaymentCalculator + payout (16/16 funds-h
       const fb = await calc.calculate([ticket(1, ex.face)], [], 'AUD', 'pass_to_buyer')
 
       expect(fb.platform_fee_cents).toBe(ex.platform)
-      expect(fb.payment_processing_fee_cents).toBe(ex.processing)
-      expect(fb.total_cents).toBe(ex.face + ex.platform + ex.processing)
-      // mode 1 (stripe_fee_inclusive): platform keep = platform + processing.
+      expect(fb.payment_processing_fee_cents).toBe(0)
+      expect(fb.total_cents).toBe(ex.face + ex.platform)
       const appFee = composeApplicationFee(fb, 1)
-      expect(appFee).toBe(ex.platform + ex.processing)
+      expect(appFee).toBe(ex.platform)
       // organiser share = total - keep = face value (organiser keeps face).
       expect(fb.total_cents - appFee).toBe(ex.face)
     })
 
-    test(`${ex.name} ABSORB: buyer pays face only, fees come out of payout`, async () => {
+    test(`${ex.name} ABSORB: buyer pays face only, the fee comes out of payout`, async () => {
       const calc = new PaymentCalculator()
       const fb = await calc.calculate([ticket(1, ex.face)], [], 'AUD', 'absorb')
 
-      // fee amounts are still computed (charged to the organiser via the payout)
       expect(fb.platform_fee_cents).toBe(ex.platform)
-      expect(fb.payment_processing_fee_cents).toBe(ex.processing)
+      expect(fb.payment_processing_fee_cents).toBe(0)
       // buyer total is the face value only
       expect(fb.total_cents).toBe(ex.face)
-      // buyer-facing breakdown hides the fees in absorb mode
+      // buyer-facing breakdown hides the fee in absorb mode
       expect(fb.breakdown_display.platform_fee).toBe(0)
       expect(fb.breakdown_display.processing_fee).toBe(0)
-      // organiser share = face - fees
+      // organiser share = face - fee
       const appFee = composeApplicationFee(fb, 1)
-      expect(appFee).toBe(ex.platform + ex.processing)
-      expect(fb.total_cents - appFee).toBe(ex.face - ex.platform - ex.processing)
+      expect(appFee).toBe(ex.platform)
+      expect(fb.total_cents - appFee).toBe(ex.face - ex.platform)
     })
   }
 

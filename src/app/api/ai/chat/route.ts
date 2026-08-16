@@ -88,9 +88,29 @@ export async function POST(request: Request) {
   const context: AssistantContext = {}
   const messages: ChatMessage[] = [...transcript]
 
-  if (assistant.id === 'support') {
-    const fee = await getLivePublicFee()
+  /*
+   * THE LIVE FEE, FOR EVERY ASSISTANT, NOT JUST SUPPORT.
+   *
+   * This used to run for `support` alone, which left the three surfaces most
+   * likely to be asked about money with no fee in their prompt at all. The
+   * organiser-onboarding assistant is where "what do you charge?" actually gets
+   * asked, and it was the one flying blind.
+   *
+   * `source` is respected rather than ignored. When the lookup falls back to the
+   * reviewed constant, `feeLabel` is deliberately LEFT UNSET so `pricingRule()`
+   * switches every assistant into "I cannot confirm the rate, see /pricing".
+   * A marketing page may render the fallback rather than 500; an assistant may
+   * not, because a page shows one guarded number in one place while an assistant
+   * restates it conversationally to a prospective organiser.
+   *
+   * One call, shared by all four. It is cached for 60 seconds in Redis by
+   * getPricingRule, so this costs nothing per conversation.
+   */
+  const fee = await getLivePublicFee()
+  if (fee.source === 'live') {
     context.feeLabel = fee.label
+  } else {
+    logAi({ evt: 'ai.fee_unavailable', assistant: assistant.id, who, reason: 'pricing_lookup_fallback' })
   }
 
   if (user && (assistant.id === 'organiser-onboarding' || assistant.id === 'buyer-onboarding')) {
@@ -104,17 +124,24 @@ export async function POST(request: Request) {
   }
 
   if (user && assistant.id === 'organiser-onboarding') {
-    const { data: org } = await supabase
+    // A LIST, not maybeSingle. This asked "does this person have an organisation"
+    // with `.eq('owner_id', user.id).maybeSingle()`, which returns PGRST116 and
+    // `data: null` when they own more than one. So the onboarding assistant told an
+    // owner of several businesses that they had none, and walked them through
+    // creating their first.
+    const { data: orgs } = await supabase
       .from('organisations')
       .select('id')
       .eq('owner_id', user.id)
-      .maybeSingle()
-    context.hasOrganisation = Boolean(org)
-    if (org) {
+    const orgIds = (orgs ?? []).map((o) => o.id)
+    context.hasOrganisation = orgIds.length > 0
+    if (orgIds.length > 0) {
+      // Every business the person runs, because the assistant is talking to the
+      // PERSON rather than to one of their businesses.
       const { count } = await supabase
         .from('events')
         .select('id', { count: 'exact', head: true })
-        .eq('organisation_id', org.id)
+        .in('organisation_id', orgIds)
       context.eventCount = count ?? 0
     }
   }

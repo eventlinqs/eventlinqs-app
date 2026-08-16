@@ -1,72 +1,123 @@
-# EventLinqs Fee Structure — LOCKED (do not relitigate)
+# EventLinqs Fee Structure: LOCKED (do not relitigate)
 
 This is the final, decided fee model. It is built into the platform and made
 editable in the admin panel. Do not reopen the debate. Build to this exactly.
-Researched and confirmed against Eventbrite, Humanitix, Ticketmaster, Ticketek
-(June 2026). Dash rule followed in prose to Lawal.
 
-## The model: two fees, like the whole industry (Eventbrite-style percentage, not Ticketmaster flat-order)
+**No figure in this document is the source of truth.** The one source is the
+PRICING-LOCK block in `docs/PRICING.md`, and the worked arithmetic is COMPUTED
+from it by `scripts/pricing-derive.mjs`. This file explains the reasoning; that
+file holds the numbers. Where the two disagree, the build fails and
+`docs/PRICING.md` wins.
 
-EventLinqs charges TWO fees on every PAID ticket:
+## The model: ONE fee (founder ruling, 15 August 2026)
 
-1. PLATFORM / SERVICE FEE (this is the profit margin): 3.5% + $0.99 per ticket.
-2. PAYMENT PROCESSING FEE (covers Stripe, earns a small margin): 2.5% of the order.
+EventLinqs charges **one fee on every paid ticket**, and card processing comes
+out of it rather than being charged beside it. The rate itself is in the lock
+block, not here.
 
-Free events: $0, no fees (same as all competitors).
+Free events: no fee at all, permanently, the same as every competitor.
 
-## Why these numbers (the reasoning, so it is not reopened)
+<!-- ONE-FEE-ALLOW-BEGIN: records what was deleted, which requires naming it. -->
+**This document previously specified TWO fees**, a platform fee plus a separate
+2.5 per cent payment processing fee. That second fee is deleted. The reasoning
+for the deletion, including the Competition and Consumer Act s 55A surcharge
+exposure that a fee named after processing carried, is in `docs/PRICING.md`
+section 1 and is not repeated here.
+<!-- ONE-FEE-ALLOW-END -->
 
-- Stripe costs EventLinqs about 1.75% + $0.30 per domestic AU card. The 2.5%
-  processing fee covers that and leaves a small margin (set below Eventbrite's
-  2.9% deliberately).
-- CORRECTED POSITIONING (founder decision 2026-07-05, Path B, superseding
-  the original claim in this section): Humanitix's published 4% + $0.99
-  INCLUDES payment processing, so on an all-in basis they are 7 to 29 cents
-  cheaper than us across $15 to $35 (full tables:
-  docs/surpass/pricing-decision.md). "Cheaper than Humanitix" is FALSE
-  all-in and must never be claimed. The true money story: a lower HEADLINE
-  platform fee than Humanitix (3.5% + $0.99 versus their 4% + $0.99), far
-  cheaper than Eventbrite all-in at every price point, and radical fee
-  transparency no competitor offers.
-- Worked example, $30 ticket: platform fee 1.05 + 0.99 = 2.04; processing 2.5% ≈
-  0.75; total fees ≈ 2.79. Stripe takes ~0.83. Profit ≈ 2.04 platform + a thin
-  processing margin. Profitable on the platform line; processing roughly at cost-plus.
-- Comparison on $30 (honest): EventLinqs 2.79 in fees all-in versus
-  Eventbrite about 3.77 and Humanitix about 2.41 to 2.64 depending on their
-  GST treatment. Far cheaper than Eventbrite; slightly ABOVE Humanitix.
-- Higher-priced check, $80 ticket: our 6% + $0.99 is about 5.79 all-in,
-  still well under Eventbrite and above Humanitix's inclusive 4% + $0.99
-  (about 4.61 with GST on their fee). The gap to Humanitix widens with
-  price, which is why the marketing claim is scoped to the headline
-  platform fee and the transparency edge, never to all-in price.
-- Ticketmaster/Ticketek use flat per-order fees (~$5.50 to $7) suited to expensive
-  arena tickets. That model is WRONG for community/music events at lower prices,
-  so EventLinqs does NOT copy it. But they confirm the universal rule: everyone
-  charges processing separately and profits on the service fee. EventLinqs is not
-  a charity, so it charges processing and profits on it.
+## Why one fee, and what it costs us
+
+- **Stripe's real cost is `1.70% + A$0.30`** per domestic Australian
+  card-not-present payment, and Stripe's published pricing states, verbatim,
+  **"Fees include GST"**, so no GST is added on top of that.
+  (https://support.stripe.com/questions/april-2024-pricing-update-for-businesses-on-standard-pricing-in-australia
+  and https://stripe.com/au/pricing, both fetched 15 August 2026.)
+
+  **Two corrections are recorded here rather than quietly applied**, because both
+  were live in this document and both moved the margin in the direction that
+  flattered nobody:
+
+  1. This file said Stripe costs "about 1.75% + $0.30". That was the rate until
+     **1 April 2024**, when Stripe reduced it to 1.70%. The figure had been
+     stale for over two years.
+  2. A proposed correction was to ADD 10 per cent GST to Stripe's fee. That
+     would have been wrong in the other direction: the published AU rate is
+     already GST-inclusive, so adding GST overstates the cost by about 10 per
+     cent and understates the margin by the same.
+
+  **UNSOURCED:** the rate after **1 October 2026**. Stripe's pricing page
+  footnotes the 1.7% figure with "Lower pricing from 1 Oct 2026" and does not
+  publish the new number. That date falls about six weeks after launch, so the
+  margin table must be re-derived then.
+
+- **The margin is positive at every price**, from a $5 ticket upward, and is
+  computed in `docs/PRICING.md` section 3 from the lock block. It is not restated
+  here, because restating it here is exactly how this document came to carry four
+  wrong numbers.
+
+- **A dispute costs A$25.00** (https://stripe.com/au/pricing, fetched 15 August
+  2026), which is more than the margin on every ticket in the table. Chargebacks,
+  not the processing rate, are the real margin risk.
+
+## Positioning: the old rule is OUT OF DATE and the opposite is now provable
+
+<!-- ONE-FEE-ALLOW-BEGIN: states the superseded basis of the old positioning rule. -->
+The founder decision of 5 July 2026 (Path B) recorded that **"cheaper than
+Humanitix" is FALSE all-in and must never be claimed**. That was correct under
+the two-fee model, where our all-in was the platform fee plus 2.5 per cent.
+<!-- ONE-FEE-ALLOW-END -->
+
+**Deleting the second fee inverted it.** Humanitix publishes **"4% + $0.99 Per
+paid ticket (excl. GST)"** for Australia
+(https://www.humanitix.com/au/pricing, fetched 15 August 2026). EventLinqs
+charges a lower percentage on the same flat amount, so the EventLinqs fee is
+lower at every non-zero ticket price, and the gap widens as the price rises.
+Their figure is quoted excluding GST, so the true gap in the buyer's pocket is
+wider still.
+
+**What that does and does not license.** The comparison above is arithmetic from
+both parties' published rates and it holds across the whole price range. Whether
+to put a comparative pricing claim in market is a commercial decision for the
+founder, not an engineering one, and it carries Australian Consumer Law exposure
+if a competitor changes their rate and our page does not. Two things follow, and
+only the second is a build instruction:
+
+1. **Founder decision required:** whether the marketing now makes a direct
+   all-in comparison. It is available and sourced; it is not automatic.
+2. **Build rule, regardless of that decision:** no comparative claim may be
+   hardcoded in a page. If one ships, it derives from the lock block and carries
+   the date the competitor's page was last verified, because a comparison is a
+   claim about someone else's price and theirs can change without notice.
+
+Ticketmaster and Ticketek use flat per-order fees suited to expensive arena
+seats. That model is wrong for community events at lower prices and EventLinqs
+does not copy it.
 
 ## Hard requirements for the build
 
-1. TWO fees as above, applied per paid ticket / per order as specified.
-2. ALL fees fully editable in the ADMIN PANEL by the founder (both percentages and
-   the flat amount), without a code change. The founder controls pricing.
-3. ACCC COMPLIANCE (Australian Consumer Law, drip-pricing rules): the total all-in
-   price MUST be shown clearly and early to the buyer, as a single total figure,
-   never sprung at the final checkout step. Unavoidable fees are surfaced up front.
-4. Who pays the fees: support BOTH absorb (organiser pays, deducted from payout) and
-   pass-on (buyer pays at checkout), like Eventbrite and Humanitix. Default to
-   pass-on (buyer pays), so the organiser keeps full face value, but make it a
-   per-event toggle for the organiser.
-5. GST posture stays as already locked: EventLinqs is a limited payment collection
-   agent. The ORGANISER is the seller and handles GST on the ticket price.
-   EventLinqs only deals with GST on its OWN fee, and only when GST-registered
-   (turnover over $75k). Do not add 10% GST to the EventLinqs fee until registered.
-6. Single source of truth: fees resolve through the existing pricing_rules / fee
-   system. Do not fork or duplicate fee logic. The funds-holding payment engine
-   (proven, gate-green) stays intact; the fee change is additive and verified.
+1. **ONE fee**, applied per paid ticket, resolved from `pricing_rules` through
+   the single resolver. Never two.
+2. **Editable in the admin panel** by the founder, both the percentage and the
+   flat amount, without a code change.
+   <!-- ONE-FEE-ALLOW: records the removed admin fields. -->
+   The processing-fee fields were REMOVED from that screen on 15 August 2026:
+   nothing read them, so they let the founder set a number that charged nobody.
+3. **ACCC compliance** (drip-pricing): the all-in total is shown clearly and
+   early, as a single figure, never sprung at the final checkout step.
+4. **Who pays**: support both absorb (organiser pays, deducted from payout) and
+   pass-on (buyer pays at checkout). Pass-on is the per-event default so the
+   organiser keeps full face value.
+5. **GST posture unchanged**: EventLinqs is a limited payment collection agent.
+   The ORGANISER is the seller and handles GST on the ticket price. EventLinqs
+   deals with GST only on its own fee, and only once GST-registered (turnover
+   above $75k). Do not add 10 per cent GST to the EventLinqs fee until then.
+   EventLinqs also cannot recover the GST embedded in Stripe's fee while
+   unregistered; see `docs/PRICING.md` section 9.
+6. **Single source of truth**: fees resolve through `pricing_rules` and the one
+   resolver. Do not fork or duplicate fee logic. The funds-holding payment engine
+   stays intact.
 
 ## Status
 
-LOCKED 2026. Build when Lawal is home, after the production security fix and the
-TEST migrations. This is the NEXT major build after launch-readiness is closed.
-Do not reopen the numbers; tune only in admin if real data later warrants it.
+LOCKED. One fee, founder ruling 15 August 2026. Do not reopen the number; tune
+only in admin if real data later warrants it.

@@ -298,7 +298,9 @@ Actions, **L** local `.env.local`. The Development scope holds no secrets at all
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase, Project Settings, API | P, V (TEST project), L | Supabase rotation invalidates the old key immediately, so write every store, then redeploy at once. Expect a brief window. | `refFromJwt` matches the intended project; sentinel `database` check |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | same page | P, V, L | Write, then REBUILD (baked at build time). | homepage renders data |
 | `NEXT_PUBLIC_SUPABASE_URL` | same page | P, V, L | Configuration, not a secret. REBUILD after change. | `SUPABASE_PRODUCTION_REF_ISOLATION` cross rule |
-| `CRON_SECRET` | generated: `openssl rand -hex 24` | P, **G** | Write P and G BOTH before redeploying. Writing one and not the other is the exact failure that silenced the smoke gate for eighteen days. | `node scripts/check-env-stores.mjs --mode=handshake` must print HTTP 200 |
+| `CRON_SECRET` | generated: `openssl rand -hex 24` | P, **G** | Write P and G BOTH before redeploying. Writing one and not the other is the exact failure that silenced the smoke gate for eighteen days. **SINGLE POINT OF FAILURE, see the note below.** | `node scripts/check-env-stores.mjs --mode=handshake` must print HTTP 200 |
+| `UPSTASH_REDIS_REST_TOKEN` | Upstash console, the database's REST API tab | P, V, L | **PAYMENT-CRITICAL: this store caches the resolved FEE.** Rotate the token in the Upstash console, write P and V, redeploy. The cache is regenerable, so a brief gap only means fee resolution falls through to the database. Never point production at a non-production database. | `node scripts/verify/payment-critical-doctrine.mjs` green, then sentinel `env` check green; confirm a fee renders on an event page |
+| `UPSTASH_REDIS_REST_URL` | Upstash console, same tab | P, V, L | Configuration, not a secret, but it decides WHICH store. Changing it points the fee cache at a different database, so treat a change as a rotation of the pair. | `node scripts/verify/env-store-isolation.mjs` must not report it shared with another environment |
 | `QUEUE_SECRET` | generated: `openssl rand -hex 24` | P, V | Single-valued: write, redeploy. In-flight queue tokens are invalidated. | sentinel `pages` check; queue admission returns 200 |
 | `HEALTH_CHECK_TOKEN` | generated: `openssl rand -hex 24` | P, V | Write, redeploy. | `GET /api/health/sentry-error?token=...` returns 200 |
 | `RESEND_API_KEY` | Resend dashboard, API Keys | P, V, **G**, L | Create the new key, write all three stores, send one test, THEN delete the old key. **No test mode exists**, so treat every copy as live. | `GET https://api.resend.com/domains` returns 200; sentinel `email` check |
@@ -341,3 +343,75 @@ do not rely on silence when you can ask:
 curl -sS -H "Authorization: Bearer $CRON_SECRET" \
   'https://www.eventlinqs.com.au/api/cron/health-sentinel?dry=1' | jq '.status'
 ```
+
+---
+
+## 8. `CRON_SECRET` is deliberately ONE secret in two stores
+
+**Founder ruling 2026-08-08.** `check-env-stores` asserts that the Vercel
+Production copy and the GitHub Actions copy are the SAME secret, and that is
+correct by design, not a defect. The handshake proves equality by
+**authenticating** rather than by comparing: CI sends
+`Authorization: Bearer $CRON_SECRET` to a production cron route and requires
+HTTP 200. Two different secrets cannot both succeed, so a 200 is proof of
+byte-equality without either store ever revealing its value.
+
+**The consequence, recorded because it follows directly from the design:**
+
+> `CRON_SECRET` is a SINGLE POINT OF FAILURE. There is exactly one valid value
+> at any moment, so the two copies move together or neither moves. There is no
+> add-then-revoke window as there is for Stripe webhook secrets or Supabase
+> keys.
+
+What that means in practice:
+
+- **Rotation is a simultaneous two-store write followed by one redeploy.** The
+  gap between writing the first store and the second IS the outage: every cron
+  route 401s, and the post-deploy smoke gate goes red.
+- **Losing one copy loses the pair.** A store wiped or a secret rotated in one
+  place with no record of the value means both must be regenerated together;
+  there is nothing to recover it from.
+- **Compromise is total.** One leaked value authorises every cron route:
+  disbursement, payout holds, the digest send, publish-scheduled, reservation
+  expiry, the health sentinel. There is no per-route scoping.
+- **Never rotate it during a deploy or while a cron window is open.** Vercel
+  crons that fire mid-rotation fail closed and are not retried.
+
+If per-route scoping or an add-then-revoke window is ever wanted, that is a
+design change to `src/lib/cron/auth.ts` (accept a comma-separated list of valid
+secrets, exactly as `STRIPE_WEBHOOK_SECRETS` already does) and it is not a
+rotation-runbook change. It is not currently built.
+
+### Two shape violations found 8 August 2026
+
+The manifest declares `CRON_SECRET` as `^\S{32,}$`, "a single-token secret of at
+least 32 characters". Measured:
+
+| Store | Length | Conforms |
+|---|---|---|
+| `.env.test` | 4 | **NO** |
+| `.env.local` (PRODUCTION) | 28 | **NO** |
+
+- **`.env.test` is FIXED**: regenerated to a 43-character
+  `randomBytes(32).toString('base64url')` value. Our own TEST environment was
+  violating the manifest we enforce everywhere else.
+- **Production's 28-character value is NOT fixed and is a real finding.** The
+  live environment violates its own declared shape. It is single-valued, so
+  correcting it is a full simultaneous rotation of P and G, which is a
+  production write and is held while production writes are frozen. It is not
+  urgent on entropy grounds (28 characters of `openssl` output is still strong)
+  but the manifest and the reality must agree, and today they do not.
+
+**Did any check pass BECAUSE of the short value?** No. Verified empirically by
+running every `CRON_SECRET`-touching check before and after the change:
+`check-public-env` 0 to 0, `env-locks-verify` 0 to 0, `env-store-isolation`
+1 to 1 (its failure is the six shared stores, and it reported `CRON_SECRET`
+isolated both times). No verdict changed; the only difference is that the shape
+violation disappeared from the output.
+
+`check-public-env` had been reporting it correctly all along, as a **non-blocking
+warning** because local-scope shape violations warn rather than block. So it was
+passing IN SPITE of the short value, not because of it, and the value had been
+visible in the output and ignored rather than hidden. That is a different
+failure mode from a silent one, and a milder one, but a warning nobody reads is
+on the same road as no warning at all.

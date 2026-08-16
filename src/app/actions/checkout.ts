@@ -576,6 +576,13 @@ function chargePreconditionMessage(reason: ChargePreconditionError['reason']): s
       return 'Payments for this region are not yet supported.'
     case 'fee_breakdown_invalid':
       return 'There was a pricing issue with this checkout. Please refresh and try again.'
+    case 'event_externally_ticketed':
+      // Unreachable through the UI: the sale gate refuses an externally
+      // ticketed event before a selector is ever rendered. It is handled here
+      // because the charge precondition is the second, independent refusal, and
+      // a buyer who somehow reached it deserves the truth rather than a generic
+      // pricing error that would send them round the loop again.
+      return 'Tickets for this event are sold on another site, so there is nothing to check out here.'
   }
 }
 

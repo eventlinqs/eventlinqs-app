@@ -4,8 +4,22 @@
  * ContactForm - client component.
  *
  * Receives `initialSubject` pre-computed by the server from ?topic= and ?interest= params.
- * On submit: shows inline success state and console.logs.
- * TODO(M11): wire to POST /api/contact → Resend delivery.
+ *
+ * ON SUBMIT IT OPENS A `mailto:` to hello@eventlinqs.com with the subject and
+ * body pre-filled, then shows the inline success state. It does NOT post to an
+ * API and it does NOT console.log; the header said "console.logs" until
+ * 15 August 2026 and that was simply false, which is worse than no comment.
+ *
+ * WHY MAILTO IS THE SHIPPED ANSWER, and not a stub. The message leaves the
+ * browser through the sender's own mail client, so it needs no inbox, no
+ * deliverability reputation and no spam handling on our side, and it cannot
+ * silently drop a message the way an unmonitored form endpoint does. The
+ * trade-off is real and known: a reader with no mail client configured gets
+ * nothing, which is why the page also renders the address in full beside the
+ * form.
+ *
+ * TODO(lawal 2026-10-01): revisit once a monitored inbox and Resend inbound
+ * routing exist. Until then this is the deliberate choice, not an unfinished one.
  */
 
 import { useState } from 'react'
@@ -100,7 +114,7 @@ export function ContactForm({ initialSubject = '' }: ContactFormProps) {
             </button>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} noValidate className="mt-8 space-y-5">
+          <form method="post" onSubmit={handleSubmit} noValidate className="mt-8 space-y-5">
             <FormField
               id="contact-name"
               label="Full name"

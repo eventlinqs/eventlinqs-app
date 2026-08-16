@@ -2,6 +2,7 @@ import { Resend } from 'resend'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getAppUrl } from '@/lib/site-url'
 import { getNoReplyFrom } from '@/lib/email/sender'
+import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
 
 /**
  * M6 Phase 4 organiser payout notifications.
@@ -188,7 +189,14 @@ function formatAmount(cents: number, currency: string): string {
 function formatDate(iso: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso
-  return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })
+  // Rendered on the server, which runs in UTC, so with no timeZone an
+  // organiser was told a payout date that could be a day off.
+  return d.toLocaleDateString('en-AU', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: PLATFORM_TIME_ZONE,
+  })
 }
 
 function baseUrl(): string {

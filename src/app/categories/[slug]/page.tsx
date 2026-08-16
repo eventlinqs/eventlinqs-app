@@ -62,26 +62,36 @@ export default async function CategoryPage({ params }: Props) {
   // since the slug is the stable identifier in this data model.
   const supabase = createPublicClient()
 
+  // The category filter is applied IN THE QUERY, on an inner-joined
+  // event_categories, so the six rows that come back are the six soonest
+  // events IN THIS CATEGORY.
+  //
+  // It used to take the six soonest events platform-wide and only then filter
+  // by category in JavaScript, which meant a category page showed an event
+  // only when that event happened to be among the six soonest on the entire
+  // platform. With any real catalogue every category landing fell through to
+  // the empty state no matter how many events the category had. The comment
+  // that justified it ("Supabase doesn't allow nested WHERE on joined tables
+  // without a view or RPC") is not correct: PostgREST filters on an embedded
+  // resource when the embed is an inner join, which is the `!inner` below.
+  const categorySlugs = [slug, category.displayName.toLowerCase()]
   const { data: eventsRaw } = await withBuildRetry(
     () =>
       supabase
         .from('events')
         .select(
-          'id, slug, title, cover_image_url, thumbnail_url, start_date, venue_name, venue_city, venue_country, created_at, category:event_categories(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)',
+          'id, slug, title, cover_image_url, thumbnail_url, start_date, venue_name, venue_city, venue_country, created_at, category:event_categories!inner(name, slug), ticket_tiers(id, price, currency, sold_count, reserved_count, total_capacity)',
         )
         .eq('status', 'published')
         .eq('visibility', 'public')
         .gte('start_date', new Date().toISOString())
+        .in('category.slug', categorySlugs)
         .order('start_date', { ascending: true })
         .limit(6),
     { label: `categories/${slug}` },
   )
 
-  // Filter client-side by category slug - Supabase doesn't allow nested WHERE
-  // on joined tables without a view or RPC. Safe at this event volume.
-  const liveEvents = ((eventsRaw ?? []) as unknown as EventCardData[]).filter(
-    e => e.category?.slug === slug || e.category?.slug === category.displayName.toLowerCase(),
-  )
+  const liveEvents = (eventsRaw ?? []) as unknown as EventCardData[]
 
   return <CategoryLandingPage category={category} liveEvents={liveEvents} />
 }

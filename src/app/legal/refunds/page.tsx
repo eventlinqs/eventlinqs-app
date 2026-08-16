@@ -38,7 +38,7 @@ export default async function RefundPolicyPage() {
   const platformLabel = `${Number(rates.platformFeePercent.toFixed(2))}% + AUD ${(
     rates.platformFeeFixedCents / 100
   ).toFixed(2)}`
-  const processingLabel = `${Number(rates.processingFeePercent.toFixed(2))}%`
+  // ONE FEE, 15 August 2026. Card processing is included in the single fee.
 
   return (
     <LegalPageShell
@@ -99,8 +99,9 @@ export default async function RefundPolicyPage() {
       <p>
         If an event is cancelled and not rescheduled, you are entitled to a full
         refund of the total amount you paid. That includes the ticket price and
-        every EventLinqs fee shown at checkout: the platform fee and the payment
-        processing fee. There is no deduction and no administration charge.
+        the EventLinqs service fee shown at checkout, which is the only fee
+        charged and already includes card processing. There is no deduction and
+        no administration charge.
       </p>
       <p>
         You do not need to lodge a request. When an organiser confirms a
@@ -185,9 +186,8 @@ export default async function RefundPolicyPage() {
 
       <h2 id="fees">What Happens to the Fees</h2>
       <p>
-        EventLinqs charges a platform fee of{' '}
-        <strong>{platformLabel}</strong> per paid ticket and a payment processing
-        fee of <strong>{processingLabel}</strong> of the order. Free events carry
+        EventLinqs charges a single fee of <strong>{platformLabel}</strong> per
+        paid ticket, with card processing included in it. Free events carry
         no fees at all. The full, all-in amount is shown to you on the event page
         before you commit to buy, and again at checkout.
       </p>

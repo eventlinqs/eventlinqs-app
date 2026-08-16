@@ -58,9 +58,13 @@ describe('share code generation and validation', () => {
     expect(isValidShareCode(1234567890)).toBe(false)
   })
 
-  test('buildShortUrl normalises a trailing slash', () => {
+  test('buildShortUrl normalises a trailing slash and mints on /e/', () => {
+    // /e/, not /s/. Eventbrite's own default event address is /e/[slug] and /s/
+    // is a URL-shortener convention that appears nowhere in ticketing. The /s/
+    // route still RESOLVES every code ever minted, for the posters already
+    // hanging in venue windows; nothing new is issued on it.
     expect(buildShortUrl('https://staging.eventlinqs.com/', 'abcDEF1234')).toBe(
-      'https://staging.eventlinqs.com/s/abcDEF1234',
+      'https://staging.eventlinqs.com/e/abcDEF1234',
     )
   })
 

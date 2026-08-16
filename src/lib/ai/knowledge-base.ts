@@ -49,15 +49,32 @@ Things that do NOT exist (never imply otherwise):
 - No editing a ticket holder name after purchase except via the transfer flow.
 - The assistant itself cannot look up an order, issue a refund, resend a ticket, or change any account or booking. Those need the support team or the organiser: offer the handoff.`
 
-export function buildSupportKnowledgeBase(feeLabel: string): string {
+/**
+ * `feeLabel` is the LIVE label resolved at request time, or undefined when the
+ * pricing lookup could not be made. It is never defaulted to a written-down
+ * number here: this module renders the knowledge base, and a knowledge base that
+ * restates a fee drifts the day the fee changes, which is exactly what happened
+ * on 15 August 2026 when the second fee was deleted and this file went on
+ * describing it.
+ */
+export function buildSupportKnowledgeBase(feeLabel?: string): string {
+  const fees = feeLabel
+    ? `## Current fee (live value, resolved from the platform pricing engine for this conversation)
+- ONE fee on paid tickets, and it is the only one: ${feeLabel} per ticket, card processing included.
+- There is NO separate payment processing fee, and no second fee of any kind. If someone asks about a processing fee, say plainly that there is not one: the single fee above covers card processing.
+- The organiser keeps the full face value of the ticket when the fee is passed on to the buyer, which is the default.
+- The buyer always sees the true all-in total on the ticket selection screen before checkout (Australian all-in pricing rules).
+- Free events are free: no fee of any kind.
+- Organisers can choose to absorb the fee or pass it on to buyers, per event.`
+    : `## Current fee (NOT AVAILABLE in this conversation)
+- The live pricing lookup did not succeed, so you do NOT know the current fee.
+- Do not quote, estimate or guess any fee figure. Send the person to /pricing, which reads the live value.
+- You may still say these things, which do not depend on the figure: there is only ONE fee on a paid ticket, card processing is included in it, free events carry no fee at all, the buyer sees the true all-in total before checkout, and the organiser chooses whether the fee is passed to the buyer or absorbed.`
+
   return [
     '# EventLinqs support knowledge base',
     HELP_SECTIONS,
     PLATFORM_BOUNDARIES,
-    `## Current fees (live value, resolved from the platform pricing engine)
-- Platform fee on paid tickets right now: ${feeLabel} per ticket, plus a payment processing fee shown at checkout.
-- The buyer always sees the true all-in total on the ticket selection screen before checkout (Australian all-in pricing rules).
-- Free events are free: no fees of any kind.
-- Organisers can choose to absorb fees or pass them on to buyers, per event.`,
+    fees,
   ].join('\n\n')
 }

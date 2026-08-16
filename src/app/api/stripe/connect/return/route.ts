@@ -3,7 +3,6 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { checkRateLimit, clientIp } from '@/lib/redis/rate-limit'
-import { isFullyOnboarded, retrieveAccount } from '@/lib/stripe/connect'
 import { getAppUrl } from '@/lib/site-url'
 
 export const dynamic = 'force-dynamic'
@@ -63,7 +62,11 @@ export async function GET(req: NextRequest) {
     )
   }
 
-  const { data: org } = await supabase
+  // Service role read, ownership enforced immediately below (owner_id !== user.id
+  // -> 403). owner_id and stripe_account_id are revoked from `authenticated` by
+  // column privilege (migration 20260808000010). Identity is already verified via
+  // getUser() above.
+  const { data: org } = await createAdminClient()
     .from('organisations')
     .select('id, owner_id, stripe_account_id')
     .eq('id', organisationId)
@@ -71,39 +74,50 @@ export async function GET(req: NextRequest) {
   if (!org || org.owner_id !== user.id) {
     return NextResponse.redirect(`${appUrl()}/dashboard/payouts?status=not_found`, 303)
   }
+
+  // Every redirect from here on carries `&org=`, including the failure branches.
+  //
+  // WHY THAT MATTERS AND WHY IT IS NOT COSMETIC. A person may run several
+  // businesses, each with its own Stripe account. Somebody who has just finished
+  // onboarding business B and hits a failure branch would, without this, be dropped
+  // onto the payouts page for business A, be shown A's healthy state, and conclude
+  // that B was connected when it was not. The one branch above keeps no org because
+  // the organisation is not the caller's to name.
+  const payouts = (status: string) =>
+    `${appUrl()}/dashboard/payouts?status=${status}&org=${encodeURIComponent(org.id)}`
+
   if (!org.stripe_account_id) {
-    return NextResponse.redirect(
-      `${appUrl()}/dashboard/payouts?status=needs_onboarding`,
-      303
-    )
+    return NextResponse.redirect(payouts('needs_onboarding'), 303)
   }
 
   try {
-    const account = await retrieveAccount(org.stripe_account_id)
-    const fullyOnboarded = isFullyOnboarded(account)
+    // RECONCILE, rather than a partial write of its own.
+    //
+    // This block used to update five columns and, like the account.updated handler,
+    // it omitted payout_status. It also omitted stripe_account_country and
+    // payout_destination. So returning from Stripe onboarding could leave a row that
+    // disagreed with Stripe in exactly the way that stranded the founder, and it was
+    // a THIRD place where the definition of "what Stripe says" could drift.
+    //
+    // reconcileConnectedAccount is now the only definition. The return path is a
+    // trigger, not a writer.
+    const { reconcileConnectedAccount } = await import('@/lib/stripe/reconcile-connect')
     const admin = createAdminClient()
-    const update: Record<string, unknown> = {
-      stripe_charges_enabled: Boolean(account.charges_enabled),
-      stripe_payouts_enabled: Boolean(account.payouts_enabled),
-      stripe_capabilities: account.capabilities ?? {},
-      stripe_requirements: account.requirements ?? {},
-      stripe_onboarding_complete: fullyOnboarded,
-    }
-    const { error: updateError } = await admin
-      .from('organisations')
-      .update(update)
-      .eq('id', org.id)
-    if (updateError) {
-      console.error('[connect-return] DB update failed', updateError)
+    const result = await reconcileConnectedAccount(admin, org.id)
+
+    if (!result.ok) {
+      console.error('[connect-return] reconcile failed', { orgId: org.id, reason: result.reason })
+      // Send them to payouts either way: the Refresh Stripe status control there is
+      // the retry, so a failed reconcile is recoverable in the browser rather than a
+      // dead end.
+      return NextResponse.redirect(payouts('pending'), 303)
     }
 
-    const status = fullyOnboarded ? 'complete' : 'pending'
-    return NextResponse.redirect(`${appUrl()}/dashboard/payouts?status=${status}`, 303)
+    // `org` carries the id needed for the redirect, so the account is only fetched
+    // for the status word shown in the query string.
+    return NextResponse.redirect(payouts(result.canSell ? 'complete' : 'pending'), 303)
   } catch (err) {
-    console.error('[connect-return] retrieveAccount failed', err)
-    return NextResponse.redirect(
-      `${appUrl()}/dashboard/payouts?status=fetch_error`,
-      303
-    )
+    console.error('[connect-return] reconcile threw', err)
+    return NextResponse.redirect(payouts('fetch_error'), 303)
   }
 }

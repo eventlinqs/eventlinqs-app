@@ -1,0 +1,62 @@
+{
+  "results": [
+    {
+      "name": "the platform balance can be funded in test mode",
+      "ok": true,
+      "detail": "charge ch_3U2NzuGqHIQtgS8t1uaBAR8M 200 AUD succeeded"
+    },
+    {
+      "name": "each transfer landed on the business it named, never the other",
+      "ok": true,
+      "detail": "Harbour Nights Presents: transfer tr_1U2NzwGqHIQtgS8t6Dw6vCnM -> acct_1U2NOpGTgPP2EN9E\n        Northside Comedy Room: transfer tr_1U2NzzGqHIQtgS8tKEzUt3Va -> acct_1U2NOwKH9wJ7una3"
+    },
+    {
+      "name": "each business holds its OWN balance, of its OWN amount",
+      "ok": true,
+      "detail": "Harbour Nights Presents (acct_1U2NOpGTgPP2EN9E): 15 AUD, expected at least 15\n        Northside Comedy Room (acct_1U2NOwKH9wJ7una3): 22 AUD, expected at least 22"
+    },
+    {
+      "name": "and each of those balances pays out to a DIFFERENT bank account",
+      "ok": true,
+      "detail": "Harbour Nights Presents -> ba_1U2NOtGTgPP2EN9EfqXjERXy (last4 3456)\n        Northside Comedy Room -> ba_1U2NOzKH9wJ7una3c0UoBkR7 (last4 3456)"
+    }
+  ],
+  "transfers": [
+    {
+      "id": "tr_1U2NzwGqHIQtgS8t6Dw6vCnM",
+      "destination": "acct_1U2NOpGTgPP2EN9E",
+      "amount": 1500
+    },
+    {
+      "id": "tr_1U2NzzGqHIQtgS8tKEzUt3Va",
+      "destination": "acct_1U2NOwKH9wJ7una3",
+      "amount": 2200
+    }
+  ],
+  "balances": [
+    {
+      "name": "Harbour Nights Presents",
+      "account": "acct_1U2NOpGTgPP2EN9E",
+      "total": 1500,
+      "expected": 1500
+    },
+    {
+      "name": "Northside Comedy Room",
+      "account": "acct_1U2NOwKH9wJ7una3",
+      "total": 2200,
+      "expected": 2200
+    }
+  ],
+  "banks": [
+    {
+      "name": "Harbour Nights Presents",
+      "bank": "ba_1U2NOtGTgPP2EN9EfqXjERXy",
+      "last4": "3456"
+    },
+    {
+      "name": "Northside Comedy Room",
+      "bank": "ba_1U2NOzKH9wJ7una3c0UoBkR7",
+      "last4": "3456"
+    }
+  ]
+}

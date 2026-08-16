@@ -952,6 +952,7 @@ export type Database = {
           description: string | null
           end_date: string
           event_type: Database["public"]["Enums"]["event_type"]
+          external_ticket_url: string | null
           fee_pass_type: Database["public"]["Enums"]["fee_pass_type"]
           gallery_urls: Json | null
           genre_slug: string | null
@@ -1018,6 +1019,7 @@ export type Database = {
           description?: string | null
           end_date: string
           event_type?: Database["public"]["Enums"]["event_type"]
+          external_ticket_url?: string | null
           fee_pass_type?: Database["public"]["Enums"]["fee_pass_type"]
           gallery_urls?: Json | null
           genre_slug?: string | null
@@ -1084,6 +1086,7 @@ export type Database = {
           description?: string | null
           end_date?: string
           event_type?: Database["public"]["Enums"]["event_type"]
+          external_ticket_url?: string | null
           fee_pass_type?: Database["public"]["Enums"]["fee_pass_type"]
           gallery_urls?: Json | null
           genre_slug?: string | null
@@ -3183,7 +3186,9 @@ export type Database = {
           code: string
           created_at: string
           created_by: string | null
-          event_id: string
+          destination_url: string | null
+          draft_code: string | null
+          event_id: string | null
           id: string
         }
         Insert: {
@@ -3192,7 +3197,9 @@ export type Database = {
           code: string
           created_at?: string
           created_by?: string | null
-          event_id: string
+          destination_url?: string | null
+          draft_code?: string | null
+          event_id?: string | null
           id?: string
         }
         Update: {
@@ -3201,7 +3208,9 @@ export type Database = {
           code?: string
           created_at?: string
           created_by?: string | null
-          event_id?: string
+          destination_url?: string | null
+          draft_code?: string | null
+          event_id?: string | null
           id?: string
         }
         Relationships: [

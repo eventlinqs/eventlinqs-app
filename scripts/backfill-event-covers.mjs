@@ -9,18 +9,22 @@
 // already updated. Dry-run mode prints what would happen without
 // touching the DB - run with `--dry-run` to verify.
 //
-// Usage:
-//   node --env-file=.env.local scripts/backfill-event-covers.mjs
-//   node --env-file=.env.local scripts/backfill-event-covers.mjs --dry-run
+// Usage (TEST is the documented target; .env.local points at PRODUCTION and the
+// preflight below refuses it without explicit founder approval):
+//   node --env-file=.env.test scripts/backfill-event-covers.mjs
+//   node --env-file=.env.test scripts/backfill-event-covers.mjs --dry-run
+import { assertNotProduction } from './lib/production-write-preflight.mjs'
 import { createClient } from '@supabase/supabase-js'
 import { readFileSync } from 'node:fs'
+
+assertNotProduction()
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 const SERVICE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY
 const DRY_RUN = process.argv.includes('--dry-run')
 
 if (!SUPABASE_URL || !SERVICE_KEY) {
-  console.error('Missing env vars. Run with: node --env-file=.env.local scripts/backfill-event-covers.mjs')
+  console.error('Missing env vars. Run with: node --env-file=.env.test scripts/backfill-event-covers.mjs')
   process.exit(1)
 }
 

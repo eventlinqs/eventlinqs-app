@@ -1,0 +1,122 @@
+PRODUCTION (READ ONLY): https://gndnldyfudbytbboxesk.supabase.co
+
+=== 1. The seed marker on production ===
+  events total        : 48
+  is_seed_data = true : 0
+  is_seed_data = false: 48
+  neither (NULL)      : 0
+
+=== 2. Organisations behind the seeded events ===
+  organisations owning at least one seeded event : 0
+  of those, owning ONLY seeded events            : 0
+  of those, also owning real events (KEEP)       : 0
+
+=== 3. Connect accounts held by the seeded-only organisations ===
+  seeded-only organisations read back : 0
+  holding a stripe_account_id         : 0
+  holding NONE                        : 0
+
+=== 4. Are those accounts live-mode or test-mode ===
+  NOT APPLICABLE. No seeded-only organisation on production holds a Connect account,
+  so there is no live-mode account to strand and the question closes here.
+
+=== 5. Venues ===
+  venues on production: 0
+  (venue ids are not selected above, so no venue-orphan claim is made here)
+
+=== 6. ZERO MARKED. What are the 48 then ===
+  organisations on production: 18
+    Owambe Sydney                      events=3   connect=NONE country=NULL charges=false payout=active onboarded=false
+    Afrobeats Melbourne                events=4   connect=NONE country=NULL charges=false payout=active onboarded=false
+    Gospel Brisbane                    events=2   connect=NONE country=NULL charges=false payout=active onboarded=false
+    Amapiano Adelaide                  events=2   connect=NONE country=NULL charges=false payout=active onboarded=false
+    Lagos Comedy Tour                  events=3   connect=NONE country=NULL charges=false payout=active onboarded=false
+    Caribbean Carnival Melbourne       events=3   connect=NONE country=NULL charges=false payout=active onboarded=false
+    Island Vibes Sydney                events=2   connect=NONE country=NULL charges=false payout=active onboarded=false
+    Bollywood Nights Sydney            events=2   connect=NONE country=NULL charges=false payout=active onboarded=false
+    Diwali Festival Melbourne          events=3   connect=NONE country=NULL charges=false payout=active onboarded=false
+    Filipino Fiesta Brisbane           events=2   connect=NONE country=NULL charges=false payout=active onboarded=false
+    Lunar Nights Melbourne             events=2   connect=NONE country=NULL charges=false payout=active onboarded=false
+    Latin Sabor Sydney                 events=2   connect=NONE country=NULL charges=false payout=active onboarded=false
+    Sydney Pride Collective            events=4   connect=NONE country=NULL charges=false payout=active onboarded=false
+    Polonia Australia Events           events=3   connect=NONE country=NULL charges=false payout=active onboarded=false
+    Mahrajan Sydney                    events=5   connect=NONE country=NULL charges=false payout=active onboarded=false
+    Pasifika Collective                events=4   connect=NONE country=NULL charges=false payout=active onboarded=false
+    Party Pty Ltd                      events=2   connect=acct_1SFaa2E8rD62IcbM country=AU charges=true payout=active onboarded=true
+    OANH                               events=0   connect=NONE country=NULL charges=false payout=active onboarded=false
+  events whose organisation row is missing entirely: 0
+
+  every event, oldest first:
+    published  lunar-nights-melbourne-year-of-the-horse     org=Lunar Nights Melbourne created=2026-04-25
+    published  diwali-gala-dinner-an-evening-in-jaipur      org=Diwali Festival Melbou created=2026-04-25
+    published  bollywood-brunch-sangeet-sundays             org=Bollywood Nights Sydne created=2026-04-25
+    published  lagos-comedy-tour-brisbane-closer            org=Lagos Comedy Tour      created=2026-04-25
+    published  gospel-on-the-river-brisbane-worship-night   org=Gospel Brisbane        created=2026-04-25
+    published  afrobeats-and-brunch-sunday-sessions         org=Afrobeats Melbourne    created=2026-04-25
+    published  naming-ceremony-showcase-yoruba-traditions-n org=Owambe Sydney          created=2026-04-25
+    published  afrobeats-melbourne-summer-sessions          org=Afrobeats Melbourne    created=2026-04-25
+    published  afrobeats-live-headline-concert              org=Afrobeats Melbourne    created=2026-04-25
+    published  brisbane-gospel-choir-showcase               org=Gospel Brisbane        created=2026-04-25
+    published  amapiano-day-party-adelaide-hills            org=Amapiano Adelaide      created=2026-04-25
+    published  amapiano-adelaide-log-drum-sessions          org=Amapiano Adelaide      created=2026-04-25
+    published  lagos-comedy-tour-melbourne-night            org=Lagos Comedy Tour      created=2026-04-25
+    published  diwali-festival-melbourne-festival-of-lights org=Diwali Festival Melbou created=2026-04-25
+    published  filipino-fiesta-brisbane-sariwa-sunday       org=Filipino Fiesta Brisba created=2026-04-25
+    published  opm-night-filipino-live-music-showcase       org=Filipino Fiesta Brisba created=2026-04-25
+    published  island-vibes-sydney-roots-and-culture-night  org=Island Vibes Sydney    created=2026-04-25
+    published  reggaeton-and-bachata-latin-heat             org=Latin Sabor Sydney     created=2026-04-25
+    published  caribbean-sunset-cruise-sydney-harbour       org=Island Vibes Sydney    created=2026-04-25
+    published  latin-sabor-sydney-salsa-saturdays           org=Latin Sabor Sydney     created=2026-04-25
+    published  lunar-banquet-eight-course-dinner-show       org=Lunar Nights Melbourne created=2026-04-25
+    published  lagos-comedy-tour-sydney-showcase            org=Lagos Comedy Tour      created=2026-04-25
+    published  bollywood-nights-sydney-dhol-and-dance       org=Bollywood Nights Sydne created=2026-04-25
+    published  owambe-sydney-lagos-to-sydney-wedding-after- org=Owambe Sydney          created=2026-04-25
+    published  reggae-on-the-lawn-family-carnival-day       org=Caribbean Carnival Mel created=2026-04-25
+    published  aso-ebi-affair-owambe-garden-party           org=Owambe Sydney          created=2026-04-25
+    published  caribbean-carnival-melbourne-soca-saturday   org=Caribbean Carnival Mel created=2026-04-25
+    draft      maori-cultural-night-melbourne               org=Pasifika Collective    created=2026-05-09
+    draft      eurovision-watch-party-sydney                org=Polonia Australia Even created=2026-05-09
+    draft      pasifika-festival-sydney                     org=Pasifika Collective    created=2026-05-09
+    draft      sydney-mardi-gras-afterparty                 org=Sydney Pride Collectiv created=2026-05-09
+    draft      lgbtq-comedy-night-brisbane                  org=Sydney Pride Collectiv created=2026-05-09
+    draft      rainbow-family-picnic-adelaide               org=Sydney Pride Collectiv created=2026-05-09
+    draft      polish-folk-festival-sydney                  org=Polonia Australia Even created=2026-05-09
+    draft      oktoberfest-melbourne                        org=Polonia Australia Even created=2026-05-09
+    draft      lebanese-mahrajan-sydney                     org=Mahrajan Sydney        created=2026-05-09
+    draft      persian-new-year-melbourne                   org=Mahrajan Sydney        created=2026-05-09
+    draft      arab-music-night-brisbane                    org=Mahrajan Sydney        created=2026-05-09
+    draft      turkish-coffee-and-stories-sydney            org=Mahrajan Sydney        created=2026-05-09
+    draft      pride-brunch-melbourne                       org=Sydney Pride Collectiv created=2026-05-09
+    draft      pacific-islander-comedy-brisbane             org=Pasifika Collective    created=2026-05-09
+    published  africultures-festival-sydney-2027            org=Afrobeats Melbourne    created=2026-05-14
+    published  pasifika-festival-melbourne-2027             org=Pasifika Collective    created=2026-05-14
+    published  diwali-mela-brisbane-2026                    org=Diwali Festival Melbou created=2026-05-14
+    published  lebanese-eid-festival-sydney-2027            org=Mahrajan Sydney        created=2026-05-14
+    published  caribbean-carnival-melbourne-2027            org=Caribbean Carnival Mel created=2026-05-14
+    published  open-field-party-v8yqlp                      org=Party Pty Ltd          created=2026-08-08
+    published  open-party-r3wpl0                            org=Party Pty Ltd          created=2026-08-09
+
+  --- mode of every Connect account on production ---
+  key available in C:/Users/61416/OneDrive/Desktop/EventLinqs/eventlinqs-app-tab-a/.env.local: test-mode
+    acct_1SFaa2E8rD62IcbM  HTTP 403 (account_invalid) under the test-mode key. UNRESOLVED: not this platform, or not this mode. A live-mode key would be needed to say which.
+
+{
+  "probedAt": "2026-08-15T01:28:13.862Z",
+  "project": "gndnldyfudbytbboxesk",
+  "eventsTotal": 48,
+  "seededEvents": 0,
+  "realEvents": 48,
+  "orgsWithSeededEvents": 0,
+  "orgsSeededOnly": 0,
+  "seededOnlyOrgsRead": 0,
+  "seededOnlyOrgsWithConnect": 0,
+  "liveModeVerdict": "not applicable, no seeded-only organisation holds a Connect account",
+  "venuesTotal": 0,
+  "orgsOnProduction": 18,
+  "orgsHoldingConnect": 1,
+  "eventsWithMissingOrg": 0,
+  "connectModeVerdict": "acct_1SFaa2E8rD62IcbM UNRESOLVED from this shell (only a test-mode key was available)",
+  "markerVerdict": "is_seed_data is FALSE on every production row. Either production carries no seeded data, or it carries seeded data that was never marked. The listing above is the evidence for which."
+}
+
+read-only probe complete. Nothing was written.

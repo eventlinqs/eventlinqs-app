@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { formatEventDateShort } from '@/lib/dates/event-time'
 import Link from 'next/link'
 import { Sparkles, X, RefreshCw } from 'lucide-react'
 import { trackEvent } from '@/lib/analytics/plausible'
@@ -11,6 +12,8 @@ interface Suggestion {
   title: string
   city: string | null
   startDate: string
+  /** The EVENT's zone, so the date reads correctly from any state. */
+  timezone: string | null
   coverImage: string | null
   reason: string
 }
@@ -161,7 +164,7 @@ export function SurpriseMeModal({ open, onClose, initial = [] }: Props) {
                       {s.title}
                     </p>
                     <p className="mt-1 text-xs text-[var(--text-secondary)]">
-                      {new Date(s.startDate).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' })}
+                      {formatEventDateShort(s.startDate, s.timezone)}
                       {s.city ? ` · ${s.city}` : ''}
                     </p>
                     <p className="mt-2 text-xs text-[var(--brand-accent-strong)]">

@@ -28,20 +28,20 @@ const locked = parseLockedValues(process.cwd()) as Record<string, number | strin
 const PUBLIC_RATES: FeeRates = {
   platformFeePercent: Number(locked.platform_fee_percentage),
   platformFeeFixedCents: Number(locked.platform_fee_fixed),
-  processingFeePercent: Number(locked.processing_fee_percentage),
-  processingFeeFixedCents: Number(locked.processing_fee_fixed_cents),
 }
 
 /**
- * The founding fee-free period waives the PLATFORM fee only. Payment processing
- * is a genuine third-party cost and is never waived, which is why a fee-free
- * 20.00 ticket is 20.50 all in rather than 20.00.
+ * The founding fee-free period waives the fee, and there is now only one, so a
+ * fee-free 20.00 ticket is 20.00 all in.
+ *
+ * It used to be 20.50, because the separate 2.5 per cent processing fee was
+ * never waived. That fee was deleted on 15 August 2026 and card processing comes
+ * out of the single 3.5 per cent, so "completely fee-free" is now literally true
+ * where it was previously 50 cents short of it.
  */
 const FOUNDING_RATES: FeeRates = {
   platformFeePercent: 0,
   platformFeeFixedCents: 0,
-  processingFeePercent: Number(locked.processing_fee_percentage),
-  processingFeeFixedCents: Number(locked.processing_fee_fixed_cents),
 }
 
 const TWENTY_DOLLARS = 2000
@@ -60,8 +60,10 @@ describe('docs/PRICING.md is the authority', () => {
     // re-baseline. Changing these requires changing this assertion too.
     expect(PUBLIC_RATES.platformFeePercent).toBe(3.5)
     expect(PUBLIC_RATES.platformFeeFixedCents).toBe(99)
-    expect(PUBLIC_RATES.processingFeePercent).toBe(2.5)
-    expect(PUBLIC_RATES.processingFeeFixedCents).toBe(0)
+    // ONE fee. The separate processing rules are no longer part of the lock,
+    // because nothing reads them: see the ruling recorded in docs/PRICING.md.
+    expect(locked.processing_fee_percentage).toBeUndefined()
+    expect(locked.processing_fee_fixed_cents).toBeUndefined()
   })
 })
 
@@ -72,16 +74,16 @@ describe('ANCHOR 1: a 20.00 ticket at the public rates', () => {
     expect(fees.platform_fee_cents).toBe(169)
   })
 
-  it('charges a payment processing fee of 0.50 (2.5% of 20.00, no flat part)', () => {
-    expect(fees.payment_processing_fee_cents).toBe(50)
+  it('charges NO separate processing fee: it was deleted', () => {
+    expect(fees.payment_processing_fee_cents).toBe(0)
   })
 
-  it('totals EXACTLY 2.19 in fees', () => {
-    expect(fees.platform_fee_cents + fees.payment_processing_fee_cents).toBe(219)
+  it('totals EXACTLY 1.69 in fees, where it was 2.19 under two fees', () => {
+    expect(fees.platform_fee_cents + fees.payment_processing_fee_cents).toBe(169)
   })
 
-  it('bills the buyer 22.19 all in under pass-on', () => {
-    expect(computeAllInTotalCents(TWENTY_DOLLARS, fees, 'pass_to_buyer')).toBe(2219)
+  it('bills the buyer 21.69 all in under pass-on', () => {
+    expect(computeAllInTotalCents(TWENTY_DOLLARS, fees, 'pass_to_buyer')).toBe(2169)
   })
 
   it('leaves the organiser the FULL 20.00 under pass-on', () => {
@@ -98,12 +100,14 @@ describe('ANCHOR 2: a 20.00 ticket during the founding fee-free period', () => {
     expect(fees.platform_fee_cents).toBe(0)
   })
 
-  it('still passes on the 0.50 processing fee, which is a real third-party cost', () => {
-    expect(fees.payment_processing_fee_cents).toBe(50)
+  it('charges nothing else either: fee-free now means fee-free', () => {
+    expect(fees.payment_processing_fee_cents).toBe(0)
   })
 
-  it('is EXACTLY 20.50 all in', () => {
-    expect(computeAllInTotalCents(TWENTY_DOLLARS, fees, 'pass_to_buyer')).toBe(2050)
+  it('is EXACTLY 20.00 all in, where it was 20.50 under two fees', () => {
+    // The founding offer says "completely fee-free". Under the two-fee model
+    // that was 50 cents short of true, because processing was never waived.
+    expect(computeAllInTotalCents(TWENTY_DOLLARS, fees, 'pass_to_buyer')).toBe(2000)
   })
 
   it('still leaves the organiser the full 20.00', () => {
@@ -119,18 +123,17 @@ describe('ABSORB mode: the organiser carries the fees', () => {
     expect(computeAllInTotalCents(TWENTY_DOLLARS, fees, 'absorb')).toBe(2000)
   })
 
-  it('leaves the organiser 17.81 after the 2.19 in fees', () => {
+  it('leaves the organiser 18.31 after the 1.69 fee', () => {
+    // 17.81 under the old two-fee model.
     const organiserReceives =
       TWENTY_DOLLARS - fees.platform_fee_cents - fees.payment_processing_fee_cents
-    expect(organiserReceives).toBe(1781)
+    expect(organiserReceives).toBe(1831)
   })
 
   it('never charges the buyer more than face value, whatever the rates', () => {
     const silly: FeeRates = {
       platformFeePercent: 50,
       platformFeeFixedCents: 5000,
-      processingFeePercent: 20,
-      processingFeeFixedCents: 900,
     }
     const f = computeFeeLineCents(TWENTY_DOLLARS, 1, silly)
     expect(computeAllInTotalCents(TWENTY_DOLLARS, f, 'absorb')).toBe(2000)
@@ -141,8 +144,8 @@ describe('GST: the inclusive posture adds no line to a buyer total', () => {
   const fees = computeFeeLineCents(TWENTY_DOLLARS, 1, PUBLIC_RATES)
 
   it('adds nothing when taxCents defaults to 0', () => {
-    expect(computeAllInTotalCents(TWENTY_DOLLARS, fees, 'pass_to_buyer')).toBe(2219)
-    expect(computeAllInTotalCents(TWENTY_DOLLARS, fees, 'pass_to_buyer', 0)).toBe(2219)
+    expect(computeAllInTotalCents(TWENTY_DOLLARS, fees, 'pass_to_buyer')).toBe(2169)
+    expect(computeAllInTotalCents(TWENTY_DOLLARS, fees, 'pass_to_buyer', 0)).toBe(2169)
   })
 
   it('does not add 10% GST on top of the fee (not GST-registered yet)', () => {
@@ -155,11 +158,11 @@ describe('GST: the inclusive posture adds no line to a buyer total', () => {
     expect(withGst).not.toBe(computeAllInTotalCents(TWENTY_DOLLARS, fees, 'pass_to_buyer'))
     // The shipped call site never passes a tax argument, so the buyer total is
     // the untaxed one. Asserted explicitly so a future default change fails here.
-    expect(computeAllInTotalCents(TWENTY_DOLLARS, fees, 'pass_to_buyer')).toBe(2219)
+    expect(computeAllInTotalCents(TWENTY_DOLLARS, fees, 'pass_to_buyer')).toBe(2169)
   })
 
   it('carries a tax line through untouched when one is genuinely supplied', () => {
-    expect(computeAllInTotalCents(TWENTY_DOLLARS, fees, 'pass_to_buyer', 137)).toBe(2219 + 137)
+    expect(computeAllInTotalCents(TWENTY_DOLLARS, fees, 'pass_to_buyer', 137)).toBe(2169 + 137)
     expect(computeAllInTotalCents(TWENTY_DOLLARS, fees, 'absorb', 137)).toBe(2000 + 137)
   })
 })
@@ -180,11 +183,12 @@ describe('the flat components apply at the right cardinality', () => {
     expect(three.platform_fee_cents).toBe(210 + 297)
   })
 
-  it('applies the processing flat component PER ORDER, not per ticket', () => {
-    const rates: FeeRates = { ...PUBLIC_RATES, processingFeeFixedCents: 30 }
-    const three = computeFeeLineCents(TWENTY_DOLLARS * 3, 3, rates)
-    // 2.5% of 60.00 = 150c, plus ONE 30c, not three
-    expect(three.payment_processing_fee_cents).toBe(150 + 30)
+  it('never charges a processing line, at any quantity', () => {
+    // The separate processing fee was deleted on 15 August 2026. The field is
+    // kept on the shape because orders.processing_fee_cents holds real history
+    // that the ledger reads, but every NEW order records zero here.
+    const three = computeFeeLineCents(TWENTY_DOLLARS * 3, 3, PUBLIC_RATES)
+    expect(three.payment_processing_fee_cents).toBe(0)
   })
 })
 
@@ -200,21 +204,15 @@ describe('the last-resort fallback cannot become a second source', () => {
     expect(PUBLIC_PLATFORM_FEE.currency).toBe(locked.currency)
   })
 
-  it('PUBLIC_PROCESSING_FEE equals docs/PRICING.md', async () => {
-    const { PUBLIC_PROCESSING_FEE } = await import('@/lib/pricing/public-fee')
-    expect(PUBLIC_PROCESSING_FEE.percent).toBe(Number(locked.processing_fee_percentage))
-    expect(PUBLIC_PROCESSING_FEE.fixedCents).toBe(Number(locked.processing_fee_fixed_cents))
-  })
-
-  it('the fallback produces the same 2.19 as the live rates', async () => {
-    const { PUBLIC_PLATFORM_FEE, PUBLIC_PROCESSING_FEE } = await import('@/lib/pricing/public-fee')
+  it('the fallback produces the same 1.69 as the live rates', async () => {
+    // 2.19 under the old two-fee model (169 platform + 50 processing). One fee
+    // now, so the same 20.00 ticket carries 1.69 all in.
+    const { PUBLIC_PLATFORM_FEE } = await import('@/lib/pricing/public-fee')
     const fees = computeFeeLineCents(TWENTY_DOLLARS, 1, {
       platformFeePercent: PUBLIC_PLATFORM_FEE.percent,
       platformFeeFixedCents: PUBLIC_PLATFORM_FEE.fixedCents,
-      processingFeePercent: PUBLIC_PROCESSING_FEE.percent,
-      processingFeeFixedCents: PUBLIC_PROCESSING_FEE.fixedCents,
     })
-    expect(fees.platform_fee_cents + fees.payment_processing_fee_cents).toBe(219)
+    expect(fees.platform_fee_cents + fees.payment_processing_fee_cents).toBe(169)
   })
 })
 
@@ -240,11 +238,13 @@ describe('FOUNDING WAIVER: a 20.00 ticket inside and outside the window', () => 
     expect(isWaiverActive(NOW.toISOString(), NOW)).toBe(false)
   })
 
-  it('INSIDE the window is EXACTLY 20.50 all in, pass-on', () => {
+  it('INSIDE the window is EXACTLY 20.00 all in, pass-on', () => {
+    // 20.50 under the two-fee model. One fee now, and it is waived in full, so
+    // "completely fee-free" is literally true rather than 50 cents short.
     const fees = computeFeeLineCents(TWENTY_DOLLARS, 1, ratesFor(INSIDE))
     expect(fees.platform_fee_cents).toBe(0)
-    expect(fees.payment_processing_fee_cents).toBe(50)
-    expect(computeAllInTotalCents(TWENTY_DOLLARS, fees, 'pass_to_buyer')).toBe(2050)
+    expect(fees.payment_processing_fee_cents).toBe(0)
+    expect(computeAllInTotalCents(TWENTY_DOLLARS, fees, 'pass_to_buyer')).toBe(2000)
   })
 
   it('INSIDE the window the organiser still keeps the full 20.00', () => {
@@ -253,31 +253,31 @@ describe('FOUNDING WAIVER: a 20.00 ticket inside and outside the window', () => 
     expect(buyerPays - fees.platform_fee_cents - fees.payment_processing_fee_cents).toBe(2000)
   })
 
-  it('ONE DAY AFTER expiry the same ticket is 22.19 all in', () => {
+  it('ONE DAY AFTER expiry the same ticket is 21.69 all in', () => {
     const fees = computeFeeLineCents(TWENTY_DOLLARS, 1, ratesFor(EXPIRED_YESTERDAY))
     expect(fees.platform_fee_cents).toBe(169)
-    expect(fees.payment_processing_fee_cents).toBe(50)
-    expect(computeAllInTotalCents(TWENTY_DOLLARS, fees, 'pass_to_buyer')).toBe(2219)
+    expect(fees.payment_processing_fee_cents).toBe(0)
+    expect(computeAllInTotalCents(TWENTY_DOLLARS, fees, 'pass_to_buyer')).toBe(2169)
   })
 
-  it('ABSORB inside the window: buyer pays 20.00 and the organiser keeps 19.50', () => {
+  it('ABSORB inside the window: buyer pays 20.00 and the organiser keeps ALL of it', () => {
     const fees = computeFeeLineCents(TWENTY_DOLLARS, 1, ratesFor(INSIDE))
     expect(computeAllInTotalCents(TWENTY_DOLLARS, fees, 'absorb')).toBe(2000)
-    // Only the 50c processing fee comes out of the payout, not the platform fee.
-    expect(TWENTY_DOLLARS - fees.platform_fee_cents - fees.payment_processing_fee_cents).toBe(1950)
+    // Nothing comes out of the payout: the one fee is waived and there is no
+    // second one. The organiser used to lose 50c here.
+    expect(TWENTY_DOLLARS - fees.platform_fee_cents - fees.payment_processing_fee_cents).toBe(2000)
   })
 
-  it('ABSORB after expiry: buyer pays 20.00 and the organiser keeps 17.81', () => {
+  it('ABSORB after expiry: buyer pays 20.00 and the organiser keeps 18.31', () => {
     const fees = computeFeeLineCents(TWENTY_DOLLARS, 1, ratesFor(EXPIRED_YESTERDAY))
     expect(computeAllInTotalCents(TWENTY_DOLLARS, fees, 'absorb')).toBe(2000)
-    expect(TWENTY_DOLLARS - fees.platform_fee_cents - fees.payment_processing_fee_cents).toBe(1781)
+    expect(TWENTY_DOLLARS - fees.platform_fee_cents - fees.payment_processing_fee_cents).toBe(1831)
   })
 
-  it('NEVER waives the processing fee, at any quantity', () => {
+  it('waives EVERYTHING, at any quantity', () => {
     const fees = computeFeeLineCents(TWENTY_DOLLARS * 4, 4, ratesFor(INSIDE))
     expect(fees.platform_fee_cents).toBe(0)
-    // 2.5% of 80.00 = 200c, still charged in full.
-    expect(fees.payment_processing_fee_cents).toBe(200)
+    expect(fees.payment_processing_fee_cents).toBe(0)
   })
 })
 

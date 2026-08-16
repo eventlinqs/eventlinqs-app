@@ -9,6 +9,7 @@ import {
   createExpressAccount,
   isAllowedConnectCountry,
 } from '@/lib/stripe/connect'
+import { buildConnectBusinessProfile } from '@/lib/stripe/business-profile'
 import { getPayoutScheduleDays } from '@/lib/payments/pricing-rules'
 import { getAppUrl } from '@/lib/site-url'
 
@@ -87,10 +88,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
   }
 
-  const { data: org, error: orgError } = await supabase
+  // Service role read, ownership enforced immediately below. These columns
+  // (email, stripe_*) are revoked from `authenticated` by column privilege
+  // (migration 20260808000010): that role serves both the owner and any logged-in
+  // visitor, and a grant cannot tell them apart. Identity is already verified via
+  // getUser() above; the owner_id check below is what authorises this read.
+  const { data: org, error: orgError } = await createAdminClient()
     .from('organisations')
     .select(
-      'id, owner_id, name, email, stripe_account_id, stripe_account_country, stripe_charges_enabled'
+      'id, owner_id, name, slug, email, phone, stripe_account_id, stripe_account_country, stripe_charges_enabled'
     )
     .eq('id', organisationId)
     .single()
@@ -121,6 +127,14 @@ export async function POST(req: NextRequest) {
         country,
         email: org.email ?? user.email ?? '',
         payoutDelayDays,
+        // Hand Stripe everything we already hold, so its hosted form opens with
+        // the business name filled in instead of blank. A blank field is how
+        // "Party Pty Ltd" became "Eventlinqs" on the production account
+        // acct_1U2Df1GThKJm4ih9: the organiser was asked to retype a name the
+        // platform had in this very row and got it wrong. ("Party Pty Ltd" is
+        // the founder's TEST organiser record, not a company; the retyping
+        // defect it exposed is real and applies to every organiser.)
+        businessProfile: buildConnectBusinessProfile(org, user.email ?? null),
       })
       accountId = account.id
       const { error: updateError } = await admin

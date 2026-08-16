@@ -10,6 +10,9 @@ interface InitialSuggestion {
   title: string
   city: string | null
   startDate: string
+  /** The EVENT's zone, so the server-rendered pick shows the same day the
+   *  refreshed picks do. */
+  timezone: string | null
   coverImage: string | null
   reason: string
 }

@@ -1,4 +1,6 @@
-#!/usr/bin/env node
+// No shebang on this file. Vite does not strip one when a test imports the module, and the whole
+// suite then dies at collection with "SyntaxError: Invalid or unexpected token" and no line number,
+// reporting "no tests" and passing vacuously. Every caller runs this as `node <path>`.
 /**
  * Builds the walker's target list from real TEST data, so the sweep clicks
  * slugs that exist rather than slugs that were guessed. Deliberately includes

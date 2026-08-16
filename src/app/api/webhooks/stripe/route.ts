@@ -15,6 +15,7 @@ import { trackTicketPurchaseCompleteServer } from '@/lib/analytics/plausible'
 import { handleConnectAccountUpdated } from '@/lib/stripe/connect-handlers'
 import { recordOrderConfirmedLedger } from '@/lib/payments/connect-ledger'
 import { voidPayoutById, getStripeClient } from '@/lib/payments/payout'
+import { getAppUrl } from '@/lib/site-url'
 import { reverseOrganiserTransferForRefund } from '@/lib/payments/event-transfer'
 import { getDefaultTransferGateway } from '@/lib/payments/gateway-factory'
 import {
@@ -484,7 +485,15 @@ async function handlePaymentSucceeded(
       ) as { item_name: string; quantity: number }[]
       const primaryTicket = ticketItems[0]
       const totalQty = ticketItems.reduce((sum, i) => sum + (i.quantity ?? 0), 0)
-      const origin = process.env.NEXT_PUBLIC_APP_URL ?? 'https://eventlinqs.com'
+      // PAYMENT PATH, READ THIS BEFORE CHANGING IT. `origin` is used on the
+      // next line and nowhere else in this file: it builds the page URL handed
+      // to the Plausible purchase event. No order, ticket, payment, payout or
+      // refund decision reads it. The line previously carried its own fallback
+      // with `??`, which meant an EMPTY NEXT_PUBLIC_APP_URL won and the
+      // analytics URL became "/orders/...", and the fallback host was the wrong
+      // domain besides. getAppUrl() is the single definition, uses `||` so an
+      // empty value falls through, and resolves to the canonical host.
+      const origin = getAppUrl()
       trackTicketPurchaseCompleteServer(
         `${origin}/orders/${orderForAnalytics.order_number}/confirmation`,
         {
@@ -1260,23 +1269,38 @@ async function handleConnectAccountDeauthorized(accountId: string | null, eventI
     .eq('stripe_account_id', accountId)
     .maybeSingle()
 
-  const { error } = await adminClient
-    .from('organisations')
-    .update({
-      stripe_account_id: null,
-      stripe_onboarding_complete: false,
-      stripe_charges_enabled: false,
-      stripe_payouts_enabled: false,
-      stripe_capabilities: {},
-      stripe_requirements: {},
-      payout_destination: null,
-      payout_status: 'restricted',
-      updated_at: new Date().toISOString(),
+  // ONE OWNER FOR DISCONNECT. This used to write its own column set inline, and it
+  // set payout_status to 'restricted', which is a lie about an organisation that has
+  // no Stripe account at all and is exactly what the publish gate later read back
+  // and refused on. It also meant a second disconnect path could drift from this
+  // one and leave a half-cleared row, which is the state the founder found: a null
+  // stripe_account_id with the payout status, capabilities, requirements and bank
+  // account id all still present.
+  //
+  // disconnectConnectedAccount writes every derived column in DISCONNECTED_STATE in
+  // one update, so the row moves from connected to disconnected atomically and a
+  // half-cleared row is unreachable. payout_status becomes 'unset', not
+  // 'restricted' (migration 20260809000001).
+  if (!prevOrg?.id) {
+    console.warn('[m6] account.application.deauthorized: no organisation for account', {
+      eventId,
+      accountId,
     })
-    .eq('stripe_account_id', accountId)
+    return
+  }
 
-  if (error) {
-    console.error('[m6] account.application.deauthorized update failed', { eventId, accountId, error })
+  const { disconnectConnectedAccount } = await import('@/lib/stripe/reconcile-connect')
+  const disconnected = await disconnectConnectedAccount(
+    adminClient,
+    prevOrg.id,
+    'account.application.deauthorized',
+  )
+  if (!disconnected.ok) {
+    console.error('[m6] account.application.deauthorized update failed', {
+      eventId,
+      accountId,
+      error: disconnected.error,
+    })
     return
   }
 

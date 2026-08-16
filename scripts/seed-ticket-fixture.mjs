@@ -2,14 +2,38 @@
 // spine spec. Writes tests/e2e/.ticket-fixture.json with the bearer code +
 // secret, the buyer login, and ids for cleanup.
 //
-//   node --env-file=.env.local scripts/seed-ticket-fixture.mjs         # seed
-//   node --env-file=.env.local scripts/seed-ticket-fixture.mjs clean   # remove
+//   node --env-file=.env.test scripts/seed-ticket-fixture.mjs         # seed
+//   node --env-file=.env.test scripts/seed-ticket-fixture.mjs clean   # remove
+//
+// TEST is the documented target. .env.local points at PRODUCTION and the
+// preflight refuses it without explicit founder approval.
 //
 // Writes DATA only (no schema change, no migration). Self-cleaning.
+import { assertNotProduction } from './lib/production-write-preflight.mjs'
 import { createClient } from '@supabase/supabase-js'
 import { writeFileSync, rmSync, existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+
+// CREDENTIALS COME FROM THE ENVIRONMENT, NEVER FROM THIS FILE.
+// GitGuardian flagged a plaintext account password committed to this
+// repository on 2026-08-08. It was hardcoded in 11 committed automation
+// scripts and reproduced into 3 security documents. A drive script is not a
+// safe place for a credential: it is committed, it is pushed, and it is
+// indexed. Fail closed rather than fall back to a literal.
+function requireEnv(name) {
+  const v = process.env[name]
+  if (!v) {
+    console.error(`[drive] ${name} is not set. Export it for this shell; it is deliberately not in the repo.`)
+    process.exit(2)
+  }
+  return v
+}
+
+// The two guards answer different questions and both are needed: requireEnv asks
+// whether a credential was supplied, assertNotProduction asks which database it
+// opens. A script can pass the first and still be pointed at production.
+assertNotProduction()
 
 const here = dirname(fileURLToPath(import.meta.url))
 const FIXTURE = join(here, '..', 'tests', 'e2e', '.ticket-fixture.json')
@@ -17,13 +41,13 @@ const FIXTURE = join(here, '..', 'tests', 'e2e', '.ticket-fixture.json')
 const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY
 if (!SB_URL || !SERVICE) {
-  console.error('Missing env. Run: node --env-file=.env.local scripts/seed-ticket-fixture.mjs')
+  console.error('Missing env. Run: node --env-file=.env.test scripts/seed-ticket-fixture.mjs')
   process.exit(1)
 }
 const svc = createClient(SB_URL, SERVICE, { auth: { autoRefreshToken: false, persistSession: false } })
 
-const EMAIL = 'ticket-fixture@eventlinqs.test'
-const PASSWORD = 'TicketFixture2026!Secure'
+const EMAIL = requireEnv('EL_DRIVE_EMAIL')
+const PASSWORD = requireEnv('EL_DRIVE_PASSWORD')
 const ORDER_NUMBER = 'EL-FIXTURE01'
 
 async function findUser(email) {

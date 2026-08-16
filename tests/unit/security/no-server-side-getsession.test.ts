@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { statSync } from 'node:fs'
 import { join, extname } from 'node:path'
+import { safeRead, safeWalk } from '../../helpers/safe-walk'
 
 /**
  * Pre-launch hardening item 7 (regression guard).
@@ -27,22 +28,13 @@ const SCAN_DIRS = ['src']
 const EXTRA_FILES = ['middleware.ts']
 const CODE_EXT = new Set(['.ts', '.tsx'])
 
-function walk(dir: string, out: string[]): void {
-  let entries: string[]
-  try {
-    entries = readdirSync(dir)
-  } catch {
-    return
-  }
-  for (const name of entries) {
-    const full = join(dir, name)
-    const s = statSync(full)
-    if (s.isDirectory()) {
-      walk(full, out)
-    } else if (CODE_EXT.has(extname(name))) {
-      out.push(full)
-    }
-  }
+/**
+ * Every code file under `dir`. safeWalk guards readdirSync AND statSync: the
+ * local walk guarded only the readdir, so a file that vanished between being
+ * listed and being stat-ed still threw ENOENT out of the sweep.
+ */
+function walk(dir: string): string[] {
+  return safeWalk(dir, (name) => CODE_EXT.has(extname(name)))
 }
 
 function isClientComponent(source: string): boolean {
@@ -53,9 +45,13 @@ function isClientComponent(source: string): boolean {
 }
 
 describe('no server-side supabase.auth.getSession()', () => {
-  it('every getSession() call lives in a client component', () => {
+  // 30s, not the 5s default: this walks and reads every file in SCAN_DIRS, so
+  // its cost grows with the codebase while the default timeout does not. It
+  // began failing intermittently at 131 test files purely from competing for
+  // I/O under the parallel runner, never from finding a real violation.
+  it('every getSession() call lives in a client component', { timeout: 30_000 }, () => {
     const files: string[] = []
-    for (const d of SCAN_DIRS) walk(join(ROOT, d), files)
+    for (const d of SCAN_DIRS) files.push(...walk(join(ROOT, d)))
     for (const f of EXTRA_FILES) {
       try {
         statSync(join(ROOT, f))
@@ -67,7 +63,10 @@ describe('no server-side supabase.auth.getSession()', () => {
 
     const offenders: string[] = []
     for (const file of files) {
-      const src = readFileSync(file, 'utf8')
+      // safeRead returns null for a file deleted since the walk listed it, which
+      // cannot carry a server-side getSession() and is correctly skipped.
+      const src = safeRead(file)
+      if (src === null) continue
       if (!src.includes('auth.getSession(')) continue
       if (isClientComponent(src)) continue
       offenders.push(file.slice(ROOT.length + 1).replace(/\\/g, '/'))

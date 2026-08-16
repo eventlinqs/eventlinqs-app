@@ -109,6 +109,16 @@ export const SHAPES = {
     minLength: 40,
     describe: 'a legacy eyJ JWT or an sb_secret_ key',
   },
+  googleMapId: {
+    // A Google Cloud Map ID. The 16-character floor is deliberate: Google's
+    // own placeholder, DEMO_MAP_ID, is 11 characters, so a real ID passes and
+    // the demo value cannot be shipped by accident. Shipping DEMO_MAP_ID would
+    // render a map whose advanced markers silently do not appear, which is a
+    // worse defect than the deprecation notice this variable exists to remove.
+    pattern: '^[A-Za-z0-9_-]{16,64}$',
+    minLength: 16,
+    describe: 'a Google Cloud Map ID, never the literal DEMO_MAP_ID',
+  },
   stripePublishableAny: {
     pattern: '^pk_(test|live)_[A-Za-z0-9]{20,}$',
     minLength: 40,
@@ -196,6 +206,29 @@ export const SHAPES = {
     minLength: 12,
     describe: 'an address at eventlinqs.com, the apex domain verified at Resend, optionally with a display name',
   },
+  /**
+   * THE CANONICAL ORIGIN, and only it. Used as the PRODUCTION scope shape for
+   * both origin variables.
+   *
+   * It used to be `^https://([a-z0-9-]+\.)*eventlinqs\.com(\.au)?/?$`, which
+   * accepted `https://eventlinqs.com` and `https://www.eventlinqs.com`. So the
+   * declared CONTRACT permitted exactly the value that caused the 13 August
+   * canonical-host defect, while the code had already been changed to refuse it.
+   * A contract looser than the code is a contract that will eventually be taken
+   * literally by somebody setting a variable in a dashboard at speed.
+   *
+   * Law 9 clause 3: the version contract lives in version control. The same
+   * applies to the origin contract, and this is where it is written down.
+   *
+   * Preview and development keep `originOrLocalhost` below, deliberately: a
+   * preview must resolve against its own deployment, and a developer must be
+   * able to point at localhost.
+   */
+  canonicalHttpsOrigin: {
+    pattern: '^https://www\\.eventlinqs\\.com\\.au/?$',
+    minLength: 24,
+    describe: 'the canonical production origin, https://www.eventlinqs.com.au, and nothing else',
+  },
   brandedHttpsOrigin: {
     pattern: '^https://([a-z0-9-]+\\.)*eventlinqs\\.com(\\.au)?/?$',
     minLength: 20,
@@ -252,7 +285,17 @@ export const SHAPES = {
  *                                    a stricter shape for one scope (production
  *                                    must be LIVE where a preview may be test)
  * @property {boolean}  paymentCritical  true when production cannot take a real
- *                                    payment, or cannot complete one, without it
+ *                                    payment, cannot complete one, or would take
+ *                                    it FOR THE WRONG AMOUNT, without it or with
+ *                                    the wrong value.
+ *                                    The third clause was added 8 August 2026 by
+ *                                    founder ruling. The wording only covered
+ *                                    absence, so a variable whose CORRUPTION
+ *                                    changes the amount charged did not qualify,
+ *                                    which is how the Upstash store, holding the
+ *                                    resolved-fee cache, was classified false.
+ *                                    A fee is money whether it is missing or
+ *                                    wrong.
  * @property {boolean}  githubActions true when it must ALSO exist as a GitHub
  *                                    Actions repository secret
  * @property {boolean}  publicVar     true when it is baked into the browser
@@ -563,6 +606,26 @@ export const ENV_MANIFEST = [
     publicVar: true,
   },
   {
+    name: 'NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID',
+    describe: 'Google Maps Map ID (vector): required by AdvancedMarkerElement on every map',
+    // Required wherever a map renders. AdvancedMarkerElement REQUIRES a Map ID
+    // (Google, "Advanced markers migration"): a map built without one shows no
+    // advanced markers at all, so an absent value here is a blank-pin defect
+    // rather than a degraded one. Optional in development so a local checkout
+    // without the ID still boots; the map falls back to the legacy marker path.
+    requiredOn: ['production', 'preview'],
+    forbiddenOn: [],
+    optionalOn: ['development'],
+    // Not a secret. A Map ID is embedded in the page by design, exactly like
+    // the browser key beside it, and is scoped in the Cloud console.
+    mustBeSensitive: false,
+    previewBranchScoping: 'forbidden',
+    shape: SHAPES.googleMapId,
+    paymentCritical: false,
+    githubActions: false,
+    publicVar: true,
+  },
+  {
     name: 'GOOGLE_MAPS_API_KEY',
     describe: 'Google Maps server key: geocoding at seed and publish time',
     requiredOn: ['production', 'preview'],
@@ -576,30 +639,34 @@ export const ENV_MANIFEST = [
     publicVar: false,
   },
 
-  // ── Rate limiting and the AI cost guard ───────────────────────────────────
+  // ── The shared Redis store: rate limits, the AI budget guard, the feature
+  //    flags, AND the resolved-fee cache. paymentCritical by founder ruling
+  //    2026-08-08: getPricingRule returns the cached entry BEFORE consulting
+  //    the database, so a wrong value here is a wrong fee charged, for up to
+  //    PRICING_RULES_CACHE_TTL_SECONDS. A fee is money.
   {
     name: 'UPSTASH_REDIS_REST_URL',
-    describe: 'Upstash Redis REST URL: rate limits and the AI monthly budget guard',
+    describe: 'Upstash Redis REST URL: the resolved-fee cache, feature flags, rate limits and the AI monthly budget guard',
     requiredOn: ['production'],
     forbiddenOn: [],
     optionalOn: ['preview', 'development'],
     mustBeSensitive: false,
     previewBranchScoping: 'allowed',
     shape: SHAPES.upstashUrl,
-    paymentCritical: false,
+    paymentCritical: true,
     githubActions: false,
     publicVar: false,
   },
   {
     name: 'UPSTASH_REDIS_REST_TOKEN',
-    describe: 'Upstash Redis REST token',
+    describe: 'Upstash Redis REST token: write access to the resolved-fee cache and the feature flags',
     requiredOn: ['production'],
     forbiddenOn: [],
     optionalOn: ['preview', 'development'],
     mustBeSensitive: true,
     previewBranchScoping: 'allowed',
     shape: SHAPES.anyNonEmpty,
-    paymentCritical: false,
+    paymentCritical: true,
     githubActions: false,
     publicVar: false,
   },
@@ -655,7 +722,7 @@ export const ENV_MANIFEST = [
     mustBeSensitive: false,
     previewBranchScoping: 'allowed',
     shape: SHAPES.originOrLocalhost,
-    scopeShape: { production: SHAPES.brandedHttpsOrigin },
+    scopeShape: { production: SHAPES.canonicalHttpsOrigin },
     paymentCritical: false,
     githubActions: false,
     publicVar: true,
@@ -689,7 +756,7 @@ export const ENV_MANIFEST = [
     shape: SHAPES.originOrLocalhost,
     // On production a wrong value puts a 301 in front of every link the platform
     // generates, and Stripe does not follow redirects on a return URL.
-    scopeShape: { production: SHAPES.brandedHttpsOrigin },
+    scopeShape: { production: SHAPES.canonicalHttpsOrigin },
     paymentCritical: false,
     githubActions: false,
     publicVar: true,

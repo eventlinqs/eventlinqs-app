@@ -1,0 +1,72 @@
+{
+  "base": "http://localhost:3000",
+  "at": "2026-08-08T03:57:03.309Z",
+  "code": "Htve83OtXY",
+  "steps": [
+    {
+      "name": "Facebook still gets its redirect",
+      "ok": true,
+      "detail": "HTTP 302 -> http://localhost:3000/events/comedy-lineup-live-at-brisbane-hotel-hobart"
+    },
+    {
+      "name": "Facebook gets no attribution cookie",
+      "ok": true,
+      "detail": "no el_share_code"
+    },
+    {
+      "name": "X still gets its redirect",
+      "ok": true,
+      "detail": "HTTP 302 -> http://localhost:3000/events/comedy-lineup-live-at-brisbane-hotel-hobart"
+    },
+    {
+      "name": "X gets no attribution cookie",
+      "ok": true,
+      "detail": "no el_share_code"
+    },
+    {
+      "name": "WhatsApp still gets its redirect",
+      "ok": true,
+      "detail": "HTTP 302 -> http://localhost:3000/events/comedy-lineup-live-at-brisbane-hotel-hobart"
+    },
+    {
+      "name": "WhatsApp gets no attribution cookie",
+      "ok": true,
+      "detail": "no el_share_code"
+    },
+    {
+      "name": "Slack still gets its redirect",
+      "ok": true,
+      "detail": "HTTP 302 -> http://localhost:3000/events/comedy-lineup-live-at-brisbane-hotel-hobart"
+    },
+    {
+      "name": "Slack gets no attribution cookie",
+      "ok": true,
+      "detail": "no el_share_code"
+    },
+    {
+      "name": "no crawler was counted as a click",
+      "ok": true,
+      "detail": "0 -> 0 click rows across 4 crawler hits"
+    },
+    {
+      "name": "the browser landed on the event page",
+      "ok": true,
+      "detail": "http://localhost:3000/events/comedy-lineup-live-at-brisbane-hotel-hobart"
+    },
+    {
+      "name": "the browser DID get the attribution cookie",
+      "ok": true,
+      "detail": "el_share_code=Htve83OtXY"
+    },
+    {
+      "name": "the real browser WAS counted as a click",
+      "ok": true,
+      "detail": "0 -> 1 click rows. A filter that drops real people understates reach, which is the same lie in the other direction"
+    },
+    {
+      "name": "the view beacon fired",
+      "ok": true,
+      "detail": "0 -> 1 view rows, so the whole path works: script ran, cookie survived, endpoint accepted"
+    }
+  ]
+}

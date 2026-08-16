@@ -22,11 +22,52 @@ jobs:
       # only satisfy `next build`'s client-bundle validation.
       NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
-      NEXT_PUBLIC_SITE_URL: https://eventlinqs.com
+      # The CANONICAL host. This was https://eventlinqs.com, which is one of the
+      # hosts the canonical 301 redirects, and a placeholder that names the wrong
+      # host is how the wrong host gets copied into the next thing.
+      NEXT_PUBLIC_SITE_URL: https://www.eventlinqs.com.au
+
+      # MAKE preview-deployment-state A REAL GATE.
+      #
+      # The guard runs inside `npm run build` (prebuild -> run-guards) and needs
+      # three things to ask Vercel anything: a token, a project id and a team id.
+      # It had NONE of them here, so it printed SKIP on every CI run since it was
+      # written, and the VERCEL_TOKEN created for it on 15 August 2026 was never
+      # reachable by the job that runs it. A secret nothing reads is not
+      # protection.
+      #
+      # The two ids are identifiers, not secrets: they are the same values
+      # `vercel link` writes into .vercel/project.json, which is gitignored, so
+      # naming them here is what puts the contract in version control rather than
+      # in a dashboard (Law 9, clause 3).
+      #
+      # This can only ever SKIP or FAIL-ON-ERROR: an absent, invalid or rejected
+      # token exits 0 with a warning by design, so wiring it cannot break a build
+      # that would otherwise pass.
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_PROJECT_ID: prj_YIHLHcjuQfg4RmtNt7JekkcTVznJ
+      VERCEL_ORG_ID: team_yPo8T18zSl5VczJfWIIrNqly
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # FULL HISTORY, and only on this job.
+          #
+          # `npm run build` runs prebuild, which runs the guard registry, which
+          # runs scripts/guards/no-ai-authorship.mjs. That guard reads commit
+          # MESSAGES. actions/checkout defaults to fetch-depth 1, so it was being
+          # handed a one-commit clone and reporting PASS having inspected a single
+          # message: a gate announcing enforcement it was not performing, which is
+          # worse than no gate, because it is believed.
+          #
+          # The guard now prints how many commits it scanned, so this setting is
+          # verifiable from the CI log rather than taken on trust. A line reading
+          # "scanned 1 commit(s)" means this block has been lost.
+          #
+          # The other two jobs (types-drift-guard, test) never run the guard and
+          # keep the fast shallow clone.
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -155,7 +196,8 @@ jobs:
       # only satisfy module imports that validate client-bundle env.
       NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
-      NEXT_PUBLIC_SITE_URL: https://eventlinqs.com
+      # The CANONICAL host, for the same reason as the verify job above.
+      NEXT_PUBLIC_SITE_URL: https://www.eventlinqs.com.au
 
     steps:
       - name: Checkout

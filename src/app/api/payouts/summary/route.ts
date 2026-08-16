@@ -13,7 +13,10 @@ export async function GET(request: Request): Promise<NextResponse> {
   const blocked = await applyRateLimit('payouts-read', request)
   if (blocked) return blocked
 
-  const scope = await resolveOrganiserScope()
+  // ?org=<id> names which business. See the note in ../list/route.ts.
+  const scope = await resolveOrganiserScope(
+    new URL(request.url).searchParams.get('org') ?? undefined,
+  )
   if (!scope.ok) {
     return NextResponse.json(
       { ok: false, error: scope.reason },

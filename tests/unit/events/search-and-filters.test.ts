@@ -115,9 +115,40 @@ describe('URL filters that appear in real hrefs', () => {
     expect(parseEventsSearchParams({ date: 'someday' }).filters.preset).toBeUndefined()
   })
 
-  it('parses suburb, and lets it win over the city it travels with', () => {
+  /**
+   * MERGE DECISION, 9 August 2026, restated by the founder 12 August, and it
+   * CHANGED this assertion. Recorded here rather than only in a commit message
+   * because the next reader is whoever hits this test, not whoever reads the
+   * log.
+   *
+   * origin/main collapsed suburb INTO city: `?city=sydney&suburb=newtown`
+   * became `city: 'newtown'`, an ilike on venue_city. That only matches events
+   * whose venue_city string literally reads "Newtown", and most Sydney events
+   * store venue_city as "Sydney", so the suburb link returned few or no
+   * results while looking like a working filter.
+   *
+   * This line of work keeps suburb as its OWN filter, resolved through
+   * resolveSuburb to a district and then to the ids of events inside it
+   * (fetchers.ts resolveEventFilterOps). That is real geographic narrowing
+   * rather than a string coincidence, and it is fully wired.
+   *
+   * The precise behaviour is kept. This assertion now tests the composed
+   * result: the city it travelled with is preserved AND the suburb narrows.
+   *
+   * IF YOU ARE MERGING AND SEE THIS ASSERTION CHANGED, IT IS NOT A REGRESSION.
+   * Reverting it silently re-breaks the suburb link on every city page.
+   * FOUNDER: if you prefer main's simpler collapse, this is the one place to
+   * change it back, and the suburb filter in fetchers.ts goes with it.
+   */
+  it('parses suburb as its own filter and keeps the city it travels with', () => {
     const f = parseEventsSearchParams({ city: 'sydney', suburb: 'newtown' }).filters
-    expect(f.city).toBe('newtown')
+    expect(f.city).toBe('sydney')
+    expect(f.suburb).toBe('newtown')
+  })
+
+  it('parses a bare suburb with no city, so the suburb link works alone', () => {
+    const f = parseEventsSearchParams({ suburb: 'newtown' }).filters
+    expect(f.suburb).toBe('newtown')
   })
 
   it('parses venue and event_type', () => {

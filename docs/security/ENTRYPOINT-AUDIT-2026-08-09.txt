@@ -1,0 +1,18 @@
+Entry points: 167 (50 route handlers, 117 server actions)
+
+  AMBER-PRIVILEGED-NO-SCOPE 4
+  GREEN              119
+  GREEN-VIA-RLS      7
+  PUBLIC-BY-DESIGN   37
+
+
+### AMBER-PRIVILEGED-NO-SCOPE (4)
+  actions/consent.ts::setDigestConsentAction
+      src/app/actions/consent.ts  auth=getUser  authz=NONE  validation=none  takesId=false  privileged=true
+  actions/gigs.ts::reportMarketplaceItemAction
+      src/app/actions/gigs.ts  auth=getUser  authz=NONE  validation=zod safeParse  takesId=false  privileged=true
+  api/ai/magic-start/POST
+      src/app/api/ai/magic-start/route.ts  auth=getUser  authz=NONE  validation=none  takesId=false  privileged=true
+  api/broadcast/share-link/POST
+      src/app/api/broadcast/share-link/route.ts  auth=getUser  authz=NONE  validation=zod safeParse  takesId=false  privileged=true
+[entrypoint-authz] PASS - every entry point declares an auth posture.

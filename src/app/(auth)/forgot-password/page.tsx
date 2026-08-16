@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Suspense } from 'react'
 import { AuthShell } from '@/components/auth/auth-shell'
 import { ForgotPasswordForm } from '@/components/auth/forgot-password-form'
 
@@ -21,7 +22,11 @@ export default function ForgotPasswordPage() {
         </>
       }
     >
-      <ForgotPasswordForm />
+      {/* The form reads ?email= to prefill when the signup form sends someone
+          here, and useSearchParams needs a boundary. Matches /login. */}
+      <Suspense fallback={<div className="h-[220px]" />}>
+        <ForgotPasswordForm />
+      </Suspense>
     </AuthShell>
   )
 }

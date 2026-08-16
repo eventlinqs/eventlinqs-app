@@ -6,7 +6,7 @@ import { processEventImage } from '@/lib/media/image-pipeline'
 import { MAX_IMAGE_BYTES } from '@/lib/media/limits'
 import { checkRateLimit } from '@/lib/redis/rate-limit'
 import { POLICIES } from '@/lib/rate-limit/policies'
-import { resolveSeatingOrganisation } from '@/lib/organisations/access'
+import { canManageOrganisationSeating } from '@/lib/organisations/access'
 
 /**
  * View from seat, by PHOTOGRAPH (item 9): the organiser uploads one real
@@ -23,14 +23,20 @@ export type SectionViewResult =
   | { ok: true; photo_url: string }
   | { ok: false; error: string }
 
-/** The caller may manage this chart: chart -> venue -> their organisation. */
+/**
+ * The caller may manage this chart: chart -> venue -> the organisation that owns it
+ * -> may this caller manage that organisation.
+ *
+ * The direction matters. This used to resolve the caller's ONE organisation first
+ * and require the chart's organisation to equal it, which (a) returned null for any
+ * owner of more than one, because the resolver used maybeSingle, and (b) could never
+ * accept a chart belonging to their second business even once that was fixed.
+ */
 async function callerOwnsChart(
   userId: string,
   seatMapId: string,
 ): Promise<{ ok: boolean }> {
   const supabase = await createClient()
-  const org = await resolveSeatingOrganisation(supabase, userId)
-  if (!org) return { ok: false }
   const admin = createAdminClient()
   const { data: map } = await admin
     .from('seat_maps')
@@ -38,7 +44,8 @@ async function callerOwnsChart(
     .eq('id', seatMapId)
     .maybeSingle()
   const venueOrg = (map?.venues as { organisation_id?: string | null } | null)?.organisation_id
-  return { ok: !!map && venueOrg === org.id }
+  if (!map || !venueOrg) return { ok: false }
+  return { ok: await canManageOrganisationSeating(supabase, userId, venueOrg) }
 }
 
 export async function uploadSectionViewPhoto(formData: FormData): Promise<SectionViewResult> {

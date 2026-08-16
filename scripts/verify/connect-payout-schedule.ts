@@ -19,6 +19,7 @@
 
 import Stripe from 'stripe'
 import { createExpressAccount } from '../../src/lib/stripe/connect'
+import { buildConnectBusinessProfile } from '../../src/lib/stripe/business-profile'
 
 const DIM = '\x1b[2m'
 const RESET = '\x1b[0m'
@@ -48,6 +49,15 @@ async function main(): Promise<void> {
     country: 'AU',
     email: `payout-schedule-proof-${Date.now()}@eventlinqs-proof.invalid`,
     payoutDelayDays: requestedDelayDays,
+    businessProfile: buildConnectBusinessProfile(
+      {
+        name: 'Payout Schedule Proof',
+        slug: 'payout-schedule-proof',
+        email: null,
+        phone: null,
+      },
+      null
+    ),
   })
   console.log(`created account: ${account.id}`)
 

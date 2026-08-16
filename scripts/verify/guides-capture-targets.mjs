@@ -8,6 +8,23 @@
  */
 import fs from 'node:fs'
 
+// CREDENTIALS COME FROM THE ENVIRONMENT, NEVER FROM THIS FILE.
+// GitGuardian flagged a plaintext account password committed to this
+// repository on 2026-08-08. It was hardcoded in 11 committed automation
+// scripts and reproduced into 3 security documents. A drive script is not a
+// safe place for a credential: it is committed, it is pushed, and it is
+// indexed. Fail closed rather than fall back to a literal.
+function requireEnv(name) {
+  const v = process.env[name]
+  if (!v) {
+    console.error(`[drive] ${name} is not set. Export it for this shell; it is deliberately not in the repo.`)
+    process.exit(2)
+  }
+  return v
+}
+
+
+
 const PROD_REF = 'gndnldyfudbytbboxesk'
 const TEST_REF = 'vkapkibzokmfaxqogypq'
 
@@ -28,8 +45,7 @@ async function q(path) {
   return res.json()
 }
 
-const ORGANISER_EMAIL = 'broadcast.gate.organiser@eventlinqs.com'
-
+const ORGANISER_EMAIL = requireEnv('EL_DRIVE_EMAIL')
 const users = await q(`profiles?email=eq.${ORGANISER_EMAIL}&select=id,email,full_name`)
 if (users.length === 0) throw new Error(`organiser ${ORGANISER_EMAIL} not found on TEST`)
 const userId = users[0].id

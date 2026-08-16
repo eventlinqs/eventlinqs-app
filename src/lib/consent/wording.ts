@@ -36,6 +36,23 @@ export const DIGEST_CONSENT_WORDING =
   'Keep me posted on events in my area: a weekly local digest and occasional EventLinqs updates by email. You can unsubscribe at any time.'
 export const DIGEST_CONSENT_WORDING_VERSION = 'v1'
 
+/**
+ * The city newsletter capture, shown on every city landing, every
+ * community-by-city page and every organiser profile.
+ *
+ * This string is the EXACT promise printed on that panel, word for word, so
+ * the wording recorded as evidence is the wording the person actually read.
+ * `tests/unit/consent/newsletter-capture.test.ts` pins it against the
+ * component's own literals, so the two can never drift apart silently.
+ *
+ * Nothing is added that the panel does not say. Storing a stronger consent
+ * than the one shown would be the same lie in the other direction.
+ */
+export function cityNewsletterConsentWording(cityName: string): string {
+  return `Get ${cityName}'s best events weekly. One email a week, the events worth your time.`
+}
+export const CITY_NEWSLETTER_CONSENT_VERSION = 'v1'
+
 /** Normalise an email for consent matching (case-insensitive, trimmed). */
 export function normaliseConsentEmail(email: string): string {
   return email.trim().toLowerCase()

@@ -60,7 +60,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const admin = createAdminClient()
   const { data: event } = await admin
     .from('events')
-    .select('id, status')
+    .select('id, status, slug')
     .eq('slug', parsed.data.slug)
     .maybeSingle()
   if (!event) {
@@ -80,6 +80,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       eventId: event.id,
       channel,
       createdBy: user?.id ?? null,
+      eventSlug: event.slug,
     })
     if (link) links[channel] = buildShortUrl(origin, link.code)
   }
