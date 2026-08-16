@@ -427,7 +427,10 @@ export function EventMediaStep({
 
           {preview && (
             <div className="mt-4">
-              <div className="relative aspect-[4/3] w-full max-w-sm overflow-hidden rounded-lg border border-ink-200 bg-ink-100">
+              {/* 4:5, matching the frame the cover is authored at, so the
+               *  organiser sees the whole composition before they commit to it
+               *  rather than a crop of it. */}
+              <div className="relative mx-auto aspect-[4/5] w-full max-w-[260px] overflow-hidden rounded-lg border border-ink-200 bg-ink-100 sm:mx-0">
                 {/* eslint-disable-next-line @next/next/no-img-element -- transient in-memory preview, never a public render surface */}
                 <img
                   src={preview.dataUrl}

@@ -184,8 +184,15 @@ const ROOT = join(HERE, '..', '..')
  * organiser CURRENT wall clock with no zone conversion, because converting it
  * and back is what puts a 9pm Perth event on the wrong day.
  */
+/*
+ * 2026-08-17 (later): raised 202/2424 -> 202/2425. One assertion added to
+ * tests/unit/broadcast/cover-format.test.ts, stating the cover frame property
+ * as arithmetic rather than as a number: the authored ratio must be no wider
+ * than any frame the platform crops a cover to. The first version of that
+ * format was 4:3 and clipped the event name in the 4:5 card crop.
+ */
 const MIN_FILES = 202
-const MIN_TESTS = 2424
+const MIN_TESTS = 2425
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

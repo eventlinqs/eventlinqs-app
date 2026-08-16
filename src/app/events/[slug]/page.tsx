@@ -20,6 +20,7 @@ import { isFlagEnabled } from '@/lib/flags'
 import { SocialProofBadge } from '@/components/inventory/social-proof-badge'
 import { GoingProof } from '@/components/inventory/going-proof'
 import { TicketPanelClient } from '@/components/features/events/ticket-panel-client'
+import { GetTicketsCta } from '@/components/features/events/get-tickets-cta'
 import { getEventInventoryStatic, getTierInventoryStatic } from '@/lib/redis/inventory-cache'
 import { getDynamicPriceMap } from '@/lib/pricing/dynamic-pricing'
 import { SiteHeader } from '@/components/layout/site-header'
@@ -782,12 +783,9 @@ export default async function EventDetailPage({ params }: Props) {
                     Browse upcoming events
                   </Link>
                 ) : (
-                  <Link
-                    href="#tickets"
-                    className="inline-flex items-center rounded-lg bg-gold-500 px-6 py-3 text-base font-semibold text-ink-900 shadow-lg shadow-gold-500/20 transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.02] hover:bg-gold-600"
-                  >
+                  <GetTicketsCta className="inline-flex items-center rounded-lg bg-gold-500 px-6 py-3 text-base font-semibold text-ink-900 shadow-lg shadow-gold-500/20 transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.02] hover:bg-gold-600">
                     Get tickets
-                  </Link>
+                  </GetTicketsCta>
                 )}
                 {!eventBannerState ? (
                   <span className="inline-flex items-center gap-2 text-sm text-white/80">

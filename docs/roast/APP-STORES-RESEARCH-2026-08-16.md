@@ -13,7 +13,19 @@ marked **UNSOURCED** rather than asserted. Nothing in this document was built.
 | Apple Wallet passes: what is required? | Apple Developer Program membership (99 USD/year), a Pass Type ID, a signing certificate and Apple's WWDR intermediate. Passes are signed `.pkpass` bundles. No review, no per-pass approval |
 | Google Wallet passes: what is required? | A Google Wallet API issuer account, a Google Cloud service account, and a **publishing-access request** before real users can be issued passes. No fee found for the issuer account |
 | Does the scanner work offline today? | **No. Not at all**, and the reason is structural rather than a missing feature. See section 5 |
-| Does iOS evict a home-screen PWA after seven days? | **The premise is wrong, per WebKit's own post.** Home screen web apps are explicitly outside Safari's seven-day counter. See section 5b |
+| Does iOS evict a home-screen PWA after seven days? | **NO. The premise is withdrawn.** WebKit's own post puts home screen web apps outside Safari's seven-day counter, with their own counter that advances only with use. **This removes the strongest argument for a native scanner.** See section 5b |
+
+> **CORRECTION, accepted by the founder on 17 August 2026.** The brief that
+> commissioned this research stated that "iOS evicts home-screen PWAs after
+> roughly seven days of disuse, taking cached data with them, which is exactly
+> wrong for a scanner used once a month". That is not what WebKit publishes, and
+> the difference decides an expensive question: whether the offline scanner has
+> to be a native app. It does not. The corrected position is section 5b, with
+> the source quoted verbatim.
+>
+> Nothing else in this document rested on the wrong premise. The offline-scanner
+> verdict in section 5 was reached from this repository's own code, four
+> independent reasons read out of the files, not from the eviction claim.
 
 ---
 
@@ -174,12 +186,18 @@ The only part that does work offline is the QR decode itself, because
 **Roughly a week**, and the third item is the part that needs a ruling before
 any of it is worth starting.
 
-### 5b. The seven-day eviction premise is wrong
+### 5b. The seven-day eviction premise is WITHDRAWN
 
-The brief states that "iOS evicts home-screen PWAs after roughly seven days of
+**Status: a founder-briefing error, corrected by primary source and accepted on
+17 August 2026.** It is recorded here and in
+`docs/roast/POST-LAUNCH-FINDINGS.md` rather than quietly edited, because how it
+was wrong is the useful part: a plausible, widely repeated platform behaviour was
+stated from memory, and a single first-party page reversed it.
+
+The brief stated that "iOS evicts home-screen PWAs after roughly seven days of
 disuse, taking cached data with them, which is exactly wrong for a scanner used
-once a month". That is worth correcting, because it is the argument that would
-otherwise force a native app.
+once a month". That is the argument that would otherwise force a native app, so
+it is worth more than a footnote.
 
 WebKit's own announcement of the policy says the opposite for installed web
 apps:

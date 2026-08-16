@@ -37,6 +37,41 @@ blocking. The sections below are the running record and are kept in date order.
 | N-6 | Mobile performance on the homepage is 0.63 and LCP runs 5.2 to 6.3 seconds on the preview. | Warn-level by a dated waiver (Issue #42, expires 2026-11-01), not a blocker. Detail and the proposed fix are in the section below. |
 | N-7 | `/pricing`, `/help` and `/legal/terms` render zero `<img>` elements. | Not a gate failure, but `/pricing` is a marketing surface and Law 4 says a text-only marketing surface is a design defect by definition. Detail below. |
 
+### Recorded 17 August 2026: a founder-briefing error, corrected by primary source
+
+**The claim.** The brief commissioning the app-store research stated that "iOS
+evicts home-screen PWAs after roughly seven days of disuse, taking cached data
+with them, which is exactly wrong for a scanner used once a month."
+
+**The source says otherwise.** WebKit's own announcement of the storage policy,
+https://webkit.org/blog/10218/full-third-party-cookie-blocking-and-more/
+(fetched 2026-08-16), verbatim:
+
+> "Web applications added to the home screen are not part of Safari and thus have
+> their own counter of days of use. Their days of use will match actual use of
+> the web application which resets the timer."
+
+and
+
+> "We do not expect the first-party in such a web application to have its website
+> data deleted"
+
+The seven-day cap is scoped to "seven days of Safari use without user interaction
+on the site". An installed web app is not Safari and keeps its own counter.
+
+**What it changes.** It removes the strongest argument for building a native
+scanner. An offline scanner can be a home-screen PWA holding its guest list in
+IndexedDB, and the remaining reasons to prefer native are camera performance and
+`BarcodeDetector` support on current iOS, the second of which is still
+**UNSOURCED** and is the cheapest next check on the whole subject.
+
+**Why it is recorded rather than quietly edited**, which is the point. This is
+the same family as everything else this project keeps catching: a plausible,
+widely repeated platform behaviour, stated from memory, reversed by a single
+first-party page. The difference here is only that the memory was the founder's
+rather than an agent's, and the correction cost one fetch. Accepted 17 August
+2026. The research document carries the correction at the top and in section 5b.
+
 ### Recorded 16 August 2026, overnight pass: what the two new guards found, and the four things left open
 
 **The headline.** Two build-failing guards were added

@@ -109,31 +109,58 @@ user-content path, so if it appears in a future list it is verified against the
 installed package with a real file, never against a lockfile diff. It is not in
 this list; it is current.
 
-## The Supabase Postgres version: NOT DETERMINED, and why
+## The Supabase Postgres version: DETERMINED, 17 August 2026
 
-I could not read it, and I am recording the failure rather than an estimate.
-
-- `SUPABASE_DB_URL` in `.env.test` is a redacted placeholder, so a direct
-  `select version()` could not connect. Proven, not assumed: the connection
-  attempt failed with `ERR_INVALID_URL` on a redacted string.
-- PostgREST does not expose the Postgres version, so the anon and service-role
-  clients cannot answer it.
-- The Supabase Management API can, and needs a `SUPABASE_ACCESS_TOKEN`, which is
-  not present in this worktree and which the memory index records as expiring
-  repeatedly.
-
-**How to get it in one line**, for whoever has the credential:
+**Resolved, and the previous "blocked" answer was wrong about the route rather
+than about the credential.** The blocker recorded on 16 August was the redacted
+`SUPABASE_DB_URL` in `.env.test`, which is real: a direct `select version()`
+cannot connect, proven by an `ERR_INVALID_URL` on the placeholder. What that
+missed is that the connection string was never the only route. **The Supabase
+CLI on this machine is already signed in**, so the Management API answers it
+read-only, with no database connection and no write of any kind:
 
 ```
-supabase projects list            # shows the Postgres version per project
+supabase projects list --output json
 ```
 
-or, in the SQL editor of either project, `select version();`.
+| Project | Ref | `postgres_engine` | `version` | Channel | Status |
+|---|---|---|---|---|---|
+| eventlinqs-sydney (**PRODUCTION**) | `gndnldyfudbytbboxesk` | **17** | 17.6.1.105 | ga | ACTIVE_HEALTHY |
+| eventlinqs-test (**TEST**) | `vkapkibzokmfaxqogypq` | **17** | 17.6.1.155 | ga | ACTIVE_HEALTHY |
 
-**Why it matters enough to chase:** Supabase upgrades Postgres majors on its own
-schedule and an out-of-date instance is exactly the Law 9 shape this document
-exists to catch. It is also the one item here that could require downtime, so it
-wants a date rather than a discovery.
+**Is it current? Yes on the major, slightly behind on the minor.** PostgreSQL
+supports 17 until **8 November 2029**, and the current minor of that line is
+**17.11** (https://www.postgresql.org/support/versioning/, fetched 2026-08-17,
+which also states the project supports each major for five years and recommends
+"always run the current minor release"). Both projects run Supabase's build of
+**17.6**. Minor upgrades are Supabase's to schedule from the dashboard, not the
+repository's, so this is a check-and-apply item rather than a code change, and it
+is not urgent: there is no end-of-life pressure until 2029.
+
+**The two environments are NOT on the same platform build.** TEST is 17.6.1.155
+and production is 17.6.1.105. Same Postgres, different Supabase build. Worth
+knowing when a behaviour reproduces on one and not the other.
+
+### The finding this actually surfaced: local development runs TWO MAJORS BEHIND
+
+`supabase/config.toml` line 16 declares:
+
+```toml
+[db]
+major_version = 15
+```
+
+That is the Postgres `supabase start` runs locally. **Both hosted projects run
+17.** So anything verified against a local Supabase is verified on Postgres 15
+and deployed onto Postgres 17, which is exactly the shape of Law 9 clause 2: two
+environments disagreeing, with the older one not brought forward. Postgres 15 is
+still supported (until 11 November 2027), so nothing is broken today; the risk is
+that a behaviour differing between 15 and 17 is invisible locally.
+
+**The fix is one line**, `major_version = 17`, followed by a local `supabase stop`
+and `supabase start` to recreate the container. It is NOT applied here because
+this document is report-only by instruction, and because recreating the local
+database is a founder action with local state attached to it.
 
 ## The order I would do this in
 
