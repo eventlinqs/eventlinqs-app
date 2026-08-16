@@ -989,6 +989,12 @@ export function EventForm({
       onImagesChange={imgs => set('media', imgs)}
       video={formData.video_url}
       onVideoChange={v => set('video_url', v)}
+      // The LIVE form values, so a designed cover carries the details the
+      // organiser has typed rather than the ones last written to the row.
+      title={formData.title}
+      startLocal={formData.start_date}
+      venueName={formData.venue_name}
+      venueCity={formData.venue_city}
     />
   )
 

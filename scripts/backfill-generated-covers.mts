@@ -1,6 +1,11 @@
-#!/usr/bin/env node
 /**
  * BACKFILL: give every cover-less event a designed cover.
+ *
+ * NO SHEBANG, deliberately. scripts/guards/no-control-characters.mjs forbids one
+ * on any .mjs under scripts/ because Vite does not strip it when a test imports
+ * the module, so the importing suite fails to COLLECT and reports "no tests"
+ * rather than a failure. That guard currently scans .mjs only, so it did not see
+ * this file; the reasoning applies identically here and the line is gone.
  *
  * WHAT IT DOES. Counts the events with no real cover, and with --apply renders
  * the Law 6 typographic composition for each one through the SAME code path the

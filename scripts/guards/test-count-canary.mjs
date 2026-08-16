@@ -177,8 +177,15 @@ const ROOT = join(HERE, '..', '..')
  * appears on a thin catalogue is proven in the DOM rather than asserted from
  * the source.
  */
-const MIN_FILES = 201
-const MIN_TESTS = 2420
+/*
+ * 2026-08-17: raised 201/2420 -> 202/2424.
+ * tests/unit/events/generated-cover-labels.test.ts, 4 tests, from wiring the
+ * designed cover into the organiser form. They pin that the cover prints the
+ * organiser CURRENT wall clock with no zone conversion, because converting it
+ * and back is what puts a 9pm Perth event on the wrong day.
+ */
+const MIN_FILES = 202
+const MIN_TESTS = 2424
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

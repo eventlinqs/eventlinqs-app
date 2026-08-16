@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { uploadEventImage } from '@/lib/upload'
+import { generateEventCoverPreview, uploadEventImage } from '@/lib/upload'
 import { prepareImageForUpload } from '@/lib/media/client-compress'
 import { parseVideoEmbed } from '@/lib/media/video-embed'
 import {
@@ -39,13 +39,48 @@ type Props = {
   onImagesChange: (images: MediaImage[]) => void
   video: string
   onVideoChange: (video: string) => void
+  /**
+   * The event details as they stand in the form RIGHT NOW, not as they were
+   * last saved. A designed cover carries the name, the date and the place, so a
+   * cover made from a stale row would print details the organiser has already
+   * changed, which is worse than having no cover at all.
+   */
+  title: string
+  startLocal: string
+  venueName: string
+  venueCity: string
+}
+
+/** The details a designed cover prints, as one comparable value. */
+function detailKey(title: string, startLocal: string, venueName: string, venueCity: string) {
+  return JSON.stringify([title.trim(), startLocal, venueName.trim(), venueCity.trim()])
+}
+
+/** Turn the preview bytes back into a File so they take the ordinary upload path. */
+function dataUrlToFile(dataUrl: string, name: string): File {
+  const [head, body] = dataUrl.split(',')
+  const mime = /data:([^;]+)/.exec(head)?.[1] ?? 'image/jpeg'
+  const binary = atob(body)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i)
+  return new File([bytes], name, { type: mime })
 }
 
 function uid() {
   return crypto.randomUUID()
 }
 
-export function EventMediaStep({ eventId, images, onImagesChange, video, onVideoChange }: Props) {
+export function EventMediaStep({
+  eventId,
+  images,
+  onImagesChange,
+  video,
+  onVideoChange,
+  title,
+  startLocal,
+  venueName,
+  venueCity,
+}: Props) {
   // Internal state is the source of truth so parallel uploads update individual
   // tiles without stale-closure races; the parent is notified on every change.
   const [items, setItems] = useState<MediaImage[]>(images)
@@ -54,6 +89,12 @@ export function EventMediaStep({ eventId, images, onImagesChange, video, onVideo
   const itemsRef = useRef(items)
   useEffect(() => { itemsRef.current = items }, [items])
   const [notice, setNotice] = useState<string | null>(null)
+  // The designed cover: rendered, shown, and only committed on an explicit
+  // press. `preview` holds bytes that exist nowhere else, so declining one
+  // leaves nothing behind.
+  const [making, setMaking] = useState(false)
+  const [preview, setPreview] = useState<{ dataUrl: string; madeFrom: string } | null>(null)
+  const [generatedFrom, setGeneratedFrom] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -143,6 +184,57 @@ export function EventMediaStep({ eventId, images, onImagesChange, video, onVideo
     },
     [uploadOne],
   )
+
+  const currentKey = detailKey(title, startLocal, venueName, venueCity)
+
+  const makeCover = useCallback(async () => {
+    setNotice(null)
+    setMaking(true)
+    try {
+      const result = await generateEventCoverPreview({
+        eventId,
+        title,
+        startLocal,
+        venueName,
+        venueCity,
+      })
+      if (result.ok) {
+        setPreview({ dataUrl: result.dataUrl, madeFrom: currentKey })
+      } else {
+        setPreview(null)
+        setNotice(result.error)
+      }
+    } catch {
+      setPreview(null)
+      setNotice('We could not make a cover just now. Try again in a moment.')
+    } finally {
+      setMaking(false)
+    }
+  }, [eventId, title, startLocal, venueName, venueCity, currentKey])
+
+  // COMMIT, and only on an explicit press. An existing cover is never destroyed:
+  // it moves down into the gallery, where they can put it back with one press.
+  const useGeneratedCover = useCallback(() => {
+    if (!preview) return
+    if (itemsRef.current.length >= MAX_TOTAL_IMAGES) {
+      setNotice(
+        `You already have ${MAX_TOTAL_IMAGES} images. Remove one, then use this cover.`,
+      )
+      return
+    }
+    setNotice(null)
+    const file = dataUrlToFile(preview.dataUrl, 'designed-cover.jpg')
+    const localPreview = URL.createObjectURL(file)
+    objectUrls.current.add(localPreview)
+    const id = uid()
+    setItems((prev) => [
+      { id, url: '', alt: '', width: 0, height: 0, localPreview, uploading: true },
+      ...prev,
+    ])
+    setGeneratedFrom(preview.madeFrom)
+    setPreview(null)
+    void uploadOne(file, id, 'cover')
+  }, [preview, uploadOne])
 
   const onPick = (fileList: FileList | null) => {
     if (!fileList || fileList.length === 0) return
@@ -298,6 +390,82 @@ export function EventMediaStep({ eventId, images, onImagesChange, video, onVideo
             <p className="mt-1 text-xs text-ink-400">JPEG, PNG, WebP, AVIF, or HEIC. Up to 10MB each. The first image is your cover.</p>
           </div>
         )}
+
+        {/* THE DESIGNED COVER, beside the upload rather than instead of it.
+         *
+         *  A cover is required to publish and most small organisers have no
+         *  artwork, so without this the requirement locks out exactly the people
+         *  the platform is for. Law 6: nothing is GENERATED, the composition is
+         *  built from their own event details in the brand system, and it is the
+         *  same one the Launch Kit already gives them.
+         *
+         *  Three rules this block keeps: it never renders without being asked,
+         *  it always shows the result before anything changes, and it never
+         *  destroys an image they uploaded. */}
+        <div className="mt-4 rounded-lg border border-ink-200 bg-ink-100/60 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-ink-900">No artwork yet?</p>
+              <p className="mt-1 max-w-prose text-xs text-ink-600">
+                We can set your event name, date and venue into a cover in the EventLinqs
+                style. You see it before anything changes.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={makeCover}
+              disabled={making}
+              className="inline-flex min-h-11 shrink-0 items-center rounded-lg border border-ink-200 bg-white px-4 py-2.5 text-sm font-medium text-ink-900 transition-colors hover:border-gold-400 hover:text-gold-600 disabled:opacity-50"
+            >
+              {making ? 'Making it...' : preview ? 'Make another' : 'Make a cover'}
+            </button>
+          </div>
+
+          {preview && (
+            <div className="mt-4">
+              <div className="relative aspect-[4/3] w-full max-w-sm overflow-hidden rounded-lg border border-ink-200 bg-ink-100">
+                {/* eslint-disable-next-line @next/next/no-img-element -- transient in-memory preview, never a public render surface */}
+                <img
+                  src={preview.dataUrl}
+                  alt="Preview of the cover made from your event details"
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+              </div>
+              <p className="mt-2 text-xs text-ink-600">
+                {cover
+                  ? 'Nothing has changed yet. Using this makes it your cover, and the one you have now moves into your gallery.'
+                  : 'Nothing has changed yet.'}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={useGeneratedCover}
+                  className="inline-flex min-h-11 items-center rounded-lg bg-gold-500 px-5 py-2.5 text-sm font-medium text-ink-900 transition-colors hover:bg-gold-600"
+                >
+                  Use this cover
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreview(null)}
+                  className="inline-flex min-h-11 items-center rounded-lg border border-ink-200 px-5 py-2.5 text-sm font-medium text-ink-600 transition-colors hover:border-gold-400 hover:text-gold-600"
+                >
+                  Keep what I have
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* A cover carrying stale details is worse than none, so when the name,
+           *  date or venue moves after one was made, it says so and offers to do
+           *  it again. Session-scoped: on a later visit the control above is
+           *  still there and still makes a fresh one. */}
+          {!preview && generatedFrom && generatedFrom !== currentKey && (
+            <p className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              Your event details have changed since this cover was made, so it is showing
+              the old ones. Press Make a cover to bring it up to date.
+            </p>
+          )}
+        </div>
 
         <input
           ref={fileInputRef}

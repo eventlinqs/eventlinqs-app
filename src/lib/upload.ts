@@ -126,6 +126,81 @@ export async function uploadEventImage(formData: FormData): Promise<UploadImageR
   }
 }
 
+export type GeneratedCoverPreviewResult =
+  | { ok: true; dataUrl: string; width: number; height: number }
+  | { ok: false; error: string }
+
+/**
+ * Render a DESIGNED COVER from the event's own details and hand it back as a
+ * preview. Nothing is stored and nothing is attached to the event.
+ *
+ * WHY IT EXISTS. A cover is required to publish, and most small organisers have
+ * no artwork. Without an escape hatch inside the product, the requirement locks
+ * out exactly the people the platform is for. Law 6 already prescribes the
+ * answer for the no-artwork case: a typographic composition built from the
+ * organiser's own event details. This action renders THAT composition, the same
+ * one the Launch Kit gives them, at the event cover frame.
+ *
+ * IT RETURNS BYTES, NOT A URL, ON PURPOSE. The organiser sees the cover before
+ * anything is committed, and the bytes they approve are the bytes that get
+ * uploaded, through the ordinary upload path above. So there is no orphaned
+ * storage object for a cover somebody looked at and declined, and no second
+ * pipeline: an accepted generated cover is validated, EXIF-stripped and stored
+ * exactly like a photograph they chose themselves.
+ *
+ * Same gate and same rate limit as uploadEventImage, for the same reasons: the
+ * caller must be able to write this event, and rendering is expensive enough
+ * that it cannot be free to call in a loop.
+ */
+export async function generateEventCoverPreview(input: {
+  eventId: string
+  title?: string | null
+  startLocal?: string | null
+  venueName?: string | null
+  venueCity?: string | null
+}): Promise<GeneratedCoverPreviewResult> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { ok: false, error: 'You must be signed in to make a cover.' }
+
+  const policy = POLICIES['media-upload']
+  const rl = await checkRateLimit({
+    key: `${policy.keyPrefix}:cover:${user.id}`,
+    limit: policy.limit,
+    windowSec: policy.windowSec,
+  })
+  if (!rl.ok) {
+    return { ok: false, error: 'You are making covers too quickly. Wait a moment and try again.' }
+  }
+
+  if (!input.eventId) {
+    return { ok: false, error: 'Save your event details first, then make a cover.' }
+  }
+  if (!(await callerCanWriteEvent(supabase, user.id, input.eventId))) {
+    return { ok: false, error: 'You do not have permission to change this event.' }
+  }
+
+  try {
+    const { renderGeneratedCover } = await import('@/lib/events/generated-cover')
+    const bytes = await renderGeneratedCover(input.eventId, undefined, {
+      title: input.title,
+      startLocal: input.startLocal,
+      venueName: input.venueName,
+      venueCity: input.venueCity,
+    })
+    if (!bytes) return { ok: false, error: 'We could not find that event. Try saving it first.' }
+    return {
+      ok: true,
+      dataUrl: `data:image/jpeg;base64,${Buffer.from(bytes).toString('base64')}`,
+      width: 1440,
+      height: 1080,
+    }
+  } catch (err) {
+    console.error('[upload] cover generation failed:', err)
+    return { ok: false, error: 'We could not make a cover just now. Try again in a moment.' }
+  }
+}
+
 /** Parse the in-bucket object path from a public storage URL, or null. */
 function objectPathFromUrl(url: string): string | null {
   const marker = `/storage/v1/object/public/${BUCKET}/`

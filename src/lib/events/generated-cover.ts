@@ -33,6 +33,58 @@ import { hasRealCover } from '@/lib/events/publish-gate'
  * night to sell and no poster to sell it with.
  */
 
+/**
+ * The details an organiser can change in the wizard without saving.
+ *
+ * WHY THESE FOUR AND NOT THE WHOLE ROW. A cover carrying stale details is worse
+ * than no cover, and the details that move while somebody is authoring are the
+ * name, when it is on and where it is. Everything else on the composition (the
+ * price, the organiser name, the link) is an event-level fact that is already
+ * saved by the time the media step is reached, so it is read from the row and
+ * cannot be spoofed by the caller.
+ */
+export type CoverDetailOverrides = {
+  title?: string | null
+  /** Local wall clock, `YYYY-MM-DDTHH:mm`, exactly as the form holds it. */
+  startLocal?: string | null
+  venueName?: string | null
+  venueCity?: string | null
+}
+
+/**
+ * Format a LOCAL wall clock into the card's date language.
+ *
+ * No zone conversion happens here and that is deliberate: `2026-09-12T20:00` in
+ * the event's own zone reads as "Saturday 12 September, 8:00 pm" to everybody
+ * who will stand in that room. Converting it to an instant and back would
+ * introduce a zone round trip with nothing to gain and a day boundary to lose.
+ * The shapes match formatArtefactDateParts, and a test pins that they agree.
+ */
+export function labelsFromLocal(startLocal: string | null | undefined): {
+  dateLabel: string
+  timeLabel: string
+} {
+  if (!startLocal) return { dateLabel: '', timeLabel: '' }
+  const m = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/.exec(startLocal)
+  if (!m) return { dateLabel: '', timeLabel: '' }
+  const [, y, mo, d, h, mi] = m
+  const asUtc = new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi)))
+  const dateLabel = new Intl.DateTimeFormat('en-AU', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    timeZone: 'UTC',
+  }).format(asUtc)
+  const timeLabel = new Intl.DateTimeFormat('en-AU', {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: 'UTC',
+  })
+    .format(asUtc)
+    .toLowerCase()
+  return { dateLabel, timeLabel }
+}
+
 /** The bucket event imagery already lives in. */
 export const EVENT_IMAGE_BUCKET = 'event-images'
 
@@ -52,14 +104,33 @@ export type GeneratedCoverResult =
 export async function renderGeneratedCover(
   eventId: string,
   origin: string = getSiteUrl(),
+  overrides?: CoverDetailOverrides,
 ): Promise<Uint8Array | null> {
   // mintLinks false: a cover is not a channel, so nothing is written to
   // share_links and no tracked code is burned to make an image.
   const context = await loadArtefactContext(eventId, origin, null, 'EventLinqs', false)
   if (!context) return null
 
+  const base = toCardInput(context, 'qr')
+
+  // The organiser's CURRENT details win over the saved row, so a cover made
+  // during authoring never carries a name, date or venue they have already
+  // changed. Anything they have not touched falls back to the row.
+  const title = overrides?.title?.trim() || base.title
+  const local = labelsFromLocal(overrides?.startLocal)
+  const dateLabel = local.dateLabel || base.dateLabel
+  const timeLabel = local.timeLabel || base.timeLabel
+  const place = [overrides?.venueName?.trim(), overrides?.venueCity?.trim()]
+    .filter(Boolean)
+    .join(', ')
+  const placeLabel = overrides ? place : base.placeLabel
+
   return renderSocialCard('cover', {
-    ...toCardInput(context, 'qr'),
+    ...base,
+    title,
+    dateLabel,
+    timeLabel,
+    placeLabel,
     // The two inputs that select the composition. `cover: null` IS the
     // typographic branch; a QR belongs on a poster somebody photographs, not on
     // the picture at the top of the page they are already reading.
