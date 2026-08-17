@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import {
   TICKET_SALES_CLOSED_ERROR,
   TICKETS_NOT_ON_SALE_RESERVATION_ERROR,
@@ -49,7 +51,34 @@ describe('tierSaleWindowState', () => {
 
 describe('sale-window error copy', () => {
   it('matches the strings returned by create_reservation (migration 20260704000005)', () => {
-    expect(TICKETS_NOT_ON_SALE_RESERVATION_ERROR).toBe('Tickets for this event are not on sale yet.')
     expect(TICKET_SALES_CLOSED_ERROR).toBe('Ticket sales for this event have closed.')
+  })
+
+  /**
+   * THE STRING THIS TEST USED TO PIN IS THE ONE THAT COST A NIGHT.
+   *
+   * `TICKETS_NOT_ON_SALE_RESERVATION_ERROR` reads "Tickets for this event are not
+   * on sale yet." It was returned for THREE unrelated causes, one of which was a
+   * failed database read, and it names a sale window. There is no sale-start
+   * column on an event in this codebase, so the founder spent hours editing a
+   * field that does not exist, sent there by this sentence.
+   *
+   * The constant is kept exported because migration 20260704000005 still returns
+   * it from create_reservation for the genuine tier-window case. What is pinned
+   * now is that the SERVER ACTION no longer reaches for it, because the action's
+   * refusals are typed and each one says something true.
+   */
+  it('is no longer the server action\'s answer to every refusal', () => {
+    expect(TICKETS_NOT_ON_SALE_RESERVATION_ERROR).toBe('Tickets for this event are not on sale yet.')
+
+    const action = readFileSync(
+      path.join(__dirname, '../../../src/app/actions/reservations.ts'),
+      'utf8',
+    )
+    expect(
+      action.includes('TICKETS_NOT_ON_SALE_RESERVATION_ERROR'),
+      'createReservation must return a TYPED refusal, not the one sentence that ' +
+        'meant a payment-setup problem, an external event and a failed read all at once.',
+    ).toBe(false)
   })
 })

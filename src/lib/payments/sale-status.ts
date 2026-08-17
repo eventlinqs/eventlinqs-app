@@ -152,7 +152,200 @@ export function ticketsOnSale(params: {
   org: OrgSaleFields | null | undefined
   event?: ExternalTicketFields | null
 }): boolean {
-  if (isExternallyTicketed(params.event)) return false
-  if (!params.isPaidEvent) return true
-  return isOrganiserSellable(params.org)
+  return ticketsOnSaleDetailed(params).onSale
+}
+
+/* ===========================================================================
+ * WHY A REASON AND NOT A BOOLEAN
+ * ===========================================================================
+ *
+ * THE INCIDENT, 18 August 2026. A founder spent hours editing "sales start"
+ * dates on a live event that would not sell. There is no sales-start column on
+ * an event in this codebase, so every edit was a no-op against a field that does
+ * not exist. He was sent there by the refusal itself, which read "Tickets for
+ * this event are not on sale yet" and named no cause.
+ *
+ * The actual cause was neither a sale window nor the organiser's Stripe posture,
+ * which was perfect on all five fields. `events.external_ticket_url` did not
+ * exist on production, because 20260815000001 had not been applied. The
+ * reservation guard names that column in a select, so PostgREST failed the whole
+ * request, the call site discarded the error, and the event row arrived as null.
+ * A null event meant the organisation was never read, and a null organisation is
+ * correctly refused. Every paid event on the platform was refused this way.
+ *
+ * So the refusal had THREE different causes that all produced ONE sentence, and
+ * that sentence pointed at the only one of the three that does not exist. A
+ * boolean cannot carry a cause. That is the defect this type closes.
+ *
+ * TWO AUDIENCES, DELIBERATELY DIFFERENT. A buyer must never be shown Stripe
+ * internals or a platform fault they cannot act on. The organiser who owns the
+ * event must be shown the real cause and the ONE control that clears it. Both
+ * come from here, so they can never drift into telling different stories.
+ * =========================================================================== */
+
+export type SaleRefusalReason =
+  /** Sold on another platform. We never take money for it. */
+  | 'externally_ticketed'
+  /** Paid event, organiser cannot yet receive funds. The honest, common case. */
+  | 'organiser_payment_setup_incomplete'
+  /**
+   * A READ FAILED. This is NOT a refusal and must never be worded as one: it
+   * means the platform could not establish sellability at all. It exists so a
+   * schema error, a dropped connection or a permissions change can never again
+   * be reported to a human as a sales-window problem.
+   */
+  | 'sale_lookup_failed'
+
+export type SaleAudience = 'buyer' | 'organiser'
+
+export interface SaleRefusal {
+  reason: SaleRefusalReason
+  heading: string
+  body: string
+  /** The single control that clears it. Organiser audience only; null for a buyer. */
+  action: { label: string; href: string } | null
+}
+
+export type SaleDecision =
+  | { onSale: true; reason: null }
+  | { onSale: false; reason: SaleRefusalReason }
+
+/**
+ * The one sellability decision, carrying its cause.
+ *
+ * `orgLookupFailed` is passed by a caller whose organiser read ERRORED, as
+ * distinct from a caller who read successfully and got nothing back. Both refuse
+ * the sale, and they must: fail closed. They are told apart only so the human
+ * reading the refusal is told the truth about which one happened.
+ */
+export function ticketsOnSaleDetailed(params: {
+  isPaidEvent: boolean
+  event?: ExternalTicketFields | null
+  lookupFailed?: boolean
+  /**
+   * The organisation row, for a caller that HAS it (the reservation action).
+   */
+  org?: OrgSaleFields | null
+  /**
+   * The verdict, for a caller that has already collapsed the row to a boolean.
+   *
+   * The event page must do exactly that: it reads the Stripe posture with the
+   * service role and reduces it to one boolean BEFORE anything crosses the
+   * client boundary, so no Stripe account identifier ever reaches the RSC
+   * payload. Handing that caller an `org` shape would mean inventing a fake row,
+   * so it hands its answer instead. Exactly one of `org` or `organiserSellable`
+   * is meaningful per call.
+   */
+  organiserSellable?: boolean
+}): SaleDecision {
+  if (params.lookupFailed) return { onSale: false, reason: 'sale_lookup_failed' }
+  if (isExternallyTicketed(params.event)) return { onSale: false, reason: 'externally_ticketed' }
+  if (!params.isPaidEvent) return { onSale: true, reason: null }
+  const sellable =
+    params.organiserSellable !== undefined
+      ? params.organiserSellable
+      : isOrganiserSellable(params.org)
+  if (!sellable) return { onSale: false, reason: 'organiser_payment_setup_incomplete' }
+  return { onSale: true, reason: null }
+}
+
+export function describeSaleRefusal(
+  reason: SaleRefusalReason,
+  audience: SaleAudience,
+): SaleRefusal {
+  switch (reason) {
+    case 'externally_ticketed':
+      return {
+        reason,
+        heading: TICKETS_SOLD_ELSEWHERE_HEADING,
+        body: TICKETS_SOLD_ELSEWHERE_BODY,
+        action: null,
+      }
+
+    case 'organiser_payment_setup_incomplete':
+      return audience === 'organiser'
+        ? {
+            reason,
+            heading: 'Your tickets are not on sale',
+            body:
+              'EventLinqs cannot take money for this event until your payment setup is complete, so buyers currently see a holding message instead of a checkout. Finishing it puts your tickets on sale straight away.',
+            action: { label: 'Finish payment setup', href: '/dashboard/payouts' },
+          }
+        : {
+            reason,
+            heading: TICKETS_NOT_ON_SALE_HEADING,
+            body: TICKETS_NOT_ON_SALE_BODY,
+            action: null,
+          }
+
+    case 'sale_lookup_failed':
+      // NEVER worded as a sale window, for either audience. The founder was sent
+      // to edit dates for hours by a message that guessed. This one says what is
+      // actually true: we could not tell, and it is our fault, not a setting.
+      return audience === 'organiser'
+        ? {
+            reason,
+            heading: 'We could not check this event',
+            body:
+              'EventLinqs could not read this event well enough to confirm it can sell tickets. This is a fault on our side and not a setting you can change. It has been logged and nothing about your event is wrong.',
+            action: null,
+          }
+        : {
+            reason,
+            heading: 'Tickets are briefly unavailable',
+            body:
+              'We could not load ticket availability for this event just now. Please refresh the page in a moment.',
+            action: null,
+          }
+  }
+}
+
+/**
+ * What the reservation action returns to a BUYER for a given cause. The client
+ * latches on the reason, not on this string, so the wording can change without
+ * anything downstream having to re-parse prose.
+ */
+export function saleRefusalMessage(reason: SaleRefusalReason): string {
+  if (reason === 'externally_ticketed') return TICKETS_SOLD_ELSEWHERE_RESERVATION_ERROR
+  return describeSaleRefusal(reason, 'buyer').body
+}
+
+/* ---------------------------------------------------------------------------
+ * TIER-LEVEL CAUSES. A tier can be unavailable for reasons that have nothing to
+ * do with the organiser, and rolling them into the same sentence is how "not on
+ * sale yet" came to mean four different things.
+ * ------------------------------------------------------------------------- */
+
+export type TierUnavailableReason = 'sale_not_yet_open' | 'sale_closed' | 'sold_out'
+
+export function describeTierUnavailable(
+  reason: TierUnavailableReason,
+  audience: SaleAudience,
+): { label: string; detail: string } {
+  switch (reason) {
+    case 'sale_not_yet_open':
+      return {
+        label: 'Not yet on sale',
+        detail:
+          audience === 'organiser'
+            ? 'This tier has a sale start in the future, so buyers cannot select it yet. Clear the sale start to put it on sale now.'
+            : 'This ticket type goes on sale later.',
+      }
+    case 'sale_closed':
+      return {
+        label: 'Sales closed',
+        detail:
+          audience === 'organiser'
+            ? 'This tier has a sale end in the past, so buyers can no longer select it. Extend or clear the sale end to reopen it.'
+            : 'Sales for this ticket type have closed.',
+      }
+    case 'sold_out':
+      return {
+        label: 'Sold out',
+        detail:
+          audience === 'organiser'
+            ? 'Every ticket in this tier is sold or held. Raise the capacity to sell more.'
+            : 'This ticket type is sold out.',
+      }
+  }
 }

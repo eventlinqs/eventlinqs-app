@@ -34,6 +34,7 @@
  *   pricing-derive             the worked fee figures match the lock block they derive from
  *   no-partial-builds          no undated flag, deferral marker or placeholder ships
  *   no-external-checkout       an externally ticketed event cannot reach a checkout
+ *   one-sellability-source     one sellability rule, and no live button beside a refusal
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -367,6 +368,15 @@ const GUARDS = [
   // output instead of printing the PASS it always printed.
   'scripts/guards/no-display-time-exclusion.mjs',
   'scripts/guards/publish-requires-cover.mjs',
+  // Founder ruling 2026-08-18, after every paid event on production refused to
+  // sell behind a message that named a field this codebase does not have, with
+  // an enabled gold checkout button sitting directly underneath it. Pins three
+  // things: a sale-gate read may not discard its error, a checkout control must
+  // be disarmed by the refusal rather than accompanied by it, and sellability is
+  // decided in one place. Prints its scan counts and its reviewed baseline on
+  // every run, and fails if a baseline entry stops matching, so it cannot pass
+  // vacuously or rot into an unexamined allowlist.
+  'scripts/guards/one-sellability-source.mjs',
 ]
 
 /**

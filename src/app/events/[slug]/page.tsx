@@ -49,6 +49,7 @@ import {
   eventIsPaid,
   isExternallyTicketed,
   isOrganiserSellable,
+  ticketsOnSaleDetailed,
 } from '@/lib/payments/sale-status'
 import { ExternalTicketsPanel } from '@/components/events/external-tickets-panel'
 // Service role, used for exactly one thing on this page: reading the two
@@ -173,8 +174,10 @@ async function fetchEvent(slug: string): Promise<FullEvent | null> {
  * crosses the client boundary. The column privilege stays exactly as the audit
  * left it.
  */
-async function organiserCanSell(organisationId: string | null | undefined): Promise<boolean> {
-  if (!organisationId) return false
+async function organiserCanSell(
+  organisationId: string | null | undefined,
+): Promise<{ sellable: boolean; lookupFailed: boolean }> {
+  if (!organisationId) return { sellable: false, lookupFailed: false }
   const admin = createAdminClient()
   const { data, error } = await admin
     .from('organisations')
@@ -190,10 +193,14 @@ async function organiserCanSell(organisationId: string | null | undefined): Prom
     // Fail CLOSED. Refusing to sell when we cannot establish the organiser can
     // settle is the safe direction: the alternative is taking money the platform
     // may not be able to pay out.
+    //
+    // It is reported as a LOOKUP FAILURE rather than as an unfinished payment
+    // setup, because those are different things and telling a founder the wrong
+    // one cost a night. See ticketsOnSaleDetailed.
     console.error('[event-detail] organiserCanSell failed:', error)
-    return false
+    return { sellable: false, lookupFailed: true }
   }
-  return isOrganiserSellable(data)
+  return { sellable: isOrganiserSellable(data), lookupFailed: false }
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -637,9 +644,27 @@ export default async function EventDetailPage({ params }: Props) {
     }
   }
 
-  const saleBlocked =
-    externallyTicketed ||
-    (eventIsPaid(allTiers) && !(await organiserCanSell(event.organisation_id)))
+  /*
+   * ONE DECISION, CARRYING ITS CAUSE, shared with the client.
+   *
+   * The boolean is kept because several call sites below branch on it, but the
+   * REASON travels with it now and is handed to the selector, so the sentence a
+   * buyer reads on a server render and the sentence they read after a click
+   * refusal come from the same place and cannot tell different stories.
+   */
+  const isPaidEvent = eventIsPaid(allTiers)
+  const organiserSale = isPaidEvent
+    ? await organiserCanSell(event.organisation_id)
+    : { sellable: true, lookupFailed: false }
+
+  const saleDecision = ticketsOnSaleDetailed({
+    isPaidEvent,
+    organiserSellable: organiserSale.sellable,
+    event,
+    lookupFailed: organiserSale.lookupFailed,
+  })
+  const saleBlocked = !saleDecision.onSale
+  const saleRefusalReason = saleDecision.reason
 
   const baseUrl = getSiteUrl()
   const eventStateForSchema =
@@ -1096,6 +1121,7 @@ export default async function EventDetailPage({ params }: Props) {
                           squadBookingEnabled={event.squad_booking_enabled ?? false}
                           tierInventory={tierInventory}
                           saleBlocked={saleBlocked}
+                          saleRefusalReason={saleRefusalReason}
                           feeRates={feeRates}
                           feePassType={eventFeePassType}
                         />
@@ -1134,6 +1160,7 @@ export default async function EventDetailPage({ params }: Props) {
                         squadBookingEnabled={event.squad_booking_enabled ?? false}
                         tierInventory={tierInventory}
                         saleBlocked={saleBlocked}
+                        saleRefusalReason={saleRefusalReason}
                         feeRates={feeRates}
                         feePassType={eventFeePassType}
                       />
