@@ -1,8 +1,11 @@
 import { describe, expect, test } from 'vitest'
 import {
+  ORG_SALE_FIELDS_SELECT,
+  ORG_SALE_FIELD_KEYS,
   eventIsPaid,
   isOrganiserSellable,
   ticketsOnSale,
+  verifyOrgSaleFields,
 } from '@/lib/payments/sale-status'
 
 /**
@@ -42,25 +45,37 @@ const without = (patch: Partial<OrgFixture>): OrgFixture => ({ ...sellable, ...p
 const notConnected = without({ stripe_account_id: null })
 const connectedNoCharges = without({ stripe_charges_enabled: false })
 
+/**
+ * The only way to reach the gate, and that is the point.
+ *
+ * `isOrganiserSellable` takes `VerifiedOrgSaleFields`, whose brand cannot be
+ * produced outside sale-status.ts, so every caller including this test must go
+ * through the verifier. Founder ruling, 18 August 2026: if a value is required,
+ * the type system refuses to compile without it.
+ */
+const verified = (org: OrgFixture) => {
+  const verdict = verifyOrgSaleFields(org)
+  if (!verdict.complete) throw new Error(`fixture missing ${verdict.missing.join(', ')}`)
+  return verdict.org
+}
+
 describe('isOrganiserSellable', () => {
   test('true when every requirement is met', () => {
-    expect(isOrganiserSellable(sellable)).toBe(true)
+    expect(isOrganiserSellable(verified(sellable))).toBe(true)
   })
 
   test('false when the organiser is not connected or cannot take charges', () => {
-    expect(isOrganiserSellable(notConnected)).toBe(false)
-    expect(isOrganiserSellable(connectedNoCharges)).toBe(false)
-    expect(isOrganiserSellable(null)).toBe(false)
-    expect(isOrganiserSellable(undefined)).toBe(false)
+    expect(isOrganiserSellable(verified(notConnected))).toBe(false)
+    expect(isOrganiserSellable(verified(connectedNoCharges))).toBe(false)
   })
 
   test('false when payouts are not enabled, because the platform holds the funds', () => {
-    expect(isOrganiserSellable(without({ stripe_payouts_enabled: false }))).toBe(false)
+    expect(isOrganiserSellable(verified(without({ stripe_payouts_enabled: false })))).toBe(false)
   })
 
   test('false when the payout status is not active', () => {
-    expect(isOrganiserSellable(without({ payout_status: 'on_hold' }))).toBe(false)
-    expect(isOrganiserSellable(without({ payout_status: 'restricted' }))).toBe(false)
+    expect(isOrganiserSellable(verified(without({ payout_status: 'on_hold' })))).toBe(false)
+    expect(isOrganiserSellable(verified(without({ payout_status: 'restricted' })))).toBe(false)
   })
 
   /**
@@ -68,17 +83,53 @@ describe('isOrganiserSellable', () => {
    * payment step: connected, charges enabled, but no country recorded yet.
    */
   test('false when the country is absent or outside the Connect currency map', () => {
-    expect(isOrganiserSellable(without({ stripe_account_country: null }))).toBe(false)
-    expect(isOrganiserSellable(without({ stripe_account_country: 'ZZ' }))).toBe(false)
+    expect(isOrganiserSellable(verified(without({ stripe_account_country: null })))).toBe(false)
+    expect(isOrganiserSellable(verified(without({ stripe_account_country: 'ZZ' })))).toBe(false)
     // A supported country still sells.
-    expect(isOrganiserSellable(without({ stripe_account_country: 'NZ' }))).toBe(true)
+    expect(isOrganiserSellable(verified(without({ stripe_account_country: 'NZ' })))).toBe(true)
+  })
+})
+
+/**
+ * ABSENT AND FALSE ARE DIFFERENT ANSWERS.
+ *
+ * This codebase has been bitten by collapsing them twice in one week: a security
+ * migration narrowed a select on 15 August, and a select named a column that did
+ * not exist on 18 August. Both made a gate field arrive `undefined`, and
+ * `undefined !== true` refused every paid event on the platform while telling
+ * organisers their payment setup was incomplete.
+ */
+describe('a missing gate field is a programming error, not a refusal', () => {
+  const partial = { stripe_account_id: 'acct_123', stripe_charges_enabled: true }
+
+  test('the verifier names exactly which fields are absent', () => {
+    // It THROWS outside production, which is the loud failure the ruling asks
+    // for, so the message is asserted from the throw.
+    expect(() => verifyOrgSaleFields(partial)).toThrow(/stripe_payouts_enabled/)
+    expect(() => verifyOrgSaleFields(partial)).toThrow(/stripe_account_country/)
+    expect(() => verifyOrgSaleFields(partial)).toThrow(/payout_status/)
   })
 
-  test('a missing field is refused, never assumed', () => {
-    // Selecting fewer columns than the gate reads must fail CLOSED. This is what
-    // stops a narrowed SELECT quietly re-opening the same hole.
-    const partial = { stripe_account_id: 'acct_123', stripe_charges_enabled: true }
-    expect(isOrganiserSellable(partial as never)).toBe(false)
+  test('presence is decided by the KEY, not by the value', () => {
+    // A NULL country is a legitimate value that refuses the sale. A MISSING
+    // country column is a bug. Collapsing those two is the whole defect.
+    const nullCountry = { ...sellable, stripe_account_country: null }
+    const verdict = verifyOrgSaleFields(nullCountry)
+    expect(verdict.complete).toBe(true)
+    if (verdict.complete) expect(isOrganiserSellable(verdict.org)).toBe(false)
+  })
+
+  test('the select list the gate publishes carries all five keys', () => {
+    for (const key of [
+      'stripe_account_id',
+      'stripe_charges_enabled',
+      'stripe_payouts_enabled',
+      'stripe_account_country',
+      'payout_status',
+    ]) {
+      expect(ORG_SALE_FIELDS_SELECT).toContain(key)
+    }
+    expect(ORG_SALE_FIELD_KEYS).toHaveLength(5)
   })
 })
 

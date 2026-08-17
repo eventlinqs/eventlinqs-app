@@ -4,6 +4,7 @@ import {
   isExternallyTicketed,
   isOrganiserSellable,
   ticketsOnSale,
+  verifyOrgSaleFields,
 } from '@/lib/payments/sale-status'
 import {
   assertCanCreateDestinationCharge,
@@ -185,7 +186,12 @@ describe('NON-NEGOTIABLE 3: an external event can never reach a checkout', () =>
   })
 
   it('refuses a PAID external event even with a perfect organiser', () => {
-    expect(isOrganiserSellable(SELLABLE_ORG)).toBe(true)
+    // Through the verifier, because the gate no longer accepts an unproven bag
+    // of fields: the brand on VerifiedOrgSaleFields cannot be produced outside
+    // sale-status.ts. See verifyOrgSaleFields.
+    const verdict = verifyOrgSaleFields(SELLABLE_ORG)
+    expect(verdict.complete).toBe(true)
+    if (verdict.complete) expect(isOrganiserSellable(verdict.org)).toBe(true)
     expect(
       ticketsOnSale({ isPaidEvent: true, org: SELLABLE_ORG, event: EXTERNAL_EVENT }),
     ).toBe(false)

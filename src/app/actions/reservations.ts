@@ -6,6 +6,7 @@ import { actionRateLimit } from '@/lib/rate-limit/action'
 import { refreshInventoryCache } from '@/lib/redis/inventory-cache'
 import { getOrCreateGuestSessionId } from '@/lib/auth/guest-session'
 import {
+  ORG_SALE_FIELDS_SELECT,
   isExternallyTicketed,
   saleRefusalMessage,
   ticketsOnSaleDetailed,
@@ -155,11 +156,12 @@ export async function createReservation(
       // currency map. Selecting fewer fields than the gate reads makes the
       // missing ones undefined, which refuses the sale rather than passing it:
       // fail closed, but only if the columns are actually here.
+      // ORG_SALE_FIELDS_SELECT, not a hand-typed list. Two hand-typed lists is
+      // how one of them ends up short, and a short list still returns a row, so
+      // the failure is silent. See verifyOrgSaleFields.
       const { data: org, error: orgError } = await admin
         .from('organisations')
-        .select(
-          'stripe_account_id, stripe_charges_enabled, stripe_payouts_enabled, stripe_account_country, payout_status',
-        )
+        .select(ORG_SALE_FIELDS_SELECT)
         .eq('id', ev.organisation_id)
         .single()
 

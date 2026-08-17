@@ -46,10 +46,12 @@ import { SectionHeader } from '@/components/ui/SectionHeader'
 import { EventSoldOut } from '@/components/features/events/event-sold-out'
 import { TicketsNotOnSale } from '@/components/features/events/tickets-not-on-sale'
 import {
+  ORG_SALE_FIELDS_SELECT,
   eventIsPaid,
   isExternallyTicketed,
   isOrganiserSellable,
   ticketsOnSaleDetailed,
+  verifyOrgSaleFields,
 } from '@/lib/payments/sale-status'
 import { ExternalTicketsPanel } from '@/components/events/external-tickets-panel'
 // Service role, used for exactly one thing on this page: reading the two
@@ -181,12 +183,10 @@ async function organiserCanSell(
   const admin = createAdminClient()
   const { data, error } = await admin
     .from('organisations')
-    // All five fields the sale gate reads, so it agrees with the charge
-    // precondition rather than passing an organiser who will be refused at the
-    // payment step. See isOrganiserSellable.
-    .select(
-      'stripe_account_id, stripe_charges_enabled, stripe_payouts_enabled, stripe_account_country, payout_status',
-    )
+    // ORG_SALE_FIELDS_SELECT: the one list, owned by the gate that reads it, so
+    // this query cannot drift short of the rule. A narrowed select here took
+    // every paid event off sale on 15 August.
+    .select(ORG_SALE_FIELDS_SELECT)
     .eq('id', organisationId)
     .maybeSingle()
   if (error) {
@@ -200,7 +200,18 @@ async function organiserCanSell(
     console.error('[event-detail] organiserCanSell failed:', error)
     return { sellable: false, lookupFailed: true }
   }
-  return { sellable: isOrganiserSellable(data), lookupFailed: false }
+  // No row is a legitimate state (organiser not found) and refuses the sale.
+  if (!data) return { sellable: false, lookupFailed: false }
+
+  // A row PRESENT but short of gate columns is a programming error, reported as a
+  // lookup failure rather than as the organiser's payment setup. This is the
+  // branch that would have told the truth on 15 August.
+  const verdict = verifyOrgSaleFields(data)
+  if (!verdict.complete) {
+    console.error('[event-detail] organisation row missing gate fields:', verdict.missing)
+    return { sellable: false, lookupFailed: true }
+  }
+  return { sellable: isOrganiserSellable(verdict.org), lookupFailed: false }
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

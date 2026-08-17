@@ -37,6 +37,7 @@
  *   one-sellability-source     one sellability rule, and no live button beside a refusal
  *   zoned-event-times          an event time is converted in the event zone, not the runtime one
  *   mutation-revalidates       a publicly visible mutation invalidates what it affected
+ *   gate-fields-complete       a query feeding a gate selects every field that gate reads
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -393,6 +394,14 @@ const GUARDS = [
   // price change was visible to the person who made it and to no buyer. A
   // dashboard-only revalidation therefore does NOT satisfy this guard.
   'scripts/guards/mutation-revalidates.mjs',
+  // Founder ruling 2026-08-18: every gate that reads a set of fields must be
+  // unable to run on an incomplete set. Twice in one week a query narrowed while
+  // the gate went on reading, the missing field arrived undefined, and undefined
+  // refuses at a boolean test exactly as false does. It reads each gate required
+  // list out of its own signature rather than duplicating it, follows the entry
+  // points a caller actually uses rather than only direct calls, and refuses a
+  // bare cast at the boundary.
+  'scripts/guards/gate-fields-complete.mjs',
 ]
 
 /**

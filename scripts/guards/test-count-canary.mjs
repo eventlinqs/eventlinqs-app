@@ -217,8 +217,16 @@ const ROOT = join(HERE, '..', '..')
  * mutations invalidated nothing, so an organiser saved and the public page did
  * not change.
  */
+/*
+ * 2026-08-18 (later): raised 206/2481 -> 206/2483. Two tests, no new file, from
+ * closing the incomplete-row class in sale-status.test.ts. They pin the two
+ * halves that were collapsed twice in one week: the verifier NAMES which fields
+ * are absent, and presence is decided by the KEY rather than the value, so a
+ * null country still refuses the sale while a missing country column is a
+ * programming error instead of a verdict about the organiser.
+ */
 const MIN_FILES = 206
-const MIN_TESTS = 2481
+const MIN_TESTS = 2483
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

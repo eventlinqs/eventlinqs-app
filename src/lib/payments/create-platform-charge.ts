@@ -7,6 +7,7 @@ import {
   getCurrencyForCountry,
 } from './application-fee'
 import { statementDescriptorSuffix } from '@/lib/stripe/business-profile'
+import { verifyRowFields } from './required-fields'
 import type { FeeBreakdown } from './payment-calculator'
 import type { CreatePaymentIntentParams, PaymentGateway, PaymentIntentResult } from './gateway'
 
@@ -147,13 +148,38 @@ async function loadEventTitle(eventId: string | null): Promise<string | null> {
   }
 }
 
+/**
+ * The exact columns the charge precondition reads, as one list.
+ *
+ * It sits beside the type rather than inside the query, so narrowing the select
+ * and forgetting the reader is not possible in one edit. `assertOrganiserCanReceiveFunds`
+ * reads four of these; `id` and `name` are carried for the caller.
+ */
+const ORG_CHARGE_FIELDS_SELECT =
+  'id, name, stripe_account_id, stripe_payouts_enabled, stripe_account_country, payout_status'
+
+/**
+ * The subset the GATE READS, which is what must be verified.
+ *
+ * NOT the whole select list, and the difference matters: `id` and `name` are
+ * carried for the caller (the statement descriptor), and their absence is a
+ * cosmetic problem, not a wrong verdict about whether money may move. Requiring
+ * them here made the verifier throw on every existing charge fixture, which was
+ * the verifier working correctly on a list I had given it wrongly. Verify what
+ * the DECISION depends on, nothing more.
+ */
+const ORG_CHARGE_FIELD_KEYS = [
+  'stripe_account_id',
+  'stripe_payouts_enabled',
+  'stripe_account_country',
+  'payout_status',
+]
+
 async function loadOrgChargeFields(organisationId: string): Promise<OrgChargeFields> {
   const admin = createAdminClient()
   const { data, error } = await admin
     .from('organisations')
-    .select(
-      'id, name, stripe_account_id, stripe_payouts_enabled, stripe_account_country, payout_status'
-    )
+    .select(ORG_CHARGE_FIELDS_SELECT)
     .eq('id', organisationId)
     .maybeSingle()
   if (error) {
@@ -162,5 +188,26 @@ async function loadOrgChargeFields(organisationId: string): Promise<OrgChargeFie
   if (!data) {
     throw new Error(`Organisation ${organisationId} not found`)
   }
-  return data as OrgChargeFields
+
+  /*
+   * VERIFIED, NOT CAST. This used to end `return data as OrgChargeFields`, and a
+   * cast is an assertion by the author that nobody checks. Narrow the select by
+   * one column and it still compiles, still returns an object, and the missing
+   * field arrives `undefined` at a boolean test where BOTH `!undefined` and
+   * `undefined !== true` are true, so the precondition refuses and the refusal is
+   * indistinguishable from a real one.
+   *
+   * On the charge path a refusal is not a page state, it is a buyer who has
+   * already chosen tickets being turned away, so this throws rather than
+   * returning a verdict: the caller is mid-payment and has no better answer to
+   * give than "this failed", and a loud failure gets fixed.
+   */
+  const verdict = verifyRowFields<OrgChargeFields>(data, ORG_CHARGE_FIELD_KEYS, 'charge-precondition')
+  if (!verdict.complete) {
+    throw new Error(
+      `Organisation ${organisationId} loaded without ${verdict.missing.join(', ')}, which the ` +
+        `charge precondition reads. Refusing to decide on an incomplete row.`,
+    )
+  }
+  return verdict.row
 }
