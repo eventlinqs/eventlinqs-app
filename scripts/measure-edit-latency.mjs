@@ -119,7 +119,30 @@ if (ids.length === 0) {
   process.exit(1)
 }
 
-const target = candidates.find((c) => ids.includes(c.id)) ?? null
+// `--slug` pins the event, so a run is repeatable and a measurement is not
+// quietly taken against a different event than the previous one.
+const slugIdx = process.argv.indexOf('--slug')
+const PINNED = slugIdx === -1 ? null : process.argv[slugIdx + 1]
+
+// A pinned slug is fetched by name. Looking for it inside the 25-row sample
+// reported "this session owns no published event", which was false: the event
+// simply was not in the sample.
+let target = null
+if (PINNED) {
+  const { data: pinned } = await db
+    .from('events')
+    .select('id, slug, title, status, organisation_id, venue_name, timezone')
+    .eq('slug', PINNED)
+    .maybeSingle()
+  if (pinned && ids.includes(pinned.id)) target = pinned
+  else if (pinned) {
+    console.error(`[latency] ${PINNED} exists but is not owned by this session`)
+  } else {
+    console.error(`[latency] no event with slug ${PINNED}`)
+  }
+} else {
+  target = candidates.find((c) => ids.includes(c.id)) ?? null
+}
 if (!target) {
   console.error('[latency] no PUBLISHED event owned by this session; nothing to measure')
   await browser.close()
@@ -135,9 +158,47 @@ console.log('MUTATION                            LATENCY TO PUBLIC PAGE')
 const stamp = Date.now().toString().slice(-6)
 
 /**
+ * Walk the edit wizard to its end and save.
+ *
+ * The edit form is the multi-step wizard, not a single form with a Save button,
+ * and its fields carry neither name nor id: they are addressed by placeholder,
+ * which is what a screen reader and a human both use. Guessing at
+ * `input[name="title"]` found nothing and reported six timeouts that were really
+ * six selector misses, which is its own kind of lie, so the walk is explicit.
+ */
+/** Advance the wizard one step. */
+async function advance() {
+  const next = page.locator('button', { hasText: /^Continue$/ }).first()
+  if ((await next.count()) === 0 || !(await next.isEnabled())) return false
+  await next.click()
+  await page.waitForTimeout(1100)
+  return true
+}
+
+/** Walk to the review step and press the real control, which is "Save Changes". */
+async function saveWizard() {
+  for (let step = 0; step < 9; step += 1) {
+    const save = page.locator('button', { hasText: /^Save Changes$/ }).first()
+    if ((await save.count()) > 0) {
+      if (!(await save.isEnabled())) return { ok: false, why: 'Save Changes is disabled on the review step' }
+      await save.click()
+      await page.waitForTimeout(3000)
+      const err = await page.evaluate(() => {
+        const t = document.body.innerText
+        const m = t.match(/[^\n]*(could not|failed|required|must |invalid|error)[^\n]*/i)
+        return m ? m[0].slice(0, 160) : null
+      })
+      return { ok: !err, why: err }
+    }
+    if (!(await advance())) return { ok: false, why: `no Continue and no Save Changes at step ${step}` }
+  }
+  return { ok: false, why: 'never reached the review step' }
+}
+
+/**
  * Drive one field on the edit form and time the public page.
  */
-async function measureField({ name, selector, value, expectOnPage }) {
+async function measureField({ name, selector, value, expectOnPage, step = 0 }) {
   // Warm the public page so this measures an invalidation, not a cold miss.
   await fetch(`${BASE}/events/${target.slug}`, { cache: 'no-store' })
 
@@ -145,78 +206,135 @@ async function measureField({ name, selector, value, expectOnPage }) {
     waitUntil: 'domcontentloaded',
     timeout: 60000,
   })
-  await page.waitForTimeout(2500)
+  await page.waitForTimeout(3000)
+
+  // Walk to the step the field lives on. The price is on the tickets step, not
+  // the first one, and looking for it on step 0 reported "field not found" for
+  // what was really "wrong screen".
+  for (let i = 0; i < step; i += 1) {
+    if (!(await advance())) break
+  }
 
   const field = page.locator(selector).first()
   if ((await field.count()) === 0) {
-    record(name, null, `field not found: ${selector}`)
+    record(name, null, `field not found on step ${step}: ${selector}`)
     return
   }
   await field.fill(value)
+  await page.waitForTimeout(400)
 
-  // Save, and start the clock the moment the save resolves.
-  const save = page
-    .locator('button:has-text("Save"), button:has-text("Update"), button[type="submit"]')
-    .last()
-  await save.click()
-  await page.waitForTimeout(1500)
+  const saved = await saveWizard()
+  if (!saved.ok) {
+    record(name, null, `save did not complete: ${saved.why}`)
+    return
+  }
   const startedAt = Date.now()
 
   const ms = await timeUntilVisible(`/events/${target.slug}`, (html) => html.includes(expectOnPage), startedAt)
   record(name, ms, `looked for "${expectOnPage}"`)
 }
 
+// Selectors read off the rendered form rather than guessed. The wizard fields
+// carry no name and no id; the placeholder is the stable handle.
 await measureField({
   name: '1. event title',
-  selector: 'input[name="title"], #title',
-  value: `${target.title} ${stamp}`,
+  selector: 'input[placeholder="e.g. Summer Music Festival 2026"]',
+  value: `Aso Ebi Affair ${stamp}`,
   expectOnPage: stamp,
 })
 
 await measureField({
-  name: '2. venue name',
-  selector: 'input[name="venue_name"], #venue_name',
-  value: `Venue ${stamp}`,
-  expectOnPage: `Venue ${stamp}`,
+  name: '2. summary (event card text)',
+  selector: 'input[placeholder="A brief one-line description shown on event cards"]',
+  value: `Summary ${stamp}b`,
+  expectOnPage: `Summary ${stamp}b`,
 })
 
 await measureField({
-  name: '3. ticket price',
+  name: '3. description',
+  selector: 'textarea[placeholder^="Describe your event"]',
+  value: `Description ${stamp}c`,
+  expectOnPage: `Description ${stamp}c`,
+})
+
+await measureField({
+  name: '4. ticket price',
   selector: 'input[placeholder="0.00"]',
-  value: '7.77',
-  expectOnPage: '7.77',
-})
-
-await measureField({
-  name: '4. summary',
-  selector: 'textarea[name="summary"], #summary',
-  value: `Summary ${stamp}`,
-  expectOnPage: `Summary ${stamp}`,
+  value: '77.77',
+  expectOnPage: '77.77',
+  step: 4, // the tickets step
 })
 
 // ---- status mutations, driven from the events table ------------------------
-async function measureStatus({ name, buttonText, expectGone }) {
+/**
+ * A status mutation, driven from the events table.
+ *
+ * The public marker is the ticket panel, not the word "Checkout": that button is
+ * only labelled Checkout once a quantity is chosen, so looking for it in the
+ * server HTML measured nothing. A paused event renders the paused notice
+ * instead of a selector, which IS in the server HTML.
+ */
+async function measureStatus({ name, labels, expect }) {
   await fetch(`${BASE}/events/${target.slug}`, { cache: 'no-store' })
   await page.goto(`${BASE}/dashboard/events`, { waitUntil: 'domcontentloaded', timeout: 60000 })
-  await page.waitForTimeout(2000)
-  const btn = page.locator(`button:has-text("${buttonText}")`).first()
-  if ((await btn.count()) === 0) {
-    record(name, null, `control not found: ${buttonText}`)
+  await page.waitForTimeout(2500)
+
+  let clicked = null
+  for (const label of labels) {
+    const btn = page.locator('button', { hasText: new RegExp(`^${label}$`, 'i') }).first()
+    if ((await btn.count()) > 0 && (await btn.isEnabled())) {
+      await btn.click()
+      clicked = label
+      break
+    }
+  }
+  if (!clicked) {
+    // Say what WAS on the page, so "control not found" is a finding rather than
+    // a shrug. A label that has been renamed is a one-line fix; a control that
+    // does not exist is a defect, and these two must be distinguishable.
+    const present = await page.evaluate(() =>
+      [...new Set([...document.querySelectorAll('button')].map((b) => b.innerText.trim()))]
+        .filter((t) => t && t.length < 24)
+        .join(' | '),
+    )
+    record(name, null, `no control among [${labels.join(', ')}]; page offers: ${present}`)
     return
   }
-  await btn.click()
-  await page.waitForTimeout(1500)
+  await page.waitForTimeout(2000)
   const startedAt = Date.now()
-  const ms = await timeUntilVisible(
-    `/events/${target.slug}`,
-    (html) => (expectGone ? !html.includes('Checkout') : html.includes('Checkout')),
-    startedAt,
-  )
-  record(name, ms, expectGone ? 'checkout should disappear' : 'checkout should return')
+  const ms = await timeUntilVisible(`/events/${target.slug}`, expect, startedAt)
+  record(name, ms, `pressed "${clicked}"`)
 }
 
-await measureStatus({ name: '5. pause (stops selling)', buttonText: 'Pause', expectGone: true })
-await measureStatus({ name: '6. publish (resumes selling)', buttonText: 'Publish', expectGone: false })
+/*
+ * THE MARKER WAS ESTABLISHED BEFORE IT WAS USED, and that is not pedantry.
+ *
+ * The first version of this measurement polled for `!html.includes('Checkout')`,
+ * which was ALREADY TRUE before the mutation: the checkout button is only
+ * labelled "Checkout" once a quantity is chosen, so the word never appears in
+ * server HTML. The predicate was satisfied on the first poll and the script
+ * reported 217 ms for a mutation it had not observed at all. That is exactly the
+ * vacuous-green failure this project keeps being bitten by, produced here by the
+ * very harness meant to detect it, so the numbers it printed were discarded.
+ *
+ * The marker below was measured first, on the two states, driven directly in the
+ * database: a published event renders 196,880 bytes and contains the tier name;
+ * a paused one renders 53,697 bytes and is a 404. It therefore changes, which is
+ * the only property a poll predicate needs and the one the first version lacked.
+ */
+const TIER_MARKER = 'General Admission'
+
+await measureStatus({
+  name: '5. pause (takes it off sale)',
+  labels: ['Pause'],
+  expect: (html) => !html.includes(TIER_MARKER),
+})
+
+await measureStatus({
+  name: '6. republish (puts it back on sale)',
+  labels: ['Publish', 'Resume', 'Go live', 'Republish'],
+  expect: (html) => html.includes(TIER_MARKER),
+})
 
 await browser.close()
 

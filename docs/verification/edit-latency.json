@@ -1,0 +1,36 @@
+{
+  "base": "http://localhost:3000",
+  "event": "aso-ebi-affair-owambe-garden-party",
+  "results": [
+    {
+      "name": "1. event title",
+      "ms": null,
+      "detail": "save did not complete: Event images must be uploaded to EventLinqs, not linked from another site. Re-upload the image and try again."
+    },
+    {
+      "name": "2. summary (event card text)",
+      "ms": null,
+      "detail": "save did not complete: Event images must be uploaded to EventLinqs, not linked from another site. Re-upload the image and try again."
+    },
+    {
+      "name": "3. description",
+      "ms": null,
+      "detail": "save did not complete: Event images must be uploaded to EventLinqs, not linked from another site. Re-upload the image and try again."
+    },
+    {
+      "name": "4. ticket price",
+      "ms": null,
+      "detail": "save did not complete: Event images must be uploaded to EventLinqs, not linked from another site. Re-upload the image and try again."
+    },
+    {
+      "name": "5. pause (takes it off sale)",
+      "ms": 227,
+      "detail": "pressed \"Pause\""
+    },
+    {
+      "name": "6. republish (puts it back on sale)",
+      "ms": null,
+      "detail": "no control among [Publish, Resume, Go live, Republish]; page offers: ES\nEventLinqs | Collapse | Duplicate | Cancel"
+    }
+  ]
+}
