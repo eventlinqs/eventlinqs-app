@@ -191,8 +191,34 @@ const ROOT = join(HERE, '..', '..')
  * than any frame the platform crops a cover to. The first version of that
  * format was 4:3 and clipped the event name in the 4:5 card crop.
  */
-const MIN_FILES = 202
-const MIN_TESTS = 2425
+/*
+ * 2026-08-18: raised 202/2425 -> 206/2481, the launch-blocker night. Four new
+ * files, 56 tests, one per defect closed.
+ *
+ * tests/unit/payments/sale-refusal-truthfulness.test.ts, 12. Every paid event on
+ * production refused to sell, behind a message naming a sale window on a
+ * platform that has no sale-start column on an event. The reservation guard
+ * named events.external_ticket_url in a select, the column did not exist because
+ * 20260815000001 was unapplied, PostgREST failed the whole request, and the call
+ * site discarded the error. These pin that a failed read is reported as its own
+ * cause, that each cause has a distinct message, and that a refusal takes the
+ * checkout away rather than sitting above a live one.
+ *
+ * tests/unit/dates/zoned-input-round-trip.test.ts, 15, and
+ * venue-timezone.test.ts, 18. An organiser typed noon and the page said 2am. A
+ * zoneless datetime-local value read through new Date() takes the offset of
+ * whatever runtime evaluates it, so every edit moved the event one offset
+ * earlier. Both sides of the 4 October DST transition are pinned, in seven
+ * zones, because a fixed-offset implementation passes one half and fails the
+ * other. The Sydney cases pass even on the broken code when the machine runs on
+ * Sydney time, which is exactly how it survived review.
+ *
+ * tests/unit/events/revalidate-event.test.ts, 10. Five of the seven event
+ * mutations invalidated nothing, so an organiser saved and the public page did
+ * not change.
+ */
+const MIN_FILES = 206
+const MIN_TESTS = 2481
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
