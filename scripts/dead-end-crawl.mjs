@@ -59,6 +59,18 @@ const VIEWPORTS =
 
 const jsonArg = process.argv.indexOf('--json')
 
+/**
+ * `--storage <state.json>` crawls SIGNED IN, which is the other half of the
+ * surface: the dashboard, the organiser wizard, the scanner and checkout up to
+ * the payment step. `--paths a,b,c` replaces the public seed list with those
+ * paths, so the two halves are separate runs with separate reports rather than
+ * one run whose numbers cannot be compared with either.
+ */
+const storageIdx = process.argv.indexOf('--storage')
+const STORAGE = storageIdx === -1 ? null : process.argv[storageIdx + 1]
+const pathsIdx = process.argv.indexOf('--paths')
+const PATH_OVERRIDE = pathsIdx === -1 ? null : process.argv[pathsIdx + 1].split(',')
+
 const SEED_PATHS = [
   '/',
   '/events',
@@ -208,10 +220,14 @@ const browser = await chromium.launch()
 
 // Discover real event slugs before the passes, so both viewports crawl the same
 // pages and the two reports are comparable.
-const discovery = await browser.newContext({ viewport: { width: 1440, height: 900 } })
+const discoveryOptions = { viewport: { width: 1440, height: 900 } }
+if (STORAGE) discoveryOptions.storageState = STORAGE
+const discovery = await browser.newContext(discoveryOptions)
 const discoveryPage = await discovery.newPage()
+// An explicit path list is the whole run; discovery would only add public pages
+// to an authenticated crawl and make the two reports incomparable.
 let eventPaths = []
-try {
+if (!PATH_OVERRIDE) try {
   await discoveryPage.goto(`${BASE}/events`, { waitUntil: 'domcontentloaded', timeout: 45000 })
   await discoveryPage.waitForTimeout(1500)
   eventPaths = await discoveryPage.evaluate(
@@ -230,20 +246,22 @@ try {
 }
 await discovery.close()
 
-if (eventPaths.length === 0) {
+if (!PATH_OVERRIDE && eventPaths.length === 0) {
   console.error(
     '[dead-end-crawl] WARNING: discovered ZERO event pages from /events.\n' +
       '                 The event detail page is the surface this script exists for,\n' +
       '                 so a run without one is reported as incomplete, not as a pass.',
   )
 }
-const PATHS = [...SEED_PATHS, ...eventPaths]
+const PATHS = PATH_OVERRIDE ?? [...SEED_PATHS, ...eventPaths]
 
 for (const viewport of VIEWPORTS) {
-  const context = await browser.newContext({
+  const contextOptions = {
     viewport: { width: viewport.width, height: viewport.height },
     deviceScaleFactor: 1,
-  })
+  }
+  if (STORAGE) contextOptions.storageState = STORAGE
+  const context = await browser.newContext(contextOptions)
   const page = await context.newPage()
 
   let pagesLoaded = 0

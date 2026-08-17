@@ -193,6 +193,44 @@ await advance(3)
 // ---- Step 4, Event Media: the control under test ---------------------------
 await page.waitForTimeout(800)
 await shot(page, '05-step4-media-before')
+
+/*
+ * `--upload <file>` proves the OTHER organiser is unaffected: the one who has
+ * artwork and uploads it. Same step, same form, ordinary file input, and the
+ * assertion is that a cover tile appears and the designed-cover panel is still
+ * sitting there untouched beside it rather than having taken anything over.
+ */
+const uploadIdx = process.argv.indexOf('--upload')
+if (uploadIdx !== -1) {
+  const file = process.argv[uploadIdx + 1]
+  await page.setInputFiles('#event-media-files', file)
+  await page.waitForFunction(
+    () => document.querySelectorAll('input[aria-label^="Alt text for image"]').length > 0,
+    undefined,
+    { timeout: 60000 },
+  )
+  await page.waitForTimeout(5000)
+  await shot(page, '06-step4-uploaded')
+  const state = await page.evaluate(() => ({
+    tiles: document.querySelectorAll('input[aria-label^="Alt text for image"]').length,
+    // innerText reflects RENDERED text, and the badge is uppercased in CSS, so
+    // it comes back as "COVER". Comparing case-sensitively reported a false
+    // failure against a screen that was correct.
+    coverBadge: [...document.querySelectorAll('span')].some(
+      s => s.innerText.trim().toLowerCase() === 'cover',
+    ),
+    stillUploading: document.body.innerText.includes('Uploading...'),
+    panelPresent: document.body.innerText.includes('No artwork yet?'),
+    panelButton: [...document.querySelectorAll('button')]
+      .map(b => b.innerText.trim())
+      .find(t => t === 'Make a cover' || t === 'Make another'),
+    readyLine: (document.body.innerText.match(/\d+ images? ready[^\n]*/) || [''])[0],
+  }))
+  console.log('[flow] UPLOAD PATH:', JSON.stringify(state))
+  await browser.close()
+  process.exit(state.tiles > 0 && state.coverBadge && state.panelPresent ? 0 : 1)
+}
+
 console.log('[flow] pressing Make a cover')
 await press('Make a cover')
 // Rendering is satori plus sharp; give it room rather than racing it. The third
@@ -237,10 +275,9 @@ await advance(4)
 // ---- Step 5, Tickets -------------------------------------------------------
 // FREE, deliberately. A paid event would put the Stripe sale gate in the path
 // of a proof about a cover, and this run must not touch the money engine at all.
-await fill('Tier name', 'General admission')
-await fill('name', 'General admission')
-await fill('price', '0')
-await fill('capacity', '100')
+await fill('e.g. General Admission', 'General admission')
+await fill('0.00', '0')
+await fill('Enter capacity', '100')
 await shot(page, '08-step5-tickets')
 await advance(5)
 
@@ -250,10 +287,10 @@ await advance(6)
 
 // ---- Step 7, Review and Publish -------------------------------------------
 await shot(page, '10-step7-review')
-for (const label of ['Publish event', 'Publish', 'Publish now']) {
+for (const label of ['Publish and get your launch kit', 'Publish event', 'Publish']) {
   if (await press(label)) break
 }
-await page.waitForTimeout(6000)
+await page.waitForTimeout(9000)
 await shot(page, '11-after-publish')
 console.log('[flow] after publish, landed on', new URL(page.url()).pathname)
 console.log(`[flow] TITLE = ${TITLE}`)
