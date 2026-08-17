@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
+import { revalidateEventSurfacesById } from '@/lib/events/revalidate-event'
 
 const StepSchema = z.object({
   id: z.string().uuid().optional(),
@@ -116,5 +117,10 @@ export async function saveDynamicPricing(
   }
 
   revalidatePath(`/dashboard/events/${event_id}/pricing`)
+  // THE PUBLIC PAGE TOO. This used to invalidate the organiser's own pricing
+  // screen and nothing else, so a price change was visible to the person who
+  // made it and to nobody else until the event page expired on its own timer.
+  // A price is the single most important thing on that page to be right.
+  await revalidateEventSurfacesById(adminClient, event_id)
   return { success: true }
 }

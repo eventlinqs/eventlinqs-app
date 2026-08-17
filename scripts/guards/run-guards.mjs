@@ -36,6 +36,7 @@
  *   no-external-checkout       an externally ticketed event cannot reach a checkout
  *   one-sellability-source     one sellability rule, and no live button beside a refusal
  *   zoned-event-times          an event time is converted in the event zone, not the runtime one
+ *   mutation-revalidates       a publicly visible mutation invalidates what it affected
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -386,6 +387,12 @@ const GUARDS = [
   // rather than guessing at field names, which is how it found two further
   // instances of the same defect in surfaces nobody had reported.
   'scripts/guards/zoned-event-times.mjs',
+  // Founder ruling 2026-08-18, after an organiser saved an edit and the public
+  // page did not change. Five of the seven event mutations invalidated nothing
+  // at all, and a sixth invalidated only the organiser own pricing screen, so a
+  // price change was visible to the person who made it and to no buyer. A
+  // dashboard-only revalidation therefore does NOT satisfy this guard.
+  'scripts/guards/mutation-revalidates.mjs',
 ]
 
 /**

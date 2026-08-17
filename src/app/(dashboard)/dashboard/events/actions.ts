@@ -4,7 +4,10 @@ import { createClient } from '@/lib/supabase/server'
 import { checkSellable } from '@/lib/events/sellable-guard'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
-import { revalidatePath, updateTag } from 'next/cache'
+import {
+  revalidateEventSurfaces,
+  revalidateEventSurfacesById,
+} from '@/lib/events/revalidate-event'
 import { canTransition } from '@/lib/event-lifecycle'
 import { checkPublishGate, hasPaidTier } from '@/lib/events/publish-gate'
 import { parseVideoEmbed } from '@/lib/media/video-embed'
@@ -289,13 +292,14 @@ export async function createEvent(input: CreateEventInput): Promise<{ error?: st
     }
   }
 
-  revalidatePath('/dashboard/events')
-  revalidatePath('/dashboard')
-  if (input.has_reserved_seating) {
-    revalidatePath(`/events/${slug}`)
-  }
-  // New city may have appeared in the picker merge source.
-  updateTag('picker-cities')
+  // Every surface this event appears on, not just the dashboard. It reads the
+  // row rather than trusting fields assembled here, so a field added to the event
+  // later cannot be forgotten at this call site. See revalidateEventSurfaces.
+  // The user-scoped client, not the admin one: this is a cache hint about an
+  // event the caller just created and owns, so it needs no service role, and the
+  // generated Database generic on the admin client makes this call site
+  // instantiate deeply enough that TypeScript gives up (TS2589).
+  await revalidateEventSurfacesById(supabase, input.eventId)
 
   // Activation metric: event_published (fire-and-forget, never blocks the
   // organiser's publish). A create with status published is always a first
@@ -501,13 +505,10 @@ export async function updateEvent(input: UpdateEventInput): Promise<{ error: str
     }
   }
 
-  revalidatePath('/dashboard/events')
-  revalidatePath('/dashboard')
-  if (input.has_reserved_seating && event.slug) {
-    revalidatePath(`/events/${event.slug}`)
-  }
-  // venue_city may have changed - refresh the picker merge source.
-  updateTag('picker-cities')
+  // THE DEFECT: this used to invalidate the public page only when the event had
+  // reserved seating, so an ordinary event's edit was invisible until its 300
+  // second ISR window expired, and then only on the request AFTER that.
+  await revalidateEventSurfacesById(admin, input.eventId)
 
   // Activation metric: a draft transitioning to published through the edit
   // path is that event's first publish.
@@ -561,8 +562,10 @@ export async function publishEvent(eventId: string): Promise<{ error?: string }>
     .eq('id', eventId)
 
   if (error) return { error: 'Failed to publish event' }
-  // A newly published event may bring a previously absent city into the picker.
-  updateTag('picker-cities')
+  // THE DEFECT: publishing used to invalidate NOTHING but the city picker, so a
+  // freshly published event did not appear on the listing, the homepage or any
+  // discovery surface until each one expired on its own timer.
+  await revalidateEventSurfacesById(supabase, eventId)
 
   // Activation metric: publishing from the events table. A draft going live
   // is a first publish; resuming a paused event is not.
@@ -596,7 +599,11 @@ export async function pauseEvent(eventId: string): Promise<{ error?: string }> {
     .update({ status: 'paused' })
     .eq('id', eventId)
 
-  return error ? { error: 'Failed to pause event' } : {}
+  if (error) return { error: 'Failed to pause event' }
+  // A paused event that keeps selling from a cached page is the worst version of
+  // this defect: it takes money for something the organiser has stopped.
+  await revalidateEventSurfacesById(supabase, eventId)
+  return {}
 }
 
 export async function cancelEvent(eventId: string): Promise<{ error?: string }> {
@@ -620,7 +627,11 @@ export async function cancelEvent(eventId: string): Promise<{ error?: string }> 
     .update({ status: 'cancelled' })
     .eq('id', eventId)
 
-  return error ? { error: 'Failed to cancel event' } : {}
+  if (error) return { error: 'Failed to cancel event' }
+  // Same reasoning as pause, and more urgent: a cancelled event must stop being
+  // offered everywhere it is listed, immediately.
+  await revalidateEventSurfacesById(supabase, eventId)
+  return {}
 }
 
 export async function duplicateEvent(eventId: string): Promise<{ error?: string; newEventId?: string }> {
@@ -674,6 +685,9 @@ export async function duplicateEvent(eventId: string): Promise<{ error?: string;
     await supabase.from('ticket_tiers').insert(newTiers)
   }
 
+  // A duplicate lands as a DRAFT, so no public surface changes, but the
+  // organiser's own lists must show it at once.
+  await revalidateEventSurfacesById(supabase, newEvent.id)
   return { newEventId: newEvent.id }
 }
 
@@ -684,7 +698,10 @@ export async function deleteEvent(eventId: string): Promise<{ error?: string }> 
 
   const { data: event } = await supabase
     .from('events')
-    .select('status, created_by, cover_image_url, gallery_urls')
+    // slug, venue_city and tags are read HERE because after the delete there is
+    // no row left to compose the invalidation from, and a deleted event that
+    // lingers on a cached listing is a link straight into a 404.
+    .select('status, created_by, cover_image_url, gallery_urls, slug, venue_city, tags')
     .eq('id', eventId)
     .single()
 
@@ -693,6 +710,12 @@ export async function deleteEvent(eventId: string): Promise<{ error?: string }> 
 
   const { error } = await supabase.from('events').delete().eq('id', eventId)
   if (error) return { error: 'Failed to delete event' }
+
+  revalidateEventSurfaces({
+    slug: event.slug,
+    venue_city: event.venue_city,
+    tags: Array.isArray(event.tags) ? (event.tags as string[]) : [],
+  })
 
   // Orphan cleanup: remove the event's stored images so deleting an event never
   // leaks storage. Best-effort (the row is already gone); failures are logged.
