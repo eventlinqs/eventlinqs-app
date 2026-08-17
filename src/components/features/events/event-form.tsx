@@ -16,7 +16,20 @@ import {
   stripCanonicalCommunityTokens,
   canonicalTokensForCommunities,
 } from '@/lib/communities/tag-bridge'
-import { formatPlatformDateTime } from '@/lib/dates/event-time'
+import {
+  formatPlatformDateTime,
+  fromZonedInputValue,
+  toZonedInputValue,
+} from '@/lib/dates/event-time'
+import { timezoneForVenue } from '@/lib/dates/venue-timezone'
+
+/**
+ * The zone a brand new form starts in, before the organiser has typed an address
+ * that determines one. Melbourne rather than Sydney because that is where the
+ * recruitment effort is pointed, and it is replaced the moment a venue names a
+ * state or a known city. See timezoneForVenue.
+ */
+const DEFAULT_TIMEZONE = 'Australia/Melbourne'
 import type {
   EventCategory,
   EventType,
@@ -174,7 +187,9 @@ function getDefaultFormData(): FormData {
   const now = new Date()
   const start = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
   const end = new Date(start.getTime() + 2 * 60 * 60 * 1000)
-  const fmt = (d: Date) => d.toISOString().slice(0, 16)
+  // The seeded default is shown in the SAME zone the form is about to save in,
+  // so the organiser is never handed a UTC wall clock labelled as their own.
+  const fmt = (d: Date) => toZonedInputValue(d.toISOString(), DEFAULT_TIMEZONE)
 
   return {
     title: '',
@@ -185,7 +200,7 @@ function getDefaultFormData(): FormData {
     community_slugs: [],
     start_date: fmt(start),
     end_date: fmt(end),
-    timezone: 'Australia/Melbourne',
+    timezone: DEFAULT_TIMEZONE,
     is_multi_day: false,
     is_recurring: false,
     recurrence_rule: 'FREQ=WEEKLY',
@@ -287,7 +302,13 @@ function fromExistingEvent(
   },
   tiers: TicketTier[]
 ): FormData {
-  const fmt = (d: string) => new Date(d).toISOString().slice(0, 16)
+  // THE EDIT ROUND TRIP, which is where the shift accumulated. The stored value
+  // is a UTC instant; the input must show it as a wall clock in the EVENT's own
+  // zone. Slicing the ISO string handed the organiser UTC and called it local,
+  // and saving then subtracted the browser's offset from it a second time, so
+  // every save moved the event one offset earlier. See fromZonedInputValue.
+  const zone = event.timezone
+  const fmt = (d: string) => toZonedInputValue(d, zone)
   return {
     title: event.title,
     summary: event.summary ?? '',
@@ -319,8 +340,8 @@ function fromExistingEvent(
       price: (t.price / 100).toString(),
       currency: t.currency,
       total_capacity: t.total_capacity.toString(),
-      sale_start: t.sale_start ? new Date(t.sale_start).toISOString().slice(0, 16) : '',
-      sale_end: t.sale_end ? new Date(t.sale_end).toISOString().slice(0, 16) : '',
+      sale_start: t.sale_start ? toZonedInputValue(t.sale_start, zone) : '',
+      sale_end: t.sale_end ? toZonedInputValue(t.sale_end, zone) : '',
       min_per_order: t.min_per_order.toString(),
       max_per_order: t.max_per_order.toString(),
       sort_order: t.sort_order ?? i,
@@ -407,6 +428,9 @@ export function EventForm({
   // Activation metric: kit_started fires once per create-mode session, on the
   // first meaningful input (typing a title, or applying a Magic Start draft).
   const kitStartedRef = useRef(false)
+  // Set once the organiser picks a zone by hand, so venue-derived resolution
+  // never overwrites a deliberate choice.
+  const timezoneTouchedRef = useRef(false)
   const markKitStarted = useCallback(
     (mode: 'wizard' | 'magic_start') => {
       if (editMode || kitStartedRef.current) return
@@ -416,20 +440,33 @@ export function EventForm({
     [editMode],
   )
 
-  // Auto-detect the browser timezone on mount (new events only). This must run
-  // in an effect, not the state initializer: reading the browser timezone
-  // during render would differ between the server (UTC) and the client, causing
-  // a hydration mismatch. The one extra render is intentional and one-time.
+  /*
+   * THE EVENT'S ZONE FOLLOWS THE VENUE, not the browser.
+   *
+   * This used to read `Intl.DateTimeFormat().resolvedOptions().timeZone` and use
+   * it as the event's zone. That is the ORGANISER's zone, and the two are only
+   * the same when the organiser is at the venue. It is also coarser than it
+   * looks: Windows carries one setting for the whole eastern seaboard, and it
+   * resolves to Australia/Sydney, so a Geelong event created on a Melbourne
+   * laptop was stored as Sydney. Harmless while the offsets agree, wrong on the
+   * label a buyer reads, and wrong outright the day a Perth or Brisbane
+   * organiser signs up.
+   *
+   * The venue decides. It re-resolves as the organiser types the address, so
+   * changing the city changes the zone, and it stops the moment the organiser
+   * sets the dropdown by hand: `timezoneTouchedRef` records that they overrode
+   * it, and their choice is never taken back off them. An address that does not
+   * determine a zone leaves whatever is already selected alone.
+   */
   useEffect(() => {
-    if (editMode) return
-    try {
-      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time, client-only timezone seed; must be an effect for SSR-safe hydration
-      if (tz) set('timezone', tz)
-    } catch {
-      // keep the default timezone
-    }
-  }, [editMode, set])
+    if (editMode || timezoneTouchedRef.current) return
+    const resolved = timezoneForVenue({
+      state: formData.venue_state,
+      city: formData.venue_city,
+    })
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- derived from the venue fields; must be an effect so SSR and the client agree
+    if (resolved && resolved !== formData.timezone) set('timezone', resolved)
+  }, [editMode, formData.venue_state, formData.venue_city, formData.timezone, set])
 
   const buildPayload = (status: EventStatus) => ({
     eventId: eventId,
@@ -442,8 +479,12 @@ export function EventForm({
       ...stripCanonicalCommunityTokens(formData.tags.split(',').map(t => t.trim()).filter(Boolean)),
       ...canonicalTokensForCommunities(formData.community_slugs),
     ])),
-    start_date: new Date(formData.start_date).toISOString(),
-    end_date: new Date(formData.end_date).toISOString(),
+    // What the organiser typed, read in the zone THEY chose in this form, not in
+    // whatever zone the browser happens to be set to. `new Date("2026-09-01T12:00")`
+    // is specified to read a zoneless date-time as the runtime's local time, so
+    // the dropdown above was decorative and the browser decided. It decides now.
+    start_date: fromZonedInputValue(formData.start_date, formData.timezone),
+    end_date: fromZonedInputValue(formData.end_date, formData.timezone),
     timezone: formData.timezone,
     is_multi_day: formData.is_multi_day,
     is_recurring: formData.is_recurring,
@@ -491,8 +532,12 @@ export function EventForm({
       price: parseFloat(t.price) || 0,
       currency: t.currency,
       total_capacity: parseInt(t.total_capacity) || 0,
-      sale_start: t.sale_start ? new Date(t.sale_start).toISOString() : null,
-      sale_end: t.sale_end ? new Date(t.sale_end).toISOString() : null,
+      // A BLANK sale window stays NULL, and NULL means on sale now. That is the
+      // rule create_reservation already enforces (migration 20260704000005) and
+      // the rule tierSaleWindowState mirrors. It is stated here because a founder
+      // spent a night believing a blank field had put his event on hold.
+      sale_start: t.sale_start ? fromZonedInputValue(t.sale_start, formData.timezone) : null,
+      sale_end: t.sale_end ? fromZonedInputValue(t.sale_end, formData.timezone) : null,
       min_per_order: parseInt(t.min_per_order) || 1,
       max_per_order: parseInt(t.max_per_order) || 10,
       sort_order: i,
@@ -828,7 +873,12 @@ export function EventForm({
         <label className="block text-sm font-medium text-ink-600 mb-1">Timezone</label>
         <select
           value={formData.timezone}
-          onChange={e => set('timezone', e.target.value)}
+          onChange={e => {
+            // The organiser has overridden the venue-derived zone. Record it, so
+            // a later address edit never silently takes their choice back.
+            timezoneTouchedRef.current = true
+            set('timezone', e.target.value)
+          }}
           className="w-full rounded-lg border border-ink-200 px-4 py-2.5 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500"
         >
           {formData.timezone && !TIMEZONES.includes(formData.timezone) && (

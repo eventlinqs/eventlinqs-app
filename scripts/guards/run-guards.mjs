@@ -35,6 +35,7 @@
  *   no-partial-builds          no undated flag, deferral marker or placeholder ships
  *   no-external-checkout       an externally ticketed event cannot reach a checkout
  *   one-sellability-source     one sellability rule, and no live button beside a refusal
+ *   zoned-event-times          an event time is converted in the event zone, not the runtime one
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -377,6 +378,14 @@ const GUARDS = [
   // every run, and fails if a baseline entry stops matching, so it cannot pass
   // vacuously or rot into an unexamined allowlist.
   'scripts/guards/one-sellability-source.mjs',
+  // Founder ruling 2026-08-18, after an organiser typed 12:00 pm and the page
+  // showed 2:00 am. A zoneless datetime-local value read through new Date() takes
+  // the offset of whatever runtime evaluates it, so every edit moved the event
+  // one offset earlier, and a create was only accidentally right when the browser
+  // zone happened to match the event zone. This guard binds to the actual inputs
+  // rather than guessing at field names, which is how it found two further
+  // instances of the same defect in surfaces nobody had reported.
+  'scripts/guards/zoned-event-times.mjs',
 ]
 
 /**

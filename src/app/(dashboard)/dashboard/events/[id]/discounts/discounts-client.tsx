@@ -3,10 +3,17 @@
 import { useState, useTransition } from 'react'
 import { createDiscountCode, updateDiscountCode, deleteDiscountCode } from '@/app/actions/discount-codes'
 import type { DiscountCode, TicketTier } from '@/types/database'
-import { PLATFORM_TIME_ZONE } from '@/lib/dates/event-time'
+import { PLATFORM_TIME_ZONE, fromZonedInputValue } from '@/lib/dates/event-time'
 
 interface Props {
   eventId: string
+  /**
+   * The EVENT's zone. A discount window is typed as a wall clock and must be
+   * stored as the instant that wall clock names IN THE EVENT'S ZONE. It used to
+   * be sent as the raw "YYYY-MM-DDTHH:mm" string, which Postgres reads as UTC,
+   * so a code the organiser set to open at noon opened at 11pm the night before.
+   */
+  eventTimezone: string | null
   currency: string
   initialCodes: DiscountCode[]
   tiers: Pick<TicketTier, 'id' | 'name'>[]
@@ -25,7 +32,7 @@ const initialForm = {
   is_active: true,
 }
 
-export function DiscountCodesClient({ eventId, currency, initialCodes, tiers }: Props) {
+export function DiscountCodesClient({ eventId, eventTimezone, currency, initialCodes, tiers }: Props) {
   const [codes, setCodes] = useState<DiscountCode[]>(initialCodes)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(initialForm)
@@ -63,8 +70,9 @@ export function DiscountCodesClient({ eventId, currency, initialCodes, tiers }: 
         max_uses_per_user: parseInt(form.max_uses_per_user) || 1,
         min_order_amount_cents: form.min_order_amount ? Math.round(parseFloat(form.min_order_amount) * 100) : null,
         applicable_tier_ids: form.applicable_tier_ids.length > 0 ? form.applicable_tier_ids : null,
-        valid_from: form.valid_from || null,
-        valid_until: form.valid_until || null,
+        // Read in the EVENT's zone, not sent raw for Postgres to read as UTC.
+        valid_from: form.valid_from ? fromZonedInputValue(form.valid_from, eventTimezone) : null,
+        valid_until: form.valid_until ? fromZonedInputValue(form.valid_until, eventTimezone) : null,
         is_active: form.is_active,
       })
 

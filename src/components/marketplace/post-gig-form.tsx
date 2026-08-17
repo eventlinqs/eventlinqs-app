@@ -3,6 +3,8 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { postGigAction } from '@/app/actions/gigs'
+import { PLATFORM_TIME_ZONE, fromZonedInputValue } from '@/lib/dates/event-time'
+import { timezoneForVenue } from '@/lib/dates/venue-timezone'
 import {
   PAY_TYPES,
   PAY_TYPE_LABELS,
@@ -43,6 +45,8 @@ export function PostGigForm({
     e.preventDefault()
     setMessage(null)
     const amountCents = payAmount ? Math.round(parseFloat(payAmount) * 100) : null
+    const gigZone =
+      timezoneForVenue({ city: citySlug.replace(/-/g, ' ') }) ?? PLATFORM_TIME_ZONE
     startTransition(async () => {
       const res = await postGigAction({
         title,
@@ -53,8 +57,19 @@ export function PostGigForm({
         payType,
         payAmountCents: Number.isFinite(amountCents as number) ? amountCents : null,
         payNote: payNote || undefined,
-        eventDate: eventDate ? new Date(eventDate).toISOString() : '',
-        applicationDeadline: deadline ? new Date(deadline).toISOString() : '',
+        /*
+         * The gig's city decides the zone, not the poster's browser.
+         *
+         * These two used to go through `new Date(<datetime-local value>)`, which
+         * ECMAScript reads as the RUNTIME's local time. A promoter in Perth
+         * posting a Sydney gig stored a time three hours out, and the performers
+         * being notified are precisely the people in the gig's city, not the
+         * poster's. The slug is hyphenated ("gold-coast"), so it is spaced before
+         * lookup; a city that does not resolve falls back to the platform zone,
+         * which is at least identical on the server and in every browser.
+         */
+        eventDate: eventDate ? fromZonedInputValue(eventDate, gigZone) : '',
+        applicationDeadline: deadline ? fromZonedInputValue(deadline, gigZone) : '',
         eventId: eventId || null,
       })
       if (res.ok) {
