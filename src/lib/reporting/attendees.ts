@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getSiteUrl } from '@/lib/site-url'
 import { buildConsentIndex, isEmailConsented, type ConsentRow } from '@/lib/consent/status'
 import type { AttendeeRow, OrderReportRow } from './types'
+import { resolveEventAccess } from '@/lib/organisations/event-access'
 
 export type { AttendeeRow, OrderReportRow, AttendeeFilters } from './types'
 export { filterAttendees } from './types'
@@ -11,11 +12,16 @@ export { filterAttendees } from './types'
  * Organiser attendee + orders reporting data layer.
  *
  * Data sovereignty: an organiser may only ever read their OWN events' data.
- * Every fetch here goes through getOrganiserEvent(), which verifies the
- * logged-in user owns the event's organisation (organisations.owner_id =
- * auth.uid()) using the session client BEFORE any service-role read. The
- * admin client bypasses RLS, so the ownership gate is the only thing
+ * Every fetch here goes through getOrganiserEvent(), which resolves access through
+ * the single shared gate (src/lib/organisations/event-access.ts) BEFORE any
+ * service-role read. The admin client bypasses RLS, so that gate is the only thing
  * standing between organisers; it must run first and must fail closed.
+ *
+ * The gate admits the organisation OWNER **or** an organisation_members row with
+ * role owner, admin or manager. It was owner-only until 2026-08-19, which silently
+ * contradicted the refund path: resolveRefundScope and create_refund_request both
+ * admitted managers, so a manager passed every authorisation check and still could
+ * not reach the page. Founder ruling: any organiser can refund.
  */
 
 // Ticket statuses that represent a real attendee on the guest list. Refunded,
@@ -54,13 +60,22 @@ export async function getOrganiserEvent(eventId: string): Promise<OrganiserEvent
     .maybeSingle()
   if (!event) return null
 
-  // Ownership gate: the organisation must belong to this user. Using the
-  // session client means RLS also applies, so a non-owner cannot read the row.
-  const { data: org } = await supabase
+  /*
+   * ACCESS GATE. This was `.eq('owner_id', user.id)`, owner-only, while
+   * resolveRefundScope and create_refund_request both admit owner, admin and
+   * manager. A manager could therefore pass every authorisation check the refund
+   * path performs and still never reach the control, because this gate returned
+   * null and the page called notFound(). Founder ruling 2026-08-19: any organiser
+   * can refund. One shared definition now answers the question, and a test pins it
+   * to resolveRefundScope's role list so the two cannot diverge again.
+   */
+  const access = await resolveEventAccess(eventId)
+  if (!access.allowed) return null
+
+  const { data: org } = await createAdminClient()
     .from('organisations')
     .select('id, name')
-    .eq('id', event.organisation_id)
-    .eq('owner_id', user.id)
+    .eq('id', access.organisationId)
     .maybeSingle()
   if (!org) return null
 

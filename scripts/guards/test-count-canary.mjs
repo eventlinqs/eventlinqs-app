@@ -241,8 +241,19 @@ const ROOT = join(HERE, '..', '..')
  * for any future failure mode somebody forgets to translate, which is the half
  * that keeps working after this session is forgotten.
  */
-const MIN_FILES = 208
-const MIN_TESTS = 2511
+/*
+ * 2026-08-19 (later): raised 208/2511 -> 209/2517. One file, 6 tests.
+ *
+ * tests/unit/payments/event-access-matches-refund-scope.test.ts. The dashboard order
+ * route gated on organisations.owner_id alone while resolveRefundScope and
+ * create_refund_request both admitted owner, admin and manager, so a manager passed
+ * every authorisation check the refund path performs and still never saw the button.
+ * The divergence was never a logic bug, it was two lists of roles in two files that
+ * nothing compared, so these tests compare them: the shared gate against
+ * ORG_MEMBER_ROLES, and both against the role list inside create_refund_request.
+ */
+const MIN_FILES = 209
+const MIN_TESTS = 2517
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.
