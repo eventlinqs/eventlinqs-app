@@ -225,8 +225,24 @@ const ROOT = join(HERE, '..', '..')
  * null country still refuses the sale while a missing country column is a
  * programming error instead of a verdict about the organiser.
  */
-const MIN_FILES = 206
-const MIN_TESTS = 2483
+/*
+ * 2026-08-19: raised 206/2483 -> 208/2511. Two files, 28 tests, from the refund
+ * session.
+ *
+ * tests/unit/payments/refund-post-disbursement.test.ts, 7. The clawback that runs
+ * when a refund lands AFTER the organiser has already been paid had no test at
+ * all. The load-bearing one asserts it can never reverse more than was actually
+ * transferred, because over-reversing is not a rounding error, it is inventing
+ * money against a connected account.
+ *
+ * tests/unit/payments/refund-failure-plain-words.test.ts, 21. Both refund actions
+ * returned the caught error's own message, so an organiser could read a Stripe
+ * charge id or a database status enum in the refund dialog. The leak test fails
+ * for any future failure mode somebody forgets to translate, which is the half
+ * that keeps working after this session is forgotten.
+ */
+const MIN_FILES = 208
+const MIN_TESTS = 2511
 
 /**
  * SKIPPED TESTS ALLOWED: NONE. This closes a hole in the two counts above.

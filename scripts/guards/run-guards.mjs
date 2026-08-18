@@ -39,6 +39,7 @@
  *   mutation-revalidates       a publicly visible mutation invalidates what it affected
  *   gate-fields-complete       a query feeding a gate selects every field that gate reads
  *   refund-restores-inventory  a refund can never take the money and keep the seat sold
+ *   inventory-lock-integrity   two buyers can never be sold the same seat
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -414,6 +415,14 @@ const GUARDS = [
   // inventory path, an adopted orphan, a refusal that stops a double-restore, and
   // exactly one sanctioned void.
   'scripts/guards/refund-restores-inventory.mjs',
+  // Measured 2026-08-19 against the real TEST database: 50 simultaneous buyers
+  // against ONE seat, live create_reservation -> 1 won. Same body with FOR UPDATE
+  // removed -> 16 won, 16 claimed against a capacity of 1. Fifteen people turned
+  // away at the door. The row lock IS the protection, so a refactor that drops it
+  // ships a platform that passes every existing test and oversells under load.
+  // This pins the lock, the availability arithmetic, the already-confirmed latch,
+  // and the rule that the counters have exactly one owner.
+  'scripts/guards/inventory-lock-integrity.mjs',
 ]
 
 /**

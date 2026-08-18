@@ -311,6 +311,49 @@ const DRILLS = [
     replace: '  const inAppRefundId: string | undefined = undefined',
     expect: 'refuses a refund carrying metadata.refund_id',
   },
+
+  // -------------------------------------------------------------------------
+  // OVERSELL (measured 2026-08-19). 50 simultaneous buyers against one seat:
+  // with the row lock 1 won, with the lock removed 16 won and 15 people would
+  // have been turned away at the door. These drills are the ways back in.
+  // -------------------------------------------------------------------------
+  {
+    name: 'the reservation row lock removed (16 of 50 buyers won one seat without it)',
+    guard: `${GUARDS}/inventory-lock-integrity.mjs`,
+    file: 'supabase/migrations/20260704000005_sale_window_enforcement.sql',
+    find: '      FOR UPDATE;',
+    replace: '      ;',
+    expect: 'no longer takes the row lock',
+  },
+  {
+    name: 'availability arithmetic stops subtracting reserved_count',
+    guard: `${GUARDS}/inventory-lock-integrity.mjs`,
+    file: 'supabase/migrations/20260704000005_sale_window_enforcement.sql',
+    find: 'tt.total_capacity - tt.sold_count - tt.reserved_count AS available',
+    replace: 'tt.total_capacity - tt.sold_count AS available',
+    expect: 'computes availability as capacity minus sold minus reserved',
+  },
+  {
+    name: 'reserved_count assigned instead of incremented (loses concurrent reservations)',
+    guard: `${GUARDS}/inventory-lock-integrity.mjs`,
+    file: 'supabase/migrations/20260704000005_sale_window_enforcement.sql',
+    find: 'SET reserved_count = reserved_count + v_quantity',
+    replace: 'SET reserved_count = v_quantity',
+    expect: 'increments reserved_count rather than assigning it',
+  },
+  {
+    name: 'an application-level write to sold_count (a second owner of the counter)',
+    guard: `${GUARDS}/inventory-lock-integrity.mjs`,
+    file: 'src/app/actions/checkout.ts',
+    find: "import { createClient } from '@/lib/supabase/server'",
+    replace:
+      "import { createClient } from '@/lib/supabase/server'\n"
+      + 'async function rogueInventoryWrite(db: ReturnType<typeof createAdminClient>, id: string, n: number) {\n'
+      + "  return db.from('ticket_tiers').update({ sold_count: n }).eq('id', id)\n"
+      + '}\n'
+      + 'void rogueInventoryWrite',
+    expect: 'application-level write(s) to the inventory counters',
+  },
 ]
 
 function run(guard) {

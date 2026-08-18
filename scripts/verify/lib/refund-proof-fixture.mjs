@@ -10,6 +10,120 @@
  */
 
 /**
+ * Remove refund-proof fixtures INCLUDING the ones carrying orders, in the order
+ * the foreign keys allow. Used by `--cleanup`, never by a proof run.
+ *
+ * WHY THE ORDER IS WRITTEN OUT RATHER THAN LEFT TO CASCADE. tickets and
+ * refund_tickets reference each other's parents with ON DELETE RESTRICT, so
+ * deleting an event first fails with 23503 and leaves half a fixture behind, which
+ * is worse than leaving all of it. Children first, parents last, every time.
+ *
+ * It is scoped by the `refund-proof-presents-%` slug, so it can only ever reach
+ * fixtures this harness created. It cannot touch a seeded or real organisation.
+ */
+export async function purgeFixtures(db, log = () => {}) {
+  const { data: orgs } = await db
+    .from('organisations')
+    .select('id, owner_id, slug')
+    .like('slug', 'refund-proof-presents-%')
+
+  /**
+   * EVERY DELETE IS CHECKED. The first version of this function ignored the error
+   * field on each call and then reported "removed 4 fixture(s); 4 remaining",
+   * which is a function claiming success while the rows were all still there. A
+   * cleanup that cannot fail loudly is worse than no cleanup, because the next
+   * person believes the database is clean.
+   */
+  const errors = []
+  const del = async (label, builder) => {
+    const { error } = await builder
+    if (error) errors.push(`${label}: ${error.code} ${error.message}`)
+  }
+
+  let removed = 0
+  for (const org of orgs ?? []) {
+    const { data: events } = await db.from('events').select('id').eq('organisation_id', org.id)
+    const eventIds = (events ?? []).map(e => e.id)
+
+    let orderIds = []
+    if (eventIds.length) {
+      const { data: orders } = await db.from('orders').select('id').in('event_id', eventIds)
+      orderIds = (orders ?? []).map(o => o.id)
+    }
+
+    if (orderIds.length) {
+      // refund_tickets holds ON DELETE RESTRICT on tickets, so its rows go first,
+      // and its parent refunds rows go before the order they belong to.
+      const { data: refunds } = await db.from('refunds').select('id').in('order_id', orderIds)
+      const refundIds = (refunds ?? []).map(r => r.id)
+      if (refundIds.length) await del('refund_tickets', db.from('refund_tickets').delete().in('refund_id', refundIds))
+      await del('tickets', db.from('tickets').delete().in('order_id', orderIds))
+      if (refundIds.length) await del('refunds', db.from('refunds').delete().in('id', refundIds))
+      await del('payments', db.from('payments').delete().in('order_id', orderIds))
+      await del('order_items', db.from('order_items').delete().in('order_id', orderIds))
+      await del('orders', db.from('orders').delete().in('id', orderIds))
+    }
+
+    // Money-side rows hang off the organisation rather than the order.
+    await del('organiser_balance_ledger', db.from('organiser_balance_ledger').delete().eq('organisation_id', org.id))
+    await del('payout_holds', db.from('payout_holds').delete().eq('organisation_id', org.id))
+
+    /*
+     * SHARE LINKS MUST GO BEFORE THE EVENT, and this is the non-obvious one.
+     *
+     * share_links.event_id is ON DELETE SET NULL, and share_links carries a check
+     * constraint `share_links_target_exactly_one` requiring exactly one target to
+     * be non-null. So deleting an event does not fail with a foreign-key error, it
+     * nulls the target and then fails the CHECK:
+     *
+     *   23514  new row for relation "share_links" violates check constraint
+     *          "share_links_target_exactly_one"
+     *
+     * That error names share_links while the statement names events, which is why
+     * it reads as unrelated. The acquisition loop creates these automatically (6
+     * per event here), so any event that has ever been shared or published hits it.
+     * Worth knowing beyond this harness: the seeded-data purge deletes events and
+     * will meet exactly this.
+     *
+     * share_link_events is NOT deleted here. Its FK is
+     * `link_id ... on delete cascade` (20260704000002), so removing a share_links
+     * row takes its attribution events with it. The first version deleted it
+     * explicitly AND guessed the column as `share_link_id`, which errored 42703
+     * on every fixture; the rows were already gone by cascade, so the error was
+     * pure noise from work that did not need doing.
+     */
+    if (eventIds.length) {
+      const { data: links } = await db.from('share_links').select('id').in('event_id', eventIds)
+      const linkIds = (links ?? []).map(l => l.id)
+      if (linkIds.length) await del('share_links', db.from('share_links').delete().in('id', linkIds))
+    }
+    const { data: orgLinks } = await db.from('share_links').select('id').eq('organisation_id', org.id)
+    const orgLinkIds = (orgLinks ?? []).map(l => l.id)
+    if (orgLinkIds.length) {
+      await del('share_links (org)', db.from('share_links').delete().in('id', orgLinkIds))
+    }
+
+    if (eventIds.length) {
+      await del('ticket_tiers', db.from('ticket_tiers').delete().in('event_id', eventIds))
+      await del('events', db.from('events').delete().in('id', eventIds))
+    }
+    await del('organisations', db.from('organisations').delete().eq('id', org.id))
+    if (org.owner_id) {
+      await del('profiles', db.from('profiles').delete().eq('id', org.owner_id))
+      await db.auth.admin.deleteUser(org.owner_id).catch(() => {})
+    }
+    removed += 1
+    log(`purged ${org.slug} (${eventIds.length} event(s), ${orderIds.length} order(s))`)
+  }
+
+  if (errors.length) {
+    log(`${errors.length} delete(s) FAILED:`)
+    for (const e of errors) log(`    ${e}`)
+  }
+  return { removed, errors }
+}
+
+/**
  * Clear fixtures left by an earlier run that failed before buying anything. A
  * fixture carrying orders is KEPT: it is the evidence. Without this, TEST
  * accumulates an organisation and an auth user on every iteration.
