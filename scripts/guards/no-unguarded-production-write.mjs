@@ -181,6 +181,77 @@ function codeLines(raw) {
   return out
 }
 
+/**
+ * D. A PROVABLY READ-ONLY SESSION. Added 2026-08-18.
+ *
+ * WHY A FOURTH SHAPE, and why this is not a loosening. This guard exists to stop
+ * an unintended WRITE. Its three existing shapes all work by identifying the
+ * TARGET and refusing production. That is the only available move for a script
+ * that needs write power. But a read-only PRODUCTION probe is a legitimate and
+ * necessary thing to own: diagnosing production requires reading production, and
+ * `scripts/probe/prod-sale-gate-probe.mjs` already argues exactly this in its
+ * header. It escaped this guard only because it reads through the Supabase client
+ * rather than through Postgres, which is an accident of transport, not a
+ * principle. A probe that needs pg_policies, information_schema or
+ * pg_get_functiondef cannot use PostgREST at all, because those live outside the
+ * exposed schema.
+ *
+ * So the fourth shape does not identify the target. It removes the CAPABILITY:
+ *
+ *   1. the connection is opened with `-c default_transaction_read_only=on`, so
+ *      POSTGRES ITSELF raises 25006 on any INSERT/UPDATE/DELETE/DDL in the
+ *      session, whatever the file goes on to ask for. This is server-side and is
+ *      not a promise made by the file about itself.
+ *   2. the file never turns that off, and never reaches for the session-wide
+ *      escape hatches that could.
+ *   3. the file contains no database mutation verb at all, on either transport,
+ *      so there is no write even attempting to run.
+ *
+ * All three are required. Any one alone would be a loophole: (1) without (2) could
+ * be switched off mid-file; (1) and (2) without (3) would pass a file that clearly
+ * intends to write and would merely fail at runtime, which is not the standard
+ * this guard holds. A file satisfying all three cannot write to any database,
+ * production included, so demanding it also refuse production would be demanding
+ * a check against a power it does not hold.
+ *
+ * The failure direction is also right: if somebody later adds a write to such a
+ * file, clause 3 stops matching, the file is no longer read-only in this guard's
+ * eyes, and it goes back to needing the preflight.
+ */
+const READ_ONLY_SESSION = /default_transaction_read_only\s*=\s*on/
+const READ_ONLY_DEFEATED = new RegExp(
+  [
+    /default_transaction_read_only\s*=\s*off/.source,
+    /SET\s+SESSION\s+CHARACTERISTICS/.source,
+    /transaction_read_only\s*=\s*['"`]?off/.source,
+  ].join('|'),
+  'i',
+)
+/**
+ * Any SQL statement that changes data or schema, in the file's own source.
+ *
+ * GRANT and REVOKE require a following `ON`, and that is not decoration. The first
+ * version matched `/\bGRANT\s/i`, which also matches the ordinary English word
+ * "grant" in a lowercase sentence. It fired on three console.log lines in a
+ * read-only probe that said things like "none grant anon anything by default", and
+ * the only available remedies were to keep rewording English prose forever or to
+ * weaken the check. Requiring the `ON` that every real GRANT/REVOKE statement
+ * carries distinguishes the statement from the noun without giving anything up.
+ *
+ * The other alternatives were both worse: matching case-sensitively would miss a
+ * lowercase `grant select on ...`, and dropping the clause would miss the real
+ * thing entirely.
+ */
+const SQL_MUTATION = /\b(INSERT\s+INTO|UPDATE\s+\w|DELETE\s+FROM|DROP\s+(TABLE|FUNCTION|INDEX|POLICY|SCHEMA)|TRUNCATE|ALTER\s+(TABLE|DEFAULT\s+PRIVILEGES)|CREATE\s+(TABLE|FUNCTION|INDEX|POLICY|OR\s+REPLACE)|\b(GRANT|REVOKE)\b[^\n;]{0,80}\bON\b)/i
+
+function isProvablyReadOnly(body) {
+  if (!READ_ONLY_SESSION.test(body)) return false
+  if (READ_ONLY_DEFEATED.test(body)) return false
+  if (MUTATION.test(body)) return false
+  if (SQL_MUTATION.test(body)) return false
+  return true
+}
+
 /** A ref token and a refusal within GUARD_WINDOW lines of each other. */
 function hasRefCheck(lines) {
   const refAt = []
@@ -195,6 +266,8 @@ function hasRefCheck(lines) {
 const files = sourceFiles(ROOT, { extensions: ['.mjs', '.js', '.cjs', '.ts', '.mts'], subdir: 'scripts' })
 
 const offenders = []
+/** Read-only production probes: named in the summary, never silently skipped. */
+const readOnlyProbes = []
 let writeCapable = 0
 
 let viaClient = 0
@@ -209,6 +282,14 @@ for (const rel of files) {
   const clientWrite = CREDENTIAL.test(body) && MUTATION.test(body)
   const postgresWrite = DIRECT_POSTGRES.test(body)
   if (!clientWrite && !postgresWrite) continue
+
+  // A provably read-only session holds no write power, so it is not counted as
+  // write-capable at all. Counted separately so the summary still says how many
+  // such probes exist rather than hiding them.
+  if (postgresWrite && !clientWrite && isProvablyReadOnly(body)) {
+    readOnlyProbes.push(rel)
+    continue
+  }
 
   writeCapable += 1
   if (clientWrite) viaClient += 1
@@ -274,3 +355,13 @@ console.log(
     `(${viaClient} via the Supabase client, ${viaPostgres} via a direct Postgres connection), ` +
     'every one guarded (preflight, TEST allowlist, or PROD denylist).',
 )
+// Named rather than merely counted: a silently exempted category is how an
+// exemption becomes a habit. Anyone reading a PASS can see exactly which files
+// were admitted on the read-only argument and go check them.
+if (readOnlyProbes.length > 0) {
+  console.log(
+    `[no-unguarded-production-write] plus ${readOnlyProbes.length} provably read-only probe(s), ` +
+      'admitted because a default_transaction_read_only=on session cannot write:',
+  )
+  for (const p of readOnlyProbes) console.log(`    ${p}`)
+}
