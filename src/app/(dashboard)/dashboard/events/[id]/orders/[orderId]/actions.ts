@@ -5,6 +5,8 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requestTicketRefund, RefundNotAuthorisedError } from '@/lib/payments/refund-service'
+import { toOrganiserRefundFailure } from '@/lib/payments/refund-failure'
+import { captureException } from '@/lib/observability/sentry'
 
 const SubmitRefundSchema = z.object({
   eventId: z.string().uuid(),
@@ -69,8 +71,32 @@ export async function submitOrganiserRefund(input: {
     return { ok: true, refundId: res.refundId, amountCents: res.amountCents, currency: res.currency }
   } catch (err) {
     if (err instanceof RefundNotAuthorisedError) {
-      return { ok: false, error: 'You are not authorised to refund this order.' }
+      return {
+        ok: false,
+        error:
+          'You are not authorised to refund this order. Ask an owner or a manager of this '
+          + 'organisation to refund it, or to give you manager access.',
+      }
     }
-    return { ok: false, error: err instanceof Error ? err.message : 'Refund could not be processed.' }
+    /*
+     * PLAIN WORDS ONLY (founder ruling 18 August 2026). This used to return
+     * `err.message`, which put database and Stripe internals straight into the
+     * organiser's refund dialog: "order not refundable in status pending", "no
+     * payment intent for order", or a Stripe sentence naming a charge id. The
+     * translation lives in one place so the organiser action and the admin action
+     * cannot drift apart.
+     *
+     * The raw error is NOT lost. It is captured for Sentry with the order context
+     * below, which is where an engineer looks; the organiser gets the sentence.
+     */
+    const failure = toOrganiserRefundFailure(err)
+    captureException(err, {
+      scope: 'organiser-refund',
+      reason: failure.reason,
+      order_id: parsed.data.orderId,
+      event_id: parsed.data.eventId,
+      actor_id: user.id,
+    })
+    return { ok: false, error: failure.message }
   }
 }

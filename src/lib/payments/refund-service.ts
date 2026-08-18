@@ -38,9 +38,24 @@ export class RefundNotAuthorisedError extends Error {
 }
 
 export class RefundRequestError extends Error {
-  constructor(message: string) {
+  /**
+   * The Postgres SQLSTATE the RPC raised with, preserved so callers classify on a
+   * CODE rather than on prose. The refund RPCs raise with explicit ERRCODEs
+   * (check_violation, no_data_found, insufficient_privilege), and throwing that
+   * information away forced the only available fallback, which was matching the
+   * message text. Same lesson as the GoTrue classification: read the code.
+   *
+   * It is not sufficient on its own: several distinct refusals in
+   * create_refund_request share ERRCODE check_violation, so the message still has
+   * to separate them. The difference is that those messages are OURS, written in
+   * our own migration and stable under our control, not a third party's prose.
+   */
+  readonly code?: string
+
+  constructor(message: string, code?: string) {
     super(message)
     this.name = 'RefundRequestError'
+    this.code = code
   }
 }
 
@@ -66,7 +81,7 @@ export async function requestTicketRefund(
     p_actor_id: input.actorId,
     p_buyer_message: input.buyerMessage ?? null,
   })
-  if (error) throw new RefundRequestError(error.message)
+  if (error) throw new RefundRequestError(error.message, error.code)
 
   const row = (Array.isArray(data) ? data[0] : data) as CreateRefundRequestRow | undefined
   if (!row) throw new RefundRequestError('create_refund_request returned no row')

@@ -6,6 +6,7 @@ import { requireAdminSession } from '@/lib/admin/auth'
 import { assertCan } from '@/lib/admin/rbac'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requestTicketRefund, RefundNotAuthorisedError } from '@/lib/payments/refund-service'
+import { toOrganiserRefundFailure } from '@/lib/payments/refund-failure'
 import { recordAuditEvent } from '@/lib/admin/audit'
 
 const SubmitRefundSchema = z.object({
@@ -66,6 +67,10 @@ export async function submitAdminRefund(input: {
     if (err instanceof RefundNotAuthorisedError) {
       return { ok: false, error: 'You are not authorised to refund this order.' }
     }
-    return { ok: false, error: err instanceof Error ? err.message : 'Refund could not be processed.' }
+    // Same translation as the organiser path, from one shared module, so the two
+    // surfaces cannot drift into saying different things about the same failure.
+    // An admin who needs the underlying error reads it in Sentry or the audit log
+    // rather than out of a customer-facing dialog.
+    return { ok: false, error: toOrganiserRefundFailure(err).message }
   }
 }
