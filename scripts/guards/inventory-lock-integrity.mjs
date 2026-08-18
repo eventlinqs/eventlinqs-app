@@ -117,6 +117,32 @@ const CHECKS = [
         re: /sold_count\s*=\s*sold_count\s*\+[\s\S]{0,120}reserved_count\s*=\s*GREATEST/i,
         why: 'incrementing sold without releasing reserved double-counts the seat',
       },
+      {
+        label: 're-acquires the seat when the hold has LAPSED, with the availability test inside the UPDATE',
+        re: /sold_count\s*=\s*sold_count\s*\+\s*v_quantity\s*WHERE\s+id\s*=\s*v_tier_id\s*AND\s+total_capacity\s*-\s*sold_count\s*-\s*reserved_count\s*>=\s*v_quantity/i,
+        why:
+          'measured 2026-08-19: without this, a payment landing after its 10 minute hold '
+          + 'expired confirmed into a ticket while sold_count stayed 0, and produced 2 admitting '
+          + 'tickets for a 1 seat tier with both buyers charged. The predicate must sit INSIDE the '
+          + 'UPDATE so it is evaluated under the write lock and cannot be raced',
+      },
+      {
+        label: 'REFUSES when the lapsed seat is gone (ROW_COUNT of 0 raises)',
+        re: /GET\s+DIAGNOSTICS\s+v_taken\s*=\s*ROW_COUNT[\s\S]{0,400}?RAISE\s+EXCEPTION/i,
+        why:
+          'if the re-acquire takes nothing the seat belongs to somebody else, and confirming '
+          + 'anyway mints a second ticket for it. Refusing leaves a paid order pending, which is '
+          + 'a refund; an oversell cannot be undone at the door',
+      },
+      {
+        label: 'decides inventory BEFORE confirming the order',
+        // The ticket trigger fires on the confirmation, so the seat must already be
+        // taken by then. If the orders UPDATE moves back above the tier UPDATE, the
+        // ticket is minted from the confirmation while the seat comes from the
+        // reservation, which is exactly the defect that was reproduced.
+        re: /ticket_tiers[\s\S]*?UPDATE\s+public\.orders\s+SET\s+status\s*=\s*'confirmed'/i,
+        why: 'the ticket-issuing trigger fires on the confirmation, so the seat must be secured first',
+      },
     ],
   },
 ]

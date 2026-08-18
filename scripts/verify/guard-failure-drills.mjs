@@ -342,6 +342,22 @@ const DRILLS = [
     expect: 'increments reserved_count rather than assigning it',
   },
   {
+    name: 'the lapsed-hold re-acquire removed (2 tickets for 1 seat, both buyers charged)',
+    guard: `${GUARDS}/inventory-lock-integrity.mjs`,
+    file: 'supabase/migrations/20260819000003_confirm_order_reacquires_lapsed_hold.sql',
+    find: '              AND total_capacity - sold_count - reserved_count >= v_quantity;',
+    replace: '              ;',
+    expect: 're-acquires the seat when the hold has LAPSED',
+  },
+  {
+    name: 'the sold-out refusal removed (would confirm a ticket for somebody else\'s seat)',
+    guard: `${GUARDS}/inventory-lock-integrity.mjs`,
+    file: 'supabase/migrations/20260819000003_confirm_order_reacquires_lapsed_hold.sql',
+    find: '            GET DIAGNOSTICS v_taken = ROW_COUNT;',
+    replace: '            v_taken := 1;',
+    expect: 'REFUSES when the lapsed seat is gone',
+  },
+  {
     name: 'an application-level write to sold_count (a second owner of the counter)',
     guard: `${GUARDS}/inventory-lock-integrity.mjs`,
     file: 'src/app/actions/checkout.ts',
