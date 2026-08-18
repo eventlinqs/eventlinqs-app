@@ -1,0 +1,27 @@
+{
+  "base": "https://eventlinqs-staging.vercel.app",
+  "startedAt": "2026-08-18T12:41:46.031Z",
+  "orphan": {
+    "soldBefore": 0,
+    "soldAfterBuy": 1,
+    "soldAfterRefund": 1,
+    "tickets": [
+      {
+        "ticket_code": "EL-TWWR-DYMU",
+        "status": "void"
+      }
+    ],
+    "orderStatus": "confirmed",
+    "stripeRefundId": "re_3U5mL8GqHIQtgS8t1aj9Po7n"
+  },
+  "finishedAt": "2026-08-18T12:42:23.129Z",
+  "orderId": "0549ad5e-17cd-4837-b32a-226a4a75caef",
+  "fails": [
+    "INVENTORY RESTORED after a Stripe-side refund: sold_count back to 0"
+  ],
+  "fixture": {
+    "slug": "refund-proof-night-msynjhnr",
+    "eventId": "ccdcdd40-5544-4a99-b179-0ad5169f0aab",
+    "tierId": "35220a19-240a-4bf5-8389-ee3308ce1383"
+  }
+}

@@ -900,11 +900,50 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
         .is('stripe_refund_id', null)
     }
 
-    const { data: result, error } = await adminClient.rpc('reconcile_refund', {
+    let { data: result, error } = await adminClient.rpc('reconcile_refund', {
       p_stripe_refund_id: r.id,
       p_charge_id: charge.id,
       p_refund_amount_cents: r.amount,
     })
+
+    // ADOPT THE ORPHAN. `no_refund_row` means this refund was created outside the
+    // application (the Stripe dashboard, or a script), so there is nothing for
+    // reconcile to attach to. The old behaviour fell through to
+    // orphanOrderLevelVoid, which voided the tickets and stopped: it never
+    // returned the seats to sale, never reversed the ledger and never moved the
+    // order off `confirmed`. Proven by scripts/verify/refund-orphan-inventory-drill.mjs,
+    // which refunded a real test charge at Stripe and watched sold_count stay at 1.
+    //
+    // The seats mattered most. The buyer got their money and the ticket stopped
+    // admitting, so nothing looked wrong from either side, while the tier
+    // permanently counted a sold seat that no longer existed. Worse, the same
+    // handler promoted the waitlist, inviting people into a tier its own counter
+    // called full.
+    //
+    // Rather than teach that second path to do everything reconcile_refund already
+    // does correctly, the orphan is turned INTO the shape reconcile understands:
+    // synthesise the refunds row and its ticket claims, then reconcile normally.
+    // One inventory path, one ledger path, one idempotency anchor, all of them the
+    // ones already proven end to end.
+    if (result === 'no_refund_row' && !error) {
+      const adopted = await adoptOrphanRefund(adminClient, charge, r)
+      if (adopted) {
+        const retry = await adminClient.rpc('reconcile_refund', {
+          p_stripe_refund_id: r.id,
+          p_charge_id: charge.id,
+          p_refund_amount_cents: r.amount,
+        })
+        result = retry.data
+        error = retry.error
+        if (!retry.error) {
+          console.log('[webhook] adopted an out-of-app refund and reconciled it', {
+            stripe_refund_id: r.id,
+            outcome: retry.data,
+          })
+        }
+      }
+    }
+
     if (error) {
       // Throw so the webhook returns non-2xx and Stripe retries. reconcile_refund
       // is idempotent (already-completed -> no-op), so a retry is corrective and safe.
@@ -931,14 +970,247 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
     }
   }
 
-  // Orphan safety net: a refund created directly in Stripe with no refunds row.
-  // Valid ONLY under the hard operating rule that refunds are always initiated
-  // in the app, never in the Stripe dashboard. Voids tickets at the order level
-  // so a refunded buyer never holds a valid QR, and sends a cumulative email.
-  // No ledger reversal is possible without a refunds row.
+  // LAST-RESORT SAFETY NET, reached only when adoption itself failed (no payment
+  // row for the intent, no order, or the claim insert errored). Adoption is the
+  // normal route for an out-of-app refund now, so `matchedAnyRow` is true in that
+  // case and this does not run.
+  //
+  // It is kept because its one job still matters when everything else has failed:
+  // a buyer who has been refunded must not walk in holding a valid QR. It voids
+  // tickets at the order level and stops. It does NOT return inventory and cannot
+  // reverse the ledger, because without a refunds row there is nothing to reverse
+  // against, so reaching this line means the seats need a manual look. That is why
+  // it now says so out loud instead of failing quietly.
   if (!matchedAnyRow) {
+    console.error(
+      '[webhook] charge.refunded: could not adopt this refund, falling back to a door-safety void only.',
+      { charge_id: charge.id, note: 'tickets voided; inventory and ledger NOT reconciled; needs a manual check' },
+    )
+    captureException(new Error('charge.refunded fell through to the door-safety void'), {
+      scope: 'stripe-webhook',
+      handler: 'charge-refunded-unadoptable',
+      charge_id: charge.id,
+    })
     await orphanOrderLevelVoid(adminClient, charge)
   }
+}
+
+/**
+ * Turn a refund created OUTSIDE the application into the in-app shape
+ * reconcile_refund understands: a `refunds` row keyed on stripe_refund_id plus
+ * `refund_tickets` claims for the tickets it covers. Returns true when a row
+ * exists afterwards (whether written here or by a concurrent delivery), so the
+ * caller can reconcile.
+ *
+ * WHY SYNTHESISE A ROW RATHER THAN DECREMENT INVENTORY HERE. Returning inventory
+ * from application code means a read-modify-write on ticket_tiers.sold_count from
+ * a handler that Stripe may deliver more than once and in parallel. That is a lost
+ * update waiting to happen, and it would be a SECOND place that owns the seat
+ * count. reconcile_refund already returns inventory, reverses the ledger, releases
+ * the reserve hold and sets the order status, all in one transaction, and it is
+ * idempotent on the refund row's `completed` latch. Feeding it the row it needs
+ * reuses all of that instead of reimplementing a quarter of it less safely.
+ *
+ * IDEMPOTENCY. `uq_refunds_stripe_refund` is a unique index on stripe_refund_id,
+ * so a redelivery's insert loses the race and returns 23505. That is treated as
+ * success, because the only thing the caller needs to know is that a row exists.
+ *
+ * WHICH TICKETS GET CLAIMED, and the honest limit. Stripe tells us an AMOUNT, not
+ * which tickets an operator had in mind, and for a dashboard refund that intent
+ * does not exist anywhere. So tickets are taken in a deterministic order while the
+ * set's proportional allocation still fits inside the refunded amount, and at
+ * least one is always taken. A full refund therefore claims every remaining
+ * ticket, which is the overwhelmingly common case. A partial out-of-app refund
+ * claims a whole number of tickets that fits the amount, which may not be the
+ * tickets the operator pictured. The MONEY is exact either way: reconcile reverses
+ * the ledger by Stripe's own amount, not by the tickets chosen. This is recorded
+ * as a limit rather than smoothed over, and it is the reason refunds belong in the
+ * app, where the operator names the tickets.
+ */
+async function adoptOrphanRefund(
+  adminClient: ReturnType<typeof createAdminClient>,
+  charge: Stripe.Charge,
+  stripeRefund: Stripe.Refund,
+): Promise<boolean> {
+  /*
+   * NEVER ADOPT AN IN-APP REFUND. Every refund this platform creates goes through
+   * requestTicketRefund -> refundOrder, which stamps `metadata.refund_id` with the
+   * refunds row id (verified: those are the only two write entry points,
+   * /api/payouts/refunds is a read-only reporting GET). So the presence of that key
+   * means a refunds row ALREADY EXISTS, and reaching here with one set would mean
+   * the earlier binding step failed rather than that this refund is an orphan.
+   *
+   * Adopting it would insert a SECOND refunds row for one Stripe refund, and
+   * reconcile would then reverse the ledger twice and return the same seat twice,
+   * overselling the tier. Refusing costs nothing: the door-safety fallback still
+   * runs, and the mismatch is reported so it can be looked at.
+   */
+  const inAppRefundId = (stripeRefund.metadata as { refund_id?: string } | null | undefined)?.refund_id
+  if (inAppRefundId) {
+    console.error('[webhook] refusing to adopt: this refund carries metadata.refund_id, so an in-app row exists', {
+      stripe_refund_id: stripeRefund.id,
+      refund_id: inAppRefundId,
+    })
+    captureException(new Error('orphan adoption refused: in-app refund_id present but reconcile found no row'), {
+      scope: 'stripe-webhook',
+      handler: 'adopt-orphan-refund',
+      stripe_refund_id: stripeRefund.id,
+      refund_id: inAppRefundId,
+    })
+    return false
+  }
+
+  const paymentIntentId = typeof charge.payment_intent === 'string'
+    ? charge.payment_intent
+    : (charge.payment_intent as Stripe.PaymentIntent | null)?.id
+  if (!paymentIntentId) return false
+
+  const { data: payment } = await adminClient
+    .from('payments')
+    .select('order_id')
+    .eq('gateway_payment_id', paymentIntentId)
+    .maybeSingle()
+  if (!payment?.order_id) return false
+  const orderId = payment.order_id as string
+
+  const { data: order } = await adminClient
+    .from('orders')
+    .select('id, organisation_id, currency, total_cents')
+    .eq('id', orderId)
+    .maybeSingle()
+  if (!order?.organisation_id) return false
+
+  const amountCents = stripeRefund.amount ?? 0
+  if (amountCents <= 0) return false
+
+  // Every ticket on the order, with its face value, so the denominator matches
+  // create_refund_request's (which allocates over ALL of the order's tickets).
+  const { data: allTickets } = await adminClient
+    .from('tickets')
+    .select('id, ticket_code, status, order_item:order_items(unit_price_cents)')
+    .eq('order_id', orderId)
+    .order('ticket_code')
+  const rows = (allTickets ?? []) as unknown as Array<{
+    id: string
+    ticket_code: string
+    status: string
+    order_item: { unit_price_cents: number } | null
+  }>
+  const allFace = rows.reduce((sum, t) => sum + Number(t.order_item?.unit_price_cents ?? 0), 0)
+
+  // Claimable = still admitting AND not already claimed by an active refund. The
+  // partial unique index uq_refund_tickets_active_ticket would reject a second
+  // active claim anyway; filtering here means the insert does not have to fail.
+  const { data: claimed } = await adminClient
+    .from('refund_tickets')
+    .select('ticket_id')
+    .eq('is_active', true)
+  const alreadyClaimed = new Set((claimed ?? []).map(c => c.ticket_id as string))
+
+  /*
+   * WHY `void` IS CLAIMABLE HERE AND `refunded` IS NOT. This distinction is the
+   * whole correctness argument for the repair case, so it is written down.
+   *
+   * `void` is set in exactly ONE place in this codebase: orphanOrderLevelVoid
+   * below, the door-safety fallback (verified by grepping every write of
+   * tickets.status). That path voids the ticket and never touches sold_count. So a
+   * ticket sitting at `void` is, by construction, a ticket whose SEAT IS STILL
+   * COUNTED AS SOLD. Claiming it returns a seat that is genuinely missing, which
+   * is precisely the repair, and there is no path that could have returned it
+   * already.
+   *
+   * `refunded` is set only by reconcile_refund, which returns the seat in the SAME
+   * transaction. Claiming one of those would decrement a second time for a seat
+   * already back on sale, quietly overselling the tier. So it is excluded.
+   *
+   * This is also what removes a race from the proof: if a redelivery or the
+   * fallback voided the tickets first, adoption still restores the inventory
+   * afterwards instead of finding nothing to claim.
+   */
+  const candidates = rows.filter(
+    t => (t.status === 'valid' || t.status === 'scanned' || t.status === 'void') && !alreadyClaimed.has(t.id),
+  )
+
+  const chosen: string[] = []
+  if (allFace > 0) {
+    let selFace = 0
+    for (const t of candidates) {
+      const nextFace = selFace + Number(t.order_item?.unit_price_cents ?? 0)
+      const nextAlloc = Math.round((Number(order.total_cents) * nextFace) / allFace)
+      // Always take the first ticket, then keep taking while the set still fits.
+      if (chosen.length === 0 || nextAlloc <= amountCents) {
+        chosen.push(t.id)
+        selFace = nextFace
+      } else break
+    }
+  }
+
+  const insert = await adminClient
+    .from('refunds')
+    .insert({
+      order_id: orderId,
+      organisation_id: order.organisation_id,
+      amount_cents: amountCents,
+      currency: (order.currency as string) ?? (charge.currency ?? 'aud').toUpperCase(),
+      reason: 'other',
+      status: 'processing',
+      initiator: 'system',
+      requested_by: null,
+      stripe_refund_id: stripeRefund.id,
+      buyer_message: null,
+      organiser_internal_notes:
+        'Adopted by the webhook: this refund was created outside EventLinqs (Stripe dashboard or API). '
+        + 'Tickets were selected from the refunded amount because no operator selection exists.',
+    })
+    .select('id')
+    .maybeSingle()
+
+  if (insert.error) {
+    // 23505 = a concurrent delivery already adopted it. A row exists, which is all
+    // the caller needs; reconcile is idempotent from here.
+    if (insert.error.code === '23505') return true
+    captureException(insert.error, {
+      scope: 'stripe-webhook',
+      handler: 'adopt-orphan-refund',
+      order_id: orderId,
+      stripe_refund_id: stripeRefund.id,
+    })
+    return false
+  }
+
+  const refundId = insert.data?.id as string | undefined
+  if (!refundId) return false
+
+  if (chosen.length > 0) {
+    const { error: claimErr } = await adminClient
+      .from('refund_tickets')
+      .insert(chosen.map(ticket_id => ({ refund_id: refundId, ticket_id, is_active: true })))
+    if (claimErr) {
+      // The claims are what make the tickets void and the seats return, so a
+      // failure here must not leave a refunds row that reconciles to nothing.
+      // Mark it failed (the trigger frees any claims) and let the fallback void run.
+      await adminClient
+        .from('refunds')
+        .update({ status: 'failed', failure_reason: `orphan claim failed: ${claimErr.message}` })
+        .eq('id', refundId)
+      captureException(claimErr, {
+        scope: 'stripe-webhook',
+        handler: 'adopt-orphan-refund-claims',
+        order_id: orderId,
+        stripe_refund_id: stripeRefund.id,
+      })
+      return false
+    }
+  }
+
+  console.log('[webhook] adopted out-of-app refund', {
+    stripe_refund_id: stripeRefund.id,
+    order_id: orderId,
+    refund_id: refundId,
+    tickets_claimed: chosen.length,
+    amount_cents: amountCents,
+  })
+  return true
 }
 
 /**

@@ -38,6 +38,7 @@
  *   zoned-event-times          an event time is converted in the event zone, not the runtime one
  *   mutation-revalidates       a publicly visible mutation invalidates what it affected
  *   gate-fields-complete       a query feeding a gate selects every field that gate reads
+ *   refund-restores-inventory  a refund can never take the money and keep the seat sold
  *
  * On no-external-checkout: an event whose tickets are sold on another platform
  * must never render a selector or take a payment here, and the ruling was
@@ -402,6 +403,17 @@ const GUARDS = [
   // points a caller actually uses rather than only direct calls, and refuses a
   // bare cast at the boundary.
   'scripts/guards/gate-fields-complete.mjs',
+  // Founder task 2026-08-18: "a refund that succeeds at Stripe but fails to
+  // restore inventory must be impossible to ship." It was possible, and it
+  // shipped. A refund created outside the app (the Stripe dashboard shape) had no
+  // refunds row, so reconcile_refund had nothing to attach to and the handler fell
+  // through to a door-safety void that returned no seats and left the order on
+  // `confirmed`. Reproduced with a real test-mode refund: money back, ticket dead,
+  // sold_count still 1. Every party saw a correct outcome, which is why it could
+  // have run for months. This pins the structure that makes it impossible: one
+  // inventory path, an adopted orphan, a refusal that stops a double-restore, and
+  // exactly one sanctioned void.
+  'scripts/guards/refund-restores-inventory.mjs',
 ]
 
 /**

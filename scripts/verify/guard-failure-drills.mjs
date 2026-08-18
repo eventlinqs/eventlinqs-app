@@ -262,6 +262,55 @@ const DRILLS = [
     // expected text is its report format rather than the code that caused it.
     expect: "import * as '@sentry/nextjs'",
   },
+
+  // -------------------------------------------------------------------------
+  // REFUND INVENTORY (the 2026-08-18 leak). A refund that succeeds at Stripe and
+  // does not return the seat is invisible to everybody: the buyer is refunded,
+  // the ticket stops admitting, and the tier quietly keeps counting the seat as
+  // sold. Reproduced with a real test-mode refund by
+  // scripts/verify/refund-orphan-inventory-drill.mjs. These five drills are the
+  // five ways back into it.
+  // -------------------------------------------------------------------------
+  {
+    name: 'reconcile_refund stops returning inventory (the leak itself)',
+    guard: `${GUARDS}/refund-restores-inventory.mjs`,
+    file: 'supabase/migrations/20260621000005_reconcile_refund_cast_and_event_scope.sql',
+    find: 'GREATEST(0, tt.sold_count - sub.cnt)',
+    replace: 'tt.sold_count',
+    expect: 'no longer returns inventory',
+  },
+  {
+    name: 'the ::public.order_status cast dropped again (the 20260621000002 defect)',
+    guard: `${GUARDS}/refund-restores-inventory.mjs`,
+    file: 'supabase/migrations/20260621000005_reconcile_refund_cast_and_event_scope.sql',
+    find: "END)::public.order_status",
+    replace: 'END)',
+    expect: 'casts the order status',
+  },
+  {
+    name: 'an out-of-app refund no longer adopted (straight to the door-safety void)',
+    guard: `${GUARDS}/refund-restores-inventory.mjs`,
+    file: 'src/app/api/webhooks/stripe/route.ts',
+    find: 'const adopted = await adoptOrphanRefund(adminClient, charge, r)',
+    replace: 'const adopted = false',
+    expect: 'no longer adopts an unmatched refund',
+  },
+  {
+    name: 'a second ticket-void path appears (the leak returning under a new name)',
+    guard: `${GUARDS}/refund-restores-inventory.mjs`,
+    file: 'src/app/api/webhooks/stripe/route.ts',
+    find: '  let matchedAnyRow = false',
+    replace: "  let matchedAnyRow = false\n  const rogueVoid = { status: 'void' }\n  void rogueVoid",
+    expect: 'void a ticket',
+  },
+  {
+    name: 'adoption stops refusing an in-app refund (would double-restore the seat)',
+    guard: `${GUARDS}/refund-restores-inventory.mjs`,
+    file: 'src/app/api/webhooks/stripe/route.ts',
+    find: '  const inAppRefundId = (stripeRefund.metadata as { refund_id?: string } | null | undefined)?.refund_id',
+    replace: '  const inAppRefundId: string | undefined = undefined',
+    expect: 'refuses a refund carrying metadata.refund_id',
+  },
 ]
 
 function run(guard) {
